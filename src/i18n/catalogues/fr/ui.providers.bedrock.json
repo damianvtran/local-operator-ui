@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "ID de clé d’accès",
-	"ui.providers.bedrock.ambient_body": "Utilisez les identifiants AWS déjà fournis par cet ordinateur : variables d’environnement, votre configuration AWS ou le rôle de la machine sur laquelle tourne Local Operator.",
 	"ui.providers.bedrock.ambient_none": "Aucun identifiant AWS n’a été détecté dans l’environnement. La connexion vérifie quand même toute la chaîne d’identifiants AWS.",
 	"ui.providers.bedrock.ambient_sources": "Trouvé : {sources}",
 	"ui.providers.bedrock.api_key_label": "Clé API Amazon Bedrock",

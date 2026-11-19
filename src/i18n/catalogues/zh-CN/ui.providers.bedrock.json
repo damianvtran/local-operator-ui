@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "访问密钥ID",
-	"ui.providers.bedrock.ambient_body": "使用这台电脑已提供的AWS凭据：环境变量、你的AWS配置，或运行Local Operator的机器所附带的角色。",
 	"ui.providers.bedrock.ambient_none": "环境中未检测到AWS凭据。连接时仍会检查完整的AWS凭据链。",
 	"ui.providers.bedrock.ambient_sources": "已找到：{sources}",
 	"ui.providers.bedrock.api_key_label": "Amazon Bedrock API密钥",

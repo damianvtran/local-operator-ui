@@ -97,6 +97,7 @@ import type {
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { awsPanelAvailable } from "./bedrock-connect-model";
 import { BedrockConnectPanel } from "./bedrock-connect-panel";
 import { useMakeLocalDefault } from "./local-default";
 import { checkLocalProvider } from "./local-provider-check";
@@ -645,9 +646,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * the early returns so the hook order is the same for every provider.
 	 */
 	const capabilities = useDesktopCapabilities();
-	const awsPanel =
-		provider.auth_methods.some((candidate) => candidate.kind === "aws") &&
-		desktopFeatureEnabled(capabilities.data, "bedrock_auth");
+	const awsPanel = awsPanelAvailable(
+		provider,
+		desktopFeatureEnabled(capabilities.data, "bedrock_auth"),
+	);
 	const methods = provider.auth_methods.filter(
 		(candidate) => candidate.kind !== "aws",
 	);

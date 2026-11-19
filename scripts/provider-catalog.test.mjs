@@ -43,6 +43,7 @@ const catalog = await import(
 );
 const {
 	brandOf,
+	connectedRowMeta,
 	methodBlurb,
 	methodName,
 	monogramOf,
@@ -390,4 +391,56 @@ test("bedrock's aws method is named for the account and keeps the key group", ()
 	]);
 	assert.match(methodBlurb(bedrock.auth_methods[0], bedrock), /AWS profile/);
 	assert.equal(providerGroup(bedrock), "key");
+});
+
+/*
+ * QA round 1, Q1: a Bedrock connection is a profile, an SSO sign-in or the
+ * default credentials far more often than a key, so the connected row names
+ * the stored connection (the backend's label, sent as `identity` when exactly
+ * one row is stored) instead of "API key saved". Plain key providers keep
+ * their line.
+ */
+test("a connected Bedrock row names its AWS connection, not an API key", () => {
+	const bedrock = {
+		id: "bedrock",
+		name: "Amazon Bedrock",
+		local: false,
+		identity: "acme-dev-sso · us-west-2",
+		auth_methods: [
+			{
+				id: "bedrock",
+				method_id: "bedrock",
+				label: "AWS account",
+				kind: "aws",
+			},
+			{
+				id: "bedrock",
+				method_id: "bedrock:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.equal(
+		connectedRowMeta(bedrock, "Claude Opus 5.5 (Bedrock)"),
+		"acme-dev-sso · us-west-2 · Claude Opus 5.5 (Bedrock)",
+	);
+	assert.equal(
+		connectedRowMeta({ ...bedrock, identity: null }, null),
+		"AWS connection saved",
+	);
+	const keyOnly = {
+		id: "openrouter",
+		name: "OpenRouter",
+		local: false,
+		auth_methods: [
+			{
+				id: "openrouter",
+				method_id: "openrouter:api-key",
+				label: "API key",
+				kind: "api_key",
+			},
+		],
+	};
+	assert.equal(connectedRowMeta(keyOnly, null), "API key saved");
 });

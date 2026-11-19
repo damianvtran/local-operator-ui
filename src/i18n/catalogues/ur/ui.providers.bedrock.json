@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "رسائی کلید کی ID",
-	"ui.providers.bedrock.ambient_body": "وہ AWS اسناد استعمال کریں جو یہ کمپیوٹر پہلے سے فراہم کرتا ہے: ماحولیاتی متغیرات، آپ کی AWS کنفیگریشن، یا اس مشین کا کردار جس پر Local Operator چل رہا ہے۔",
 	"ui.providers.bedrock.ambient_none": "ماحول میں کوئی AWS اسناد نہیں ملیں۔ کنیکٹ کرتے وقت پھر بھی پوری AWS اسناد کی زنجیر جانچی جائے گی۔",
 	"ui.providers.bedrock.ambient_sources": "ملا: {sources}",
 	"ui.providers.bedrock.api_key_label": "Amazon Bedrock API کلید",

@@ -52,6 +52,16 @@ type Scenario =
 	| "sso-no-cli"
 	/** The SSO sign-in is running: the device code and Cancel. */
 	| "sso-waiting"
+	/** An aws login profile that was never signed in (session `missing`). */
+	| "sso-missing"
+	/** Two SSO profiles need sign-in; one run belongs to the first only. */
+	| "sso-two-profiles"
+	/** A saved connection's Check: AWS rejected it (422). */
+	| "check-failed"
+	/** A saved connection's Check: the app stopped waiting (504 deadline). */
+	| "check-unverified"
+	/** Access-key tab with a malformed key ID and a typed non-Region. */
+	| "invalid-input"
 	/** Connect answered 422 `bedrock_credentials_rejected`. */
 	| "rejected"
 	/** Credentials work but cannot list models (403): saved, unverified. */
@@ -197,7 +207,42 @@ const context = (scenario: Scenario): BedrockAwsContext => {
 			],
 		};
 	}
-	if (scenario === "profiles")
+	if (scenario === "sso-missing") {
+		const [, ...rest] = base.profiles;
+		return {
+			...base,
+			profiles: [
+				{
+					name: "acme-console",
+					kind: "login",
+					region: "us-west-2",
+					session: {
+						state: "missing",
+						expires_at: null,
+						login_command: null,
+					},
+				},
+				...rest,
+			],
+		};
+	}
+	if (scenario === "sso-two-profiles") {
+		const [first, second, ...rest] = base.profiles;
+		const expired = { state: "expired" as const, expires_at: null };
+		return {
+			...base,
+			profiles: [
+				{ ...first, session: { ...first.session, ...expired } },
+				{ ...second, session: { ...second.session, ...expired } },
+				...rest,
+			],
+		};
+	}
+	if (
+		scenario === "profiles" ||
+		scenario === "check-failed" ||
+		scenario === "check-unverified"
+	)
 		return {
 			...base,
 			connections: [
@@ -314,6 +359,20 @@ const installBridge = (scenario: Scenario) => {
 				return ok(SSO_WAITING);
 			case "auth.status":
 				return ok(SSO_WAITING);
+			case "auth.bedrock.check":
+				if (scenario === "check-unverified")
+					return refused(
+						504,
+						"deadline_exceeded",
+						"The app stopped waiting for the backend after 90 seconds. The check may still be running.",
+					);
+				if (scenario === "check-failed")
+					return refused(
+						422,
+						"bedrock_sso_expired",
+						"The SSO session for profile acme-dev-sso has expired. Run aws sso login --profile acme-dev-sso, then check again.",
+					);
+				return ok({ valid: true, reason: null, code: null });
 			case "config.get":
 				return ok({ values: { hosting: "bedrock" } });
 			default:
@@ -393,7 +452,8 @@ type Story = StoryObj<{ scenario: Scenario }>;
 const CONNECT = /^Connect$/;
 const SIGN_IN_SSO = /Sign in with AWS SSO/;
 const ACCESS_KEY_TAB = /Access key/;
-const PROFILE_TAB = /^Profile$/;
+const PROFILE_TAB = /^AWS profile$/;
+const CHECK = /^Check$/;
 
 const story = (scenario: Scenario, play?: Story["play"]) =>
 	({
@@ -451,3 +511,46 @@ export const ContextError: Story = story("context-error");
 export const Connected: Story = story("connected", pressConnect);
 /** A backend without `features.bedrock_auth`: the plain API-key panel only. */
 export const NoCapabilityFallback: Story = story("no-capability");
+/** An aws login profile never signed in: "not signed in yet", no "Nothing was saved." */
+export const SsoNeverSignedIn: Story = story("sso-missing");
+/**
+ * Per-profile sign-in (R2): the run started for acme-dev-sso stays with it;
+ * picking acme-prod-sso shows that profile's own Sign in button, and the
+ * key tabs' Connect is not held by the other profile's run.
+ */
+export const SsoPerProfile: Story = story("sso-two-profiles", async () => {
+	await userEvent.click(
+		await screen.findByRole("button", { name: SIGN_IN_SSO }),
+	);
+	await screen.findByText(/WDKX-QPLM/);
+	await userEvent.click(
+		await screen.findByRole("combobox", { name: /AWS profile/ }),
+	);
+	await userEvent.click(
+		await screen.findByRole("option", { name: /acme-prod-sso/ }),
+	);
+});
+/** A saved connection's Check that AWS refused: the reason is a visible line. */
+export const CheckFailed: Story = story("check-failed", async () => {
+	await userEvent.click(await screen.findByRole("button", { name: CHECK }));
+	await screen.findByText(/has expired/);
+});
+/** A Check the app stopped waiting for: "Not verified", neutral, with the reason. */
+export const CheckUnverified: Story = story("check-unverified", async () => {
+	await userEvent.click(await screen.findByRole("button", { name: CHECK }));
+	await screen.findByText(/stopped waiting/);
+});
+/** Inline validation: a lower-case key ID and a typed Region AWS has no such id for. */
+export const InvalidInput: Story = story("invalid-input", async () => {
+	await userEvent.click(
+		await screen.findByRole("tab", { name: ACCESS_KEY_TAB }),
+	);
+	await userEvent.type(
+		await screen.findByLabelText(/Access key ID/),
+		"akia-not-a-key",
+	);
+	await userEvent.tab();
+	const region = await screen.findByRole("combobox", { name: /Region/ });
+	await userEvent.click(region);
+	await userEvent.keyboard("moon-base-1{Enter}");
+});

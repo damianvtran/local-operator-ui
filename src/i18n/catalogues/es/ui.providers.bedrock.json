@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "ID de clave de acceso",
-	"ui.providers.bedrock.ambient_body": "Usa las credenciales de AWS que este equipo ya proporciona: variables de entorno, tu configuración de AWS o el rol de la máquina donde se ejecuta Local Operator.",
 	"ui.providers.bedrock.ambient_none": "No se detectaron credenciales de AWS en el entorno. Al conectar se comprueba igualmente toda la cadena de credenciales de AWS.",
 	"ui.providers.bedrock.ambient_sources": "Encontrado: {sources}",
 	"ui.providers.bedrock.api_key_label": "Clave de API de Amazon Bedrock",

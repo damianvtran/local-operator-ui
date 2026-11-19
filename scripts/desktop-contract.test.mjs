@@ -4511,3 +4511,22 @@ test("bedrock AWS panel ops reach their routes and refuse malformed connections"
 	}
 	assert.equal(seen.length, count);
 });
+
+/*
+ * Review round 1, R4: Bedrock's connect and check wait on AWS twice - a
+ * credential resolve capped at 15 s (`CREDENTIAL_TIMEOUT_S`) and a probe whose
+ * 15 s httpx timeout bounds each of its four phases - so the daemon's bounded
+ * worst case is 75 s before it stores the row. The transport must wait longer
+ * than that, or it reports a deadline for a connect the backend then saves.
+ */
+test("bedrock connect and check wait longer than the daemon's bounded worst case", () => {
+	const daemonWorstCaseMs = (15 + 4 * 15) * 1000;
+	for (const op of ["auth.bedrock.connect", "auth.bedrock.check"]) {
+		assert.ok(
+			desktopRequestDeadlineMs(op) > daemonWorstCaseMs,
+			`${op}: ${desktopRequestDeadlineMs(op)} ms`,
+		);
+	}
+	// The context read and the SSO start answer without waiting on AWS.
+	assert.equal(desktopRequestDeadlineMs("auth.bedrock.context"), 20000);
+});

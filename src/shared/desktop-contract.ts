@@ -8010,7 +8010,29 @@ const COMMUNITY_LONG_OPS: ReadonlySet<string> = new Set([
 	"community.events",
 ]);
 
+/*
+ * AMAZON BEDROCK'S CONNECT AND CHECK WAIT ON AWS, TWICE (review round 1, R4).
+ * The daemon's bounds (local-operator `local_operator/providers/bedrock/`):
+ * resolving a profile's credentials is capped at `CREDENTIAL_TIMEOUT_S = 15.0`
+ * (`auth.py`, an `asyncio.wait_for` around botocore, which gives
+ * `credential_process`, SSO token refresh and IMDS no bound of their own);
+ * the signed probe then runs under `CHECK_TIMEOUT_S = 15.0` (`login.py`;
+ * `check.py` passes it to httpx, where it bounds EACH phase - connect, write,
+ * read, pool - not the request). The route `auth.bedrock.check` calls
+ * `check_connection(key, 15.0)` the same way. So the bounded worst case is
+ * 15 + 4 x 15 = 75 s before a connect stores its row, defaults and re-homes
+ * sessions. On the 20 s control budget the app reported a deadline - and
+ * cleared the typed secrets - for a connect the backend went on to store.
+ * The long budget (90 s) sits above that bound. Not in `READ_ONLY_OPS`:
+ * connect writes a credential, so its timeout keeps the write sentence.
+ */
+const BEDROCK_AWS_OPS: ReadonlySet<string> = new Set([
+	"auth.bedrock.connect",
+	"auth.bedrock.check",
+]);
+
 const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
+	...BEDROCK_AWS_OPS,
 	...COMMUNITY_LONG_OPS,
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,

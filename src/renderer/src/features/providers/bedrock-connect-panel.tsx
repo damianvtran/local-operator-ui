@@ -28,8 +28,11 @@
  * - SSO sign-in reuses the provider sign-in machinery (`useSignInSession`,
  *   `pollAuthOperation`): `auth.bedrock.ssoLogin` returns an ordinary
  *   `AuthOperation`, polled with `auth.status` and cancelled with `auth.cancel`.
- *   The session key is `bedrock-sso`, distinct from the provider's own, so an
- *   SSO refresh never collides with the provider-level flow registry.
+ *   The session key is `bedrock-sso:<profile>` (`ssoSessionKey`), distinct
+ *   from the provider's own, so an SSO refresh never collides with the
+ *   provider-level flow registry, and one profile's run never shows on another.
+ * - The rules (which profiles a tab lists, when secrets survive, what a failed
+ *   Check is called) live in `bedrock-connect-model.ts`, tested in Node.
  * - Success is reported UP (`onConnected`), and `ProviderDetail` renders the
  *   same receipt view every other provider's saved key gets, so Bedrock's
  *   "connected" looks and behaves like everyone else's.
@@ -60,167 +63,59 @@ import {
 	type SearchableOption,
 	SearchableSelect,
 } from "@shared/components/ui/searchable-select";
-import { formatDateTime, formatList, t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import type { FC, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
 	BedrockAwsContext,
 	BedrockCheckResult,
 	BedrockConnectResult,
 	BedrockConnection,
-	BedrockConnectionInput,
 	BedrockProfile,
-	BedrockProfileKind,
 } from "../../../../shared/desktop-contract";
+import {
+	BEDROCK_METHODS,
+	type BedrockMethod,
+	accessKeyIdError,
+	checkResultFromError,
+	checkVerdict,
+	connectionInput,
+	customRegionError,
+	defaultMethod,
+	isSsoProfile,
+	keepsSecretsAfter,
+	kindLabel,
+	methodDescription,
+	methodLabel,
+	needsSignIn,
+	outcomeUnknown,
+	profilesFor,
+	refusalTitle,
+	regionHelp,
+	sessionBadge,
+	signInCommand,
+	signInCopy,
+	ssoSessionKey,
+} from "./bedrock-connect-model";
 import { deviceCodeOf } from "./provider-catalog";
 import { SecretInput } from "./secret-input";
 import { useSignInSession } from "./sign-in-sessions";
 
-/** The panel's five ways in; SSO and Profile both submit `method: "profile"`. */
-export type BedrockMethod =
-	| "profile"
-	| "sso"
-	| "access_key"
-	| "api_key"
-	| "ambient";
-
-const METHODS: readonly BedrockMethod[] = [
-	"profile",
-	"sso",
-	"access_key",
-	"api_key",
-	"ambient",
-];
-
-/** Profiles whose session the AWS CLI's SSO/login flow refreshes. */
-const SSO_KINDS: ReadonlySet<BedrockProfileKind> = new Set(["sso", "login"]);
+export type { BedrockMethod } from "./bedrock-connect-model";
 
 /** Query key for the AWS context; exported so stories/tests can seed it. */
 export const BEDROCK_CONTEXT_KEY = ["desktop", "bedrock", "aws"] as const;
 
-/* Mirrors the contract's own bound, so a typed Region is refused here rather
- * than by a strict-schema rejection the user cannot read. */
-const AWS_REGION = /^[a-z]{2}(-[a-z]+)+-\d{1,2}$/;
-
-const methodLabel = (method: BedrockMethod): string => {
-	switch (method) {
-		case "profile":
-			return t("ui.providers.bedrock.tab_profile");
-		case "sso":
-			return t("ui.providers.bedrock.tab_sso");
-		case "access_key":
-			return t("ui.providers.bedrock.tab_access_key");
-		case "api_key":
-			return t("ui.providers.bedrock.tab_api_key");
-		case "ambient":
-			return t("ui.providers.bedrock.tab_ambient");
-	}
-};
-
-const kindLabel = (kind: BedrockProfileKind): string => {
-	switch (kind) {
-		case "static":
-			return t("ui.providers.bedrock.kind_static");
-		case "sso":
-			return t("ui.providers.bedrock.kind_sso");
-		case "login":
-			return t("ui.providers.bedrock.kind_login");
-		case "assume_role":
-			return t("ui.providers.bedrock.kind_assume_role");
-		case "process":
-			return t("ui.providers.bedrock.kind_process");
-		case "web_identity":
-			return t("ui.providers.bedrock.kind_web_identity");
-		default:
-			return t("ui.providers.bedrock.kind_other");
-	}
-};
-
-/**
- * The session badge for a profile, or null when sessions do not apply (a
- * static key pair has no session to expire). `expired_refreshable` is NOT a
- * warning: botocore refreshes it with the stored refresh token on first use,
- * so telling the user to sign in again would be a false alarm.
+/*
+ * After a Connect the app gave up on (deadline, IPC), the backend may still
+ * store the row: its worst case runs past any deadline a person waits for
+ * (see `auth.bedrock.connect` in desktop-contract.ts). One more read of the
+ * context this long after the first lets a late save appear in "Saved
+ * connections" without the user reopening the panel (R4).
  */
-export function sessionBadge(
-	profile: BedrockProfile,
-): { text: string; tone: "success" | "warning" | "neutral" } | null {
-	const { state, expires_at: expiresAt } = profile.session;
-	switch (state) {
-		case "valid":
-			return {
-				text: expiresAt
-					? t("ui.providers.bedrock.session_valid_until", {
-							time: formatDateTime(new Date(expiresAt), {
-								hour: "numeric",
-								minute: "2-digit",
-							}),
-						})
-					: t("ui.providers.bedrock.session_valid"),
-				tone: "success",
-			};
-		case "expired_refreshable":
-			return {
-				text: t("ui.providers.bedrock.session_refreshes"),
-				tone: "neutral",
-			};
-		case "expired":
-			return {
-				text: t("ui.providers.bedrock.session_expired"),
-				tone: "warning",
-			};
-		case "missing":
-			return {
-				text: t("ui.providers.bedrock.session_missing"),
-				tone: "warning",
-			};
-		default:
-			return null;
-	}
-}
-
-/** Whether a profile needs an SSO sign-in before it can sign requests. */
-export const needsSignIn = (profile: BedrockProfile | null): boolean =>
-	profile !== null &&
-	SSO_KINDS.has(profile.kind) &&
-	(profile.session.state === "expired" || profile.session.state === "missing");
-
-/** The heading for a refused connect, by the backend's `bedrock_*` code. */
-export function refusalTitle(code: string | undefined): string {
-	switch (code) {
-		case "bedrock_credentials_rejected":
-			return t("ui.providers.bedrock.error_credentials_rejected");
-		case "bedrock_sso_expired":
-			return t("ui.providers.bedrock.sso_expired_title");
-		case "bedrock_profile_not_found":
-			return t("ui.providers.bedrock.error_profile_not_found");
-		case "bedrock_region_invalid":
-			return t("ui.providers.bedrock.error_region_invalid");
-		case "bedrock_no_credentials":
-			return t("ui.providers.bedrock.error_no_credentials");
-		default:
-			return t("ui.providers.bedrock.error_generic");
-	}
-}
-
-const regionSourceLabel = (
-	source: BedrockAwsContext["default_region_source"],
-): string => {
-	switch (source) {
-		case "config":
-			return t("ui.providers.bedrock.region_source_config");
-		case "profile":
-			return t("ui.providers.bedrock.region_source_profile");
-		case "fallback":
-			return t("ui.providers.bedrock.region_source_fallback");
-		default:
-			// AWS_REGION / AWS_DEFAULT_REGION: an env var name is a machine
-			// token and stays untranslated.
-			return source;
-	}
-};
+const LATE_SAVE_REREAD_MS = 15_000;
 
 type Refusal = { code?: string; text: string };
 
@@ -251,28 +146,27 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 	);
 	const [profileName, setProfileName] = useState<string | null>(null);
 	const [regionChoice, setRegionChoice] = useState<string | null>(null);
+	const [regionError, setRegionError] = useState<string | null>(null);
 	const [apiKey, setApiKey] = useState("");
 	const [accessKeyId, setAccessKeyId] = useState("");
 	const [secretAccessKey, setSecretAccessKey] = useState("");
 	const [sessionToken, setSessionToken] = useState("");
+	const [accessKeyIdLeft, setAccessKeyIdLeft] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [refusal, setRefusal] = useState<Refusal | null>(null);
 
+	const lateReread = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(
+		() => () => {
+			if (lateReread.current) clearTimeout(lateReread.current);
+		},
+		[],
+	);
+
 	const profiles = data?.profiles ?? [];
-	const ssoProfiles = profiles.filter((p) => SSO_KINDS.has(p.kind));
-	/*
-	 * The first method a person most likely wants: an SSO profile if the machine
-	 * has one (the common corporate setup), any profile next, else the API key -
-	 * the one method that needs nothing on this computer.
-	 */
-	const method: BedrockMethod =
-		chosenMethod ??
-		(ssoProfiles.length > 0
-			? "sso"
-			: profiles.length > 0
-				? "profile"
-				: "api_key");
-	const listed = method === "sso" ? ssoProfiles : profiles;
+	const method: BedrockMethod = chosenMethod ?? defaultMethod(profiles);
+	const usesProfile = method === "profile" || method === "sso";
+	const listed = profilesFor(method, profiles);
 	const profile =
 		listed.find((candidate) => candidate.name === profileName) ??
 		listed[0] ??
@@ -282,14 +176,23 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 	 * what the user picked, then the profile's own Region, then the backend's
 	 * default (settings > AWS_REGION > AWS_DEFAULT_REGION > fallback).
 	 */
-	const usesProfile = method === "profile" || method === "sso";
 	const region =
 		regionChoice ??
 		(usesProfile ? profile?.region : null) ??
 		data?.default_region ??
 		null;
 
-	const sso = useSignInSession("bedrock-sso", () => ({
+	/*
+	 * One sign-in session PER PROFILE (R2): the device code, the waiting state,
+	 * Cancel and a failure belong to the profile the run was started for, so
+	 * picking another profile shows that profile's own state, and coming back
+	 * finds the first run still going. Only an SSO-kind profile can start one;
+	 * the key for anything else is never started.
+	 */
+	const ssoKey = ssoSessionKey(
+		usesProfile && profile && isSsoProfile(profile) ? profile.name : "",
+	);
+	const sso = useSignInSession(ssoKey, () => ({
 		start: (name: string) =>
 			desktopResult<AuthOperation>({
 				op: "auth.bedrock.ssoLogin",
@@ -300,8 +203,15 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 		cancel: (id: string) => desktopResult({ op: "auth.cancel", id }),
 		open: (id: string, reopen: boolean) => openAuthorization(id, reopen),
 		poll: pollAuthOperation,
-		// The session state lives in the context; a fresh read repaints badges.
-		onSucceeded: () => void context.refetch(),
+		/*
+		 * The session state lives in the context; a fresh read repaints badges.
+		 * An earlier `bedrock_sso_expired` refusal is answered by this sign-in,
+		 * so it stops being shown over a now-valid session (R1).
+		 */
+		onSucceeded: () => {
+			setRefusal(null);
+			void context.refetch();
+		},
 	}));
 
 	const regionOptions: SearchableOption[] = useMemo(
@@ -325,32 +235,29 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 	const clearSecrets = () => {
 		setApiKey("");
 		setAccessKeyId("");
+		setAccessKeyIdLeft(false);
 		setSecretAccessKey("");
 		setSessionToken("");
 	};
 
-	const connection = (): BedrockConnectionInput | null => {
-		if (method === "ambient") return { method: "ambient", region };
-		if (!region) return null;
-		if (method === "api_key")
-			return apiKey.trim()
-				? { method: "api_key", region, api_key: apiKey.trim() }
-				: null;
-		if (method === "access_key")
-			return accessKeyId.trim() && secretAccessKey.trim()
-				? {
-						method: "access_key",
-						region,
-						access_key_id: accessKeyId.trim(),
-						secret_access_key: secretAccessKey.trim(),
-						session_token: sessionToken.trim() || null,
-					}
-				: null;
-		return profile
-			? { method: "profile", profile: profile.name, region }
+	const pending = connectionInput({
+		method,
+		region,
+		profile,
+		apiKey,
+		accessKeyId,
+		secretAccessKey,
+		sessionToken,
+	});
+	/*
+	 * Said once the field is left, or at once for a character no access key ID
+	 * can hold: a half-typed `AKIA` is not yet wrong, a lower-case one already is.
+	 */
+	const accessKeyIdProblem =
+		method === "access_key" &&
+		(accessKeyIdLeft || /[^A-Z0-9]/.test(accessKeyId.trim()))
+			? accessKeyIdError(accessKeyId)
 			: null;
-	};
-	const pending = connection();
 
 	const connect = async () => {
 		if (!pending) return;
@@ -365,10 +272,11 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 			onConnected(result);
 		} catch (error) {
 			/*
-			 * Secrets are cleared on a refusal too: nothing was stored, and a key
-			 * AWS just rejected is not worth keeping in memory for a retry.
+			 * Secrets are cleared once AWS judged them or the outcome is unknown,
+			 * and kept when only the input's shape was refused (R3):
+			 * `keepsSecretsAfter` holds the rule.
 			 */
-			clearSecrets();
+			if (!keepsSecretsAfter(error)) clearSecrets();
 			setRefusal({
 				code: error instanceof DesktopControlError ? error.code : undefined,
 				text:
@@ -376,8 +284,16 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 						? error.message
 						: t("ui.providers.bedrock.error_generic"),
 			});
-			// A refusal may be stale context (an SSO session that just ran out).
+			// A refusal may be stale context (an SSO session that just ran out),
+			// and an abandoned request may have been stored: re-read either way.
 			void context.refetch();
+			if (outcomeUnknown(error)) {
+				if (lateReread.current) clearTimeout(lateReread.current);
+				lateReread.current = setTimeout(
+					() => void context.refetch(),
+					LATE_SAVE_REREAD_MS,
+				);
+			}
 		} finally {
 			setSubmitting(false);
 		}
@@ -387,6 +303,7 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 		setChosenMethod(next as BedrockMethod);
 		setProfileName(null);
 		setRegionChoice(null);
+		setRegionError(null);
 		setRefusal(null);
 		clearSecrets();
 	};
@@ -430,28 +347,38 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 		sso.state.phase === "settled" &&
 		(sso.state.error !== null ||
 			(ssoOperation !== null && ssoOperation.state !== "succeeded"));
-	const showSignIn =
-		usesProfile &&
-		(needsSignIn(profile) || refusal?.code === "bedrock_sso_expired");
+	const ssoRefused = refusal?.code === "bedrock_sso_expired";
+	const showSignIn = usesProfile && (needsSignIn(profile) || ssoRefused);
 	const badge = profile ? sessionBadge(profile) : null;
 	const helpId = "bedrock-secret-help";
+	const accessKeyIdHelpId = "bedrock-access-key-id-help";
+	const regionErrorId = "bedrock-region-error";
 
 	/* --------------------------------------------- per-method input block */
 	let fields: ReactNode;
 	if (usesProfile && listed.length === 0) {
+		/*
+		 * Three empties, three sentences: no ~/.aws at all; only SSO profiles
+		 * (they are on the AWS SSO tab); only self-signing ones.
+		 */
+		const noAws = profiles.length === 0;
 		fields = (
 			<Alert variant="neutral" data-sign-in-state="bedrock-no-profiles">
 				<AlertTitle>
 					{method === "sso"
 						? t("ui.providers.bedrock.no_sso_profiles_title")
-						: t("ui.providers.bedrock.no_profiles_title")}
+						: noAws
+							? t("ui.providers.bedrock.no_profiles_title")
+							: t("ui.providers.bedrock.no_plain_profiles_title")}
 				</AlertTitle>
 				<AlertDescription>
 					{method === "sso"
 						? t("ui.providers.bedrock.no_sso_profiles_body", {
 								command: "aws configure sso",
 							})
-						: t("ui.providers.bedrock.no_profiles_body")}
+						: noAws
+							? t("ui.providers.bedrock.no_profiles_body")
+							: t("ui.providers.bedrock.no_plain_profiles_body")}
 				</AlertDescription>
 			</Alert>
 		);
@@ -470,6 +397,7 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 					onSelect={(option) => {
 						setProfileName(option.id);
 						setRegionChoice(null);
+						setRegionError(null);
 						setRefusal(null);
 					}}
 				/>
@@ -485,6 +413,7 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 				{showSignIn && profile ? (
 					<SsoSignIn
 						profile={profile}
+						afterRefusedConnect={ssoRefused}
 						cliAvailable={data.aws_cli_available}
 						active={ssoActive}
 						code={ssoCode}
@@ -531,10 +460,22 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 					id="bedrock-access-key-id"
 					value={accessKeyId}
 					onChange={(event) => setAccessKeyId(event.target.value)}
+					onBlur={() => setAccessKeyIdLeft(true)}
 					autoComplete="off"
 					spellCheck={false}
+					aria-invalid={accessKeyIdProblem ? true : undefined}
+					aria-describedby={accessKeyIdProblem ? accessKeyIdHelpId : undefined}
 					className="font-mono"
 				/>
+				{accessKeyIdProblem ? (
+					<p
+						id={accessKeyIdHelpId}
+						className="text-danger text-meta"
+						data-sign-in-state="bedrock-access-key-id-invalid"
+					>
+						{accessKeyIdProblem}
+					</p>
+				) : null}
 				<Label htmlFor="bedrock-secret-access-key">
 					{t("ui.providers.bedrock.secret_access_key_label")}
 				</Label>
@@ -561,21 +502,16 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 		);
 	} else {
 		fields = (
-			<div
-				className="flex flex-col gap-1 text-body-sm"
+			<p
+				className="text-ink-dim text-meta"
 				data-sign-in-state="bedrock-ambient"
 			>
-				<p className="text-ink-muted">
-					{t("ui.providers.bedrock.ambient_body")}
-				</p>
-				<p className="text-ink-dim text-meta">
-					{data.ambient.sources.length > 0
-						? t("ui.providers.bedrock.ambient_sources", {
-								sources: formatList(data.ambient.sources),
-							})
-						: t("ui.providers.bedrock.ambient_none")}
-				</p>
-			</div>
+				{data.ambient.sources.length > 0
+					? t("ui.providers.bedrock.ambient_sources", {
+							sources: formatList(data.ambient.sources),
+						})
+					: t("ui.providers.bedrock.ambient_none")}
+			</p>
 		);
 	}
 
@@ -586,46 +522,70 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 	 * Connect waits on an SSO sign-in the profile still needs: a profile whose
 	 * session is missing would be refused by the backend's own check, and an
 	 * enabled button that can only fail is the dead affordance this app avoids.
+	 * A running sign-in holds only the profile tabs; the key and default
+	 * credential methods never wait on one (R2).
 	 */
-	const blocked = usesProfile && needsSignIn(profile);
+	const blocked = usesProfile && (needsSignIn(profile) || ssoActive);
 
 	return (
 		<div className="flex flex-col gap-4" data-sign-in-state="bedrock">
-			<Tabs value={method} onValueChange={chooseMethod}>
-				<TabsList aria-label={t("ui.providers.bedrock.how_to_connect")}>
-					{METHODS.map((candidate) => (
-						<TabsTrigger key={candidate} value={candidate}>
-							{methodLabel(candidate)}
-						</TabsTrigger>
-					))}
-				</TabsList>
-			</Tabs>
+			<div className="flex flex-col gap-2">
+				<Tabs value={method} onValueChange={chooseMethod}>
+					<TabsList aria-label={t("ui.providers.bedrock.how_to_connect")}>
+						{BEDROCK_METHODS.map((candidate) => (
+							<TabsTrigger key={candidate} value={candidate}>
+								{methodLabel(candidate)}
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+				<p
+					className="text-body-sm text-ink-muted"
+					data-sign-in-state="bedrock-method-description"
+				>
+					{methodDescription(method, profiles)}
+				</p>
+			</div>
 
 			{fields}
 
-			<SearchableSelect
-				label={t("ui.providers.bedrock.region_label")}
-				placeholder={t("ui.providers.bedrock.region_placeholder")}
-				busyLabel={t("ui.providers.bedrock.loading_context")}
-				emptyText={t("ui.providers.bedrock.region_no_match")}
-				options={regionOptions}
-				selected={regionSelected}
-				onSelect={(option) => setRegionChoice(option.id)}
-				onCustomSubmit={(text) => {
-					const typed = text.trim();
-					if (AWS_REGION.test(typed)) setRegionChoice(typed);
-				}}
-				customRowLabel={(text) =>
-					t("ui.providers.bedrock.region_custom", { region: text.trim() })
-				}
-				helperText={t("ui.providers.bedrock.region_help", {
-					region: data.default_region,
-					source: regionSourceLabel(data.default_region_source),
-				})}
-			/>
+			<div className="flex flex-col gap-1">
+				<SearchableSelect
+					label={t("ui.providers.bedrock.region_label")}
+					placeholder={t("ui.providers.bedrock.region_placeholder")}
+					busyLabel={t("ui.providers.bedrock.loading_context")}
+					emptyText={t("ui.providers.bedrock.region_no_match")}
+					options={regionOptions}
+					selected={regionSelected}
+					onSelect={(option) => {
+						setRegionChoice(option.id);
+						setRegionError(null);
+					}}
+					onCustomSubmit={(text) => {
+						// The same bound the backend holds; a refusal says why (R3).
+						const problem = customRegionError(text);
+						setRegionError(problem);
+						if (problem === null) setRegionChoice(text.trim());
+					}}
+					customRowLabel={(text) =>
+						t("ui.providers.bedrock.region_custom", { region: text.trim() })
+					}
+					helperText={regionHelp(data, profile, usesProfile)}
+				/>
+				{regionError ? (
+					<p
+						id={regionErrorId}
+						className="text-danger text-meta"
+						role="alert"
+						data-sign-in-state="bedrock-region-invalid"
+					>
+						{regionError}
+					</p>
+				) : null}
+			</div>
 
 			{/* An SSO-expired refusal is said once, by the sign-in block above. */}
-			{refusal && !(showSignIn && refusal.code === "bedrock_sso_expired") ? (
+			{refusal && !(showSignIn && ssoRefused) ? (
 				<Alert variant="danger" data-sign-in-state="bedrock-refused">
 					<AlertTitle>{refusalTitle(refusal.code)}</AlertTitle>
 					<AlertDescription>{refusal.text}</AlertDescription>
@@ -636,7 +596,7 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
 				<Button
 					variant="primary"
 					size="sm"
-					disabled={!pending || submitting || blocked || ssoActive}
+					disabled={!pending || submitting || blocked}
 					onClick={() => void connect()}
 				>
 					{submitting ? <Spinner size="sm" /> : null}
@@ -663,6 +623,7 @@ export const BedrockConnectPanel: FC<BedrockConnectPanelProps> = ({
  */
 const SsoSignIn: FC<{
 	profile: BedrockProfile;
+	afterRefusedConnect: boolean;
 	cliAvailable: boolean;
 	active: boolean;
 	code: string | null;
@@ -673,6 +634,7 @@ const SsoSignIn: FC<{
 	onCancel: () => void;
 }> = ({
 	profile,
+	afterRefusedConnect,
 	cliAvailable,
 	active,
 	code,
@@ -682,13 +644,21 @@ const SsoSignIn: FC<{
 	onOpen,
 	onCancel,
 }) => {
-	const command =
-		profile.session.login_command ?? `aws sso login --profile ${profile.name}`;
+	const command = signInCommand(profile);
+	const copy = signInCopy(profile, afterRefusedConnect);
 	return (
-		<Alert variant="warning" data-sign-in-state="bedrock-sso-expired">
-			<AlertTitle>{t("ui.providers.bedrock.sso_expired_title")}</AlertTitle>
+		<Alert
+			variant="warning"
+			data-sign-in-state={
+				profile.session.state === "missing"
+					? "bedrock-sso-missing"
+					: "bedrock-sso-expired"
+			}
+		>
+			<AlertTitle>{copy.title}</AlertTitle>
 			<AlertDescription className="flex flex-col items-start gap-2">
-				{t("ui.providers.bedrock.sso_expired_body")}
+				<span>{copy.body}</span>
+				{copy.nothingSaved ? <span>{copy.nothingSaved}</span> : null}
 				{!cliAvailable ? (
 					<>
 						<span>{t("ui.providers.bedrock.sso_needs_cli")}</span>
@@ -781,50 +751,55 @@ const SavedConnectionRow: FC<{ connection: BedrockConnection }> = ({
 				}),
 			);
 		} catch (error) {
-			setResult({
-				valid: false,
-				reason: error instanceof Error ? error.message : null,
-				code:
-					error instanceof DesktopControlError ? (error.code ?? null) : null,
-			});
+			// Only the backend's 4xx is a verdict; anything else is "could not
+			// tell" (R4) - `checkResultFromError` holds the rule.
+			setResult(checkResultFromError(error));
 		} finally {
 			setChecking(false);
 		}
 	};
-	const verdict =
-		result === null
-			? null
-			: result.valid === true
-				? {
-						tone: "success" as const,
-						text: t("ui.providers.bedrock.check_ok"),
-					}
-				: result.valid === null
-					? {
-							tone: "neutral" as const,
-							text: t("ui.providers.bedrock.check_unverified"),
-						}
-					: {
-							tone: "danger" as const,
-							text: t("ui.providers.bedrock.check_failed"),
-						};
+	const verdict = checkVerdict(result);
+	const detailId = `bedrock-check-${connection.credential_id}`; // i18n: ignore DOM id, not copy
 	return (
-		<li className="flex flex-wrap items-center gap-2 text-body-sm">
-			<span className="font-mono">{connection.label}</span>
-			{verdict ? (
-				<Badge variant={verdict.tone} title={result?.reason ?? undefined}>
-					{verdict.text}
-				</Badge>
+		<li className="flex flex-col gap-0.5 text-body-sm">
+			<span className="flex flex-wrap items-center gap-2">
+				<span className="font-mono">{connection.label}</span>
+				{verdict ? (
+					<Badge
+						variant={verdict.tone}
+						aria-describedby={verdict.detail ? detailId : undefined}
+					>
+						{verdict.text}
+					</Badge>
+				) : null}
+				<Button
+					variant="ghost"
+					size="sm"
+					disabled={checking}
+					onClick={() => void check()}
+				>
+					{checking ? <Spinner size="sm" /> : null}
+					{t("ui.providers.bedrock.check")}
+				</Button>
+			</span>
+			{/*
+			 * The reason is a visible line, not a hover title (D2): keyboard and
+			 * touch users never see a title, and "Not working" alone does not
+			 * say what to fix. Unverified keeps the neutral ink of its badge.
+			 */}
+			{verdict?.detail ? (
+				<output
+					id={detailId}
+					className={
+						verdict.tone === "danger"
+							? "block text-danger text-meta"
+							: "block text-ink-muted text-meta"
+					}
+					data-sign-in-state={`bedrock-check-${verdict.tone}`}
+				>
+					{verdict.detail}
+				</output>
 			) : null}
-			<Button
-				variant="ghost"
-				size="sm"
-				disabled={checking}
-				onClick={() => void check()}
-			>
-				{checking ? <Spinner size="sm" /> : null}
-				{t("ui.providers.bedrock.check")}
-			</Button>
 		</li>
 	);
 };

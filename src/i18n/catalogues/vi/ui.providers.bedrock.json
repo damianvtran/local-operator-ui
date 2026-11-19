@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "ID khóa truy cập",
-	"ui.providers.bedrock.ambient_body": "Dùng thông tin xác thực AWS mà máy tính này đã có sẵn: biến môi trường, cấu hình AWS của bạn hoặc vai trò của máy đang chạy Local Operator.",
 	"ui.providers.bedrock.ambient_none": "Không phát hiện thông tin xác thực AWS nào trong môi trường. Khi kết nối, toàn bộ chuỗi thông tin xác thực AWS vẫn được kiểm tra.",
 	"ui.providers.bedrock.ambient_sources": "Đã tìm thấy: {sources}",
 	"ui.providers.bedrock.api_key_label": "Khóa API Amazon Bedrock",

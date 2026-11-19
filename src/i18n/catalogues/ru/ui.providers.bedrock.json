@@ -1,6 +1,5 @@
 {
 	"ui.providers.bedrock.access_key_id_label": "Идентификатор ключа доступа",
-	"ui.providers.bedrock.ambient_body": "Использовать учётные данные AWS, которые уже есть на этом компьютере: переменные окружения, вашу конфигурацию AWS или роль машины, на которой работает Local Operator.",
 	"ui.providers.bedrock.ambient_none": "Учётные данные AWS в окружении не найдены. При подключении всё равно будет проверена вся цепочка учётных данных AWS.",
 	"ui.providers.bedrock.ambient_sources": "Найдено: {sources}",
 	"ui.providers.bedrock.api_key_label": "API-ключ Amazon Bedrock",
