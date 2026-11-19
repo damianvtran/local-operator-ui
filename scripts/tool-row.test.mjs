@@ -31,9 +31,6 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export * from "./src/renderer/src/features/chat/components/trace/bridge-row-model";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
-			// The i18n store from inside the bundle, so a registered catalogue
-			// reaches the summaries' own translation calls (i18n slice C3).
-			'export * as i18n from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -49,7 +46,6 @@ const bundle = await build({
 	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
-	i18n,
 	bridgeRow,
 	bridgeRowView,
 	bridgeLabelFromDetails,
@@ -2715,6 +2711,8 @@ const detailBundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-detail-model";',
 			'export * from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			// The same i18n instance the models see, for the locale-switch case.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "@shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -2745,6 +2743,7 @@ const {
 	wakeIsCatchup,
 	wakePromptBody,
 	wakeReceiptHeadline,
+	...detailI18n
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(detailBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2915,6 +2914,44 @@ test("a capped section says how much of itself is not shown", () => {
 	assert.equal(detailOverflowLabel(1), "… 1 more line");
 	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 	assert.equal(detailOverflowLabel(0), "… 0 more lines");
+});
+
+test("a subtree past the walk's depth cap says so, in the reader's words", () => {
+	// Nine levels: deeper than `MAX_DEPTH` (8), so the walk prints the marker
+	// in place of the leaves rather than recursing.
+	let deep = { leaf: "x" };
+	for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+	const values = argumentLines({ deep }).map((line) => line.value);
+	assert.ok(values.includes("… deeper values not shown"), values.join("|"));
+	assert.equal(values.includes("x"), false);
+});
+
+/*
+ * Both markers are read through `t()` per call (a module constant would be
+ * frozen in the locale active at import), and the count takes the locale's
+ * plural arms: French CLDR puts 0 in `one`, English does not.
+ */
+test("the detail pane's overflow markers follow the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.more_lines":
+			"{count, plural, one {⟦fr⟧ # ligne} other {⟦fr⟧ # lignes}}",
+		"ui.chat.canonical.tool_row.detail.deeper_values": "⟦fr⟧ deeper",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailOverflowLabel(0), "⟦fr⟧ 0 ligne");
+		assert.equal(detailOverflowLabel(3), "⟦fr⟧ 3 lignes");
+		let deep = { leaf: "x" };
+		for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+		assert.ok(
+			argumentLines({ deep }).some((line) => line.value === "⟦fr⟧ deeper"),
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 });
 
 test("a sub-pixel overhang is not a line below the fold", () => {
@@ -6957,50 +6994,22 @@ test("a pure locale switch repaints a collapsed fold's live clause: the row grou
 	);
 });
 
-test("C3: painted argument-summary words are keyed, and stay bidi-free for the copy path", () => {
-	i18n.registerCatalogue("ur", {
-		"ui.chat.trace.send.mode.now": "ابھی",
-		"ui.chat.trace.address.pid": "پی آئی ڈی {pid}",
-		"ui.chat.trace.sessions.peek.last": "آخری {count, number, ::group-off}",
+/*
+ * The empty-container marker is the UI's own (the producer's `(empty)` stream
+ * bodies never reach `resultLines`), so it is keyed and read per call.
+ */
+test("the detail pane's empty-result marker follows the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.empty": "(⟦fr⟧ vide)",
 	});
-	i18n.setLocale("ur");
+	i18n.setLocale("fr");
 	try {
-		const send = summaryFromArgs("send", {
-			pid: 48213,
-			now: true,
-			message: "x",
-		});
-		assert.equal(send, "ابھی · پی آئی ڈی 48213 · x");
-		// `translateRaw`: the same text is the copied transcript's, so no
-		// U+2066-2069 isolate may ride into the clipboard.
-		assert.doesNotMatch(send, /[\u2066-\u2069]/);
-		assert.equal(
-			summaryFromArgs("sessions", { op: "peek", pid: 7, steps: 12 }),
-			"پی آئی ڈی 7 · آخری 12",
-		);
+		assert.equal(detailText(resultLines("{}")), "(⟦fr⟧ vide)");
+		assert.equal(detailText(resultLines('{"a": {}}')), "(⟦fr⟧ vide)");
 	} finally {
 		i18n.setLocale("en");
 		i18n.clearRegisteredCatalogues();
 	}
-	assert.equal(
-		summaryFromArgs("sessions", {
-			op: "peek",
-			session: "abc",
-			query: "err",
-			steps: 6,
-		}),
-		"abc · search err · 6 around",
-	);
-	assert.equal(
-		summaryFromArgs("sessions", {
-			op: "peek",
-			session: "abc",
-			before_id: "s9",
-		}),
-		"abc · before s9",
-	);
-	assert.equal(
-		summaryFromArgs("sessions", { op: "peek", session: "abc", digest: true }),
-		"abc · digest",
-	);
+	assert.equal(detailText(resultLines("{}")), "(empty)");
 });

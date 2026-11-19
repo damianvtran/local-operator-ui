@@ -381,5 +381,14 @@
 	"ui.canvas.files.remoteReadOnly": "Từ {device} · chỉ đọc",
 	"ui.canvas.files.remoteTooLargeToOpen": "Quá lớn để mở từ {device}. Hãy tải tệp xuống thiết bị này.",
 	"ui.canvas.files.remotePeerUpdateHow": "Hãy chạy lop network update {device} trên thiết bị này, hoặc cập nhật Local Operator trên {device}, rồi thử lại.",
-	"ui.canvas.files.remotePlay": "Phát từ {device}"
+	"ui.canvas.files.remotePlay": "Phát từ {device}",
+	"ui.canvas.files.remoteUnsupported": "Không thể mở tệp từ xa trên thiết bị này.",
+	"ui.canvas.artifact.fallback_name.video": "Video {digest}",
+	"ui.canvas.artifact.fallback_name.image": "Hình ảnh {digest}",
+	"ui.canvas.artifact.fallback_name.audio": "Âm thanh {digest}",
+	"ui.canvas.artifact.fallback_name.file": "Tệp {digest}",
+	"ui.canvas.artifact.cue.file": "Tệp được lưu trong phiên này",
+	"ui.canvas.artifact.cue.image": "Hình ảnh được tạo, được lưu trong phiên này",
+	"ui.canvas.artifact.cue.video": "Video được tạo, được lưu trong phiên này",
+	"ui.canvas.artifact.cue.audio": "Âm thanh được tạo, được lưu trong phiên này"
 }

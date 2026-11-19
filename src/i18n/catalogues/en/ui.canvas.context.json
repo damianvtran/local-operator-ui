@@ -1781,5 +1781,76 @@
 		"placeholders": {
 			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
 		}
+	},
+	"ui.canvas.files.remoteUnsupported": {
+		"role": "notice in a remote session's Files panel when this device's backend cannot open files from another device",
+		"tone": "plain statement, one full stop",
+		"length": "One short sentence.",
+		"note": "Shown for a session that runs on another device when the local backend lacks remote-file support. 'Remote' means on the other device.",
+		"placeholders": {}
+	},
+	"ui.canvas.artifact.fallback_name.video": {
+		"role": "name of a generated video that the agent gave no name, shown on its Files row, tab and as the save-as filename stem",
+		"tone": "noun followed by the fingerprint",
+		"length": "One word plus the fingerprint.",
+		"note": "The fingerprint tells nameless items apart, so it must stay in the string; word order is the language's. Use the same noun as the Files section uses for this kind.",
+		"placeholders": {
+			"digest": "first 8 characters of the file's content hash, lowercase hex, e.g. 9277c383; never translate or reformat"
+		}
+	},
+	"ui.canvas.artifact.fallback_name.image": {
+		"role": "name of a generated image that the agent gave no name, shown on its Files row, tab and as the save-as filename stem",
+		"tone": "noun followed by the fingerprint",
+		"length": "One word plus the fingerprint.",
+		"note": "The fingerprint tells nameless items apart, so it must stay in the string; word order is the language's. Use the same noun as the Files section uses for this kind.",
+		"placeholders": {
+			"digest": "first 8 characters of the file's content hash, lowercase hex, e.g. 9277c383; never translate or reformat"
+		}
+	},
+	"ui.canvas.artifact.fallback_name.audio": {
+		"role": "name of a generated sound clip that the agent gave no name, shown on its Files row, tab and as the save-as filename stem",
+		"tone": "noun followed by the fingerprint",
+		"length": "One word plus the fingerprint.",
+		"note": "The fingerprint tells nameless items apart, so it must stay in the string; word order is the language's. Use the same noun as the Files section uses for this kind.",
+		"placeholders": {
+			"digest": "first 8 characters of the file's content hash, lowercase hex, e.g. 9277c383; never translate or reformat"
+		}
+	},
+	"ui.canvas.artifact.fallback_name.file": {
+		"role": "name of a generated file that the agent gave no name, shown on its Files row, tab and as the save-as filename stem",
+		"tone": "noun followed by the fingerprint",
+		"length": "One word plus the fingerprint.",
+		"note": "The fingerprint tells nameless items apart, so it must stay in the string; word order is the language's. Use the same noun as the Files section uses for this kind.",
+		"placeholders": {
+			"digest": "first 8 characters of the file's content hash, lowercase hex, e.g. 9277c383; never translate or reformat"
+		}
+	},
+	"ui.canvas.artifact.cue.file": {
+		"role": "last clause of the hover text on a generated item in the Files section, after its name and fingerprint",
+		"tone": "plain, concise product language, sentence case, no trailing period",
+		"length": "One short clause.",
+		"note": "Explains that the item (a file the agent produced) lives in the session's own store, not on the user's disk, which is why Open file / Open folder are missing. Phrase it like the attachment tooltip's 'kept in this session'.",
+		"placeholders": {}
+	},
+	"ui.canvas.artifact.cue.image": {
+		"role": "last clause of the hover text on a generated item in the Files section, after its name and fingerprint",
+		"tone": "plain, concise product language, sentence case, no trailing period",
+		"length": "One short clause.",
+		"note": "Explains that the item (an image the agent generated) lives in the session's own store, not on the user's disk, which is why Open file / Open folder are missing. Phrase it like the attachment tooltip's 'kept in this session'.",
+		"placeholders": {}
+	},
+	"ui.canvas.artifact.cue.video": {
+		"role": "last clause of the hover text on a generated item in the Files section, after its name and fingerprint",
+		"tone": "plain, concise product language, sentence case, no trailing period",
+		"length": "One short clause.",
+		"note": "Explains that the item (a video the agent generated) lives in the session's own store, not on the user's disk, which is why Open file / Open folder are missing. Phrase it like the attachment tooltip's 'kept in this session'.",
+		"placeholders": {}
+	},
+	"ui.canvas.artifact.cue.audio": {
+		"role": "last clause of the hover text on a generated item in the Files section, after its name and fingerprint",
+		"tone": "plain, concise product language, sentence case, no trailing period",
+		"length": "One short clause.",
+		"note": "Explains that the item (a sound clip the agent generated; 'sound' matches the Sounds section) lives in the session's own store, not on the user's disk, which is why Open file / Open folder are missing. Phrase it like the attachment tooltip's 'kept in this session'.",
+		"placeholders": {}
 	}
 }

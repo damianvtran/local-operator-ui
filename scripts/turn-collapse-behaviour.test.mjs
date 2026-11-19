@@ -186,6 +186,8 @@ const bundle = await build({
 			 */
 			'export { backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";',
 			'export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
+			/* The i18n instance the bar reads, for the locale-switch and plural cases. */
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale, t as translate } from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -228,6 +230,10 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
+	translate,
 	applyEvent,
 	applyHistoryPage,
 	EMPTY_TRANSCRIPT,
@@ -1168,6 +1174,49 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 		TURN_CONDENSED_RE,
 		"the settle states the bar's own facts",
 	);
+});
+
+/*
+ * Code review R2 (UI #1992): the condensed sentence's clauses are joined by the
+ * locale's own list punctuation (`formatList`), not a Latin ", " inside a
+ * zh-CN sentence. English stays byte-identical (`TURN_CONDENSED_RE` above).
+ */
+test("the settle sentence joins its clauses with the locale's list separator", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	registerCatalogue("zh-CN", {
+		"ui.chat.canonical.condense.turn_condensed": "⟦zh⟧ condensed",
+		"ui.chat.canonical.condense.sentence": "{lead}⟦zh⟧：{parts}⟦zh⟧。",
+		"ui.chat.canonical.transcript.took_duration": "⟦zh⟧ took {duration}",
+		"ui.chat.canonical.fold.count.actions":
+			"{count, plural, other {⟦zh⟧ # action}}",
+	});
+	setLocale("zh-CN");
+	t.after(() => {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	});
+	const running = [
+		userRecord("zh-user:1"),
+		toolRecord("zh-tool:1", { ts: TS + 1_000, durationS: 3 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	await mounted.render(
+		[
+			...running,
+			answerRecord("zh-answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+		],
+		{},
+	);
+	const said =
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.match(
+		said,
+		/^⟦zh⟧ condensed⟦zh⟧：⟦zh⟧ took [^,、]+、⟦zh⟧ 1 action⟦zh⟧。$/,
+		said,
+	);
+	assert.ok(!said.includes(", "), said);
 });
 
 test("the store's caps evict and forget clears — the delete path's two halves", () => {
@@ -4830,5 +4879,76 @@ test("Bridge admitted history media retains its own row while nearby incoming re
 	assert.ok(
 		rowBox(mounted, "bridge-media-final"),
 		"real final answer remains outside receipt condensation",
+	);
+});
+
+/*
+ * B3b: the head-cut bar's words were template English (the "At least ..." titles,
+ * the group label, the settle sentence's frame and its "at least" marker), so a
+ * French reader heard and hovered English. All of it now reads `t()` at render.
+ */
+test("the head-cut bar's titles plural by count in English", () => {
+	const actions = (count) =>
+		translate("ui.chat.canonical.turn_summary.actions_at_least", { count });
+	const messages = (count) =>
+		translate("ui.chat.canonical.turn_summary.messages_at_least", { count });
+	assert.equal(
+		actions(1),
+		"At least 1 action — earlier rows of this turn are not loaded",
+	);
+	assert.equal(
+		actions(2),
+		"At least 2 actions — earlier rows of this turn are not loaded",
+	);
+	assert.equal(
+		actions(1200),
+		"At least 1200 actions — earlier rows of this turn are not loaded",
+	);
+	assert.equal(messages(1), "At least 1 message — earlier rows are not loaded");
+	assert.equal(
+		messages(2),
+		"At least 2 messages — earlier rows are not loaded",
+	);
+});
+
+test("a head-cut group bar speaks and titles itself in the active locale", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	registerCatalogue("fr", {
+		"ui.chat.canonical.segment.group.peer": "⟦fr⟧ pairs",
+		"ui.chat.canonical.turn_summary.messages_at_least":
+			"{count, plural, one {⟦fr⟧ au moins # message} other {⟦fr⟧ au moins # messages}}",
+		"ui.chat.canonical.condense.at_least": "⟦fr⟧ au moins {stated}",
+		"ui.chat.canonical.condense.sentence": "{lead} ⟦fr⟧: {parts} ⟦fr⟧.",
+	});
+	setLocale("fr");
+	t.after(() => {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	});
+	const cut = [
+		peerRecord("fr-p1", { ts: TS + 1_000 }),
+		peerRecord("fr-p2", { ts: TS + 2_000 }),
+		toolRecord("fr-tool", { ts: TS + 3_000, durationS: 1, phase: "running" }),
+	];
+	const mounted = await mount(t, cut, { waiting: true, hasMore: true });
+	await mounted.render(
+		[...cut, answerRecord("fr-final", { ts: TS + 5_000, stopReason: "stop" })],
+		{ hasMore: true, waiting: false },
+	);
+	assert.match(
+		bar(mounted)?.textContent ?? "",
+		/⟦fr⟧ pairs/,
+		"the bar's label",
+	);
+	const titles = [...bar(mounted).querySelectorAll("[title]")].map((node) =>
+		node.getAttribute("title"),
+	);
+	assert.ok(titles.includes("⟦fr⟧ au moins 2 messages"), titles.join("|"));
+	assert.ok(!titles.some((title) => /At least/.test(title)), titles.join("|"));
+	assert.equal(
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent,
+		"⟦fr⟧ pairs ⟦fr⟧: ⟦fr⟧ au moins 2 ⟦fr⟧.",
 	);
 });
