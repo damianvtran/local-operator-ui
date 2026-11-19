@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { test } from "node:test";
-import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { build, transform } from "esbuild";
 import {
 	classifyDismissTrace,
 	createDismissRecorder,
@@ -224,6 +226,27 @@ test("real optimistic path: recorder missing/throwing cannot alter return, cance
 				);
 				assert.ok(records.some((row) => row.phase === "publish.after"));
 				assert.ok(records.some((row) => row.phase === "ledger.settlement"));
+				// Independent BigInt FNV-1a oracle checks contents, not only hash presence.
+				const rawHash = client
+					.getQueryCache()
+					.find({ queryKey: key }).queryHash;
+				let expectedHash = 2166136261n;
+				for (const char of rawHash)
+					expectedHash =
+						((expectedHash ^ BigInt(char.charCodeAt(0))) * 16777619n) &
+						0xffffffffn;
+				const cache = records.filter(
+					(row) => row.phase === "cache.notification",
+				);
+				assert.ok(cache.length > 0);
+				assert.ok(
+					cache.every((row) => row.queryHash === expectedHash.toString(16)),
+				);
+				assert.ok(cache.some((row) => row.present === false));
+				assert.equal(
+					JSON.stringify(cache).includes(JSON.stringify(key)),
+					false,
+				);
 			}
 		} finally {
 			for (const stop of sink.cleanup) stop();
@@ -280,4 +303,37 @@ test("forced original failure rc survives diagnostic failure (app's rc gate rema
 		{ encoding: "utf8" },
 	);
 	assert.equal(child.status, 7, child.stderr);
+});
+
+// Execute the shipped observer diagnostic block, not a rendered DrawerUpdates:
+// absence is an observation, never evidence that the optimistic UI succeeded.
+test("absent drawer observer emits explicit false without inventing row state", async () => {
+	const source = readFileSync(
+		"src/renderer/src/features/notifications/components/drawer-updates.tsx",
+		"utf8",
+	);
+	const start = source.indexOf("// Include an absent observer target:");
+	const end = source.indexOf("\n\tconst unread =", start);
+	assert.ok(start > 0 && end > start);
+	const { code } = await transform(source.slice(start, end), { loader: "ts" });
+	const records = [];
+	const context = {
+		__notificationDiagnostic: { targetId },
+		list: { data: { items: [] }, isError: false },
+		rows: [],
+		view: "unread",
+		recordNotificationDiagnostic: (phase, id, metadata) =>
+			records.push({ phase, id, ...metadata }),
+	};
+	runInNewContext(code, context);
+	assert.equal(records.length, 1);
+	assert.equal(records[0].phase, "drawer.projection");
+	assert.equal(records[0].id, targetId);
+	assert.equal(records[0].present, false);
+	assert.equal(records[0].visible, false);
+	assert.equal(records[0].dismissed, undefined);
+	records.length = 0;
+	context.__notificationDiagnostic = undefined;
+	runInNewContext(code, context);
+	assert.equal(records.length, 0);
 });

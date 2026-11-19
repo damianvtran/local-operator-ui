@@ -16,6 +16,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function createDismissRecorder(targetId, enabled = false) {
 	const records = [];
 	const errors = [];
+	let stopped = false;
 	const anchor = {
 		wall: new Date().toISOString(),
 		monotonic: performance.now(),
@@ -26,8 +27,11 @@ export function createDismissRecorder(targetId, enabled = false) {
 		records,
 		errors,
 		anchor,
+		stop() {
+			stopped = true;
+		},
 		record(phase, metadata = {}) {
-			if (!enabled) return;
+			if (!enabled || stopped) return;
 			try {
 				if (records.length < 2048)
 					records.push({ phase, at: performance.now(), ...metadata });
@@ -43,6 +47,7 @@ export function createDismissRecorder(targetId, enabled = false) {
 export function installDismissDiagnostic(targetId, neighborId) {
 	const records = [];
 	const listeners = [];
+	let stopped = false;
 	const sink = {
 		targetId,
 		records,
@@ -51,6 +56,7 @@ export function installDismissDiagnostic(targetId, neighborId) {
 		cleanup: [],
 		anchor: { wall: new Date().toISOString(), monotonic: performance.now() },
 		record(phase, metadata) {
+			if (stopped) return;
 			if (records.length < 2048)
 				records.push({ phase, at: performance.now(), ...metadata });
 			else sink.dropped++;
@@ -121,6 +127,8 @@ export function installDismissDiagnostic(targetId, neighborId) {
 		}
 	}
 	sink.stop = () => {
+		if (stopped) return;
+		stopped = true;
 		for (const stop of [...listeners, ...sink.cleanup]) {
 			try {
 				stop();
@@ -128,9 +136,77 @@ export function installDismissDiagnostic(targetId, neighborId) {
 				sink.errors++;
 			}
 		}
-		globalThis.__notificationDiagnostic = undefined;
+		if (globalThis.__notificationDiagnostic === sink)
+			globalThis.__notificationDiagnostic = undefined;
 	};
 	return { installed: true, targetId, neighborId, rows: sink.snapshot() };
+}
+
+/** Harvest while the measured renderer still exists, then freeze both ledgers.
+ * Diagnostic failures must never replace the original scene outcome. Stop runs
+ * even when snapshot fails, and later fixture cleanup cannot append to this file.
+ */
+export function harvestDismissDiagnostic() {
+	const sink = globalThis.__notificationDiagnostic;
+	if (!sink) return { missing: true };
+	let rows;
+	try {
+		rows = sink.snapshot();
+	} catch {
+		sink.errors++;
+	} finally {
+		sink.stop();
+	}
+	return {
+		records: sink.records,
+		errors: sink.errors,
+		dropped: sink.dropped,
+		anchor: sink.anchor,
+		rows,
+	};
+}
+
+export async function finishDismissDiagnostic(cdp, diagnostic, out) {
+	if (!diagnostic.enabled) return;
+	try {
+		let renderer;
+		try {
+			renderer = await cdp.evaluate(
+				`(${harvestDismissDiagnostic.toString()})()`,
+			);
+		} catch {
+			diagnostic.errors.push("snapshot-error");
+			// A failed CDP response need not mean evaluation never ran. Stop is idempotent.
+			await cdp
+				.evaluate("globalThis.__notificationDiagnostic?.stop()")
+				.catch(() => {});
+			renderer = { missing: true };
+		}
+		diagnostic.stop();
+		writeFileSync(
+			join(out, "dismiss-diagnostic.json"),
+			JSON.stringify(
+				{
+					schema: "notification-dismiss-v1",
+					targetId: diagnostic.targetId,
+					hostAnchor: diagnostic.anchor,
+					host: diagnostic.records,
+					renderer,
+					errors: diagnostic.errors,
+					classification: classifyDismissTrace(
+						[...diagnostic.records, ...(renderer?.records ?? [])],
+						diagnostic.targetId,
+					),
+				},
+				null,
+				2,
+			),
+		);
+	} catch {
+		diagnostic.errors.push("snapshot-or-write-error");
+	} finally {
+		diagnostic.stop();
+	}
 }
 
 /** Missing phases are evidence gaps, never a substitute optimistic-dismiss PASS. */
@@ -921,37 +997,41 @@ export async function runDrawerRemediationScene({
 		const concurrent = fixture.seedRows[2];
 		fixture.state.holdPatch = true;
 		const diagnostic = fixture.state.diagnostic;
-		if (diagnostic.enabled) {
-			diagnostic.record("step.armed", {
-				id: concurrent.id,
-				revision: concurrent.revision,
-				sourceCommit: process.env.GITHUB_SHA,
-				coreCommit: process.env.LOCAL_OPERATOR_CORE_REF,
-				seedIndex: 2,
-				title: "Drawer update 2",
-				neighborId: fixture.seedRows[3].id,
-				session: fixture.session,
-			});
-			const installed = await cdp.evaluate(
-				`(${installDismissDiagnostic.toString()})(${JSON.stringify(concurrent.id)},${JSON.stringify(fixture.seedRows[3].id)})`,
+		try {
+			if (diagnostic.enabled) {
+				diagnostic.record("step.armed", {
+					id: concurrent.id,
+					revision: concurrent.revision,
+					sourceCommit: process.env.GITHUB_SHA,
+					coreCommit: process.env.LOCAL_OPERATOR_CORE_REF,
+					seedIndex: 2,
+					title: "Drawer update 2",
+					neighborId: fixture.seedRows[3].id,
+					session: fixture.session,
+				});
+				const installed = await cdp.evaluate(
+					`(${installDismissDiagnostic.toString()})(${JSON.stringify(concurrent.id)},${JSON.stringify(fixture.seedRows[3].id)})`,
+				);
+				assert.equal(
+					installed?.targetId,
+					concurrent.id,
+					"diagnostic target must match selected seed row",
+				);
+				diagnostic.record("step.installed", installed);
+			}
+			await click(
+				cdp,
+				`[data-drawer-update="${concurrent.id}"] [data-row-action="dismiss"]`,
+				diagnostic.enabled ? diagnostic : undefined,
 			);
-			assert.equal(
-				installed?.targetId,
-				concurrent.id,
-				"diagnostic target must match selected seed row",
+			await until(
+				async () =>
+					!(await stateOf(cdp)).rows.some((row) => row.id === concurrent.id),
+				"optimistic dismiss",
 			);
-			diagnostic.record("step.installed", installed);
+		} finally {
+			await finishDismissDiagnostic(cdp, diagnostic, out);
 		}
-		await click(
-			cdp,
-			`[data-drawer-update="${concurrent.id}"] [data-row-action="dismiss"]`,
-			diagnostic.enabled ? diagnostic : undefined,
-		);
-		await until(
-			async () =>
-				!(await stateOf(cdp)).rows.some((row) => row.id === concurrent.id),
-			"optimistic dismiss",
-		);
 		fixture.readFromOtherSurface(concurrent);
 		fixture.state.failNextPatch = true;
 		fixture.release();
@@ -1287,40 +1367,11 @@ export async function runDrawerRemediationScene({
 		} catch {}
 		throw error;
 	} finally {
-		// Snapshot before unconditional release: cleanup forwarding is not pre-failure evidence.
+		// Measured evidence is already frozen; unconditional cleanup has its own reel.
 		const diagnostic = fixture.state.diagnostic;
-		if (diagnostic.enabled) {
-			try {
-				diagnostic.record("cleanup.before-release", {
-					id: diagnostic.targetId,
-				});
-				const renderer = await cdp.evaluate(
-					"(()=>{const s=globalThis.__notificationDiagnostic;if(!s)return {missing:true};let rows;try{rows=s.snapshot()}finally{s.stop()}return {records:s.records,errors:s.errors,dropped:s.dropped,anchor:s.anchor,rows}})()",
-				);
-				const records = [...diagnostic.records, ...(renderer?.records ?? [])];
-				writeFileSync(
-					join(out, "dismiss-diagnostic.json"),
-					JSON.stringify(
-						{
-							schema: "notification-dismiss-v1",
-							targetId: diagnostic.targetId,
-							hostAnchor: diagnostic.anchor,
-							host: diagnostic.records,
-							renderer,
-							errors: diagnostic.errors,
-							classification: classifyDismissTrace(
-								records,
-								diagnostic.targetId,
-							),
-						},
-						null,
-						2,
-					),
-				);
-			} catch {
-				diagnostic.errors.push("snapshot-or-write-error");
-			}
-		}
+		const cleanup = [
+			{ phase: "cleanup.before-release", at: performance.now() },
+		];
 		fixture.release();
 		fixture.state.failReads = false;
 		fixture.state.enabled = false;
@@ -1348,14 +1399,15 @@ export async function runDrawerRemediationScene({
 		}
 		if (diagnostic.enabled) {
 			try {
-				diagnostic.record("cleanup.after-handover", {
-					id: diagnostic.targetId,
+				cleanup.push({
+					phase: "cleanup.after-handover",
+					at: performance.now(),
 				});
 				writeFileSync(
 					join(out, "dismiss-diagnostic-cleanup.json"),
 					JSON.stringify(
 						{
-							host: diagnostic.records,
+							host: cleanup,
 							errors: diagnostic.errors,
 						},
 						null,
