@@ -14041,10 +14041,15 @@ const main = async () => {
 	 *     file, and no per-story catch - so a throw anywhere ends the run with the
 	 *     wiped tree left on disk;
 	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
-	 *     `documentElement.dataset.capturePending` and clears it only when the
-	 *     settings page renders the Appearance switch, which the offline page never
-	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
-	 *     there. The repository's own measurement of that state is in
+	 *     `documentElement.dataset.capturePending` and clears it only once the
+	 *     settings page renders the Appearance section container
+	 *     (`[data-tour-tag="settings-appearance-section"]`) and the story has
+	 *     scrolled it to the top of the viewport. On the measured date it
+	 *     anchored instead on the section's switch, which the offline page never
+	 *     rendered, so the readiness probe threw at its 60s bound and the sweep
+	 *     ENDED there; the anchor is the section now (PR #1983), but a stub that
+	 *     never mounts the section still strands the shutter the same way. The
+	 *     repository's own measurement of that state is in
 	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
 	 *     `{"drawn":false,"counted":88,"pending":true}`.
 	 *
