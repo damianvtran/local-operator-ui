@@ -1,0 +1,228 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "63e156b43384",
+  "instance": "63e156b43384",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "No fallback: the session system prompt names the served model as anthropic/claude-opus-5-5, which is the requested model; no model-switch notice occurred.",
+  "independence": "Independent auditor; did not author or modify any translations. Translator was a separate LLM job (f6b3d19df87a, anthropic/claude-opus-5-5); same model family, different session/instance.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "63e156b43384",
+    "instance": "63e156b43384",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": "No fallback: the session system prompt names the served model as anthropic/claude-opus-5-5, which is the requested model; no model-switch notice occurred.",
+    "independence": "Independent auditor; did not author or modify any translations. Translator was a separate LLM job (f6b3d19df87a, anthropic/claude-opus-5-5); same model family, different session/instance.",
+    "model_source": "Session system prompt: 'Model: anthropic/claude-opus-5-5'.",
+    "independent_from_translator_session": true
+  },
+  "locale": "ru",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-agents-team-config-english",
+  "base": "1eec0703e662114f37e61e3b2c92cb2c04fb64d7",
+  "head": "f6e6260da1c10b887fba3dfa59de725cf21a77ba",
+  "round": 1,
+  "scope": "Audit of exactly the 55 ru keys this branch adds (47 ui.agents.config + 8 ui.agents.teams) per git diff origin/main...HEAD on the en catalogues; existing ru values used as glossary context only. Checks: meaning, completeness (no Latin text outside placeholders/ICU keywords/'Local Operator'), ICU placeholder names and select arms agent/team/skill/other, ru CLDR plurals one/few/many/other with # (rendered at 0,1,2,5,21,1000000), case/gender/number agreement per arm, вы register, glossary, « » quotes and em dashes, length fit, and that no existing ru key changed (vs HEAD and origin/main).",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "RU-1",
+        "severity": "minor",
+        "key": "ui.agents.config.summary.change.class_reactive",
+        "description": "Context asks for the same words as the class setting; the existing notice for the same event (ui.notices.agents.reactive) says «проактивные сообщения отключены». Meaning is correct; wording diverges. Current: «класс изменён на реактивный — проактивные сообщения прекращены». Suggestion: «класс изменён на реактивный — проактивные сообщения отключены»."
+      }
+    ],
+    "nit": [
+      {
+        "id": "RU-2",
+        "severity": "nit",
+        "key": "ui.agents.config.error.start_failed",
+        "description": "«начать запуск» is mildly tautological (run = запуск per existing glossary). Meaning correct. Current: «Не удалось начать запуск конфигурации. Ваш запрос остался здесь.». Suggestion: «Не удалось выполнить запуск конфигурации. Ваш запрос остался здесь.»."
+      }
+    ]
+  },
+  "plural_render": {
+    "ui.agents.config.summary.change.tools_added": {
+      "0": "добавлено 0 инструментов",
+      "1": "добавлен 1 инструмент",
+      "2": "добавлено 2 инструмента",
+      "5": "добавлено 5 инструментов",
+      "21": "добавлен 21 инструмент",
+      "1000000": "добавлено 1 000 000 инструментов"
+    },
+    "ui.agents.config.summary.change.tools_removed": {
+      "0": "убрано 0 инструментов",
+      "1": "убран 1 инструмент",
+      "2": "убрано 2 инструмента",
+      "5": "убрано 5 инструментов",
+      "21": "убран 21 инструмент",
+      "1000000": "убрано 1 000 000 инструментов"
+    }
+  },
+  "namespaces": {
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201",
+        "ru": "166181414a47934816d5c0b871bb4c85a59d2a05e700a5130d10cf390bb98e58"
+      },
+      "context_sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3",
+      "keys_read": 47,
+      "reviewed_keys": [
+        "ui.agents.config.title.working",
+        "ui.agents.config.title.stopping",
+        "ui.agents.config.title.finished",
+        "ui.agents.config.title.finished_no_changes",
+        "ui.agents.config.title.stopped",
+        "ui.agents.config.title.stopped_error",
+        "ui.agents.config.title.finished_error",
+        "ui.agents.config.placeholder.working",
+        "ui.agents.config.seed_prompt",
+        "ui.agents.config.error.lists_unreadable",
+        "ui.agents.config.error.send_after_setup",
+        "ui.agents.config.error.start_failed",
+        "ui.agents.config.error.send_failed",
+        "ui.agents.config.error.stop_unacknowledged",
+        "ui.agents.config.disabled.connecting",
+        "ui.agents.config.disabled.needs_newer_backend",
+        "ui.agents.config.summary.step.creating_named",
+        "ui.agents.config.summary.step.creating",
+        "ui.agents.config.summary.step.updating_named",
+        "ui.agents.config.summary.step.updating",
+        "ui.agents.config.summary.step.editing_named",
+        "ui.agents.config.summary.step.editing",
+        "ui.agents.config.summary.step.installing_named",
+        "ui.agents.config.summary.step.installing",
+        "ui.agents.config.summary.step.reading_named",
+        "ui.agents.config.summary.step.reading",
+        "ui.agents.config.summary.step.working",
+        "ui.agents.config.summary.step.checked",
+        "ui.agents.config.summary.change.description",
+        "ui.agents.config.summary.change.kind",
+        "ui.agents.config.summary.change.effort",
+        "ui.agents.config.summary.change.manager",
+        "ui.agents.config.summary.change.instructions",
+        "ui.agents.config.summary.change.field",
+        "ui.agents.config.summary.change.tools",
+        "ui.agents.config.summary.change.tools_widened",
+        "ui.agents.config.summary.change.tools_narrowed",
+        "ui.agents.config.summary.change.tool_added",
+        "ui.agents.config.summary.change.tool_removed",
+        "ui.agents.config.summary.change.tools_added",
+        "ui.agents.config.summary.change.tools_removed",
+        "ui.agents.config.summary.change.tools_changed",
+        "ui.agents.config.summary.change.delegation_on",
+        "ui.agents.config.summary.change.delegation_off",
+        "ui.agents.config.summary.change.class_proactive",
+        "ui.agents.config.summary.change.class_reactive",
+        "ui.agents.config.summary.change.members"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "RU-1",
+            "severity": "minor",
+            "key": "ui.agents.config.summary.change.class_reactive",
+            "description": "Context asks for the same words as the class setting; the existing notice for the same event (ui.notices.agents.reactive) says «проактивные сообщения отключены». Meaning is correct; wording diverges. Current: «класс изменён на реактивный — проактивные сообщения прекращены». Suggestion: «класс изменён на реактивный — проактивные сообщения отключены»."
+          }
+        ],
+        "nit": [
+          {
+            "id": "RU-2",
+            "severity": "nit",
+            "key": "ui.agents.config.error.start_failed",
+            "description": "«начать запуск» is mildly tautological (run = запуск per existing glossary). Meaning correct. Current: «Не удалось начать запуск конфигурации. Ваш запрос остался здесь.». Suggestion: «Не удалось выполнить запуск конфигурации. Ваш запрос остался здесь.»."
+          }
+        ]
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "existing_keys_unchanged": {
+        "vs_HEAD": true,
+        "vs_origin_main": true
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.agents.config.json",
+          "sha256": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.agents.config.context.json",
+          "sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/ru/ui.agents.config.json",
+          "sha256": "166181414a47934816d5c0b871bb4c85a59d2a05e700a5130d10cf390bb98e58"
+        }
+      }
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c",
+        "ru": "9076ebc727835016a8029b9db7f9766b14953ead5414afae4c7375a627c6fb7e"
+      },
+      "context_sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.agents.teams.create.error_name_required",
+        "ui.agents.teams.create.error_name_taken",
+        "ui.agents.teams.create.error_instructions_required",
+        "ui.agents.teams.edit.error_generic",
+        "ui.agents.teams.create.title_new",
+        "ui.agents.teams.includes_team",
+        "ui.agents.teams.group.agents",
+        "ui.agents.teams.group.teams"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "existing_keys_unchanged": {
+        "vs_HEAD": true,
+        "vs_origin_main": true
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.agents.teams.json",
+          "sha256": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.agents.teams.context.json",
+          "sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/ru/ui.agents.teams.json",
+          "sha256": "9076ebc727835016a8029b9db7f9766b14953ead5414afae4c7375a627c6fb7e"
+        }
+      }
+    }
+  }
+}
