@@ -122095,6 +122095,99 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "22a684c9b70e0f983441edff8dd495670d8f64e497c247bf21f49cf359b7e9ea",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-fr.json",
+					"receipt_sha256": "29aad0271fd621f015576156e3e9ce744870e16409ffb2346dc53cc04fb73bec",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "fbe26d8c641c1682defd9ee286c49f928601c46ea6d4bbb8767a0f76950c352b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-hi.json",
+					"receipt_sha256": "ef2418b526d7d30208a345090d9e04c102f8521eff1ee8972580d5570fee16e9",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "7911d6acc7d927b9900e6a1dbf8624cdb13bc53e2bfbfdee9a950618eae64bcf",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-ur.json",
+					"receipt_sha256": "5da888fbb37c0a0a91bbbd16469b4078cba54a5f2269f01b7b00c66d48449f40",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
