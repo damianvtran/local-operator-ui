@@ -20,7 +20,10 @@ import { userEvent, within } from "@storybook/test";
 import { type FC, useState } from "react";
 import { type MeshApprovalRow, approvalRows } from "./mesh-approvals";
 import { MeshApprovalsTray } from "./mesh-approvals-tray";
-import type { MeshPairingSectionProps } from "./mesh-pairing-card";
+import type {
+	MeshPairingSectionProps,
+	PairingPendingPhase,
+} from "./mesh-pairing-card";
 import {
 	type MeshPairingRow,
 	type PairingOutcome,
@@ -306,7 +309,11 @@ export const Empty: Story = {
  * holds it (the answer never returns here), so the frame after a click is the
  * frame a person sees while main confirms, attests and core checks the code.
  */
-const LiveTray: FC<{ pairings: MeshPairingSectionProps }> = ({ pairings }) => {
+const LiveTray: FC<{
+	pairings: MeshPairingSectionProps;
+	/** Where the held press is: the sheet still asking, or approved (U-R3-2). */
+	phase?: PairingPendingPhase;
+}> = ({ pairings, phase = "answering" }) => {
 	const [pending, setPending] =
 		useState<MeshPairingSectionProps["pending"]>(null);
 	return (
@@ -315,7 +322,7 @@ const LiveTray: FC<{ pairings: MeshPairingSectionProps }> = ({ pairings }) => {
 				...pairings,
 				pending,
 				onAnswer: (ask) =>
-					setPending({ id: ask.row.id, decision: ask.decision }),
+					setPending({ id: ask.row.id, decision: ask.decision, phase }),
 			}}
 		/>
 	);
@@ -339,7 +346,21 @@ export const InviterCodeTyped: Story = {
 	},
 };
 
-/** The press landed: "Checking…" while main confirms and attests and core compares. */
+/**
+ * The press landed and main's native sheet is up: the card says only "Waiting
+ * for confirmation…", never the act itself, until the person approves the sheet
+ * (UX review round 3, U-R3-2).
+ */
+export const AwaitingSheet: Story = {
+	render: (args) => <LiveTray {...args} phase="confirming" />,
+	args: { pairings: bundle({ rows: rows(inviterWire()) }) },
+	play: async ({ canvasElement }) => {
+		const canvas = await typeCode(canvasElement);
+		await userEvent.click(await canvas.findByTestId("mesh-pairing-admit"));
+	},
+};
+
+/** The sheet was approved: "Checking…" while main attests and core compares. */
 export const Confirming: Story = {
 	render: (args) => <LiveTray {...args} />,
 	args: { pairings: bundle({ rows: rows(inviterWire()) }) },

@@ -37,7 +37,15 @@ export function useMeshPairingTray(
 	const feedId = useFeedMeshPairing(enabled);
 	const read = useMeshPairings(enabled);
 	const eligibility = useMeshPairingEligibility(enabled);
-	const answer = useMeshPairingAnswer();
+	/*
+	 * The answer whose sheet the person APPROVED (UX review round 3, U-R3-2).
+	 * Until it matches the in-flight answer, the sheet is still asking, so the
+	 * card reads "Waiting for confirmation…" rather than claiming "Declining…".
+	 * Compared by identity: TanStack's `variables` is the very object `mutate`
+	 * got, so a stale approval of an earlier press can never mark a newer one.
+	 */
+	const [approvedAsk, setApprovedAsk] = useState<PairingAnswerAsk | null>(null);
+	const answer = useMeshPairingAnswer({ onConfirmed: setApprovedAsk });
 	/*
 	 * A SENT HOLD (UX review U6): after an accepted answer the card keeps its
 	 * in-flight look until a read that STARTED after the answer lands, so Admit /
@@ -150,6 +158,8 @@ export function useMeshPairingTray(
 				// (UX review U7) on every refusal whose copy says "press it again".
 				const refused: PairingRefusal =
 					mapped.kind === "foreground" ||
+					mapped.kind === "devtools" ||
+					mapped.kind === "sheet_open" ||
 					mapped.kind === "relay" ||
 					mapped.kind === "changed"
 						? { ...mapped, action }
@@ -174,9 +184,14 @@ export function useMeshPairingTray(
 		nowSeconds,
 		pending:
 			answer.isPending && answer.variables
-				? { id: answer.variables.row.id, decision: answer.variables.decision }
+				? {
+						id: answer.variables.row.id,
+						decision: answer.variables.decision,
+						phase:
+							approvedAsk === answer.variables ? "answering" : "confirming",
+					}
 				: held
-					? { id: held.id, decision: held.decision }
+					? { id: held.id, decision: held.decision, phase: "answering" }
 					: null,
 		// `null` until main has said, or when it could not: unknown, answerable.
 		eligibility: eligibility.data ?? null,

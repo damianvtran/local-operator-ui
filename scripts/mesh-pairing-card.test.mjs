@@ -29,7 +29,7 @@ import React, { act } from "react";
  *    refusals (U1), the joiner fallback with `<code>` (U2), focus back after a
  *    wrong code (U3), expired hints (U5), the sent hold (U6), live-only counts
  *    (D4), the badge reading the list before the feed speaks (Q1), "press
- *    Confirm again" (D6).
+ *    Join again" (D6; one joiner verb, U-R3-N1).
  */
 
 const bootstrapDOM = new JSDOM("<!doctype html><html><body></body></html>", {
@@ -666,10 +666,12 @@ test("a provenance refusal says what to do, keyed", async () => {
 	await type(input(), "481926");
 	await click(admit());
 	await until(() => $("mesh-pairing-error"), "refusal");
-	// Names the button (design D6): the joiner's is Confirm.
+	// Names the button (design D6): the joiner's is Join, the sheet's verb too
+	// (UX review round 3, U-R3-N1).
+	assert.equal(admit().textContent, "Join");
 	assert.equal(
 		$("mesh-pairing-error").textContent,
-		"Bring this window to the front and press Confirm again.",
+		"Bring this window to the front and press Join again.",
 	);
 });
 
@@ -842,7 +844,7 @@ test("a stale or foreign confirmation asks for the press again, too", async () =
 		await until(() => $("mesh-pairing-error"), reason);
 		assert.equal(
 			$("mesh-pairing-error").textContent,
-			"Bring this window to the front and press Confirm again.",
+			"Bring this window to the front and press Join again.",
 			reason,
 		);
 		await act(async () => root.unmount());
@@ -1077,9 +1079,17 @@ test("DevTools or a debugger open NOW asks for the press again; it is not a dead
 		await type(input(), "112233");
 		await click(admit());
 		await until(() => $("mesh-pairing-error"), reason);
+		// The window is already in front: name the real fix (U-R3-1).
 		assert.equal(
 			$("mesh-pairing-error").textContent,
-			"Bring this window to the front and press Confirm again.",
+			reason === "sheet_open"
+				? "Finish the confirmation that is already open, then press Join again."
+				: "Close DevTools and any attached debugger, then press Join again.",
+			reason,
+		);
+		assert.doesNotMatch(
+			$("mesh-pairing-error").textContent,
+			/Bring this window to the front/,
 			reason,
 		);
 		assert.equal($("mesh-pairing-terminal-fallback"), null, reason);
@@ -1115,6 +1125,9 @@ test("a retry-style refusal puts focus back on the button it names (U7)", async 
 		["window_not_focused", "admit", () => admit()],
 		["pairing_changed", "admit", () => admit()],
 		["no_user_action", "decline", () => $("mesh-pairing-decline")],
+		// The round-3 refusals say "press it again" too (U-R3-1).
+		["devtools_open", "admit", () => admit()],
+		["sheet_open", "decline", () => $("mesh-pairing-decline")],
 	];
 	for (const [reason, decision, target] of cases) {
 		let release;
@@ -1235,6 +1248,60 @@ test("a pairing already answered elsewhere closes neutrally (core 409 pairing_an
 		assert.equal(input().disabled, true, `${where}: nothing left to answer`);
 		assert.equal(admit().disabled, true, where);
 		assert.equal($("mesh-pairing-terminal-fallback"), null, where);
+		// Every control is disabled, so focus goes to the line that says why,
+		// never the page body (UX review round 3, U-R3-3).
+		assert.equal(line.tabIndex, -1, where);
+		assert.ok(
+			document.activeElement === line,
+			`${where}: focus is on ${document.activeElement?.tagName}`,
+		);
+	}
+});
+
+test("while the native sheet asks, the card claims nothing; after approval it says Checking (U-R3-2)", async () => {
+	for (const decision of ["admit", "decline"]) {
+		let approve;
+		let release;
+		script = {
+			"pairings.list": list(inviter()),
+			"pairings.eligibility": ok({ eligible: true, reason: null }),
+			// The sheet stays up until the case approves it.
+			"pairings.confirm": () =>
+				new Promise((resolve) => {
+					approve = () => resolve(ok({ confirmation: "ab".repeat(32) }));
+				}),
+			"pairings.answer": () =>
+				new Promise((resolve) => {
+					release = () => resolve(ok({ status: "sent", attempts_left: 3 }));
+				}),
+		};
+		sent = [];
+		await act(async () => root?.unmount());
+		root = undefined;
+		await render(createElement(Tray));
+		await until(() => input() && !input().disabled, "answerable");
+		await type(input(), "481926");
+		const button = () =>
+			decision === "admit" ? admit() : $("mesh-pairing-decline");
+		await click(button());
+		await until(() => typeof approve === "function", `${decision}: sheet up`);
+		await settle();
+		assert.equal(
+			button().textContent,
+			"Waiting for confirmation…",
+			`${decision}: neutral while the sheet asks`,
+		);
+		assert.doesNotMatch(button().textContent, /Checking|Declining/);
+		await act(async () => approve());
+		await until(() => typeof release === "function", `${decision}: answering`);
+		await settle();
+		assert.equal(
+			button().textContent,
+			decision === "admit" ? "Checking…" : "Declining…",
+			`${decision}: the act is under way only after the sheet's button`,
+		);
+		await act(async () => release());
+		await settle();
 	}
 });
 

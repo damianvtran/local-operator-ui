@@ -186,11 +186,21 @@ export const MeshPairingCodeInput: FC<{
 	);
 };
 
+/** See `MeshPairingCardProps.pendingPhase`. */
+export type PairingPendingPhase = "confirming" | "answering";
+
 export interface MeshPairingCardProps {
 	row: MeshPairingRow;
 	nowSeconds: number;
 	/** The answer in flight for THIS card, if any. */
 	pending: "admit" | "decline" | null;
+	/**
+	 * Where that answer is: `confirming` while main's native sheet still asks,
+	 * `answering` once the person approved it (UX review round 3, U-R3-2). Only
+	 * `answering` may say "Checking…"/"Declining…": during the sheet the card
+	 * must not claim the act the person has not confirmed yet.
+	 */
+	pendingPhase?: PairingPendingPhase;
 	/** The last refusal for THIS card, if any. */
 	refusal: PairingRefusal | null;
 	/** Bumped on every refusal so a repeat of the same one still clears the field. */
@@ -214,6 +224,7 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	row,
 	nowSeconds,
 	pending,
+	pendingPhase = "answering",
 	refusal,
 	refusalSerial = 0,
 	eligibility = null,
@@ -281,6 +292,8 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 	useEffect(() => {
 		if (
 			refusal?.kind !== "foreground" &&
+			refusal?.kind !== "devtools" &&
+			refusal?.kind !== "sheet_open" &&
 			refusal?.kind !== "relay" &&
 			refusal?.kind !== "changed" &&
 			refusal?.kind !== "cancelled"
@@ -299,6 +312,17 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 		target.current.focus();
 		setActionFocus(null);
 	}, [actionFocus, canAdmit, canDecline]);
+	/*
+	 * A CLOSED card disables every control, so the button the person pressed
+	 * can no longer hold focus and a keyboard user fell to the page body (UX
+	 * review round 3, U-R3-3). Focus moves to the status line that says why
+	 * (`tabIndex=-1`: reachable by script, never a tab stop).
+	 */
+	const errorRef = useRef<HTMLParagraphElement>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the serial and kind ARE the triggers
+	useEffect(() => {
+		if (refusal?.kind === "closed") errorRef.current?.focus();
+	}, [refusalSerial, refusal?.kind]);
 	/*
 	 * The hint under the code. Expired: what to do next, by side (a joiner cannot
 	 * start an invite - UX U5). A host that cannot answer: no "type the digits"
@@ -483,6 +507,8 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 			{refusal && errorShown && (
 				<p
 					id={errorId}
+					ref={errorRef}
+					tabIndex={closed ? -1 : undefined}
 					// A closed card is news, not a failure: neutral ink, polite status.
 					role={closed ? "status" : "alert"}
 					className={cn(
@@ -552,7 +578,9 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 						data-testid="mesh-pairing-admit"
 					>
 						{pending === "admit"
-							? t("ui.mesh.pairing.action.confirming")
+							? pendingPhase === "confirming"
+								? t("ui.mesh.pairing.action.waiting_confirmation")
+								: t("ui.mesh.pairing.action.confirming")
 							: row.side === "inviter"
 								? t("ui.mesh.pairing.action.admit")
 								: t("ui.mesh.pairing.action.confirm")}
@@ -566,7 +594,9 @@ export const MeshPairingCard: FC<MeshPairingCardProps> = ({
 						data-testid="mesh-pairing-decline"
 					>
 						{pending === "decline"
-							? t("ui.mesh.pairing.action.declining")
+							? pendingPhase === "confirming"
+								? t("ui.mesh.pairing.action.waiting_confirmation")
+								: t("ui.mesh.pairing.action.declining")
 							: t("ui.mesh.pairing.action.decline")}
 					</Button>
 				</div>
@@ -606,7 +636,11 @@ export interface MeshPairingSectionProps {
 	error: string | null;
 	onRetry: () => void;
 	nowSeconds: number;
-	pending: { id: string; decision: "admit" | "decline" } | null;
+	pending: {
+		id: string;
+		decision: "admit" | "decline";
+		phase?: PairingPendingPhase;
+	} | null;
 	refusal: { id: string; refusal: PairingRefusal; serial: number } | null;
 	/** Main's static eligibility; see `MeshPairingCardProps.eligibility`. */
 	eligibility?: PairingEligibility | null;
@@ -664,6 +698,7 @@ export const MeshPairingSection: FC<MeshPairingSectionProps> = ({
 							row={row}
 							nowSeconds={nowSeconds}
 							pending={pending?.id === row.id ? pending.decision : null}
+							pendingPhase={pending?.id === row.id ? pending.phase : undefined}
 							refusal={refusal?.id === row.id ? refusal.refusal : null}
 							refusalSerial={refusal?.id === row.id ? refusal.serial : 0}
 							eligibility={eligibility}

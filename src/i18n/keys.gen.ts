@@ -10230,6 +10230,7 @@ export type MessageParams = {
 	"ui.mesh.pairing.action.confirming": undefined;
 	"ui.mesh.pairing.action.decline": undefined;
 	"ui.mesh.pairing.action.declining": undefined;
+	"ui.mesh.pairing.action.waiting_confirmation": undefined;
 	"ui.mesh.pairing.attempts_left": { count: number };
 	"ui.mesh.pairing.code.aria": { digits: string };
 	"ui.mesh.pairing.code.show": { peer: string };
@@ -10238,6 +10239,7 @@ export type MessageParams = {
 	"ui.mesh.pairing.error.build": undefined;
 	"ui.mesh.pairing.error.changed": { action: string };
 	"ui.mesh.pairing.error.closed": undefined;
+	"ui.mesh.pairing.error.devtools": { action: string };
 	"ui.mesh.pairing.error.expired": undefined;
 	"ui.mesh.pairing.error.foreground": { action: string };
 	"ui.mesh.pairing.error.mismatch": { count: number };
@@ -10245,6 +10247,7 @@ export type MessageParams = {
 	"ui.mesh.pairing.error.needs_app": undefined;
 	"ui.mesh.pairing.error.read": undefined;
 	"ui.mesh.pairing.error.relay": undefined;
+	"ui.mesh.pairing.error.sheet_open": { action: string };
 	"ui.mesh.pairing.error.unknown": undefined;
 	"ui.mesh.pairing.expired_hint.inviter": undefined;
 	"ui.mesh.pairing.expired_hint.joiner": { peer: string };
@@ -10289,10 +10292,12 @@ export type MessageParams = {
 		network: string;
 		peer: string;
 	};
+	"ui.mesh.pairing.sheet.offers_final_choice": { peer: string };
+	"ui.mesh.pairing.sheet.offers_incoming": { peer: string; list: string };
+	"ui.mesh.pairing.sheet.offers_incoming_none": { peer: string };
 	"ui.mesh.pairing.sheet.role": { role: string };
+	"ui.mesh.pairing.sheet.share_item": { label: string; key: string };
 	"ui.mesh.pairing.sheet.shares_decline": undefined;
-	"ui.mesh.pairing.sheet.shares_incoming": { peer: string; list: string };
-	"ui.mesh.pairing.sheet.shares_incoming_none": { peer: string };
 	"ui.mesh.pairing.sheet.shares_outgoing": { peer: string; list: string };
 	"ui.mesh.pairing.sheet.shares_outgoing_none": { peer: string };
 	"ui.mesh.pairing.time_left_minutes": { count: number };

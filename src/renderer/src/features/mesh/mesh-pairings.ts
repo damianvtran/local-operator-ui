@@ -329,6 +329,14 @@ export type PairingRefusal =
 	| { kind: "needs_app" }
 	/** Bring the window forward and press the button again; `action` names it. */
 	| { kind: "foreground"; action?: PairingAction }
+	/**
+	 * DevTools or a debugger is attached to the window NOW. The window is already
+	 * in front, so "bring it forward" would repeat the refusal; the fix is to
+	 * close DevTools / detach the debugger (UX review round 3, U-R3-1).
+	 */
+	| { kind: "devtools"; action?: PairingAction }
+	/** Another pairing's confirmation sheet is open: finish that one first. */
+	| { kind: "sheet_open"; action?: PairingAction }
 	| { kind: "build" }
 	| { kind: "expired" }
 	| { kind: "not_ready" }
@@ -362,14 +370,15 @@ const FOREGROUND_REASONS = new Set([
 	// press mints a new one (security review round 1, US-R1-1).
 	"no_confirmation",
 	"confirmation_mismatch",
-	// The window's DevTools or a debugger session is open NOW. Not a build
-	// property: closing it and pressing again works, so this is never the
-	// permanent "this build cannot" dead end (code review round 2, M2).
-	"devtools_open",
-	"debugger_attached",
-	// Another pairing's native sheet is open; this press raised none.
-	"sheet_open",
 ]);
+
+/**
+ * The window's DevTools or a debugger session is open NOW. Not a build
+ * property: closing it and pressing again works, so this is never the permanent
+ * "this build cannot" dead end (code review round 2, M2) - and not "bring the
+ * window forward" either, which would only repeat it (UX review round 3, U-R3-1).
+ */
+const DEVTOOLS_REASONS = new Set(["devtools_open", "debugger_attached"]);
 
 /**
  * Main reached the listener stage and it did not answer in time or closed on the
@@ -404,6 +413,9 @@ export function pairingRefusal(error: unknown): PairingRefusal {
 		case "pairing_attest_refused": {
 			const reason = typeof body?.reason === "string" ? body.reason : "";
 			if (FOREGROUND_REASONS.has(reason)) return { kind: "foreground" };
+			if (DEVTOOLS_REASONS.has(reason)) return { kind: "devtools" };
+			// Another pairing's native sheet is open; this press raised none.
+			if (reason === "sheet_open") return { kind: "sheet_open" };
 			if (reason === "expired") return { kind: "expired" };
 			if (RETRYABLE_ATTEST_REASONS.has(reason)) return { kind: "relay" };
 			if (reason === "pairing_closed") return { kind: "closed" };
@@ -447,6 +459,14 @@ export function pairingRefusalSentence(
 			return t("ui.mesh.pairing.error.needs_app");
 		case "foreground":
 			return t("ui.mesh.pairing.error.foreground", {
+				action: refusal.action ?? "other",
+			});
+		case "devtools":
+			return t("ui.mesh.pairing.error.devtools", {
+				action: refusal.action ?? "other",
+			});
+		case "sheet_open":
+			return t("ui.mesh.pairing.error.sheet_open", {
 				action: refusal.action ?? "other",
 			});
 		case "build":
@@ -704,8 +724,14 @@ export type PairingAnswerAsk = {
  * card, sender document and focus, attests and only then forwards. A refused or
  * cancelled confirm sends no answer; a cancel resolves `{status: "cancelled"}`.
  * `deadline` here is the card's expiry as an UPPER BOUND - main picks the real one.
+ *
+ * `onConfirmed` fires between the hops, once the person approved the sheet:
+ * until then the card must not claim the action is under way ("Declining…")
+ * while the sheet is still asking (UX review round 3, U-R3-2).
  */
-export function useMeshPairingAnswer() {
+export function useMeshPairingAnswer(options?: {
+	onConfirmed?: (ask: PairingAnswerAsk) => void;
+}) {
 	const client = useQueryClient();
 	return useMutation({
 		retry: false,
@@ -734,6 +760,7 @@ export function useMeshPairingAnswer() {
 			// Main answers 200 only with a token; anything else is not an answer.
 			if (typeof confirmation !== "string" || confirmation === "")
 				throw new Error(t("ui.mesh.pairing.error.unknown"));
+			options?.onConfirmed?.(ask);
 			const result = await desktopResult<{
 				status?: unknown;
 				attempts_left?: unknown;

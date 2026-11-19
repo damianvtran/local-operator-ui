@@ -833,7 +833,8 @@ test("every sheet label comes from main's own read, never from the renderer", as
 		"Device: Studio Mac (SHA256:ab12cd)",
 		"Role: drive",
 		"Code: 481 926",
-		"This device will share with Studio Mac: Anthropic key, OpenAI key",
+		// Each label carries core's key beside it (security review round 3, R3-1).
+		"This device will share with Studio Mac: Anthropic key (anthropic), OpenAI key (openai)",
 	]);
 	assert.equal(sheet.actionLabel, "Admit");
 	assert.equal(sheet.cancelLabel, "Cancel");
@@ -864,11 +865,13 @@ test("every sheet label comes from main's own read, never from the renderer", as
 	const joinerSheet = joiner.calls.sheets[0].sheet;
 	assert.equal(plain(joinerSheet.message), "Join Home mesh from Studio Mac?");
 	assert.equal(joinerSheet.actionLabel, "Join");
+	// An OFFER the inviter still decides on, never a grant (R3-2).
 	assert.ok(
 		plain(joinerSheet.detail).includes(
-			"Studio Mac will share with this device: OpenAI key, Anthropic key",
+			"Studio Mac offers to share with this device: OpenAI key (openai), Anthropic key (anthropic)\nStudio Mac makes the final choice of what it shares.",
 		),
 	);
+	assert.ok(!plain(joinerSheet.detail).includes("will share"));
 	assert.ok(!plain(joinerSheet.detail).includes("Role:"));
 	const decline = host();
 	await mint(
@@ -879,6 +882,252 @@ test("every sheet label comes from main's own read, never from the renderer", as
 	assert.equal(declineSheet.actionLabel, "Decline");
 	assert.ok(plain(declineSheet.detail).endsWith("Nothing will be shared."));
 	assert.ok(!plain(declineSheet.detail).includes("Code:"));
+});
+
+/* ------------------------------------------ security review round 3 (R3-*) */
+
+/** Two DISTINCT credentials whose masked labels are identical. */
+const sameLabelRow = (over = {}) =>
+	inviterRow({
+		offers: {
+			state: "listed",
+			items: [
+				{ key: "openai", label: "sk-…abcd", kind: "api-key", share: true },
+				{ key: "openrouter", label: "sk-…abcd", kind: "api-key", share: true },
+				// Core sent no label: the key is the label, and is not doubled.
+				{ key: "github-app", label: "", kind: "github-app", share: true },
+			],
+		},
+		...over,
+	});
+
+test("R3-1: two credentials with the same masked label read distinctly, each bound to its own key", async () => {
+	const sheetFor = async (shares) => {
+		const { host: h, calls } = host({
+			readPairings: async () => listed(sameLabelRow()),
+		});
+		const token = await mint(inviterAdmit({ shares }), h);
+		return { h, calls, token, detail: plain(calls.sheets[0].sheet.detail) };
+	};
+	const openai = await sheetFor(["openai"]);
+	const openrouter = await sheetFor(["openrouter"]);
+	assert.ok(
+		openai.detail.endsWith(
+			"This device will share with Studio Mac: sk-…abcd (openai)",
+		),
+		openai.detail,
+	);
+	assert.ok(
+		openrouter.detail.endsWith(
+			"This device will share with Studio Mac: sk-…abcd (openrouter)",
+		),
+	);
+	// Negative control: the labels alone are identical, so only the key tells
+	// the two grants apart - and the sheets must differ.
+	assert.equal(
+		sameLabelRow().offers.items[0].label,
+		sameLabelRow().offers.items[1].label,
+	);
+	assert.notEqual(openai.detail, openrouter.detail);
+	// Bound to its own key: the openai approval cannot answer for openrouter...
+	assertRefused(
+		await answerMeshPairing(
+			inviterAdmit({ shares: ["openrouter"], confirmation: openai.token }),
+			openai.h,
+		),
+		openai.calls,
+		"confirmation_mismatch",
+	);
+	// ...and the openrouter approval forwards exactly openrouter.
+	const sent = await answerMeshPairing(
+		inviterAdmit({ shares: ["openrouter"], confirmation: openrouter.token }),
+		openrouter.h,
+	);
+	assert.equal(sent.status, 200);
+	assert.deepEqual(openrouter.calls.forward[0].shares, ["openrouter"]);
+	// A label-less item shows its key once, not "github-app (github-app)".
+	const both = await sheetFor(["github-app", "openai"]);
+	assert.ok(
+		both.detail.endsWith(": github-app, sk-…abcd (openai)"),
+		both.detail,
+	);
+	// The joiner's offer list names both keys too.
+	const joiner = host({
+		readPairings: async () =>
+			listed(joinerRow({ offers: sameLabelRow().offers })),
+	});
+	await mint(
+		{
+			op: "pairings.answer",
+			side: "joiner",
+			inviteId: "inv_j",
+			nonce: "n2",
+			decision: "admit",
+			code: "481926",
+		},
+		joiner.host,
+	);
+	assert.ok(
+		plain(joiner.calls.sheets[0].sheet.detail).includes(
+			"sk-…abcd (openai), sk-…abcd (openrouter), github-app",
+		),
+	);
+});
+
+test("R3-2: the joiner reads an offer the inviter decides; only the inviter's frozen choice is definitive", async () => {
+	const joinerAdmit = {
+		op: "pairings.answer",
+		side: "joiner",
+		inviteId: "inv_j",
+		nonce: "n2",
+		decision: "admit",
+		code: "481926",
+	};
+	const joinerDetail = async (row) => {
+		const j = host({ readPairings: async () => listed(row) });
+		await mint(joinerAdmit, j.host);
+		return plain(j.calls.sheets[0].sheet.detail);
+	};
+	const offered = await joinerDetail(joinerRow());
+	assert.ok(offered.includes("Studio Mac offers to share with this device:"));
+	assert.ok(
+		offered.endsWith("Studio Mac makes the final choice of what it shares."),
+	);
+	// Negative control: no definitive wording on the joiner side, list or not.
+	assert.ok(!/will share|Nothing will be shared/.test(offered), offered);
+	const none = await joinerDetail(
+		joinerRow({ offers: { state: "listed", items: [] } }),
+	);
+	assert.ok(
+		none.endsWith("Studio Mac offers nothing to share with this device."),
+	);
+	assert.ok(!/will share/.test(none), none);
+	// The inviter's own frozen selection keeps the definitive words.
+	const inviter = host();
+	await mint(inviterAdmit({ shares: ["openai"] }), inviter.host);
+	const own = plain(inviter.calls.sheets[0].sheet.detail);
+	assert.ok(
+		own.endsWith("This device will share with Studio Mac: OpenAI key (openai)"),
+	);
+	assert.ok(!own.includes("offers"), own);
+	const nothing = host();
+	await mint(inviterAdmit({ shares: [] }), nothing.host);
+	assert.ok(
+		plain(nothing.calls.sheets[0].sheet.detail).endsWith(
+			"This device will share nothing with Studio Mac.",
+		),
+	);
+});
+
+test("R3-3: expiry is re-checked after main's async reads, before minting and before dialling", async () => {
+	// Confirm: the card lapses DURING the fresh post-sheet read.
+	const lapse = host();
+	let ms = NOW_MS;
+	let reads = 0;
+	lapse.host.nowMs = () => ms;
+	lapse.host.readPairings = async () => {
+		reads += 1;
+		if (reads === 2) ms = NOW_MS + 601_000; // past inviterRow's 600 s
+		return listed(inviterRow());
+	};
+	const refused = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		lapse.host,
+	);
+	assert.equal(refused.body.detail?.reason, "expired");
+	assert.equal(lapse.host.confirmations.size, 0, "nothing minted");
+	// Answer: the deadline passes during the pre-dial card read.
+	const late = host();
+	const token = await mint(inviterAdmit(), late.host);
+	let answerMs = NOW_MS;
+	late.host.nowMs = () => answerMs;
+	late.host.readPairings = async () => {
+		answerMs = NOW_MS + 401_000; // past the request's 400 s deadline
+		return listed(inviterRow());
+	};
+	assertRefused(
+		await answerMeshPairing(inviterAdmit({ confirmation: token }), late.host),
+		late.calls,
+		"expired",
+	);
+	// Answer: the deadline passes during the attestation - nothing is forwarded.
+	const slow = host();
+	const slowToken = await mint(inviterAdmit(), slow.host);
+	let slowMs = NOW_MS;
+	slow.host.nowMs = () => slowMs;
+	slow.host.attest = async (path, frame) => {
+		slow.calls.attest.push({ path, frame });
+		slowMs = NOW_MS + 401_000;
+		return null;
+	};
+	const dialled = await answerMeshPairing(
+		inviterAdmit({ confirmation: slowToken }),
+		slow.host,
+	);
+	assert.equal(dialled.body.detail?.reason, "expired");
+	assert.equal(slow.calls.forward.length, 0);
+});
+
+test("R3-m1: focus is judged after the fresh read, so an honest Admit succeeds on the first press", async () => {
+	// AppKit hands key status back a beat after the sheet orders out: unfocused
+	// right after the sheet, focused again once main's fresh read returns.
+	const lag = host();
+	lag.host.facts = () => {
+		const facts = person();
+		const lagging = lag.calls.sheets.length > 0 && lag.calls.reads < 2;
+		return lagging
+			? { ...facts, window: { ...facts.window, focused: false } }
+			: facts;
+	};
+	const sent = await mint(inviterAdmit(), lag.host);
+	assert.match(sent, /^[0-9a-f]{64}$/);
+	// Still unfocused after the read: refused, nothing minted.
+	const away = host();
+	away.host.facts = () => {
+		const facts = person();
+		return away.calls.sheets.length > 0
+			? { ...facts, window: { ...facts.window, focused: false } }
+			: facts;
+	};
+	const refused = await confirmMeshPairing(
+		confirmOf(inviterAdmit()),
+		away.host,
+	);
+	assert.equal(refused.body.detail?.reason, "window_not_focused");
+	assert.equal(away.host.confirmations.size, 0);
+});
+
+test("R3-m2: a sheet that could not show (no main window) is no_window, not cancelled", async () => {
+	let gone = false;
+	const { host: h, calls } = host({
+		document: () => (gone ? null : mainDocument()),
+		showSheet: async (sheet) => {
+			calls.sheets.push({ sheet });
+			gone = true; // the window closed: showSheet has no owner and says false
+			return false;
+		},
+	});
+	const response = await confirmMeshPairing(confirmOf(inviterAdmit()), h);
+	assert.equal(response.status, 403);
+	assert.equal(response.body.detail.reason, "no_window");
+	assert.equal(h.confirmations.size, 0);
+	assert.equal(h.confirmations.sheetOpen, false);
+});
+
+test("R3-n1: a repeated share key is one grant - listed once, forwarded once", async () => {
+	const { host: h, calls } = host();
+	const token = await mint(inviterAdmit({ shares: ["openai", "openai"] }), h);
+	assert.ok(
+		plain(calls.sheets[0].sheet.detail).endsWith(
+			"This device will share with Studio Mac: OpenAI key (openai)",
+		),
+	);
+	const sent = await answerMeshPairing(
+		inviterAdmit({ shares: ["openai"], confirmation: token }),
+		h,
+	);
+	assert.equal(sent.status, 200);
+	assert.deepEqual(calls.forward[0].shares, ["openai"]);
 });
 
 test("a confirm main's read cannot back shows no sheet at all", async () => {

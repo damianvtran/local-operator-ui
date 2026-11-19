@@ -428,9 +428,11 @@ export function canonicalPairingAnswer(
 		nonce: request.nonce,
 		act: admit ? "respond" : "decline",
 		code: admit ? request.code : "",
+		// Deduped as well as sorted (code review round 3, R3-n1): `["k","k"]`
+		// is one grant, so the sheet lists it once and core is sent it once.
 		shares: Object.freeze(
 			admit && request.side === "inviter"
-				? [...(request.shares ?? [])].sort()
+				? [...new Set(request.shares ?? [])].sort()
 				: [],
 		),
 	});
@@ -793,6 +795,25 @@ export function livePairingRow(
 	return { row };
 }
 
+/**
+ * One shared item as the sheet names it: core's masked label AND core's key
+ * (security review round 3, R3-1). Two distinct credentials can mask to the same
+ * label ("sk-…abcd" on two providers), and the label alone would make two
+ * different grants read identically on the one surface that vouches for them.
+ * The key is the authoritative identifier - for a provider credential it IS the
+ * provider (`offers.py` `rows.append({"key": provider, ...})`), and it is what
+ * core grants by - and it comes from main's own read, never from the renderer.
+ * A label that is only the key (core sent none) is not repeated as "k (k)".
+ */
+function shareItemLabel(item: { key: string; label: string }): string {
+	return item.label === item.key
+		? item.key
+		: t("ui.mesh.pairing.sheet.share_item", {
+				label: item.label,
+				key: item.key,
+			});
+}
+
 /** Six digits as the card draws them ("481 926"). */
 function groupedCode(code: string): string {
 	return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
@@ -836,8 +857,10 @@ export function pairingSheet(
 		);
 	if (!admit) lines.push(t("ui.mesh.pairing.sheet.shares_decline"));
 	else if (answer.side === "inviter") {
-		const labels = answer.shares.map(
-			(key) => row.offers.find((item) => item.key === key)?.label ?? key,
+		const labels = answer.shares.map((key) =>
+			shareItemLabel(
+				row.offers.find((item) => item.key === key) ?? { key, label: key },
+			),
 		);
 		lines.push(
 			labels.length > 0
@@ -850,19 +873,29 @@ export function pairingSheet(
 					}),
 		);
 	} else {
+		// The joiner sees the inviter's OFFER, not a grant (security review round
+		// 3, R3-2): the inviter can still remove items when it admits, and the
+		// joiner's answer carries no share list, so nothing here is final. Only
+		// the inviter's own frozen selection above is worded as "will share".
 		const labels = row.offersListed
-			? row.offers.filter((item) => item.share).map((item) => item.label)
+			? row.offers.filter((item) => item.share).map(shareItemLabel)
 			: [];
-		lines.push(
-			labels.length > 0
-				? t("ui.mesh.pairing.sheet.shares_incoming", {
-						peer: row.peerName,
-						list: formatList(labels),
-					})
-				: t("ui.mesh.pairing.sheet.shares_incoming_none", {
-						peer: row.peerName,
-					}),
-		);
+		if (labels.length > 0)
+			lines.push(
+				t("ui.mesh.pairing.sheet.offers_incoming", {
+					peer: row.peerName,
+					list: formatList(labels),
+				}),
+				t("ui.mesh.pairing.sheet.offers_final_choice", {
+					peer: row.peerName,
+				}),
+			);
+		else
+			lines.push(
+				t("ui.mesh.pairing.sheet.offers_incoming_none", {
+					peer: row.peerName,
+				}),
+			);
 	}
 	return {
 		message,
@@ -950,6 +983,10 @@ export async function confirmMeshPairing(
 		}
 		// The card's clock closed the sheet (or ran out as it was answered): no answer.
 		if (expiry.signal.aborted) return pairingAttestRefusal("expired");
+		// No sheet could be shown, or it closed with its window (code review round
+		// 3, R3-m2): `showSheet` has no owner then and resolves false. That is not
+		// the person's cancel, so say why instead of reporting "cancelled".
+		if (!approved && !host.document()) return pairingAttestRefusal("no_window");
 		// Cancel, Escape or a dismissed sheet: nothing minted, nothing sent, and not
 		// an error either - the card just becomes answerable again.
 		if (!approved)
@@ -959,13 +996,18 @@ export async function confirmMeshPairing(
 			};
 		const nowS = Math.floor(nowMs() / 1000);
 		if (!(before.row.expiresAtS > nowS)) return pairingAttestRefusal("expired");
-		const settled = pairingProvenanceRefusal(host.facts());
-		if (settled) return pairingAttestRefusal(settled);
 		const current = host.document();
 		if (!current || !sameDocument(document, current))
 			return pairingAttestRefusal("confirmation_mismatch");
 		const again = await readLiveRow(host, answer, nowS);
 		if ("refusal" in again) return pairingAttestRefusal(again.refusal);
+		// The focus gate is read AFTER the fresh card read, not in the first task
+		// after the sheet closes (code review round 3, R3-m1): AppKit may hand key
+		// status back to the parent a beat after the sheet orders out, and an
+		// honest Admit must not bounce off that. No security is lost - the answer
+		// step re-runs this full gate right before it dials.
+		const settled = pairingProvenanceRefusal(host.facts());
+		if (settled) return pairingAttestRefusal(settled);
 		// What the person read must still be true: same expiry, same words.
 		const reread = pairingSheet(answer, again.row);
 		if (
@@ -974,6 +1016,10 @@ export async function confirmMeshPairing(
 			reread.detail !== sheet.detail
 		)
 			return pairingAttestRefusal("pairing_changed");
+		// The reads above awaited core; the card may have lapsed meanwhile
+		// (security review round 3, R3-3). Checked once more right before minting.
+		if (!(before.row.expiresAtS > Math.floor(nowMs() / 1000)))
+			return pairingAttestRefusal("expired");
 		const confirmation = host.confirmations.mint(
 			{ document, answer },
 			before.row.expiresAtS,
@@ -1009,7 +1055,8 @@ export async function answerMeshPairing(
 	if ("refusal" in spent) return pairingAttestRefusal(spent.refusal);
 	const { answer, expiresAtS } = spent.confirmed;
 
-	const nowS = Math.floor((host.nowMs ?? Date.now)() / 1000);
+	const nowMs = host.nowMs ?? Date.now;
+	const nowS = Math.floor(nowMs() / 1000);
 	const ceiling = Math.min(
 		expiresAtS,
 		request.deadline ?? Number.POSITIVE_INFINITY,
@@ -1042,11 +1089,18 @@ export async function answerMeshPairing(
 	const now = host.document();
 	if (!now || !document || !sameDocument(document, now))
 		return pairingAttestRefusal("confirmation_mismatch");
+	// The card read and the attestation both await; the deadline may have
+	// passed meanwhile (security review round 3, R3-3). Re-checked after each,
+	// so nothing is attested or dialled for an answer core would call late.
+	if (!(deadline > Math.floor(nowMs() / 1000)))
+		return pairingAttestRefusal("expired");
 	const failure = await (host.attest ?? attestMeshPairing)(
 		meshPairingSocketPath(host.configDir()),
 		meshPairingFrame(forwarded),
 	);
 	if (failure) return pairingAttestRefusal(failure);
+	if (!(deadline > Math.floor(nowMs() / 1000)))
+		return pairingAttestRefusal("expired");
 	return host.forward(forwarded);
 }
 
