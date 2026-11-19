@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "正在检查 {region} 中的 Amazon Bedrock…",
 	"ui.providers.bedrock.connect": "连接",
 	"ui.providers.bedrock.connected_models": "已以 {label} 身份连接到 Amazon Bedrock · 可用模型 {count, plural, other {# 个}}",
+	"ui.providers.bedrock.connection_saved": "已保存 Amazon Bedrock 连接 {label}",
 	"ui.providers.bedrock.context_failed": "无法读取你的 AWS 配置。",
 	"ui.providers.bedrock.copy_code": "复制代码",
 	"ui.providers.bedrock.copy_command": "复制命令",

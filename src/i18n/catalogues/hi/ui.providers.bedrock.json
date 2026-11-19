@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "{region} में Amazon Bedrock जाँचा जा रहा है…",
 	"ui.providers.bedrock.connect": "कनेक्ट करें",
 	"ui.providers.bedrock.connected_models": "Amazon Bedrock से {label} के रूप में कनेक्ट है · {count, plural, one {# मॉडल उपलब्ध} other {# मॉडल उपलब्ध}}",
+	"ui.providers.bedrock.connection_saved": "Amazon Bedrock कनेक्शन {label} सहेजा गया",
 	"ui.providers.bedrock.context_failed": "आपका AWS कॉन्फ़िगरेशन पढ़ा नहीं जा सका।",
 	"ui.providers.bedrock.copy_code": "कोड कॉपी करें",
 	"ui.providers.bedrock.copy_command": "कमांड कॉपी करें",

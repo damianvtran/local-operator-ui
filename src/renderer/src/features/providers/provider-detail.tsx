@@ -1042,13 +1042,19 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			? (keySaved as BedrockConnectResult)
 			: null;
 	const bedrockHeadline =
-		bedrockSaved?.valid === true &&
-		typeof bedrockSaved.models_available === "number"
-			? t("ui.providers.bedrock.connected_models", {
-					label: bedrockSaved.label,
-					count: bedrockSaved.models_available,
-				})
-			: undefined;
+		bedrockSaved === null
+			? undefined
+			: bedrockSaved.valid === true
+				? typeof bedrockSaved.models_available === "number"
+					? t("ui.providers.bedrock.connected_models", {
+							label: bedrockSaved.label,
+							count: bedrockSaved.models_available,
+						})
+					: undefined
+				: // An AWS connection is not a "key": say what was stored, by its label.
+					t("ui.providers.bedrock.connection_saved", {
+						label: bedrockSaved.label,
+					});
 	const savedReceipt = keySaved ? (
 		<SignedIn
 			brand={brand}

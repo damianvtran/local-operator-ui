@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "Comprobando Amazon Bedrock en {region}…",
 	"ui.providers.bedrock.connect": "Conectar",
 	"ui.providers.bedrock.connected_models": "Conectado a Amazon Bedrock como {label} · {count, plural, one {# modelo disponible} other {# modelos disponibles}}",
+	"ui.providers.bedrock.connection_saved": "Conexión de Amazon Bedrock {label} guardada",
 	"ui.providers.bedrock.context_failed": "No se pudo leer tu configuración de AWS.",
 	"ui.providers.bedrock.copy_code": "Copiar código",
 	"ui.providers.bedrock.copy_command": "Copiar comando",

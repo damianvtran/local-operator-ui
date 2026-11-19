@@ -232,7 +232,7 @@ const connectResult = (scenario: Scenario): DesktopResponse => {
 			return refused(
 				422,
 				"bedrock_credentials_rejected",
-				"AWS did not recognise this access key. Check the key ID and secret, or create a new access key in the IAM console. Nothing was saved.",
+				"AWS did not recognise the credentials in profile acme-dev-sso (UnrecognizedClientException). Check the profile in ~/.aws/config. Nothing was saved.",
 			);
 		case "access-denied":
 			return ok({
@@ -276,8 +276,17 @@ let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 	null;
 const never = new Promise<DesktopResponse>(() => {});
 
+/*
+ * The sign-in sessions are module-level (they outlive a panel by design), so a
+ * story starts from a clean registry - once per story, not per render: a reset
+ * on every render would drop the SSO flow the waiting story just started.
+ */
+let installedScenario: Scenario | null = null;
 const installBridge = (scenario: Scenario) => {
-	resetSignInSessions();
+	if (installedScenario !== scenario) {
+		resetSignInSessions();
+		installedScenario = scenario;
+	}
 	bridge = async (request) => {
 		switch (request?.op) {
 			case "capabilities":
@@ -332,6 +341,30 @@ if (typeof window !== "undefined") {
 	};
 }
 
+/*
+ * The row a SAVED connection leaves behind. In the app the grid re-reads the
+ * census after a connect (`refreshProviders`) and hands the panel the stored
+ * row, whose verdict the receipt repeats; a static fixture row would instead
+ * paint the never-configured verdict ("Needs sign-in") over a fresh success.
+ * The post-connect stories therefore render the row as it is after that read.
+ */
+const SAVED_SCENARIOS: ReadonlySet<Scenario> = new Set([
+	"connected",
+	"access-denied",
+	"unverified",
+]);
+const rowFor = (scenario: Scenario): DesktopProvider =>
+	SAVED_SCENARIOS.has(scenario)
+		? {
+				...BEDROCK,
+				configured: true,
+				has_credential: true,
+				stored_credentials: 1,
+				identity: "acme-dev-sso · us-west-2",
+				account_count: 1,
+			}
+		: BEDROCK;
+
 /** Installed as the story RENDERS, so the first read never meets "no bridge". */
 const Frame: FC<{ scenario: Scenario }> = ({ scenario }) => {
 	installBridge(scenario);
@@ -342,7 +375,7 @@ const Frame: FC<{ scenario: Scenario }> = ({ scenario }) => {
 					title="Amazon Bedrock"
 					description="Fixture frame: every profile, account and key on this page is stub data."
 				>
-					<ProviderDetail provider={BEDROCK} />
+					<ProviderDetail provider={rowFor(scenario)} />
 				</SettingsSection>
 			</div>
 		</div>
@@ -358,8 +391,6 @@ export default meta;
 type Story = StoryObj<{ scenario: Scenario }>;
 
 const CONNECT = /^Connect$/;
-/* Shaped like an access key id (the contract's own bound) and obviously fake. */
-const FIXTURE_ACCESS_KEY_ID = ["AKIA", "FIXTURE", "000000000"].join("");
 const SIGN_IN_SSO = /Sign in with AWS SSO/;
 const ACCESS_KEY_TAB = /Access key/;
 const PROFILE_TAB = /^Profile$/;
@@ -401,19 +432,13 @@ export const AccessKeyForm: Story = story("profiles", async () => {
 		await screen.findByRole("tab", { name: ACCESS_KEY_TAB }),
 	);
 });
-/** AWS rejected the credentials (422): heading by code, backend's sentence. */
+/**
+ * AWS rejected the credentials (422): heading by code, backend's sentence.
+ * Driven from the profile tab: the play only has to press Connect, so the
+ * frame does not depend on synthetic typing into masked fields.
+ */
 export const Rejected: Story = story("rejected", async () => {
-	await userEvent.click(
-		await screen.findByRole("tab", { name: ACCESS_KEY_TAB }),
-	);
-	await userEvent.type(
-		await screen.findByLabelText("Access key ID"),
-		FIXTURE_ACCESS_KEY_ID,
-	);
-	await userEvent.type(
-		await screen.findByLabelText("Secret access key"),
-		"fixture-secret",
-	);
+	await userEvent.click(await screen.findByRole("tab", { name: PROFILE_TAB }));
 	await pressConnect();
 });
 /** Credentials work but cannot list models: saved, unverified, AWS's reason. */

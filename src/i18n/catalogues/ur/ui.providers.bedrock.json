@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "{region} میں Amazon Bedrock کی جانچ ہو رہی ہے…",
 	"ui.providers.bedrock.connect": "کنیکٹ کریں",
 	"ui.providers.bedrock.connected_models": "Amazon Bedrock سے {label} کے طور پر کنیکٹ ہے · {count, plural, one {# ماڈل دستیاب} other {# ماڈل دستیاب}}",
+	"ui.providers.bedrock.connection_saved": "Amazon Bedrock کنکشن {label} محفوظ ہو گیا",
 	"ui.providers.bedrock.context_failed": "آپ کی AWS کنفیگریشن پڑھی نہیں جا سکی۔",
 	"ui.providers.bedrock.copy_code": "کوڈ کاپی کریں",
 	"ui.providers.bedrock.copy_command": "کمانڈ کاپی کریں",

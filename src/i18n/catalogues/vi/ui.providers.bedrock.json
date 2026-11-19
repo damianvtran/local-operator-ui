@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "Đang kiểm tra Amazon Bedrock tại {region}…",
 	"ui.providers.bedrock.connect": "Kết nối",
 	"ui.providers.bedrock.connected_models": "Đã kết nối Amazon Bedrock với tư cách {label} · {count, plural, other {có # mô hình}}",
+	"ui.providers.bedrock.connection_saved": "Đã lưu kết nối Amazon Bedrock {label}",
 	"ui.providers.bedrock.context_failed": "Không đọc được cấu hình AWS của bạn.",
 	"ui.providers.bedrock.copy_code": "Sao chép mã",
 	"ui.providers.bedrock.copy_command": "Sao chép lệnh",

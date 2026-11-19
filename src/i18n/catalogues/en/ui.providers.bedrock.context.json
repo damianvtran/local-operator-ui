@@ -78,6 +78,14 @@
 			"label": "Connection label, e.g. dev · us-east-1 (never translated)"
 		}
 	},
+	"ui.providers.bedrock.connection_saved": {
+		"role": "heading",
+		"tone": "plain",
+		"note": "Receipt headline after an Amazon Bedrock connection was stored but not verified (credentials work but cannot list models, or the check timed out).",
+		"placeholders": {
+			"label": "Connection label, e.g. dev · us-east-1 (never translated)"
+		}
+	},
 	"ui.providers.bedrock.context_failed": {
 		"role": "body text",
 		"tone": "plain",

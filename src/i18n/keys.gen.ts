@@ -11476,6 +11476,7 @@ export type MessageParams = {
 	"ui.providers.bedrock.checking": { region: string };
 	"ui.providers.bedrock.connect": undefined;
 	"ui.providers.bedrock.connected_models": { label: string; count: number };
+	"ui.providers.bedrock.connection_saved": { label: string };
 	"ui.providers.bedrock.context_failed": undefined;
 	"ui.providers.bedrock.copy_code": undefined;
 	"ui.providers.bedrock.copy_command": undefined;

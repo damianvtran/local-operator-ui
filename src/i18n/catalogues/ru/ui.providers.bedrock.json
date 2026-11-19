@@ -11,6 +11,7 @@
 	"ui.providers.bedrock.checking": "Проверяем Amazon Bedrock в {region}…",
 	"ui.providers.bedrock.connect": "Подключить",
 	"ui.providers.bedrock.connected_models": "Подключено к Amazon Bedrock как {label} · {count, plural, one {доступна # модель} few {доступны # модели} many {доступно # моделей} other {доступно # модели}}",
+	"ui.providers.bedrock.connection_saved": "Подключение Amazon Bedrock {label} сохранено",
 	"ui.providers.bedrock.context_failed": "Не удалось прочитать вашу конфигурацию AWS.",
 	"ui.providers.bedrock.copy_code": "Скопировать код",
 	"ui.providers.bedrock.copy_command": "Скопировать команду",
