@@ -1,9 +1,10 @@
 # PR #1971 i18n audit round 2 — gate output (execution log, not notes)
 # head bec0906c52c4ac429ecf9caed5262b33f639ee2b + this audit's corrections (uncommitted when these ran)
 # auditor session 3b3df24653ea, model deepseek/deepseek-flash, 2026-11-18
+# paths: the worktree this ran in is written <worktree> (no machine-local prefix in a public tree)
 
 $ node scripts/i18n/generate.mjs --check
-/Users/olafagbemi/src/local-operator-ui/.worktrees/rc-device-row/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+<worktree>/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
 exit: 0
 
 $ node scripts/i18n/check-duplicates.mjs
