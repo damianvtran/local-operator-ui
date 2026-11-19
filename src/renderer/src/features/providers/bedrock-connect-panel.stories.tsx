@@ -24,7 +24,7 @@
 
 import { SettingsSection } from "@features/settings/components/settings-section";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
+import { fireEvent, screen, userEvent } from "@storybook/test";
 import type { FC } from "react";
 import type {
 	AuthOperation,
@@ -540,17 +540,24 @@ export const CheckUnverified: Story = story("check-unverified", async () => {
 	await userEvent.click(await screen.findByRole("button", { name: CHECK }));
 	await screen.findByText(/stopped waiting/);
 });
-/** Inline validation: a lower-case key ID and a typed Region AWS has no such id for. */
+/**
+ * Inline validation: a lower-case key ID and a typed Region AWS has no such id
+ * for. Values go in through `fireEvent` (the native value setter plus the
+ * event React listens to): synthetic `userEvent.type` painted the text without
+ * reaching React's onChange in this harness, the same reason `Rejected` avoids
+ * typing into fields.
+ */
 export const InvalidInput: Story = story("invalid-input", async () => {
-	await userEvent.click(
-		await screen.findByRole("tab", { name: ACCESS_KEY_TAB }),
-	);
-	await userEvent.type(
-		await screen.findByLabelText(/Access key ID/),
-		"akia-not-a-key",
-	);
-	await userEvent.tab();
-	const region = await screen.findByRole("combobox", { name: /Region/ });
-	await userEvent.click(region);
-	await userEvent.keyboard("moon-base-1{Enter}");
+	// Located by position and id, not by English names, so the same play
+	// drives the frame in every locale (the es capture checks the widths).
+	const tabs = await screen.findAllByRole("tab");
+	await userEvent.click(tabs[2]);
+	const id = document.getElementById("bedrock-access-key-id");
+	if (id) fireEvent.change(id, { target: { value: "akia-not-a-key" } });
+	const boxes = await screen.findAllByRole("combobox");
+	const region = boxes[boxes.length - 1];
+	fireEvent.focus(region);
+	fireEvent.click(region);
+	fireEvent.change(region, { target: { value: "moon-base-1" } });
+	fireEvent.keyDown(region, { key: "Enter" });
 });
