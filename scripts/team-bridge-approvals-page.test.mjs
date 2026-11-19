@@ -228,7 +228,7 @@ test("R3-01: after the badge's landing, picking another conversation leaves Requ
 	}
 });
 
-test("R1-03: a refused Touch ID keeps the selection", async () => {
+test("R1-03: a refused confirmation prompt keeps the selection", async () => {
 	const app = await mount({
 		seed: ({ fixture }) => {
 			fixture.approvals = {
@@ -258,7 +258,8 @@ test("R1-03: a refused Touch ID keeps the selection", async () => {
 		);
 		await click(approveSelected);
 		await until(
-			() => host.textContent.includes("Touch ID was not confirmed."),
+			() =>
+				host.textContent.includes("The confirmation prompt wasn't completed."),
 			"the dismissal reads",
 		);
 		assert.equal(

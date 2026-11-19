@@ -11,7 +11,7 @@
 		"tone": "calm, explanatory",
 		"length": "one sentence or two",
 		"placeholders": {},
-		"note": "A teammate is a person; their agent is the AI agent acting for them. Keep the two words distinct; never say bare \"team\"."
+		"note": "A teammate is a person; their agent is the AI agent acting for them. Keep the two words distinct; never say bare \"team\". Do not say each decision is confirmed with Touch ID or any device check: ordinary approvals raise no OS prompt (decision a-856f)."
 	},
 	"ui.teamBridge.approvals.waiting": {
 		"role": "badge label / accessible count",
@@ -96,14 +96,14 @@
 		"tone": "imperative",
 		"length": "2 words",
 		"placeholders": {},
-		"note": "Approves every selected request in one Touch ID confirmation."
+		"note": "Approves every selected request in one action."
 	},
 	"ui.teamBridge.approvals.deny_selected": {
 		"role": "button",
 		"tone": "imperative",
 		"length": "2 words",
 		"placeholders": {},
-		"note": "Denies every selected request in one Touch ID confirmation."
+		"note": "Denies every selected request in one action."
 	},
 	"ui.teamBridge.approvals.approve": {
 		"role": "button",
@@ -163,7 +163,7 @@
 		"tone": "neutral",
 		"length": "two sentences",
 		"placeholders": {},
-		"note": "Explains why the row cannot be decided here."
+		"note": "Explains why the row cannot be decided here. Say \"this computer\", not \"this Mac\": the app runs on macOS, Windows and Linux."
 	},
 	"ui.teamBridge.approvals.reason_not_open": {
 		"role": "row helper text",
@@ -186,7 +186,7 @@
 		"tone": "calm",
 		"length": "short",
 		"placeholders": {},
-		"note": "The system Touch ID prompt is open."
+		"note": "Brief status while the app checks the selection before sending it. With current backends no prompt appears; an older backend may show the OS confirmation prompt at this point. Keep it true for both: do not promise or name a prompt."
 	},
 	"ui.teamBridge.approvals.deciding": {
 		"role": "status line",
@@ -231,7 +231,7 @@
 		"tone": "neutral",
 		"length": "short",
 		"placeholders": {},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Say \"this computer\", not \"this Mac\": the app runs on macOS, Windows and Linux."
 	},
 	"ui.teamBridge.approvals.result.locked": {
 		"role": "result label",
@@ -259,7 +259,7 @@
 		"tone": "calm",
 		"length": "two or three sentences",
 		"placeholders": {},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.refusal.cooldown": {
 		"role": "inline status",
@@ -268,7 +268,7 @@
 		"placeholders": {
 			"seconds": "whole seconds to wait"
 		},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.refusal.locked_named": {
 		"role": "inline status",
@@ -292,14 +292,14 @@
 		"tone": "calm",
 		"length": "two or three sentences",
 		"placeholders": {},
-		"note": "Points the person to the per-request ask cards in their chat."
+		"note": "Points the person to the per-request ask cards in their chat. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.refusal.dismissed": {
 		"role": "inline status",
 		"tone": "calm",
 		"length": "three sentences",
 		"placeholders": {},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.refusal.expired": {
 		"role": "inline status",
@@ -380,21 +380,21 @@
 		"placeholders": {
 			"count": "number of requests"
 		},
-		"note": "Shown while the system Touch ID prompt is open, listing what it would sign."
+		"note": "Shown while the operating system's confirmation prompt (device password or biometrics) is open, listing what it would sign. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.notice.foreign": {
 		"role": "notice label",
 		"tone": "plain, cautionary",
 		"length": "3-4 words",
 		"placeholders": {},
-		"note": "Security label on a Touch ID notice this window did not start. It may come from another program or another Local Operator window, so do not say \"another program\"."
+		"note": "Security label on a confirmation-prompt notice this window did not start. It may come from another program or another Local Operator window, so do not say \"another program\"."
 	},
 	"ui.teamBridge.approvals.notice.foreign_help": {
 		"role": "notice helper text",
 		"tone": "calm, cautionary",
 		"length": "two sentences",
 		"placeholders": {},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.notice.item_approve": {
 		"role": "notice list item",
@@ -419,7 +419,7 @@
 		"tone": "neutral",
 		"length": "short",
 		"placeholders": {},
-		"note": "Team Bridge approvals panel."
+		"note": "Team Bridge approvals panel. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.approve_selected_partial": {
 		"role": "batch button label",
@@ -471,14 +471,14 @@
 		"tone": "calm",
 		"length": "two sentences",
 		"placeholders": {},
-		"note": "The app refused before showing Touch ID because too many confirmations were requested at once."
+		"note": "The app refused before showing the confirmation prompt because too many confirmations were requested at once. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.refusal.unconfirmed": {
 		"role": "refusal message",
 		"tone": "calm, reassuring",
 		"length": "two sentences",
 		"placeholders": {},
-		"note": "Touch ID succeeded but sending to the teammate failed. Rows that did not go out reappear with a \"Send approval/Send denial\" button."
+		"note": "The decisions were accepted but sending to the teammate failed. Rows that did not go out reappear with a \"Send approval/Send denial\" button."
 	},
 	"ui.teamBridge.approvals.result.not_designated": {
 		"role": "per-request result line",
@@ -524,7 +524,7 @@
 		"tone": "plain, slightly cautionary",
 		"length": "short",
 		"placeholders": {},
-		"note": "The prompt includes a request this Mac has no record of. The reader most needs to notice this line."
+		"note": "The prompt includes a request this computer has no record of. The reader most needs to notice this line."
 	},
 	"ui.teamBridge.approvals.notice.item_deny_unlisted": {
 		"role": "Touch ID notice list item",
@@ -548,7 +548,7 @@
 			"count": "number of decisions in that check",
 			"time": "localized date and time it ended"
 		},
-		"note": "A record left after a Touch ID check this window did not start was confirmed."
+		"note": "A record left after a confirmation prompt this window did not start was completed. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	},
 	"ui.teamBridge.approvals.trace.dismissed": {
 		"role": "security notice line, dismissible",
@@ -558,7 +558,7 @@
 			"count": "number of decisions in that check",
 			"time": "localized date and time it ended"
 		},
-		"note": "As trace.signed, when the person cancelled the Touch ID prompt."
+		"note": "As trace.signed, when the person cancelled the confirmation prompt."
 	},
 	"ui.teamBridge.approvals.trace.refused": {
 		"role": "security notice line, dismissible",
@@ -568,6 +568,6 @@
 			"count": "number of decisions in that check",
 			"time": "localized date and time it ended"
 		},
-		"note": "As trace.signed, when the app refused the check."
+		"note": "As trace.signed, when the app refused the check. Since local-operator v0.107.2 (decision a-856f) ordinary approvals raise no OS prompt, so this line only appears with an older backend that still asks for the device password or biometrics (Touch ID or the Mac password on macOS, Windows Hello on Windows). Never name Touch ID or Mac: the same copy runs on every platform."
 	}
 }

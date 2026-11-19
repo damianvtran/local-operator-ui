@@ -134,7 +134,7 @@ export function TeamBridgeRequestsView({
 	coolingDown?: boolean;
 	/** When the cooldown ends (epoch ms), for the live countdown. */
 	cooldownUntil?: number | null;
-	/** Batch deciding needs Touch ID this Mac does not have (sticky, D5). */
+	/** The daemon refused batch deciding for want of a presence signature (sticky, D5; older backends only). */
 	presenceRequired?: boolean;
 	onDecide: (items: ApprovalSelectionItem[]) => void;
 	onRetry?: () => void;
@@ -159,10 +159,18 @@ export function TeamBridgeRequestsView({
 	const statusRef = useRef<HTMLDivElement>(null);
 	const inFlight = flow.phase === "authorizing" || flow.phase === "deciding";
 	/*
-	 * Once the daemon says batch deciding needs Touch ID this Mac lacks, the
-	 * batch controls and the row buttons go away and every row offers its card
-	 * instead; offering a button that is certain to be refused again is not
-	 * calm. Sticky across Dismiss (design D5).
+	 * Once the daemon says batch deciding needs a presence signature this
+	 * computer cannot make, the batch controls and the row buttons go away and
+	 * every row offers its card instead; offering a button that is certain to
+	 * be refused again is not calm. Sticky across Dismiss (design D5).
+	 *
+	 * NOT A PLATFORM GATE. Nothing here reads the OS, the hardware or
+	 * `navigator.platform`: the list decides on macOS with or without Touch ID,
+	 * Windows and Linux alike. This only fires on the daemon's own
+	 * `operator_presence_required` refusal, which local-operator v0.107.2 and
+	 * later never send - ordinary approvals raise no OS prompt there (core
+	 * #4208, decision a-856f). It stays for an older backend, where the batch
+	 * really would be refused again.
 	 */
 	const batchUnavailable =
 		presenceRequired ||
@@ -423,7 +431,7 @@ function RequestRow({
 	checked: boolean;
 	blocked: boolean;
 	showBatch: boolean;
-	/** False on a Mac without Touch ID: the row offers its card instead. */
+	/** False once the daemon refused batch deciding for presence: the row offers its card instead. */
 	decideHere: boolean;
 	onOpenCard?: (sessionId: string) => void;
 	onToggle: () => void;

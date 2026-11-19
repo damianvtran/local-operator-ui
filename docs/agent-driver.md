@@ -321,8 +321,9 @@ The frames below came from exactly that command —
 
 ## The CI producer's case table
 
-`scripts/asks-app-regression.mjs` runs in `ci.yml`'s macOS NPX leg on every pull
-request, and it is what supplies the frames a design or UX round reads for a
+`scripts/asks-app-regression.mjs` runs in `full-suite.yml`'s `native-proofs` job
+at the merge gate (and on demand via `workflow_dispatch` with `native_proofs=true`),
+and it is what supplies the frames a design or UX round reads for a
 CHANGE (the scenes above are how a surface is photographed deliberately, by
 hand). It boots the real assembled app once per case per leg — a **candidate** leg
 built from the checkout, and a **control** leg built from a real historical revision

@@ -251,6 +251,10 @@ const IDENTICAL_OK = new Map([
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
 	[
+		"fr:ui.community.message.agent_badge",
+		"French glossary term for agent is « Agent » — the community badge mirrors fr:ui.teamBridge.profile.agent_badge (exempted above); scoped to fr so other locales still translate it",
+	],
+	[
 		"fr:ui.teamBridge.invitations.title",
 		"Shared UI term: the French noun is spelled identically (« Invitations »); scoped to fr so other locales still translate it",
 	],

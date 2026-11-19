@@ -10940,8 +10940,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "15235556d247b50b635341cffdccef2ea15480dbca4a69458d9fb3f9ff00de2f",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "00194fab109aea540437d968bc9c916488ff9b7a3880f9b08f93bd69783c1698",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -10950,21 +10950,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-es",
+					"instance": "pr1970-r3-es-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-es.json",
-					"receipt_sha256": "d7fd3ad4c2c39f91ade7d7c42d481a4ac4095bc2a405fa6b32a090040ab6e17f",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-es-teambridge-7d46617d.json",
+					"receipt_sha256": "dea5b92e4cec8799b29a488aa60b5fb11dfaeb9600b388c1e218c283ab1a1b32",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -12976,6 +12976,78 @@
 							"receipt_sha256": "f695e77885aee3aeb5a0797c39c986e5f15543801cf3ef781cfa5d49ce185359",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "84ba8b0ba30ff1fea575631f1cfe0399161ca6d68de9a2a7507e0e2131eb98a0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1970-r1-es-teambridge-b50d1c57",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-es-teambridge-b50d1c57.json",
+							"receipt_sha256": "ced00f54c3835a24858f9e64dcb8e5aef9a8b081ccf4479083069b5eff6f1b53",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "15235556d247b50b635341cffdccef2ea15480dbca4a69458d9fb3f9ff00de2f",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-es.json",
+							"receipt_sha256": "d7fd3ad4c2c39f91ade7d7c42d481a4ac4095bc2a405fa6b32a090040ab6e17f",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "794b7681eea771d7842d5415faf69b5937ba98d248f7e5cbfe7a0d29104c6621",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-es-teambridge-ad53fc6c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-es-teambridge-ad53fc6c.json",
+							"receipt_sha256": "469b2632b1fe7be31611f751e1bca9b2b3f4a90e4329601e4fa3cf3698b4310e",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger plus round-1 fixes T2; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -24623,8 +24695,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "8ce114b81967a2f1dc395d7bd65d45d74746ee5ab96ca236d525bea730c64dc5",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "061c4082992a7a3c145a01cd12281615613f01a369777a1203e56542cf298a91",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -24633,21 +24705,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "bcc4b8aad6ff-pr1969-r1-fr",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1970-r3-fr-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-fr.json",
-					"receipt_sha256": "2795f23f9c79351af2bc2213fe81c36109d165912af85c76a0ea9c20fc510a45",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-fr-teambridge-7d46617d.json",
+					"receipt_sha256": "1af9ed4ed8d801643fd69d3489b992eebf014f440478007fcefd1358269af677",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -26683,6 +26755,78 @@
 							"receipt_sha256": "03ae84da16b3a936aed6f5fd847453568ff97c2990b34900258c38b4030444ce",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "c3c144226eca7402a2f9fc678472a7718cc9fd8c1469f7d33ca12c3f455e0440",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1970-r1-fr-teambridge-33f24424",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-fr-teambridge-33f24424.json",
+							"receipt_sha256": "fb721a6a963b7cf34ae848c8e0a614b7a72d44bc2f90345470073fd163201ff5",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "8ce114b81967a2f1dc395d7bd65d45d74746ee5ab96ca236d525bea730c64dc5",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "bcc4b8aad6ff-pr1969-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-fr.json",
+							"receipt_sha256": "2795f23f9c79351af2bc2213fe81c36109d165912af85c76a0ea9c20fc510a45",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "353acf3916d42bf8617a43984f8e9ca7918cf30bd5b22ef54900d9986c0accfc",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-fr-teambridge-6482a8d8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-fr-teambridge-6482a8d8.json",
+							"receipt_sha256": "0409c61f2e057bd6b93b6ea0863d628342893dd9bb1a46d932d2cb4084201da3",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger plus round-1 fixes T1; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -38082,8 +38226,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "eaa1530d4036645a4410fce0c4377fb5d36e4568e9071bfda57f3c422f1caa64",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "24d3a305113cfa4780285ff880c4375099f0ff459575524ae4fc5de53e368150",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -38092,21 +38236,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-hi",
+					"instance": "pr1970-r3-hi-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-hi.json",
-					"receipt_sha256": "65bf3cbb8bdd94fa100db97652bd06b9b16b23f11a65fdcd3fa42f2c55cc6052",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-hi-teambridge-7d46617d.json",
+					"receipt_sha256": "81feb9422ba59dadcd630579f5638574a843120cbb7492c3c2b3ac9f8ba4d01e",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -40024,6 +40168,78 @@
 							"receipt_sha256": "4159cefba29549ca553daff31db110688f8c87d6cb1080deb856b85febc25706",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "da1cc9f2c3c8d29df2b75c93357caee96fce98c049dde567f02d079dc3715bae",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1970-r1-hi-teambridge-1a3badf4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-hi-teambridge-1a3badf4.json",
+							"receipt_sha256": "bb0d96fd895e46c7e877ab7f2f908faa7e967c1e063444c9a1efe9d674f9b940",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "eaa1530d4036645a4410fce0c4377fb5d36e4568e9071bfda57f3c422f1caa64",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-hi.json",
+							"receipt_sha256": "65bf3cbb8bdd94fa100db97652bd06b9b16b23f11a65fdcd3fa42f2c55cc6052",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "9857d33d10d80294515c2068902d84a76e3c7735b4b8a4eb6efefbaa378efbad",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-hi-teambridge-8833e6ce",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-hi-teambridge-8833e6ce.json",
+							"receipt_sha256": "bb4319403867e3a3432b0947ae24b3ce99d87163ea3881dd3cc678679bbae7c5",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -51150,8 +51366,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "2d87791778f9091cf00d735e561e79c5df436cfb3e977a033a01dfc29e6f4f73",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "725fc1ffe7c4d5139d1e20608dbae561fe8608aa186d584ca911e4b75c340ae9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -51160,21 +51376,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-ru",
+					"instance": "pr1970-r3-ru-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-ru.json",
-					"receipt_sha256": "efe2beeaf3166f64a53bfde6d6e085a1c2de57104e9254a6a63433122c2f88ff",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-ru-teambridge-7d46617d.json",
+					"receipt_sha256": "924d5a17d552b8f5230aebf4e334d5ddbd207492510d6f3a556ce3f9b67f900e",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -53181,6 +53397,78 @@
 							"receipt_sha256": "69cfb179987b2fce5b33f05c9c3408f1c9ca73b041f21d0b46507352575616cd",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "43daed63948e21daeffb5adf20cbb5208f6a525695023d440813bbef4b958645",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1970-r1-ru-teambridge-7797f081",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1970-r1-ru-teambridge-7797f081.json",
+							"receipt_sha256": "64b56e15c719f07ba0dbec53efb4f01b20e3708c9f842f672e8a9c890cac1206",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "2d87791778f9091cf00d735e561e79c5df436cfb3e977a033a01dfc29e6f4f73",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-ru.json",
+							"receipt_sha256": "efe2beeaf3166f64a53bfde6d6e085a1c2de57104e9254a6a63433122c2f88ff",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "692f4559a697eee4a7153a6c79862c23ac36933f4c3118e7647b417037deedb0",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-ru-teambridge-b341f4d6",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-ru-teambridge-b341f4d6.json",
+							"receipt_sha256": "e17daf6be8c4e65c155a34e95e8cf12e8a335213a405158709324eba46734be1",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger plus round-1 fixes T6; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -64487,8 +64775,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "77fef559b9a5eec0fe828177dd2ffc2db7efb675c8370f132c46e33cc183eae4",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "0386218dd35731c127fff8a4706879eccd95a12c4140134981c2b1d896037f4b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -64497,21 +64785,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-ur",
+					"instance": "pr1970-r3-ur-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-ur.json",
-					"receipt_sha256": "3f0eefca89141afed9ded1076702404ebadbab553f72af6c0a59c75b253ced03",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-ur-teambridge-7d46617d.json",
+					"receipt_sha256": "ee092f0bdf66e0c6c67377f537019c06d7416b3004f6f704f938f6f655320e0f",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -66429,6 +66717,78 @@
 							"receipt_sha256": "358bcbd4bdccb25a9e23523540442eb88682a1f2997b70c49cf953c537fe91ca",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "5463dfa308e2e14a051eb98e49564c5d021e7a35374dcdd963e42a0dac3de917",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1970-r1-ur-teambridge-46f2cb64",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-ur-teambridge-46f2cb64.json",
+							"receipt_sha256": "321ef7abec90be731ef3f66f871d45f1b1fcd2e78cc13b73009a36a430debba7",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "77fef559b9a5eec0fe828177dd2ffc2db7efb675c8370f132c46e33cc183eae4",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-ur.json",
+							"receipt_sha256": "3f0eefca89141afed9ded1076702404ebadbab553f72af6c0a59c75b253ced03",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "6ca98b859f088770507968804eb2cbf771c727e53816b777ff41cc9cc6b1e999",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-ur-teambridge-2e72b51c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-ur-teambridge-2e72b51c.json",
+							"receipt_sha256": "9df71b6fd43a43cdf8ed8a67c976465c4df2f81f093039ed1b4af56a3de5a79b",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -78111,8 +78471,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "4c74265d837111eaf7516749602d774a70517cf88c1c324fb4405d2c17853be2",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "df416cd7032c0d4d461737d2b12be27eb8e429e712a741003517fd51add11ddb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -78121,21 +78481,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-vi",
+					"instance": "pr1970-r3-vi-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-vi.json",
-					"receipt_sha256": "7f757115418f3cf09dacbe55166cf2f461815c55b847704462f47f6d35ebdd89",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-vi-teambridge-7d46617d.json",
+					"receipt_sha256": "3703d554c14b6b918a2d28c59bde2ba2cf7bbf40e476aed8263f2667af4d1695",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -80156,6 +80516,78 @@
 							"receipt_sha256": "6d09a3bb0e0922ccd662395825b7fb7e18ec77a13cb44de1e7284cb83a55330a",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "f047470f21ea75237c2eb3814eef3bc744e4959f06dbb01aa8ebebc7a052bc62",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1970-r1-vi-teambridge-4a93abe0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-vi-teambridge-4a93abe0.json",
+							"receipt_sha256": "060af16ae042d27256cd1c78e9e1f32881c5178ac2d068bcdbb7dbe836968316",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "4c74265d837111eaf7516749602d774a70517cf88c1c324fb4405d2c17853be2",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-vi.json",
+							"receipt_sha256": "7f757115418f3cf09dacbe55166cf2f461815c55b847704462f47f6d35ebdd89",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "535fd081d6d15116b274ccec46d8a64a9af09e0ab97a6576f5766142a3f74b40",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-vi-teambridge-a5145114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-vi-teambridge-a5145114.json",
+							"receipt_sha256": "d0f414ace7229190d1b2637a11dc2aeb405b6955fd9efe1eef6ba66584116d28",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -92367,8 +92799,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
-			"target_sha256": "28cdbb9cd09343286d4e4393dd24d12cbdc6ec34cb87f4812fbba147683cebd4",
+			"source_sha256": "4f3cf16c9cdf8fd85149d57683f4d8c0b556a98266d8622e7526e8a78e5e0cc6",
+			"target_sha256": "8525251054e91bd14b71811d4ee6ef127931799881b03b7924e843f8bc50829c",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -92377,21 +92809,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "copy-reviewer",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "bcc4b8aad6ff-pr1969-r1-zh-CN",
+					"instance": "pr1970-r3-zh-CN-teambridge-7d46617d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-zh-CN.json",
-					"receipt_sha256": "9da80d10602a48bedd86540d60e34a5baf96daf949cb8231926c72d7c5d3a7de",
-					"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
-					"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+					"receipt": "i18n/receipts/pr1970-r3-zh-CN-teambridge-7d46617d.json",
+					"receipt_sha256": "a9923ca7a943687803a3b3ad39b08dc047ff82b603c31dff344bc02bca045f9c",
+					"scope": "PR #1970 round 3 (c31ce6bb..2cea4d29, rebase onto main 1f59324dc0): merged ui.teamBridge - this PR's 9 scope.* keys plus PR #1969's 3 sender.* keys; rest byte-identical to bytes audited on both parents",
+					"note": "PR #1970 r3: post-rebase audit of merged bytes by fresh reviewer session 7d46617d9b1e; PR #1970 r2 (e9adf2dc1808) and PR #1969 r1 (bcc4b8aad6ff) audits kept in superseded"
 				}
 			],
 			"status": "audited",
@@ -94386,6 +94818,78 @@
 							"receipt_sha256": "aafee02543f87903399c638bd43452c6a9b8204e933ffc898de06366db99013a",
 							"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
 							"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+					"target_sha256": "d83abf77ac5bc6e1224a72f2ed3b9c23881916856fc436f0b4707df2ec1f9110",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1970-r1-zh-CN-teambridge-234d7647",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r1-zh-CN-teambridge-234d7647.json",
+							"receipt_sha256": "9a32ce63b1aa65709d858064e4b1b546e9a680721ba0a44600578fd9836750da",
+							"scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16)",
+							"note": "PR #1970 r1: independent audit by reviewer session 8c463a3c88c3 (mgr 06c3529d8318); minors deferred in-thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "2709e9b311d38ed0c1f3089ebe68e965c8c4d87dc83194f1bd5241c912699a36",
+					"target_sha256": "28cdbb9cd09343286d4e4393dd24d12cbdc6ec34cb87f4812fbba147683cebd4",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "bcc4b8aad6ff-pr1969-r1-zh-CN",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/bcc4b8aad6ff-pr1969-r1-zh-CN.json",
+							"receipt_sha256": "9da80d10602a48bedd86540d60e34a5baf96daf949cb8231926c72d7c5d3a7de",
+							"scope": "PR #1969 round 1: ui.teamBridge.sender.app_badge/.unknown_app/.unknown_sender (integration app sender copy)",
+							"note": "PR #1969 r1: coder drafts; independent audit by copy-reviewer session bcc4b8aad6ff; fr C1 unknown_app corrected to 'Application inconnue'"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+					"target_sha256": "16f7f1fea3729e942bd55ef375ae78d58d6b32aa2215109f0e0dcee348231ff9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1970-r2-zh-CN-teambridge-58bd31d0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1970-r2-zh-CN-teambridge-58bd31d0.json",
+							"receipt_sha256": "91cdead011213082d31165e36c94278fc33ec2f3d90cc70447d646388e2b55ca",
+							"scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger plus round-1 fixes T3/T4/T5; rest of the file byte-identical to the round-1 audited bytes",
+							"note": "PR #1970 r2: delta audit (community.trigger + r1 fixes) by fresh reviewer session e9adf2dc1808; r1 audit 8c463a3c88c3 of 2295ee16 kept in superseded"
 						}
 					],
 					"status": "audited"
@@ -97752,29 +98256,29 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "de12aa5e3f38c1dd5ba700ffedb1936a7a6792ab4a33bfac65e1a2ea54aaa8aa",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "512f8636c6186b4d99ecda30e20661a92b067e83beaebd7d229c2cdeb4623444",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97782,29 +98286,29 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "467efeb27a20a853cfecab9a656af36fc7538d03152235c858a9ee74aaecfa15",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "e1b0228efacbbdbd024082bc72cec85dcb6583982b1c46948e8c0479fdcf8e04",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97812,29 +98316,29 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "a4e31f4a48834348e72c79a4b2ed928ed1eff05386ea8060ac2963b60a32eca0",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "5908d5cb248ecf423bf54fcc814779ed7f8bc16a3f695954acc08ae2aaddb312",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97842,29 +98346,29 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "65f20472c1b73752965b91118b789038fe0b14e9837439fa53293850514dc6a1",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "22e0349fab32225573f847e56b8c66e591db473e41669dc933040044c7907327",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97872,29 +98376,29 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "67c3ff3dcc22ced968b00038137cfee89c6afd09fd7ba1ce199949ed69defa52",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "c2790df88e4f47e1985085eb38b44c3d31bec92a1b85bb180b79a66ac4e6dd84",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97902,29 +98406,29 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "05ec602ea9b08a8e759945a41b20fc9e093d47136c14080b8cb1d6b40f82eeab",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "a5ccd969095982bcf0a71882700e946e3d2f9962256be9296c616b43a951a594",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -97932,29 +98436,29 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "3c39044a4883aa8b3b8698dd44549432adcf52824fb594ee9f800d762d1b5f1d",
-			"target_sha256": "b03b58fe85fb0488ed7031a75c538cb40cf81b633b728f10fa8d510b203aeb40",
+			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+			"target_sha256": "bbc307141d04ad1fa053581007cbafc09ae5ec6eb5ddab1245b6b01a7c98c921",
 			"translator": {
-				"agent": "coder-7676fcaa6d32",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-31"
+				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
 			},
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-31",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "ad24d2c43271",
+					"instance": "7a964b27683c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 6,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ad24d2c43271.json",
-					"receipt_sha256": "f60fd33c93c1ab22d084ad1b3b4b649aac1fd99e85ac625fb80d1fe48e97c817",
-					"scope": "Three incoming Bridge metadata keys; zh-CN optional spacing/punctuation nits retained"
+					"receipt": "i18n/receipts/7a964b27683c.json",
+					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
 				}
 			],
 			"status": "audited"
@@ -116686,8 +117190,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "75052d23272271b39d73b0bb026969c0b6f77a28ae9ad8a05754ffd6da0197f3",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "49acc5f130645ff787f7ea85ddce1bcc55cb99f846e4c5fe7f5b12f37ef6ac01",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116697,28 +117201,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-fr-tbapprovals-4541a0ae",
+					"instance": "pr1980-r1-fr-tbapprovals-d79060d8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-fr-tbapprovals-4541a0ae.json",
-					"receipt_sha256": "1fb23f76838824728a0722e96a3a66563f7a2bee1037bb2ccc4d178d70f961c5",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-fr-tbapprovals-d79060d8.json",
+					"receipt_sha256": "8df4f5ca63f00b12271ea2369da2d5281bffc467125950fb26b923c4d1746857",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "75052d23272271b39d73b0bb026969c0b6f77a28ae9ad8a05754ffd6da0197f3",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-fr-tbapprovals-4541a0ae",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-fr-tbapprovals-4541a0ae.json",
+							"receipt_sha256": "1fb23f76838824728a0722e96a3a66563f7a2bee1037bb2ccc4d178d70f961c5",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "f965e5ae2cd5dcf0d600f4841afc40ebfe8b334976c0b7389816459a756cb344",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116728,28 +117258,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean",
-					"instance": "pr1954-r1-es-tbapprovals-f1b52917",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1980-r1-es-tbapprovals-7636e6ba",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1954-r1-es-tbapprovals-f1b52917.json",
-					"receipt_sha256": "37533fb87f2cd445f2a51a4e943305aa790787af06fc028b0b3597cbdc334a64",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-es-tbapprovals-7636e6ba.json",
+					"receipt_sha256": "99ed44a4d809e81ac209fe56378fb073d12fecd896bb8281022eb21d3a7c75cd",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-es-tbapprovals-f1b52917",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-es-tbapprovals-f1b52917.json",
+							"receipt_sha256": "37533fb87f2cd445f2a51a4e943305aa790787af06fc028b0b3597cbdc334a64",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "c0aa9fab0a51db2d399f485c3e3a575af03a919264892b09cc9cfecdcdc2db8c",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "7baef23e9c607331bfaa65f975b54a5f5562bc96280cf2505dce9c4a6dc3885c",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116759,28 +117315,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-zh-cn-tbapprovals-1549da42",
+					"instance": "pr1980-r1-zh-cn-tbapprovals-3feb01cc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-zh-cn-tbapprovals-1549da42.json",
-					"receipt_sha256": "9a418db6b6a0340b7d38788123d343e7870b5e95582b4078a827dbfbcb569fe0",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-zh-cn-tbapprovals-3feb01cc.json",
+					"receipt_sha256": "e2d21493c13b11de99f0154b42aa807bc410c880b0a98d93da4cf4e8918e68eb",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "c0aa9fab0a51db2d399f485c3e3a575af03a919264892b09cc9cfecdcdc2db8c",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-zh-cn-tbapprovals-1549da42",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-zh-cn-tbapprovals-1549da42.json",
+							"receipt_sha256": "9a418db6b6a0340b7d38788123d343e7870b5e95582b4078a827dbfbcb569fe0",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "327258359307aeff0a6ab165689802385df3e60ba9a03a91871ea089e85b088a",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "53348d3229d7cfd4f516c699b377d92abaeb03ea3c1e94f22e2e59895a5a52eb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116790,28 +117372,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-ru-tbapprovals-6414c665",
+					"instance": "pr1980-r1-ru-tbapprovals-3ae1bd72",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-ru-tbapprovals-6414c665.json",
-					"receipt_sha256": "f51e5eb07c2fa48e211709e08726d707e6163b19ca8d29440b98eb8afc53427c",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-ru-tbapprovals-3ae1bd72.json",
+					"receipt_sha256": "5755f613e61fb444317926295f3a9cfcb5212d4dd6f3b0f991ba003b2aad9ec4",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "327258359307aeff0a6ab165689802385df3e60ba9a03a91871ea089e85b088a",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-ru-tbapprovals-6414c665",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-ru-tbapprovals-6414c665.json",
+							"receipt_sha256": "f51e5eb07c2fa48e211709e08726d707e6163b19ca8d29440b98eb8afc53427c",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "db92666f593af914d3d35390aa359f8b4318e3475190799fdf5405881cfba1d7",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "2536460f4787079e53f95cc5e6501ce2cd4e1ce0f6bf8eedd070c9cd8576127a",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116821,28 +117429,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "pr1954-r1-vi-tbapprovals-f631a6db",
+					"instance": "pr1980-r1-vi-tbapprovals-4b0c04c2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1954-r1-vi-tbapprovals-f631a6db.json",
-					"receipt_sha256": "46154d31e552c2252acf8e695bce7e261b46cb5b37634582203c5a575882af93",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-vi-tbapprovals-4b0c04c2.json",
+					"receipt_sha256": "8061a7c28a8ced37df534befa08b92dadd4c4d9531bf14bf1c612788f38ea4af",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "db92666f593af914d3d35390aa359f8b4318e3475190799fdf5405881cfba1d7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean",
+							"instance": "pr1954-r1-vi-tbapprovals-f631a6db",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-vi-tbapprovals-f631a6db.json",
+							"receipt_sha256": "46154d31e552c2252acf8e695bce7e261b46cb5b37634582203c5a575882af93",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "21fff573303adc8f98572b9e30eefc5c9a110c564568173fe5b95bdb4a953ecc",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116852,28 +117486,54 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+					"instance": "pr1980-r1-ur-tbapprovals-1faae0eb",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/pr1954-r1-ur-tbapprovals-3b72526a.json",
-					"receipt_sha256": "f1600e18f4566ac3e16b738537638d3a6b361acbfde723dee21016f63cc98147",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-ur-tbapprovals-1faae0eb.json",
+					"receipt_sha256": "63a08a22a8eaa2ccc63b9f327de7a347c1586be52a209374367505b63a888a26",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1954-r1-ur-tbapprovals-3b72526a.json",
+							"receipt_sha256": "f1600e18f4566ac3e16b738537638d3a6b361acbfde723dee21016f63cc98147",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.approvals",
-			"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
-			"target_sha256": "15298cf967a808a2aad10d1788eb725fa448a5c4461c76f19e24f9a28a7e7936",
+			"source_sha256": "5e4a69856d16d1038a927a3a0de7285432d83ee69c2d0087888e77e8ec180dad",
+			"target_sha256": "47dbe66b03ee41f207a7ad25e27cb4791485564a396728cb73c976fc185a4355",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -116883,22 +117543,48 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1954-r1-hi-tbapprovals-5e87fe58",
+					"instance": "pr1980-r1-hi-tbapprovals-0025c880",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/pr1954-r1-hi-tbapprovals-5e87fe58.json",
-					"receipt_sha256": "dcfbce2fbf3849a3606a5b94fe3e154980b7bec28b75c08ae0a5ed239fd14b1e",
-					"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
-					"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+					"receipt": "i18n/receipts/pr1980-r1-hi-tbapprovals-0025c880.json",
+					"receipt_sha256": "00eb70574ee37737d335b57e501d70b3e15d879de848ce5a9e315fc1843767b6",
+					"scope": "PR #1980 round 1: 15 changed ui.teamBridge.approvals values (origin/main..9d9fb985); 74 keys mechanically re-verified",
+					"note": "PR #1980: translator coder (implementer session); independent audit copy-reviewer session b3a06099b675"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+					"target_sha256": "15298cf967a808a2aad10d1788eb725fa448a5c4461c76f19e24f9a28a7e7936",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "pr1954-r1-hi-tbapprovals-5e87fe58",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1954-r1-hi-tbapprovals-5e87fe58.json",
+							"receipt_sha256": "dcfbce2fbf3849a3606a5b94fe3e154980b7bec28b75c08ae0a5ed239fd14b1e",
+							"scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys (e9f13e7fd1 + auditor locale fixes)",
+							"note": "PR #1954: translator coder job 7e72069d48db (mgr 2c6111e02b16); independent audit copy-reviewer session ae8a9a614afb"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -117902,6 +118588,573 @@
 							"receipt_sha256": "36def2bacbf375a4401e1db716d577e99cfd82f30ed5fc93c72ab36357769c35",
 							"scope": "PR #1962 round 1: all 30 ui.recovery keys (af3ea44614 + auditor locale fixes)",
 							"note": "PR #1962: translator coder (anthropic/claude-opus-5-5); independent audit task session fefddad98e83 (lopdev UI-1 i18n audit r1)"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "5577645dd5ce565089c34b93c1749f9453ee4c4166ff78edc4beb2785af9d3b7",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1973-r3-fr-community-9dbe07f0",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-fr-community-9dbe07f0.json",
+					"receipt_sha256": "8486aa3effa6d30f7f2325555832e1bf46f12d3283dd8389e1d3e7c248e55317",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "d369817bb4ac44c31538e5c3d48f88008a05063e765f63473f93c4c828c05af7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-fr-community-736b5bf1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/pr1973-r1-fr-community-736b5bf1.json",
+							"receipt_sha256": "b8417d59306ba6ceb5630e63e5ba9df69878158caa9c8b1ee966fe85f1fda951",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-fr-community-db929001",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-fr-community-db929001.json",
+							"receipt_sha256": "ffaa22e9ae33b2ecc7daebf8c5e730cb09267a517e667c69d0aeb0e872343da2",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 20 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "190d8c82ad9b91db387ac8000791ec64bf28e87ca8e02cd510dffae7f7cd00d3",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1973-r3-es-community-fba941e3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-es-community-fba941e3.json",
+					"receipt_sha256": "47b2be8ddc90e860f056127a6188c14bb0e8b025e3950b148485661d1dec7efc",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "53f9dfc8bd70ac45b6215eb662be6e9095c59b94e2f3288a1757cc99e45cdeea",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-es-community-a63b779f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1973-r1-es-community-a63b779f.json",
+							"receipt_sha256": "02643656b625b64412473db025f19408c0e5b708df3459741d23c8dc50cb1c07",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2197fe8a192011d1d106671732a809b0ed2ad38bfaabd80308f3ba5dd8849d15",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-es-community-b6312ee8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-es-community-b6312ee8.json",
+							"receipt_sha256": "0d458856788cef9cd6470207fae616a3abb5ed432ea41ae007c67e9e5b426d3e",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "3674a5c6a01c89bd3e0506b49eb55b754ae659c013d168816c6425549140da48",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1973-r3-zh-CN-community-cdf29ca6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1973-r3-zh-CN-community-cdf29ca6.json",
+					"receipt_sha256": "50a7d8b5978db65f3c75168678770ab3f794d060746ff5bc9781874d06ddb2d3",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "ee414fec0459c3bc9c02548ddb475e5257a7d99681ef585cb8a7079a3a4cfb4a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-zh-CN-community-bbed671d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r1-zh-CN-community-bbed671d.json",
+							"receipt_sha256": "2382fc459297178a812275a334291714109175aa3b0af16fd7f60366bf15a7dd",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "5641bfca1b956f731203dd6ed13bfaeb76d6d4202b12782273a9fafaeb103c83",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-zh-CN-community-74675741",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-zh-CN-community-74675741.json",
+							"receipt_sha256": "3a0b2ce62a8285e738712f2937f86040b4abbb43b5e4d9cae3d2490a6c4340da",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 67 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "edbb5bbcb08bb017a05c338359123c332f69c8e8e34ad94f4509356768822124",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1973-r3-ru-community-5ddc5c3b",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-ru-community-5ddc5c3b.json",
+					"receipt_sha256": "cea5b3162a7cb83c47343175c20e688890c92915b0de9b9574cbf2851b75509b",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "1634eeba4915ed0b7654ca04d5a3fa4da118f5d414ecc027b7486958191ec0f4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-ru-community-ff9b1f6e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1973-r1-ru-community-ff9b1f6e.json",
+							"receipt_sha256": "57ca4cd054bb49589bc3857334e833f5a4f7fbb6c70c525becc41eaf015b442b",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-ru-community-79c11365",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-ru-community-79c11365.json",
+							"receipt_sha256": "cc02660103586075ab58120d91d40a428f9bd159b4295c1e7654a472d7906674",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "89a3bbe1705ea45eb2771881adffcc5269aa9490f0c60de600df2961e71ead41",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1973-r3-vi-community-5b683bbb",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-vi-community-5b683bbb.json",
+					"receipt_sha256": "5b8d5ddaff13377583aef51350ac05468daf8e3238f4cc315952811cbfe9cb03",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "6796a2d85b9c60360209221c6136e84a491a413d9e8ede0252c2d900f3553ab2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-vi-community-5ca3dc14",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r1-vi-community-5ca3dc14.json",
+							"receipt_sha256": "1f2f1b2ccea0a9586eda0905746f2cd1dafcee865ac4c4a8d84685f26f1a5d61",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "b8fb7c1b6d735a9dadf828804de1c7ffe052be4f91bc9205344403023a95ad96",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-vi-community-b39877fd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-vi-community-b39877fd.json",
+							"receipt_sha256": "c75571ecd7815f8e608d240e3e0540fff53691cddc1ee7dc2f1b6d03a37eb9fd",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "454e1c20a3b6aeaf373cc36a40704d41f524f952d60bac7860f6d7c0622d837d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1973-r3-ur-community-b9876adf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-ur-community-b9876adf.json",
+					"receipt_sha256": "da27deea55e3fdc42ea1fcb033ea327887a9b9d1023fd2383fd0d46eaf2e3c33",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "4128fcedd541fad0b4a382cb0dd8c053cf5f70827b1a47b8cd7e278c5415df02",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-ur-community-e7fdb36a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1973-r1-ur-community-e7fdb36a.json",
+							"receipt_sha256": "47f36e24f1ba05ad26feeffee41e19dd224503af7a78aedc25213a634975e7b7",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-ur-community-8dd3f205",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-ur-community-8dd3f205.json",
+							"receipt_sha256": "b4a3302a6e9508c1dd95405737c03976a02e519c581d905da09f641a7fa55064",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 6 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.community",
+			"source_sha256": "31ed7098167d062d6ec77c48abf0ced5ac957effebc407554c23593c6a2c404d",
+			"target_sha256": "3a8ca88560ace7e1911ebc8aa09c4602e816c620180f0cb497188100edaebc96",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1973-r3-hi-community-7caeaf32",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1973-r3-hi-community-7caeaf32.json",
+					"receipt_sha256": "131b8c7e316fafe3cb6f9cb596213847a2366f60aa84567fea35c4a064c66984",
+					"scope": "PR #1973 round 3 delta (72da4b83..f334bb91): 4 new ui.community.join.reaccept.* values (D7); rest byte-identical to the round-2 audited bytes",
+					"note": "PR #1973 r3: delta audit of the 4 D7 re-accept keys by fresh reviewer session facc506ecc22; r2 audit ef5cbe7f8a91 of 72da4b83 kept in superseded"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "9169504c55653ad01e02e1a7724a7221234bdbb1b57e54401a7dbab098a60ec6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1973-r1-hi-community-fe02b16b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r1-hi-community-fe02b16b.json",
+							"receipt_sha256": "2c59f72040e9f016cc1ac35e38326991e4e68e7511bf5ca0a34aae8585e86f34",
+							"scope": "PR #1973 round 1: all 172 new ui.community.* keys at aeecfe4a (new namespace, first full pass)",
+							"note": "PR #1973 r1: full audit of the new namespace by reviewer job 42a1b3f32681 (session 9bf5768d1c00); translator coder job e584f309bede (session 1e4dc439a105); findings deferred in the PR thread"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+					"target_sha256": "2f47503b1842d2fd7f74c88858b0ad2f03894db66c424cf24b417504c295f1de",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1973-r2-hi-community-a8d649a9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1973-r2-hi-community-a8d649a9.json",
+							"receipt_sha256": "d1c9e6d65c526130a6bfa40183a7bb5af889c854362688bcc0d4f7657cb35cb5",
+							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 28 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
+							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
 						}
 					],
 					"status": "audited"

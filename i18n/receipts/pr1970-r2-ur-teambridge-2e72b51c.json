@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2 (delta), PR #1970",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-18",
+  "head": "a4697362c0896225de096d6a05edcc9486b3f264",
+  "instance": "pr1970-r2-ur-teambridge-2e72b51c",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session e9adf2dc1808, a fresh reviewer task for PR #1970 round 2; not the translator/implementer and not the round-1 auditor session (8c463a3c88c3). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1970-r2-ur-teambridge-2e72b51c"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.scope.community.trigger",
+      "note": "New key, audited against en 'Community: {name}' and its context entry (screen-reader name while a community is selected; must not be announced as an organization). کمیونٹی: {name} — singular of کمیونٹیز, the form already shipped in ui.common/ui.onboarding; same colon shape as ur scope.trigger (تنظیم: {name}); placeholder isolation is the runtime's, unchanged."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks at a4697362: key set equals English; the file differs from 2295ee16 only in the keys listed here; all audited values parse with @formatjs/icu-messageformat-parser ({name} argument / {count, number} preserved); U+2026 ellipsis kept, no ASCII '...'; no bidi control characters. Rendered fit not verified in this lane (no browser tool)."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.community.trigger": "کمیونٹی: {name}"
+  },
+  "prior_round": {
+    "instance": "pr1970-r1-ur-teambridge-46f2cb64",
+    "head": "2295ee16d36ac7a749e913e576950320c28d3fb1",
+    "note": "Keys not listed in audited_values are byte-identical to the round-1 audit.",
+    "receipt": "i18n/receipts/pr1970-r1-ur-teambridge-46f2cb64.json"
+  },
+  "scope": "PR #1970 round 2 delta (2295ee16..a4697362): new ui.teamBridge.scope.community.trigger; rest of the file byte-identical to the round-1 audited bytes",
+  "binding": "Verified on the committed tree at a4697362c0896225de096d6a05edcc9486b3f264 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/ur/ui.teamBridge.json sha256 6ca98b859f088770507968804eb2cbf771c727e53816b777ff41cc9cc6b1e999; English sha256 1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321; context sha256 299e34dbb1e2ce1e332e4463d48687467c63b8c9800a99e511857528d551b50a.",
+  "en_sha256": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321",
+  "context_sha256": "299e34dbb1e2ce1e332e4463d48687467c63b8c9800a99e511857528d551b50a",
+  "target_sha256": "6ca98b859f088770507968804eb2cbf771c727e53816b777ff41cc9cc6b1e999",
+  "sha256": {
+    "ur": "6ca98b859f088770507968804eb2cbf771c727e53816b777ff41cc9cc6b1e999",
+    "en": "1a40e5bfad7178af53bb2ff1ea1351b74f6b4d66d531ae3b83cad594a5b14321"
+  }
+}

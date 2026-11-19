@@ -431,8 +431,15 @@ test("Q5: no marker, a malformed marker, or a non-A letter offers no paused band
 	);
 });
 
+/*
+ * The ended panel is the FIRST arm of the no-org slot. The community lane
+ * (#1973) adds a flag-gated `communityList.enabled ? <CommunityNoPlanEntry>`
+ * arm between it and the trial on-ramp; that arm sits AFTER the ended panel,
+ * so an ended org still never sees either on-ramp. The optional group admits
+ * exactly that arm and nothing else before `<TeamBridgeTrialEmpty`.
+ */
 const ENDED_ORG_REPLACES_ONRAMP =
-	/noOrgPanel=\{\n\t+trialEnded \? \(\n\t+<TeamBridgeTrialEndedPanel\n\t+tenantId=\{trialEnded\.tenantId\}\n\t+endedAt=\{trialEnded\.endedAt\}\n\t+\/>\n\t+\) : \(\n\t+<TeamBridgeTrialEmpty/;
+	/noOrgPanel=\{\n\t+trialEnded \? \(\n\t+<TeamBridgeTrialEndedPanel\n\t+tenantId=\{trialEnded\.tenantId\}\n\t+endedAt=\{trialEnded\.endedAt\}\n\t+\/>\n\t+\) : (?:communityList\.enabled \? \([\s\S]*?<CommunityNoPlanEntry[\s\S]*?\/>\n\t+\) : )?\(\n\t+<TeamBridgeTrialEmpty/;
 const ENDED_ORG_FROM_STATUS =
 	/const trialEnded = trialEndedOrg\(status\.data\);/;
 
