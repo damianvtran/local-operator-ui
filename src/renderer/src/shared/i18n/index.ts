@@ -9,6 +9,8 @@
  */
 
 export type {
+	DurationPart,
+	DurationUnit,
 	LocaleCapabilities,
 	LocaleSource,
 	LocaleState,
@@ -28,7 +30,11 @@ export {
 	formatBytes,
 	formatDate,
 	formatDateTime,
+	formatCompactDuration,
 	formatDuration,
+	formatDurationParts,
+	formatDurationUnit,
+	formatSettledDuration,
 	formatClauses,
 	formatList,
 	formatNumber,
