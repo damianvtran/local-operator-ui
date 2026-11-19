@@ -2097,7 +2097,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/a9ee8572dff0.json",
-					"receipt_sha256": "8bd99c52c22e5239c427ac359b9380942a3eff1f3bd813598bcf408a105b625f"
+					"receipt_sha256": "2bb531c815a70207eb7171ef5135dc5e18231ef4b1e3ccda11afc9d39fa93b55"
 				}
 			],
 			"status": "audited",
@@ -15316,7 +15316,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/16655c1d1913.json",
-					"receipt_sha256": "6d992c0e121645d0ecc9028648f36097ff573b4cc5be646500b68e6b29f9b0aa"
+					"receipt_sha256": "47b3c235b305f0bb0bf5b82d801f6b4cf307e156953204aca2566b9d3fbe8cec"
 				}
 			],
 			"status": "audited",
@@ -29141,7 +29141,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/6c6609d4af4d.json",
-					"receipt_sha256": "ef1f43361536de3675a10f73c9c175d5918f9ab3771362292a167cb97dca8acd"
+					"receipt_sha256": "219f87187c5f8a52db31224576b6be75f1deabbf73a8c6fe74b50cfd943c5980"
 				}
 			],
 			"status": "audited",
@@ -42558,7 +42558,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/2c6807f03acd.json",
-					"receipt_sha256": "c50917f598eed6781c09194ce2f7a77e84101480165093e4f166471e135f4c25"
+					"receipt_sha256": "b2a1899991742448c12c771284ecc8da983db23fc3f771758c65d35dcdcd3b4c"
 				}
 			],
 			"status": "audited",
@@ -55855,7 +55855,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/13b8374041bd.json",
-					"receipt_sha256": "681f59b5567d04178fe5b31300b4b53a232870a4499bded4e0b54981f05de720"
+					"receipt_sha256": "f2d55f00de942552da98fb7a53d4989330f4bca9f287c1c4333450d1b1824312"
 				}
 			],
 			"status": "audited",
@@ -69196,7 +69196,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/38831ad85d10.json",
-					"receipt_sha256": "41620a863ed05ce86851cebc3cad8d5f8ddc644a48a1c52371f7a83d61b3a2a1"
+					"receipt_sha256": "bd41a374c34fd4020103f7e3def3698906b83cb0c4bb781cd28cfa7edcfa8c31"
 				}
 			],
 			"status": "audited",
@@ -83261,7 +83261,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/d555eb73b874.json",
-					"receipt_sha256": "25fd176e8817b43c5af2b03d5ce533dd3a1d691e341b6ff42212406ecc3b0beb"
+					"receipt_sha256": "2e3efe7f4bbc1ba64b78a7eef5636c33e7c8f000e9137300fe63462a9e92b6d2"
 				}
 			],
 			"status": "audited",
