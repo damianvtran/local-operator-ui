@@ -1,0 +1,282 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "a9ee8572dff0",
+  "instance": "a9ee8572dff0",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": null,
+  "independence": "Independent auditor (lopdev team task child, session a9ee8572dff0); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job b193a292f9e5.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "a9ee8572dff0",
+    "instance": "a9ee8572dff0",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": null,
+    "independence": "Independent auditor (lopdev team task child, session a9ee8572dff0); did not author or modify any translation. The translator was a separate LLM task agent (anthropic/claude-opus-5-5), job b193a292f9e5."
+  },
+  "locale": "es",
+  "date": "2026-11-19",
+  "round": 1,
+  "branches": {
+    "c3": {
+      "worktree": "i18n-c3-durations",
+      "branch": "fix/i18n-duration-units-state-words",
+      "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    },
+    "b3": {
+      "worktree": "i18n-b3a",
+      "branch": "fix/i18n-canonical-transcript-b3a",
+      "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    },
+    "a10": {
+      "worktree": "i18n-a10-caption",
+      "branch": "fix/i18n-a10-caption",
+      "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+      "base": "32c2b19f841d2f6e6f075a9dc418f436a8066781"
+    }
+  },
+  "scope": "Round-1 independent es audit across three branches — C3 fix/i18n-duration-units-state-words @ 40831919ca (ui.chat.run_details, ui.chat.trace, ui.common.time), B3 fix/i18n-canonical-transcript-b3a @ 9510c61b5e (ui.chat.canonical, ui.canvas) and A10 fix/i18n-a10-caption @ 486c434e59 (ui.chat) — combined from the per-branch receipts; verdicts unchanged.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "ES-W2-1",
+        "severity": "minor",
+        "key": "ui.chat.canonical.segment.label.job",
+        "finding": "Fit: « Resultado de trabajo » is 20 cells but the context sets maxCells 18 for this condensed-section bar label (siblings: « Despertar » 9, « Mensaje de par » 14, « Consulta » 8). Meaning, glossary (« trabajo » as in « Trabajos ») and register are correct, so this is width only. Suggest « Fin de trabajo » (14) or « Trabajo » (7); the group label « Resultados de trabajos » (22/22) fits and can stay. Disposition: minor, non-gating; fix in the remediation wave if one runs, else defer."
+      }
+    ],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "es": "e2c0bf01838bbebd86dfc06cc4af9a88a4dd0f4cf2151a5f78801e5244e8e329"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "es": "b758a64f072b959f62b71b4e2c1787e9a6c91d892b341f9ed69101ef8aa7a27c"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "es": "2cb965da80f805b52b67f31488b1912bf52c33bb7f69058156d377e0e40e2156"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "ES-W2-1",
+            "severity": "minor",
+            "key": "ui.chat.canonical.segment.label.job",
+            "finding": "Fit: « Resultado de trabajo » is 20 cells but the context sets maxCells 18 for this condensed-section bar label (siblings: « Despertar » 9, « Mensaje de par » 14, « Consulta » 8). Meaning, glossary (« trabajo » as in « Trabajos ») and register are correct, so this is width only. Suggest « Fin de trabajo » (14) or « Trabajo » (7); the group label « Resultados de trabajos » (22/22) fits and can stay. Disposition: minor, non-gating; fix in the remediation wave if one runs, else defer."
+          }
+        ],
+        "nit": []
+      },
+      "sha256": {
+        "en": "473048573913f94d49b553d1dae56317bd14f33d4fe752d15496df9330ac7ceb",
+        "es": "4f5adc833242e1ee0ce115eb1396331c431f838ebb6e7f167df4a11fb6bffe05"
+      },
+      "context_sha256": "e6a7b43020909c3d02a839b449bb04259a7efa6e65c46a48e4320bf32175b4de",
+      "keys_read": 42,
+      "reviewed_keys": [
+        "ui.chat.canonical.supplement.status.preparing",
+        "ui.chat.canonical.supplement.status.cancelled",
+        "ui.chat.canonical.supplement.status.failed",
+        "ui.chat.canonical.supplement.actions.adjust",
+        "ui.chat.canonical.supplement.cause.provider_quota",
+        "ui.chat.canonical.supplement.cause.provider_auth",
+        "ui.chat.canonical.supplement.cause.provider_transient",
+        "ui.chat.canonical.supplement.cause.provider_timeout",
+        "ui.chat.canonical.supplement.cause.provider_request",
+        "ui.chat.canonical.supplement.cause.provider_content",
+        "ui.chat.canonical.supplement.cause.provider_context",
+        "ui.chat.canonical.supplement.explanation.model_unavailable",
+        "ui.chat.canonical.supplement.explanation.service_unresponsive",
+        "ui.chat.canonical.supplement.explanation.cost_limit",
+        "ui.chat.canonical.supplement.explanation.time_limit",
+        "ui.chat.canonical.supplement.explanation.retryable",
+        "ui.chat.canonical.supplement.details.attempt",
+        "ui.chat.canonical.supplement.details.attempt_http",
+        "ui.chat.canonical.supplement.more_files",
+        "ui.chat.canonical.supplement.graphics.show_all",
+        "ui.chat.canonical.supplement.graphics.show",
+        "ui.chat.canonical.supplement.graphics.show_head",
+        "ui.chat.canonical.supplement.graphics.hide",
+        "ui.chat.canonical.tool_row.detail.deeper_values",
+        "ui.chat.canonical.tool_row.detail.more_lines",
+        "ui.chat.canonical.segment.label.wake",
+        "ui.chat.canonical.segment.label.peer",
+        "ui.chat.canonical.segment.label.job",
+        "ui.chat.canonical.segment.label.ask",
+        "ui.chat.canonical.segment.group.peer",
+        "ui.chat.canonical.segment.group.wake",
+        "ui.chat.canonical.segment.group.monitor",
+        "ui.chat.canonical.segment.group.job",
+        "ui.chat.canonical.segment.group.mixed",
+        "ui.chat.canonical.turn_summary.actions_at_least",
+        "ui.chat.canonical.turn_summary.messages_at_least",
+        "ui.chat.canonical.condense.turn_condensed",
+        "ui.chat.canonical.condense.at_least",
+        "ui.chat.canonical.condense.sentence",
+        "ui.chat.canonical.condense.sentence_bare",
+        "ui.chat.canonical.checkpoint_jump.miss",
+        "ui.chat.canonical.tool_row.detail.empty"
+      ]
+    },
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "65ed2c90ec6bc7823f0faaa3e2170b2fab807b5b5966c12378cc9c3adcafe117",
+        "es": "aae4ef036374d1ea77e6636f3eef20d50999a99c40d7a4b13572e7c827ecdbb5"
+      },
+      "context_sha256": "cde28dfe54c497d2cf853efa13c4c83c56bb22deaf79bd60af7a84bd8c410773",
+      "keys_read": 9,
+      "reviewed_keys": [
+        "ui.canvas.files.remoteUnsupported",
+        "ui.canvas.artifact.fallback_name.video",
+        "ui.canvas.artifact.fallback_name.image",
+        "ui.canvas.artifact.fallback_name.audio",
+        "ui.canvas.artifact.fallback_name.file",
+        "ui.canvas.artifact.cue.file",
+        "ui.canvas.artifact.cue.image",
+        "ui.canvas.artifact.cue.video",
+        "ui.canvas.artifact.cue.audio"
+      ]
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "es": "d5daf80861b43092e7d8a0abfe261f800d629fc4cfcad28f9eccf333629f100e"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+      ]
+    }
+  }
+}

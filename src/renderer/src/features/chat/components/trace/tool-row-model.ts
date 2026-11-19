@@ -13,7 +13,15 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
-import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
+import {
+	type MessageKey,
+	type WithoutParams,
+	formatByteQuantity,
+	formatCompactDuration,
+	formatSettledDuration as formatSharedSettledDuration,
+	t,
+	translateRaw,
+} from "@shared/i18n";
 import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
@@ -170,16 +178,33 @@ function scalarText(value: unknown): string {
  * an explicit `wake: false` is quiet.
  */
 function sendMode(args: Record<string, unknown>): string {
-	if (args.now) return "now";
-	return args.wake === false ? "quiet" : "wake";
+	if (args.now) return summaryWord("ui.chat.trace.send.mode.now");
+	return args.wake === false
+		? summaryWord("ui.chat.trace.send.mode.quiet")
+		: summaryWord("ui.chat.trace.send.mode.wake");
+}
+
+/**
+ * A word or phrase of a painted argument summary, localized.
+ *
+ * `translateRaw`, not `t()`: `summaryFromArgs` is ALSO the copied-transcript
+ * text (`transcript-copy.ts`), and `t()`'s RTL bidi isolates would ride into
+ * the clipboard. The row that paints the summary isolates its own text.
+ */
+function summaryWord(
+	key: MessageKey,
+	params: Record<string, unknown> = {},
+): string {
+	return translateRaw(key, params);
 }
 
 /** The addressed peer, mirroring `peer_send_target_label`'s precedence. */
 function sendTarget(args: Record<string, unknown>): string {
 	const pid = args.pid;
-	if (typeof pid === "number" && Number.isFinite(pid)) return `pid ${pid}`;
+	if (typeof pid === "number" && Number.isFinite(pid))
+		return summaryWord("ui.chat.trace.address.pid", { pid: String(pid) });
 	const session = String(args.session ?? "").trim();
-	if (session) return `session ${session}`;
+	if (session) return summaryWord("ui.chat.trace.address.session", { session });
 	// `?` rather than blank: the call will fail, but the row is painted first,
 	// and an empty slot reads as though the next field were the target.
 	return (
@@ -827,7 +852,8 @@ export function isFailedResult(
  */
 function sessionsAddress(args: Record<string, unknown>): string {
 	const pid = numberFrom(args.pid);
-	if (pid !== null && Number.isInteger(pid)) return `pid ${pid}`;
+	if (pid !== null && Number.isInteger(pid))
+		return summaryWord("ui.chat.trace.address.pid", { pid: String(pid) });
 	return scalarText(args.session) || scalarText(args.target) || "?";
 }
 
@@ -850,20 +876,27 @@ function sessionsPeekWindow(args: Record<string, unknown>): string {
 	if (query) {
 		const steps = numberFrom(args.steps);
 		return steps !== null && Number.isInteger(steps) && steps >= 0
-			? `search ${query} · ${steps} around`
-			: `search ${query}`;
+			? summaryWord("ui.chat.trace.sessions.peek.search_around", {
+					query,
+					count: steps,
+				})
+			: summaryWord("ui.chat.trace.sessions.peek.search", { query });
 	}
 	const steps = numberFrom(args.steps);
 	if (steps !== null && Number.isInteger(steps) && steps >= 0)
-		return `last ${steps}`;
+		return summaryWord("ui.chat.trace.sessions.peek.last", { count: steps });
 	const head = numberFrom(args.head);
 	if (head !== null && Number.isInteger(head) && head >= 0)
-		return `first ${head}`;
-	if (args.digest === true) return "digest";
+		return summaryWord("ui.chat.trace.sessions.peek.first", { count: head });
+	if (args.digest === true)
+		return summaryWord("ui.chat.trace.sessions.peek.digest");
 	const before = scalarText(args.before_id);
-	if (before) return `before ${before}`;
+	if (before)
+		return summaryWord("ui.chat.trace.sessions.peek.before", { id: before });
 	const around = scalarText(args.around_id);
-	return around ? `around ${around}` : "";
+	return around
+		? summaryWord("ui.chat.trace.sessions.peek.around", { id: around })
+		: "";
 }
 
 /**
@@ -1126,22 +1159,9 @@ export function outputFallbackLine(
  * settled row past a minute. Widest strings: `59m59s`, `23h59m`, `99d23h`.
  */
 export function formatDuration(seconds: number): string {
-	const total = Math.max(0, Math.floor(seconds));
-	if (total < 60) return `${total}s`;
-	if (total < 3600) {
-		const m = Math.floor(total / 60);
-		const s = total % 60;
-		return s === 0 ? `${m}m` : `${m}m${s}s`;
-	}
-	if (total < 86400) {
-		const h = Math.floor(total / 3600);
-		const m = Math.floor((total % 3600) / 60);
-		return m === 0 ? `${h}h` : `${h}h${m}m`;
-	}
-	const d = Math.floor(total / 86400);
-	if (d > 99) return "100d+";
-	const h = Math.floor((total % 86400) / 3600);
-	return h === 0 ? `${d}d` : `${d}d${h}h`;
+	// The shared localized helper (`src/i18n/format.ts`); this name stays so
+	// the row's many importers keep one specifier.
+	return formatCompactDuration(seconds);
 }
 
 /**
@@ -1157,16 +1177,11 @@ export function formatDuration(seconds: number): string {
  */
 export function formatSettledDuration(seconds: number | null): string {
 	if (seconds === null) return "";
-	const elapsed = Math.max(0, seconds);
-	// `<0.1s`, never `0.0s` (`tool_card.py:2615-2623`). Printing `0.0s` for a
+	// `<0.1s`, never `0.0s` (`tool_card.py:2615-2623`): printing `0.0s` for a
 	// call that genuinely returned at once reprints the exact string the old
-	// fabricated-duration bug produced, so a reader cannot tell a real sub-50 ms
-	// call from a row whose duration was lost. The TUI's own reasoning for the
-	// spelling: "reads as too fast to measure".
-	if (elapsed < 0.05) return "<0.1s";
-	if (elapsed < 10) return `${elapsed.toFixed(1)}s`;
-	if (elapsed < 60) return `${Math.round(elapsed)}s`;
-	return formatDuration(elapsed);
+	// fabricated-duration bug produced. The ladder (and that sentinel, now a
+	// keyed message) lives in the shared localized helper.
+	return formatSharedSettledDuration(seconds);
 }
 
 /**

@@ -649,7 +649,7 @@
 		"role": "explanation under the cancel question",
 		"tone": "factual, two sentences",
 		"length": "Wraps in a 288px card",
-		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs). 'Cancelled' quotes the job row's own status word; use the same word your translation uses for a cancelled job. Use your language's quotation marks.",
+		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs). 'Cancelled' quotes the job row's own status word; use the same word your translation uses for a cancelled job — the 'job' arm of ui.chat.run_details.state.cancelled (feminine in French, « Annulée »), capitalised. Use your language's quotation marks.",
 		"placeholders": {
 			"label": "the job's name as the run panel shows it"
 		}
@@ -756,6 +756,296 @@
 		"note": "Counts subagent rows (children of this run) that are folded away; the noun is left out in English, so a language that needs one may add it. The count is a plain integer and never grouped (1000 stays 1000). Pressing the button shows every row.",
 		"placeholders": {
 			"count": "how many subagent rows are folded away; always 1 or more"
+		}
+	},
+	"ui.chat.run_details.state.running": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child is working now. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.running": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each is working now. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.queued": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child is waiting for a free slot to start. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.queued": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each is waiting for a free slot to start. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.paused": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child is paused and will resume. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.paused": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each is paused and will resume. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.interrupted": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child was stopped mid-run. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.interrupted": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each was stopped mid-run. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.done": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child finished. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.done": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each finished. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.cancelled": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child was cancelled. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.cancelled": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each was cancelled. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.gone": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child no longer exists on the backend. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.gone": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each no longer exists on the backend. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.failed": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child ended with an error. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.failed": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each ended with an error. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.state.cancelled_before_start": {
+		"role": "State word of a subagent or background job row in the run details pane and composer status chips",
+		"tone": "Lowercase status word, no punctuation.",
+		"length": "One or two words; sits beside the row's name.",
+		"note": "The child was cancelled before it ever ran, so it did no work. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.cancelled_before_start": {
+		"role": "One segment of a section tally in the run details pane, e.g. '2 running · 1 failed'",
+		"tone": "Terse count plus status.",
+		"length": "A number plus one or two words.",
+		"note": "How many child rows are in this state: each was cancelled before it ever ran, so it did no work. Agree the status with the count as your language requires. The same string is shown for sub-agent rows and for background-job rows; the kind select lets the word agree with whichever noun the row is.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"kind": "Which section the row sits in: 'subagent' (a sub-agent the run started) or 'job' (a background job / task). English reads the same in every arm; the select exists so gendered languages can make the participle agree with that noun (e.g. French masculine for a sub-agent, feminine for « tâche »). Translate every arm; keep 'other' as the neutral fallback."
+		}
+	},
+	"ui.chat.run_details.tally.unrecognised": {
+		"role": "One segment of a section tally in the run details pane, for a state this app does not recognise",
+		"tone": "Terse count plus status.",
+		"length": "A number plus the backend's own word.",
+		"note": "{word} is the backend's raw status word for a state this app does not know; it cannot be translated. Keep only the number and the word.",
+		"placeholders": {
+			"count": "Number of rows.",
+			"word": "The backend's raw status word; insert unchanged."
+		}
+	},
+	"ui.chat.run_details.todos.tally_closed": {
+		"role": "To-dos section tally in the run details pane",
+		"tone": "Terse count.",
+		"length": "Short phrase.",
+		"note": "Closed means finished with: done or dropped. Pairs with tally_dropped after a middle dot.",
+		"placeholders": {
+			"closed": "Number of closed to-dos.",
+			"total": "Total number of to-dos."
+		}
+	},
+	"ui.chat.run_details.todos.tally_dropped": {
+		"role": "To-dos section tally segment in the run details pane",
+		"tone": "Terse count.",
+		"length": "A number plus one word.",
+		"note": "How many of the closed to-dos were abandoned rather than done.",
+		"placeholders": {
+			"count": "Number of dropped to-dos."
+		}
+	},
+	"ui.chat.run_details.chip.subagents_running": {
+		"role": "Composer status chip and run details trigger clause counting each subagent (a child agent run)",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is running. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.subagents_queued": {
+		"role": "Composer status chip and run details trigger clause counting each subagent (a child agent run)",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is queued. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.subagents_paused": {
+		"role": "Composer status chip and run details trigger clause counting each subagent (a child agent run)",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is paused. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.subagents_open": {
+		"role": "Composer status chip and run details trigger clause counting each subagent (a child agent run)",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when open means still in progress in some way (running, queued or paused) when the rows are in mixed states. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.jobs_running": {
+		"role": "Composer status chip and run details trigger clause counting each background tool job",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is running. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.jobs_queued": {
+		"role": "Composer status chip and run details trigger clause counting each background tool job",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is queued. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.jobs_paused": {
+		"role": "Composer status chip and run details trigger clause counting each background tool job",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when every open row is paused. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.jobs_open": {
+		"role": "Composer status chip and run details trigger clause counting each background tool job",
+		"tone": "Terse count plus status.",
+		"length": "A number plus two words; sits in a narrow chip.",
+		"note": "Used when open means still in progress in some way (running, queued or paused) when the rows are in mixed states. Agree the noun and status with the count.",
+		"placeholders": {
+			"count": "Number of rows."
+		}
+	},
+	"ui.chat.run_details.chip.busiest": {
+		"role": "Suffix appended to a status chip's accessible name and tooltip, after a clause like '40 subagents open'",
+		"tone": "Terse.",
+		"length": "Separator plus the clause.",
+		"note": "Adds the busiest state's count when rows are in mixed states, e.g. '40 subagents open, 3 running'. Keep the leading separator in your language's punctuation.",
+		"placeholders": {
+			"clause": "An already translated count-and-status phrase; insert unchanged."
+		}
+	},
+	"ui.chat.run_details.children.count": {
+		"role": "Mark at the end of a subagent row saying how many child runs it started",
+		"tone": "Terse count.",
+		"length": "A number plus one word; very narrow.",
+		"note": "Child means a sub-run started by that subagent.",
+		"placeholders": {
+			"count": "Number of children, at least 1."
 		}
 	}
 }

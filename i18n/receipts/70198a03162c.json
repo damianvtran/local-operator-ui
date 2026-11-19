@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "70198a03162c",
+    "instance": "70198a03162c",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "none: served model equals requested model (session system prompt reports anthropic/claude-opus-5-5)",
+  "independence": "Independent auditor (session 70198a03162c); did not author or modify any translations (zh-CN kind-select sync: translator job a9fcf17fe662, anthropic/claude-opus-5-5; round-1 audit: d555eb73b874). Catalogues read only; no commits, pushes, tests or servers.",
+  "instance": "70198a03162c",
+  "session": "70198a03162c",
+  "locale": "zh-CN",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-duration-units-state-words",
+  "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+  "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+  "round": 2,
+  "scope": "zh-CN W2 C3 round 2 delta (454d22bd78..40831919ca): the 18 ui.chat.run_details state.*/tally.* keys that gained {kind, select, subagent/job/other}. Verified: zh-CN/ui.chat.run_details.json sha256 c27ee35e… as briefed; collapsing each of the 18 selects back to its (identical) arm text and re-serialising with the file's tab indentation reproduces byte-for-byte the round-1 audited file 55c39d7d…, so these 18 keys are the only change and every arm equals the round-1 audited text; en at 454d22bd78 hashes to the round-1 en f23d6ec6…, and the en diff touches exactly these 18 keys. ICU: parsed every changed key; argument names/types and select arms (subagent, job, other) identical to English, {count, number} kept inside every tally arm at the head (\"{count, number}个运行中\" etc.), braces balanced. Identical arms are correct for zh-CN (no gender/participle agreement); 个 + status reads naturally for 后台任务 rows as for 子智能体 rows (\"2个运行中 · 1个失败\"), and the bare state words (运行中/排队中/已暂停/已中断/已完成/已取消/已不存在/失败/启动前已取消) need no noun. zh-CN diff vs origin/main still only adds keys plus one trailing-comma rewrite (subagents.show_more). Non-delta: the other 13 new run_details keys are byte-unchanged from round 1 (proved by the reconstruction above); ui.chat.trace and ui.common.time en/zh-CN/context hashes equal round 1's, so their round-1 results (trace: nit ZH-CN-W2-1 deferred; time: clean) are carried unchanged. Hashes below are the current files at 40831919ca.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "ZH-CN-W2-1",
+        "severity": "nit",
+        "key": "ui.chat.trace.sessions.peek.around",
+        "finding": "\"围绕{id}\" (around a step id) is understandable but stilted for a terse label; \"{id}前后\" is the idiomatic reading and mirrors search_around's 前后. Optional polish; disposition: deferred unless a remediation wave runs anyway."
+      }
+    ]
+  },
+  "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "zh-CN": "c27ee35ee9a42442322a34dd7f6c1722e68132d9d1b2fcfe3b20b04292bccb5e"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "ZH-CN-W2-1",
+            "severity": "nit",
+            "key": "ui.chat.trace.sessions.peek.around",
+            "finding": "\"围绕{id}\" (around a step id) is understandable but stilted for a terse label; \"{id}前后\" is the idiomatic reading and mirrors search_around's 前后. Optional polish; disposition: deferred unless a remediation wave runs anyway."
+          }
+        ]
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "zh-CN": "54eeffce5db6c49cbefd6d621a678fda779b9f5cccdd48e47476acd537e4e031"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "zh-CN": "2e3f1507c479722d230cf39915f946e7a670f40fedddc57b7d64a1620d378772"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    }
+  }
+}

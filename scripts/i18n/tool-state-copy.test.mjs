@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -209,9 +210,9 @@ const toolRecord = (phase, argumentBytes) => ({
 });
 
 /**
- * The running tool's summary as the transcript prints it: the trace fold's live
- * clause (`summaryOf` -> `toolRecordSummary`), the row's own words. A lone
- * unsettled call renders collapsed, so this is the surface a reader sees.
+ * The unsettled tool row's own status (`toolRecordSummary`) as the transcript
+ * prints it. A lone composing/queued call renders its own ledger row, not an
+ * aggregate fold, so read that row's summary cell.
  */
 function summaryOf(phase, argumentBytes, { keepIsolates = false } = {}) {
 	const html = renderToStaticMarkup(
@@ -240,18 +241,48 @@ function summaryOf(phase, argumentBytes, { keepIsolates = false } = {}) {
 			),
 		),
 	);
-	const texts = decode(html)
-		.replace(/<[^>]*>/g, "|")
-		.split("|")
-		.map((s) => (keepIsolates ? s : plain(s)).trim())
-		.filter(Boolean);
-	// The fold's label is itself localized (`Running` is `Exécution de` in fr), so
-	// the summary is found by position: the last text that is not the trailing
-	// age chip (`100d+`).
-	const summary = texts.filter((t) => !/^\d+[a-z]+\+?$/.test(t)).at(-1);
-	assert.ok(summary, `summary found in ${JSON.stringify(texts)}`);
-	return summary;
+	return summaryFromHtml(html, { keepIsolates });
 }
+
+function summaryFromHtml(html, { keepIsolates = false } = {}) {
+	// The summary and age are separate facts, not distinguishable by alphabet or
+	// text position once durations are localized. Read the renderer's structural
+	// summary cell's bidi run, retaining all its text (including the Urdu size isolate)
+	// so a wrong status still fails the exact catalogue assertions below.
+	const summaries = JSDOM.fragment(html).querySelectorAll(
+		"span.flex-1.font-mono > bdi",
+	);
+	assert.equal(
+		summaries.length,
+		1,
+		"one row summary in the single-tool fixture",
+	);
+	const text = summaries[0].textContent;
+	return (keepIsolates ? text : plain(text)).trim();
+}
+
+test("summary extraction ignores localized trailing ages without masking a wrong status", () => {
+	for (const age of ["100 д.+", "100 دن سے زیادہ", "100 ngày+", "100天+"]) {
+		const render = (status) =>
+			`<button><span class="min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm"><bdi dir="auto">${status}</bdi></span><span>${age}</span></button>`;
+		const expected = "قطار میں · \u206812 kB\u2069";
+		assert.equal(summaryFromHtml(render(expected)), plain(expected), age);
+		assert.equal(
+			summaryFromHtml(render(expected), { keepIsolates: true }),
+			expected,
+			age,
+		);
+		// Negative control: a legitimate-looking age must not hide or replace the
+		// actual incorrect status. The normal exact-status assertion must reject it.
+		const wrong = summaryFromHtml(render("WRONG STATUS"));
+		assert.equal(wrong, "WRONG STATUS", age);
+		assert.throws(() => assert.equal(wrong, plain(expected)), age);
+	}
+	assert.throws(
+		() => summaryFromHtml("<span>100天+</span>"),
+		/one row summary/,
+	);
+});
 
 /** `{ text, datum }` of the card's one state line (`datum` is null when absent). */
 function stateLineOf(view) {

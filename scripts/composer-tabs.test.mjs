@@ -3598,7 +3598,8 @@ test("the Jobs section draws the partition's rows, and its only pressable is the
 	 * it" stays one rule rather than a second local condition.
 	 */
 	assert.match(jobs, /<li[\s\S]*?data-run-panel-row=\{row\.id\}/);
-	assert.match(jobs, /<SubagentRowBody row=\{row\} \/>/);
+	// `kind="job"` so its state words agree with the job noun (FR-W2-1).
+	assert.match(jobs, /<SubagentRowBody row=\{row\} kind="job" \/>/);
 	assert.doesNotMatch(jobs, /<button/);
 	assert.equal(
 		(jobs.match(/onClick/g) ?? []).length,

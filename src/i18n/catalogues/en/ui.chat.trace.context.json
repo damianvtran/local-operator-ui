@@ -198,5 +198,102 @@
 		"tone": "Plain, calm, factual.",
 		"note": "Neither the wake-up nor the recipient's transcript confirms the message arrived; it may still arrive. Amber (partial) state, distinct from not delivered.",
 		"length": "Two or three words."
+	},
+	"ui.chat.trace.send.mode.now": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "One lowercase word.",
+		"length": "One short word.",
+		"note": "Delivery mode of a message sent to another agent session: delivered immediately, interrupting the recipient's current turn. Siblings: quiet, wake."
+	},
+	"ui.chat.trace.send.mode.quiet": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "One lowercase word.",
+		"length": "One short word.",
+		"note": "Delivery mode: dropped in the recipient's mailbox without waking it. Siblings: now, wake."
+	},
+	"ui.chat.trace.send.mode.wake": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "One lowercase word.",
+		"length": "One short word.",
+		"note": "Delivery mode (the default): delivered and the idle recipient is woken to answer. Siblings: now, quiet."
+	},
+	"ui.chat.trace.address.pid": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus value.",
+		"length": "Label plus a number.",
+		"note": "Identifies the target agent session by its operating-system process id. 'pid' is a technical abbreviation; keep it or use your language's usual term.",
+		"placeholders": {
+			"pid": "A process id number; insert unchanged."
+		}
+	},
+	"ui.chat.trace.address.session": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus value.",
+		"length": "Label plus an identifier.",
+		"note": "Identifies the target agent session by its session id.",
+		"placeholders": {
+			"session": "A session identifier; insert unchanged."
+		}
+	},
+	"ui.chat.trace.sessions.peek.search": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus value.",
+		"length": "Label plus the search text.",
+		"note": "Reading another session's transcript around matches of a search term.",
+		"placeholders": {
+			"query": "The user's or agent's search text; insert unchanged."
+		}
+	},
+	"ui.chat.trace.sessions.peek.search_around": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus values.",
+		"length": "Short phrase.",
+		"note": "Search term plus how many transcript steps around each match are read. Keep the middle dot separator.",
+		"placeholders": {
+			"query": "The search text; insert unchanged.",
+			"count": "Number of transcript steps."
+		}
+	},
+	"ui.chat.trace.sessions.peek.last": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus number.",
+		"length": "One word plus a number.",
+		"note": "Reads the most recent N steps of another session's transcript.",
+		"placeholders": {
+			"count": "Number of transcript steps."
+		}
+	},
+	"ui.chat.trace.sessions.peek.first": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus number.",
+		"length": "One word plus a number.",
+		"note": "Reads the earliest N steps of another session's transcript.",
+		"placeholders": {
+			"count": "Number of transcript steps."
+		}
+	},
+	"ui.chat.trace.sessions.peek.digest": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "One lowercase word.",
+		"length": "One short word.",
+		"note": "Reads a condensed summary of another session's transcript instead of its steps."
+	},
+	"ui.chat.trace.sessions.peek.before": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus value.",
+		"length": "One word plus an identifier.",
+		"note": "Reads transcript steps older than the given step id.",
+		"placeholders": {
+			"id": "A transcript step identifier; insert unchanged."
+		}
+	},
+	"ui.chat.trace.sessions.peek.around": {
+		"role": "Argument summary in a tool-call row of the chat transcript; rows truncate from the right.",
+		"tone": "Terse label plus value.",
+		"length": "One word plus an identifier.",
+		"note": "Reads transcript steps surrounding the given step id.",
+		"placeholders": {
+			"id": "A transcript step identifier; insert unchanged."
+		}
 	}
 }
