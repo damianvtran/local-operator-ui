@@ -1,0 +1,204 @@
+/**
+ * The Mesh tab's pairing state, as one bundle for `MeshPairingSection`.
+ *
+ * Owns the three things the read cannot carry (see `mesh-pairings.ts`): what the
+ * person answered on each card, the last refusal per card, and the short-lived
+ * outcomes of cards the read stopped serving. Kept out of `mesh-page.tsx` so the
+ * page only passes the bundle through and the bookkeeping has one home.
+ */
+
+import { t } from "@shared/i18n";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { MeshPairingSectionProps } from "./mesh-pairing-card";
+import {
+	MESH_PAIRING_OUTCOME_MS,
+	type MeshPairingRow,
+	type PairingAction,
+	type PairingAnswerAsk,
+	type PairingAnswerRecord,
+	type PairingOutcome,
+	type PairingRefusal,
+	foldPairingOutcomes,
+	pairingRefusal,
+	useFeedMeshPairing,
+	useMeshPairingAnswer,
+	useMeshPairingEligibility,
+	useMeshPairings,
+	useSecondClock,
+} from "./mesh-pairings";
+
+const EMPTY_ROWS: readonly MeshPairingRow[] = [];
+
+export function useMeshPairingTray(
+	enabled: boolean,
+	/** Network ids the mesh read already shows, so a joiner's close reads as "joined". */
+	joinedNetworkIds: ReadonlySet<string>,
+): MeshPairingSectionProps | undefined {
+	const feedId = useFeedMeshPairing(enabled);
+	const read = useMeshPairings(enabled);
+	const eligibility = useMeshPairingEligibility(enabled);
+	/*
+	 * The answer whose sheet the person APPROVED (UX review round 3, U-R3-2).
+	 * Until it matches the in-flight answer, the sheet is still asking, so the
+	 * card reads "Waiting for confirmation…" rather than claiming "Declining…".
+	 * Compared by identity: TanStack's `variables` is the very object `mutate`
+	 * got, so a stale approval of an earlier press can never mark a newer one.
+	 */
+	const [approvedAsk, setApprovedAsk] = useState<PairingAnswerAsk | null>(null);
+	const answer = useMeshPairingAnswer({ onConfirmed: setApprovedAsk });
+	/*
+	 * A SENT HOLD (UX review U6): after an accepted answer the card keeps its
+	 * in-flight look until a read that STARTED after the answer lands, so Admit /
+	 * Confirm cannot re-enable with the digits still filled for the second or two
+	 * before the card moves on. `at` is compared with the query's own
+	 * `dataUpdatedAt`; a read that shows the card unchanged releases it too.
+	 */
+	const [held, setHeld] = useState<{
+		id: string;
+		decision: "admit" | "decline";
+		at: number;
+	} | null>(null);
+	const answers = useRef(new Map<string, PairingAnswerRecord>());
+	const previous = useRef<readonly MeshPairingRow[]>(EMPTY_ROWS);
+	const joinedRef = useRef(joinedNetworkIds);
+	joinedRef.current = joinedNetworkIds;
+	const [outcomes, setOutcomes] = useState<PairingOutcome[]>([]);
+	const [refusal, setRefusal] = useState<{
+		id: string;
+		refusal: PairingRefusal;
+		serial: number;
+	} | null>(null);
+	const rows = read.data ?? EMPTY_ROWS;
+	const nowSeconds = useSecondClock(
+		enabled && (rows.length > 0 || outcomes.length > 0),
+	);
+
+	// A new read (data or only its timestamp) is the trigger: an unchanged list
+	// still releases the sent hold.
+	useEffect(() => {
+		const next = read.data;
+		if (!next) return;
+		setHeld((current) =>
+			current && read.dataUpdatedAt > current.at ? null : current,
+		);
+		// Captured NOW: the updater runs at the next render, after the ref below
+		// has already moved on to `next` (which would fold nothing).
+		const prior = previous.current;
+		const joined = joinedRef.current;
+		const answered = answers.current;
+		setOutcomes((current) =>
+			foldPairingOutcomes({
+				previous: prior,
+				rows: next,
+				outcomes: current,
+				answers: answered,
+				nowMs: Date.now(),
+				joinedNetworks: joined,
+			}),
+		);
+		previous.current = next;
+		// A refusal about a card that is gone is now an outcome, not an error.
+		setRefusal((current) =>
+			current && next.some((row) => row.id === current.id) ? current : null,
+		);
+	}, [read.data, read.dataUpdatedAt]);
+
+	// Outcomes leave on the same clock the time-left lines read.
+	useEffect(() => {
+		setOutcomes((current) => {
+			const kept = current.filter(
+				(outcome) => nowSeconds * 1000 - outcome.at < MESH_PAIRING_OUTCOME_MS,
+			);
+			return kept.length === current.length ? current : kept;
+		});
+	}, [nowSeconds]);
+
+	// A joiner whose card closed reads "finished" until the network shows up.
+	const shown = useMemo(
+		() =>
+			outcomes.map((outcome) =>
+				outcome.kind === "finished" &&
+				joinedNetworkIds.has(outcome.row.networkId)
+					? { ...outcome, kind: "joined" as const }
+					: outcome,
+			),
+		[outcomes, joinedNetworkIds],
+	);
+
+	if (!enabled) return undefined;
+	const onAnswer = (ask: PairingAnswerAsk) => {
+		setRefusal(null);
+		// The button a retry-style refusal names and gives focus back to (D6, U7).
+		const action: PairingAction =
+			ask.decision === "decline"
+				? "decline"
+				: ask.row.side === "inviter"
+					? "admit"
+					: "confirm";
+		answer.mutate(ask, {
+			onSuccess: (result) => {
+				// The person cancelled main's sheet: nothing was sent, nothing to hold.
+				if (result.status === "cancelled") {
+					setRefusal({
+						id: ask.row.id,
+						refusal: { kind: "cancelled", action },
+						serial: Date.now(),
+					});
+					return;
+				}
+				answers.current.set(ask.row.id, {
+					decision: ask.decision,
+					status: result.status,
+				});
+				setHeld({ id: ask.row.id, decision: ask.decision, at: Date.now() });
+			},
+			onError: (error) => {
+				const mapped = pairingRefusal(error);
+				// Name the button to press again (design D6) and return focus to it
+				// (UX review U7) on every refusal whose copy says "press it again".
+				const refused: PairingRefusal =
+					mapped.kind === "foreground" ||
+					mapped.kind === "devtools" ||
+					mapped.kind === "sheet_open" ||
+					mapped.kind === "relay" ||
+					mapped.kind === "changed"
+						? { ...mapped, action }
+						: mapped;
+				if (refused.kind === "mismatch" && refused.attemptsLeft === 0)
+					answers.current.set(ask.row.id, {
+						decision: ask.decision,
+						status: "spent",
+					});
+				setRefusal({ id: ask.row.id, refusal: refused, serial: Date.now() });
+			},
+		});
+	};
+	return {
+		rows,
+		outcomes: shown,
+		// The skeleton only when the feed already named an open card: an idle tab
+		// must not flash a placeholder on every mount.
+		loading: read.isPending && typeof feedId === "string",
+		error: read.isError ? t("ui.mesh.pairing.error.read") : null,
+		onRetry: () => void read.refetch(),
+		nowSeconds,
+		pending:
+			answer.isPending && answer.variables
+				? {
+						id: answer.variables.row.id,
+						decision: answer.variables.decision,
+						phase:
+							approvedAsk === answer.variables ? "answering" : "confirming",
+					}
+				: held
+					? { id: held.id, decision: held.decision, phase: "answering" }
+					: null,
+		// `null` until main has said, or when it could not: unknown, answerable.
+		eligibility: eligibility.data ?? null,
+		// Still asking main: not answerable YET (QA round 2, Q2). A FAILED read is
+		// not pending, so it stays answerable and main still refuses at the click.
+		eligibilityPending: eligibility.isPending,
+		refusal,
+		onAnswer,
+	};
+}

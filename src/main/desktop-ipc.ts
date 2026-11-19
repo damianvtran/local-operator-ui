@@ -5,7 +5,10 @@ import {
 	shell,
 } from "electron";
 import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
-import type { DesktopResponse } from "../shared/desktop-contract";
+import {
+	type DesktopResponse,
+	desktopRequestSchema,
+} from "../shared/desktop-contract";
 import {
 	DESKTOP_FOREGROUND_REQUIRED_MESSAGE,
 	SUBSCRIPTION_ID_PATTERN,
@@ -20,6 +23,12 @@ import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
 import { trustedDesktopFrame } from "./desktop-transport";
 import type { LinkPreviewService } from "./link-preview/service";
+import {
+	MESH_PAIRING_MAIN_OPS,
+	type PairingMainRequest,
+	isMeshPairingMainOp,
+	pairingAttestRefusal,
+} from "./mesh-pairing-attest";
 import type { SupplementFrameMounts } from "./supplement-mounts";
 import type { TeamBridgeNotifier } from "./team-bridge-notifier";
 
@@ -333,6 +342,20 @@ export function registerDesktopIPC(
 	 * them would silently reinterpret a callback in the harnesses.
 	 */
 	linkPreview?: LinkPreviewService,
+	/**
+	 * Main's own mesh pairing ops (`mesh-pairing-attest.ts` MESH_PAIRING_MAIN_OPS):
+	 * the attested answer, the one-shot confirmation it consumes, and the launch's
+	 * static eligibility. This channel never forwards any of them by itself - core
+	 * acts on an answer only after main attested the exact body, and the other two
+	 * have no core route. Absent (a harness, an older wiring) means every one is
+	 * refused here with the same 403 a failed gate answers - never forwarded.
+	 *
+	 * APPENDED LAST for the reason `teamBridgeNotifier` gives.
+	 */
+	meshPairing?: (
+		event: IpcMainInvokeEvent,
+		request: PairingMainRequest,
+	) => Promise<DesktopResponse>,
 ): void {
 	const opened = new Map<string, string>();
 	function authorize(event: IpcMainInvokeEvent): void {
@@ -351,6 +374,19 @@ export function registerDesktopIPC(
 	const guarded = guardForegroundReceipts(window, request);
 	ipcMain.handle("desktop-request", (event, input: unknown) => {
 		authorize(event);
+		if (isMeshPairingMainOp(input)) {
+			const parsed = desktopRequestSchema.safeParse(input);
+			// The transport's own refusal for a malformed op (no Zod text: it can
+			// carry user input), so this path answers like every other.
+			if (!parsed.success || !MESH_PAIRING_MAIN_OPS.has(parsed.data.op))
+				return Promise.resolve({
+					status: 422,
+					body: { detail: "Invalid desktop operation." }, // i18n: ignore wire diagnostic, mirrors desktop-transport
+				});
+			return meshPairing
+				? meshPairing(event, parsed.data as PairingMainRequest)
+				: Promise.resolve(pairingAttestRefusal("listener_unavailable"));
+		}
 		const refusal = admitDesktopRequest?.(input);
 		if (refusal !== null && refusal !== undefined) return refusal;
 		const outcome = guarded(input);
