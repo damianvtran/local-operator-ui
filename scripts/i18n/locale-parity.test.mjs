@@ -559,6 +559,29 @@ const IDENTICAL_OK = new Map([
 		"ui.providers.provider_grid.row_action",
 		"Language-neutral: {action} and {brand} with a colon.",
 	],
+	/*
+	 * AWS product names in the bedrock connect panel (PR #1987), GLOBAL on
+	 * purpose: the English context sidecars require each of these keys to keep
+	 * AWS's own term verbatim in EVERY language ("Keep AWS product names ...
+	 * untranslated"; "SSO stays as the acronym"; "'AWS SSO' is the AWS product
+	 * term; keep it"), and the remediation-round audit confirmed the 5 tab_* and
+	 * 7 kind_* labels are byte-identical to local-operator PR #4270's TUI
+	 * wire.login.bedrock in all seven locales. A locale-scoped row would leave
+	 * the other six free to ship an untranslated badge, which is the stub this
+	 * guard exists to catch; the brand claim is the same in every locale.
+	 */
+	[
+		"ui.providers.bedrock.kind_login",
+		"AWS brand label, not UI copy: the kind badge names AWS's own sign-in method ('AWS login'), which the key's context sidecar requires untranslated in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.kind_sso",
+		"AWS acronym, not UI copy: the kind badge names the profile type by AWS's own initialism ('SSO'), which the key's context sidecar requires kept as the acronym in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.tab_sso",
+		"AWS product term, not UI copy: the segmented-control tab is labelled with AWS's own name for the IAM Identity Center sign-in ('AWS SSO'), which the key's context sidecar requires kept in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method name; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
 	[
 		"ui.schedules.scheduled_task_dialog.value1_message",
 		"Language-neutral: {value1} and {message} with a colon.",

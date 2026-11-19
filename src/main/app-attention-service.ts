@@ -161,6 +161,9 @@ export class AppAttentionService {
 			"auth.cancel",
 			"auth.key",
 			"auth.logout",
+			// Bedrock's AWS panel stores credentials through its own two ops.
+			"auth.bedrock.connect",
+			"auth.bedrock.ssoLogin",
 			"accounts.remove",
 			"agent_messages.enable",
 			"agent_messages.settings.put",

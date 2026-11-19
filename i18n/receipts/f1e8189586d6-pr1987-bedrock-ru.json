@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1987",
+  "locale": "ru",
+  "namespace": "ui.providers.bedrock",
+  "pr": 1987,
+  "date": "2026-11-19",
+  "head": "21be3643c9d0",
+  "instance": "f1e8189586d6-pr1987-bedrock-ru",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "f1e8189586d6-pr1987-bedrock-ru",
+    "independence": "lopdev task subagent job ab68148cabf7 (session f1e8189586d6), anthropic/claude-opus-5-5, no fallback observed; distinct from the translator (coder, PR #1987 implementer lane bedrock-B-ui, job 07b871a99b2c, anthropic/claude-opus-5-5 per manager). Judged from English, its context sidecar, the core glossary and locale style guide (local-operator i18n/), and shipped catalogue precedent; no MT used. Minor findings were corrected by the auditor in place (repo docs do not forbid it); the hashes below are of the corrected bytes."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (71); ICU parse OK (@formatjs/icu-messageformat-parser); argument names/types equal English per key; every plural arm set equals Intl.PluralRules cardinal categories; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Semantic pass: every value faithful to English and its context sidecar; AWS product names (Amazon Bedrock, AWS CLI, AWS SSO, SSO, IAM) and Local Operator kept Latin; {region}/{label}/{command}/{sources}/{source}/{time} preserved; region_help reads with each region_source_* phrase in place."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.checking",
+      "current": "Проверяем Amazon Bedrock в {region}…",
+      "replacement": "Проверка Amazon Bedrock в {region}…",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.loading_context",
+      "current": "Читаем вашу конфигурацию AWS…",
+      "replacement": "Чтение вашей конфигурации AWS…",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.session_expired",
+      "current": "Сеанс истёк",
+      "replacement": "Сессия истекла",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.session_token_label",
+      "current": "Токен сеанса (необязательно)",
+      "replacement": "Токен сессии (необязательно)",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_expired_body",
+      "current": "Войдите снова, чтобы обновить его. Ничего не сохранено.",
+      "replacement": "Войдите снова, чтобы обновить её. Ничего не сохранено.",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_expired_title",
+      "current": "Сеанс SSO истёк",
+      "replacement": "Сессия SSO истекла",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_waiting",
+      "current": "Ждём завершения входа в AWS…",
+      "replacement": "Ожидание завершения входа в AWS…",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "glossary session → сессия (сеанс appeared only here); ru guide prefers impersonal progress forms (Проверка/Чтение/Ожидание, 151 repo precedents) over first-person plural"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 7,
+    "nit": 0
+  },
+  "scope": "PR #1987 round 1: new namespace ui.providers.bedrock, all 71 keys (origin/main..21be3643c9 plus auditor corrections)",
+  "en_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+  "context_sha256": "73941550bb926fc74be6bb35a68cf9a540702d21eada0668f2b0a2252b9da6bc",
+  "sha256": {
+    "ru": "cbc46ff0affbf89b16d7e7d2a6c34d52ffe5598ebfef0b1cff49edb8a410ebe2",
+    "en": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba"
+  }
+}

@@ -160,6 +160,7 @@ import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
 import enUiPhonePairing from "./catalogues/en/ui.phone_pairing.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
+import enUiProvidersBedrock from "./catalogues/en/ui.providers.bedrock.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiRecovery from "./catalogues/en/ui.recovery.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
@@ -335,6 +336,7 @@ import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
 import esUiPhonePairing from "./catalogues/es/ui.phone_pairing.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
+import esUiProvidersBedrock from "./catalogues/es/ui.providers.bedrock.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiRecovery from "./catalogues/es/ui.recovery.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
@@ -510,6 +512,7 @@ import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
 import frUiPhonePairing from "./catalogues/fr/ui.phone_pairing.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
+import frUiProvidersBedrock from "./catalogues/fr/ui.providers.bedrock.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiRecovery from "./catalogues/fr/ui.recovery.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
@@ -685,6 +688,7 @@ import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
 import hiUiPhonePairing from "./catalogues/hi/ui.phone_pairing.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
+import hiUiProvidersBedrock from "./catalogues/hi/ui.providers.bedrock.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiRecovery from "./catalogues/hi/ui.recovery.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
@@ -860,6 +864,7 @@ import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
 import ruUiPhonePairing from "./catalogues/ru/ui.phone_pairing.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
+import ruUiProvidersBedrock from "./catalogues/ru/ui.providers.bedrock.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiRecovery from "./catalogues/ru/ui.recovery.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
@@ -1035,6 +1040,7 @@ import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
 import urUiPhonePairing from "./catalogues/ur/ui.phone_pairing.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
+import urUiProvidersBedrock from "./catalogues/ur/ui.providers.bedrock.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiRecovery from "./catalogues/ur/ui.recovery.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
@@ -1210,6 +1216,7 @@ import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
 import viUiPhonePairing from "./catalogues/vi/ui.phone_pairing.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiProvidersBedrock from "./catalogues/vi/ui.providers.bedrock.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiRecovery from "./catalogues/vi/ui.recovery.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
@@ -1385,6 +1392,7 @@ import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
 import zhCNUiPhonePairing from "./catalogues/zh-CN/ui.phone_pairing.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
+import zhCNUiProvidersBedrock from "./catalogues/zh-CN/ui.providers.bedrock.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiRecovery from "./catalogues/zh-CN/ui.recovery.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
@@ -1563,6 +1571,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiPhonePairing,
 	...enUiPresence,
 	...enUiProjects,
+	...enUiProvidersBedrock,
 	...enUiProviders,
 	...enUiRecovery,
 	...enUiSchedulesErrors,
@@ -1746,6 +1755,7 @@ export const bundledCatalogues: Readonly<
 		...esUiPhonePairing,
 		...esUiPresence,
 		...esUiProjects,
+		...esUiProvidersBedrock,
 		...esUiProviders,
 		...esUiRecovery,
 		...esUiSchedulesErrors,
@@ -1923,6 +1933,7 @@ export const bundledCatalogues: Readonly<
 		...frUiPhonePairing,
 		...frUiPresence,
 		...frUiProjects,
+		...frUiProvidersBedrock,
 		...frUiProviders,
 		...frUiRecovery,
 		...frUiSchedulesErrors,
@@ -2100,6 +2111,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiPhonePairing,
 		...hiUiPresence,
 		...hiUiProjects,
+		...hiUiProvidersBedrock,
 		...hiUiProviders,
 		...hiUiRecovery,
 		...hiUiSchedulesErrors,
@@ -2277,6 +2289,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiPhonePairing,
 		...ruUiPresence,
 		...ruUiProjects,
+		...ruUiProvidersBedrock,
 		...ruUiProviders,
 		...ruUiRecovery,
 		...ruUiSchedulesErrors,
@@ -2454,6 +2467,7 @@ export const bundledCatalogues: Readonly<
 		...urUiPhonePairing,
 		...urUiPresence,
 		...urUiProjects,
+		...urUiProvidersBedrock,
 		...urUiProviders,
 		...urUiRecovery,
 		...urUiSchedulesErrors,
@@ -2631,6 +2645,7 @@ export const bundledCatalogues: Readonly<
 		...viUiPhonePairing,
 		...viUiPresence,
 		...viUiProjects,
+		...viUiProvidersBedrock,
 		...viUiProviders,
 		...viUiRecovery,
 		...viUiSchedulesErrors,
@@ -2808,6 +2823,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiPhonePairing,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
+		...zhCNUiProvidersBedrock,
 		...zhCNUiProviders,
 		...zhCNUiRecovery,
 		...zhCNUiSchedulesErrors,
@@ -11660,6 +11676,89 @@ export type MessageParams = {
 		endedSentence_message: string;
 	};
 	"ui.projects.use_request_update.the_request_could_not_be_confirmed": undefined;
+	"ui.providers.bedrock.access_key_id_invalid": undefined;
+	"ui.providers.bedrock.access_key_id_label": undefined;
+	"ui.providers.bedrock.ambient_none": undefined;
+	"ui.providers.bedrock.ambient_sources": { sources: string };
+	"ui.providers.bedrock.api_key_label": undefined;
+	"ui.providers.bedrock.check": undefined;
+	"ui.providers.bedrock.check_failed": undefined;
+	"ui.providers.bedrock.check_ok": undefined;
+	"ui.providers.bedrock.check_unverified": undefined;
+	"ui.providers.bedrock.checking": { region: string };
+	"ui.providers.bedrock.connect": undefined;
+	"ui.providers.bedrock.connected_models": { label: string; count: number };
+	"ui.providers.bedrock.connection_saved": { label: string };
+	"ui.providers.bedrock.connection_saved_row": undefined;
+	"ui.providers.bedrock.context_failed": undefined;
+	"ui.providers.bedrock.copy_code": undefined;
+	"ui.providers.bedrock.copy_command": undefined;
+	"ui.providers.bedrock.error_credentials_rejected": undefined;
+	"ui.providers.bedrock.error_generic": undefined;
+	"ui.providers.bedrock.error_no_credentials": undefined;
+	"ui.providers.bedrock.error_profile_not_found": undefined;
+	"ui.providers.bedrock.error_region_invalid": undefined;
+	"ui.providers.bedrock.how_to_connect": undefined;
+	"ui.providers.bedrock.kind_assume_role": undefined;
+	"ui.providers.bedrock.kind_login": undefined;
+	"ui.providers.bedrock.kind_other": undefined;
+	"ui.providers.bedrock.kind_process": undefined;
+	"ui.providers.bedrock.kind_sso": undefined;
+	"ui.providers.bedrock.kind_static": undefined;
+	"ui.providers.bedrock.kind_web_identity": undefined;
+	"ui.providers.bedrock.loading_context": undefined;
+	"ui.providers.bedrock.method_access_key_desc": undefined;
+	"ui.providers.bedrock.method_ambient_desc": undefined;
+	"ui.providers.bedrock.method_api_key_desc": undefined;
+	"ui.providers.bedrock.method_aws": undefined;
+	"ui.providers.bedrock.method_aws_blurb": undefined;
+	"ui.providers.bedrock.method_profile_desc": { count: number };
+	"ui.providers.bedrock.method_sso_desc": { count: number };
+	"ui.providers.bedrock.no_plain_profiles_body": undefined;
+	"ui.providers.bedrock.no_plain_profiles_title": undefined;
+	"ui.providers.bedrock.no_profiles_body": undefined;
+	"ui.providers.bedrock.no_profiles_title": undefined;
+	"ui.providers.bedrock.no_sso_profiles_body": { command: string };
+	"ui.providers.bedrock.no_sso_profiles_title": undefined;
+	"ui.providers.bedrock.nothing_saved": undefined;
+	"ui.providers.bedrock.profile_label": undefined;
+	"ui.providers.bedrock.profile_no_match": undefined;
+	"ui.providers.bedrock.profile_placeholder": undefined;
+	"ui.providers.bedrock.region_custom": { region: string };
+	"ui.providers.bedrock.region_help": { region: string; source: string };
+	"ui.providers.bedrock.region_invalid": { region: string };
+	"ui.providers.bedrock.region_label": undefined;
+	"ui.providers.bedrock.region_no_match": undefined;
+	"ui.providers.bedrock.region_placeholder": undefined;
+	"ui.providers.bedrock.region_source_config": undefined;
+	"ui.providers.bedrock.region_source_fallback": undefined;
+	"ui.providers.bedrock.region_source_profile": undefined;
+	"ui.providers.bedrock.retry": undefined;
+	"ui.providers.bedrock.saved_connections": undefined;
+	"ui.providers.bedrock.secret_access_key_label": undefined;
+	"ui.providers.bedrock.secrets_help": undefined;
+	"ui.providers.bedrock.session_expired": undefined;
+	"ui.providers.bedrock.session_missing": undefined;
+	"ui.providers.bedrock.session_refreshes": undefined;
+	"ui.providers.bedrock.session_token_label": undefined;
+	"ui.providers.bedrock.session_valid": undefined;
+	"ui.providers.bedrock.session_valid_until": { time: string };
+	"ui.providers.bedrock.sso_cancel": undefined;
+	"ui.providers.bedrock.sso_code_label": undefined;
+	"ui.providers.bedrock.sso_expired_body": undefined;
+	"ui.providers.bedrock.sso_expired_title": undefined;
+	"ui.providers.bedrock.sso_failed": undefined;
+	"ui.providers.bedrock.sso_missing_body": undefined;
+	"ui.providers.bedrock.sso_missing_title": undefined;
+	"ui.providers.bedrock.sso_needs_cli": undefined;
+	"ui.providers.bedrock.sso_open_page": undefined;
+	"ui.providers.bedrock.sso_sign_in": undefined;
+	"ui.providers.bedrock.sso_waiting": undefined;
+	"ui.providers.bedrock.tab_access_key": undefined;
+	"ui.providers.bedrock.tab_ambient": undefined;
+	"ui.providers.bedrock.tab_api_key": undefined;
+	"ui.providers.bedrock.tab_profile": undefined;
+	"ui.providers.bedrock.tab_sso": undefined;
 	"ui.providers.connect_provider_card.connect": undefined;
 	"ui.providers.connect_provider_card.connect_a_model_provider_to_start": undefined;
 	"ui.providers.connect_provider_card.connect_a_provider": undefined;

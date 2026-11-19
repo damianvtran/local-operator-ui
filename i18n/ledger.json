@@ -120914,6 +120914,412 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "fc7548876124d2cb7c5d6a009ef1ba2d2960dbf9cd212a04db41d8491a9daf24",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "350ecfa493e1-pr1987-bedrock-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json",
+					"receipt_sha256": "4de1b3f62b80839b2f62329686b5e633a7f9a8ba5191392dd72408f26699afaa",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-fr.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "250de2095b91da55bcbb594a41b4f751bc4641d6844542d2d656ae0dbccbf264",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 19,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-fr.json",
+							"receipt_sha256": "e46cd840ac0c1d7413ac8e33ff05bc34fffadb4ea21d6813d89d22d98c71f939",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-fr.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "fdbe7cd5c3c6b7cee4432fce09a808fcc9e0c6eb28054c20d53c415986678df0",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "350ecfa493e1-pr1987-bedrock-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json",
+					"receipt_sha256": "da5d2c14cbed99c6ded11c7dabfb6f27c83e9a797edf8538c9c4c0edef775861",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-es.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "b2d0e29c490b0a715c2d84469ded7c8fa2bdaddb3e1748e4d1347a23047e10d2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-es.json",
+							"receipt_sha256": "a1bc3830924153dc96bd5b42699fed9cc072a709a09bce889a168bbc4dd57d1f",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-es.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "f068ab4c902198fccb91fa47dd917c1b538c272185f71100c0250f18f2b9bfef",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "350ecfa493e1-pr1987-bedrock-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json",
+					"receipt_sha256": "ccfa956072d4da07954a80126c0a6bf45ec69e7319580317965982a313b6b010",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-zh-cn.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "7ae4b4de67854771734ef7163a7c166657b2196524861e6485c61a1db2c924b6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 35,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-zh-cn.json",
+							"receipt_sha256": "46d859c0e76c3af07bfe142da60c2b5ce1f3c12ddb498c181166dab2ef1f31e0",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-zh-cn.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "c28362272b29d4d808041f3988723c1437522d65ccffe9cc25ca0d57a4eed6fa",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "350ecfa493e1-pr1987-bedrock-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 6,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json",
+					"receipt_sha256": "c68ea498105e7657468f8d0546824d6d48b2a90808bf5165638d812b47a95598",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ru.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "cbc46ff0affbf89b16d7e7d2a6c34d52ffe5598ebfef0b1cff49edb8a410ebe2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 7,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-ru.json",
+							"receipt_sha256": "b856868192340ea8e07c020f303e4a8731a512f2b839daf4bb6422cce13c06c3",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-ru.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "023e137e071baad300f76768b88fbb5c0f3affee31717e741500ecb1aef11967",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "350ecfa493e1-pr1987-bedrock-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 5,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json",
+					"receipt_sha256": "28fbe5ade49db199bfd854c6c84505bc78006bf1fa84efa8e5437ef933b1e58e",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-vi.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "af95f9486ef9f0931d2d02f6ce8a95de9633838d24dedf54650aa893854b274e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-vi.json",
+							"receipt_sha256": "94e7502d1064f784c83c89fdf60ea2cc498e89d92a1d3ad51af4d9b6d5c1b3b2",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-vi.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "fc30c1b5643f57686ecd00b9a1f9cdcc05f22ff3ea449894381119d880f51012",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "350ecfa493e1-pr1987-bedrock-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json",
+					"receipt_sha256": "3dc1caa613cb64956add8ae10d63b703ddaf9ef111626e596722c3cf09c77e65",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-ur.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "0a7d62d7ca5145a3510b828e6d470cf047d49a7948a27d85baf76d75de224634",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-ur.json",
+							"receipt_sha256": "d1f876f3e806a6ef9b0345db776484d81d0724ed4c4c331d3cc30103c946da1f",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-ur.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.providers.bedrock",
+			"source_sha256": "971bf978c080ea7740fcf5f9f75b30cde611a03c1663cb387c70aba0cfc674c1",
+			"target_sha256": "2ff14964af97a5251d5ce3a259dbcf91bd3ff6803909ae74858eb764946b4a91",
+			"translator": {
+				"agent": "task",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "PR #1987 remediation translation: lopdev task job 48f1eebcc45e (commit 44037e7acc12); round-1 rows by coder job 07b871a99b2c; audit receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "350ecfa493e1-pr1987-bedrock-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json",
+					"receipt_sha256": "7934123d8e91e031a00fcdceb12f11c544329fc10d6c5c61946a1b2084564f9e",
+					"scope": "PR #1987 remediation: 13 added + 5 changed keys, ambient_body removed, label parity with core #4270",
+					"note": "PR #1987 remediation audit (session 350ecfa493e1); translator task job 48f1eebcc45e; receipt i18n/receipts/350ecfa493e1-pr1987-bedrock-hi.json; minors fixed by auditor, nits deferred"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+					"target_sha256": "12abeb1c0c2950ba4c68d774b057ad0a1837de82f85edbe30c3d1b79c48d5779",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-19",
+							"result": "clean-with-findings",
+							"instance": "f1e8189586d6-pr1987-bedrock-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/f1e8189586d6-pr1987-bedrock-hi.json",
+							"receipt_sha256": "225dd76cae27cbee5bccb8bff7256517846358f20026d06b2f67521dc40e63ef",
+							"scope": "PR #1987 r1: new ui.providers.bedrock, all 71 keys; auditor corrections in receipt",
+							"note": "PR #1987 r1 independent audit (job ab68148cabf7); translator coder job 07b871a99b2c; receipt i18n/receipts/f1e8189586d6-pr1987-bedrock-hi.json; minors fixed by auditor, nits deferred"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

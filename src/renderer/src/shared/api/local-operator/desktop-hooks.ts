@@ -1237,7 +1237,13 @@ export type DesktopFeature =
 	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
 	 * rendered and the route (404 on an older backend) is never called.
 	 */
-	| "mobile_doctor";
+	| "mobile_doctor"
+	/**
+	 * Amazon Bedrock's AWS panel (`bedrock_auth`, bedrock design §7): the four
+	 * `auth.bedrock.*` ops. Absent ⇒ the provider panel offers only the generic
+	 * API-key path (`auth.key`), which every backend with a `bedrock` row serves.
+	 */
+	| "bedrock_auth";
 
 /**
  * WHY a negotiated feature surface may not be offered.
