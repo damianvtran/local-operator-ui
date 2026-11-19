@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "送达未确认，消息可能仍会到达，重发前先检查",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "未确认：对方没有响应，会话记录中也没有这条消息。消息可能仍会到达，重发前先检查。",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "唤醒没有响应，对方的会话记录中也还没有这条消息，但它可能仍会到达。重发前先检查。",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "送达未确认"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "送达未确认",
+	"ui.chat.trace.send.mode.now": "立即",
+	"ui.chat.trace.send.mode.quiet": "静默",
+	"ui.chat.trace.send.mode.wake": "唤醒",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "会话{session}",
+	"ui.chat.trace.sessions.peek.search": "搜索{query}",
+	"ui.chat.trace.sessions.peek.search_around": "搜索{query} · 前后{count, number, ::group-off}步",
+	"ui.chat.trace.sessions.peek.last": "最近{count, number, ::group-off}步",
+	"ui.chat.trace.sessions.peek.first": "最早{count, number, ::group-off}步",
+	"ui.chat.trace.sessions.peek.digest": "摘要",
+	"ui.chat.trace.sessions.peek.before": "早于{id}",
+	"ui.chat.trace.sessions.peek.around": "围绕{id}"
 }

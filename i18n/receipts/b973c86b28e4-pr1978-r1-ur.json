@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1978 (move dialog working set)",
+  "locale": "ur",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc",
+  "instance": "b973c86b28e4-pr1978-r1-ur",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session b973c86b28e4 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translator was a different session: agent coder, job eacba7a3806e, session 76c99189cb1d. Same served model family as the translator (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "b973c86b28e4-pr1978-r1-ur"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main d0484be33486 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/ur.md @ origin/main d0484be33486 (sha256 7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc"
+  },
+  "findings": [
+    {
+      "id": "UR-1",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer",
+      "keys": [
+        "ui.mesh.mesh_actions.working_set_reason_outside_home",
+        "ui.mesh.mesh_actions.working_set_reason_over_cap",
+        "ui.mesh.mesh_actions.working_set_reason_destination_conflict",
+        "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer",
+        "ui.mesh.mesh_actions.working_set_clone_pending",
+        "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone"
+      ],
+      "problem": "device rendered 'آلہ / آلے'; the glossary's ur cell is 'ڈیوائس', used 109 times in the corpus (36 in ui.mesh, 0 'آلہ'), and the rest of this dialog says ڈیوائس.",
+      "fix": "Use ڈیوائس with feminine agreement as the corpus does: 'دوسری ڈیوائس ابھی ورک ٹری وصول نہیں کر سکتی۔', 'دوسری ڈیوائس پر کلون کریں', 'دوسری ڈیوائس پر اس پاتھ پر…', 'اگر دوسری ڈیوائس پر یہ ریپوزٹری نہیں ہے…', 'دوسری ڈیوائس اس ریپوزٹری کو کلون نہیں کر سکتی۔', '…اسے دوسری ڈیوائس پر نہیں رکھا جا سکتا۔'"
+    },
+    {
+      "id": "UR-2",
+      "severity": "NIT",
+      "key": "ui.mesh.mesh_actions.working_set_checkbox_leave",
+      "problem": "'میں سمجھتا ہوں' is masculine; corpus precedent exists (ui.settings.imports.confirm_label) but the neutral form is also shipped (ui.chat.pickers.fast.premium_acknowledgement 'مجھے معلوم ہے کہ').",
+      "fix": "'مجھے معلوم ہے کہ {device} پر گفتگو کے پاس یہ فائلیں نہیں ہوں گی'"
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at dd014c1e9d (scratch script run with the repo's @formatjs/icu-messageformat-parser): key set equals English; the base..head diff of this file is exactly the 42 added working_set_* lines (0 changed, 0 removed values, so every other value is the bytes audited by the superseded row); every audited value parses and carries the same arguments, types and ::group-off skeletons as English; plural arms present for every CLDR category of the locale and no foreign arm; NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no leading/trailing/double spaces; no <Trans> tags in this namespace. Rendered fit NOT verified in this lane (no rendered frames)."
+    }
+  ],
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "جانچ ہو رہی ہے کہ یہ منتقلی کون سی ورکنگ فائلیں بھیجے گی…",
+    "ui.mesh.mesh_actions.working_set_error": "یہ جانچ نہیں ہو سکی کہ یہ منتقلی کون سی ورکنگ فائلیں بھیجے گی۔ اگر اس گفتگو کی ورکنگ فائلیں ہیں تو منتقلی کچھ بھی بھیجنے سے پہلے آپ سے ان کا جائزہ لینے کو کہے گی۔",
+    "ui.mesh.mesh_actions.working_set_warning": "گفتگو کے دوران منتقل کرنے سے اس گفتگو کی تمام ورکنگ فائلیں {device} پر بھیج دی جاتی ہیں: نیچے دیے گئے ورک ٹری اپنی غیر پُش شدہ کمٹس اور غیر کمٹ شدہ تبدیلیوں کے ساتھ، نیز اسکریچ فائلیں اور سیشن میموری۔ صرف اسی صورت میں جاری رکھیں جب یہ کام {device} پر ہونا چاہیے۔",
+    "ui.mesh.mesh_actions.working_set_changed": "آپ کے جائزے کے بعد ورکنگ فائلیں بدل گئی ہیں۔ تازہ فہرست دیکھیں اور دوبارہ تصدیق کریں۔",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, one {{count, number, ::group-off} ورک ٹری بھیجا جائے گا} other {{count, number, ::group-off} ورک ٹری بھیجے جائیں گے}} · کل {size}",
+    "ui.mesh.mesh_actions.working_set_detached": "الگ شدہ HEAD",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, one {{unpushed, number, ::group-off} غیر پُش شدہ کمٹ} other {{unpushed, number, ::group-off} غیر پُش شدہ کمٹس}} · اسٹیجڈ: {staged, number, ::group-off} · غیر اسٹیجڈ: {unstaged, number, ::group-off} · غیر ٹریک شدہ: {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "{path} پر پہنچے گا",
+    "ui.mesh.mesh_actions.working_set_clone": "{device} پر ابھی یہ ریپوزٹری نہیں ہے، اس لیے اسے {url} سے کلون کیا جائے گا۔",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "{device} پر ابھی یہ ریپوزٹری نہیں ہے، اس لیے اسے {url} سے کلون کیا جائے گا (تقریباً {size})۔",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "روکا گیا — نہیں بھیجا جائے گا",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "یہ خفیہ فائل لگتی ہے، اس لیے نہیں بھیجی جائے گی۔",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "اس میں خفیہ معلومات جیسی قدر ہے، اس لیے نہیں بھیجی جائے گی۔",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "ایک غیر پُش شدہ کمٹ خفیہ فائل جیسی فائل شامل کرتا ہے، اس لیے نہیں بھیجا جائے گا۔",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "ایک غیر پُش شدہ کمٹ میں خفیہ معلومات جیسی قدر ہے، اس لیے نہیں بھیجا جائے گا۔",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "جہاں ہے وہیں رہے گا",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "ڈیپینڈینسیز",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "بلڈ آؤٹ پٹ",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "Git نظرانداز کرتا ہے",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "ورک ٹری سے باہر کی فائل",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "{command} سے دوبارہ بنائیں",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "اس ورک ٹری میں ایک اور فعال گفتگو کام کر رہی ہے، اس لیے یہ جہاں ہے وہیں رہے گا۔",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "یہ ورک ٹری ہوم فولڈر سے باہر ہے، اس لیے اسے دوسرے آلے پر نہیں رکھا جا سکتا۔",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "اس ورک ٹری میں حل طلب مرج تنازعات ہیں۔ انہیں حل کریں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "یہاں مرج، ری بیس یا چیری پِک جاری ہے۔ اسے مکمل یا منسوخ کریں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "سب ماڈیول والے ورک ٹری ابھی منتقل نہیں ہوتے۔",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "Git LFS استعمال کرنے والے ورک ٹری ابھی منتقل نہیں ہوتے۔",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "غیر پُش شدہ ہسٹری میں خفیہ معلومات جیسا مواد ہے۔ کمٹ کو پُش کریں یا دوبارہ لکھیں، یا اسے اس برانچ سے ہٹائیں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "یہ اس منتقلی کے ساتھ بھیجنے کے لیے بہت بڑا ہے۔ اسے پُش کریں یا دوسرے آلے پر کلون کریں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "دوسرے آلے پر اس پاتھ پر پہلے سے ایک مختلف چیک آؤٹ موجود ہے۔",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "دوسرا آلہ ابھی ورک ٹری وصول نہیں کر سکتا۔ وہاں Local Operator اپ ڈیٹ کریں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "نہیں بھیجا جائے گا ({code})۔",
+    "ui.mesh.mesh_actions.working_set_checkbox": "مجھے یقین ہے کہ {device} کو یہ فائلیں ملنی چاہئیں",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "یہ ورژن ابھی ورکنگ فائلیں منتقل نہیں کرتا۔ نیچے دیے گئے ورک ٹری اپنی جگہ رہیں گے، اس لیے {device} پر گفتگو کے پاس ان کی غیر پُش شدہ کمٹس یا غیر کمٹ شدہ تبدیلیاں نہیں ہوں گی۔ منتقل کرنے سے پہلے جو ضروری ہو اسے پُش یا کمٹ کر لیں۔",
+    "ui.mesh.mesh_actions.working_set_warning_without": "یہ ورکنگ فائلیں اس منتقلی کے ساتھ نہیں بھیجی جا سکتیں، اس لیے {device} پر گفتگو کے پاس یہ نہیں ہوں گی۔ آپ ان کے بغیر منتقل کر سکتے ہیں، یا منسوخ کر کے پہلے اپنا کام پُش یا کمٹ کر سکتے ہیں۔",
+    "ui.mesh.mesh_actions.working_set_unknown": "ورکنگ فائلوں کی جانچ نہیں ہو سکی، اس لیے یہ اس منتقلی کے ساتھ نہیں بھیجی جا سکتیں اور {device} پر گفتگو کے پاس یہ نہیں ہوں گی۔ آپ ان کے بغیر منتقل کر سکتے ہیں، یا منسوخ کر کے دوبارہ کوشش کر سکتے ہیں۔",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, one {{count, number, ::group-off} ورک ٹری اپنی جگہ رہے گا} other {{count, number, ::group-off} ورک ٹری اپنی جگہ رہیں گے}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "میں سمجھتا ہوں کہ {device} پر گفتگو کے پاس یہ فائلیں نہیں ہوں گی",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "اگر دوسرے آلے پر یہ ریپوزٹری نہیں ہے تو خالی جگہ کی جانچ کے بعد اسے {url} سے کلون کیا جائے گا۔",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "غیر پُش شدہ ہسٹری خفیہ معلومات کی جانچ کے لیے بہت بڑی ہے، اس لیے یہ نہیں بھیجی جاتی۔ کمٹس کو پُش کریں یا انہیں اس برانچ سے ہٹائیں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "دوسرا آلہ اس ریپوزٹری کو کلون نہیں کر سکتا۔ پہلے اسے وہاں کلون کریں، پھر دوبارہ منتقل کریں۔",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "منتقل نہیں ہوا: یہ ورژن ابھی ورک ٹری منتقل نہیں کرتا۔"
+  },
+  "prior_audits": [
+    {
+      "instance": "i18n-audit-uimesh-ur-59a1adac0231",
+      "covers": "every ui.mesh value other than the 42 working_set_* keys (byte-identical at this head); moved to superseded by this row"
+    }
+  ],
+  "scope": "PR #1978 round 1 (1fb3d656c3..dd014c1e9d): the 42 added ui.mesh.mesh_actions.working_set_* keys; the remaining values are unchanged bytes covered by the prior audit",
+  "binding": "Verified on the committed tree at dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/ur/ui.mesh.json sha256 d8f059f9dffb870ec708d172b87068b9f40df1e0cc4530bf8e82fcf4091a9e80; English sha256 6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1; context sha256 bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21.",
+  "en_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+  "context_sha256": "bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21",
+  "target_sha256": "d8f059f9dffb870ec708d172b87068b9f40df1e0cc4530bf8e82fcf4091a9e80",
+  "sha256": {
+    "ur": "d8f059f9dffb870ec708d172b87068b9f40df1e0cc4530bf8e82fcf4091a9e80",
+    "en": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1"
+  }
+}

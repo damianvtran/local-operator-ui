@@ -22,6 +22,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
+import { workingSetConsent } from "../../mesh/mesh-drop";
 import {
 	useMeshNetworks,
 	useMeshPeers,
@@ -120,6 +121,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 								to: plan.to,
 								keep: plan.keep,
 								waitS: WAIT_CEILING_S,
+								// The consent the original pick carried, re-sent with it.
+								...workingSetConsent(plan),
 							},
 							{
 								onSuccess: (outcome) => {
@@ -137,7 +140,8 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 											name: move.name,
 											from: move.from,
 											receipt: outcome.receipt,
-											engaged: null,
+											// The receipt's own fact, as the pane's pick reads it.
+											engaged: outcome.receipt.engagement?.engaged ?? null,
 										});
 										return;
 									}
@@ -200,6 +204,7 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 
 	const arrival = arrivalCopy({
 		engaged: move.engaged,
+		resumeRequested: Boolean(move.receipt.resume_requested),
 		name: move.name,
 		from: move.from,
 		newSessionId: move.receipt.new_session_id,

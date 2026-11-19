@@ -168,7 +168,101 @@ test("durations mirror the core's compact shape: zero units omitted, digits loca
 	assert.equal(format.formatDuration(86_461, "en"), "1d 1m 1s");
 	assert.equal(format.formatDuration(0, "en"), "0s");
 	assert.equal(format.formatDuration(-5, "en"), "0s");
-	assert.equal(format.formatDuration(3725, "fr"), "1h 2m 5s");
+	// i18n slice C3: the unit words are CLDR's narrow units now, so French
+	// takes `min` (measured, ICU 78.3) rather than the former ASCII `m`.
+	assert.equal(format.formatDuration(3725, "fr"), "1h 2min 5s");
+});
+
+/** The RTL bidi isolates `translate()` adds around an argument, removed. */
+const stripIsolates = (text) => text.replace(/[\u2066-\u2069]/g, "");
+
+test("C3: every duration shape is byte-identical in English", () => {
+	const compact = [
+		[0, "0s"],
+		[59, "59s"],
+		[60, "1m"],
+		[65, "1m5s"],
+		[3599, "59m59s"],
+		[3600, "1h"],
+		[3725, "1h2m"],
+		[86_399, "23h59m"],
+		[90_000, "1d1h"],
+		[99 * 86_400 + 23 * 3600, "99d23h"],
+		[100 * 86_400, "100d+"],
+		[-5, "0s"],
+	];
+	for (const [seconds, expected] of compact) {
+		assert.equal(format.formatCompactDuration(seconds, "en"), expected);
+	}
+	const settled = [
+		[0, "<0.1s"],
+		[0.049, "<0.1s"],
+		[0.05, "0.1s"],
+		[2, "2.0s"],
+		// `toFixed` rounding, not Intl's: 9.95 is `9.9`, and stays under ten.
+		[9.95, "9.9s"],
+		[12.4, "12s"],
+		[65, "1m5s"],
+	];
+	for (const [seconds, expected] of settled) {
+		assert.equal(format.formatSettledDuration(seconds, "en"), expected);
+	}
+	assert.equal(format.formatDurationUnit(250, "millisecond", 0, "en"), "250ms");
+	assert.equal(format.formatDurationUnit(1, "week", 0, "en"), "1w");
+	assert.equal(
+		format.formatDurationParts(
+			[
+				[1, "hour"],
+				[30, "minute"],
+			],
+			{ compact: true },
+			"en",
+		),
+		"1h30m",
+	);
+});
+
+test("C3: French and Urdu durations take their own units through the helper", () => {
+	assert.equal(format.formatCompactDuration(5, "fr"), "5s");
+	assert.equal(format.formatCompactDuration(65, "fr"), "1min 5s");
+	assert.equal(format.formatCompactDuration(5400, "fr"), "1h 30min");
+	assert.equal(format.formatSettledDuration(1.5, "fr"), "1,5s");
+	assert.equal(format.formatCompactDuration(100 * 86_400, "fr"), "100j+");
+	// The audited French catalogue sets the less-than mark with a narrow no-break
+	// space (U+202F), as French typography does before a number; audited in round 2 (16655c1d1913).
+	assert.equal(format.formatSettledDuration(0, "fr"), "<\u202f0,1s");
+
+	assert.equal(format.formatCompactDuration(5, "ur"), "5 سیکنڈ");
+	assert.equal(format.formatCompactDuration(65, "ur"), "1 منٹ اور 5 سیکنڈ");
+	assert.equal(
+		format.formatDuration(3725, "ur"),
+		"1 گھنٹہ، 2 منٹ، اور 5 سیکنڈ",
+	);
+	assert.equal(
+		stripIsolates(format.formatCompactDuration(100 * 86_400, "ur")),
+		"100 دن سے زیادہ",
+	);
+	// Urdu reads the bounds as words after the duration ("سے کم" less than,
+	// "سے زیادہ" more than) rather than English's < and + marks, as audited in 13b8374041bd.
+	assert.equal(
+		stripIsolates(format.formatSettledDuration(0.01, "ur")),
+		"0.1 سیکنڈ سے کم",
+	);
+	// No ASCII unit letter survives in either locale's compound shape.
+	assert.doesNotMatch(format.formatCompactDuration(3725, "ur"), /[a-z]/);
+});
+
+test("C3: a duration resolved without a pin follows a live locale switch", () => {
+	// The formatter instances are cached per locale; the call that does not
+	// pin one must read the CURRENT locale every time, never the first one.
+	locale.setLocale("en");
+	const before = format.formatCompactDuration(65);
+	locale.setLocale("fr");
+	const after = format.formatCompactDuration(65);
+	locale.setLocale("en");
+	assert.equal(before, "1m5s");
+	assert.equal(after, "1min 5s");
+	assert.equal(format.formatCompactDuration(65), "1m5s");
 });
 
 test("byte sizes mirror the core's SI ladder, one decimal below ten units", () => {

@@ -232,6 +232,9 @@ const methodNames = (): Record<string, string> => ({
 export function methodName(method: ProviderMethod): string {
 	if (method.kind === "api_key")
 		return t("ui.providers.provider_catalog.api_key");
+	// Amazon Bedrock's structured method: profiles, SSO, access keys or the
+	// default chain, all behind one tab (bedrock design §10 Slice B).
+	if (method.kind === "aws") return t("ui.providers.bedrock.method_aws");
 	const named = methodNames()[method.method_id];
 	if (named) return named;
 	const qualifier = qualifierOf(method.label);
@@ -270,6 +273,7 @@ export function methodBlurb(
 ): string {
 	const blurb = methodBlurbs()[method.method_id];
 	if (blurb) return blurb;
+	if (method.kind === "aws") return t("ui.providers.bedrock.method_aws_blurb");
 	if (method.kind === "device")
 		return t("ui.providers.provider_catalog.sign_in_to_your_account_with_a", {
 			brand: brandOf(provider),
@@ -478,8 +482,20 @@ export function connectedRowMeta(
 	signIn: string | null = t("ui.providers.provider_catalog.signed_in"),
 ): string | null {
 	const group = providerGroup(provider);
-	const how =
-		group === "local"
+	/*
+	 * Amazon Bedrock's AWS connections sit in the key group (they bill per use)
+	 * but are mostly NOT keys: a profile, an SSO sign-in or the default
+	 * credentials. "API key saved" was wrong for all of those (QA round 1, Q1),
+	 * so the row names the stored connection itself - the backend's label
+	 * (`acme-dev · us-west-2`, `API key · us-east-1`), carried as `identity`
+	 * when exactly one row is stored - or says an AWS connection is saved.
+	 */
+	const awsConnection = provider.auth_methods.some(
+		(method) => method.kind === "aws",
+	);
+	const how = awsConnection
+		? (provider.identity ?? t("ui.providers.bedrock.connection_saved_row"))
+		: group === "local"
 			? t("ui.providers.provider_catalog.on_this_computer")
 			: group === "key"
 				? t("ui.providers.provider_catalog.api_key_saved")

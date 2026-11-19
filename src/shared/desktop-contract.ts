@@ -116,6 +116,65 @@ const settingKey = z
 	.max(256)
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
+
+/*
+ * Amazon Bedrock connection inputs (bedrock design §7 route 4). Bounded here so
+ * a compromised render path cannot hand the backend an arbitrary string where
+ * a Region or profile name belongs: the Region becomes part of an AWS hostname
+ * and the profile name a `[profile …]` lookup, so both are held to the shapes
+ * AWS itself uses. The backend validates again (`extra="forbid"`, SecretStr);
+ * this is the renderer half of the same fence, not the only one.
+ */
+const awsRegion = z
+	.string()
+	.min(1)
+	.max(32)
+	.regex(/^[a-z]{2}(-[a-z]+)+-\d{1,2}$/);
+/*
+ * AWS CLI profile names are free-form section names in practice (`dev`,
+ * `acme.prod`, `team/admin`, `me@acme`); control characters and the section
+ * brackets are what would let a value escape its `[profile …]` line, so those
+ * are excluded and everything AWS users actually type is allowed.
+ */
+const awsProfileName = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[\w .@+/:=,-]+$/);
+const bedrockConnectionSchema = z.discriminatedUnion("method", [
+	z
+		.object({
+			method: z.literal("api_key"),
+			region: awsRegion,
+			api_key: secret,
+		})
+		.strict(),
+	z
+		.object({
+			method: z.literal("profile"),
+			profile: awsProfileName,
+			region: awsRegion,
+		})
+		.strict(),
+	z
+		.object({
+			method: z.literal("access_key"),
+			region: awsRegion,
+			access_key_id: z
+				.string()
+				.min(16)
+				.max(128)
+				.regex(/^[A-Z0-9]+$/),
+			secret_access_key: secret,
+			session_token: secret.nullable(),
+		})
+		.strict(),
+	z
+		.object({ method: z.literal("ambient"), region: awsRegion.nullable() })
+		.strict(),
+]);
+/** One Bedrock connection as `PUT /v1/auth/providers/bedrock/connection` takes it. */
+export type BedrockConnectionInput = z.infer<typeof bedrockConnectionSchema>;
 /**
  * The canonical stream session id, as the wire spells it.
  *
@@ -4211,6 +4270,40 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("auth.key"), provider: id, value: secret }).strict(),
 	z.object({ op: z.literal("auth.logout"), provider: id }).strict(),
 	/*
+	 * AMAZON BEDROCK (`features.bedrock_auth`, local-operator
+	 * `server/routes/auth.py`, bedrock design §7). Bedrock is the one provider
+	 * whose connection is a STRUCTURED choice - a method, a Region, a profile
+	 * name, sometimes two secrets - which the single-prompt `auth.start`/
+	 * `auth.key` pair cannot carry (the backend answers `auth.start` for
+	 * `bedrock` with 422 `bedrock_use_aws_panel`). These four ops are the AWS
+	 * panel's whole vocabulary; the renderer sends none of them unless the
+	 * capability is advertised, so an older backend never sees an unknown route.
+	 *
+	 * `context` never returns a credential value (profiles, Regions, session
+	 * state only). `connect` validates BEFORE storing and is the only op that
+	 * carries secrets, each through the shared `secret` bound. `ssoLogin`
+	 * returns an ordinary `AuthOperation`, polled with `auth.status` and
+	 * cancelled with `auth.cancel` exactly like a browser sign-in.
+	 */
+	z
+		.object({ op: z.literal("auth.bedrock.context") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("auth.bedrock.connect"),
+			connection: bedrockConnectionSchema,
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("auth.bedrock.ssoLogin"), profile: awsProfileName })
+		.strict(),
+	z
+		.object({
+			op: z.literal("auth.bedrock.check"),
+			credentialId: z.number().int().positive(),
+		})
+		.strict(),
+	/*
 	 * Local bearer only: the harness owns Radient OAuth and organization policy.
 	 * The account guard is local-only and is stripped before the hub write.
 	 */
@@ -5052,6 +5145,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			keep: z.boolean().optional(),
 			waitS: z.number().min(0).max(300).optional(),
 			requestId: requestId.optional(),
+			/*
+			 * THE WORKING-SET CONSENT (`features.session_transfer_working_set`, design
+			 * move-working-set §11.1). `confirmWorkingSet` is the preflight's
+			 * `scope_digest` the user was SHOWN and ticked for: the route compares it and
+			 * refuses `working_set_changed` (with the fresh manifest) when the scope moved,
+			 * so consent is to a specific list, never a bool a stray retry could also
+			 * send. `withoutWorkingSet` is the explicit "leave the files behind" consent.
+			 * There is deliberately NO opt-in for a worktree withheld because its
+			 * unpushed history carries secret-shaped material: v1 leaves it behind with a
+			 * reason and a remedy, and no flag can override that. Both fields are
+			 * omitted while absent: the core's model is closed, so a backend without the
+			 * key would 422 on either.
+			 */
+			confirmWorkingSet: z
+				.string()
+				.regex(/^sha256:[0-9a-f]{64}$/)
+				.optional(),
+			withoutWorkingSet: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * What a move WOULD carry, without moving anything: the manifest the move
+	 * dialog shows and the digest its consent echoes back. A read (nothing is
+	 * written on either device), posted because the route takes the destination in
+	 * a body like the transfer it previews. Behind
+	 * `features.session_transfer_working_set` only.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.transfer.preflight"),
+			sessionId,
+			to: z.union([z.literal("local"), meshId]),
 		})
 		.strict(),
 	/*
@@ -7957,6 +8082,13 @@ const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
 const MESH_READ_OPS: ReadonlySet<string> = new Set([
 	"networks.list",
 	"peers.list",
+	/*
+	 * The working-set preflight asks the DESTINATION too (free space, whether it
+	 * can clone a missing primary from origin - design move-working-set §4/§17 Q1)
+	 * over the same mesh link the listings dial, so it waits on the same
+	 * backend-published probe budgets rather than the 20 s control budget.
+	 */
+	"sessions.transfer.preflight",
 ]);
 
 /**
@@ -8013,7 +8145,29 @@ const COMMUNITY_LONG_OPS: ReadonlySet<string> = new Set([
 	"community.events",
 ]);
 
+/*
+ * AMAZON BEDROCK'S CONNECT AND CHECK WAIT ON AWS, TWICE (review round 1, R4).
+ * The daemon's bounds (local-operator `local_operator/providers/bedrock/`):
+ * resolving a profile's credentials is capped at `CREDENTIAL_TIMEOUT_S = 15.0`
+ * (`auth.py`, an `asyncio.wait_for` around botocore, which gives
+ * `credential_process`, SSO token refresh and IMDS no bound of their own);
+ * the signed probe then runs under `CHECK_TIMEOUT_S = 15.0` (`login.py`;
+ * `check.py` passes it to httpx, where it bounds EACH phase - connect, write,
+ * read, pool - not the request). The route `auth.bedrock.check` calls
+ * `check_connection(key, 15.0)` the same way. So the bounded worst case is
+ * 15 + 4 x 15 = 75 s before a connect stores its row, defaults and re-homes
+ * sessions. On the 20 s control budget the app reported a deadline - and
+ * cleared the typed secrets - for a connect the backend went on to store.
+ * The long budget (90 s) sits above that bound. Not in `READ_ONLY_OPS`:
+ * connect writes a credential, so its timeout keeps the write sentence.
+ */
+const BEDROCK_AWS_OPS: ReadonlySet<string> = new Set([
+	"auth.bedrock.connect",
+	"auth.bedrock.check",
+]);
+
 const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
+	...BEDROCK_AWS_OPS,
 	...COMMUNITY_LONG_OPS,
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
@@ -8421,6 +8575,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
+	// The move's preflight computes a manifest and moves nothing.
+	"sessions.transfer.preflight",
 	"sessions.search",
 	"sessions.variables.list",
 	"skills.list",
@@ -9234,7 +9390,12 @@ export type ProviderMethod = {
 	 */
 	method_id: string;
 	label: string;
-	kind: "api_key" | "browser" | "device";
+	/**
+	 * `aws` is Amazon Bedrock's structured AWS-account method (bedrock design
+	 * §7): it is never started through `auth.start` and renders the AWS panel
+	 * instead, and only when the backend advertises `features.bedrock_auth`.
+	 */
+	kind: "api_key" | "browser" | "device" | "aws";
 	requires_secret_input: boolean;
 	paste_fallback: boolean;
 	/**
@@ -9283,6 +9444,75 @@ export type SaveKeyResult = {
 	valid?: boolean | null;
 	reason?: string | null;
 	defaults_applied?: DefaultsApplied | null;
+};
+/*
+ * Amazon Bedrock's AWS context and results (bedrock design §7, routes 3-6).
+ * Shapes are the backend's JSON verbatim; nothing here is a credential value.
+ */
+export type BedrockSessionState =
+	| "valid"
+	| "expired_refreshable"
+	| "expired"
+	| "missing"
+	| "not_applicable";
+export type BedrockProfileKind =
+	| "static"
+	| "sso"
+	| "login"
+	| "assume_role"
+	| "process"
+	| "web_identity"
+	| "other";
+export type BedrockRegion = { id: string; label: string; geo_prefix: string };
+export type BedrockProfile = {
+	name: string;
+	kind: BedrockProfileKind;
+	region: string | null;
+	session: {
+		state: BedrockSessionState;
+		expires_at: string | null;
+		login_command: string | null;
+	};
+};
+export type BedrockConnection = {
+	credential_id: number;
+	method: "api_key" | "profile" | "access_key" | "ambient" | "env-bearer";
+	profile?: string | null;
+	region: string | null;
+	label: string;
+};
+export type BedrockAwsContext = {
+	regions: BedrockRegion[];
+	default_region: string;
+	default_region_source:
+		| "config"
+		| "AWS_REGION"
+		| "AWS_DEFAULT_REGION"
+		| "profile"
+		| "fallback";
+	profiles: BedrockProfile[];
+	aws_cli_available: boolean;
+	ambient: { enabled: boolean; sources: string[] };
+	connections: BedrockConnection[];
+};
+/**
+ * `auth.bedrock.connect` success. `valid: null` is "stored, not verified"
+ * (credentials work but cannot list models, or the probe timed out) with
+ * `reason` saying which. A REJECTED connection is a 422 carrying one of the
+ * `bedrock_*` codes, never this shape.
+ */
+export type BedrockConnectResult = {
+	valid: boolean | null;
+	reason: string | null;
+	credential_id: number;
+	label: string;
+	models_available: number | null;
+	defaults_applied?: DefaultsApplied | null;
+};
+export type BedrockCheckResult = {
+	valid: boolean | null;
+	reason: string | null;
+	code: string | null;
 };
 export type DesktopProvider = {
 	id: string;
@@ -9913,7 +10143,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// recorded outcome instead of moving twice, and a request with no key
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
+					// Each consent field only when the caller set it: see the op's own
+					// comment (closed core model, gated key).
+					...(request.confirmWorkingSet
+						? { confirm_working_set: request.confirmWorkingSet }
+						: {}),
+					...(request.withoutWorkingSet ? { without_working_set: true } : {}),
 				},
+			};
+		case "sessions.transfer.preflight":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/transfer/preflight`,
+				method: "POST",
+				body: { to: request.to },
 			};
 		/*
 		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the
@@ -11673,6 +11915,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/auth/providers/${request.provider}/credentials`,
 				method: "DELETE",
+			};
+		case "auth.bedrock.context":
+			return { path: "/v1/auth/providers/bedrock/aws", method: "GET" };
+		case "auth.bedrock.connect":
+			return {
+				path: "/v1/auth/providers/bedrock/connection",
+				method: "PUT",
+				body: request.connection,
+			};
+		case "auth.bedrock.ssoLogin":
+			return {
+				path: "/v1/auth/providers/bedrock/sso-login",
+				method: "POST",
+				body: { profile: request.profile },
+			};
+		case "auth.bedrock.check":
+			return {
+				path: "/v1/auth/providers/bedrock/check",
+				method: "POST",
+				body: { credential_id: request.credentialId },
 			};
 		case "agent_messages.status":
 			return {

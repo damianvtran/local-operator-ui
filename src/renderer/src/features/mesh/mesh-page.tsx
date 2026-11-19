@@ -47,7 +47,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { Network } from "lucide-react";
-import { type FC, useCallback, useMemo, useState } from "react";
+import { type FC, useCallback, useMemo, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { t } from "../../../../i18n/messages";
 import {
@@ -76,7 +76,9 @@ import {
 	type MovePlan,
 	type Remedy,
 	lossSentence,
+	reopenAsk,
 	resolveDrop,
+	workingSetConsent,
 } from "./mesh-drop";
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
@@ -103,7 +105,9 @@ import {
 import {
 	type MeshRefusal,
 	type MeshSessionRow,
+	type MoveWorkingSetSeed,
 	deviceIdentityText,
+	workingSetReopen,
 } from "./mesh-types";
 import { useMeshPairingTray } from "./use-mesh-pairing-tray";
 
@@ -124,6 +128,12 @@ type PendingMove = {
 	plan: MovePlan;
 	alternatives: MovePlan[];
 	risky: boolean;
+	/** A consent refusal's fresh manifest, shown instead of a new preflight. */
+	seed?: MoveWorkingSetSeed | null;
+	/** The destination's label, for a review whose manifest names none. */
+	destinationName?: string;
+	/** The option to pre-select on a refusal reopen (the user's earlier pick). */
+	initialKeep?: boolean;
 };
 
 /** What the last move answered, for the notice under the header. */
@@ -774,6 +784,9 @@ export const MeshSurface: FC<{
 				plan={pendingMove?.plan ?? emptyPlan}
 				alternatives={pendingMove?.alternatives ?? []}
 				risky={pendingMove?.risky ?? false}
+				workingSetSeed={pendingMove?.seed ?? null}
+				destinationName={pendingMove?.destinationName}
+				initialKeep={pendingMove?.initialKeep}
 				busy={moveBusy}
 				onCancel={onCancelMove}
 				onChoose={onChooseMove}
@@ -962,6 +975,11 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 	const removeMember = useNetworkMemberRemove();
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
+	/*
+	 * The question the dialog last asked, kept past its close: a consent refusal
+	 * reopens the SAME question (Move/Copy pair and risk), see `reopenAsk`.
+	 */
+	const askedRef = useRef<PendingMove | null>(null);
 	const [moveReport, setMoveReport] = useState<MoveReport | null>(null);
 	const [inviteAsk, setInviteAsk] = useState<{
 		deviceId?: string;
@@ -1017,6 +1035,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 				to: plan.to,
 				keep: plan.keep,
 				waitS: waitS ?? plan.waitS,
+				...workingSetConsent(plan),
 			};
 			transfer.mutate(ask, {
 				onSuccess: (outcome) => {
@@ -1042,12 +1061,24 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 											destination,
 											suffix: receipt.new_session_id.slice(-6),
 										})
-									: t("ui.mesh.mesh_page.move_receipt", {
-											destination,
-											retirement: receipt.source_retired
-												? t("ui.mesh.mesh_page.the_copy_here_is_gone")
-												: "",
-										}),
+									: /*
+										 * A MOVE MADE MID-TURN RESUMES on the destination, and the
+										 * receipt's `engagement` says so; the notice states it only
+										 * when the receipt does (no block: an older core, say nothing).
+										 */
+										receipt.engagement?.engaged
+										? t("ui.mesh.mesh_page.move_receipt_resumed", {
+												destination,
+												retirement: receipt.source_retired
+													? t("ui.mesh.mesh_page.the_copy_here_is_gone")
+													: "",
+											})
+										: t("ui.mesh.mesh_page.move_receipt", {
+												destination,
+												retirement: receipt.source_retired
+													? t("ui.mesh.mesh_page.the_copy_here_is_gone")
+													: "",
+											}),
 							undo:
 								receipt.mode === "keep"
 									? {
@@ -1076,6 +1107,25 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 											),
 										}
 									: null,
+						});
+						return;
+					}
+					/*
+					 * A CONSENT REFUSAL REOPENS THE DIALOG with the fresh manifest it carried
+					 * (design move-working-set §11.4): `working_set_changed` after a tick, or
+					 * `working_set_unconfirmed` from a drop that never showed the list. The
+					 * plan's own consent is dropped by the dialog on the next confirm.
+					 */
+					const seed = workingSetReopen(outcome.refusal);
+					if (seed) {
+						setPendingMove({
+							...reopenAsk(askedRef.current, plan, false),
+							seed,
+							destinationName:
+								plan.to === "local"
+									? t("ui.mesh.mesh_drop.this_device")
+									: graph?.devices.find((device) => device.id === plan.to)
+											?.label,
 						});
 						return;
 					}
@@ -1209,7 +1259,10 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 					plan: refusal.plan,
 				})
 			}
-			onChooseMove={(plan) => run(plan)}
+			onChooseMove={(plan) => {
+				askedRef.current = pendingMove;
+				run(plan);
+			}}
 			onCancelMove={() => setPendingMove(null)}
 			moveBusy={transfer.isPending}
 			moveReport={moveReport}

@@ -42,5 +42,23 @@
 			"date": "Long calendar date, already localised; insert unchanged.",
 			"time": "A clock reading or date inserted by the app already formatted for the locale; insert it unchanged."
 		}
+	},
+	"ui.common.time.duration.under_minimum": {
+		"role": "Duration of a tool call too fast to measure, in a narrow right-aligned column of a tool row",
+		"tone": "Terse symbol-like reading, no words.",
+		"length": "As short as the language allows; English is five characters.",
+		"note": "English source: <{duration}. Means 'less than {duration}'. Place the less-than mark (or your language's equivalent) where it reads naturally.",
+		"placeholders": {
+			"duration": "A tenth of a second, already formatted with this language's unit (for example 0.1s); insert unchanged."
+		}
+	},
+	"ui.common.time.duration.over_cap": {
+		"role": "Elapsed-time clock that has passed its display cap of 100 days, in a status strip or tool row",
+		"tone": "Terse symbol-like reading, no words.",
+		"length": "As short as the language allows; English is five characters.",
+		"note": "English source: {duration}+. Means 'more than {duration}'. Keep a plus-style mark unless your language reads it differently.",
+		"placeholders": {
+			"duration": "One hundred days, already formatted with this language's unit (for example 100d); insert unchanged."
+		}
 	}
 }

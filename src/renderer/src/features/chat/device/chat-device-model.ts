@@ -856,6 +856,14 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
  */
 export function arrivalCopy(input: {
 	engaged: boolean | null;
+	/**
+	 * The receipt's `resume_requested` was present: the source asked the
+	 * destination to resume it, outcome not yet known (QA round 1, Q-1). The cold
+	 * move arm then drops its "Nothing is running there yet" line - the receipt
+	 * says something may well be running - and keeps the neutral detail. Absent
+	 * (older fixtures, older core): exactly today's sentence.
+	 */
+	resumeRequested?: boolean;
 	name: string;
 	/**
 	 * The device the conversation came FROM, when the move brought it back here.
@@ -924,7 +932,12 @@ export function arrivalCopy(input: {
 	return {
 		verb: t("ui.chat.device_move.result.moved.verb", { name }),
 		detail: t("ui.chat.device_move.result.moved.detail_there"),
-		second: t("ui.chat.device_move.result.moved.second", { name }),
+		// `engaged === false` is the wire saying it did NOT start: the cold line
+		// stays true then, whatever was requested.
+		second:
+			engaged === null && input.resumeRequested === true
+				? null
+				: t("ui.chat.device_move.result.moved.second", { name }),
 	};
 }
 
