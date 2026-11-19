@@ -2337,7 +2337,7 @@ test("settle diff: a skill fingerprint change is 'instructions changed'; null sk
 		{ kind: "skill", name: "other" },
 	]);
 	const line = (r) =>
-		`${r.target.kind}:${r.target.name}:${r.created}:${r.changes.map((c) => c.label).join("|")}`;
+		`${r.target.kind}:${r.target.name}:${r.created}:${r.changes.map((c) => PAGE.summary.summaryText(c.label)).join("|")}`;
 	assert.deepEqual(results.map(line), [
 		"skill:demo:false:instructions changed",
 		"skill:other:false:description changed",
@@ -2369,7 +2369,10 @@ test("settle diff: a skill fingerprint change is 'instructions changed'; null sk
 		});
 	assert.equal(row("update").target.kind, "skill");
 	assert.equal(row("update").writes, true);
-	assert.equal(row("update").verb, "Updating skill demo");
+	assert.equal(
+		PAGE.summary.summaryText(row("update").verb),
+		"Updating skill demo",
+	);
 	assert.equal(row("show").writes, false);
 	assert.equal(PAGE.summary.RUN_TOOL_NAMES.has("skill"), true);
 });

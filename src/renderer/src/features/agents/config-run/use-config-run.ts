@@ -55,6 +55,7 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -62,8 +63,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type RunResult,
 	type RunTarget,
+	type SummaryText,
 	useConfigRunStore,
 } from "./config-run-store";
+import { configSeedPrompt } from "./seed-prompt";
 import {
 	type CatalogueSnapshot,
 	RUN_TOOL_NAMES,
@@ -73,6 +76,7 @@ import {
 	projectRunToolRow,
 	snapshotCatalogue,
 	snapshotSkills,
+	summaryText,
 } from "./summary";
 
 /**
@@ -231,15 +235,14 @@ export function lastAssistantText(
 /**
  * What the operator TYPED, for "You asked: …" (UX r1 U6): the box's text less
  * the "Change the <kind> <name>: " seed that "Ask for a change" wrote for this
- * same target. The seed is `configSeedPrompt`'s shape (config-composer.tsx,
- * which imports this module, so the shape is restated rather than imported);
- * `agents-config-summary.test.mjs` pins the two together. Text that does not
+ * same target. The seed comes from `configSeedPrompt` itself (seed-prompt.ts), in
+ * the current locale, so a translated seed is recognised as one. Text that does not
  * start with the seed is the operator's own and is returned whole.
  */
 export function typedTopic(text: string, about: RunTarget | null): string {
 	const trimmed = text.trim();
 	if (!about) return trimmed;
-	const seed = `Change the ${about.kind} ${about.name}:`;
+	const seed = configSeedPrompt(about).trim();
 	if (!trimmed.startsWith(seed)) return trimmed;
 	const rest = trimmed.slice(seed.length).trim();
 	return rest || trimmed;
@@ -351,7 +354,8 @@ export type ConfigRunHandle = {
 	elapsed: string;
 	/** Live activity, for the Watch panel (the run's own tool rows). */
 	activity: {
-		verb: string;
+		/** Catalogue copy; paint with `summaryText` so it follows the locale. */
+		verb: SummaryText;
 		target: RunTarget | null;
 		/** Whether this call writes the registry rather than reading it. */
 		writes: boolean;
@@ -406,6 +410,9 @@ export type ConfigRunHandle = {
 };
 
 export function useConfigRun(): ConfigRunHandle {
+	// The hook paints `step` (summaryText) itself, and its host (agents-page) is
+	// not otherwise subscribed to the locale.
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
 	const skillsEnabled = configSkillRunEnabled(capabilities.data);
@@ -519,8 +526,13 @@ export function useConfigRun(): ConfigRunHandle {
 		}
 	}, [activity, live, store]);
 
+	// Painted here, every render, rather than inside the memoised `activity`, so
+	// the live step line follows a language switch mid-run (`useI18nLocale` above
+	// is what re-renders this hook's host when the locale moves).
 	const step =
-		live && activity.length > 0 ? activity[activity.length - 1].verb : null;
+		live && activity.length > 0
+			? summaryText(activity[activity.length - 1].verb)
+			: null;
 	const elapsed = formatElapsed(useElapsed(store.startedAt, live));
 
 	/**
@@ -588,9 +600,7 @@ export function useConfigRun(): ConfigRunHandle {
 				// result could not be read and offers the lists' own retry.
 				useConfigRunStore
 					.getState()
-					.fail(
-						"The run finished, but the agents and teams lists could not be read to describe what changed.",
-					);
+					.fail(t("ui.agents.config.error.lists_unreadable"));
 				// The lists may still be stale, so the invalidation still runs.
 				invalidateAuthoring(client);
 				return;
@@ -767,6 +777,12 @@ export function useConfigRun(): ConfigRunHandle {
 		 * one place that decides what the run is told is also the one place that
 		 * knows which row it is about.
 		 */
+		/*
+		 * MODEL-FACING, SO DELIBERATELY ENGLISH AND NOT KEYED: this sentence is the
+		 * context the configuration run reads, never shown as interface copy, and
+		 * the run's own instructions are English. The operator's text is appended
+		 * verbatim in whatever language they wrote it.
+		 */
 		const body = about
 			? `About the ${about.kind} “${about.name}”: ${text.trim()}`
 			: text.trim();
@@ -877,8 +893,8 @@ export function useConfigRun(): ConfigRunHandle {
 					userFacingMessage(
 						caught,
 						sessionId
-							? "The run was set up, but your request could not be sent. It is still in the box — send it again when the backend is reachable."
-							: "The configuration run could not be started. Your request is still here.",
+							? t("ui.agents.config.error.send_after_setup")
+							: t("ui.agents.config.error.start_failed"),
 					),
 				);
 			/*
@@ -985,10 +1001,7 @@ export function useConfigRun(): ConfigRunHandle {
 			useConfigRunStore
 				.getState()
 				.failUnsent(
-					userFacingMessage(
-						caught,
-						"The request could not be sent. It is still in the box.",
-					),
+					userFacingMessage(caught, t("ui.agents.config.error.send_failed")),
 				);
 		} finally {
 			setStarting(false);
@@ -1015,7 +1028,10 @@ export function useConfigRun(): ConfigRunHandle {
 			useConfigRunStore
 				.getState()
 				.stopFailed(
-					userFacingMessage(caught, "The run did not acknowledge the request."),
+					userFacingMessage(
+						caught,
+						t("ui.agents.config.error.stop_unacknowledged"),
+					),
 				);
 		}
 	};
@@ -1023,10 +1039,10 @@ export function useConfigRun(): ConfigRunHandle {
 	const disabledReason = enabled
 		? null
 		: capabilities.isLoading
-			? "Connecting to the backend…"
+			? t("ui.agents.config.disabled.connecting")
 			: capabilities.error
 				? t("ui.agents.config.banner.unavailable")
-				: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
+				: t("ui.agents.config.disabled.needs_newer_backend");
 
 	return {
 		enabled,
