@@ -119157,13 +119157,13 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "aecd76fa4d8d6400e8c884df70c17a5769bd7f884bb5016469d1ac6e404c4b84",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "9b39f1a5176b47d607128c9c8239b01a7394f9824c157b342d21de907aa633a2",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 1 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
@@ -119171,17 +119171,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1971-r2-fr-remotecompute-3b3df24653ea",
+					"instance": "pr1971-r3-fr-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1971-r2-fr-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "ba16d4dbbb404f6cba6e6a5f5ae519e0e7bd54a15effc71c89a6cfb850764694",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r2-fr-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-fr-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "896cfa965778937635157b14c11a288936ee1103a3e4e2136448db5522897651",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 plus this round's one-character typography correction (U+202F before the colon) - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r3-fr-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119209,19 +119209,43 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "aecd76fa4d8d6400e8c884df70c17a5769bd7f884bb5016469d1ac6e404c4b84",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-fr-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/pr1971-r2-fr-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "ba16d4dbbb404f6cba6e6a5f5ae519e0e7bd54a15effc71c89a6cfb850764694",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r2-fr-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "24793c7b50da6af1cf5635f529a24c1c20fb48a70c78a8e93e6dafbf4ba00ec2",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "056ecee6e6a242c30c6a009255a9f488c0c6db9db3065446a0ed0aa1d7072bc9",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 1 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
@@ -119229,17 +119253,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1971-r2-es-remotecompute-3b3df24653ea",
+					"instance": "pr1971-r3-es-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1971-r2-es-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "68f53f2bb82870c2c1363fcd747c6ca42c2d9748ada649083486e8c8e7b33490",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r2-es-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-es-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "ec42920b95d839237837679149a49fb1a2e82795dbde9f7809071ed0d4700145",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r3-es-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119267,37 +119291,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "24793c7b50da6af1cf5635f529a24c1c20fb48a70c78a8e93e6dafbf4ba00ec2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-es-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-es-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "68f53f2bb82870c2c1363fcd747c6ca42c2d9748ada649083486e8c8e7b33490",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r2-es-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "4d46913e258eb3463443999eacf7b026a3b5e6b48edd3ae3c9c3f7f21dbcb91d",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "378874c5fb417fa258dcbd6e4ba985ee9aea71121b55d3c747ada5ff092f7bb8",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 0 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r2-zh-CN-remotecompute-3b3df24653ea",
+					"result": "clean",
+					"instance": "pr1971-r3-zh-CN-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r2-zh-CN-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "c9fec41a8c9a613f566be2af4a4c06f9dc6e40fb1b88e04694b1a5377936132f",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r2-zh-CN-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "d512b6128779ecdd8128c0611c4799ae779d47d98bb0027908316c6e400a0573",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119325,19 +119373,43 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "4d46913e258eb3463443999eacf7b026a3b5e6b48edd3ae3c9c3f7f21dbcb91d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-zh-CN-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-zh-CN-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "c9fec41a8c9a613f566be2af4a4c06f9dc6e40fb1b88e04694b1a5377936132f",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r2-zh-CN-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "4754857b0b3d296787c342452ca361d7474d805ef7d729dfe05a3492090cd604",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "a4d86a0cc1bce4cf90f15895c1b28917efbac7c47432d9b7fb40b40144f19dc6",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 1 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
@@ -119345,17 +119417,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
 					"result": "clean-with-findings",
-					"instance": "pr1971-r2-ru-remotecompute-3b3df24653ea",
+					"instance": "pr1971-r3-ru-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1971-r2-ru-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "bd42575eaf6c2a23911123143cfa6234fcbd2a993c05bbdab32c29600fee97f4",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r2-ru-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-ru-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "090de5e49a4550a700929a4e174993d31aa336f12596a250c3d83a2e2037f1cb",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r3-ru-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119383,37 +119455,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "4754857b0b3d296787c342452ca361d7474d805ef7d729dfe05a3492090cd604",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-ru-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-ru-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "bd42575eaf6c2a23911123143cfa6234fcbd2a993c05bbdab32c29600fee97f4",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r2-ru-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "f6273fc84a377deeb51f218908241d77b38accb1e52a2e97cc563fb6736558b6",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "380e37d0b8e4219e03631b5c15737ecb10c8e27b537ea90fca06cd21c75f180d",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 1 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r2-vi-remotecompute-3b3df24653ea",
+					"result": "clean",
+					"instance": "pr1971-r3-vi-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r2-vi-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "f3b7a1bb303a5c7e3f9e7c04045f906997f60d6768ba0ce6bc9e9b2dac59e11a",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r2-vi-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-vi-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "34aa42110ddc1c0615cc3bbe7e2cc4fb9039412b6b0f1bd139bc4026c419b6a0",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r3-vi-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119441,37 +119537,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "f6273fc84a377deeb51f218908241d77b38accb1e52a2e97cc563fb6736558b6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-vi-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-vi-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "f3b7a1bb303a5c7e3f9e7c04045f906997f60d6768ba0ce6bc9e9b2dac59e11a",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r2-vi-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "ae9c4754a1f500ada1a28febbda711e5317b22b66d6a31854742efee6fc85263",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 0 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r2-ur-remotecompute-3b3df24653ea",
+					"result": "clean",
+					"instance": "pr1971-r3-ur-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r2-ur-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "01d4d264ed9d1e42fca36fb48765fe334b80c9e23d2861f7459710d948018cb1",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r2-ur-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-ur-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "05c72e2449f06264bbaebc20bac56edb390758bb1267bb16312beb510fcbfc04",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119499,37 +119619,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "ae9c4754a1f500ada1a28febbda711e5317b22b66d6a31854742efee6fc85263",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-ur-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-ur-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "01d4d264ed9d1e42fca36fb48765fe334b80c9e23d2861f7459710d948018cb1",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r2-ur-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
-			"target_sha256": "7bc566bcc6fac17be9078bc0d971aff6ef6fbb707a750d299946b56295ed8734",
+			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+			"target_sha256": "66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
 				"date": "2026-11-18",
-				"note": "PR #1971: the delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at e69d3c1a74; round 2 corrected 0 string(s) it rejected."
+				"note": "PR #1971: the round-3 delta was translated by the PR's remediation coder session (deepseek/deepseek-flash) at 45d350292e; this audit retranslated nothing."
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r2-hi-remotecompute-3b3df24653ea",
+					"result": "clean",
+					"instance": "pr1971-r3-hi-remotecompute-e3f2fc029be5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r2-hi-remotecompute-3b3df24653ea.json",
-					"receipt_sha256": "8ff8308d8a10c3d57c2e44ec37250d44dbd43540d54e18fbe70946520f40e3f5",
-					"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
-					"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r2-hi-remotecompute-3b3df24653ea/record.json"
+					"receipt": "i18n/receipts/pr1971-r3-hi-remotecompute-e3f2fc029be5.json",
+					"receipt_sha256": "15630997c4eb137000f43fed425bc22940eb5ee965bf3a3999e665ba05be6301",
+					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r3-hi-remotecompute-e3f2fc029be5/record.json"
 				}
 			],
 			"status": "audited",
@@ -119554,6 +119698,30 @@
 							"receipt_sha256": "25cd44c44a198147c1d53a1b26fde8fed833fb6cd6a06bc4630e6357cda1f3bb",
 							"scope": "PR #1971 round 1: all 77 ui.chat.remote_compute keys in hi, claim-sensitive binding/tier copy, plural categories, RTL and cell budgets",
 							"note": "PR #1971: translator = the PR's coder session (feat commit 44f676535); independent audit i18n-auditor session 382f3765de49; rejected strings corrected in-round, receipts under i18n/receipts/"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+					"target_sha256": "7bc566bcc6fac17be9078bc0d971aff6ef6fbb707a750d299946b56295ed8734",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r2-hi-remotecompute-3b3df24653ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r2-hi-remotecompute-3b3df24653ea.json",
+							"receipt_sha256": "8ff8308d8a10c3d57c2e44ec37250d44dbd43540d54e18fbe70946520f40e3f5",
+							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
+							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r2-hi-remotecompute-3b3df24653ea/record.json"
 						}
 					],
 					"status": "audited"
