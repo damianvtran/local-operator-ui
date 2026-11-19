@@ -9297,31 +9297,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "1da50508c3c65fcd82aa9bfb67bd1b606ab5b25255883b4036361332e593832e",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "87e0b25c971c7fcb3dbdcb169a8ebdba2cdfc79bb8b5cfbff173b6dc18fe2e57",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-es",
+					"instance": "pr1981-r2-es-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-es.json",
-					"receipt_sha256": "c3c196fdd44e8e69f86313b935fd352b7340b5b12ecb587146aa1e35b40fc807",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-es.json"
+					"receipt": "i18n/receipts/pr1981-r2-es-copy-448ec44e.json",
+					"receipt_sha256": "c001b211d6edd6001a1449b62a48975b6262ad99a2461edd00563b12874e7e6c",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-es-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -9444,6 +9444,30 @@
 							"receipt_sha256": "24317f545db19968092c378c1f4208c8bed19ff422296dce5255c94b8de24db1",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/es/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-es/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "1da50508c3c65fcd82aa9bfb67bd1b606ab5b25255883b4036361332e593832e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-es.json",
+							"receipt_sha256": "c3c196fdd44e8e69f86313b935fd352b7340b5b12ecb587146aa1e35b40fc807",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-es.json"
 						}
 					],
 					"status": "audited"
@@ -22818,31 +22842,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "9d57752fb1c806c4b7d2746f4e9781754979a952e201e3bc1dfbc20779fc6ecd",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "b717ec88ddf3616db1fa870a4ddcb013e30979de1d6b2dab4d6ca84d2dd2c0fd",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-fr",
+					"instance": "pr1981-r2-fr-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-fr.json",
-					"receipt_sha256": "3bb9fc0a57f075339e8ed98ba37b1e4dfb60afecb97e71fc59c454b187794971",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-fr.json"
+					"receipt": "i18n/receipts/pr1981-r2-fr-copy-448ec44e.json",
+					"receipt_sha256": "6cdccbcb303231deba4fc6047f8e4cd6a7610dd688ab3e2f29000a5478254290",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-fr-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -22965,6 +22989,30 @@
 							"receipt_sha256": "fb7ecbf4ed8220a5b6053027e769aacd69f95ae2adc7183ca6f1ac746dfb78b7",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/fr/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-fr/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "9d57752fb1c806c4b7d2746f4e9781754979a952e201e3bc1dfbc20779fc6ecd",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-fr.json",
+							"receipt_sha256": "3bb9fc0a57f075339e8ed98ba37b1e4dfb60afecb97e71fc59c454b187794971",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-fr.json"
 						}
 					],
 					"status": "audited"
@@ -36477,31 +36525,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "fb2aa62c924426ee9ee8d3588a88af5b70686a9048bd9c1d3e40718b78a4ce01",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "97957e62af924deeda08b1ec7ede9077f092c252f8c0cb0dfe5e6062caa0cafd",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-hi",
+					"instance": "pr1981-r2-hi-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-hi.json",
-					"receipt_sha256": "237173e68ef4e9963741d013b95411771d1f56beb25e210a9ce80d903446fb89",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-hi.json"
+					"receipt": "i18n/receipts/pr1981-r2-hi-copy-448ec44e.json",
+					"receipt_sha256": "758b648ad039faedd3459864520747bc0c23dfea93d55aeec25291e72927fe7c",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-hi-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -36624,6 +36672,30 @@
 							"receipt_sha256": "2dbc740857051e68a9246deed45a4f7f1bf3b57e89b20bae31f36d9e1d7f627a",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/hi/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-hi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "fb2aa62c924426ee9ee8d3588a88af5b70686a9048bd9c1d3e40718b78a4ce01",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-hi.json",
+							"receipt_sha256": "237173e68ef4e9963741d013b95411771d1f56beb25e210a9ce80d903446fb89",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-hi.json"
 						}
 					],
 					"status": "audited"
@@ -49698,31 +49770,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "6993a2a03fe8baf52bc21d7687603d07da21235df1b98d898696cc76dde39b0e",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "471e410e0f5ac26cacc3ced9cb04d65017bc540aa4411e5d0fc063c48a6c903a",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-ru",
+					"instance": "pr1981-r2-ru-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-ru.json",
-					"receipt_sha256": "62e40d92e74a3ac6484778353b36d89f8cd545c34c12c343eecca19913049eb5",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-ru.json"
+					"receipt": "i18n/receipts/pr1981-r2-ru-copy-448ec44e.json",
+					"receipt_sha256": "59d96b41ef11f69c96010475969548f3d57f6b63a39e4e68cb029be372c61b15",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-ru-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -49845,6 +49917,30 @@
 							"receipt_sha256": "8f2e23f57222a41b340148e6a9eaf77fd8cbb6fc45b917cc223107a1f0f97afe",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/ru/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-ru/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "6993a2a03fe8baf52bc21d7687603d07da21235df1b98d898696cc76dde39b0e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-ru.json",
+							"receipt_sha256": "62e40d92e74a3ac6484778353b36d89f8cd545c34c12c343eecca19913049eb5",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-ru.json"
 						}
 					],
 					"status": "audited"
@@ -63112,31 +63208,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "612731b2d4ebf9f7a47e40b1518197cae304ad4c8ac51548e60d9a803b9229cd",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "55c674a73a083430c6ae48b39df0c782b844e43b5004c9cff801fe39c4e24b2f",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-ur",
+					"instance": "pr1981-r2-ur-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-ur.json",
-					"receipt_sha256": "306fd8465739d07557ee87083972501c4cdd9eb90e2db8b724896d5528d010f4",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-ur.json"
+					"receipt": "i18n/receipts/pr1981-r2-ur-copy-448ec44e.json",
+					"receipt_sha256": "b77f62109f72884e91954d5f7581a8811e1c65b3d113e6c31c83920446fe579f",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-ur-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -63259,6 +63355,30 @@
 							"receipt_sha256": "f4d1294dc06f3c53e272fca577bab951ecdb3c38325f3bec2a41504dc3b8642d",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/ur/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-ur/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "612731b2d4ebf9f7a47e40b1518197cae304ad4c8ac51548e60d9a803b9229cd",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-ur.json",
+							"receipt_sha256": "306fd8465739d07557ee87083972501c4cdd9eb90e2db8b724896d5528d010f4",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-ur.json"
 						}
 					],
 					"status": "audited"
@@ -76591,31 +76711,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "336f9962652743374299c0826945bde3a92270e4ee31475de832fc8e44630b64",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "c7b91e4fec361d5df615ae19f30aad2a1c2804438e2a0bf0658c09fa1fe42362",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "ff66daec882c-pr1832-r2-vi",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r2-vi-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-vi.json",
-					"receipt_sha256": "ee44b4f8816a7947c7e4170b4c643c2ca139e01c3afb784e9fa06b4b49063b2d",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-vi.json"
+					"receipt": "i18n/receipts/pr1981-r2-vi-copy-448ec44e.json",
+					"receipt_sha256": "5e26ffd98fd01977e2bd2d961a58790f5eb3d643a23c7d93d2e76a78b8da6bb5",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-vi-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -76738,6 +76858,30 @@
 							"receipt_sha256": "66c8739ca64f4563fb17e628391737489bd04cb5e5ce3e890e73d1ac4b57fd76",
 							"scope": "Post-merge re-audit (#1554 x main e8f34569c5b): 5 receipt keys (inspect_body, inline_image_receipt, previous_chunk, next_chunk, chunk_number) re-read linguistically; main-side bytes covered by main's row",
 							"note": "Post-merge re-audit by reviewer session 5b6b5bce99e4: 5 receipt keys byte-identical to audited bbb6cd2952f, rest byte-identical to main e8f34569c5b. Evidence: i18n/audits/evidence/vi/ui.ownerAudit/owneraudit-receipt-merge1554-audit-5b6b5bce99e4-merge1554-vi/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "336f9962652743374299c0826945bde3a92270e4ee31475de832fc8e44630b64",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "ff66daec882c-pr1832-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-vi.json",
+							"receipt_sha256": "ee44b4f8816a7947c7e4170b4c643c2ca139e01c3afb784e9fa06b4b49063b2d",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-vi.json"
 						}
 					],
 					"status": "audited"
@@ -90772,31 +90916,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.ownerAudit",
-			"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
-			"target_sha256": "112264ae5562657af7173ab9fb1972d857a14392283ed03b9eab1c92998876c7",
+			"source_sha256": "f143ad7cb33ca8fb1a568144097fd82ca264447e2bb999cea2be6e144448f6b2",
+			"target_sha256": "ea07ce5367c9fedc4b2a588ea4922dbb1af4d9bc79b6ed524b7bcdf03033eda5",
 			"translator": {
-				"agent": "coder-baa670dd72df",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-01",
-				"scope": "Two-key addition only: older_replies and empty_replies; existing values retained unchanged. Fallback model per runtime model-switch notice."
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18",
+				"note": "PR #1981: one-key change, ui.ownerAudit.held_review (924551c6ce; hi revised in fc873f42a2 for copy C10); other values unchanged from prior translators."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-18",
 					"result": "clean",
-					"instance": "ff66daec882c-pr1832-r2-zh-cn",
+					"instance": "pr1981-r2-zh-CN-copy-448ec44e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-zh-cn.json",
-					"receipt_sha256": "e3cabaddea93000b7cb683cea05c59d6d21b658ac95b1931e16d2f9cc5dd307d",
-					"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
-					"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-zh-cn.json"
+					"receipt": "i18n/receipts/pr1981-r2-zh-CN-copy-448ec44e.json",
+					"receipt_sha256": "01e89bd0435b41447070a4918eb575c5eebe029d229ea2a36e45adae02b038e5",
+					"scope": "PR #1981 copy-review round 2 at fc873f42a2: held_review only; other 43 pairs byte-identical to base 1fb3d656c3",
+					"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-zh-CN-copy-448ec44e.json"
 				}
 			],
 			"status": "audited",
@@ -90943,6 +91087,30 @@
 							"receipt_sha256": "2b50fddb89bf160c9fa9ca5cf340e1c11cd00784320ae497db0402a6bb4173d0",
 							"scope": "Narrow re-audit of bc53982680e (ZH1/ZH2 applied): chunk_number and inline_image_receipt re-read linguistically; other 38 values byte-identical to 738df0eb884 (audited 5b6b5bce99e4)",
 							"note": "Re-audit by reviewer session cd08059be49d: ZH1/ZH2 fixed, en unchanged, 38 values byte-identical to 738df0eb884. Evidence: i18n/audits/evidence/zh-CN/ui.ownerAudit/owneraudit-receipt-merge1554-audit-cd08059be49d-merge1554-zh-cn/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7e2531bcaf24bd647d1ad0f69ebf793f4c0a8d5ac20c292a2d0548f827b37c0c",
+					"target_sha256": "112264ae5562657af7173ab9fb1972d857a14392283ed03b9eab1c92998876c7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "ff66daec882c-pr1832-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ff66daec882c-pr1832-r2-zh-cn.json",
+							"receipt_sha256": "e3cabaddea93000b7cb683cea05c59d6d21b658ac95b1931e16d2f9cc5dd307d",
+							"scope": "PR #1832 i18n round 2: 19 keys changed vs base 23ec4af967b (ui.ownerAudit share) audited at de18cd95b7c; other pairs byte-identical to base",
+							"note": "PR #1832 i18n audit r2, reviewer ff66daec882c; receipt i18n/receipts/ff66daec882c-pr1832-r2-zh-cn.json"
 						}
 					],
 					"status": "audited"
@@ -119155,6 +119323,405 @@
 							"receipt_sha256": "d1c9e6d65c526130a6bfa40183a7bb5af889c854362688bcc0d4f7657cb35cb5",
 							"scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 28 changed ui.community values (round-1 suggestions applied); rest byte-identical to the round-1 audited bytes",
 							"note": "PR #1973 r2: delta audit of r1-suggested values by fresh reviewer session ef5cbe7f8a91; r1 audit 9bf5768d1c00 of aeecfe4a kept in superseded"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "97f65662ee5e2778d7c0be3d0ddab41e57ab84a582906d41809b52959fe2b2dc",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-es-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-es-copy-c80a86dd.json",
+					"receipt_sha256": "d2163d3ceaae5f7c35231dc972a1cab785386e73600cc5225dc1c51de10981c6",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-es-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "b952bc23aa7c3e63d2f6b78a3bae874f38fbe9c3dd8dee776114c99f992df150",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r2-es-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r2-es-copy-448ec44e.json",
+							"receipt_sha256": "c001b211d6edd6001a1449b62a48975b6262ad99a2461edd00563b12874e7e6c",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-es-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "18aab4a0cb12612757a3459ac13252898523e71881da4c51db5b3358b3dbd0e0",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-fr-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json",
+					"receipt_sha256": "a7811f0597195c04f8c4b9a63e9e3c6d5b5ff455597d46493b3b30205f8d0f39",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters, discarding) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "128e0c84e634c6a66d193154439bd5e2160138163626c543b7325638e85992b7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1981-r2-fr-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r2-fr-copy-448ec44e.json",
+							"receipt_sha256": "6cdccbcb303231deba4fc6047f8e4cd6a7610dd688ab3e2f29000a5478254290",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-fr-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "8c8bb553f955cd4df9ef3efffc3bdf08b656323d46753620d1c8f8a48d3f9d50",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-hi-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json",
+					"receipt_sha256": "dbeffece826f521caf8cf6a6e90ccfdd1923ae366bb2b4e89468b8e219e4505b",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "023f251aff99b1c13f7cfc61bf65c5ee2acf437059c6aa270f54daf848097f38",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1981-r2-hi-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1981-r2-hi-copy-448ec44e.json",
+							"receipt_sha256": "758b648ad039faedd3459864520747bc0c23dfea93d55aeec25291e72927fe7c",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-hi-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "88f17fcec78da4e367b2a82d11dc953d4b0f77d4406445c31137d738659e87ca",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean-with-findings",
+					"instance": "pr1981-r3-ru-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json",
+					"receipt_sha256": "d74ca0115cad925d24d4e2b4dee317c83da88a8f3c4abfc57a5297cf6dfe0fb6",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "01f53412c7a1bf56f59e5daac6044db1327570cbf9e6577b9de66df1f2a1965b",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r2-ru-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r2-ru-copy-448ec44e.json",
+							"receipt_sha256": "59d96b41ef11f69c96010475969548f3d57f6b63a39e4e68cb029be372c61b15",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-ru-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "8f5d0c59afb7be0e68f7f24341bb58039fc863f71da6054f0ff2e3e71238484c",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-ur-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json",
+					"receipt_sha256": "f1fcf29fba9997a971a7eddbcbaa0e1f1417be2a7f3853913d2c9dc571129a37",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "27d23c700ba76953f1a0b2718b0b6ce75f4e1030bd7b0e11d68aef7c06546f4f",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1981-r2-ur-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1981-r2-ur-copy-448ec44e.json",
+							"receipt_sha256": "b77f62109f72884e91954d5f7581a8811e1c65b3d113e6c31c83920446fe579f",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-ur-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "d3afcbd46697a6bdb1f83891e7836942342d0a5052702f8e360a65746b2a9410",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-vi-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json",
+					"receipt_sha256": "ed5bead21b09d599f3cb6b85d12211d4201636761e64faebdaecdddb30bd6954",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "7815984b6a28312070692e76a91cd33cf825a6b6b6a2021949bd0f4b95236147",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r2-vi-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r2-vi-copy-448ec44e.json",
+							"receipt_sha256": "5e26ffd98fd01977e2bd2d961a58790f5eb3d643a23c7d93d2e76a78b8da6bb5",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-vi-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.holds",
+			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+			"target_sha256": "eafacaca15cf013b5134730792dc8bf34a9507230efd1188522ef16e85ac9591",
+			"translator": {
+				"agent": "coder-fa67a4efec8b",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-18"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-18",
+					"result": "clean",
+					"instance": "pr1981-r3-zh-CN-copy-c80a86dd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json",
+					"receipt_sha256": "7f0d360ffdb4fe0e291f6808da3be5842ec26bea3568890a77c4086d57218bbf",
+					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "7ae9c6602f2e20a626710782f01eae941689e960bfebe9ff8c398c9f152551ff",
+					"target_sha256": "bcd9e2bdaf0d5bb7e578454bc717cc276d7ae7afdc514f6477fbb5552dbd471e",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r2-zh-CN-copy-448ec44e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r2-zh-CN-copy-448ec44e.json",
+							"receipt_sha256": "01e89bd0435b41447070a4918eb575c5eebe029d229ea2a36e45adae02b038e5",
+							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
+							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-zh-CN-copy-448ec44e.json"
 						}
 					],
 					"status": "audited"

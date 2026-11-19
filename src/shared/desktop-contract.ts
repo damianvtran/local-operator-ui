@@ -64,6 +64,11 @@ const TEAM_BRIDGE_APPROVAL_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.requests.authorize",
 	"team_bridge.requests.decide",
 	"team_bridge.decisions.list",
+	/* Held messages (local-operator B4b, `/v1/desktop/team-bridge/holds`): the
+	   same committed-owner resolution as approvals, no tenant on the wire. */
+	"team_bridge.holds.list",
+	"team_bridge.holds.deliver",
+	"team_bridge.holds.discard",
 ]);
 const teamBridgeApprovalSelection = z
 	.array(
@@ -4754,6 +4759,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * TEAM BRIDGE HELD MESSAGES (local-operator B4b, operator decision a-3f46):
+	 * the conversation messages this machine's screener is holding, and the
+	 * owner's Deliver / Discard of a releasable one. The writes carry the
+	 * route's own strict body: `conversation_id` and the lowercase sha256 of the
+	 * body the person was shown (`body_sha256`), which the daemon compares with
+	 * the screened bytes and refuses `snapshot_stale` on any difference.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.list"),
+			expected_account_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.enum(["team_bridge.holds.deliver", "team_bridge.holds.discard"]),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
 	 * TEAM BRIDGE APPROVALS (local-operator #4099): the pending requests a
 	 * teammate's agent sent this operator, the two-step human batch decide, and the
 	 * decision ledger. The selection ops carry the operator's EXPLICIT list - the
@@ -8089,6 +8117,12 @@ export function desktopRequestDeadlineMs(
 	// until the person answers it, exactly like the typed approve above.
 	if (op === "team_bridge.requests.authorize")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	// A held message's Deliver/Discard is signed by the operator key off the
+	// daemon's loop, and that signer may wait on the key's own presence policy
+	// (desktop_team_bridge.py `_decide_hold`). The UI raises no prompt of its
+	// own (decision a-856f); it only must not time out before the signer does.
+	if (op === "team_bridge.holds.deliver" || op === "team_bridge.holds.discard")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	/*
 	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
 	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
@@ -8224,6 +8258,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.unread",
 	"team_bridge.requests.list",
 	"team_bridge.decisions.list",
+	"team_bridge.holds.list",
 	"team_bridge.directory",
 	"team_bridge.status",
 	"community.communities.list",
@@ -11965,6 +12000,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * Held messages (local-operator B4b). The list takes ONLY
+		 * `expected_account_id` (the route refuses any other query parameter);
+		 * the message id is path-encoded so it can never add a segment.
+		 */
+		case "team_bridge.holds.list":
+			return {
+				path: `/v1/desktop/team-bridge/holds?${new URLSearchParams({ expected_account_id: request.expected_account_id })}`,
+				method: "GET",
+			};
+		case "team_bridge.holds.deliver":
+		case "team_bridge.holds.discard":
+			return {
+				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					conversation_id: request.conversation_id,
+					body_sha256: request.body_sha256,
+				},
+			};
 		case "team_bridge.requests.authorize":
 			return {
 				path: "/v1/desktop/team-bridge/requests/decide/authorize",

@@ -116,8 +116,10 @@ export function notDecidableReason(
 ): NotDecidableReason | null {
 	if (row.decidable) return null;
 	// No local ask: the request reached the hub but no card was raised on THIS
-	// machine (another device holds it, or it was screened out). Otherwise the
-	// card exists but is not open (snoozed, expired, cancelled).
+	// device (another device holds it, or this device's screener did not admit
+	// it - a HELD message is listed, and decided, in the "Held messages"
+	// section below, never here). Otherwise the card exists but is not open
+	// (snoozed, expired, cancelled).
 	return row.ask === null ? "no_card" : "not_open";
 }
 

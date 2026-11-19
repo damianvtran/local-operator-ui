@@ -17,7 +17,7 @@
 	"ui.ownerAudit.admitted": "Được chánh văn phòng của bạn tiếp nhận",
 	"ui.ownerAudit.rejected": "Bị bộ lọc của chánh văn phòng của bạn từ chối",
 	"ui.ownerAudit.not_screened": "Chưa được chánh văn phòng của bạn lọc",
-	"ui.ownerAudit.held_review": "Đang giữ lại chờ bạn xem xét trong phiên của chánh văn phòng",
+	"ui.ownerAudit.held_review": "Đang giữ lại chờ bạn xem xét trong Phê duyệt của Team Bridge",
 	"ui.ownerAudit.screening": "Chánh văn phòng của bạn đang lọc",
 	"ui.ownerAudit.screening_retry": "Chánh văn phòng của bạn chưa thể lọc; đang thử lại",
 	"ui.ownerAudit.delivery_pending": "Đã lọc; đang chờ chuyển tới chánh văn phòng của bạn",

@@ -53,6 +53,11 @@ type Counts = {
 	 * badge from the unread total (approvals decision (a), design D1).
 	 */
 	teamBridgeRequests?: number;
+	/**
+	 * Releasable held messages (B4b). Non-zero advertises
+	 * `team_bridge_hold_release` and joins the requests in the one badge.
+	 */
+	teamBridgeHolds?: number;
 	/** Draw a passkey hold and a held popup beside the approvals. */
 	waits?: boolean;
 };
@@ -83,6 +88,7 @@ const route =
 						team_bridge: 1,
 						team_bridge_conversations: 1,
 						team_bridge_conversation_owner_guard: 1,
+						...(counts.teamBridgeHolds ? { team_bridge_hold_release: 1 } : {}),
 					},
 				});
 			case "aida.status":
@@ -157,6 +163,27 @@ const route =
 					pending_count: counts.teamBridgeRequests ?? 0,
 					next_cursor: null,
 					has_more: false,
+				});
+			case "team_bridge.holds.list":
+				return ok({
+					enabled: true,
+					key_protection: "hardware",
+					items: Array.from(
+						{ length: counts.teamBridgeHolds ?? 0 },
+						(_, index) => ({
+							message_id: `bcmsg_story${index}`,
+							conversation_id: "bcv_storyconv",
+							seq: index + 1,
+							held_at: "2026-11-17T09:00:00Z",
+							kind: "owner_decision",
+							hold_code: "model_hold",
+							releasable: true,
+							can_deliver: true,
+							can_discard: true,
+							deliver_until: "2026-11-24T09:00:00Z",
+							decision: null,
+						}),
+					),
 				});
 			case "sidebar_layout.get":
 				return ok({ layout: null });
@@ -358,6 +385,21 @@ export const MoreOpenRequestsWaiting: Story = {
 	render: () => (
 		<Scene
 			counts={{ ...SMALL, teamBridgeRequests: 2 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
+};
+
+/**
+ * Held messages only (B4b, UX U1): 12 releasable holds and no requests. The
+ * badge counts the holds and the row's accessible name says "12 items
+ * waiting", never "requests".
+ */
+export const MoreOpenHeldWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeHolds: 12 }}
 			collapsed={false}
 			moreOpen
 		/>
