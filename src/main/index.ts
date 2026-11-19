@@ -147,11 +147,22 @@ import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
 import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
+	quickSendConfigDir,
 	readQuickSendValue,
 	watchLocalConfig,
 	watchQuickSend,
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
+import {
+	MESH_PAIRING_DEBUG_SWITCHES,
+	MESH_PAIRING_PROBE_WORLD_ID,
+	MeshPairingConfirmations,
+	type PairingAnswerHost,
+	answerMeshPairing,
+	confirmMeshPairing,
+	meshPairingEligibility,
+	refusalEnv,
+} from "./mesh-pairing-attest";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { installTypeOfServiceGuard } from "./net-tos-guard";
 import {
@@ -3793,6 +3804,38 @@ app
 			cache: linkPreviewArtifacts,
 		});
 
+		/*
+		 * Mesh pairing confirmations (security review round 1, US-R1-1): one
+		 * outstanding token per window, bound to the sending document. The document
+		 * GENERATION is main's count of cross-document commits and renderer losses on
+		 * that webContents, so a token minted for one loaded page cannot be spent by
+		 * the next even where Chromium reuses the frame host (same frame token).
+		 * Listeners attach on the first read - generation 0 is "the page that asked
+		 * first" - and every bump also burns that window's token outright.
+		 */
+		const meshPairingConfirmations = new MeshPairingConfirmations();
+		const pairingDocumentGenerations = new WeakMap<
+			Electron.WebContents,
+			number
+		>();
+		const pairingDocumentGeneration = (contents: Electron.WebContents) => {
+			const known = pairingDocumentGenerations.get(contents);
+			if (known !== undefined) return known;
+			pairingDocumentGenerations.set(contents, 0);
+			const id = contents.id;
+			const bump = () => {
+				pairingDocumentGenerations.set(
+					contents,
+					(pairingDocumentGenerations.get(contents) ?? 0) + 1,
+				);
+				meshPairingConfirmations.forget(id);
+			};
+			contents.on("did-navigate", bump);
+			contents.on("render-process-gone", bump);
+			contents.once("destroyed", () => meshPairingConfirmations.forget(id));
+			return 0;
+		};
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3856,6 +3899,131 @@ app
 			 * gate as every other channel above it.
 			 */
 			linkPreview,
+			/*
+			 * Main's own mesh pairing ops (`mesh-pairing-attest.ts`): the launch's
+			 * static eligibility, the one-shot confirmation (click-provenance gate,
+			 * isolated-world activation pre-filter, then the person's approval of
+			 * the exact answer on a native sheet built from main's own read), and
+			 * the answer (consume for the identical answer, re-check, attest over
+			 * `mesh-pairing.sock`, then this same forwarder). ONLY the
+			 * main window may confirm or answer (the tray lives there; the mini view
+			 * has no pairing card), so the sender is re-checked against it alone.
+			 */
+			async (event, pairingRequest) => {
+				const launchFacts = () => ({
+					platform: process.platform,
+					packaged: app.isPackaged,
+					/*
+					 * argv PLUS any debug switch main appended to Chromium's own
+					 * command line at runtime (`app.commandLine.appendSwitch`), which
+					 * `process.argv` never shows.
+					 */
+					argv: [
+						...process.argv,
+						...MESH_PAIRING_DEBUG_SWITCHES.filter((name) =>
+							app.commandLine.hasSwitch(name.slice(2)),
+						),
+					],
+					/*
+					 * Refusal-only: this env feeds nothing but the `dev_flag` check in
+					 * `pairingStaticRefusal`, which REFUSES when a driver variable is
+					 * set. So unlike the launch facts above (window mode, driver
+					 * arming), where a cwd `.env` must not be able to ADD anything and
+					 * `launchEnv` alone is the safe read, here the safe read is the
+					 * superset of the launch snapshot and the folded env: the snapshot
+					 * alone would miss a driver variable a `.env` added and so weaken
+					 * the refusal. `refusalEnv` keeps any non-empty value per key, so
+					 * a `.env` line blanking a launch-time driver variable cannot mask
+					 * it either: a driver variable set in EITHER env refuses.
+					 */
+					env: refusalEnv(launchEnv, process.env),
+					windowMode: windowLaunch.mode,
+				});
+				if (pairingRequest.op === "pairings.eligibility")
+					return meshPairingEligibility(launchFacts());
+				const owner = mainWindow;
+				// Re-read on every call: the window may close, or the sender's
+				// document change, between the confirmation and the answer.
+				const admitted = () =>
+					owner !== null &&
+					!owner.isDestroyed() &&
+					isAdmittedSender(event, [{ window: owner, url: rendererUrl }]);
+				const host: PairingAnswerHost = {
+					facts: () => ({
+						...launchFacts(),
+						window:
+							admitted() && owner
+								? {
+										visible: owner.isVisible(),
+										minimized: owner.isMinimized(),
+										focused: owner.isFocused(),
+										devToolsOpened: owner.webContents.isDevToolsOpened(),
+										debuggerAttached: owner.webContents.debugger.isAttached(),
+									}
+								: null,
+					}),
+					document: () => {
+						const frame = event.senderFrame;
+						if (!admitted() || !owner || !frame || frame.isDestroyed())
+							return null;
+						return {
+							webContentsId: event.sender.id,
+							processId: frame.processId,
+							frameToken: frame.frameToken,
+							generation: pairingDocumentGeneration(owner.webContents),
+						};
+					},
+					/*
+					 * In an ISOLATED world (code review F2): a page script can redefine
+					 * `navigator.userActivation` in its own world, not in this one.
+					 * `userGesture` is FALSE on purpose: `true` would GRANT the page an
+					 * activation, which is exactly the fact being asked about.
+					 */
+					userActivation: async () =>
+						owner !== null && !owner.isDestroyed()
+							? (await owner.webContents.executeJavaScriptInIsolatedWorld(
+									MESH_PAIRING_PROBE_WORLD_ID,
+									[{ code: "navigator.userActivation.isActive === true" }],
+									false,
+								)) === true
+							: false,
+					/*
+					 * Main's OWN read of the cards (security review round 2, US-R2-1):
+					 * the sheet's labels and the answerability check never come from
+					 * the renderer's request.
+					 */
+					readPairings: () => sendDesktop({ op: "pairings.list" }),
+					/*
+					 * The TRUSTED CONTROL: a native message box attached to the main
+					 * window (window-modal - a sheet on macOS), which no page script,
+					 * CDP session or dev driver can click. Button 0 is the action and
+					 * the ONLY answer that approves. Cancel is the default AND the
+					 * cancel button, so a held or repeated Return from the code field
+					 * and Escape both dismiss rather than approve. `signal` closes it
+					 * at the card's expiry (Electron resolves that as the cancel id).
+					 */
+					showSheet: async (sheet, signal) => {
+						if (owner === null || owner.isDestroyed()) return false;
+						const { response } = await dialog.showMessageBox(owner, {
+							type: "question",
+							buttons: [sheet.actionLabel, sheet.cancelLabel],
+							defaultId: 1,
+							cancelId: 1,
+							noLink: true,
+							message: sheet.message,
+							detail: sheet.detail,
+							signal,
+						});
+						return response === 0 && !signal.aborted;
+					},
+					confirmations: meshPairingConfirmations,
+					configDir: () => quickSendConfigDir(),
+					forward: sendDesktop,
+				};
+				return pairingRequest.op === "pairings.confirm"
+					? confirmMeshPairing(pairingRequest, host)
+					: answerMeshPairing(pairingRequest, host);
+			},
 		);
 
 		// Both app documents may read recording state; only the main window's

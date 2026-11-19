@@ -81,6 +81,7 @@ import {
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
 import { MeshList } from "./mesh-list";
+import type { MeshPairingSectionProps } from "./mesh-pairing-card";
 import { MeshRevoked } from "./mesh-revoked";
 import { deviceSessionTotal } from "./mesh-sessions";
 import {
@@ -104,6 +105,7 @@ import {
 	type MeshSessionRow,
 	deviceIdentityText,
 } from "./mesh-types";
+import { useMeshPairingTray } from "./use-mesh-pairing-tray";
 
 const PRESENTATIONS = ["canvas", "list"] as const;
 export type Presentation = (typeof PRESENTATIONS)[number];
@@ -208,6 +210,8 @@ export const MeshSurface: FC<{
 		 * route that accepts the reviewed-digest body for `profile_save`.
 		 */
 		profileApprovals: boolean;
+		/** `features.mesh_pairing`: the pairing cards' bundle; absent = no cards. */
+		pairings?: MeshPairingSectionProps;
 	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
@@ -527,6 +531,7 @@ export const MeshSurface: FC<{
 			 * the operator.
 			 */}
 			<MeshApprovalsTray
+				pairings={approvals.pairings}
 				rows={approvals.rows}
 				error={approvals.error}
 				pending={approvals.pending}
@@ -920,6 +925,20 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 				...approvalRefusal(decideApproval.error),
 			}
 		: null;
+	/*
+	 * MESH PAIRING CARDS, on their OWN key (`features.mesh_pairing`) and NOT gated
+	 * on membership: a device joining its first network is in no mesh yet, and
+	 * its card is the one this tab must still show. The joined set lets a joiner's
+	 * closed card say "joined" once the network appears in the mesh read.
+	 */
+	const meshPairingEnabled =
+		enabled &&
+		desktopFeatureState(capabilities.data, "mesh_pairing") === "enabled";
+	const joinedNetworkIds = useMemo(
+		() => new Set((graph?.networks ?? []).map((network) => network.id)),
+		[graph],
+	);
+	const pairings = useMeshPairingTray(meshPairingEnabled, joinedNetworkIds);
 	const approvalsNowSeconds = useMemo(
 		() => Math.floor((approvals.dataUpdatedAt || Date.now()) / 1000),
 		[approvals.dataUpdatedAt],
@@ -1161,6 +1180,7 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 				},
 				onRetry: () => void approvals.refetch(),
 				nowSeconds: approvalsNowSeconds,
+				pairings,
 			}}
 			sessions={sessionRead.data?.rows ?? []}
 			movingSessionId={

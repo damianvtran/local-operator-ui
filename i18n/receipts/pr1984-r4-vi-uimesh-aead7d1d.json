@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation delta audit, round 4, PR #1984",
+  "locale": "vi",
+  "namespace": "ui.mesh",
+  "pr": 1984,
+  "date": "2026-11-19",
+  "head": "a45eeb1196ea8c144094fd29e596a41ce07538f8",
+  "instance": "pr1984-r4-vi-uimesh-aead7d1d",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session aead7d1dac3d, the lopdev team's reviewer role acting as i18n auditor; distinct from the translator (coder, the PR #1984 implementer, anthropic/claude-opus-5-5) and from the round-1/2/3 auditors (ebce28ae95a7, 25a46e05af75, 22d91c4c728f). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar (sha256 below), the core glossary (local-operator origin/main 1d0cd5673, i18n/glossary.md blob e3cdd40c90), the locale style guide and shipped ui.mesh precedent; no MT. The auditor made no catalogue edits; it authored only these receipts and the ledger rows ledger-assemble derived from them.",
+    "instance": "pr1984-r4-vi-uimesh-aead7d1d"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes at a45eeb1196: key set equals English (384); ICU parse OK for all 384 keys (@formatjs/icu-messageformat-parser) with argument/select/plural/tag signature equal to English; plural arms are valid CLDR categories incl. other; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC. Delta keys: action.confirm is byte-equal to sheet.button.join; every admit/confirm/decline arm of error.foreground/changed/devtools/sheet_open quotes that locale's action.* label exactly, in error.foreground's quotation marks, with one shared lead sentence; removed keys absent; every non-delta key byte-identical to 63ad8010c1."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Meaning: offers_incoming/_none word the inviter's list as an OFFER (never 'will share'), distinct from sheet.shares_outgoing's frozen grant; offers_final_choice says the inviter decides at the end; waiting_confirmation does not claim the action is under way; error.devtools names DevTools and a debugger, not window focus."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Round-3 V1/V2 verified at this head: sheet.message.joiner_admit = 'Tham gia {network} qua {peer}?' (matches title.joiner's qua); error.closed ends 'không được ghi nhận'."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Retained, not re-read semantically: every ui.mesh.pairing.* value outside the 12 delta keys checked here (62 keys) is byte-identical to 63ad8010c1 (audited in PR #1984 i18n rounds 1-3, comments 6995348955, 6996429024, 6997397720); the 310 non-pairing values are byte-identical to merge base c8e9c494b6, whose bytes equal the target_sha256 of the superseded i18n-audit-uimesh-*-59a1adac0231 audits on this row."
+    }
+  ],
+  "scope": "PR #1984 round 4: semantic delta audit of 63ad8010c1..a45eeb1196 in ui.mesh (sheet.share_item, sheet.offers_incoming, sheet.offers_incoming_none, sheet.offers_final_choice, action.waiting_confirmation, error.devtools, error.sheet_open (added); action.confirm, error.foreground, error.changed (changed: confirm arm = Join); sheet.shares_incoming(_none) (removed); vi also sheet.message.joiner_admit (V1) and error.closed (V2)); full-file mechanical pass; remaining values retained by byte identity",
+  "binding": "Verified on the clean working tree at a45eeb1196ea8c144094fd29e596a41ce07538f8: target src/i18n/catalogues/vi/ui.mesh.json sha256 14f4cc34832779fcdee5cea3a18225df9fe82f5b91cc29ceca49ef2498f6819b; English sha256 ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2; context sha256 63c2ff897e36c7d46aacfa506b7ef16ab98344cf833696126a0d58192dea9ca2.",
+  "en_sha256": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2",
+  "sha256": {
+    "vi": "14f4cc34832779fcdee5cea3a18225df9fe82f5b91cc29ceca49ef2498f6819b",
+    "en": "ca25148f52940054622a90a2250b3050c038be5b72f6751e6019b00207a317d2"
+  },
+  "context_sha256": "63c2ff897e36c7d46aacfa506b7ef16ab98344cf833696126a0d58192dea9ca2"
+}

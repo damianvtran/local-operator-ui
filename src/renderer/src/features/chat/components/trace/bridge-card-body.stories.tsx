@@ -43,6 +43,13 @@ const LONG = [
 	"",
 	"Last line of the message: END.",
 ].join("\n");
+/** Short lines under the character limit: folds by line count (D3). */
+const SHORT_LINES = Array.from(
+	{ length: 20 },
+	(_, index) => `- [ ] step ${index + 1}: check the box`,
+).join("\n");
+/** One paragraph over the character limit: the prose cut ends in "…" (D3). */
+const PROSE = `${"The rollback plan is the same as last time, so revert the deploy first and then restore the flags. ".repeat(7)}Last words: END.`;
 
 const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 	before: null,
@@ -55,6 +62,16 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 	long: answer({
 		v: 1,
 		items: [item({ state: "admitted", body: LONG, source: "hub" })],
+		more: 0,
+	}),
+	shortLines: answer({
+		v: 1,
+		items: [item({ state: "admitted", body: SHORT_LINES, source: "hub" })],
+		more: 0,
+	}),
+	prose: answer({
+		v: 1,
+		items: [item({ state: "admitted", body: PROSE, source: "hub" })],
 		more: 0,
 	}),
 	held: answer({
@@ -104,7 +121,33 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 		],
 		more: 4,
 	}),
+	/** The #1977 D2 frame: 20 short bodies plus server overflow. */
+	coalescedMany: answer({
+		v: 1,
+		items: Array.from({ length: 20 }, (_, index) =>
+			item({
+				message_id: `bcmsg_${index}`,
+				state: "admitted",
+				body: `Message ${index + 1} of the thread.`,
+			}),
+		),
+		more: 3,
+	}),
 };
+
+/** Press the first toggle matching `selector` once the read has landed. */
+const press =
+	(selector: string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		for (let tries = 0; tries < 50; tries += 1) {
+			const toggle = canvasElement.querySelector<HTMLButtonElement>(selector);
+			if (toggle) {
+				toggle.click();
+				return;
+			}
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+	};
 
 /** The pane exactly as `BridgeIncomingRow` composes it, open. */
 const Pane: FC<{ state: string }> = ({ state }) => {
@@ -159,19 +202,10 @@ export const LongCollapsed: Story = { args: { state: "long" } };
 /** The same body after the reader pressed "Show more" (the story presses it). */
 export const LongExpanded: Story = {
 	args: { state: "long" },
-	play: async ({ canvasElement }) => {
-		for (let tries = 0; tries < 50; tries += 1) {
-			const toggle = canvasElement.querySelector<HTMLButtonElement>(
-				"[data-bridge-body-toggle]",
-			);
-			if (toggle) {
-				toggle.click();
-				return;
-			}
-			await new Promise((resolve) => setTimeout(resolve, 20));
-		}
-	},
+	play: press("[data-bridge-body-toggle]"),
 };
+export const ShortLinesCollapsed: Story = { args: { state: "shortLines" } };
+export const ProseCollapsed: Story = { args: { state: "prose" } };
 export const Held: Story = { args: { state: "held" } };
 export const HeldTransient: Story = { args: { state: "heldTransient" } };
 export const Refused: Story = { args: { state: "refused" } };
@@ -182,6 +216,14 @@ export const UnavailableOffline: Story = {
 	args: { state: "unavailableOffline" },
 };
 export const Coalesced: Story = { args: { state: "coalesced" } };
+export const CoalescedManyCollapsed: Story = {
+	args: { state: "coalescedMany" },
+};
+/** The many-message card after the reader pressed the card's "Show more". */
+export const CoalescedManyExpanded: Story = {
+	args: { state: "coalescedMany" },
+	play: press("[data-bridge-card-toggle]"),
+};
 
 /** Every state on one page, so one navigation captures the whole set. */
 export const AllStates: Story = {

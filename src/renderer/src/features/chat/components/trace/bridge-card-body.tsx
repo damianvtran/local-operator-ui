@@ -9,6 +9,7 @@ import {
 	type BridgeCardBodyItem,
 	bridgeBodyPreview,
 	bridgeCardBodyOf,
+	bridgeCardFold,
 } from "./bridge-receipt-model";
 
 /**
@@ -122,7 +123,35 @@ const Outcome: FC<{ text: string; state: string }> = ({ text, state }) => (
 	</div>
 );
 
-/** One admitted body, folded past the collapse length. */
+/**
+ * The "Show more" / "Show less" control shared by a body's fold and the card's.
+ *
+ * Accent ink (#1977 design round 1, D5): in the meta grey it read as a caption
+ * like the provenance label around it until hovered; the TUI draws this
+ * affordance in `accent` too. `data-*` attributes are passed through so the
+ * two folds stay separately addressable.
+ */
+const FoldToggle: FC<{
+	expanded: boolean;
+	onToggle: () => void;
+	marker: Record<string, string>;
+}> = ({ expanded, onToggle, marker }) => (
+	<button
+		type="button"
+		className={cn(
+			"self-start rounded-sm text-accent text-meta underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+		)}
+		aria-expanded={expanded}
+		{...marker}
+		onClick={onToggle}
+	>
+		{expanded
+			? t("ui.chat.bridgeReceipt.show_less")
+			: t("ui.chat.bridgeReceipt.show_more")}
+	</button>
+);
+
+/** One admitted body, folded past the collapse length or line count. */
 const AdmittedBody: FC<{ body: string }> = ({ body }) => {
 	const [expanded, setExpanded] = useState(false);
 	const preview = bridgeBodyPreview(body);
@@ -147,19 +176,11 @@ const AdmittedBody: FC<{ body: string }> = ({ body }) => {
 				<TeamBridgeMarkdown>{shown}</TeamBridgeMarkdown>
 			</div>
 			{preview.truncated ? (
-				<button
-					type="button"
-					className={cn(
-						"self-start rounded-sm text-ink-dim text-meta underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
-					)}
-					aria-expanded={expanded}
-					data-bridge-body-toggle=""
-					onClick={() => setExpanded((open) => !open)}
-				>
-					{expanded
-						? t("ui.chat.bridgeReceipt.show_less")
-						: t("ui.chat.bridgeReceipt.show_more")}
-				</button>
+				<FoldToggle
+					expanded={expanded}
+					onToggle={() => setExpanded((open) => !open)}
+					marker={{ "data-bridge-body-toggle": "" }}
+				/>
 			) : null}
 		</div>
 	);
@@ -203,10 +224,13 @@ export const BridgeCardBodySection: FC<{
 	const active = enabled && Boolean(sessionId) && Boolean(entryId);
 	// `undefined` = still loading; `null` = the read failed or was malformed.
 	const [answer, setAnswer] = useState<Read | undefined>(undefined);
+	// The card-level fold (D2). Resets with each read, like the body itself.
+	const [cardExpanded, setCardExpanded] = useState(false);
 	useEffect(() => {
 		if (!active || !sessionId) return;
 		let live = true;
 		setAnswer(undefined);
+		setCardExpanded(false);
 		void readBridgeCardBody(sessionId, entryId, transport).then((read) => {
 			if (live) setAnswer(read);
 		});
@@ -236,9 +260,11 @@ export const BridgeCardBodySection: FC<{
 				state="unavailable"
 			/>
 		);
+	const fold = bridgeCardFold(answer.items);
+	const listed = cardExpanded ? answer.items : fold.shown;
 	return (
 		<div className={cn("flex flex-col gap-2")} data-bridge-card-body="">
-			{answer.items.map((item, index) => (
+			{listed.map((item, index) => (
 				<div
 					key={item.messageId}
 					className={cn(index > 0 && "border-hairline border-t pt-2")}
@@ -247,10 +273,22 @@ export const BridgeCardBodySection: FC<{
 					<Item item={item} />
 				</div>
 			))}
-			{answer.more > 0 ? (
+			{/*
+			 * "And N more messages" counts what follows the WHOLE listed run, so
+			 * it is shown only while that run is visible: under the folded card it
+			 * would read as the count of everything not shown and undercount it.
+			 */}
+			{answer.more > 0 && (cardExpanded || fold.hidden === 0) ? (
 				<div className={cn("text-ink-dim text-meta")} data-bridge-body-more="">
 					{t("ui.chat.bridgeReceipt.more", { count: answer.more })}
 				</div>
+			) : null}
+			{fold.hidden > 0 ? (
+				<FoldToggle
+					expanded={cardExpanded}
+					onToggle={() => setCardExpanded((open) => !open)}
+					marker={{ "data-bridge-card-toggle": "" }}
+				/>
 			) : null}
 		</div>
 	);
