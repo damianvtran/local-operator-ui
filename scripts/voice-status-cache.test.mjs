@@ -67,7 +67,7 @@ const statusBody = (sessionId) => ({
 	settings: { max_spoken_chars: 800 },
 });
 
-async function rig({ switchOn = true } = {}) {
+async function rig({ switchOn = true, voiceLevel = 2 } = {}) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -120,7 +120,7 @@ async function rig({ switchOn = true } = {}) {
 	});
 	client.setQueryData(mod.desktopKeys.capabilities, {
 		desktop_available: true,
-		features: { voice: 1 },
+		features: { voice: voiceLevel },
 	});
 	const seen = { current: null };
 	const Probe = () => {
@@ -152,6 +152,26 @@ async function rig({ switchOn = true } = {}) {
 	});
 	return { mod, client, server, seen, mount, unmount, dom };
 }
+
+/*
+ * `features.voice` 2 is the level that has the speech route (the backend's own
+ * comment, local_operator/server/features.py): a renderer on a backend at 1 has
+ * a voice toggle but nothing to hear or speak with, so it shows no voice at all.
+ */
+test("CAPABILITY: a backend on features.voice 1 serves no voice - the status is never read", async () => {
+	const { server, seen, mount, unmount } = await rig({ voiceLevel: 1 });
+	await mount();
+	assert.equal(server.gets, 0, "voice.status is not asked");
+	assert.equal(seen.current.activeSessionId, null);
+	await unmount();
+});
+
+test("CAPABILITY: a backend on features.voice 2 is read", async () => {
+	const { server, mount, unmount } = await rig({ voiceLevel: 2 });
+	await mount();
+	assert.ok(server.gets >= 1);
+	await unmount();
+});
 
 test("Q2: a view remounted after a switch shows the NEW holder, before any refetch", async () => {
 	const { mod, client, server, seen, mount, unmount } = await rig();
@@ -329,7 +349,7 @@ test("PROVIDER: the Settings reader sees provider and readiness with the voice s
 	});
 	client.setQueryData(mod.desktopKeys.capabilities, {
 		desktop_available: true,
-		features: { voice: 1 },
+		features: { voice: 2 },
 	});
 	const root = createRoot(dom.window.document.getElementById("root"));
 	await act(async () => {

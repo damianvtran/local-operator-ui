@@ -173,7 +173,7 @@ window.api = {
 			if (request?.op === "capabilities") {
 				return {
 					status: 200,
-					body: { result: { desktop_available: true, features: { voice: 1 } } },
+					body: { result: { desktop_available: true, features: { voice: 2 } } },
 				};
 			}
 			if (request?.op === "voice.control") {

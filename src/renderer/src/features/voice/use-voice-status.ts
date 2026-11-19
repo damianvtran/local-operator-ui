@@ -38,13 +38,23 @@ export const voiceKeys = {
 	status: ["desktop", "voice"] as const,
 };
 
+/**
+ * `features.voice` 2 is the level with the speech route (`/voice/text` and
+ * `/voice/speech`, backend local_operator/server/features.py): a backend on 1
+ * has no way to hear or speak for the app's own page, so it shows no voice.
+ */
+const VOICE_FEATURE_LEVEL = 2;
+
 /** Whether this backend serves session voice at all. */
 export function useVoiceCapability(): boolean {
 	const capabilities = useDesktopCapabilities();
 	// Two halves, both required: the daemon serves voice AND the person turned it
 	// on in this app (default off).
 	const switchedOn = useVoiceSwitch();
-	return switchedOn && desktopFeatureEnabled(capabilities.data, "voice", 1);
+	return (
+		switchedOn &&
+		desktopFeatureEnabled(capabilities.data, "voice", VOICE_FEATURE_LEVEL)
+	);
 }
 
 /**
@@ -108,7 +118,11 @@ export function useVoiceProviders(): VoiceProviderStatus & {
 	loading: boolean;
 } {
 	const capabilities = useDesktopCapabilities();
-	const available = desktopFeatureEnabled(capabilities.data, "voice", 1);
+	const available = desktopFeatureEnabled(
+		capabilities.data,
+		"voice",
+		VOICE_FEATURE_LEVEL,
+	);
 	const query = useQuery({
 		queryKey: voiceKeys.status,
 		queryFn: readVoiceStatus,

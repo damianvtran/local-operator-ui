@@ -235,6 +235,8 @@ const resolutionFor = (scenario) => {
  */
 const voice = {
 	on: false,
+	/** `features.voice`: 2 is the speech route's level (the backend's own). */
+	level: 2,
 	status: {},
 	edits: [],
 	editReply: null,
@@ -271,7 +273,7 @@ const installBridge = (scenario, asked) => {
 						// `tts` is the gate this surface sits behind; the `older` scenario
 						// withholds it, which is what a daemon predating voicing does.
 						...(scenario === "older" ? {} : { tts: 1 }),
-						...(voice.on ? { voice: 1 } : {}),
+						...(voice.on ? { voice: voice.level } : {}),
 					},
 				});
 			case "voice.status":
@@ -909,6 +911,7 @@ const withVoice = async (t, status, run) => {
 	voice.hold = null;
 	t.after(() => {
 		voice.on = false;
+		voice.level = 2;
 		voice.hold = null;
 		voice.status = {};
 		voice.editReply = null;
@@ -1310,6 +1313,15 @@ test("PROVIDER: it is asked and shown with the hands-free switch OFF, and a back
 	const { container } = await mount(t, "radient-pass");
 	// `ok`, not `equal(…, null)`: a failing equal would print a whole jsdom element.
 	assert.ok(providerBox(container) === null, "no features.voice, no choice");
+});
+
+test("PROVIDER: a backend on features.voice 1 has no speech route, so it shows no choice", async (t) => {
+	await withVoice(t, { provider: null }, async () => {
+		voice.level = 1;
+		const { container } = await mount(t, "radient-pass");
+		assert.ok(providerBox(container) === null, "voice 1 is not enough");
+		assert.equal(voice.gets, 0, "and voice.status is not asked");
+	});
 });
 
 test("SWITCH: the hands-free voice switch lives in the Speech section, with its own words", async (t) => {
