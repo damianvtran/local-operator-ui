@@ -113,8 +113,18 @@ test("summary portrait reserves its box and actions wrap without title offsets",
 		source.includes("flex min-w-0 flex-[1_1_16rem] items-center gap-4"),
 	);
 	assert.ok(source.includes('className="min-w-0 flex-1 space-y-1"'));
+	// The title still truncates rather than wrapping beside the portrait, and its
+	// alignment comes from the shared document-direction token (USER_TEXT_ALIGN)
+	// rather than a hard-coded `text-left`, so an RTL locale ends it at the right.
 	assert.ok(
-		source.includes('className="truncate text-title focus:outline-none"'),
+		source.includes(
+			"className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}",
+		),
+	);
+	assert.ok(
+		/import \{[^}]*\bUSER_TEXT_ALIGN\b[^}]*\} from "@shared\/i18n"/.test(
+			source,
+		),
 	);
 	assert.ok(source.includes('aria-hidden="true"'));
 });
