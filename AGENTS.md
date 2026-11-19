@@ -2300,17 +2300,17 @@ that event's own payload.
 branch. A PR never touches it, and the reviewer round treats a version change
 inside a feature PR as a finding.
 
-**CI checks this**, in the `Version Bump Guard` workflow
-(`.github/workflows/version-bump-guard.yml`, `scripts/version-bump-guard.mjs`). A
+**CI checks this**, in the `version-bump-guard` job of `ci.yml` behind `CI Gate`
+(`.github/workflows/ci.yml`, `scripts/version-bump-guard.mjs`). A
 pull request whose diff changes the `version` line fails unless its title starts
 with `chore(release):`. Dependency and metadata edits to `package.json` are
 unaffected — the guard reads the version line, not the file.
 
 **On a release-bump PR that guard is the only check.** A version-only
-`package.json` diff is classified as a release bump, so every job in `ci.yml` is
-a deliberate skip and that pull request's whole PR-side evidence is
-`Version Bump Guard` plus the `Change Scope` job that decided so (see *Change
-scope*). Do not read those two green checks as a matrix: the review round on the
+`package.json` diff is classified as a release bump, so every scope-flagged job in
+`ci.yml` is a deliberate skip and that pull request's whole PR-side evidence is
+`Version Bump Guard` plus `Change Scope` behind `CI Gate` (see *Change
+scope*). Do not read those green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
@@ -2357,12 +2357,15 @@ look is a rule that fails on the day someone does not.
 
 ### The merge gate (full suite)
 
-**The full desktop suite runs for a pull request EXACTLY ONCE, at the merge gate,
-and a red gate blocks the merge.** Review rounds stay cheap: nothing here runs
-the suite per push (*Targeted tests* above). The trigger is a LABEL EVENT -
+**The full desktop suite and macOS native app proofs run for a pull request
+EXACTLY ONCE, at the merge gate, and a red gate blocks the merge.** Review rounds
+stay cheap: nothing here runs the suite or the four PR native scenes per push
+(*Targeted tests* above). The trigger is a LABEL EVENT -
 `pull_request: [labeled]` in `.github/workflows/full-suite.yml` - and the check
 carrying the verdict is `Merge gate (full suite)`, reported by that workflow's
-`merge-gate` job from the `changes`, `test` and `desktop-tests-result` results.
+`merge-gate` job from the `changes`, `test`, `desktop-tests-result` and
+`native-proofs` results. Mid-review QA can also run `native-proofs` on demand via
+`gh workflow run full-suite.yml --ref <branch> -f native_proofs=true`.
 
 **The procedure.** When the code, QA, design and UX rounds are clean and the head
 is FINAL, run `pnpm merge-gate <n>` (`scripts/merge-gate.mjs`). It creates

@@ -512,10 +512,9 @@ export const FLAGS = [
  * also the order the summary prints). Every flag here must be one of `FLAGS`
  * and the job's `if:` must read each of them (asserted A1).
  *
- * `version-bump-guard` is deliberately absent: it is a job of its own workflow
- * (`version-bump-guard.yml`), gated on the EVENT rather than on a scope flag,
- * so that a PR cannot influence whether the guard that reads its own version
- * line runs. It is not part of this workflow's job set.
+ * `version-bump-guard` is in `UNGATED_JOBS` below rather than here: it is gated
+ * on the EVENT (`pull_request`) rather than on a scope flag, so that a PR
+ * cannot influence whether the guard that reads its own version line runs.
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
@@ -561,6 +560,10 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
+	"version-bump-guard":
+		"PR-only event guard (`if: github.event_name == 'pull_request'`), node " +
+		"builtins only (~15s): a PR must never influence whether the guard reading " +
+		"its own version line runs, and `CI Gate` fails closed if it skips on a PR.",
 	"ci-gate":
 		"always runs: it is the ONE stable check name a ruleset requires, and it " +
 		"reads every other job's result, so a scope flag here would let a skipped " +

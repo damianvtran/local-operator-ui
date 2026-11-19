@@ -827,16 +827,21 @@ test("future asks production and fixture-only deltas select the existing native 
 			"needs.audit.result == 'success' || needs.audit.result == 'skipped'",
 		),
 	);
+	const fullSuite = readFileSync(
+		new URL("../.github/workflows/full-suite.yml", import.meta.url),
+		"utf8",
+	);
+	assert(fullSuite.includes("needs.changes.outputs.pack != 'false'"));
 });
-test("existing job performs real native capture and always uploads measurements", () => {
+test("merge-gate native-proofs job performs real native capture and always uploads measurements", () => {
 	const workflow = readFileSync(
-		new URL("../.github/workflows/ci.yml", import.meta.url),
+		new URL("../.github/workflows/full-suite.yml", import.meta.url),
 		"utf8",
 	);
 	assert(workflow.includes("node scripts/asks-app-regression.mjs"));
 	assert(
 		workflow.includes(
-			"asks-app-regression-${{ github.event.pull_request.number }}",
+			"asks-app-regression-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}",
 		),
 	);
 	const source = readFileSync(
