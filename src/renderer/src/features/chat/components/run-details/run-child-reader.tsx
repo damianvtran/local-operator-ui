@@ -811,7 +811,11 @@ export const RunChildReader = ({
 		onUnopenable();
 	}, [onUnopenable, state]);
 
-	const stateWord = childStateLabel(row);
+	/*
+	 * `"subagent"`: the reader opens a CHILD session over `subagents.transcript`,
+	 * so its state word agrees with the sub-agent noun (`RunRowKind`).
+	 */
+	const stateWord = childStateLabel(row, "subagent");
 	/*
 	 * Whether the brief block has anything left to say: `BriefBlock` renders only
 	 * when the row carries a brief AND the transcript is not already showing it.

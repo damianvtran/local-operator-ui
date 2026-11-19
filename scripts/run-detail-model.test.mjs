@@ -4455,3 +4455,42 @@ test("C3: a row derived once keeps its state CODE and re-spells its label after 
 	assert.equal(childStateLabel(row), "running");
 	assert.equal(childStateLabel(cancelled), CANCELLED_BEFORE_START);
 });
+
+test("FR-W2-1: state words and tallies take the row's kind, so participles can agree with subagent or job", () => {
+	// One row model and one key serve the Subagents roster AND the Jobs section;
+	// French « sous-agent » is masculine and « tâche » feminine, so the caller's
+	// `kind` must reach the select or one catalogue string serves both nouns.
+	const rows = [
+		{ status: "cancelled", stateWord: "cancelled" },
+		{ status: "cancelled", stateWord: "cancelled" },
+	];
+	const tally = { count: 3, markCount: 2, mark: "running" };
+	// English is identical in every arm, including the defaulted/`other` one.
+	for (const kind of ["subagent", "job"]) {
+		assert.equal(subagentTally(rows, undefined, kind), "2 cancelled");
+		assert.equal(childStateLabel(rows[0], kind), "cancelled");
+		assert.equal(busiestClause(tally, kind), ", 2 running");
+	}
+	assert.equal(subagentTally(rows), "2 cancelled");
+	i18n.registerCatalogue("fr", {
+		"ui.chat.run_details.state.cancelled":
+			"{kind, select, subagent {annulé} job {annulée} other {annulé}}",
+		"ui.chat.run_details.tally.cancelled":
+			"{kind, select, subagent {{count, number} annulés} job {{count, number} annulées} other {{count, number} annulés}}",
+		"ui.chat.run_details.tally.running":
+			"{kind, select, subagent {{count, number} lancés} job {{count, number} lancées} other {{count, number} lancés}}",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(subagentTally(rows, undefined, "subagent"), "2 annulés");
+		assert.equal(subagentTally(rows, undefined, "job"), "2 annulées");
+		assert.equal(subagentTally(rows), "2 annulés");
+		assert.equal(childStateLabel(rows[0], "subagent"), "annulé");
+		assert.equal(childStateLabel(rows[0], "job"), "annulée");
+		assert.equal(busiestClause(tally, "job"), ", 2 lancées");
+		assert.equal(busiestClause(tally, "subagent"), ", 2 lancés");
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+});

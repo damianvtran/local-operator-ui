@@ -1,7 +1,6 @@
 import {
 	type DurationUnit,
 	type WithParams,
-	type WithoutParams,
 	currentLocale,
 	formatCompactDuration,
 	formatDate,
@@ -190,7 +189,7 @@ const STATE_WORD_KEY = {
 	failed: "ui.chat.run_details.state.failed",
 	"cancelled before it started":
 		"ui.chat.run_details.state.cancelled_before_start",
-} as const satisfies Record<string, WithoutParams>;
+} as const satisfies Record<string, WithParams>;
 
 /** `{count} <state>` per known word: a full phrase each, so ru/hi can agree. */
 const STATE_TALLY_KEY = {
@@ -206,17 +205,34 @@ const STATE_TALLY_KEY = {
 		"ui.chat.run_details.tally.cancelled_before_start",
 } as const satisfies Record<string, WithParams>;
 
+/**
+ * Which list a state word or tally is painted in: the Subagents roster or the
+ * Jobs section.
+ *
+ * Both lists draw the SAME row (`SubagentRowBody`) over the same `SubagentRow`
+ * and the same state vocabulary, and the row itself does not know which list it
+ * is in — so the caller says. English reads identically for both, but in a
+ * gendered language the participle agrees with the noun the row stands for (fr
+ * « 2 sous-agents annulés » vs « 2 tâches annulées »), and one catalogue string
+ * cannot do both. Every `state.*` / `tally.*` key therefore carries a
+ * `{kind, select, subagent {…} job {…} other {…}}` argument instead of a
+ * duplicated `tally.job.*` family: one key per fact keeps the TUI-parity tables
+ * above single, and a locale that needs no agreement writes one arm three times
+ * (i18n audit FR-W2-1).
+ */
+export type RunRowKind = "subagent" | "job";
+
 const isKnownStateWord = (word: string): word is keyof typeof STATE_WORD_KEY =>
 	Object.prototype.hasOwnProperty.call(STATE_WORD_KEY, word);
 
 /** A row's state word as painted: localized when known, the wire's otherwise. */
-export const stateWordLabel = (word: string): string =>
-	isKnownStateWord(word) ? t(STATE_WORD_KEY[word]) : word;
+export const stateWordLabel = (word: string, kind: RunRowKind): string =>
+	isKnownStateWord(word) ? t(STATE_WORD_KEY[word], { kind }) : word;
 
 /** `3 running` / `1 reticulating`: a count of rows sharing one state word. */
-const stateTally = (count: number, word: string): string =>
+const stateTally = (count: number, word: string, kind: RunRowKind): string =>
 	isKnownStateWord(word)
-		? t(STATE_TALLY_KEY[word], { count })
+		? t(STATE_TALLY_KEY[word], { count, kind })
 		: t("ui.chat.run_details.tally.unrecognised", { count, word });
 
 /**
@@ -3699,7 +3715,16 @@ export const tallyBudget = (paneWidth: number): number => {
  * unrecognised word sort last for the same reason: they are rare, quiet, and
  * neither of them is a count the reader acts on.
  */
-export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
+export function subagentTally(
+	rows: SubagentRow[],
+	maxChars?: number,
+	/*
+	 * Defaults to the roster this function is named for; the Jobs section passes
+	 * `"job"` so its tally's participles agree with « tâche » rather than with
+	 * « sous-agent » (`RunRowKind`).
+	 */
+	kind: RunRowKind = "subagent",
+): string {
 	const segments: string[] = [];
 	for (const status of [
 		"running",
@@ -3724,7 +3749,9 @@ export function subagentTally(rows: SubagentRow[], maxChars?: number): string {
 		for (const row of matched) {
 			words.set(row.stateWord, (words.get(row.stateWord) ?? 0) + 1);
 		}
-		for (const [word, count] of words) segments.push(stateTally(count, word));
+		for (const [word, count] of words) {
+			segments.push(stateTally(count, word, kind));
+		}
 	}
 	return shedSegments(segments, maxChars);
 }
@@ -4083,11 +4110,15 @@ const tallyWord = (tally: ActivityTally): OpenChildStatus | "open" =>
  * that is running. It is the same derivation over the same tally as the clause, so
  * the two strings cannot state different numbers.
  */
-export const busiestClause = (tally: ActivityTally): string =>
+export const busiestClause = (
+	tally: ActivityTally,
+	/* The chip's own family, so the state agrees with its noun (`RunRowKind`). */
+	kind: RunRowKind,
+): string =>
 	tally.markCount === tally.count
 		? ""
 		: t("ui.chat.run_details.chip.busiest", {
-				clause: stateTally(tally.markCount, CHILD_STATE_WORD[tally.mark]),
+				clause: stateTally(tally.markCount, CHILD_STATE_WORD[tally.mark], kind),
 			});
 
 /**
@@ -4389,8 +4420,8 @@ export function runDetailTriggerLabel(
  * here would announce this model's guess about a state it has just said it does
  * not know.
  */
-export function childStateLabel(row: SubagentRow): string {
-	return stateWordLabel(row.stateWord);
+export function childStateLabel(row: SubagentRow, kind: RunRowKind): string {
+	return stateWordLabel(row.stateWord, kind);
 }
 
 /**
