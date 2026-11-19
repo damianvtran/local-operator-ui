@@ -259,6 +259,13 @@ If you encounter issues not covered here, please:
 
 Some general style and interaction UX here is inspired by [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) (`dsh`).
 
+Session voice began as a local rig built around [qwen-audio-agent](https://github.com/QwenAudio/qwen-audio-agent) (QwenAudio) and
+[speech-to-speech](https://github.com/huggingface/speech-to-speech) (Hugging Face), with the Qwen3-TTS, Parakeet and Smart Turn models;
+not reviewed or endorsed by them. The voice that ships today does not run that rig. It listens with
+[Silero VAD](https://github.com/snakers4/silero-vad) (Silero Team) through [vad-web](https://github.com/ricky0123/vad) (ricky0123) on
+[ONNX Runtime Web](https://github.com/microsoft/onnxruntime) (Microsoft), and speaks through Radient or your own ElevenLabs key.
+Licence texts for what the app redistributes are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
 ## License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details. It is open source because AI tools should be accessible to everyone, and your contributions and feedback help make that real.
