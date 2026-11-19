@@ -66,7 +66,7 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { useServerOffline } from "@shared/hooks/use-connectivity-status";
-import { formatDateTime, t } from "@shared/i18n";
+import { formatDateTime, formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
@@ -569,12 +569,15 @@ function condenseSentence(segment: SegmentPlan): string {
 	 */
 	const lead = segment.label ?? t("ui.chat.canonical.condense.turn_condensed");
 	// The frame is keyed too: where the colon sits (French spaces it) and the
-	// closing stop are the language's, not this file's.
+	// closing stop are the language's, not this file's. So is the separator
+	// between the clauses (code review R2): `formatList` is CLDR's narrow list,
+	// `"a, b"` in English exactly as the hard-coded ", " was, `、` in zh-CN and
+	// `، ` in Urdu - no catalogue key, so no translation round.
 	return parts.length === 0
 		? t("ui.chat.canonical.condense.sentence_bare", { lead })
 		: t("ui.chat.canonical.condense.sentence", {
 				lead,
-				parts: parts.join(", "),
+				parts: formatList(parts),
 			});
 }
 

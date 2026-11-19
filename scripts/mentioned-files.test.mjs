@@ -2218,3 +2218,65 @@ test("A23b. nameless artifact names and cues follow the active locale", () => {
 	}
 	assert.equal(fallbackArtifactName("video", D(1)), `Video ${head}`);
 });
+
+/*
+ * Code review R1 (UI #1992): a nameless artifact's save-as name is DATA - it
+ * becomes a file name on disk - so it is built with `translateRaw`. In an RTL
+ * locale `t()` wraps the digest head in U+2068/U+2069, which the displayed
+ * title keeps (it needs them) and the file name must not (`تصویر ⁨9277c383⁩.png`
+ * was the pre-fix output in ur). Walks every shipped locale's BUNDLED catalogue
+ * (`i18n/languages.json`), so a new RTL language is covered without editing
+ * this test.
+ */
+test("A23c. save-as names carry no bidi controls in any shipped locale", () => {
+	const head = D(1).slice(0, 8);
+	const BIDI = /[\u200e\u200f\u2066-\u2069]/;
+	const languages = JSON.parse(
+		readFileSync(new URL("../i18n/languages.json", import.meta.url), "utf8"),
+	).languages;
+	const kinds = ["image", "video", "audio", "file"];
+	let sawIsolatedTitle = false;
+	try {
+		for (const { code, dir } of languages) {
+			setLocale(code);
+			for (const kind of kinds) {
+				const name = artifactFileName({ digest: D(1), kind });
+				assert.doesNotMatch(
+					name,
+					BIDI,
+					`${code} ${kind}: ${JSON.stringify(name)}`,
+				);
+				assert.ok(name.includes(head), `${code} ${kind} keeps the digest head`);
+				// Same words as the displayed title, minus only the controls.
+				const title = fallbackArtifactName(kind, D(1));
+				assert.equal(
+					name.replace(/\.[a-z0-9]+$/, ""),
+					title.replace(new RegExp(BIDI, "g"), ""),
+				);
+				if (dir === "rtl" && BIDI.test(title)) sawIsolatedTitle = true;
+			}
+		}
+	} finally {
+		setLocale("en");
+	}
+	// Negative control: the displayed title in an RTL locale still isolates the
+	// digest, so this test proves the save seam strips what the title keeps.
+	assert.ok(sawIsolatedTitle, "expected an RTL title with bidi isolates");
+	// English is byte-identical to the pre-fix output.
+	assert.equal(
+		artifactFileName({ digest: D(1), kind: "image" }),
+		`Image ${head}.png`,
+	);
+	assert.equal(
+		artifactFileName({ digest: D(1), kind: "video" }),
+		`Video ${head}.mp4`,
+	);
+	assert.equal(
+		artifactFileName({ digest: D(1), kind: "audio" }),
+		`Sound ${head}.mp3`,
+	);
+	assert.equal(
+		artifactFileName({ digest: D(1), kind: "file" }),
+		`File ${head}.bin`,
+	);
+});

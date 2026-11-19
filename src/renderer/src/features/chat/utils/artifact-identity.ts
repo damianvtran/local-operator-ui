@@ -32,11 +32,12 @@
  *   not (see `image-actions.ts` on why a blob-keyed document is a dead tab).
  *
  * Pure so both the transcript scanner (a node-bundled module) and the canvas
- * components can import it. Its one import is `t()`, by relative specifier so a
- * node bundle needs no renderer alias, for the reader-facing names and cues.
+ * components can import it. Its one import is the message module, by relative
+ * specifier so a node bundle needs no renderer alias: `t()` for the
+ * reader-facing names and cues, `translateRaw` for the save-file name.
  */
 
-import { t } from "../../../../../i18n/messages";
+import { t, translateRaw } from "../../../../../i18n/messages";
 
 /** The scheme-ish prefix of an artifact document's `id`/`path`. */
 export const ARTIFACT_PATH_PREFIX = "artifact:";
@@ -104,19 +105,32 @@ export function fallbackArtifactName(
 	kind: ArtifactIdentityKind,
 	digest: string,
 ): string {
+	return fallbackNameWith(false, kind, digest);
+}
+
+/**
+ * The one renderer of a nameless artifact's name, with `raw` choosing the
+ * translator so the displayed title (`t`, with the RTL bidi isolates that keep
+ * the digest head in its own order inside Urdu copy) and the save-file stem
+ * (`translateRaw`, see `artifactFileName`) can never drift to different keys.
+ */
+function fallbackNameWith(
+	raw: boolean,
+	kind: ArtifactIdentityKind,
+	digest: string,
+): string {
 	// The digest head stays a placeholder: `artifactTooltip` finds it in the
 	// title to avoid printing it twice, whatever the language puts around it.
-	const head = digest.slice(0, 8);
-	switch (kind) {
-		case "video":
-			return t("ui.canvas.artifact.fallback_name.video", { digest: head });
-		case "image":
-			return t("ui.canvas.artifact.fallback_name.image", { digest: head });
-		case "audio":
-			return t("ui.canvas.artifact.fallback_name.audio", { digest: head });
-		default:
-			return t("ui.canvas.artifact.fallback_name.file", { digest: head });
-	}
+	const params = { digest: digest.slice(0, 8) };
+	const key =
+		kind === "video"
+			? "ui.canvas.artifact.fallback_name.video"
+			: kind === "image"
+				? "ui.canvas.artifact.fallback_name.image"
+				: kind === "audio"
+					? "ui.canvas.artifact.fallback_name.audio"
+					: "ui.canvas.artifact.fallback_name.file";
+	return raw ? translateRaw(key, params) : t(key, params);
 }
 
 /**
@@ -172,8 +186,13 @@ export function artifactFileName(artifact: {
 	// The fallback name already ends in the digest head, so only a producer's
 	// bare label needs the suffix to stay unique (`Hero-412b2a3d.png`); appending
 	// it to the fallback proposed `Video 9277c383-9277c383.mp4` (UX U1 / QA Q3).
+	// `translateRaw`, NOT `t`: this string leaves the UI as DATA - it becomes
+	// the name of a file on the user's disk - and in an RTL locale `t()` wraps
+	// the digest head in U+2068/U+2069 isolates, which would be saved into the
+	// file name invisibly (`تصویر ⁨9277c383⁩.png`, code review R1). The file
+	// manager applies its own bidi algorithm to the bare name.
 	if (!given)
-		return `${fallbackArtifactName(artifact.kind, artifact.digest)}.${extension}`;
+		return `${fallbackNameWith(true, artifact.kind, artifact.digest)}.${extension}`;
 	return `${given}-${artifact.digest.slice(0, 8)}.${extension}`;
 }
 

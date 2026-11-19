@@ -1176,6 +1176,49 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 	);
 });
 
+/*
+ * Code review R2 (UI #1992): the condensed sentence's clauses are joined by the
+ * locale's own list punctuation (`formatList`), not a Latin ", " inside a
+ * zh-CN sentence. English stays byte-identical (`TURN_CONDENSED_RE` above).
+ */
+test("the settle sentence joins its clauses with the locale's list separator", async (t) => {
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	registerCatalogue("zh-CN", {
+		"ui.chat.canonical.condense.turn_condensed": "⟦zh⟧ condensed",
+		"ui.chat.canonical.condense.sentence": "{lead}⟦zh⟧：{parts}⟦zh⟧。",
+		"ui.chat.canonical.transcript.took_duration": "⟦zh⟧ took {duration}",
+		"ui.chat.canonical.fold.count.actions":
+			"{count, plural, other {⟦zh⟧ # action}}",
+	});
+	setLocale("zh-CN");
+	t.after(() => {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	});
+	const running = [
+		userRecord("zh-user:1"),
+		toolRecord("zh-tool:1", { ts: TS + 1_000, durationS: 3 }),
+	];
+	const mounted = await mount(t, running, { waiting: true });
+	await mounted.render(
+		[
+			...running,
+			answerRecord("zh-answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+		],
+		{},
+	);
+	const said =
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.match(
+		said,
+		/^⟦zh⟧ condensed⟦zh⟧：⟦zh⟧ took [^,、]+、⟦zh⟧ 1 action⟦zh⟧。$/,
+		said,
+	);
+	assert.ok(!said.includes(", "), said);
+});
+
 test("the store's caps evict and forget clears — the delete path's two halves", () => {
 	/*
 	 * AGENT REVIEW ROUND 1, R1-2. The store's contract (`turn-collapse-open.ts`)
