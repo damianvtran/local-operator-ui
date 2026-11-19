@@ -961,7 +961,9 @@ test("the skeleton is painted from the row's own box (change one, change both)",
 	assert.match(settledRow, /ROW_BOX/, "the settled row uses the constant");
 	assert.match(
 		skeleton,
-		/cn\(ROW_BOX, "pl-9"\)/,
+		// Logical `ps-9`, not `pl-9`: the gutter sits on the chevron's side,
+		// which is the right in an RTL locale (rtl-layout.test.mjs).
+		/cn\(ROW_BOX, "ps-9"\)/,
 		"the skeleton uses it too, plus the chevron gutter",
 	);
 	/*

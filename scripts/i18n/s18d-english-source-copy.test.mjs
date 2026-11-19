@@ -158,7 +158,6 @@ const bundle = await build({
 export { InvalidAttachment } from "./${COMPONENTS[1]}";
 export { AgentCreate } from "./${COMPONENTS[3]}";
 export { useI18nLocale } from "./src/renderer/src/shared/i18n/use-locale";
-export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 export { MemoryRouter } from "react-router-dom";
 export { setLocale, registerCatalogue, clearRegisteredCatalogues, t } from "./src/i18n";`,
 		resolveDir: ROOT,
@@ -215,7 +214,6 @@ const {
 	AgentReasoning,
 	InvalidAttachment,
 	AgentCreate,
-	useUiPreferencesStore,
 	MemoryRouter,
 	useI18nLocale,
 	setLocale,
@@ -421,7 +419,6 @@ for (const [name, [element, english, marker, absent]] of Object.entries(
 	SURFACES,
 )) {
 	test(`${name} prints today's English and repaints on a live language switch`, async () => {
-		useUiPreferencesStore.setState({ showAgentReasoning: true });
 		setLocale("en");
 		const mounted = await mount(element());
 		try {

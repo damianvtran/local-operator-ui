@@ -69,7 +69,7 @@ import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { t } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t } from "@shared/i18n";
 import type { MessageKey } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -1173,7 +1173,7 @@ export function AgentsPage() {
 							size="sm"
 							onClick={() => requestGo({ name: null })}
 						>
-							<ArrowLeft className="size-4" />
+							<ArrowLeft className="size-4 rtl:-scale-x-100" />
 							{t("ui.agents.pages.back_to_list")}
 						</Button>
 					</div>
@@ -1809,8 +1809,8 @@ function EmptyPane({
 			/>
 			<div className={column}>
 				<div className={CHAT_MEASURE}>
-					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
-					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
+					{/* `-ms-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ms-2`), so its TEXT is at the box's edge. */}
+					<Button variant="ghost" className="-ms-3" onClick={onAddManually}>
 						{teamMode
 							? t("ui.agents.pages.ask.manual_team")
 							: t("ui.agents.pages.ask.manual_agent")}
@@ -2045,7 +2045,19 @@ function Roster({
 							 */}
 							<span className="flex w-full items-center gap-2">
 								{isProfile ? <RosterMark agentId={row.agent_id} /> : null}
-								<span className="min-w-0 truncate text-body-sm text-ink">
+								{/*
+								 * THE LIVE ROSTER'S NAME AND BLURB SET THEIR OWN DIRECTION (design
+								 * review round 1, D1): the fix first landed on `AgentsSidebarItem`,
+								 * which only the legacy page mounts, so under ur this list still
+								 * clipped an English description from its START ("...rk, delegates
+								 * it"). `dir="auto"` puts the ellipsis at the text's own end;
+								 * `USER_TEXT_ALIGN` keeps the edge on the locale's start (see
+								 * `shared/i18n/user-text-dir.ts` for why not `rtl:`).
+								 */}
+								<span
+									dir="auto"
+									className={`min-w-0 truncate text-body-sm text-ink ${USER_TEXT_ALIGN}`}
+								>
 									{rowLabel(row)}
 								</span>
 								{mark !== undefined ? (
@@ -2098,7 +2110,12 @@ function Roster({
 									</span>
 								) : null}
 								{blurb ? (
-									<span className="min-w-0 flex-1 truncate">{blurb}</span>
+									<span
+										dir="auto"
+										className={`min-w-0 flex-1 truncate ${USER_TEXT_ALIGN}`}
+									>
+										{blurb}
+									</span>
 								) : (
 									/*
 									 * A ROW WITH NO DESCRIPTION SAYS SO (design review round 1 D4 =

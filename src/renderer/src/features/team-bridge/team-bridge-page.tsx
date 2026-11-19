@@ -151,6 +151,7 @@ import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import type { TeamBridgeDraft } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
+import { actionableHoldCount } from "./team-bridge-holds-model";
 import { TeamBridgeInvitations } from "./team-bridge-invitations";
 import {
 	pendingAgentInvitations,
@@ -356,6 +357,7 @@ import {
 } from "./use-team-bridge-approvals";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 import { type FileSend, filesCapability } from "./use-team-bridge-files";
+import { useHeldMessages } from "./use-team-bridge-holds";
 
 /**
  * Why a send was refused, in the terms the person can act on (UX round 1, U2).
@@ -766,7 +768,9 @@ export type TeamBridgePageViewProps = {
 	 * not drawn at all. `waiting` is the decidable count; `panel` is the wired
 	 * Requests view, passed in so this props-only view never starts a query.
 	 */
-	requests?: { waiting: number; panel: ReactNode };
+	/* `held`: how much of `waiting` is held messages, so the badge's
+	   accessible name stops calling them all "requests" (UX U1). */
+	requests?: { waiting: number; held?: number; panel: ReactNode };
 	/**
 	 * Set while the address asks for the Requests view (`?view=requests`, the
 	 * nav row's landing while it counts requests - UX review U1). The container
@@ -3202,9 +3206,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							<AttentionBadge
 								count={requests.waiting}
 								className="shrink-0"
-								aria-label={t("ui.teamBridge.approvals.waiting", {
-									count: requests.waiting,
-								})}
+								aria-label={
+									(requests.held ?? 0) > 0
+										? t("ui.teamBridge.holds.waiting_total", {
+												count: requests.waiting,
+											})
+										: t("ui.teamBridge.approvals.waiting", {
+												count: requests.waiting,
+											})
+								}
 							/>
 						)}
 					</button>
@@ -6026,6 +6036,8 @@ const TeamBridgeOwnedPage: FC<{
 	 * slot stays absent, so an older backend shows no Requests entry at all.
 	 */
 	const approvalRequests = useApprovalRequests(readsEnabled);
+	// Releasable held messages share the Approvals slot's count (B4b).
+	const heldMessages = useHeldMessages(readsEnabled);
 	/*
 	 * A failed read that is NOT a 404 still draws the entry (QA Q2): requests
 	 * may exist that could not be read, and the panel says so with Retry. Only
@@ -6049,7 +6061,10 @@ const TeamBridgeOwnedPage: FC<{
 			(lastRequestsError.current !== null &&
 				!approvalsUnsupported(lastRequestsError.current)))
 			? {
-					waiting: approvalRequests.data?.pending_count ?? 0,
+					waiting:
+						(approvalRequests.data?.pending_count ?? 0) +
+						actionableHoldCount(heldMessages.data),
+					held: actionableHoldCount(heldMessages.data),
 					panel: <TeamBridgeRequests />,
 				}
 			: undefined;

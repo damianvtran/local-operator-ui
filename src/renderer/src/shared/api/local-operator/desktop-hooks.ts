@@ -378,6 +378,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_thread_reads"
 	/**
+	 * The admitted body behind an inbound Team Bridge transcript card:
+	 * `sessions.bridgeCardBody`, core's entry-keyed display-store read (bridge-body
+	 * design §4). Absent (an older backend): the card keeps "Message body
+	 * unavailable." and makes no request at all.
+	 */
+	| "team_bridge_card_body"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
@@ -1076,6 +1083,17 @@ export type DesktopFeature =
 	 * popup is mounted and Settings → Phone access renders exactly as before.
 	 */
 	| "phone_pairing"
+	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
 	/**
 	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
 	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings

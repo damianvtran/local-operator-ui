@@ -292,10 +292,10 @@ const VERDICT = {
 	 * Review and retry are `warning`: the owner is the one who can act or should
 	 * know; screening in progress and screened-not-yet-delivered are `info`.
 	 * `held_review` names WHERE to decide (UX U4, design D6): this read-only
-	 * audit has no Deliver/Discard, and the desktop app has no client for
-	 * local-operator's `/v1/desktop/team-bridge/holds` (searched 2026-11-09);
-	 * the decision lives in the notice local-operator #3714 raises in the chief
-	 * of staff's designated session. Wire the buttons here once a client exists. */
+	 * audit has no Deliver/Discard. The decision lives in Team Bridge Approvals'
+	 * "Held messages" section (`team-bridge-held-messages.tsx`), the client for
+	 * local-operator's `/v1/desktop/team-bridge/holds`; core no longer raises the
+	 * chief-of-staff session notice this chip used to point at. */
 	held_review: { variant: "warning", copy: "ui.ownerAudit.held_review" },
 	screening: { variant: "info", copy: "ui.ownerAudit.screening" },
 	screening_retry: {

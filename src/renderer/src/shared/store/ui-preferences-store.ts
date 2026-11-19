@@ -1032,31 +1032,6 @@ type UiPreferencesState = {
 	setSidebarOverflowExpanded: (expanded: boolean) => void;
 
 	/**
-	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
-	 *
-	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
-	 * itself, and rendering it at prose weight is what makes the app read as a
-	 * developer tool. When false, reasoning turns are hidden entirely — a
-	 * collapsed "Reasoning" disclosure would still be chrome on every turn,
-	 * which is the weight this preference exists to remove.
-	 */
-	showAgentReasoning: boolean;
-
-	/**
-	 * Set whether agent reasoning is shown.
-	 *
-	 * Written only by the Appearance switch in `settings-page.tsx`. That is the
-	 * preference's sole control, and for a while it did not exist: the flag, the
-	 * grouping rule that honours it and the disclosure that renders it all
-	 * shipped with nothing able to turn them on, so `AgentReasoning` returned
-	 * null unconditionally and the whole feature was dead in the product while
-	 * looking alive in the source. Keep a control reachable, or delete the rest.
-	 *
-	 * @param show - Whether reasoning turns should be visible
-	 */
-	setShowAgentReasoning: (show: boolean) => void;
-
-	/**
 	 * How the transcript draws a settled turn: `by-turn` (the shipped
 	 * condensation, where a turn keeps the rows its visibility invariant
 	 * requires) or `by-response` (every settled text-bearing row stays on
@@ -2197,8 +2172,15 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * persisted and become the bound conversation's projection, so the step lifts
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
+ *
+ * v6 DROPS `showAgentReasoning`. Its only control, General Settings' "show agent
+ * reasoning" switch, was removed because the canonical transcript has no
+ * reasoning record kind: the switch toggled a flag that only Storybook-only legacy
+ * components read, so it changed nothing in the shipped app. Same shape as v2's
+ * `chatMeasureWidth`: without the step the stale key would be copied onto the
+ * state by zustand's merge and written back by the rest-spread on every save.
  */
-export const UI_PREFERENCES_VERSION = 5;
+export const UI_PREFERENCES_VERSION = 6;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -2207,6 +2189,9 @@ export const UI_PREFERENCES_VERSION = 5;
  * below does the same).
  */
 const RETIRED_IN_V2: readonly string[] = ["chatMeasureWidth"];
+
+/** The keys v6 removes from a stored blob; see `UI_PREFERENCES_VERSION`. */
+const RETIRED_IN_V6: readonly string[] = ["showAgentReasoning"];
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -2223,7 +2208,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
 			sidebarOverflowExpanded: false,
-			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
@@ -2417,12 +2401,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,
-				});
-			},
-
-			setShowAgentReasoning: (show: boolean) => {
-				set({
-					showAgentReasoning: show,
 				});
 			},
 
@@ -3438,6 +3416,7 @@ export function migrateUiPreferences(
 		blob.customAccents = sanitizeCustomAccents(blob.customAccents);
 		blob.customThemeId = sanitizeCustomThemeId(blob.customThemeId);
 	}
+	if (version < 6) for (const key of RETIRED_IN_V6) delete blob[key];
 	return blob;
 }
 

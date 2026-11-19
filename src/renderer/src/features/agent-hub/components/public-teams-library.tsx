@@ -290,7 +290,7 @@ export const PublicTeamsLibrary: FC<{
 						"has-[:focus-visible]:outline-accent has-[:focus-visible]:outline-offset-2",
 					)}
 				>
-					<Search aria-hidden="true" className="ml-2 shrink-0 text-ink-dim" />
+					<Search aria-hidden="true" className="ms-2 shrink-0 text-ink-dim" />
 					<Input
 						ref={searchRef}
 						type="search"
@@ -498,7 +498,7 @@ const PublicTeamCard: FC<{
 							{displayName}
 						</h3>
 						{version ? (
-							<span className="ml-2 shrink-0 text-ink-dim text-meta">
+							<span className="ms-2 shrink-0 text-ink-dim text-meta">
 								{/* i18n: ignore version prefix - "v" + a version number is a technical token, not copy */}
 								v{version}
 							</span>
@@ -590,7 +590,7 @@ const PublicTeamCard: FC<{
 							className="flex max-w-56 flex-col items-end gap-1"
 							data-testid="agent-hub-public-team-pull-error"
 						>
-							<output className="text-right text-meta text-danger">
+							<output className="text-end text-meta text-danger">
 								{failureBody}
 							</output>
 							{treatment?.actions

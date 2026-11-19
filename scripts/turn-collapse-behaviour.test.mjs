@@ -4615,6 +4615,51 @@ test("Bridge incoming reducer rows condense across quiet cycles without hiding t
 	assert.ok(!bar(mounted).contains(rowBox(mounted, "bridge-final")));
 });
 
+/*
+ * PR #1977 review R3: with no `team_bridge_card_body` capability (an older
+ * backend; this mount advertises none) the open pane must be today's pane:
+ * the "unavailable" sentence in BridgeDetail's outcome slot ABOVE the
+ * provenance line, and no body section mounted (so no request either).
+ */
+test("Bridge incoming pane on a backend without the body read keeps today's sentence above the provenance line", async (t) => {
+	__resetTurnCollapseOpen();
+	const fixture = JSON.parse(
+		await readFile(
+			new URL("./fixtures/bridge-incoming.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const reduced = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+		has_more: false,
+		cursor_missing: false,
+	}).records;
+	const mounted = await mount(t, [
+		userRecord("bridge-legacy-user"),
+		answerRecord("bridge-legacy-final", { stopReason: "stop" }),
+		reduced[0],
+		toolRecord("bridge-legacy-quiet", { toolName: "no_reply" }),
+	]);
+	await click(barTrigger(mounted));
+	const row = rowBox(mounted, "bridge-receipt-1");
+	assert.ok(row, "the receipt is visible once the fold opens");
+	await click(row.querySelector("button[aria-expanded]"));
+	const outcome = row.querySelector('[data-detail-section="bridge-outcome"]');
+	const provenance = row.querySelector("[data-bridge-provenance]");
+	assert.ok(outcome && provenance, "pane open with outcome and provenance");
+	assert.equal(outcome.textContent, "Message body unavailable.");
+	assert.ok(
+		outcome.compareDocumentPosition(provenance) &
+			outcome.ownerDocument.defaultView.Node.DOCUMENT_POSITION_FOLLOWING,
+		"the sentence sits above the provenance line, where it always was",
+	);
+	assert.equal(
+		row.querySelector("[data-bridge-body-state]"),
+		null,
+		"no body section is mounted without the capability",
+	);
+});
+
 test("Bridge incoming action fold retains both receipts through live settle and the next activation", async (t) => {
 	__resetTurnCollapseOpen();
 	const fixture = JSON.parse(

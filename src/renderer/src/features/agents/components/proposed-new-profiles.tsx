@@ -79,7 +79,7 @@ export function ProposedNewGroup({
 								</span>
 								<span
 									aria-hidden="true"
-									className="ml-auto size-1.5 shrink-0 rounded-full bg-warning"
+									className="ms-auto size-1.5 shrink-0 rounded-full bg-warning"
 								/>
 							</span>
 							<span className="text-ink-muted text-meta">

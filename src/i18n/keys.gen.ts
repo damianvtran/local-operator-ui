@@ -189,6 +189,7 @@ import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
+import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
@@ -364,6 +365,7 @@ import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
+import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
@@ -539,6 +541,7 @@ import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
+import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
@@ -714,6 +717,7 @@ import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
+import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
@@ -889,6 +893,7 @@ import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
+import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
@@ -1064,6 +1069,7 @@ import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
+import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
@@ -1239,6 +1245,7 @@ import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
+import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
@@ -1414,6 +1421,7 @@ import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approvals.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
+import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
@@ -1592,6 +1600,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiShellRail,
 	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
+	...enUiTeamBridgeHolds,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
 	...enUiTeamBridgeThreadRow,
@@ -1775,6 +1784,7 @@ export const bundledCatalogues: Readonly<
 		...esUiShellRail,
 		...esUiTeamBridgeApprovals,
 		...esUiTeamBridgeArchive,
+		...esUiTeamBridgeHolds,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
 		...esUiTeamBridgeThreadRow,
@@ -1952,6 +1962,7 @@ export const bundledCatalogues: Readonly<
 		...frUiShellRail,
 		...frUiTeamBridgeApprovals,
 		...frUiTeamBridgeArchive,
+		...frUiTeamBridgeHolds,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
 		...frUiTeamBridgeThreadRow,
@@ -2129,6 +2140,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiShellRail,
 		...hiUiTeamBridgeApprovals,
 		...hiUiTeamBridgeArchive,
+		...hiUiTeamBridgeHolds,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
 		...hiUiTeamBridgeThreadRow,
@@ -2306,6 +2318,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiShellRail,
 		...ruUiTeamBridgeApprovals,
 		...ruUiTeamBridgeArchive,
+		...ruUiTeamBridgeHolds,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
 		...ruUiTeamBridgeThreadRow,
@@ -2483,6 +2496,7 @@ export const bundledCatalogues: Readonly<
 		...urUiShellRail,
 		...urUiTeamBridgeApprovals,
 		...urUiTeamBridgeArchive,
+		...urUiTeamBridgeHolds,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
 		...urUiTeamBridgeThreadRow,
@@ -2660,6 +2674,7 @@ export const bundledCatalogues: Readonly<
 		...viUiShellRail,
 		...viUiTeamBridgeApprovals,
 		...viUiTeamBridgeArchive,
+		...viUiTeamBridgeHolds,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
 		...viUiTeamBridgeThreadRow,
@@ -2837,6 +2852,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiShellRail,
 		...zhCNUiTeamBridgeApprovals,
 		...zhCNUiTeamBridgeArchive,
+		...zhCNUiTeamBridgeHolds,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
 		...zhCNUiTeamBridgeThreadRow,
@@ -4938,9 +4954,24 @@ export type MessageParams = {
 	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.attachments.volume": undefined;
+	"ui.chat.bridgeReceipt.held": undefined;
+	"ui.chat.bridgeReceipt.held_transient": undefined;
+	"ui.chat.bridgeReceipt.loading": undefined;
+	"ui.chat.bridgeReceipt.more": { count: number };
+	"ui.chat.bridgeReceipt.not_admitted": undefined;
+	"ui.chat.bridgeReceipt.pending": undefined;
 	"ui.chat.bridgeReceipt.provenance": undefined;
 	"ui.chat.bridgeReceipt.received": { sender: string };
+	"ui.chat.bridgeReceipt.refused": undefined;
+	"ui.chat.bridgeReceipt.show_less": undefined;
+	"ui.chat.bridgeReceipt.show_more": undefined;
 	"ui.chat.bridgeReceipt.unavailable": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": undefined;
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": undefined;
 	"ui.chat.canonical.checkpoint_rail.label": undefined;
 	"ui.chat.canonical.fold.bridge.one": undefined;
 	"ui.chat.canonical.fold.bridge.other": undefined;
@@ -10327,6 +10358,92 @@ export type MessageParams = {
 	"ui.mesh.mesh_types.device_suffix": { suffix: string };
 	"ui.mesh.mesh_types.network_suffix": { suffix: string };
 	"ui.mesh.mesh_types.unnamed_device": undefined;
+	"ui.mesh.pairing.action.admit": undefined;
+	"ui.mesh.pairing.action.confirm": undefined;
+	"ui.mesh.pairing.action.confirming": undefined;
+	"ui.mesh.pairing.action.decline": undefined;
+	"ui.mesh.pairing.action.declining": undefined;
+	"ui.mesh.pairing.action.waiting_confirmation": undefined;
+	"ui.mesh.pairing.attempts_left": { count: number };
+	"ui.mesh.pairing.code.aria": { digits: string };
+	"ui.mesh.pairing.code.show": { peer: string };
+	"ui.mesh.pairing.code.type_hint": { peer: string };
+	"ui.mesh.pairing.code.type_label": { peer: string };
+	"ui.mesh.pairing.error.build": undefined;
+	"ui.mesh.pairing.error.changed": { action: string };
+	"ui.mesh.pairing.error.closed": undefined;
+	"ui.mesh.pairing.error.devtools": { action: string };
+	"ui.mesh.pairing.error.expired": undefined;
+	"ui.mesh.pairing.error.foreground": { action: string };
+	"ui.mesh.pairing.error.mismatch": { count: number };
+	"ui.mesh.pairing.error.mismatch_spent": undefined;
+	"ui.mesh.pairing.error.needs_app": undefined;
+	"ui.mesh.pairing.error.read": undefined;
+	"ui.mesh.pairing.error.relay": undefined;
+	"ui.mesh.pairing.error.sheet_open": { action: string };
+	"ui.mesh.pairing.error.unknown": undefined;
+	"ui.mesh.pairing.expired_hint.inviter": undefined;
+	"ui.mesh.pairing.expired_hint.joiner": { peer: string };
+	"ui.mesh.pairing.loading": undefined;
+	"ui.mesh.pairing.offers.absent": undefined;
+	"ui.mesh.pairing.offers.listed": { peer: string };
+	"ui.mesh.pairing.offers.none": undefined;
+	"ui.mesh.pairing.offers.owner_listed": { peer: string };
+	"ui.mesh.pairing.offers.owner_none": undefined;
+	"ui.mesh.pairing.offers.owner_peer_older": undefined;
+	"ui.mesh.pairing.offers.owner_reduce_only": undefined;
+	"ui.mesh.pairing.result.admitted": { peer: string; network: string };
+	"ui.mesh.pairing.result.declined": { peer: string };
+	"ui.mesh.pairing.result.ended": { peer: string };
+	"ui.mesh.pairing.result.expired": { peer: string };
+	"ui.mesh.pairing.result.expired_joiner": { peer: string };
+	"ui.mesh.pairing.result.finished": { peer: string; network: string };
+	"ui.mesh.pairing.result.joined": { network: string };
+	"ui.mesh.pairing.result.spent": { peer: string };
+	"ui.mesh.pairing.role": { role: string };
+	"ui.mesh.pairing.section": undefined;
+	"ui.mesh.pairing.sheet.button.admit": undefined;
+	"ui.mesh.pairing.sheet.button.cancel": undefined;
+	"ui.mesh.pairing.sheet.button.decline": undefined;
+	"ui.mesh.pairing.sheet.button.join": undefined;
+	"ui.mesh.pairing.sheet.code": { code: string };
+	"ui.mesh.pairing.sheet.device": { peer: string; id: string };
+	"ui.mesh.pairing.sheet.device_name_only": { peer: string };
+	"ui.mesh.pairing.sheet.message.inviter_admit": {
+		peer: string;
+		network: string;
+	};
+	"ui.mesh.pairing.sheet.message.inviter_decline": {
+		peer: string;
+		network: string;
+	};
+	"ui.mesh.pairing.sheet.message.joiner_admit": {
+		network: string;
+		peer: string;
+	};
+	"ui.mesh.pairing.sheet.message.joiner_decline": {
+		network: string;
+		peer: string;
+	};
+	"ui.mesh.pairing.sheet.offers_final_choice": { peer: string };
+	"ui.mesh.pairing.sheet.offers_incoming": { peer: string; list: string };
+	"ui.mesh.pairing.sheet.offers_incoming_none": { peer: string };
+	"ui.mesh.pairing.sheet.role": { role: string };
+	"ui.mesh.pairing.sheet.share_item": { label: string; key: string };
+	"ui.mesh.pairing.sheet.shares_decline": undefined;
+	"ui.mesh.pairing.sheet.shares_outgoing": { peer: string; list: string };
+	"ui.mesh.pairing.sheet.shares_outgoing_none": { peer: string };
+	"ui.mesh.pairing.time_left_minutes": { count: number };
+	"ui.mesh.pairing.time_left_seconds": { count: number };
+	"ui.mesh.pairing.title.inviter": { peer: string; network: string };
+	"ui.mesh.pairing.title.joiner": { network: string; peer: string };
+	"ui.mesh.pairing.unavailable.fallback_inviter": { peer: string };
+	"ui.mesh.pairing.unavailable.fallback_joiner": { peer: string };
+	"ui.mesh.pairing.unavailable.host": undefined;
+	"ui.mesh.pairing.unavailable.no_attestation": undefined;
+	"ui.mesh.pairing.waiting.inviter": { peer: string };
+	"ui.mesh.pairing.waiting.joiner_types": { peer: string };
+	"ui.mesh.pairing.waiting.other": { peer: string };
 	"ui.miniView.alternates": { first: string; second: string };
 	"ui.miniView.context": { used: string };
 	"ui.miniView.context_estimated": { used: string };
@@ -13615,6 +13732,63 @@ export type MessageParams = {
 	"ui.teamBridge.archive.thread.empty": undefined;
 	"ui.teamBridge.archive.thread.forbidden": undefined;
 	"ui.teamBridge.archive.toast.archive_failed": { name: string };
+	"ui.teamBridge.holds.body_withheld": undefined;
+	"ui.teamBridge.holds.cannot_verify": undefined;
+	"ui.teamBridge.holds.confirm.cancel": undefined;
+	"ui.teamBridge.holds.confirm.deliver": undefined;
+	"ui.teamBridge.holds.confirm.deliver_action": undefined;
+	"ui.teamBridge.holds.confirm.discard": undefined;
+	"ui.teamBridge.holds.confirm.discard_action": undefined;
+	"ui.teamBridge.holds.deliver": undefined;
+	"ui.teamBridge.holds.deliver_label": { sender: string };
+	"ui.teamBridge.holds.deliver_until": { time: string };
+	"ui.teamBridge.holds.delivering": undefined;
+	"ui.teamBridge.holds.details_unavailable": undefined;
+	"ui.teamBridge.holds.discard": undefined;
+	"ui.teamBridge.holds.discard_label": { sender: string };
+	"ui.teamBridge.holds.discarding": undefined;
+	"ui.teamBridge.holds.empty": undefined;
+	"ui.teamBridge.holds.from_agent": { agent: string; person: string };
+	"ui.teamBridge.holds.from_agent_unnamed": { person: string };
+	"ui.teamBridge.holds.from_person": { person: string };
+	"ui.teamBridge.holds.held_at": { time: string };
+	"ui.teamBridge.holds.hidden_characters": undefined;
+	"ui.teamBridge.holds.intro": undefined;
+	"ui.teamBridge.holds.key_file_only": undefined;
+	"ui.teamBridge.holds.load_failed": undefined;
+	"ui.teamBridge.holds.loading": undefined;
+	"ui.teamBridge.holds.read_first": undefined;
+	"ui.teamBridge.holds.reason.action": undefined;
+	"ui.teamBridge.holds.reason.new_work": undefined;
+	"ui.teamBridge.holds.reason.no_screener": undefined;
+	"ui.teamBridge.holds.reason.not_screened": undefined;
+	"ui.teamBridge.holds.reason.other": undefined;
+	"ui.teamBridge.holds.reason.records": undefined;
+	"ui.teamBridge.holds.reason.review": undefined;
+	"ui.teamBridge.holds.reason.unclear": undefined;
+	"ui.teamBridge.holds.reason.unreadable": undefined;
+	"ui.teamBridge.holds.reason.unscreened": undefined;
+	"ui.teamBridge.holds.reason.waiting": undefined;
+	"ui.teamBridge.holds.refusal.already_decided": undefined;
+	"ui.teamBridge.holds.refusal.deliver_expired": undefined;
+	"ui.teamBridge.holds.refusal.generic": undefined;
+	"ui.teamBridge.holds.refusal.not_releasable": undefined;
+	"ui.teamBridge.holds.refusal.release_off": undefined;
+	"ui.teamBridge.holds.refusal.signing_unavailable": undefined;
+	"ui.teamBridge.holds.refusal.stale": undefined;
+	"ui.teamBridge.holds.release_off": undefined;
+	"ui.teamBridge.holds.show_full": undefined;
+	"ui.teamBridge.holds.show_full_attachments": { count: number };
+	"ui.teamBridge.holds.show_less": undefined;
+	"ui.teamBridge.holds.state.chose_deliver": undefined;
+	"ui.teamBridge.holds.state.chose_discard": undefined;
+	"ui.teamBridge.holds.state.deliver_expired": undefined;
+	"ui.teamBridge.holds.state.not_applied": undefined;
+	"ui.teamBridge.holds.state.not_releasable": undefined;
+	"ui.teamBridge.holds.title": undefined;
+	"ui.teamBridge.holds.unknown_sender": undefined;
+	"ui.teamBridge.holds.unscreened": undefined;
+	"ui.teamBridge.holds.waiting_total": { count: number };
 	"ui.teamBridge.actions.label": undefined;
 	"ui.teamBridge.agentNotify.all": undefined;
 	"ui.teamBridge.agentNotify.error": undefined;

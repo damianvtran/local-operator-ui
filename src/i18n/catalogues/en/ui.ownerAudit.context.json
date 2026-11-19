@@ -116,7 +116,7 @@
 		"tone": "neutral metadata, factual",
 		"length": "Very short chip.",
 		"placeholders": {},
-		"note": "\"Held for your review in your chief of staff's session\": the chief of staff's screening HELD this message for the owner (the reader) to decide, and the Deliver/Discard decision lives in the notice in their chief of staff's Local Operator session, not in this read-only audit. Address the reader directly ('your'). Do not imply it was refused, deleted or malicious."
+		"note": "\"Held for your review in Team Bridge Approvals\": the chief of staff's screening HELD this message for the owner (the reader) to decide, and the Deliver/Discard decision lives in the Held messages section of Team Bridge's Approvals panel, not in this read-only audit. \"Approvals\" is the panel's title (ui.teamBridge.approvals.title); use the same translation. Team Bridge is a product name. Address the reader directly ('your'). Do not imply it was refused, deleted or malicious."
 	},
 	"ui.ownerAudit.screening": {
 		"role": "per-message screening verdict chip",

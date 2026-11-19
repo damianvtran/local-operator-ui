@@ -64,6 +64,11 @@ const TEAM_BRIDGE_APPROVAL_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.requests.authorize",
 	"team_bridge.requests.decide",
 	"team_bridge.decisions.list",
+	/* Held messages (local-operator B4b, `/v1/desktop/team-bridge/holds`): the
+	   same committed-owner resolution as approvals, no tenant on the wire. */
+	"team_bridge.holds.list",
+	"team_bridge.holds.deliver",
+	"team_bridge.holds.discard",
 ]);
 const teamBridgeApprovalSelection = z
 	.array(
@@ -272,6 +277,8 @@ const remoteRunDirectory = z.string().min(1).max(4096);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/** Core's pairing id/nonce grammar (`network/pairing_attest.py` `_ID`). */
+export const MESH_PAIRING_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 /**
  * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
  * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
@@ -3406,6 +3413,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("legacy.agent.download"), agentId: id }).strict(),
+	/*
+	 * The canvas editor's inline edit (`POST /v1/chat/agents/{id}/edit`).
+	 *
+	 * It used to be the one control call the renderer made with its own `fetch`;
+	 * it now rides this transport like every other control, so main attaches the
+	 * desktop credential and the request leaves from main rather than from the
+	 * page. The wire body is forwarded field for field (snake_case, as the
+	 * backend's `AgentEditFileRequest` declares it) so the request the backend
+	 * reads is the one the renderer used to send.
+	 *
+	 * No per-field `.max()`: the old path had none, and the honest bound on these
+	 * strings is the whole body's ({@link INLINE_EDIT_BYTE_BUDGET}), which a
+	 * per-field cap could only contradict. `strict()` still keeps any key the
+	 * backend does not declare from riding along.
+	 */
+	z
+		.object({
+			op: z.literal("legacy.agent.editFile"),
+			agentId: id,
+			request: z
+				.object({
+					hosting: z.string(),
+					model: z.string(),
+					file_path: z.string(),
+					file_content: z.string().optional(),
+					selection: z.string().optional(),
+					edit_prompt: z.string(),
+					attachments: z.array(z.string()).optional(),
+				})
+				.strict(),
+		})
+		.strict(),
 	z.object({ op: z.literal("legacy.job.cancel"), jobId: id }).strict(),
 	z.object({ op: z.literal("commands.list") }).strict(),
 	z
@@ -3704,6 +3743,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			requestId,
 			asideId: requestId,
 			confirmed: z.literal(true),
+		})
+		.strict(),
+	/*
+	 * The ADMITTED body behind one inbound Team Bridge card (core design
+	 * bridge-body §4). Keyed by the card's own journal ENTRY id, never by a
+	 * message id: core answers only for a `team_bridge_message` row of a session
+	 * this reader can already read, so the op cannot be used to probe arbitrary
+	 * hub messages. Dispatched only when `features.team_bridge_card_body >= 1`;
+	 * an older runtime never sees it and the card keeps its old sentence.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.bridgeCardBody"),
+			sessionId,
+			entryId: id,
 		})
 		.strict(),
 	z
@@ -4727,6 +4781,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * TEAM BRIDGE HELD MESSAGES (local-operator B4b, operator decision a-3f46):
+	 * the conversation messages this machine's screener is holding, and the
+	 * owner's Deliver / Discard of a releasable one. The writes carry the
+	 * route's own strict body: `conversation_id` and the lowercase sha256 of the
+	 * body the person was shown (`body_sha256`), which the daemon compares with
+	 * the screened bytes and refuses `snapshot_stale` on any difference.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.list"),
+			expected_account_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.enum(["team_bridge.holds.deliver", "team_bridge.holds.discard"]),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
 	 * TEAM BRIDGE APPROVALS (local-operator #4099): the pending requests a
 	 * teammate's agent sent this operator, the two-step human batch decide, and the
 	 * decision ledger. The selection ops carry the operator's EXPLICIT list - the
@@ -5217,6 +5294,87 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 			code: z.string().min(1).max(32).optional(),
 		})
+		.strict(),
+	/*
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259,
+	 * `routes/desktop_mesh_pairings.py`): two devices pairing from the Mesh
+	 * approvals tray instead of a terminal (operator ask: "pairing does NOT require
+	 * running terminal commands").
+	 *
+	 * `pairings.list` is a plain read. `pairings.answer` is the ONE desktop op main
+	 * does not simply forward: core consumes a matching APP ATTESTATION before it
+	 * acts, and only main can make one (`src/main/mesh-pairing-attest.ts` - the
+	 * click-provenance gate, then the `mesh-pairing.sock` frame, then this POST).
+	 * A renderer cannot attest, so a renderer that sent this op straight to the
+	 * backend would only collect `403 pairing_needs_app`.
+	 *
+	 * `deadline` is NOT the renderer's to choose: main overwrites it with the value
+	 * it attested (now + a few seconds, never past the card's expiry). The renderer
+	 * passes the card's `expires_at` there as an upper bound only, which is why the
+	 * field is optional here. `shares` is the inviter's reduce-only keep list; main
+	 * always sends it explicitly (sorted) so the attested content and the POST can
+	 * never disagree about "omitted" vs "empty".
+	 *
+	 * The ids are core's own grammar (`pairing_attest._ID`: `[A-Za-z0-9_.:-]{1,128}`),
+	 * repeated here so a hand-built id cannot become a path fragment.
+	 *
+	 * TWO MORE OPS NEVER LEAVE THE APP (security review round 1, US-R1-1, and UX/
+	 * design round 1, U1/D1). `pairings.eligibility` is main's STATIC reading of
+	 * whether this launch could ever attest (platform, packaged, debug/driver
+	 * switches, window mode), so a card disables its input up front instead of
+	 * taking six digits and refusing them. `pairings.confirm` carries the EXACT
+	 * answer (act, code, shares) and asks main for a ONE-SHOT confirmation of it:
+	 * main freezes that answer, shows it on a native window-modal sheet worded
+	 * from main's own read of the cards, and mints a token bound to the answer
+	 * and the sending document only when the person presses the sheet's action
+	 * button (security review round 2, US-R2-1). `pairings.answer` must carry the
+	 * identical answer and the token (`confirmation`) or main refuses before
+	 * dialling. Both are answered by main (`desktop-ipc.ts`) and have
+	 * no core route - see their `desktopEndpoint` cases.
+	 */
+	z
+		.object({ op: z.literal("pairings.list") })
+		.strict(),
+	z.object({ op: z.literal("pairings.eligibility") }).strict(),
+	z
+		.object({
+			op: z.literal("pairings.confirm"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+			/*
+			 * THE EXACT ANSWER the person is about to give (security review round 2,
+			 * US-R2-1): main freezes it, shows it on a native sheet, and binds the
+			 * token to it, so `pairings.answer` must carry these same values or it is
+			 * refused. Same grammar as the answer's own fields. No labels travel here:
+			 * every word the sheet shows is main's own read of the pairing.
+			 */
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("pairings.answer"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+			// Exactly six digits to admit; nothing ("") to decline - core's frame rule.
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
+			deadline: z.number().int().positive().optional(),
+			// Main's one-shot token from `pairings.confirm` (32 random bytes, hex).
+			// Optional in the SCHEMA only because main's forwarded body drops it;
+			// main refuses an answer from a renderer without one.
+			confirmation: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+		})
+		// `admit` carries six digits, `decline` none: the cross-field rule lives in
+		// `desktopRequestSchema`'s superRefine (the union is discriminated).
 		.strict(),
 	/*
 	 * Settings → Phone access → Paired phones. A device id is what core derives
@@ -5851,6 +6009,19 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				message:
 					"A usage reset must name an account: send `credentialRef` or `identity`.", // i18n: ignore wire validation diagnostic
 				path: ["credentialRef"],
+			});
+		}
+		/* A pairing admit carries the six typed digits and a decline none: core's
+		   attest frame refuses any other pairing (`pairing_attest.validate_frame`),
+		   so a request shaped otherwise could never be answered. */
+		if (
+			(request.op === "pairings.answer" || request.op === "pairings.confirm") &&
+			(request.decision === "admit") !== (request.code !== "")
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "admit carries six digits; decline carries none", // i18n: ignore wire validation diagnostic
+				path: ["code"],
 			});
 		}
 		/* Consent: accept/decline carry the participation version, withdraw
@@ -7697,6 +7868,36 @@ const COMMUNITY_SUBMIT_BYTE_BUDGET =
 const DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET = 1_100_000;
 
 /**
+ * The budget for `legacy.agent.editFile`, the canvas editor's inline edit.
+ *
+ * The body carries the WHOLE editor buffer (`file_content`), the selection, the
+ * prompt, and every pasted attachment as a base64 data URL - so neither the
+ * control budget (256 KiB, less than one screenshot) nor the message budget
+ * (sized to the session control socket's 1 MiB line, which this plain REST POST
+ * never passes through) is honest about it. The backend route declares no body
+ * limit, and the renderer `fetch` this op replaces had none either, so the
+ * number is derived from the app's own ceilings instead:
+ *
+ *  - 64 MiB for the buffer: `MAX_FILE_READ_BYTES`, the largest file the app
+ *    reads into any viewer, so the largest document the editor can hold;
+ *  - 64 MiB again for the selection, which is a substring of that buffer and so
+ *    can be all of it;
+ *  - one maximal attachment, `MAX_ATTACHMENT_UPLOAD_BYTES` (32 MiB) as base64
+ *    (x4/3), the app's declared per-attachment ceiling;
+ *  - 64 KiB for the prompt, model/hosting/path fields and JSON envelope.
+ *
+ * Written as literals because `MAX_FILE_READ_BYTES` is declared further down
+ * this module and `MAX_DESKTOP_REQUEST_BYTES` reads this at module evaluation
+ * (a forward reference would be a TDZ error). `desktop-contract.test.mjs`
+ * asserts the relationship to both named ceilings, so a change to either fails
+ * there instead of silently narrowing the pipe. Like the system-prompt budget,
+ * text that escapes heavily can exceed it while legal by length; that refuses
+ * with a 413 the inline-edit popover reports as its ordinary failure.
+ */
+const INLINE_EDIT_BYTE_BUDGET =
+	2 * (64 * 1024 * 1024) + Math.ceil((32 * 1024 * 1024 * 4) / 3) + 64 * 1024;
+
+/**
  * Ops whose body carries user text and inline images, and so needs the room.
  *
  * 880,000 is the backend's real ceiling minus headroom, not a round number.
@@ -7744,6 +7945,7 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
 		return DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET;
 	if (op === "community.submit" || op === "community.edit")
 		return COMMUNITY_SUBMIT_BYTE_BUDGET;
+	if (op === "legacy.agent.editFile") return INLINE_EDIT_BYTE_BUDGET;
 	return MESSAGE_OPS.has(op) || IMPORT_OPS.has(op)
 		? DESKTOP_MESSAGE_BYTE_BUDGET
 		: DESKTOP_CONTROL_BYTE_BUDGET;
@@ -7779,6 +7981,29 @@ export function desktopRequestByteBudget(op: DesktopRequest["op"]): number {
  */
 const DESKTOP_CONTROL_DEADLINE_MS = 20_000;
 const DESKTOP_LONG_READ_DEADLINE_MS = 90_000;
+
+/**
+ * The deadline for `legacy.agent.editFile`, the canvas editor's inline edit.
+ *
+ * The route answers only after its model work is done - up to THREE sequential
+ * model calls, because it re-asks when a returned SEARCH block is not found in
+ * the buffer (`max_retries = 3` in `local_operator/server/routes/chat.py`) - so
+ * the 20 s control budget would abandon an ordinary edit mid-generation.
+ *
+ * The renderer `fetch` this op replaces had no deadline of its own; the bound
+ * that now applies regardless of any signal is main's fetch itself. Main's
+ * `fetch` is Node's bundled undici (7.30.1 here), whose default dispatcher
+ * gives up on a response whose HEADERS have not arrived within
+ * `headersTimeout` = 300 s, and this route sends its headers only when the
+ * whole JSON answer is ready. So any deadline above 300 s is unreachable, and
+ * reaching that ceiling would surface as a generic transport failure rather
+ * than as this op's own deadline. 295 s sits just inside it so the request ends
+ * on THIS deadline, carrying `deadline_exceeded`, which is ~98 s per model call
+ * across the three attempts. The renderer's IPC bound adds
+ * `DESKTOP_DEADLINE_MARGIN_MS` on top as usual.
+ */
+const UNDICI_DEFAULT_HEADERS_TIMEOUT_MS = 300_000;
+const INLINE_EDIT_DEADLINE_MS = UNDICI_DEFAULT_HEADERS_TIMEOUT_MS - 5_000;
 
 /**
  * Ops whose answer is an aggregate over the local usage ledger.
@@ -8105,6 +8330,12 @@ export function desktopRequestDeadlineMs(
 	// until the person answers it, exactly like the typed approve above.
 	if (op === "team_bridge.requests.authorize")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	// A held message's Deliver/Discard is signed by the operator key off the
+	// daemon's loop, and that signer may wait on the key's own presence policy
+	// (desktop_team_bridge.py `_decide_hold`). The UI raises no prompt of its
+	// own (decision a-856f); it only must not time out before the signer does.
+	if (op === "team_bridge.holds.deliver" || op === "team_bridge.holds.discard")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	/*
 	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
 	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
@@ -8120,6 +8351,7 @@ export function desktopRequestDeadlineMs(
 		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "devices.remove" || op === "operator.setup.run")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "legacy.agent.editFile") return INLINE_EDIT_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -8239,6 +8471,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.unread",
 	"team_bridge.requests.list",
 	"team_bridge.decisions.list",
+	"team_bridge.holds.list",
 	"team_bridge.directory",
 	"team_bridge.status",
 	"community.communities.list",
@@ -8302,6 +8535,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// census, and the app re-reads it rather than caching a stale count.
 	"runtimes.list",
 	"sessions.aside.get",
+	// Reads core's display store (and, for old cards, the hub's admitted history)
+	// and writes nothing the reader can see; a timeout gets the read sentence.
+	"sessions.bridgeCardBody",
 	"sessions.checkpoints",
 	"sessions.failovers",
 	"sessions.find",
@@ -8327,6 +8563,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
 	"devices.list",
+	// The open pairing cards: a folded read that never clears or creates anything.
+	"pairings.list",
 	"operator.setup.read",
 	// Reads the phone password and changes nothing; a timeout gets the read sentence.
 	"mobile.password",
@@ -8476,6 +8714,9 @@ export const MAX_DESKTOP_REQUEST_BYTES = Math.max(
 	DESKTOP_MESSAGE_BYTE_BUDGET,
 	DESKTOP_CONTROL_BYTE_BUDGET,
 	DESKTOP_SYSTEM_PROMPT_BYTE_BUDGET,
+	// The inline edit's buffer-sized body has to clear the dev proxy's streamed
+	// read too, or the dev app would refuse an edit the packaged app sends.
+	INLINE_EDIT_BYTE_BUDGET,
 );
 
 /**
@@ -9938,6 +10179,36 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.code !== undefined ? { code: request.code } : {}),
 				},
 			};
+		case "pairings.list":
+			return { path: "/v1/desktop/mesh/pairings", method: "GET" };
+		/*
+		 * MAIN-ONLY ops: `desktop-ipc.ts` answers them before any forwarding and core
+		 * has no such route. The path is deliberately OUTSIDE `/v1/desktop/`, so the
+		 * transport's admitted-prefix checks treat any answer as not-the-daemon's
+		 * (`desktopAnswerProvesPairing`, `desktopRefusalCodeForStatus`) and a request
+		 * that somehow reached the transport could not land on a real route.
+		 */
+		case "pairings.eligibility":
+			return { path: "app:mesh-pairing/eligibility", method: "GET" };
+		case "pairings.confirm":
+			return { path: "app:mesh-pairing/confirm", method: "POST" };
+		/*
+		 * The body is core's strict `PairingAnswer` and nothing else. `shares` is
+		 * omitted rather than sent as null when absent (the joiner has no list);
+		 * `deadline` is whatever main attested - see the schema's note.
+		 */
+		case "pairings.answer":
+			return {
+				path: `/v1/desktop/mesh/pairings/${request.side}/${encodeURIComponent(request.inviteId)}/answer`,
+				method: "POST",
+				body: {
+					decision: request.decision,
+					code: request.code,
+					nonce: request.nonce,
+					deadline: request.deadline ?? 0,
+					...(request.shares !== undefined ? { shares: request.shares } : {}),
+				},
+			};
 		case "devices.list":
 			return { path: "/v1/desktop/devices", method: "GET" };
 		case "devices.remove":
@@ -11225,6 +11496,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "legacy.agent.download":
 			return { path: `/v1/agents/${request.agentId}/download`, method: "GET" };
+		case "legacy.agent.editFile":
+			return {
+				path: `/v1/chat/agents/${request.agentId}/edit`,
+				method: "POST",
+				body: request.request,
+			};
 		case "legacy.job.cancel":
 			return { path: `/v1/jobs/${request.jobId}`, method: "DELETE" };
 		case "commands.list":
@@ -11438,6 +11715,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/asides/${request.asideId}/adopt`,
 				method: "POST",
 				body: { request_id: request.requestId, confirmed: request.confirmed },
+			};
+		case "sessions.bridgeCardBody":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/bridge-cards/${encodeURIComponent(request.entryId)}/body`,
+				method: "GET",
 			};
 		case "sessions.aside.get":
 		case "sessions.aside.close":
@@ -12032,6 +12314,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * Held messages (local-operator B4b). The list takes ONLY
+		 * `expected_account_id` (the route refuses any other query parameter);
+		 * the message id is path-encoded so it can never add a segment.
+		 */
+		case "team_bridge.holds.list":
+			return {
+				path: `/v1/desktop/team-bridge/holds?${new URLSearchParams({ expected_account_id: request.expected_account_id })}`,
+				method: "GET",
+			};
+		case "team_bridge.holds.deliver":
+		case "team_bridge.holds.discard":
+			return {
+				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
+				method: "POST",
+				body: {
+					expected_account_id: request.expected_account_id,
+					conversation_id: request.conversation_id,
+					body_sha256: request.body_sha256,
+				},
+			};
 		case "team_bridge.requests.authorize":
 			return {
 				path: "/v1/desktop/team-bridge/requests/decide/authorize",

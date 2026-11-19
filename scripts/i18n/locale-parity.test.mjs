@@ -384,6 +384,16 @@ const IDENTICAL_OK = new Map([
 		"French scope adjective: « global » is the normal masculine label for account-wide scope; this audited label is a cognate, not an English stub.",
 	],
 	[
+		"ui.mesh.pairing.sheet.share_item",
+		// `{label} ({key})`: the pairing sheet's share item, two placeholders and
+		// parentheses, no words. It is ONE message so a locale owns its brackets
+		// (zh-CN uses full-width （）), which is why a locale MAY differ; where the
+		// locale's punctuation matches English, identical is the correct
+		// translation. Audited in local-operator-ui #1984 round 4 (receipts
+		// i18n/receipts/pr1984-r4-*-uimesh-aead7d1d.json).
+		"language-neutral format string: only placeholders and parentheses, no words",
+	],
+	[
 		"ui.settings.model.system_prompt.instructions",
 		"French cognate: « instructions » has the same spelling.",
 	],

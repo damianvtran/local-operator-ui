@@ -178,11 +178,11 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
  * THE ROW'S TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design review
  * round 1 D1). A ghost button has no edge, so its box was flush with the column
  * while its label ended 8 px inside it, and the bordered Stop and the box itself
- * were on the edge. `-mr-2` is the `sm` button's `px-2`: the hover ground moves
+ * were on the edge. `-me-2` is the `sm` button's `px-2`: the hover ground moves
  * into the 24 px gutter (nothing there clips it - the dock has no overflow), and
  * the glyph lands on the column edge.
  */
-const TRAILING_GHOST = "-mr-2";
+const TRAILING_GHOST = "-me-2";
 
 /**
  * THE BOUND ON EVERYTHING THAT MAY GROW THE DOCK (agent review round 1 #1 =
@@ -597,7 +597,7 @@ function ComposerStatus({
 								<Button
 									variant="ghost"
 									size="sm"
-									// The trailing control when no run is showing: `-mr-2` (the button's
+									// The trailing control when no run is showing: `-me-2` (the button's
 									// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
 									className={showsRun ? undefined : TRAILING_GHOST}
 									onClick={onClearAbout}
@@ -1416,8 +1416,8 @@ export function ConfigComposer({
 			 * `about` is set keeps the hero's height, so the box does not move under the
 			 * caret the moment Enter is pressed (the original D4).
 			 *
-			 * `-ml-2` cancels the button's own `px-2`, so the chip's TEXT starts at the
-			 * box's left edge rather than its padding box; the hover ground then reaches
+			 * `-ms-2` cancels the button's own `px-2`, so the chip's TEXT starts at the
+			 * box's start edge rather than its padding box; the hover ground then reaches
 			 * 8 px outside the column, which a ground is allowed to do and text is not.
 			 * The inset wrapper is the band's own (`CHAT_COLUMN_INSET`, the value and not
 			 * a copy of it) so the three columns share an edge if that inset moves. The
@@ -1446,7 +1446,7 @@ export function ConfigComposer({
 								 */
 								variant="ghost"
 								size="sm"
-								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
+								className="-ms-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 								disabled={disabled}
 								onClick={() => {
 									setBoxText(t(example));

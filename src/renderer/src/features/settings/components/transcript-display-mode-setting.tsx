@@ -15,8 +15,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * label in another theme cannot reflow the row.
  *
  * THE DESCRIPTION STATES THE SCOPE, which is half of what the issue asks for:
- * this preference changes how *responses* are drawn, and the neighbouring
- * `showAgentReasoning` switch hides *reasoning* only — mid-turn narration the
+ * this preference changes how *responses* are drawn — mid-turn narration the
  * agent writes as prose is transcript content, not reasoning, so it is never
  * REMOVED by either mode: `by turn` folds it behind the turn's bars (the shipped
  * condensation), `by response` keeps it on screen. Stating the fold is the point

@@ -1,0 +1,254 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor",
+	"role": "Independent reviewer; no translation or implementation edits",
+	"instance": "7a964b27683c",
+	"model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"model_provenance": "Served model from session system prompt; no fallback notice observed in this session.",
+	"independence": "Auditor session 7a964b27683c authored no catalogue, context or consumer file in PR #1977; translator is a separate coder agent. Different agent and instance from the round-1 auditor 72ae6dc5603e.",
+	"head": "d9a4a6eb2a (+ uncommitted worktree; bytes bound by sha256, not HEAD)",
+	"namespace": "ui.chat.bridgeReceipt",
+	"locales": [
+		"en",
+		"es",
+		"fr",
+		"hi",
+		"ru",
+		"ur",
+		"vi",
+		"zh-CN"
+	],
+	"date": "2026-11-18T22:43:57+00:00",
+	"status": "clean-with-findings",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+		"es": "e1b0228efacbbdbd024082bc72cec85dcb6583982b1c46948e8c0479fdcf8e04",
+		"fr": "512f8636c6186b4d99ecda30e20661a92b067e83beaebd7d229c2cdeb4623444",
+		"hi": "bbc307141d04ad1fa053581007cbafc09ae5ec6eb5ddab1245b6b01a7c98c921",
+		"ru": "22e0349fab32225573f847e56b8c66e591db473e41669dc933040044c7907327",
+		"ur": "a5ccd969095982bcf0a71882700e946e3d2f9962256be9296c616b43a951a594",
+		"vi": "c2790df88e4f47e1985085eb38b44c3d31bec92a1b85bb180b79a66ac4e6dd84",
+		"zh-CN": "5908d5cb248ecf423bf54fcc814779ed7f8bc16a3f695954acc08ae2aaddb312"
+	},
+	"context_sha256": {
+		"en": "87460a3afa420d421dcecca6584bd9b7050f85156abac5da1400015b5732a504"
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.json",
+		"es": "src/i18n/catalogues/es/ui.chat.bridgeReceipt.json",
+		"fr": "src/i18n/catalogues/fr/ui.chat.bridgeReceipt.json",
+		"hi": "src/i18n/catalogues/hi/ui.chat.bridgeReceipt.json",
+		"ru": "src/i18n/catalogues/ru/ui.chat.bridgeReceipt.json",
+		"ur": "src/i18n/catalogues/ur/ui.chat.bridgeReceipt.json",
+		"vi": "src/i18n/catalogues/vi/ui.chat.bridgeReceipt.json",
+		"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.bridgeReceipt.json",
+		"context": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.context.json"
+	},
+	"scope": "Round 2: all 18 keys x 7 locales. Verified round-1 fixes R1-R10,R12-R17 applied verbatim, R11 deferred; new held_transient and changed unavailable_reason.offline; unchanged keys byte-identical to HEAD.",
+	"findings": [
+		{
+			"id": "R18",
+			"severity": "MINOR",
+			"locale": "es",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "Pendiente de filtrado — aún no se muestra a tu agente.",
+			"suggestion": "Pendiente de análisis — aún no se muestra a tu agente.",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"análisis\" in ui.agentMessages.settings.screening.* (\"Modelo de análisis\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R19",
+			"severity": "MINOR",
+			"locale": "fr",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "En attente de filtrage — pas encore transmis à votre agent.",
+			"suggestion": "En attente de vérification — pas encore transmis à votre agent.",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"vérification\" in ui.agentMessages.settings.screening.* (\"Modèle de vérification\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R20",
+			"severity": "MINOR",
+			"locale": "ru",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "Ожидает фильтрации — пока не показано вашему агенту.",
+			"suggestion": "Ожидает проверки — пока не показано вашему агенту.",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"проверка\" in ui.agentMessages.settings.screening.* (\"Модель проверки\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R21",
+			"severity": "MINOR",
+			"locale": "hi",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "स्क्रीनिंग का इंतज़ार है — अभी आपके एजेंट को नहीं दिखाया गया।",
+			"suggestion": "जाँच का इंतज़ार है — अभी आपके एजेंट को नहीं दिखाया गया।",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"जाँच\" in ui.agentMessages.settings.screening.* (\"जाँच मॉडल\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R22",
+			"severity": "MINOR",
+			"locale": "ur",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "اسکریننگ کا انتظار ہے — ابھی آپ کے ایجنٹ کو نہیں دکھایا گیا۔",
+			"suggestion": "جانچ کا انتظار ہے — ابھی آپ کے ایجنٹ کو نہیں دکھایا گیا۔",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"جانچ\" in ui.agentMessages.settings.screening.* (\"جانچ ماڈل\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R23",
+			"severity": "MINOR",
+			"locale": "zh-CN",
+			"key": "ui.chat.bridgeReceipt.held_transient",
+			"status": "open",
+			"current": "等待筛查——尚未展示给智能体。",
+			"suggestion": "等待检查——尚未展示给智能体。",
+			"problem": "Glossary drift: \"screening\" (of incoming Team Bridge messages) is rendered \"检查\" in ui.agentMessages.settings.screening.* (\"检查模型\") but differently here; same machine function, two terms.",
+			"disposition": "recommend deferred: context note requires same words as core tui.bridge_card.body.held_transient, so the fix must land in core and UI together"
+		},
+		{
+			"id": "R24",
+			"severity": "NIT",
+			"locale": "es",
+			"key": "ui.chat.bridgeReceipt.unavailable_reason.offline",
+			"status": "open",
+			"current": "No se pudo conectar con Radient — cierra y vuelve a abrir.",
+			"suggestion": "No se pudo conectar con Radient — cierra y vuelve a abrir para reintentar.",
+			"problem": "Drops \"to retry\", which every other locale keeps; purpose is implied but less explicit.",
+			"disposition": "recommend deferred with R18 (core parity)"
+		},
+		{
+			"id": "R11",
+			"severity": "NIT",
+			"locale": "zh-CN",
+			"key": "ui.chat.bridgeReceipt.pending",
+			"status": "deferred",
+			"current": "仍在送达中。",
+			"suggestion": "omit final 。 on short statuses",
+			"problem": "zh-CN guide short-status rule; consistent across the file including held_transient, so not a regression.",
+			"disposition": "deferred in round 1"
+		},
+		{
+			"id": "C-ZH-1",
+			"severity": "NIT",
+			"locale": "zh-CN",
+			"key": "ui.chat.bridgeReceipt.received",
+			"status": "open",
+			"current": "收到来自 {sender} 的消息",
+			"suggestion": "收到来自{sender}的消息",
+			"problem": "Pre-existing open nit from receipt ad24d2c43271; key byte-unchanged since HEAD, still present in audited bytes.",
+			"disposition": "pre-existing, non-gating"
+		}
+	],
+	"resolved_round1": [
+		{
+			"id": "R1",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R2",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R3",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R4",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R5",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R6",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R7",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R8",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R9",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R10",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R12",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R13",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R14",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R15",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R16",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		},
+		{
+			"id": "R17",
+			"severity": "observation",
+			"status": "fixed",
+			"note": "verified applied verbatim in target bytes"
+		}
+	],
+	"limitations": [
+		"No rendered fit / RTL frame (no browser use in this role); manager owns visual gates.",
+		"No native-speaker certification.",
+		"Core tui.bridge_card ledger rows not found in core i18n/ledger.json; core strings audited here on their own merits."
+	]
+}
