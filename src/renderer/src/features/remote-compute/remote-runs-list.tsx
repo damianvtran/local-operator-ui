@@ -106,6 +106,13 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 				// caret on the dialog itself.
 				onOpenAutoFocus={(event) => event.preventDefault()}
 				/*
+				 * THE CORNER IS `Dismiss`, ITS FOOTER IS `Close` (QA round 4, Q-4-1). This
+				 * dialog is the sheet's sibling two controls away (`View runs` reaches it), and
+				 * it had the exact pair U11 removed from the sheet: two stops named `Close` in
+				 * one trap, nothing to tell them apart.
+				 */
+				closeLabel={t("ui.common.actions.dismiss")}
+				/*
 				 * AND THE PANEL DOES NOT PAINT ITS OWN EDGE (design round 1, D5).
 				 * `html :focus-visible` draws a 2px accent stroke at 2px offset and its own
 				 * rule 5 lets the outline reach `[data-lo-floating]`, so this dialog - the

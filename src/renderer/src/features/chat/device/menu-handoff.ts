@@ -21,13 +21,31 @@
  */
 import { createContext, useContext } from "react";
 
-/** Ask the enclosing menu to hand its focus to `open` instead of its trigger. */
-export type MenuHandOff = (open: () => void) => void;
+/** What a row inside a menu may ask of the menu that holds it. */
+export type MenuHandOff = {
+	/** Ask the enclosing menu to hand its focus to `open` instead of its trigger. */
+	handOff: (open: () => void) => void;
+	/**
+	 * CLOSE THE MENU, SO A LATE HAND-OFF CAN STILL BE SPENT (UX round 4, U14).
+	 *
+	 * The hand-off fires from the menu's own close, so a row that takes it before
+	 * there is anything to open has to close the menu itself once the answer lands. A
+	 * press on the picker's first read is exactly that case: the press is held, and
+	 * the open follows an answer the menu is still on screen for.
+	 */
+	close: () => void;
+};
 
 const MenuHandOffContext = createContext<MenuHandOff | null>(null);
 
 export const MenuHandOffProvider = MenuHandOffContext.Provider;
 
-/** The enclosing menu's hand-off, or an immediate call when there is none. */
+/** No enclosing menu: nothing to hand to and nothing to close. */
+const DIRECT: MenuHandOff = {
+	handOff: (open) => open(),
+	close: () => undefined,
+};
+
+/** The enclosing menu's own doors, or the immediate call when there is none. */
 export const useMenuHandOff = (): MenuHandOff =>
-	useContext(MenuHandOffContext) ?? ((open) => open());
+	useContext(MenuHandOffContext) ?? DIRECT;

@@ -49,6 +49,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { type FC, Fragment, useEffect, useRef, useState } from "react";
 import { useNow } from "./remote-compute-clock";
+import { restoreSheetFocus, sheetOpener } from "./remote-compute-focus";
 import {
 	type RemoteSheetModel,
 	type RemoteTierRow,
@@ -271,25 +272,12 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	 *
 	 * The opener is remembered here because this dialog has no `DialogTrigger`: the
 	 * chip it was opened from belongs to the menu beside it, when the sheet opens the menu
-	 * has shut, and Radix's own restore therefore has nothing to focus - Escape dropped
-	 * the caret to `<body>`. `archive-conversation-dialog.tsx` is the file this shape is
-	 * copied from, down to the disconnected check and the trigger fallback.
+	 * has shut, and Radix's own restore therefore has nothing to focus. The capture and
+	 * the return are `remote-compute-focus.ts`'s, because `document.activeElement` is
+	 * `body` after a hand-off and body is not an opener (UX round 4, U9).
 	 */
 	const contentRef = useRef<HTMLDivElement>(null);
 	const opener = useRef<HTMLElement | null>(null);
-	/**
-	 * THE FOCUS FRAME IS CANCELLED WITH THE MOUNT (agent review round 3, NIT-1). The
-	 * frame below lands even when the dialog was closed in the same tick; the optional
-	 * chain keeps that harmless, but the frame still runs a focus call on a node that
-	 * is going away. One id and one cleanup is the whole fix.
-	 */
-	const focusFrame = useRef<number | null>(null);
-	useEffect(
-		() => () => {
-			if (focusFrame.current !== null) cancelAnimationFrame(focusFrame.current);
-		},
-		[],
-	);
 	/**
 	 * THE IDEMPOTENCY KEY IS MINTED ON THE FIRST PRESS AND RESENT ON EVERY RETRY.
 	 *
@@ -326,10 +314,7 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 	const wasOpen = useRef(false);
 	useEffect(() => {
 		if (open && !wasOpen.current) {
-			opener.current =
-				document.activeElement instanceof HTMLElement
-					? document.activeElement
-					: null;
+			opener.current = sheetOpener(document.activeElement);
 			setChosenNetworkId(null);
 			setChoosing(false);
 			setRefusedAt(null);
@@ -407,37 +392,31 @@ export const RemoteComputeSheet: FC<RemoteComputeSheetProps> = ({
 				 * still puts the caret inside the trap, which is what makes Escape and the
 				 * Tab cycle work at all (UX round 2, U6).
 				 *
-				 * `tabIndex={-1}` is what makes a `div` focusable at all, and the rAF is
-				 * the part that matters: the FocusScope that installs the trap is not
-				 * mounted at the instant this event fires, so a synchronous `focus()` lands
-				 * before the trap exists and Radix then moves the focus back out.
+				 * `tabIndex={-1}` is what makes a `div` focusable at all. The focus is taken
+				 * HERE AND NOW rather than one frame later (UX round 4, U13): the frame was a
+				 * deferral to survive the menu's own restore, and the hand-off moved this open
+				 * past that restore, so the only thing left to race was the frame itself - 4 of
+				 * 13 pointer opens left the caret on `<body>` with the dialog open.
 				 */
 				tabIndex={-1}
 				onOpenAutoFocus={(event) => {
 					event.preventDefault();
-					focusFrame.current = requestAnimationFrame(() => {
-						focusFrame.current = null;
-						contentRef.current?.focus();
-					});
+					contentRef.current?.focus();
 				}}
 				/*
 				 * AND THE FOCUS GOES BACK TO THE DOOR (UX round 2, U9). Closed by `Close`
 				 * the caret already returned to the chip; closed by Escape it fell to
 				 * `<body>`, so the next Tab started at the top of the document. Both ways
-				 * out are the same way out now: the element that opened the sheet, then
-				 * the chip itself when that element has gone (the menu's row is unmounted by
-				 * the select that opens this sheet, which is the usual case for the
-				 * keyboard door).
+				 * out are the same way out now: the element that opened the sheet, then the
+				 * chip itself when that element has gone (the menu's row is unmounted by the
+				 * select that opens this sheet, which is the usual case for the keyboard
+				 * door).
 				 */
 				onCloseAutoFocus={(event) => {
 					event.preventDefault();
 					const target = opener.current;
 					opener.current = null;
-					if (target?.isConnected) {
-						target.focus();
-						if (document.activeElement === target) return;
-					}
-					document.querySelector<HTMLElement>("[data-device-chip]")?.focus();
+					restoreSheetFocus(target, document);
 				}}
 				/*
 				 * A PANEL THAT FITS THE WINDOW, AND SCROLLS ITS OWN BODY (UX round 2, U10).

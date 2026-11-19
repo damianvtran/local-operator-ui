@@ -139,7 +139,7 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 	 * Tab walked it. `menu-handoff.ts` owns the rest: the open is deferred to the menu's
 	 * close, which drops the restore.
 	 */
-	const handOff = useMenuHandOff();
+	const { handOff, close: closeMenu } = useMenuHandOff();
 	/*
 	 * A PICKER THAT JUST OPENED ASKS AGAIN, ONCE (UX U2). The mounted popover is the
 	 * moment the row's answer decides whether a money action is offered, and the
@@ -164,6 +164,11 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 	const [signingIn, setSigningIn] = useState(false);
 	/** A retry this row pressed, in flight: the row says `checking…` (UX U2). */
 	const [checking, setChecking] = useState(false);
+	/**
+	 * A press taken while the FIRST read was still out, waiting for its answer (UX round
+	 * 4, U14). It is spent - or dropped - by the effect below.
+	 */
+	const [pressed, setPressed] = useState(false);
 	/*
 	 * THE CLOCK IS A SECOND, not ten (UX U4): the aggregate prints seconds, and a
 	 * reading sampled every ten of them lags by up to nine. The row is one line of
@@ -179,6 +184,21 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 		now,
 		narrow,
 	});
+	/*
+	 * A HELD PRESS IS SPENT THE MOMENT THE ANSWER HAS SOMETHING TO OPEN (UX round 4,
+	 * U14). The press was taken while the first read was out, so it could open nothing;
+	 * when the answer lands on a state with a second level it goes through the menu's own
+	 * hand-off, which means closing the menu that was holding the press on screen. Any
+	 * other answer just clears the hold: the row now says what it is, and the menu stays
+	 * where the user can read it.
+	 */
+	useEffect(() => {
+		if (!pressed || view.kind === "loading") return;
+		setPressed(false);
+		if (view.kind !== "ready" && view.kind !== "runs") return;
+		handOff(onOpenSheet);
+		closeMenu();
+	}, [pressed, view.kind, handOff, closeMenu, onOpenSheet]);
 	if (view.kind === "hidden" || hostedElsewhere) return null;
 	const disabled = view.kind === "network" || view.kind === "not-offered";
 	/** What the right-hand slot holds, for the states that are pressable. */
@@ -210,13 +230,9 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 		/*
 		 * `ready` AND `runs` BOTH LEAD TO THE SECOND LEVEL: a run in flight does not
 		 * stop a user starting another, and the aggregate on the row says what is
-		 * already spending. `loading` has nothing to open yet, so it asks again.
+		 * already spending. Every other kind has answered above or refused the press.
 		 */
-		if (view.kind === "ready" || view.kind === "runs") {
-			handOff(onOpenSheet);
-			return;
-		}
-		void read.refetch();
+		if (view.kind === "ready" || view.kind === "runs") handOff(onOpenSheet);
 	};
 	const reason =
 		!checking &&
@@ -242,9 +258,9 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 			</DropdownMenuLabel>
 			<DropdownMenuItem
 				data-radient-row={view.kind}
-				data-radient-checking={checking ? "" : undefined}
+				data-radient-checking={checking || pressed ? "" : undefined}
 				aria-disabled={disabled || undefined}
-				aria-busy={signingIn || checking || undefined}
+				aria-busy={signingIn || checking || pressed || undefined}
 				aria-label={view.sentence}
 				onSelect={(event) => {
 					/*
@@ -268,6 +284,19 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 						event.preventDefault();
 						return;
 					}
+					/*
+					 * THE FIRST READ IS THE OPEN A USER IS MOST LIKELY TO MAKE (UX round 4, U14).
+					 * The row is on screen before its answer is, and a press then closed the menu
+					 * and opened nothing - the silent press U12 fixed one state away. The press is
+					 * held here, with the spinner the row already draws, and spent by the effect
+					 * above as soon as the answer has a second level.
+					 */
+					if (view.kind === "loading") {
+						event.preventDefault();
+						setPressed(true);
+						void read.refetch();
+						return;
+					}
 					if (view.kind === "capacity") event.preventDefault();
 					open();
 				}}
@@ -278,7 +307,7 @@ export const RemoteComputePicker: FC<RemoteComputePickerProps> = ({
 				)}
 			>
 				<span className="flex w-full items-center gap-2">
-					{signingIn || checking ? (
+					{signingIn || checking || pressed ? (
 						<Spinner
 							aria-hidden="true"
 							className="size-3.5 shrink-0 text-ink-dim"

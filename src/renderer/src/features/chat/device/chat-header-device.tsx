@@ -44,6 +44,7 @@ import {
 	type ReactNode,
 	forwardRef,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -59,7 +60,7 @@ import {
 	placementSentence,
 } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
-import { MenuHandOffProvider } from "./menu-handoff";
+import { type MenuHandOff, MenuHandOffProvider } from "./menu-handoff";
 
 /** The dot's ink: `warning` when a device did not answer, `ink-muted` otherwise. */
 const STATE_DOT = {
@@ -338,8 +339,10 @@ const DevicePicker = ({
 	 * The Radient row is rendered inside this content but composed two trees away, so
 	 * it cannot pass its opener down; it hands the opener to this slot instead, and
 	 * `onCloseAutoFocus` below is where it is spent. The slot lives in the header (see
-	 * `ChatHeaderDevice`) because this component is written as a bare arrow and holds
-	 * no state of its own.
+	 * `ChatHeaderDevice`) because this component holds no state of its own; the menu's
+	 * own close rides the same provider (`menu-handoff.ts`), because a press held until
+	 * the row's read answers has to close this menu to spend its hand-off (UX round 4,
+	 * U14).
 	 */
 	handOffTo: MutableRefObject<(() => void) | null>;
 	/**
@@ -366,153 +369,164 @@ const DevicePicker = ({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
-}) => (
-	<MenuHandOffProvider
-		value={(open) => {
-			handOffTo.current = open;
-		}}
-	>
-		<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
-			<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-			<DropdownMenuContent
-				align="start"
-				side="bottom"
-				data-device-picker=""
-				data-device-picker-busy={busy ? "" : undefined}
-				className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
-				/*
-				 * THE MENU DOES NOT TAKE THE FOCUS BACK WHEN IT HANDS OFF (UX round 3, U6).
-				 * Radix restores focus to the trigger here, and that restore ran AFTER the
-				 * dialog opened from the same press had focused its own panel - so the caret
-				 * landed on the chip with the page already `aria-hidden` and the first Tab
-				 * walked it. A row that handed its opener over refuses the restore and opens
-				 * one frame later, once this content's focus scope has unmounted; a menu closed
-				 * any other way keeps Radix's own behaviour.
-				 */
-				onCloseAutoFocus={(event) => {
-					const handOff = handOffTo.current;
-					if (!handOff) return;
-					event.preventDefault();
-					handOffTo.current = null;
-					requestAnimationFrame(handOff);
-				}}
-			>
-				<div
-					data-device-picker-list=""
-					className="min-h-0 flex-1 overflow-y-auto"
+}) => {
+	/*
+	 * ONE VALUE FOR EVERY ROW UNDER THIS MENU, so a row that acts in an EFFECT does not
+	 * see a fresh object each render and re-run it (the picker's held press does).
+	 */
+	const handOff = useMemo<MenuHandOff>(
+		() => ({
+			handOff: (open) => {
+				handOffTo.current = open;
+			},
+			close: () => onOpenChange(false),
+		}),
+		[handOffTo, onOpenChange],
+	);
+	return (
+		<MenuHandOffProvider value={handOff}>
+			<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
+				<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+				<DropdownMenuContent
+					align="start"
+					side="bottom"
+					data-device-picker=""
+					data-device-picker-busy={busy ? "" : undefined}
+					className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
+					/*
+					 * THE MENU DOES NOT TAKE THE FOCUS BACK WHEN IT HANDS OFF (UX round 3, U6).
+					 * Radix restores focus to the trigger here, and that restore ran AFTER the
+					 * dialog opened from the same press had focused its own panel - so the caret
+					 * landed on the chip with the page already `aria-hidden` and the first Tab
+					 * walked it. A row that handed its opener over refuses the restore and opens
+					 * one frame later, once this content's focus scope has unmounted; a menu closed
+					 * any other way keeps Radix's own behaviour.
+					 */
+					onCloseAutoFocus={(event) => {
+						const handOff = handOffTo.current;
+						if (!handOff) return;
+						event.preventDefault();
+						handOffTo.current = null;
+						requestAnimationFrame(handOff);
+					}}
 				>
-					<DropdownMenuLabel className="text-meta text-ink-dim">
-						{model.heading}
-					</DropdownMenuLabel>
-					<PickerRow row={model.self} busy={busy} onPick={onPick} />
-					{model.sections.map((section) => (
-						<div key={section.key}>
-							<DropdownMenuSeparator />
-							<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
-								<span className="truncate">{section.name}</span>
-								<span>{devices(section.count)}</span>
-							</DropdownMenuLabel>
-							{section.rows.map((row) => (
-								<PickerRow
-									key={row.deviceId}
-									row={row}
-									busy={busy}
-									onPick={onPick}
-								/>
-							))}
-						</div>
-					))}
-					{model.guidance ? (
-						/*
-						 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
-						 * and network creation is CLI-only, so the honest instruction names the
-						 * command that exists rather than a button that does not. Drawn only for an
-						 * ANSWERED read: see `model.readFailure` below, which is what an empty list
-						 * means when nobody answered.
-						 */
-						<DeviceGuidance guidance={model.guidance} />
-					) : null}
-					{/* The second group, last: it is the one entry that is not a device, and
-					 * the rule above it is what says so. */}
-					{remoteGroup}
-				</div>
-				{model.footer ||
-				model.readFailure ||
-				model.inFlight ||
-				model.offerCheckAgain ? (
-					<>
-						{/*
-						 * THE PINNED BAND HAS ITS OWN GROUND, AND THAT IS ITS RULE (design round 2,
-						 * D1 part 3). Round 1 gave the rule above it `bg-hairline-strong`; the separator
-						 * paints its own `divider-inset` background and that utility is not a Tailwind
-						 * class, so tailwind-merge could not drop it - all three rules measured the same
-						 * `#353023` in localOperatorDark. Even had the cascade gone the other way, a
-						 * weight step cannot carry it: `hairline-strong` is 1.28:1 on this panel's ground
-						 * against the divider's 1.09:1, which is not a visible step at 1x. The contract's
-						 * instrument for something that is not part of the flow is a lightness step, so
-						 * the band takes `surface` - the step below the panel's `elevated` - and that
-						 * edge, not a hairline of any weight, is what says "below this is not a
-						 * destination".
-						 *
-						 * FULL-BLEED, because a band inset by the panel's own `p-1` would hang a 4px
-						 * frame of `elevated` under a strip that is meant to be the panel's last line.
-						 * `-mx-1 -mb-1` reaches that padding on three sides and `rounded-b-md` follows the
-						 * panel's own corner; `px-3` keeps the text on the same 12px the item labels start
-						 * at (`p-1` + `px-2`), so the band's sentence does not step sideways.
-						 */}
-						<div
-							data-device-band=""
-							className="-mx-1 -mb-1 flex shrink-0 items-center gap-2 rounded-b-md bg-surface px-3 py-2"
-						>
+					<div
+						data-device-picker-list=""
+						className="min-h-0 flex-1 overflow-y-auto"
+					>
+						<DropdownMenuLabel className="text-meta text-ink-dim">
+							{model.heading}
+						</DropdownMenuLabel>
+						<PickerRow row={model.self} busy={busy} onPick={onPick} />
+						{model.sections.map((section) => (
+							<div key={section.key}>
+								<DropdownMenuSeparator />
+								<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
+									<span className="truncate">{section.name}</span>
+									<span>{devices(section.count)}</span>
+								</DropdownMenuLabel>
+								{section.rows.map((row) => (
+									<PickerRow
+										key={row.deviceId}
+										row={row}
+										busy={busy}
+										onPick={onPick}
+									/>
+								))}
+							</div>
+						))}
+						{model.guidance ? (
+							/*
+							 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
+							 * and network creation is CLI-only, so the honest instruction names the
+							 * command that exists rather than a button that does not. Drawn only for an
+							 * ANSWERED read: see `model.readFailure` below, which is what an empty list
+							 * means when nobody answered.
+							 */
+							<DeviceGuidance guidance={model.guidance} />
+						) : null}
+						{/* The second group, last: it is the one entry that is not a device, and
+						 * the rule above it is what says so. */}
+						{remoteGroup}
+					</div>
+					{model.footer ||
+					model.readFailure ||
+					model.inFlight ||
+					model.offerCheckAgain ? (
+						<>
 							{/*
-							 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
-							 * outranks everything (nothing here can be pressed anyway), then the read's
-							 * own failure, then the consequence of the default pick.
+							 * THE PINNED BAND HAS ITS OWN GROUND, AND THAT IS ITS RULE (design round 2,
+							 * D1 part 3). Round 1 gave the rule above it `bg-hairline-strong`; the separator
+							 * paints its own `divider-inset` background and that utility is not a Tailwind
+							 * class, so tailwind-merge could not drop it - all three rules measured the same
+							 * `#353023` in localOperatorDark. Even had the cascade gone the other way, a
+							 * weight step cannot carry it: `hairline-strong` is 1.28:1 on this panel's ground
+							 * against the divider's 1.09:1, which is not a visible step at 1x. The contract's
+							 * instrument for something that is not part of the flow is a lightness step, so
+							 * the band takes `surface` - the step below the panel's `elevated` - and that
+							 * edge, not a hairline of any weight, is what says "below this is not a
+							 * destination".
+							 *
+							 * FULL-BLEED, because a band inset by the panel's own `p-1` would hang a 4px
+							 * frame of `elevated` under a strip that is meant to be the panel's last line.
+							 * `-mx-1 -mb-1` reaches that padding on three sides and `rounded-b-md` follows the
+							 * panel's own corner; `px-3` keeps the text on the same 12px the item labels start
+							 * at (`p-1` + `px-2`), so the band's sentence does not step sideways.
 							 */}
-							{model.inFlight ? (
-								<span
-									data-device-in-flight=""
-									className="min-w-0 flex-1 text-meta text-ink"
-								>
-									{model.inFlight}
-								</span>
-							) : model.readFailure ? (
-								<span
-									data-device-read-failure=""
-									className="min-w-0 flex-1 text-meta text-warning"
-								>
-									{model.readFailure}
-								</span>
-							) : model.footer ? (
-								<span
-									data-device-footer=""
-									className="min-w-0 flex-1 text-meta text-ink-dim"
-								>
-									{model.footer}
-								</span>
-							) : (
-								<span className="min-w-0 flex-1" />
-							)}
-							{model.offerCheckAgain ? (
-								<DropdownMenuItem
-									data-device-recheck=""
-									aria-disabled={busy || undefined}
-									onSelect={() => {
-										if (busy) return;
-										onCheckAgain();
-									}}
-									className="shrink-0 px-1 py-0 text-meta"
-								>
-									{t("ui.chat.device.check_again")}
-								</DropdownMenuItem>
-							) : null}
-						</div>
-					</>
-				) : null}
-			</DropdownMenuContent>
-		</DropdownMenu>
-	</MenuHandOffProvider>
-);
+							<div
+								data-device-band=""
+								className="-mx-1 -mb-1 flex shrink-0 items-center gap-2 rounded-b-md bg-surface px-3 py-2"
+							>
+								{/*
+								 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
+								 * outranks everything (nothing here can be pressed anyway), then the read's
+								 * own failure, then the consequence of the default pick.
+								 */}
+								{model.inFlight ? (
+									<span
+										data-device-in-flight=""
+										className="min-w-0 flex-1 text-meta text-ink"
+									>
+										{model.inFlight}
+									</span>
+								) : model.readFailure ? (
+									<span
+										data-device-read-failure=""
+										className="min-w-0 flex-1 text-meta text-warning"
+									>
+										{model.readFailure}
+									</span>
+								) : model.footer ? (
+									<span
+										data-device-footer=""
+										className="min-w-0 flex-1 text-meta text-ink-dim"
+									>
+										{model.footer}
+									</span>
+								) : (
+									<span className="min-w-0 flex-1" />
+								)}
+								{model.offerCheckAgain ? (
+									<DropdownMenuItem
+										data-device-recheck=""
+										aria-disabled={busy || undefined}
+										onSelect={() => {
+											if (busy) return;
+											onCheckAgain();
+										}}
+										className="shrink-0 px-1 py-0 text-meta"
+									>
+										{t("ui.chat.device.check_again")}
+									</DropdownMenuItem>
+								) : null}
+							</div>
+						</>
+					) : null}
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</MenuHandOffProvider>
+	);
+};
 
 /**
  * The control, and the one question a destructive pick has to ask.
