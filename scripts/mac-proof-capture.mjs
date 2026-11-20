@@ -142,6 +142,8 @@ export const SCENES = Object.freeze([
 	"conversation",
 	"files",
 	"canvas",
+	// One picture from --session's Files view opened in the canvas (--preview-file).
+	"file-preview",
 	"library",
 	"notifications",
 	// #1902: the asks drawer of --session, opened on its suggested-command ask.
@@ -151,11 +153,28 @@ export const SCENES = Object.freeze([
 	// #1907: the same item's details INSIDE --session's drawer (Updates tab).
 	"update-detail",
 ]);
+/** The `file-preview` scene's default row: the picture 79's remote session holds. */
+export const PREVIEW_FILE_DEFAULT = "image-1.png";
+/*
+ * A plain file name, because it is interpolated into CSS attribute selectors
+ * (`[title*="/<name>"]`, `img[alt="<name>"]`): a quote, backslash, slash or
+ * control character would change the selector rather than name a file.
+ */
+const PREVIEW_FILE = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,127}$/;
+
+export function previewFileProblem(name) {
+	return typeof name === "string" && PREVIEW_FILE.test(name)
+		? null
+		: `--preview-file must be a plain file name (letters, digits, . _ - and space; got ${JSON.stringify(name)})`;
+}
+
 export const THEMES = Object.freeze({
 	dark: "localOperatorDark",
 	light: "localOperatorLight",
 });
 const SESSION_ID = /^[a-f0-9]{12}$/;
+/** A library row id, as core's route pins it (desktop_library.py:62 `AssetID`). */
+const LIBRARY_ASSET_ID = /^la_[0-9a-f]{16}$/;
 
 /*
  * ---------------------------------------------------------------------------
@@ -999,6 +1018,8 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
                                daemon reads the seeded rows back. Defaults --session (and
                                --notification-id) to the seed's own ids
   --notification-id <n_...>    the item the notification-detail and update-detail scenes open
+  --preview-file <name>        the --session Files row the file-preview scene shows in the canvas
+                               (default ${PREVIEW_FILE_DEFAULT}); the receipt proves it is a PEER row
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -1048,6 +1069,7 @@ export function parseArgs(argv) {
 		seedConfig: null,
 		seed: null,
 		notificationId: null,
+		previewFile: PREVIEW_FILE_DEFAULT,
 		serveRecordDir: null,
 		tokenFromOperatorProfile: false,
 		dryRun: false,
@@ -1142,6 +1164,9 @@ export function parseArgs(argv) {
 			case "--notification-id":
 				opts.notificationId = take();
 				break;
+			case "--preview-file":
+				opts.previewFile = take();
+				break;
 			case "--serve-record-dir":
 				opts.serveRecordDir = take();
 				break;
@@ -1226,13 +1251,18 @@ export function validateOptions(opts) {
 			(s) =>
 				s === "files" ||
 				s === "canvas" ||
+				s === "file-preview" ||
 				s === "asks" ||
 				s === "update-detail",
 		)
 	)
 		throw new Refusal(
-			"the files, canvas, asks and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
+			"the files, canvas, file-preview, asks and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
 		);
+	if (opts.scenes.includes("file-preview")) {
+		const problem = previewFileProblem(opts.previewFile);
+		if (problem) throw new Refusal(problem);
+	}
 	if (opts.seed !== null && opts.seedConfig !== null)
 		throw new Refusal(
 			"--seed and --seed-config are alternatives (one generates the template, the other copies yours)",
@@ -1364,8 +1394,18 @@ export function validateOptions(opts) {
  *   (`data-notifications-empty`) - so neither the skeleton nor a detail frame
  *   can take the shot. The "Select a notification" placeholder has no stable
  *   attribute at v0.59.2, so it is not used.
- * - library: the library page's own header (`data-library-header` inside
- *   `data-library-page`), which only the /library route renders.
+ * - library: the RESULTS, settled - not the header. The header
+ *   (`data-library-header`, library-page.tsx:834) paints with the route, before
+ *   the listing answers, so it proved the route and nothing about the rows.
+ *   `[data-library-results]` (library-page.tsx:1019) carries
+ *   `aria-busy={listing.isLoading || listing.isFetching}` (:1021), and its only
+ *   loading content is `LibraryGridSkeleton` (`data-library-skeleton`,
+ *   library-card.tsx:521/543); while the catalogue is still indexing the header
+ *   shows `data-library-building` (:1002). So the wait is: results not busy, no
+ *   skeleton, no building line - which leaves exactly the settled faces: cards
+ *   (`data-library-card-id`), the empty state, or the listing error. A timeout
+ *   means the library never settled in 20 s and the run fails with no frame;
+ *   it never means "photograph the skeleton".
  */
 export const SCENE_READY = Object.freeze({
 	// `:not(:has(... [data-notification-open]))` too (design D7): #1907's
@@ -1373,8 +1413,123 @@ export const SCENE_READY = Object.freeze({
 	// the pane already showed the empty placeholder - mid-transition.
 	notifications:
 		"[data-notifications-page]:not(:has([data-notification-detail], [data-notification-open])) :is([data-notifications-list], [data-notifications-empty])",
-	library: "[data-library-page] [data-library-header]",
+	library:
+		'[data-library-page]:not(:has([data-library-building], [data-library-skeleton])) [data-library-results][aria-busy="false"]',
 });
+
+/*
+ * The canvas's Files view, SETTLED (79's be9379d8 Mac run: `files-light.png`
+ * was shuttered on "Loading session files..." - the scene waited only for the
+ * chat header, which is up long before the session's file index answers).
+ *
+ * Every selector below is markup of the app at v0.59.2
+ * (src/renderer/src/features/chat/components/canvas/finder-files-view.tsx), and
+ * the shipped `waitFor` is `document.querySelector`, so a selector LIST is one
+ * wait that passes on the first settled face it finds:
+ * - rows: `[data-tour-tag="file-row"]` (:1437 audio, :1533 every other kind),
+ *   only rendered once the list has items, inside the scroller section
+ *   `[data-tour-tag="files-scroller"]` (:811);
+ * - the empty state, or an explicit error: the scroller's no-rows block is ONE
+ *   `<div>` whose first `<p>` is the heading (:860) - "Loading session files...",
+ *   "Building the file index...", "No files yet", or the error sentence. The
+ *   heading's TEXT is the only difference between those states (no attribute
+ *   at v0.59.2), but what FOLLOWS it is not: the settled empty state adds its
+ *   detail `<p>` (:882, rendered only when `index.state === "ready"` and the
+ *   attachments are not loading), an unsupported index adds its explanation
+ *   `<p>` (:875), and an error adds its Retry/Continue `<button>` (:887). The
+ *   loading and building headings stand ALONE. So `> div > p + :is(p, button)`
+ *   matches every settled face and never a loading one - there is no other
+ *   `<p>` in the scroller, rows are spans and buttons;
+ * - and, for both, no Attachments section still captioned "Loading session
+ *   files..." (:1073: a `text-ink-dim` span in the section's `<h3><button>`; its
+ *   one settled sibling caption, "partial", carries a `title`, :1081).
+ * A timeout means none of those within 20 s: the run fails and no frame is
+ * taken under the scene's name.
+ *
+ * NOT COVERED, and why: while an index is still PAGING with rows already on
+ * screen, the count line above the scroller appends " - Loading session
+ * files..." (:718) as bare text in an attribute-less span; no v0.59.2 selector
+ * can see it. The rows that frame shows are real, settled rows.
+ */
+const FILES_SCROLLER =
+	'[data-tour-tag="canvas-container"] [data-tour-tag="files-scroller"]:not(:has(h3 > button > span.text-ink-dim:not([title])))';
+export const FILES_READY = `${FILES_SCROLLER} [data-tour-tag="file-row"], ${FILES_SCROLLER} > div > p + :is(p, button)`;
+
+/**
+ * The `file-preview` scene: --session's Files view, the `name` row shown IN THE
+ * CANVAS, positive-waited on the painted picture. Shipped v0.59.2 verbs only
+ * (`press`, `waitFor`, `openCanvas`, `navigate`: dev-driver-script.ts:62-71).
+ *
+ * WHY THE ROW'S MENU, NOT THE ROW. A picture in the grouped Images grid (the
+ * default, finder-layout.ts:17 `group: true`) is a TILE, and a tile's own click
+ * is EXPAND - the lightbox, not the canvas (finder-files-view.tsx:1553
+ * `tiled && media === "image" ? onExpand : onOpen`). The canvas door every row
+ * has is its menu's "Show in canvas" (remote rows: remote-file-actions-menu.tsx,
+ * entry `data-remote-action="show-in-canvas"` :262, wired to the same `onOpen`,
+ * finder-files-view.tsx:1363). `press` dispatches pointerdown...click
+ * (install.ts:206-263): the trigger is a Radix `DropdownMenuTrigger` (`aria-
+ * haspopup="menu"`, opens on pointerdown, button 0), the entry a Radix item
+ * (selects on click; `data-disabled` while disabled - above the relay's size
+ * ceiling - which the selector refuses, so a disabled entry fails the run).
+ *
+ * WHICH ROW. Row ids are opaque (`remote:<row id>` / `artifact:<digest>`,
+ * session-files.ts:113/123), so the row is found by its button's tooltip
+ * (`title`, :1552): a path row's starts with the owner's display path
+ * (`.../<name>`), an artifact row's with its name (artifactTooltip). Rows are
+ * virtualised (only bands in view render), so the row must be on the first
+ * screen of the list - if it is not, `press` fails with "nothing matches".
+ *
+ * THE SETTLED STATE. The canvas viewer paints `<img alt={document.title}>`
+ * only once the bytes arrived (image-preview.tsx:127-129 artifact, :238-240
+ * path; loading/failure render `FileViewerState` instead), inside
+ * `[data-tour-tag="canvas-container"]` (canvas/index.tsx:836). The lightbox
+ * (`data-image-viewport`, image-lightbox.tsx:716) portals to <body>, and is
+ * excluded anyway, so an Expand can never pass for the canvas. The Files
+ * grid's own thumbnails are `alt=""`. A timeout means the picture never
+ * painted in the canvas (unreachable owner, refused read) and no frame.
+ */
+export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
+	const problem = previewFileProblem(name);
+	if (problem) throw new Refusal(problem);
+	const titled = `:is([title^="${name}"], [title*="/${name}"])`;
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { view: "files" } },
+		{
+			verb: "waitFor",
+			payload: { selector: FILES_READY, timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: `[data-tour-tag="files-scroller"] [data-tour-tag="file-row"]:has(button${titled}) button[aria-haspopup="menu"]`,
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "press",
+			payload: {
+				selector:
+					'[role="menu"] [data-remote-action="show-in-canvas"]:not([data-disabled])',
+				timeoutMs: 5000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: filePreviewSelector(name),
+				timeoutMs: 20000,
+			},
+			timeoutMs: 25000,
+		},
+	];
+}
+
+/** The painted canvas picture of `name` (see `filePreviewSceneSteps`). */
+export function filePreviewSelector(name) {
+	return `[data-tour-tag="canvas-container"] img[alt="${name}"]:not([data-image-viewport] img)`;
+}
 
 /**
  * "This notification's opening has settled as READ" (design D7), from markup
@@ -1527,6 +1682,7 @@ export function buildSteps({
 	capture,
 	notificationId = null,
 	windowWaitS = WINDOW_WAIT_DEFAULT_S,
+	previewFile = PREVIEW_FILE_DEFAULT,
 }) {
 	const shutter = (label) => ({
 		verb: "shutter",
@@ -1571,10 +1727,23 @@ export function buildSteps({
 								payload: { view: scene === "files" ? "files" : "documents" },
 							},
 				);
-				steps.push({
-					verb: "waitFor",
-					payload: { selector: '[data-chat-region="header"]' },
-				});
+				// `files` waits for its DATA, not the header: the header is up long
+				// before the file index answers (79's files-light.png, "Loading
+				// session files..."). See FILES_READY for the settled faces.
+				steps.push(
+					scene === "files"
+						? {
+								verb: "waitFor",
+								payload: { selector: FILES_READY, timeoutMs: 20000 },
+								timeoutMs: 25000,
+							}
+						: {
+								verb: "waitFor",
+								payload: { selector: '[data-chat-region="header"]' },
+							},
+				);
+			} else if (scene === "file-preview") {
+				steps.push(...filePreviewSceneSteps(previewFile));
 			} else if (scene === "asks") {
 				steps.push(...asksSceneSteps());
 			} else if (scene === "notification-detail") {
@@ -1833,15 +2002,54 @@ export const DAEMON_ROUTES = Object.freeze([
 		segment: NOTIFICATION_ID,
 		query: Object.freeze([]),
 	}),
+	/*
+	 * The provenance read-backs (`libraryProvenance`, `imagePreview` in the
+	 * receipt), NEW with the file-preview scene and read-only GETs, all three:
+	 * - the library listing, asked exactly as the desktop asks it
+	 *   (`scope=final`) for its first row - core desktop_library.py:225. On a
+	 *   catalogue still indexing it kicks the same background index build the
+	 *   app's own Library route already kicked; it writes no row;
+	 * - one library row - desktop_library.py:296, `service.get_asset`, a store
+	 *   read; `{id}` is ONE `la_<16 hex>` segment (the route's own AssetID);
+	 * - --session's file index, filtered by name - desktop_session_files.py:135;
+	 *   for a peer's conversation core asks the OWNER for its index
+	 *   (`peer_session_files`) and stamps `remote` on each row
+	 *   (server/utils/remote_session_files.py `_stamp`). The same read the app's
+	 *   Files view makes; it starts no runtime.
+	 */
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/library/assets",
+		query: Object.freeze(["scope", "limit"]),
+	}),
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/library/assets/{id}",
+		segment: LIBRARY_ASSET_ID,
+		query: Object.freeze([]),
+	}),
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/sessions/{id}/files",
+		segment: SESSION_ID,
+		query: Object.freeze(["q", "limit"]),
+	}),
 ]);
 
-/** Whether `pathname` is `route.path`, with a `{id}` tail standing for one `segment` match. */
+/**
+ * Whether `pathname` is `route.path`, segment for segment, a `{id}` segment
+ * standing for exactly ONE path segment that matches `route.segment` (never a
+ * free suffix, never two segments).
+ */
 function routeMatches(route, pathname) {
-	if (!route.path.endsWith("/{id}")) return route.path === pathname;
-	const prefix = route.path.slice(0, -"{id}".length);
+	if (!route.path.includes("{id}")) return route.path === pathname;
+	const want = route.path.split("/");
+	const got = pathname.split("/");
 	return (
-		pathname.startsWith(prefix) &&
-		route.segment.test(pathname.slice(prefix.length))
+		want.length === got.length &&
+		want.every((part, i) =>
+			part === "{id}" ? route.segment.test(got[i]) : part === got[i],
+		)
 	);
 }
 
@@ -2487,6 +2695,136 @@ export async function waitForRemoteSession(
 			);
 		await sleep(pollMs);
 	}
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Provenance: what makes a Library or file-preview frame proof of the REMOTE
+ * path rather than a picture of local data that happens to look the same.
+ * ---------------------------------------------------------------------------
+ *
+ * WHY. Both frames are meant to show a PEER's files through this device. A
+ * library row with a local path, or a session whose transcript the rig holds in
+ * its own `<config>/sessions`, renders the same pixels while proving nothing
+ * about the remote route. So after the frames, while the rig daemon is still up,
+ * the harness reads the data behind them back (allowlisted GETs only) and the
+ * run FAILS (exit 1) when either is not remote. The receipt keeps the JSON
+ * subset it judged, so a reader can check the verdict without the rig.
+ */
+
+/**
+ * `libraryProvenance` from the first row of the desktop's own listing and that
+ * row's detail. A peer row: `remote` set and NO local `ref.path` (core keeps no
+ * local path identity for a row only a peer references). `source` is the row's
+ * `origin` (LibraryRow has no field named `source`).
+ */
+export function libraryProvenanceCheck(listing, detail) {
+	const first = (listing?.result ?? listing)?.rows?.[0] ?? null;
+	const row = detail?.result ?? detail ?? null;
+	if (!first?.id || !row)
+		return {
+			assetId: first?.id ?? null,
+			remote: null,
+			path: null,
+			source: null,
+			pass: false,
+			problem: first?.id
+				? `library row ${first.id} could not be read back`
+				: "the library listing has no row to check",
+		};
+	const remote = row.remote ?? null;
+	const path = row.ref?.path ?? null;
+	const pass = remote !== null && path === null;
+	return {
+		assetId: row.id ?? first.id,
+		remote,
+		path,
+		source: row.origin ?? null,
+		pass,
+		...(pass
+			? {}
+			: {
+					problem:
+						remote === null
+							? `library row ${first.id} is not a peer row (remote is null)`
+							: `library row ${first.id} has a local path (${path})`,
+				}),
+	};
+}
+
+/**
+ * `imagePreview` from --session's file index row named `name` and whether the
+ * rig holds that session itself. Passes only for a row the daemon stamped
+ * `remote` (a peer's index) in a session the rig's config root does NOT hold:
+ * a session present under `<config>/sessions` could have been served from this
+ * disk, so its picture would not prove the remote read.
+ */
+export function imagePreviewCheck({ listing, name, sessionOnRig }) {
+	const rows = (listing?.result ?? listing)?.rows ?? [];
+	const row = rows.find((r) => r?.name === name) ?? null;
+	const remote = row?.remote ?? null;
+	const problems = [];
+	if (!row) problems.push(`no file row named ${name} in the session's index`);
+	else if (remote !== true) problems.push(`file row ${row.id} is not remote`);
+	if (sessionOnRig !== false)
+		problems.push(
+			sessionOnRig === null
+				? "no rig config root to check the session against (attach mode)"
+				: "the session is present in the rig's own <config>/sessions",
+		);
+	return {
+		assetId: row?.id ?? null,
+		remote,
+		originDevice: row?.origin_device ?? null,
+		sessionOnRig,
+		pass: problems.length === 0,
+		...(problems.length ? { problem: problems.join("; ") } : {}),
+	};
+}
+
+/** Read the first library row back (the one the Library frame shows first). */
+export async function readLibraryProvenance(base, token, { timeoutMs }) {
+	const listing = await daemonRequest(
+		base,
+		"GET",
+		"/v1/desktop/library/assets?scope=final&limit=1",
+		{ token, timeoutMs },
+	);
+	const id = (listing?.result ?? listing)?.rows?.[0]?.id;
+	const detail =
+		typeof id === "string" && LIBRARY_ASSET_ID.test(id)
+			? await daemonRequest(base, "GET", `/v1/desktop/library/assets/${id}`, {
+					token,
+					timeoutMs,
+				})
+			: null;
+	return libraryProvenanceCheck(listing, detail);
+}
+
+/**
+ * Core's own bound on the peer index call it makes for this read
+ * (network/file_index.py:48 `INDEX_CLIENT_TIMEOUT_S = 45.0`), plus margin, so
+ * the harness never abandons a read core is still allowed to finish.
+ */
+export const PEER_INDEX_READ_MS = 50_000;
+
+/** Read the previewed row back from --session's index; `configRoot` null = attach. */
+export async function readImagePreview(
+	base,
+	token,
+	{ session, name, configRoot, timeoutMs },
+) {
+	const listing = await daemonRequest(
+		base,
+		"GET",
+		`/v1/desktop/sessions/${session}/files?q=${encodeURIComponent(name)}&limit=50`,
+		{ token, timeoutMs: Math.min(PEER_INDEX_READ_MS, timeoutMs) },
+	);
+	const sessionOnRig =
+		configRoot === null
+			? null
+			: existsSync(join(configRoot, "sessions", session));
+	return imagePreviewCheck({ listing, name, sessionOnRig });
 }
 
 /**
@@ -4481,6 +4819,30 @@ export async function main(argv = process.argv.slice(2)) {
 		if (!abort && receipt.frames.length !== expected)
 			abort = `captured ${receipt.frames.length} of ${expected} frames`;
 		if (!abort) abort = duplicateFrameProblem(receipt.frames);
+		// Provenance (see `libraryProvenanceCheck`): after the frames, while the
+		// rig daemon is still up, and bounded by what is left of --timeout. A
+		// non-remote answer FAILS the run: the frame would not prove the remote path.
+		if (!abort && opts.scenes.includes("library")) {
+			checkpoint("reading the library row's provenance back");
+			receipt.libraryProvenance = await readLibraryProvenance(
+				backendUrl,
+				token,
+				{ timeoutMs: Math.max(1000, runDeadline - Date.now()) },
+			);
+			if (!receipt.libraryProvenance.pass)
+				abort = `library provenance: ${receipt.libraryProvenance.problem}`;
+		}
+		if (!abort && opts.scenes.includes("file-preview")) {
+			checkpoint("reading the previewed file's provenance back");
+			receipt.imagePreview = await readImagePreview(backendUrl, token, {
+				session: opts.session,
+				name: opts.previewFile,
+				configRoot: opts.backend === "attach" ? null : lopRun.configRoot,
+				timeoutMs: Math.max(1000, runDeadline - Date.now()),
+			});
+			if (!receipt.imagePreview.pass)
+				abort = `file-preview provenance: ${receipt.imagePreview.problem}`;
+		}
 		if (abort) throw new Error(abort);
 		receipt.verdict = "captured";
 	} catch (error) {

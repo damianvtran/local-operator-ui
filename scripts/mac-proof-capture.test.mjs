@@ -13,11 +13,13 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import os from "node:os";
 import { join } from "node:path";
 import { after, describe, test } from "node:test";
 import vm from "node:vm";
+import { JSDOM } from "jsdom";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	APP_ZIP_UNPACKED_CAP_BYTES,
@@ -26,7 +28,9 @@ import {
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
 	EXIT,
+	FILES_READY,
 	FORBIDDEN_DAEMON_PATH,
+	PREVIEW_FILE_DEFAULT,
 	RUNNER_MAX_STEPS,
 	Refusal,
 	SCENES,
@@ -60,8 +64,12 @@ import {
 	envGovernedBlockedMessage,
 	extractedContainmentProblem,
 	extractedSymlinkProblem,
+	filePreviewSceneSteps,
+	filePreviewSelector,
 	frameMatchesWindow,
+	imagePreviewCheck,
 	killRigMatched,
+	libraryProvenanceCheck,
 	lopArgvProblem,
 	operatorPathProblem,
 	operatorRoots,
@@ -70,9 +78,12 @@ import {
 	physical,
 	pngSize,
 	portListenerOwned,
+	previewFileProblem,
 	processFacts,
 	processFactsMany,
 	quarantineProblem,
+	readImagePreview,
+	readLibraryProvenance,
 	redactEnv,
 	relayPortFromConfig,
 	relayPortProblem,
@@ -350,6 +361,17 @@ http.createServer((req, res) => {
     const file = path.join(config, "fake-sessions.json");
     const rows = reads >= 3 && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
     return res.end(JSON.stringify({ status: 200, message: "ok", result: { sessions: rows } }));
+  }
+  // The Library provenance read-back: a PEER row unless the rig's config
+  // carries fake-library.json (a row to serve instead, e.g. a local one).
+  if (req.url.startsWith("/v1/desktop/library/assets")) {
+    if (req.headers.authorization !== "Bearer " + process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) { res.statusCode = 401; return res.end("{}"); }
+    const file = path.join(config, "fake-library.json");
+    const row = fs.existsSync(file)
+      ? JSON.parse(fs.readFileSync(file, "utf8"))
+      : { id: "la_00000000000000aa", ref: { type: "path", path: null }, origin: "generated", remote: { device_id: "d1", device_name: "Owner" } };
+    const result = req.url.startsWith("/v1/desktop/library/assets?") ? { state: "ready", rows: [row] } : row;
+    return res.end(JSON.stringify({ status: 200, message: "ok", result }));
   }
   res.statusCode = 404;
   res.end("{}");
@@ -961,9 +983,10 @@ test("route-only scenes wait for a positive selector of their settled state befo
 		SCENE_READY.notifications,
 		/\[data-notifications-list\], \[data-notifications-empty\]/,
 	);
+	// The RESULTS settled, never the header alone (it paints before the rows).
 	assert.equal(
 		SCENE_READY.library,
-		"[data-library-page] [data-library-header]",
+		'[data-library-page]:not(:has([data-library-building], [data-library-skeleton])) [data-library-results][aria-busy="false"]',
 	);
 	// The detail scene waits for the read-on-open to settle (design D7).
 	const detailShutter = steps.findIndex(
@@ -1794,6 +1817,60 @@ it("stale frame: two scenes photographed to the same bytes fail the run (exit 1)
 	assert.equal(receipt.exit, 1);
 });
 
+it("library provenance: a LOCAL first row fails the run (exit 1) with the judged subset in the receipt", async () => {
+	const app = fakeApp("LocalLibrary");
+	const rigRoot = join(TREE, "locallib-rig");
+	const out = join(TREE, "locallib-out");
+	const seed = join(TREE, "locallib-seed");
+	mkdirSync(seed, { recursive: true });
+	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
+	// The fake daemon serves this row instead of its default peer row.
+	writeFileSync(
+		join(seed, "fake-library.json"),
+		JSON.stringify({
+			id: "la_00000000000000bb",
+			ref: { type: "path", path: "/Users/rig/report.pdf" },
+			origin: "mentioned",
+			remote: null,
+		}),
+	);
+	const run = await runHarnessAsync([
+		"--app",
+		app,
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--seed-config",
+		seed,
+		"--scene",
+		"library",
+		"--theme",
+		"dark",
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/library provenance: library row la_00000000000000bb is not a peer row \(remote is null\)/,
+	);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.equal(receipt.exit, 1);
+	assert.deepEqual(receipt.libraryProvenance, {
+		assetId: "la_00000000000000bb",
+		remote: null,
+		path: "/Users/rig/report.pdf",
+		source: "mentioned",
+		pass: false,
+		problem:
+			"library row la_00000000000000bb is not a peer row (remote is null)",
+	});
+});
+
 it("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", async () => {
 	const app = fakeApp("Isolated", { ignoreTerm: true });
 	const rigRoot = join(TREE, "iso-rig");
@@ -2003,7 +2080,13 @@ it("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a
 		lop,
 		["serve", "--host", "127.0.0.1", "--port", String(port)],
 		{
-			env: { PATH: process.env.PATH, LOCAL_OPERATOR_CONFIG_DIR: cfg },
+			// The claimed record's key is the token the harness attaches with, so
+			// the Library provenance read-back (an authorized GET) can answer.
+			env: {
+				PATH: process.env.PATH,
+				LOCAL_OPERATOR_CONFIG_DIR: cfg,
+				LOCAL_OPERATOR_DESKTOP_TOKEN: "synthetic-claim-key-0123456789",
+			},
 			stdio: "ignore",
 		},
 	);
@@ -2083,6 +2166,18 @@ it("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a
 		const rig = rigOf(claimedRig);
 		trackPids(rig);
 		assert.equal(claimed.status, 0, claimed.all);
+		// The Library frame's row was read back as a PEER row, and recorded.
+		assert.deepEqual(
+			JSON.parse(readFileSync(join(claimedOut, "receipt.json"), "utf8"))
+				.libraryProvenance,
+			{
+				assetId: "la_00000000000000aa",
+				remote: { device_id: "d1", device_name: "Owner" },
+				path: null,
+				source: "generated",
+				pass: true,
+			},
+		);
 		const seen = JSON.parse(
 			readFileSync(join(rig, "fake-app-seen.json"), "utf8"),
 		);
@@ -2181,8 +2276,11 @@ test("the daemon client: its allowlist holds no prompt/send/engage path, and it 
 	assert.deepEqual(DAEMON_ROUTES.map((r) => r.path).sort(), [
 		"/health",
 		"/v1/desktop/asks",
+		"/v1/desktop/library/assets",
+		"/v1/desktop/library/assets/{id}",
 		"/v1/desktop/notifications/{id}",
 		"/v1/desktop/sessions",
+		"/v1/desktop/sessions/{id}/files",
 	]);
 	// The --seed read-backs: the aggregate with no query, one notification id
 	// (one segment, core's own id shape), nothing past it.
@@ -4444,3 +4542,737 @@ describe(
 		for (const args of e2eCases) test(...args);
 	},
 );
+
+/*
+ * ---------------------------------------------------------------------------
+ * Scene waits on SETTLED data (79's be9379d8 Mac run) and the file-preview
+ * scene. The app under capture is v0.59.2, so every selector is anchored to that
+ * tag's source: the anchors below are frozen here (file:line + the text on that
+ * line) so the selector check runs in any clone, and the full-checkout test
+ * re-reads each line from the tag itself. A SOURCE-LEVEL proof plus a DOM proof
+ * on fixtures shaped like that markup (jsdom); the live Mac run is the frame proof.
+ * ---------------------------------------------------------------------------
+ */
+const V0592_ANCHORS = Object.freeze([
+	// [file, line, text on that line at v0.59.2, the selector fragment it backs]
+	[
+		"src/renderer/src/features/chat/components/canvas/index.tsx",
+		836,
+		'data-tour-tag="canvas-container"',
+		'[data-tour-tag="canvas-container"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		811,
+		'data-tour-tag="files-scroller"',
+		'[data-tour-tag="files-scroller"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		860,
+		'<p className={cn("text-heading text-ink")}>',
+		"> div > p",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		875,
+		'<p className={cn("max-w-prose text-body-sm text-ink-muted")}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		882,
+		'<p className={cn("max-w-80 text-body-sm text-ink-muted")}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		887,
+		'<Button variant="outline" size="sm" onClick={index.refresh}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1073,
+		'<span className={cn("text-meta text-ink-dim")}>',
+		"span.text-ink-dim",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1080,
+		'title={t("ui.canvas.files.attachmentsPartialReason")}',
+		":not([title])",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1437,
+		'data-tour-tag="file-row"',
+		'[data-tour-tag="file-row"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1533,
+		'data-tour-tag="file-row"',
+		'[data-tour-tag="file-row"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1552,
+		"title={tooltip}",
+		"[title^=",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1553,
+		'onClick={tiled && item.row.media === "image" ? onExpand : onOpen}',
+		'button[aria-haspopup="menu"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		218,
+		"<DropdownMenuTrigger asChild>",
+		'button[aria-haspopup="menu"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		262,
+		"data-remote-action={action.id}",
+		'[data-remote-action="show-in-canvas"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/image-preview.tsx",
+		129,
+		"alt={document.title}",
+		"img[alt=",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/image-preview.tsx",
+		240,
+		"alt={document.title}",
+		"img[alt=",
+	],
+	[
+		"src/renderer/src/shared/components/common/image-lightbox.tsx",
+		716,
+		'data-image-viewport=""',
+		":not([data-image-viewport] img)",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		789,
+		'data-library-page=""',
+		"[data-library-page]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1002,
+		'data-library-building=""',
+		"[data-library-building]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1019,
+		'data-library-results=""',
+		"[data-library-results]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1021,
+		"aria-busy={listing.isLoading || listing.isFetching}",
+		'[aria-busy="false"]',
+	],
+	[
+		"src/renderer/src/features/library/components/library-card.tsx",
+		521,
+		'data-library-skeleton=""',
+		"[data-library-skeleton]",
+	],
+	["src/main/dev-driver-script.ts", 65, '"press",', "press"],
+	["src/main/dev-driver-script.ts", 67, '"waitFor",', "waitFor"],
+	[
+		"src/renderer/src/dev-driver/install.ts",
+		263,
+		'element.dispatchEvent(new MouseEvent("click"',
+		"press",
+	],
+	[
+		"src/renderer/src/dev-driver/install.ts",
+		903,
+		"const present = document.querySelector(selector) !== null;",
+		"waitFor",
+	],
+]);
+
+/** Every selector the three scenes' waits and presses use, at the default preview file. */
+function sceneSelectors() {
+	const preview = filePreviewSceneSteps(PREVIEW_FILE_DEFAULT);
+	return [
+		FILES_READY,
+		SCENE_READY.library,
+		...preview
+			.filter((s) => s.payload?.selector)
+			.map((s) => s.payload.selector),
+	].join("\n");
+}
+
+test("v0.59.2 anchors: every selector fragment is backed by a frozen tag line, and every verb is shipped", () => {
+	const all = sceneSelectors();
+	for (const [file, line, , fragment] of V0592_ANCHORS)
+		if (!["press", "waitFor"].includes(fragment))
+			assert.ok(
+				all.includes(fragment),
+				`${file}:${line} backs ${fragment}, which no selector uses`,
+			);
+	// And the other way: each attribute a selector names is one an anchor names.
+	const attrs = new Set(
+		all.match(/\[(?:data-[a-z-]+|aria-[a-z]+|role|title|alt)/g),
+	);
+	const anchored = [...V0592_ANCHORS, ...RADIX_ANCHORS]
+		.map((a) => a[3])
+		.join("\n");
+	for (const attr of attrs)
+		assert.ok(anchored.includes(attr), `${attr} has no v0.59.2 anchor`);
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	const { steps } = buildSteps({
+		scenes: ["files", "file-preview", "library"],
+		themes: ["dark", "light"],
+		session: "ce618964c88e",
+		capture: "capturepage",
+	});
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+});
+
+/*
+ * The menu's own attributes come from Radix, not from app source: the
+ * versions v0.59.2's pnpm-lock.yaml pins (radix-ui 1.6.7 ->
+ * @radix-ui/react-dropdown-menu 2.1.24 / react-menu) render them. Checked
+ * against the INSTALLED package when it is that pinned version.
+ */
+const RADIX_DROPDOWN = "@radix-ui/react-dropdown-menu@2.1.24";
+const RADIX_ANCHORS = Object.freeze([
+	[
+		"@radix-ui/react-dropdown-menu/dist/index.mjs",
+		null,
+		'"aria-haspopup": "menu"',
+		'[aria-haspopup="menu"]',
+	],
+	[
+		"@radix-ui/react-menu/dist/index.mjs",
+		null,
+		'role: "menu"',
+		'[role="menu"]',
+	],
+	[
+		"@radix-ui/react-menu/dist/index.mjs",
+		null,
+		'"data-disabled": disabled ? "" : void 0',
+		"[data-disabled]",
+	],
+]);
+
+test("Radix anchors: the pinned dropdown renders aria-haspopup, role=menu and data-disabled", () => {
+	const lock = readFileSync(
+		new URL("../pnpm-lock.yaml", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		lock.includes(`'${RADIX_DROPDOWN}'`),
+		`the lockfile pins ${RADIX_DROPDOWN}`,
+	);
+	const dropdown = join(process.cwd(), "node_modules/.pnpm");
+	const dir = readdirSync(dropdown).find((d) => d.startsWith("radix-ui@1.6.7"));
+	assert.ok(dir, "radix-ui@1.6.7 is installed");
+	for (const [file, , text] of RADIX_ANCHORS) {
+		const source = readFileSync(
+			join(dropdown, dir, "node_modules", file),
+			"utf8",
+		);
+		assert.ok(source.includes(text), `${file} renders ${text}`);
+	}
+});
+
+test("v0.59.2 anchors match the tag's own source, line for line (full checkout)", (t) => {
+	const repo = new URL("..", import.meta.url).pathname;
+	if (
+		spawnSync("git", ["cat-file", "-e", "v0.59.2^{commit}"], { cwd: repo })
+			.status !== 0
+	) {
+		// CI checks out with fetch-depth 2 and no tags; the frozen anchors above
+		// still bind the selectors there. Said loudly, never a silent pass.
+		t.skip(
+			"v0.59.2 is not in this clone (shallow, no tags); the line-for-line re-read runs in a full checkout",
+		);
+		return;
+	}
+	const cache = new Map();
+	for (const [file, line, text] of V0592_ANCHORS) {
+		if (!cache.has(file)) {
+			const shown = spawnSync("git", ["show", `v0.59.2:${file}`], {
+				cwd: repo,
+				encoding: "utf8",
+			});
+			assert.equal(shown.status, 0, `git show v0.59.2:${file}`);
+			cache.set(file, shown.stdout.split("\n"));
+		}
+		assert.ok(
+			cache.get(file)[line - 1].includes(text),
+			`v0.59.2:${file}:${line} no longer reads ${text}`,
+		);
+	}
+});
+
+/* Fixtures shaped like v0.59.2's markup (finder-files-view.tsx :811-:895, :1073-:1083, :1533-:1553). */
+const chatHeader = '<header data-chat-region="header"></header>';
+const filesShell = (inner) =>
+	`${chatHeader}<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller">${inner}</section></section>`;
+const FILES_FACES = Object.freeze({
+	loading: [
+		filesShell('<div><p class="text-heading">Loading session files…</p></div>'),
+		false,
+	],
+	building: [
+		filesShell(
+			'<div><p class="text-heading">Building the file index…</p></div>',
+		),
+		false,
+	],
+	empty: [
+		filesShell(
+			'<div><p class="text-heading">No files yet</p><p class="max-w-80">Files the agent creates…</p></div>',
+		),
+		true,
+	],
+	error: [
+		filesShell(
+			'<div><p class="text-heading">Could not load session files</p><button>Retry</button></div>',
+		),
+		true,
+	],
+	unsupported: [
+		filesShell(
+			'<div><p class="text-heading">Remote files are unavailable here</p><p class="max-w-prose">How to fix</p><button>Retry</button></div>',
+		),
+		true,
+	],
+	rows: [
+		filesShell(
+			'<section><h3><button>Images<span class="text-meta text-ink-muted">1</span></button></h3><ul><div data-tour-tag="file-row"><button title="/Users/o/image-1.png\nOn mac">i</button></div></ul></section>',
+		),
+		true,
+	],
+	"rows, attachments still loading": [
+		filesShell(
+			'<section><h3><button>Attachments<span class="text-meta text-ink-muted">0</span><span class="text-meta text-ink-dim">Loading session files…</span></button></h3></section><section><ul><div data-tour-tag="file-row"></div></ul></section>',
+		),
+		false,
+	],
+	"rows, attachments partial": [
+		filesShell(
+			'<section><h3><button>Attachments<span class="text-meta text-ink-dim" title="why">May be incomplete</span></button></h3></section><section><ul><div data-tour-tag="file-row"></div></ul></section>',
+		),
+		true,
+	],
+});
+const matches = (html, selector) =>
+	new JSDOM(html).window.document.querySelector(selector) !== null;
+
+test("files: the wait passes on rows, the empty state or an explicit error, and never on a loading face", () => {
+	for (const [face, [html, settled]] of Object.entries(FILES_FACES))
+		assert.equal(matches(html, FILES_READY), settled, face);
+	const { steps } = buildSteps({
+		scenes: ["files"],
+		themes: ["light"],
+		session: "ce618964c88e",
+		capture: "screencapture",
+		windowWaitS: 0,
+	});
+	const shutter = steps.findIndex((s) => s.payload?.label === "files-light");
+	assert.deepEqual(steps[shutter - 1], {
+		verb: "waitFor",
+		payload: { selector: FILES_READY, timeoutMs: 20000 },
+		timeoutMs: 25000,
+	});
+});
+
+test("files: the base step list (no data wait) would have shuttered the loading face 79 photographed", () => {
+	// Quoted from origin/main 53d86477e3 `buildSteps({scenes:["files"]})`, the
+	// steps behind 79's files-light.png ("Loading session files…"):
+	const base = [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { view: "files" } },
+		{ verb: "waitFor", payload: { selector: '[data-chat-region="header"]' } },
+		{ verb: "shutter", payload: { label: "files-light", capture: "external" } },
+	];
+	const loading = FILES_FACES.loading[0];
+	assert.equal(
+		matches(loading, base[2].payload.selector),
+		true,
+		"the base wait passes on the loading face",
+	);
+	assert.equal(matches(loading, FILES_READY), false, "the new wait does not");
+});
+
+test("library: the wait needs settled results; the base header wait passed over the skeleton", () => {
+	const page = (busy, inner = "", header = "") =>
+		`<div data-library-page><header data-library-header>${header}</header><section data-library-results aria-busy="${busy}">${inner}</section></div>`;
+	const faces = {
+		skeleton: [page("true", "<div data-library-skeleton></div>"), false],
+		"refetching (busy)": [
+			page("true", '<div data-library-card-id="la_0000000000000001"></div>'),
+			false,
+		],
+		"indexing (building line)": [
+			page(
+				"false",
+				'<div data-library-card-id="la_0000000000000001"></div>',
+				"<div data-library-building></div>",
+			),
+			false,
+		],
+		cards: [
+			page("false", '<div data-library-card-id="la_0000000000000001"></div>'),
+			true,
+		],
+		empty: [page("false", "<div><p>Nothing here yet</p></div>"), true],
+	};
+	for (const [face, [html, settled]] of Object.entries(faces))
+		assert.equal(matches(html, SCENE_READY.library), settled, face);
+	// origin/main 53d86477e3's library wait, `[data-library-page] [data-library-header]`:
+	assert.equal(
+		matches(faces.skeleton[0], "[data-library-page] [data-library-header]"),
+		true,
+	);
+});
+
+test("file-preview: Files settled -> the row's menu -> Show in canvas -> the painted canvas picture", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	assert.deepEqual(
+		steps.map((s) => s.verb),
+		["navigate", "openCanvas", "waitFor", "press", "press", "waitFor"],
+	);
+	assert.deepEqual(steps[1].payload, { view: "files" });
+	assert.equal(steps[2].payload.selector, FILES_READY);
+	assert.ok(
+		steps.every((s) => s.optional !== true),
+		"no optional step: a miss fails the run",
+	);
+	const [trigger, entry, preview] = [steps[3], steps[4], steps[5]].map(
+		(s) => s.payload.selector,
+	);
+	const row = (
+		title,
+		menu = '<div><button aria-haspopup="menu" data-t="menu">⋯</button></div>',
+	) =>
+		`<section data-tour-tag="files-scroller"><div data-tour-tag="file-row"><button title="${title}">x</button>${menu}</div></section>`;
+	const pick = (html, sel) =>
+		new JSDOM(html).window.document
+			.querySelector(sel)
+			?.getAttribute("data-t") ?? null;
+	assert.equal(
+		pick(row("/Users/o/work/image-1.png\nOn mac"), trigger),
+		"menu",
+		"owner's path row",
+	);
+	assert.equal(
+		pick(row("image-1.png · 9277c383 · Image"), trigger),
+		"menu",
+		"artifact row",
+	);
+	assert.equal(
+		pick(row("/Users/o/image-2.png"), trigger),
+		null,
+		"another picture",
+	);
+	assert.equal(
+		pick(
+			row("/Users/o/image-1.png", "<div><button>Expand</button></div>"),
+			trigger,
+		),
+		null,
+		"no menu, no press",
+	);
+	const menu = (disabled) =>
+		`<div role="menu"><div role="menuitem" data-remote-action="show-in-canvas" ${disabled ? 'data-disabled=""' : ""} data-t="show"></div></div>`;
+	assert.equal(pick(menu(false), entry), "show");
+	assert.equal(
+		pick(menu(true), entry),
+		null,
+		"a disabled entry (above the relay ceiling) fails the run",
+	);
+	const canvas = (inner) =>
+		`<section data-tour-tag="canvas-container">${inner}</section>`;
+	assert.equal(
+		matches(canvas('<img alt="image-1.png" src="blob:x">'), preview),
+		true,
+		"painted in the canvas",
+	);
+	assert.equal(
+		matches(canvas('<div><p>Opening…</p></div><img alt="">'), preview),
+		false,
+		"still opening; grid thumbnails have an empty alt",
+	);
+	assert.equal(
+		matches(
+			`${canvas("")}<div data-image-viewport><img alt="image-1.png"></div>`,
+			preview,
+		),
+		false,
+		"the lightbox is not the canvas",
+	);
+	assert.equal(steps[5].payload.selector, filePreviewSelector("image-1.png"));
+});
+
+test("file-preview: a name that would change the selector is refused, and the scene needs --session", () => {
+	assert.equal(previewFileProblem("image-1.png"), null);
+	for (const bad of [
+		'a"]',
+		"a\\b",
+		"dir/a.png",
+		"a\nb",
+		"",
+		".hidden",
+		"x".repeat(129),
+	])
+		assert.ok(previewFileProblem(bad), JSON.stringify(bad));
+	assert.throws(() => filePreviewSceneSteps('x"] , *'), Refusal);
+	const opts = parseArgs([
+		"--app",
+		"/Applications/Local Operator.app",
+		"--out",
+		"/tmp/x",
+		"--scene",
+		"file-preview",
+	]);
+	assert.equal(opts.previewFile, PREVIEW_FILE_DEFAULT);
+	assert.throws(() => validateOptions(opts), /file-preview.*need --session/);
+	const named = parseArgs([
+		"--app",
+		"/Applications/Local Operator.app",
+		"--out",
+		"/tmp/x",
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"file-preview",
+		"--preview-file",
+		'a"b',
+	]);
+	assert.throws(
+		() => validateOptions(named),
+		/--preview-file must be a plain file name/,
+	);
+	const { steps } = buildSteps({
+		scenes: ["file-preview"],
+		themes: ["dark", "light"],
+		session: "ce618964c88e",
+		capture: "screencapture",
+		previewFile: "clip-2.png",
+	});
+	assert.deepEqual(
+		steps.filter((s) => s.verb === "shutter").map((s) => s.payload.label),
+		["file-preview-dark", "file-preview-light"],
+	);
+	assert.ok(
+		steps.some(
+			(s) => s.payload?.selector === filePreviewSelector("clip-2.png"),
+		),
+	);
+});
+
+test("provenance: a peer library row passes; a local row or a row with a local path fails", () => {
+	const listing = (id) => ({ result: { rows: id ? [{ id }] : [] } });
+	const peer = {
+		result: {
+			id: "la_00000000000000aa",
+			ref: { type: "path", path: null },
+			origin: "generated",
+			remote: { device_id: "d1", device_name: "Mac" },
+		},
+	};
+	assert.deepEqual(
+		libraryProvenanceCheck(listing("la_00000000000000aa"), peer),
+		{
+			assetId: "la_00000000000000aa",
+			remote: { device_id: "d1", device_name: "Mac" },
+			path: null,
+			source: "generated",
+			pass: true,
+		},
+	);
+	const local = {
+		result: {
+			...peer.result,
+			remote: null,
+			ref: { type: "path", path: "/rig/home/a.png" },
+		},
+	};
+	const r1 = libraryProvenanceCheck(listing("la_00000000000000aa"), local);
+	assert.equal(r1.pass, false);
+	assert.match(r1.problem, /not a peer row/);
+	const pathed = {
+		result: { ...peer.result, ref: { type: "path", path: "/rig/home/a.png" } },
+	};
+	const r2 = libraryProvenanceCheck(listing("la_00000000000000aa"), pathed);
+	assert.equal(r2.pass, false);
+	assert.match(r2.problem, /has a local path/);
+	assert.equal(libraryProvenanceCheck(listing(null), null).pass, false);
+	assert.equal(
+		libraryProvenanceCheck(listing("la_00000000000000aa"), null).pass,
+		false,
+	);
+});
+
+test("provenance: the previewed row must be a peer row in a session the rig does not hold", () => {
+	const listing = (row) => ({
+		result: {
+			rows: [
+				{ id: "f_other", name: "notes.md", remote: true },
+				...(row ? [row] : []),
+			],
+		},
+	});
+	const peerRow = {
+		id: "f_1",
+		name: "image-1.png",
+		remote: true,
+		origin_device: { id: "d1", name: "Mac" },
+	};
+	assert.deepEqual(
+		imagePreviewCheck({
+			listing: listing(peerRow),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}),
+		{
+			assetId: "f_1",
+			remote: true,
+			originDevice: { id: "d1", name: "Mac" },
+			sessionOnRig: false,
+			pass: true,
+		},
+	);
+	const localRow = { id: "f_1", name: "image-1.png" };
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(localRow),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/not remote/,
+	);
+	const onRig = imagePreviewCheck({
+		listing: listing(peerRow),
+		name: "image-1.png",
+		sessionOnRig: true,
+	});
+	assert.equal(onRig.pass, false);
+	assert.match(onRig.problem, /present in the rig's own <config>\/sessions/);
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(peerRow),
+			name: "image-1.png",
+			sessionOnRig: null,
+		}).problem,
+		/attach mode/,
+	);
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(null),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/no file row named image-1.png/,
+	);
+});
+
+test("provenance readers: allowlisted GETs only, against a real HTTP daemon, and the session dir is read off disk", async () => {
+	const seen = [];
+	const server = createHttpServer((req, res) => {
+		seen.push(`${req.method} ${req.url} ${req.headers.authorization ?? ""}`);
+		const body = req.url.startsWith("/v1/desktop/library/assets?")
+			? { result: { rows: [{ id: "la_00000000000000aa" }] } }
+			: req.url === "/v1/desktop/library/assets/la_00000000000000aa"
+				? {
+						result: {
+							id: "la_00000000000000aa",
+							ref: { path: null },
+							origin: "generated",
+							remote: { device_id: "d1" },
+						},
+					}
+				: req.url.startsWith("/v1/desktop/sessions/ce618964c88e/files?")
+					? {
+							result: {
+								rows: [{ id: "f_1", name: "image-1.png", remote: true }],
+							},
+						}
+					: null;
+		res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
+		res.end(JSON.stringify(body ?? {}));
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const base = `http://127.0.0.1:${server.address().port}`;
+	const cfg = mkdtempSync(join(os.tmpdir(), "mac-proof-prov-"));
+	try {
+		const lib = await readLibraryProvenance(base, "tok", { timeoutMs: 5000 });
+		assert.equal(lib.pass, true);
+		const absent = await readImagePreview(base, "tok", {
+			session: "ce618964c88e",
+			name: "image-1.png",
+			configRoot: cfg,
+			timeoutMs: 5000,
+		});
+		assert.equal(absent.pass, true);
+		assert.equal(absent.sessionOnRig, false);
+		mkdirSync(join(cfg, "sessions", "ce618964c88e"), { recursive: true });
+		const present = await readImagePreview(base, "tok", {
+			session: "ce618964c88e",
+			name: "image-1.png",
+			configRoot: cfg,
+			timeoutMs: 5000,
+		});
+		assert.equal(present.pass, false);
+		assert.equal(present.sessionOnRig, true);
+		assert.deepEqual(seen, [
+			"GET /v1/desktop/library/assets?scope=final&limit=1 Bearer tok",
+			"GET /v1/desktop/library/assets/la_00000000000000aa Bearer tok",
+			"GET /v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50 Bearer tok",
+			"GET /v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50 Bearer tok",
+		]);
+	} finally {
+		server.close();
+		rmSync(cfg, { recursive: true, force: true });
+	}
+	// The three new routes: exactly one id segment each, only their query keys, GET only.
+	for (const ok of [
+		"/v1/desktop/library/assets?scope=final&limit=1",
+		"/v1/desktop/library/assets/la_00000000000000aa",
+		"/v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50",
+	])
+		assert.equal(daemonRequestProblem("GET", ok), null, ok);
+	for (const [method, path] of [
+		["PATCH", "/v1/desktop/library/assets/la_00000000000000aa"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/content"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/chat"],
+		["GET", "/v1/desktop/library/assets/la_short"],
+		["GET", "/v1/desktop/library/assets?q=x"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files?cursor=x"],
+		["GET", "/v1/desktop/sessions/CE618964C88E/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/x/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/f_1"],
+		["POST", "/v1/desktop/sessions/ce618964c88e/files"],
+	])
+		assert.ok(
+			daemonRequestProblem(method, path),
+			`${method} ${path} must be refused`,
+		);
+});

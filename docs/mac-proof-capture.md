@@ -19,23 +19,27 @@ node scripts/mac-proof-capture.mjs \
   --app "/Applications/Local Operator.app" \
   --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-frames" \
   --session ce618964c88e \
-  --scene conversation --scene files --scene canvas --scene library --scene notifications \
+  --scene conversation --scene files --scene canvas --scene file-preview --scene library --scene notifications \
   --theme dark,light
 ```
 
 Each `--scene` x `--theme` becomes one frame, `<scene>-<theme>.png`, plus a
-`receipt.json` and the run's scratch logs in `--out/logs`. The five scenes are
+`receipt.json` and the run's scratch logs in `--out/logs`. The six scenes are
 presets: `conversation` (the `--session` view), `files` (the canvas's Files
-view), `canvas` (the canvas's Documents view), `library` (the Library route) and
+view), `canvas` (the canvas's Documents view), `file-preview` (one picture from
+the `--session` Files view opened in the canvas: `--preview-file`, default
+`image-1.png`), `library` (the Library route) and
 `notifications` (the notifications route, no detail open), plus three that
 need a staged state: `asks` (the `--session` conversation with its asks drawer
 open on a suggested-command ask), `notification-detail` (`/notifications/<id>`,
 the details page of `--notification-id`) and `update-detail` (the same item's
 details inside the `--session` conversation's drawer, Updates tab). `files`,
-`canvas`, `asks` and `update-detail` need `--session`; see "Seeded scenes" for
-staging the state they photograph. `library` and `notifications` each wait for
-markup only their settled route renders before the shutter (run #1907 shot
-`notifications` before the route repainted; see "What a frame may claim"). The app's
+`canvas`, `file-preview`, `asks` and `update-detail` need `--session`; see
+"Seeded scenes" for staging the state they photograph. `files`, `file-preview`,
+`library` and `notifications` each wait for markup only their SETTLED state
+renders before the shutter (run #1907 shot `notifications` before the route
+repainted; 79's be9379d8 run shot `files` on "Loading session files…"); see
+"Scene waits: a loading state never takes a frame". The app's
 step runner takes at most 64 steps, so a scene list over that is refused before
 launch: split it across runs.
 Before it spawns anything, the run prints how many frames it will take and says
@@ -304,9 +308,13 @@ prompts, sends, engages or resumes anything, and that is enforced in code:
 
 - every daemon HTTP call goes through one client (`daemonRequest`) whose
   allowlist is `GET /health`, `GET /v1/desktop/sessions` (query keys
-  `include_peers`, `limit`), and the two `--seed` read-backs `GET
+  `include_peers`, `limit`), the two `--seed` read-backs `GET
   /v1/desktop/asks` and `GET /v1/desktop/notifications/<n_ + 16 of a-z2-7>`
-  (one path segment, no query); a path holding a control character is refused
+  (one path segment, no query), and the three provenance read-backs `GET
+  /v1/desktop/library/assets` (keys `scope`, `limit`), `GET
+  /v1/desktop/library/assets/<la_ + 16 hex>` (no query) and `GET
+  /v1/desktop/sessions/<12 hex>/files` (keys `q`, `limit`) - all reads; each
+  `<id>` is exactly one path segment; a path holding a control character is refused
   outright; anything else - and any path naming prompt, send,
   engage, message(s), runs, resume, steer, wake, slash, stop, claim, turn, exec,
   history or stream - is refused before a byte is sent;
@@ -408,6 +416,54 @@ an existing path is refused rather than deleted. The receipt labels such a
 bundle `kind: "built"` (anything outside `/Applications` is), and the frames are
 evidence of that build, not of the installed app or a release.
 
+## Scene waits: a loading state never takes a frame
+
+Every scene's last step before its shutter is a `waitFor` on markup that exists
+only in the scene's settled state, from the shipped v0.59.2 verbs and markup
+(the app under capture may be an older release than this branch). A `waitFor`
+that times out fails the run (exit 1) and no frame is written under the scene's
+name: a timeout means "it never settled", never "photograph what is there".
+
+| Scene | Waits for (any of) | Never passes on |
+|---|---|---|
+| `files` | a file row; the empty state (heading + its detail line); an explicit error or unsupported state (heading + its explanation or Retry/Continue) | "Loading session files…", "Building the file index…", an Attachments section still captioned "Loading…" |
+| `file-preview` | the `files` wait, then the row's menu → **Show in canvas**, then the painted `<img alt="<name>">` inside the canvas | a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
+| `library` | the results section with `aria-busy="false"` (cards, the empty state or the listing error) | the skeleton, a refetch in flight, the "indexing" line in the header |
+| `notifications` | the list or its empty state, with no detail pane | the skeleton, the previous scene's detail |
+
+Why `file-preview` goes through the row's menu: a picture in the grouped Images
+grid is a tile, and a tile's own click opens the lightbox, not the canvas. The
+row must be on the Files view's first screen (rows are virtualised). The exact
+selectors and the v0.59.2 file:line behind each are in `scripts/mac-proof-capture.mjs`
+(`FILES_READY`, `SCENE_READY`, `filePreviewSceneSteps`), and
+`scripts/mac-proof-capture.test.mjs` freezes those lines and re-reads them from
+the tag in a full checkout.
+
+One gap, stated rather than papered over: while a file index is still paging
+with rows already on screen, the count line above them appends " · Loading
+session files…" as bare text no v0.59.2 attribute exposes. The rows in that
+frame are real; the suffix can still be visible.
+
+## Provenance: the frame shows a PEER's data
+
+A Library or file-preview frame of local data looks the same as one of a peer's,
+so after the frames, while the rig daemon is still up, the harness reads the data
+behind them back (allowlisted GETs, below) and **fails the run (exit 1)** when it
+is not remote. The receipt keeps what it judged:
+
+- `libraryProvenance: {assetId, remote, path, source, pass}` (with the `library`
+  scene): the first row of the desktop's own listing (`scope=final`), read back
+  by id. Passes only when `remote` is set and `ref.path` is null - a row only a
+  peer references. `source` is the row's `origin` (core has no field named
+  `source`).
+- `imagePreview: {assetId, remote, originDevice, sessionOnRig, pass}` (with the
+  `file-preview` scene): the `--preview-file` row of `--session`'s file index.
+  Passes only when the daemon stamped it `remote: true` AND the session is absent
+  from the rig's own `<config>/sessions` (a session the rig holds could have been
+  served from this disk). Attach mode has no rig config root, so it cannot pass.
+
+A failing check adds `problem` naming why.
+
 ## What a frame may claim
 
 - `screencapture` frames (the darwin default) are labelled **`screencapture -l
@@ -444,8 +500,10 @@ Mac-only, **pending measurement** on a real Mac:
   `ObjC.bindFunction` path answered `{"granted":true}` on Darwin 27.2, measured
   standalone, not yet through a full screencapture run), and the
   PNG-size-equals-bounds check at the Mac's backing scale;
-- the `library`/`notifications`/`update-detail` waits against the installed
-  app's real markup (the selectors are read from the v0.59.2 source);
+- the `files`/`file-preview`/`library`/`notifications`/`update-detail` waits
+  against the installed app's real markup (the selectors are read from the
+  v0.59.2 source and proven on jsdom fixtures shaped like it, not in Chromium),
+  and the provenance read-backs against a real peer's rows;
 - `getMediaSourceId()` agreeing with the JXA `CGWindowList` entry;
 - `screencapture -x -o -l` of a non-front `inactive` window carrying real
   vibrancy, with no activation or focus change (sample the frontmost app by pid);
