@@ -6827,9 +6827,18 @@ export function applyEvent(
 					? base.startedAt <= userStoppedAt
 					: claimsFailure);
 			return upsert(seeded, {
-				// The live result IS the full output: a clipped marker carried from the
-				// page would read "showing X of Y" over complete content (review m1).
-				...withoutClipped(base),
+				/*
+				 * KEEP THE PAGE'S CLIPPED MARKER (QA round 2, Q2-1). A row large enough
+				 * to clip (over the core's 1.5 MiB row budget) never reaches us whole as a
+				 * live end event: the reconnect seed trims it
+				 * (`frontend_state._bound_live_events_in_place`) and a live frame over the
+				 * 1 MiB wire line is cut or emptied (`runtime/server.py::fit_frame_for_wire`).
+				 * Clearing the marker here would paint a trimmed "…" preview, an empty
+				 * `content`, or a missing `result` as the complete output - silent
+				 * truncation. The marker's own range read is the only route to the full
+				 * text, so it survives; the cost is at most a redundant "showing X of Y".
+				 */
+				...base,
 				args,
 				phase: "done",
 				// A call that REPORTED a result demonstrably ran, so a never-run verdict

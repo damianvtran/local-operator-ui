@@ -744,8 +744,15 @@ test("reducer: a withheld bookkeeping row (the state checkpoint) stays invisible
 	assert.deepEqual(state.records, []);
 });
 
-test("reducer: a live tool result's full output clears the page's clipped marker (m1)", () => {
-	let state = m.applyHistoryPage(
+// A live `tool_execution_end` NEVER clears the page's clipped marker (QA round
+// 2, Q2-1). A row big enough to clip (over the core's 1.5 MiB row budget) never
+// reaches the client whole live: the reconnect seed trims it
+// (`frontend_state._bound_live_events_in_place`) and a frame over the 1 MiB
+// wire line is cut or emptied (`runtime/server.py::fit_frame_for_wire`). Each
+// case is a shape the core really sends for such a row, applied over the page's
+// clipped record the way `use-canonical-session` does (page first, then seed).
+const clippedToolPage = () =>
+	m.applyHistoryPage(
 		m.EMPTY_TRANSCRIPT,
 		historyPage({
 			id: "e_tool",
@@ -757,25 +764,45 @@ test("reducer: a live tool result's full output clears the page's clipped marker
 				tool_name: "bash",
 				content: [{ type: "text", text: "PREVIEW" }],
 			},
-			truncated: marker(),
+			truncated: marker({ bytes_total: 13_260_171 }),
 		}),
 	);
-	const clipped = state.records.find((r) => r.id === "tool:call_1");
-	assert.ok(clipped?.clipped, "the page's tool row carries the marker");
-	state = m.applyEvent(state, {
-		type: "tool_execution_end",
-		tool_call_id: "call_1",
-		tool_name: "bash",
-		result: { content: [{ type: "text", text: "FULL OUT" }] },
-	});
-	const settled = state.records.find((r) => r.id === "tool:call_1");
-	assert.equal(settled.output, "FULL OUT");
-	assert.equal(
-		settled.clipped,
-		undefined,
-		"no 'showing X of Y' over the full output",
-	);
+const toolEnd = (extra) => ({
+	type: "tool_execution_end",
+	tool_call_id: "call_1",
+	tool_name: "bash",
+	...extra,
 });
+for (const [label, event, options] of [
+	[
+		"a seed-trimmed end (short text with an ellipsis)",
+		toolEnd({
+			result: { content: [{ type: "text", text: `${"x".repeat(206)}…` }] },
+		}),
+		{ seed: true },
+	],
+	["an end with content: []", toolEnd({ result: { content: [] } }), {}],
+	["an end with no result", toolEnd({}), {}],
+	[
+		"a live end that looks complete",
+		toolEnd({ result: { content: [{ type: "text", text: "FULL OUT" }] } }),
+		{},
+	],
+]) {
+	test(`reducer: ${label} keeps the page's clipped marker (Q2-1)`, () => {
+		let state = clippedToolPage();
+		const before = state.records.find((r) => r.id === "tool:call_1");
+		assert.ok(before?.clipped, "the page's tool row carries the marker");
+		state = m.applyEvent(state, event, Date.now(), options);
+		const settled = state.records.find((r) => r.id === "tool:call_1");
+		assert.equal(settled.phase, "done", "the end event did settle the row");
+		assert.deepEqual(
+			settled.clipped,
+			{ ...marker({ bytes_total: 13_260_171 }), entryId: "e_tool" },
+			"a clipped row is never painted as complete",
+		);
+	});
+}
 
 // ---- the bytes_total ceiling and the re-mint transport path ------------------
 
