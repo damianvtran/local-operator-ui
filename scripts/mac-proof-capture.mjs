@@ -152,6 +152,10 @@ export const SCENES = Object.freeze([
 	"notification-detail",
 	// #1907: the same item's details INSIDE --session's drawer (Updates tab).
 	"update-detail",
+	// The harness's ONE write: --session's Files row -> "Download to this
+	// device", landed by the rig's backend inside the rig (see
+	// downloadSceneSteps). --backend-config-root only.
+	"download",
 ]);
 /** The `file-preview` scene's default row: the picture 79's remote session holds. */
 export const PREVIEW_FILE_DEFAULT = "image-1.png";
@@ -168,6 +172,8 @@ export function previewFileProblem(name) {
 		: `--preview-file must be a plain file name (letters, digits, . _ - and space; got ${JSON.stringify(name)})`;
 }
 
+/** The file the download scene takes when --download-file is not given (the authorised fixture). */
+export const DOWNLOAD_FILE_DEFAULT = "notes.md";
 export const THEMES = Object.freeze({
 	dark: "localOperatorDark",
 	light: "localOperatorLight",
@@ -1020,6 +1026,10 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
   --notification-id <n_...>    the item the notification-detail and update-detail scenes open
   --preview-file <name>        the --session Files row the file-preview scene shows in the canvas
                                (default ${PREVIEW_FILE_DEFAULT}); the receipt proves it is a PEER row
+  --download-file <name>       --scene download (config-root only, one --theme): the Files row
+                               to download (default ${DOWNLOAD_FILE_DEFAULT}); one per run
+  --manifest <abs json>        --scene download: {files:[{filename,bytes,sha256}]}; the landed
+                               file must match the --download-file entry (refused if absent)
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -1070,6 +1080,8 @@ export function parseArgs(argv) {
 		seed: null,
 		notificationId: null,
 		previewFile: PREVIEW_FILE_DEFAULT,
+		downloadFile: null,
+		manifest: null,
 		serveRecordDir: null,
 		tokenFromOperatorProfile: false,
 		dryRun: false,
@@ -1170,6 +1182,17 @@ export function parseArgs(argv) {
 			case "--serve-record-dir":
 				opts.serveRecordDir = take();
 				break;
+			case "--download-file":
+				// One file per run: the authorisation covers one, never both.
+				if (opts.downloadFile !== null)
+					throw new Refusal(
+						"--download-file is given more than once (one file per run)",
+					);
+				opts.downloadFile = take();
+				break;
+			case "--manifest":
+				opts.manifest = take();
+				break;
 			case "--token-from-operator-profile":
 				opts.tokenFromOperatorProfile = true;
 				break;
@@ -1207,6 +1230,40 @@ function applySeedDefaults(opts) {
 	const spec = loadSeedSpec(opts.seed);
 	opts.session ??= spec.session.id;
 	if (spec.detailId) opts.notificationId ??= spec.detailId;
+}
+
+/**
+ * The download scene's flag refusals (the harness's one write; see
+ * downloadSceneSteps). Before anything else of the run can be spawned:
+ * - config-root only: `attach` would land the file in the operator's real
+ *   ~/Downloads (its daemon runs as the operator), `isolated` has no peer;
+ * - one theme: a second pass would find the file already landed (the backend
+ *   reuses an identical file) and prove nothing;
+ * - --download-file / --manifest only with the scene, and a plain file name.
+ */
+function downloadOptionsProblem(opts) {
+	const download = opts.scenes.includes("download");
+	if (!download) {
+		if (opts.downloadFile !== null || opts.manifest !== null)
+			throw new Refusal(
+				"--download-file and --manifest apply only to --scene download",
+			);
+		return;
+	}
+	if (opts.backend !== "config-root")
+		throw new Refusal(
+			opts.backend === "attach"
+				? "--scene download refuses --backend attach: that daemon runs as the operator, so the file would land in the operator's real ~/Downloads; use --backend-config-root (the rig's own HOME)"
+				: `--scene download needs --backend-config-root (the download route lands a PEER's row, and only that mode's HOME keeps it inside the rig; got --backend ${opts.backend})`,
+		);
+	if (opts.themes.length !== 1)
+		throw new Refusal(
+			"--scene download takes exactly one --theme (it downloads once; a second theme would find the file already landed)",
+		);
+	const nameProblem = downloadFileProblem(
+		opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT,
+	);
+	if (nameProblem) throw new Refusal(nameProblem);
 }
 
 /** Every refusal that needs no filesystem state beyond the flags themselves. */
@@ -1253,16 +1310,18 @@ export function validateOptions(opts) {
 				s === "canvas" ||
 				s === "file-preview" ||
 				s === "asks" ||
-				s === "update-detail",
+				s === "update-detail" ||
+				s === "download",
 		)
 	)
 		throw new Refusal(
-			"the files, canvas, file-preview, asks and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
+			"the files, canvas, file-preview, asks, download and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
 		);
 	if (opts.scenes.includes("file-preview")) {
 		const problem = previewFileProblem(opts.previewFile);
 		if (problem) throw new Refusal(problem);
 	}
+	downloadOptionsProblem(opts);
 	if (opts.seed !== null && opts.seedConfig !== null)
 		throw new Refusal(
 			"--seed and --seed-config are alternatives (one generates the template, the other copies yours)",
@@ -1363,6 +1422,7 @@ export function validateOptions(opts) {
 		["--backend-config-root", opts.backendConfigRoot],
 		["--backend-home", opts.backendHome],
 		["--serve-record-dir", opts.serveRecordDir],
+		["--manifest", opts.manifest],
 	])
 		if (path !== null && !isAbsolute(path))
 			throw new Refusal(`${flag} must be an absolute path (got ${path})`);
@@ -1777,6 +1837,7 @@ export function buildSteps({
 	notificationId = null,
 	windowWaitS = WINDOW_WAIT_DEFAULT_S,
 	previewFile = PREVIEW_FILE_DEFAULT,
+	downloadFile = null,
 }) {
 	const shutter = (label) => ({
 		verb: "shutter",
@@ -1869,6 +1930,10 @@ export function buildSteps({
 				});
 			} else if (scene === "update-detail") {
 				steps.push(...updateDetailSceneSteps(notificationId));
+			} else if (scene === "download") {
+				steps.push(
+					...downloadSceneSteps(downloadFile ?? DOWNLOAD_FILE_DEFAULT),
+				);
 			} else {
 				steps.push({ verb: "navigate", payload: `/${scene}` });
 				steps.push({
@@ -1932,6 +1997,402 @@ export function asksSceneSteps() {
 			},
 		},
 	];
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * The download scene: the harness's FIRST (and only) write.
+ * ---------------------------------------------------------------------------
+ *
+ * WHY IT EXISTS. The remote-files real-path plan needs proof that ONE file a
+ * peer owns can be downloaded through the desktop app, on the Mac, without
+ * touching the operator's app, profile or ~/Downloads. Every other scene only
+ * looks; this one presses the Files row's "Download to this device".
+ *
+ * WHO WRITES, AND WHERE (read from the code, cited so a reviewer can re-check):
+ * - The menu entry (`[data-remote-action="download"]`,
+ *   remote-file-actions-menu.tsx at v0.59.2) calls `downloadRemoteFile`
+ *   (remote-file-transfer.tsx), which sends the desktop op
+ *   `sessions.files.download` = `POST /v1/desktop/sessions/<sid>/files/<fid>/download`
+ *   (desktop-contract.ts) from the APP to the rig's `lop serve`, with the
+ *   app's own token. The harness's daemon client is NOT on that path and its
+ *   allowlist (`DAEMON_ROUTES`) gains no route: it stays GET-only, and a test
+ *   pins that it still refuses that POST.
+ * - The BACKEND lands the file (core
+ *   `local_operator/server/routes/desktop_session_files.py` remote_file_download,
+ *   `server/utils/remote_session_files.py` downloads_dir): `Path.home()/Downloads`
+ *   when that is a directory, else `<config>/downloads`; never overwriting (an
+ *   identical file is reused, `created: false`; a different one goes to
+ *   `name (1).ext` ... `name (99).ext`).
+ *
+ * WHY --backend-config-root ONLY. In that mode the rig's lop processes run with
+ * `HOME=--backend-home` and `LOCAL_OPERATOR_CONFIG_DIR=--backend-config-root`,
+ * so both possible destinations are inside the rig. `--backend attach` talks to
+ * a daemon running as the operator, whose `Path.home()/Downloads` IS the
+ * operator's real ~/Downloads; `--backend isolated` has no peer, so the route
+ * (remote rows only) has nothing to land. Both are refused before anything is
+ * spawned.
+ *
+ * WHAT THE WRITE CAN REACH: exactly one new file, `<backend-home>/Downloads/<name>`
+ * (or its `(n)` variant), or `<config-root>/downloads/<name>` when the former
+ * is not a directory. Preflight refuses a destination that is a symlink or
+ * resolves outside its rig root, and one that already holds `<name>` (a reused
+ * identical file would land nothing new and prove nothing).
+ *
+ * WHY "Save as..." IS NEVER PRESSED. Save as reads the bytes into the window and
+ * hands them to Electron's download manager, whose default folder is
+ * `app.getPath('downloads')` - the operator's real ~/Downloads, whatever HOME
+ * the rig set (window-guards-electron.ts guardDownloads). So the only remote
+ * action this harness may press is `download` (`downloadStepsProblem`), and a row
+ * that offers no Download (only Save as) fails the run instead.
+ */
+
+/**
+ * How long the scene waits for the download's outcome toast. Not a measured
+ * distribution: `downloadRemoteFile` re-POSTs a pending transfer on
+ * ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] (use-attachment-url.ts at
+ * v0.59.2), 30 s of backoff before it gives up, so this is twice that; the
+ * whole-run --timeout still bounds it.
+ */
+export const DOWNLOAD_OUTCOME_WAIT_MS = 60_000;
+
+/** The ONE remote action the harness may press. */
+export const DOWNLOAD_ITEM_SELECTOR =
+	'[role="menu"] [data-remote-action="download"]:not([data-disabled])';
+
+/** Sonner 2.0.3 marks each toast `data-sonner-toast` with `data-type` = its kind. */
+const DOWNLOAD_OUTCOME_TOAST =
+	'[data-sonner-toast]:is([data-type="success"], [data-type="error"], [data-type="info"])';
+const DOWNLOAD_SUCCESS_TOAST = '[data-sonner-toast][data-type="success"]';
+
+/**
+ * A plain basename the backend could land: no separator, no `.`/`..`, no
+ * control character, no quote or backslash (it is quoted into a CSS attribute
+ * selector).
+ */
+export function downloadFileProblem(name) {
+	if (typeof name !== "string" || name.length === 0 || name.length > 255)
+		return "--download-file must be a file name (1-255 characters)";
+	if (name === "." || name === "..")
+		return `--download-file must be a file name (got ${name})`;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+	if (/[/\\"\u0000-\u001f\u007f]/.test(name))
+		return `--download-file must be a plain file name: no /, \\, " or control characters (got ${JSON.stringify(name)})`;
+	return null;
+}
+
+/**
+ * The download scene, from the shipped S2 verbs only (navigate, openCanvas,
+ * waitFor, press - `DEV_DRIVER_SCRIPT_VERBS` at v0.59.2); no new renderer verb.
+ *
+ * - The Files view exactly as the `files` scene reaches it.
+ * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside a
+ *   `data-tour-tag="file-row"` (finder-files-view.tsx), whose accessible name is
+ *   "Actions for <name>" (ui.common.actions.actions_for_name). The name is the
+ *   only per-row marker the row carries (`data-file-id` is the owner's id, which
+ *   the harness does not know), so it is matched as a substring of the label:
+ *   every locale's label contains `{name}`. A wrong row cannot pass: the
+ *   landed file must carry this name and the manifest's sha256.
+ * - Pressed only while `aria-expanded="false"`; the press dispatches
+ *   pointerdown, which opens a Radix DropdownMenu.
+ * - The Download entry is REQUIRED enabled (`DOWNLOAD_ITEM_SELECTOR`): a local
+ *   row's menu has none, an unreadable row's is disabled, and a row that offers
+ *   only Save as fails here. Then it is pressed (Radix selects on click).
+ * - The outcome toast (one id: loading, then success/error/info in place), and
+ *   then a REQUIRED success toast, so an error fails fast and names itself.
+ */
+export function downloadSceneSteps(file = null) {
+	// `?? default`, not a parameter default: parseArgs leaves an unset
+	// --download-file as null, which a default parameter would keep.
+	const name = file ?? DOWNLOAD_FILE_DEFAULT;
+	const trigger = `[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="${name}"]`;
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { view: "files" } },
+		{ verb: "waitFor", payload: { selector: '[data-chat-region="header"]' } },
+		{
+			verb: "waitFor",
+			payload: { selector: trigger, timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		{
+			verb: "press",
+			payload: { selector: `${trigger}[aria-expanded="false"]` },
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: DOWNLOAD_ITEM_SELECTOR, timeoutMs: 5000 },
+		},
+		{ verb: "press", payload: { selector: DOWNLOAD_ITEM_SELECTOR } },
+		{
+			verb: "waitFor",
+			payload: {
+				selector: DOWNLOAD_OUTCOME_TOAST,
+				timeoutMs: DOWNLOAD_OUTCOME_WAIT_MS,
+			},
+			timeoutMs: DOWNLOAD_OUTCOME_WAIT_MS + 5000,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: DOWNLOAD_SUCCESS_TOAST, timeoutMs: 1000 },
+		},
+	];
+}
+
+/**
+ * Refuse a step list that could press anything that writes outside the rig:
+ * a `press` whose selector names a remote action other than `download`, or any
+ * spelling of Save as. Run on the built list before launch, so a future edit to
+ * the scene cannot slip a Save as press through.
+ */
+export function downloadStepsProblem(steps) {
+	for (const [i, step] of (steps ?? []).entries()) {
+		if (step?.verb !== "press") continue;
+		const selector =
+			typeof step.payload === "string"
+				? step.payload
+				: String(step.payload?.selector ?? "");
+		if (/save[-_ ]?as|copy-image/i.test(selector))
+			return `step ${i + 1} presses ${selector}: Save as / Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads, so the harness never presses them`;
+		for (const match of selector.matchAll(
+			/data-remote-action\s*(?:[~|^$*]?=\s*["']?([^"'\]]*))?/g,
+		))
+			if (match[1] !== "download")
+				return `step ${i + 1} presses ${selector}: the only remote action the harness may press is [data-remote-action="download"]`;
+	}
+	return null;
+}
+
+/** A hint for the run's error when the Download entry never appeared. */
+export function downloadFailureHint(message) {
+	if (!String(message).includes(DOWNLOAD_ITEM_SELECTOR)) return null;
+	return "the row offered no enabled Download entry (a local row, an unreadable row, or one already landed in this profile); the harness never falls back to Save as, which would write to the operator's ~/Downloads";
+}
+
+/**
+ * The manifest entry for `name`: `{files: [{filename, bytes, sha256}, ...]}`
+ * (the remote-files proof manifest's shape). Throws a Refusal for a path that
+ * is not a regular file, unparseable JSON, no entry, or an entry without a
+ * 64-hex sha256 and an integer byte count.
+ */
+export function manifestEntry(path, name) {
+	let stat;
+	try {
+		stat = statSync(path);
+	} catch {
+		throw new Refusal(`--manifest ${path} does not exist`);
+	}
+	if (!stat.isFile())
+		throw new Refusal(`--manifest ${path} is not a regular file`);
+	let parsed;
+	try {
+		parsed = JSON.parse(readFileSync(path, "utf8"));
+	} catch (error) {
+		throw new Refusal(`--manifest ${path} is not JSON (${error.message})`);
+	}
+	const files = Array.isArray(parsed?.files) ? parsed.files : null;
+	if (!files)
+		throw new Refusal(`--manifest ${path} has no "files" list of entries`);
+	const hits = files.filter((f) => f?.filename === name);
+	if (hits.length === 0)
+		throw new Refusal(
+			`--manifest ${path} has no entry for ${name} (it lists ${files.map((f) => f?.filename).join(", ") || "nothing"})`,
+		);
+	if (hits.length > 1)
+		throw new Refusal(`--manifest ${path} lists ${name} more than once`);
+	const [entry] = hits;
+	if (
+		typeof entry.sha256 !== "string" ||
+		!/^[0-9a-f]{64}$/.test(entry.sha256) ||
+		!Number.isInteger(entry.bytes) ||
+		entry.bytes < 0
+	)
+		throw new Refusal(
+			`--manifest ${path}: the ${name} entry needs a lowercase 64-hex sha256 and an integer bytes`,
+		);
+	return { filename: name, bytes: entry.bytes, sha256: entry.sha256 };
+}
+
+/**
+ * The two folders core may land into for this rig, in core's order, each
+ * vetted: not a symlink, and physically inside its own rig root. `exists`
+ * says whether it is a directory now (core picks the home one only then).
+ */
+export function downloadDestinations({
+	backendHome,
+	configRoot,
+	operatorDownloads = operatorDownloadsDir(),
+}) {
+	const candidates = [
+		{ dir: join(backendHome, "Downloads"), root: backendHome },
+		{ dir: join(configRoot, "downloads"), root: configRoot },
+	];
+	return candidates.map(({ dir, root }) => {
+		let st = null;
+		try {
+			st = lstatSync(dir);
+		} catch {}
+		if (st?.isSymbolicLink())
+			throw new Refusal(
+				`${dir} is a symlink; the download must land in the rig itself, so a linked downloads folder is refused`,
+			);
+		if (st && !st.isDirectory())
+			return { dir, exists: false, notADirectory: true };
+		if (st && !within(physical(dir), physical(root)))
+			throw new Refusal(`${dir} resolves outside ${root}`);
+		// A rig sited INSIDE the operator's ~/Downloads would add no top-level
+		// entry there, so the stray check could not see it: refused outright.
+		if (
+			within(
+				comparablePath(physical(dir)),
+				comparablePath(physical(operatorDownloads)),
+			)
+		)
+			throw new Refusal(
+				`${dir} is inside the operator's ~/Downloads (${operatorDownloads}); site the rig elsewhere`,
+			);
+		return { dir, exists: Boolean(st) };
+	});
+}
+
+/**
+ * The rig side of preflight: the manifest entry (when given) and the vetted
+ * destinations, refusing one that already holds the file.
+ */
+export function downloadPreflight(opts, { backendHome, operatorDownloads }) {
+	const file = opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT;
+	const manifest =
+		opts.manifest === null
+			? null
+			: { path: opts.manifest, entry: manifestEntry(opts.manifest, file) };
+	const destinations = downloadDestinations({
+		backendHome,
+		configRoot: opts.backendConfigRoot,
+		...(operatorDownloads ? { operatorDownloads } : {}),
+	});
+	for (const d of destinations)
+		if (d.exists && existsSync(join(d.dir, file)))
+			throw new Refusal(
+				`${join(d.dir, file)} already exists in the rig; move it out first (the backend would reuse it and land nothing new, so the run could not prove a download)`,
+			);
+	return { file, manifest, destinations };
+}
+
+/** The operator's real ~/Downloads: from the passwd home, never $HOME (which a rig may set). */
+export function operatorDownloadsDir(homedir = os.userInfo().homedir) {
+	return join(homedir, "Downloads");
+}
+
+/**
+ * Names only, sorted; `{exists: false}` when absent. EPERM/EACCES throws: on
+ * macOS ~/Downloads is TCC-protected, and an unreadable listing can prove
+ * nothing, so the caller turns it into BLOCKED rather than a pass.
+ */
+export function listNames(dir) {
+	try {
+		return { exists: true, names: readdirSync(dir).sort() };
+	} catch (error) {
+		if (error.code === "ENOENT") return { exists: false, names: [] };
+		throw error;
+	}
+}
+
+/** The names `after` has that `before` did not. */
+export function newEntries(before, after) {
+	const seen = new Set(before?.names ?? []);
+	return (after?.names ?? []).filter((n) => !seen.has(n));
+}
+
+/** core `_candidates`: `name`, then `stem (1).ext` ... `stem (99).ext`. */
+export function landingNames(name) {
+	const dot = name.lastIndexOf(".");
+	const [stem, ext] =
+		dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+	return [
+		name,
+		...Array.from({ length: 99 }, (_, i) => `${stem} (${i + 1})${ext}`),
+	];
+}
+
+/**
+ * Read what landed, after the steps. `before` maps each destination dir to
+ * its listing at run start. Exactly one new landing-named entry must exist
+ * across the destinations, as a regular file physically inside the rig; its
+ * bytes and sha256 are compared to the manifest entry when one was given.
+ * Returns `{result, problem}`; `problem` is null only on a PASS.
+ */
+export function inspectLanding(plan, before, { rigRoots }) {
+	const names = new Set(landingNames(plan.file));
+	const landed = [];
+	for (const d of plan.destinations) {
+		const now = listNames(d.dir);
+		for (const n of newEntries(before.get(d.dir), now))
+			if (names.has(n)) landed.push(join(d.dir, n));
+	}
+	const result = {
+		file: plan.file,
+		destination: null,
+		insideRig: null,
+		bytes: null,
+		sha256: null,
+		manifest: plan.manifest,
+		compared: plan.manifest ? null : "not compared (no --manifest)",
+		verdict: "FAIL",
+	};
+	if (landed.length === 0)
+		return {
+			result,
+			problem: `no ${plan.file} appeared in the rig (${plan.destinations.map((d) => d.dir).join(" or ")}) after the download's success toast`,
+		};
+	if (landed.length > 1)
+		return {
+			result,
+			problem: `more than one new download landed: ${landed.join(", ")}`,
+		};
+	const [path] = landed;
+	result.destination = path;
+	const st = lstatSync(path);
+	const real = st.isFile() ? physical(path) : null;
+	result.insideRig =
+		real !== null && rigRoots.some((root) => within(real, physical(root)));
+	if (!result.insideRig)
+		return {
+			result,
+			problem: `${path} is not a regular file inside the rig`,
+		};
+	const bytes = readFileSync(path);
+	result.bytes = bytes.length;
+	result.sha256 = sha256(bytes);
+	if (plan.manifest) {
+		const want = plan.manifest.entry;
+		const ok = result.sha256 === want.sha256 && result.bytes === want.bytes;
+		result.compared = ok ? "match" : "mismatch";
+		if (!ok)
+			return {
+				result,
+				problem: `${path} is ${result.bytes} B sha256 ${result.sha256}; the manifest says ${want.bytes} B sha256 ${want.sha256}`,
+			};
+	}
+	result.verdict = "PASS";
+	return { result, problem: null };
+}
+
+/**
+ * The stray-download check, after the reap: any name in the operator's real
+ * ~/Downloads that was not there at run start fails the run. Names only: the
+ * harness never opens or hashes the operator's files, and the receipt lists
+ * only the NEW names. Something else on the machine saving a file meanwhile
+ * also fails it - a false alarm is the safe direction.
+ */
+export function strayDownloadsProblem(before, after) {
+	const added = newEntries(before, after);
+	return {
+		newEntries: added,
+		problem:
+			added.length === 0
+				? null
+				: `new entr${added.length === 1 ? "y" : "ies"} appeared in the operator's ~/Downloads during the run: ${added.join(", ")}`,
+	};
 }
 
 /**
@@ -3817,6 +4278,69 @@ export function negativeControlCases() {
 		],
 		["lop network start", () => lopArgvProblem(["network", "start"])],
 		[
+			// The download is the APP's request; the harness's client never sends it.
+			"daemon call to the files download route (the app's write, never the harness's)",
+			() =>
+				daemonRequestProblem(
+					"POST",
+					"/v1/desktop/sessions/ce618964c88e/files/f1/download",
+				),
+		],
+		[
+			"--scene download on --backend attach (the operator's real ~/Downloads)",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/x",
+						"--session",
+						"ce618964c88e",
+						"--scene",
+						"download",
+						"--theme",
+						"dark",
+						"--backend",
+						"attach",
+						"--backend-url",
+						"http://127.0.0.1:5555",
+					]),
+				),
+		],
+		[
+			"--scene download on the isolated backend",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/x",
+						"--session",
+						"ce618964c88e",
+						"--scene",
+						"download",
+						"--theme",
+						"dark",
+					]),
+				),
+		],
+		[
+			"a --manifest that is a directory",
+			() => manifestEntry(tree, DOWNLOAD_FILE_DEFAULT),
+		],
+		[
+			"a step list that presses Save as",
+			() =>
+				downloadStepsProblem([
+					{
+						verb: "press",
+						payload: { selector: '[data-remote-action="save-as"]' },
+					},
+				]),
+		],
+		[
 			"daemon call to an absolute URL on another host",
 			() => daemonRequestProblem("GET", "http://10.255.255.1:9/health"),
 		],
@@ -4069,7 +4593,11 @@ export function preflight(opts, { roots = operatorRoots() } = {}) {
 				`--backend-config-root is already in use by pid(s) ${[...new Set(busy)].join(", ")}; stop them first (the harness reaps every process on its root, so it never shares one)`,
 			);
 	}
-	return { app, rigRoot, lop, relayPort, backendHome };
+	// Last, so every backend refusal above names its own cause first.
+	const download = opts.scenes.includes("download")
+		? downloadPreflight(opts, { backendHome })
+		: null;
+	return { app, rigRoot, lop, relayPort, backendHome, download };
 }
 
 /** Resolve the token for attach mode. Never prints it. */
@@ -4153,7 +4681,8 @@ export async function main(argv = process.argv.slice(2)) {
 
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
-	const stepProblem = stepCountProblem(steps.steps);
+	const stepProblem =
+		stepCountProblem(steps.steps) ?? downloadStepsProblem(steps.steps);
 	if (stepProblem) {
 		console.error(`[mac-proof] refused: ${stepProblem}`);
 		return EXIT.REFUSED;
@@ -4239,6 +4768,18 @@ export async function main(argv = process.argv.slice(2)) {
 						},
 					}
 				: {}),
+			...(plan.download
+				? {
+						download: {
+							file: plan.download.file,
+							route:
+								"POST /v1/desktop/sessions/<session>/files/<file id>/download, sent by the app; the harness's daemon client stays GET-only",
+							destinations: plan.download.destinations,
+							manifest: plan.download.manifest,
+							operatorDownloads: operatorDownloadsDir(),
+						},
+					}
+				: {}),
 			steps,
 		};
 		console.log(JSON.stringify(report, null, 2));
@@ -4279,6 +4820,34 @@ export async function main(argv = process.argv.slice(2)) {
 			);
 			return EXIT.BLOCKED;
 		}
+	}
+
+	/*
+	 * The download scene's "before" listings, taken before anything is spawned:
+	 * names only, of the operator's real ~/Downloads (the stray check) and of
+	 * the rig's two possible destinations (to tell the new landing from what
+	 * was there). An unreadable ~/Downloads (macOS TCC protects it) proves
+	 * nothing, so it is BLOCKED here rather than a pass later.
+	 */
+	let downloadBefore = null;
+	if (plan.download) {
+		const operatorDownloads = operatorDownloadsDir();
+		let operator;
+		try {
+			operator = listNames(operatorDownloads);
+		} catch (error) {
+			console.error(
+				`[mac-proof] BLOCKED: cannot list the operator's ${operatorDownloads} (${error.code ?? error.message}), so the stray-download check could not run; on macOS grant Files and Folders > Downloads Folder to ${tccHost()} in System Settings > Privacy & Security`,
+			);
+			return EXIT.BLOCKED;
+		}
+		downloadBefore = {
+			operatorDownloads,
+			operator,
+			rig: new Map(
+				plan.download.destinations.map((d) => [d.dir, listNames(d.dir)]),
+			),
+		};
 	}
 
 	mkdirSync(opts.out, { recursive: true });
@@ -4329,6 +4898,18 @@ export async function main(argv = process.argv.slice(2)) {
 				: []),
 		],
 		reap: {},
+		...(plan.download
+			? {
+					download: {
+						route:
+							"POST /v1/desktop/sessions/<session>/files/<file id>/download (sent by the app with its own token; the harness's daemon client stays GET-only)",
+						file: plan.download.file,
+						destinations: plan.download.destinations.map((d) => d.dir),
+						manifest: plan.download.manifest,
+						verdict: "FAIL",
+					},
+				}
+			: {}),
 		verdict: "failed",
 	};
 	const children = { app: null };
@@ -4508,6 +5089,34 @@ export async function main(argv = process.argv.slice(2)) {
 				receipt.error = `interrupted by ${interrupted}`;
 				receipt.endedBy = { signal: interrupted };
 				receipt.exit = EXIT.FAILED;
+			}
+			// After the reap, so nothing of this run can still be writing: any
+			// new name in the operator's real ~/Downloads fails the run.
+			if (downloadBefore) {
+				let after = null;
+				try {
+					after = listNames(downloadBefore.operatorDownloads);
+				} catch (error) {
+					after = { unreadable: error.code ?? error.message };
+				}
+				const stray = after.unreadable
+					? {
+							newEntries: null,
+							problem: `the operator's ${downloadBefore.operatorDownloads} could not be listed after the run (${after.unreadable})`,
+						}
+					: strayDownloadsProblem(downloadBefore.operator, after);
+				receipt.download.operatorDownloads = {
+					path: downloadBefore.operatorDownloads,
+					before: downloadBefore.operator.names.length,
+					after: after.unreadable ? null : after.names.length,
+					newEntries: stray.newEntries,
+				};
+				if (stray.problem) {
+					receipt.download.verdict = "FAIL";
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${stray.problem}`;
+					receipt.exit = EXIT.FAILED;
+				}
 			}
 			const leaked = Object.values(receipt.reap).some(
 				(r) => r && r.clean === false,
@@ -4957,6 +5566,15 @@ export async function main(argv = process.argv.slice(2)) {
 			if (!receipt.imagePreview.pass)
 				abort = `file-preview provenance: ${receipt.imagePreview.problem}`;
 		}
+		// The landing is read while the run is still whole (the steps are done,
+		// the reap has not started), so a FAIL names the file it saw.
+		if (!abort && plan.download) {
+			const landing = inspectLanding(plan.download, downloadBefore.rig, {
+				rigRoots: [plan.backendHome, opts.backendConfigRoot],
+			});
+			receipt.download = { ...receipt.download, ...landing.result };
+			abort = landing.problem;
+		}
 		if (abort) throw new Error(abort);
 		receipt.verdict = "captured";
 	} catch (error) {
@@ -4965,6 +5583,8 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.error = interrupted
 			? `interrupted by ${interrupted}`
 			: error.message;
+		const hint = plan.download ? downloadFailureHint(receipt.error) : null;
+		if (hint) receipt.error = `${receipt.error} (${hint})`;
 		receipt.exit = error instanceof Refusal ? error.code : EXIT.FAILED;
 		if (!interrupted && /exceeded --timeout/.test(receipt.error))
 			receipt.endedBy = { timeoutS: opts.timeoutS };
