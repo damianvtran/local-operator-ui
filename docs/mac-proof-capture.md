@@ -282,18 +282,43 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   and the command block inside it (`[data-ask-command]`); it presses the composer
   chip only while it still reads minimized, because the open policy may already
   have opened the drawer and the chip toggles. `notification-detail` requires
-  `[data-notification-detail="<id>"]`, its title, and the read-on-open settled:
-  the detail's toggle showing its read face (lucide `svg.lucide-circle`; the
-  toggle has no read-state attribute at v0.59.2) and no list row for the item
-  still `data-notification-unread` (the Unread count derives from those rows).
+  `[data-notification-detail="<id>"]`, its title, and the read face: the
+  detail's toggle showing its read icon (lucide `svg.lucide-circle`; the toggle,
+  notification-detail.tsx:351-378 at v0.59.2, carries no read-state attribute,
+  so its icon is the only selector-visible proxy) and no list row for the item
+  still `data-notification-unread` (notification-row.tsx:203, the row's own
+  state; the Unread count derives from those rows).
   `update-detail` opens the drawer from the panel rail's ask item
   (`[data-panel-rail-item="ask"]`, pressed only while `aria-pressed="false"`;
   the composer chip exists only when the conversation has asks, and this seed
-  has none), selects the Updates tab only while it is not selected, presses the
-  item's `[data-row-action="details"]`, and requires
-  `[data-drawer-detail="<id>"]` with its title and the same settled read. The
-  Updates tab's own count badge comes from a separate count query and has no
-  attribute to wait on.
+  has none), selects the Updates tab only while it is not selected, switches the
+  drawer to its **Read** view (the radio `[data-drawer-read-view="read"]`,
+  pressed only while `aria-checked="false"`, drawer-updates.tsx:1033-1064; the
+  drawer opens on Unread, :301), requires the item's row in that list by the
+  row's own state attribute (`[data-drawer-view-list="read"]
+  [data-drawer-update="<id>"]:not([data-unread])`, :952/:1119/:1120), presses
+  its `[data-row-action="details"]`, and requires `[data-drawer-detail="<id>"]`
+  with its title and the same read icon. The Updates tab's own count badge comes
+  from a separate count query and has no attribute to wait on.
+- **The detail's read face is SEEDED, not driven.** `n_macproofdetailaa` is
+  seeded `read: true`, beside three unread items (`n_macprooffill*`) and one more
+  read one, so a run shows both faces without the app writing anything. The live
+  unread→read flip cannot be exercised in an unfocused window:
+  `notifications.read` is a foreground-receipt op refused outside focus
+  (src/main/desktop-ipc.ts:95-101 `FOREGROUND_RECEIPT_OPS`, refused at :166-185
+  on `!isFocused()`, v0.59.2), and this harness only ever runs an unfocused
+  window. Opening an unread item therefore flips it optimistically and rolls it
+  back, so the read icon never arrives. 79's run (main 34a08e97, app 0.59.2)
+  failed that way: "Step 16 waitFor `[data-drawer-detail="n_macproofdetailaa"]
+  [data-notification-toggle-read] svg.lucide-circle` timed out", and #1907's
+  "Unread 3 in dark, 4 in light" fits the same flip and rollback. It was not
+  icon drift: lucide-react is 0.507.0 at v0.59.2 and on main. The frame depicts
+  the seeded state; it makes no claim that the app marked the item read. Any
+  `--notification-id` either scene opens must already be read, or the run fails
+  at the row (drawer) or the read icon (page). The receipt records
+  `seed.items` (`{id, read}` per item) and lists the `detail-read-seeded`
+  limit, and the daemon read-back BLOCKS the run unless the detail item comes
+  back with the seeded `read`.
 - **Generate a template by hand** (to inspect it, or for `--seed-config`):
   `node scripts/mac-proof-seed.mjs --scenario ask-command --out <abs empty dir>`.
   `--out` is refused when it is, sits inside, or contains your own config root
@@ -557,13 +582,30 @@ name: a timeout means "it never settled", never "photograph what is there".
 | Scene | Waits for (any of) | Never passes on |
 |---|---|---|
 | `files` | a row of the session's file index (not an attachment row); the empty state (heading + its detail line); an explicit error or unsupported state (heading + its explanation or Retry/Continue) | "Loading session files…" or "Building the file index…" standing alone, an Attachments section still captioned "Loading session files…", attachment rows alone |
-| `file-preview` | the `files` wait, then the menu of the index row named exactly `<name>` → **Show in canvas**, then `<img alt="<name>">` inside the canvas | an attachment row, a row whose name only starts with `<name>` (`image-1.png.bak`), a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
+| `file-preview` | the `files` wait, then (optionally) a press on a collapsed group header to expand it, then the menu of the index row named exactly `<name>` → **Show in canvas**, then `<img alt="<name>">` inside the canvas | an attachment row, a row whose name only starts with `<name>` (`image-1.png.bak`), a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
 | `library` | the results section with `aria-busy="false"` (cards, the empty state or the listing error) | the skeleton, a refetch in flight, the "indexing" line in the header |
 | `notifications` | the list or its empty state, with no detail pane | the skeleton, the previous scene's detail |
 
 Why `file-preview` goes through the row's menu: a picture in the grouped Images
 grid is a tile, and a tile's own click opens the lightbox, not the canvas. The
-row must be on the Files view's first screen (rows are virtualised). The exact
+row must be on the Files view's first screen (rows are virtualised).
+
+Why it expands a group first (79's run, main 34a08e97, app 0.59.2: "step 10
+press found no file-row with title image-1.png"): that session lists 1043 files,
+an expanded Highlights group of one row and a **collapsed** "Working files,
+1,042" group, and `image-1.png` sat in the collapsed one, whose rows v0.59.2
+never renders. Once a session has a highlighted file, every other file sits
+under Working files, which starts closed (finder-layout.ts:18, :224, :227). The
+search field would open every group, but no v0.59.2 script verb can type into a
+field (dev-driver-script.ts:62-71), so the scene presses the group's header
+instead. The header is a `<button>` directly inside the section's `<h3>`, and it
+is matched by its own state: `aria-expanded="false"` and not
+`aria-disabled="true"` (finder-files-view.tsx:945, :984-:986), never by its
+localized label or its chevron icon. The press is optional, because a session
+with no highlights has no such group, and a run's second theme finds it already
+open. In the harness's fresh profile Working files is the only group that can
+start collapsed. After the expand, the row must still be on the first screen
+of the list. The exact
 selectors and the v0.59.2 file:line behind each are in `scripts/mac-proof-capture.mjs`
 (`FILES_READY`, `SCENE_READY`, `filePreviewSceneSteps`), and
 `scripts/mac-proof-capture.test.mjs` freezes those lines and re-reads them from
@@ -592,6 +634,10 @@ Gaps, stated rather than papered over (the receipt lists them too, `limits`):
 - **One row of that name.** The shipped verbs cannot count matches, so the
   provenance read-back fails the run when the index holds two or more rows
   named `--preview-file`.
+- **No search.** The Files search field is never used (no shipped verb types),
+  so a row deep inside a large group is reachable only when it falls on the
+  first screen after its group is expanded (`preview-no-search`,
+  `preview-first-screen`).
 
 ## Provenance: the frame shows a PEER's data
 
@@ -620,8 +666,9 @@ not even in `problem`.
 
 Every receipt also carries `limits: [{id, text}]`, the known measurement limits
 of the scenes it ran (`MEASUREMENT_LIMITS` in the script): the paging caption,
-attachments-only sessions, the first-screen row, no image-decode wait, and
-scene-wait selectors proven on fixtures rather than in Chromium.
+attachments-only sessions, the first-screen row, no Files search, no
+image-decode wait, the detail scenes' seeded read face, and scene-wait selectors
+proven on fixtures rather than in Chromium.
 
 ## What a frame may claim
 

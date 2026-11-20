@@ -435,15 +435,17 @@ test(
 				);
 			}
 			const read = items.filter((i) => i.read_rev >= i.revision);
-			assert.deepEqual(
-				read.map((i) => i.id),
-				["n_macproofreadaaaa"],
-			);
-			assert.equal(read[0].read_via, "explicit");
+			// The detail item is seeded READ: an unfocused window cannot mark it
+			// read (ui desktop-ipc.ts:95-101, :166-185), so its read face is seeded.
+			assert.deepEqual(read.map((i) => i.id).sort(), [
+				"n_macproofdetailaa",
+				"n_macproofreadaaaa",
+			]);
+			for (const r of read) assert.equal(r.read_via, "explicit");
 			assert.equal(
 				items.filter((i) => i.read_rev === 0).length,
-				4,
-				"the rest unread",
+				3,
+				"the rest unread: the unread face beside it",
 			);
 			const history = db
 				.prepare("SELECT * FROM item_history ORDER BY revision")
@@ -467,9 +469,50 @@ test(
 			sessionId: sid,
 			notificationId: "n_macproofdetailaa",
 			historyRevisions: [1, 2],
+			detailRead: true,
+			items: [
+				{ id: "n_macproofdetailaa", read: true },
+				{ id: "n_macprooffillaaaa", read: false },
+				{ id: "n_macprooffillbbbb", read: false },
+				{ id: "n_macprooffillcccc", read: false },
+				{ id: "n_macproofreadaaaa", read: true },
+			],
 		});
 	},
 );
+
+test("notification-details read-back: the daemon must answer the SEEDED read state", () => {
+	const expect = {
+		scenario: "notification-details",
+		path: "/v1/desktop/notifications/n_macproofdetailaa",
+		notificationId: "n_macproofdetailaa",
+		historyRevisions: [1, 2],
+		detailRead: true,
+	};
+	const answer = (read) => ({
+		result: {
+			item: {
+				id: "n_macproofdetailaa",
+				...(read === undefined ? {} : { read }),
+			},
+			history: [{ revision: 2 }, { revision: 1 }],
+		},
+	});
+	assert.equal(seedRowsProblem(expect, answer(true)), null);
+	assert.match(
+		seedRowsProblem(expect, answer(false)) ?? "",
+		/came back read=false, seeded read=true/,
+	);
+	assert.match(
+		seedRowsProblem(expect, answer(undefined)) ?? "",
+		/came back read=undefined/,
+		"no read field fails closed",
+	);
+	// An expectation written before detailRead existed is not re-judged.
+	const { detailRead, ...older } = expect;
+	assert.equal(detailRead, true);
+	assert.equal(seedRowsProblem(older, answer(false)), null);
+});
 
 test("excerpt matches core's whitespace collapse and ellipsis", () => {
 	assert.equal(excerpt("  a\n\nb\tc  "), "a b c");
