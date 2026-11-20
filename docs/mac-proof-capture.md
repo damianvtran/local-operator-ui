@@ -33,13 +33,15 @@ the `--session` Files view opened in the canvas: `--preview-file`, default
 need a staged state: `asks` (the `--session` conversation with its asks drawer
 open on a suggested-command ask), `notification-detail` (`/notifications/<id>`,
 the details page of `--notification-id`) and `update-detail` (the same item's
-details inside the `--session` conversation's drawer, Updates tab). `files`,
-`canvas`, `file-preview`, `asks` and `update-detail` need `--session`; see
-"Seeded scenes" for staging the state they photograph. `files`, `file-preview`,
-`library` and `notifications` each wait for markup only their SETTLED state
-renders before the shutter (run #1907 shot `notifications` before the route
-repainted; 79's be9379d8 run shot `files` on "Loading session files…"); see
-"Scene waits: a loading state never takes a frame". The app's
+details inside the `--session` conversation's drawer, Updates tab), and one
+that WRITES: `download` (one Files row of a remote `--session` downloaded to the
+rig; `--backend-config-root` only, see "The download scene"). `files`,
+`canvas`, `file-preview`, `asks`, `update-detail` and `download` need
+`--session`; see "Seeded scenes" for staging the state they photograph. `files`,
+`file-preview`, `library` and `notifications` each wait for markup only their
+SETTLED state renders before the shutter (run #1907 shot `notifications` before
+the route repainted; 79's be9379d8 run shot `files` on "Loading session files…");
+see "Scene waits: a loading state never takes a frame". The app's
 step runner takes at most 64 steps, so a scene list over that is refused before
 launch: split it across runs.
 Before it spawns anything, the run prints how many frames it will take and says
@@ -299,7 +301,135 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   when set), compared by realpath; an agent scratchpad under
   `~/.local-operator/sessions/<id>/scratchpad` is the one carve-out.
 
+## The download scene: the harness's one write
+
+79's real-path plan needs proof that ONE file a peer owns downloads through the
+desktop app, on the Mac, without touching the operator's app, profile or
+`~/Downloads`. Every other scene only looks; `--scene download` presses the Files
+row's **Download to this device** once.
+
+**Who writes, and where.** The menu entry (`[data-remote-action="download"]`,
+`remote-file-actions-menu.tsx` at v0.59.2) sends the desktop op
+`sessions.files.download` = **`POST /v1/desktop/sessions/<sid>/files/<fid>/download`**
+(`desktop-contract.ts`) from the **app**, with the app's own token, to the rig's
+`lop serve`. The **backend** lands the file (core
+`server/routes/desktop_session_files.py` `remote_file_download`,
+`server/utils/remote_session_files.py` `downloads_dir`): `Path.home()/Downloads`
+when that is a directory, else `<config>/downloads`, never overwriting (an
+identical file is reused with `created: false`, a different one goes to
+`name (1).ext` ... `name (99).ext`). The harness's own daemon client is not on
+that path: its allowlist gains **no** route and still refuses that POST (a
+negative-control case and a test pin it).
+
+**What the write can reach.** In `--backend-config-root` mode the lop processes
+run with `HOME=--backend-home` and `LOCAL_OPERATOR_CONFIG_DIR=--backend-config-root`,
+so the only possible destinations are `<backend-home>/Downloads/<name>` (or its
+`(n)` variant) and `<config-root>/downloads/<name>`. Electron's
+`app.getPath('downloads')` - the operator's real `~/Downloads` whatever HOME the
+rig sets - is reached only by **Save as...** (`guardDownloads`,
+`window-guards-electron.ts`), so the harness never presses Save as or Copy image:
+the built step list is checked before launch against an exact **allowlist**: a
+download run may press only its own row trigger and the enabled Download entry
+(byte-for-byte; any other press, including another scene's, refuses the run),
+and any other run may not press a remote action or Save as at all - except
+`file-preview`'s byte-exact Show in canvas entry, a read into the canvas.
+
+```sh
+# On the Mac: the rig device already joined to the mesh (see --backend-config-root),
+# the fixture owner's manifest copied next to the run.
+node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-download" \
+  --backend-config-root ~/lop-rig/config --session ce618964c88e \
+  --scene download --theme dark \
+  --manifest "$LOCAL_OPERATOR_SCRATCHPAD/MAC-PROOF-MANIFEST-v0.105.3.json" \
+  --download-file notes.md --timeout 240
+shasum -a 256 ~/lop-rig/home/Downloads/notes.md      # the receipt's destination
+```
+
+The steps (shipped verbs only: `navigate`, `openCanvas`, `waitFor`, `press`): the
+Files view as the `files` scene reaches it; the row's `⋯` trigger
+(`[data-tour-tag="file-row"] button[aria-haspopup="menu"]` whose `aria-label` is
+**exactly** "Actions for <name>" in any shipped locale, read from
+`src/i18n/catalogues/*/ui.common.actions.json` - never a substring, so
+`old-notes.md` is not `notes.md`'s row); the run **refuses** when more than one
+row carries that label (a `gone` wait on a two-rows selector); the trigger is
+pressed only while `aria-expanded="false"`; the **enabled** Download entry,
+required and then pressed; the outcome toast (`[data-sonner-toast]`
+success/error/info, 60 s: twice the app's 30 s re-POST backoff, not a measured
+distribution - the receipt records the measured `toastLatency`), then a required
+**success** toast; then the shutter `download-<theme>`.
+
+| Refused (exit 2, nothing spawned) | Why |
+|---|---|
+| `--backend attach` | that daemon runs as the operator: the file would land in the real `~/Downloads` |
+| `--backend isolated` (default) | no peer, and the route lands only a peer's row |
+| more than one `--theme` | the backend reuses the identical file (`created: false`), so a second pass shows the app's "already downloaded" toast, not a download |
+| `--download-file` with `/`, `\`, `"`, a control character, `.`/`..`, or given twice | one plain file name per run |
+| `--download-file`/`--manifest` without `--scene download`; no `--session` | |
+| `--manifest` not absolute, absent, not a regular file, not JSON, no `files` list, no (or a repeated) entry for the file, an entry without a 64-hex `sha256` and integer `bytes` | the comparison must be machine-checkable |
+| `<backend-home>/Downloads` or `<config-root>/downloads` a symlink, resolving outside its root, or inside the operator's `~/Downloads` | the write must land in the rig, and somewhere the stray check can see |
+| `<name>` already in either destination | the backend would reuse it and land nothing new; move it out first |
+| a download run pressing anything but its exact allowlist; any other run pressing a remote action, Save as or Copy image (case-insensitive), file-preview's exact Show in canvas excepted | Save as writes through Electron to the real `~/Downloads` |
+| `MAC_PROOF_TEST_OPERATOR_DOWNLOADS` set outside `node --test`, or not absolute | a test-only seam (below) |
+| either rig destination unreadable before the run | a landing could not be told from what was there |
+
+| Fails the run (exit 1) | |
+|---|---|
+| no enabled Download entry on the row (a local row, an unreadable row, only Save as) | the error says the harness never falls back to Save as |
+| an error/info toast instead of success | |
+| more than one Files row labelled for `<name>` | the harness refuses to guess which row to download |
+| not exactly ONE new file, of any name, across both rig destinations after the success toast, or that one not named `<name>` (or its `(n)` variant); re-checked after the reap | |
+| the landed bytes/sha256 differ from the manifest entry | |
+| with `--check-operator-downloads` only: **any** new name in the operator's real `~/Downloads` between run start (before the backend or the app starts) and the end (after the reap) | names only; another process saving a file meanwhile also fails it, the safe direction |
+
+**Containment is proven by destination, not by a listing.** The proof is
+positive: exactly one new `<name>` landed, as a regular file physically inside
+the rig (`destination` + `insideRig` in the receipt), from a backend whose HOME
+and config root are the rig's. The comparison of the operator's real
+`~/Downloads` is a second, negative check and is **OPT-IN**
+(`--check-operator-downloads`, default **off**): on macOS `~/Downloads` is
+TCC-protected, and listing it from the hosting app (Terminal, an agent host) can
+raise a "Files and Folders" access prompt on the operator's own screen, before
+the app starts - the exact class of prompt this harness promises never to raise
+on an unattended run. Without the flag nothing of `~/Downloads` is listed and
+the receipt records `operatorDownloads: {checked: false}`, so the missing check
+is visible rather than implied. With it, the folder (read from the passwd home,
+`os.userInfo().homedir`, never `$HOME`) is listed before and after, and one that
+cannot be listed is **BLOCKED (exit 3)** with the host to grant, never a pass.
+With the flag off the harness touches nothing in `~/Downloads` at all - not
+even a realpath: the rig-inside-`~/Downloads` refusal compares against
+`<realpath(home)>/Downloads` as spelled, so a symlinked `~/Downloads` is not
+followed, and the receipt's `limits` says containment is destination-based.
+
+**Test-only seam.** `MAC_PROOF_TEST_OPERATOR_DOWNLOADS=<abs dir>` makes the
+flag-on listing read that folder instead, so the test suite never lists the
+real `~/Downloads` of whoever runs it. It is honoured only under `node --test`
+(`NODE_TEST_CONTEXT`), refused otherwise; the rig-inside-`~/Downloads` refusal
+still compares against the real default, and the receipt records the listed
+`path` with `injected: true`.
+
+**The receipt** gains `download`: `route` (the template above, sent by the app),
+`file`, `destinations` (`[{dir, exists}]`, the dry-run plan's shape),
+`destination` (the landed path), `newInRig` (every new path in the rig, recorded
+after the reap on every path, abort and signal included), `insideRig`, `bytes`,
+`sha256`, `manifest` (`{path, entry: {filename, bytes, sha256}}` or `null`),
+`compared` (`match`, `mismatch`, or `not compared (no --manifest)`),
+`operatorDownloads` (`{checked: false}` by default; with the flag `{checked:
+true, path, before, after, newEntries}` - counts and the new names only),
+`toastLatency` (`{step, waitedMs, boundMs, source}`: the press-to-outcome-toast
+wait the renderer measured), `limits` (`[{id, text}]`: what this run cannot
+prove - `toast-latency-unmeasured`, `config-root-only`,
+`containment-destination-based` when the stray check is off,
+`fixture-proven-actions`) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
+landing and containment only and says so; the Mac proof passes `--manifest`.
+
+**Negative control:** `--negative-control` includes the download refusals
+(attach, isolated, a directory as `--manifest`, a Save as press, the harness
+client's POST to the download route).
+
 ## The harness reads; it never acts
+
+(`--scene download` is the one exception, and the write is the app's, through
+the backend, into the rig: see above.)
 
 A read-role rig device can still **start a runtime on the session's owner**: on
 core origin/main, `network/types.py` gives `net_session_engage` the `"view"`
@@ -538,4 +668,11 @@ Mac-only, **pending measurement** on a real Mac:
   vibrancy, with no activation or focus change (sample the frontmost app by pid);
 - the `ps -E` config-root sweep on macOS;
 - a real boot of the S1 runner in the packaged app, the remote session painting,
-  and the reap leaving no `Local Operator` pid carrying the rig profile.
+  and the reap leaving no `Local Operator` pid carrying the rig profile;
+- the `download` scene against the installed app's real Files row and menu (the
+  selectors are read from the v0.59.2 source; Linux proves the harness side
+  against a fake app whose press sends the same POST to a fake backend that
+  lands like core), whether the owner's side needs an in-app Admit (then the
+  leg is BLOCKED, not worked around), and - only for a run that passes
+  `--check-operator-downloads` - whether listing `~/Downloads` raises a TCC
+  prompt for the run's host.
