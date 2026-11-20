@@ -1868,7 +1868,14 @@ export const TagModePopulated: Story = {
 			...document.querySelectorAll<HTMLElement>("[data-chat-tag-section]"),
 		].map((node) => node.dataset.chatTagSection);
 		expect(order).toEqual(["review", "project", "concept", "untagged"]);
-		for (const key of ["pinned", "running", "today", "week", "older"])
+		for (const key of [
+			"pinned",
+			"running",
+			"today",
+			"yesterday",
+			"week",
+			"older",
+		])
 			expect(document.querySelector(`[data-chat-section="${key}"]`)).toBeNull();
 		const first = (id: string) =>
 			tagGroup(id)?.querySelector<HTMLElement>("[data-session-row]")?.dataset

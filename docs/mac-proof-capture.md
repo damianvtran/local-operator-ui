@@ -27,11 +27,17 @@ Each `--scene` x `--theme` becomes one frame, `<scene>-<theme>.png`, plus a
 `receipt.json` and the run's scratch logs in `--out/logs`. The five scenes are
 presets: `conversation` (the `--session` view), `files` (the canvas's Files
 view), `canvas` (the canvas's Documents view), `library` (the Library route) and
-`notifications` (the notifications route), plus two that need a staged state:
-`asks` (the `--session` conversation with its asks drawer open on a
-suggested-command ask) and `notification-detail` (`/notifications/<id>`, the
-details page of `--notification-id`). `files`, `canvas` and `asks` need
-`--session`; see "Seeded scenes" for staging the state they photograph.
+`notifications` (the notifications route, no detail open), plus three that
+need a staged state: `asks` (the `--session` conversation with its asks drawer
+open on a suggested-command ask), `notification-detail` (`/notifications/<id>`,
+the details page of `--notification-id`) and `update-detail` (the same item's
+details inside the `--session` conversation's drawer, Updates tab). `files`,
+`canvas`, `asks` and `update-detail` need `--session`; see "Seeded scenes" for
+staging the state they photograph. `library` and `notifications` each wait for
+markup only their settled route renders before the shutter (run #1907 shot
+`notifications` before the route repainted; see "What a frame may claim"). The app's
+step runner takes at most 64 steps, so a scene list over that is refused before
+launch: split it across runs.
 Before it spawns anything, the run prints how many frames it will take and says
 it is opening **one** `inactive` window (one Dock tile) for the whole run.
 
@@ -74,10 +80,19 @@ is below the default `--timeout` and will SIGKILL the harness.
    capture) or `headless` (in-app capture) run; `normal` never does.
 2. **Screen Recording is checked without a prompt.** `CGPreflightScreenCaptureAccess`
    through JXA (it never prompts; `CGRequestScreenCaptureAccess`, which would, is
-   never called). If it is not granted to the host process (the terminal or agent
-   app), the run is BLOCKED with that sentence. If JXA cannot call the preflight
-   at all, the run is also BLOCKED: there is no guessing fallback, because every
-   other signal (window names) answers yes for system UI without the permission.
+   never called). The bridged `$.CGPreflightScreenCaptureAccess` is tried first;
+   where it is not a function (macOS 27) the harness declares it with
+   `ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []])` and calls
+   that - measured on Darwin 27.2 as `{"granted":true}`. If it is not granted,
+   the run is BLOCKED and names the TCC host to grant: the nearest
+   `<X>.app/Contents/MacOS/...` up the parent-pid chain (`ps -A -o
+   pid=,ppid=,comm=`, C locale), else the top non-launchd process (an agent's
+   renamed process title such as `Local Operator [session] id=...`): "grant
+   Screen & System Audio Recording to <X> in System Settings > Privacy &
+   Security". The harness never requests or changes TCC. If JXA cannot call the
+   preflight by either path, the run is also BLOCKED: there is no guessing
+   fallback, because every other signal (window names) answers yes for system UI
+   without the permission.
    Each captured PNG must also measure the window's `CGWindowList` bounds times
    one backing scale, or the frame is refused.
 3. **A backend the app only ever attaches to** (see *Backend modes*).
@@ -104,6 +119,35 @@ is below the default `--timeout` and will SIGKILL the harness.
    (window only, no shadow, no sound), checks the PNG, and writes the ack the
    runner waits for. Nothing is activated, focused or raised: `screencapture -l`
    reads one window from the window server whether or not it is front.
+
+   **The window wait (`--window-wait <s>`, default 6, max 15, `0` = none).** A
+   window created to show a specific conversation - which `--open-session` asks
+   for - HOLDS its first present until the renderer reports that conversation is
+   up, with `CONVERSATION_PAINT_FALLBACK_MS = 3_000` after window creation as the
+   bound (`holdPresentUntilConversation`, `src/main/index.ts:1252`; the constant
+   at `src/main/index.ts:2347`). The readiness steps can finish inside that
+   hold, and the first default-mode Mac run (installed 0.59.2) failed exactly so:
+   every DOM step ok, then `the window is not visible at the shutter (... visible=false
+   focused=false ...)`, 0 frames. The app has no shutter-free probe for its
+   window facts and reads the step list once at launch, so the harness spends
+   one bounded wait in the runner after the readiness `state` step and before the
+   first scene: `waitFor` on `:not(*)` (matches nothing) with
+   `timeoutMs = --window-wait`, optional, so its expected timeout reads
+   `skipped (optional)`. 6 s is twice the 3 s hold bound. Nothing is shown,
+   focused or activated - the app presents the window on its own schedule - and
+   each SHUTTER is still refused unless `visible=true focused=false`.
+   `capturepage` runs never show a window and get no wait. The receipt records
+   `windowWait: {waitedMs, visibleAtShutter}` (the wait as the harness clock
+   measured it, and the first SHUTTER's `visible`).
+
+   **A timeout** - `the window is not visible at the shutter after a <n> ms
+   window wait (--window-wait <s>): visible=false focused=false; ...`, exit 1 -
+   means the app still had not presented its window when the wait was spent: a
+   renderer that never reported and a fallback that did not fire, or a slower
+   Mac. Retry once with a longer `--window-wait` (max 15); if it persists, read
+   `logs/app-stdout.log` for the `[window-mode] state:` and `[window-raise]`
+   lines. Never answer it with `--window-mode normal` or anything that focuses
+   the window: the `focused=true` refusal is unchanged.
 7. **Reap.** The app by exact process group, escalating to SIGKILL, then any
    process still carrying the run's `--user-data-dir` by exact pid
    (`scripts/app-tree-teardown.mjs`); every lop process by its group, then every
@@ -152,7 +196,13 @@ the harness writes.
   - refuses (exit 2, nothing spawned) if the root is `~/.local-operator` or
     inside it, if another process already runs on it (the reap sweeps every
     process on the root, so it never shares one), or if `<root>/config.yml` has
-    no `network.port` or has `4097`. An unset port makes the relay advertise
+    no `network.port` or has `4097`. The harness reads exactly what core reads:
+    `values:` > `network:` > `port:`, the layout `lop config edit network.port
+    <n>` writes (core `config.py` reads only `values`; `settings_io.py` path
+    `("network", "port")`, default 4097). A top-level `network:` block does not
+    count - core ignores it and the relay would still use 4097 - and anything
+    it cannot read plainly (flow style, anchors, tabs, duplicated keys, a port
+    under another parent) also refuses. An unset port makes the relay advertise
     the operator's `:4097`, and peers then dial the operator's real relay -
     measured on node2 as writes to the real audit log;
   - runs the lop processes with `HOME=--backend-home` (default
@@ -196,9 +246,11 @@ daemon:
 node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1902" \
   --seed ask-command --scene asks --theme dark,light
 
-# #1907: a long multi-paragraph notification with links and earlier revisions
+# #1907: a long multi-paragraph notification with links and earlier revisions,
+# on its page and inside the conversation drawer's Updates tab
 node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1907" \
-  --seed notification-details --scene notification-detail --scene notifications --theme dark,light
+  --seed notification-details --scene notification-detail --scene notifications \
+  --scene update-detail --theme dark,light
 ```
 
 - **What is written.** `scripts/mac-proof-seed.mjs` generates a synthetic config
@@ -224,7 +276,18 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   and the command block inside it (`[data-ask-command]`); it presses the composer
   chip only while it still reads minimized, because the open policy may already
   have opened the drawer and the chip toggles. `notification-detail` requires
-  `[data-notification-detail="<id>"]` and its title.
+  `[data-notification-detail="<id>"]`, its title, and the read-on-open settled:
+  the detail's toggle showing its read face (lucide `svg.lucide-circle`; the
+  toggle has no read-state attribute at v0.59.2) and no list row for the item
+  still `data-notification-unread` (the Unread count derives from those rows).
+  `update-detail` opens the drawer from the panel rail's ask item
+  (`[data-panel-rail-item="ask"]`, pressed only while `aria-pressed="false"`;
+  the composer chip exists only when the conversation has asks, and this seed
+  has none), selects the Updates tab only while it is not selected, presses the
+  item's `[data-row-action="details"]`, and requires
+  `[data-drawer-detail="<id>"]` with its title and the same settled read. The
+  Updates tab's own count badge comes from a separate count query and has no
+  attribute to wait on.
 - **Generate a template by hand** (to inspect it, or for `--seed-config`):
   `node scripts/mac-proof-seed.mjs --scenario ask-command --out <abs empty dir>`.
   `--out` is refused when it is, sits inside, or contains your own config root
@@ -355,7 +418,14 @@ evidence of that build, not of the installed app or a release.
   what is visible in it.
 - `--capture capturepage` frames (the default elsewhere; what Linux/xvfb
   exercises) come from the app's own `capturePage()` and are labelled **no
-  vibrancy claim**.
+  vibrancy claim; RGBA with translucent glass; do not judge contrast from this
+  mode** (on the run's `capture` and every frame's `method`). The bytes are kept
+  as captured: glass regions keep their alpha, so a viewer composites them over
+  white and dark frames look mid-grey - contrast read off them is falsely low.
+- Two frames of **different scenes** with the same sha256 fail the run (exit 1),
+  naming both: one of them is a stale frame (run #1907's
+  `notifications-light.png` was byte-identical to `notification-detail-light.png`,
+  sha256 `cbbbcdc5...`). One scene's two themes are not compared.
 - A frame exists only after every step before it succeeded: a failed step, a
   conversation that is not `--session`, or a focused window ends the run before
   the next shutter.
@@ -370,8 +440,12 @@ supervisor, the env/argv builder, the daemon-client and lop allowlists, the thre
 backend modes end to end, token confinement and the reap.
 
 Mac-only, **pending measurement** on a real Mac:
-- the Screen Recording preflight result (BLOCKED when JXA cannot call it), and
-  the PNG-size-equals-bounds check at the Mac's backing scale;
+- the Screen Recording preflight result (BLOCKED when JXA cannot call it; the
+  `ObjC.bindFunction` path answered `{"granted":true}` on Darwin 27.2, measured
+  standalone, not yet through a full screencapture run), and the
+  PNG-size-equals-bounds check at the Mac's backing scale;
+- the `library`/`notifications`/`update-detail` waits against the installed
+  app's real markup (the selectors are read from the v0.59.2 source);
 - `getMediaSourceId()` agreeing with the JXA `CGWindowList` entry;
 - `screencapture -x -o -l` of a non-front `inactive` window carrying real
   vibrancy, with no activation or focus change (sample the frontmost app by pid);

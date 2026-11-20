@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "डिलीवरी अपुष्ट — यह अब भी पहुँच सकता है, इसलिए दोबारा भेजने से पहले जाँचें",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "पुष्टि नहीं हुई: कोई जवाब नहीं आया और संदेश उनके ट्रांसक्रिप्ट में नहीं है। यह अब भी पहुँच सकता है, इसलिए दोबारा भेजने से पहले जाँचें।",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "जागृति का कोई जवाब नहीं आया और संदेश अभी उनके ट्रांसक्रिप्ट में भी नहीं है — यह अब भी पहुँच सकता है। दोबारा भेजने से पहले जाँचें।",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "डिलीवरी अपुष्ट"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "डिलीवरी अपुष्ट",
+	"ui.chat.trace.send.mode.now": "तुरंत",
+	"ui.chat.trace.send.mode.quiet": "चुपचाप",
+	"ui.chat.trace.send.mode.wake": "जगाकर",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "सत्र {session}",
+	"ui.chat.trace.sessions.peek.search": "खोज {query}",
+	"ui.chat.trace.sessions.peek.search_around": "खोज {query} · आसपास {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.last": "अंतिम {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.first": "शुरुआती {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.digest": "सारांश",
+	"ui.chat.trace.sessions.peek.before": "{id} से पहले",
+	"ui.chat.trace.sessions.peek.around": "{id} के आसपास"
 }

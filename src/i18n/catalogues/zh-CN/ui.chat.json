@@ -138,6 +138,8 @@
 	"ui.chat.checkpoint.jump_user": "跳转到你的消息（第{turn, number}轮，共{total, number}轮），{clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "跳转到你的消息（第{turn, number}轮，共{total, number}轮）",
 	"ui.chat.checkpoint.turn": "第{turn, number}轮（共{total, number}轮）",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "此会话归团队{team}所有：{speaker}是发言者，因此{agentCommand}已关闭。请先运行{detachCommand}解除该团队。",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "此会话归团队{team}所有：由其管理者发言，因此{agentCommand}已关闭。请先运行{detachCommand}解除该团队。",
 	"ui.chat.header_identity.agent_seat_closed_title": "{team}已关闭智能体席位",
 	"ui.chat.header_identity.aria_agent_assign": "智能体：{label}。分配智能体",
 	"ui.chat.header_identity.aria_agent_closed": "智能体：{label}。{reason}",

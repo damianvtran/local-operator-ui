@@ -30,5 +30,17 @@
 	"ui.chat.trace.send.delivery.unconfirmed.label": "доставка не подтверждена — сообщение ещё может дойти, поэтому проверьте, прежде чем отправлять снова",
 	"ui.chat.trace.send.delivery.unconfirmed.note": "Не подтверждено: ответа не было, а сообщения нет в транскрипте получателя. Оно ещё может дойти, поэтому проверьте, прежде чем отправлять снова.",
 	"ui.chat.trace.send.delivery.unconfirmed.title": "Нет ответа на пробуждение, и в транскрипте получателя сообщения пока нет — оно ещё может дойти. Проверьте, прежде чем отправлять снова.",
-	"ui.chat.trace.send.delivery.unconfirmed.word": "доставка не подтверждена"
+	"ui.chat.trace.send.delivery.unconfirmed.word": "доставка не подтверждена",
+	"ui.chat.trace.send.mode.now": "сразу",
+	"ui.chat.trace.send.mode.quiet": "тихо",
+	"ui.chat.trace.send.mode.wake": "пробуждение",
+	"ui.chat.trace.address.pid": "pid {pid}",
+	"ui.chat.trace.address.session": "сессия {session}",
+	"ui.chat.trace.sessions.peek.search": "поиск {query}",
+	"ui.chat.trace.sessions.peek.search_around": "поиск {query} · {count, number, ::group-off} вокруг",
+	"ui.chat.trace.sessions.peek.last": "последние {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.first": "первые {count, number, ::group-off}",
+	"ui.chat.trace.sessions.peek.digest": "сводка",
+	"ui.chat.trace.sessions.peek.before": "до {id}",
+	"ui.chat.trace.sessions.peek.around": "вокруг {id}"
 }

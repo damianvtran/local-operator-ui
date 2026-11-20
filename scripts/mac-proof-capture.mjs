@@ -127,6 +127,17 @@ export const OPERATOR_PORT = 1111;
 export const SCREENCAPTURE_METHOD =
 	"screencapture -l (real vibrancy, pending Mac measurement)";
 
+/**
+ * What a capturePage frame is (design D5): the app's own `capturePage()` keeps
+ * the window's alpha, so glass regions are translucent RGBA. Viewers
+ * composite that over white, so dark
+ * frames look mid-grey and contrast reads falsely low (designer's frame review
+ * of #1907, alpha 0.59-0.77 on glass). The bytes stay as
+ * captured; the receipt says so on the run and on every frame.
+ */
+export const CAPTUREPAGE_METHOD =
+	"capturePage: no vibrancy claim; RGBA with translucent glass; do not judge contrast from this mode";
+
 export const SCENES = Object.freeze([
 	"conversation",
 	"files",
@@ -137,6 +148,8 @@ export const SCENES = Object.freeze([
 	"asks",
 	// #1907: one notification's details page (/notifications/<--notification-id>).
 	"notification-detail",
+	// #1907: the same item's details INSIDE --session's drawer (Updates tab).
+	"update-detail",
 ]);
 export const THEMES = Object.freeze({
 	dark: "localOperatorDark",
@@ -724,6 +737,55 @@ export function releaseZipApp(
  * prints `[window-mode]`, so it always lands inside that window.
  */
 export const STARTUP_WINDOW_MS = 20_000;
+
+/*
+ * WHY A WINDOW WAIT BEFORE THE FIRST SCENE (79's first default-mode Mac run,
+ * installed 0.59.2, harness 00e18cd6: `the window is not visible at the shutter
+ * (SHUTTER label=conversation-dark media=window:7139:0 visible=false
+ * focused=false ...)`, 0 frames, every DOM step ok).
+ *
+ * The harness passes `--open-session`, and a window created to show a specific
+ * conversation HOLDS its first present (src/main/index.ts:1252,
+ * `holdPresentUntilConversation`) until the renderer reports that conversation
+ * is up, or `CONVERSATION_PAINT_FALLBACK_MS = 3_000` (src/main/index.ts:2347)
+ * after the window was created. The readiness steps finish inside that hold, so
+ * the first SHUTTER reported `window.isVisible()` false (`windowFacts`,
+ * src/main/index.ts:1775) and the guard below rightly refused it.
+ *
+ * The app has no shutter-free probe verb for its window facts (the shipped verbs
+ * are DEV_DRIVER_SCRIPT_VERBS in src/main/dev-driver-script.ts, and `state`'s
+ * `visibilityState` is not `isVisible()`), and the step list is read once at
+ * launch, so the harness cannot poll mid-run. It therefore spends ONE bounded,
+ * honest wait in the app's own runner before the first scene: a `waitFor` on a
+ * selector that never matches (`:not(*)`), marked optional so its expected
+ * timeout reads `skipped (optional)` instead of failing the run. Nothing here
+ * shows, focuses or activates the window - the app presents it on its own
+ * schedule - and the per-SHUTTER `visible=true` / `focused=false` guard is
+ * unchanged: a window still hidden after the wait fails the run naming the wait.
+ *
+ * 6 s default = 2x the 3 s fallback bound, which is a code constant (not a
+ * measured distribution); 15 s max keeps the wait well inside --timeout (180 s
+ * default) and the app's 300 s script cap. 0 disables it (the pre-fix behaviour).
+ * capturepage runs are headless and never visible, so they get no wait.
+ */
+export const WINDOW_WAIT_DEFAULT_S = 6;
+export const WINDOW_WAIT_MAX_S = 15;
+/** Matches no element, ever: the wait step can only end by its own bound. */
+export const WINDOW_WAIT_SELECTOR = ":not(*)";
+
+/** The runner step that spends the window wait, or null when none is due. */
+export function windowWaitStep({ capture, windowWaitS }) {
+	if (capture !== "screencapture" || !(windowWaitS > 0)) return null;
+	const ms = Math.round(windowWaitS * 1000);
+	return {
+		verb: "waitFor",
+		payload: { selector: WINDOW_WAIT_SELECTOR, timeoutMs: ms },
+		// Above the verb's own bound, so the step ends by the verb's timeout
+		// (100 ms polls in install.ts `waitFor`), not the runner's.
+		timeoutMs: ms + 5000,
+		optional: true,
+	};
+}
 export function startupProblem(state, elapsedMs) {
 	if (elapsedMs <= STARTUP_WINDOW_MS) return null;
 	if (!state.windowModeLine)
@@ -916,6 +978,9 @@ Captures every --scene x --theme of the real app in ONE inactive launch.
                                capturepage (elsewhere, "no vibrancy claim")
   --window-mode <mode>         inactive (default for screencapture) | headless (capturepage only)
   --size WxH                   window size (default 1380x900)
+  --window-wait <s>            screencapture only: bounded wait before the first scene so the
+                               app's conversation-paint hold (3 s) releases the window first
+                               (default ${WINDOW_WAIT_DEFAULT_S}, max ${WINDOW_WAIT_MAX_S}, 0 = none); it never shows or focuses it
   --timeout <s>                whole-run bound from harness start (default 180, max 290);
                                the reap runs after it. SIGKILL cannot be caught: run this
                                as a background job or with a caller timeout >= --timeout + 60
@@ -933,7 +998,7 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
                                starts, copy it in the same way, and BLOCK (exit 3) unless the
                                daemon reads the seeded rows back. Defaults --session (and
                                --notification-id) to the seed's own ids
-  --notification-id <n_...>    the item the notification-detail scene opens
+  --notification-id <n_...>    the item the notification-detail and update-detail scenes open
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -971,6 +1036,7 @@ export function parseArgs(argv) {
 		capture: process.platform === "darwin" ? "screencapture" : "capturepage",
 		windowMode: null,
 		size: "1380x900",
+		windowWaitS: WINDOW_WAIT_DEFAULT_S,
 		timeoutS: 180,
 		rigRoot: null,
 		backend: "isolated",
@@ -1039,6 +1105,9 @@ export function parseArgs(argv) {
 				break;
 			case "--size":
 				opts.size = take();
+				break;
+			case "--window-wait":
+				opts.windowWaitS = Number(take());
 				break;
 			case "--timeout":
 				opts.timeoutS = Number(take());
@@ -1153,10 +1222,16 @@ export function validateOptions(opts) {
 		);
 	if (
 		opts.session === null &&
-		opts.scenes.some((s) => s === "files" || s === "canvas" || s === "asks")
+		opts.scenes.some(
+			(s) =>
+				s === "files" ||
+				s === "canvas" ||
+				s === "asks" ||
+				s === "update-detail",
+		)
 	)
 		throw new Refusal(
-			"the files, canvas and asks scenes need --session (the canvas and the asks belong to a conversation)",
+			"the files, canvas, asks and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
 		);
 	if (opts.seed !== null && opts.seedConfig !== null)
 		throw new Refusal(
@@ -1175,10 +1250,12 @@ export function validateOptions(opts) {
 		);
 	if (
 		opts.notificationId === null &&
-		opts.scenes.includes("notification-detail")
+		opts.scenes.some(
+			(s) => s === "notification-detail" || s === "update-detail",
+		)
 	)
 		throw new Refusal(
-			"the notification-detail scene needs --notification-id (or --seed notification-details)",
+			"the notification-detail and update-detail scenes need --notification-id (or --seed notification-details)",
 		);
 	const mode = windowModeProblem(opts.windowMode);
 	if (mode) throw new Refusal(mode);
@@ -1186,6 +1263,14 @@ export function validateOptions(opts) {
 	if (capture) throw new Refusal(capture);
 	if (!/^\d{3,4}x\d{3,4}$/.test(opts.size))
 		throw new Refusal(`--size must be WxH (got ${opts.size})`);
+	if (
+		!Number.isFinite(opts.windowWaitS) ||
+		opts.windowWaitS < 0 ||
+		opts.windowWaitS > WINDOW_WAIT_MAX_S
+	)
+		throw new Refusal(
+			`--window-wait must be between 0 and ${WINDOW_WAIT_MAX_S} seconds (got ${opts.windowWaitS})`,
+		);
 	if (
 		!Number.isFinite(opts.timeoutS) ||
 		opts.timeoutS <= 0 ||
@@ -1262,6 +1347,175 @@ export function validateOptions(opts) {
  */
 
 /**
+ * The positive "this scene is on screen" selector for the scenes that are only
+ * a route. WHY (run #1907, measured): with no wait after `navigate`, the
+ * `notifications` shutter fired while the previous scene's detail pane was
+ * still painted - `notifications-light.png` had the same sha256 (cbbbcdc5...) as
+ * `notification-detail-light.png`. `navigate` only waits for the hash route,
+ * not for React to repaint, so each scene waits for markup that exists ONLY in
+ * its target state.
+ *
+ * CONSTRAINT: the installed app may be an older release, so these use only the
+ * shipped `waitFor` (selector + timeoutMs; `document.querySelector`, renderer
+ * dev-driver/install.ts at v0.59.2) and attributes present at v0.59.2:
+ * - notifications: the page (`data-notifications-page`) WITHOUT a detail pane
+ *   inside it (`data-notification-detail`, notification-detail.tsx), holding
+ *   either the loaded list (`data-notifications-list`) or its empty state
+ *   (`data-notifications-empty`) - so neither the skeleton nor a detail frame
+ *   can take the shot. The "Select a notification" placeholder has no stable
+ *   attribute at v0.59.2, so it is not used.
+ * - library: the library page's own header (`data-library-header` inside
+ *   `data-library-page`), which only the /library route renders.
+ */
+export const SCENE_READY = Object.freeze({
+	// `:not(:has(... [data-notification-open]))` too (design D7): #1907's
+	// notifications-dark still had the previous scene's row lit as open while
+	// the pane already showed the empty placeholder - mid-transition.
+	notifications:
+		"[data-notifications-page]:not(:has([data-notification-detail], [data-notification-open])) :is([data-notifications-list], [data-notifications-empty])",
+	library: "[data-library-page] [data-library-header]",
+});
+
+/**
+ * "This notification's opening has settled as READ" (design D7), from markup
+ * present at v0.59.2. Opening an unread item marks it read
+ * (notification-detail.tsx `useOpenedDetailRead`), and #1907's detail frames
+ * caught it half-way (Unread 3 in dark, 4 in light). Two facts, one selector:
+ * - the detail's own toggle shows its READ face: `item.read` renders lucide's
+ *   `<Circle>` (class `lucide-circle`, lucide-react 0.507.0 createLucideIcon)
+ *   and unread renders `<Check>` - the toggle has no read-state attribute at
+ *   v0.59.2, so the icon class is the one stable marker;
+ * - on the page, no list row for it is still `data-notification-unread` (the
+ *   Unread count is derived from those rows, notifications-page.tsx
+ *   `visibleUnread`). A narrow window hides the list, so an absent row passes.
+ * `scope` is the detail container: the page's `[data-notification-detail=id]`
+ * or the drawer's `[data-drawer-detail=id]`.
+ */
+export function detailReadSelector(
+	id,
+	scope = `[data-notification-detail="${id}"]`,
+) {
+	const toggle = `${scope} [data-notification-toggle-read] svg.lucide-circle`;
+	return scope.startsWith("[data-notification-detail=")
+		? `[data-notifications-page]:not(:has([data-notification-row="${id}"][data-notification-unread])) ${toggle}`
+		: toggle;
+}
+
+/**
+ * The update-detail scene (#1907, design D6): the item's details INSIDE the
+ * conversation's drawer (Updates tab -> View details -> in-drawer detail with
+ * "Back to updates" and "Open in Notifications"), from shipped verbs only.
+ *
+ * WHY THE RAIL, NOT THE CHIP. The asks scene presses the composer chip
+ * `[data-status-asks]`, but that chip renders only when the conversation has
+ * asks (composer-status-row.tsx `showAsks`), and the notification-details seed
+ * has none. The panel rail's ask item (`[data-panel-rail-item="ask"]`,
+ * panel-rail.tsx/panel-rail-item.tsx) opens the drawer in the conversation's
+ * scope regardless, and a door-opened drawer is not auto-closed on an empty
+ * queue. Every press is guarded by the state it would change, as in the asks
+ * scene: the rail item only while `aria-pressed="false"`, the Updates tab only
+ * while `aria-selected="false"` (with no asks the drawer DEFAULTS to Updates,
+ * drawer-updates.tsx `defaultDrawerTab`; pressing it from the fleet drawer's
+ * strip re-scopes to this conversation). Then the required waits: the tab
+ * selected, the item's row, the in-drawer detail with its title, and its read
+ * settled (`detailReadSelector`).
+ */
+export function updateDetailSceneSteps(id) {
+	const row = `[data-drawer-update="${id}"]`;
+	const detail = `[data-drawer-detail="${id}"]`;
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { open: false } },
+		{
+			verb: "waitFor",
+			payload: { selector: '[data-panel-rail-item="ask"]', timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-panel-rail-item="ask"][aria-pressed="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: '[data-drawer-tab="updates"]', timeoutMs: 10000 },
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-drawer-tab="updates"][aria-selected="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: '[data-drawer-tab="updates"][aria-selected="true"]',
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: `${row} [data-row-action="details"]`,
+				timeoutMs: 15000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: `${detail} [data-notification-detail-title]`,
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: detailReadSelector(id, detail), timeoutMs: 10000 },
+		},
+	];
+}
+
+/**
+ * Two DIFFERENT scenes photographed to the same bytes mean one of them is a
+ * stale frame (run #1907: notifications-light == notification-detail-light,
+ * sha256 cbbbcdc5...). Answers the problem naming both, else null. Frames of
+ * the SAME scene in two themes are not compared here: that is a theme question,
+ * not a stale route. The scene is the label minus its `-<theme>` suffix.
+ */
+export function duplicateFrameProblem(frames) {
+	const byHash = new Map();
+	for (const frame of frames ?? []) {
+		if (!frame?.sha256) continue;
+		const suffix = `-${frame.theme}`;
+		const scene = frame.label.endsWith(suffix)
+			? frame.label.slice(0, -suffix.length)
+			: frame.label;
+		const prior = byHash.get(frame.sha256);
+		if (prior && prior.scene !== scene)
+			return `frames ${prior.label} and ${frame.label} are byte-identical (sha256 ${frame.sha256}); two different scenes cannot be the same picture, so one is a stale frame`;
+		if (!prior) byHash.set(frame.sha256, { scene, label: frame.label });
+	}
+	return null;
+}
+
+/** The shipped runner's cap (src/main/dev-driver-script.ts DEV_DRIVER_SCRIPT_MAX_STEPS at v0.59.2). */
+export const RUNNER_MAX_STEPS = 64;
+
+/**
+ * A step list over the cap is refused by the app only AFTER its window is up;
+ * refuse it here first, naming the fix. The drawer scenes are long (update-detail
+ * is 12 steps a theme), so every scene x both themes no longer fits one launch.
+ */
+export function stepCountProblem(steps) {
+	if (steps.length <= RUNNER_MAX_STEPS) return null;
+	return `the step list has ${steps.length} steps and the app's runner caps it at ${RUNNER_MAX_STEPS}; split the --scene list across runs`;
+}
+
+/**
  * The step list the app's S1 runner walks. One launch: onboarding out of the
  * way, readiness, then per theme every scene with one shutter each. Frames are
  * labelled `<scene>-<theme>` (also the PNG name).
@@ -1272,6 +1526,7 @@ export function buildSteps({
 	session,
 	capture,
 	notificationId = null,
+	windowWaitS = WINDOW_WAIT_DEFAULT_S,
 }) {
 	const shutter = (label) => ({
 		verb: "shutter",
@@ -1298,6 +1553,10 @@ export function buildSteps({
 		// The harness reads this result: with --session, activeSessionId must match.
 		{ verb: "state" },
 	];
+	// Before the first scene, not right before the shutter: each scene's own
+	// positive-selector waitFor stays the last step before its frame (#1907).
+	const wait = windowWaitStep({ capture, windowWaitS });
+	if (wait) steps.push(wait);
 	for (const theme of themes) {
 		steps.push({ verb: "setTheme", payload: THEMES[theme] });
 		for (const scene of scenes) {
@@ -1335,8 +1594,25 @@ export function buildSteps({
 					verb: "waitFor",
 					payload: { selector: `${selector} [data-notification-detail-title]` },
 				});
+				// Settled, not just painted (design D7): opening an unread item marks
+				// it read, and #1907's dark/light frames showed Unread 3 vs 4.
+				steps.push({
+					verb: "waitFor",
+					payload: {
+						selector: detailReadSelector(notificationId),
+						timeoutMs: 10000,
+					},
+					timeoutMs: 15000,
+				});
+			} else if (scene === "update-detail") {
+				steps.push(...updateDetailSceneSteps(notificationId));
 			} else {
 				steps.push({ verb: "navigate", payload: `/${scene}` });
+				steps.push({
+					verb: "waitFor",
+					payload: { selector: SCENE_READY[scene], timeoutMs: 20000 },
+					timeoutMs: 25000,
+				});
 			}
 			steps.push(shutter(label));
 		}
@@ -1651,36 +1927,98 @@ export async function daemonRequest(
 export const OPERATOR_RELAY_PORT = 4097;
 
 /**
- * `network.port` from `<root>/config.yml`, read without a YAML dependency: the
- * block-style `network:` mapping and its indented `port:` key. Anything else
- * (flow style, anchors) answers null, which REFUSES - fail closed, because an
- * unset port makes the relay advertise :4097 and peers then dial the operator's
- * real relay (measured on node2: writes reached the real audit log).
+ * `values.network.port` from `<root>/config.yml`, read without a YAML dependency.
+ *
+ * WHERE THE PORT LIVES. lop keeps every setting under a top-level `values:`
+ * mapping: `lop config edit network.port 14097` writes
+ *
+ *     values:
+ *       network:
+ *         port: 14097
+ *
+ * and core reads ONLY that mapping (local_operator/config.py `values =
+ * parsed.get("values", {})`; settings_io.py `key="network.port", path=("network",
+ * "port"), default=4097`). The first real Mac runs (2026-11) exited 2 on
+ * every lop-written config because this read a top-level `network:` block.
+ * A top-level `network.port` is NOT honoured: core ignores it (and reports the
+ * stray key), so the relay would still advertise 4097. It answers null here,
+ * which refuses, rather than pass a port the relay never uses.
+ *
+ * FAIL CLOSED. Only plain block style is read: two-space-or-any consistent
+ * space indentation, bare `values:` and `network:` keys, and a decimal port,
+ * optionally quoted, optionally followed by ` # comment`. Anything else -
+ * flow style, anchors/aliases, tabs, document markers or directives, a
+ * duplicated `values`/`network`/`port` key, a top-level line that is not a
+ * plain `key:`, an indentation that steps back inside a block, or a port under
+ * any other parent - answers null, which REFUSES. An unset port makes the relay
+ * advertise :4097 and peers then dial the operator's real relay (measured on
+ * node2: writes reached the real audit log), so guessing is never safe.
  */
 export function relayPortFromConfig(text) {
-	const lines = text.split(/\r?\n/);
-	let inNetwork = false;
-	let indent = null;
-	for (const line of lines) {
-		if (/^\S/.test(line)) {
-			inNetwork = /^network:\s*(#.*)?$/.test(line);
-			indent = null;
+	if (typeof text !== "string") return null;
+	const KEY = /^( *)([A-Za-z0-9_.-]+):(?: +(.*?))? *$/;
+	// A mapping key whose value is a nested block: nothing after the colon but
+	// an optional comment. `values: {..}`, `network: &a`, `network: *a` are not.
+	const bare = (value) => value === undefined || value.startsWith("#");
+	let state = "top"; // top | values | network
+	let valuesSeen = false;
+	let networkSeen = false;
+	let portSeen = false;
+	let childIndent = null;
+	let grandIndent = null;
+	let port = null;
+	for (const line of text.split(/\r?\n/)) {
+		if (/^[ \t]*(#.*)?$/.test(line)) continue;
+		if (/^\s*/.exec(line)[0].includes("\t")) return null;
+		if (/^(---|\.\.\.|%)/.test(line)) return null;
+		const indent = line.length - line.trimStart().length;
+		const m = line.match(KEY);
+		if (indent === 0) {
+			if (!m) return null;
+			state = "top";
+			if (m[2] === "values") {
+				if (valuesSeen || !bare(m[3])) return null;
+				valuesSeen = true;
+				state = "values";
+			}
 			continue;
 		}
-		if (!inNetwork || line.trim() === "" || line.trim().startsWith("#"))
-			continue;
-		const lead = line.match(/^(\s+)/)[1].length;
-		indent ??= lead;
-		if (lead !== indent) continue;
-		const match = line.match(/^\s+port:\s*["']?(\d+)["']?\s*(#.*)?$/);
-		if (match) return Number(match[1]);
+		if (state === "top") continue;
+		if (state === "network") {
+			if (indent > childIndent) {
+				grandIndent ??= indent;
+				if (indent < grandIndent) return null;
+				if (indent > grandIndent) continue;
+				if (!m) return null;
+				if (m[2] === "port") {
+					if (portSeen) return null;
+					portSeen = true;
+					const value = (m[3] ?? "").match(
+						/^(?:(0|[1-9]\d*)|"(0|[1-9]\d*)"|'(0|[1-9]\d*)')(?: +#.*)?$/,
+					);
+					if (!value) return null;
+					port = Number(value[1] ?? value[2] ?? value[3]);
+				}
+				continue;
+			}
+			state = "values";
+		}
+		childIndent ??= indent;
+		if (indent < childIndent) return null;
+		if (indent > childIndent) continue;
+		if (!m) return null;
+		if (m[2] === "network") {
+			if (networkSeen || !bare(m[3])) return null;
+			networkSeen = true;
+			state = "network";
+		}
 	}
-	return null;
+	return port;
 }
 
 export function relayPortProblem(port) {
 	if (port === null || !Number.isInteger(port) || port <= 0 || port > 65535)
-		return "--backend-config-root needs network.port set in <root>/config.yml (unset, the relay advertises the operator's :4097 and peers dial it)";
+		return "--backend-config-root needs network.port set in <root>/config.yml as `values:` > `network:` > `port:` (what `lop config edit network.port <n>` writes; a top-level `network:` block is ignored by core), and unset the relay advertises the operator's :4097 and peers dial it";
 	if (port === OPERATOR_RELAY_PORT)
 		return `network.port is ${OPERATOR_RELAY_PORT}, the operator's own relay port; a rig device's relay must use another`;
 	return null;
@@ -1727,6 +2065,8 @@ const FRAME_LABEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
  */
 const SHUTTER_EXTERNAL =
 	/^SHUTTER label=(\S+) media=(\S+) visible=(true|false) focused=(true|false) ack=.+$/;
+/** The window facts a SHUTTER line carries, quoted in the not-visible abort. */
+const SHUTTER_FACTS = /visible=\S+ focused=\S+/;
 const SHUTTER_CAPTUREPAGE =
 	/^SHUTTER label=(\S+) capture=capturepage path=.+ width=(\d+) height=(\d+) visible=(true|false) focused=(true|false)$/;
 
@@ -1736,6 +2076,10 @@ export function createSupervisor({
 	capture,
 	framesDir,
 	labels = null,
+	// The runner step (1-based) that spends the window wait, and its --window-wait;
+	// null when the run has none. See WINDOW_WAIT_DEFAULT_S for why it exists.
+	windowWait = null,
+	now = Date.now,
 }) {
 	if (typeof framesDir !== "string" || !isAbsolute(framesDir))
 		throw new TypeError(
@@ -1752,6 +2096,19 @@ export function createSupervisor({
 		stateChecked: session === null,
 		done: false,
 		steps: [],
+		// The receipt's `windowWait`: how long the wait step actually took (harness
+		// clock, from the line before it to its own line) and the first SHUTTER's
+		// `visible`, so a run that still failed says whether the wait was spent.
+		windowWait: { waitedMs: 0, visibleAtShutter: null },
+	};
+	let lastRunnerLineAt = null;
+	const notVisible = (body) => {
+		const facts = body.match(SHUTTER_FACTS)?.[0] ?? "";
+		const waited =
+			windowWait === null
+				? "with no window wait (--window-wait 0)"
+				: `after a ${state.windowWait.waitedMs} ms window wait (--window-wait ${windowWait.s})`;
+		return `the window is not visible at the shutter ${waited}: ${facts}; the app had not presented its window yet (a window opened for a conversation is held until it paints, src/main/index.ts holdPresentUntilConversation), so retry with a longer --window-wait (max ${WINDOW_WAIT_MAX_S}) - never a focused or normal-mode run (${body})`;
 	};
 	const feed = (line) => {
 		if (line.startsWith("[window-mode] window mode ")) {
@@ -1787,11 +2144,16 @@ export function createSupervisor({
 			return { abort: `the step runner refused: ${body}` };
 		if (body.startsWith("ready ")) {
 			state.ready = true;
+			lastRunnerLineAt = now();
 			return null;
 		}
 		const step = body.match(/^step=(\d+) verb=(\S+) (ok|error:|skipped)(.*)$/);
 		if (step) {
 			const [, n, verb, outcome, rest] = step;
+			const at = now();
+			if (windowWait !== null && Number(n) === windowWait.step)
+				state.windowWait.waitedMs = at - (lastRunnerLineAt ?? at);
+			lastRunnerLineAt = at;
 			state.steps.push({
 				step: Number(n),
 				verb,
@@ -1836,13 +2198,12 @@ export function createSupervisor({
 			if (shot.has(label))
 				return { abort: `a second SHUTTER for ${label} (${body})` };
 			const [visible, focused] = external ? [m[3], m[4]] : [m[4], m[5]];
+			if (state.windowWait.visibleAtShutter === null)
+				state.windowWait.visibleAtShutter = visible === "true";
 			if (focused !== "false")
 				return { abort: `the window is focused at the shutter (${body})` };
 			if (external) {
-				if (visible !== "true")
-					return {
-						abort: `the window is not visible at the shutter (${body})`,
-					};
+				if (visible !== "true") return { abort: notVisible(body) };
 				const id = m[2].match(/^window:(\d+):/)?.[1];
 				if (!id)
 					return { abort: `the SHUTTER line carries no window id (${body})` };
@@ -1895,25 +2256,106 @@ function jxa(source) {
 
 /**
  * Screen Recording, asked WITHOUT a prompt: `CGPreflightScreenCaptureAccess`
- * never prompts (its sibling `CGRequestScreenCaptureAccess` would put a dialog on
- * the operator's screen and is never called).
+ * never prompts (its request-side sibling would put a dialog on the operator's
+ * screen, so this source never names it - a test asserts that).
  *
- * Answers "granted", "denied" or "unknown". UNKNOWN - the JXA bridge could not
- * call the preflight - is BLOCKED by the caller, never guessed. An earlier
- * fallback read "another process's window has a kCGWindowName" as granted, but
- * system UI (Menubar, Dock, Window Server) reports names without the
- * permission, so it could answer yes while ungranted; `screencapture -l` would
- * then raise the TCC prompt on the operator's screen and photograph an empty
- * window (review r1 R1-1). Not being able to ask safely is a stop.
+ * TWO WAYS TO REACH THE SAME C FUNCTION. `ObjC.import('CoreGraphics')` bridges
+ * the symbol on older macOS; on macOS 27 the bridged `$` has no function by
+ * that name, so the first real Mac run answered unknown and exited 3 BLOCKED.
+ * JXA's documented C binding, `ObjC.bindFunction(name, [returnType,
+ * [argTypes]])`, declares the signature itself (`bool (void)`) and then `$.<name>`
+ * calls it. Measured by manager 79bddc262663 on Damian's Mac (Darwin 27.2): the
+ * bindFunction path returned `{"granted":true}`. Each step is in its own try,
+ * and only a boolean (or the C bool's 0/1) is an answer.
+ *
+ * Output is exactly `{"granted": true|false|null}`. Null - neither path could
+ * call the preflight - is UNKNOWN and BLOCKED by the caller, never guessed. An
+ * earlier fallback read "another process's window has a kCGWindowName" as
+ * granted, but system UI (Menubar, Dock, Window Server) reports names without
+ * the permission, so it could answer yes while ungranted; `screencapture -l`
+ * would then raise the TCC prompt on the operator's screen and photograph an
+ * empty window (review r1 R1-1). Not being able to ask safely is a stop.
  */
-export function screenRecordingGranted() {
-	return screenRecordingVerdict(
-		jxa(`
+export const SCREEN_RECORDING_PREFLIGHT_JXA = `
 ObjC.import('CoreGraphics');
 var granted = null;
-try { if (typeof $.CGPreflightScreenCaptureAccess === 'function') granted = !!$.CGPreflightScreenCaptureAccess(); } catch (e) {}
-JSON.stringify({granted: granted});`),
-	);
+var callable = false;
+try { callable = typeof $.CGPreflightScreenCaptureAccess === 'function'; } catch (e) {}
+if (!callable) {
+	try { ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []]); callable = true; } catch (e) {}
+}
+if (callable) {
+	try {
+		var answer = $.CGPreflightScreenCaptureAccess();
+		if (answer === true || answer === false) granted = answer;
+		else if (answer === 0 || answer === 1) granted = answer === 1;
+	} catch (e) {}
+}
+JSON.stringify({granted: granted});`;
+
+/** Runs `SCREEN_RECORDING_PREFLIGHT_JXA`: "granted", "denied" or "unknown". */
+export function screenRecordingGranted() {
+	return screenRecordingVerdict(jxa(SCREEN_RECORDING_PREFLIGHT_JXA));
+}
+
+/**
+ * Who macOS asks about Screen Recording: the TCC "responsible" app is the
+ * nearest `.app` bundle up this process's parent chain (Terminal, iTerm, the
+ * agent's own app). The BLOCKED/denied messages name it so the operator knows
+ * which row to tick; the harness itself never requests or changes TCC.
+ *
+ * `psTable` is `ps -A -o pid=,ppid=,comm=` output (C locale). Walks from `pid`
+ * to the first ancestor whose `comm` is a `<X>.app/Contents/MacOS/...`
+ * executable and answers `{ host: "<X>.app", kind: "app" }` (the OUTERMOST
+ * bundle in the path, so a nested Helper.app names its parent app). With no
+ * .app ancestor it answers the top non-launchd entry as `kind: "process"`:
+ * measured by 79bddc262663 on the Mac, the agent shell's chain was
+ * `48300 /opt/homebrew/bin/bash` -> `20192 Local Operator [session]
+ * id=79bddc26` -> launchd, a renamed process title with no bundle path, so the
+ * title is the best name available. Null when the chain cannot be read.
+ */
+export function tccHostFromPsTable(psTable, pid) {
+	const rows = new Map();
+	for (const line of String(psTable ?? "").split("\n")) {
+		const m = line.match(/^\s*(\d+)\s+(\d+)\s+(.*?)\s*$/);
+		if (m) rows.set(Number(m[1]), { ppid: Number(m[2]), comm: m[3] });
+	}
+	const launchd = (at, row) => at === 1 || /(^|\/)launchd$/.test(row.comm);
+	let top = null;
+	const seen = new Set();
+	for (let at = pid; rows.has(at) && !seen.has(at); at = rows.get(at).ppid) {
+		seen.add(at);
+		const row = rows.get(at);
+		if (launchd(at, row)) break;
+		const bundle = row.comm.match(/^(?:.*?\/)?([^/]+?\.app)\/Contents\//);
+		if (bundle && /\.app\/Contents\/MacOS\/[^/]+$/.test(row.comm))
+			return { host: bundle[1], kind: "app", pid: at };
+		top = { host: row.comm, kind: "process", pid: at };
+	}
+	return top;
+}
+
+/** The TCC host of this process, from one `ps` snapshot; null if unreadable. */
+export function tccHost(pid = process.pid) {
+	try {
+		const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid=,comm="], {
+			encoding: "utf8",
+			env: cLocaleEnv(),
+			timeout: 10000,
+		});
+		if (ps.error || ps.status !== 0) return null;
+		return tccHostFromPsTable(ps.stdout, pid);
+	} catch {
+		return null;
+	}
+}
+
+/** The operator-facing instruction naming the TCC host (never a request). */
+export function screenRecordingGrantHint(host) {
+	const who = host?.host
+		? `${host.host}${host.kind === "process" ? ` (pid ${host.pid}, the top of this process's parent chain; no .app ancestor was found)` : ""}`
+		: "this process's host (the terminal or agent app; its parent chain could not be read)";
+	return `grant Screen & System Audio Recording to ${who} in System Settings > Privacy & Security; this harness never requests or changes it (that would prompt)`;
 }
 
 /** The JXA preflight's output, read strictly: only a boolean is an answer. */
@@ -2882,11 +3324,28 @@ export function negativeControlCases() {
 		[
 			"config-root relay with network.port unset",
 			() =>
-				relayPortProblem(relayPortFromConfig("network:\n  enabled: true\n")),
+				relayPortProblem(
+					relayPortFromConfig("values:\n  network:\n    enabled: true\n"),
+				),
 		],
 		[
 			"config-root relay with network.port 4097",
-			() => relayPortProblem(relayPortFromConfig("network:\n  port: 4097\n")),
+			() =>
+				relayPortProblem(
+					relayPortFromConfig("values:\n  network:\n    port: 4097\n"),
+				),
+		],
+		[
+			// Core reads only `values:`; a top-level port leaves the relay on 4097.
+			"config-root relay with network.port only at top level",
+			() => relayPortProblem(relayPortFromConfig("network:\n  port: 14097\n")),
+		],
+		[
+			"config-root relay with values: but no network",
+			() =>
+				relayPortProblem(
+					relayPortFromConfig("values:\n  ui:\n    port: 14097\n"),
+				),
 		],
 		[
 			"daemon call to an engage path",
@@ -3243,6 +3702,11 @@ export async function main(argv = process.argv.slice(2)) {
 
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
+	const stepProblem = stepCountProblem(steps.steps);
+	if (stepProblem) {
+		console.error(`[mac-proof] refused: ${stepProblem}`);
+		return EXIT.REFUSED;
+	}
 	if (opts.dryRun) {
 		const placeholderToken = "<minted-at-run>";
 		const backendUrl =
@@ -3296,7 +3760,7 @@ export async function main(argv = process.argv.slice(2)) {
 			capture:
 				opts.capture === "screencapture"
 					? SCREENCAPTURE_METHOD
-					: "capturePage: no vibrancy claim",
+					: CAPTUREPAGE_METHOD,
 			command: plan.app.executable,
 			argv: buildAppArgv({
 				rig: rigPlaceholder,
@@ -3347,21 +3811,20 @@ export async function main(argv = process.argv.slice(2)) {
 			verdict = screenRecordingGranted();
 		} catch (error) {
 			console.error(
-				`[mac-proof] BLOCKED: could not read Screen Recording permission without a prompt (${error.message})`,
+				`[mac-proof] BLOCKED: could not read Screen Recording permission without a prompt (${error.message}). ` +
+					`Once it can be read: ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
 		}
 		if (verdict === "unknown") {
 			console.error(
-				"[mac-proof] BLOCKED: CGPreflightScreenCaptureAccess is not callable from JXA here, so Screen Recording cannot be read without risking a prompt. " +
-					"Use --capture capturepage (no vibrancy claim), or report this macOS version so the harness can learn another prompt-free probe.",
+				`[mac-proof] BLOCKED: CGPreflightScreenCaptureAccess is not callable from JXA here (neither bridged nor via ObjC.bindFunction), so Screen Recording cannot be read without risking a prompt. Use --capture capturepage (no vibrancy claim), or report this macOS version so the harness can learn another prompt-free probe. If it is a permission gap: ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
 		}
 		if (verdict !== "granted") {
 			console.error(
-				"[mac-proof] BLOCKED: Screen Recording is not granted to this process's host (the terminal or agent app). " +
-					"Grant it in System Settings > Privacy & Security > Screen Recording; this harness never requests it (that would prompt).",
+				`[mac-proof] BLOCKED: Screen Recording is not granted to this process's host; ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
 		}
@@ -3400,7 +3863,7 @@ export async function main(argv = process.argv.slice(2)) {
 		capture:
 			opts.capture === "screencapture"
 				? SCREENCAPTURE_METHOD
-				: "capturePage: no vibrancy claim",
+				: CAPTUREPAGE_METHOD,
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
@@ -3873,6 +4336,12 @@ export async function main(argv = process.argv.slice(2)) {
 			labels: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => s.payload.label),
+			windowWait: (() => {
+				const i = steps.steps.findIndex(
+					(s) => s.payload?.selector === WINDOW_WAIT_SELECTOR,
+				);
+				return i < 0 ? null : { step: i + 1, s: opts.windowWaitS };
+			})(),
 		});
 		const appLog = [];
 		let abort = null;
@@ -3944,7 +4413,7 @@ export async function main(argv = process.argv.slice(2)) {
 					label: shot.label,
 					theme,
 					file,
-					method: "capturePage: no vibrancy claim",
+					method: CAPTUREPAGE_METHOD,
 					sha256: sha256(bytes),
 					pixels: size,
 					at: new Date().toISOString(),
@@ -4001,6 +4470,7 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.steps = supervisor.state.steps;
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
+		receipt.windowWait = supervisor.state.windowWait;
 		writeFileSync(
 			join(rig, "logs", "app-stdout.log"),
 			token
@@ -4010,6 +4480,7 @@ export async function main(argv = process.argv.slice(2)) {
 		const expected = opts.scenes.length * opts.themes.length;
 		if (!abort && receipt.frames.length !== expected)
 			abort = `captured ${receipt.frames.length} of ${expected} frames`;
+		if (!abort) abort = duplicateFrameProblem(receipt.frames);
 		if (abort) throw new Error(abort);
 		receipt.verdict = "captured";
 	} catch (error) {

@@ -465,7 +465,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	/*
 	 * THE CHIP'S ACCESSIBLE NAME, one WHOLE sentence per state (design D6's
 	 * clause split, kept): the role and the visible label lead, then either the
-	 * action or the runtime's closure reason. Each state is its own catalogue
+	 * action or the caption explaining why the seat is closed. Each state is its own catalogue
 	 * message rather than a sentence assembled from translated fragments - the
 	 * role noun, its article and the word order are the locale's, and "Switch
 	 * agent" cannot be built from "Agent" in every language. `label` is the
@@ -557,7 +557,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						closedReason !== null
 							? /*
 								 * The closed chip's tooltip: the label leads (which profile this
-								 * is about), then the runtime's own closure sentence - the SAME
+								 * is about), then the localized closure sentence - the SAME
 								 * string the panel states, as the flagged chip does for its rule.
 								 */
 								`${label} — ${closedReason}`

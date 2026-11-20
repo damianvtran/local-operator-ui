@@ -17,6 +17,7 @@
 	"ui.chat.sidebar_view.section.running": "В работе",
 	"ui.chat.sidebar_view.section.teams": "Команды",
 	"ui.chat.sidebar_view.section.today": "Сегодня",
+	"ui.chat.sidebar_view.section.yesterday": "Вчера",
 	"ui.chat.sidebar_view.section.week": "На этой неделе",
 	"ui.chat.sidebar_view.sections": "Разделы",
 	"ui.chat.sidebar_view.time_basis": "Отсчёт времени",

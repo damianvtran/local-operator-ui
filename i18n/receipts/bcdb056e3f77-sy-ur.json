@@ -1,0 +1,46 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "bcdb056e3f77-sy-ur",
+	"date": "2026-11-19",
+	"locale": "ur",
+	"independence": "Independent i18n auditor (lopdev reviewer session bcdb056e3f77, model anthropic/claude-sonnet-5-5 as served; no provider fallback). Did not translate or implement this change: values were reused by the coder from existing catalogues. Read only the committed bytes at the head below; edited nothing but this receipt.",
+	"references": {
+		"glossary": "damianvtran/local-operator@56662d28b33f i18n/glossary.md (last touched at that commit; origin/main ebad0e1da46e)",
+		"style_guide": "damianvtran/local-operator@56662d28b33f i18n/style-guides/ur.md (incl. its RTL & bidi section)",
+		"shipped_terms": "src/i18n/catalogues/{en,ur}/ui.common.time.json ui.common.time.yesterday; src/i18n/catalogues/{en,ur}/ui.notifications.json ui.notifications.group.yesterday (both identical to the new value)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"head": "cef617797717103a9bf322bbf0aee5cd65007c8b",
+	"worktree": "~/workspace/repos/local-operator-ui/.worktrees/sidebar-yesterday",
+	"scope": "One new key, ui.chat.sidebar_view.section.yesterday, read against the en value 'Yesterday', its .context.json entry (role: section visibility switch label; maxCells 20; same name interpolated into reorder accessible names), the core glossary, this locale's style guide, and the locale's neighbouring Today/This week/Older values. Mechanical: NFC, no Cc/Cf characters (so no manual bidi controls), value equals the audited ui.common.time.yesterday and ui.notifications.group.yesterday, uppercase transform checked (heading element in chat-sidebar.tsx uses CSS `uppercase tracking-wide`). sha256 recomputed with shasum -a 256 over each whole namespace catalogue file on disk, equal to the values frozen by the coder.",
+	"namespace": "ui.chat.sidebar_view",
+	"keys_audited": 1,
+	"keys": [
+		"ui.chat.sidebar_view.section.yesterday"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+	"target_path": "src/i18n/catalogues/ur/ui.chat.sidebar_view.json",
+	"value": "گزشتہ روز",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+		"ur": "c16330d33000a3175b22a7dc81c8e0895f5e19335c42d20e836cd24d31d0b28c"
+	},
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "ur-O1",
+			"point": "Fitness as sidebar section heading",
+			"detail": "Unambiguous past-day phrase (avoids a bare 'کل', which also means tomorrow); Arabic script is caseless so CSS uppercase is a no-op; no bidi control characters. Length 9 code points vs maxCells 20. Value is byte-identical to the already-audited ui.common.time.yesterday and ui.notifications.group.yesterday in this locale; matches the آج / اس ہفتے neighbours. In the reorder accessible name '{section} اوپر کریں' it reads as a complete noun phrase."
+		}
+	]
+}

@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "Ir a tu mensaje del turno {turn, number} de {total, number}, a las {clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "Ir a tu mensaje del turno {turn, number} de {total, number}",
 	"ui.chat.checkpoint.turn": "Turno {turn, number} de {total, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "el equipo {team} controla esta sesión: {speaker} es quien habla, así que {agentCommand} está bloqueado. Ejecuta {detachCommand} para desvincular primero el equipo.",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "el equipo {team} controla esta sesión: el responsable del equipo es quien habla, así que {agentCommand} está bloqueado. Ejecuta {detachCommand} para desvincular primero el equipo.",
 	"ui.chat.header_identity.agent_seat_closed_title": "Puesto de agente bloqueado por {team}",
 	"ui.chat.header_identity.aria_agent_assign": "Agente: {label}. Asignar un agente",
 	"ui.chat.header_identity.aria_agent_closed": "Agente: {label}. {reason}",
