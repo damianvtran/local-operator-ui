@@ -35,6 +35,7 @@ import {
 import {
 	type CanonicalContentBlock,
 	type CanonicalFrontendState,
+	type DesktopClippedRow,
 	type DesktopHistoryPage,
 	type DesktopStreamCursor,
 	epochMsFromSeconds,
@@ -73,6 +74,7 @@ import {
 	preferDiffTruncatedRows,
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
+import { parseClippedMarker, sameClippedMarker } from "./clipped-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { soundCostCaption } from "./image-gen-card-model";
 import {
@@ -942,7 +944,24 @@ type TranscriptPayloadRecord =
 			live: boolean;
 	  };
 
-export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
+/**
+ * The core's clipped-row marker, carried onto whichever record its entry
+ * became (`durableRecord`), so the row paints its "showing X of Y" line or,
+ * for a withheld row, a placeholder (`clipped-row.tsx`). Absent on every row
+ * that fit its read.
+ */
+export type ClippedStamp = {
+	/**
+	 * `entryId` is the JOURNAL entry's id, kept beside the marker because a
+	 * record's own `id` can be a canonical tool-call id: the ref re-mint reads
+	 * `around_id=<entry id>`, never the call id.
+	 */
+	clipped?: DesktopClippedRow & { entryId: string };
+};
+
+export type TranscriptRecord = TranscriptPayloadRecord &
+	JournalPosition &
+	ClippedStamp;
 
 export type TranscriptState = {
 	/** Non-rendered, bounded profile prunes awaiting their older native target. */
@@ -3336,7 +3355,82 @@ function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
 	return `tool:${String(payload?.tool_call_id ?? "")}`; // i18n: ignore internal record-index key; never rendered
 }
 
+/**
+ * `durableRecordBody` plus the clipped-row marker. The marker is stamped here,
+ * once, so both page paths (`applyHistoryPage`, the peer payload lane) carry it
+ * and no record kind's builder has to know about it.
+ */
 function durableRecord(
+	entry: DesktopHistoryPage["entries"][number],
+	previous?: TranscriptRecord,
+): TranscriptRecord | null {
+	const marker = parseClippedMarker(entry.truncated);
+	const record =
+		durableRecordBody(entry, previous) ??
+		(marker?.omitted ? withheldRecord(entry) : null);
+	if (!record) return record;
+	if (marker) {
+		const clipped = { ...marker, entryId: entry.id };
+		// Keep the painted marker's REFERENCE when unchanged: `shallowEqual`
+		// compares by `!==`, and a fresh object on every re-read would repaint the row.
+		const kept =
+			previous?.clipped &&
+			previous.clipped.entryId === clipped.entryId &&
+			sameClippedMarker(previous.clipped, clipped)
+				? previous.clipped
+				: clipped;
+		return record.clipped === kept ? record : { ...record, clipped: kept };
+	}
+	// A re-read that now fits (the row was edited down, or the budget grew)
+	// must not keep a stale marker carried over from `previous`.
+	return withoutClipped(record);
+}
+
+/** The record with no clipped marker; the same reference when it had none. */
+function withoutClipped<T extends ClippedStamp>(record: T): T {
+	if (!record.clipped) return record;
+	const { clipped: _stale, ...rest } = record;
+	return rest as T;
+}
+
+/**
+ * The stand-in record for a WITHHELD row (`truncated.omitted: true`).
+ *
+ * WHY. The core withholds a row it cannot even preview (a supplement over the
+ * history budget, a checkpoint) and serves it with an EMPTY payload: no
+ * `details`, no content. Every kind's builder then returns null - a supplement
+ * has no anchor to key on - and without this the row would vanish from the
+ * page, the silent loss the marker exists to prevent (agent review round 1,
+ * M1). The record is a plain `custom` row at the ENTRY's id; `TranscriptRow`
+ * paints the placeholder in its body's place, so nothing of the custom row's
+ * own anatomy shows.
+ *
+ * CONSTRAINT. Only kinds the transcript would have painted: a withheld
+ * bookkeeping row (`SILENT_CUSTOM_TYPES`, which includes the state checkpoint)
+ * stays invisible, exactly as it would have been whole.
+ */
+function withheldRecord(
+	entry: DesktopHistoryPage["entries"][number],
+): TranscriptRecord | null {
+	const payload = entry.payload ?? {};
+	const customType =
+		typeof payload.custom_type === "string" ? payload.custom_type : "";
+	if (entry.type === "custom") {
+		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
+	} else if (entry.type !== "message") return null;
+	const type = customType || entry.type;
+	return {
+		kind: "custom",
+		id: entry.id,
+		ts: Math.round((entry.ts ?? 0) * 1000),
+		customType: type,
+		text: "",
+		attribution: "system",
+		...customRow(type, "", {}),
+	};
+}
+
+function durableRecordBody(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
 	 * The record already painted for this id, if any. It carries TWO facts, and
@@ -6733,6 +6827,17 @@ export function applyEvent(
 					? base.startedAt <= userStoppedAt
 					: claimsFailure);
 			return upsert(seeded, {
+				/*
+				 * KEEP THE PAGE'S CLIPPED MARKER (QA round 2, Q2-1). A row large enough
+				 * to clip (over the core's 1.5 MiB row budget) never reaches us whole as a
+				 * live end event: the reconnect seed trims it
+				 * (`frontend_state._bound_live_events_in_place`) and a live frame over the
+				 * 1 MiB wire line is cut or emptied (`runtime/server.py::fit_frame_for_wire`).
+				 * Clearing the marker here would paint a trimmed "…" preview, an empty
+				 * `content`, or a missing `result` as the complete output - silent
+				 * truncation. The marker's own range read is the only route to the full
+				 * text, so it survives; the cost is at most a redundant "showing X of Y".
+				 */
 				...base,
 				args,
 				phase: "done",

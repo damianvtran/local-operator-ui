@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "آؤٹ پٹ مختصر کر دیا گیا — اس آلے پر اسے پھیلایا نہیں جا سکتا",
+	"ui.chat.clipped_row.final": "مکمل آؤٹ پٹ اب دستیاب نہیں؛ صرف پیش منظر دکھایا جا سکتا ہے۔",
+	"ui.chat.clipped_row.marker": "آؤٹ پٹ مختصر کر دیا گیا — {total} میں سے {shown} دکھایا جا رہا ہے",
+	"ui.chat.clipped_row.omitted": "یہ اندراج یہاں دکھانے کے لیے بہت بڑا ہے ({total})۔",
+	"ui.chat.clipped_row.open": "مکمل آؤٹ پٹ کھولیں",
+	"ui.chat.clipped_row.viewer.cancel": "منسوخ کریں",
+	"ui.chat.clipped_row.viewer.close": "بند کریں",
+	"ui.chat.clipped_row.viewer.error": "مکمل آؤٹ پٹ لوڈ نہیں ہو سکا۔",
+	"ui.chat.clipped_row.viewer.loading": "مکمل آؤٹ پٹ لوڈ ہو رہا ہے — {total} میں سے {received}",
+	"ui.chat.clipped_row.viewer.progress_label": "مکمل آؤٹ پٹ لوڈ ہونے کی پیش رفت",
+	"ui.chat.clipped_row.viewer.retry": "دوبارہ کوشش کریں",
+	"ui.chat.clipped_row.viewer.size": "کل {total}",
+	"ui.chat.clipped_row.viewer.title": "مکمل آؤٹ پٹ"
+}

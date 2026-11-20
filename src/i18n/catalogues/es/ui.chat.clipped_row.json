@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "Salida truncada: no se puede ampliar en este dispositivo",
+	"ui.chat.clipped_row.final": "La salida completa ya no está disponible; solo se puede mostrar la vista previa.",
+	"ui.chat.clipped_row.marker": "Salida truncada: se muestran {shown} de {total}",
+	"ui.chat.clipped_row.omitted": "Este elemento es demasiado grande para mostrarlo aquí ({total}).",
+	"ui.chat.clipped_row.open": "Abrir la salida completa",
+	"ui.chat.clipped_row.viewer.cancel": "Cancelar",
+	"ui.chat.clipped_row.viewer.close": "Cerrar",
+	"ui.chat.clipped_row.viewer.error": "No se pudo cargar la salida completa.",
+	"ui.chat.clipped_row.viewer.loading": "Cargando la salida completa: {received} de {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "Progreso de carga de la salida completa",
+	"ui.chat.clipped_row.viewer.retry": "Reintentar",
+	"ui.chat.clipped_row.viewer.size": "{total} en total",
+	"ui.chat.clipped_row.viewer.title": "Salida completa"
+}

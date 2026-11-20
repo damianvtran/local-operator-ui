@@ -1937,6 +1937,37 @@ export type DesktopHistoryEntry = {
 	payload: Record<string, unknown>;
 	journal_seq?: number;
 	ts_source?: "entry" | "unstated" | "served";
+	/**
+	 * Present ONLY on a row the core clipped to its read's budget (core
+	 * `docs/DESKTOP_API.md`, "Clipped rows"). Unvalidated wire: read it through
+	 * `parseClippedMarker` (`clipped-row-model.ts`), never directly.
+	 */
+	truncated?: unknown;
+};
+/**
+ * The clipped-row marker as the core serves it. Both counts are UTF-8 bytes of
+ * compact JSON; the core's wire-byte budgets are its own concern and nothing
+ * here compares against them. `ref: null` = not fetchable from this device (a
+ * peer's row clipped by its owner). `omitted` = a non-message row withheld to
+ * its envelope rather than cut.
+ */
+export type DesktopClippedRow = {
+	bytes_total: number;
+	shown_bytes: number;
+	ref: string | null;
+	reason: "open_frame_cap" | "history_cap";
+	omitted?: true;
+};
+/** One range of a clipped row (`GET .../history/rows/{ref}`). */
+export type DesktopHistoryRowRange = {
+	bytes_total: number;
+	offset: number;
+	/** The limit the route APPLIED (clamped at 1 MiB). */
+	limit: number;
+	length: number;
+	eof: boolean;
+	/** Standard base64 of bytes `[offset, offset + length)`. */
+	data: string;
 };
 export type DesktopHistoryPage = {
 	/** Opaque equality domain; never publication seq or a sortable UUID. */

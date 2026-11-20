@@ -65,6 +65,7 @@ import enUiChatAttachmentRefusal from "./catalogues/en/ui.chat.attachment_refusa
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatBridgeReceipt from "./catalogues/en/ui.chat.bridgeReceipt.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
+import enUiChatClippedRow from "./catalogues/en/ui.chat.clipped_row.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
@@ -241,6 +242,7 @@ import esUiChatAttachmentRefusal from "./catalogues/es/ui.chat.attachment_refusa
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
 import esUiChatBridgeReceipt from "./catalogues/es/ui.chat.bridgeReceipt.json";
 import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
+import esUiChatClippedRow from "./catalogues/es/ui.chat.clipped_row.json";
 import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
@@ -417,6 +419,7 @@ import frUiChatAttachmentRefusal from "./catalogues/fr/ui.chat.attachment_refusa
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
 import frUiChatBridgeReceipt from "./catalogues/fr/ui.chat.bridgeReceipt.json";
 import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
+import frUiChatClippedRow from "./catalogues/fr/ui.chat.clipped_row.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
@@ -593,6 +596,7 @@ import hiUiChatAttachmentRefusal from "./catalogues/hi/ui.chat.attachment_refusa
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
 import hiUiChatBridgeReceipt from "./catalogues/hi/ui.chat.bridgeReceipt.json";
 import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
+import hiUiChatClippedRow from "./catalogues/hi/ui.chat.clipped_row.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
@@ -769,6 +773,7 @@ import ruUiChatAttachmentRefusal from "./catalogues/ru/ui.chat.attachment_refusa
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
 import ruUiChatBridgeReceipt from "./catalogues/ru/ui.chat.bridgeReceipt.json";
 import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
+import ruUiChatClippedRow from "./catalogues/ru/ui.chat.clipped_row.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
@@ -945,6 +950,7 @@ import urUiChatAttachmentRefusal from "./catalogues/ur/ui.chat.attachment_refusa
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
 import urUiChatBridgeReceipt from "./catalogues/ur/ui.chat.bridgeReceipt.json";
 import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
+import urUiChatClippedRow from "./catalogues/ur/ui.chat.clipped_row.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
@@ -1121,6 +1127,7 @@ import viUiChatAttachmentRefusal from "./catalogues/vi/ui.chat.attachment_refusa
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
 import viUiChatBridgeReceipt from "./catalogues/vi/ui.chat.bridgeReceipt.json";
 import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
+import viUiChatClippedRow from "./catalogues/vi/ui.chat.clipped_row.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
@@ -1297,6 +1304,7 @@ import zhCNUiChatAttachmentRefusal from "./catalogues/zh-CN/ui.chat.attachment_r
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
 import zhCNUiChatBridgeReceipt from "./catalogues/zh-CN/ui.chat.bridgeReceipt.json";
 import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
+import zhCNUiChatClippedRow from "./catalogues/zh-CN/ui.chat.clipped_row.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
@@ -1476,6 +1484,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatAttachments,
 	...enUiChatBridgeReceipt,
 	...enUiChatCanonical,
+	...enUiChatClippedRow,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
@@ -1660,6 +1669,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatAttachments,
 		...esUiChatBridgeReceipt,
 		...esUiChatCanonical,
+		...esUiChatClippedRow,
 		...esUiChatCommentaryActions,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
@@ -1838,6 +1848,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatAttachments,
 		...frUiChatBridgeReceipt,
 		...frUiChatCanonical,
+		...frUiChatClippedRow,
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
@@ -2016,6 +2027,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatAttachments,
 		...hiUiChatBridgeReceipt,
 		...hiUiChatCanonical,
+		...hiUiChatClippedRow,
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
@@ -2194,6 +2206,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatAttachments,
 		...ruUiChatBridgeReceipt,
 		...ruUiChatCanonical,
+		...ruUiChatClippedRow,
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
@@ -2372,6 +2385,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatAttachments,
 		...urUiChatBridgeReceipt,
 		...urUiChatCanonical,
+		...urUiChatClippedRow,
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
@@ -2550,6 +2564,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatAttachments,
 		...viUiChatBridgeReceipt,
 		...viUiChatCanonical,
+		...viUiChatClippedRow,
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
@@ -2728,6 +2743,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatAttachments,
 		...zhCNUiChatBridgeReceipt,
 		...zhCNUiChatCanonical,
+		...zhCNUiChatClippedRow,
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
@@ -5567,6 +5583,19 @@ export type MessageParams = {
 	"ui.chat.canonical.working_line.stopping": undefined;
 	"ui.chat.canonical.working_line.thinking": undefined;
 	"ui.chat.canonical.working_line.waiting_for_agent": undefined;
+	"ui.chat.clipped_row.cannot_expand": undefined;
+	"ui.chat.clipped_row.final": undefined;
+	"ui.chat.clipped_row.marker": { shown: string; total: string };
+	"ui.chat.clipped_row.omitted": { total: string };
+	"ui.chat.clipped_row.open": undefined;
+	"ui.chat.clipped_row.viewer.cancel": undefined;
+	"ui.chat.clipped_row.viewer.close": undefined;
+	"ui.chat.clipped_row.viewer.error": undefined;
+	"ui.chat.clipped_row.viewer.loading": { received: string; total: string };
+	"ui.chat.clipped_row.viewer.progress_label": undefined;
+	"ui.chat.clipped_row.viewer.retry": undefined;
+	"ui.chat.clipped_row.viewer.size": { total: string };
+	"ui.chat.clipped_row.viewer.title": undefined;
 	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;

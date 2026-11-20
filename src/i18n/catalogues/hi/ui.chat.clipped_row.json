@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "आउटपुट छोटा किया गया — इस डिवाइस पर इसे पूरा नहीं खोला जा सकता",
+	"ui.chat.clipped_row.final": "पूरा आउटपुट अब उपलब्ध नहीं है; केवल पूर्वावलोकन दिखाया जा सकता है।",
+	"ui.chat.clipped_row.marker": "आउटपुट छोटा किया गया — {total} में से {shown} दिखाया जा रहा है",
+	"ui.chat.clipped_row.omitted": "यह प्रविष्टि यहाँ दिखाने के लिए बहुत बड़ी है ({total})।",
+	"ui.chat.clipped_row.open": "पूरा आउटपुट खोलें",
+	"ui.chat.clipped_row.viewer.cancel": "रद्द करें",
+	"ui.chat.clipped_row.viewer.close": "बंद करें",
+	"ui.chat.clipped_row.viewer.error": "पूरा आउटपुट लोड नहीं हो सका।",
+	"ui.chat.clipped_row.viewer.loading": "पूरा आउटपुट लोड हो रहा है — {total} में से {received}",
+	"ui.chat.clipped_row.viewer.progress_label": "पूरा आउटपुट लोड होने की प्रगति",
+	"ui.chat.clipped_row.viewer.retry": "फिर से कोशिश करें",
+	"ui.chat.clipped_row.viewer.size": "कुल {total}",
+	"ui.chat.clipped_row.viewer.title": "पूरा आउटपुट"
+}

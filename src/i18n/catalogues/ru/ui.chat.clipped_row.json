@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "Вывод сокращён — на этом устройстве его нельзя развернуть",
+	"ui.chat.clipped_row.final": "Полный вывод больше недоступен; можно показать только предпросмотр.",
+	"ui.chat.clipped_row.marker": "Вывод сокращён — показано {shown} из {total}",
+	"ui.chat.clipped_row.omitted": "Эта запись слишком велика, чтобы показать её здесь ({total}).",
+	"ui.chat.clipped_row.open": "Открыть полный вывод",
+	"ui.chat.clipped_row.viewer.cancel": "Отмена",
+	"ui.chat.clipped_row.viewer.close": "Закрыть",
+	"ui.chat.clipped_row.viewer.error": "Не удалось загрузить полный вывод.",
+	"ui.chat.clipped_row.viewer.loading": "Загрузка полного вывода — {received} из {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "Ход загрузки полного вывода",
+	"ui.chat.clipped_row.viewer.retry": "Повторить",
+	"ui.chat.clipped_row.viewer.size": "Всего {total}",
+	"ui.chat.clipped_row.viewer.title": "Полный вывод"
+}

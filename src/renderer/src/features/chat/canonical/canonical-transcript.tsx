@@ -212,6 +212,7 @@ import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { clippedRowBody } from "./clipped-row";
 import { ConversationLoadingIndicator } from "./conversation-loading-indicator";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
@@ -4131,6 +4132,19 @@ const TranscriptRow = memo(function TranscriptRow({
 				<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
 			);
 	}
+	/*
+	 * THE CLIPPED ROW (core `docs/DESKTOP_API.md`, "Clipped rows"). A cut message
+	 * keeps its preview and gains the marker line beneath it; a WITHHELD row
+	 * (`omitted`) has an empty payload, so the placeholder stands in for its
+	 * body - applied BEFORE the null check, since a withheld row may have no
+	 * body at all (`clippedRowBody`). Only the parent conversation's rows can
+	 * be fetched by ref: a contained child's transcript reads as "cannot expand".
+	 */
+	body = clippedRowBody(
+		body,
+		record.clipped,
+		scope && !scope.childId ? scope.sessionId : null,
+	);
 	if (body === null) return null;
 	return (
 		<TranscriptCopyMenu getPayload={getCopyPayload}>

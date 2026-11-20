@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "Output truncated — cannot expand on this device",
+	"ui.chat.clipped_row.final": "The full output is no longer available; the preview is all that can be shown.",
+	"ui.chat.clipped_row.marker": "Output truncated — showing {shown} of {total}",
+	"ui.chat.clipped_row.omitted": "This entry is too large to show here ({total}).",
+	"ui.chat.clipped_row.open": "Open full output",
+	"ui.chat.clipped_row.viewer.cancel": "Cancel",
+	"ui.chat.clipped_row.viewer.close": "Close",
+	"ui.chat.clipped_row.viewer.error": "The full output could not be loaded.",
+	"ui.chat.clipped_row.viewer.loading": "Loading full output — {received} of {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "Full output loading progress",
+	"ui.chat.clipped_row.viewer.retry": "Try again",
+	"ui.chat.clipped_row.viewer.size": "{total} in total",
+	"ui.chat.clipped_row.viewer.title": "Full output"
+}

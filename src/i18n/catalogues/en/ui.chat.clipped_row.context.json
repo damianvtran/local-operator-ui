@@ -1,0 +1,94 @@
+{
+	"ui.chat.clipped_row.cannot_expand": {
+		"length": "",
+		"note": "",
+		"role": "line under a clipped transcript row that this device cannot fetch in full (a row from another device's session)",
+		"tone": "short status line, no full stop"
+	},
+	"ui.chat.clipped_row.final": {
+		"length": "",
+		"note": "",
+		"role": "status after the full output could not be fetched even after one retry; the clipped preview is final",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.clipped_row.marker": {
+		"length": "",
+		"note": "",
+		"placeholders": {
+			"shown": "size of the preview shown, already formatted (for example 1.2 MB)",
+			"total": "size of the full output, already formatted (for example 12.6 MB)"
+		},
+		"role": "line under a transcript row the server clipped because it was too large",
+		"tone": "short status line, no full stop"
+	},
+	"ui.chat.clipped_row.omitted": {
+		"length": "",
+		"note": "",
+		"placeholders": {
+			"total": "size of the withheld entry, already formatted (for example 10.5 MB)"
+		},
+		"role": "placeholder replacing a non-message transcript entry whose content was withheld because it was too large",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.clipped_row.open": {
+		"length": "",
+		"note": "",
+		"role": "link-style button that opens a dialog showing the full output of a clipped row",
+		"tone": "short action label, imperative, no full stop"
+	},
+	"ui.chat.clipped_row.viewer.cancel": {
+		"length": "",
+		"note": "",
+		"role": "button in the full-output dialog that stops loading and closes it",
+		"tone": "one word action label"
+	},
+	"ui.chat.clipped_row.viewer.close": {
+		"length": "",
+		"note": "",
+		"role": "button that closes the full-output dialog",
+		"tone": "one word action label"
+	},
+	"ui.chat.clipped_row.viewer.error": {
+		"length": "",
+		"note": "",
+		"role": "error in the full-output dialog when loading failed but can be retried",
+		"tone": "one sentence, ends with a full stop"
+	},
+	"ui.chat.clipped_row.viewer.loading": {
+		"length": "",
+		"note": "",
+		"placeholders": {
+			"received": "bytes loaded so far, already formatted",
+			"total": "size of the full output, already formatted"
+		},
+		"role": "progress text while the full output loads in parts",
+		"tone": "short status line, no full stop"
+	},
+	"ui.chat.clipped_row.viewer.progress_label": {
+		"length": "",
+		"note": "",
+		"role": "accessible name of the progress bar in the full-output dialog",
+		"tone": "short noun phrase, no full stop"
+	},
+	"ui.chat.clipped_row.viewer.retry": {
+		"length": "",
+		"note": "",
+		"role": "button that retries loading the full output",
+		"tone": "short action label"
+	},
+	"ui.chat.clipped_row.viewer.size": {
+		"length": "",
+		"note": "",
+		"placeholders": {
+			"total": "size of the full output, already formatted"
+		},
+		"role": "dialog description giving the full output's size",
+		"tone": "short noun phrase, no full stop"
+	},
+	"ui.chat.clipped_row.viewer.title": {
+		"length": "",
+		"note": "",
+		"role": "title of the dialog that shows the full output of a clipped transcript row",
+		"tone": "short title, no full stop"
+	}
+}

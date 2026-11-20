@@ -365,6 +365,9 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/i18n/direction.ts",
 	"src/i18n/locale.ts",
 	"src/i18n/messages.ts",
+	// The clipped-row reducer (#2011); its value import of the history-row range
+	// bound from `desktop-contract.ts` is what bundles the `src/shared/` files below.
+	"src/renderer/src/features/chat/canonical/clipped-row-model.ts",
 	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
 	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
 	"src/renderer/src/features/chat/canonical/journal-order.ts",
@@ -386,6 +389,13 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
 	"src/renderer/src/features/chat/transcript-display-mode.ts",
+	"src/shared/agent-messages-contract.ts",
+	"src/shared/attachment-upload.ts",
+	"src/shared/desktop-contract.ts",
+	"src/shared/desktop-control-contract.ts",
+	"src/shared/desktop-diff-page.ts",
+	"src/shared/journal-order-query.ts",
+	"src/shared/link-preview.ts",
 	"src/shared/profile-consent.ts",
 ]);
 

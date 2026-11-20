@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #2011",
+  "locale": "es",
+  "namespace": "ui.chat.clipped_row",
+  "pr": 2011,
+  "repo": "damianvtran/local-operator-ui",
+  "date": "2026-11-20",
+  "head": "55c932ef00fd",
+  "instance": "4dbf36f5db0d-pr2011-clipped-row-es",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "4dbf36f5db0d-pr2011-clipped-row-es",
+    "independence": "lopdev reviewer task subagent, session 4dbf36f5db0d, anthropic/claude-opus-5-5, no fallback observed; distinct agent from the translator (the PR's implementing coder, whose model PR #2011 does not state - lopdev coder rows elsewhere record anthropic/claude-opus-5-5, so auditor and translator are likely the SAME model family). Independence is by agent/session, per ledger-check."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "files": {
+    "en": "src/i18n/catalogues/en/ui.chat.clipped_row.json",
+    "context": "src/i18n/catalogues/en/ui.chat.clipped_row.context.json",
+    "target": "src/i18n/catalogues/es/ui.chat.clipped_row.json"
+  },
+  "sha256": {
+    "es": "31ad52c717233e16343785b3dfda38daf32e49cf6859dbf16cce5e0492596220",
+    "en": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+    "en_context": "db839e99f8f4427d8acf40826a1ba208f49f71ad192976ef5b8f382fe324e867"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (13 keys); placeholder names per key equal English ({shown},{total},{received}); no ICU plural/select in this namespace; leading/trailing whitespace parity; NFC; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Every key read in full against English and the en context sidecar (roles/tones; no length/maxCells budgets set): cannot_expand, final, marker, omitted, open, viewer.cancel, viewer.close, viewer.error, viewer.loading, viewer.progress_label, viewer.retry, viewer.size, viewer.title. Judged with core i18n/glossary.md, the locale style guide (local-operator i18n/style-guides) and catalogue precedent in this repo, especially the transcript neighbours ui.chat.canonical.tool_row.detail_section.output and tool_row.diff.truncated. No MT used."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Salida = detail_section.output; 'truncada' + colon separator matches the es neighbour diff.truncated ('Diff truncado: …'), idiomatic and allowed alongside the guide's em dash; 'ampliar' = attachments.expand precedent; vista previa precedent; Cancelar 53/53, Cerrar 15/15, Reintentar 26/31 (dominant); impersonal phrasing, no tú/usted clash."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "notes": "Audit notes, not an execution log. Auditor did not edit catalogues."
+}

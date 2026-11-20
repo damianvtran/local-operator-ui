@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "输出已截断 — 无法在此设备上展开",
+	"ui.chat.clipped_row.final": "完整输出已不可用，只能显示预览。",
+	"ui.chat.clipped_row.marker": "输出已截断 — 显示 {shown}，共 {total}",
+	"ui.chat.clipped_row.omitted": "此条目过大，无法在此显示（{total}）。",
+	"ui.chat.clipped_row.open": "打开完整输出",
+	"ui.chat.clipped_row.viewer.cancel": "取消",
+	"ui.chat.clipped_row.viewer.close": "关闭",
+	"ui.chat.clipped_row.viewer.error": "无法加载完整输出。",
+	"ui.chat.clipped_row.viewer.loading": "正在加载完整输出 — {received}，共 {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "完整输出加载进度",
+	"ui.chat.clipped_row.viewer.retry": "重试",
+	"ui.chat.clipped_row.viewer.size": "共 {total}",
+	"ui.chat.clipped_row.viewer.title": "完整输出"
+}
