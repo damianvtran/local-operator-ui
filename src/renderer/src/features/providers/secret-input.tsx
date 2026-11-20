@@ -18,7 +18,9 @@ export const SecretInput: FC<{
 	label: string;
 	invalid?: boolean;
 	describedBy?: string;
-}> = ({ id, value, onChange, label, invalid, describedBy }) => {
+	/** A stored key's mask: dots saying "one is saved", never the field's value. */
+	placeholder?: string;
+}> = ({ id, value, onChange, label, invalid, describedBy, placeholder }) => {
 	useI18nLocale();
 	const [visible, setVisible] = useState(false);
 	return (
@@ -27,6 +29,7 @@ export const SecretInput: FC<{
 				id={id}
 				type={visible ? "text" : "password"}
 				value={value}
+				placeholder={placeholder}
 				onChange={(event) => onChange(event.target.value)}
 				autoComplete="off"
 				spellCheck={false}

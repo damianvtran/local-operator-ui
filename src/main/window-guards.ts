@@ -579,6 +579,80 @@ export function permissionVerdict(
 	return query.mediaType === "audio";
 }
 
+/**
+ * THE HIDDEN VOICE PAGE'S rule (plan §2): the Qwen WebUI may have the
+ * microphone - audio only, main frame only - and only when it presents the
+ * exact Gateway origin this app launched. It is separate from
+ * `permissionVerdict` because that door admits the app's own documents;
+ * this page is third-party code, so it gets one permission, one origin, and
+ * no allowance for anything else.
+ */
+export function voicePagePermissionVerdict(
+	query: PermissionQuery,
+	gatewayOrigin: string,
+): boolean {
+	if (!query.isMainFrame) return false;
+	if (query.permission !== "media") return false;
+	let gateway: string;
+	try {
+		gateway = new URL(gatewayOrigin).origin;
+	} catch {
+		return false;
+	}
+	let requesting: string;
+	try {
+		requesting = new URL(query.requestingUrl).origin;
+	} catch {
+		return false;
+	}
+	if (requesting !== gateway) return false;
+	if (query.mediaTypes)
+		return (
+			query.mediaTypes.length > 0 &&
+			query.mediaTypes.every((type) => type === "audio")
+		);
+	// The check handler reports one type; `video` and `unknown` are refused.
+	return query.mediaType === "audio";
+}
+
+/**
+ * THE APP-OWNED VOICE PAGE'S rule (plan D2/U1): the bundled `voice-page.html`
+ * may have the microphone - audio only, main frame only - and only when the
+ * requesting document is that exact page. Unlike `voicePagePermissionVerdict`
+ * the page is first-party code, but it is a hidden document that must never
+ * widen: no video, no subframe (a frame inside it is not the page), and no
+ * other document of the app or any other origin.
+ *
+ * `pageUrl` is the URL main loaded (`appVoicePageUrl`). A `file:` page is
+ * matched on its path, a served one on origin AND path, so a sibling document
+ * on the same dev origin does not inherit the grant.
+ */
+export function appVoicePagePermissionVerdict(
+	query: PermissionQuery,
+	pageUrl: string,
+): boolean {
+	if (!query.isMainFrame) return false;
+	if (query.permission !== "media") return false;
+	let page: URL;
+	let requesting: URL;
+	try {
+		page = new URL(pageUrl);
+		requesting = new URL(query.requestingUrl);
+	} catch {
+		return false;
+	}
+	if (requesting.protocol !== page.protocol) return false;
+	if (requesting.pathname !== page.pathname) return false;
+	if (page.protocol !== "file:" && requesting.origin !== page.origin)
+		return false;
+	if (query.mediaTypes)
+		return (
+			query.mediaTypes.length > 0 &&
+			query.mediaTypes.every((type) => type === "audio")
+		);
+	return query.mediaType === "audio";
+}
+
 // ---------------------------------------------------------------------------
 // The static serve family's response policy
 // ---------------------------------------------------------------------------

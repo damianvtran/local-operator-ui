@@ -1258,6 +1258,102 @@ export const CONTROLS = [
 		border: "accentAlt",
 		ink: "accentAlt",
 	},
+	/*
+	 * THE COMPOSER STRIP'S STATE CHIPS (design spec `voice-composer/SPEC.md` §4/§8).
+	 *
+	 * One row per ground a chip can wear, because a chip IS the pairing the reader
+	 * has to resolve: a 12px word on a wash, inside the composer box, on the band's
+	 * own `sunken`.
+	 *
+	 * THE EDGE IS DECLARED AWAY ON EVERY ROW, and that is the spec's design rather
+	 * than an omission: a chip's boundary to the band is its wash, and a wash is
+	 * the one fill that provably cannot carry a 3:1 boundary here - `accentWash`
+	 * and `warningWash` measure 1.00:1 against `sunken` in some palette (synth,
+	 * tokyoNightDay), exactly as `accentWash` does on `canvas` elsewhere in this
+	 * file. What carries the state is the WORD: the spec's own rule is "the word is
+	 * the contract, colour never carries it alone", and the inset hairline on the
+	 * neutral chips is emphasis rather than a boundary the reader navigates by.
+	 * The `-border` roles on three rows are inset rules drawn against the chip's
+	 * own fill, so they are not the ground edge this table's floor measures; the
+	 * rows still assert the ink, which is the half that is read.
+	 *
+	 * THE INKS ARE THE TIGHT HALF AND THEY WERE MEASURED BEFORE THE ROWS WERE
+	 * WRITTEN, over all 59 palettes: `accent` on `accentWash` 4.51:1 at worst
+	 * (everforest), `onAccent` on `accent` 4.97 (tokyoNightDay), `warning` on
+	 * `warningWash` 4.54 (everforestLight), `danger` on `dangerWash` 4.52
+	 * (everforestLight), `inkMuted` on `surface` 6.56 (nightfox), `inkDim` on
+	 * `sunken` 5.00 (rosePineDawn). Every one clears the 4.5:1 text floor with no
+	 * pin, which is why none is listed in `PAIR_PINS`.
+	 */
+	{
+		/* Listening and Speaking - the accent wash. */
+		name: "voice strip chip (listening)",
+		on: ["sunken"],
+		fill: "accentWash",
+		border: null,
+		ink: "accent",
+		edge: false,
+	},
+	{
+		/* Hearing you - the ONE solid fill in the set (design D4). */
+		name: "voice strip chip (hearing)",
+		on: ["sunken"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+		edge: false,
+	},
+	{
+		/*
+		 * Working, Connecting, Silenced and Reply ended - neutral on the box's own
+		 * surface, with an inset hairline. Reply ended moved HERE from the accent
+		 * wash in design round 1 (D6): on the live wash it read as Speaking with a
+		 * check, and a finished reply is not a live one. The pair is the same one
+		 * this row already measures.
+		 */
+		name: "voice strip chip (working)",
+		on: ["sunken"],
+		fill: "surface",
+		border: null,
+		ink: "inkMuted",
+		edge: false,
+	},
+	{
+		/* Interrupted, and the "Cut short" chip beside the strip. */
+		name: "voice strip chip (interrupted)",
+		on: ["sunken"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "warning",
+		edge: false,
+	},
+	{
+		/* Approve on screen - the approval chip, which is itself a button. */
+		name: "voice strip chip (approval)",
+		on: ["sunken"],
+		fill: "warningWash",
+		border: "warningBorder",
+		ink: "warning",
+		edge: false,
+	},
+	{
+		/* Microphone blocked, voice page not connected, voice error. */
+		name: "voice strip chip (failure)",
+		on: ["sunken"],
+		fill: "dangerWash",
+		border: "dangerBorder",
+		ink: "danger",
+		edge: false,
+	},
+	{
+		/* The caption and the history rows: quiet text on the band's ground. */
+		name: "voice strip caption",
+		on: ["sunken"],
+		fill: null,
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
 	{
 		/*
 		 * The composer's credential pill and mask span (`credential-overlay.tsx`).
@@ -4027,6 +4123,51 @@ export const INK_STEP_FLOOR = SYNTAX_COMMENT_FLOOR;
 export const FIELD_SEPARATION_FLOOR = 2.0;
 
 export const LINE_SEPARATION_FLOOR = 4.0;
+
+/**
+ * Pairs whose GROUND is a `color-mix`, asserted in the palette loop's "MIXED
+ * FILLS" block. `mix` is `[A, B, A's share]`, exactly as the class spells it;
+ * `apartFrom` lists the neighbouring states the fill must not be confused with,
+ * each with its ΔE00 floor.
+ */
+export const MIXED_FILLS = [
+	{
+		/*
+		 * THE SESSION VOICE TOGGLE, PRESSED (design rounds 1-2, D2/D6). `AudioLines`
+		 * is the glyph in both states, so the pressed GROUND is what says "on". It
+		 * was plain `accentWash`, which is also the ghost variant's HOVER fill: a
+		 * pressed toggle and a hovered off one were the same picture (D6). The fill
+		 * is now the outline variant's pressed mix, and the glyph stays `accent`.
+		 *
+		 * Measured across all 59 palettes when this row was written: `accent` on
+		 * the mix 3.27:1 at worst (everforest) - over the 3:1 icon floor, under 4.5,
+		 * which is why the glyph is held to the non-text floor and no more. The mix
+		 * sits ΔE00 7.24 from `accentWash` at worst (sage), so pressed no longer
+		 * reads as hovered; FIELD_SEPARATION_FLOOR is the bar because this is a
+		 * filled 28px square, a field rather than a line.
+		 */
+		name: "voice toggle (pressed)",
+		mix: ["accentWash", "accent", 0.8],
+		ink: "accent",
+		floor: FLOOR.nonText,
+		apartFrom: [["accentWash", FIELD_SEPARATION_FLOOR]],
+	},
+	{
+		/*
+		 * THE SAME TOGGLE, PRESSED AND HOVERED (D6): one rung further toward
+		 * `accent` (70%). The glyph steps to `ink` here because `accent` on this
+		 * fill measured 2.77:1 at worst and fell under 3:1 in two palettes, while
+		 * `ink` measured 4.31:1 at worst (everforest). The rung is ΔE00 3.92 from
+		 * the resting pressed fill at worst (tokyoNight) - the hover step a
+		 * reader must see.
+		 */
+		name: "voice toggle (pressed, hovered)",
+		mix: ["accentWash", "accent", 0.7],
+		ink: "ink",
+		floor: FLOOR.nonText,
+		apartFrom: [[["accentWash", "accent", 0.8], FIELD_SEPARATION_FLOOR]],
+	},
+];
 
 /*
  * THE PANEL SEAM, and why it is measured with the FIELD floor on both sides.

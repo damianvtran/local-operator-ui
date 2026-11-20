@@ -1,0 +1,3328 @@
+{
+	"take": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d",
+	"typed": "abc21113-7113-4698-8985-6e68e17a3b65",
+	"cut": 21,
+	"conn1": [
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 1,
+			"type": "open",
+			"payload": {
+				"subscription_id": "5fe0b6a5b69a43fca804e6a444f18af9",
+				"gap": true,
+				"watch_ttl_seconds": 45.0
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 1,
+			"type": "snapshot",
+			"payload": {
+				"frontend": {
+					"state_version": 1,
+					"epoch": "c83c4d9247a843b4969d8c4117180424",
+					"sequence": 3,
+					"snapshot": {
+						"state_version": 1,
+						"session_id": "ff0d7764d2e5",
+						"epoch": "c83c4d9247a843b4969d8c4117180424",
+						"sequence": 3,
+						"checkpoint_id": null,
+						"cwd": "/tmp/voice-fixture/config/workspace",
+						"conversation_title": "Voice binding",
+						"conversation_title_user_set": true,
+						"conversation_title_forked": false,
+						"goal": "",
+						"goal_status": "",
+						"goal_judge": null,
+						"goal_history": [],
+						"goal_history_truncated": false,
+						"active_agent": "",
+						"active_team": "",
+						"effective_identity": {
+							"speaker": "",
+							"team": "",
+							"role_of_speaker": ""
+						},
+						"selected_model": {
+							"provider": "test",
+							"model_id": "e2e-model",
+							"context_window": 100000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 8192,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": ""
+						},
+						"effective_model": {
+							"provider": "test",
+							"model_id": "e2e-model",
+							"context_window": 100000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 8192,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": ""
+						},
+						"model_access": {
+							"state": "ok",
+							"effective_state": "local",
+							"owner_device": "",
+							"owner_label": "",
+							"observed_at": null,
+							"last_grant_at": null,
+							"last_grant_expires_at": null,
+							"provider": "test",
+							"label": "Test (mock)"
+						},
+						"last_usage": null,
+						"usage_components": [],
+						"context_tokens": null,
+						"context_is_estimate": null,
+						"context_window": 100000,
+						"context_breakdown": null,
+						"cumulative_parent_cost": null,
+						"child_costs": {},
+						"subagent_cost": null,
+						"subagent_cost_knowledge": "exact",
+						"cost_knowledge": "unknown",
+						"spend_channels": {
+							"version": 1,
+							"tracked": true,
+							"total_micro": 0,
+							"knowledge": "unknown",
+							"by_basis": {
+								"billed": 0,
+								"subscription_api_equivalent": 0,
+								"estimated": 0,
+								"not_tracked_micro": 0,
+								"not_tracked_calls": 0
+							},
+							"rows": [],
+							"children": {
+								"total_micro": 0,
+								"knowledge": "exact"
+							},
+							"breakdown": {
+								"by_agent": [],
+								"by_source": []
+							},
+							"vocabulary": {
+								"channels": {},
+								"bases": {}
+							}
+						},
+						"streaming": false,
+						"generation": 0,
+						"last_turn_outcome": "",
+						"last_turn_cut_off": "",
+						"activity_started_at": null,
+						"activity_phase": "",
+						"activity_phase_started_at": null,
+						"live_tool_started_at": {},
+						"active_duration_s": 0.0,
+						"current_turn_accrued_cost": 0.0,
+						"queued_steering": [],
+						"live_events": [],
+						"jobs": [],
+						"todos": [],
+						"wakes": [],
+						"monitors": [],
+						"mcp_servers": [],
+						"mcp_startup": null,
+						"loop": null,
+						"pending_gate": null,
+						"asks_open": 0,
+						"slash_capabilities": [
+							{
+								"command": "help",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "keys",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "exit",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "clear",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "copy",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "links",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "new",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "reload",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "update",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "resume",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "aida",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "move",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "rename",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fork",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "archive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unarchive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "delete",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "model",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "effort",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fast",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "theme",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "language",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "provider",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "settings",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sidebar",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "search",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "accounts",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "failovers",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "usage",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "hub",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "context",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "session",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "info",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "analytics",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "goal",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "loop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "btw",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "compact",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "stop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "highlights",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "approvals",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "skills",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mcp",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "login",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "logout",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "notifications",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mobile",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "network",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "credential",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "team",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "agent",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "memory",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "project",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							}
+						],
+						"model_catalogue": [],
+						"model_catalogue_truncated": false,
+						"history_cursor": "4472f50e021a4316933f69b4f1c6d22d",
+						"history_generation": 0,
+						"attachment_root": "/tmp/voice-fixture/config/sessions/ff0d7764d2e5",
+						"attention": {
+							"conversation_id": "session/ff0d7764d2e5",
+							"completion_token": null,
+							"anchor_id": null,
+							"kind": null,
+							"reason": "",
+							"cause": "",
+							"notify": true,
+							"unseen": false,
+							"revision": [0, 0],
+							"supported": true
+						}
+					},
+					"live_cursor": "4472f50e021a4316933f69b4f1c6d22d",
+					"display_history": null
+				},
+				"history": {
+					"entries": [
+						{
+							"id": "4472f50e021a4316933f69b4f1c6d22d",
+							"ts": 1792148722.824849,
+							"type": "custom",
+							"payload": {
+								"custom_type": "conversation_name",
+								"details": {
+									"text": "Voice binding",
+									"user_set": true
+								}
+							},
+							"ts_source": "entry"
+						}
+					],
+					"has_more": false,
+					"cursor_missing": false,
+					"has_newer": null
+				},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 2,
+			"type": "admission.accepted",
+			"payload": {
+				"request_id": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d",
+				"mode": "prompt"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 3,
+			"type": "event",
+			"payload": {
+				"type": "message_start",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "hello"
+						}
+					],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d"
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 4,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 4,
+				"changes": {
+					"activity_phase": "thinking",
+					"activity_phase_started_at": 1792148722.905204,
+					"streaming": true,
+					"generation": 1,
+					"activity_started_at": 1792148722.905204
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 5,
+			"type": "event",
+			"payload": {
+				"type": "agent_start",
+				"generation": 1
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 6,
+			"type": "event",
+			"payload": {
+				"type": "turn_start"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 7,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 5,
+				"changes": {
+					"activity_phase_started_at": 1792148722.9055989
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 8,
+			"type": "event",
+			"payload": {
+				"type": "message_start",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "0c6ee5fd09c4414fb7d518af79766155"
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 10,
+			"type": "event",
+			"payload": {
+				"type": "provider_turn_start",
+				"response_id": "mock-response-id",
+				"provider": "test",
+				"model_id": "e2e-model"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 11,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 6,
+				"changes": {
+					"activity_phase": "responding",
+					"activity_phase_started_at": 1792148722.907556
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 12,
+			"type": "event",
+			"payload": {
+				"type": "message_update",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "0c6ee5fd09c4414fb7d518af79766155"
+				},
+				"delta": "Hello"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 13,
+			"type": "event",
+			"payload": {
+				"type": "message_update",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "0c6ee5fd09c4414fb7d518af79766155"
+				},
+				"delta": " from the mock provider!"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 14,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 7,
+				"changes": {
+					"activity_phase": "thinking",
+					"activity_phase_started_at": 1792148722.9077718,
+					"last_usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"context_tokens": 10,
+					"context_is_estimate": false
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 15,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 8,
+				"changes": {
+					"spend_channels": {
+						"version": 1,
+						"tracked": true,
+						"total_micro": 0,
+						"knowledge": "unknown",
+						"by_basis": {
+							"billed": 0,
+							"subscription_api_equivalent": 0,
+							"estimated": 0,
+							"not_tracked_micro": 0,
+							"not_tracked_calls": 0
+						},
+						"rows": [
+							{
+								"channel": "inference",
+								"provider": "test",
+								"model": "e2e-model",
+								"label": "test/e2e-model",
+								"units": 1.0,
+								"unit": "calls",
+								"amount_micro": 0,
+								"knowledge": "unknown",
+								"basis": ["not_tracked"],
+								"price_versions": []
+							}
+						],
+						"children": {
+							"total_micro": 0,
+							"knowledge": "exact"
+						},
+						"breakdown": {
+							"by_agent": [
+								{
+									"id": "parent",
+									"label": "Parent agent",
+									"amount_micro": null,
+									"knowledge": "partial",
+									"unstated_records": 0,
+									"bases": []
+								}
+							],
+							"by_source": [
+								{
+									"id": "inference",
+									"label": "Inference",
+									"amount_micro": null,
+									"knowledge": "partial",
+									"unstated_records": 0,
+									"bases": []
+								}
+							]
+						},
+						"vocabulary": {
+							"channels": {
+								"inference": {
+									"label": "Inference"
+								}
+							},
+							"bases": {
+								"not_tracked": {
+									"label": "not tracked",
+									"source_class": "unknown",
+									"marker": "not tracked"
+								}
+							}
+						}
+					},
+					"history_cursor": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 16,
+			"type": "event",
+			"payload": {
+				"type": "message_end",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Hello from the mock provider!"
+						}
+					],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": "stop",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "0c6ee5fd09c4414fb7d518af79766155"
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 17,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 9,
+				"changes": {
+					"activity_phase_started_at": 1792148722.909141
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 18,
+			"type": "event",
+			"payload": {
+				"type": "turn_end",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Hello from the mock provider!"
+						}
+					],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": "stop",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "0c6ee5fd09c4414fb7d518af79766155"
+				},
+				"tool_results": []
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 20,
+			"type": "admission.accepted",
+			"payload": {
+				"request_id": "abc21113-7113-4698-8985-6e68e17a3b65",
+				"mode": "steer"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 21,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 10,
+				"changes": {
+					"queued_steering": [
+						{
+							"id": "abc21113-7113-4698-8985-6e68e17a3b65",
+							"text": "[bash:1] typed steer",
+							"image_count": 0,
+							"status": "queued"
+						}
+					],
+					"history_cursor": "b22e7357733240098919cbee6c916e4f"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		}
+	],
+	"conn2": [
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 21,
+			"type": "open",
+			"payload": {
+				"subscription_id": "1534ce86d7a3481f84815bbb4417638f",
+				"gap": false,
+				"watch_ttl_seconds": 45.0
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 44,
+			"type": "snapshot",
+			"payload": {
+				"frontend": {
+					"state_version": 1,
+					"epoch": "c83c4d9247a843b4969d8c4117180424",
+					"sequence": 20,
+					"snapshot": {
+						"state_version": 1,
+						"session_id": "ff0d7764d2e5",
+						"epoch": "c83c4d9247a843b4969d8c4117180424",
+						"sequence": 20,
+						"checkpoint_id": null,
+						"cwd": "/tmp/voice-fixture/config/workspace",
+						"conversation_title": "Voice binding",
+						"conversation_title_user_set": true,
+						"conversation_title_forked": false,
+						"goal": "",
+						"goal_status": "",
+						"goal_judge": null,
+						"goal_history": [],
+						"goal_history_truncated": false,
+						"active_agent": "",
+						"active_team": "",
+						"effective_identity": {
+							"speaker": "",
+							"team": "",
+							"role_of_speaker": ""
+						},
+						"selected_model": {
+							"provider": "test",
+							"model_id": "e2e-model",
+							"context_window": 100000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 8192,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": ""
+						},
+						"effective_model": {
+							"provider": "test",
+							"model_id": "e2e-model",
+							"context_window": 100000,
+							"context_metadata_resolved": false,
+							"default_context_window": null,
+							"max_context_window": null,
+							"max_output_tokens": 8192,
+							"supports_tools": true,
+							"supports_images": true,
+							"supports_audio_input": false,
+							"supports_prompt_cache": false,
+							"supports_responses_api": false,
+							"requires_reasoning_echo": false,
+							"base_url": null,
+							"temperature": null,
+							"top_p": null,
+							"reasoning": false,
+							"reasoning_effort": null,
+							"supports_sampling_params": true,
+							"reasoning_efforts": [],
+							"reasoning_default_effort": null,
+							"reasoning_boundary_markers": [],
+							"supports_fast_mode": false,
+							"fast_mode": false,
+							"display_name": ""
+						},
+						"model_access": {
+							"state": "ok",
+							"effective_state": "local",
+							"owner_device": "",
+							"owner_label": "",
+							"observed_at": null,
+							"last_grant_at": null,
+							"last_grant_expires_at": null,
+							"provider": "test",
+							"label": "Test (mock)"
+						},
+						"last_usage": {
+							"input_tokens": 10,
+							"output_tokens": 5,
+							"cache_read_tokens": 0,
+							"cache_write_tokens": 0,
+							"cache_write_5m_tokens": 0,
+							"cache_write_1h_tokens": 0,
+							"context_tokens": null,
+							"reasoning_tokens": 0,
+							"usd_cost": null,
+							"estimated_usd_cost": null,
+							"cost_components": [],
+							"provider": null,
+							"model_id": null
+						},
+						"usage_components": [],
+						"context_tokens": 10,
+						"context_is_estimate": false,
+						"context_window": 100000,
+						"context_breakdown": null,
+						"cumulative_parent_cost": null,
+						"child_costs": {},
+						"subagent_cost": null,
+						"subagent_cost_knowledge": "exact",
+						"cost_knowledge": "unknown",
+						"spend_channels": {
+							"version": 1,
+							"tracked": true,
+							"total_micro": 0,
+							"knowledge": "unknown",
+							"by_basis": {
+								"billed": 0,
+								"subscription_api_equivalent": 0,
+								"estimated": 0,
+								"not_tracked_micro": 0,
+								"not_tracked_calls": 0
+							},
+							"rows": [
+								{
+									"channel": "inference",
+									"provider": "test",
+									"model": "e2e-model",
+									"label": "test/e2e-model",
+									"units": 2.0,
+									"unit": "calls",
+									"amount_micro": 0,
+									"knowledge": "unknown",
+									"basis": ["not_tracked"],
+									"price_versions": []
+								}
+							],
+							"children": {
+								"total_micro": 0,
+								"knowledge": "exact"
+							},
+							"breakdown": {
+								"by_agent": [
+									{
+										"id": "parent",
+										"label": "Parent agent",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								],
+								"by_source": [
+									{
+										"id": "inference",
+										"label": "Inference",
+										"amount_micro": null,
+										"knowledge": "partial",
+										"unstated_records": 0,
+										"bases": []
+									}
+								]
+							},
+							"vocabulary": {
+								"channels": {
+									"inference": {
+										"label": "Inference"
+									}
+								},
+								"bases": {
+									"not_tracked": {
+										"label": "not tracked",
+										"source_class": "unknown",
+										"marker": "not tracked"
+									}
+								}
+							}
+						},
+						"streaming": true,
+						"generation": 2,
+						"last_turn_outcome": "completed",
+						"last_turn_cut_off": "",
+						"activity_started_at": 1792148723.2840772,
+						"activity_phase": "running",
+						"activity_phase_started_at": 1792148723.288102,
+						"live_tool_started_at": {
+							"call_mock_bash": 1792148723.2878568
+						},
+						"active_duration_s": 0.3644421100616455,
+						"current_turn_accrued_cost": 0.0,
+						"queued_steering": [],
+						"live_events": [],
+						"jobs": [],
+						"todos": [],
+						"wakes": [],
+						"monitors": [],
+						"mcp_servers": [],
+						"mcp_startup": null,
+						"loop": null,
+						"pending_gate": null,
+						"asks_open": 0,
+						"slash_capabilities": [
+							{
+								"command": "help",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "keys",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "exit",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "clear",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "copy",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "links",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "new",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "reload",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "update",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "resume",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "aida",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "move",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "rename",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fork",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "archive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "unarchive",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "delete",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "model",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "effort",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "fast",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "theme",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "language",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "provider",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "settings",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "sidebar",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "search",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "accounts",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "failovers",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "usage",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "hub",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "context",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "session",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "info",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "analytics",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "goal",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "loop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "btw",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "compact",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "stop",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "highlights",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "approvals",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "skills",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mcp",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "login",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "logout",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "notifications",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "mobile",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "network",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "credential",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "team",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "agent",
+								"scope": "authoritative_session",
+								"operation": "slash",
+								"reason": null,
+								"supports_images": true
+							},
+							{
+								"command": "memory",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							},
+							{
+								"command": "project",
+								"scope": "frontend_local",
+								"operation": null,
+								"reason": null,
+								"supports_images": false
+							}
+						],
+						"model_catalogue": [],
+						"model_catalogue_truncated": false,
+						"history_cursor": "abc21113-7113-4698-8985-6e68e17a3b65",
+						"history_generation": 0,
+						"attachment_root": "/tmp/voice-fixture/config/sessions/ff0d7764d2e5",
+						"attention": {
+							"conversation_id": "session/ff0d7764d2e5",
+							"completion_token": null,
+							"anchor_id": null,
+							"kind": null,
+							"reason": "",
+							"cause": "",
+							"notify": true,
+							"unseen": false,
+							"revision": [0, 0],
+							"supported": true
+						}
+					},
+					"live_cursor": "abc21113-7113-4698-8985-6e68e17a3b65",
+					"display_history": null
+				},
+				"history": {
+					"entries": [
+						{
+							"id": "4472f50e021a4316933f69b4f1c6d22d",
+							"ts": 1792148722.824849,
+							"type": "custom",
+							"payload": {
+								"custom_type": "conversation_name",
+								"details": {
+									"text": "Voice binding",
+									"user_set": true
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "410e941b0cc14dd69506cf4b63fd367b",
+							"ts": 1792148722.893346,
+							"type": "custom",
+							"payload": {
+								"custom_type": "attention_started",
+								"details": {
+									"conversation_id": "session/ff0d7764d2e5",
+									"token": "58a44423-680c-446c-a3e6-abde61338e05"
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "e8f44ee6f3b44f5f9ba81c5cd67e08ee",
+							"ts": 1792148722.8936388,
+							"type": "custom",
+							"payload": {
+								"custom_type": "selected_model",
+								"details": {
+									"version": 2,
+									"selector": "test/e2e-model",
+									"effort": null,
+									"boot": "test/e2e-model"
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d",
+							"ts": 1792148722.895127,
+							"type": "message",
+							"payload": {
+								"kind": "message",
+								"role": "user",
+								"content": [
+									{
+										"text": "hello"
+									}
+								],
+								"input_mode": "dictated",
+								"producer_command_id": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d"
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "964c832cafcf4650b701dd6bb6410124",
+							"ts": 1792148722.909328,
+							"type": "custom",
+							"payload": {
+								"custom_type": "session_channel_spend.v1",
+								"details": {
+									"kind": "start",
+									"version": 1,
+									"ts_ms": 1792148722909
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "fbdf1963cf2f40158559415ad7d6dff7",
+							"ts": 1792148722.9095721,
+							"type": "custom",
+							"payload": {
+								"custom_type": "session_spend.v1",
+								"details": {
+									"version": 1,
+									"micro": 0,
+									"calls": 1,
+									"priced_calls": 0,
+									"unpriced_calls": 1,
+									"floor": false,
+									"rebuilt": false,
+									"writer": "96836:1792148720",
+									"last_identity": {
+										"provider": "test",
+										"model_id": "e2e-model"
+									},
+									"by_identity": {
+										"test/e2e-model": {
+											"provider": "test",
+											"model_id": "e2e-model",
+											"micro": 0,
+											"calls": 1,
+											"unpriced": 1
+										}
+									}
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "0c6ee5fd09c4414fb7d518af79766155",
+							"ts": 1792148722.913734,
+							"type": "message",
+							"payload": {
+								"kind": "message",
+								"role": "assistant",
+								"content": [
+									{
+										"text": "Hello from the mock provider!"
+									}
+								],
+								"stop_reason": "stop",
+								"usage": {
+									"input_tokens": 10,
+									"output_tokens": 8
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "b22e7357733240098919cbee6c916e4f",
+							"ts": 1792148722.916079,
+							"type": "custom",
+							"payload": {
+								"custom_type": "frontend_state_checkpoint_v1",
+								"details": {
+									"checkpoint_id": "8ce29d34d3e4445a9fd429313c992d90",
+									"state": {
+										"state_version": 1,
+										"session_id": "ff0d7764d2e5",
+										"epoch": "c83c4d9247a843b4969d8c4117180424",
+										"sequence": 9,
+										"checkpoint_id": "8ce29d34d3e4445a9fd429313c992d90",
+										"cwd": "/tmp/voice-fixture/config/workspace",
+										"conversation_title": "Voice binding",
+										"conversation_title_user_set": true,
+										"conversation_title_forked": false,
+										"goal": "",
+										"goal_status": "",
+										"goal_judge": null,
+										"goal_history": [],
+										"goal_history_truncated": false,
+										"active_agent": "",
+										"active_team": "",
+										"effective_identity": {
+											"speaker": "",
+											"team": "",
+											"role_of_speaker": ""
+										},
+										"selected_model": {
+											"provider": "test",
+											"model_id": "e2e-model",
+											"context_window": 100000,
+											"context_metadata_resolved": false,
+											"default_context_window": null,
+											"max_context_window": null,
+											"max_output_tokens": 8192,
+											"supports_tools": true,
+											"supports_images": true,
+											"supports_audio_input": false,
+											"supports_prompt_cache": false,
+											"supports_responses_api": false,
+											"requires_reasoning_echo": false,
+											"base_url": null,
+											"temperature": null,
+											"top_p": null,
+											"reasoning": false,
+											"reasoning_effort": null,
+											"supports_sampling_params": true,
+											"reasoning_efforts": [],
+											"reasoning_default_effort": null,
+											"reasoning_boundary_markers": [],
+											"supports_fast_mode": false,
+											"fast_mode": false,
+											"display_name": ""
+										},
+										"effective_model": {
+											"provider": "test",
+											"model_id": "e2e-model",
+											"context_window": 100000,
+											"context_metadata_resolved": false,
+											"default_context_window": null,
+											"max_context_window": null,
+											"max_output_tokens": 8192,
+											"supports_tools": true,
+											"supports_images": true,
+											"supports_audio_input": false,
+											"supports_prompt_cache": false,
+											"supports_responses_api": false,
+											"requires_reasoning_echo": false,
+											"base_url": null,
+											"temperature": null,
+											"top_p": null,
+											"reasoning": false,
+											"reasoning_effort": null,
+											"supports_sampling_params": true,
+											"reasoning_efforts": [],
+											"reasoning_default_effort": null,
+											"reasoning_boundary_markers": [],
+											"supports_fast_mode": false,
+											"fast_mode": false,
+											"display_name": ""
+										},
+										"last_usage": {
+											"input_tokens": 10,
+											"output_tokens": 8,
+											"cache_read_tokens": 0,
+											"cache_write_tokens": 0,
+											"cache_write_5m_tokens": 0,
+											"cache_write_1h_tokens": 0,
+											"context_tokens": null,
+											"reasoning_tokens": 0,
+											"usd_cost": null,
+											"estimated_usd_cost": null,
+											"cost_components": [],
+											"provider": null,
+											"model_id": null
+										},
+										"usage_components": [],
+										"context_tokens": 10,
+										"context_is_estimate": false,
+										"context_window": 100000,
+										"context_breakdown": null,
+										"cumulative_parent_cost": null,
+										"child_costs": {},
+										"subagent_cost": null,
+										"subagent_cost_knowledge": "exact",
+										"cost_knowledge": "unknown",
+										"spend_channels": {
+											"version": 1,
+											"tracked": true,
+											"total_micro": 0,
+											"knowledge": "unknown",
+											"by_basis": {
+												"billed": 0,
+												"subscription_api_equivalent": 0,
+												"estimated": 0,
+												"not_tracked_micro": 0,
+												"not_tracked_calls": 0
+											},
+											"rows": [
+												{
+													"channel": "inference",
+													"provider": "test",
+													"model": "e2e-model",
+													"label": "test/e2e-model",
+													"units": 1.0,
+													"unit": "calls",
+													"amount_micro": 0,
+													"knowledge": "unknown",
+													"basis": ["not_tracked"],
+													"price_versions": []
+												}
+											],
+											"children": {
+												"total_micro": 0,
+												"knowledge": "exact"
+											},
+											"breakdown": {
+												"by_agent": [
+													{
+														"id": "parent",
+														"label": "Parent agent",
+														"amount_micro": null,
+														"knowledge": "partial",
+														"unstated_records": 0,
+														"bases": []
+													}
+												],
+												"by_source": [
+													{
+														"id": "inference",
+														"label": "Inference",
+														"amount_micro": null,
+														"knowledge": "partial",
+														"unstated_records": 0,
+														"bases": []
+													}
+												]
+											},
+											"vocabulary": {
+												"channels": {
+													"inference": {
+														"label": "Inference"
+													}
+												},
+												"bases": {
+													"not_tracked": {
+														"label": "not tracked",
+														"source_class": "unknown",
+														"marker": "not tracked"
+													}
+												}
+											}
+										},
+										"streaming": true,
+										"generation": 1,
+										"last_turn_outcome": "",
+										"last_turn_cut_off": "",
+										"activity_started_at": 1792148722.905204,
+										"activity_phase": "thinking",
+										"activity_phase_started_at": 1792148722.909141,
+										"live_tool_started_at": {},
+										"active_duration_s": 0.0,
+										"current_turn_accrued_cost": 0.0,
+										"queued_steering": [],
+										"live_events": [],
+										"jobs": [],
+										"todos": [],
+										"wakes": [],
+										"monitors": [],
+										"mcp_servers": [],
+										"mcp_startup": null,
+										"loop": null,
+										"pending_gate": null,
+										"slash_capabilities": [
+											{
+												"command": "help",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "keys",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "exit",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "clear",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "copy",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "links",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "new",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "reload",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "update",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "resume",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "aida",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "move",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "rename",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "fork",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "archive",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "unarchive",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "delete",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "model",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "effort",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "fast",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "theme",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "language",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "provider",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "settings",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "sidebar",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "search",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "accounts",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "failovers",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "usage",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "hub",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "context",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "session",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "info",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "analytics",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "goal",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "loop",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "btw",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "compact",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "stop",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "highlights",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "approvals",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "skills",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "mcp",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "login",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "logout",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "notifications",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "mobile",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "network",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "credential",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "team",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": true
+											},
+											{
+												"command": "agent",
+												"scope": "authoritative_session",
+												"operation": "slash",
+												"reason": null,
+												"supports_images": true
+											},
+											{
+												"command": "memory",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											},
+											{
+												"command": "project",
+												"scope": "frontend_local",
+												"operation": null,
+												"reason": null,
+												"supports_images": false
+											}
+										],
+										"model_catalogue": [],
+										"model_catalogue_truncated": false,
+										"history_cursor": "5b810dc7-c9f5-4345-8a69-33bbcf5bbe6d",
+										"history_generation": 0,
+										"attachment_root": "/tmp/voice-fixture/config/sessions/ff0d7764d2e5",
+										"attention": {}
+									}
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "26bf5a8d5295459985155e636a329f84",
+							"ts": 1792148723.271234,
+							"type": "custom",
+							"payload": {
+								"custom_type": "completion_attention",
+								"details": {
+									"conversation_id": "session/ff0d7764d2e5",
+									"token": "58a44423-680c-446c-a3e6-abde61338e05",
+									"anchor": "0c6ee5fd09c4414fb7d518af79766155",
+									"kind": "complete",
+									"cause": "",
+									"reason": "",
+									"notify": true
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "a85b8bde431f4214ac7dbe3fa83559e0",
+							"ts": 1792148723.279465,
+							"type": "custom",
+							"payload": {
+								"custom_type": "attention_started",
+								"details": {
+									"conversation_id": "session/ff0d7764d2e5",
+									"token": "2540bce1-ec26-4082-a9ae-5204f98b3009"
+								}
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "abc21113-7113-4698-8985-6e68e17a3b65",
+							"ts": 1792148723.282249,
+							"type": "message",
+							"payload": {
+								"kind": "message",
+								"role": "user",
+								"content": [
+									{
+										"text": "[bash:1] typed steer"
+									}
+								],
+								"producer_command_id": "abc21113-7113-4698-8985-6e68e17a3b65"
+							},
+							"ts_source": "entry"
+						},
+						{
+							"id": "70c689895e65452dbcbe358b64ef113e",
+							"ts": 1792148723.287806,
+							"type": "custom",
+							"payload": {
+								"custom_type": "session_spend.v1",
+								"details": {
+									"version": 1,
+									"micro": 0,
+									"calls": 2,
+									"priced_calls": 0,
+									"unpriced_calls": 2,
+									"floor": false,
+									"rebuilt": false,
+									"writer": "96836:1792148720",
+									"last_identity": {
+										"provider": "test",
+										"model_id": "e2e-model"
+									},
+									"by_identity": {
+										"test/e2e-model": {
+											"provider": "test",
+											"model_id": "e2e-model",
+											"micro": 0,
+											"calls": 2,
+											"unpriced": 2
+										}
+									}
+								}
+							},
+							"ts_source": "entry"
+						}
+					],
+					"has_more": false,
+					"cursor_missing": false,
+					"has_newer": null
+				},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 45,
+			"type": "attention",
+			"payload": {
+				"conversation_id": "session/ff0d7764d2e5",
+				"completion_token": "58a44423-680c-446c-a3e6-abde61338e05",
+				"anchor_id": "0c6ee5fd09c4414fb7d518af79766155",
+				"kind": "complete",
+				"reason": "",
+				"cause": "",
+				"notify": true,
+				"unseen": true,
+				"revision": [1, 0],
+				"supported": true
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 46,
+			"type": "event",
+			"payload": {
+				"type": "tool_execution_update",
+				"tool_call_id": "call_mock_bash",
+				"tool_name": "bash",
+				"partial_result": {
+					"content": [
+						{
+							"type": "text",
+							"text": "--- stdout ---\n(empty)\n--- stderr ---\n(empty)"
+						}
+					],
+					"details": {
+						"tool_name": "bash",
+						"running": true,
+						"memory_advisory": null,
+						"query_budget_advisory": null
+					}
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 47,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 21,
+				"changes": {
+					"live_tool_started_at": {},
+					"activity_phase": "thinking",
+					"activity_phase_started_at": 1792148724.3554869
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 48,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 22,
+				"changes": {
+					"history_cursor": "70c689895e65452dbcbe358b64ef113e"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 49,
+			"type": "event",
+			"payload": {
+				"type": "tool_execution_end",
+				"tool_call_id": "call_mock_bash",
+				"tool_name": "bash",
+				"result": {
+					"tool_call_id": "call_mock_bash",
+					"tool_name": "bash",
+					"content": [
+						{
+							"type": "text",
+							"text": "exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)"
+						}
+					],
+					"details": null,
+					"duration_s": 1.0674460830632597,
+					"is_error": false,
+					"useless": false
+				},
+				"duration_s": 1.0674460830632597,
+				"is_error": false
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 50,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 23,
+				"changes": {
+					"activity_phase_started_at": 1792148724.357822
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 51,
+			"type": "event",
+			"payload": {
+				"type": "turn_end",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [
+						{
+							"id": "call_mock_bash",
+							"name": "bash",
+							"arguments": {
+								"command": "sleep 1"
+							},
+							"raw_arguments": "{\"command\": \"sleep 1\"}"
+						}
+					],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": "toolUse",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 5,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "7b2f9e71ee984ce290052afedd8a3ae4"
+				},
+				"tool_results": [
+					{
+						"tool_call_id": "call_mock_bash",
+						"tool_name": "bash",
+						"content": [
+							{
+								"type": "text",
+								"text": "exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)"
+							}
+						],
+						"details": null,
+						"duration_s": 1.0674460830632597,
+						"is_error": false,
+						"useless": false
+					}
+				]
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 52,
+			"type": "event",
+			"payload": {
+				"type": "turn_start"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 53,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 24,
+				"changes": {
+					"activity_phase_started_at": 1792148724.36044
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 54,
+			"type": "event",
+			"payload": {
+				"type": "message_start",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 55,
+			"type": "event",
+			"payload": {
+				"type": "provider_turn_start",
+				"response_id": "mock-response-id",
+				"provider": "test",
+				"model_id": "e2e-model"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 56,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 25,
+				"changes": {
+					"activity_phase": "responding",
+					"activity_phase_started_at": 1792148724.363133
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 57,
+			"type": "event",
+			"payload": {
+				"type": "message_update",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+				},
+				"delta": "Hello"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 58,
+			"type": "event",
+			"payload": {
+				"type": "message_update",
+				"message": {
+					"role": "assistant",
+					"content": [],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": null,
+					"usage": null,
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+				},
+				"delta": " from the mock provider!"
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 59,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 26,
+				"changes": {
+					"activity_phase": "thinking",
+					"activity_phase_started_at": 1792148724.363474,
+					"last_usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					}
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 60,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 27,
+				"changes": {
+					"spend_channels": {
+						"version": 1,
+						"tracked": true,
+						"total_micro": 0,
+						"knowledge": "unknown",
+						"by_basis": {
+							"billed": 0,
+							"subscription_api_equivalent": 0,
+							"estimated": 0,
+							"not_tracked_micro": 0,
+							"not_tracked_calls": 0
+						},
+						"rows": [
+							{
+								"channel": "inference",
+								"provider": "test",
+								"model": "e2e-model",
+								"label": "test/e2e-model",
+								"units": 3.0,
+								"unit": "calls",
+								"amount_micro": 0,
+								"knowledge": "unknown",
+								"basis": ["not_tracked"],
+								"price_versions": []
+							}
+						],
+						"children": {
+							"total_micro": 0,
+							"knowledge": "exact"
+						},
+						"breakdown": {
+							"by_agent": [
+								{
+									"id": "parent",
+									"label": "Parent agent",
+									"amount_micro": null,
+									"knowledge": "partial",
+									"unstated_records": 0,
+									"bases": []
+								}
+							],
+							"by_source": [
+								{
+									"id": "inference",
+									"label": "Inference",
+									"amount_micro": null,
+									"knowledge": "partial",
+									"unstated_records": 0,
+									"bases": []
+								}
+							]
+						},
+						"vocabulary": {
+							"channels": {
+								"inference": {
+									"label": "Inference"
+								}
+							},
+							"bases": {
+								"not_tracked": {
+									"label": "not tracked",
+									"source_class": "unknown",
+									"marker": "not tracked"
+								}
+							}
+						}
+					},
+					"history_cursor": "4aa377a9b130408cba369fe67e57d06c"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 61,
+			"type": "event",
+			"payload": {
+				"type": "message_end",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Hello from the mock provider!"
+						}
+					],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": "stop",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+				}
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 62,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 28,
+				"changes": {
+					"activity_phase_started_at": 1792148724.365417
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 63,
+			"type": "event",
+			"payload": {
+				"type": "turn_end",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Hello from the mock provider!"
+						}
+					],
+					"tool_calls": [],
+					"tool_call_id": null,
+					"tool_name": null,
+					"is_error": false,
+					"stop_reason": "stop",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"input_mode": null,
+					"input_path": null,
+					"provider_payload": null,
+					"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+				},
+				"tool_results": []
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 64,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 29,
+				"changes": {
+					"activity_phase": "",
+					"activity_phase_started_at": null,
+					"streaming": false,
+					"activity_started_at": null,
+					"active_duration_s": 1.4544460773468018,
+					"last_usage": {
+						"input_tokens": 20,
+						"output_tokens": 13,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [
+							{
+								"input_tokens": 10,
+								"output_tokens": 5,
+								"cache_read_tokens": 0,
+								"cache_write_tokens": 0,
+								"cache_write_5m_tokens": 0,
+								"cache_write_1h_tokens": 0,
+								"context_tokens": null,
+								"reasoning_tokens": 0,
+								"usd_cost": null,
+								"estimated_usd_cost": null,
+								"cost_components": [],
+								"provider": null,
+								"model_id": null
+							},
+							{
+								"input_tokens": 10,
+								"output_tokens": 8,
+								"cache_read_tokens": 0,
+								"cache_write_tokens": 0,
+								"cache_write_5m_tokens": 0,
+								"cache_write_1h_tokens": 0,
+								"context_tokens": null,
+								"reasoning_tokens": 0,
+								"usd_cost": null,
+								"estimated_usd_cost": null,
+								"cost_components": [],
+								"provider": null,
+								"model_id": null
+							}
+						],
+						"provider": null,
+						"model_id": null
+					},
+					"context_tokens": null
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 65,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 30,
+				"changes": {
+					"last_usage": {
+						"input_tokens": 10,
+						"output_tokens": 8,
+						"cache_read_tokens": 0,
+						"cache_write_tokens": 0,
+						"cache_write_5m_tokens": 0,
+						"cache_write_1h_tokens": 0,
+						"context_tokens": null,
+						"reasoning_tokens": 0,
+						"usd_cost": null,
+						"estimated_usd_cost": null,
+						"cost_components": [],
+						"provider": null,
+						"model_id": null
+					},
+					"history_cursor": "94b057571fab4fa39e9ab3513157b6a1"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 66,
+			"type": "event",
+			"payload": {
+				"type": "agent_end",
+				"messages": [
+					{
+						"role": "assistant",
+						"content": [],
+						"tool_calls": [
+							{
+								"id": "call_mock_bash",
+								"name": "bash",
+								"arguments": {
+									"command": "sleep 1"
+								},
+								"raw_arguments": "{\"command\": \"sleep 1\"}"
+							}
+						],
+						"tool_call_id": null,
+						"tool_name": null,
+						"is_error": false,
+						"stop_reason": "toolUse",
+						"usage": {
+							"input_tokens": 10,
+							"output_tokens": 5,
+							"cache_read_tokens": 0,
+							"cache_write_tokens": 0,
+							"cache_write_5m_tokens": 0,
+							"cache_write_1h_tokens": 0,
+							"context_tokens": null,
+							"reasoning_tokens": 0,
+							"usd_cost": null,
+							"estimated_usd_cost": null,
+							"cost_components": [],
+							"provider": null,
+							"model_id": null
+						},
+						"input_mode": null,
+						"input_path": null,
+						"provider_payload": null,
+						"id": "7b2f9e71ee984ce290052afedd8a3ae4"
+					},
+					{
+						"role": "tool",
+						"content": [
+							{
+								"type": "text",
+								"text": "exit code: 0\n--- stdout ---\n(empty)\n--- stderr ---\n(empty)"
+							}
+						],
+						"tool_calls": [],
+						"tool_call_id": "call_mock_bash",
+						"tool_name": "bash",
+						"is_error": false,
+						"stop_reason": null,
+						"usage": null,
+						"input_mode": null,
+						"input_path": null,
+						"provider_payload": {
+							"details": null,
+							"useless": false,
+							"duration_s": 1.0674460830632597
+						},
+						"id": "4aa377a9b130408cba369fe67e57d06c"
+					},
+					{
+						"role": "assistant",
+						"content": [
+							{
+								"type": "text",
+								"text": "Hello from the mock provider!"
+							}
+						],
+						"tool_calls": [],
+						"tool_call_id": null,
+						"tool_name": null,
+						"is_error": false,
+						"stop_reason": "stop",
+						"usage": {
+							"input_tokens": 10,
+							"output_tokens": 8,
+							"cache_read_tokens": 0,
+							"cache_write_tokens": 0,
+							"cache_write_5m_tokens": 0,
+							"cache_write_1h_tokens": 0,
+							"context_tokens": null,
+							"reasoning_tokens": 0,
+							"usd_cost": null,
+							"estimated_usd_cost": null,
+							"cost_components": [],
+							"provider": null,
+							"model_id": null
+						},
+						"input_mode": null,
+						"input_path": null,
+						"provider_payload": null,
+						"id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc"
+					}
+				],
+				"aborted": false,
+				"error": null,
+				"generation": 2,
+				"cut_off": "",
+				"cut_off_cause": "",
+				"context_tokens": null,
+				"notify": true
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 68,
+			"type": "frontend.update",
+			"payload": {
+				"epoch": "c83c4d9247a843b4969d8c4117180424",
+				"sequence": 31,
+				"changes": {
+					"history_cursor": "464f3a0482544d948e811a3998751350"
+				},
+				"degraded": false,
+				"degraded_reason": "",
+				"job_trajectory_appends": {},
+				"job_trajectory_replacements": [],
+				"job_todo_updates": {},
+				"cold": false,
+				"cold_reason": null,
+				"attaching": false,
+				"verified_at": 1792148722.838619
+			}
+		},
+		{
+			"session_id": "ff0d7764d2e5",
+			"epoch": "8f200838e36a48c89966bc65a0679bb1",
+			"seq": 69,
+			"type": "attention",
+			"payload": {
+				"conversation_id": "session/ff0d7764d2e5",
+				"completion_token": "2540bce1-ec26-4082-a9ae-5204f98b3009",
+				"anchor_id": "8fc1bc00f4be4a7eb58c08ce3b10a1fc",
+				"kind": "complete",
+				"reason": "",
+				"cause": "",
+				"notify": true,
+				"unseen": true,
+				"revision": [3, 0],
+				"supported": true
+			}
+		}
+	],
+	"_source": "Captured by review round 6 (R6-M1) from lo-voice b2533239d's real stream, mock provider; machine paths replaced with /tmp/voice-fixture. conn1: the take's turn (generation 1) runs; a typed steer is admitted at seq 20; the connection drops at seq 21. conn2: a gap-free resume whose snapshot@44 absorbed turn 1's agent_end AND the typed turn's agent_start (generation 2, streaming:true)."
+}

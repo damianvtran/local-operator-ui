@@ -71,6 +71,7 @@ import { t } from "../../i18n/messages";
 import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
 import { PhonePairingHost } from "@features/phone-pairing/pairing-popup";
+import { QwenVoiceController } from "@features/voice/qwen-voice-controller";
 import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -812,6 +813,12 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
+			{/*
+			 * SESSION VOICE'S CONTROLLER, at the root rather than in the chat page, so
+			 * an exchange survives navigation: words sent from one route are answered
+			 * aloud on any other. It renders nothing (`features/voice`).
+			 */}
+			<QwenVoiceController />
 			{/*
 			 * `relative` is load-bearing, not decoration.
 			 *

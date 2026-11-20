@@ -1826,7 +1826,14 @@ export const SettingsPage: FC = () => {
 							 */}
 							{/* Notifications precedes Speech in the rail and document order. */}
 							<NotificationsSection sectionRef={sectionRefs.notifications} />
-							<SpeechSection sectionRef={sectionRefs.speech} />
+							<SpeechSection
+								sectionRef={sectionRefs.speech}
+								onOpenProviders={(provider) =>
+									navigate(
+										`/settings?section=providers&provider=${encodeURIComponent(provider)}`,
+									)
+								}
+							/>
 							<KeyboardShortcutsSection
 								sectionRef={sectionRefs.keyboard}
 								focusKey={settingFocusKey}

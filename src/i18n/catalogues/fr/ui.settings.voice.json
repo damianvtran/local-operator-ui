@@ -1,0 +1,4 @@
+{
+	"ui.settings.voice.label": "Voix de session",
+	"ui.settings.voice.description": "Permet de parler à une conversation en mains libres. Désactivée par défaut. Tant qu’elle est désactivée, rien ne tourne pour la voix : ni microphone, ni modèles vocaux, ni vérifications en arrière-plan. L’activer ajoute un bouton vocal au champ de saisie ; la désactiver arrête la voix immédiatement et libère le microphone."
+}

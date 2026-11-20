@@ -1131,6 +1131,10 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the Agents proposal card's own 'Open conversation' link to the session that filed the proposal - the Projects and Schedules rows' case: the filing session may never have been opened in this window, so the card that names it has to be able to reach it",
 	},
+	"src/renderer/src/features/voice/qwen-voice-controller.tsx": {
+		count: 1,
+		why: "the voice card toast's `Open` action, shown only when the voice session is NOT the one on screen (`showCardToast`), which takes the user to the conversation that is speaking - the Schedules row's case again: the session holding the voice slot may never have been opened in this window",
+	},
 };
 
 /** The files that commit a switch, and why each is allowed to. */

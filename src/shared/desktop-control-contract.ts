@@ -711,6 +711,78 @@ export type DesktopAidaState = {
  */
 export type DesktopAidaControlResult = Omit<DesktopAidaState, "enabled">;
 
+/**
+ * The ONE session voice is enabled on, machine-wide (the backend's `docs/design/qwen-voice.md`,
+ * V3): the slot file's public half. `null` is "voice is off everywhere".
+ */
+export type DesktopVoiceActive = {
+	session_id: string;
+	/** Epoch milliseconds, as the slot file records it. */
+	enabled_at: number;
+} | null;
+
+/**
+ * `GET /v1/desktop/voice` (the frozen contract). `settings.max_spoken_chars` is the
+ * server's own cap on what `/voice/text` returns; the renderer never trims text.
+ * There is no speech-path report: hearing and speaking are the Qwen rig's.
+ */
+export type DesktopVoiceState = {
+	active: DesktopVoiceActive;
+	settings: { max_spoken_chars: number };
+	/**
+	 * Whether bring-your-own-key voice can run (the backend's `byok`, V16).
+	 * ABSENT on a backend that predates pinned voice: read absence as "unknown",
+	 * never as "ready". `ready` is false when no ElevenLabs key is stored, even
+	 * if another provider's login is; pinned voice never falls through to one.
+	 * Kept by the backend for older apps; this app reads `providers` instead.
+	 */
+	byok?: { provider: "elevenlabs"; ready: boolean; reason: string };
+	/**
+	 * THE ONE SPEECH PROVIDER the person chose (`speech.provider`): hearing,
+	 * speaking, hands-free voice and the Speak button all use it and nothing else.
+	 * `null` is "none chosen". ABSENT on a backend that predates the choice; read
+	 * it through `readVoiceProviderStatus`, which also drops a value this app does
+	 * not know.
+	 */
+	provider?: SpeechProvider | null;
+	/** Whether each provider can both hear and speak right now, and why not. */
+	providers?: Record<SpeechProvider, SpeechProviderReadiness>;
+};
+
+/** The two speech providers a person can choose; there is no third. */
+export type SpeechProvider = "radient" | "elevenlabs";
+
+/**
+ * `ready`: the provider can both hear and speak. `reason`: the backend's own
+ * sentence when it cannot (null when ready, or when the backend sent none).
+ */
+export type SpeechProviderReadiness = {
+	ready: boolean;
+	reason: string | null;
+};
+
+/** `POST /v1/desktop/voice/text`'s answer: the words to speak, already cleaned. */
+export type DesktopVoiceText = {
+	text: string;
+	spoken_chars: number;
+	/**
+	 * Whether the reply was cut at the server's character cap (plan §8). Optional:
+	 * the backend slice that adds it lands separately, and an absent field means
+	 * "not cut", never an error.
+	 */
+	truncated?: boolean;
+};
+
+/**
+ * `POST /v1/desktop/voice`'s answer. `replaced` is the session that LOST the slot
+ * to this enable - the switch is one atomic swap on the server, so this is the
+ * only place the renderer learns that A went off because B came on.
+ */
+export type DesktopVoiceControlResult = {
+	active: DesktopVoiceActive;
+	replaced: string | null;
+};
+
 /*
  * THE LIBRARY SURFACE'S WIRE DTOs (`/v1/desktop/library*` and
  * `/v1/desktop/librarian`), mirrored from the frozen design contract

@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "Thay khóa",
+	"ui.providers.stored_key.remove": "Gỡ khóa",
+	"ui.providers.stored_key.remove_confirm": "Gỡ khóa này?",
+	"ui.providers.stored_key.remove_yes": "Gỡ",
+	"ui.providers.stored_key.remove_failed": "Không gỡ được khóa."
+}
