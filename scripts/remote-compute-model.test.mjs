@@ -48,6 +48,7 @@ const {
 	cloudRunReady,
 	liveRuns,
 	remoteSheetModel,
+	remoteSheetDirectory,
 	summarisePrompt,
 	remoteRunCardModel,
 	remoteRemedy,
@@ -296,6 +297,37 @@ test("an unknown status is read as in flight rather than settled", () => {
 	assert.equal(remoteRunPhase("Succeeded"), "succeeded");
 });
 
+test("a bare stopped run is settled, and says only that it finished", () => {
+	/*
+	 * Q-1 (defensive half): a deployment that publishes the provider's terminal token
+	 * with no outcome beside it. `stopped` is the fact; which outcome it had is not
+	 * this client's to state, so the phase is the one whose word is `Finished`.
+	 */
+	assert.equal(remoteRunPhase("stopped"), "succeeded");
+	assert.equal(remoteRunStatusKnown("stopped"), true);
+	const stopped = remoteRun(
+		live({
+			status: "stopped",
+			metered_seconds: 64,
+			charged_usd: 0,
+			hold_usd: 0,
+		}),
+	);
+	const model = remoteRunCardModel(stopped, {
+		now: Date.now() + 600_000,
+		networkName: null,
+	});
+	assert.equal(model.phase, "succeeded");
+	assert.equal(model.status, "Finished");
+	// The clock stops, the charge replaces the hold, and Cancel gives way to Forget.
+	assert.equal(model.elapsed, null);
+	assert.equal(model.amount?.kind, "charged");
+	assert.equal(model.amount?.text, "charged $0.00");
+	assert.deepEqual(model.actions, { cancel: false, delete: true });
+	// And the picker stops counting it as a live run.
+	assert.deepEqual(liveRuns([stopped]), []);
+});
+
 /* -------------------------------------------------------------- the tier plan */
 
 test("cloud run is ready only when the capacity names that tier as ready", () => {
@@ -460,6 +492,41 @@ test("an empty composer or no directory stands the submit down with its own reas
 	assert.equal(
 		noDirectory.submit.why,
 		"This conversation has no directory yet.",
+	);
+});
+
+test("a session row with no cwd still runs where the chip says it is", () => {
+	/*
+	 * Q-2: the canonical row's `cwd` is written only by this app's own
+	 * `createSession`, so a conversation another client of the daemon created carries
+	 * none - while the pane's chip (the stream's own directory) names the path. The
+	 * sheet reads the chip's value, so the two cannot disagree.
+	 */
+	const directory = remoteSheetDirectory({
+		paneCwd: "/src/hello-world",
+		rowCwd: undefined,
+	});
+	assert.equal(directory, "/src/hello-world");
+	const model = remoteSheetModel({
+		value: read(),
+		prompt: "fix the importer",
+		directory,
+		chosenNetworkId: null,
+	});
+	assert.equal(model.directory.path, "/src/hello-world");
+	assert.equal(model.submit.enabled, true);
+	assert.equal(model.submit.why, null);
+
+	// The pane wins over a row that disagrees: after a move, the row is where the
+	// conversation was created, and the chip is where it is.
+	assert.equal(
+		remoteSheetDirectory({ paneCwd: "/src/new", rowCwd: "/src/old" }),
+		"/src/new",
+	);
+	// Neither knowing is still the sheet's own no-directory case, unchanged.
+	assert.equal(
+		remoteSheetDirectory({ paneCwd: undefined, rowCwd: undefined }),
+		"",
 	);
 });
 

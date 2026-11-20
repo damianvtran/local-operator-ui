@@ -57,6 +57,7 @@ import {
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
+import { remoteSheetDirectory } from "../../remote-compute/remote-compute-model";
 import { RemoteComputePicker } from "../../remote-compute/remote-compute-picker";
 import {
 	remoteComputeKeys,
@@ -128,10 +129,18 @@ function deviceNameFor(input: {
 	return deviceName("", deviceId);
 }
 
-export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
-	sessionId,
-	draftKey,
-}) => {
+export const ChatDeviceSlot: FC<{
+	sessionId?: string;
+	draftKey?: string;
+	/**
+	 * The directory this pane's cwd chip paints, handed in by the page that owns the
+	 * pane. It is the same value the header's chip renders, so the Radient sheet cannot
+	 * name a different directory than the control beside it (`remoteSheetDirectory`).
+	 * Absent in stories, where the canonical row is the only source there is; `null` is
+	 * the staged-cwd store's own way of saying the same thing.
+	 */
+	paneCwd?: string | null;
+}> = ({ sessionId, draftKey, paneCwd }) => {
 	const capabilities = useDesktopCapabilities();
 	const peersEnabled =
 		desktopFeatureState(capabilities.data, "peers") === "enabled";
@@ -499,9 +508,10 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	/*
 	 * THE OTHER GROUP IN THIS PICKER, composed here for the same reason the mesh's
 	 * rows are: the node reads its own facts, and the header stays chrome. Its directory
-	 * is this pane's own (`draftCwd`, or the live row's `cwd`), and a conversation whose
-	 * row is REMOTE has no such directory here - the path on that row is where the
-	 * session runs on the peer - so the group is absent for that pane (agent review m4).
+	 * is this pane's own (`paneCwd`, the value the cwd chip paints, with the live row's
+	 * `cwd` behind it as the fallback), and a conversation whose row is REMOTE has no
+	 * such directory here - the path on that row is where the session runs on the peer
+	 * - so the group is absent for that pane (agent review m4).
 	 */
 	const remoteGroup = identity ? (
 		<RemoteComputePicker
@@ -537,7 +547,11 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 					surface={remoteSurface}
 					onSurfaceChange={setRemoteSurface}
 					identity={identity}
-					directory={sessionId ? (row?.cwd ?? "") : draftCwd}
+					directory={
+						sessionId
+							? remoteSheetDirectory({ paneCwd, rowCwd: row?.cwd })
+							: draftCwd
+					}
 					onSubmitted={(run) => pinRun(identity, run.id)}
 				/>
 			) : null}

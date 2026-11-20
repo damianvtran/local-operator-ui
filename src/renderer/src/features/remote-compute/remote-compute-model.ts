@@ -406,6 +406,38 @@ export type RemoteSheetModel = {
 };
 
 /**
+ * THE DIRECTORY A RUN FROM THIS PANE WOULD START IN, resolved in ONE place.
+ *
+ * THE PANE'S OWN VALUE WINS, and it is the value the cwd chip paints - the stream's
+ * directory with this session's in-flight move on top of it (`useSessionMove`), read
+ * by the pane that owns both surfaces. A sheet fed from it cannot disagree with the
+ * control beside it about where the conversation is, which is the whole point of
+ * resolving it here rather than at each surface.
+ *
+ * THE CANONICAL ROW IS THE FALLBACK, NEVER THE SOURCE. Its `cwd` is written only by
+ * this app's own `createSession` (`canonical-sessions-store`), so a conversation
+ * another client of the daemon created carries none - and a row-first read stood the
+ * sheet down with "no directory yet" while the chip a few pixels above printed the
+ * path (QA round 2, Q-2). The row still answers for the window before a stream's
+ * first snapshot names a directory, which is the case it is good for.
+ *
+ * `""` when neither knows: that is the sheet's own no-directory case, and the submit
+ * says why rather than starting a run with nowhere to run.
+ */
+export function remoteSheetDirectory(input: {
+	/**
+	 * What the pane's cwd chip paints; absent in either of the two ways a directory can
+	 * be unknown - `null` from the staged-cwd store, `undefined` before the stream
+	 * reports one.
+	 */
+	paneCwd: string | null | undefined;
+	/** The canonical-sessions row's `cwd`; `undefined` for a row this app did not create. */
+	rowCwd: string | null | undefined;
+}): string {
+	return input.paneCwd || input.rowCwd || "";
+}
+
+/**
  * The second-level sheet: the network, the two tiers, the prompt, the directory.
  *
  * THE NETWORK IS PRE-SELECTED ONLY WHEN IT IS UNAMBIGUOUS, and "unambiguous" means

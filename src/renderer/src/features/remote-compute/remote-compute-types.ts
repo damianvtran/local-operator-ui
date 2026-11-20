@@ -315,6 +315,21 @@ export function remoteRunPhase(status: string): RemoteRunPhase {
 		case "complete":
 		case "completed":
 		case "done":
+		/*
+		 * A BARE `stopped` IS SETTLED, AND `stopped` IS ALL IT SAYS. It is what a
+		 * deployment answers for a finished run that publishes the provider's terminal
+		 * token without the outcome beside it (`stopped` + `outcome: succeeded |
+		 * cancelled | failed`); this client reads the status alone, so there is no
+		 * outcome here to resolve it by. Of the three settled phases, `succeeded` is the
+		 * one whose word makes no claim the token did not: `card.status.succeeded` reads
+		 * `Finished`, which is exactly what `stopped` states, where `failed` prints
+		 * `Failed` over a run the deployment may well have completed (the live round 2
+		 * run was `stopped`/`succeeded`). The alternatives are worse than the naming:
+		 * in flight keeps the clock running, offers `Cancel` on a run that cannot spend
+		 * and shows the hold instead of the charge - and, because this token is now
+		 * KNOWN, `statusLabel` would fall to its in-flight default and print `Running`.
+		 */
+		case "stopped":
 			return "succeeded";
 		case "failed":
 		case "error":
@@ -352,6 +367,10 @@ export function remoteRunStatusKnown(status: string): boolean {
 		case "expired":
 		case "cancelled":
 		case "canceled":
+		/* The settled token a deployment may publish instead of an outcome; see
+		 * `remoteRunPhase`. Known, because the card's mono fallback is for tokens this
+		 * client cannot read at all. */
+		case "stopped":
 			return true;
 		default:
 			return false;

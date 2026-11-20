@@ -1350,6 +1350,16 @@ function SessionPanel({
 		capabilities: capabilities.data,
 	});
 	/*
+	 * THE PANE'S DIRECTORY, ONCE, for every surface that names it: this is what the
+	 * header's cwd chip paints, and the device slot's Radient sheet is handed the same
+	 * value rather than re-deriving it from the canonical row. The row's `cwd` is
+	 * written by this app's `createSession` alone, so a conversation another client of
+	 * the daemon created had the chip printing its path while the sheet said "no
+	 * directory yet" and refused to start a run (QA round 2, Q-2). One expression, so
+	 * the two cannot disagree.
+	 */
+	const chipCwd = draftKey ? cwd : live.cwd;
+	/*
 	 * The chip's write path, which is one value because the two kinds answer
 	 * differently: a draft STAGES the directory `sessions.create` will use, and a
 	 * live session on a capable backend MOVES one, so what the chip may announce or
@@ -5088,6 +5098,8 @@ function SessionPanel({
 						<ChatDeviceSlot
 							sessionId={sessionId ?? undefined}
 							draftKey={draftKey ?? undefined}
+							/* The value the header's chip below paints; see `chipCwd`. */
+							paneCwd={chipCwd}
 						/>
 					}
 					/*
@@ -5306,9 +5318,10 @@ function SessionPanel({
 					 * point of the chip - a value the backend has not confirmed yet has to
 					 * be paintable, or the user watches a move they made not happen. The
 					 * rebase onto `main` kept main's `sessionId` prop beside it; both are
-					 * wanted and neither subsumes the other.
+					 * wanted and neither subsumes the other. It is read through `chipCwd` so
+					 * the device slot's Radient sheet names the same directory (QA Q-2).
 					 */
-					cwd={draftKey ? cwd : live.cwd}
+					cwd={chipCwd}
 					cwdWritePath={cwdWritePath}
 					cwdReadOnlyReason={cwdReadOnlyReason}
 					/*
