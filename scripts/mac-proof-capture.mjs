@@ -1030,6 +1030,10 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
                                to download (default ${DOWNLOAD_FILE_DEFAULT}); one per run
   --manifest <abs json>        --scene download: {files:[{filename,bytes,sha256}]}; the landed
                                file must match the --download-file entry (refused if absent)
+  --check-operator-downloads   --scene download, OFF by default: also compare a names-only listing
+                               of the operator's real ~/Downloads before/after (exit 3 if it cannot
+                               be listed). Off because on macOS that listing can raise a TCC
+                               "Files and Folders" prompt; containment is proven by destination
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -1082,6 +1086,7 @@ export function parseArgs(argv) {
 		previewFile: PREVIEW_FILE_DEFAULT,
 		downloadFile: null,
 		manifest: null,
+		checkOperatorDownloads: false,
 		serveRecordDir: null,
 		tokenFromOperatorProfile: false,
 		dryRun: false,
@@ -1193,6 +1198,9 @@ export function parseArgs(argv) {
 			case "--manifest":
 				opts.manifest = take();
 				break;
+			case "--check-operator-downloads":
+				opts.checkOperatorDownloads = true;
+				break;
 			case "--token-from-operator-profile":
 				opts.tokenFromOperatorProfile = true;
 				break;
@@ -1244,9 +1252,13 @@ function applySeedDefaults(opts) {
 function downloadOptionsProblem(opts) {
 	const download = opts.scenes.includes("download");
 	if (!download) {
-		if (opts.downloadFile !== null || opts.manifest !== null)
+		if (
+			opts.downloadFile !== null ||
+			opts.manifest !== null ||
+			opts.checkOperatorDownloads
+		)
 			throw new Refusal(
-				"--download-file and --manifest apply only to --scene download",
+				"--download-file, --manifest and --check-operator-downloads apply only to --scene download",
 			);
 		return;
 	}
@@ -2392,6 +2404,76 @@ export function strayDownloadsProblem(before, after) {
 			added.length === 0
 				? null
 				: `new entr${added.length === 1 ? "y" : "ies"} appeared in the operator's ~/Downloads during the run: ${added.join(", ")}`,
+	};
+}
+
+/**
+ * The operator-~/Downloads baseline, taken before the backend or the app starts.
+ *
+ * OPT-IN (`--check-operator-downloads`), default OFF. WHY: on macOS ~/Downloads
+ * is TCC-protected, and listing it from the hosting app (Terminal, an agent
+ * host) can raise a "Files and Folders" access prompt on the operator's own
+ * screen before the app has even started - exactly the class of prompt this
+ * harness promises never to raise on an unattended run. The containment proof
+ * the scene needs is POSITIVE and does not need the listing: exactly one new
+ * file, inside the rig (`destination` + `insideRig` in the receipt). The
+ * absence-of-strays listing is a second, negative check an operator can ask
+ * for when a prompt (or a granted host) is acceptable.
+ *
+ * Off: returns `{checked: false}` WITHOUT touching the folder, so the receipt
+ * says the check did not run rather than implying it passed. On: the listing,
+ * or a BLOCKED Refusal (exit 3) when it cannot be read - an unreadable folder
+ * proves nothing. `list` is injectable so tests can prove "no listing attempted".
+ */
+export function operatorDownloadsBaseline({
+	check,
+	dir = operatorDownloadsDir(),
+	list = listNames,
+	host = () => tccHost(),
+}) {
+	if (!check) return { checked: false };
+	try {
+		return { checked: true, path: dir, before: list(dir) };
+	} catch (error) {
+		throw new Refusal(
+			`BLOCKED: cannot list the operator's ${dir} (${error.code ?? error.message}), so --check-operator-downloads could not run; on macOS grant Files and Folders > Downloads Folder to ${host()} in System Settings > Privacy & Security, or run without the flag (containment is then proven by the receipt's destination alone)`,
+			EXIT.BLOCKED,
+		);
+	}
+}
+
+/**
+ * The after-the-reap half: `{record, problem}`. Off: `{checked: false}` and no
+ * listing. On: before/after counts and the NEW names only; an unreadable
+ * folder after the run, or any new name, is a problem (exit 1).
+ */
+export function operatorDownloadsVerdict(baseline, list = listNames) {
+	if (!baseline?.checked) return { record: { checked: false }, problem: null };
+	let after;
+	try {
+		after = list(baseline.path);
+	} catch (error) {
+		return {
+			record: {
+				checked: true,
+				path: baseline.path,
+				before: baseline.before.names.length,
+				after: null,
+				newEntries: null,
+			},
+			problem: `the operator's ${baseline.path} could not be listed after the run (${error.code ?? error.message})`,
+		};
+	}
+	const stray = strayDownloadsProblem(baseline.before, after);
+	return {
+		record: {
+			checked: true,
+			path: baseline.path,
+			before: baseline.before.names.length,
+			after: after.names.length,
+			newEntries: stray.newEntries,
+		},
+		problem: stray.problem,
 	};
 }
 
@@ -4776,7 +4858,9 @@ export async function main(argv = process.argv.slice(2)) {
 								"POST /v1/desktop/sessions/<session>/files/<file id>/download, sent by the app; the harness's daemon client stays GET-only",
 							destinations: plan.download.destinations,
 							manifest: plan.download.manifest,
-							operatorDownloads: operatorDownloadsDir(),
+							operatorDownloads: opts.checkOperatorDownloads
+								? { checked: true, path: operatorDownloadsDir() }
+								: { checked: false },
 						},
 					}
 				: {}),
@@ -4823,26 +4907,24 @@ export async function main(argv = process.argv.slice(2)) {
 	}
 
 	/*
-	 * The download scene's "before" listings, taken before anything is spawned:
-	 * names only, of the operator's real ~/Downloads (the stray check) and of
-	 * the rig's two possible destinations (to tell the new landing from what
-	 * was there). An unreadable ~/Downloads (macOS TCC protects it) proves
-	 * nothing, so it is BLOCKED here rather than a pass later.
+	 * The download scene's "before" listings, taken before the backend or the
+	 * app starts: names only, of the rig's two possible destinations (to tell
+	 * the new landing from what was there) and - only with
+	 * --check-operator-downloads (see operatorDownloadsBaseline for why it is
+	 * opt-in) - of the operator's real ~/Downloads.
 	 */
 	let downloadBefore = null;
 	if (plan.download) {
-		const operatorDownloads = operatorDownloadsDir();
 		let operator;
 		try {
-			operator = listNames(operatorDownloads);
+			operator = operatorDownloadsBaseline({
+				check: opts.checkOperatorDownloads,
+			});
 		} catch (error) {
-			console.error(
-				`[mac-proof] BLOCKED: cannot list the operator's ${operatorDownloads} (${error.code ?? error.message}), so the stray-download check could not run; on macOS grant Files and Folders > Downloads Folder to ${tccHost()} in System Settings > Privacy & Security`,
-			);
-			return EXIT.BLOCKED;
+			console.error(`[mac-proof] ${error.message}`);
+			return error instanceof Refusal ? error.code : EXIT.BLOCKED;
 		}
 		downloadBefore = {
-			operatorDownloads,
 			operator,
 			rig: new Map(
 				plan.download.destinations.map((d) => [d.dir, listNames(d.dir)]),
@@ -4906,6 +4988,9 @@ export async function main(argv = process.argv.slice(2)) {
 						file: plan.download.file,
 						destinations: plan.download.destinations.map((d) => d.dir),
 						manifest: plan.download.manifest,
+						// Replaced after the reap; set now so an early end still
+						// says whether the stray check was asked for.
+						operatorDownloads: { checked: opts.checkOperatorDownloads },
 						verdict: "FAIL",
 					},
 				}
@@ -5090,27 +5175,13 @@ export async function main(argv = process.argv.slice(2)) {
 				receipt.endedBy = { signal: interrupted };
 				receipt.exit = EXIT.FAILED;
 			}
-			// After the reap, so nothing of this run can still be writing: any
-			// new name in the operator's real ~/Downloads fails the run.
+			// After the reap, so nothing of this run can still be writing. With
+			// --check-operator-downloads any new name in the operator's real
+			// ~/Downloads fails the run; without it the receipt records
+			// {checked: false} and nothing is listed.
 			if (downloadBefore) {
-				let after = null;
-				try {
-					after = listNames(downloadBefore.operatorDownloads);
-				} catch (error) {
-					after = { unreadable: error.code ?? error.message };
-				}
-				const stray = after.unreadable
-					? {
-							newEntries: null,
-							problem: `the operator's ${downloadBefore.operatorDownloads} could not be listed after the run (${after.unreadable})`,
-						}
-					: strayDownloadsProblem(downloadBefore.operator, after);
-				receipt.download.operatorDownloads = {
-					path: downloadBefore.operatorDownloads,
-					before: downloadBefore.operator.names.length,
-					after: after.unreadable ? null : after.names.length,
-					newEntries: stray.newEntries,
-				};
+				const stray = operatorDownloadsVerdict(downloadBefore.operator);
+				receipt.download.operatorDownloads = stray.record;
 				if (stray.problem) {
 					receipt.download.verdict = "FAIL";
 					receipt.verdict = "failed";

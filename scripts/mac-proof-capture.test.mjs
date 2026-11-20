@@ -84,7 +84,9 @@ import {
 	listNames,
 	lopArgvProblem,
 	manifestEntry,
+	operatorDownloadsBaseline,
 	operatorDownloadsDir,
+	operatorDownloadsVerdict,
 	operatorPathProblem,
 	operatorRoots,
 	parseArgs,
@@ -5119,7 +5121,7 @@ test("download: a --manifest that is a directory refuses with exit 2 before any 
 /** One config-root download run against the fake app + fake lop. */
 async function downloadRun(
 	name,
-	{ manifestSha = NOTES_SHA, post = true } = {},
+	{ manifestSha = NOTES_SHA, post = true, extra = [] } = {},
 ) {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
 	const device = rigDevice(
@@ -5167,6 +5169,7 @@ async function downloadRun(
 		manifest,
 		"--peer-wait",
 		"30",
+		...extra,
 	]);
 	const rig = rigOf(rigRoot);
 	trackPids(rig, device.config);
@@ -5201,11 +5204,9 @@ it("download e2e: the app's POST lands notes.md in the rig; the receipt records 
 		receipt.download.route,
 		/^POST \/v1\/desktop\/sessions\/<session>\/files\/<file id>\/download/,
 	);
-	assert.equal(
-		receipt.download.operatorDownloads.path,
-		join(os.userInfo().homedir, "Downloads"),
-	);
-	assert.deepEqual(receipt.download.operatorDownloads.newEntries, []);
+	// Default OFF: the operator's ~/Downloads was not listed, and the receipt
+	// says so instead of implying a clean stray check.
+	assert.deepEqual(receipt.download.operatorDownloads, { checked: false });
 	// Exactly one write, and it came from the app; everything else was a GET.
 	const writes = requests.filter((r) => !r.startsWith("GET "));
 	assert.deepEqual(writes, [
@@ -5231,6 +5232,120 @@ it("download e2e: no file landing in the rig fails the run (exit 1)", async () =
 	assert.match(run.all, /no notes\.md appeared in the rig/);
 	assert.equal(receipt.download.verdict, "FAIL");
 	assert.equal(receipt.download.destination, null);
+});
+
+it("download e2e: --check-operator-downloads lists the operator's ~/Downloads before/after and records the comparison", async () => {
+	const { run, receipt } = await downloadRun("dl-check", {
+		extra: ["--check-operator-downloads"],
+	});
+	assert.equal(run.status, 0, run.all);
+	assert.equal(receipt.download.verdict, "PASS");
+	const op = receipt.download.operatorDownloads;
+	assert.equal(op.checked, true);
+	assert.equal(op.path, join(os.userInfo().homedir, "Downloads"));
+	assert.deepEqual(op.newEntries, []);
+	assert.equal(op.before, op.after);
+});
+
+test("download: the operator-~/Downloads check is opt-in - off lists nothing, on compares, BLOCKED only with the flag", () => {
+	const calls = [];
+	const spy = (answers) => (dir) => {
+		calls.push(dir);
+		const next = answers.shift();
+		if (next instanceof Error) throw next;
+		return next;
+	};
+	const denied = Object.assign(new Error("denied"), { code: "EPERM" });
+	// OFF (the default): no listing attempted, even of an unreadable folder.
+	const off = operatorDownloadsBaseline({
+		check: false,
+		dir: "/Users/u/Downloads",
+		list: spy([denied]),
+	});
+	assert.deepEqual(off, { checked: false });
+	assert.deepEqual(operatorDownloadsVerdict(off, spy([denied])), {
+		record: { checked: false },
+		problem: null,
+	});
+	assert.deepEqual(calls, [], "nothing listed when the check is off");
+	assert.equal(parseArgs(downloadArgs()).checkOperatorDownloads, false);
+	assert.equal(
+		parseArgs(downloadArgs(["--check-operator-downloads"]))
+			.checkOperatorDownloads,
+		true,
+	);
+	// ON: an unreadable folder is BLOCKED (exit 3), naming the host to grant.
+	assert.throws(
+		() =>
+			operatorDownloadsBaseline({
+				check: true,
+				dir: "/Users/u/Downloads",
+				list: spy([denied]),
+				host: () => "Terminal",
+			}),
+		(error) =>
+			error instanceof Refusal &&
+			error.code === EXIT.BLOCKED &&
+			/cannot list the operator's \/Users\/u\/Downloads \(EPERM\).*Terminal/.test(
+				error.message,
+			),
+	);
+	// ON: the listing is compared; a new name is a problem, none is not.
+	const on = operatorDownloadsBaseline({
+		check: true,
+		dir: "/Users/u/Downloads",
+		list: spy([{ exists: true, names: ["a.pdf"] }]),
+	});
+	assert.deepEqual(on, {
+		checked: true,
+		path: "/Users/u/Downloads",
+		before: { exists: true, names: ["a.pdf"] },
+	});
+	const clean = operatorDownloadsVerdict(
+		on,
+		spy([{ exists: true, names: ["a.pdf"] }]),
+	);
+	assert.equal(clean.problem, null);
+	assert.deepEqual(clean.record, {
+		checked: true,
+		path: "/Users/u/Downloads",
+		before: 1,
+		after: 1,
+		newEntries: [],
+	});
+	const dirty = operatorDownloadsVerdict(
+		on,
+		spy([{ exists: true, names: ["a.pdf", "notes.md"] }]),
+	);
+	assert.match(
+		dirty.problem,
+		/appeared in the operator's ~\/Downloads.*notes\.md/,
+	);
+	assert.deepEqual(dirty.record.newEntries, ["notes.md"]);
+	const gone = operatorDownloadsVerdict(on, spy([denied]));
+	assert.match(gone.problem, /could not be listed after the run \(EPERM\)/);
+	assert.equal(gone.record.after, null);
+	assert.deepEqual(calls, [
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+	]);
+	// The flag without the scene is a mistake, not a no-op.
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/x",
+					"--check-operator-downloads",
+				]),
+			),
+		/apply only to --scene download/,
+	);
 });
 
 /* ---------------------------------- end to end, as one bounded concurrent group */

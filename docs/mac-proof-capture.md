@@ -370,20 +370,29 @@ cannot pass: the landed file must carry `<name>` and the manifest's sha256.
 | an error/info toast instead of success | |
 | no new `<name>` (or `(n)` variant) in the rig's destinations after the success toast; more than one | |
 | the landed bytes/sha256 differ from the manifest entry | |
-| **any** new name in the operator's real `~/Downloads` between run start (before the backend or the app starts) and the end (after the reap) | names only; another process saving a file meanwhile also fails it, the safe direction |
+| with `--check-operator-downloads` only: **any** new name in the operator's real `~/Downloads` between run start (before the backend or the app starts) and the end (after the reap) | names only; another process saving a file meanwhile also fails it, the safe direction |
 
-**BLOCKED (exit 3):** the operator's `~/Downloads` cannot be listed. It is read
-from the passwd home (`os.userInfo().homedir`), never `$HOME`. On macOS it is
-TCC-protected: a host without Files and Folders > Downloads Folder access may
-see the system's access prompt on the first listing (before the app starts),
-and a refusal is BLOCKED with the host to grant, never a pass.
+**Containment is proven by destination, not by a listing.** The proof is
+positive: exactly one new `<name>` landed, as a regular file physically inside
+the rig (`destination` + `insideRig` in the receipt), from a backend whose HOME
+and config root are the rig's. The comparison of the operator's real
+`~/Downloads` is a second, negative check and is **OPT-IN**
+(`--check-operator-downloads`, default **off**): on macOS `~/Downloads` is
+TCC-protected, and listing it from the hosting app (Terminal, an agent host) can
+raise a "Files and Folders" access prompt on the operator's own screen, before
+the app starts - the exact class of prompt this harness promises never to raise
+on an unattended run. Without the flag nothing of `~/Downloads` is listed and
+the receipt records `operatorDownloads: {checked: false}`, so the missing check
+is visible rather than implied. With it, the folder (read from the passwd home,
+`os.userInfo().homedir`, never `$HOME`) is listed before and after, and one that
+cannot be listed is **BLOCKED (exit 3)** with the host to grant, never a pass.
 
 **The receipt** gains `download`: `route` (the template above, sent by the app),
 `file`, `destinations`, `destination` (the landed path), `insideRig`, `bytes`,
 `sha256`, `manifest` (`{path, entry: {filename, bytes, sha256}}` or `null`),
 `compared` (`match`, `mismatch`, or `not compared (no --manifest)`),
-`operatorDownloads` (`{path, before, after, newEntries}` - counts and the new
-names only) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
+`operatorDownloads` (`{checked: false}` by default; with the flag `{checked:
+true, path, before, after, newEntries}` - counts and the new names only) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
 landing and containment only and says so; the Mac proof passes `--manifest`.
 
 **Negative control:** `--negative-control` includes the download refusals
@@ -637,5 +646,6 @@ Mac-only, **pending measurement** on a real Mac:
   selectors are read from the v0.59.2 source; Linux proves the harness side
   against a fake app whose press sends the same POST to a fake backend that
   lands like core), whether the owner's side needs an in-app Admit (then the
-  leg is BLOCKED, not worked around), and whether listing `~/Downloads` raises
-  a TCC prompt for the run's host.
+  leg is BLOCKED, not worked around), and - only for a run that passes
+  `--check-operator-downloads` - whether listing `~/Downloads` raises a TCC
+  prompt for the run's host.
