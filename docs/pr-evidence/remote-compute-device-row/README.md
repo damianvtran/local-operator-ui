@@ -54,6 +54,25 @@ Reproduce: `pnpm storybook` (port 6006), then drive
 `/iframe.html?id=<story>&args=theme:<palette>;locale:en&viewMode=story` at the size in
 the table below and screenshot the viewport.
 
+**Round-4 remediation recapture (2026-11-20).** Six frames are new, from one rig that
+also takes the DOM reading each frame is evidence for (`scripts/remote-compute-stopping-frames.mjs`,
+booted by `scripts/with-storybook.mjs`) - a still can show a button that looks disabled and
+cannot say `disabled === true`, and it cannot say `aria-expanded` at all.
+`card-stopping-*` is design round 4's D15: the run being stopped says `Cancelling…` in the
+app's own face, the clock and the hold keep running (it can still spend), and `Cancel` is
+still there, kept in its own word, disabled for the whole window. `card-running-*` was NOT
+retaken: the rig asserts that control's reading (`Cancel` enabled) without overwriting an
+approved frame with a slightly different clip. `pane-cwd-without-row-cwd-open-*` is QA
+round 4's Q-1 - the picker genuinely open, `aria-expanded="true"` and two rows read from
+the DOM in the same pass, after the story's door was moved to wait for the control to
+mount. `runs-unknown-token-*` is design round 4's D17: an `error` row printing the
+server's own token in the mono step beside a `Running` row in sans, which no earlier frame
+carried in the dialog.
+
+Measurement quoted in the PR is taken from these files: the status word's rendered text
+and the Cancel button's `disabled` property, both read from the document the frame was
+taken of.
+
 ## What each set shows
 
 | Frames | State | What it shows |
@@ -75,11 +94,14 @@ the table below and screenshot the viewport.
 | `sheet-refused-600x500-*` | — | The same refusal at the window's own floor (600x500), where the body is 160px against 380px of content - the size at which round 3's MAJOR-1 was raised |
 | `sheet-keyboard-focus-*` | — | The sheet after ONE Tab: the ring is on `View runs`, inside the dialog, so the keyboard enters it (round 2, U6) |
 | `card-running-*` | — | A run spending: status, elapsed from the server's start, the hold one ink step above the clock (D3), the binding sentence on its own line, Cancel |
+| `card-stopping-*` | — | The run being stopped (round 4, D15): `Cancelling…` in the app's own face where the server's mono token used to be, the clock and the hold still running, and `Cancel` disabled - its label kept, because it names what is happening |
 | `card-finished-*` | — | Settled: the charge instead of the hold, Forget instead of Cancel |
 | `card-failed-*` | — | The provider's failure state, `Failed` in `danger` rather than the banner's warning hue (D8) |
 | `runs-populated-*` | — | The list: three rows, two live, Cancel only where a run can still spend, the facts separated by the same painted middots the card uses (round 2, D7), and NO panel-level accent ring (D5) |
 | `runs-record-only-*` | — | Signed out: the banner says these are this device's last known rows |
 | `runs-empty-*` | — | Nothing run yet |
+| `runs-unknown-token-*` | — | One row the client cannot name (`error`) and one it can (`Running`), in the same dialog: the unknown token in the mono step, its neighbour in the app's face (round 4, D17) |
+| `pane-cwd-without-row-cwd-open-*` | — | The picker OPEN through the control's own door over a pane whose row carries no `cwd`, `aria-expanded="true"` and two rows read from the DOM in the same pass (round 4, Q-1) |
 
 ## What these frames cannot claim
 

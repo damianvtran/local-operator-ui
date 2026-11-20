@@ -15,6 +15,7 @@
 	"ui.chat.remote_compute.card.status.failed": "ناکام",
 	"ui.chat.remote_compute.card.status.queued": "قطار میں",
 	"ui.chat.remote_compute.card.status.running": "چل رہا ہے",
+	"ui.chat.remote_compute.card.status.stopping": "منسوخ ہو رہا ہے…",
 	"ui.chat.remote_compute.card.status.succeeded": "مکمل",
 	"ui.chat.remote_compute.card.unavailable": "یہ رن پڑھا نہیں جا سکا۔",
 	"ui.chat.remote_compute.card.untitled": "بلا عنوان رن",

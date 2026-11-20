@@ -55,6 +55,7 @@ const {
 	remoteRetrySeconds,
 	remoteRunPhase,
 	remoteRunStatusKnown,
+	remoteRunStopping,
 	remoteRunDeleted,
 	remoteComputeRead,
 	remoteRun,
@@ -72,6 +73,7 @@ const {
 	RemoteRefusal,
 	desktopEndpoint,
 	desktopRequestSchema,
+	t,
 } = module;
 
 /* --------------------------------------------------------------- the fixtures */
@@ -376,6 +378,57 @@ test("a retryable error is in flight: polling, Cancel, and the server's own toke
 	 * nothing retries it.
 	 */
 	assert.equal(remoteRunPhase("expired"), "failed");
+});
+
+test("a stopping run is named in the app's own words, and stays in flight", () => {
+	/*
+	 * DESIGN ROUND 4, D15. `stopping` is the token a Cancel press is answered with,
+	 * so it is the one in-flight token this surface CAUSES - and it used to fall to
+	 * the raw-token fallback: a lowercase `stopping` in mono, in the corner of the
+	 * card, was the only acknowledgement that the press had landed.
+	 *
+	 * IT STAYS IN FLIGHT, which is the half a label alone would not settle: the run
+	 * can still spend while it is being stopped, so the clock and the hold keep
+	 * running and `Cancel` is still the offered action (disabled on the surfaces, in
+	 * `remote-run-card.tsx` and `remote-runs-list.tsx`).
+	 */
+	assert.equal(remoteRunPhase("stopping"), "in-flight");
+	assert.equal(remoteRunPhase("Stopping"), "in-flight");
+	assert.equal(remoteRunStatusKnown("stopping"), true);
+	assert.equal(remoteRunStopping("stopping"), true);
+	assert.equal(remoteRunStopping("STOPPING"), true);
+	assert.equal(remoteRunStopping("running"), false);
+	assert.equal(remoteRunStopping("stopped"), false);
+	const stopping = remoteRun(
+		live({ id: "stopping", status: "stopping", metered_seconds: 5 }),
+	);
+	const model = remoteRunCardModel(stopping, {
+		now: Date.now() + 1_000,
+		networkName: null,
+	});
+	assert.equal(model.phase, "in-flight");
+	// The app's word, in the app's face - not the server's token in mono.
+	assert.equal(model.status, t("ui.chat.remote_compute.card.status.stopping"));
+	assert.equal(model.status, "Cancelling…");
+	assert.equal(model.statusKnown, true);
+	// The fact the two Cancel buttons read to stop inviting a second press.
+	assert.equal(model.stopping, true);
+	// Still live: the clock runs, the hold is the number that is true now, and the
+	// card still offers the action the dialog's row does.
+	assert.ok(model.elapsed !== null);
+	assert.equal(model.amount?.kind, "held");
+	assert.deepEqual(model.actions, { cancel: true, delete: false });
+	assert.equal(
+		remoteRunPollMs(stopping, Date.now() + 1_000),
+		REMOTE_RUN_POLL_MS,
+	);
+	// A running run is NOT in that window, so its Cancel is offered enabled.
+	const running = remoteRunCardModel(remoteRun(live({ status: "running" })), {
+		now: NOW,
+		networkName: null,
+	});
+	assert.equal(running.stopping, false);
+	assert.deepEqual(running.actions, { cancel: true, delete: false });
 });
 
 test("a deleted run is not drawn on any surface: the list, the count, the card", () => {

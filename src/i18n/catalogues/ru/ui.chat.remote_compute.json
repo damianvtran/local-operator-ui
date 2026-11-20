@@ -15,6 +15,7 @@
 	"ui.chat.remote_compute.card.status.failed": "Сбой",
 	"ui.chat.remote_compute.card.status.queued": "В очереди",
 	"ui.chat.remote_compute.card.status.running": "Выполняется",
+	"ui.chat.remote_compute.card.status.stopping": "Отменяется…",
 	"ui.chat.remote_compute.card.status.succeeded": "Завершён",
 	"ui.chat.remote_compute.card.unavailable": "Не удалось прочитать этот запуск.",
 	"ui.chat.remote_compute.card.untitled": "Запуск без названия",

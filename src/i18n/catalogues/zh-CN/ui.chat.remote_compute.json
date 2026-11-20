@@ -15,6 +15,7 @@
 	"ui.chat.remote_compute.card.status.failed": "失败",
 	"ui.chat.remote_compute.card.status.queued": "排队中",
 	"ui.chat.remote_compute.card.status.running": "运行中",
+	"ui.chat.remote_compute.card.status.stopping": "取消中……",
 	"ui.chat.remote_compute.card.status.succeeded": "已完成",
 	"ui.chat.remote_compute.card.unavailable": "无法读取此次运行。",
 	"ui.chat.remote_compute.card.untitled": "未命名运行",

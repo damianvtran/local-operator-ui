@@ -42,7 +42,11 @@ import type {
 	RemoteRun,
 	RemoteRunPhase,
 } from "./remote-compute-types";
-import { remoteRunPhase, remoteRunStatusKnown } from "./remote-compute-types";
+import {
+	remoteRunPhase,
+	remoteRunStatusKnown,
+	remoteRunStopping,
+} from "./remote-compute-types";
 
 /* ------------------------------------------------------------ the picker row */
 
@@ -596,9 +600,18 @@ export function summarisePrompt(prompt: string): string {
 
 export type RemoteRunCardModel = {
 	title: string;
-	/** `Running`, `Queued`, `Failed`, or the server's own token when unknown. */
+	/** `Running`, `Queued`, `Cancelling…`, `Failed`, or the server's own token when unknown. */
 	status: string;
 	statusKnown: boolean;
+	/**
+	 * The run is being stopped: the press landed and the server has not settled it.
+	 *
+	 * NOT `cancel.isPending`. That is the request in flight, and it is over in the
+	 * beat the answer takes, while the run reports `stopping` for as long as the
+	 * stop itself takes - the whole window in which a second press would be a
+	 * second request (design round 4, D15).
+	 */
+	stopping: boolean;
 	phase: RemoteRunPhase;
 	/** `4m12s`, from the server's `started_at`; `null` before it starts. */
 	elapsed: string | null;
@@ -648,6 +661,7 @@ export function remoteRunCardModel(
 		title: run.name || t("ui.chat.remote_compute.card.untitled"),
 		status: known ? statusLabel(run.status, phase) : run.status,
 		statusKnown: known,
+		stopping: remoteRunStopping(run.status),
 		phase,
 		elapsed,
 		amount,
@@ -677,6 +691,16 @@ function statusLabel(status: string, phase: RemoteRunPhase): string {
 	}
 	if (token === "provisioning" || token === "starting" || token === "running") {
 		return t("ui.chat.remote_compute.card.status.running");
+	}
+	/*
+	 * THE ONE IN-FLIGHT TOKEN THIS APP CAUSES HAS A WORD (design round 4, D15).
+	 * `stopping` is what a Cancel press is answered with, so the press is
+	 * acknowledged by the card instead of by a lowercase server token in mono - the
+	 * raw-token fallback keeps its job for tokens this client does not initiate
+	 * (`error`). It stays in flight, so the clock and the hold keep running.
+	 */
+	if (remoteRunStopping(status)) {
+		return t("ui.chat.remote_compute.card.status.stopping");
 	}
 	switch (phase) {
 		case "succeeded":

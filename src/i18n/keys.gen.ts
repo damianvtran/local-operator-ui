@@ -7321,6 +7321,7 @@ export type MessageParams = {
 	"ui.chat.remote_compute.card.status.failed": undefined;
 	"ui.chat.remote_compute.card.status.queued": undefined;
 	"ui.chat.remote_compute.card.status.running": undefined;
+	"ui.chat.remote_compute.card.status.stopping": undefined;
 	"ui.chat.remote_compute.card.status.succeeded": undefined;
 	"ui.chat.remote_compute.card.unavailable": undefined;
 	"ui.chat.remote_compute.card.untitled": undefined;

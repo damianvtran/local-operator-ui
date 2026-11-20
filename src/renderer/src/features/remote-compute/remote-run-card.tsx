@@ -215,7 +215,14 @@ export const RemoteRunCard: FC<RemoteRunCardProps> = ({
 						variant="ghost"
 						size="sm"
 						data-remote-run-cancel=""
-						disabled={cancel.isPending}
+						/*
+						 * THE BUTTON DOES NOT INVITE A SECOND PRESS (design round 4, D15).
+						 * `cancel.isPending` covers the request only; the run then reports
+						 * `stopping` until the server settles it, and for that whole window a lit
+						 * `Cancel` beside a run already being cancelled reads as a press that did
+						 * not land. The label stays: it names what is happening.
+						 */
+						disabled={cancel.isPending || model.stopping}
 						onClick={() => {
 							setFailure(null);
 							cancel.mutate(run.id, {

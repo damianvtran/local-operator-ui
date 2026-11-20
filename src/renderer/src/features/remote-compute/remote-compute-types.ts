@@ -385,6 +385,14 @@ export function remoteRunPhase(status: string): RemoteRunPhase {
 		 */
 		case "error":
 			return "in-flight";
+		/*
+		 * `stopping` IS THE WINDOW AFTER A CANCEL PRESS AND BEFORE THE SETTLEMENT, and
+		 * it stays in flight because the run can still spend and the clock must keep
+		 * running. Read as settled it would hide `Cancel` in the beat it is being
+		 * answered and take `Finished` for an outcome the server has not stated.
+		 */
+		case "stopping":
+			return "in-flight";
 		case "failed":
 		case "timed-out":
 		case "timed_out":
@@ -397,6 +405,18 @@ export function remoteRunPhase(status: string): RemoteRunPhase {
 		default:
 			return "in-flight";
 	}
+}
+
+/**
+ * Whether a run is being stopped: the beat between the press and the settlement.
+ *
+ * ONE RULE, TWO SURFACES. The card and the runs dialog both offer `Cancel`, and
+ * both must stop inviting a second press for that whole beat - which is longer
+ * than the request itself (`cancel.isPending`), because the run reports `stopping`
+ * until the server settles it.
+ */
+export function remoteRunStopping(status: string): boolean {
+	return status.toLowerCase() === "stopping";
 }
 
 /** Whether a status token is one this client can name. */
@@ -425,6 +445,13 @@ export function remoteRunStatusKnown(status: string): boolean {
 		case "expired":
 		case "cancelled":
 		case "canceled":
+		/*
+		 * KNOWN, because THIS surface is what causes it: a Cancel press is answered
+		 * with `stopping`, so the card owes the press a sentence of its own rather than
+		 * the raw-token fallback (design round 4, D15). The fallback keeps its job for
+		 * tokens the client does not initiate (`error`, a future provider phase).
+		 */
+		case "stopping":
 		/* The settled token a deployment may publish instead of an outcome; see
 		 * `remoteRunPhase`. Known, because the card's mono fallback is for tokens this
 		 * client cannot read at all. */

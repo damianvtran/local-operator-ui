@@ -20,7 +20,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { type ReactNode, useLayoutEffect } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from "react";
 import "../../styles/index.css";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -241,31 +241,48 @@ const Pickers = ({
 	 * carries, and the reason the sheet reads the pane before the row (Q-2).
 	 */
 	row?: { session_id: string; title: string; cwd?: string };
-	/** Asks the control's own door to open the picker on this frame's first paint. */
+	/** Asks the control's own door to open the picker once the control has mounted. */
 	open?: boolean;
 }) => {
 	useLayoutEffect(() => {
-		/*
-		 * THE TOKEN THE CONTROL WILL HAVE SEEDED ITSELF WITH. `ChatHeaderDevice` compares
-		 * a request against the value the store held when IT mounted - which is this
-		 * effect's `now`, since a child mounts before its parent's layout effect - and
-		 * opens only on a DIFFERENT number. `seed()` clears the counter, so the request
-		 * below has to be checked against that pre-seed value rather than assumed new: a
-		 * frame re-mounted over one that already asked at 1 would otherwise be served the
-		 * same 1 and stay shut.
-		 */
-		const served = useChatDeviceStore.getState().pickerRequests[SESSION];
 		installBridge(remote);
 		seed();
 		if (row) useCanonicalSessionsStore.setState({ sessions: [row] });
-		if (open) {
-			const request = useChatDeviceStore.getState().requestPicker;
-			request(SESSION);
-			if (useChatDeviceStore.getState().pickerRequests[SESSION] === served) {
-				request(SESSION);
+	}, [remote, row]);
+	/*
+	 * THE REQUEST WAITS FOR THE CONTROL TO MOUNT (QA round 4, Q-1).
+	 *
+	 * `ChatDeviceSlot` renders `ChatHeaderDevice` only once a capability read has
+	 * answered, and that control seeds its "already served" baseline from the
+	 * store's counter AT ITS OWN MOUNT. Asking from this frame's layout effect was
+	 * therefore asking before the control existed: it mounted afterwards, seeded
+	 * itself with the already-incremented number, saw no change, and the panel never
+	 * opened - three renders, zero rows, `aria-expanded="false"`.
+	 *
+	 * So the door is knocked on only when the chip is on screen, which is the
+	 * signal that the control has mounted and taken its baseline. `seed()` above
+	 * has already cleared the counter, so the request is a change.
+	 */
+	const asked = useRef(false);
+	useEffect(() => {
+		if (!open || asked.current) return;
+		let frame = 0;
+		let cancelled = false;
+		const knock = () => {
+			if (cancelled) return;
+			if (!document.querySelector("[data-device-chip]")) {
+				frame = requestAnimationFrame(knock);
+				return;
 			}
-		}
-	}, [remote, row, open]);
+			asked.current = true;
+			useChatDeviceStore.getState().requestPicker(SESSION);
+		};
+		frame = requestAnimationFrame(knock);
+		return () => {
+			cancelled = true;
+			cancelAnimationFrame(frame);
+		};
+	}, [open]);
 	return (
 		<div className="flex flex-col bg-canvas">
 			<Band width={width}>
@@ -534,6 +551,20 @@ export const CardRunning: Story = {
 	render: () => <Card remote={runAnswer({ status: "running" })} />,
 };
 
+/**
+ * A run being stopped, the beat a Cancel press is answered with (design round 4, D15).
+ *
+ * THE WORD IS THE APP'S, not the server's token: `stopping` is the one in-flight
+ * token this surface causes, so the card owes the press a sentence. The clock and
+ * the hold keep running (the run can still spend) and `Cancel` is still offered -
+ * disabled for the whole window, so the only enabled control is one that will act.
+ */
+export const CardStopping: Story = {
+	render: () => (
+		<Card remote={runAnswer({ status: "stopping", metered_seconds: 5 })} />
+	),
+};
+
 /** Settled with its charge, and the controls that a settled run offers. */
 export const CardFinished: Story = {
 	render: () => (
@@ -629,6 +660,35 @@ export const RunsPopulated: Story = {
 export const RunsRecordOnly: Story = {
 	render: () => (
 		<List remote={runsList([{ ...RUN, status: "succeeded" }], "signed-out")} />
+	),
+};
+
+/**
+ * A row whose status this client cannot name (design round 4, D17).
+ *
+ * `error` is in flight and retryable, and this client has no sentence for "failed,
+ * but the server will try again" - so the row prints the deployment's own token in
+ * the mono step. The frame exists because the delta added that mono step here and
+ * no earlier frame carried an unknown token in the dialog: `Running` beside it is
+ * the control, the sans word for a status this app CAN name.
+ */
+export const RunsUnknownToken: Story = {
+	render: () => (
+		<List
+			remote={runsList(
+				[
+					{ ...RUN, network_id: "n_4a1c" },
+					{
+						...RUN,
+						id: "aa12bc77f001",
+						name: "Rewrite the parser tests",
+						status: "error",
+						started_at: Date.now() - 40_000,
+					},
+				],
+				"ok",
+			)}
+		/>
 	),
 };
 

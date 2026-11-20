@@ -1,0 +1,87 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "cf7ec0dbe2cd",
+		"instance": "pr1971-r4-ur-remotecompute-cf7ec0dbe2cd",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session wrote none of the strings it audited and edited no catalogue, context sidecar or code in this worktree; the translator is the PR's remediation coder, working in another session. The only bytes this session created are the i18n/receipts/ files it writes.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r4-ur-remotecompute-cf7ec0dbe2cd",
+	"locale": "ur",
+	"namespace": "ui.chat.remote_compute",
+	"date": "2026-11-20",
+	"head": "50241a6ae23554af1703f7deefb2564bbe978a9a",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"audited_bytes": {
+		"state": "uncommitted working tree of the shared worktree at audit time; the added key is not in any commit yet, so the sha256 values below (not the head) are what this audit binds",
+		"worktree": "/Users/olafagbemi/src/local-operator-ui/.worktrees/rc-device-row",
+		"head_at_audit": "50241a6ae23554af1703f7deefb2564bbe978a9a",
+		"r3_baseline_commit": "5a9e3fbe38cfd5ed497ffc2f0855f6bf20838e69"
+	},
+	"scope": "Round-4 delta audit of the ONE added key ui.chat.remote_compute.card.status.stopping in this locale (ur), held to the English source and its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58, plus the shipped corpus in this locale (ur) for the neighbouring in-flight and settled status words. The other 83 keys are carried from the r3 audit of these same files: verified, not assumed — removing the single added line from the target on disk reproduces the r3 receipt's recorded target_sha256 exactly, so the rest of the namespace is byte-identical to the r3-audited bytes. Only that one line differs.",
+	"status": "passed",
+	"result": "clean",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+		"english_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+		"context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+		"context_sha256": "ec264ded1402c97e557fa0edc8d51c0f4308b83638e37ac54f75c2a7f53c20c4",
+		"target": "src/i18n/catalogues/ur/ui.chat.remote_compute.json",
+		"target_sha256": "3fd3454acc2796b47a96704074686933e47f7ccb3c0c278c26082df52ca7f00d",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/ur.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"style_guide_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+	},
+	"sha256": {
+		"en": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+		"ur": "3fd3454acc2796b47a96704074686933e47f7ccb3c0c278c26082df52ca7f00d"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.card.status.stopping"
+		],
+		"english_bytes": {
+			"ui.chat.remote_compute.card.status.stopping": "Cancelling…"
+		},
+		"one_line_proof": "target on disk minus the one added line == the r3 receipt's target_sha256 for this locale (53931fdee241831d…); English minus the same line == d07c9ca6078b985d… (the r3 English sha). Verified by re-hashing the file with that line removed, not by eyeballing the diff.",
+		"target_minus_added_line_sha256": "53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027"
+	},
+	"keyset_check": {
+		"rule": "the locale key set must equal English",
+		"result": "84 keys in English and in this locale, set-equal; node scripts/i18n/check-duplicates.mjs: 0 duplicate keys over 1613 files; node scripts/i18n/context-parity.mjs: ok; node scripts/i18n/generate.mjs --check: src/i18n/keys.gen.ts byte-identical to a fresh generation"
+	},
+	"meaning_check": {
+		"rule": "context sidecar: present progressive, one trailing ellipsis, sentence case, same part of speech as status.running where the locale has one, never a past-tense outcome, never a promise that the run stopped",
+		"neighbours": {
+			"running": "En curso",
+			"queued": "En cola",
+			"cancelled": "Cancelada",
+			"failed": "Fallida",
+			"succeeded": "Finalizada"
+		},
+		"verdict": "منسوخ ہو رہا ہے… is the progressive 'is being cancelled' — the same رہا ہے shape as status.running's چل رہا ہے (masculine singular, agreeing with رن) — and distinct from the settled منسوخ; it does not say the run has stopped.",
+		"value_audited": "منسوخ ہو رہا ہے…"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "all 84 values scanned for الگ تھلگ, محفوظ, نجی, منقسم, پابند, محدود — 0 matches",
+		"result": "0 matches in all 84 values of the namespace"
+	},
+	"ellipsis_check": {
+		"rule": "exactly one trailing ellipsis marker, in the locale's own convention; no ASCII '...', no space before it",
+		"result": "PASS: one trailing U+2026 (this locale's convention; its style guide sets no different form), no ASCII '...', no space before the mark, nothing after it."
+	},
+	"budget_check": {
+		"rule": "the context entry declares no maxCells for this key (role/tone/note only), so there is no cell budget to hold it to",
+		"english_cells": 11
+	},
+	"corrections": [],
+	"findings": [],
+	"notes": "Residual findings: none. Every rule in the brief holds on this value; nothing was edited. Register and the رہا ہے progressive match the namespace's other Urdu statuses (چل رہا ہے / قطار میں / منسوخ)."
+}

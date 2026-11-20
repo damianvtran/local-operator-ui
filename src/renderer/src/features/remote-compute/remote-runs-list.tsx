@@ -213,7 +213,10 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 											<Button
 												variant="ghost"
 												size="sm"
-												disabled={cancel.isPending}
+												data-radient-run-cancel=""
+												/* The card's rule, on the dialog's own button (design D15): the
+												 * whole `stopping` window, not just the request. */
+												disabled={cancel.isPending || model.stopping}
 												onClick={() => {
 													setFailure(null);
 													cancel.mutate(run.id, {

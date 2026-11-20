@@ -15,6 +15,7 @@
 	"ui.chat.remote_compute.card.status.failed": "Fallida",
 	"ui.chat.remote_compute.card.status.queued": "En cola",
 	"ui.chat.remote_compute.card.status.running": "En curso",
+	"ui.chat.remote_compute.card.status.stopping": "Cancelando…",
 	"ui.chat.remote_compute.card.status.succeeded": "Finalizada",
 	"ui.chat.remote_compute.card.unavailable": "No se pudo leer esta ejecución.",
 	"ui.chat.remote_compute.card.untitled": "Ejecución sin título",

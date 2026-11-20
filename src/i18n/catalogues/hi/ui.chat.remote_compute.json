@@ -15,6 +15,7 @@
 	"ui.chat.remote_compute.card.status.failed": "विफल",
 	"ui.chat.remote_compute.card.status.queued": "कतार में",
 	"ui.chat.remote_compute.card.status.running": "चल रहा है",
+	"ui.chat.remote_compute.card.status.stopping": "रद्द हो रहा है…",
 	"ui.chat.remote_compute.card.status.succeeded": "पूरा हुआ",
 	"ui.chat.remote_compute.card.unavailable": "यह रन पढ़ा नहीं जा सका।",
 	"ui.chat.remote_compute.card.untitled": "बिना नाम का रन",

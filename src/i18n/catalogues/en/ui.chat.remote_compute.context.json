@@ -88,6 +88,11 @@
 		"tone": "one word, sentence case",
 		"note": "Also covers provisioning and starting; keep it true for the whole span."
 	},
+	"ui.chat.remote_compute.card.status.stopping": {
+		"role": "run status: the run is being stopped, after the user pressed Cancel",
+		"tone": "one short word or phrase in the present progressive, sentence case, one trailing ellipsis",
+		"note": "The press landed and the server has not settled the run yet. It is still in flight, so the clock and the hold keep running. Same part of speech as status.running where the locale has one; never a past-tense outcome and never a promise that the run stopped."
+	},
 	"ui.chat.remote_compute.card.status.succeeded": {
 		"role": "run status: finished successfully",
 		"tone": "one word, sentence case",

@@ -121170,8 +121170,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "9b39f1a5176b47d607128c9c8239b01a7394f9824c157b342d21de907aa633a2",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "4e2060bfa5f6f4f7b801cc3be67777470da35d032a9c59ef5af82e9f06acb55f",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121182,19 +121182,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r3-fr-remotecompute-e3f2fc029be5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "pr1971-r4-fr-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-fr-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "896cfa965778937635157b14c11a288936ee1103a3e4e2136448db5522897651",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 plus this round's one-character typography correction (U+202F before the colon) - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r3-fr-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-fr-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "60c6867d20ccfcb8b5e7bd00d686b3a6fe3acc6b3c879dd07127303fba3d4a5a",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121246,14 +121246,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "9b39f1a5176b47d607128c9c8239b01a7394f9824c157b342d21de907aa633a2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r3-fr-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r3-fr-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "896cfa965778937635157b14c11a288936ee1103a3e4e2136448db5522897651",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 plus this round's one-character typography correction (U+202F before the colon) - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r3-fr-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "056ecee6e6a242c30c6a009255a9f488c0c6db9db3065446a0ed0aa1d7072bc9",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "347691bfa7e5b7b8c0589b00a6e406b0098c65580d5172a973238e0e887d67ee",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121264,19 +121288,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r3-es-remotecompute-e3f2fc029be5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "pr1971-r4-es-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-es-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "ec42920b95d839237837679149a49fb1a2e82795dbde9f7809071ed0d4700145",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r3-es-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-es-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "a8f2bd39ff4a3b03f50fbb74c71f3113906b5b0398d377d59fd399d2be574031",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121328,14 +121352,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "056ecee6e6a242c30c6a009255a9f488c0c6db9db3065446a0ed0aa1d7072bc9",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r3-es-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r3-es-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "ec42920b95d839237837679149a49fb1a2e82795dbde9f7809071ed0d4700145",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r3-es-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "378874c5fb417fa258dcbd6e4ba985ee9aea71121b55d3c747ada5ff092f7bb8",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "04a00e06d3817bd1188226622f354e5025680de71ac0668c3657453c987291ce",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121346,19 +121394,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1971-r3-zh-CN-remotecompute-e3f2fc029be5",
+					"instance": "pr1971-r4b-zh-CN-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "d512b6128779ecdd8128c0611c4799ae779d47d98bb0027908316c6e400a0573",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4b-zh-CN-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "7503d36d27206507668449e88310e5b21920e8346d0d91a88a0588ec43cd9cef",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, re-audited on the ellipsis-corrected bytes the r4 pass requested, against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping), re-audited after the 取消中…… correction; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121410,14 +121458,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "378874c5fb417fa258dcbd6e4ba985ee9aea71121b55d3c747ada5ff092f7bb8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1971-r3-zh-CN-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "d512b6128779ecdd8128c0611c4799ae779d47d98bb0027908316c6e400a0573",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "a4d86a0cc1bce4cf90f15895c1b28917efbac7c47432d9b7fb40b40144f19dc6",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "48c117cee5acc9212a0a82fbf948b69e92152bbe14f4e724f1fac51c27df0cfb",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121428,19 +121500,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1971-r3-ru-remotecompute-e3f2fc029be5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "pr1971-r4-ru-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-ru-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "090de5e49a4550a700929a4e174993d31aa336f12596a250c3d83a2e2037f1cb",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r3-ru-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-ru-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "1c53a1e8acba484a56aa971c4e3295a27b175c9404dd239c3e82720b76fc1c5c",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121492,14 +121564,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "a4d86a0cc1bce4cf90f15895c1b28917efbac7c47432d9b7fb40b40144f19dc6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1971-r3-ru-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1971-r3-ru-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "090de5e49a4550a700929a4e174993d31aa336f12596a250c3d83a2e2037f1cb",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r3-ru-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "380e37d0b8e4219e03631b5c15737ecb10c8e27b537ea90fca06cd21c75f180d",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "14c4ff8ee0a172862b9f5f4fe124230e38fc7723e6b8ea13526731c56ba40c22",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121510,19 +121606,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1971-r3-vi-remotecompute-e3f2fc029be5",
+					"instance": "pr1971-r4-vi-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-vi-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "34aa42110ddc1c0615cc3bbe7e2cc4fb9039412b6b0f1bd139bc4026c419b6a0",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r3-vi-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-vi-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "a62b3673e4f263dc76388d16385722a9fe2162619921be30ea98328d13b59d43",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121574,14 +121670,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "380e37d0b8e4219e03631b5c15737ecb10c8e27b537ea90fca06cd21c75f180d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1971-r3-vi-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1971-r3-vi-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "34aa42110ddc1c0615cc3bbe7e2cc4fb9039412b6b0f1bd139bc4026c419b6a0",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r3-vi-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "3fd3454acc2796b47a96704074686933e47f7ccb3c0c278c26082df52ca7f00d",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121592,19 +121712,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1971-r3-ur-remotecompute-e3f2fc029be5",
+					"instance": "pr1971-r4-ur-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-ur-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "05c72e2449f06264bbaebc20bac56edb390758bb1267bb16312beb510fcbfc04",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-ur-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "751b3451e4cc241f4124c6b00e0c1598dac89501b0c29e5c3fd953376df0dc4b",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121656,14 +121776,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1971-r3-ur-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1971-r3-ur-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "05c72e2449f06264bbaebc20bac56edb390758bb1267bb16312beb510fcbfc04",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.remote_compute",
-			"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
-			"target_sha256": "66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6",
+			"source_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+			"target_sha256": "df9f64fb790a852fef28a62f717ede094e0afe2d586361788e222fbc9b151143",
 			"translator": {
 				"agent": "coder",
 				"model": "deepseek/deepseek-flash",
@@ -121674,19 +121818,19 @@
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1971-r3-hi-remotecompute-e3f2fc029be5",
+					"instance": "pr1971-r4-hi-remotecompute-cf7ec0dbe2cd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1971-r3-hi-remotecompute-e3f2fc029be5.json",
-					"receipt_sha256": "15630997c4eb137000f43fed425bc22940eb5ee965bf3a3999e665ba05be6301",
-					"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
-					"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r3-hi-remotecompute-e3f2fc029be5/record.json"
+					"receipt": "i18n/receipts/pr1971-r4-hi-remotecompute-cf7ec0dbe2cd.json",
+					"receipt_sha256": "f5d847074485c215eec06ab1a25b2eb8b3ef39032e234da9178ed5b587ed80bd",
+					"scope": "PR #1971 round 4 (design D15): the one added key ui.chat.remote_compute.card.status.stopping, audited against the English source, its context sidecar, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58. The other 84 keys are unchanged bytes and were not re-read.",
+					"note": "PR #1971 r4 D15: one key (card.status.stopping) re-audited; 0 blocker/major. Evidence: i18n/audits/r4-delta-brief.md"
 				}
 			],
 			"status": "audited",
@@ -121735,6 +121879,30 @@
 							"receipt_sha256": "8ff8308d8a10c3d57c2e44ec37250d44dbd43540d54e18fbe70946520f40e3f5",
 							"scope": "PR #1971 round 2: the 10 round-1 remote-compute delta keys re-audited in this locale on bec0906c52 - claim-sensitive binding, tier and store copy plus the row remedy",
 							"note": "PR #1971 r2: independent re-audit of the round-1 copy delta; translator = the PR's coder (deepseek/deepseek-flash). Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r2-hi-remotecompute-3b3df24653ea/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+					"target_sha256": "66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1971-r3-hi-remotecompute-e3f2fc029be5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1971-r3-hi-remotecompute-e3f2fc029be5.json",
+							"receipt_sha256": "15630997c4eb137000f43fed425bc22940eb5ee965bf3a3999e665ba05be6301",
+							"scope": "PR #1971 round 3: the three remote-compute keys this delta re-staled re-audited in this locale on 5a9e3fbe38 - the U7 token quoting, the D2 subject and the claim sweep",
+							"note": "PR #1971 r3: independent re-audit of the re-staled delta; U7 quoting renders one pair, D2 subject present. Evidence: i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r3-hi-remotecompute-e3f2fc029be5/record.json"
 						}
 					],
 					"status": "audited"
