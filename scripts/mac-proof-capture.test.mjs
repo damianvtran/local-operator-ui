@@ -30,6 +30,7 @@ import {
 	EXIT,
 	FILES_READY,
 	FORBIDDEN_DAEMON_PATH,
+	MEASUREMENT_LIMITS,
 	PREVIEW_FILE_DEFAULT,
 	RUNNER_MAX_STEPS,
 	Refusal,
@@ -84,6 +85,7 @@ import {
 	quarantineProblem,
 	readImagePreview,
 	readLibraryProvenance,
+	receiptLimits,
 	redactEnv,
 	relayPortFromConfig,
 	relayPortProblem,
@@ -1862,13 +1864,47 @@ it("library provenance: a LOCAL first row fails the run (exit 1) with the judged
 	assert.equal(receipt.exit, 1);
 	assert.deepEqual(receipt.libraryProvenance, {
 		assetId: "la_00000000000000bb",
-		remote: null,
-		path: "/Users/rig/report.pdf",
+		remote: false,
+		localPath: true,
 		source: "mentioned",
 		pass: false,
 		problem:
 			"library row la_00000000000000bb is not a peer row (remote is null)",
 	});
+	// S1: a boolean, never the absolute local path, anywhere in the receipt.
+	assert.ok(
+		!readFileSync(join(out, "receipt.json"), "utf8").includes("/Users/rig"),
+	);
+	// NEW (release owner): the run's known measurement limits, by scene.
+	assert.deepEqual(
+		receipt.limits.map((l) => l.id),
+		["selectors-fixture-proven"],
+	);
+});
+
+test("receipt limits: each run lists exactly the known measurement limits its scenes hit", () => {
+	const ids = (scenes) => receiptLimits(scenes).map((l) => l.id);
+	assert.deepEqual(ids(["file-preview"]), [
+		"files-paging-caption",
+		"files-attachments-only",
+		"preview-first-screen",
+		"preview-no-decode-wait",
+		"selectors-fixture-proven",
+	]);
+	assert.deepEqual(ids(["files"]), [
+		"files-paging-caption",
+		"files-attachments-only",
+		"selectors-fixture-proven",
+	]);
+	assert.deepEqual(ids(["library"]), ["selectors-fixture-proven"]);
+	assert.deepEqual(ids(["conversation", "canvas"]), []);
+	for (const limit of receiptLimits(SCENES)) {
+		assert.deepEqual(Object.keys(limit), ["id", "text"]);
+		assert.ok(limit.text.length > 0 && limit.text.length <= 200, limit.id);
+	}
+	// Every scene a limit names is a real scene.
+	for (const limit of MEASUREMENT_LIMITS)
+		for (const scene of limit.scenes) assert.ok(SCENES.includes(scene));
 });
 
 it("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", async () => {
@@ -2172,12 +2208,19 @@ it("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a
 				.libraryProvenance,
 			{
 				assetId: "la_00000000000000aa",
-				remote: { device_id: "d1", device_name: "Owner" },
-				path: null,
+				remote: true,
+				localPath: false,
 				source: "generated",
 				pass: true,
 			},
 		);
+		// S1: the peer's device id/name never reach the (public) receipt.
+		const claimedReceipt = readFileSync(
+			join(claimedOut, "receipt.json"),
+			"utf8",
+		);
+		assert.ok(!claimedReceipt.includes('"Owner"'), "no device name");
+		assert.ok(!claimedReceipt.includes('"d1"'), "no device id");
 		const seen = JSON.parse(
 			readFileSync(join(rig, "fake-app-seen.json"), "utf8"),
 		);
@@ -4615,6 +4658,31 @@ const V0592_ANCHORS = Object.freeze([
 		'data-tour-tag="file-row"',
 		'[data-tour-tag="file-row"]',
 	],
+	// F1: index rows vs attachment rows, told apart by the row id.
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1438,
+		"data-file-id={doc.id}",
+		"[data-file-id]",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1534,
+		"data-file-id={doc.id}",
+		"[data-file-id]",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/attachment-items.ts",
+		41,
+		'export const ATTACHMENT_ID_PREFIX = "attachment:";',
+		'[data-file-id^="attachment:"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/attachment-items.ts",
+		140,
+		"id: `${ATTACHMENT_ID_PREFIX}${item.key}`,",
+		'[data-file-id^="attachment:"]',
+	],
 	[
 		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
 		1552,
@@ -4637,6 +4705,13 @@ const V0592_ANCHORS = Object.freeze([
 		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
 		262,
 		"data-remote-action={action.id}",
+		'[data-remote-action="show-in-canvas"]',
+	],
+	// The VALUE `action.id` takes for the canvas entry (F3: values, not names).
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		130,
+		'case "show-in-canvas":',
 		'[data-remote-action="show-in-canvas"]',
 	],
 	[
@@ -4752,6 +4827,52 @@ test("v0.59.2 anchors: every selector fragment is backed by a frozen tag line, a
 });
 
 /*
+ * F3: VALUE-level coverage. The test above checks attribute NAMES, so a
+ * selector reading `[data-tour-tag="file-rows"]` or `[data-file-id^="attachmnt:"]`
+ * would still pass it. Here every `[attr op "value"]` token the scene waits and
+ * presses use must be, verbatim, the fragment of an anchor whose frozen v0.59.2
+ * line SHOWS that value - the literal string, or for a boolean ARIA value an
+ * expression assigned to that attribute (React renders it "true"/"false").
+ * `title`/`alt` values are exempt: they are the --preview-file name, not markup
+ * (their exact-name behaviour is pinned by the file-preview tests).
+ */
+test("v0.59.2 anchors: every attribute VALUE a selector matches is one a frozen tag line shows", () => {
+	const anchors = [...V0592_ANCHORS, ...RADIX_ANCHORS];
+	const tokens = new Set(sceneSelectors().match(/\[[a-z-]+[\^$*]?="[^"]*"\]/g));
+	let checked = 0;
+	for (const token of tokens) {
+		const [, attr, value] = token.match(/^\[([a-z-]+)[\^$*]?="([^"]*)"\]$/);
+		if (attr === "title" || attr === "alt") continue;
+		const backing = anchors.filter((a) => a[3] === token);
+		assert.ok(backing.length, `${token} is no anchor's fragment`);
+		const shown = backing.some(
+			([, , text]) =>
+				text.includes(`"${value}"`) ||
+				(["true", "false"].includes(value) && text.includes(`${attr}={`)),
+		);
+		assert.ok(shown, `no anchor line for ${token} shows the value ${value}`);
+		checked++;
+	}
+	// The tokens this PR introduced, named so a refactor cannot drop them unseen.
+	for (const token of [
+		'[data-tour-tag="files-scroller"]',
+		'[data-tour-tag="file-row"]',
+		'[data-file-id^="attachment:"]',
+		'[data-remote-action="show-in-canvas"]',
+		'[aria-busy="false"]',
+		'[aria-haspopup="menu"]',
+		'[role="menu"]',
+	])
+		assert.ok(tokens.has(token), `${token} is in a scene selector`);
+	assert.ok(checked >= 7, `checked ${checked} valued tokens`);
+	// And the check bites: a misspelt value has no anchor.
+	assert.equal(
+		anchors.some((a) => a[3] === '[data-tour-tag="file-rows"]'),
+		false,
+	);
+});
+
+/*
  * The menu's own attributes come from Radix, not from app source: the
  * versions v0.59.2's pnpm-lock.yaml pins (radix-ui 1.6.7 ->
  * @radix-ui/react-dropdown-menu 2.1.24 / react-menu) render them. Checked
@@ -4806,8 +4927,13 @@ test("v0.59.2 anchors match the tag's own source, line for line (full checkout)"
 		spawnSync("git", ["cat-file", "-e", "v0.59.2^{commit}"], { cwd: repo })
 			.status !== 0
 	) {
-		// CI checks out with fetch-depth 2 and no tags; the frozen anchors above
-		// still bind the selectors there. Said loudly, never a silent pass.
+		// A LOCAL-ONLY guarantee (F3). CI checks out with `fetch-depth: 2` and no
+		// tags (.github/workflows/ci.yml), so in CI this test always skips and the
+		// selectors are bound by the frozen anchors and the name- and value-level
+		// tests above - which prove the selectors agree with the anchor TEXT, not
+		// that the text is still what v0.59.2 says. That second half is checked
+		// here, where the anchors are edited: a full local checkout with tags.
+		// Said loudly, never a silent pass.
 		t.skip(
 			"v0.59.2 is not in this clone (shallow, no tags); the line-for-line re-read runs in a full checkout",
 		);
@@ -4830,7 +4956,19 @@ test("v0.59.2 anchors match the tag's own source, line for line (full checkout)"
 	}
 });
 
-/* Fixtures shaped like v0.59.2's markup (finder-files-view.tsx :811-:895, :1073-:1083, :1533-:1553). */
+/* Fixtures shaped like v0.59.2's markup (finder-files-view.tsx :811-:895, :912-:1089, :1533-:1553). */
+const fileRows = (ids) =>
+	ids
+		.map(
+			(id) =>
+				`<div data-tour-tag="file-row" data-file-id="${id}"><button title="${id}">x</button></div>`,
+		)
+		.join("");
+// The Attachments <section> has no attribute of its own (:912-915).
+const attachmentsSection = (...ids) =>
+	`<section><h3><button>Attachments<span class="text-meta text-ink-muted">${ids.length}</span></button></h3><ul data-tour-tag="files-grid"><li><div class="grid">${fileRows(ids)}</div></li></ul></section>`;
+const imagesSection = (...ids) =>
+	`<section><h3><button>Images<span class="text-meta text-ink-muted">${ids.length}</span></button></h3><ul data-tour-tag="files-grid"><li><div class="grid">${fileRows(ids)}</div></li></ul></section>`;
 const chatHeader = '<header data-chat-region="header"></header>';
 const filesShell = (inner) =>
 	`${chatHeader}<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller">${inner}</section></section>`;
@@ -4865,19 +5003,58 @@ const FILES_FACES = Object.freeze({
 	],
 	rows: [
 		filesShell(
-			'<section><h3><button>Images<span class="text-meta text-ink-muted">1</span></button></h3><ul><div data-tour-tag="file-row"><button title="/Users/o/image-1.png\nOn mac">i</button></div></ul></section>',
+			'<section><h3><button>Images<span class="text-meta text-ink-muted">1</span></button></h3><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"><button title="/Users/o/image-1.png\nOn mac">i</button></div></ul></section>',
 		),
 		true,
 	],
 	"rows, attachments still loading": [
 		filesShell(
-			'<section><h3><button>Attachments<span class="text-meta text-ink-muted">0</span><span class="text-meta text-ink-dim">Loading session files…</span></button></h3></section><section><ul><div data-tour-tag="file-row"></div></ul></section>',
+			'<section><h3><button>Attachments<span class="text-meta text-ink-muted">0</span><span class="text-meta text-ink-dim">Loading session files…</span></button></h3></section><section><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"></div></ul></section>',
 		),
 		false,
 	],
 	"rows, attachments partial": [
 		filesShell(
-			'<section><h3><button>Attachments<span class="text-meta text-ink-dim" title="why">May be incomplete</span></button></h3></section><section><ul><div data-tour-tag="file-row"></div></ul></section>',
+			'<section><h3><button>Attachments<span class="text-meta text-ink-dim" title="why">May be incomplete</span></button></h3></section><section><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"></div></ul></section>',
+		),
+		true,
+	],
+	// F1 (the reviewer's jsdom repro): attachments arrived, the INDEX is still
+	// loading - the Attachments section has no caption, the count line is blank
+	// (:693), and its rows carry the same data-tour-tag. Must NOT pass.
+	"attachments only (index still loading)": [
+		filesShell(attachmentsSection("attachment:k1", "attachment:k2")),
+		false,
+	],
+	"attachments + index rows": [
+		filesShell(
+			`${attachmentsSection("attachment:k1")}${imagesSection("artifact:9277c383aa", "remote:f_2")}`,
+		),
+		true,
+	],
+	"index rows only (local session)": [
+		filesShell(imagesSection("/Users/me/work/image-1.png")),
+		true,
+	],
+	"a row with no data-file-id": [
+		filesShell(
+			'<section><ul><div data-tour-tag="file-row"></div></ul></section>',
+		),
+		false,
+	],
+	// F2: the two v0.59.2 states where a button follows a loading/building
+	// heading. They DO pass - pinned so the comment's claim stays true - and the
+	// harness cannot reach either (fresh profile: no filter; 20 s wait: far
+	// before the 60th building poll).
+	"building + Continue (after 60 polls; unreachable in 20 s)": [
+		filesShell(
+			'<div><p class="text-heading">Building the file index…</p><button>Continue</button></div>',
+		),
+		true,
+	],
+	"loading + Clear (an active filter; unreachable on a fresh profile)": [
+		filesShell(
+			'<div><p class="text-heading">Loading session files…</p><button>Clear</button></div>',
 		),
 		true,
 	],
@@ -4968,11 +5145,15 @@ test("file-preview: Files settled -> the row's menu -> Show in canvas -> the pai
 	const [trigger, entry, preview] = [steps[3], steps[4], steps[5]].map(
 		(s) => s.payload.selector,
 	);
-	const row = (
+	const entry1 = (
 		title,
 		menu = '<div><button aria-haspopup="menu" data-t="menu">⋯</button></div>',
+		id = "remote:f_1",
+		t = "menu",
 	) =>
-		`<section data-tour-tag="files-scroller"><div data-tour-tag="file-row"><button title="${title}">x</button>${menu}</div></section>`;
+		`<div data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button>${menu.replace('data-t="menu"', `data-t="${t}"`)}</div>`;
+	const row = (title, menu, id) =>
+		`<section data-tour-tag="files-scroller">${entry1(title, menu, id)}</section>`;
 	const pick = (html, sel) =>
 		new JSDOM(html).window.document
 			.querySelector(sel)
@@ -4991,6 +5172,40 @@ test("file-preview: Files settled -> the row's menu -> Show in canvas -> the pai
 		pick(row("/Users/o/image-2.png"), trigger),
 		null,
 		"another picture",
+	);
+	// F4 / QA Q1-2: the EXACT name - a prefix or suffix of it is another file.
+	for (const [title, want, why] of [
+		["/Users/o/image-1.png.bak\nOn mac", null, ".bak beside it"],
+		["/Users/o/image-1.png.orig", null, ".orig, last line"],
+		[
+			"image-1.png.bak · 9277c383 · Generated image, kept in this session",
+			null,
+			"artifact .bak",
+		],
+		["/Users/o/copy image-1.png", null, "a longer name ending in it"],
+		["/Users/o/image-1.png", "menu", "local path row, one line"],
+		["image-1.png\nOn mac", "menu", "bare owner path, then the device line"],
+		["image-1.png", "menu", "bare name, one line"],
+		[
+			"image-1.png · 9277c383 · Generated image, kept in this session",
+			"menu",
+			"artifact tooltip (artifact-identity.ts:200-211)",
+		],
+	])
+		assert.equal(pick(row(title), trigger), want, why);
+	// The .bak row FIRST in the list no longer wins the press.
+	assert.equal(
+		pick(
+			`<section data-tour-tag="files-scroller">${entry1("/Users/o/image-1.png.bak", undefined, "remote:f_0", "bak")}${entry1("/Users/o/image-1.png\nOn mac", undefined, "remote:f_1", "real")}</section>`,
+			trigger,
+		),
+		"real",
+	);
+	// F1: an attachment row of the same name is the person's upload, never pressed.
+	assert.equal(
+		pick(row("/Users/me/image-1.png", undefined, "attachment:k1"), trigger),
+		null,
+		"attachment row",
 	);
 	assert.equal(
 		pick(
@@ -5102,8 +5317,8 @@ test("provenance: a peer library row passes; a local row or a row with a local p
 		libraryProvenanceCheck(listing("la_00000000000000aa"), peer),
 		{
 			assetId: "la_00000000000000aa",
-			remote: { device_id: "d1", device_name: "Mac" },
-			path: null,
+			remote: true,
+			localPath: false,
 			source: "generated",
 			pass: true,
 		},
@@ -5124,6 +5339,18 @@ test("provenance: a peer library row passes; a local row or a row with a local p
 	const r2 = libraryProvenanceCheck(listing("la_00000000000000aa"), pathed);
 	assert.equal(r2.pass, false);
 	assert.match(r2.problem, /has a local path/);
+	assert.equal(r2.localPath, true);
+	// S1: the receipt is public - no device id/name, no absolute local path,
+	// not even in `problem`.
+	for (const result of [
+		libraryProvenanceCheck(listing("la_00000000000000aa"), peer),
+		r1,
+		r2,
+	]) {
+		const json = JSON.stringify(result);
+		for (const leak of ['"d1"', "Mac", "/rig/home"])
+			assert.ok(!json.includes(leak), `${leak} in ${json}`);
+	}
 	assert.equal(libraryProvenanceCheck(listing(null), null).pass, false);
 	assert.equal(
 		libraryProvenanceCheck(listing("la_00000000000000aa"), null).pass,
@@ -5155,11 +5382,51 @@ test("provenance: the previewed row must be a peer row in a session the rig does
 		{
 			assetId: "f_1",
 			remote: true,
-			originDevice: { id: "d1", name: "Mac" },
+			matchingRows: 1,
+			originDeviceKnown: true,
 			sessionOnRig: false,
 			pass: true,
 		},
 	);
+	// S2: whether an origin device is known, never which one.
+	assert.ok(
+		!/d1|Mac/.test(
+			JSON.stringify(
+				imagePreviewCheck({
+					listing: listing(peerRow),
+					name: "image-1.png",
+					sessionOnRig: false,
+				}),
+			),
+		),
+	);
+	// F4: exact name; a `.bak` beside it is another file, and two rows with the
+	// name (two folders) fail the run - the frame cannot say which it shows.
+	const bak = { ...peerRow, id: "f_0", name: "image-1.png.bak" };
+	assert.equal(
+		imagePreviewCheck({
+			listing: { result: { rows: [bak, peerRow] } },
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).assetId,
+		"f_1",
+	);
+	assert.match(
+		imagePreviewCheck({
+			listing: { result: { rows: [bak] } },
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/no file row named image-1.png/,
+	);
+	const twice = imagePreviewCheck({
+		listing: { result: { rows: [peerRow, { ...peerRow, id: "f_2" }] } },
+		name: "image-1.png",
+		sessionOnRig: false,
+	});
+	assert.equal(twice.pass, false);
+	assert.equal(twice.matchingRows, 2);
+	assert.match(twice.problem, /2 file rows are named image-1.png/);
 	const localRow = { id: "f_1", name: "image-1.png" };
 	assert.match(
 		imagePreviewCheck({
@@ -5270,9 +5537,54 @@ test("provenance readers: allowlisted GETs only, against a real HTTP daemon, and
 		["GET", "/v1/desktop/sessions/ce618964c88e/x/files"],
 		["GET", "/v1/desktop/sessions/ce618964c88e/files/f_1"],
 		["POST", "/v1/desktop/sessions/ce618964c88e/files"],
+		// S3: an encoded slash is not a separator - the `{id}` segment must
+		// match the id pattern whole, `%2F` and all.
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa%2Fcontent"],
+		["GET", "/v1/desktop/library/assets%2Fla_00000000000000aa"],
+		["GET", "/v1/desktop/sessions/ce618964c88e%2Ffiles"],
+		["GET", "/v1/desktop/sessions%2Fce618964c88e/files"],
+		// S3: empty segments (a doubled or trailing slash) change the segment count.
+		["GET", "/v1/desktop/library/assets//la_00000000000000aa"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/"],
+		["GET", "/v1/desktop/library/assets/"],
+		["GET", "/v1/desktop/sessions//ce618964c88e/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e//files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/"],
+		// S3: dot-segments resolving OFF an allowed route, plain or encoded.
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/.."],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/.."],
+		["GET", "/v1/desktop/library/assets/%2e%2e/la_00000000000000aa"],
+		["GET", "/v1/desktop/sessions/%2E%2E/ce618964c88e/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/%2e%2e/x"],
+		[
+			"GET",
+			"/v1/desktop/library/assets/la_00000000000000aa/../../../sessions/ce618964c88e/runs",
+		],
 	])
 		assert.ok(
 			daemonRequestProblem(method, path),
 			`${method} ${path} must be refused`,
 		);
+	// S3: a dot-segment that resolves ONTO an allowed route is judged by its
+	// resolution - which is exactly what `daemonRequest` sends (it fetches
+	// `new URL(path, base)`, the same WHATWG resolution), so the daemon never
+	// sees a path the allowlist did not judge.
+	for (const [path, sent] of [
+		[
+			"/v1/desktop/library/assets/./la_00000000000000aa",
+			"/v1/desktop/library/assets/la_00000000000000aa",
+		],
+		[
+			"/v1/desktop/library/assets/x/../la_00000000000000aa",
+			"/v1/desktop/library/assets/la_00000000000000aa",
+		],
+		[
+			"/v1/desktop/sessions/ce618964c88e/./files",
+			"/v1/desktop/sessions/ce618964c88e/files",
+		],
+	]) {
+		assert.equal(daemonRequestProblem("GET", path), null, path);
+		assert.equal(new URL(path, "http://127.0.0.1").pathname, sent);
+		assert.equal(daemonRequestProblem("GET", sent), null, sent);
+	}
 });

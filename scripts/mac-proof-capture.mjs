@@ -1428,7 +1428,27 @@ export const SCENE_READY = Object.freeze({
  * wait that passes on the first settled face it finds:
  * - rows: `[data-tour-tag="file-row"]` (:1437 audio, :1533 every other kind),
  *   only rendered once the list has items, inside the scroller section
- *   `[data-tour-tag="files-scroller"]` (:811);
+ *   `[data-tour-tag="files-scroller"]` (:811) - but only rows of the session's
+ *   file INDEX, never the person's attachments (agent review F1). Attachments
+ *   load on their own request and render their own "Attachments" section with
+ *   the SAME `data-tour-tag="file-row"` (one `FinderEntry`, :1437/:1533), and
+ *   once they arrive that section has no caption while the index can still be
+ *   loading (the count line is then blank, :693) - a frame of the person's own
+ *   uploads with the peer's files still missing. The Attachments `<section>`
+ *   carries no attribute at v0.59.2 (:912-915, `key` and `style` only), so the
+ *   exclusion is on the row's `data-file-id` (:1438/:1534): every attachment row's
+ *   id is `attachment:<key>` (attachment-items.ts:41 `ATTACHMENT_ID_PREFIX`,
+ *   :140 - one id per attachment, never the file's), and no index row's is
+ *   (session-files.ts:113 `remote:<row id>` for a peer's path row, :123
+ *   `artifact:<digest>` for any artifact row, the path itself for a local one).
+ *   `remote:` alone would be the narrower anchor but the wrong one: a peer's
+ *   ARTIFACT rows carry `artifact:` (:123) and a local session's rows neither,
+ *   so it would time out on both; the remote claim is the provenance
+ *   read-back's job (`imagePreviewCheck`). Consequence, fail-closed: a session
+ *   whose index is settled EMPTY but which holds attachments shows neither an
+ *   index row nor the empty block (:854 needs no attachments either), so the
+ *   wait times out and the run fails - it cannot be told from "index still
+ *   loading" by any v0.59.2 attribute, so it is never photographed;
  * - the empty state, or an explicit error: the scroller's no-rows block is ONE
  *   `<div>` whose first `<p>` is the heading (:860) - "Loading session files...",
  *   "Building the file index...", "No files yet", or the error sentence. The
@@ -1437,9 +1457,17 @@ export const SCENE_READY = Object.freeze({
  *   detail `<p>` (:882, rendered only when `index.state === "ready"` and the
  *   attachments are not loading), an unsupported index adds its explanation
  *   `<p>` (:875), and an error adds its Retry/Continue `<button>` (:887). The
- *   loading and building headings stand ALONE. So `> div > p + :is(p, button)`
- *   matches every settled face and never a loading one - there is no other
- *   `<p>` in the scroller, rows are spans and buttons;
+ *   loading and building headings stand alone EXCEPT in two v0.59.2 states,
+ *   where a `<button>` follows them and the wait would pass (agent review F2):
+ *   "Building the file index..." + Continue, once the index hook gives up after
+ *   60 building polls (use-session-files.ts:152, :247 back-off 1.1-5 s, ~3.7 min,
+ *   then :257-259 sets `error`, so :887 renders), and "Loading session files..."
+ *   + Clear while a search or kind filter is active (`narrowing`, :893). The
+ *   harness reaches neither: its profile is fresh (no saved filter, no query
+ *   typed) and its wait gives up at 20 s, long before the 60th poll. So
+ *   `> div > p + :is(p, button)` matches every settled face the harness can
+ *   reach and no loading one - there is no other `<p>` in the scroller, rows
+ *   are spans and buttons;
  * - and, for both, no Attachments section still captioned "Loading session
  *   files..." (:1073: a `text-ink-dim` span in the section's `<h3><button>`; its
  *   one settled sibling caption, "partial", carries a `title`, :1081).
@@ -1453,7 +1481,10 @@ export const SCENE_READY = Object.freeze({
  */
 const FILES_SCROLLER =
 	'[data-tour-tag="canvas-container"] [data-tour-tag="files-scroller"]:not(:has(h3 > button > span.text-ink-dim:not([title])))';
-export const FILES_READY = `${FILES_SCROLLER} [data-tour-tag="file-row"], ${FILES_SCROLLER} > div > p + :is(p, button)`;
+/** A row of the session's file INDEX: any file row that is not an attachment (F1). */
+export const INDEX_ROW =
+	'[data-tour-tag="file-row"][data-file-id]:not([data-file-id^="attachment:"])';
+export const FILES_READY = `${FILES_SCROLLER} ${INDEX_ROW}, ${FILES_SCROLLER} > div > p + :is(p, button)`;
 
 /**
  * The `file-preview` scene: --session's Files view, the `name` row shown IN THE
@@ -1474,24 +1505,39 @@ export const FILES_READY = `${FILES_SCROLLER} [data-tour-tag="file-row"], ${FILE
  *
  * WHICH ROW. Row ids are opaque (`remote:<row id>` / `artifact:<digest>`,
  * session-files.ts:113/123), so the row is found by its button's tooltip
- * (`title`, :1552): a path row's starts with the owner's display path
- * (`.../<name>`), an artifact row's with its name (artifactTooltip). Rows are
- * virtualised (only bands in view render), so the row must be on the first
- * screen of the list - if it is not, `press` fails with "nothing matches".
+ * (`title`, :1552), matched on the EXACT name (agent review F4 / QA Q1-2: a
+ * prefix match picked `image-1.png.bak` first). The tooltip's first line is
+ * the identity (:1275-1281) and any further line follows a "\n" (:1295-1303:
+ * the remote row's "On <device>", an attachment status):
+ * - a path row: the identity is the (owner's display) path, so the title ends
+ *   in `/<name>` or has `/<name>` right before a newline - or IS the bare name;
+ * - an artifact row: `artifactTooltip` (artifact-identity.ts:200-211) is
+ *   `<name> \u00b7 <digest head> \u00b7 <cue>`, so the title starts `<name> \u00b7 `.
+ * Attachment rows are excluded (`INDEX_ROW`): an attachment named like the
+ * peer's file is the person's upload, not the peer's file. The shipped verbs
+ * cannot count matches, so "exactly one row of that name" is the provenance
+ * read-back's check (`imagePreviewCheck` fails the run on two or more).
+ * Rows are virtualised (only bands in view render), so the row must be on the
+ * first screen of the list - if it is not, `press` fails with "nothing matches".
  *
- * THE SETTLED STATE. The canvas viewer paints `<img alt={document.title}>`
+ * THE SETTLED STATE. The canvas viewer renders `<img alt={document.title}>`
  * only once the bytes arrived (image-preview.tsx:127-129 artifact, :238-240
  * path; loading/failure render `FileViewerState` instead), inside
  * `[data-tour-tag="canvas-container"]` (canvas/index.tsx:836). The lightbox
  * (`data-image-viewport`, image-lightbox.tsx:716) portals to <body>, and is
  * excluded anyway, so an Expand can never pass for the canvas. The Files
  * grid's own thumbnails are `alt=""`. A timeout means the picture never
- * painted in the canvas (unreachable owner, refused read) and no frame.
+ * reached the canvas (unreachable owner, refused read) and no frame.
+ * NOT COVERED (QA Q1-1): the `<img>` exists as soon as its URL is set, BEFORE
+ * the browser decodes it, and no v0.59.2 attribute marks the decode (no
+ * `onLoad` state, no `complete` attribute a selector can read), so a frame can
+ * catch a not-yet-decoded picture. Stated in the receipt's `limits`.
  */
 export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 	const problem = previewFileProblem(name);
 	if (problem) throw new Refusal(problem);
-	const titled = `:is([title^="${name}"], [title*="/${name}"])`;
+	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
+	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
 	return [
 		{ verb: "navigate", payload: "/chat" },
 		{ verb: "openCanvas", payload: { view: "files" } },
@@ -1503,7 +1549,7 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 		{
 			verb: "press",
 			payload: {
-				selector: `[data-tour-tag="files-scroller"] [data-tour-tag="file-row"]:has(button${titled}) button[aria-haspopup="menu"]`,
+				selector: `[data-tour-tag="files-scroller"] ${INDEX_ROW}:has(button${titled}) button[aria-haspopup="menu"]`,
 				timeoutMs: 10000,
 			},
 		},
@@ -1526,9 +1572,57 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 	];
 }
 
-/** The painted canvas picture of `name` (see `filePreviewSceneSteps`). */
+/** The canvas picture of `name` (see `filePreviewSceneSteps`). */
 export function filePreviewSelector(name) {
 	return `[data-tour-tag="canvas-container"] img[alt="${name}"]:not([data-image-viewport] img)`;
+}
+
+/*
+ * What a frame of this run CANNOT prove, said in the receipt (`limits`) so a
+ * reader judging the frames does not have to know these waits' source. Each
+ * entry names the scenes it applies to; a run lists only those its scenes hit.
+ * Factual and short: the reasoning lives beside each selector above and in
+ * docs/mac-proof-capture.md, "Scene waits".
+ */
+export const MEASUREMENT_LIMITS = Object.freeze([
+	Object.freeze({
+		id: "files-paging-caption",
+		scenes: Object.freeze(["files", "file-preview"]),
+		text: 'While the file index is still paging with rows on screen, the count line can read "Loading session files…"; no v0.59.2 attribute exposes it, so the wait cannot exclude it.',
+	}),
+	Object.freeze({
+		id: "files-attachments-only",
+		scenes: Object.freeze(["files", "file-preview"]),
+		text: "Attachment rows never satisfy the Files wait; a session whose index is empty but holds attachments times out and fails rather than being photographed.",
+	}),
+	Object.freeze({
+		id: "preview-first-screen",
+		scenes: Object.freeze(["file-preview"]),
+		text: "The previewed row must be on the Files view's first screen (rows are virtualised); otherwise the run fails.",
+	}),
+	Object.freeze({
+		id: "preview-no-decode-wait",
+		scenes: Object.freeze(["file-preview"]),
+		text: "The wait sees the canvas <img> once its URL is set, not once it has decoded; there is no image-decode wait.",
+	}),
+	Object.freeze({
+		id: "selectors-fixture-proven",
+		scenes: Object.freeze([
+			"files",
+			"file-preview",
+			"library",
+			"notifications",
+			"update-detail",
+		]),
+		text: "Scene-wait selectors are read from the v0.59.2 source and proven on jsdom fixtures shaped like it, not in Chromium.",
+	}),
+]);
+
+/** The `limits` this run's scenes hit, as `{id, text}`. */
+export function receiptLimits(scenes) {
+	return MEASUREMENT_LIMITS.filter((limit) =>
+		limit.scenes.some((scene) => scenes.includes(scene)),
+	).map(({ id, text }) => ({ id, text }));
 }
 
 /**
@@ -2007,8 +2101,10 @@ export const DAEMON_ROUTES = Object.freeze([
 	 * receipt), NEW with the file-preview scene and read-only GETs, all three:
 	 * - the library listing, asked exactly as the desktop asks it
 	 *   (`scope=final`) for its first row - core desktop_library.py:225. On a
-	 *   catalogue still indexing it kicks the same background index build the
-	 *   app's own Library route already kicked; it writes no row;
+	 *   catalogue not yet indexed it can START the background index build, which
+	 *   writes the catalogue under the rig's config root - the same build the
+	 *   app's own Library route starts when it opens, so after the `library`
+	 *   scene it is a no-op (the build is already running or done);
 	 * - one library row - desktop_library.py:296, `service.get_asset`, a store
 	 *   read; `{id}` is ONE `la_<16 hex>` segment (the route's own AssetID);
 	 * - --session's file index, filtered by name - desktop_session_files.py:135;
@@ -2708,15 +2804,23 @@ export async function waitForRemoteSession(
  * its own `<config>/sessions`, renders the same pixels while proving nothing
  * about the remote route. So after the frames, while the rig daemon is still up,
  * the harness reads the data behind them back (allowlisted GETs only) and the
- * run FAILS (exit 1) when either is not remote. The receipt keeps the JSON
- * subset it judged, so a reader can check the verdict without the rig.
+ * run FAILS (exit 1) when either is not remote. The receipt keeps what it
+ * judged, so a reader can check the verdict without the rig.
+ *
+ * PRIVACY (security review S1/S2). Receipts and frames are attached to PRs in a
+ * PUBLIC repository, so the receipt records only booleans about the peer and
+ * the local disk - `remote`, `originDeviceKnown`, `localPath` - never the
+ * peer's device id or name, nor an absolute local path (not even in a
+ * `problem` sentence). The opaque row ids (`la_...`, the index row id) stay: they
+ * name nothing outside the daemon that issued them.
  */
 
 /**
  * `libraryProvenance` from the first row of the desktop's own listing and that
  * row's detail. A peer row: `remote` set and NO local `ref.path` (core keeps no
  * local path identity for a row only a peer references). `source` is the row's
- * `origin` (LibraryRow has no field named `source`).
+ * `origin` (LibraryRow has no field named `source`). `remote` and `localPath`
+ * are booleans: whether the row carries a remote block / a local path.
  */
 export function libraryProvenanceCheck(listing, detail) {
 	const first = (listing?.result ?? listing)?.rows?.[0] ?? null;
@@ -2725,29 +2829,28 @@ export function libraryProvenanceCheck(listing, detail) {
 		return {
 			assetId: first?.id ?? null,
 			remote: null,
-			path: null,
+			localPath: null,
 			source: null,
 			pass: false,
 			problem: first?.id
 				? `library row ${first.id} could not be read back`
 				: "the library listing has no row to check",
 		};
-	const remote = row.remote ?? null;
-	const path = row.ref?.path ?? null;
-	const pass = remote !== null && path === null;
+	const remote = (row.remote ?? null) !== null;
+	const localPath = (row.ref?.path ?? null) !== null;
+	const pass = remote && !localPath;
 	return {
 		assetId: row.id ?? first.id,
 		remote,
-		path,
+		localPath,
 		source: row.origin ?? null,
 		pass,
 		...(pass
 			? {}
 			: {
-					problem:
-						remote === null
-							? `library row ${first.id} is not a peer row (remote is null)`
-							: `library row ${first.id} has a local path (${path})`,
+					problem: !remote
+						? `library row ${first.id} is not a peer row (remote is null)`
+						: `library row ${first.id} has a local path`,
 				}),
 	};
 }
@@ -2761,11 +2864,19 @@ export function libraryProvenanceCheck(listing, detail) {
  */
 export function imagePreviewCheck({ listing, name, sessionOnRig }) {
 	const rows = (listing?.result ?? listing)?.rows ?? [];
-	const row = rows.find((r) => r?.name === name) ?? null;
-	const remote = row?.remote ?? null;
+	// EXACT name, and exactly one (F4): the scene's row selector cannot count,
+	// so two same-named rows (two folders) would make the frame ambiguous.
+	const named = rows.filter((r) => r?.name === name);
+	const row = named.length === 1 ? named[0] : null;
+	const remote = row ? row.remote === true : null;
 	const problems = [];
-	if (!row) problems.push(`no file row named ${name} in the session's index`);
-	else if (remote !== true) problems.push(`file row ${row.id} is not remote`);
+	if (named.length > 1)
+		problems.push(
+			`${named.length} file rows are named ${name} in the session's index (the frame cannot say which one it shows)`,
+		);
+	else if (!row)
+		problems.push(`no file row named ${name} in the session's index`);
+	else if (!remote) problems.push(`file row ${row.id} is not remote`);
 	if (sessionOnRig !== false)
 		problems.push(
 			sessionOnRig === null
@@ -2775,7 +2886,9 @@ export function imagePreviewCheck({ listing, name, sessionOnRig }) {
 	return {
 		assetId: row?.id ?? null,
 		remote,
-		originDevice: row?.origin_device ?? null,
+		matchingRows: named.length,
+		// Whether the daemon named an origin device - never which one (S2).
+		originDeviceKnown: row ? (row.origin_device ?? null) !== null : null,
 		sessionOnRig,
 		pass: problems.length === 0,
 		...(problems.length ? { problem: problems.join("; ") } : {}),
@@ -4205,6 +4318,7 @@ export async function main(argv = process.argv.slice(2)) {
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
+		limits: receiptLimits(opts.scenes),
 		disclosed: [
 			"the opened conversation's unread/seen marks may clear on the daemon that served it",
 			"a desktop presence beat (45 s TTL) is sent to that daemon",

@@ -426,8 +426,8 @@ name: a timeout means "it never settled", never "photograph what is there".
 
 | Scene | Waits for (any of) | Never passes on |
 |---|---|---|
-| `files` | a file row; the empty state (heading + its detail line); an explicit error or unsupported state (heading + its explanation or Retry/Continue) | "Loading session files…", "Building the file index…", an Attachments section still captioned "Loading…" |
-| `file-preview` | the `files` wait, then the row's menu → **Show in canvas**, then the painted `<img alt="<name>">` inside the canvas | a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
+| `files` | a row of the session's file index (not an attachment row); the empty state (heading + its detail line); an explicit error or unsupported state (heading + its explanation or Retry/Continue) | "Loading session files…" or "Building the file index…" standing alone, an Attachments section still captioned "Loading session files…", attachment rows alone |
+| `file-preview` | the `files` wait, then the menu of the index row named exactly `<name>` → **Show in canvas**, then `<img alt="<name>">` inside the canvas | an attachment row, a row whose name only starts with `<name>` (`image-1.png.bak`), a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
 | `library` | the results section with `aria-busy="false"` (cards, the empty state or the listing error) | the skeleton, a refetch in flight, the "indexing" line in the header |
 | `notifications` | the list or its empty state, with no detail pane | the skeleton, the previous scene's detail |
 
@@ -439,10 +439,29 @@ selectors and the v0.59.2 file:line behind each are in `scripts/mac-proof-captur
 `scripts/mac-proof-capture.test.mjs` freezes those lines and re-reads them from
 the tag in a full checkout.
 
-One gap, stated rather than papered over: while a file index is still paging
-with rows already on screen, the count line above them appends " · Loading
-session files…" as bare text no v0.59.2 attribute exposes. The rows in that
-frame are real; the suffix can still be visible.
+Attachment rows and index rows share `data-tour-tag="file-row"` and the
+Attachments section has no attribute of its own, so index rows are told apart by
+their id: every attachment row's `data-file-id` starts `attachment:`, no index
+row's does. A session whose index is settled empty but which holds attachments
+therefore shows nothing the wait accepts: the run fails rather than photograph it.
+
+Gaps, stated rather than papered over (the receipt lists them too, `limits`):
+
+- **Paging.** While a file index is still paging with rows already on screen,
+  the count line above them appends " · Loading session files…" as bare text no
+  v0.59.2 attribute exposes. The rows in that frame are real; the suffix can
+  still be visible.
+- **Decode.** The canvas `<img>` exists as soon as its URL is set, before the
+  browser has decoded it; nothing in v0.59.2's markup marks the decode, so a
+  `file-preview` frame can catch a picture not yet painted.
+- **Two headings that are not alone.** "Building the file index…" gets a
+  Continue button after 60 building polls (~3.7 min), and "Loading session
+  files…" gets a Clear button while a search or kind filter is active; either
+  would pass the wait. The harness reaches neither: its profile is fresh (no
+  filter) and the wait gives up at 20 s.
+- **One row of that name.** The shipped verbs cannot count matches, so the
+  provenance read-back fails the run when the index holds two or more rows
+  named `--preview-file`.
 
 ## Provenance: the frame shows a PEER's data
 
@@ -451,18 +470,28 @@ so after the frames, while the rig daemon is still up, the harness reads the dat
 behind them back (allowlisted GETs, below) and **fails the run (exit 1)** when it
 is not remote. The receipt keeps what it judged:
 
-- `libraryProvenance: {assetId, remote, path, source, pass}` (with the `library`
-  scene): the first row of the desktop's own listing (`scope=final`), read back
-  by id. Passes only when `remote` is set and `ref.path` is null - a row only a
-  peer references. `source` is the row's `origin` (core has no field named
-  `source`).
-- `imagePreview: {assetId, remote, originDevice, sessionOnRig, pass}` (with the
-  `file-preview` scene): the `--preview-file` row of `--session`'s file index.
-  Passes only when the daemon stamped it `remote: true` AND the session is absent
-  from the rig's own `<config>/sessions` (a session the rig holds could have been
-  served from this disk). Attach mode has no rig config root, so it cannot pass.
+- `libraryProvenance: {assetId, remote, localPath, source, pass}` (with the
+  `library` scene): the first row of the desktop's own listing (`scope=final`),
+  read back by id. `remote` and `localPath` are booleans (the row has a remote
+  block / a `ref.path`). Passes only when `remote: true` and `localPath: false` -
+  a row only a peer references. `source` is the row's `origin` (core has no
+  field named `source`).
+- `imagePreview: {assetId, remote, matchingRows, originDeviceKnown, sessionOnRig,
+  pass}` (with the `file-preview` scene): the row of `--session`'s file index
+  named exactly `--preview-file`. Passes only when exactly one row has that name,
+  the daemon stamped it `remote: true`, AND the session is absent from the rig's
+  own `<config>/sessions` (a session the rig holds could have been served from
+  this disk). Attach mode has no rig config root, so it cannot pass.
 
-A failing check adds `problem` naming why.
+A failing check adds `problem` naming why. Receipts get attached to PRs in a
+public repository, so neither check copies the peer's device id or name (only
+`originDeviceKnown: true/false`) nor a local path (only `localPath: true/false`),
+not even in `problem`.
+
+Every receipt also carries `limits: [{id, text}]`, the known measurement limits
+of the scenes it ran (`MEASUREMENT_LIMITS` in the script): the paging caption,
+attachments-only sessions, the first-screen row, no image-decode wait, and
+scene-wait selectors proven on fixtures rather than in Chromium.
 
 ## What a frame may claim
 
