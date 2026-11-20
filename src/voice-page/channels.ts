@@ -1,0 +1,57 @@
+/**
+ * The voice page's IPC surface (plan D2): one message up in two flavours, three
+ * down. Names live here so the page's preload and main's relay (U2) cannot
+ * disagree about a string.
+ */
+export const VOICE_PAGE_CHANNELS = {
+	/** page -> main: the WAV bytes of one finished utterance. */
+	take: "voice-page:take",
+	/** page -> main: the detector's events (`VadEventKind`), liveness included. */
+	vad: "voice-page:vad",
+	/** main -> page: a segment's bytes and its id. */
+	play: "voice-page:play",
+	/** main -> page: stop playback and drop the schedule. */
+	stop: "voice-page:stop",
+	/** main -> page: silence (or restore) the page's own output. */
+	mute: "voice-page:mute",
+	/**
+	 * page -> main: where playback is. The page owns the audio clock, so only it
+	 * can tell main a segment has begun (main fetches the next one then, never
+	 * earlier: one request ahead) or that the reply ran out.
+	 */
+	progress: "voice-page:progress",
+} as const;
+
+/**
+ * What the page's detector reports. `ready` / `failed` are its liveness, riding
+ * this channel so the preload stays at six functions: `ready` once the detector
+ * has started over a live microphone, `failed` when it could not or the
+ * microphone was lost. `speech_cancel` withdraws a `speech_start` that never
+ * became an utterance.
+ */
+export type VadEventKind =
+	| "speech_start"
+	| "speech_end"
+	| "speech_cancel"
+	| "ready"
+	| "failed";
+
+/**
+ * One segment of a reply. `id.replyId` names the reply and `id.index` the
+ * segment's place in it (from 0). The page plays only the current reply: a
+ * message for any other (retired) reply is dropped, and a new `replyId` resets
+ * the page's inbox. `last` marks the reply's final segment, so the page knows
+ * when to drain.
+ */
+export type PlayMessage = {
+	id: { replyId: string; index: number };
+	bytes: Uint8Array;
+	last?: boolean;
+};
+
+/** What the page reports about the reply it is playing (`replyId` as pushed). */
+export type ProgressMessage =
+	| { kind: "segment_start"; replyId: string; index: number }
+	| { kind: "drained"; replyId: string }
+	/** The page could not play the reply (a segment would not decode). */
+	| { kind: "failed"; replyId: string };

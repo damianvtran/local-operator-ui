@@ -8,6 +8,7 @@ import {
 } from "electron-vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { desktopProxyPlugin } from "./scripts/vite-plugins/desktop-proxy";
+import { voicePageVadPlugin } from "./scripts/vite-plugins/voice-page-vad";
 import { replaceBackendConfigPlugin } from "./scripts/vite-plugins/replace-backend-config";
 
 // V8 bytecode is tied to the exact Electron (V8) version that produced it, so a
@@ -86,6 +87,9 @@ export default defineConfig({
 						__dirname,
 						"src/preload/recording-encoder.ts",
 					),
+					// The hidden voice page's own, narrow preload (plan D2). A
+					// sandboxed preload cannot require siblings, so it is its own entry.
+					"voice-page": resolve(__dirname, "src/preload/voice-page.ts"),
 				},
 			},
 		},
@@ -106,7 +110,13 @@ export default defineConfig({
 		// tailwindcss() must run for BOTH renderer html entries (index.html and
 		// installer.html); it is a renderer-level plugin, so registering it here
 		// covers both inputs declared below.
-		plugins: [react(), tailwindcss(), tsconfigPaths(), desktopProxyPlugin()],
+		plugins: [
+			react(),
+			tailwindcss(),
+			tsconfigPaths(),
+			desktopProxyPlugin(),
+			voicePageVadPlugin(),
+		],
 		input: {
 			index: resolve(__dirname, "src/renderer/index.html"),
 			installer: resolve(__dirname, "src/renderer/installer.html"),
@@ -164,6 +174,9 @@ export default defineConfig({
 				__dirname,
 				"src/renderer/recording-encoder.html",
 			),
+			// The app-owned voice page (plan D2/U1): in BOTH lists, for the mini
+			// view's reason above.
+			"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -204,6 +217,7 @@ export default defineConfig({
 					 * serves it — both halves are load-bearing and a test pins them.
 					 */
 					mini: resolve(__dirname, "src/renderer/mini.html"),
+					"voice-page": resolve(__dirname, "src/renderer/voice-page.html"),
 					/*
 					 * S1's address-overlay document: the BUILD half of the pair above.
 					 * A static HTML input with no module script still gets emitted, and

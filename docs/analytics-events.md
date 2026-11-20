@@ -32,7 +32,7 @@ two ways).
 | `provider_setup_failed` | `provider`, `method`, `reason` (`PROVIDER_SETUP_FAILURE_REASONS`) | sign-in ended `cancelled` / `expired` / `failed`, start refused, key refused |
 | `local_model_check` | `provider`, `result` (`reachable` \| `unreachable` \| `error`), `reason` | every local-provider reachability probe (`provider-detail.tsx`, including Check again) |
 | `first_message_sent` | none | first successful send of this install profile (`chat-page.tsx`); flag `lo.analytics.first-message-sent` in localStorage |
-| `message_send_failed` | `reason_category` (`SEND_FAILURE_REASONS`) | the composer's send catch (`chat-page.tsx`) |
+| `message_send_failed` | `reason_category` (`SEND_FAILURE_REASONS`), `http_status` (`SEND_FAILURE_HTTP_STATUSES`, `none` or `other`), `error_code` (`SEND_FAILURE_ERROR_CODES`, `none` or `other`) | the composer's send catch (`chat-page.tsx`, `diagnoseSendFailure`) |
 | `backend_status` | `state` (`ready` \| `failed`), `reason` (`BACKEND_STARTUP_CATEGORIES` or `none`), `after_ready` (boolean), `elapsed_s` | each settled start-up attempt of the app's own server, and a server that died after it was ready (`backend-startup-panel.tsx`, `useBackendStartupTelemetry`); once per attempt per renderer session (deduped in sessionStorage, so a reload does not report it again) |
 | `onboarding_tour_step` | `step`, `outcome` (`shown` \| `skipped_missing_target` \| `completed` \| `cancelled`) | `use-onboarding-tour.ts`; skips from `guardTourTargets` in `tour-steps.ts` |
 
@@ -42,6 +42,16 @@ change does not touch.
 Rows with `after_ready: true` are a server that started, worked and then exited
 non-zero; their `elapsed_s` is null. Exclude them from start-up analysis and
 read them as mid-session crashes.
+
+`message_send_failed` gained `http_status` and `error_code` in the release
+after 0.59.2. Before it, `backend_unreachable` also counted main's no-token
+refusal (`pairing.*`), the request deadline (`deadline_exceeded`) and a daemon
+that answered but could not reach the runtime (`runtime_unreachable`, which is
+also how a missing provider or model arrives); those now report `unauthorized`,
+`transport` and `runtime_unavailable`. Every other row keeps its old category,
+so compare across that release by `error_code`, not by `reason_category` alone.
+Both new properties are closed allowlists: an unlisted value reports `other`,
+never itself, and no message text is read.
 
 `first_message_sent` is "first send since this release", not "first send ever":
 the once-per-install flag did not exist before, so every existing install

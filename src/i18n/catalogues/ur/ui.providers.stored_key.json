@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "کلید تبدیل کریں",
+	"ui.providers.stored_key.remove": "کلید ہٹائیں",
+	"ui.providers.stored_key.remove_confirm": "یہ کلید ہٹائیں؟",
+	"ui.providers.stored_key.remove_yes": "ہٹائیں",
+	"ui.providers.stored_key.remove_failed": "کلید نہیں ہٹائی جا سکی۔"
+}

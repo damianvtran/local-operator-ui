@@ -1,0 +1,59 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "090976849b8e",
+    "instance": "090976849b8e-voiceui-r2-ur",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Same model family as the translator (anthropic/claude-sonnet-5-5), different session and agent role; not an independent model."
+  },
+  "locale": "ur",
+  "audit_date": "2026-11-19",
+  "scope": "Round 2 re-audit of ui.chat.voice (81 keys) at HEAD 30359fb665: the 14 keys changed since the round-1 audit of bad1701b2d are re-read (3 in ur); the other keys are byte-identical to round 1 (git diff bad1701b2d..HEAD on this file touches only those keys). Round 1 changes_requested findings (MAJOR notice_elsewhere_prefix / phase_speaking and the MINORs) are resolved by these edits; a first fix attempt in hi (phase_unheard, connecting_caption collapsed to one string) was caught and corrected before signing.",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "namespaces": {
+    "ui.chat.voice": {
+      "status": "passed",
+      "sha256": {
+        "ur": "7911d6acc7d927b9900e6a1dbf8624cdb13bc53e2bfbfdee9a950618eae64bcf",
+        "en": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a"
+      },
+      "context_sha256": "43c5962762a2fa3a9bf85cf48fbc2e3f365832bd36fc8c65f9753c21618530a8",
+      "key_count": 81,
+      "findings": []
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.chat.voice.notice_elsewhere_prefix",
+      "target": "آواز کسی اور گفتگو میں آن ہے:",
+      "back": "Voice is on in another conversation:"
+    },
+    {
+      "key": "ui.chat.voice.dictation_off_voice",
+      "target": "آواز آن ہے، اس لیے ڈکٹیشن بند ہے۔ ڈکٹیشن کے لیے آواز موقوف کریں یا بند کریں۔",
+      "back": "Voice is on, so dictation is off. For dictation, pause or turn off voice."
+    },
+    {
+      "key": "ui.chat.voice.dictation_off_voice_elsewhere",
+      "target": "آواز “{title}” میں آن ہے۔ ڈکٹیشن کے لیے اسے یہاں لائیں یا بند کریں۔",
+      "back": "Voice is on in “{title}”. For dictation, bring it here or turn it off."
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at the HEAD named in scope.",
+    "Changed-key isolation: git diff vs the round-1 audited bytes lists exactly the 14 keys (fr 4, hi 7, ur 3); each value equals the round-1 suggested replacement except the two hi captions, which were corrected in a follow-up commit to keep their state words.",
+    "ICU parity: all 81 messages (and the 700 messages of all four namespaces x 7 locales) parsed with the project's @formatjs/icu-messageformat-parser; argument names/types equal English's; key sets and order equal; NFC; no bidi control characters; no stray whitespace. fr: U+202F before ; : ? ! and inside « » confirmed.",
+    "Back-translations of every changed key recorded; each is faithful to English (hi phase_unheard 'The voice page is not connected' / connecting_caption 'The voice page is opening' now carry their state and differ from each other).",
+    "Terms re-checked against existing UI: hi डिक्टेशन, स्वीकृति दें; ur ڈकटیشن (composer term, ×4 in ui.chat.composer); fr sur l'écran. Style guide and glossary read as binding (hashes in references).",
+    "No rendered frame was produced or reviewed in this audit."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+    "core_origin_main": "4a5aea9bd"
+  }
+}

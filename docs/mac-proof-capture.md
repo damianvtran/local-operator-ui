@@ -19,19 +19,31 @@ node scripts/mac-proof-capture.mjs \
   --app "/Applications/Local Operator.app" \
   --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-frames" \
   --session ce618964c88e \
-  --scene conversation --scene files --scene canvas --scene library --scene notifications \
+  --scene conversation --scene files --scene canvas --scene file-preview --scene library --scene notifications \
   --theme dark,light
 ```
 
 Each `--scene` x `--theme` becomes one frame, `<scene>-<theme>.png`, plus a
-`receipt.json` and the run's scratch logs in `--out/logs`. The five scenes are
+`receipt.json` and the run's scratch logs in `--out/logs`. The six scenes are
 presets: `conversation` (the `--session` view), `files` (the canvas's Files
-view), `canvas` (the canvas's Documents view), `library` (the Library route) and
-`notifications` (the notifications route), plus two that need a staged state:
-`asks` (the `--session` conversation with its asks drawer open on a
-suggested-command ask) and `notification-detail` (`/notifications/<id>`, the
-details page of `--notification-id`). `files`, `canvas` and `asks` need
-`--session`; see "Seeded scenes" for staging the state they photograph.
+view), `canvas` (the canvas's Documents view), `file-preview` (one picture from
+the `--session` Files view opened in the canvas: `--preview-file`, default
+`image-1.png`), `library` (the Library route) and
+`notifications` (the notifications route, no detail open), plus three that
+need a staged state: `asks` (the `--session` conversation with its asks drawer
+open on a suggested-command ask), `notification-detail` (`/notifications/<id>`,
+the details page of `--notification-id`) and `update-detail` (the same item's
+details inside the `--session` conversation's drawer, Updates tab), and one
+that WRITES: `download` (one Files row of a remote `--session` downloaded to the
+rig; `--backend-config-root` only, see "The download scene"). `files`,
+`canvas`, `file-preview`, `asks`, `update-detail` and `download` need
+`--session`; see "Seeded scenes" for staging the state they photograph. `files`,
+`file-preview`, `library` and `notifications` each wait for markup only their
+SETTLED state renders before the shutter (run #1907 shot `notifications` before
+the route repainted; 79's be9379d8 run shot `files` on "Loading session files…");
+see "Scene waits: a loading state never takes a frame". The app's
+step runner takes at most 64 steps, so a scene list over that is refused before
+launch: split it across runs.
 Before it spawns anything, the run prints how many frames it will take and says
 it is opening **one** `inactive` window (one Dock tile) for the whole run.
 
@@ -74,10 +86,19 @@ is below the default `--timeout` and will SIGKILL the harness.
    capture) or `headless` (in-app capture) run; `normal` never does.
 2. **Screen Recording is checked without a prompt.** `CGPreflightScreenCaptureAccess`
    through JXA (it never prompts; `CGRequestScreenCaptureAccess`, which would, is
-   never called). If it is not granted to the host process (the terminal or agent
-   app), the run is BLOCKED with that sentence. If JXA cannot call the preflight
-   at all, the run is also BLOCKED: there is no guessing fallback, because every
-   other signal (window names) answers yes for system UI without the permission.
+   never called). The bridged `$.CGPreflightScreenCaptureAccess` is tried first;
+   where it is not a function (macOS 27) the harness declares it with
+   `ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []])` and calls
+   that - measured on Darwin 27.2 as `{"granted":true}`. If it is not granted,
+   the run is BLOCKED and names the TCC host to grant: the nearest
+   `<X>.app/Contents/MacOS/...` up the parent-pid chain (`ps -A -o
+   pid=,ppid=,comm=`, C locale), else the top non-launchd process (an agent's
+   renamed process title such as `Local Operator [session] id=...`): "grant
+   Screen & System Audio Recording to <X> in System Settings > Privacy &
+   Security". The harness never requests or changes TCC. If JXA cannot call the
+   preflight by either path, the run is also BLOCKED: there is no guessing
+   fallback, because every other signal (window names) answers yes for system UI
+   without the permission.
    Each captured PNG must also measure the window's `CGWindowList` bounds times
    one backing scale, or the frame is refused.
 3. **A backend the app only ever attaches to** (see *Backend modes*).
@@ -104,6 +125,35 @@ is below the default `--timeout` and will SIGKILL the harness.
    (window only, no shadow, no sound), checks the PNG, and writes the ack the
    runner waits for. Nothing is activated, focused or raised: `screencapture -l`
    reads one window from the window server whether or not it is front.
+
+   **The window wait (`--window-wait <s>`, default 6, max 15, `0` = none).** A
+   window created to show a specific conversation - which `--open-session` asks
+   for - HOLDS its first present until the renderer reports that conversation is
+   up, with `CONVERSATION_PAINT_FALLBACK_MS = 3_000` after window creation as the
+   bound (`holdPresentUntilConversation`, `src/main/index.ts:1252`; the constant
+   at `src/main/index.ts:2347`). The readiness steps can finish inside that
+   hold, and the first default-mode Mac run (installed 0.59.2) failed exactly so:
+   every DOM step ok, then `the window is not visible at the shutter (... visible=false
+   focused=false ...)`, 0 frames. The app has no shutter-free probe for its
+   window facts and reads the step list once at launch, so the harness spends
+   one bounded wait in the runner after the readiness `state` step and before the
+   first scene: `waitFor` on `:not(*)` (matches nothing) with
+   `timeoutMs = --window-wait`, optional, so its expected timeout reads
+   `skipped (optional)`. 6 s is twice the 3 s hold bound. Nothing is shown,
+   focused or activated - the app presents the window on its own schedule - and
+   each SHUTTER is still refused unless `visible=true focused=false`.
+   `capturepage` runs never show a window and get no wait. The receipt records
+   `windowWait: {waitedMs, visibleAtShutter}` (the wait as the harness clock
+   measured it, and the first SHUTTER's `visible`).
+
+   **A timeout** - `the window is not visible at the shutter after a <n> ms
+   window wait (--window-wait <s>): visible=false focused=false; ...`, exit 1 -
+   means the app still had not presented its window when the wait was spent: a
+   renderer that never reported and a fallback that did not fire, or a slower
+   Mac. Retry once with a longer `--window-wait` (max 15); if it persists, read
+   `logs/app-stdout.log` for the `[window-mode] state:` and `[window-raise]`
+   lines. Never answer it with `--window-mode normal` or anything that focuses
+   the window: the `focused=true` refusal is unchanged.
 7. **Reap.** The app by exact process group, escalating to SIGKILL, then any
    process still carrying the run's `--user-data-dir` by exact pid
    (`scripts/app-tree-teardown.mjs`); every lop process by its group, then every
@@ -152,7 +202,13 @@ the harness writes.
   - refuses (exit 2, nothing spawned) if the root is `~/.local-operator` or
     inside it, if another process already runs on it (the reap sweeps every
     process on the root, so it never shares one), or if `<root>/config.yml` has
-    no `network.port` or has `4097`. An unset port makes the relay advertise
+    no `network.port` or has `4097`. The harness reads exactly what core reads:
+    `values:` > `network:` > `port:`, the layout `lop config edit network.port
+    <n>` writes (core `config.py` reads only `values`; `settings_io.py` path
+    `("network", "port")`, default 4097). A top-level `network:` block does not
+    count - core ignores it and the relay would still use 4097 - and anything
+    it cannot read plainly (flow style, anchors, tabs, duplicated keys, a port
+    under another parent) also refuses. An unset port makes the relay advertise
     the operator's `:4097`, and peers then dial the operator's real relay -
     measured on node2 as writes to the real audit log;
   - runs the lop processes with `HOME=--backend-home` (default
@@ -196,9 +252,11 @@ daemon:
 node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1902" \
   --seed ask-command --scene asks --theme dark,light
 
-# #1907: a long multi-paragraph notification with links and earlier revisions
+# #1907: a long multi-paragraph notification with links and earlier revisions,
+# on its page and inside the conversation drawer's Updates tab
 node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1907" \
-  --seed notification-details --scene notification-detail --scene notifications --theme dark,light
+  --seed notification-details --scene notification-detail --scene notifications \
+  --scene update-detail --theme dark,light
 ```
 
 - **What is written.** `scripts/mac-proof-seed.mjs` generates a synthetic config
@@ -224,7 +282,43 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   and the command block inside it (`[data-ask-command]`); it presses the composer
   chip only while it still reads minimized, because the open policy may already
   have opened the drawer and the chip toggles. `notification-detail` requires
-  `[data-notification-detail="<id>"]` and its title.
+  `[data-notification-detail="<id>"]`, its title, and the read face: the
+  detail's toggle showing its read icon (lucide `svg.lucide-circle`; the toggle,
+  notification-detail.tsx:351-378 at v0.59.2, carries no read-state attribute,
+  so its icon is the only selector-visible proxy) and no list row for the item
+  still `data-notification-unread` (notification-row.tsx:203, the row's own
+  state; the Unread count derives from those rows).
+  `update-detail` opens the drawer from the panel rail's ask item
+  (`[data-panel-rail-item="ask"]`, pressed only while `aria-pressed="false"`;
+  the composer chip exists only when the conversation has asks, and this seed
+  has none), selects the Updates tab only while it is not selected, switches the
+  drawer to its **Read** view (the radio `[data-drawer-read-view="read"]`,
+  pressed only while `aria-checked="false"`, drawer-updates.tsx:1033-1064; the
+  drawer opens on Unread, :301), requires the item's row in that list by the
+  row's own state attribute (`[data-drawer-view-list="read"]
+  [data-drawer-update="<id>"]:not([data-unread])`, :952/:1119/:1120), presses
+  its `[data-row-action="details"]`, and requires `[data-drawer-detail="<id>"]`
+  with its title and the same read icon. The Updates tab's own count badge comes
+  from a separate count query and has no attribute to wait on.
+- **The detail's read face is SEEDED, not driven.** `n_macproofdetailaa` is
+  seeded `read: true`, beside three unread items (`n_macprooffill*`) and one more
+  read one, so a run shows both faces without the app writing anything. The live
+  unread→read flip cannot be exercised in an unfocused window:
+  `notifications.read` is a foreground-receipt op refused outside focus
+  (src/main/desktop-ipc.ts:95-101 `FOREGROUND_RECEIPT_OPS`, refused at :166-185
+  on `!isFocused()`, v0.59.2), and this harness only ever runs an unfocused
+  window. Opening an unread item therefore flips it optimistically and rolls it
+  back, so the read icon never arrives. 79's run (main 34a08e97, app 0.59.2)
+  failed that way: "Step 16 waitFor `[data-drawer-detail="n_macproofdetailaa"]
+  [data-notification-toggle-read] svg.lucide-circle` timed out", and #1907's
+  "Unread 3 in dark, 4 in light" fits the same flip and rollback. It was not
+  icon drift: lucide-react is 0.507.0 at v0.59.2 and on main. The frame depicts
+  the seeded state; it makes no claim that the app marked the item read. Any
+  `--notification-id` either scene opens must already be read, or the run fails
+  at the row (drawer) or the read icon (page). The receipt records
+  `seed.items` (`{id, read}` per item) and lists the `detail-read-seeded`
+  limit, and the daemon read-back BLOCKS the run unless the detail item comes
+  back with the seeded `read`.
 - **Generate a template by hand** (to inspect it, or for `--seed-config`):
   `node scripts/mac-proof-seed.mjs --scenario ask-command --out <abs empty dir>`.
   `--out` is refused when it is, sits inside, or contains your own config root
@@ -232,7 +326,135 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   when set), compared by realpath; an agent scratchpad under
   `~/.local-operator/sessions/<id>/scratchpad` is the one carve-out.
 
+## The download scene: the harness's one write
+
+79's real-path plan needs proof that ONE file a peer owns downloads through the
+desktop app, on the Mac, without touching the operator's app, profile or
+`~/Downloads`. Every other scene only looks; `--scene download` presses the Files
+row's **Download to this device** once.
+
+**Who writes, and where.** The menu entry (`[data-remote-action="download"]`,
+`remote-file-actions-menu.tsx` at v0.59.2) sends the desktop op
+`sessions.files.download` = **`POST /v1/desktop/sessions/<sid>/files/<fid>/download`**
+(`desktop-contract.ts`) from the **app**, with the app's own token, to the rig's
+`lop serve`. The **backend** lands the file (core
+`server/routes/desktop_session_files.py` `remote_file_download`,
+`server/utils/remote_session_files.py` `downloads_dir`): `Path.home()/Downloads`
+when that is a directory, else `<config>/downloads`, never overwriting (an
+identical file is reused with `created: false`, a different one goes to
+`name (1).ext` ... `name (99).ext`). The harness's own daemon client is not on
+that path: its allowlist gains **no** route and still refuses that POST (a
+negative-control case and a test pin it).
+
+**What the write can reach.** In `--backend-config-root` mode the lop processes
+run with `HOME=--backend-home` and `LOCAL_OPERATOR_CONFIG_DIR=--backend-config-root`,
+so the only possible destinations are `<backend-home>/Downloads/<name>` (or its
+`(n)` variant) and `<config-root>/downloads/<name>`. Electron's
+`app.getPath('downloads')` - the operator's real `~/Downloads` whatever HOME the
+rig sets - is reached only by **Save as...** (`guardDownloads`,
+`window-guards-electron.ts`), so the harness never presses Save as or Copy image:
+the built step list is checked before launch against an exact **allowlist**: a
+download run may press only its own row trigger and the enabled Download entry
+(byte-for-byte; any other press, including another scene's, refuses the run),
+and any other run may not press a remote action or Save as at all - except
+`file-preview`'s byte-exact Show in canvas entry, a read into the canvas.
+
+```sh
+# On the Mac: the rig device already joined to the mesh (see --backend-config-root),
+# the fixture owner's manifest copied next to the run.
+node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-download" \
+  --backend-config-root ~/lop-rig/config --session ce618964c88e \
+  --scene download --theme dark \
+  --manifest "$LOCAL_OPERATOR_SCRATCHPAD/MAC-PROOF-MANIFEST-v0.105.3.json" \
+  --download-file notes.md --timeout 240
+shasum -a 256 ~/lop-rig/home/Downloads/notes.md      # the receipt's destination
+```
+
+The steps (shipped verbs only: `navigate`, `openCanvas`, `waitFor`, `press`): the
+Files view as the `files` scene reaches it; the row's `⋯` trigger
+(`[data-tour-tag="file-row"] button[aria-haspopup="menu"]` whose `aria-label` is
+**exactly** "Actions for <name>" in any shipped locale, read from
+`src/i18n/catalogues/*/ui.common.actions.json` - never a substring, so
+`old-notes.md` is not `notes.md`'s row); the run **refuses** when more than one
+row carries that label (a `gone` wait on a two-rows selector); the trigger is
+pressed only while `aria-expanded="false"`; the **enabled** Download entry,
+required and then pressed; the outcome toast (`[data-sonner-toast]`
+success/error/info, 60 s: twice the app's 30 s re-POST backoff, not a measured
+distribution - the receipt records the measured `toastLatency`), then a required
+**success** toast; then the shutter `download-<theme>`.
+
+| Refused (exit 2, nothing spawned) | Why |
+|---|---|
+| `--backend attach` | that daemon runs as the operator: the file would land in the real `~/Downloads` |
+| `--backend isolated` (default) | no peer, and the route lands only a peer's row |
+| more than one `--theme` | the backend reuses the identical file (`created: false`), so a second pass shows the app's "already downloaded" toast, not a download |
+| `--download-file` with `/`, `\`, `"`, a control character, `.`/`..`, or given twice | one plain file name per run |
+| `--download-file`/`--manifest` without `--scene download`; no `--session` | |
+| `--manifest` not absolute, absent, not a regular file, not JSON, no `files` list, no (or a repeated) entry for the file, an entry without a 64-hex `sha256` and integer `bytes` | the comparison must be machine-checkable |
+| `<backend-home>/Downloads` or `<config-root>/downloads` a symlink, resolving outside its root, or inside the operator's `~/Downloads` | the write must land in the rig, and somewhere the stray check can see |
+| `<name>` already in either destination | the backend would reuse it and land nothing new; move it out first |
+| a download run pressing anything but its exact allowlist; any other run pressing a remote action, Save as or Copy image (case-insensitive), file-preview's exact Show in canvas excepted | Save as writes through Electron to the real `~/Downloads` |
+| `MAC_PROOF_TEST_OPERATOR_DOWNLOADS` set outside `node --test`, or not absolute | a test-only seam (below) |
+| either rig destination unreadable before the run | a landing could not be told from what was there |
+
+| Fails the run (exit 1) | |
+|---|---|
+| no enabled Download entry on the row (a local row, an unreadable row, only Save as) | the error says the harness never falls back to Save as |
+| an error/info toast instead of success | |
+| more than one Files row labelled for `<name>` | the harness refuses to guess which row to download |
+| not exactly ONE new file, of any name, across both rig destinations after the success toast, or that one not named `<name>` (or its `(n)` variant); re-checked after the reap | |
+| the landed bytes/sha256 differ from the manifest entry | |
+| with `--check-operator-downloads` only: **any** new name in the operator's real `~/Downloads` between run start (before the backend or the app starts) and the end (after the reap) | names only; another process saving a file meanwhile also fails it, the safe direction |
+
+**Containment is proven by destination, not by a listing.** The proof is
+positive: exactly one new `<name>` landed, as a regular file physically inside
+the rig (`destination` + `insideRig` in the receipt), from a backend whose HOME
+and config root are the rig's. The comparison of the operator's real
+`~/Downloads` is a second, negative check and is **OPT-IN**
+(`--check-operator-downloads`, default **off**): on macOS `~/Downloads` is
+TCC-protected, and listing it from the hosting app (Terminal, an agent host) can
+raise a "Files and Folders" access prompt on the operator's own screen, before
+the app starts - the exact class of prompt this harness promises never to raise
+on an unattended run. Without the flag nothing of `~/Downloads` is listed and
+the receipt records `operatorDownloads: {checked: false}`, so the missing check
+is visible rather than implied. With it, the folder (read from the passwd home,
+`os.userInfo().homedir`, never `$HOME`) is listed before and after, and one that
+cannot be listed is **BLOCKED (exit 3)** with the host to grant, never a pass.
+With the flag off the harness touches nothing in `~/Downloads` at all - not
+even a realpath: the rig-inside-`~/Downloads` refusal compares against
+`<realpath(home)>/Downloads` as spelled, so a symlinked `~/Downloads` is not
+followed, and the receipt's `limits` says containment is destination-based.
+
+**Test-only seam.** `MAC_PROOF_TEST_OPERATOR_DOWNLOADS=<abs dir>` makes the
+flag-on listing read that folder instead, so the test suite never lists the
+real `~/Downloads` of whoever runs it. It is honoured only under `node --test`
+(`NODE_TEST_CONTEXT`), refused otherwise; the rig-inside-`~/Downloads` refusal
+still compares against the real default, and the receipt records the listed
+`path` with `injected: true`.
+
+**The receipt** gains `download`: `route` (the template above, sent by the app),
+`file`, `destinations` (`[{dir, exists}]`, the dry-run plan's shape),
+`destination` (the landed path), `newInRig` (every new path in the rig, recorded
+after the reap on every path, abort and signal included), `insideRig`, `bytes`,
+`sha256`, `manifest` (`{path, entry: {filename, bytes, sha256}}` or `null`),
+`compared` (`match`, `mismatch`, or `not compared (no --manifest)`),
+`operatorDownloads` (`{checked: false}` by default; with the flag `{checked:
+true, path, before, after, newEntries}` - counts and the new names only),
+`toastLatency` (`{step, waitedMs, boundMs, source}`: the press-to-outcome-toast
+wait the renderer measured), `limits` (`[{id, text}]`: what this run cannot
+prove - `toast-latency-unmeasured`, `config-root-only`,
+`containment-destination-based` when the stray check is off,
+`fixture-proven-actions`) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
+landing and containment only and says so; the Mac proof passes `--manifest`.
+
+**Negative control:** `--negative-control` includes the download refusals
+(attach, isolated, a directory as `--manifest`, a Save as press, the harness
+client's POST to the download route).
+
 ## The harness reads; it never acts
+
+(`--scene download` is the one exception, and the write is the app's, through
+the backend, into the rig: see above.)
 
 A read-role rig device can still **start a runtime on the session's owner**: on
 core origin/main, `network/types.py` gives `net_session_engage` the `"view"`
@@ -241,9 +463,13 @@ prompts, sends, engages or resumes anything, and that is enforced in code:
 
 - every daemon HTTP call goes through one client (`daemonRequest`) whose
   allowlist is `GET /health`, `GET /v1/desktop/sessions` (query keys
-  `include_peers`, `limit`), and the two `--seed` read-backs `GET
+  `include_peers`, `limit`), the two `--seed` read-backs `GET
   /v1/desktop/asks` and `GET /v1/desktop/notifications/<n_ + 16 of a-z2-7>`
-  (one path segment, no query); a path holding a control character is refused
+  (one path segment, no query), and the three provenance read-backs `GET
+  /v1/desktop/library/assets` (keys `scope`, `limit`), `GET
+  /v1/desktop/library/assets/<la_ + 16 hex>` (no query) and `GET
+  /v1/desktop/sessions/<12 hex>/files` (keys `q`, `limit`) - all reads; each
+  `<id>` is exactly one path segment; a path holding a control character is refused
   outright; anything else - and any path naming prompt, send,
   engage, message(s), runs, resume, steer, wake, slash, stop, claim, turn, exec,
   history or stream - is refused before a byte is sent;
@@ -345,6 +571,105 @@ an existing path is refused rather than deleted. The receipt labels such a
 bundle `kind: "built"` (anything outside `/Applications` is), and the frames are
 evidence of that build, not of the installed app or a release.
 
+## Scene waits: a loading state never takes a frame
+
+Every scene's last step before its shutter is a `waitFor` on markup that exists
+only in the scene's settled state, from the shipped v0.59.2 verbs and markup
+(the app under capture may be an older release than this branch). A `waitFor`
+that times out fails the run (exit 1) and no frame is written under the scene's
+name: a timeout means "it never settled", never "photograph what is there".
+
+| Scene | Waits for (any of) | Never passes on |
+|---|---|---|
+| `files` | a row of the session's file index (not an attachment row); the empty state (heading + its detail line); an explicit error or unsupported state (heading + its explanation or Retry/Continue) | "Loading session files…" or "Building the file index…" standing alone, an Attachments section still captioned "Loading session files…", attachment rows alone |
+| `file-preview` | the `files` wait, then (optionally) a press on a collapsed group header to expand it, then the menu of the index row named exactly `<name>` → **Show in canvas**, then `<img alt="<name>">` inside the canvas | an attachment row, a row whose name only starts with `<name>` (`image-1.png.bak`), a disabled Show-in-canvas entry (above the relay's ceiling), the lightbox, the canvas's "Opening…" state |
+| `library` | the results section with `aria-busy="false"` (cards, the empty state or the listing error) | the skeleton, a refetch in flight, the "indexing" line in the header |
+| `notifications` | the list or its empty state, with no detail pane | the skeleton, the previous scene's detail |
+
+Why `file-preview` goes through the row's menu: a picture in the grouped Images
+grid is a tile, and a tile's own click opens the lightbox, not the canvas. The
+row must be on the Files view's first screen (rows are virtualised).
+
+Why it expands a group first (79's run, main 34a08e97, app 0.59.2: "step 10
+press found no file-row with title image-1.png"): that session lists 1043 files,
+an expanded Highlights group of one row and a **collapsed** "Working files,
+1,042" group, and `image-1.png` sat in the collapsed one, whose rows v0.59.2
+never renders. Once a session has a highlighted file, every other file sits
+under Working files, which starts closed (finder-layout.ts:18, :224, :227). The
+search field would open every group, but no v0.59.2 script verb can type into a
+field (dev-driver-script.ts:62-71), so the scene presses the group's header
+instead. The header is a `<button>` directly inside the section's `<h3>`, and it
+is matched by its own state: `aria-expanded="false"` and not
+`aria-disabled="true"` (finder-files-view.tsx:945, :984-:986), never by its
+localized label or its chevron icon. The press is optional, because a session
+with no highlights has no such group, and a run's second theme finds it already
+open. In the harness's fresh profile Working files is the only group that can
+start collapsed. After the expand, the row must still be on the first screen
+of the list. The exact
+selectors and the v0.59.2 file:line behind each are in `scripts/mac-proof-capture.mjs`
+(`FILES_READY`, `SCENE_READY`, `filePreviewSceneSteps`), and
+`scripts/mac-proof-capture.test.mjs` freezes those lines and re-reads them from
+the tag in a full checkout.
+
+Attachment rows and index rows share `data-tour-tag="file-row"` and the
+Attachments section has no attribute of its own, so index rows are told apart by
+their id: every attachment row's `data-file-id` starts `attachment:`, no index
+row's does. A session whose index is settled empty but which holds attachments
+therefore shows nothing the wait accepts: the run fails rather than photograph it.
+
+Gaps, stated rather than papered over (the receipt lists them too, `limits`):
+
+- **Paging.** While a file index is still paging with rows already on screen,
+  the count line above them appends " · Loading session files…" as bare text no
+  v0.59.2 attribute exposes. The rows in that frame are real; the suffix can
+  still be visible.
+- **Decode.** The canvas `<img>` exists as soon as its URL is set, before the
+  browser has decoded it; nothing in v0.59.2's markup marks the decode, so a
+  `file-preview` frame can catch a picture not yet painted.
+- **Two headings that are not alone.** "Building the file index…" gets a
+  Continue button after 60 building polls (~3.7 min), and "Loading session
+  files…" gets a Clear button while a search or kind filter is active; either
+  would pass the wait. The harness reaches neither: its profile is fresh (no
+  filter) and the wait gives up at 20 s.
+- **One row of that name.** The shipped verbs cannot count matches, so the
+  provenance read-back fails the run when the index holds two or more rows
+  named `--preview-file`.
+- **No search.** The Files search field is never used (no shipped verb types),
+  so a row deep inside a large group is reachable only when it falls on the
+  first screen after its group is expanded (`preview-no-search`,
+  `preview-first-screen`).
+
+## Provenance: the frame shows a PEER's data
+
+A Library or file-preview frame of local data looks the same as one of a peer's,
+so after the frames, while the rig daemon is still up, the harness reads the data
+behind them back (allowlisted GETs, below) and **fails the run (exit 1)** when it
+is not remote. The receipt keeps what it judged:
+
+- `libraryProvenance: {assetId, remote, localPath, source, pass}` (with the
+  `library` scene): the first row of the desktop's own listing (`scope=final`),
+  read back by id. `remote` and `localPath` are booleans (the row has a remote
+  block / a `ref.path`). Passes only when `remote: true` and `localPath: false` -
+  a row only a peer references. `source` is the row's `origin` (core has no
+  field named `source`).
+- `imagePreview: {assetId, remote, matchingRows, originDeviceKnown, sessionOnRig,
+  pass}` (with the `file-preview` scene): the row of `--session`'s file index
+  named exactly `--preview-file`. Passes only when exactly one row has that name,
+  the daemon stamped it `remote: true`, AND the session is absent from the rig's
+  own `<config>/sessions` (a session the rig holds could have been served from
+  this disk). Attach mode has no rig config root, so it cannot pass.
+
+A failing check adds `problem` naming why. Receipts get attached to PRs in a
+public repository, so neither check copies the peer's device id or name (only
+`originDeviceKnown: true/false`) nor a local path (only `localPath: true/false`),
+not even in `problem`.
+
+Every receipt also carries `limits: [{id, text}]`, the known measurement limits
+of the scenes it ran (`MEASUREMENT_LIMITS` in the script): the paging caption,
+attachments-only sessions, the first-screen row, no Files search, no
+image-decode wait, the detail scenes' seeded read face, and scene-wait selectors
+proven on fixtures rather than in Chromium.
+
 ## What a frame may claim
 
 - `screencapture` frames (the darwin default) are labelled **`screencapture -l
@@ -355,7 +680,14 @@ evidence of that build, not of the installed app or a release.
   what is visible in it.
 - `--capture capturepage` frames (the default elsewhere; what Linux/xvfb
   exercises) come from the app's own `capturePage()` and are labelled **no
-  vibrancy claim**.
+  vibrancy claim; RGBA with translucent glass; do not judge contrast from this
+  mode** (on the run's `capture` and every frame's `method`). The bytes are kept
+  as captured: glass regions keep their alpha, so a viewer composites them over
+  white and dark frames look mid-grey - contrast read off them is falsely low.
+- Two frames of **different scenes** with the same sha256 fail the run (exit 1),
+  naming both: one of them is a stale frame (run #1907's
+  `notifications-light.png` was byte-identical to `notification-detail-light.png`,
+  sha256 `cbbbcdc5...`). One scene's two themes are not compared.
 - A frame exists only after every step before it succeeded: a failed step, a
   conversation that is not `--session`, or a focused window ends the run before
   the next shutter.
@@ -370,11 +702,24 @@ supervisor, the env/argv builder, the daemon-client and lop allowlists, the thre
 backend modes end to end, token confinement and the reap.
 
 Mac-only, **pending measurement** on a real Mac:
-- the Screen Recording preflight result (BLOCKED when JXA cannot call it), and
-  the PNG-size-equals-bounds check at the Mac's backing scale;
+- the Screen Recording preflight result (BLOCKED when JXA cannot call it; the
+  `ObjC.bindFunction` path answered `{"granted":true}` on Darwin 27.2, measured
+  standalone, not yet through a full screencapture run), and the
+  PNG-size-equals-bounds check at the Mac's backing scale;
+- the `files`/`file-preview`/`library`/`notifications`/`update-detail` waits
+  against the installed app's real markup (the selectors are read from the
+  v0.59.2 source and proven on jsdom fixtures shaped like it, not in Chromium),
+  and the provenance read-backs against a real peer's rows;
 - `getMediaSourceId()` agreeing with the JXA `CGWindowList` entry;
 - `screencapture -x -o -l` of a non-front `inactive` window carrying real
   vibrancy, with no activation or focus change (sample the frontmost app by pid);
 - the `ps -E` config-root sweep on macOS;
 - a real boot of the S1 runner in the packaged app, the remote session painting,
-  and the reap leaving no `Local Operator` pid carrying the rig profile.
+  and the reap leaving no `Local Operator` pid carrying the rig profile;
+- the `download` scene against the installed app's real Files row and menu (the
+  selectors are read from the v0.59.2 source; Linux proves the harness side
+  against a fake app whose press sends the same POST to a fake backend that
+  lands like core), whether the owner's side needs an in-app Admit (then the
+  leg is BLOCKED, not worked around), and - only for a run that passes
+  `--check-operator-downloads` - whether listing `~/Downloads` raises a TCC
+  prompt for the run's host.

@@ -1,0 +1,169 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "090976849b8e",
+    "instance": "090976849b8e-voiceui-vi",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Same model family as the translator (anthropic/claude-sonnet-5-5), different session and agent role; not an independent model."
+  },
+  "locale": "vi",
+  "audit_date": "2026-11-19",
+  "scope": "Voice UI strings added on feat/qwen-voice-ui-2026-11-17 at translations commit bad1701b2d: ui.chat.voice (81 keys), ui.settings.voice (2 keys), ui.settings.speech.provider (12 keys), ui.providers.stored_key (5 keys)",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "namespaces": {
+    "ui.chat.voice": {
+      "status": "passed",
+      "sha256": {
+        "vi": "dfa58a40e07b7b78831f4f5ed3e02446cb4b3ff993a51497d273a977d5bcd97a",
+        "en": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a"
+      },
+      "context_sha256": "43c5962762a2fa3a9bf85cf48fbc2e3f365832bd36fc8c65f9753c21618530a8",
+      "key_count": 81,
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.voice.byok_stt_failed",
+          "en": "Voice could not hear that. Check your speech provider in Settings.",
+          "current": "Giọng nói không nghe được. Hãy kiểm tra nhà cung cấp giọng nói của bạn trong Cài đặt.",
+          "problem": "«Giọng nói không nghe được» has no object, so it also reads 'the voice cannot be heard'; en says the voice could not hear THAT (cf. byok_speech_failed, which names its object).",
+          "suggested": "Giọng nói không nghe được nội dung đó. Hãy kiểm tra nhà cung cấp giọng nói của bạn trong Cài đặt."
+        }
+      ]
+    },
+    "ui.settings.voice": {
+      "status": "passed",
+      "sha256": {
+        "vi": "5588bc00958b14c49ed69edc896a7826af3ecb424bece9a0d3823456d6f70898",
+        "en": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497"
+      },
+      "context_sha256": "486cd3292afdddc3d4af9bc481af0e432e57030dceecf4ca9585f2990a3fb333",
+      "key_count": 2,
+      "findings": []
+    },
+    "ui.settings.speech.provider": {
+      "status": "passed",
+      "sha256": {
+        "vi": "d4182013dbf2ba102bc41d96155697f8a7e7a141d71ae39c95977be867fd41a1",
+        "en": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8"
+      },
+      "context_sha256": "f6d3835453c3477a7d40da11574165fcf16ab801a6db0d12410e627540681520",
+      "key_count": 12,
+      "findings": []
+    },
+    "ui.providers.stored_key": {
+      "status": "passed",
+      "sha256": {
+        "vi": "ace55a88537a63160c671aed9f7fe8ce5c82c0cb6241e1510b39439d39d7d14a",
+        "en": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf"
+      },
+      "context_sha256": "7037b459a94c8acd004571f99a9fef5b53393dc8732b53f8aa8c9afc131714d9",
+      "key_count": 5,
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.stored_key.remove",
+          "en": "Remove key",
+          "current": "Gỡ khóa",
+          "problem": "«Gỡ khóa» also means 'unlock' in Vietnamese, and khóa is both 'key' and 'lock'; the destructive confirm («Gỡ khóa này?») is exposed to that reading. Existing vi uses «Xóa» for Delete and 6 of 12 'Remove' labels.",
+          "suggested": "Xóa khóa"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.stored_key.remove_confirm",
+          "en": "Remove this key?",
+          "current": "Gỡ khóa này?",
+          "problem": "Same «gỡ khóa» ambiguity.",
+          "suggested": "Xóa khóa này?"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.providers.stored_key.remove_failed",
+          "en": "The key could not be removed.",
+          "current": "Không gỡ được khóa.",
+          "problem": "Same «gỡ khóa» ambiguity.",
+          "suggested": "Không xóa được khóa."
+        }
+      ]
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.chat.voice.approval_waiting",
+      "target": "Hãy phê duyệt hoặc từ chối trên màn hình. Giọng nói không thể trả lời phê duyệt.",
+      "back": "Please approve or reject on screen. Voice can't reply to approvals."
+    },
+    {
+      "key": "ui.chat.voice.card_pending",
+      "target": "Hãy trả lời câu hỏi hoặc phê duyệt trên màn hình trước.",
+      "back": "Please answer the question or approval on screen first."
+    },
+    {
+      "key": "ui.chat.voice.not_enabled",
+      "target": "Giọng nói không còn bật cho cuộc trò chuyện này.",
+      "back": "Voice is no longer on for this conversation."
+    },
+    {
+      "key": "ui.chat.voice.stream_lost",
+      "target": "Giọng nói không còn nhận được cập nhật của cuộc trò chuyện này. Câu trả lời sẽ không được đọc thành tiếng cho đến khi kết nối lại.",
+      "back": "Voice no longer receives this conversation's updates. Replies won't be read aloud until reconnected."
+    },
+    {
+      "key": "ui.chat.voice.notice_elsewhere_prefix",
+      "target": "Giọng nói đang bật trong",
+      "back": "Voice is on in [title]"
+    },
+    {
+      "key": "ui.chat.voice.dictation_off_voice_elsewhere",
+      "target": "Giọng nói đang bật trong “{title}”. Hãy chuyển về đây hoặc tắt để đọc chính tả.",
+      "back": "Voice is on in “{title}”. Move it back here or turn it off to dictate."
+    },
+    {
+      "key": "ui.chat.voice.byok_speech_rate_limited",
+      "target": "Hiện đã hết giới hạn của nhà cung cấp giọng nói của bạn nên câu trả lời đó không được đọc thành tiếng.",
+      "back": "The limit of your voice provider is currently used up, so that reply wasn't read aloud."
+    },
+    {
+      "key": "ui.chat.voice.provider_unset",
+      "target": "Hãy chọn nhà cung cấp giọng nói trước: Radient hoặc khóa ElevenLabs của riêng bạn. Chế độ giọng nói chỉ dùng nhà cung cấp bạn chọn.",
+      "back": "Please choose a voice provider first: Radient or your own ElevenLabs key. Voice mode only uses the provider you choose."
+    },
+    {
+      "key": "ui.settings.speech.provider.radient.description",
+      "target": "Tính vào tín dụng Radient của bạn.",
+      "back": "Charged to your Radient credit."
+    },
+    {
+      "key": "ui.settings.speech.provider.elevenlabs.description",
+      "target": "Dùng tài khoản ElevenLabs của chính bạn, do ElevenLabs tính phí.",
+      "back": "Uses your own ElevenLabs account, charged by ElevenLabs."
+    },
+    {
+      "key": "ui.settings.speech.provider.none_ready",
+      "target": "Cả hai nhà cung cấp đều chưa sẵn sàng. Hãy thiết lập một nhà cung cấp trong Nhà cung cấp, rồi chọn tại đây.",
+      "back": "Neither provider is ready yet. Set up a provider in Providers, then choose here."
+    },
+    {
+      "key": "ui.providers.stored_key.remove_confirm",
+      "target": "Gỡ khóa này?",
+      "back": "Unhook (also reads 'unlock') this key?"
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at the worktree HEAD named in scope; each namespace block names exactly those bytes.",
+    "ICU parity: every message of the 4 namespaces (100 keys) parsed with the project's own @formatjs/icu-messageformat-parser (v3.5.21) and compared with English: same argument names/types ({title}, {reason}, {time}, {count}); key sets and key order equal English's; 700/700 (7 locales x 100 keys) clean. NFC on every message; no bidi control characters; no leading/trailing or doubled whitespace; no message identical to English; brand names (Radient, ElevenLabs, macOS, Local Operator), the 30-second figure, the ↑ arrow and ' · ' separators preserved wherever English has them; final-stop and ellipsis shape matches English (two ur/hi empty_history differences are the SOV verb after the closing quote, accepted).",
+    "Every string read against its English value and en .context.json sidecar (role, tone, note), against this locale's style guide and the core glossary (hashes in references), and against the sibling already-audited backend wording local_operator/i18n/catalogues/<locale>/wire.voice.json for provider/approval/conversation/key terms.",
+    "Neighbour consistency measured against existing UI catalogues of this locale: Retry, Settings, Providers (ui.settings.model.provider_callout.providers_link) / Provider, Reconnect, Pause, Approve/Deny (ui.chat.approval.option.*), Remove/Delete, Ready, Dictation, Speak aloud, API key, Radient credit, composer wording (ui.agents.config.banner.unavailable).",
+    "Register: es tú, fr vous, ru вы, vi bạn, zh 你, hi आप, ur آپ — consistent per style guide; no please-particles except where the zh style guide's 请 rule applies (checked per directive).",
+    "Length fit judged from character counts and from voice-composer.tsx layout (chips shrink-0, captions truncate); no rendered frame was produced or reviewed in this audit.",
+    "Back-translations of the 12 most consequential strings (approval, pending-card, voice-not-enabled, stream-lost, voice-elsewhere, provider-unset, rate limit, Radient/ElevenLabs billing, none-ready, key removal) recorded in back_translations for the namespaces this receipt covers."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51",
+    "core_origin_main": "4a5aea9bd"
+  }
+}
