@@ -55,5 +55,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Discard message",
 	"ui.teamBridge.holds.confirm.cancel": "Cancel",
 	"ui.teamBridge.holds.delivering": "Delivering…",
-	"ui.teamBridge.holds.discarding": "Discarding…"
+	"ui.teamBridge.holds.discarding": "Discarding…",
+	"ui.teamBridge.holds.receipt_only": "Its sender and text can no longer be loaded, so it can’t be delivered. You can still discard it without reading it.",
+	"ui.teamBridge.holds.reference": "Reference {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "Discard only this message ({reference}) without reading it? It won’t reach your agent. The discard is recorded on this device and can’t be undone.",
+	"ui.teamBridge.holds.discard_unread_label": "Discard message {reference} without reading it",
+	"ui.teamBridge.holds.state.discard_recorded": "Discard recorded on this device. It hasn’t been applied yet."
 }

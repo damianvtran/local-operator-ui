@@ -576,3 +576,284 @@ test("the list parse keeps optional fields optional and drops unknown keys", () 
 	const { can_deliver: _cd, ...broken } = hold();
 	assert.throws(() => api.parseHoldsPage({ enabled: true, items: [broken] }));
 });
+
+// -- local-operator #4358: core's `actionable`, the receipt Discard ----------
+
+const RECEIPT = "c".repeat(64);
+/* The operator's stuck row, rebuilt synthetically (never read from or written
+   to a live config): model_hold, held 2026-11-10 09:23Z, 168 h window long
+   past, no release row, its body no longer loadable. */
+const orphan = (over = {}) =>
+	hold({
+		message_id: "bcmsg_5ac4b3e8deadbeef",
+		held_at: "2026-11-10T14:23:00Z",
+		can_deliver: false,
+		deliver_until: "2026-11-17T14:23:00Z",
+		actionable: true,
+		discard_receipt: RECEIPT,
+		...over,
+	});
+
+test("the badge counts core's `actionable` when served, and only it", () => {
+	const fresh = hold({
+		message_id: "bcmsg_647",
+		held_at: "2026-11-18T09:00:00Z",
+		actionable: true,
+	});
+	// The operator's 2: the stuck expired row and a new valid hold.
+	assert.equal(m.actionableHoldCount({ items: [orphan(), fresh] }, NOW), 2);
+	// The orphan discarded (core: release row present -> actionable false,
+	// decision pending): 2 -> 1, never 0 while the valid hold remains.
+	const settled = orphan({
+		actionable: false,
+		discard_receipt: null,
+		decision: {
+			word: "discard",
+			decided_at: "2026-11-20T12:00:00Z",
+			outcome: "pending",
+			key_id: "k1",
+		},
+	});
+	assert.equal(m.actionableHoldCount({ items: [settled, fresh] }, NOW), 1);
+	// A refused decision is settled from the person's side too.
+	const refused = orphan({
+		actionable: false,
+		decision: { ...settled.decision, outcome: "refused" },
+	});
+	assert.equal(m.actionableHoldCount({ items: [refused] }, NOW), 0);
+	// Core wins in both directions over the legacy flags.
+	assert.equal(m.isActionableHold(hold({ actionable: false }), NOW), false);
+	assert.equal(
+		m.isActionableHold(
+			hold({ can_deliver: false, can_discard: false, actionable: true }),
+			NOW,
+		),
+		true,
+	);
+	// Older core (no `actionable`): the legacy rule, unchanged.
+	assert.equal(m.isActionableHold(hold(), NOW), true);
+	assert.equal(m.isActionableHold(hold({ conversation_id: "" }), NOW), false);
+	// Repeated reads of the same page give the same number.
+	const page = { items: [orphan(), fresh, settled] };
+	assert.equal(
+		m.actionableHoldCount(page, NOW),
+		m.actionableHoldCount(page, NOW),
+	);
+});
+
+test("a receipt arms Discard only when the body cannot be shown (#4358)", () => {
+	const a = m.holdAffordance(orphan(), NOW);
+	assert.equal(a.state, "deliver_expired");
+	assert.equal(m.receiptDiscardArmed(orphan(), a, "unavailable", null), true);
+	assert.equal(
+		m.receiptDiscardArmed(orphan(), a, "ready", { state: "none" }),
+		true,
+	);
+	// Still loading: nothing acts on load, and a body about to arrive wins.
+	assert.equal(m.receiptDiscardArmed(orphan(), a, "loading", null), false);
+	// A body on screen (or withheld with a hash) binds its hash, as before.
+	for (const binding of [
+		{ state: "shown", hash: "a".repeat(64) },
+		{ state: "withheld", hash: "a".repeat(64) },
+		// A differing served hash arms nothing (QA Q2), receipt or not.
+		{ state: "mismatch" },
+	])
+		assert.equal(m.receiptDiscardArmed(orphan(), a, "ready", binding), false);
+	// No receipt, a malformed one, no Discard, or a decided row: nothing.
+	for (const receipt of [null, undefined, "C".repeat(64), "c".repeat(63)])
+		assert.equal(
+			m.receiptDiscardArmed(
+				orphan({ discard_receipt: receipt }),
+				a,
+				"unavailable",
+				null,
+			),
+			false,
+		);
+	const noDiscard = orphan({ can_discard: false });
+	assert.equal(
+		m.receiptDiscardArmed(
+			noDiscard,
+			m.holdAffordance(noDiscard, NOW),
+			"unavailable",
+			null,
+		),
+		false,
+	);
+	const decided = orphan({
+		decision: {
+			word: "discard",
+			decided_at: null,
+			outcome: "pending",
+			key_id: null,
+		},
+	});
+	assert.equal(
+		m.receiptDiscardArmed(
+			decided,
+			m.holdAffordance(decided, NOW),
+			"unavailable",
+			null,
+		),
+		false,
+	);
+});
+
+test("Deliver never carries a receipt; Discard prefers the shown hash (S-11)", () => {
+	const both = { deliver: true, discard: true };
+	const shown = { state: "shown", hash: "a".repeat(64) };
+	assert.deepEqual(
+		m.holdDecideProof("deliver", {
+			armed: both,
+			binding: shown,
+			receipt: RECEIPT,
+		}),
+		{ body_sha256: "a".repeat(64) },
+	);
+	// No shown body: Deliver has no proof at all, whatever the receipt.
+	for (const binding of [
+		null,
+		{ state: "none" },
+		{ state: "withheld", hash: "a".repeat(64) },
+		{ state: "mismatch" },
+	])
+		assert.equal(
+			m.holdDecideProof("deliver", { armed: both, binding, receipt: RECEIPT }),
+			null,
+		);
+	assert.deepEqual(
+		m.holdDecideProof("discard", {
+			armed: both,
+			binding: shown,
+			receipt: RECEIPT,
+		}),
+		{ body_sha256: "a".repeat(64) },
+	);
+	assert.deepEqual(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: true },
+			binding: null,
+			receipt: RECEIPT,
+		}),
+		{ hold_receipt: RECEIPT },
+	);
+	assert.equal(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: false },
+			binding: null,
+			receipt: RECEIPT,
+		}),
+		null,
+	);
+});
+
+test("the receipt Discard reaches its route with exactly one proof", () => {
+	const base = {
+		op: "team_bridge.holds.discard",
+		expected_account_id: "acct_1",
+		message_id: "bcmsg_1",
+		conversation_id: "bcv_abcdefgh",
+	};
+	const ok = { ...base, hold_receipt: RECEIPT };
+	assert.equal(c.desktopRequestSchema.safeParse(ok).success, true);
+	assert.deepEqual(c.desktopEndpoint(ok).body, {
+		expected_account_id: "acct_1",
+		conversation_id: "bcv_abcdefgh",
+		hold_receipt: RECEIPT,
+	});
+	const parse = (request) => c.desktopRequestSchema.safeParse(request).success;
+	// Both or neither: refused before IPC (the route answers 422).
+	assert.equal(parse({ ...ok, body_sha256: "a".repeat(64) }), false);
+	assert.equal(parse(base), false);
+	assert.equal(parse({ ...base, hold_receipt: "C".repeat(64) }), false);
+	assert.equal(parse({ ...base, hold_receipt: null }), false);
+	// Deliver has no receipt field at all.
+	assert.equal(parse({ ...ok, op: "team_bridge.holds.deliver" }), false);
+	assert.equal(
+		parse({
+			...base,
+			op: "team_bridge.holds.deliver",
+			body_sha256: "a".repeat(64),
+			hold_receipt: RECEIPT,
+		}),
+		false,
+	);
+});
+
+test("the list parse carries `actionable` and a well-formed receipt only", () => {
+	const page = api.parseHoldsPage({
+		enabled: true,
+		items: [
+			orphan(),
+			orphan({ message_id: "bcmsg_2", discard_receipt: "NOT-HEX" }),
+			orphan({ message_id: "bcmsg_3", discard_receipt: null }),
+			hold({ message_id: "bcmsg_4" }),
+		],
+	});
+	assert.equal(page.items[0].actionable, true);
+	assert.equal(page.items[0].discard_receipt, RECEIPT);
+	// A malformed receipt reads as none rather than failing the whole list.
+	assert.equal(page.items[1].discard_receipt, null);
+	assert.equal(page.items[2].discard_receipt, null);
+	// An older core: both absent, still parses.
+	assert.equal(page.items[3].actionable, undefined);
+	assert.equal(page.items[3].discard_receipt, null);
+	assert.throws(() =>
+		api.parseHoldsPage({
+			enabled: true,
+			items: [orphan({ actionable: "yes" })],
+		}),
+	);
+});
+
+test("order is stable by hold time then id, whatever order the list arrives in", () => {
+	const items = [
+		hold({
+			message_id: "bcmsg_b",
+			held_at: "2026-11-02T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_a",
+			held_at: "2026-11-02T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_old",
+			held_at: "2026-10-01T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_nt",
+			held_at: null,
+			can_deliver: false,
+			deliver_until: null,
+		}),
+	];
+	const want = ["bcmsg_old", "bcmsg_a", "bcmsg_b", "bcmsg_nt"];
+	assert.deepEqual(
+		m.sortHolds(items, NOW).map((i) => i.message_id),
+		want,
+	);
+	assert.deepEqual(
+		m.sortHolds([...items].reverse(), NOW).map((i) => i.message_id),
+		want,
+	);
+	// The order reads metadata only: the same list sorts the same way twice.
+	assert.deepEqual(
+		m.sortHolds(m.sortHolds(items, NOW), NOW).map((i) => i.message_id),
+		want,
+	);
+});
+
+test("a row's reference is short, stable and the message's own", () => {
+	assert.equal(m.holdReference("bcmsg_5ac4b3e8deadbeef"), "deadbeef");
+	assert.equal(m.holdReference("bcmsg_abc"), "abc");
+	assert.equal(
+		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
+		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
+	);
+});

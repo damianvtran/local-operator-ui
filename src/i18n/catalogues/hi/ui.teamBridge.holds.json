@@ -55,5 +55,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "संदेश खारिज करें",
 	"ui.teamBridge.holds.confirm.cancel": "रद्द करें",
 	"ui.teamBridge.holds.delivering": "पहुँचाया जा रहा है…",
-	"ui.teamBridge.holds.discarding": "खारिज किया जा रहा है…"
+	"ui.teamBridge.holds.discarding": "खारिज किया जा रहा है…",
+	"ui.teamBridge.holds.receipt_only": "इसका भेजने वाला और टेक्स्ट अब लोड नहीं हो सकते, इसलिए इसे पहुँचाया नहीं जा सकता। आप अब भी इसे बिना पढ़े खारिज कर सकते हैं।",
+	"ui.teamBridge.holds.reference": "संदर्भ {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "सिर्फ़ यह संदेश ({reference}) बिना पढ़े खारिज करें? यह आपके एजेंट तक नहीं पहुँचेगा। खारिज करना इस डिवाइस पर दर्ज होता है और इसे वापस नहीं लिया जा सकता।",
+	"ui.teamBridge.holds.discard_unread_label": "संदेश {reference} बिना पढ़े खारिज करें",
+	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है, लेकिन अभी लागू नहीं हुआ है।"
 }

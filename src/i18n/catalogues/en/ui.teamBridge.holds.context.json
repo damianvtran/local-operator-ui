@@ -416,5 +416,46 @@
 		"length": "1 word",
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. Shown on the pressed button while Discard is recorded."
+	},
+	"ui.teamBridge.holds.receipt_only": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown on a held message whose sender and text can no longer be loaded (for example it expired). Only Discard is possible, and the person discards it without having read it. Deliver and Discard match the button names. Never say the sender will be told."
+	},
+	"ui.teamBridge.holds.reference": {
+		"role": "meta line",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {
+			"reference": "a short code of letters and digits that identifies the message, e.g. '9a1f3c2e'; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. The only way to tell this message apart when its sender and text cannot load. Same code appears in the confirm question."
+	},
+	"ui.teamBridge.holds.confirm.discard_unread": {
+		"role": "confirmation question before an irreversible action",
+		"tone": "calm, precise",
+		"length": "three short sentences",
+		"placeholders": {
+			"reference": "the message's short code, same as in the Reference line; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Confirms discarding exactly ONE message whose text was never shown. 'Discard' matches the button name. The discard is recorded on the user's own device. Do not promise that the sender is notified."
+	},
+	"ui.teamBridge.holds.discard_unread_label": {
+		"role": "accessible button name",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"reference": "the message's short code; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Screen-reader name of the Discard button on a message whose text cannot be loaded."
+	},
+	"ui.teamBridge.holds.state.discard_recorded": {
+		"role": "status line",
+		"tone": "calm, factual",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: it is saved on this device but has not taken effect yet. Do not say the sender was told."
 	}
 }

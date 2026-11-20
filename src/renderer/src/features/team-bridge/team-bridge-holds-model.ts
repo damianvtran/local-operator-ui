@@ -52,6 +52,18 @@ export type HoldItem = {
 	decision: HoldDecisionView | null;
 	/** local-operator #4212: nothing could screen this message. Optional. */
 	unscreened?: boolean;
+	/**
+	 * local-operator #4358: core's own "the person owes this an answer". When
+	 * present it is the ONLY input to the badge and the nav count (see
+	 * `isActionableHold`); absent means an older core.
+	 */
+	actionable?: boolean;
+	/**
+	 * local-operator #4358: binds this ONE local hold record for a Discard when
+	 * the body cannot be shown. Discard only, never Deliver. Null or absent
+	 * means no receipt Discard is offered.
+	 */
+	discard_receipt?: string | null;
 };
 
 export type HoldsPage = {
@@ -61,6 +73,12 @@ export type HoldsPage = {
 };
 
 export type HoldWord = "deliver" | "discard";
+
+/**
+ * What a decide binds: the hash of the body on screen, or (Discard only) the
+ * list's `discard_receipt`. Exactly one, as the route requires.
+ */
+export type HoldProof = { body_sha256: string } | { hold_receipt: string };
 
 export type HoldReceipt = {
 	message_id: string | null;
@@ -247,21 +265,45 @@ export function holdAffordance(
 }
 
 /**
- * Holds the person can act on now: one that offers a button and has no
- * recorded answer. This is the number added to the Approvals badge; a hold that
- * only waits on the machine is listed but never counted.
+ * Whether the person owes this hold an answer: the one predicate the badge,
+ * the nav count and the section's "waiting" all read, so they cannot disagree.
+ *
+ * WHY CORE DECIDES IT (local-operator #4358, operator report 2026-11-20). The
+ * renderer used to re-derive this from `can_deliver` / `can_discard`, and
+ * counted an expired hold whose body could no longer load: the badge said 1
+ * while the row offered nothing. Core now serves `actionable` (undecided, has a
+ * conversation, and Deliver or Discard open), so when it is present it wins
+ * outright: a recorded decision (pending, applied or refused) is `false` there
+ * and never counts again, and a valid new hold is `true` beside it.
+ *
+ * LEGACY FALLBACK (older core, no `actionable`): the previous rule, kept as
+ * is so an older daemon's badge does not change under it. It can still
+ * over-count a row whose body cannot load; that is the bug #4358 fixes at the
+ * source, not one this side can resolve.
+ */
+export function isActionableHold(
+	item: HoldItem,
+	now: number = Date.now(),
+): boolean {
+	if (typeof item.actionable === "boolean") return item.actionable;
+	// No conversation id: the owner-audit join cannot find the message, so
+	// it can never be decided here and must not hold the badge on (QA Q1).
+	if (!item.conversation_id) return false;
+	const a = holdAffordance(item, now);
+	return a.state === "open" || a.state === "deliver_expired";
+}
+
+/**
+ * Holds the person can act on now (`isActionableHold`). This is the number
+ * added to the Approvals badge; a hold that only waits on the machine, or one
+ * already decided, is listed but never counted.
  */
 export function actionableHoldCount(
 	page: Pick<HoldsPage, "items"> | null | undefined,
+	now: number = Date.now(),
 ): number {
 	if (!page) return 0;
-	return page.items.filter((item) => {
-		// No conversation id: the owner-audit join cannot find the message, so
-		// it can never be decided here and must not hold the badge on (QA Q1).
-		if (!item.conversation_id) return false;
-		const a = holdAffordance(item);
-		return a.state === "open" || a.state === "deliver_expired";
-	}).length;
+	return page.items.filter((item) => isActionableHold(item, now)).length;
 }
 
 // -- refusals -----------------------------------------------------------------
@@ -439,7 +481,13 @@ export function armedWords(
  * The order the owner works the list in (UX U5). Core lists oldest first, so
  * expired rows would bury the ones still deliverable: deliverable rows come
  * first, soonest deadline first, then Discard-only rows, then rows with
- * nothing to decide, then decided ones. Stable inside each group.
+ * nothing to decide, then decided ones.
+ *
+ * Inside a group: oldest `held_at` first, the message id breaking ties. The
+ * order reads only list metadata, never the body or its loading state, so a
+ * body arriving, a refresh or an expansion never moves a row under the
+ * person's pointer; and it does not depend on the order the daemon happened
+ * to serve (#4358 added the same id tie-break on its side).
  */
 export function sortHolds(
 	items: readonly HoldItem[],
@@ -458,15 +506,93 @@ export function sortHolds(
 			: Number.NaN;
 		return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
 	};
-	return items
-		.map((item, index) => ({ item, index }))
-		.sort(
-			(a, b) =>
-				rank(a.item) - rank(b.item) ||
-				(rank(a.item) === 0 ? deadline(a.item) - deadline(b.item) : 0) ||
-				a.index - b.index,
-		)
-		.map((entry) => entry.item);
+	const heldAt = (item: HoldItem) => {
+		const value = item.held_at ? Date.parse(item.held_at) : Number.NaN;
+		// An unknown hold time sorts last in its group, not first.
+		return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+	};
+	const byHeld = (a: HoldItem, b: HoldItem) => {
+		const left = heldAt(a);
+		const right = heldAt(b);
+		if (left !== right) return left < right ? -1 : 1;
+		if (a.message_id === b.message_id) return 0;
+		return a.message_id < b.message_id ? -1 : 1;
+	};
+	return [...items].sort(
+		(a, b) =>
+			rank(a) - rank(b) ||
+			(rank(a) === 0 ? deadline(a) - deadline(b) : 0) ||
+			byHeld(a, b),
+	);
+}
+
+// -- the receipt Discard (local-operator #4358) ----------------------------------
+
+/**
+ * Whether this hold's Discard may bind its `discard_receipt` instead of a body.
+ *
+ * ONLY when the body cannot be shown: the owner-audit join answered
+ * `unavailable` (expired at the hub, conversation gone, no audit here) or it
+ * loaded with no usable hash at all. NOT while it is still loading (a body
+ * about to arrive must not be skipped, and nothing acts on load), NOT when a
+ * body is on screen or withheld with a hash (that path binds the hash, as
+ * before), and NOT on a `mismatch` (the view disagrees with what was
+ * screened; it keeps its "cannot verify" line and arms nothing, as QA Q2
+ * decided). Deliver never takes this path.
+ */
+export function receiptDiscardArmed(
+	item: Pick<HoldItem, "discard_receipt" | "message_id">,
+	affordance: HoldAffordance,
+	detail: "loading" | "unavailable" | "ready",
+	binding: BodyBinding | null,
+): boolean {
+	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
+		return false;
+	if (!affordance.discard) return false;
+	const receipt = item.discard_receipt;
+	if (typeof receipt !== "string" || !SHA256_HEX.test(receipt)) return false;
+	if (detail === "unavailable") return true;
+	return detail === "ready" && binding?.state === "none";
+}
+
+/**
+ * The proof a press may send, or null when that word is not armed. Deliver
+ * binds only a shown body (`armed.deliver` already requires it seen in full,
+ * nothing hidden); Discard binds the body's hash when there is one, else the
+ * receipt when `receiptDiscardArmed`. Pure so the "Deliver never carries a
+ * receipt" rule is tested from the shipped source.
+ */
+export function holdDecideProof(
+	word: HoldWord,
+	input: {
+		armed: { deliver: boolean; discard: boolean };
+		binding: BodyBinding | null;
+		receipt: string | null;
+	},
+): HoldProof | null {
+	const hash =
+		input.binding &&
+		(input.binding.state === "shown" || input.binding.state === "withheld")
+			? input.binding.hash
+			: null;
+	if (word === "deliver")
+		return input.armed.deliver && input.binding?.state === "shown" && hash
+			? { body_sha256: hash }
+			: null;
+	if (!input.armed.discard) return null;
+	if (hash) return { body_sha256: hash };
+	return input.receipt ? { hold_receipt: input.receipt } : null;
+}
+
+const MESSAGE_ID_PREFIX = /^bcmsg_/;
+
+/**
+ * A short, stable reference for a row whose sender and text cannot load: the
+ * only identity such a row has, so the confirm step can name WHICH message.
+ */
+export function holdReference(messageId: string): string {
+	const bare = messageId.replace(MESSAGE_ID_PREFIX, "");
+	return bare.length > 8 ? bare.slice(-8) : bare;
 }
 
 /**

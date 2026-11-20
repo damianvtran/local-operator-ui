@@ -55,5 +55,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "پیغام مسترد کریں",
 	"ui.teamBridge.holds.confirm.cancel": "منسوخ کریں",
 	"ui.teamBridge.holds.delivering": "پہنچایا جا رہا ہے…",
-	"ui.teamBridge.holds.discarding": "مسترد کیا جا رہا ہے…"
+	"ui.teamBridge.holds.discarding": "مسترد کیا جا رہا ہے…",
+	"ui.teamBridge.holds.receipt_only": "اس کا بھیجنے والا اور متن اب لوڈ نہیں ہو سکتے، اس لیے اسے پہنچایا نہیں جا سکتا۔ آپ اب بھی اسے پڑھے بغیر مسترد کر سکتے ہیں۔",
+	"ui.teamBridge.holds.reference": "حوالہ {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "صرف یہ پیغام ({reference}) پڑھے بغیر مسترد کریں؟ یہ آپ کے ایجنٹ تک نہیں پہنچے گا۔ مسترد کرنا اس آلے پر درج ہوتا ہے اور واپس نہیں ہو سکتا۔",
+	"ui.teamBridge.holds.discard_unread_label": "پیغام {reference} پڑھے بغیر مسترد کریں",
+	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس آلے پر درج ہو گیا ہے، لیکن ابھی لاگو نہیں ہوا۔"
 }
