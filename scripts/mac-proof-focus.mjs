@@ -26,15 +26,22 @@
  *      Without `-n`, `open -a` hands the request to the operator's running
  *      Local Operator, whose `activate` handler raises HIS window
  *      (index.ts:5623), so both are refused if absent (`openArgvProblem`).
- *      The env reaches the app by inheritance (open(1): "Opened applications
+ *      The env reaches the app two ways, by a table (`APP_ENV_KEYS`): every
+ *      NON-SECRET isolation key (config root, attach URL, HOME, log dir,
+ *      manager-off, driver arming) rides EXPLICITLY on `open --env KEY=VALUE`,
+ *      so the app can never fall back to the operator's daemon, config root or
+ *      log dir even if LaunchServices drops the caller's env; the ONE secret,
+ *      the desktop token, is inherited only (open(1): "Opened applications
  *      inherit environment variables just as if you had launched the
- *      application directly"), never `--env` (the rig token would sit in `ps`).
- *      Inheritance is PROVEN from the app's own log lines (`envProof*`), not
- *      assumed.
+ *      application directly") and never on argv, where `ps` would show it. If
+ *      the token does not arrive, the app FAILS CLOSED on its own (see
+ *      `APP_ENV_KEYS`). Both halves are PROVEN from the app's own log lines
+ *      (`createEnvProof`, `createAttachCheck`), not assumed.
  *   2. The app is now launchd's child, so: pid discovery by the rig's unique
  *      `--user-data-dir` (`discoverAppPid`), a reap by pid + start time, and a
- *      detached sentinel (`sentinelScript`) that reaps it if the harness dies
- *      (the app's own launcher watch turns off when its ppid is 1,
+ *      detached sentinel (`SENTINEL_SCRIPT`), armed BEFORE `open` runs, that
+ *      sweeps every process carrying the rig profile if the harness dies (the
+ *      app's own launcher watch turns off when its ppid is 1,
  *      window-mode.ts:849-861).
  *   3. INTER-RUN GATE (`interRunGateProblem`, RCA R2): no previous rig app may
  *      still be alive, or frontmost, when a run launches.
@@ -55,8 +62,16 @@
  */
 
 import { execFile, spawn, spawnSync } from "node:child_process";
-import { closeSync, fstatSync, openSync, readSync } from "node:fs";
-import { join } from "node:path";
+import {
+	closeSync,
+	fstatSync,
+	openSync,
+	readSync,
+	realpathSync,
+} from "node:fs";
+import os from "node:os";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { StringDecoder } from "node:string_decoder";
 
 /** The absolute tools on macOS: never resolved through PATH, so a rig PATH cannot swap them. */
 export const OPEN_BIN = "/usr/bin/open";
@@ -112,17 +127,84 @@ export function rigStyleProfilePattern(rigRoot = null) {
  */
 
 /**
+ * EVERY key `buildAppEnv` (mac-proof-capture.mjs) sets, classified ONCE here.
+ * `secret: false` keys ride on `open --env KEY=VALUE` (they are paths, flags
+ * and a loopback URL: nothing in them is worth hiding from `ps`); the secret is
+ * inherited only. `required` keys must be on the argv, or `openArgvProblem`
+ * refuses the launch (a later edit dropping one would reopen review S1).
+ *
+ * WHY EXPLICIT (security review S1, round 1, checked against v0.59.2): the
+ * app reads its config root (discovery.ts:254-257), its attach URL
+ * (attach-backend.ts:118), the manager switch (backend-service.ts:822) and the
+ * driver arming (dev-driver.ts:162-176, "ONE way in: the environment
+ * variable") from ENV ONLY. With none of them, it resolves `managed`, claims
+ * the operator's own daemon (backend-service.ts:2748-2766), beats presence and
+ * writes a viewer record, all before `createWindow` (index.ts:5106), so a
+ * harness check at the present comes too late. Passing them on argv means
+ * they arrive whether or not LaunchServices passes the caller's env.
+ *
+ * WHY THE TOKEN IS INHERITED ONLY, and why that fails CLOSED (verified in the
+ * v0.59.2 source): with the attach URL present and no token,
+ * `resolveBackendAttach` answers `incomplete`/`token-missing`
+ * (attach-backend.ts:117-125), and `index.ts:2663-2666` calls `app.exit(1)`
+ * "before discovery, before any window"; `reportAttachFailure`
+ * (index.ts:1516-1519) only logs `[attach] <detail>`, never a dialog. Nothing
+ * before that check in `whenReady` (index.ts:2598-2662) touches a backend. So
+ * a missing token is a dead app plus an `[attach]` line, which the harness
+ * reports as BLOCKED, never the operator's daemon. (The token is read after a
+ * dotenv fold of `<cwd>/.env`, config.ts:31; LaunchServices starts the app in
+ * `/`, which carries no `.env`.)
+ *
+ * open(1) on the capture Mac (macOS 27.2.1, capture owner 2026-11-20): "--env
+ * VAR  Adds VAR to the environment of the launched application. VAR should be
+ * formatted NAME=VALUE or NAME". The NAME-only form (copy NAME from open's
+ * env) is NOT used for the token: its behaviour is unmeasured, and it would
+ * still put the key on argv for no gain over inheritance. Refused.
+ */
+export const APP_ENV_KEYS = Object.freeze({
+	HOME: { secret: false, required: true },
+	LOCAL_OPERATOR_CONFIG_DIR: { secret: false, required: true },
+	LOCAL_OPERATOR_LOG_DIR: { secret: false, required: true },
+	LOCAL_OPERATOR_UI_TELEMETRY: { secret: false, required: false },
+	LOCAL_OPERATOR_NO_NOTIFICATIONS: { secret: false, required: false },
+	VITE_DISABLE_BACKEND_MANAGER: { secret: false, required: true },
+	LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL: { secret: false, required: true },
+	LOCAL_OPERATOR_UI_WINDOW_MODE: { secret: false, required: false },
+	LOCAL_OPERATOR_UI_DEV_DRIVER: { secret: false, required: true },
+	LOCAL_OPERATOR_UI_DEV_DRIVER_OUT: { secret: false, required: true },
+	LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT: { secret: false, required: true },
+	LOCAL_OPERATOR_DESKTOP_TOKEN: { secret: true, required: false },
+});
+/** The keys allowed on `open --env`, in table order. */
+export const OPEN_ENV_KEYS = Object.freeze(
+	Object.keys(APP_ENV_KEYS).filter((k) => !APP_ENV_KEYS[k].secret),
+);
+const SECRET_ENV_KEYS = Object.keys(APP_ENV_KEYS).filter(
+	(k) => APP_ENV_KEYS[k].secret,
+);
+
+/** `--env KEY=VALUE` pairs for every non-secret key `env` sets, in table order. */
+export function openEnvArgs(env) {
+	const out = [];
+	for (const key of OPEN_ENV_KEYS)
+		if (env?.[key] !== undefined) out.push("--env", `${key}=${env[key]}`);
+	return out;
+}
+
+/**
  * `open -g -n -a <app> --stdout <rig>/logs/app-stdout.log --stderr
- * <rig>/logs/app-stderr.log --args <app argv>`. Flags per open(1):
+ * <rig>/logs/app-stderr.log --env K=V ... --args <app argv>`. Flags per open(1):
  * - `-g` "Do not bring the application to the foreground" (LS's no-front launch);
  * - `-n` "Open a new instance of the application(s) even if one is already
  *   running" - MANDATORY, see the file header;
  * - `--stdout`/`--stderr` take a PATH: a regular file, tailed by the harness
  *   (a FIFO would block LS's open until a reader exists);
+ * - `--env KEY=VALUE` for every NON-SECRET key of `env` (`APP_ENV_KEYS`);
+ *   the token is never among them (inherited only);
  * - no `-W`: `open` returns once LS has launched the app, so there is no
- *   long-lived `open` process to reap, and no `--env` (the token stays off argv).
+ *   long-lived `open` process to reap.
  */
-export function buildOpenArgv({ appBundle, rig, appArgv }) {
+export function buildOpenArgv({ appBundle, rig, appArgv, env = {} }) {
 	return [
 		"-g",
 		"-n",
@@ -132,6 +214,7 @@ export function buildOpenArgv({ appBundle, rig, appArgv }) {
 		join(rig, "logs", "app-stdout.log"),
 		"--stderr",
 		join(rig, "logs", "app-stderr.log"),
+		...openEnvArgs(env),
 		"--args",
 		...appArgv,
 	];
@@ -141,9 +224,11 @@ export function buildOpenArgv({ appBundle, rig, appArgv }) {
  * Refuse an `open` argv that could raise a window or leak the token. Run on the
  * built argv right before the spawn, so a later edit cannot drop a flag:
  * `-g` and `-n` among the options (before `--args`), an absolute `.app` after
- * `-a`, no `--env`/`-e`-style env injection, nothing token-shaped, and the
- * app's own argv carrying this rig's `--user-data-dir` (the identity pid
- * discovery and every reap select by).
+ * `-a`, no `-e` (open(1): open with TextEdit; never part of a rig launch),
+ * every `--env` a `KEY=VALUE` whose key is a NON-SECRET `APP_ENV_KEYS` entry,
+ * every `required` key present, the token nowhere on the argv (neither as a
+ * key nor inside any value), and the app's own argv carrying this rig's
+ * `--user-data-dir` (the identity pid discovery and every reap select by).
  */
 export function openArgvProblem(argv, { profile, token = null }) {
 	if (!Array.isArray(argv)) return "the open argv is not a list";
@@ -162,12 +247,34 @@ export function openArgvProblem(argv, { profile, token = null }) {
 		!bundle.endsWith(".app")
 	)
 		return `the open argv must name an absolute .app after -a (got ${bundle})`;
-	if (
-		options.some((o) => o === "--env" || o === "-e" || o.startsWith("--env="))
-	)
-		return "the open argv passes --env: the rig's env is inherited, never put on argv (ps shows it)";
+	if (options.includes("-e"))
+		return "the open argv passes -e (open with TextEdit): never part of a rig launch";
+	const envKeys = [];
+	for (let i = 0; i < options.length; i++) {
+		const o = String(options[i]);
+		if (o.startsWith("--env="))
+			return `the open argv uses the undocumented --env=<pair> form (${o.split("=")[1]}); pass --env KEY=VALUE`;
+		if (o !== "--env") continue;
+		const pair = String(options[++i] ?? "");
+		const eq = pair.indexOf("=");
+		const key = eq === -1 ? pair : pair.slice(0, eq);
+		if (SECRET_ENV_KEYS.includes(key))
+			return `the open argv puts the secret ${key} on --env: it is inherited only, never on argv (ps shows it)`;
+		if (eq <= 0)
+			return `the open argv uses the NAME-only --env form (${key}): unmeasured, so refused; pass --env KEY=VALUE`;
+		if (!OPEN_ENV_KEYS.includes(key))
+			return `the open argv passes --env ${key}, which is not on the non-secret allowlist (APP_ENV_KEYS)`;
+		if (token && pair.includes(token))
+			return `the open argv's --env ${key} value carries the rig token`;
+		envKeys.push(key);
+	}
 	if (token && argv.some((x) => String(x).includes(token)))
 		return "the open argv carries the rig token";
+	const missing = OPEN_ENV_KEYS.filter(
+		(k) => APP_ENV_KEYS[k].required && !envKeys.includes(k),
+	);
+	if (missing.length > 0)
+		return `the open argv lacks --env ${missing.join(", ")}: without them the app falls back to the operator's daemon, config root or log dir if LaunchServices drops the env`;
 	if (!appArgs.includes(`--user-data-dir=${profile}`))
 		return `the app argv after --args lacks this rig's --user-data-dir=${profile}`;
 	return null;
@@ -213,9 +320,8 @@ export function createEnvProof({ backendUrl }) {
 		else if (line.startsWith("[dev-driver-script] ARMED"))
 			state.scriptArmed = true;
 		else {
-			const m = line.match(ATTACHED_LINE);
-			if (m) {
-				const got = m[1].replace(/\/+$/, "");
+			const got = attachedUrlOf(line);
+			if (got !== null) {
 				if (got === want) state.backend = got;
 				else state.wrongBackend ??= got;
 			}
@@ -238,9 +344,45 @@ export function createEnvProof({ backendUrl }) {
 	return { feed, missing, record, state };
 }
 
-/** The BLOCKED message: what is missing, and the next step (no --env fallback, by design). */
+/** The BLOCKED message: what is missing, and the next step (the token never moves onto argv, by design). */
 export function envNotInheritedMessage(missing, when, wrongBackend = null) {
-	return `BLOCKED launch-env-not-inherited: the app launched through LaunchServices (open -g -n) did not prove its env ${when}: missing ${missing.join("; ")}${wrongBackend ? ` (it attached to ${wrongBackend} instead)` : ""}. The app was reaped before any capture. Next step: check that this macOS's open(1) passes the caller's environment to a new instance (man open, "inherit environment variables"); the harness never falls back to --env, which would put the rig token in ps`;
+	return `BLOCKED launch-env-not-inherited: the app launched through LaunchServices (open -g -n) did not prove its env ${when}: missing ${missing.join("; ")}${wrongBackend ? ` (it attached to ${wrongBackend} instead)` : ""}. The app was reaped before any capture. The non-secret isolation keys ride on open --env; only the desktop token is inherited, and an app without it exits at its attach check (index.ts:2663) before touching any backend. Next step: check that this macOS's open(1) passes the caller's environment to a new instance (man open, "inherit environment variables"); the token is never put on argv, where ps would show it`;
+}
+
+/** The backend URL an app line says it attached to, or null. */
+export function attachedUrlOf(line) {
+	const m = String(line).match(ATTACHED_LINE);
+	return m ? m[1].replace(/\/+$/, "") : null;
+}
+
+/**
+ * The receipt's `attach` assertion (capture owner, 2026-11-20): `url` is what
+ * the app's OWN attach line named, `rigUrl` the serve URL THIS run started (a
+ * dynamic port: 1907b attached to http://127.0.0.1:60317; never a constant,
+ * never the operator's :1111, never the relay's port), `match` whether they
+ * agree (null until a line arrives). Every attach line is judged as it is
+ * read, the run's whole length: `feed` answers true on the FIRST mismatch, and
+ * a mismatch stays recorded even if a later line matches.
+ */
+export function createAttachCheck({ rigUrl }) {
+	const record = {
+		url: null,
+		rigUrl: String(rigUrl).replace(/\/+$/, ""),
+		match: null,
+	};
+	const feed = (line) => {
+		const got = attachedUrlOf(line);
+		if (got === null || record.match === false) return false;
+		record.url = got;
+		record.match = got === record.rigUrl;
+		return record.match === false;
+	};
+	return { feed, record };
+}
+
+/** The failure message for an attach line naming another backend. */
+export function attachMismatchMessage({ url, rigUrl }) {
+	return `the app attached to ${url}, not the backend this run started (${rigUrl}); attach.match is false, so nothing it showed came from the rig. The app was reaped`;
 }
 
 /*
@@ -453,11 +595,18 @@ export function emptyFrontmost(tool) {
 }
 
 /**
- * The watch. `sample()` -> `{asn, pid, name}` | `{unknown}`; `isRig(pid)` ->
- * `{rig, helper}` (by PID: the app pid, or argv carrying the rig profile token).
- * `onSteal(stolen)` fires once, on the first rig sample; `onBlind(reason)` once,
- * after FRONTMOST_BLIND_LIMIT consecutive unknown samples. `record` is the
- * receipt's `frontmost`, filled in place.
+ * The watch. `sample()` -> `{asn, pid, name}` | `{unknown}`; `isRig(pid, asn)`
+ * -> `{rig, helper}` or `{unknown}` (by PID: the app pid, or argv carrying the
+ * rig profile token). `onSteal(stolen)` fires once, on the first rig sample;
+ * `onBlind(reason)` once, after FRONTMOST_BLIND_LIMIT consecutive unknown
+ * samples. `record` is the receipt's `frontmost`, filled in place.
+ *
+ * EVERY known sample is classified, not only a change of front pid (review F1,
+ * round 1): the app pid is learned at discovery, AFTER the rig app may already
+ * be in front, so a pid judged before discovery must be judged again once
+ * discovery names it. An `isRig` that cannot read a pid's argv answers
+ * `{unknown}`: the sample counts toward the blind limit and nothing is
+ * remembered, so the next sample asks again.
  */
 export function createFrontmostWatch({
 	sample,
@@ -472,6 +621,7 @@ export function createFrontmostWatch({
 	let launchedAt = null;
 	let lastAt = null;
 	let lastPid = null;
+	let lastRig = null;
 	let streak = 0;
 	let blind = false;
 	let running = false;
@@ -484,23 +634,28 @@ export function createFrontmostWatch({
 		lastAt = at;
 		record.samples++;
 		const atMs = at - started;
-		if (s.unknown) {
+		const unknown = (why) => {
 			record.unknown++;
 			streak++;
 			if (streak > FRONTMOST_BLIND_LIMIT && !blind) {
 				blind = true;
 				onBlind(
-					`the frontmost watchdog was blind for ${streak} consecutive samples (${s.unknown})`,
+					`the frontmost watchdog was blind for ${streak} consecutive samples (${why})`,
 				);
 			}
-			return s;
-		}
+			return { unknown: why };
+		};
+		if (s.unknown) return unknown(s.unknown);
+		const who = await isRig(s.pid, s.asn);
+		if (who.unknown) return unknown(who.unknown);
 		streak = 0;
 		if (record.baseline === null)
 			record.baseline = { asn: s.asn, pid: s.pid, name: s.name, atMs };
-		if (s.pid !== lastPid) {
+		// A transition is a new front pid OR the same pid newly judged rig
+		// (discovery named it), so the steal shows in the timeline too.
+		if (s.pid !== lastPid || who.rig !== lastRig) {
 			lastPid = s.pid;
-			const who = await isRig(s.pid);
+			lastRig = who.rig;
 			record.transitions.push({
 				atMs,
 				sinceLaunchMs: launchedAt === null ? null : at - launchedAt,
@@ -509,16 +664,17 @@ export function createFrontmostWatch({
 				name: s.name,
 				rig: who.rig,
 			});
-			if (who.rig && record.stolen === null) {
-				record.stolen = {
-					atMs,
-					sinceLaunchMs: launchedAt === null ? null : at - launchedAt,
-					pid: s.pid,
-					asn: s.asn,
-					helper: who.helper,
-				};
-				onSteal(record.stolen);
-			}
+		}
+		// Outside the transition gate: a rig sample is a steal whenever it is seen.
+		if (who.rig && record.stolen === null) {
+			record.stolen = {
+				atMs,
+				sinceLaunchMs: launchedAt === null ? null : at - launchedAt,
+				pid: s.pid,
+				asn: s.asn,
+				helper: who.helper,
+			};
+			onSteal(record.stolen);
 		}
 		return s;
 	};
@@ -553,22 +709,28 @@ export function createFrontmostWatch({
 }
 
 /**
- * `isRig` for the watch: the recorded app pid, else a pid whose argv carries
- * the rig profile token (a helper, or the app before discovery). Answers are
- * cached per pid; a ps failure answers not-rig for that pid (the poll goes on,
- * and `unknown` counts only unreadable FRONT samples).
+ * `isRig` for the watch: the recorded app pid (compared on EVERY call, so a
+ * pid judged before discovery is caught the moment discovery names it), else
+ * a pid whose argv carries the rig profile token (a helper, or the app before
+ * discovery). Only a SUCCESSFUL argv read is cached, keyed by pid + ASN (a new
+ * process behind a recycled pid has a new ASN); a failed read (`ps` timed out,
+ * or the pid is gone) answers `{unknown}` and is asked again next sample
+ * (review F1: a cached failure hid the rig app for the rest of the run).
  */
 export function rigPidClassifier({ profile, appPid, argvOf }) {
 	const token = profileToken(profile);
 	const cache = new Map();
-	return async (pid) => {
+	return async (pid, asn = "") => {
 		const app = appPid();
 		if (app !== null && pid === app) return { rig: true, helper: false };
-		if (!cache.has(pid)) {
+		const key = `${pid}|${asn}`;
+		if (!cache.has(key)) {
 			const argv = await argvOf(pid);
-			cache.set(pid, argv !== null && token.test(argv));
+			if (argv === null)
+				return { unknown: `ps could not read pid ${pid}'s argv` };
+			cache.set(key, token.test(argv));
 		}
-		return cache.get(pid)
+		return cache.get(key)
 			? { rig: true, helper: app !== null }
 			: { rig: false, helper: false };
 	};
@@ -597,34 +759,65 @@ export function psArgvOf(pid) {
  */
 
 /**
- * A plain `/bin/sh` loop (no installs): while the harness pid lives, exit as
- * soon as the app pid is gone (the normal reap); once the harness is gone, and
- * ONLY if the app pid still has the recorded start time (a recycled pid is a
- * stranger), TERM it, wait 3 s, KILL it. Argv: `$1` harness pid, `$2` app pid,
- * `$3` app start (C-locale `ps -o lstart=`). It never matches by name.
+ * How long the sentinel keeps sweeping after the harness is gone. LaunchServices
+ * can finish a launch after the harness died (Gatekeeper's first assessment of
+ * an extracted --app-zip bundle is the plausible slow case, review F2), so one
+ * sweep at the moment of death is not enough: it sweeps for the whole
+ * discovery bound plus margin. Not a measured LS latency.
+ */
+export const SENTINEL_GRACE_MS = DISCOVERY_TIMEOUT_MS + 5000;
+
+/**
+ * A plain `/bin/sh` loop (no installs), keyed on the rig PROFILE, not on one
+ * app pid, so it can be armed BEFORE `open` runs (review F2, QA Q1-5): while
+ * the harness lives (pid + start time, so a recycled harness pid does not hold
+ * it forever, review S4) it only waits; the harness kills it after a normal
+ * reap. Once the harness is gone it sweeps, every 200 ms for `$4` ticks (and
+ * then until no carrier is left, hard-capped 10 s later): every process whose
+ * argv carries the exact whole argument `--user-data-dir=<profile>` (the app,
+ * its helpers, a late LaunchServices launch, `open` itself) gets TERM on first
+ * sight, then KILL 3 s later if that same pid still has the same start time.
+ * Argv: `$1` harness pid, `$2` harness start (C-locale `ps -o lstart=`; empty =
+ * unknown, liveness only), `$3` the profile path, `$4` grace ticks. The
+ * profile path rides as a bare argument, never as the `--user-data-dir=` token,
+ * so the sentinel never matches itself. It never matches by name.
  */
 export const SENTINEL_SCRIPT = [
-	'h="$1"; a="$2"; s="$3"',
-	'same() { [ "$(ps -o lstart= -p "$a" 2>/dev/null | tr -s " " | sed "s/^ //;s/ $//")" = "$s" ]; }',
-	'while kill -0 "$h" 2>/dev/null; do kill -0 "$a" 2>/dev/null || exit 0; sleep 0.2; done',
-	"same || exit 0",
-	'kill -TERM "$a" 2>/dev/null',
-	"i=0; while [ $i -lt 15 ]; do same || exit 0; sleep 0.2; i=$((i+1)); done",
-	'same && kill -KILL "$a" 2>/dev/null',
-	"exit 0",
+	'h="$1"; hs="$2"; p="$3"; g="$4"',
+	'T=" --user-data-dir=$p "; export T',
+	'st() { ps -o lstart= -p "$1" 2>/dev/null | tr -s " " | sed "s/^ //;s/ $//"; }',
+	'up() { kill -0 "$h" 2>/dev/null || return 1; [ -z "$hs" ] || [ "$(st "$h")" = "$hs" ]; }',
+	"while up; do sleep 0.2; done",
+	// pid:start (start with _ for spaces), for every exact-token carrier.
+	`carriers() { ps -A -ww -o pid=,lstart=,command= 2>/dev/null | awk 'index(" " $0 " ", ENVIRON["T"]) { print $1 ":" $2 "_" $3 "_" $4 "_" $5 "_" $6 }'; }`,
+	'termed=""; i=0',
+	"while :; do",
+	'  now="$(carriers)"',
+	'  [ "$i" -ge "$g" ] && [ -z "$now" ] && exit 0',
+	'  [ "$i" -ge $((g + 50)) ] && exit 0',
+	"  for c in $now; do",
+	'    case " $termed " in',
+	'      *" $c@"*) t="${termed##*" $c@"}"; t="${t%% *}"; [ $((i - t)) -ge 15 ] && kill -KILL "${c%%:*}" 2>/dev/null ;;',
+	'      *) kill -TERM "${c%%:*}" 2>/dev/null; termed="$termed $c@$i" ;;',
+	"    esac",
+	"  done",
+	"  sleep 0.2; i=$((i + 1))",
+	"done",
 ].join("\n");
 
 /**
  * Start the sentinel detached (its own session, no stdio), so a SIGKILL of the
  * harness (or its process group) does not take it along. `$0` names the rig, so
  * the rig sweep (`rigMatcher`, which matches the rig path in argv) is its
- * backstop. Answers the child; the caller records and reaps its pid.
+ * backstop. Answers the child; the caller records it and kills it through this
+ * handle after a normal reap (never by a pid that may have been recycled).
  */
 export function startSentinel({
 	harnessPid,
-	appPid,
-	appStart,
+	harnessStart,
+	profile,
 	rig,
+	graceMs = SENTINEL_GRACE_MS,
 	sh = "/bin/sh",
 }) {
 	const child = spawn(
@@ -634,8 +827,9 @@ export function startSentinel({
 			SENTINEL_SCRIPT,
 			`mac-proof-sentinel:${rig}`,
 			String(harnessPid),
-			String(appPid),
-			appStart,
+			harnessStart ?? "",
+			profile,
+			String(Math.max(1, Math.ceil(graceMs / 200))),
 		],
 		{
 			detached: true,
@@ -664,18 +858,30 @@ export function startSentinel({
  *   names the pid the fakes' orphans are re-parented to (a Linux subreaper
  *   is often not pid 1), and the inter-run gate is scoped to the run's own rig
  *   root so concurrent cases do not see each other's rigs.
- * Honoured only under `node --test` (NODE_TEST_CONTEXT), else refused, so an
- * operator cannot switch the real Mac run off LaunchServices.
+ * Honoured only under `node --test` (NODE_TEST_CONTEXT) AND only when the
+ * `--app`/`--app-zip` path resolves inside `os.tmpdir()`, where the suite's
+ * fixtures live (security review S3, QA Q1-4): NODE_TEST_CONTEXT is a plain
+ * env var anyone can set, so on its own it would let a real Mac run of the
+ * installed `/Applications/...` bundle go back to the direct exec this file
+ * prevents. Anything else is refused (exit 2) before the plan is built.
  */
 export const TEST_LAUNCH_ENV = "MAC_PROOF_TEST_LAUNCH";
 export const TEST_LAUNCHD_PID_ENV = "MAC_PROOF_TEST_LAUNCHD_PID";
 
-export function launchMode(env = process.env, platform = process.platform) {
+export function launchMode(
+	env = process.env,
+	platform = process.platform,
+	{ appPath = null, tmp = os.tmpdir() } = {},
+) {
 	const seam = env[TEST_LAUNCH_ENV];
 	if (seam !== undefined && seam !== "") {
 		if (!env.NODE_TEST_CONTEXT)
 			return {
 				problem: `${TEST_LAUNCH_ENV} is a test-only seam honoured only under node --test (NODE_TEST_CONTEXT); unset it - a Mac run always launches through LaunchServices`,
+			};
+		if (!insideDir(appPath, tmp))
+			return {
+				problem: `${TEST_LAUNCH_ENV} is a test-only seam that drives only fixtures under the temp dir (${tmp}); the app ${JSON.stringify(appPath)} is not one, so it always launches through LaunchServices - unset ${TEST_LAUNCH_ENV}`,
 			};
 		if (seam === "direct") return { kind: "direct", injected: true };
 		if (!seam.startsWith("/"))
@@ -705,15 +911,33 @@ export function launchMode(env = process.env, platform = process.platform) {
 	return { kind: "direct", injected: false };
 }
 
+/** Whether `path` resolves (symlinks followed where it exists) strictly inside `dir`. */
+function insideDir(path, dir) {
+	if (typeof path !== "string" || path === "") return false;
+	const real = (p) => {
+		try {
+			return realpathSync(p);
+		} catch {
+			return resolve(p);
+		}
+	};
+	const rel = relative(real(dir), real(path));
+	return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
 /**
  * Read what a file gained since the last call (the app's `--stdout`/`--stderr`
  * file, written by the app itself under LaunchServices), split into whole
  * lines. Each file keeps its OWN partial-line buffer, so a stdout fragment is
- * never glued to a stderr one. A missing file reads as nothing yet.
+ * never glued to a stderr one, and its OWN streaming UTF-8 decoder, so a
+ * multi-byte character split across two reads (the logger's `›` is 3 bytes)
+ * is held until its last byte arrives instead of decoding as U+FFFD (review
+ * F3). A missing file reads as nothing yet.
  */
 export function createFileTail(path) {
 	let offset = 0;
 	let partial = "";
+	const decoder = new StringDecoder("utf8");
 	const read = ({ flush = false } = {}) => {
 		const lines = [];
 		let fd;
@@ -730,11 +954,12 @@ export function createFileTail(path) {
 				const n = readSync(fd, buffer, 0, buffer.length, offset);
 				if (n <= 0) break;
 				offset += n;
-				partial += buffer.subarray(0, n).toString("utf8");
+				partial += decoder.write(buffer.subarray(0, n));
 			}
 		} finally {
 			closeSync(fd);
 		}
+		if (flush) partial += decoder.end();
 		let at = partial.indexOf("\n");
 		while (at !== -1) {
 			lines.push(partial.slice(0, at).replace(/\r$/, ""));
@@ -821,15 +1046,19 @@ export async function stopLaunchedApp({
 
 /**
  * The `process.on("exit")` backstop for an LS-launched app (the direct path's
- * `reapOnExit`, which signals a process GROUP the app is not in here). Sync, as
- * exit handlers must be: KILL the recorded pid only while its start matches,
- * then every pid carrying the rig profile token. The sentinel needs no kill
- * here: once this process is gone it finds the app gone too and exits.
+ * `reapOnExit`, which signals a process GROUP the app is not in here). Armed
+ * before `open` runs; `launched()` answers the discovered `{pid, start}` or
+ * null. Sync, as exit handlers must be: KILL the recorded pid only while its
+ * start matches, then every pid carrying the rig profile token. The sentinel
+ * is not killed here: it sweeps for its grace and exits on its own, which also
+ * covers an app LaunchServices starts after this process is gone.
  */
-export function reapLaunchedOnExit({ pid, start, profile }) {
+export function reapLaunchedOnExit({ launched, profile }) {
 	process.on("exit", () => {
+		const app = launched();
 		try {
-			if (sameProcess(pid, start)) process.kill(pid, "SIGKILL");
+			if (app && sameProcess(app.pid, app.start))
+				process.kill(app.pid, "SIGKILL");
 		} catch {}
 		const token = profileToken(profile);
 		for (const r of psRows() ?? [])

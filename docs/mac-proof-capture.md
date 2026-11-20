@@ -48,12 +48,15 @@ Before it spawns anything, the run prints how many frames it will take and says
 it is opening **one** `inactive` window (one Dock tile) for the whole run.
 
 `--dry-run` prints the plan (argv, environment with the token redacted, the
-frame names) and spawns nothing. `--negative-control` runs every refusal case
+frame names) and spawns nothing. On macOS its `launch` shows what actually
+execs: the `open -g -n …` argv with its `--env` keys (token-free), the keys
+inherited only, and the `openArgvProblem` verdict on that argv. `--negative-control` runs every refusal case
 against the real guard code and prints PASS/FAIL per case; it exits 0 only when
 every case refused. `--help` lists every flag.
 
 Exit codes: `0` every frame captured; `1` the run failed (a step, a capture, a
-leak, a signal, the `--timeout`); `2` refused before anything was spawned; `3`
+leak, a signal, the `--timeout`, or anything that went wrong after a spawn, such
+as pid discovery under LaunchServices); `2` refused before anything was spawned; `3`
 BLOCKED (a permission or an access decision only the operator can make). Both the
 closing line and `receipt.json` name what ended a run early (`interrupted by
 SIGHUP`, `the run exceeded --timeout 180 s`, `the app could not run: …`).
@@ -212,35 +215,67 @@ instant.
 **What prevents the steal now (macOS):**
 
 - **`open -g -n -a <app> --stdout <rig>/logs/app-stdout.log --stderr
-  <rig>/logs/app-stderr.log --args <app argv>`** (`scripts/mac-proof-focus.mjs`
-  `buildOpenArgv`). `-g` is LaunchServices' no-front launch. `-n` is
-  **mandatory**: without it `open -a` hands the request to the operator's
-  running Local Operator, whose `activate` handler raises *his* window. The
-  argv is checked right before the spawn (`openArgvProblem`: `-g` and `-n`
-  before `--args`, an absolute `.app`, no `--env`, no token, the rig's own
-  `--user-data-dir`), and a test fails if either flag is ever dropped.
+  <rig>/logs/app-stderr.log --env KEY=VALUE … --args <app argv>`**
+  (`scripts/mac-proof-focus.mjs` `buildOpenArgv`). `-g` is LaunchServices'
+  no-front launch. `-n` is **mandatory**: without it `open -a` hands the request
+  to the operator's running Local Operator, whose `activate` handler raises
+  *his* window. The argv is checked right before the spawn (`openArgvProblem`:
+  `-g` and `-n` before `--args`, an absolute `.app`, every `--env` key on the
+  non-secret allowlist and every required one present, no token anywhere, the
+  rig's own `--user-data-dir`), and a test fails if either flag is ever dropped.
+- **Env isolation is explicit, the secret is inherited.** v0.59.2 reads its
+  config root, attach URL, backend-manager switch, log dir and driver arming
+  from the environment only. Without them it resolves `managed` and claims the
+  operator's own daemon (presence beats, a viewer record) before any window,
+  so a check at the present would come too late (security review S1). So every
+  **non-secret** key the app env sets (`HOME`, `LOCAL_OPERATOR_CONFIG_DIR`,
+  `LOCAL_OPERATOR_LOG_DIR`, `VITE_DISABLE_BACKEND_MANAGER`,
+  `LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL`, the window mode, telemetry and
+  notification switches, and the three driver-arming keys) rides on `open --env
+  KEY=VALUE`, from ONE classified table (`APP_ENV_KEYS`). The desktop token is
+  the one secret: it is inherited only (open(1): "Opened applications inherit
+  environment variables"), never on argv where `ps` would show it, and never in
+  the `--env NAME` form (documented, but unmeasured). `open`'s exit is checked:
+  an `open` that rejects `--env` fails the run before anything launches.
+- **Fail-closed if the token does not arrive** (checked in the v0.59.2 source):
+  the attach URL present with no token resolves `incomplete`
+  (`attach-backend.ts:117-125`), and `index.ts:2663` calls `app.exit(1)` before
+  discovery and before any window, logging one `[attach] …` line and raising no
+  dialog (`index.ts:1516`). The harness reads that line (or the exit) and
+  reports `BLOCKED launch-env-not-inherited` (exit 3).
 - **The env is proven from the app's own lines**, not assumed: `[dev-driver]
   ARMED`, `[dev-driver-script] ARMED` and `Attached to the backend this launch
   named: http://127.0.0.1:<port>` naming the rig serve's own URL, all before the
-  `[window-raise] trigger=initial-present` line (or within the 20 s startup
-  window). If any is missing, or the app prints `[dev-driver] not armed`, the
-  run is reaped and exits 3, `BLOCKED launch-env-not-inherited`, naming the next
-  step. There is no `--env` fallback (it would put the token in `ps`); whether to
-  add an explicit opt-in is a later decision.
+  `[dev-driver-script] ready` and `[window-raise] trigger=initial-present` lines
+  (or within the 20 s startup window). If any is missing, or the app prints
+  `[dev-driver] not armed` or `[attach] …`, or exits first, the run is reaped and
+  exits 3, `BLOCKED launch-env-not-inherited`, naming the next step.
+- **The attach assertion**, every run: the receipt's `attach: {url, rigUrl,
+  match}` puts the URL the app's own attach line named beside the serve URL
+  this run started (a dynamic port, never a constant). Every attach line is
+  judged the moment it is read, for the whole run: one naming any other backend
+  (the operator's `:1111`, say) sets `match: false`, reaps the app and fails the
+  run (exit 1).
 - **The app's stdout and stderr are files**, tailed every 100 ms into the same
-  line parsers (window mode, steps, SHUTTER, the env proof). The token is
-  redacted from them after the reap.
+  line parsers (window mode, steps, SHUTTER, the env proof), each through its
+  own streaming UTF-8 decoder. The token is redacted from them after the reap;
+  the outcome per file is in `receipt.redaction`, and a file that could not be
+  rewritten fails the run and is not copied to `--out`.
 - **Pid discovery:** exactly one process whose argv carries the rig's unique
   `--user-data-dir`, with no `--type=` (Electron helpers) and launchd (pid 1) as
-  its parent, within 10 s; zero or several refuse the run and every process
-  carrying the profile is reaped. Its pid and start time are recorded, and the
-  reap goes by both.
-- **The sentinel:** under LaunchServices the app's launcher is launchd, so its
-  own launcher watch is off (`window-mode.ts:849-861`). A detached `/bin/sh`
-  loop watches the harness pid and, if the harness dies, TERMs then KILLs the
-  recorded app pid, only while its start time still matches. It exits by itself
-  once the app is gone, and the reap kills it too (`launch.sentinel`,
-  `reap.sentinel`).
+  its parent, within 10 s; zero or several fail the run (exit 1: `open` has
+  already run) and every process carrying the profile is reaped. Its pid and
+  start time are recorded, and the reap goes by both.
+- **The sentinel, armed before `open`:** under LaunchServices the app's
+  launcher is launchd, so its own launcher watch is off
+  (`window-mode.ts:849-861`). Before `open` is spawned, a detached `/bin/sh`
+  loop is started, keyed on the rig profile rather than on one pid. While the
+  harness lives (pid and start time) it only waits; the harness kills it after
+  its own reap (`launch.sentinel`, `reap.sentinel`). If the harness dies, it
+  sweeps for 15 s: every process carrying the rig's exact `--user-data-dir`
+  (the app, its helpers, an app LaunchServices starts late) gets TERM, then KILL
+  3 s later if that same pid still has the same start time. An exit hook does
+  the same sweep once when the harness exits normally.
 - **The inter-run gate (exit 2):** before launch, no process may still carry a
   rig-style profile of this harness (`<root>/mac-proof-XXXXXX/profile`), and the
   frontmost app may not be one.
@@ -268,7 +303,12 @@ null | {atMs, sinceLaunchMs, pid, asn, helper}}`, plus `launch: {mode, open,
 argv, app: {pid, start}, sentinel, envProof}`. `tool` is `null` off macOS. The
 `[window-mode] state` and SHUTTER `focused=` checks are kept: they answer a
 different question (key state). `maxGapMs` is recorded, not enforced: a
-synchronous `screencapture` can stall the loop.
+`screencapture` and the window lookup run as async children so the loop keeps
+sampling while a frame is shot, which makes `maxGapMs` the loop's own cadence.
+The preflight probe is recorded as `frontmost.baseline` (`source: "preflight"`),
+so a run the inter-run gate refuses still says what was in front. A pid whose
+argv cannot be read counts as an unreadable sample, and every sample re-checks
+the front pid against the discovered app pid.
 
 **Mac acceptance** for this change: across a back-to-back matrix (seeded and
 held-present runs interleaved), no `frontmost.transitions` entry with `rig:
@@ -278,6 +318,17 @@ every run. The receipt's `limits` carries `focus-prevention-launchservices`:
 come-forward stays inferred until the first watched Mac run confirms it. Linux
 proves the harness side (`scripts/mac-proof-capture.test.mjs`, the `focus:`
 cases) against a fake `open` and `lsappinfo`; it cannot prove LaunchServices.
+Two more limits ride on every darwin receipt: `focus-env-explicit-unmeasured`
+(that LaunchServices delivers the `--env` pairs and the inherited token is
+proven per run, not measured ahead) and `focus-crash-cleanup-bounded` (a
+harness that is itself killed leaves the token unredacted in the 0700 rig's app
+logs, and the sentinel sweeps for 15 s only).
+
+**The test seam.** `MAC_PROOF_TEST_LAUNCH` (the fake `open`/`lsappinfo`, or
+`direct`) is honoured only under `node --test` and only for an `--app` or
+`--app-zip` under the temp dir, where the suite's fixtures live. With a real
+bundle such as `/Applications/Local Operator.app` it refuses (exit 2), so it
+cannot turn a Mac run back into the direct exec.
 
 ## Backend modes
 

@@ -41,7 +41,7 @@
  *     before any frame can claim its state.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
 	closeSync,
@@ -82,9 +82,14 @@ import {
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
+	APP_ENV_KEYS,
 	DISCOVERY_TIMEOUT_MS,
+	OPEN_ENV_KEYS,
 	PRESENT_LINE,
+	TEST_LAUNCH_ENV,
+	attachMismatchMessage,
 	buildOpenArgv,
+	createAttachCheck,
 	createEnvProof,
 	createFileTail,
 	createFrontmostWatch,
@@ -101,6 +106,7 @@ import {
 	rigPidClassifier,
 	rigStyleProfilePattern,
 	sampleFrontmost,
+	startOf,
 	startSentinel,
 	stopLaunchedApp,
 } from "./mac-proof-focus.mjs";
@@ -1832,6 +1838,22 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 		when: "launchServices",
 		text: "open -g -n is the prevention, inferred from open(1) and the RCA until a watched Mac run shows no rig pid frontmost; lsappinfo was measured prompt-free (0.08 s). Matching is by pid only.",
 	}),
+	/*
+	 * Round-1 review (S1, S2, F2): what the LaunchServices launch's isolation
+	 * and cleanup rest on that no Linux run can measure.
+	 */
+	Object.freeze({
+		id: "focus-env-explicit-unmeasured",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "The non-secret isolation keys ride on open --env (documented by man open on macOS 27.2.1); that LaunchServices delivers them, and the inherited token, to a new instance is proven per run from the app's own lines, not measured in advance. A token that does not arrive makes v0.59.2 exit at its attach check before any backend or window.",
+	}),
+	Object.freeze({
+		id: "focus-crash-cleanup-bounded",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "If the harness itself is killed (SIGKILL, crash), the app's own log files keep the token unredacted inside the 0700 rig, and the sentinel sweeps rig-profile processes for 15 s only; a LaunchServices launch finishing later is caught by the next run's inter-run gate, not reaped.",
+	}),
 	Object.freeze({
 		id: "toast-latency-unmeasured",
 		scenes: Object.freeze(["download"]),
@@ -3417,6 +3439,62 @@ export function redactEnv(env) {
 	return out;
 }
 
+/**
+ * The dry-run's `launch`: on the LaunchServices path, the exact `open` argv the
+ * run would spawn (with the placeholder rig, and an --app-zip bundle shown at
+ * its extraction dir), the keys that ride on it, the keys inherited only, and
+ * the verdict of the same `openArgvProblem` guard. The placeholder token is
+ * passed to the guard, so a token on that argv would show as a problem here.
+ */
+export function dryRunLaunch({
+	launch,
+	appBundle,
+	rig,
+	backendUrl,
+	token,
+	opts,
+}) {
+	if (launch.kind !== "launchservices")
+		return {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		};
+	const bundle = appBundle?.endsWith(".app")
+		? appBundle
+		: join(rig, "app", "<extracted from --app-zip>.app");
+	const env = buildAppEnv({
+		rig,
+		backendUrl,
+		token,
+		windowMode: opts.windowMode,
+	});
+	const argv = buildOpenArgv({
+		appBundle: bundle,
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: opts.windowMode,
+			size: opts.size,
+			session: opts.session,
+		}),
+		env,
+	});
+	return {
+		mode: "launchservices",
+		...(launch.injected ? { injected: true } : {}),
+		command: launch.open,
+		argv,
+		envOnArgv: OPEN_ENV_KEYS.filter((k) => env[k] !== undefined),
+		envInheritedOnly: Object.keys(APP_ENV_KEYS).filter(
+			(k) => APP_ENV_KEYS[k].secret,
+		),
+		problem: openArgvProblem(argv, {
+			profile: join(rig, "profile"),
+			token,
+		}),
+	};
+}
+
 /*
  * ---------------------------------------------------------------------------
  * The stdout supervisor: a pure state machine over the app's protocol lines.
@@ -3770,13 +3848,54 @@ export function frameMatchesWindow(pixels, bounds) {
 }
 
 /** Owner pid, layer and bounds of one on-screen window. Needs no Screen Recording. */
-export function windowInfo(windowId) {
-	const out = jxa(`
+/**
+ * One bounded command WITHOUT blocking the event loop: `{status, stdout,
+ * stderr}` (status null on a spawn error or timeout). The per-frame window
+ * lookup and screencapture use it so the 100 ms frontmost watchdog keeps
+ * sampling while a frame is shot (review F4); `spawnSync` there stalled every
+ * sample for up to 20 s + 30 s.
+ */
+export function runAsync(cmd, args, { timeout }) {
+	return new Promise((resolve) => {
+		execFile(
+			cmd,
+			args,
+			{ encoding: "utf8", timeout, maxBuffer: 16 << 20 },
+			(error, stdout, stderr) =>
+				resolve({
+					status: error
+						? typeof error.code === "number"
+							? error.code
+							: null
+						: 0,
+					stdout: String(stdout ?? ""),
+					stderr: String(stderr ?? ""),
+					error: error ? error.message : null,
+				}),
+		);
+	});
+}
+
+const WINDOW_INFO_JXA = (windowId) => `
 ObjC.import('CoreGraphics');
 var list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0))) || [];
 var w = list.filter(function (x) { return x.kCGWindowNumber === ${Number(windowId)}; })[0];
-JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`);
-	return JSON.parse(out);
+JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`;
+
+export function windowInfo(windowId) {
+	return JSON.parse(jxa(WINDOW_INFO_JXA(windowId)));
+}
+
+/** `windowInfo`, without blocking the event loop (the per-frame path; review F4). */
+export async function windowInfoAsync(windowId, run = runAsync) {
+	const r = await run(
+		"osascript",
+		["-l", "JavaScript", "-e", WINDOW_INFO_JXA(windowId)],
+		{ timeout: 20000 },
+	);
+	if (r.status !== 0)
+		throw new Error(`osascript failed: ${(r.stderr || r.error || "").trim()}`);
+	return JSON.parse(r.stdout.trim());
 }
 
 /** Width and height from a PNG's IHDR, or null when the bytes are not a PNG. */
@@ -4616,6 +4735,123 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 
 /**
+ * The focus/launch refusals, each against the real guard, on a well-formed
+ * darwin launch with ONE thing wrong: the `open` argv without -n or -g, with
+ * the token's key or value on --env, with a key off the allowlist, with a
+ * required isolation key missing, the NAME-only --env form; the test seam with
+ * a real app path or outside node --test; and the inter-run gate (a leftover
+ * rig, an unlistable process table).
+ */
+export function focusRefusalCases(tree) {
+	const rig = join(tree, "mac-proof-Ab12Cd");
+	const profile = join(rig, "profile");
+	const token = "negative-control-token";
+	const env = buildAppEnv({
+		base: {},
+		rig,
+		backendUrl: "http://127.0.0.1:60317",
+		token,
+		windowMode: "inactive",
+	});
+	const argv = buildOpenArgv({
+		appBundle: "/Applications/Local Operator.app",
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: "inactive",
+			size: "1380x900",
+			session: null,
+		}),
+		env,
+	});
+	const check = (a) => openArgvProblem(a, { profile, token });
+	// The well-formed argv must pass, or every case below proves nothing.
+	if (check(argv) !== null)
+		throw new Error(
+			`the negative control's base open argv fails: ${check(argv)}`,
+		);
+	const at = argv.indexOf("--args");
+	const withOptions = (extra) => [
+		...argv.slice(0, at),
+		...extra,
+		...argv.slice(at),
+	];
+	const dropFlag = (flag) => argv.filter((a, i) => !(a === flag && i < at));
+	const dropEnv = (key) => {
+		const i = argv.findIndex((a) => String(a).startsWith(`${key}=`));
+		return argv.filter((_, j) => j !== i && j !== i - 1);
+	};
+	const leftover = [
+		{
+			pid: 4242,
+			ppid: 1,
+			start: "x",
+			command: `/x --user-data-dir=${profile}`,
+		},
+	];
+	const pattern = rigStyleProfilePattern(null);
+	const seam = { [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" };
+	return [
+		[
+			"open argv without -n (the operator's running app would take the launch)",
+			() => check(dropFlag("-n")),
+		],
+		[
+			"open argv without -g (LaunchServices would bring the rig app forward)",
+			() => check(dropFlag("-g")),
+		],
+		[
+			"open --env carrying the desktop token's key",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_DESKTOP_TOKEN=${token}`])),
+		],
+		[
+			"open --env value carrying the token",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_UI_TELEMETRY=${token}`])),
+		],
+		[
+			"open --env with a key off the non-secret allowlist",
+			() => check(withOptions(["--env", "PATH=/tmp/evil"])),
+		],
+		[
+			"open --env in the NAME-only form",
+			() => check(withOptions(["--env", "HOME"])),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+			() => check(dropEnv("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL")),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_CONFIG_DIR",
+			() => check(dropEnv("LOCAL_OPERATOR_CONFIG_DIR")),
+		],
+		[
+			"the launch test seam with a real app path",
+			() =>
+				launchMode(seam, "darwin", {
+					appPath: "/Applications/Local Operator.app",
+				}).problem,
+		],
+		[
+			"the launch test seam outside node --test",
+			() =>
+				launchMode({ [TEST_LAUNCH_ENV]: "direct" }, "darwin", {
+					appPath: join(os.tmpdir(), "x.app"),
+				}).problem,
+		],
+		[
+			"inter-run gate: a previous rig still running",
+			() => interRunGateProblem({ rows: leftover, front: null, pattern }),
+		],
+		[
+			"inter-run gate: ps could not list processes",
+			() => interRunGateProblem({ rows: null, front: null, pattern }),
+		],
+	];
+}
+
+/**
  * Each case must REFUSE. Built in a throwaway tree with a fake HOME so the
  * operator-root cases (equal, inside, containing, symlink) are exercised for
  * real without touching the operator's directories. The two runtime cases
@@ -5050,6 +5286,8 @@ export function negativeControlCases() {
 					]),
 				),
 		],
+		// Focus and the LaunchServices launch (mac-proof-focus.mjs; QA Q1-6).
+		...focusRefusalCases(tree),
 	];
 	const results = cases.map(([name, fn]) => ({ name, refused: refuses(fn) }));
 	rmSync(tree, { recursive: true, force: true });
@@ -5277,6 +5515,19 @@ export async function main(argv = process.argv.slice(2)) {
 		return failed === 0 ? EXIT.OK : EXIT.FAILED;
 	}
 
+	// darwin launches through LaunchServices (`open -g -n`, mac-proof-focus.mjs);
+	// Linux/xvfb keeps the direct spawn. A misused test seam refuses here,
+	// before the plan is built: the seam is honoured only for an app under the
+	// temp dir (the suite's fixtures), never for a real bundle (review S3).
+	const launch = launchMode(process.env, process.platform, {
+		appPath: opts.app ?? opts.appZip,
+	});
+	if (launch.problem) {
+		console.error(`[mac-proof] refused: ${launch.problem}`);
+		return EXIT.REFUSED;
+	}
+	const viaLaunchServices = launch.kind === "launchservices";
+
 	const runDeadline = harnessStarted + opts.timeoutS * 1000;
 	let plan;
 	try {
@@ -5288,15 +5539,6 @@ export async function main(argv = process.argv.slice(2)) {
 		);
 		return code;
 	}
-
-	// darwin launches through LaunchServices (`open -g -n`, mac-proof-focus.mjs);
-	// Linux/xvfb keeps the direct spawn. A misused test seam refuses here.
-	const launch = launchMode();
-	if (launch.problem) {
-		console.error(`[mac-proof] refused: ${launch.problem}`);
-		return EXIT.REFUSED;
-	}
-	const viaLaunchServices = launch.kind === "launchservices";
 
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
@@ -5379,6 +5621,18 @@ export async function main(argv = process.argv.slice(2)) {
 					windowMode: opts.windowMode,
 				}),
 			),
+			// What actually execs on this platform (QA Q1-1): on darwin the app is
+			// not exec'd directly but through `open -g -n`, with the non-secret
+			// keys on --env and the token inherited only. Built by the same
+			// functions the run uses, and checked by the same guard.
+			launch: dryRunLaunch({
+				launch,
+				appBundle: plan.app.realpath ?? plan.app.zip ?? null,
+				rig: rigPlaceholder,
+				backendUrl,
+				token: placeholderToken,
+				opts,
+			}),
 			frames: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => `${s.payload.label}.png`),
@@ -5554,6 +5808,13 @@ export async function main(argv = process.argv.slice(2)) {
 		 */
 		focusEvents: [],
 		frontmost: emptyFrontmost(viaLaunchServices ? "lsappinfo" : null),
+		/*
+		 * The attach assertion (capture owner, 2026-11-20; mac-proof-focus.mjs
+		 * `createAttachCheck`): the URL the app's own attach line named, the serve
+		 * URL this run started, and whether they agree. `rigUrl` is filled once
+		 * the backend is up; a mismatch at any point fails the run.
+		 */
+		attach: { url: null, rigUrl: null, match: null },
 		...(plan.download
 			? {
 					download: {
@@ -5780,6 +6041,8 @@ export async function main(argv = process.argv.slice(2)) {
 	 * `process.exit`, so it must not rely on the `finally` getting there first).
 	 */
 	let finishing = null;
+	/** App log files the token could not be redacted from (S2): never copied to --out. */
+	const unredacted = new Set();
 	const finalize = () => {
 		finishing ??= (async () => {
 			await teardown();
@@ -5795,15 +6058,43 @@ export async function main(argv = process.argv.slice(2)) {
 			}
 			// Under LaunchServices the app wrote its own log files: redact the token
 			// in place, after the reap, so nothing can still be writing them.
-			if (viaLaunchServices && redactToken)
+			// Recorded per file, and a file that could not be read back or
+			// rewritten FAILS the run (security review S2): a silent miss would
+			// leave the token on disk under a "captured" verdict. Not covered: a
+			// harness killed before this point leaves the files unredacted in the
+			// 0700 rig (docs, limits).
+			if (viaLaunchServices && redactToken) {
+				receipt.redaction = {};
+				const failed = [];
 				for (const file of ["app-stdout.log", "app-stderr.log"]) {
 					const path = join(rig, "logs", file);
 					try {
 						const text = readFileSync(path, "utf8");
-						if (text.includes(redactToken))
+						if (text.includes(redactToken)) {
 							writeFileSync(path, text.replaceAll(redactToken, "<redacted>"));
-					} catch {}
+							if (readFileSync(path, "utf8").includes(redactToken))
+								throw new Error(
+									"the token is still in the file after the rewrite",
+								);
+							receipt.redaction[file] = "redacted";
+						} else receipt.redaction[file] = "clean";
+					} catch (error) {
+						if (error.code === "ENOENT") {
+							receipt.redaction[file] = "absent";
+							continue;
+						}
+						receipt.redaction[file] = `failed: ${error.code ?? error.message}`;
+						failed.push(file);
+					}
 				}
+				for (const file of failed) unredacted.add(file);
+				if (failed.length > 0) {
+					const why = `the token could not be redacted from ${failed.join(", ")} (receipt.redaction); it is not copied to --out; delete the rig's logs by hand`;
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${why}`;
+					receipt.exit = EXIT.FAILED;
+				}
+			}
 			if (interrupted) {
 				receipt.verdict = "failed";
 				receipt.error = `interrupted by ${interrupted}`;
@@ -5863,7 +6154,12 @@ export async function main(argv = process.argv.slice(2)) {
 			if (receipt.verdict !== "captured" && receipt.exit === EXIT.BLOCKED)
 				receipt.verdict = "blocked";
 			try {
-				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
+				// A log the token could not be redacted from stays in the 0700
+				// rig only, never copied to --out (security review S2).
+				cpSync(join(rig, "logs"), join(opts.out, "logs"), {
+					recursive: true,
+					filter: (src) => !unredacted.has(basename(src)),
+				});
 			} catch {}
 			// The extracted release (a ~180 MB zip, more unpacked) goes once nothing of it can still be
 			// running: after a CLEAN reap only. A survivor keeps its tree, both for
@@ -5940,6 +6236,15 @@ export async function main(argv = process.argv.slice(2)) {
 				throw new Refusal(
 					`the frontmost watchdog's preflight failed (${probe.unknown}); refusing to launch without it (${launch.lsappinfo} front, then info -only name -only pid <ASN>)`,
 				);
+			// The receipt's baseline is this probe (review F6), so a run the
+			// inter-run gate refuses still says what was in front.
+			receipt.frontmost.baseline = {
+				asn: probe.asn,
+				pid: probe.pid,
+				name: probe.name,
+				atMs: 0,
+				source: "preflight",
+			};
 			// The test seam scopes the gate to this run's rig root: concurrent
 			// suite cases each own one (mac-proof-focus.mjs `launchMode`).
 			const gate = interRunGateProblem({
@@ -6148,13 +6453,16 @@ export async function main(argv = process.argv.slice(2)) {
 		let appPid;
 		/** The app's own --stdout/--stderr files (LaunchServices only), tailed into `onLine`. */
 		const tails = [];
+		receipt.attach.rigUrl = new URL(backendUrl).origin;
 		if (viaLaunchServices) {
 			// PREVENTION (mac-proof-focus.mjs): -g (no front) -n (a NEW instance,
-			// never the operator's running app), env inherited (never --env).
+			// never the operator's running app), every non-secret isolation key on
+			// --env, the token inherited only (`APP_ENV_KEYS`).
 			const openArgv = buildOpenArgv({
 				appBundle: plan.app.realpath,
 				rig,
 				appArgv: argvApp,
+				env: appEnv,
 			});
 			const openProblem = openArgvProblem(openArgv, { profile, token });
 			if (openProblem) throw new Refusal(openProblem);
@@ -6190,6 +6498,17 @@ export async function main(argv = process.argv.slice(2)) {
 			await watch.tick();
 			watch.start();
 			launchAttempted = true;
+			// Both backstops BEFORE `open` (review F2, QA Q1-5): from here on any
+			// process carrying the rig profile is ours to reap, whether or not
+			// discovery ever names it and whether or not this process survives.
+			reapLaunchedOnExit({ launched: () => launched, profile });
+			sentinel = startSentinel({
+				harnessPid: process.pid,
+				harnessStart: startOf(process.pid),
+				profile,
+				rig,
+			});
+			receipt.launch.sentinel = { pid: sentinel.pid ?? null };
 			const opener = spawn(launch.open, openArgv, {
 				cwd: rig,
 				env: appEnv,
@@ -6242,28 +6561,21 @@ export async function main(argv = process.argv.slice(2)) {
 				await sleep(100);
 			}
 			if (found?.pid == null)
-				// The reap (stopLaunchedApp) kills every pid carrying the profile.
-				throw new Refusal(
+				// After the spawn, so an ordinary failure (exit 1), not a refusal:
+				// exit 2 means nothing was spawned (QA Q1-2). The reap
+				// (stopLaunchedApp) kills every pid carrying the profile.
+				throw new Error(
 					`${found?.problem ?? "no app appeared"}; every process carrying this rig's profile is reaped`,
 				);
 			launched = { pid: found.pid, start: found.start };
 			appPid = found.pid;
 			appRecorded.add(appPid);
 			rememberIdentities(identities, [appPid]);
-			reapLaunchedOnExit({ pid: appPid, start: found.start, profile });
-			// The app's own launcher watch is off (its ppid is 1); this replaces it.
-			sentinel = startSentinel({
-				harnessPid: process.pid,
-				appPid,
-				appStart: found.start,
-				rig,
-			});
 			receipt.launch = {
 				...receipt.launch,
 				open: launch.open,
 				argv: openArgv,
 				app: { pid: appPid, start: found.start },
-				sentinel: { pid: sentinel.pid ?? null },
 			};
 		} else {
 			const app = spawn(plan.app.executable, argvApp, {
@@ -6306,6 +6618,8 @@ export async function main(argv = process.argv.slice(2)) {
 		// (mac-proof-focus.mjs `createEnvProof`), complete BEFORE the present.
 		const envProof = viaLaunchServices ? createEnvProof({ backendUrl }) : null;
 		envProofRef = envProof;
+		const attachCheck = createAttachCheck({ rigUrl: receipt.attach.rigUrl });
+		receipt.attach = attachCheck.record;
 		const envBlocked = (when) => {
 			abort ??= envNotInheritedMessage(
 				envProof.missing(),
@@ -6317,11 +6631,33 @@ export async function main(argv = process.argv.slice(2)) {
 		};
 		const onLine = (line) => {
 			appLog.push(line);
+			// Judged on EVERY line, even after the run finished or aborted: an
+			// attach to any backend but this run's serve fails the run whenever
+			// it appears (receipt `attach.match: false`), and the moment it is
+			// read, not at the present (QA Q1-3).
+			if (attachCheck.feed(line)) {
+				abort = attachMismatchMessage(attachCheck.record);
+				abortCode = null;
+				void teardown();
+				return;
+			}
 			if (abort || finished) return;
 			if (envProof) {
 				envProof.feed(line);
 				if (line.startsWith("[dev-driver] not armed"))
 					return envBlocked(`(the app printed: ${line})`);
+				// v0.59.2's attach-pair failure (index.ts:1516-1519, then app.exit(1)
+				// at :2663): the URL arrived on --env, the inherited token did not.
+				if (line.startsWith("[attach] ") && envProof.missing().length > 0)
+					return envBlocked(`(the app printed: ${line})`);
+				// The step runner is ready only after the window loaded, which is
+				// after the attach (index.ts:4764 < :5106): no proof by then is a
+				// block before the first step runs.
+				if (
+					line.startsWith("[dev-driver-script] ready") &&
+					envProof.missing().length > 0
+				)
+					return envBlocked("before its step runner started");
 				if (PRESENT_LINE.test(line) && envProof.missing().length > 0)
 					return envBlocked("before its window was presented");
 			}
@@ -6343,7 +6679,7 @@ export async function main(argv = process.argv.slice(2)) {
 			const theme = shot.label.split("-").pop();
 			const file = join(opts.out, `${shot.label}.png`);
 			if (opts.capture === "screencapture") {
-				const info = windowInfo(shot.windowId);
+				const info = await windowInfoAsync(shot.windowId);
 				if (!info) throw new Error(`window ${shot.windowId} is not on screen`);
 				if (info.pid !== appPid)
 					throw new Error(
@@ -6353,13 +6689,15 @@ export async function main(argv = process.argv.slice(2)) {
 					throw new Error(
 						`window ${shot.windowId} is on layer ${info.layer}, not a normal window`,
 					);
-				const run = spawnSync(
+				const run = await runAsync(
 					"screencapture",
 					["-x", "-o", "-l", String(shot.windowId), file],
-					{ encoding: "utf8", timeout: 30000 },
+					{ timeout: 30000 },
 				);
 				if (run.status !== 0)
-					throw new Error(`screencapture failed: ${(run.stderr || "").trim()}`);
+					throw new Error(
+						`screencapture failed: ${(run.stderr || run.error || "").trim()}`,
+					);
 				const bytes = readFileSync(file);
 				const size = pngSize(bytes);
 				if (!size || bytes.length < 1000)
@@ -6464,6 +6802,17 @@ export async function main(argv = process.argv.slice(2)) {
 		}
 		pump({ flush: true });
 		abort ??= focusAbort;
+		// An LS app that died with its env unproven: with the URL on --env and no
+		// token inherited, v0.59.2 exits at its attach check (index.ts:2663)
+		// before any backend or window, which is the fail-closed case.
+		if (
+			envProof &&
+			appExited &&
+			!abort &&
+			!finished &&
+			envProof.missing().length > 0
+		)
+			envBlocked("before it exited");
 		if (!abort && !finished)
 			abort =
 				endedBy() ??
