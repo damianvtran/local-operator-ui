@@ -737,6 +737,55 @@ export function releaseZipApp(
  * prints `[window-mode]`, so it always lands inside that window.
  */
 export const STARTUP_WINDOW_MS = 20_000;
+
+/*
+ * WHY A WINDOW WAIT BEFORE THE FIRST SCENE (79's first default-mode Mac run,
+ * installed 0.59.2, harness 00e18cd6: `the window is not visible at the shutter
+ * (SHUTTER label=conversation-dark media=window:7139:0 visible=false
+ * focused=false ...)`, 0 frames, every DOM step ok).
+ *
+ * The harness passes `--open-session`, and a window created to show a specific
+ * conversation HOLDS its first present (src/main/index.ts:1252,
+ * `holdPresentUntilConversation`) until the renderer reports that conversation
+ * is up, or `CONVERSATION_PAINT_FALLBACK_MS = 3_000` (src/main/index.ts:2347)
+ * after the window was created. The readiness steps finish inside that hold, so
+ * the first SHUTTER reported `window.isVisible()` false (`windowFacts`,
+ * src/main/index.ts:1775) and the guard below rightly refused it.
+ *
+ * The app has no shutter-free probe verb for its window facts (the shipped verbs
+ * are DEV_DRIVER_SCRIPT_VERBS in src/main/dev-driver-script.ts, and `state`'s
+ * `visibilityState` is not `isVisible()`), and the step list is read once at
+ * launch, so the harness cannot poll mid-run. It therefore spends ONE bounded,
+ * honest wait in the app's own runner before the first scene: a `waitFor` on a
+ * selector that never matches (`:not(*)`), marked optional so its expected
+ * timeout reads `skipped (optional)` instead of failing the run. Nothing here
+ * shows, focuses or activates the window - the app presents it on its own
+ * schedule - and the per-SHUTTER `visible=true` / `focused=false` guard is
+ * unchanged: a window still hidden after the wait fails the run naming the wait.
+ *
+ * 6 s default = 2x the 3 s fallback bound, which is a code constant (not a
+ * measured distribution); 15 s max keeps the wait well inside --timeout (180 s
+ * default) and the app's 300 s script cap. 0 disables it (the pre-fix behaviour).
+ * capturepage runs are headless and never visible, so they get no wait.
+ */
+export const WINDOW_WAIT_DEFAULT_S = 6;
+export const WINDOW_WAIT_MAX_S = 15;
+/** Matches no element, ever: the wait step can only end by its own bound. */
+export const WINDOW_WAIT_SELECTOR = ":not(*)";
+
+/** The runner step that spends the window wait, or null when none is due. */
+export function windowWaitStep({ capture, windowWaitS }) {
+	if (capture !== "screencapture" || !(windowWaitS > 0)) return null;
+	const ms = Math.round(windowWaitS * 1000);
+	return {
+		verb: "waitFor",
+		payload: { selector: WINDOW_WAIT_SELECTOR, timeoutMs: ms },
+		// Above the verb's own bound, so the step ends by the verb's timeout
+		// (100 ms polls in install.ts `waitFor`), not the runner's.
+		timeoutMs: ms + 5000,
+		optional: true,
+	};
+}
 export function startupProblem(state, elapsedMs) {
 	if (elapsedMs <= STARTUP_WINDOW_MS) return null;
 	if (!state.windowModeLine)
@@ -929,6 +978,9 @@ Captures every --scene x --theme of the real app in ONE inactive launch.
                                capturepage (elsewhere, "no vibrancy claim")
   --window-mode <mode>         inactive (default for screencapture) | headless (capturepage only)
   --size WxH                   window size (default 1380x900)
+  --window-wait <s>            screencapture only: bounded wait before the first scene so the
+                               app's conversation-paint hold (3 s) releases the window first
+                               (default ${WINDOW_WAIT_DEFAULT_S}, max ${WINDOW_WAIT_MAX_S}, 0 = none); it never shows or focuses it
   --timeout <s>                whole-run bound from harness start (default 180, max 290);
                                the reap runs after it. SIGKILL cannot be caught: run this
                                as a background job or with a caller timeout >= --timeout + 60
@@ -984,6 +1036,7 @@ export function parseArgs(argv) {
 		capture: process.platform === "darwin" ? "screencapture" : "capturepage",
 		windowMode: null,
 		size: "1380x900",
+		windowWaitS: WINDOW_WAIT_DEFAULT_S,
 		timeoutS: 180,
 		rigRoot: null,
 		backend: "isolated",
@@ -1052,6 +1105,9 @@ export function parseArgs(argv) {
 				break;
 			case "--size":
 				opts.size = take();
+				break;
+			case "--window-wait":
+				opts.windowWaitS = Number(take());
 				break;
 			case "--timeout":
 				opts.timeoutS = Number(take());
@@ -1207,6 +1263,14 @@ export function validateOptions(opts) {
 	if (capture) throw new Refusal(capture);
 	if (!/^\d{3,4}x\d{3,4}$/.test(opts.size))
 		throw new Refusal(`--size must be WxH (got ${opts.size})`);
+	if (
+		!Number.isFinite(opts.windowWaitS) ||
+		opts.windowWaitS < 0 ||
+		opts.windowWaitS > WINDOW_WAIT_MAX_S
+	)
+		throw new Refusal(
+			`--window-wait must be between 0 and ${WINDOW_WAIT_MAX_S} seconds (got ${opts.windowWaitS})`,
+		);
 	if (
 		!Number.isFinite(opts.timeoutS) ||
 		opts.timeoutS <= 0 ||
@@ -1462,6 +1526,7 @@ export function buildSteps({
 	session,
 	capture,
 	notificationId = null,
+	windowWaitS = WINDOW_WAIT_DEFAULT_S,
 }) {
 	const shutter = (label) => ({
 		verb: "shutter",
@@ -1488,6 +1553,10 @@ export function buildSteps({
 		// The harness reads this result: with --session, activeSessionId must match.
 		{ verb: "state" },
 	];
+	// Before the first scene, not right before the shutter: each scene's own
+	// positive-selector waitFor stays the last step before its frame (#1907).
+	const wait = windowWaitStep({ capture, windowWaitS });
+	if (wait) steps.push(wait);
 	for (const theme of themes) {
 		steps.push({ verb: "setTheme", payload: THEMES[theme] });
 		for (const scene of scenes) {
@@ -1996,6 +2065,8 @@ const FRAME_LABEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
  */
 const SHUTTER_EXTERNAL =
 	/^SHUTTER label=(\S+) media=(\S+) visible=(true|false) focused=(true|false) ack=.+$/;
+/** The window facts a SHUTTER line carries, quoted in the not-visible abort. */
+const SHUTTER_FACTS = /visible=\S+ focused=\S+/;
 const SHUTTER_CAPTUREPAGE =
 	/^SHUTTER label=(\S+) capture=capturepage path=.+ width=(\d+) height=(\d+) visible=(true|false) focused=(true|false)$/;
 
@@ -2005,6 +2076,10 @@ export function createSupervisor({
 	capture,
 	framesDir,
 	labels = null,
+	// The runner step (1-based) that spends the window wait, and its --window-wait;
+	// null when the run has none. See WINDOW_WAIT_DEFAULT_S for why it exists.
+	windowWait = null,
+	now = Date.now,
 }) {
 	if (typeof framesDir !== "string" || !isAbsolute(framesDir))
 		throw new TypeError(
@@ -2021,6 +2096,19 @@ export function createSupervisor({
 		stateChecked: session === null,
 		done: false,
 		steps: [],
+		// The receipt's `windowWait`: how long the wait step actually took (harness
+		// clock, from the line before it to its own line) and the first SHUTTER's
+		// `visible`, so a run that still failed says whether the wait was spent.
+		windowWait: { waitedMs: 0, visibleAtShutter: null },
+	};
+	let lastRunnerLineAt = null;
+	const notVisible = (body) => {
+		const facts = body.match(SHUTTER_FACTS)?.[0] ?? "";
+		const waited =
+			windowWait === null
+				? "with no window wait (--window-wait 0)"
+				: `after a ${state.windowWait.waitedMs} ms window wait (--window-wait ${windowWait.s})`;
+		return `the window is not visible at the shutter ${waited}: ${facts}; the app had not presented its window yet (a window opened for a conversation is held until it paints, src/main/index.ts holdPresentUntilConversation), so retry with a longer --window-wait (max ${WINDOW_WAIT_MAX_S}) - never a focused or normal-mode run (${body})`;
 	};
 	const feed = (line) => {
 		if (line.startsWith("[window-mode] window mode ")) {
@@ -2056,11 +2144,16 @@ export function createSupervisor({
 			return { abort: `the step runner refused: ${body}` };
 		if (body.startsWith("ready ")) {
 			state.ready = true;
+			lastRunnerLineAt = now();
 			return null;
 		}
 		const step = body.match(/^step=(\d+) verb=(\S+) (ok|error:|skipped)(.*)$/);
 		if (step) {
 			const [, n, verb, outcome, rest] = step;
+			const at = now();
+			if (windowWait !== null && Number(n) === windowWait.step)
+				state.windowWait.waitedMs = at - (lastRunnerLineAt ?? at);
+			lastRunnerLineAt = at;
 			state.steps.push({
 				step: Number(n),
 				verb,
@@ -2105,13 +2198,12 @@ export function createSupervisor({
 			if (shot.has(label))
 				return { abort: `a second SHUTTER for ${label} (${body})` };
 			const [visible, focused] = external ? [m[3], m[4]] : [m[4], m[5]];
+			if (state.windowWait.visibleAtShutter === null)
+				state.windowWait.visibleAtShutter = visible === "true";
 			if (focused !== "false")
 				return { abort: `the window is focused at the shutter (${body})` };
 			if (external) {
-				if (visible !== "true")
-					return {
-						abort: `the window is not visible at the shutter (${body})`,
-					};
+				if (visible !== "true") return { abort: notVisible(body) };
 				const id = m[2].match(/^window:(\d+):/)?.[1];
 				if (!id)
 					return { abort: `the SHUTTER line carries no window id (${body})` };
@@ -4244,6 +4336,12 @@ export async function main(argv = process.argv.slice(2)) {
 			labels: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => s.payload.label),
+			windowWait: (() => {
+				const i = steps.steps.findIndex(
+					(s) => s.payload?.selector === WINDOW_WAIT_SELECTOR,
+				);
+				return i < 0 ? null : { step: i + 1, s: opts.windowWaitS };
+			})(),
 		});
 		const appLog = [];
 		let abort = null;
@@ -4372,6 +4470,7 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.steps = supervisor.state.steps;
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
+		receipt.windowWait = supervisor.state.windowWait;
 		writeFileSync(
 			join(rig, "logs", "app-stdout.log"),
 			token
