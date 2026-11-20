@@ -57,7 +57,7 @@ import {
 	clippedRowDisplayText,
 	fetchClippedRow,
 } from "./clipped-row-model";
-import { messageText } from "./transcript-reducer";
+import { type ClippedStamp, messageText } from "./transcript-reducer";
 
 /** The app's request path; tests inject their own through `request`. */
 export function desktopClippedRowRequest(sessionId: string): ClippedRowRequest {
@@ -176,6 +176,37 @@ export const ClippedRowPlaceholder: FC<ClippedRowMarkerProps> = (props) => (
 		<ClippedRowMarker {...props} />
 	</div>
 );
+
+/**
+ * A transcript row's body with its clipped-row treatment applied: unchanged
+ * when unclipped, the preview plus the marker line when cut, and the
+ * placeholder when withheld.
+ *
+ * WHY A FUNCTION OF ITS OWN, RUN BEFORE THE ROW'S NULL CHECK. A withheld row
+ * (`omitted`) has no body to paint - its record is a stand-in
+ * (`transcript-reducer.ts::withheldRecord`) - so the placeholder must win even
+ * where the body would be null; checking `body === null` first made the
+ * placeholder unreachable from the transcript (agent review round 1, M1). Kept
+ * here rather than inline in `TranscriptRow` so the branch is testable on a
+ * record the reducer actually built.
+ */
+export function clippedRowBody(
+	body: JSX.Element | null,
+	clipped: ClippedStamp["clipped"],
+	sessionId: string | null,
+	request?: ClippedRowRequest,
+): JSX.Element | null {
+	if (!clipped) return body;
+	const props = { rowId: clipped.entryId, marker: clipped, sessionId, request };
+	if (clipped.omitted) return <ClippedRowPlaceholder {...props} />;
+	if (body === null) return null;
+	return (
+		<>
+			{body}
+			<ClippedRowMarker {...props} />
+		</>
+	);
+}
 
 const ClippedRowViewer: FC<{
 	rowId: string;

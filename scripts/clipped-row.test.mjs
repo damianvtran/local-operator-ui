@@ -71,7 +71,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/canonical/clipped-row";',
 			'export * from "./src/renderer/src/features/chat/canonical/clipped-row-model";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { setLocale } from "./src/renderer/src/shared/i18n";',
 			'export { createElement, act } from "react";',
 			'export { createRoot } from "react-dom/client";',
@@ -680,6 +680,254 @@ test("reducer: a clipped entry's marker rides its record, keyed by the ENTRY id"
 		page(entry({ bytes_total: "x", reason: "history_cap" })),
 	);
 	assert.equal(find(state).clipped, undefined);
+});
+
+const historyPage = (...entries) => ({
+	entries,
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("reducer: a withheld supplement row reaches the transcript as its placeholder (M1)", async () => {
+	// The core's withheld row: the payload is emptied whole, so the supplement
+	// has no `details` and its own builder has nothing to key on.
+	const withheld = marker({
+		bytes_total: 10_524_128,
+		omitted: true,
+		reason: "history_cap",
+	});
+	const state = m.applyHistoryPage(
+		m.EMPTY_TRANSCRIPT,
+		historyPage({
+			id: "e_sup",
+			ts: 1,
+			type: "custom",
+			payload: { custom_type: "supplement_v1" },
+			truncated: withheld,
+		}),
+	);
+	assert.equal(state.records.length, 1, "the withheld row is not dropped");
+	const [record] = state.records;
+	assert.equal(record.id, "e_sup");
+	assert.deepEqual(record.clipped, { ...withheld, entryId: "e_sup" });
+	// The SAME branch `TranscriptRow` runs, on the record the reducer built,
+	// with no body at all: the placeholder must still win.
+	const { request } = server({ refs: {}, remint: () => ({}) });
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	await act(() =>
+		root.render(m.clippedRowBody(null, record.clipped, SESSION, request)),
+	);
+	const placeholder = host.querySelector("[data-clipped-placeholder]");
+	assert.ok(placeholder, "the placeholder renders");
+	assert.equal(placeholder.getAttribute("data-clipped-placeholder"), "e_sup");
+	assert.match(placeholder.textContent, /too large to show here \(11\sMB\)/);
+	act(() => root.unmount());
+	host.remove();
+	await settle(5);
+	// An unclipped null body stays null (a hidden row is not resurrected).
+	assert.equal(m.clippedRowBody(null, undefined, SESSION), null);
+});
+
+test("reducer: a withheld bookkeeping row (the state checkpoint) stays invisible", () => {
+	const state = m.applyHistoryPage(
+		m.EMPTY_TRANSCRIPT,
+		historyPage({
+			id: "e_ckpt",
+			ts: 1,
+			type: "custom",
+			payload: { custom_type: "frontend_state_checkpoint_v1" },
+			truncated: marker({ omitted: true, reason: "history_cap" }),
+		}),
+	);
+	assert.deepEqual(state.records, []);
+});
+
+test("reducer: a live tool result's full output clears the page's clipped marker (m1)", () => {
+	let state = m.applyHistoryPage(
+		m.EMPTY_TRANSCRIPT,
+		historyPage({
+			id: "e_tool",
+			ts: 1,
+			type: "message",
+			payload: {
+				role: "tool",
+				tool_call_id: "call_1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "PREVIEW" }],
+			},
+			truncated: marker(),
+		}),
+	);
+	const clipped = state.records.find((r) => r.id === "tool:call_1");
+	assert.ok(clipped?.clipped, "the page's tool row carries the marker");
+	state = m.applyEvent(state, {
+		type: "tool_execution_end",
+		tool_call_id: "call_1",
+		tool_name: "bash",
+		result: { content: [{ type: "text", text: "FULL OUT" }] },
+	});
+	const settled = state.records.find((r) => r.id === "tool:call_1");
+	assert.equal(settled.output, "FULL OUT");
+	assert.equal(
+		settled.clipped,
+		undefined,
+		"no 'showing X of Y' over the full output",
+	);
+});
+
+// ---- the bytes_total ceiling and the re-mint transport path ------------------
+
+test("a bytes_total over the client ceiling is final before any request (m2)", async () => {
+	const { request, log } = server({
+		refs: { "r1.abc.def": FULL },
+		remint: () => assert.fail("never re-mints"),
+	});
+	const outcome = await m.fetchClippedRow({
+		rowId: ROW_ID,
+		marker: marker({ bytes_total: 2 * 1024 ** 3 }),
+		request,
+		signal: new AbortController().signal,
+		onProgress: () => assert.fail("nothing is allocated or reported"),
+	});
+	assert.equal(outcome.kind, "final");
+	assert.deepEqual(log, [], "no range is requested");
+	assert.ok(m.MAX_CLIPPED_ROW_BYTES >= 256 * 1024 * 1024);
+});
+
+test("a restart onto a total over the ceiling is final, not a retry loop (m2)", async () => {
+	const { request, log } = server({
+		refs: {
+			"r1.abc.def": (offset, limit) => ({
+				...rangeOf(FULL, offset, limit),
+				bytes_total: m.MAX_CLIPPED_ROW_BYTES + 1,
+			}),
+		},
+		remint: () => assert.fail("never re-mints"),
+	});
+	const outcome = await m.fetchClippedRow({
+		rowId: ROW_ID,
+		marker: marker(),
+		request,
+		signal: new AbortController().signal,
+		onProgress: () => {},
+	});
+	assert.equal(outcome.kind, "final");
+	assert.equal(log.length, 1);
+});
+
+test("viewer: an over-ceiling row reads as final with no button (m2)", async () => {
+	const { request, log } = server({ refs: {}, remint: () => ({}) });
+	const view = await mount(m.ClippedRowMarker, {
+		rowId: ROW_ID,
+		marker: marker({ bytes_total: 2 * 1024 ** 3 }),
+		sessionId: SESSION,
+		request,
+	});
+	await view.click(view.open());
+	await settle(20);
+	assert.equal(view.state(), "final");
+	assert.equal(view.open(), null);
+	assert.deepEqual(log, []);
+	await view.unmount();
+});
+
+const transportDown = () => Object.assign(new Error("down"), { status: null });
+
+test("404 -> re-mint transport failure is retryable, with one re-mint per attempt (m3)", async () => {
+	let remintFails = true;
+	const { request, log } = server({
+		refs: { "r1.fresh.ref": FULL },
+		remint: (rowId) => {
+			if (remintFails) throw transportDown();
+			return {
+				entries: [
+					{
+						id: rowId,
+						ts: 1,
+						type: "message",
+						payload: {},
+						truncated: marker({ ref: "r1.fresh.ref" }),
+					},
+				],
+				has_more: false,
+				cursor_missing: false,
+			};
+		},
+	});
+	const run = () =>
+		m.fetchClippedRow({
+			rowId: ROW_ID,
+			marker: marker(),
+			request,
+			signal: new AbortController().signal,
+			onProgress: () => {},
+		});
+	assert.equal((await run()).kind, "failed");
+	assert.deepEqual(log, [
+		["range", "r1.abc.def", 0, 1_048_576],
+		["remint", ROW_ID],
+	]);
+	// Try again: a NEW attempt, which re-mints once more and completes.
+	remintFails = false;
+	log.length = 0;
+	const second = await run();
+	assert.equal(second.kind, "complete");
+	assert.equal(log.filter(([op]) => op === "remint").length, 1);
+});
+
+test("404 -> re-mint -> retried read transport failure is retryable (m3)", async () => {
+	const { request, log } = server({
+		refs: {
+			"r1.fresh.ref": () => {
+				throw transportDown();
+			},
+		},
+		remint: (rowId) => ({
+			entries: [
+				{
+					id: rowId,
+					ts: 1,
+					type: "message",
+					payload: {},
+					truncated: marker({ ref: "r1.fresh.ref" }),
+				},
+			],
+			has_more: false,
+			cursor_missing: false,
+		}),
+	});
+	const outcome = await m.fetchClippedRow({
+		rowId: ROW_ID,
+		marker: marker(),
+		request,
+		signal: new AbortController().signal,
+		onProgress: () => {},
+	});
+	assert.equal(outcome.kind, "failed");
+	assert.equal(log.filter(([op]) => op === "remint").length, 1);
+});
+
+test("viewer: a re-mint transport failure keeps Try again offered (m3)", async () => {
+	const { request } = server({
+		refs: {},
+		remint: () => {
+			throw transportDown();
+		},
+	});
+	const view = await mount(m.ClippedRowMarker, {
+		rowId: ROW_ID,
+		marker: marker(),
+		sessionId: SESSION,
+		request,
+	});
+	await view.click(view.open());
+	await settle(20);
+	assert.ok(view.viewer("failed"), "the viewer offers Try again");
+	assert.ok(document.querySelector("[data-clipped-retry]"));
+	assert.notEqual(view.state(), "final");
+	await view.unmount();
 });
 
 // ---- the request ops --------------------------------------------------------

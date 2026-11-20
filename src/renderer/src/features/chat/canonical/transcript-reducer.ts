@@ -3364,9 +3364,11 @@ function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	previous?: TranscriptRecord,
 ): TranscriptRecord | null {
-	const record = durableRecordBody(entry, previous);
-	if (!record) return record;
 	const marker = parseClippedMarker(entry.truncated);
+	const record =
+		durableRecordBody(entry, previous) ??
+		(marker?.omitted ? withheldRecord(entry) : null);
+	if (!record) return record;
 	if (marker) {
 		const clipped = { ...marker, entryId: entry.id };
 		// Keep the painted marker's REFERENCE when unchanged: `shallowEqual`
@@ -3381,11 +3383,51 @@ function durableRecord(
 	}
 	// A re-read that now fits (the row was edited down, or the budget grew)
 	// must not keep a stale marker carried over from `previous`.
-	if (record.clipped) {
-		const { clipped: _stale, ...rest } = record;
-		return rest as TranscriptRecord;
-	}
-	return record;
+	return withoutClipped(record);
+}
+
+/** The record with no clipped marker; the same reference when it had none. */
+function withoutClipped<T extends ClippedStamp>(record: T): T {
+	if (!record.clipped) return record;
+	const { clipped: _stale, ...rest } = record;
+	return rest as T;
+}
+
+/**
+ * The stand-in record for a WITHHELD row (`truncated.omitted: true`).
+ *
+ * WHY. The core withholds a row it cannot even preview (a supplement over the
+ * history budget, a checkpoint) and serves it with an EMPTY payload: no
+ * `details`, no content. Every kind's builder then returns null - a supplement
+ * has no anchor to key on - and without this the row would vanish from the
+ * page, the silent loss the marker exists to prevent (agent review round 1,
+ * M1). The record is a plain `custom` row at the ENTRY's id; `TranscriptRow`
+ * paints the placeholder in its body's place, so nothing of the custom row's
+ * own anatomy shows.
+ *
+ * CONSTRAINT. Only kinds the transcript would have painted: a withheld
+ * bookkeeping row (`SILENT_CUSTOM_TYPES`, which includes the state checkpoint)
+ * stays invisible, exactly as it would have been whole.
+ */
+function withheldRecord(
+	entry: DesktopHistoryPage["entries"][number],
+): TranscriptRecord | null {
+	const payload = entry.payload ?? {};
+	const customType =
+		typeof payload.custom_type === "string" ? payload.custom_type : "";
+	if (entry.type === "custom") {
+		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
+	} else if (entry.type !== "message") return null;
+	const type = customType || entry.type;
+	return {
+		kind: "custom",
+		id: entry.id,
+		ts: Math.round((entry.ts ?? 0) * 1000),
+		customType: type,
+		text: "",
+		attribution: "system",
+		...customRow(type, "", {}),
+	};
 }
 
 function durableRecordBody(
@@ -6785,7 +6827,9 @@ export function applyEvent(
 					? base.startedAt <= userStoppedAt
 					: claimsFailure);
 			return upsert(seeded, {
-				...base,
+				// The live result IS the full output: a clipped marker carried from the
+				// page would read "showing X of Y" over complete content (review m1).
+				...withoutClipped(base),
 				args,
 				phase: "done",
 				// A call that REPORTED a result demonstrably ran, so a never-run verdict

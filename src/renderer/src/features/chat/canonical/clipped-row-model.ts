@@ -42,6 +42,26 @@ import type {
  */
 export const MAX_RESTARTS = 2;
 
+/**
+ * The largest row this client will reassemble: 256 MiB.
+ *
+ * WHY A CEILING AT ALL. The reassembly buffer is allocated up front at the
+ * stated `bytes_total`, then decoded into a string (up to twice that again as
+ * UTF-16), parsed, and painted in a `<pre>`, all inside the renderer. The
+ * server is trusted, but a corrupt or absurd figure (2 GB) would be allocated
+ * in full before a single range arrived, and a figure past the typed-array
+ * maximum would throw on every Try again (agent review round 1, m2).
+ *
+ * WHY THIS NUMBER. The row that motivated clipping was a 12.58 MB tool result,
+ * and the core serves every range by reading the row it stores, so a row is
+ * bounded by what one process wrote to its journal in one line. 256 MiB is ~20x
+ * that observed worst case - comfortably above any row the core has produced -
+ * while the renderer's worst case (buffer + decoded string + parsed payload,
+ * roughly 4x) stays near 1 GiB rather than unbounded. Above it the read ends
+ * as `final` before any request: the preview is all this device will show.
+ */
+export const MAX_CLIPPED_ROW_BYTES = 256 * 1024 * 1024;
+
 /** Read `entry.truncated` off the wire; anything malformed is "not clipped". */
 export function parseClippedMarker(value: unknown): DesktopClippedRow | null {
 	if (!value || typeof value !== "object") return null;
@@ -104,6 +124,8 @@ export type ClippedRowOutcome =
 class CancelledError extends Error {}
 class NotFoundError extends Error {}
 class ProtocolError extends Error {}
+/** A `bytes_total` above `MAX_CLIPPED_ROW_BYTES`: final, never retried. */
+class TooLargeError extends Error {}
 
 function isNotFound(error: unknown): boolean {
 	return (
@@ -134,6 +156,8 @@ async function readRanges(
 	let total = expectedTotal;
 	let restarts = 0;
 	restart: for (;;) {
+		// Checked before every allocation, including a restart's new total.
+		if (total > MAX_CLIPPED_ROW_BYTES) throw new TooLargeError();
 		// Allocated once per attempt at the stated size: the memory bound.
 		const buffer = new Uint8Array(total);
 		let offset = 0;
@@ -202,18 +226,27 @@ export async function fetchClippedRow(args: {
 		};
 	} catch (error) {
 		if (error instanceof CancelledError) return { kind: "cancelled" };
+		if (error instanceof TooLargeError) return { kind: "final" };
 		if (!(error instanceof NotFoundError)) return { kind: "failed" };
 	}
-	// Step 4: ONE re-mint, ONE retry.
+	/*
+	 * Step 4: ONE re-mint, ONE retry. Only the contract's two terminal cases
+	 * are `final` - the re-read has no ref (or the row is gone: a 404 on the
+	 * re-read), or the retry 404s again. A transport error or timeout on either
+	 * request is `failed`, so Try again stays offered: a network blip right after
+	 * a serve restart must not kill the action for the mount (review round 1, m3).
+	 * Try again starts a NEW attempt from the marker's ref, so each attempt still
+	 * makes at most one re-mint.
+	 */
 	let fresh: DesktopClippedRow | null = null;
 	try {
 		const page = await request.remint(rowId);
 		if (signal.aborted) return { kind: "cancelled" };
 		const row = page.entries?.find((entry) => entry.id === rowId);
 		fresh = row ? parseClippedMarker(row.truncated) : null;
-	} catch {
+	} catch (error) {
 		if (signal.aborted) return { kind: "cancelled" };
-		return { kind: "final" };
+		return isNotFound(error) ? { kind: "final" } : { kind: "failed" };
 	}
 	if (!fresh || fresh.ref === null) return { kind: "final" };
 	try {
@@ -223,7 +256,9 @@ export async function fetchClippedRow(args: {
 		};
 	} catch (error) {
 		if (error instanceof CancelledError) return { kind: "cancelled" };
-		return { kind: "final" };
+		if (error instanceof NotFoundError || error instanceof TooLargeError)
+			return { kind: "final" };
+		return { kind: "failed" };
 	}
 }
 
