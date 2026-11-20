@@ -61,7 +61,40 @@ export type TeamBridgeNotifyUnreadRow = {
 	unread_count: number;
 	last_read_seq: number;
 	latest_seq: number;
+	/**
+	 * The reader's newest eligible unread seq (agent-server PR #455), or
+	 * `undefined` when the server predates it. See `teamBridgeNotifyIdentity`.
+	 */
+	latest_unread_seq?: number;
 };
+
+/**
+ * Which seq names "the message this row would banner about".
+ *
+ * WHY NOT `latest_seq`. The conversation-wide seq moves for every message,
+ * including the reader's OWN send and replies in threads the reader does not
+ * follow. Keyed on it, an own send (seq 1 -> 3 while one older eligible message
+ * stays unread) looked like a new event and re-raised a banner for nothing the
+ * reader had not already been told about. `latest_unread_seq` moves only when
+ * a message that is actually unread for this reader arrives, so it is the
+ * event identity; `latest_seq` keeps every other job (list patching, cache
+ * refresh, the snapshot pairing below).
+ *
+ * LEGACY SERVER POLICY (explicit, tested). A row without the field comes from
+ * a server that predates #455 - including the window before that backend is
+ * deployed. Such a row keeps the pre-#455 behaviour exactly (`latest_seq` plus
+ * the `last_read_seq` filter): it can still over-notify on an own send, but it
+ * never goes silent, and nothing here pretends the old server's answer means
+ * what the new one does. The choice is per row, so a mixed answer cannot apply
+ * one row's semantics to another.
+ */
+export function teamBridgeNotifyIdentity(
+	row: Pick<TeamBridgeNotifyUnreadRow, "latest_seq" | "latest_unread_seq">,
+): { seq: number; source: "reader" | "legacy" } {
+	return typeof row.latest_unread_seq === "number"
+		? { seq: row.latest_unread_seq, source: "reader" }
+		: { seq: row.latest_seq, source: "legacy" };
+}
 
 /**
  * One banner the renderer is asking main to raise.
@@ -86,6 +119,15 @@ export type TeamBridgeNotifyCandidate = {
 	name: string | null;
 	/** The server's unread count for the reader, for the "N new messages" line. */
 	unreadCount: number;
+	/**
+	 * Set when `seq` is the reader's unread identity and the conversation
+	 * summary describes a LATER message (an own send or an unfollowed reply on
+	 * top of it). Delivery must then read the message at exactly `seq`: the
+	 * newest timeline message is not the one announced, and judging "own send,
+	 * stay quiet" or the preview from it would swallow or mislabel a real
+	 * banner. Absent in every other case, so legacy delivery is unchanged.
+	 */
+	exactSeq?: true;
 };
 
 /**
@@ -246,7 +288,17 @@ export function planTeamBridgeNotifications(
 
 	if (firstAnswer) {
 		for (const row of rows) {
-			cursors.set(row.conversation_id, row.latest_seq);
+			const identity = teamBridgeNotifyIdentity(row);
+			if (identity.source === "legacy") {
+				cursors.set(row.conversation_id, row.latest_seq);
+				continue;
+			}
+			// A reader identity of 0 names no message: seeding it would record
+			// nothing, and leaving the cursor unset lets the first real eligible
+			// message be new. Never lower a cursor: both seqs share one per-
+			// conversation sequence space, so a larger value left by a legacy
+			// row (server rolled forward mid-session) still means "already seen".
+			advanceCursor(cursors, row.conversation_id, identity.seq);
 		}
 		return { candidates: [], cursors, seeded: true };
 	}
@@ -258,6 +310,13 @@ export function planTeamBridgeNotifications(
 
 	for (const row of rows) {
 		const previous = cursors.get(row.conversation_id);
+		const identity = teamBridgeNotifyIdentity(row);
+		if (identity.source === "reader") {
+			const candidate = planReaderRow(input, row, identity.seq, previous, cursors);
+			if (candidate) candidates.push(candidate);
+			continue;
+		}
+		// LEGACY (no `latest_unread_seq`): the pre-#455 rule, byte-for-byte.
 		if (
 			row.unread_count === 0 ||
 			row.latest_seq <= row.last_read_seq ||
@@ -310,4 +369,84 @@ export function planTeamBridgeNotifications(
 	}
 
 	return { candidates, cursors, seeded: true };
+}
+
+/** Move a cursor forward only; a 0 or older seq never lowers or resets it. */
+function advanceCursor(
+	cursors: Map<string, number>,
+	conversationId: string,
+	seq: number,
+): void {
+	if (seq <= 0) return;
+	const previous = cursors.get(conversationId);
+	if (previous === undefined || seq > previous) cursors.set(conversationId, seq);
+}
+
+/**
+ * One row from a #455 server: the identity is the reader's newest eligible
+ * unread seq.
+ *
+ * What this path deliberately does NOT do, each a way to lose or repeat a
+ * banner:
+ *   - No `seq <= last_read_seq` filter. The identity is read against thread
+ *     cursors as well, so a followed-thread reply below the timeline cursor is
+ *     still a new unread message.
+ *   - No cursor move on `0`, on a smaller identity (the newest unread was read
+ *     and an older one remains) or on `unread_count: 0`. The count and the
+ *     identity are separate server queries, so either can be momentarily
+ *     zero while the other is not; consuming then could swallow a message the
+ *     next poll would report coherently. A cursor left alone costs nothing,
+ *     because the next eligible message's identity is larger anyway.
+ *   - No count is cleared here: an identity of 0 with a count says only that
+ *     no message could be named this poll, and the badge path never reads it.
+ */
+function planReaderRow(
+	input: TeamBridgeNotifyPlanInput,
+	row: TeamBridgeNotifyUnreadRow,
+	seq: number,
+	previous: number | undefined,
+	cursors: Map<string, number>,
+): TeamBridgeNotifyCandidate | undefined {
+	if (seq === 0 || row.unread_count === 0) return undefined;
+	if (previous !== undefined && seq <= previous) return undefined;
+	const conversation = input.conversations.find(
+		(entry) => entry.id === row.conversation_id,
+	);
+	// Same rule as the legacy path: no metadata, no decision and no advance.
+	if (conversation === undefined) return undefined;
+	// The summary (thread root, sender label) must come from the same snapshot
+	// as the unread row before any of it is trusted; this pairing stays on the
+	// activity seq because that is what both reads report.
+	if (conversation.latest_seq !== row.latest_seq) return undefined;
+	// Silence sticks: muted, mention-only, non-member or quiet still consume.
+	cursors.set(row.conversation_id, seq);
+	if (!shouldNotifyTeamBridge(conversation, input.selfAccountId)) return undefined;
+	if (input.quiet) return undefined;
+	/*
+	 * The summary describes the conversation's NEWEST message. When that is the
+	 * announced one, its thread root and sender label are right. When something
+	 * newer that is not eligible sits on top (an own send, an unfollowed reply),
+	 * they describe that message instead, so both are withheld and delivery
+	 * reads the exact seq; the honest metadata banner is the fallback.
+	 */
+	const describesSeq = seq === row.latest_seq;
+	const subject = teamBridgeNotificationSubject(
+		conversation,
+		input.selfAccountId,
+		input.organizations,
+	);
+	return {
+		conversationId: conversation.id,
+		...(describesSeq && conversation.last_thread_root_id
+			? { threadId: conversation.last_thread_root_id }
+			: {}),
+		tenantId: row.tenant_id,
+		seq,
+		...subject,
+		senderLabel: describesSeq ? subject.senderLabel : null,
+		kind: conversation.kind,
+		name: conversation.name?.trim() || null,
+		unreadCount: row.unread_count,
+		...(describesSeq ? {} : { exactSeq: true as const }),
+	};
 }

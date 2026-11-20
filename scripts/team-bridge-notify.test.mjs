@@ -393,6 +393,294 @@ test("a read row advances its cursor instead of notifying", async () => {
 	assert.equal(result.cursors.get("bcv_1"), 2);
 });
 
+// ---------------------------------------------------------------------------
+// Reader unread identity (agent-server #455 `latest_unread_seq`)
+//
+// The event a banner is about is the reader's newest ELIGIBLE unread message,
+// not the room's newest message: an own send or an unfollowed reply moves
+// `latest_seq` and must not re-banner an unchanged unread set. Rows without
+// the field come from a legacy server and keep the old rule (tested below).
+// ---------------------------------------------------------------------------
+
+const contractBundle = await build({
+	stdin: {
+		contents: 'export * from "./src/shared/team-bridge-contract";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const contract = await import(
+	`data:text/javascript;base64,${Buffer.from(contractBundle.outputFiles[0].text).toString("base64")}`
+);
+
+/** One poll: the list and the unread row agree on the room's `latest_seq`. */
+const readerPoll = (row, cursors, patch = {}) =>
+	plan({
+		conversations: [conversation({ latest_seq: row.latest_seq, ...patch })],
+		rows: [notifyRow(row)],
+		cursors,
+	});
+
+test("R-own-send: an own send (latest_seq 1 -> 3) over the same eligible unread stays quiet", async () => {
+	const seed = plan({
+		seeded: false,
+		rows: [notifyRow({ latest_seq: 1, unread_count: 1, latest_unread_seq: 1 })],
+	});
+	assert.equal(seed.cursors.get("bcv_1"), 1);
+	const after = readerPoll(
+		{ latest_seq: 3, unread_count: 1, last_read_seq: 0, latest_unread_seq: 1 },
+		seed.cursors,
+	);
+	assert.equal(after.candidates.length, 0, "unchanged unread set, no banner");
+	assert.equal(after.cursors.get("bcv_1"), 1);
+});
+
+test("R-legacy: a row without latest_unread_seq keeps the pre-#455 rule, own-send duplicate included", async () => {
+	const seed = plan({
+		seeded: false,
+		rows: [notifyRow({ latest_seq: 1, unread_count: 1 })],
+	});
+	const after = readerPoll(
+		{ latest_seq: 3, unread_count: 1, last_read_seq: 0 },
+		seed.cursors,
+	);
+	// The documented legacy cost: an old server cannot tell an own send from a
+	// new message, so the client does not pretend it can. Never silent.
+	assert.equal(after.candidates.length, 1);
+	assert.equal(after.candidates[0].seq, 3);
+	assert.equal(after.candidates[0].exactSeq, undefined);
+});
+
+test("R-legacy: a malformed or absent field parses as undefined, never fails the unread read", async () => {
+	const wire = (extra) =>
+		contract.teamBridgeUnreadSchema.parse({
+			total: 1,
+			conversations: [
+				{
+					conversation_id: "bcv_1",
+					unread_count: 1,
+					last_read_seq: 0,
+					latest_seq: 3,
+					muted: false,
+					...extra,
+				},
+			],
+		}).conversations[0];
+	assert.equal(wire({}).latest_unread_seq, undefined);
+	assert.equal(wire({ latest_unread_seq: "7" }).latest_unread_seq, undefined);
+	assert.equal(wire({ latest_unread_seq: -1 }).latest_unread_seq, undefined);
+	assert.equal(wire({ latest_unread_seq: 0 }).latest_unread_seq, 0);
+	assert.equal(wire({ latest_unread_seq: 5 }).latest_unread_seq, 5);
+	assert.deepEqual(model.teamBridgeNotifyIdentity({ latest_seq: 3 }), {
+		seq: 3,
+		source: "legacy",
+	});
+	assert.deepEqual(
+		model.teamBridgeNotifyIdentity({ latest_seq: 3, latest_unread_seq: 0 }),
+		{ seq: 0, source: "reader" },
+	);
+});
+
+test("R-eligible: a new eligible message notifies once; an unchanged repeated poll is quiet", async () => {
+	const first = readerPoll(
+		{ latest_seq: 5, unread_count: 2, latest_unread_seq: 5 },
+		new Map([["bcv_1", 1]]),
+	);
+	assert.equal(first.candidates.length, 1);
+	assert.equal(first.candidates[0].seq, 5);
+	// The summary describes seq 5, so it is the ordinary (non-exact) candidate.
+	assert.equal(first.candidates[0].exactSeq, undefined);
+	assert.equal(first.cursors.get("bcv_1"), 5);
+	for (let poll = 0; poll < 3; poll += 1) {
+		const again = readerPoll(
+			{ latest_seq: 5, unread_count: 2, latest_unread_seq: 5 },
+			first.cursors,
+		);
+		assert.equal(again.candidates.length, 0, `repeat ${poll}`);
+	}
+});
+
+test("R-monotone: identity 0, a decrease (read back) and a re-read never lower the cursor or re-banner", async () => {
+	let cursors = new Map([["bcv_1", 5]]);
+	for (const [latestUnread, count] of [
+		[0, 0],
+		[3, 1],
+		[0, 2],
+		[5, 1],
+	]) {
+		const result = readerPoll(
+			{ latest_seq: 6, unread_count: count, latest_unread_seq: latestUnread },
+			cursors,
+		);
+		assert.equal(result.candidates.length, 0, `${latestUnread}/${count}`);
+		assert.equal(result.cursors.get("bcv_1"), 5, `${latestUnread}/${count}`);
+		cursors = result.cursors;
+	}
+	const next = readerPoll(
+		{ latest_seq: 7, unread_count: 1, latest_unread_seq: 7 },
+		cursors,
+	);
+	assert.equal(next.candidates.length, 1);
+	assert.equal(next.candidates[0].seq, 7);
+});
+
+test("R-thread: a followed-thread reply below the timeline read cursor (7 < 9) still notifies", async () => {
+	const result = readerPoll(
+		{ latest_seq: 9, unread_count: 1, last_read_seq: 9, latest_unread_seq: 7 },
+		new Map([["bcv_1", 5]]),
+		{ last_thread_root_id: "bcmsg_other_root", last_sender_label: "Cy" },
+	);
+	assert.equal(result.candidates.length, 1);
+	const [candidate] = result.candidates;
+	assert.equal(candidate.seq, 7);
+	// The summary describes seq 9, not 7: its thread and sender are withheld and
+	// delivery reads exactly seq 7.
+	assert.equal(candidate.exactSeq, true);
+	assert.equal(candidate.threadId, undefined);
+	assert.equal(candidate.senderLabel, null);
+	assert.equal(candidate.unreadCount, 1);
+});
+
+test("R-race: unread_count > 0 with identity 0 neither banners nor consumes, and changes no count", async () => {
+	const rows = [
+		notifyRow({ latest_seq: 6, unread_count: 2, latest_unread_seq: 0 }),
+	];
+	const frozen = JSON.stringify(rows);
+	const result = plan({
+		conversations: [conversation({ latest_seq: 6 })],
+		rows,
+		cursors: new Map([["bcv_1", 4]]),
+	});
+	assert.equal(result.candidates.length, 0);
+	assert.equal(result.cursors.get("bcv_1"), 4);
+	assert.equal(JSON.stringify(rows), frozen, "the planner does not edit rows");
+	// The other half of the race: an identity whose count snapshot says 0 waits,
+	// and the next coherent answer banners it once.
+	const waiting = readerPoll(
+		{ latest_seq: 6, unread_count: 0, latest_unread_seq: 6 },
+		result.cursors,
+	);
+	assert.equal(waiting.candidates.length, 0);
+	assert.equal(waiting.cursors.get("bcv_1"), 4);
+	const coherent = readerPoll(
+		{ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 },
+		waiting.cursors,
+	);
+	assert.equal(coherent.candidates.length, 1);
+	assert.equal(coherent.candidates[0].seq, 6);
+});
+
+test("R-seed: reader identity seeds silently, 0 leaves the cursor unset, and a larger legacy cursor is kept", async () => {
+	const seed = plan({
+		seeded: false,
+		rows: [
+			notifyRow({ latest_seq: 4, unread_count: 1, latest_unread_seq: 4 }),
+			notifyRow({
+				conversation_id: "bcv_empty",
+				latest_seq: 9,
+				unread_count: 0,
+				latest_unread_seq: 0,
+			}),
+		],
+	});
+	assert.equal(seed.candidates.length, 0);
+	assert.equal(seed.cursors.get("bcv_1"), 4);
+	assert.equal(seed.cursors.has("bcv_empty"), false);
+	// Upgrade across the two keys: a cursor written from a legacy row (room seq
+	// 3) suppresses reader identity 1 from the same seq space and admits 4.
+	const upgraded = plan({
+		seeded: false,
+		cursors: new Map([["bcv_1", 3]]),
+		rows: [notifyRow({ latest_seq: 3, unread_count: 1, latest_unread_seq: 1 })],
+	});
+	assert.equal(upgraded.cursors.get("bcv_1"), 3);
+	assert.equal(
+		readerPoll(
+			{ latest_seq: 3, unread_count: 1, latest_unread_seq: 1 },
+			upgraded.cursors,
+		).candidates.length,
+		0,
+	);
+	assert.equal(
+		readerPoll(
+			{ latest_seq: 4, unread_count: 2, latest_unread_seq: 4 },
+			upgraded.cursors,
+		).candidates.length,
+		1,
+	);
+});
+
+test("R-policy: mute, mention, non-member, #agents and quiet consume the reader identity without a banner", async () => {
+	for (const [label, patch, quiet] of [
+		["mute", { notify: "mute" }, false],
+		["mention", { notify: "mention" }, false],
+		["non-member", { member: false, discoverable: true }, false],
+		["agents", { builtin: "agents" }, false],
+		["quiet", {}, true],
+	]) {
+		const result = plan({
+			conversations: [conversation({ latest_seq: 6, ...patch })],
+			rows: [notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 })],
+			cursors: new Map([["bcv_1", 2]]),
+			quiet,
+		});
+		assert.equal(result.candidates.length, 0, label);
+		assert.equal(result.cursors.get("bcv_1"), 6, label);
+	}
+});
+
+test("R-wait: missing metadata or an unpaired list snapshot waits without consuming the identity", async () => {
+	const missing = plan({
+		conversations: [],
+		rows: [notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 })],
+		cursors: new Map([["bcv_1", 2]]),
+	});
+	assert.equal(missing.cursors.get("bcv_1"), 2);
+	const unpaired = plan({
+		conversations: [conversation({ latest_seq: 5 })],
+		rows: [notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 })],
+		cursors: new Map([["bcv_1", 2]]),
+	});
+	assert.equal(unpaired.candidates.length, 0);
+	assert.equal(unpaired.cursors.get("bcv_1"), 2);
+});
+
+test("R-scope: cursors are per conversation, so one org's identity never suppresses another's", async () => {
+	const result = plan({
+		conversations: [
+			conversation({ latest_seq: 6 }),
+			conversation({ id: "bcv_2", tenant_id: "tnt_2", latest_seq: 6 }),
+		],
+		rows: [
+			notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 }),
+			notifyRow({
+				conversation_id: "bcv_2",
+				tenant_id: "tnt_2",
+				latest_seq: 6,
+				unread_count: 1,
+				latest_unread_seq: 6,
+			}),
+		],
+		cursors: new Map([["bcv_1", 6]]),
+	});
+	assert.deepEqual(
+		result.candidates.map((candidate) => [candidate.conversationId, candidate.tenantId]),
+		[["bcv_2", "tnt_2"]],
+	);
+	// After an account switch the hook drops every cursor and org seed; the
+	// next first answer is a silent seed again, whatever the identity says.
+	const reseed = plan({
+		seeded: false,
+		cursors: new Map(),
+		rows: [notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 })],
+	});
+	assert.equal(reseed.candidates.length, 0);
+	assert.equal(reseed.cursors.get("bcv_1"), 6);
+});
+
 test("the QA account + tenant payloads produce one candidate and one banner", async () => {
 	const organizations = model.teamBridgeNotifyOrganizations(QA_ACCOUNT_UNREAD);
 	assert.deepEqual(
