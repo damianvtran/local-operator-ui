@@ -141,6 +141,7 @@ import {
 	APP_ENV_KEYS,
 	OPEN_BIN,
 	OPEN_ENV_KEYS,
+	PS_TZ,
 	TEST_LAUNCHD_PID_ENV,
 	TEST_LAUNCH_ENV,
 	attachedUrlOf,
@@ -4575,6 +4576,11 @@ test("R1-1: every parsed ps/lsof runs under LC_ALL=C and LANG=C, and C lstart pa
 	});
 	assert.equal(env.LC_ALL, "C");
 	assert.equal(env.LANG, "C");
+	assert.equal(
+		cLocaleEnv({ TZ: "Asia/Tokyo" }).TZ,
+		PS_TZ,
+		"lstart is wall time: pinned to the zone startOf and the sentinel read (S5)",
+	);
 	assert.equal(env.PATH, "/bin", "the rest of the env is kept");
 	// Source pin: no `ps`/`lsof` spawn in the harness without the C env. A new
 	// one that forgets it fails here, not on a day-first Mac.
@@ -7125,6 +7131,54 @@ test("focus: the sentinel, armed before open, sweeps every rig-profile carrier o
 	assert.ok(await waitFor(() => !alive(s2.pid), 4000));
 	for (const c of [named, otherRig, liveStranger])
 		process.kill(c.pid, "SIGKILL");
+});
+
+test("focus: an operator TZ never makes the sentinel read the live harness as recycled - startOf and the sentinel share PS_TZ (security S5)", async () => {
+	// The real path: the harness inherits the operator's exported TZ, reads its
+	// own start with `startOf`, and the sentinel (env built from nothing) reads
+	// it again. Before PS_TZ the two disagreed by the zone offset, the sentinel
+	// took the live harness for a recycled pid and swept this carrier at once.
+	assert.equal(PS_TZ, "UTC");
+	const profile = join(TREE, "sentinel-tz-rig", "profile");
+	const harness = standIn();
+	const carrier = standIn([`--user-data-dir=${profile}`]);
+	await waitFor(
+		() => existsSync(carrier.ready) && startOf(harness.pid) !== null,
+		5000,
+	);
+	const saved = process.env.TZ;
+	// A zone far from the runner's (UTC on CI), so a mismatch cannot hide.
+	process.env.TZ = "Asia/Tokyo";
+	let harnessStart;
+	try {
+		harnessStart = startOf(harness.pid);
+	} finally {
+		// Not `= undefined`: process.env stores that as the string "undefined".
+		if (saved === undefined) Reflect.deleteProperty(process.env, "TZ");
+		else process.env.TZ = saved;
+	}
+	const sentinel = startSentinel({
+		harnessPid: harness.pid,
+		harnessStart,
+		profile,
+		rig: join(TREE, "sentinel-tz-rig"),
+		graceMs: 400,
+	});
+	leftovers.push(sentinel.pid);
+	// A mismatch sweeps on the sentinel's FIRST liveness check, before any
+	// 200 ms tick; 500 ms is that plus two ticks (negative control: with the
+	// pins removed this fails at this line).
+	await sleepMs(500);
+	assert.ok(alive(carrier.pid), "the harness is alive: nothing is swept");
+	assert.ok(alive(sentinel.pid), "the sentinel is still waiting on it");
+	// Control: the same sentinel DOES sweep once the harness is really gone.
+	process.kill(harness.pid, "SIGKILL");
+	assert.ok(
+		await waitFor(() => !alive(carrier.pid), 4000),
+		"swept after the harness died",
+	);
+	// Its grace exit is the subject of the sentinel case above; end it now.
+	sentinel.kill("SIGKILL");
 });
 
 test("focus: the LaunchServices reap kills the app by pid + start and helpers by the rig profile, never a same-named stranger", async () => {

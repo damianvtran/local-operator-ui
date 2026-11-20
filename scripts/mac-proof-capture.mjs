@@ -86,6 +86,7 @@ import {
 	DISCOVERY_TIMEOUT_MS,
 	OPEN_ENV_KEYS,
 	PRESENT_LINE,
+	PS_TZ,
 	TEST_LAUNCH_ENV,
 	attachMismatchMessage,
 	buildOpenArgv,
@@ -4499,10 +4500,12 @@ export function processFactsMany(
  * setlocale(LC_ALL, "") (adv_cmds ps/print.c `lstarted`, ps/ps.c), so an en_GB
  * Mac answers `Mon 16 Nov 10:00:00 2026` and a de_DE one `Mo 16 Nov ...`, and
  * the inherited LANG/LC_ALL decide it. LC_ALL overrides every LC_* category;
- * LANG is pinned too so nothing falls back to the operator's locale.
+ * LANG is pinned too so nothing falls back to the operator's locale. TZ is
+ * pinned for the same reason: `lstart` is local wall time, and these starts
+ * meet `startOf`'s and the sentinel's, which read UTC (`PS_TZ`, security S5).
  */
 export function cLocaleEnv(env = process.env) {
-	return { ...env, LC_ALL: "C", LANG: "C" };
+	return { ...env, LC_ALL: "C", LANG: "C", TZ: PS_TZ };
 }
 
 /** The C-locale `lstart` (`Mon Nov 16 10:00:00 2026`) between pgid and command. */

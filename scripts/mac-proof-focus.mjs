@@ -423,11 +423,23 @@ export function startOf(pid, run = defaultRun) {
 	return start === "" ? null : start;
 }
 
+/**
+ * `lstart` is local wall time, so the zone is part of the identity string. The
+ * harness's reads (here) and the sentinel's (`SENTINEL_SCRIPT`, whose env is
+ * built from nothing) must use the SAME zone, or an operator who exports TZ
+ * makes the sentinel read the live harness's start as a different one - a
+ * "recycled" pid - and sweep the rig while the run is still capturing (security
+ * S5; measured: TZ=Asia/Tokyo failed the sentinel case every time, UTC passed).
+ * Pinned to UTC on both sides, and in capture's `cLocaleEnv`, whose reads are
+ * compared against these.
+ */
+export const PS_TZ = "UTC";
+
 function defaultRun(cmd, args, timeout = 5000) {
 	const r = spawnSync(cmd, args, {
 		encoding: "utf8",
 		timeout,
-		env: { ...process.env, LC_ALL: "C", LANG: "C" },
+		env: { ...process.env, LC_ALL: "C", LANG: "C", TZ: PS_TZ },
 	});
 	return {
 		ok: !r.error && r.status === 0,
@@ -835,7 +847,8 @@ export function startSentinel({
 			detached: true,
 			stdio: "ignore",
 			cwd: "/",
-			env: { PATH: "/bin:/usr/bin", LC_ALL: "C", LANG: "C" },
+			// TZ: the same zone as `startOf`'s read of `harnessStart` (PS_TZ).
+			env: { PATH: "/bin:/usr/bin", LC_ALL: "C", LANG: "C", TZ: PS_TZ },
 		},
 	);
 	child.unref();
