@@ -539,16 +539,41 @@ export function sortHolds(
  * before), and NOT on a `mismatch` (the view disagrees with what was
  * screened; it keeps its "cannot verify" line and arms nothing, as QA Q2
  * decided). Deliver never takes this path.
+ *
+ * ONLY WHEN DELIVER IS CLOSED (PR #2017 round 1: code M1, security S-1, QA
+ * Q-1, copy C1). `unavailable` also covers a transient failure (a 429, a
+ * network error, a machine without owner-audit support) on a hold that is
+ * still deliverable. Arming there would offer an irreversible unread Discard
+ * of a message a retry could show and Deliver, under copy saying it can no
+ * longer be delivered. So the fallback is for a hold whose Deliver window has
+ * passed or that was never deliverable (`!affordance.deliver`); a fresh hold
+ * that fails to load keeps "Try again" and arms nothing.
+ *
+ * ONLY WHEN CORE SAYS THE ROW IS ACTIONABLE (review m1). Core mints a receipt
+ * without checking the conversation, yet the decide contract refuses an empty
+ * `conversation_id` before IPC, and core serves `actionable: false` there. A
+ * button that can only be refused is a dead end, so neither arms it.
  */
 export function receiptDiscardArmed(
-	item: Pick<HoldItem, "discard_receipt" | "message_id">,
+	item: Pick<
+		HoldItem,
+		| "discard_receipt"
+		| "message_id"
+		| "conversation_id"
+		| "actionable"
+		| "decision"
+	>,
 	affordance: HoldAffordance,
 	detail: "loading" | "unavailable" | "ready",
 	binding: BodyBinding | null,
 ): boolean {
 	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
 		return false;
-	if (!affordance.discard) return false;
+	if (affordance.deliver || !affordance.discard) return false;
+	if (item.decision) return false;
+	if (item.actionable === false) return false;
+	if (typeof item.conversation_id !== "string" || !item.conversation_id)
+		return false;
 	const receipt = item.discard_receipt;
 	if (typeof receipt !== "string" || !SHA256_HEX.test(receipt)) return false;
 	if (detail === "unavailable") return true;
@@ -584,15 +609,20 @@ export function holdDecideProof(
 	return input.receipt ? { hold_receipt: input.receipt } : null;
 }
 
-const MESSAGE_ID_PREFIX = /^bcmsg_/;
+const MESSAGE_ID_PREFIX = /^(?:bcmsg|bmsg)_/;
 
 /**
  * A short, stable reference for a row whose sender and text cannot load: the
  * only identity such a row has, so the confirm step can name WHICH message.
+ *
+ * The FIRST 8 characters of the bare id (copy C4): `lop team-bridge holds`
+ * prints the full id start-first and people name a message by its start
+ * ("5ac4b3e8…"), so the reference must match what they see elsewhere.
+ * Display only: the decide still binds the full id and the receipt.
  */
 export function holdReference(messageId: string): string {
 	const bare = messageId.replace(MESSAGE_ID_PREFIX, "");
-	return bare.length > 8 ? bare.slice(-8) : bare;
+	return bare.length > 8 ? bare.slice(0, 8) : bare;
 }
 
 /**

@@ -398,6 +398,17 @@ export const UnloadableExpired: Story = {
 	args: { items: [orphan, fresh], detail: orphanDetail },
 };
 
+/* PR #2017 r1 (M1/S-1/Q-1): a still-deliverable hold whose details failed to
+   load (a 429 or network blip) keeps "Try again" and arms NO receipt Discard,
+   even though core serves it a receipt. */
+export const UnloadableFresh: Story = {
+	args: {
+		items: [{ ...fresh, discard_receipt: RECEIPT }],
+		detail: () => ({ state: "unavailable" }),
+		onRetryDetails: () => {},
+	},
+};
+
 /* Mixed: the unloadable expired row, a valid one, a long one awaiting
    expansion, and a settled (recorded, not yet applied) Discard. */
 export const UnloadableMixed: Story = {

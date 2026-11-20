@@ -26,7 +26,9 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 
 async function load(contents) {
@@ -850,10 +852,170 @@ test("order is stable by hold time then id, whatever order the list arrives in",
 });
 
 test("a row's reference is short, stable and the message's own", () => {
-	assert.equal(m.holdReference("bcmsg_5ac4b3e8deadbeef"), "deadbeef");
+	// Copy C4: the START of the bare id, as `lop team-bridge holds` prints it.
+	assert.equal(m.holdReference("bcmsg_5ac4b3e8deadbeef"), "5ac4b3e8");
+	// The operator's real stuck row: never its suffix, never the tag.
+	const real = "bcmsg_5ac4b3e8a40641c4b90eafaf71a0dba7";
+	assert.equal(m.holdReference(real), "5ac4b3e8");
+	assert.notEqual(m.holdReference(real), "71a0dba7");
+	assert.notEqual(m.holdReference(real), "bcmsg_5a");
+	assert.equal(m.holdReference("bmsg_41abcdef99"), "41abcdef");
 	assert.equal(m.holdReference("bcmsg_abc"), "abc");
 	assert.equal(
 		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
 		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
 	);
+});
+
+// -- PR #2017 round 1 remediation (code M1/m1, security S-1, QA Q-1, copy C2) --
+
+const fresh700 = (over = {}) =>
+	hold({
+		message_id: "bcmsg_700",
+		held_at: "2026-11-18T09:00:00Z",
+		actionable: true,
+		discard_receipt: RECEIPT,
+		...over,
+	});
+
+test("a still-deliverable hold that fails to load arms no receipt Discard (M1/S-1/Q-1)", () => {
+	const item = fresh700();
+	const a = m.holdAffordance(item, NOW);
+	assert.equal(a.state, "open");
+	assert.equal(a.deliver, true);
+	for (const [detail, binding] of [
+		["unavailable", null],
+		["ready", { state: "none" }],
+	]) {
+		assert.equal(m.receiptDiscardArmed(item, a, detail, binding), false);
+		// So no proof reaches the wire for either word.
+		for (const word of ["deliver", "discard"])
+			assert.equal(
+				m.holdDecideProof(word, {
+					armed: { deliver: false, discard: false },
+					binding,
+					receipt: null,
+				}),
+				null,
+			);
+	}
+	// An in-window Discard-only hold (Deliver never open) keeps the fallback.
+	const discardOnly = fresh700({
+		hold_code: "screening_failed",
+		releasable: false,
+		can_deliver: false,
+	});
+	const b = m.holdAffordance(discardOnly, NOW);
+	assert.equal(b.deliver, false);
+	assert.equal(
+		m.receiptDiscardArmed(discardOnly, b, "unavailable", null),
+		true,
+	);
+	// The expired hold (701) still arms it, and only on an explicit press.
+	const expired = orphan({ message_id: "bcmsg_701" });
+	const e = m.holdAffordance(expired, NOW);
+	assert.equal(e.state, "deliver_expired");
+	assert.equal(m.receiptDiscardArmed(expired, e, "unavailable", null), true);
+});
+
+test("a row core says is not actionable, or has no conversation, arms nothing (m1)", () => {
+	for (const over of [
+		{ actionable: false },
+		{ conversation_id: "" },
+		{ conversation_id: null },
+	]) {
+		const item = orphan(over);
+		const a = m.holdAffordance(item, NOW);
+		assert.equal(m.receiptDiscardArmed(item, a, "unavailable", null), false);
+	}
+	// Older core (no `actionable`) with a conversation: still the fallback.
+	const legacy = orphan({ actionable: undefined });
+	assert.equal(
+		m.receiptDiscardArmed(
+			legacy,
+			m.holdAffordance(legacy, NOW),
+			"unavailable",
+			null,
+		),
+		true,
+	);
+});
+
+// The rendered row, from the shipped view (esbuild to a temp module, as
+// `account-profile.test.mjs` does), so "Retry stays" is the DOM, not a flag.
+const cacheDir = "node_modules/.cache";
+const viewOut = `${cacheDir}/team-bridge-holds-view-${process.pid}.mjs`;
+await mkdir(cacheDir, { recursive: true });
+const viewBundle = await build({
+	stdin: {
+		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";`,
+		resolveDir: process.cwd(),
+		loader: "tsx",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+	write: false,
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+});
+await writeFile(viewOut, viewBundle.outputFiles[0].text);
+after(() => unlink(viewOut));
+const { HeldMessagesView } = await import(
+	new URL(`../${viewOut}`, import.meta.url)
+);
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const RE_RETRY = />Try again</;
+const RE_RECEIPT_ONLY = /couldn’t be loaded\. It can no longer be delivered/;
+const RE_UNREAD_BUTTON = /without reading it"/;
+const RE_DELIVER_BUTTON = />Deliver</;
+const RE_OVERCLAIM = /applied|yet|sender|notif|told|will/i;
+
+function renderRow(item) {
+	const calls = [];
+	const html = renderToStaticMarkup(
+		createElement(HeldMessagesView, {
+			listState: "ready",
+			items: [item],
+			detail: () => ({ state: "unavailable" }),
+			onDecide: (...args) => calls.push(args),
+			onRetryDetails: () => {},
+			now: NOW,
+		}),
+	);
+	return { html, calls };
+}
+
+test("Try again stays on every row whose details failed to load (M1/S-1/Q-1)", () => {
+	const fresh = renderRow(fresh700());
+	assert.match(fresh.html, RE_RETRY);
+	assert.doesNotMatch(fresh.html, RE_RECEIPT_ONLY);
+	assert.doesNotMatch(fresh.html, RE_UNREAD_BUTTON);
+	const expired = renderRow(orphan({ message_id: "bcmsg_701" }));
+	assert.match(expired.html, RE_RETRY);
+	assert.match(expired.html, RE_RECEIPT_ONLY);
+	assert.match(expired.html, RE_UNREAD_BUTTON);
+	assert.doesNotMatch(expired.html, RE_DELIVER_BUTTON);
+	// Rendering is not deciding: nothing is sent without a press.
+	assert.equal(fresh.calls.length + expired.calls.length, 0);
+});
+
+test("the pending Discard line states only what is known, in every locale (C2)", () => {
+	const key = "ui.teamBridge.holds.state.discard_recorded";
+	const read = (l) =>
+		JSON.parse(
+			readFileSync(`src/i18n/catalogues/${l}/ui.teamBridge.holds.json`, "utf8"),
+		)[key];
+	assert.equal(
+		read("en"),
+		"Discard recorded on this device. No server confirmation has been received.",
+	);
+	assert.doesNotMatch(read("en"), RE_OVERCLAIM);
+	for (const l of ["fr", "es", "zh-CN", "ru", "vi", "hi", "ur"]) {
+		const v = read(l);
+		assert.ok(v && v !== read("en"), `${l} translated`);
+	}
 });

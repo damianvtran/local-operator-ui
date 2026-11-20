@@ -56,9 +56,9 @@
 	"ui.teamBridge.holds.confirm.cancel": "Hủy",
 	"ui.teamBridge.holds.delivering": "Đang chuyển…",
 	"ui.teamBridge.holds.discarding": "Đang loại bỏ…",
-	"ui.teamBridge.holds.receipt_only": "Không còn tải được người gửi và nội dung của tin nhắn này, nên không thể chuyển. Bạn vẫn có thể loại bỏ tin nhắn mà không cần đọc.",
+	"ui.teamBridge.holds.receipt_only": "Không tải được tin nhắn này. Tin nhắn không còn chuyển được nữa. Bạn vẫn có thể loại bỏ tin nhắn mà không cần đọc.",
 	"ui.teamBridge.holds.reference": "Mã tham chiếu {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Chỉ loại bỏ tin nhắn này ({reference}) mà không đọc? Tin nhắn sẽ không đến được tác nhân của bạn. Việc loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác.",
 	"ui.teamBridge.holds.discard_unread_label": "Loại bỏ tin nhắn {reference} mà không đọc",
-	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này, nhưng chưa được áp dụng."
+	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ."
 }

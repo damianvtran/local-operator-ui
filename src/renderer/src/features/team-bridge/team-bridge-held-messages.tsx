@@ -445,11 +445,18 @@ function HeldRow({
 						</p>
 					</>
 				)}
-				{offers && detail.state === "unavailable" && !unread && (
+				{/* Try again on EVERY row whose details failed to load, receipt rows
+				    included (PR #2017 r1 M1/S-1/Q-1): a failure can be transient,
+				    and an unread Discard must never be the only way forward. A
+				    receipt row drops only the "can't be discarded yet" sentence,
+				    which its own line above contradicts. */}
+				{offers && detail.state === "unavailable" && (
 					<div className="flex flex-wrap items-baseline gap-x-2">
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.details_unavailable")}
-						</p>
+						{!unread && (
+							<p className="text-meta text-ink-dim">
+								{t("ui.teamBridge.holds.details_unavailable")}
+							</p>
+						)}
 						{onRetryDetails && item.conversation_id && (
 							<Button size="sm" variant="link" onClick={onRetryDetails}>
 								{t("ui.teamBridge.list.retry")}

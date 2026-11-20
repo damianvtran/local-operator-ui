@@ -420,9 +420,9 @@
 	"ui.teamBridge.holds.receipt_only": {
 		"role": "status line",
 		"tone": "calm",
-		"length": "two short sentences",
+		"length": "three short sentences",
 		"placeholders": {},
-		"note": "Team Bridge Approvals, Held messages section. Shown on a held message whose sender and text can no longer be loaded (for example it expired). Only Discard is possible, and the person discards it without having read it. Deliver and Discard match the button names. Never say the sender will be told."
+		"note": "Team Bridge Approvals, Held messages section. Shown only on a held message whose Deliver window has closed (it expired, or it was never deliverable) and whose text could not be loaded. The sender's name may still show on the row above, so do not say the sender failed to load. Say the load failed, not that it can never load (a Try again button sits beside it). Only Discard is possible, and the person discards it without having read it. Deliver and Discard match the button names. Never say the sender will be told."
 	},
 	"ui.teamBridge.holds.reference": {
 		"role": "meta line",
@@ -456,6 +456,6 @@
 		"tone": "calm, factual",
 		"length": "two short sentences",
 		"placeholders": {},
-		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: it is saved on this device but has not taken effect yet. Do not say the sender was told."
+		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: the choice is saved on this device and no confirmation has come back from the server. State only those two facts. Do not say it was or was not applied, do not promise it will happen later, and do not say the sender was told."
 	}
 }
