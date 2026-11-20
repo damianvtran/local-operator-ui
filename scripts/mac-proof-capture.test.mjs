@@ -7473,6 +7473,11 @@ it("focus e2e: --dry-run on the LaunchServices path prints the open -g -n plan w
 			join(TREE, "LsDry-out"),
 			"--capture",
 			"capturepage",
+			// The fake, never PATH: --dry-run still resolves `lop` before it
+			// plans, and the CI runner has none on PATH (Full Test Suite run
+			// 44811315012 refused here with "no `lop` on PATH").
+			"--lop",
+			fakeLop(),
 			"--dry-run",
 		],
 		{
