@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "Sortie tronquée — impossible de l’afficher en entier sur cet appareil",
+	"ui.chat.clipped_row.final": "La sortie complète n’est plus disponible ; seul l’aperçu peut être affiché.",
+	"ui.chat.clipped_row.marker": "Sortie tronquée — {shown} affichés sur {total}",
+	"ui.chat.clipped_row.omitted": "Cet élément est trop volumineux pour être affiché ici ({total}).",
+	"ui.chat.clipped_row.open": "Afficher la sortie complète",
+	"ui.chat.clipped_row.viewer.cancel": "Annuler",
+	"ui.chat.clipped_row.viewer.close": "Fermer",
+	"ui.chat.clipped_row.viewer.error": "Impossible de charger la sortie complète.",
+	"ui.chat.clipped_row.viewer.loading": "Chargement de la sortie complète — {received} sur {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "Progression du chargement de la sortie complète",
+	"ui.chat.clipped_row.viewer.retry": "Réessayer",
+	"ui.chat.clipped_row.viewer.size": "{total} au total",
+	"ui.chat.clipped_row.viewer.title": "Sortie complète"
+}

@@ -45,6 +45,12 @@ const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
  * contract keep one name.
  */
 export { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
+/**
+ * The core's clamp on one clipped-row range (`limit` on
+ * `GET .../history/rows/{ref}`): 1 MiB. Asked for as-is, so a 12.58 MB row is
+ * 13 requests; the answer's `limit`/`length` stay the authority.
+ */
+export const DESKTOP_HISTORY_ROW_RANGE_BYTES = 1_048_576;
 
 const id = z
 	.string()
@@ -2520,6 +2526,43 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * domain - so a rebuilt source cannot silently re-rank old bodies.
 			 */
 			expectedJournalGeneration: z.string().min(1).max(128).optional(),
+		})
+		.strict(),
+	/*
+	 * THE CLIPPED-ROW READ-BACK (`docs/DESKTOP_API.md` in the core, "Clipped
+	 * rows"). A history row over its read's budget arrives with a `truncated`
+	 * marker and an opaque `ref`; this op fetches one byte range of the FULL
+	 * row. `limit` is the request's ask only: the route clamps it at 1 MiB and
+	 * states the applied value, so the caller advances by the answer's `length`
+	 * and never by its own arithmetic. `ref` is opaque (`r1.<b64url>.<b64url>`
+	 * today); the pattern only keeps it a single path segment.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.historyRow"),
+			sessionId,
+			ref: z
+				.string()
+				.min(1)
+				.max(512)
+				.regex(/^[A-Za-z0-9._-]+$/),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+			limit: z.number().int().min(1).max(DESKTOP_HISTORY_ROW_RANGE_BYTES),
+		})
+		.strict(),
+	/*
+	 * The ref re-mint for ONE row: `GET .../history?around_id=<row>&before=0&after=0`.
+	 * A ref is HMAC'd under a per-process secret, so a serve restart turns every
+	 * ref this renderer holds into a 404; the contract's recovery is to re-read
+	 * that one row (which comes back clipped with a fresh ref) and retry once.
+	 * A separate op rather than an `aroundId` on `sessions.history`, so no
+	 * transcript page reader can ever send the zero-width window by accident.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.historyRowRef"),
+			sessionId,
+			rowId: id,
 		})
 		.strict(),
 	/*
@@ -8570,6 +8613,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.find",
 	"sessions.get",
 	"sessions.history",
+	// The clipped-row read-back and its ref re-mint: reads of the journal.
+	"sessions.historyRow",
+	"sessions.historyRowRef",
 	"sessions.files",
 	"sessions.userAttachments",
 	"sessions.list",
@@ -10892,6 +10938,29 @@ export function desktopEndpoint(request: DesktopRequest): {
 			}
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/history?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.historyRow": {
+			const query = new URLSearchParams({
+				offset: String(request.offset),
+				limit: String(request.limit),
+			});
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/history/rows/${encodeURIComponent(request.ref)}?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.historyRowRef": {
+			// A bare page (no open frame): its clip reason is `history_cap` and it
+			// is the read the contract names for minting a fresh ref.
+			const query = new URLSearchParams({
+				around_id: request.rowId,
+				before: "0",
+				after: "0",
+			});
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/history?${query}`,
 				method: "GET",
 			};
 		}

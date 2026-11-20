@@ -1,0 +1,15 @@
+{
+	"ui.chat.clipped_row.cannot_expand": "Đầu ra đã bị cắt — không thể mở rộng trên thiết bị này",
+	"ui.chat.clipped_row.final": "Đầu ra đầy đủ không còn khả dụng; chỉ có thể hiển thị bản xem trước.",
+	"ui.chat.clipped_row.marker": "Đầu ra đã bị cắt — đang hiển thị {shown} trên {total}",
+	"ui.chat.clipped_row.omitted": "Mục này quá lớn để hiển thị ở đây ({total}).",
+	"ui.chat.clipped_row.open": "Mở đầu ra đầy đủ",
+	"ui.chat.clipped_row.viewer.cancel": "Hủy",
+	"ui.chat.clipped_row.viewer.close": "Đóng",
+	"ui.chat.clipped_row.viewer.error": "Không thể tải đầu ra đầy đủ.",
+	"ui.chat.clipped_row.viewer.loading": "Đang tải đầu ra đầy đủ — {received} trên {total}",
+	"ui.chat.clipped_row.viewer.progress_label": "Tiến trình tải đầu ra đầy đủ",
+	"ui.chat.clipped_row.viewer.retry": "Thử lại",
+	"ui.chat.clipped_row.viewer.size": "Tổng cộng {total}",
+	"ui.chat.clipped_row.viewer.title": "Đầu ra đầy đủ"
+}

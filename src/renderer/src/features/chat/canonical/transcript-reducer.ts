@@ -35,6 +35,7 @@ import {
 import {
 	type CanonicalContentBlock,
 	type CanonicalFrontendState,
+	type DesktopClippedRow,
 	type DesktopHistoryPage,
 	type DesktopStreamCursor,
 	epochMsFromSeconds,
@@ -73,6 +74,7 @@ import {
 	preferDiffTruncatedRows,
 	preferProgressDetails,
 } from "../components/trace/tool-row-model";
+import { parseClippedMarker, sameClippedMarker } from "./clipped-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
 import { soundCostCaption } from "./image-gen-card-model";
 import {
@@ -942,7 +944,24 @@ type TranscriptPayloadRecord =
 			live: boolean;
 	  };
 
-export type TranscriptRecord = TranscriptPayloadRecord & JournalPosition;
+/**
+ * The core's clipped-row marker, carried onto whichever record its entry
+ * became (`durableRecord`), so the row paints its "showing X of Y" line or,
+ * for a withheld row, a placeholder (`clipped-row.tsx`). Absent on every row
+ * that fit its read.
+ */
+export type ClippedStamp = {
+	/**
+	 * `entryId` is the JOURNAL entry's id, kept beside the marker because a
+	 * record's own `id` can be a canonical tool-call id: the ref re-mint reads
+	 * `around_id=<entry id>`, never the call id.
+	 */
+	clipped?: DesktopClippedRow & { entryId: string };
+};
+
+export type TranscriptRecord = TranscriptPayloadRecord &
+	JournalPosition &
+	ClippedStamp;
 
 export type TranscriptState = {
 	/** Non-rendered, bounded profile prunes awaiting their older native target. */
@@ -3336,7 +3355,40 @@ function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
 	return `tool:${String(payload?.tool_call_id ?? "")}`; // i18n: ignore internal record-index key; never rendered
 }
 
+/**
+ * `durableRecordBody` plus the clipped-row marker. The marker is stamped here,
+ * once, so both page paths (`applyHistoryPage`, the peer payload lane) carry it
+ * and no record kind's builder has to know about it.
+ */
 function durableRecord(
+	entry: DesktopHistoryPage["entries"][number],
+	previous?: TranscriptRecord,
+): TranscriptRecord | null {
+	const record = durableRecordBody(entry, previous);
+	if (!record) return record;
+	const marker = parseClippedMarker(entry.truncated);
+	if (marker) {
+		const clipped = { ...marker, entryId: entry.id };
+		// Keep the painted marker's REFERENCE when unchanged: `shallowEqual`
+		// compares by `!==`, and a fresh object on every re-read would repaint the row.
+		const kept =
+			previous?.clipped &&
+			previous.clipped.entryId === clipped.entryId &&
+			sameClippedMarker(previous.clipped, clipped)
+				? previous.clipped
+				: clipped;
+		return record.clipped === kept ? record : { ...record, clipped: kept };
+	}
+	// A re-read that now fits (the row was edited down, or the budget grew)
+	// must not keep a stale marker carried over from `previous`.
+	if (record.clipped) {
+		const { clipped: _stale, ...rest } = record;
+		return rest as TranscriptRecord;
+	}
+	return record;
+}
+
+function durableRecordBody(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
 	 * The record already painted for this id, if any. It carries TWO facts, and
