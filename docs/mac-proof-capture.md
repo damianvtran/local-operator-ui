@@ -119,6 +119,35 @@ is below the default `--timeout` and will SIGKILL the harness.
    (window only, no shadow, no sound), checks the PNG, and writes the ack the
    runner waits for. Nothing is activated, focused or raised: `screencapture -l`
    reads one window from the window server whether or not it is front.
+
+   **The window wait (`--window-wait <s>`, default 6, max 15, `0` = none).** A
+   window created to show a specific conversation - which `--open-session` asks
+   for - HOLDS its first present until the renderer reports that conversation is
+   up, with `CONVERSATION_PAINT_FALLBACK_MS = 3_000` after window creation as the
+   bound (`holdPresentUntilConversation`, `src/main/index.ts:1252`; the constant
+   at `src/main/index.ts:2347`). The readiness steps can finish inside that
+   hold, and the first default-mode Mac run (installed 0.59.2) failed exactly so:
+   every DOM step ok, then `the window is not visible at the shutter (... visible=false
+   focused=false ...)`, 0 frames. The app has no shutter-free probe for its
+   window facts and reads the step list once at launch, so the harness spends
+   one bounded wait in the runner after the readiness `state` step and before the
+   first scene: `waitFor` on `:not(*)` (matches nothing) with
+   `timeoutMs = --window-wait`, optional, so its expected timeout reads
+   `skipped (optional)`. 6 s is twice the 3 s hold bound. Nothing is shown,
+   focused or activated - the app presents the window on its own schedule - and
+   each SHUTTER is still refused unless `visible=true focused=false`.
+   `capturepage` runs never show a window and get no wait. The receipt records
+   `windowWait: {waitedMs, visibleAtShutter}` (the wait as the harness clock
+   measured it, and the first SHUTTER's `visible`).
+
+   **A timeout** - `the window is not visible at the shutter after a <n> ms
+   window wait (--window-wait <s>): visible=false focused=false; ...`, exit 1 -
+   means the app still had not presented its window when the wait was spent: a
+   renderer that never reported and a fallback that did not fire, or a slower
+   Mac. Retry once with a longer `--window-wait` (max 15); if it persists, read
+   `logs/app-stdout.log` for the `[window-mode] state:` and `[window-raise]`
+   lines. Never answer it with `--window-mode normal` or anything that focuses
+   the window: the `focused=true` refusal is unchanged.
 7. **Reap.** The app by exact process group, escalating to SIGKILL, then any
    process still carrying the run's `--user-data-dir` by exact pid
    (`scripts/app-tree-teardown.mjs`); every lop process by its group, then every

@@ -25,6 +25,7 @@ import {
 	CODESIGN_CAP_MS,
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
+	EXIT,
 	FORBIDDEN_DAEMON_PATH,
 	RUNNER_MAX_STEPS,
 	Refusal,
@@ -34,6 +35,9 @@ import {
 	SCREEN_RECORDING_PREFLIGHT_JXA,
 	STARTUP_WINDOW_MS,
 	UNKNOWN_START,
+	WINDOW_WAIT_DEFAULT_S,
+	WINDOW_WAIT_MAX_S,
+	WINDOW_WAIT_SELECTOR,
 	appNames,
 	appZipListingProblem,
 	appZipProblem,
@@ -86,6 +90,7 @@ import {
 	validateOptions,
 	verifySeedRows,
 	windowModeProblem,
+	windowWaitStep,
 } from "./mac-proof-capture.mjs";
 
 /**
@@ -1063,6 +1068,245 @@ test("update-detail: the drawer's Updates tab -> View details -> in-drawer detai
 			),
 		/update-detail scenes need --notification-id/,
 	);
+});
+
+/*
+ * The window wait (79's first default-mode Mac run: `the window is not visible
+ * at the shutter (... visible=false focused=false ...)`, 0 frames). A window
+ * opened for --session is held until its conversation paints, bounded by
+ * CONVERSATION_PAINT_FALLBACK_MS = 3 s (src/main/index.ts:1252/2347); the
+ * readiness steps finished inside that hold. The harness spends one bounded wait
+ * in the app's own runner before the first scene and NEVER shows or focuses.
+ */
+describe("window wait before the first shutter", () => {
+	// validateOptions refuses screencapture off macOS, so the range checks run
+	// on a capturepage argv; the flag's bound does not depend on the capture.
+	const argv = [
+		"--app",
+		"/x.app",
+		"--out",
+		"/tmp/o",
+		"--capture",
+		"capturepage",
+		"--window-mode",
+		"headless",
+	];
+	const onMac = (opts) => ({ ...opts, capture: "screencapture" });
+	const waitIndex = (steps) =>
+		steps.findIndex((s) => s.payload?.selector === WINDOW_WAIT_SELECTOR);
+
+	test("default --window-wait 6: one optional never-matching waitFor after the readiness state, before every scene", () => {
+		const opts = parseArgs(argv);
+		assert.equal(opts.windowWaitS, 6);
+		assert.equal(WINDOW_WAIT_DEFAULT_S, 6);
+		validateOptions(opts);
+		const { steps } = buildSteps({
+			scenes: ["conversation", "library"],
+			themes: ["dark", "light"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: opts.windowWaitS,
+		});
+		const i = waitIndex(steps);
+		assert.equal(
+			steps.filter((s) => s.payload?.selector === WINDOW_WAIT_SELECTOR).length,
+			1,
+		);
+		assert.equal(
+			steps[i - 1].verb,
+			"state",
+			"after the conversation is verified",
+		);
+		assert.ok(
+			i < steps.findIndex((s) => s.verb === "shutter"),
+			"before the first shutter",
+		);
+		assert.deepEqual(steps[i], {
+			verb: "waitFor",
+			payload: { selector: ":not(*)", timeoutMs: 6000 },
+			timeoutMs: 11000,
+			optional: true,
+		});
+		// The scene's own positive selector stays the last step before its frame.
+		const first = steps.findIndex((s) => s.verb === "shutter");
+		assert.equal(
+			steps[first - 1].payload.selector,
+			'[data-chat-region="header"]',
+		);
+		// buildSteps' own default is the same wait, so no caller can drop it by omission.
+		assert.deepEqual(
+			buildSteps({
+				scenes: ["conversation"],
+				themes: ["dark"],
+				session: "ce618964c88e",
+				capture: "screencapture",
+			}).steps[i],
+			steps[i],
+		);
+		// A selector that can never match: the step can end only by its own bound.
+		assert.equal(WINDOW_WAIT_SELECTOR, ":not(*)");
+		// capturepage is headless and never visible: no wait is spent there.
+		assert.equal(
+			windowWaitStep({ capture: "capturepage", windowWaitS: 6 }),
+			null,
+		);
+		assert.equal(
+			waitIndex(
+				buildSteps({
+					scenes: ["conversation"],
+					themes: ["dark"],
+					session: "ce618964c88e",
+					capture: "capturepage",
+					windowWaitS: 6,
+				}).steps,
+			),
+			-1,
+		);
+	});
+
+	test("max --window-wait 15 is accepted; above it, negative or non-numeric is refused", () => {
+		assert.equal(WINDOW_WAIT_MAX_S, 15);
+		const max = parseArgs([...argv, "--window-wait", "15"]);
+		validateOptions(max);
+		assert.deepEqual(windowWaitStep(onMac(max)), {
+			verb: "waitFor",
+			payload: { selector: ":not(*)", timeoutMs: 15000 },
+			timeoutMs: 20000,
+			optional: true,
+		});
+		for (const bad of ["15.5", "16", "-1", "soon"])
+			assert.throws(
+				() => validateOptions(parseArgs([...argv, "--window-wait", bad])),
+				/--window-wait must be between 0 and 15 seconds/,
+				bad,
+			);
+	});
+
+	const lines = [
+		"[window-mode] window mode inactive: 1380x900, window shown without activating the app",
+		"[dev-driver] ARMED; frames",
+		"[dev-driver-script] ARMED; steps",
+		"[dev-driver-script] ready verbs=8",
+		"[dev-driver-script] step=1 verb=skipOnboarding ok {}",
+		"[dev-driver-script] step=2 verb=waitFor ok {}",
+		"[dev-driver-script] step=3 verb=waitFor ok {}",
+		'[dev-driver-script] step=4 verb=state ok {"activeSessionId":"ce618964c88e"}',
+	];
+	const clocked = (windowWait) => {
+		let t = 1000;
+		const clock = {
+			set: (ms) => {
+				t = ms;
+			},
+		};
+		const sup = createSupervisor({
+			windowMode: "inactive",
+			session: "ce618964c88e",
+			capture: "screencapture",
+			framesDir: "/o",
+			labels: ["conversation-dark"],
+			windowWait,
+			now: () => t,
+		});
+		for (const line of lines) assert.equal(sup.feed(line), null, line);
+		return { sup, clock };
+	};
+	const shutter = (visible, focused = false) =>
+		`[dev-driver-script] SHUTTER label=conversation-dark media=window:7139:0 visible=${visible} focused=${focused} ack=/o/conversation-dark.ack`;
+
+	test("still hidden after the bound: the run fails naming the elapsed wait and the last facts", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7012);
+		assert.equal(
+			sup.feed(
+				"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+			),
+			null,
+		);
+		const { abort } = sup.feed(shutter(false));
+		assert.match(
+			abort,
+			/^the window is not visible at the shutter after a 6012 ms window wait \(--window-wait 6\): visible=false focused=false; /,
+		);
+		assert.match(
+			abort,
+			/retry with a longer --window-wait \(max 15\) - never a focused or normal-mode run/,
+		);
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 6012,
+			visibleAtShutter: false,
+		});
+		// The run's exit for any supervisor abort.
+		assert.equal(EXIT.FAILED, 1);
+	});
+
+	test("visible as soon as the wait is spent: the frame is taken, the receipt records the wait", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7100);
+		sup.feed(
+			"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+		);
+		assert.deepEqual(sup.feed(shutter(true)), {
+			shutter: {
+				label: "conversation-dark",
+				windowId: 7139,
+				ack: "/o/conversation-dark.ack",
+			},
+		});
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 6100,
+			visibleAtShutter: true,
+		});
+	});
+
+	test("visibility already there and --window-wait 0: no wait step, no delay, the frame is taken", () => {
+		const opts = parseArgs([...argv, "--window-wait", "0"]);
+		validateOptions(opts);
+		assert.equal(windowWaitStep(onMac(opts)), null);
+		const withWait = buildSteps({
+			scenes: ["conversation"],
+			themes: ["dark"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: 6,
+		}).steps;
+		const none = buildSteps({
+			scenes: ["conversation"],
+			themes: ["dark"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: 0,
+		}).steps;
+		assert.equal(waitIndex(none), -1);
+		assert.deepEqual(
+			none,
+			withWait.filter((s) => s.payload?.selector !== WINDOW_WAIT_SELECTOR),
+		);
+		const { sup } = clocked(null);
+		assert.deepEqual(sup.feed(shutter(true)).shutter.windowId, 7139);
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 0,
+			visibleAtShutter: true,
+		});
+		// And the hidden case without a wait still names that there was none.
+		const { sup: bare } = clocked(null);
+		assert.match(
+			bare.feed(shutter(false)).abort,
+			/not visible at the shutter with no window wait \(--window-wait 0\): visible=false focused=false/,
+		);
+	});
+
+	test("the wait never relaxes the focus guard", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7012);
+		sup.feed(
+			"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+		);
+		assert.match(
+			sup.feed(shutter(true, true)).abort,
+			/the window is focused at the shutter/,
+		);
+	});
 });
 
 test("the supervisor aborts on normal, focus, early shutters and the wrong conversation", () => {
