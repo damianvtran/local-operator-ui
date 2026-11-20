@@ -82,6 +82,29 @@ import {
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
+	DISCOVERY_TIMEOUT_MS,
+	PRESENT_LINE,
+	buildOpenArgv,
+	createEnvProof,
+	createFileTail,
+	createFrontmostWatch,
+	discoverAppPid,
+	emptyFrontmost,
+	envNotInheritedMessage,
+	interRunGateProblem,
+	launchMode,
+	lsappinfoRunner,
+	openArgvProblem,
+	psArgvOf,
+	psRows,
+	reapLaunchedOnExit,
+	rigPidClassifier,
+	rigStyleProfilePattern,
+	sampleFrontmost,
+	startSentinel,
+	stopLaunchedApp,
+} from "./mac-proof-focus.mjs";
+import {
 	NOTIFICATION_ID,
 	SEED_SCENARIOS,
 	generateSeed,
@@ -1795,6 +1818,20 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	 * --check-operator-downloads the stray listing runs, so containment is no
 	 * longer destination-only.
 	 */
+	/*
+	 * Every darwin run (`when`: only listed when the run launched through
+	 * LaunchServices, mac-proof-focus.mjs). Measured on the capture Mac
+	 * (2026-11-20): `lsappinfo front` + `lsappinfo info -only name -only pid`
+	 * answered in 0.08 s, rc 0, with no prompt - the watchdog's permission-free
+	 * read is confirmed. What stays inferred until the first watched Mac run is
+	 * that `open -g -n` prevents the come-forward (RCA R1).
+	 */
+	Object.freeze({
+		id: "focus-prevention-launchservices",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "open -g -n is the prevention, inferred from open(1) and the RCA until a watched Mac run shows no rig pid frontmost; lsappinfo was measured prompt-free (0.08 s). Matching is by pid only.",
+	}),
 	Object.freeze({
 		id: "toast-latency-unmeasured",
 		scenes: Object.freeze(["download"]),
@@ -1827,7 +1864,8 @@ export function receiptLimits(scenes, opts = {}) {
 	return MEASUREMENT_LIMITS.filter(
 		(limit) =>
 			limit.scenes.some((scene) => scenes.includes(scene)) &&
-			!(limit.unless && opts[limit.unless]),
+			!(limit.unless && opts[limit.unless]) &&
+			!(limit.when && !opts[limit.when]),
 	).map(({ id, text }) => ({ id, text }));
 }
 
@@ -5251,6 +5289,15 @@ export async function main(argv = process.argv.slice(2)) {
 		return code;
 	}
 
+	// darwin launches through LaunchServices (`open -g -n`, mac-proof-focus.mjs);
+	// Linux/xvfb keeps the direct spawn. A misused test seam refuses here.
+	const launch = launchMode();
+	if (launch.problem) {
+		console.error(`[mac-proof] refused: ${launch.problem}`);
+		return EXIT.REFUSED;
+	}
+	const viaLaunchServices = launch.kind === "launchservices";
+
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
 	const stepProblem =
@@ -5481,7 +5528,10 @@ export async function main(argv = process.argv.slice(2)) {
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
-		limits: receiptLimits(opts.scenes, opts),
+		limits: receiptLimits(opts.scenes, {
+			...opts,
+			launchServices: viaLaunchServices,
+		}),
 		disclosed: [
 			"the opened conversation's unread/seen marks may clear on the daemon that served it",
 			"a desktop presence beat (45 s TTL) is sent to that daemon",
@@ -5492,6 +5542,18 @@ export async function main(argv = process.argv.slice(2)) {
 				: []),
 		],
 		reap: {},
+		launch: {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		},
+		/*
+		 * Every focus event the run saw (a rig pid frontmost, a focused state or
+		 * SHUTTER line); [] on a clean run. `frontmost` is the watchdog's record
+		 * (mac-proof-focus.mjs `createFrontmostWatch`), present in EVERY receipt
+		 * so an early exit still says what was sampled; `tool: null` off darwin.
+		 */
+		focusEvents: [],
+		frontmost: emptyFrontmost(viaLaunchServices ? "lsappinfo" : null),
 		...(plan.download
 			? {
 					download: {
@@ -5513,6 +5575,19 @@ export async function main(argv = process.argv.slice(2)) {
 	};
 	const children = { app: null };
 	let appExited = false;
+	/*
+	 * The LaunchServices launch's state (darwin; see mac-proof-focus.mjs): the
+	 * watchdog, the app as discovered (pid + start), its sentinel, the env proof,
+	 * the token to redact from the app's own log files, and the first focus
+	 * abort (set by the watchdog, read by the main loop and by `finalize`).
+	 */
+	let watch = null;
+	let launched = null;
+	let launchAttempted = false;
+	let sentinel = null;
+	let envProofRef = null;
+	let redactToken = null;
+	let focusAbort = null;
 	/*
 	 * Why the run ENDED early, when it did. `interrupted` is the signal name
 	 * (SIGINT/SIGTERM/SIGHUP), `childFailure` the first spawn 'error' (EACCES,
@@ -5613,6 +5688,31 @@ export async function main(argv = process.argv.slice(2)) {
 	/** Pids reaped with an UNKNOWN identity (start did not parse; review r1 R1-1), for the receipt. */
 	const unknownStart = new Set();
 	const reapEverything = async () => {
+		// The LaunchServices app is launchd's child, outside any group of ours:
+		// by pid + recorded start, then by the rig's exact --user-data-dir token
+		// (helpers, or an app discovery never singled out). Never by name.
+		if (viaLaunchServices && launchAttempted && !receipt.reap.app) {
+			const result = await stopLaunchedApp({
+				pid: launched?.pid ?? null,
+				start: launched?.start ?? null,
+				profile,
+			});
+			receipt.reap.app = {
+				clean: result.clean,
+				escalated: result.escalated,
+				reaped: result.reaped.length,
+				survivors: result.survivors.length,
+			};
+			if (sentinel && sentinel.pid !== undefined) {
+				// It exits on its own once the app is gone; this is the backstop.
+				// A ChildProcess handle, so the kill never reaches a recycled pid.
+				const gone = () =>
+					sentinel.exitCode !== null || sentinel.signalCode !== null;
+				if (!gone()) sentinel.kill("SIGKILL");
+				for (let i = 0; i < 20 && !gone(); i++) await sleep(50);
+				receipt.reap.sentinel = { pid: sentinel.pid, clean: gone() };
+			}
+		}
 		if (children.app && children.app.pid !== undefined && !receipt.reap.app) {
 			const result = await stopAppTree({
 				pid: children.app.pid,
@@ -5683,6 +5783,27 @@ export async function main(argv = process.argv.slice(2)) {
 	const finalize = () => {
 		finishing ??= (async () => {
 			await teardown();
+			// The watchdog runs until after the reap (a steal during the reap still
+			// counts), then the run's focus verdict: a rig pid frontmost fails it.
+			if (watch) await watch.stop();
+			if (envProofRef) receipt.launch.envProof = envProofRef.record();
+			if (receipt.frontmost.stolen) {
+				receipt.verdict = "failed";
+				if (!String(receipt.error ?? "").includes(focusAbort))
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${focusAbort}`;
+				receipt.exit = EXIT.FAILED;
+			}
+			// Under LaunchServices the app wrote its own log files: redact the token
+			// in place, after the reap, so nothing can still be writing them.
+			if (viaLaunchServices && redactToken)
+				for (const file of ["app-stdout.log", "app-stderr.log"]) {
+					const path = join(rig, "logs", file);
+					try {
+						const text = readFileSync(path, "utf8");
+						if (text.includes(redactToken))
+							writeFileSync(path, text.replaceAll(redactToken, "<redacted>"));
+					} catch {}
+				}
 			if (interrupted) {
 				receipt.verdict = "failed";
 				receipt.error = `interrupted by ${interrupted}`;
@@ -5805,7 +5926,32 @@ export async function main(argv = process.argv.slice(2)) {
 		["SIGINT", "SIGTERM", "SIGHUP"],
 	);
 
+	/** The watchdog's lsappinfo runner and ASN->pid cache (darwin only). */
+	let lsappinfo = null;
+	const frontCache = new Map();
 	try {
+		// ---- focus: the watchdog preflight and the inter-run gate --------------
+		// Before anything is spawned. Fail closed: no readable frontmost app means
+		// no watchdog, so no launch (exit 2).
+		if (viaLaunchServices) {
+			lsappinfo = lsappinfoRunner(launch.lsappinfo);
+			const probe = await sampleFrontmost(lsappinfo, frontCache);
+			if (probe.unknown)
+				throw new Refusal(
+					`the frontmost watchdog's preflight failed (${probe.unknown}); refusing to launch without it (${launch.lsappinfo} front, then info -only name -only pid <ASN>)`,
+				);
+			// The test seam scopes the gate to this run's rig root: concurrent
+			// suite cases each own one (mac-proof-focus.mjs `launchMode`).
+			const gate = interRunGateProblem({
+				rows: psRows(),
+				front: probe,
+				pattern: rigStyleProfilePattern(
+					launch.gateScopedToRigRoot ? dirname(rig) : null,
+				),
+			});
+			if (gate) throw new Refusal(gate);
+		}
+
 		// ---- --app-zip: extract into the rig, then the --app guards -----------
 		if (opts.appZip !== null) {
 			plan.app = releaseZipApp(plan.app.zip, rig, {
@@ -5989,20 +6135,152 @@ export async function main(argv = process.argv.slice(2)) {
 			session: opts.session,
 		});
 		console.log(
-			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"}) for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
+			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"})${viaLaunchServices ? " through LaunchServices (open -g -n)" : ""} for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
 		);
-		const app = spawn(plan.app.executable, argvApp, {
-			cwd: rig,
-			env: buildAppEnv({ rig, backendUrl, token, windowMode: opts.windowMode }),
-			detached: true,
-			stdio: ["ignore", "pipe", "pipe"],
+		redactToken = token ?? null;
+		const appEnv = buildAppEnv({
+			rig,
+			backendUrl,
+			token,
+			windowMode: opts.windowMode,
 		});
-		children.app = app;
-		app.on("error", onChildError("the app"));
-		if (app.pid !== undefined) reapOnExit({ pid: app.pid, userData: profile });
-		app.on("exit", () => {
-			appExited = true;
-		});
+		/** The app's pid: the direct child's, or the LaunchServices instance discovered by its profile. */
+		let appPid;
+		/** The app's own --stdout/--stderr files (LaunchServices only), tailed into `onLine`. */
+		const tails = [];
+		if (viaLaunchServices) {
+			// PREVENTION (mac-proof-focus.mjs): -g (no front) -n (a NEW instance,
+			// never the operator's running app), env inherited (never --env).
+			const openArgv = buildOpenArgv({
+				appBundle: plan.app.realpath,
+				rig,
+				appArgv: argvApp,
+			});
+			const openProblem = openArgvProblem(openArgv, { profile, token });
+			if (openProblem) throw new Refusal(openProblem);
+			for (const file of ["app-stdout.log", "app-stderr.log"]) {
+				writeFileSync(join(rig, "logs", file), "");
+				tails.push(createFileTail(join(rig, "logs", file)));
+			}
+			// From just before the launch: the baseline is the operator's front app.
+			watch = createFrontmostWatch({
+				sample: () => sampleFrontmost(lsappinfo, frontCache),
+				isRig: rigPidClassifier({
+					profile,
+					appPid: () => launched?.pid ?? null,
+					argvOf: psArgvOf,
+				}),
+				record: receipt.frontmost,
+				onSteal: (stolen) => {
+					focusAbort ??= `the rig app became frontmost (pid ${stolen.pid}${stolen.helper ? ", a helper" : ""}, ${stolen.asn}) at +${stolen.sinceLaunchMs ?? stolen.atMs} ms after launch`;
+					receipt.focusEvents.push({
+						source: "lsappinfo",
+						at: new Date().toISOString(),
+						...stolen,
+					});
+					// Reap NOW, not at the main loop's next look: every 100 ms the
+					// rig app stays frontmost is 100 ms of the operator's input.
+					void teardown();
+				},
+				onBlind: (why) => {
+					focusAbort ??= why;
+				},
+			});
+			// The baseline sample first, then the 100 ms loop, then the launch.
+			await watch.tick();
+			watch.start();
+			launchAttempted = true;
+			const opener = spawn(launch.open, openArgv, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			watch.markLaunched();
+			const openOut = [];
+			opener.stdout.on("data", (c) => openOut.push(c.toString()));
+			opener.stderr.on("data", (c) => openOut.push(c.toString()));
+			const discoveryDeadline = Date.now() + DISCOVERY_TIMEOUT_MS;
+			const openExit = await new Promise((resolve) => {
+				const bound = setTimeout(
+					() => resolve("no exit"),
+					Math.max(0, discoveryDeadline - Date.now()),
+				);
+				opener.on("error", (error) => {
+					clearTimeout(bound);
+					resolve(error.message);
+				});
+				opener.on("exit", (code, signal) => {
+					clearTimeout(bound);
+					resolve(code === 0 ? 0 : `exit ${code ?? signal}`);
+				});
+			});
+			writeFileSync(join(rig, "logs", "open.log"), openOut.join(""));
+			if (openExit !== 0) {
+				if (opener.exitCode === null && opener.signalCode === null)
+					opener.kill("SIGKILL");
+				throw new Error(
+					`${launch.open} did not launch the app (${openExit}): ${openOut.join("").trim().slice(0, 300)}`,
+				);
+			}
+			// Exactly ONE process: the rig profile, no --type=, launchd's child.
+			let found = null;
+			while (Date.now() < discoveryDeadline) {
+				checkpoint("finding the LaunchServices-launched app");
+				// A steal before discovery already reaped by profile: stop looking.
+				if (focusAbort) throw new Error(focusAbort);
+				const rows = psRows();
+				found =
+					rows === null
+						? {
+								pid: null,
+								candidates: 0,
+								problem: "ps could not list processes",
+							}
+						: discoverAppPid(rows, { profile, launchdPid: launch.launchdPid });
+				if (found.pid !== null || found.candidates > 1) break;
+				await sleep(100);
+			}
+			if (found?.pid == null)
+				// The reap (stopLaunchedApp) kills every pid carrying the profile.
+				throw new Refusal(
+					`${found?.problem ?? "no app appeared"}; every process carrying this rig's profile is reaped`,
+				);
+			launched = { pid: found.pid, start: found.start };
+			appPid = found.pid;
+			appRecorded.add(appPid);
+			rememberIdentities(identities, [appPid]);
+			reapLaunchedOnExit({ pid: appPid, start: found.start, profile });
+			// The app's own launcher watch is off (its ppid is 1); this replaces it.
+			sentinel = startSentinel({
+				harnessPid: process.pid,
+				appPid,
+				appStart: found.start,
+				rig,
+			});
+			receipt.launch = {
+				...receipt.launch,
+				open: launch.open,
+				argv: openArgv,
+				app: { pid: appPid, start: found.start },
+				sentinel: { pid: sentinel.pid ?? null },
+			};
+		} else {
+			const app = spawn(plan.app.executable, argvApp, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			children.app = app;
+			app.on("error", onChildError("the app"));
+			if (app.pid !== undefined)
+				reapOnExit({ pid: app.pid, userData: profile });
+			app.on("exit", () => {
+				appExited = true;
+			});
+			appPid = app.pid;
+		}
 		const supervisor = createSupervisor({
 			windowMode: opts.windowMode,
 			session: opts.session,
@@ -6020,13 +6298,43 @@ export async function main(argv = process.argv.slice(2)) {
 		});
 		const appLog = [];
 		let abort = null;
+		/** EXIT.BLOCKED for the env proof; null = an ordinary failure (exit 1). */
+		let abortCode = null;
 		let finished = false;
 		const work = [];
+		// The LaunchServices launch proves its env from the app's own lines
+		// (mac-proof-focus.mjs `createEnvProof`), complete BEFORE the present.
+		const envProof = viaLaunchServices ? createEnvProof({ backendUrl }) : null;
+		envProofRef = envProof;
+		const envBlocked = (when) => {
+			abort ??= envNotInheritedMessage(
+				envProof.missing(),
+				when,
+				envProof.state.wrongBackend,
+			);
+			abortCode = EXIT.BLOCKED;
+			void teardown();
+		};
 		const onLine = (line) => {
 			appLog.push(line);
 			if (abort || finished) return;
+			if (envProof) {
+				envProof.feed(line);
+				if (line.startsWith("[dev-driver] not armed"))
+					return envBlocked(`(the app printed: ${line})`);
+				if (PRESENT_LINE.test(line) && envProof.missing().length > 0)
+					return envBlocked("before its window was presented");
+			}
 			const action = supervisor.feed(line);
 			if (!action) return;
+			if (action.abort && /\bfocused=true\b/.test(line))
+				receipt.focusEvents.push({
+					source: line.startsWith("[window-mode] state:")
+						? "window-state"
+						: "shutter",
+					at: new Date().toISOString(),
+					line,
+				});
 			if (action.abort) abort = action.abort;
 			else if (action.done) finished = true;
 			else if (action.shutter) work.push(capture(action.shutter));
@@ -6037,9 +6345,9 @@ export async function main(argv = process.argv.slice(2)) {
 			if (opts.capture === "screencapture") {
 				const info = windowInfo(shot.windowId);
 				if (!info) throw new Error(`window ${shot.windowId} is not on screen`);
-				if (info.pid !== app.pid)
+				if (info.pid !== appPid)
 					throw new Error(
-						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${app.pid})`,
+						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${appPid})`,
 					);
 				if (info.layer !== 0)
 					throw new Error(
@@ -6105,18 +6413,36 @@ export async function main(argv = process.argv.slice(2)) {
 				at = buffered.indexOf("\n");
 			}
 		};
-		app.stdout.on("data", split);
-		app.stderr.on("data", split);
+		/** LaunchServices: whatever the app's own files gained, line by line. */
+		const pump = (options) => {
+			for (const tail of tails)
+				for (const line of tail.read(options)) onLine(line);
+		};
+		if (children.app) {
+			children.app.stdout.on("data", split);
+			children.app.stderr.on("data", split);
+		}
 
 		const started = Date.now();
 		let tick = 0;
 		while (!abort && !finished && !appExited && !endedBy()) {
+			pump();
+			abort ??= focusAbort;
+			if (
+				envProof &&
+				!abort &&
+				Date.now() - started > STARTUP_WINDOW_MS &&
+				envProof.missing().length > 0
+			)
+				envBlocked(`within ${STARTUP_WINDOW_MS / 1000} s of launch`);
 			abort ??= startupProblem(supervisor.state, Date.now() - started);
 			await sleep(100);
+			// launchd's child, not ours: no exit event, so it is looked at.
+			if (viaLaunchServices && !pidAlive(appPid)) appExited = true;
 			// Every ~2 s: record the app's descendants (and the lop processes'),
 			// so a helper that later leaves the group is still reaped by pid.
 			if (tick++ % 20 === 0) {
-				for (const pid of descendantsOf([app.pid])) appRecorded.add(pid);
+				for (const pid of descendantsOf([appPid])) appRecorded.add(pid);
 				rememberIdentities(identities, appRecorded);
 				recordDescendants();
 			}
@@ -6136,6 +6462,8 @@ export async function main(argv = process.argv.slice(2)) {
 				abort ??= `capture failed: ${error.message}`;
 			}
 		}
+		pump({ flush: true });
+		abort ??= focusAbort;
 		if (!abort && !finished)
 			abort =
 				endedBy() ??
@@ -6146,12 +6474,15 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
 		receipt.windowWait = supervisor.state.windowWait;
-		writeFileSync(
-			join(rig, "logs", "app-stdout.log"),
-			token
-				? appLog.join("\n").replaceAll(token, "<redacted>")
-				: appLog.join("\n"),
-		);
+		// Under LaunchServices the app writes this file itself (redacted in
+		// `finalize`, after the reap); the direct spawn's lines are written here.
+		if (!viaLaunchServices)
+			writeFileSync(
+				join(rig, "logs", "app-stdout.log"),
+				token
+					? appLog.join("\n").replaceAll(token, "<redacted>")
+					: appLog.join("\n"),
+			);
 		const expected = opts.scenes.length * opts.themes.length;
 		if (!abort && receipt.frames.length !== expected)
 			abort = `captured ${receipt.frames.length} of ${expected} frames`;
@@ -6194,7 +6525,11 @@ export async function main(argv = process.argv.slice(2)) {
 				steps.steps,
 				receipt.steps,
 			);
-		if (abort) throw new Error(abort);
+		abort ??= focusAbort;
+		if (abort)
+			throw abortCode === null
+				? new Error(abort)
+				: new Refusal(abort, abortCode);
 		receipt.verdict = "captured";
 	} catch (error) {
 		// A signal that landed mid-run is THE cause; what the main path saw next
