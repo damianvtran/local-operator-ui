@@ -108,6 +108,154 @@ test("send failures map to their category by status, transport and reachability"
 		assert.ok(mod.SEND_FAILURE_REASONS.includes(reason), reason);
 });
 
+/*
+ * `message_send_failed` on 0.59.2 counted main's no-token refusal, the
+ * request deadline and the daemon's runtime hop failure as `backend_unreachable`
+ * (null status / 503), so a false outage read as a real one. The diagnosis keeps
+ * the old category wherever no structured code says otherwise, and reports the
+ * status and code only from closed allowlists.
+ */
+test("send diagnosis splits false outages by structured code and keeps old outcomes", () => {
+	const d = mod.diagnoseSendFailure;
+	const E = (status, code) =>
+		new mod.DesktopControlError(
+			status,
+			"private sentence alice@example.com",
+			undefined,
+			code,
+		);
+	// Structured codes that contradict the status bucket.
+	assert.deepEqual(d(E(null, "pairing.no-credential")), {
+		reason_category: "unauthorized",
+		http_status: "none",
+		error_code: "pairing.no-credential",
+	});
+	assert.deepEqual(d(E(504, "deadline_exceeded")), {
+		reason_category: "transport",
+		http_status: 504,
+		error_code: "deadline_exceeded",
+	});
+	assert.deepEqual(
+		d(E(null, "deadline_exceeded")).reason_category,
+		"transport",
+	);
+	assert.deepEqual(d(E(null, "transport.failed")).reason_category, "transport");
+	// A missing provider/model arrives as this code with only a sentence to tell
+	// it from a runtime crash: it is the server answering, not an outage, and the
+	// sentence is deliberately not read.
+	const noProvider = new mod.DesktopControlError(
+		503,
+		"No model provider is configured",
+		undefined,
+		"runtime_unreachable",
+	);
+	assert.deepEqual(d(noProvider), {
+		reason_category: "runtime_unavailable",
+		http_status: 503,
+		error_code: "runtime_unreachable",
+	});
+	// Old outcomes retained where no code distinguishes them.
+	assert.deepEqual(d(E(null)), {
+		reason_category: "backend_unreachable",
+		http_status: "none",
+		error_code: "none",
+	});
+	assert.equal(d(E(503)).reason_category, "backend_unreachable");
+	assert.equal(
+		d(E(503, "runtime_busy")).reason_category,
+		"backend_unreachable",
+	);
+	assert.equal(d(E(503, "runtime_busy")).error_code, "runtime_busy");
+	assert.deepEqual(d(E(422)), {
+		reason_category: "refused",
+		http_status: 422,
+		error_code: "none",
+	});
+	assert.equal(d(E(401)).reason_category, "unauthorized");
+	assert.equal(d(E(500)).reason_category, "server_error");
+	// A detached server outranks the code.
+	assert.equal(
+		d(E(null, "pairing.no-credential"), false).reason_category,
+		"backend_unreachable",
+	);
+	// Non-DesktopControlError failures keep their category, carry no status/code.
+	assert.deepEqual(d(new TypeError("Failed to fetch")), {
+		reason_category: "transport",
+		http_status: "none",
+		error_code: "none",
+	});
+	assert.deepEqual(
+		d(Object.assign(new Error("x"), { code: "pairing.refused" })),
+		{
+			reason_category: "unknown",
+			http_status: "none",
+			error_code: "none",
+		},
+	);
+});
+
+test("send diagnosis never passes an arbitrary code, status or message through", () => {
+	const d = mod.diagnoseSendFailure;
+	const hostile = [
+		"alice@example.com",
+		"sk-live-1234567890",
+		"/Users/alice/secret.txt",
+		"gpt-4o-mini",
+		"user_8f2c1d",
+		"RUNTIME_UNREACHABLE",
+		"runtime_unreachable ",
+		{ toString: () => "runtime_unreachable" },
+		42,
+	];
+	for (const code of hostile) {
+		const out = d(
+			new mod.DesktopControlError(503, String(code), undefined, code),
+		);
+		assert.equal(out.error_code, "other", String(code));
+		assert.equal(out.reason_category, "backend_unreachable");
+	}
+	assert.equal(
+		d(new mod.DesktopControlError(500, "x", undefined, "")).error_code,
+		"none",
+	);
+	for (const status of [418, 599, 200, 3.5, "503", Number.NaN])
+		assert.equal(
+			d(new mod.DesktopControlError(status, "x")).http_status,
+			"other",
+			String(status),
+		);
+	const allowedStatus = new Set([
+		...mod.SEND_FAILURE_HTTP_STATUSES,
+		"none",
+		"other",
+	]);
+	const allowedCode = new Set([
+		...mod.SEND_FAILURE_ERROR_CODES,
+		"none",
+		"other",
+	]);
+	for (const status of [null, 400, 404, 418, 503, 504])
+		for (const code of [undefined, "deadline_exceeded", "alice@example.com"]) {
+			const out = d(
+				new mod.DesktopControlError(
+					status,
+					"Alice's prompt text",
+					undefined,
+					code,
+				),
+			);
+			assert.deepEqual(Object.keys(out).sort(), [
+				"error_code",
+				"http_status",
+				"reason_category",
+			]);
+			assert.ok(mod.SEND_FAILURE_REASONS.includes(out.reason_category));
+			assert.ok(allowedStatus.has(out.http_status));
+			assert.ok(allowedCode.has(out.error_code));
+			assert.ok(!JSON.stringify(out).includes("Alice"));
+		}
+});
+
 test("provider failures keep transport and reachability, and split refusals by stage", () => {
 	const p = mod.categorizeProviderFailure;
 	assert.equal(p(new TypeError("Failed to fetch"), "key"), "transport");

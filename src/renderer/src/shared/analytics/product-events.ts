@@ -44,7 +44,7 @@ import type {
 	LocalModelCheckResult,
 	ProviderSetupFailureReason,
 	ProviderSetupMethod,
-	SendFailureReason,
+	SendFailureDiagnosis,
 	TourStepOutcome,
 } from "./first-run-reasons";
 
@@ -63,7 +63,8 @@ export interface ProductEvents {
 		reason: LocalModelCheckReason;
 	};
 	first_message_sent: Record<string, never>;
-	message_send_failed: { reason_category: SendFailureReason };
+	/** `reason_category`, `http_status`, `error_code`: see `diagnoseSendFailure`. */
+	message_send_failed: SendFailureDiagnosis;
 	backend_status: {
 		state: BackendStartupPhase;
 		reason: BackendStartupCategory | "none";
