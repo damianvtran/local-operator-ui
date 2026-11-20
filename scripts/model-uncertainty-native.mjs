@@ -905,7 +905,9 @@ export async function startModelBackend({ output }) {
 /**
  * Release transport barriers, never authority: the gateway awaits EACH raw
  * chunk before capturing the next. Inspect every complete event; unknown,
- * partial or mixed bytes remain held. Baseline A is drainable only while
+ * partial or mixed bytes remain held. OPEN has a transport epoch, not the
+ * canonical model generation: validate its closed metadata shape separately.
+ * Baseline A is drainable only while
  * seeking B after its commit, never during initial-A acceptance.
  */
 export function drainModelBarrier(
@@ -935,11 +937,6 @@ export function drainModelBarrier(
 			frame.seq < 0
 		)
 			return false;
-		if (
-			commit &&
-			(frame.epoch !== commit.epoch || baseline?.epoch !== commit.epoch)
-		)
-			return false;
 		if (frame.type === "open") {
 			// Only the protocol's closed metadata shape, not arbitrary non-model JSON.
 			const p = frame.payload;
@@ -961,6 +958,11 @@ export function drainModelBarrier(
 				(p.attaching === undefined || typeof p.attaching === "boolean")
 			);
 		}
+		if (
+			commit &&
+			(frame.epoch !== commit.epoch || baseline?.epoch !== commit.epoch)
+		)
+			return false;
 		return Boolean(
 			baseline &&
 				commit &&
@@ -974,6 +976,48 @@ export function drainModelBarrier(
 				baseline.model === "mock-model-a",
 		);
 	});
+}
+
+/**
+ * A live pre-B update is an explicit acceptance stage, never an auto-drain.
+ * The gateway stamps before_b_request when capturing bytes (not when opening
+ * the stream). Require one complete canonical update advancing the witnessed
+ * initial A; the driver must then obtain its real consumer receipt BEFORE B.
+ * Inner frontend sequence/epoch are a separate plane and cannot advance the
+ * canonical baseline. Unknown/mixed chunks remain held for diagnosis.
+ */
+export function liveBaselineA(c, sessionId, baseline) {
+	if (
+		c.path !== `/v1/desktop/sessions/${sessionId}/events` ||
+		c.before_b_request !== true
+	)
+		return false;
+	const body = c.body.replaceAll("\r\n", "\n");
+	if (!body.endsWith("\n\n") || body.slice(0, -2).includes("\n")) return false;
+	let frame;
+	try {
+		frame = JSON.parse(body.slice(6, -2));
+	} catch {
+		return false;
+	}
+	return Boolean(
+		body.startsWith("data: ") &&
+			frame &&
+			Object.keys(frame).every((key) =>
+				["type", "session_id", "epoch", "seq", "payload"].includes(key),
+			) &&
+			frame.type === "frontend.update" &&
+			frame.session_id === sessionId &&
+			baseline?.sessionId === sessionId &&
+			baseline.model === "mock-model-a" &&
+			frame.epoch === baseline.epoch &&
+			Number.isSafeInteger(frame.seq) &&
+			frame.seq > baseline.seq &&
+			frame.payload?.cold === false &&
+			frame.payload?.attaching === false &&
+			frame.payload?.changes?.session_id === sessionId &&
+			frame.payload?.changes?.selected_model?.model_id === "mock-model-a",
+	);
 }
 
 function selected(capture) {
@@ -1176,6 +1220,15 @@ export const modelUncertaintyCase = {
 			initialCursor,
 			false,
 		);
+		// Warm attachment can deliver cold snapshot A followed by live A on the
+		// same serial stream. Consume that genuine transition before initiating
+		// B, rather than draining arbitrary nonidentical A bytes after B commits.
+		const liveA = await backend.waitCapture((c) =>
+			liveBaselineA(c, backend.sessionId, selected(initialA)),
+		);
+		const liveCursor = (await trace()).receipts.length;
+		await backend.control("release", { indices: [liveA.id] });
+		await consumed("canonical-sse", liveA, "processed", liveCursor);
 		const input = '[data-tour-tag="chat-input-textarea"] textarea';
 		await press(input);
 		await cdp.send("Input.insertText", { text: "/model" });
@@ -1288,8 +1341,8 @@ export const modelUncertaintyCase = {
 				selected(c)?.model === "mock-model-b",
 			{
 				sessionId: backend.sessionId,
-				baseline: selected(initialA),
-				baselineBody: initialA.body,
+				baseline: selected(liveA),
+				baselineBody: liveA.body,
 				commit,
 			},
 		);
@@ -1301,7 +1354,7 @@ export const modelUncertaintyCase = {
 			"B SSE belongs to a different session generation",
 		);
 		assert(
-			bAuthority.seq > selected(initialA).seq,
+			bAuthority.seq > selected(liveA).seq,
 			"B SSE must advance the baseline sequence",
 		);
 		// This is the REAL ModelPicker GET issued only AFTER unconfirmed command
