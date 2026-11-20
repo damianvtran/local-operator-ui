@@ -1,0 +1,111 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "cf7ec0dbe2cd",
+		"instance": "pr1971-r4b-zh-CN-remotecompute-cf7ec0dbe2cd",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session wrote none of the strings it audited and edited no catalogue, context sidecar or code in this worktree; the translator is the PR's remediation coder, working in another session. The only bytes this session created are the i18n/receipts/ files it writes.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r4b-zh-CN-remotecompute-cf7ec0dbe2cd",
+	"locale": "zh-CN",
+	"namespace": "ui.chat.remote_compute",
+	"date": "2026-11-20",
+	"head": "50241a6ae23554af1703f7deefb2564bbe978a9a",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"audited_bytes": {
+		"state": "uncommitted working tree of the shared worktree at audit time; the added key is not in any commit yet, so the sha256 values below (not the head) are what this audit binds",
+		"worktree": "/Users/olafagbemi/src/local-operator-ui/.worktrees/rc-device-row",
+		"head_at_audit": "50241a6ae23554af1703f7deefb2564bbe978a9a",
+		"r3_baseline_commit": "5a9e3fbe38cfd5ed497ffc2f0855f6bf20838e69"
+	},
+	"scope": "Round-4b delta audit of the ONE added key ui.chat.remote_compute.card.status.stopping in zh-CN, re-audited on the bytes now on disk after the translator applied this round's correction. Supersedes the round-4 receipt pr1971-r4-zh-CN-remotecompute-cf7ec0dbe2cd (receipt_sha256 0b9954e706f72f7e…), which recorded changes_requested against target_sha256 74776f6603a41522…. Held to the English source and its context sidecar, the core glossary and the zh-CN style guide at damianvtran/local-operator 066f8e58, plus the shipped corpus for the neighbouring in-flight and settled status words. The other 83 keys are carried from the r3 audit of these same files: removing the single added line from the target on disk still reproduces the r3 receipt's recorded target_sha256 exactly, so only that one line differs from the r3-audited bytes — the superseded round and this one differ from each other by one character, the second U+2026.",
+	"status": "passed",
+	"result": "clean",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+		"english_sha256": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+		"context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+		"context_sha256": "ec264ded1402c97e557fa0edc8d51c0f4308b83638e37ac54f75c2a7f53c20c4",
+		"target": "src/i18n/catalogues/zh-CN/ui.chat.remote_compute.json",
+		"target_sha256": "04a00e06d3817bd1188226622f354e5025680de71ac0668c3657453c987291ce",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/zh-CN.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"style_guide_sha256": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6"
+	},
+	"sha256": {
+		"en": "759b4047a05dfcab0b190c8b328a16ccb17490616d30127324a14d3a9eae963b",
+		"zh-CN": "04a00e06d3817bd1188226622f354e5025680de71ac0668c3657453c987291ce"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.card.status.stopping"
+		],
+		"english_bytes": {
+			"ui.chat.remote_compute.card.status.stopping": "Cancelling…"
+		},
+		"one_line_proof": "target on disk minus the one added line == the r3 receipt's target_sha256 for this locale (378874c5fb417fa2…); English minus the same line == d07c9ca6078b985d… (the r3 English sha). Verified by re-hashing the file with that line removed, not by eyeballing the diff.",
+		"target_minus_added_line_sha256": "378874c5fb417fa258dcbd6e4ba985ee9aea71121b55d3c747ada5ff092f7bb8"
+	},
+	"keyset_check": {
+		"rule": "the locale key set must equal English",
+		"result": "84 keys in English and in this locale, set-equal; node scripts/i18n/check-duplicates.mjs: 0 duplicate keys over 1613 files; node scripts/i18n/context-parity.mjs: ok; node scripts/i18n/generate.mjs --check: src/i18n/keys.gen.ts byte-identical to a fresh generation"
+	},
+	"meaning_check": {
+		"rule": "context sidecar: present progressive, one trailing ellipsis, sentence case, same part of speech as status.running where the locale has one, never a past-tense outcome, never a promise that the run stopped",
+		"neighbours": {
+			"running": "运行中",
+			"queued": "排队中",
+			"cancelled": "已取消",
+			"failed": "失败",
+			"succeeded": "已完成"
+		},
+		"verdict": "取消中 is a progressive, in-flight state ('in the middle of cancelling'), the same X中 shape as status.running 运行中 and status.queued 排队中, and distinct from the settled 已取消. It makes no claim that the run has stopped, and it is not a past-tense outcome.",
+		"value_audited": "取消中……"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "84 values scanned for 隔离, 安全, 私有, 分段, 受保护, 限制 — 0 matches",
+		"result": "0 matches in all 84 values of the namespace"
+	},
+	"ellipsis_check": {
+		"rule": "exactly one trailing ellipsis marker, in the locale's own convention; no ASCII '...', no space before it",
+		"result": "PASS: the two-mark Chinese ellipsis …… (two U+2026), no space before it and nothing after it — the guide's rule and what every cancel-in-progress string in the corpus uses (正在取消…… in ui.settings.imports, ui.community.composer, ui.chat.run_details.wake_cancel/job_cancel). No ASCII '...', no single mark."
+	},
+	"budget_check": {
+		"rule": "the context entry declares no maxCells for this key (role/tone/note only), so there is no cell budget to hold it to",
+		"english_cells": 11,
+		"context_entry": "role/tone/note only — the sidecar declares no maxCells for this key, so there is no cell budget to hold it to. By the guide's own counting (every CJK character and every full-width punctuation mark is 2 cells) the value measures 10 cells: 取消中 3×2 plus …… 2×2, against English 'Cancelling…' at 11."
+	},
+	"corrections": [
+		{
+			"key": "ui.chat.remote_compute.card.status.stopping",
+			"from": "取消中…",
+			"to": "取消中……",
+			"applied_by": "the PR's translator (i18n remediation coder) in the shared worktree, not by this session — an auditor may write only receipts",
+			"verified": "the bytes on disk now carry two U+2026; the file's only difference from the superseded round is that character"
+		}
+	],
+	"findings": [],
+	"notes": "No counted finding on these bytes. The one MAJOR the round raised (single-mark ellipsis) is resolved on disk and recorded under `supersedes` and `corrections`, not silently dropped; 取消中 is kept as written because it matches the namespace's X中 in-flight statuses (运行中/排队中) — do not rewrite it to 正在取消. Nothing in any catalogue was edited by this session.",
+	"supersedes": {
+		"instance": "pr1971-r4-zh-CN-remotecompute-cf7ec0dbe2cd",
+		"receipt_sha256": "0b9954e706f72f7ecd36ecf272fb8cc16ff6e841243dd088bdca54f7eaf43bea",
+		"target_sha256": "74776f6603a4152258a2b3ef1a99252f17e82fc18d6f37bf43b0b110c285bf61",
+		"status": "changes_requested",
+		"finding": "MAJOR — single U+2026 where the zh-CN guide requires the two-mark Chinese ellipsis ……",
+		"disposition": "resolved: the translator applied 取消中… -> 取消中……; this receipt audits the corrected bytes and counts no finding. The earlier receipt is left in place as the record of that round and must not be used to back an audited row for the current bytes."
+	},
+	"byte_delta_vs_superseded": {
+		"from_sha256": "74776f6603a4152258a2b3ef1a99252f17e82fc18d6f37bf43b0b110c285bf61",
+		"to_sha256": "04a00e06d3817bd1188226622f354e5025680de71ac0668c3657453c987291ce",
+		"only_change": "the second U+2026 in the card.status.stopping line",
+		"proof": "rewriting that line back to a single mark and re-hashing reproduces 74776f6603a41522… exactly, so no other byte in the file moved between the two rounds.",
+		"line": "\t\"ui.chat.remote_compute.card.status.stopping\": \"取消中……\","
+	}
+}

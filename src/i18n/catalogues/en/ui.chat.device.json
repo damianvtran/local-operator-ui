@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "This conversation runs on {name}, which did not answer the last read.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "This conversation runs on {name}, which did not answer the last read ({reason}).",
 	"ui.chat.device.fact.this_device": "this device",
-	"ui.chat.device.footer.move_deletes_copy": "The copy on this device is deleted when the move commits.",
+	"ui.chat.device.footer.move_deletes_copy": "A move deletes this device's copy when it commits.",
 	"ui.chat.device.label.this_device": "This device",
 	"ui.chat.device.notice.move_hold_detail": "handing off · it continues there; this cannot be stopped from here",
 	"ui.chat.device.picker.heading.move": "Move this conversation to",

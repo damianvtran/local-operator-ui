@@ -1,0 +1,13 @@
+# PR #1971 i18n audit round 2 — clean-view gate (git archive HEAD, not the working tree)
+# HEAD b40fcab399 after the audit commit; 2026-11-18
+
+clean-view: ran on the HEAD export at /private/var/folders/3p/nyb1zh8132g5603ddsm68lc00000gn/T/export-O7NvV3/tree (surface: src, scripts/i18n, i18n, tsconfig.app.json, tsconfig.node.json; removed at exit), not on the working tree
+clean-view: base origin/main
+clean-view: ledger-check.mjs PASS
+  ledger-check: ok — 1225 entr(ies) complete, fresh and independently audited
+clean-view: check-added-strings.mjs PASS
+  PASS: no newly added literal copy in 20 changed file(s) against 1fb3d656c3e0796f2c08c06d11013e262331f925.
+clean-view: check-coverage.mjs PASS
+  coverage-check: ok — 7 gated language(s) over 175 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+PASS: 3 i18n gate(s) passed on the HEAD export, not on the working tree.
+rc=0

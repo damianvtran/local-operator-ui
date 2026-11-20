@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "Esta conversación se ejecuta en {name}, que no respondió a la última lectura ({reason}).",
 	"ui.chat.device.fact.this_device": "este dispositivo",
-	"ui.chat.device.footer.move_deletes_copy": "La copia de este dispositivo se borra cuando se completa el traspaso.",
+	"ui.chat.device.footer.move_deletes_copy": "Un traspaso borra la copia de este dispositivo cuando se completa.",
 	"ui.chat.device.label.this_device": "Este dispositivo",
 	"ui.chat.device.notice.move_hold_detail": "en traspaso · continúa allí; esto no se puede detener desde aquí",
 	"ui.chat.device.picker.heading.move": "Mover esta conversación a",

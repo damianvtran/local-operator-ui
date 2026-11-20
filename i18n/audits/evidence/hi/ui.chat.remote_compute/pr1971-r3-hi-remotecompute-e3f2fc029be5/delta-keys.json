@@ -1,0 +1,19 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "hi",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "A run's network is recorded, not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "`lop network init` से एक बनाएँ, या `lop network join '''<token>'''` से जुड़ें।",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: ऐसा कोई नेटवर्क नहीं जिससे रन जोड़ा जाए। `lop network init` से एक बनाएँ, या `lop network join '''<token>'''` से जुड़ें।",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "रन का नेटवर्क दर्ज होता है, इस संस्करण में लागू नहीं होता।"
+	},
+	"counts": {
+		"keys": 3,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

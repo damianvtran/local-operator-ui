@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "Cuộc trò chuyện này chạy trên {name}, thiết bị đó không phản hồi lần đọc gần nhất.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cuộc trò chuyện này chạy trên {name}, thiết bị đó không phản hồi lần đọc gần nhất ({reason}).",
 	"ui.chat.device.fact.this_device": "thiết bị này",
-	"ui.chat.device.footer.move_deletes_copy": "Bản sao trên thiết bị này sẽ bị xóa khi quá trình chuyển hoàn tất.",
+	"ui.chat.device.footer.move_deletes_copy": "Thao tác chuyển sẽ xóa bản sao trên thiết bị này khi hoàn tất.",
 	"ui.chat.device.label.this_device": "Thiết bị này",
 	"ui.chat.device.notice.move_hold_detail": "đang bàn giao · cuộc trò chuyện tiếp tục ở đó; không thể dừng từ đây",
 	"ui.chat.device.picker.heading.move": "Chuyển cuộc trò chuyện này đến",

@@ -1,0 +1,129 @@
+{
+	"locale": "vi",
+	"namespace": "ui.chat.remote_compute",
+	"audit_date": "2026-11-18",
+	"audit_id": "pr1971-r2-vi-remotecompute-3b3df24653ea",
+	"audit_kind": "delta",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"round": 2,
+	"key_count": 83,
+	"delta_key_count": 10,
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent translation auditor (round-2 delta)",
+		"team": "lopdev",
+		"harness": "Local Operator",
+		"session": "3b3df24653ea",
+		"instance": "pr1971-r2-vi-remotecompute-3b3df24653ea",
+		"model": "deepseek/deepseek-flash",
+		"actual_model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session header, 'Model: deepseek/deepseek-flash' — the model serving this audit session",
+		"fallback": null,
+		"independent_from_translator": true,
+		"independent_from_translator_session": true,
+		"translator": {
+			"agent": "coder",
+			"model": "deepseek/deepseek-flash",
+			"session": "the PR's remediation coder session"
+		},
+		"independence_basis": "This session wrote none of the strings it audited: the remediation coder produced them at e69d3c1a74 in another session and on another run. This round read the bytes at bec0906c52, corrected 1 string(s) in this namespace (listed under corrections) and wrote its own evidence."
+	},
+	"independence": {
+		"independent_from_translator": true,
+		"basis": "Different agent session from the translator (coder, deepseek/deepseek-flash at e69d3c1a74); this audit only corrected strings it rejected and never re-authored the namespace."
+	},
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"prior_audit": {
+		"receipt": "i18n/receipts/pr1971-r1-vi-382f3765de49.json",
+		"audit_id": "pr1971-r1-vi-382f3765de49",
+		"verdict": "passed",
+		"note": "round 1 audited the pre-remediation bytes (head 44f676535); no record.json was written for it, which this round's evidence root now supplies"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+			"sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332"
+		},
+		"vi": {
+			"path": "src/i18n/catalogues/vi/ui.chat.remote_compute.json",
+			"sha256": "f6273fc84a377deeb51f218908241d77b38accb1e52a2e97cc563fb6736558b6"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+			"sha256": "b406e50f5e18d4142006e9af578b6884ba570a6f81d1964ae7c50b0d6c4d18b1"
+		}
+	},
+	"scope": "Round-2 delta audit of the 10 ui.chat.remote_compute keys the round-1 remediation added or changed (row.network_remedy, sheet.network.not_enforced/recorded, sheet.tier.cloud_run.selected/group_label, store.accepted_without_run/refused/transport, card.binding, card.binding_none), against the English source, its context sidecars, the glossary and the locale guide at damianvtran/local-operator 066f8e58, plus the shipped corpus for reused terms. Regressions introduced by the remediation were looked for directly. The other 73 keys are unchanged bytes and were not re-read.",
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.row.network_remedy",
+			"ui.chat.remote_compute.sheet.network.not_enforced",
+			"ui.chat.remote_compute.sheet.network.recorded",
+			"ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"ui.chat.remote_compute.sheet.tier.group_label",
+			"ui.chat.remote_compute.store.accepted_without_run",
+			"ui.chat.remote_compute.store.refused",
+			"ui.chat.remote_compute.store.transport",
+			"ui.chat.remote_compute.card.binding",
+			"ui.chat.remote_compute.card.binding_none"
+		],
+		"bytes_record": "i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r2-vi-remotecompute-3b3df24653ea/delta-keys.json"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "every value of ui.chat.remote_compute in the locale was scanned for isolé/sécurisé/privé/segment, aislad/segur/privat/segment, 隔离/安全/私有/分段, изолир/защищ/приватн/сегмент/огранич, cô lập/an toàn/riêng tư/phân đoạn/bảo mật, الگ تھلگ/محفوظ/نجی/منقسم/پابند, अलग/सुरक्षित/निजी/खंडित/प्रतिबंधित — zero matches",
+		"store_transport": "no locale claims the run failed or that nothing was charged; all say only that the request did not reach the server, then ask for a retry",
+		"store_accepted_without_run": "no locale claims nothing was started; all say the server accepted the run and did not return it",
+		"result": "passes in all seven locales"
+	},
+	"corrections": [
+		{
+			"key": "ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"from": "Lần chạy này sẽ dùng Chạy trên đám mây.",
+			"to": "Lần chạy này sẽ dùng chế độ Chạy trên đám mây.",
+			"reason": "'Chạy trên đám mây' is a verb phrase, so 'dùng' (use) had no nominal object. 'chế độ' is the corpus's mode word (70 attestations). Tier name verbatim."
+		}
+	],
+	"findings": {
+		"minor": [],
+		"nit": [
+			{
+				"key": "ui.chat.remote_compute.store.accepted_without_run",
+				"issue": "'nhưng không trả về' elides the object of 'return'; Vietnamese drops it freely and 'nhận lần chạy' supplies it in the same sentence, but 'không trả lại lần chạy đó' would leave nothing to infer. Recorded, not corrected."
+			}
+		]
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean-with-findings",
+		"counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 1
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/pr1971-r2-vi-remotecompute-3b3df24653ea.json",
+			"sha256": "f3b7a1bb303a5c7e3f9e7c04045f906997f60d6768ba0ce6bc9e9b2dac59e11a",
+			"what": "the audit receipt this record's ledger row points at"
+		},
+		{
+			"path": "i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r2-vi-remotecompute-3b3df24653ea/delta-keys.json",
+			"sha256": "291cd0bcc4f891bc8e9c677fb9d5f7c30b44f5750119b5e6119cb825678be4d9",
+			"what": "the 10 audited key pair(s) in English and vi, parsed from the bytes at bec0906c52"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r2-gates.txt",
+			"sha256": "bf8778b9dce7d9f20e14a234e9182c06ab2aed10e3708312835608bf6e0dcb17",
+			"what": "actual gate output for this round (execution log, not notes)"
+		}
+	],
+	"audit_notes_not_execution_log": "Prose in this record (scope, corrections, findings) is the auditor's judgement. Command output lives in pr1971-r2-gates.txt; nothing here claims a run that log does not show.",
+	"known_limits": [
+		"Catalogue-level audit: no rendered frame, no browser run, no native-speaker sign-off.",
+		"Width judgements count cells with this audit's own counter, not a measured frame.",
+		"The other keys of each namespace are unchanged bytes: this round re-read the delta, not the whole file."
+	]
+}

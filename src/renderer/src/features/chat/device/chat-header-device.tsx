@@ -35,13 +35,16 @@ import {
 } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { messageRuns } from "@shared/lib/message-runs";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, Monitor } from "lucide-react";
 import {
 	type ComponentPropsWithoutRef,
+	type MutableRefObject,
 	type ReactNode,
 	forwardRef,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -67,6 +70,7 @@ import {
 	placementSentence,
 } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
+import { type MenuHandOff, MenuHandOffProvider } from "./menu-handoff";
 
 /** The dot's ink: `warning` when a device did not answer, `ink-muted` otherwise. */
 const STATE_DOT = {
@@ -85,49 +89,6 @@ const EMPTY_PLAN: MovePlan = {
 	verb: "",
 	waitS: 0,
 	lost: null,
-};
-
-/**
- * A catalogue message as prose plus its code spans: backticks become `<code>`.
- *
- * WHY IT EXISTS. `ui.chat.device.sentence.pairing_guidance` names two terminal
- * commands, and its own context note asks for them verbatim inside backticks
- * (`src/i18n/catalogues/en/ui.chat.device.context.json`). All seven catalogues
- * carry the markers, so drawing `{guidance}` into a plain `<p>` printed the
- * markers themselves - the picker's only instruction for a device in no network
- * read as punctuation instead of as commands. `docs/branding.md` owns the rule
- * that decides the treatment: "Monospace is machine voice", so a command is a
- * mono run, and a mono run in the middle of a sentence is a `<code>` element.
- *
- * IT IS NOT A MARKDOWN RENDERER, deliberately. This is one catalogue sentence
- * with two pairs of markers; pulling the chat's markdown pipeline in would let a
- * catalogue value emit arbitrary markup, which is the class of bug
- * `ledger-check` and the string scanner exist to keep out of the catalogues.
- *
- * `dir="ltr"` IS LOAD-BEARING IN `ur`. The commands are Latin and have to stay
- * readable inside an RTL paragraph; the explicit direction is also what keeps a
- * trailing neutral in the run from being resolved to the paragraph's direction,
- * the bidi class this repo already fixes with an isolate elsewhere.
- *
- * AN UNCLOSED MARKER IS TEXT. `split` on one delimiter yields an even number of
- * pieces only when the marker count is odd - one span opened and never closed -
- * and that renders the message exactly as written rather than crashing or
- * drawing half a span. A render path does not throw on a catalogue defect
- * (`t()` does not either); the catalogue checks own that failure.
- */
-export const messageRuns = (text: string): ReactNode[] => {
-	const parts = text.split("`");
-	if (parts.length % 2 === 0) return [text];
-	return parts.map((part, index) =>
-		index % 2 === 1 ? (
-			// biome-ignore lint/suspicious/noArrayIndexKey: a run's position in its own sentence is its identity; runs are derived per render from one string and never reordered in place.
-			<code key={index} dir="ltr" className="font-mono text-ink">
-				{part}
-			</code>
-		) : (
-			part
-		),
-	);
 };
 
 /**
@@ -372,6 +333,8 @@ const DevicePicker = ({
 	busy,
 	onPick,
 	onCheckAgain,
+	handOffTo,
+	remoteGroup,
 	open,
 	onOpenChange,
 	children,
@@ -380,6 +343,32 @@ const DevicePicker = ({
 	busy: boolean;
 	onPick: (row: DeviceRow) => void;
 	onCheckAgain: () => void;
+	/**
+	 * WHERE A ROW'S OPEN WAITS FOR THIS MENU TO CLOSE (UX round 3, U6).
+	 *
+	 * The Radient row is rendered inside this content but composed two trees away, so
+	 * it cannot pass its opener down; it hands the opener to this slot instead, and
+	 * `onCloseAutoFocus` below is where it is spent. The slot lives in the header (see
+	 * `ChatHeaderDevice`) because this component holds no state of its own; the menu's
+	 * own close rides the same provider (`menu-handoff.ts`), because a press held until
+	 * the row's read answers has to close this menu to spend its hand-off (UX round 4,
+	 * U14).
+	 */
+	handOffTo: MutableRefObject<(() => void) | null>;
+	/**
+	 * THE SECOND GROUP: rented capacity, drawn below a rule.
+	 *
+	 * A NODE RATHER THAN A ROW TYPE, because Radient is not a device: it has no id, no
+	 * membership, no presence and no sessions, so it cannot be a `DeviceRow` without
+	 * those fields asserting things that are not true (see
+	 * `features/remote-compute/remote-compute-picker.tsx`). The picker owns the peer
+	 * group and the rule; the caller composes the other group, exactly as the header
+	 * takes `deviceSlot` as a node. The node renders its own separator, its own label
+	 * and its own row - but NOT the surfaces that row opens, which are the caller's
+	 * and mounted outside this panel (`remote-compute-surfaces.tsx`), because Radix
+	 * unmounts this content on any select.
+	 */
+	remoteGroup?: ReactNode;
 	/**
 	 * The picker's open state, LIFTED because two doors reach it: the chip itself
 	 * (an uncontrolled press) and the header's `Move to another device` menu item,
@@ -390,107 +379,164 @@ const DevicePicker = ({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
-}) => (
-	<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
-		<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-		<DropdownMenuContent
-			align="start"
-			side="bottom"
-			data-device-picker=""
-			data-device-picker-busy={busy ? "" : undefined}
-			className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
-		>
-			<div
-				data-device-picker-list=""
-				className="min-h-0 flex-1 overflow-y-auto"
-			>
-				<DropdownMenuLabel className="text-meta text-ink-dim">
-					{model.heading}
-				</DropdownMenuLabel>
-				<PickerRow row={model.self} busy={busy} onPick={onPick} />
-				{model.sections.map((section) => (
-					<div key={section.key}>
-						<DropdownMenuSeparator />
-						<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
-							<span className="truncate">{section.name}</span>
-							<span>{devices(section.count)}</span>
-						</DropdownMenuLabel>
-						{section.rows.map((row) => (
-							<PickerRow
-								key={row.deviceId}
-								row={row}
-								busy={busy}
-								onPick={onPick}
-							/>
-						))}
-					</div>
-				))}
-				{model.guidance ? (
+}) => {
+	/*
+	 * ONE VALUE FOR EVERY ROW UNDER THIS MENU, so a row that acts in an EFFECT does not
+	 * see a fresh object each render and re-run it (the picker's held press does).
+	 */
+	const handOff = useMemo<MenuHandOff>(
+		() => ({
+			handOff: (open) => {
+				handOffTo.current = open;
+			},
+			close: () => onOpenChange(false),
+		}),
+		[handOffTo, onOpenChange],
+	);
+	return (
+		<MenuHandOffProvider value={handOff}>
+			<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
+				<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+				<DropdownMenuContent
+					align="start"
+					side="bottom"
+					data-device-picker=""
+					data-device-picker-busy={busy ? "" : undefined}
+					className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
 					/*
-					 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
-					 * and network creation is CLI-only, so the honest instruction names the
-					 * command that exists rather than a button that does not. Drawn only for an
-					 * ANSWERED read: see `model.readFailure` below, which is what an empty list
-					 * means when nobody answered.
+					 * THE MENU DOES NOT TAKE THE FOCUS BACK WHEN IT HANDS OFF (UX round 3, U6).
+					 * Radix restores focus to the trigger here, and that restore ran AFTER the
+					 * dialog opened from the same press had focused its own panel - so the caret
+					 * landed on the chip with the page already `aria-hidden` and the first Tab
+					 * walked it. A row that handed its opener over refuses the restore and opens
+					 * one frame later, once this content's focus scope has unmounted; a menu closed
+					 * any other way keeps Radix's own behaviour.
 					 */
-					<DeviceGuidance guidance={model.guidance} />
-				) : null}
-			</div>
-			{model.footer ||
-			model.readFailure ||
-			model.inFlight ||
-			model.offerCheckAgain ? (
-				<>
-					<DropdownMenuSeparator />
-					<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
-						{/*
-						 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
-						 * outranks everything (nothing here can be pressed anyway), then the read's
-						 * own failure, then the consequence of the default pick.
-						 */}
-						{model.inFlight ? (
-							<span
-								data-device-in-flight=""
-								className="min-w-0 flex-1 text-meta text-ink"
-							>
-								{model.inFlight}
-							</span>
-						) : model.readFailure ? (
-							<span
-								data-device-read-failure=""
-								className="min-w-0 flex-1 text-meta text-warning"
-							>
-								{model.readFailure}
-							</span>
-						) : model.footer ? (
-							<span
-								data-device-footer=""
-								className="min-w-0 flex-1 text-meta text-ink-dim"
-							>
-								{model.footer}
-							</span>
-						) : (
-							<span className="min-w-0 flex-1" />
-						)}
-						{model.offerCheckAgain ? (
-							<DropdownMenuItem
-								data-device-recheck=""
-								aria-disabled={busy || undefined}
-								onSelect={() => {
-									if (busy) return;
-									onCheckAgain();
-								}}
-								className="shrink-0 px-1 py-0 text-meta"
-							>
-								{t("ui.chat.device.check_again")}
-							</DropdownMenuItem>
+					onCloseAutoFocus={(event) => {
+						const handOff = handOffTo.current;
+						if (!handOff) return;
+						event.preventDefault();
+						handOffTo.current = null;
+						requestAnimationFrame(handOff);
+					}}
+				>
+					<div
+						data-device-picker-list=""
+						className="min-h-0 flex-1 overflow-y-auto"
+					>
+						<DropdownMenuLabel className="text-meta text-ink-dim">
+							{model.heading}
+						</DropdownMenuLabel>
+						<PickerRow row={model.self} busy={busy} onPick={onPick} />
+						{model.sections.map((section) => (
+							<div key={section.key}>
+								<DropdownMenuSeparator />
+								<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
+									<span className="truncate">{section.name}</span>
+									<span>{devices(section.count)}</span>
+								</DropdownMenuLabel>
+								{section.rows.map((row) => (
+									<PickerRow
+										key={row.deviceId}
+										row={row}
+										busy={busy}
+										onPick={onPick}
+									/>
+								))}
+							</div>
+						))}
+						{model.guidance ? (
+							/*
+							 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
+							 * and network creation is CLI-only, so the honest instruction names the
+							 * command that exists rather than a button that does not. Drawn only for an
+							 * ANSWERED read: see `model.readFailure` below, which is what an empty list
+							 * means when nobody answered.
+							 */
+							<DeviceGuidance guidance={model.guidance} />
 						) : null}
+						{/* The second group, last: it is the one entry that is not a device, and
+						 * the rule above it is what says so. */}
+						{remoteGroup}
 					</div>
-				</>
-			) : null}
-		</DropdownMenuContent>
-	</DropdownMenu>
-);
+					{model.footer ||
+					model.readFailure ||
+					model.inFlight ||
+					model.offerCheckAgain ? (
+						<>
+							{/*
+							 * THE PINNED BAND HAS ITS OWN GROUND, AND THAT IS ITS RULE (design round 2,
+							 * D1 part 3). Round 1 gave the rule above it `bg-hairline-strong`; the separator
+							 * paints its own `divider-inset` background and that utility is not a Tailwind
+							 * class, so tailwind-merge could not drop it - all three rules measured the same
+							 * `#353023` in localOperatorDark. Even had the cascade gone the other way, a
+							 * weight step cannot carry it: `hairline-strong` is 1.28:1 on this panel's ground
+							 * against the divider's 1.09:1, which is not a visible step at 1x. The contract's
+							 * instrument for something that is not part of the flow is a lightness step, so
+							 * the band takes `surface` - the step below the panel's `elevated` - and that
+							 * edge, not a hairline of any weight, is what says "below this is not a
+							 * destination".
+							 *
+							 * FULL-BLEED, because a band inset by the panel's own `p-1` would hang a 4px
+							 * frame of `elevated` under a strip that is meant to be the panel's last line.
+							 * `-mx-1 -mb-1` reaches that padding on three sides and `rounded-b-md` follows the
+							 * panel's own corner; `px-3` keeps the text on the same 12px the item labels start
+							 * at (`p-1` + `px-2`), so the band's sentence does not step sideways.
+							 */}
+							<div
+								data-device-band=""
+								className="-mx-1 -mb-1 flex shrink-0 items-center gap-2 rounded-b-md bg-surface px-3 py-2"
+							>
+								{/*
+								 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
+								 * outranks everything (nothing here can be pressed anyway), then the read's
+								 * own failure, then the consequence of the default pick.
+								 */}
+								{model.inFlight ? (
+									<span
+										data-device-in-flight=""
+										className="min-w-0 flex-1 text-meta text-ink"
+									>
+										{model.inFlight}
+									</span>
+								) : model.readFailure ? (
+									<span
+										data-device-read-failure=""
+										className="min-w-0 flex-1 text-meta text-warning"
+									>
+										{model.readFailure}
+									</span>
+								) : model.footer ? (
+									<span
+										data-device-footer=""
+										className="min-w-0 flex-1 text-meta text-ink-dim"
+									>
+										{model.footer}
+									</span>
+								) : (
+									<span className="min-w-0 flex-1" />
+								)}
+								{model.offerCheckAgain ? (
+									<DropdownMenuItem
+										data-device-recheck=""
+										aria-disabled={busy || undefined}
+										onSelect={() => {
+											if (busy) return;
+											onCheckAgain();
+										}}
+										className="shrink-0 px-1 py-0 text-meta"
+									>
+										{t("ui.chat.device.check_again")}
+									</DropdownMenuItem>
+								) : null}
+							</div>
+						</>
+					) : null}
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</MenuHandOffProvider>
+	);
+};
 
 /**
  * The control, and the one question a destructive pick has to ask.
@@ -508,6 +554,7 @@ export const ChatHeaderDevice = ({
 	busy,
 	onPick,
 	onCheckAgain,
+	remoteGroup,
 }: {
 	placement: DevicePlacement;
 	model: DevicePickerModel;
@@ -527,6 +574,8 @@ export const ChatHeaderDevice = ({
 		consent?: WorkingSetConsent,
 	) => void;
 	onCheckAgain: () => void;
+	/** The rented-capacity group below the rule; see `DevicePicker`. */
+	remoteGroup?: ReactNode;
 }) => {
 	useI18nLocale();
 	/*
@@ -603,6 +652,13 @@ export const ChatHeaderDevice = ({
 	 * present at mount, which is "nobody asked yet" for this mount.
 	 */
 	const servedRequestRef = useRef(pickerRequest);
+	/*
+	 * THE ROW'S OPEN WAITS FOR THE MENU TO CLOSE (UX round 3, U6): the slot the picker
+	 * hands its opener to, spent by `DevicePicker`'s `onCloseAutoFocus`. It is owned
+	 * here because the picker's content outlives no state of its own - see
+	 * `menu-handoff.ts` for why the open cannot happen at the press.
+	 */
+	const handOffTo = useRef<(() => void) | null>(null);
 	useEffect(() => {
 		if (
 			pickerRequest !== undefined &&
@@ -658,6 +714,8 @@ export const ChatHeaderDevice = ({
 				busy={busy}
 				onCheckAgain={onCheckAgain}
 				onPick={choose}
+				handOffTo={handOffTo}
+				remoteGroup={remoteGroup}
 				open={open}
 				onOpenChange={setOpen}
 			>

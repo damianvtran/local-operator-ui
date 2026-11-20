@@ -1,0 +1,33 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "hi",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+		"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+		"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+		"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+		"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "`lop network init` से एक बनाएँ, या `lop network join '<token>'` से जुड़ें।",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "इस संस्करण में लागू नहीं।",
+		"ui.chat.remote_compute.sheet.network.recorded": "{network} पर दर्ज। इस संस्करण में लागू नहीं।",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "यह रन क्लाउड रन का उपयोग करेगा।",
+		"ui.chat.remote_compute.sheet.tier.group_label": "किस तरह का रन",
+		"ui.chat.remote_compute.store.accepted_without_run": "सर्वर ने रन स्वीकार किया पर उसे लौटाया नहीं।",
+		"ui.chat.remote_compute.store.refused": "सर्वर ने यह अनुरोध अस्वीकार किया और कारण नहीं बताया।",
+		"ui.chat.remote_compute.store.transport": "अनुरोध सर्वर तक नहीं पहुँचा। फिर से कोशिश करें।",
+		"ui.chat.remote_compute.card.binding": "{network} पर दर्ज। इस संस्करण में लागू नहीं।",
+		"ui.chat.remote_compute.card.binding_none": "कोई नेटवर्क दर्ज नहीं। इस संस्करण में लागू नहीं।"
+	},
+	"counts": {
+		"keys": 10,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

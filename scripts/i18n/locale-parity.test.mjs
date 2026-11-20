@@ -1949,6 +1949,34 @@ const IDENTICAL_OK = new Map([
 		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
 	],
 	[
+		"ui.chat.remote_compute.row.name",
+		"The provider's own product name, Radient, printed verbatim in every locale: the row says which service the rented capacity comes from, and a translated brand would name a service that does not exist (local-operator-ui #1971).",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.prompt.label",
+		"The es style guide keeps `prompt` in English (its kept-English list, alongside endpoint and script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.prompt.label",
+		"The fr style guide keeps `prompt` in English (its kept-English list, alongside script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.prompt.label",
+		"The vi style guide keeps `prompt` in English (its kept-English list, alongside script and deploy), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Vietnamese only.",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no es guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no fr guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no vi guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Vietnamese only.",
+	],
+	[
 		"es:ui.chat.run_details.tally.unrecognised",
 		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
 	],

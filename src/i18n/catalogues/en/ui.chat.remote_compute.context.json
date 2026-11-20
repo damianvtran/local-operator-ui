@@ -1,0 +1,467 @@
+{
+	"ui.chat.remote_compute.card.artifacts_soon": {
+		"role": "the tooltip on the disabled logs and results controls",
+		"tone": "one short sentence, plain statement",
+		"note": "It arrives in a later version. Promise no date and no version number."
+	},
+	"ui.chat.remote_compute.card.binding": {
+		"role": "the line under the run card naming the network it is recorded against",
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "Claim-sensitive: the binding is RECORDED, not enforced, in this version. It is now its own line rather than the last item of the card's fact chain (design round 1, D3). Keep the word for recorded and the negation of enforcement; never promise isolation, segmentation or privacy.",
+		"placeholders": {
+			"network": "the network's own name, as the user gave it. Keep it verbatim."
+		}
+	},
+	"ui.chat.remote_compute.card.binding_none": {
+		"role": "the same line when the run carries no network",
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "States the fact and the absent enforcement, and stops. It must not imply the run was bound by choice or will be bound later."
+	},
+	"ui.chat.remote_compute.card.cancel": {
+		"role": "the run card's action that stops a live run",
+		"tone": "one imperative verb, sentence case",
+		"note": "Stops a run that can still spend. Not a dismiss: the row remains."
+	},
+	"ui.chat.remote_compute.card.cancel_failed": {
+		"role": "the sentence shown when the cancel request was refused with no sentence of its own",
+		"tone": "one sentence, plain statement",
+		"note": "Only used when the server's refusal carried no message; the server's own sentence is shown instead whenever it has one."
+	},
+	"ui.chat.remote_compute.card.charged": {
+		"role": "the amount a settled run was charged",
+		"tone": "past participle plus amount, lower case",
+		"note": "The settled charge the server reports. Never compute or extrapolate it.",
+		"placeholders": {
+			"amount": "a locale-formatted USD amount (e.g. $5.09, 5,09 $US, US$5.09). Keep it verbatim."
+		}
+	},
+	"ui.chat.remote_compute.card.forget": {
+		"role": "the run card's action that removes a settled run's record",
+		"tone": "one imperative verb, sentence case",
+		"note": "Forgets the record of a run that can no longer spend. Softer than delete, and offered only once the run has settled."
+	},
+	"ui.chat.remote_compute.card.forget_failed": {
+		"role": "the sentence shown when the remove request was refused with no sentence of its own",
+		"tone": "one sentence, plain statement",
+		"note": "Same fallback rule as card.cancel_failed."
+	},
+	"ui.chat.remote_compute.card.held": {
+		"role": "the amount an unsettled run holds",
+		"tone": "past participle plus amount, lower case",
+		"note": "A hold is the committed maximum, not a charge.",
+		"placeholders": {
+			"amount": "a locale-formatted USD amount (e.g. $5.09, 5,09 $US, US$5.09). Keep it verbatim."
+		}
+	},
+	"ui.chat.remote_compute.card.logs": {
+		"role": "label of the run's logs view",
+		"tone": "one noun, sentence case",
+		"note": "The run's own output. Disabled in this version with card.artifacts_soon."
+	},
+	"ui.chat.remote_compute.card.not_found": {
+		"role": "the sentence a gone run's read raises, shown beside its remedy",
+		"tone": "two sentences, plain statement",
+		"note": "The record is gone, not the run's fault. Name the remedy the button performs (a re-read) rather than apologising."
+	},
+	"ui.chat.remote_compute.card.results": {
+		"role": "label of the run's results view",
+		"tone": "one noun, sentence case",
+		"note": "The files a run produced. Disabled in this version with card.artifacts_soon."
+	},
+	"ui.chat.remote_compute.card.status.cancelled": {
+		"role": "run status: cancelled by a person",
+		"tone": "one word, sentence case",
+		"note": "Distinct from failed: somebody stopped it."
+	},
+	"ui.chat.remote_compute.card.status.failed": {
+		"role": "run status: failed",
+		"tone": "one word, sentence case",
+		"note": "The run itself failed."
+	},
+	"ui.chat.remote_compute.card.status.queued": {
+		"role": "run status: waiting to start",
+		"tone": "one word, sentence case",
+		"note": "It has been accepted and has not started."
+	},
+	"ui.chat.remote_compute.card.status.running": {
+		"role": "run status: started and spending",
+		"tone": "one word, sentence case",
+		"note": "Also covers provisioning and starting; keep it true for the whole span."
+	},
+	"ui.chat.remote_compute.card.status.stopping": {
+		"role": "run status: the run is being stopped, after the user pressed Cancel",
+		"tone": "one short word or phrase in the present progressive, sentence case, one trailing ellipsis",
+		"note": "The press landed and the server has not settled the run yet. It is still in flight, so the clock and the hold keep running. Same part of speech as status.running where the locale has one; never a past-tense outcome and never a promise that the run stopped."
+	},
+	"ui.chat.remote_compute.card.status.succeeded": {
+		"role": "run status: finished successfully",
+		"tone": "one word, sentence case",
+		"note": "A completed run. It is not a claim that the work inside it succeeded."
+	},
+	"ui.chat.remote_compute.card.unavailable": {
+		"role": "the run card when its read failed",
+		"tone": "one sentence, plain statement",
+		"note": "The card could not be read, so it shows nothing about the run. The remedy is a separate control."
+	},
+	"ui.chat.remote_compute.card.untitled": {
+		"role": "the run card's title when the server sent no name",
+		"tone": "a noun phrase, sentence case",
+		"note": "A placeholder for a missing name, not a prompt summary."
+	},
+	"ui.chat.remote_compute.remedy.add_credits": {
+		"role": "the button that opens the billing page after a refusal about payment",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "It opens the account's billing page in the browser; it buys nothing by itself."
+	},
+	"ui.chat.remote_compute.remedy.push_branch": {
+		"role": "the label naming the act that clears a refusal about an unpushed commit",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "The app does not push; this names what the user has to do in their own tools."
+	},
+	"ui.chat.remote_compute.remedy.push_branch_help": {
+		"role": "the explanation shown with that refusal",
+		"tone": "two sentences, plain statement",
+		"note": "Never print a shell command: describe the act. The server's own refusal sentence is shown above this one."
+	},
+	"ui.chat.remote_compute.remedy.refresh": {
+		"role": "the button that re-reads after a refusal saying the row is gone or finished",
+		"tone": "an imperative verb, sentence case",
+		"note": "A read, never a retry of the write."
+	},
+	"ui.chat.remote_compute.remedy.retry": {
+		"role": "the button that repeats a refused request",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "Used when the server named no wait."
+	},
+	"ui.chat.remote_compute.remedy.retry_in": {
+		"role": "the retry action while the server's own wait has not elapsed",
+		"tone": "imperative phrase with a countdown, sentence case",
+		"note": "The number is the server's Retry-After, never an estimate. Keep the plural arms and `#`. It is a button label, so keep it short.",
+		"placeholders": {
+			"seconds": "whole seconds remaining, from the server's answer"
+		},
+		"maxCells": 28
+	},
+	"ui.chat.remote_compute.remedy.sign_in": {
+		"role": "the button that starts a sign-in after a refusal about the account",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "Same action as the picker's on-ramp, worded as a button."
+	},
+	"ui.chat.remote_compute.row.capacity": {
+		"role": "picker row when capacity cannot be provisioned right now",
+		"tone": "lower-case noun phrase, no punctuation",
+		"note": "Not 'offline' and not a device that went away: this is rented capacity that cannot be provisioned at the moment.",
+		"maxCells": 26
+	},
+	"ui.chat.remote_compute.row.checking": {
+		"role": "picker row while the capability read is in flight",
+		"tone": "lower-case fragment ending in an ellipsis character",
+		"note": "Says only that a read is happening. Do not guess the outcome.",
+		"maxCells": 16
+	},
+	"ui.chat.remote_compute.row.create_one": {
+		"role": "the remedy printed after the needs-network row",
+		"tone": "lower-case imperative phrase, no punctuation",
+		"note": "Short: inline after a middot. The how lives in row.sentence.network.",
+		"maxCells": 16
+	},
+	"ui.chat.remote_compute.row.held": {
+		"role": "money the combined live runs are holding, on the picker row",
+		"tone": "verb phrase fragment, lower case, no trailing punctuation",
+		"note": "A hold is the committed maximum while unsettled, not a charge: use the word for a temporary hold.",
+		"placeholders": {
+			"amount": "a locale-formatted USD amount (e.g. $5.09, 5,09 $US, US$5.09). Keep it verbatim."
+		},
+		"maxCells": 24
+	},
+	"ui.chat.remote_compute.row.name": {
+		"role": "product name of the rented-capacity option in the chat's device picker",
+		"tone": "a proper noun, Latin spelling, never translated",
+		"note": "Radient is a company name. Keep it verbatim in every locale."
+	},
+	"ui.chat.remote_compute.row.needs_network": {
+		"role": "picker row when the device is in no network, so a run cannot be bound",
+		"tone": "lower-case noun phrase, no punctuation",
+		"note": "The consequence, not an error. The remedy is printed beside it by row.create_one.",
+		"maxCells": 22
+	},
+	"ui.chat.remote_compute.row.network_remedy": {
+		"role": "the visible remedy line under the Radient row when the device is in no network",
+		"tone": "one sentence naming two commands, plain, no exclamation",
+		"note": "Visible text rather than only the accessible name (UX round 1, U3): creating a network is CLI-only, so the row prints the commands instead of ending in an imperative with no control behind it. The backticked runs are terminal commands and the picker paints them as mono runs (messageRuns), which is why the ticks never reach the screen (design round 2, D6) - never remove the backticks, and never retype the token's quoting: ''' is what makes one pair of quotes survive ICU's own quoting rule (UX round 2, U7). Never translate the command names or the token placeholder.",
+		"maxCells": 92
+	},
+	"ui.chat.remote_compute.row.not_offered": {
+		"role": "picker row when the user's switch is on but this deployment runs no remote compute",
+		"tone": "lower-case phrase, no punctuation",
+		"note": "Distinct from the user's flag and from the account: the deployment does not offer it, so never suggest a remedy the user could perform.",
+		"maxCells": 34
+	},
+	"ui.chat.remote_compute.row.ready": {
+		"role": "picker row when capacity is ready and no run is live",
+		"tone": "one word, lower case, no punctuation",
+		"note": "Readiness only. Never a price, a rate or a countdown: the app cannot read them.",
+		"maxCells": 10
+	},
+	"ui.chat.remote_compute.row.retry": {
+		"role": "the action printed after the capacity row, and what selecting the row does",
+		"tone": "lower-case imperative verb, no punctuation",
+		"note": "Short: it sits inline after a middot.",
+		"maxCells": 10
+	},
+	"ui.chat.remote_compute.row.runs": {
+		"role": "count of live runs on the picker row",
+		"tone": "plural noun fragment, no sentence punctuation",
+		"note": "Use the locale's own plural categories and keep `#` so ICU formats the digits. Only used below the cap; the saturated form is row.runs_capped.",
+		"placeholders": {
+			"count": "the number of live runs, 1 to 9"
+		}
+	},
+	"ui.chat.remote_compute.row.runs_capped": {
+		"role": "saturated count of live runs",
+		"tone": "fragment with a plus sign, no sentence punctuation",
+		"note": "The count is capped so the money beside it is not: never drop the plus sign, which is what says the number is a floor.",
+		"placeholders": {
+			"count": "the cap, always 9"
+		},
+		"maxCells": 18
+	},
+	"ui.chat.remote_compute.row.sentence.capacity": {
+		"role": "accessible name of the picker row when capacity is unavailable",
+		"tone": "two short sentences: the state, then the affordance",
+		"note": "Selecting the row re-reads. It does not try to buy anything."
+	},
+	"ui.chat.remote_compute.row.sentence.checking": {
+		"role": "accessible name of the picker row while the read is in flight",
+		"tone": "one sentence, statement only",
+		"note": "Prefixes the product name and restates row.checking with its subject."
+	},
+	"ui.chat.remote_compute.row.sentence.network": {
+		"role": "accessible name of the picker row when the device is in no network",
+		"tone": "one sentence of fact, then the two commands that fix it",
+		"note": "The two commands that fix it, exactly as written: keep the backticks (the visible note paints them as mono runs) and the token's ''' quoting (UX round 2, U7). Do not translate 'lop network init' or 'lop network join'."
+	},
+	"ui.chat.remote_compute.row.sentence.not_offered": {
+		"role": "accessible name of the picker row when the deployment does not offer the family",
+		"tone": "one sentence, statement only",
+		"note": "Says why the row cannot be used, and offers nothing: no sign-in would help."
+	},
+	"ui.chat.remote_compute.row.sentence.ready": {
+		"role": "accessible name of the picker row when ready",
+		"tone": "two short sentences: the state, then the affordance",
+		"note": "Selecting the row does not start a run: it opens the second level that chooses how the run is bought. Keep that distinction."
+	},
+	"ui.chat.remote_compute.row.sentence.runs": {
+		"role": "accessible name of the picker row while runs are live",
+		"tone": "one sentence, statement then the affordance",
+		"note": "The placeholders carry the visible facts so a screen reader hears the same claim. `factsSuffix` is empty or begins with its own separator: do not add one before it.",
+		"placeholders": {
+			"count": "the count fragment, e.g. `3 runs`",
+			"factsSuffix": "empty, or a separator and the remaining facts, e.g. ` · 12m04s · held $15.27`. Keep separators and amount verbatim."
+		}
+	},
+	"ui.chat.remote_compute.row.sentence.sign_in": {
+		"role": "accessible name of the picker row when signed out",
+		"tone": "two short sentences: the reason, then the affordance",
+		"note": "The visible label cannot carry the consequence, so this sentence must: signing in is what makes the row usable, and selecting it starts that sign-in."
+	},
+	"ui.chat.remote_compute.row.sign_in": {
+		"role": "picker row when the account is signed out or expired",
+		"tone": "lower-case imperative phrase, no punctuation",
+		"note": "An on-ramp, not an error: the row is selectable and starts the sign-in. Keep the sense of 'do this to use it', not 'you are not allowed'.",
+		"maxCells": 24
+	},
+	"ui.chat.remote_compute.runs.disabled": {
+		"role": "the banner over the runs list when this deployment runs no remote compute",
+		"tone": "one sentence, plain statement",
+		"note": "Nothing failed. Keep the same fact as the picker row's not-offered state, phrased for this banner."
+	},
+	"ui.chat.remote_compute.runs.empty": {
+		"role": "the runs list when the server holds no runs",
+		"tone": "one short sentence, sentence case",
+		"note": "An answered emptiness, not a failure. The list's own error state is separate."
+	},
+	"ui.chat.remote_compute.runs.loading": {
+		"role": "the runs list while its read is in flight",
+		"tone": "a lower-case fragment ending in an ellipsis character",
+		"note": "No spinner metaphor and no guess at the outcome.",
+		"maxCells": 18
+	},
+	"ui.chat.remote_compute.runs.record_only": {
+		"role": "the banner over the runs list when the account is signed out",
+		"tone": "two sentences, plain statement",
+		"note": "These rows are this device's record, not the server's answer, and signing in is what reads the server's rows."
+	},
+	"ui.chat.remote_compute.runs.title": {
+		"role": "the heading of the dialog that lists every run",
+		"tone": "a noun phrase, sentence case",
+		"note": "Prefixed by the product name."
+	},
+	"ui.chat.remote_compute.runs.unavailable": {
+		"role": "the banner over the runs list when the server could not report its runs",
+		"tone": "two sentences, plain statement",
+		"note": "The rows shown may be stale. Do not claim they are wrong."
+	},
+	"ui.chat.remote_compute.sheet.close": {
+		"role": "the sheet's dismiss control",
+		"tone": "one imperative verb, sentence case",
+		"note": "Closes the sheet without starting anything."
+	},
+	"ui.chat.remote_compute.sheet.directory.label": {
+		"role": "the label above the directory line",
+		"tone": "one noun, sentence case",
+		"note": "The directory the run starts in, shown as a path."
+	},
+	"ui.chat.remote_compute.sheet.heading": {
+		"role": "the second-level sheet's heading",
+		"tone": "a short verb phrase with the product name, sentence case",
+		"note": "It is where a run is configured: the network, how it is bought, the prompt and the directory."
+	},
+	"ui.chat.remote_compute.sheet.network.change": {
+		"role": "the control that re-opens the network options",
+		"tone": "one imperative verb, sentence case",
+		"note": "Shown only when there is more than one network to choose from."
+	},
+	"ui.chat.remote_compute.sheet.network.choose": {
+		"role": "the prompt in place of a network name when none is chosen",
+		"tone": "an imperative phrase, sentence case",
+		"note": "A statement of what is missing, not a button label: the options are listed below it."
+	},
+	"ui.chat.remote_compute.sheet.network.choose_why": {
+		"role": "the reason printed on the tier rows while no network is chosen",
+		"tone": "an imperative fragment, lower case, no punctuation",
+		"note": "Same meaning as network.choose, phrased as a reason on a row rather than a heading.",
+		"maxCells": 22
+	},
+	"ui.chat.remote_compute.sheet.network.label": {
+		"role": "the label of the network line",
+		"tone": "one noun, sentence case",
+		"note": "The mesh network the run is recorded against."
+	},
+	"ui.chat.remote_compute.sheet.network.not_enforced": {
+		"role": "the binding sentence when no network has been chosen yet",
+		"tone": "one short sentence, plain statement",
+		"note": "Names its own subject, because it stands alone when no network has been chosen: the run's network is recorded, and enforcement is absent in this version (design round 2, D2). Never elide the subject into 'Not enforced in this version.' - with nothing above it to attach to, the nearest referent became the list of choices, which reads as a claim about the user's pick rather than about the binding. Never say isolated, segmented or private."
+	},
+	"ui.chat.remote_compute.sheet.network.recorded": {
+		"role": "the sentence under the network line explaining what the binding does",
+		"tone": "two short sentences, plain statement, full stops",
+		"note": "The most claim-sensitive sentence in the surface: the run is RECORDED against the network and access is NOT enforced by it in this version. It is now printed on its own line at body size (design round 1, D3), so the qualification must stand alone as a sentence. Never say isolated, segmented or private.",
+		"placeholders": {
+			"network": "the network's own name, as the user gave it. Keep it verbatim."
+		}
+	},
+	"ui.chat.remote_compute.sheet.prompt.empty": {
+		"role": "the note under the prompt label when the composer is empty",
+		"tone": "one short sentence, plain statement",
+		"note": "The reason, not the remedy; the remedy is typed in the composer."
+	},
+	"ui.chat.remote_compute.sheet.prompt.label": {
+		"role": "the label above the prompt summary",
+		"tone": "one noun, sentence case",
+		"note": "The composer's text, shown as one line so the user recognises what will run."
+	},
+	"ui.chat.remote_compute.sheet.submit": {
+		"role": "the sheet's one commit action",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "Starting a run spends money and time, so the verb is about starting rather than sending."
+	},
+	"ui.chat.remote_compute.sheet.submit.why_capacity": {
+		"role": "the reason the submit is disabled: capacity is unavailable",
+		"tone": "one short sentence, plain statement",
+		"note": "Same fact as row.capacity, at the commit control."
+	},
+	"ui.chat.remote_compute.sheet.submit.why_directory": {
+		"role": "the reason the submit is disabled: the conversation has no directory",
+		"tone": "one short sentence, plain statement",
+		"note": "The pane's own directory has not been resolved yet; nothing is wrong with the server."
+	},
+	"ui.chat.remote_compute.sheet.submit.why_network": {
+		"role": "the reason the submit is disabled: no network chosen",
+		"tone": "one short sentence, imperative",
+		"note": "Names the decision the user has not made yet."
+	},
+	"ui.chat.remote_compute.sheet.submit.why_prompt": {
+		"role": "the reason the submit is disabled: the composer is empty",
+		"tone": "one short sentence, imperative",
+		"note": "A run needs a prompt, and the prompt is the composer's text."
+	},
+	"ui.chat.remote_compute.sheet.submitting": {
+		"role": "the submit button while the run is being created",
+		"tone": "a present-participle fragment ending in an ellipsis character",
+		"note": "Spends nothing new on its own; the press already did.",
+		"maxCells": 16
+	},
+	"ui.chat.remote_compute.sheet.tier.capacity_why": {
+		"role": "why the on-demand tier cannot be chosen right now",
+		"tone": "a lower-case fragment, no punctuation",
+		"note": "The same fact as row.capacity, on a row. No remedy text here.",
+		"maxCells": 22
+	},
+	"ui.chat.remote_compute.sheet.tier.cloud_run.note": {
+		"role": "one shape fact about the on-demand tier, under its title",
+		"tone": "a fragment, lower case, middot separators",
+		"note": "No price and no duration: the app cannot read rates and has no measured timings. Describe the shape only - one run, one answer, then gone. Keep the middots."
+	},
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": {
+		"role": "the line under the tier list naming the tier a run will use",
+		"tone": "one declarative sentence, full stop",
+		"note": "Replaces a check mark and a selected ground that asserted a choice nobody made while only one tier can be bought (design round 1, D10). It names the tier exactly as the tier row does."
+	},
+	"ui.chat.remote_compute.sheet.tier.cloud_run.title": {
+		"role": "the name of the on-demand tier",
+		"tone": "two words or fewer, sentence case",
+		"note": "The product's name for the tier chosen per run: translate the concept and keep it recognisable, not as a literal cloud plus the verb run."
+	},
+	"ui.chat.remote_compute.sheet.tier.dedicated.note": {
+		"role": "one shape fact about the long-lived tier",
+		"tone": "a fragment, lower case, middot separators",
+		"note": "Shape only: it keeps a workspace and its files. No price, no duration, no comparison with the other tier."
+	},
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": {
+		"role": "one shape fact about the interruptible option",
+		"tone": "a fragment, lower case, middot separators",
+		"note": "Names the trade: interruptible, cheaper, can be reclaimed. No price and no notice period."
+	},
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.title": {
+		"role": "the name of the interruptible option under the long-lived tier",
+		"tone": "one word, sentence case",
+		"note": "Radient's word for interruptible capacity: translate the concept (interruptible, reclaimable), not as a literal stain."
+	},
+	"ui.chat.remote_compute.sheet.tier.dedicated.title": {
+		"role": "the name of the long-lived tier",
+		"tone": "one word, sentence case",
+		"note": "The API's own word is a dedicated workload. Keep the sense of a reserved, long-lived workspace."
+	},
+	"ui.chat.remote_compute.sheet.tier.dedicated.why": {
+		"role": "why the long-lived tier and its spot option cannot be chosen yet",
+		"tone": "two words, lower case, no punctuation",
+		"note": "Not available yet; promise no date, no version number.",
+		"maxCells": 16
+	},
+	"ui.chat.remote_compute.sheet.tier.group_label": {
+		"role": "the small heading over the tier rows",
+		"tone": "a short noun phrase, sentence case, no punctuation",
+		"note": "Introduces the rows describing what kind of run the tiers are (one-shot vs long-lived workspace) - not how it is paid for, because the sheet quotes no price (design round 1, D6). It is not a sentence and needs no verb agreement with the row count."
+	},
+	"ui.chat.remote_compute.sheet.view_runs": {
+		"role": "the link to the runs list in the sheet's footer",
+		"tone": "an imperative verb phrase, sentence case",
+		"note": "Opens a list of every run the server holds, including ones this conversation did not start."
+	},
+	"ui.chat.remote_compute.store.accepted_without_run": {
+		"role": "error sentence when the server accepted a start but returned no run row",
+		"tone": "one sentence, plain statement",
+		"note": "The run may exist upstream, so this must not say nothing was started; it says the row is missing. The idempotency key makes the retry safe."
+	},
+	"ui.chat.remote_compute.store.refused": {
+		"role": "error sentence when the server refused a request without a code this app knows",
+		"tone": "one sentence, plain, no blame",
+		"note": "The refusal came from the server and carried no message. Never add a remedy here: an invented on-ramp for an unknown code is how a user gets sent to a sign-in for a 404."
+	},
+	"ui.chat.remote_compute.store.transport": {
+		"role": "error sentence when the request never reached the local server",
+		"tone": "two short sentences, plain, no blame",
+		"note": "The daemon was unreachable, so nothing is known about the outcome. It must not claim the run failed or that nothing was charged."
+	}
+}
