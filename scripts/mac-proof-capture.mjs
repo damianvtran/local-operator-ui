@@ -1656,11 +1656,14 @@ export const SHOW_IN_CANVAS_ITEM_SELECTOR =
 export const COLLAPSED_GROUP_HEADER =
 	'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])';
 
-export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
-	const problem = previewFileProblem(name);
-	if (problem) throw new Refusal(problem);
-	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
-	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
+/**
+ * The Files view, settled, with a collapsed Working files group opened: the ONE
+ * way every row-pressing scene (file-preview, download) reaches its row. Shared,
+ * not copied, so a fix to how the list is reached lands in both (79's download
+ * run at main 3673e88232 failed exactly where file-preview had been fixed in
+ * #2015: its row sat in the collapsed group and was never rendered).
+ */
+export function filesRowReachSteps() {
 	return [
 		{ verb: "navigate", payload: "/chat" },
 		{ verb: "openCanvas", payload: { view: "files" } },
@@ -1681,6 +1684,16 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 			payload: { selector: COLLAPSED_GROUP_HEADER, timeoutMs: 1500 },
 			optional: true,
 		},
+	];
+}
+
+export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
+	const problem = previewFileProblem(name);
+	if (problem) throw new Refusal(problem);
+	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
+	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
+	return [
+		...filesRowReachSteps(),
 		{
 			verb: "press",
 			payload: {
@@ -1738,13 +1751,16 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	}),
 	Object.freeze({
 		id: "files-attachments-only",
-		scenes: Object.freeze(["files", "file-preview"]),
+		// download waits on FILES_READY too (filesRowReachSteps).
+		scenes: Object.freeze(["files", "file-preview", "download"]),
 		text: "Attachment rows never satisfy the Files wait; a session whose index is empty but holds attachments times out and fails rather than being photographed.",
 	}),
 	Object.freeze({
 		id: "preview-first-screen",
-		scenes: Object.freeze(["file-preview"]),
-		text: "The previewed row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
+		// The id predates download sharing the reach (filesRowReachSteps); kept so
+		// earlier receipts still compare.
+		scenes: Object.freeze(["file-preview", "download"]),
+		text: "The previewed or downloaded row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
 	}),
 	Object.freeze({
 		id: "preview-no-search",
@@ -1798,7 +1814,7 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	Object.freeze({
 		id: "fixture-proven-actions",
 		scenes: Object.freeze(["download"]),
-		text: "The row trigger (exact label, single row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
+		text: "The group expand, the row trigger (exact label, one index row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
 	}),
 ]);
 
@@ -2309,10 +2325,15 @@ function rowTriggerButton(labels) {
  * the row-itself case is `row:has(button)` and the ancestor case is
  * `:has(row button)` - neither nests. Used with `waitFor {gone: true}`: the
  * run refuses rather than press the first of two same-named rows (S1-2).
+ *
+ * Only INDEX rows count (`INDEX_ROW`, #2012 review C1): the trigger the scene
+ * presses is restricted to them, so an attachment of the same name (the
+ * person's upload, which shares `data-tour-tag="file-row"`) is not a second
+ * candidate, and counting it refused a run that had exactly one row to press.
  */
 export function duplicateRowSelector(labels) {
 	const button = rowTriggerButton(labels);
-	const holder = `:is([data-tour-tag="file-row"]:has(${button}), :has([data-tour-tag="file-row"] ${button}))`;
+	const holder = `:is(${INDEX_ROW}:has(${button}), :has(${INDEX_ROW} ${button}))`;
 	return `${holder} ~ ${holder}`;
 }
 
@@ -2336,14 +2357,24 @@ export function downloadFileProblem(name) {
  * The download scene, from the shipped S2 verbs only (navigate, openCanvas,
  * waitFor, press - `DEV_DRIVER_SCRIPT_VERBS` at v0.59.2); no new renderer verb.
  *
- * - The Files view exactly as the `files` scene reaches it.
- * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside a
- *   `data-tour-tag="file-row"` (finder-files-view.tsx), whose accessible name is
+ * - The Files view as file-preview reaches it (`filesRowReachSteps`): the
+ *   settled-data wait (`FILES_READY`), then the OPTIONAL press of a collapsed
+ *   group header (`COLLAPSED_GROUP_HEADER`). 79's Mac run at main 3673e88232
+ *   ("waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ *   notes.md ... after 20000ms"): 1043 files, an open Highlights group of one
+ *   row and a collapsed "Working files, 1,042" holding notes.md, whose rows
+ *   v0.59.2 never renders (see "THE COLLAPSED GROUP" at file-preview). As
+ *   there, the row must then fall on the first screen (receipt limit
+ *   `preview-first-screen`).
+ * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside an
+ *   index row (`INDEX_ROW`, finder-files-view.tsx), whose accessible name is
  *   "Actions for <name>" (ui.common.actions.actions_for_name). The name is the
  *   only per-row marker the row carries (`data-file-id` is the owner's id, which
  *   the harness does not know), so the label is matched EXACTLY, in any shipped
  *   locale (`actionsForNameLabels`), never as a substring.
- * - Then the run REFUSES when more than one row carries that label
+ *   Attachment rows are excluded, as at file-preview: an attachment named
+ *   like the peer's file is the person's upload, not a peer row to download.
+ * - Then the run REFUSES when more than one INDEX row carries that label
  *   (`duplicateRowSelector`, a `gone` wait that fails at once if present).
  * - Pressed only while `aria-expanded="false"`; the press dispatches
  *   pointerdown, which opens a Radix DropdownMenu.
@@ -2358,11 +2389,9 @@ export function downloadSceneSteps(file = null) {
 	// --download-file as null, which a default parameter would keep.
 	const name = file ?? DOWNLOAD_FILE_DEFAULT;
 	const labels = actionsForNameLabels(name);
-	const trigger = `[data-tour-tag="file-row"] ${rowTriggerButton(labels)}`;
+	const trigger = `[data-tour-tag="files-scroller"] ${INDEX_ROW} ${rowTriggerButton(labels)}`;
 	return [
-		{ verb: "navigate", payload: "/chat" },
-		{ verb: "openCanvas", payload: { view: "files" } },
-		{ verb: "waitFor", payload: { selector: '[data-chat-region="header"]' } },
+		...filesRowReachSteps(),
 		{
 			verb: "waitFor",
 			payload: { selector: trigger, timeoutMs: 20000 },
@@ -2402,7 +2431,29 @@ export function downloadSceneSteps(file = null) {
 	];
 }
 
-/** The exact press selectors a download run may use: its own scene's two. */
+/**
+ * The exact press selectors a download run may use: its own scene's three - the
+ * collapsed-group header, the row trigger, the Download entry.
+ *
+ * WHY THE HEADER PRESS CANNOT REACH Save as / Copy image / Delete (read from
+ * v0.59.2). `COLLAPSED_GROUP_HEADER` matches only a `<button>` that is the
+ * direct child of an `<h3>` directly inside a `<section>` inside the Files
+ * scroller, with `aria-expanded="false"`: the group header
+ * (finder-files-view.tsx:912 section, :916 h3, :945 button). That button's
+ * click does one thing, `toggle(section.id)` (:986 -> :514-524), which sets the
+ * Working files preference or the closed-sections set - view state, no daemon
+ * call, no file I/O. Its content is a chevron icon, the label and a caption
+ * span ("a caption, never a control", :1061-1086); no menu or row lives in it.
+ * Every file action is a Radix menu ITEM, and the menu content is portalled to
+ * <body> (dropdown-menu.tsx:191 `DropdownMenuPrimitive.Portal`), so no menu
+ * item is ever inside the scroller, let alone `section > h3 > button`. The row
+ * triggers are `button[aria-haspopup="menu"]` inside a file row's `<div>`
+ * (:1430, :1528) under the section's `<ul>`, never a child of the `<h3>`. And
+ * `press` takes the selector's FIRST match only (dev-driver/install.ts:864
+ * `document.querySelector`), so it presses a header or nothing.
+ * The press is also skipped (optional) once the group is open. Each entry
+ * is still admitted byte-for-byte, never by pattern.
+ */
 export function downloadPressAllowlist(file = null) {
 	return downloadSceneSteps(file)
 		.filter((s) => s.verb === "press")
@@ -2415,7 +2466,8 @@ export function downloadPressAllowlist(file = null) {
  * through.
  *
  * - A DOWNLOAD run (`{download: true, file}`): an ALLOWLIST - every press must be
- *   byte-for-byte one of `downloadPressAllowlist(file)`. WHY not a blocklist
+ *   byte-for-byte one of `downloadPressAllowlist(file)` (the collapsed-group
+ *   header, the row trigger, the Download entry). WHY not a blocklist
  *   (review S1-1): a text blocklist was passed by an uppercase attribute, a
  *   sibling combinator (`[data-remote-action="download"] + *`) and
  *   `:nth-of-type`, each able to reach Save as, whose bytes Electron writes to
@@ -2439,7 +2491,7 @@ export function downloadStepsProblem(
 				: String(step.payload?.selector ?? "");
 		if (allowed) {
 			if (!allowed.has(selector))
-				return `step ${i + 1} presses ${selector}: a download run may press only its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
+				return `step ${i + 1} presses ${selector}: a download run may press only the collapsed Files group header, its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
 			continue;
 		}
 		// The one exception is byte-exact: file-preview's Show in canvas, a read.

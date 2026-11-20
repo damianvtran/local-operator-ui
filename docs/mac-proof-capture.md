@@ -354,8 +354,9 @@ so the only possible destinations are `<backend-home>/Downloads/<name>` (or its
 rig sets - is reached only by **Save as...** (`guardDownloads`,
 `window-guards-electron.ts`), so the harness never presses Save as or Copy image:
 the built step list is checked before launch against an exact **allowlist**: a
-download run may press only its own row trigger and the enabled Download entry
-(byte-for-byte; any other press, including another scene's, refuses the run),
+download run may press only the collapsed Files group header, its own row
+trigger and the enabled Download entry (byte-for-byte; any other press,
+including another scene's, refuses the run),
 and any other run may not press a remote action or Save as at all - except
 `file-preview`'s byte-exact Show in canvas entry, a read into the canvas.
 
@@ -371,17 +372,32 @@ shasum -a 256 ~/lop-rig/home/Downloads/notes.md      # the receipt's destination
 ```
 
 The steps (shipped verbs only: `navigate`, `openCanvas`, `waitFor`, `press`): the
-Files view as the `files` scene reaches it; the row's `⋯` trigger
-(`[data-tour-tag="file-row"] button[aria-haspopup="menu"]` whose `aria-label` is
+Files view reached exactly as `file-preview` reaches it (the same
+`filesRowReachSteps`: the settled-data wait `FILES_READY`, then the **optional**
+press of a collapsed group header - see "Why it expands a group first" below;
+79's download run at main 3673e88232 failed on the same 1043-file session with
+`notes.md` inside the collapsed Working files group); the row's `⋯` trigger
+(`button[aria-haspopup="menu"]` inside an **index** row of the Files scroller,
+`INDEX_ROW`, whose `aria-label` is
 **exactly** "Actions for <name>" in any shipped locale, read from
 `src/i18n/catalogues/*/ui.common.actions.json` - never a substring, so
-`old-notes.md` is not `notes.md`'s row); the run **refuses** when more than one
+`old-notes.md` is not `notes.md`'s row, and never an attachment row of the same
+name, the person's upload); the run **refuses** when more than one index
 row carries that label (a `gone` wait on a two-rows selector); the trigger is
 pressed only while `aria-expanded="false"`; the **enabled** Download entry,
 required and then pressed; the outcome toast (`[data-sonner-toast]`
 success/error/info, 60 s: twice the app's 30 s re-POST backoff, not a measured
 distribution - the receipt records the measured `toastLatency`), then a required
-**success** toast; then the shutter `download-<theme>`.
+**success** toast; then the shutter `download-<theme>`. As for `file-preview`,
+the row must fall on the Files view's first screen once its group is expanded
+(rows are virtualised); otherwise the row wait fails the run.
+
+Why the header press is safe in a download run: it matches only a `<button>`
+that is the direct child of a group's `<h3>` inside the Files scroller, while
+collapsed. Its click only toggles the group (view state; no daemon call, no file
+I/O), it holds no row or menu, and every file action (Save as, Copy image,
+Download) is a menu item that Radix portals to `<body>`, outside the scroller.
+The allowlist admits that exact string, byte-for-byte, not a pattern.
 
 | Refused (exit 2, nothing spawned) | Why |
 |---|---|
@@ -442,7 +458,8 @@ after the reap on every path, abort and signal included), `insideRig`, `bytes`,
 true, path, before, after, newEntries}` - counts and the new names only),
 `toastLatency` (`{step, waitedMs, boundMs, source}`: the press-to-outcome-toast
 wait the renderer measured), `limits` (`[{id, text}]`: what this run cannot
-prove - `toast-latency-unmeasured`, `config-root-only`,
+prove - `files-attachments-only` and `preview-first-screen` (the Files wait and
+first-screen row it shares with `file-preview`), `toast-latency-unmeasured`, `config-root-only`,
 `containment-destination-based` when the stray check is off,
 `fixture-proven-actions`) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
 landing and containment only and says so; the Mac proof passes `--manifest`.

@@ -34,6 +34,7 @@ import {
 	EXIT,
 	FILES_READY,
 	FORBIDDEN_DAEMON_PATH,
+	INDEX_ROW,
 	MEASUREMENT_LIMITS,
 	PREVIEW_FILE_DEFAULT,
 	RUNNER_MAX_STEPS,
@@ -83,6 +84,7 @@ import {
 	extractedSymlinkProblem,
 	filePreviewSceneSteps,
 	filePreviewSelector,
+	filesRowReachSteps,
 	frameMatchesWindow,
 	imagePreviewCheck,
 	inspectLanding,
@@ -4822,15 +4824,21 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 	const presses = scene.filter((s) => s.verb === "press");
 	const labels = actionsForNameLabels("notes.md");
 	const exact = labels.map((l) => `[aria-label="${l}"]`).join(", ");
+	// 79's run at main 3673e88232: the row is reached as file-preview reaches its
+	// own (FILES_READY, then the collapsed-group expand), and only an INDEX row's
+	// trigger is pressed.
+	assert.deepEqual(scene.slice(0, 4), filesRowReachSteps());
+	assert.equal(scene[2].payload.selector, FILES_READY);
 	assert.deepEqual(
 		presses.map((s) => s.payload.selector),
 		[
-			`[data-tour-tag="file-row"] button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
+			COLLAPSED_GROUP_HEADER,
+			`[data-tour-tag="files-scroller"] ${INDEX_ROW} button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
 			DOWNLOAD_ITEM_SELECTOR,
 		],
 	);
 	// EXACT labels (F2 / S1-2): never a substring match.
-	assert.ok(!presses[0].payload.selector.includes("*="));
+	assert.ok(!presses[1].payload.selector.includes("*="));
 	assert.ok(labels.includes("Actions for notes.md"), labels.join(" | "));
 	assert.deepEqual(
 		downloadPressAllowlist(),
@@ -4840,9 +4848,11 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		DOWNLOAD_ITEM_SELECTOR,
 		'[role="menu"] [data-remote-action="download"]:not([data-disabled])',
 	);
-	assert.ok(
-		scene.every((s) => s.optional !== true),
-		"no optional step",
+	// The ONE optional step is the collapsed-group expand: with nothing
+	// collapsed it is skipped; the row, the entry and the toasts stay required.
+	assert.deepEqual(
+		scene.filter((s) => s.optional === true).map((s) => s.payload.selector),
+		[COLLAPSED_GROUP_HEADER],
 	);
 	// The entry is REQUIRED before it is pressed, and success is required after.
 	const at = scene.findIndex(
@@ -4857,6 +4867,34 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 	assert.equal(scene.at(-2).payload.timeoutMs, DOWNLOAD_OUTCOME_WAIT_MS);
 	const dl = { download: true, file: null };
 	assert.equal(downloadStepsProblem(steps, dl), null);
+	// The group-header press is admitted byte-for-byte, alone...
+	assert.equal(
+		downloadStepsProblem(
+			[{ verb: "press", payload: { selector: COLLAPSED_GROUP_HEADER } }],
+			dl,
+		),
+		null,
+	);
+	// ...and no near variant of it: each could reach another button (an open
+	// header, a nested caption, a sibling, a button outside the scroller).
+	for (const selector of [
+		'[data-tour-tag="files-scroller"] section > h3 > button',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="true"]',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]',
+		'[data-tour-tag="files-scroller"] section h3 button[aria-expanded="false"]:not([aria-disabled="true"])',
+		'section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])',
+		`${COLLAPSED_GROUP_HEADER} ~ *`,
+		`${COLLAPSED_GROUP_HEADER} *`,
+		` ${COLLAPSED_GROUP_HEADER}`,
+		COLLAPSED_GROUP_HEADER.toUpperCase(),
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"]), [data-remote-action="save-as"]',
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }], dl) ??
+				"",
+			/a download run may press only/,
+			selector,
+		);
 	// S1-1: an ALLOWLIST. The first three slipped past the old text blocklist.
 	for (const selector of [
 		'[role="menu"] [DATA-REMOTE-ACTION="save-as"]',
@@ -4929,9 +4967,21 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		gone: true,
 		timeoutMs: 1,
 	});
+	// Before the ROW press (the first press that touches a file); only the
+	// optional group-header expand, view state, may precede it.
 	assert.ok(
-		scene.indexOf(dup) < scene.findIndex((s) => s.verb === "press"),
-		"the single-row check runs before the first press",
+		scene.indexOf(dup) <
+			scene.findIndex(
+				(s) =>
+					s.verb === "press" && s.payload.selector !== COLLAPSED_GROUP_HEADER,
+			),
+		"the single-row check runs before the row press",
+	);
+	assert.ok(
+		scene
+			.slice(0, scene.indexOf(dup))
+			.filter((s) => s.verb === "press")
+			.every((s) => s.payload.selector === COLLAPSED_GROUP_HEADER),
 	);
 	assert.match(
 		downloadFailureHint(
@@ -4953,12 +5003,20 @@ test("download: the row trigger matches the EXACT label only, and two same-named
 	// label, the two-rows pair) - receipt limit `fixture-proven-actions`.
 	const { JSDOM } = await import("jsdom");
 	const scene = downloadSceneSteps("notes.md");
-	const trigger = scene[3].payload.selector;
+	const trigger = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
 	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
-	const row = (name, label = `Actions for ${name}`) =>
-		`<div data-tour-tag="file-row"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
+	// Shaped like v0.59.2's rows (finder-files-view.tsx:1437-1438, :1533-1534:
+	// `data-tour-tag="file-row"` and `data-file-id` on the same element).
+	const row = (name, label = `Actions for ${name}`, id = `remote:${name}`) =>
+		`<div data-tour-tag="file-row" data-file-id="${id}"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
 	const look = (html) => {
-		const doc = new JSDOM(`<body>${html}</body>`).window.document;
+		const doc = new JSDOM(
+			`<body><div data-tour-tag="files-scroller">${html}</div></body>`,
+		).window.document;
 		return {
 			rows: doc.querySelectorAll(trigger).length,
 			dup: doc.querySelector(dup) !== null,
@@ -4991,6 +5049,31 @@ test("download: the row trigger matches the EXACT label only, and two same-named
 	assert.deepEqual(
 		look(
 			`<section><h2>Working</h2>${row("notes.md")}</section><section><div>${row("notes.md")}</div></section>`,
+		),
+		{ rows: 2, dup: true },
+	);
+	// #2012 review C1: an ATTACHMENT of the same name (the person's upload; it
+	// shares data-tour-tag="file-row") is neither pressed nor a second row, so
+	// the one index row is downloaded instead of the run refusing two rows.
+	const attachment = row("notes.md", undefined, "attachment:k1");
+	assert.deepEqual(
+		look(
+			`<section><h3>Attachments</h3>${attachment}</section><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+	assert.deepEqual(look(`<section>${attachment}${row("notes.md")}</section>`), {
+		rows: 1,
+		dup: false,
+	});
+	assert.deepEqual(look(`<section>${attachment}</section>`), {
+		rows: 0,
+		dup: false,
+	});
+	// Two INDEX rows beside an attachment are still refused.
+	assert.deepEqual(
+		look(
+			`<section>${attachment}${row("notes.md")}</section><section>${row("notes.md")}</section>`,
 		),
 		{ rows: 2, dup: true },
 	);
@@ -5461,6 +5544,7 @@ test("convergence (#2012 x #2013): file-preview's Show in canvas passes the pres
 		[
 			"files-paging-caption",
 			"files-attachments-only",
+			"preview-first-screen",
 			"selectors-fixture-proven",
 			"toast-latency-unmeasured",
 			"config-root-only",
@@ -5472,13 +5556,19 @@ test("convergence (#2012 x #2013): file-preview's Show in canvas passes the pres
 
 test("download: limits name what the receipt cannot prove; the toast latency is read from the run", () => {
 	const ids = (o) => downloadLimits(o).map((l) => l.id);
+	// The download scene reaches its row as file-preview does (79's run at main
+	// 3673e88232), so file-preview's Files-wait and first-screen limits are its too.
 	assert.deepEqual(ids({ checkOperatorDownloads: false }), [
+		"files-attachments-only",
+		"preview-first-screen",
 		"toast-latency-unmeasured",
 		"config-root-only",
 		"containment-destination-based",
 		"fixture-proven-actions",
 	]);
 	assert.deepEqual(ids({ checkOperatorDownloads: true }), [
+		"files-attachments-only",
+		"preview-first-screen",
 		"toast-latency-unmeasured",
 		"config-root-only",
 		"fixture-proven-actions",
@@ -5737,6 +5827,8 @@ it("download e2e: the app's POST lands notes.md in the rig; the receipt records 
 	assert.deepEqual(
 		receipt.download.limits.map((l) => l.id),
 		[
+			"files-attachments-only",
+			"preview-first-screen",
 			"toast-latency-unmeasured",
 			"config-root-only",
 			"containment-destination-based",
@@ -5791,7 +5883,13 @@ it("download e2e: --check-operator-downloads lists the (test-injected) ~/Downloa
 	assert.notEqual(op.path, join(os.userInfo().homedir, "Downloads"));
 	assert.deepEqual(
 		receipt.download.limits.map((l) => l.id),
-		["toast-latency-unmeasured", "config-root-only", "fixture-proven-actions"],
+		[
+			"files-attachments-only",
+			"preview-first-screen",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"fixture-proven-actions",
+		],
 	);
 });
 
@@ -6762,6 +6860,88 @@ test("file-preview: a row inside the collapsed Working files group is reached by
 	assert.equal(matches(loading, FILES_READY), false);
 	assert.equal(pick(loading, expand), null);
 	assert.equal(pick(loading, trigger), null);
+});
+
+/*
+ * 79's download run at main 3673e88232 (receipt download2/receipt.json): step 10
+ * "waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ * notes.md ... after 20000ms". The same 1043-file session as file-preview's
+ * failure: notes.md sat in the COLLAPSED Working files group, whose rows
+ * v0.59.2 never renders. Fixtures shaped like that markup, as above.
+ */
+test("download: a row inside the collapsed Working files group is reached by expanding the group", () => {
+	const scene = downloadSceneSteps("notes.md");
+	const expand = scene.find((s) => s.optional === true)?.payload.selector;
+	assert.equal(expand, COLLAPSED_GROUP_HEADER);
+	const wait = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const press = scene.find(
+		(s) =>
+			s.verb === "press" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
+	// The expand comes after the Files data wait and before the row is looked for.
+	const at = (sel) => scene.findIndex((s) => s.payload?.selector === sel);
+	assert.ok(at(FILES_READY) < at(expand) && at(expand) < at(wait));
+	const fileRow = (name, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="/Users/o/${name}">x</button><div><button aria-haspopup="menu" aria-label="Actions for ${name}" aria-expanded="false" data-t="${id}">⋯</button></div></li>`;
+	const header = (open, label) =>
+		`<h3 data-glass-plane="band-backdrop"><button type="button" aria-expanded="${open}" aria-disabled="false" data-t="${label}">${label}<span>1</span></button></h3>`;
+	const view = ({ workingOpen, rows, attachments = [] }) => {
+		const highlights = `<section>${header(true, "Highlights")}<ul data-tour-tag="files-grid">${fileRow("image-1.png", "remote:h_1")}</ul></section>`;
+		const working = `<section>${header(workingOpen, "Working files")}<ul data-tour-tag="files-grid"></ul></section>`;
+		const docs = workingOpen
+			? `<section>${header(true, "Documents")}<ul data-tour-tag="files-grid">${rows.join("")}</ul></section>`
+			: "";
+		const attached = attachments.length
+			? `<section>${header(true, "Attachments")}<ul data-tour-tag="files-grid">${attachments.join("")}</ul></section>`
+			: "";
+		return `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div>${highlights}${working}${docs}${attached}</div></section></section>`;
+	};
+	const doc = (html) => new JSDOM(html).window.document;
+	const pick = (html, sel) =>
+		doc(html).querySelector(sel)?.getAttribute("data-t") ?? null;
+	const target = fileRow("notes.md", "remote:f_1");
+	// Before the expand: Files settled, but no notes.md row to wait for - 79's failure.
+	const collapsed = view({ workingOpen: false, rows: [target] });
+	assert.equal(matches(collapsed, FILES_READY), true, "Files settled");
+	assert.equal(pick(collapsed, wait), null, "collapsed: no row");
+	// The expand lands on the COLLAPSED header, never the open Highlights.
+	assert.equal(pick(collapsed, expand), "Working files");
+	// After it: the row is waited on, single, and its trigger is the press.
+	const expanded = view({ workingOpen: true, rows: [target] });
+	assert.equal(pick(expanded, wait), "remote:f_1");
+	assert.equal(pick(expanded, press), "remote:f_1");
+	assert.equal(doc(expanded).querySelector(dup), null, "one row");
+	// Already open (a session without highlights): the optional press finds nothing.
+	assert.equal(pick(expanded, expand), null);
+	// Inside the expanded group, an attachment of the same name is neither the
+	// press nor a second row (C1), and a .bak beside it is another file.
+	const crowded = view({
+		workingOpen: true,
+		rows: [fileRow("notes.md.bak", "remote:f_0"), target],
+		attachments: [fileRow("notes.md", "attachment:k1")],
+	});
+	assert.equal(pick(crowded, press), "remote:f_1");
+	assert.equal(
+		doc(crowded).querySelector(dup),
+		null,
+		"no false two-row refusal",
+	);
+	// The header press can only ever be a group header: no row trigger, no menu
+	// item (Radix portals the menu to <body>), and no button outside the scroller.
+	const menuOpen = `${expanded.replace('aria-expanded="false" data-t="remote:f_1"', 'aria-expanded="true" data-t="remote:f_1"')}<div role="menu"><button role="menuitem" data-remote-action="save-as" aria-expanded="false" data-t="save-as"></button><button role="menuitem" data-remote-action="download" data-t="download"></button></div>`;
+	assert.equal(pick(menuOpen, expand), null);
+	assert.equal(
+		pick(view({ workingOpen: false, rows: [target] }), expand),
+		"Working files",
+	);
+	for (const el of doc(collapsed).querySelectorAll(expand))
+		assert.equal(el.parentElement.tagName, "H3");
 });
 
 /*
