@@ -1827,6 +1827,13 @@ const AddEntryForm: FC<{
 		useState<AllowlistDirectorySelection | null>(null);
 	const fieldId = useId();
 	const helpId = `${fieldId}-help`;
+	// The organization is shown, not just announced: the operator has to see
+	// whose people and agents the list holds. The picker is then named by that
+	// visible label plus its own visible text (aria-labelledby), so its
+	// accessible name contains what is on screen and speech input that says
+	// either "Choose from …" or "Choose an agent" reaches it.
+	const pickerLabelId = `${fieldId}-directory-label`;
+	const pickerTriggerId = `${fieldId}-directory-picker`;
 
 	const readyDirectory =
 		directory?.state === "ready" ? directory.directory : null;
@@ -1899,7 +1906,9 @@ const AddEntryForm: FC<{
 	return (
 		<div className="flex flex-col gap-2">
 			<Label htmlFor={fieldId}>{label}</Label>
-			<div className="flex flex-wrap items-center gap-2">
+			{/* items-end: the picker carries its organization label above it, so
+			    the row aligns on the controls' baseline, not the column's middle. */}
+			<div className="flex flex-wrap items-end gap-2">
 				<Select
 					value={kind}
 					disabled={disabled}
@@ -1926,68 +1935,78 @@ const AddEntryForm: FC<{
 					</SelectContent>
 				</Select>
 				{directory?.state === "ready" && choices.length > 0 && (
-					<Select
-						value={selectionLive && selection ? selection.id : ""}
-						disabled={disabled}
-						onValueChange={choose}
-					>
-						<SelectTrigger
-							className="w-64"
-							aria-label={pickerLabel}
-							data-agent-messages-directory-picker={kind}
+					<div className="flex flex-col gap-1">
+						<span
+							id={pickerLabelId}
+							className="text-meta text-ink-dim"
+							data-agent-messages-directory-label=""
 						>
-							<SelectValue
-								placeholder={
-									kind === "endpoint"
-										? t(
-												"ui.agentMessages.settings.allowlist.directory_placeholder_agent",
-											)
-										: t(
-												"ui.agentMessages.settings.allowlist.directory_placeholder_person",
-											)
-								}
+							{pickerLabel}
+						</span>
+						<Select
+							value={selectionLive && selection ? selection.id : ""}
+							disabled={disabled}
+							onValueChange={choose}
+						>
+							<SelectTrigger
+								id={pickerTriggerId}
+								className="w-64"
+								aria-labelledby={`${pickerLabelId} ${pickerTriggerId}`}
+								data-agent-messages-directory-picker={kind}
 							>
-								{/* Closed, the trigger names the choice; the full id is
-								    in the ID field beside it, where it can be checked. */}
-								{choices.find((choice) => choice.id === selection?.id)?.label}
-							</SelectValue>
-						</SelectTrigger>
-						<SelectContent>
-							{choices.map((choice) => (
-								<SelectItem
-									key={choice.id}
-									value={choice.id}
-									data-agent-messages-directory-choice={choice.id}
+								<SelectValue
+									placeholder={
+										kind === "endpoint"
+											? t(
+													"ui.agentMessages.settings.allowlist.directory_placeholder_agent",
+												)
+											: t(
+													"ui.agentMessages.settings.allowlist.directory_placeholder_person",
+												)
+									}
 								>
-									<span className="flex min-w-0 flex-col">
-										<span className="text-ink">
-											{choice.label}
-											{choice.owner && (
-												<span className="ms-2 text-ink-dim">
-													{t(
-														"ui.agentMessages.settings.allowlist.directory_agent_owner",
-														{ owner: choice.owner },
-													)}
-												</span>
-											)}
-										</span>
-										{/* The id is the identity (names repeat), so every
+									{/* Closed, the trigger names the choice; the full id is
+								    in the ID field beside it, where it can be checked. */}
+									{choices.find((choice) => choice.id === selection?.id)?.label}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{choices.map((choice) => (
+									<SelectItem
+										key={choice.id}
+										value={choice.id}
+										data-agent-messages-directory-choice={choice.id}
+									>
+										<span className="flex min-w-0 flex-col">
+											<span className="text-ink">
+												{choice.label}
+												{choice.owner && (
+													<span className="ms-2 text-ink-dim">
+														{t(
+															"ui.agentMessages.settings.allowlist.directory_agent_owner",
+															{ owner: choice.owner },
+														)}
+													</span>
+												)}
+											</span>
+											{/* The id is the identity (names repeat), so every
 										    option shows it in full, in machine voice. */}
-										<span className="break-all font-mono text-meta text-ink-dim">
-											{choice.id}
-											{choice.duplicateLabel && (
-												<span className="ms-2 font-sans">
-													{t(
-														"ui.agentMessages.settings.allowlist.directory_same_name",
-													)}
-												</span>
-											)}
+											<span className="break-all font-mono text-meta text-ink-dim">
+												{choice.id}
+												{choice.duplicateLabel && (
+													<span className="ms-2 font-sans">
+														{t(
+															"ui.agentMessages.settings.allowlist.directory_same_name",
+														)}
+													</span>
+												)}
+											</span>
 										</span>
-									</span>
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 				)}
 				<Input
 					id={fieldId}

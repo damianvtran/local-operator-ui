@@ -1730,6 +1730,23 @@ const blockForm = (legend = "Who can message you") => {
 const directoryPicker = (scope) =>
 	scope.querySelector("button[data-agent-messages-directory-picker]");
 
+// The organization label is visible text above the picker, and the picker's
+// accessible name is built from it plus the trigger's own visible text
+// (aria-labelledby), never from a separate aria-label only a screen reader
+// hears (copy review round 1, C2).
+function directoryPickerLabel(picker) {
+	assert.equal(picker.getAttribute("aria-label"), null, "no hidden-only name");
+	const ids = (picker.getAttribute("aria-labelledby") ?? "").split(/\s+/);
+	const label = document.getElementById(ids[0]);
+	assert.ok(label, "the picker is labelled by an element on the page");
+	assert.ok(
+		label.hasAttribute("data-agent-messages-directory-label"),
+		"by the visible organization label",
+	);
+	assert.equal(ids[1], picker.id, "and by its own visible text");
+	return label.textContent;
+}
+
 async function openAndChoose(picker, id) {
 	assert.ok(picker, "expected the directory picker");
 	picker.focus();
@@ -1857,7 +1874,7 @@ test("choosing from the directory grants nothing; Add then Save writes exactly t
 	const { form, input } = blockForm();
 	const picker = directoryPicker(form);
 	assert.equal(
-		picker.getAttribute("aria-label"),
+		directoryPickerLabel(picker),
 		"Choose from Example organization",
 	);
 
@@ -1901,7 +1918,7 @@ test("the open directory list shows owner, full id and a same-name marker on eac
 	const { form } = blockForm();
 	const picker = directoryPicker(form);
 	assert.equal(
-		picker.getAttribute("aria-label"),
+		directoryPickerLabel(picker),
 		"Choose from your organization",
 		"no organization name in status: the unnamed label",
 	);
@@ -1912,8 +1929,8 @@ test("the open directory list shows owner, full id and a same-name marker on eac
 		entry.textContent.trim(),
 	);
 	assert.deepEqual(texts, [
-		"HelperRun by Ada Parkbep_ada_oneSame name as another",
-		"HelperRun by Ada Parkbep_ada_twoSame name as another",
+		"HelperRun by Ada Parkbep_ada_oneSame name as another entry",
+		"HelperRun by Ada Parkbep_ada_twoSame name as another entry",
 	]);
 	await press(document.activeElement, "keydown", { key: "Escape" });
 	await flush();

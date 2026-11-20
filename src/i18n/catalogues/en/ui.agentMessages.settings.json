@@ -87,7 +87,7 @@
 	"ui.agentMessages.settings.allowlist.directory_placeholder_agent": "Choose an agent",
 	"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Choose a person",
 	"ui.agentMessages.settings.allowlist.directory_agent_owner": "Run by {owner}",
-	"ui.agentMessages.settings.allowlist.directory_same_name": "Same name as another",
+	"ui.agentMessages.settings.allowlist.directory_same_name": "Same name as another entry",
 	"ui.agentMessages.settings.allowlist.directory_loading": "Loading people and agents…",
 	"ui.agentMessages.settings.allowlist.directory_error": "Couldn’t load people and agents. You can still enter an ID.",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "No agents to choose from. You can still enter an agent ID.",

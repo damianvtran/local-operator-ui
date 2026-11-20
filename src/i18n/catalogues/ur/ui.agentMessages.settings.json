@@ -91,7 +91,7 @@
 	"ui.agentMessages.settings.allowlist.directory_loading": "لوگ اور ایجنٹ لوڈ ہو رہے ہیں…",
 	"ui.agentMessages.settings.allowlist.directory_error": "لوگ اور ایجنٹ لوڈ نہیں ہو سکے۔ آپ اب بھی ID درج کر سکتے ہیں۔",
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "منتخب کرنے کے لیے کوئی ایجنٹ نہیں۔ آپ اب بھی ایجنٹ ID درج کر سکتے ہیں۔",
-	"ui.agentMessages.settings.allowlist.directory_empty_person": "منتخب کرنے کے لیے کوئی شخص نہیں۔ آپ اب بھی شخص ID درج کر سکتے ہیں۔",
+	"ui.agentMessages.settings.allowlist.directory_empty_person": "منتخب کرنے کے لیے کوئی شخص نہیں۔ آپ اب بھی شخص کی ID درج کر سکتے ہیں۔",
 	"ui.agentMessages.settings.allowlist.directory_stale": "یہ انتخاب اب دستیاب نہیں۔ دوبارہ منتخب کریں یا ID درج کریں۔",
 	"ui.agentMessages.settings.error.no_changes": "کوئی ترتیب تبدیل نہیں ہوئی۔ موجودہ حالت جانچنے کے لیے دوبارہ کوشش کریں۔",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} پیغام آپ کی چیف آف اسٹاف کا منتظر ہے۔ اسے وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔} other {{count} پیغامات آپ کی چیف آف اسٹاف کے منتظر ہیں۔ انہیں وصول کرنے کے لیے اس گفتگو میں ایک پیغام بھیجیں۔}}",
