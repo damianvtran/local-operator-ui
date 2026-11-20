@@ -5812,30 +5812,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "95292da14bfc71517cb99a4165a77cfca6eac83c47c03ce86475091d590ebdb8",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "575fa631c97a897fe64f97ee756aa5f5340954b3d35e800a8a50edd88cf3f97e",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-es."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-es",
+					"instance": "bcdb056e3f77-sy-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
-					"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-es.json",
+					"receipt_sha256": "03f61afba594ec76ec3499dfa62ccdc1e36760c86d8b2c59384ae8a0a35bc45e",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -5931,6 +5931,29 @@
 							"receipt_sha256": "6ea0b6b034a1a7da21873de5480c6d49d9f4d5f585d8fac385eb0f70b7dc3607",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/000a2504613d.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "95292da14bfc71517cb99a4165a77cfca6eac83c47c03ce86475091d590ebdb8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
+							"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -19530,30 +19553,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "dd1e6a4a642e8e0d25158b1079b4e8bb5375dc892db4bb5cb757813244805bdf",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "8571ca429358e44a26febca87da9b10d0b9466e90e4499a67732f3e80f7da2de",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-fr."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "68a3f14dde44-tc-fr",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "bcdb056e3f77-sy-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
-					"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-fr.json",
+					"receipt_sha256": "591039028f7e9bfd783d92c7ad675ee60227a5257cff09e3d1141dda487b100a",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -19666,6 +19689,29 @@
 							"receipt_sha256": "d9402ac40be61ca48a0820b0e82ede56e4bce8eb1a620cea4b94093097e46df3",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/92b74137fc35.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "dd1e6a4a642e8e0d25158b1079b4e8bb5375dc892db4bb5cb757813244805bdf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "68a3f14dde44-tc-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
+							"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -33441,30 +33487,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "edb6855b84e4fd87b53cbd3530d5f87e1148af8e82c3916c5d113d13cfc97ed5",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "63247b0e72e3f250a6105b37649501926bd3cae04c2a0e2e40c7589a83ddabc8",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-hi."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-hi-r2",
+					"instance": "bcdb056e3f77-sy-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
-					"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-hi.json",
+					"receipt_sha256": "f1ce36758c523e2240fd24188a483b3cf7d92ff52135618285803ae8503d1725",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -33560,6 +33606,29 @@
 							"receipt_sha256": "2b024feb7b9e1cb7694b29519a347566c52c6b3dbe7f15eaee275d387e0b578c",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/7a687a799437.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "edb6855b84e4fd87b53cbd3530d5f87e1148af8e82c3916c5d113d13cfc97ed5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
+							"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -46989,30 +47058,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "773a6339e723ddbf05fbe1ad252871f3cc946170fce702cc04d1dfcfd30dbe77",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "32ff6908d6a43e84a2d147b42603eb684725bb6700beba54f015f208bc13dd58",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-ru."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "68a3f14dde44-tc-ru",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "bcdb056e3f77-sy-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
-					"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-ru.json",
+					"receipt_sha256": "892e9615042f34acf1f0cea52814f84594dff1f14d713a231b0f8aadc0cf75b0",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -47108,6 +47177,29 @@
 							"receipt_sha256": "8c5a3165f9cf695135e0664bf3a13238a470cee604537b0ff0d3ec115037d9f2",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/f48b342c2596.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "773a6339e723ddbf05fbe1ad252871f3cc946170fce702cc04d1dfcfd30dbe77",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "68a3f14dde44-tc-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
+							"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -60664,30 +60756,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "c7f7408830ea8512ed5ae3b52970784eb24e5342894fc9b60e7d84d2b1d62b49",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "c16330d33000a3175b22a7dc81c8e0895f5e19335c42d20e836cd24d31d0b28c",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-ur."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-ur",
+					"instance": "bcdb056e3f77-sy-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
-					"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-ur.json",
+					"receipt_sha256": "e489871193ec61c4067e5b435b0151c55afe6b593b0b33a074f44ecf367d883f",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -60783,6 +60875,29 @@
 							"receipt_sha256": "9578ee4f72e0666dbb75fbb8bf017e46e6cc666ffc7cfad89f473a7f53d23f80",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/a10dc55d2802.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "c7f7408830ea8512ed5ae3b52970784eb24e5342894fc9b60e7d84d2b1d62b49",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
+							"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -74216,30 +74331,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "64bad8e7f311b2ee6bd78a71aff2d893c4d715f39c92fcef3ed876a31014c4db",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "d3e03584f58c7a3ae3823ccc43130c18fcfb21a81f99290df3f6d3f4007df952",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-vi."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-vi",
+					"instance": "bcdb056e3f77-sy-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
-					"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-vi.json",
+					"receipt_sha256": "93f8525e0cb9cb7cab6cf394012cc3709cdeaa7adab0aff51e32fd699544f65d",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -74352,6 +74467,29 @@
 							"receipt_sha256": "94bc492bd383ac60d15e1b90b2b99fef38cf74fcb4e096991d3936341b3abd1f",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/3f8a973b1d92.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "64bad8e7f311b2ee6bd78a71aff2d893c4d715f39c92fcef3ed876a31014c4db",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
+							"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -88456,30 +88594,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "58abe323c16fb0f97237311a24bd0b2975d2bc29c4a6c46c3681723c51b9b039",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "f54810445acfafba2ac9d626dfcc97be440e29aed7c6e92a0643f6c0d639fef5",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-zh-cn."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-zh-cn",
+					"instance": "bcdb056e3f77-sy-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
-					"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-zh-cn.json",
+					"receipt_sha256": "7004a3f16cebfb37461152a59e9b931919576798841526006de963f348e0f36b",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -88592,6 +88730,29 @@
 							"receipt_sha256": "9dee401cd5db5d02512eb6254fb47bc00ca9ebbc855e683f3391756789df3ce3",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/70b5f856b963.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "58abe323c16fb0f97237311a24bd0b2975d2bc29c4a6c46c3681723c51b9b039",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
+							"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"

@@ -4170,6 +4170,7 @@ export function ChatSidebar({
 		pinned: pinned.length,
 		running: sectioned.running.length,
 		today: sectioned.today.length,
+		yesterday: sectioned.yesterday.length,
 		week: sectioned.week.length,
 		older: sectioned.older.length,
 		agents: ownAgents.length,

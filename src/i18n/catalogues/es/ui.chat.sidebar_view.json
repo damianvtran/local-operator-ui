@@ -18,6 +18,7 @@
 	"ui.chat.sidebar_view.section.pinned": "Fijadas",
 	"ui.chat.sidebar_view.section.running": "En curso",
 	"ui.chat.sidebar_view.section.today": "Hoy",
+	"ui.chat.sidebar_view.section.yesterday": "Ayer",
 	"ui.chat.sidebar_view.section.week": "Esta semana",
 	"ui.chat.sidebar_view.section.older": "Anteriores",
 	"ui.chat.sidebar_view.section.agents": "Agentes",
