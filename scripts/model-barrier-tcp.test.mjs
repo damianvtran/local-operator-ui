@@ -200,6 +200,44 @@ test("optional pre-B progress drains only while seeking B, in both recorded shap
 		assert.equal(drainModelBarrier(c, context), false, c.body);
 });
 
+// R3-01/Q2: every selected_model occurrence must be A, in any order or depth;
+// present-but-malformed never falls back to A. First-match accepted the first.
+test("pre-B progress rejects mixed or malformed selected_model anywhere", () => {
+	const A = { model_id: "mock-model-a" };
+	const B = { model_id: "mock-model-b" };
+	const mixed = [
+		{ selected_model: A, nested: { selected_model: B } },
+		{ nested: { selected_model: B }, selected_model: A },
+		{ selected_model: { ...A, inner: { selected_model: B } } },
+		{ list: [{ selected_model: A }, { selected_model: B }] },
+		{ list: [[{ selected_model: B }]], selected_model: A },
+		...[null, "", "mock-model-a", 0, [], [A], {}, { model_id: "" }].flatMap(
+			(bad) => [
+				{ selected_model: bad },
+				{ selected_model: A, nested: { selected_model: bad } },
+			],
+		),
+		{ selected_model: { model: "mock-model-a" } },
+		{ selected_model: { model_id: null } },
+	];
+	let rejected = 0;
+	for (const changes of mixed) {
+		const c = capture(progress(2, changes));
+		assert.equal(drainModelBarrier(c, context), false, c.body);
+		rejected++;
+	}
+	assert.equal(rejected, mixed.length);
+	// Genuine absence and consistent nested A still progress.
+	for (const changes of [
+		{},
+		{ nested: { selected_model: A }, selected_model: A },
+	])
+		assert.equal(
+			drainModelBarrier(capture(progress(2, changes)), context),
+			true,
+		);
+});
+
 for (const [name, shape] of [
 	["cold-to-live", coldShape],
 	["already-live", liveShape],

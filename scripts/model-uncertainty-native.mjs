@@ -1010,16 +1010,35 @@ function preBProgress(frame, c, { sessionId, baseline, commit }) {
 			frame.seq > baseline.seq &&
 			p?.cold === false &&
 			p.attaching === false &&
-			// Any model ANYWHERE in the frame must be A (or none): no nested B.
-			(selected({ body: JSON.stringify(frame) })?.model ?? baseline.model) ===
-				baseline.model &&
+			onlyModelA(frame, baseline.model) &&
 			changes &&
 			typeof changes === "object" &&
 			!Array.isArray(changes) &&
-			(changes.session_id === undefined || changes.session_id === sessionId) &&
-			(changes.selected_model === undefined ||
-				changes.selected_model?.model_id === baseline.model),
+			(changes.session_id === undefined || changes.session_id === sessionId),
 	);
+}
+
+/**
+ * Progress-only predicate: EVERY `selected_model` key anywhere in the frame
+ * must be an object whose model_id is A. First-match `selected()` let a direct
+ * A shadow a nested B (R3-01/Q2), and a present-but-null/empty/scalar value
+ * must not fall back to A. Absence is fine (already-live `changes: {}`).
+ * Frames are parsed JSON, so the walk is acyclic; it never stops early.
+ */
+function onlyModelA(value, model) {
+	if (!value || typeof value !== "object") return true;
+	for (const [key, child] of Object.entries(value)) {
+		if (
+			key === "selected_model" &&
+			(!child ||
+				typeof child !== "object" ||
+				Array.isArray(child) ||
+				child.model_id !== model)
+		)
+			return false;
+		if (!onlyModelA(child, model)) return false;
+	}
+	return true;
 }
 
 function selected(capture) {
