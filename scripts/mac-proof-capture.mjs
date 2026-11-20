@@ -1595,6 +1595,37 @@ export const FILES_READY = `${FILES_SCROLLER} ${INDEX_ROW}, ${FILES_SCROLLER} > 
  * Rows are virtualised (only bands in view render), so the row must be on the
  * first screen of the list - if it is not, `press` fails with "nothing matches".
  *
+ * THE COLLAPSED GROUP (79's Mac run at main 34a08e97, app 0.59.2: "step 10
+ * press found no file-row with title image-1.png"). That session lists 1043
+ * files: an expanded Highlights group of one row and a COLLAPSED "Working
+ * files, 1,042" group, and `image-1.png` was inside the collapsed one - so its
+ * row was never rendered and no selector could reach it. At v0.59.2, once a
+ * session has any highlighted file, every other file sits under "Working
+ * files", and that group starts CLOSED (finder-layout.ts:18 `workingOpen:
+ * false`; :224 `open: prefs.workingOpen || narrowing`; :227 returns before any
+ * of its rows are laid out). Two ways in:
+ * - the search field (finder-files-view.tsx:568-575, an `<Input>`; typing makes
+ *   the view `narrowing`, :271, which opens every group). Not usable: no
+ *   v0.59.2 script verb types into a field (dev-driver-script.ts:62-71 ships
+ *   navigate/setTheme/press/state/waitFor/openCanvas/skipOnboarding/shutter,
+ *   and `press`, install.ts:206-263, only dispatches pointer and mouse events);
+ * - pressing the group's header, which is what the scene does
+ *   (`COLLAPSED_GROUP_HEADER`). The header is a `<button>` directly inside the
+ *   section's `<h3>` (:912 `<section>`, :916 `<h3>`, :945 `<button>`); its
+ *   click toggles the group (:986 -> :514-517 `setPrefs({ workingOpen })`),
+ *   and it carries the group's OWN state as `aria-expanded` (:984) and
+ *   `aria-disabled={narrowing}` (:985, where the toggle refuses, :516).
+ *   The press is OPTIONAL: a session with no highlights has no Working files
+ *   group (finder-layout.ts:217 needs both), and the second theme of one run
+ *   finds the group already open (the preference persists), so "nothing
+ *   collapsed" is expected and skipped. The header has no id attribute and its
+ *   label is localized, so the selector names "a collapsed header" rather than
+ *   "Working files". In the harness's fresh profile Working files is the only
+ *   group that can start collapsed: every other group starts open
+ *   (`closedSections: []`, finder-layout.ts:19) and closes only when a person
+ *   presses it. Once the group is expanded, its rows are virtualised like any
+ *   others, so the row still has to fall on the first screen.
+ *
  * THE SETTLED STATE. The canvas viewer renders `<img alt={document.title}>`
  * only once the bytes arrived (image-preview.tsx:127-129 artifact, :238-240
  * path; loading/failure render `FileViewerState` instead), inside
@@ -1616,6 +1647,15 @@ export const FILES_READY = `${FILES_SCROLLER} ${INDEX_ROW}, ${FILES_SCROLLER} > 
 export const SHOW_IN_CANVAS_ITEM_SELECTOR =
 	'[role="menu"] [data-remote-action="show-in-canvas"]:not([data-disabled])';
 
+/**
+ * A Files group header whose group is collapsed and may be opened. See "THE
+ * COLLAPSED GROUP" above: in the harness's profile this can only be Working
+ * files. It names state attributes, never the chevron icon, so an icon change
+ * cannot break it.
+ */
+export const COLLAPSED_GROUP_HEADER =
+	'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])';
+
 export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 	const problem = previewFileProblem(name);
 	if (problem) throw new Refusal(problem);
@@ -1628,6 +1668,18 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 			verb: "waitFor",
 			payload: { selector: FILES_READY, timeoutMs: 20000 },
 			timeoutMs: 25000,
+		},
+		// Open the collapsed Working files group (79's run: the row was in it).
+		// Optional, so "no collapsed group" is skipped. 1.5 s is the bound every
+		// optional guarded toggle here uses (the asks and update-detail scenes).
+		// It is not a measured latency: FILES_READY has already passed, and
+		// the headers come from the same render as the rows (one `sections` memo,
+		// finder-files-view.tsx:301), so the header is already in the DOM or it
+		// never will be.
+		{
+			verb: "press",
+			payload: { selector: COLLAPSED_GROUP_HEADER, timeoutMs: 1500 },
+			optional: true,
 		},
 		{
 			verb: "press",
@@ -1692,12 +1744,23 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	Object.freeze({
 		id: "preview-first-screen",
 		scenes: Object.freeze(["file-preview"]),
-		text: "The previewed row must be on the Files view's first screen (rows are virtualised); otherwise the run fails.",
+		text: "The previewed row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
+	}),
+	Object.freeze({
+		id: "preview-no-search",
+		scenes: Object.freeze(["file-preview"]),
+		text: "The Files search field is never used: no v0.59.2 script verb types into a field, so a row is reached by expanding its group, not by filtering.",
 	}),
 	Object.freeze({
 		id: "preview-no-decode-wait",
 		scenes: Object.freeze(["file-preview"]),
 		text: "The wait sees the canvas <img> once its URL is set, not once it has decoded; there is no image-decode wait.",
+	}),
+	// Why the detail scenes show a SEEDED read face: `detailReadSelector`.
+	Object.freeze({
+		id: "detail-read-seeded",
+		scenes: Object.freeze(["notification-detail", "update-detail"]),
+		text: "The unread->read flip cannot run in an unfocused window: notifications.read is a foreground-receipt op refused outside focus (desktop-ipc.ts:95-101, :166-185). The read face is seeded, not driven.",
 	}),
 	Object.freeze({
 		id: "selectors-fixture-proven",
@@ -1753,17 +1816,43 @@ export function receiptLimits(scenes, opts = {}) {
 }
 
 /**
- * "This notification's opening has settled as READ" (design D7), from markup
- * present at v0.59.2. Opening an unread item marks it read
- * (notification-detail.tsx `useOpenedDetailRead`), and #1907's detail frames
- * caught it half-way (Unread 3 in dark, 4 in light). Two facts, one selector:
- * - the detail's own toggle shows its READ face: `item.read` renders lucide's
- *   `<Circle>` (class `lucide-circle`, lucide-react 0.507.0 createLucideIcon)
- *   and unread renders `<Check>` - the toggle has no read-state attribute at
- *   v0.59.2, so the icon class is the one stable marker;
- * - on the page, no list row for it is still `data-notification-unread` (the
- *   Unread count is derived from those rows, notifications-page.tsx
- *   `visibleUnread`). A narrow window hides the list, so an absent row passes.
+ * "This notification's detail shows it READ" (design D7), from markup present
+ * at v0.59.2.
+ *
+ * WHY THE ITEM IS SEEDED READ, NOT OPENED UNREAD (79's Mac run at main
+ * 34a08e97, app 0.59.2: "Step 16 waitFor `[data-drawer-detail="n_macproofdetailaa"]
+ * [data-notification-toggle-read] svg.lucide-circle` timed out"). It was not
+ * icon drift: lucide-react is 0.507.0 at v0.59.2 and on main, and its
+ * createLucideIcon still emits `lucide-circle`. Opening an unread item fires
+ * `notifications.read` (notification-detail.tsx:871-891 `useOpenedDetailRead`,
+ * drawer-updates.tsx:371, through notifications-api.ts:879 `useNotificationsWrite`),
+ * and main REFUSES that op unless the window is focused: it is a
+ * foreground-receipt op (desktop-ipc.ts:95-101 `FOREGROUND_RECEIPT_OPS`, refused
+ * at :166-185 on `!owner.isFocused()`). This harness only ever runs an
+ * unfocused window, and refuses a focused one on purpose, so the optimistic
+ * flip is rolled back (notifications-api.ts:892 `onError`) and the item never
+ * becomes read. #1907's "Unread 3 in dark, 4 in light" fits that: one frame
+ * caught the optimistic flip, the other caught the rollback. So the live
+ * unread->read flip cannot be exercised here at all, and the notification-
+ * details seed stores the item ALREADY READ: `useOpenedDetailRead` returns
+ * before writing (notification-detail.tsx:889), the read face is there from
+ * the first paint, and the frame shows the seeded state. It does not show the
+ * app flipping it. Any --notification-id these scenes open must likewise
+ * already be read.
+ *
+ * The facts, one selector:
+ * - the detail's own toggle shows its READ face. The toggle
+ *   (notification-detail.tsx:351-378, a `<Button data-notification-toggle-read="">`)
+ *   carries NO read-state attribute at v0.59.2, only `aria-disabled`, `title`
+ *   and the marker. `item.read` switches only its icon (:371-375, `<Circle>` when
+ *   read, `<Check>` when unread) and its label text (localized), so the icon
+ *   class is the only selector-visible proxy. No attribute is invented here.
+ * - the ROW's own state attribute, wherever a row is on screen: on the page, no
+ *   list row for it is still `data-notification-unread` (notification-row.tsx:203;
+ *   the Unread count comes from those rows), and a narrow window hides the
+ *   list, so an absent row passes. In the drawer the detail REPLACES the list
+ *   (drawer-updates.tsx:779), so the row's `data-unread` (:1120) is checked
+ *   BEFORE the detail opens (`updateDetailSceneSteps`), not here.
  * `scope` is the detail container: the page's `[data-notification-detail=id]`
  * or the drawer's `[data-drawer-detail=id]`.
  */
@@ -1794,10 +1883,21 @@ export function detailReadSelector(
  * drawer-updates.tsx `defaultDrawerTab`; pressing it from the fleet drawer's
  * strip re-scopes to this conversation). Then the required waits: the tab
  * selected, the item's row, the in-drawer detail with its title, and its read
- * settled (`detailReadSelector`).
+ * face (`detailReadSelector`).
+ *
+ * THE READ VIEW. The item is seeded read (see `detailReadSelector` for why an
+ * unfocused window cannot make it read), and the drawer opens on its Unread
+ * view (drawer-updates.tsx:301 `initialView = "unread"`, :404-408 lists only
+ * unread rows there). So the scene switches to the Read view. That is a radio
+ * (:1033 `role="radio"`, :1034 `aria-checked`, :1064 `data-drawer-read-view`),
+ * pressed only while unchecked, and then it waits for the item's row in that
+ * list (:952 `data-drawer-view-list`) WITHOUT the row's own unread state
+ * attribute (:1119 `data-drawer-update`, :1120 `data-unread`, present only
+ * while unread). The row is checked by state attribute here because the detail
+ * replaces the list once it opens.
  */
 export function updateDetailSceneSteps(id) {
-	const row = `[data-drawer-update="${id}"]`;
+	const row = `[data-drawer-view-list="read"] [data-drawer-update="${id}"]:not([data-unread])`;
 	const detail = `[data-drawer-detail="${id}"]`;
 	return [
 		{ verb: "navigate", payload: "/chat" },
@@ -1837,8 +1937,30 @@ export function updateDetailSceneSteps(id) {
 		{
 			verb: "press",
 			payload: {
+				selector: '[data-drawer-read-view="read"][aria-checked="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: '[data-drawer-read-view="read"][aria-checked="true"]',
+				timeoutMs: 10000,
+			},
+		},
+		// The row, by its OWN read state (no `data-unread`): an item that is still
+		// unread fails here, naming the row, rather than at the icon wait.
+		{
+			verb: "waitFor",
+			payload: { selector: row, timeoutMs: 15000 },
+			timeoutMs: 20000,
+		},
+		{
+			verb: "press",
+			payload: {
 				selector: `${row} [data-row-action="details"]`,
-				timeoutMs: 15000,
+				timeoutMs: 5000,
 			},
 		},
 		{
@@ -1884,7 +2006,8 @@ export const RUNNER_MAX_STEPS = 64;
 /**
  * A step list over the cap is refused by the app only AFTER its window is up;
  * refuse it here first, naming the fix. The drawer scenes are long (update-detail
- * is 12 steps a theme), so every scene x both themes no longer fits one launch.
+ * is 15 steps a theme: the Read view switch and the row's state wait), so every
+ * scene x both themes no longer fits one launch.
  */
 export function stepCountProblem(steps) {
 	if (steps.length <= RUNNER_MAX_STEPS) return null;
@@ -1985,8 +2108,11 @@ export function buildSteps({
 					verb: "waitFor",
 					payload: { selector: `${selector} [data-notification-detail-title]` },
 				});
-				// Settled, not just painted (design D7): opening an unread item marks
-				// it read, and #1907's dark/light frames showed Unread 3 vs 4.
+				// The read face (design D7). The item is SEEDED read: an unfocused
+				// window's `notifications.read` is refused by main's foreground guard
+				// (desktop-ipc.ts:95-101, :166-185), so opening an unread one flips it
+				// optimistically and rolls it back (#1907's Unread 3 vs 4). See
+				// `detailReadSelector`.
 				steps.push({
 					verb: "waitFor",
 					payload: {
@@ -5687,6 +5813,9 @@ export async function main(argv = process.argv.slice(2)) {
 					scenario: opts.seed,
 					generatedAt: generated.now,
 					files: generated.files,
+					// `{id, read}` per seeded notification: the detail scenes' read
+					// face is SEEDED (`detailReadSelector`), so the receipt says so.
+					...(generated.expect?.items ? { items: generated.expect.items } : {}),
 				};
 				cpSync(generated.out, configRoot, { recursive: true });
 			}

@@ -528,6 +528,16 @@ export function seedExpectations(spec) {
 		historyRevisions: (detail.history ?? [])
 			.map((h) => h.revision)
 			.sort((a, b) => a - b),
+		/*
+		 * The read state of every seeded item, recorded in the receipt. The
+		 * detail scenes photograph a read face that was SEEDED, not driven: an
+		 * unfocused window's `notifications.read` is refused by main's
+		 * foreground guard (ui desktop-ipc.ts:95-101, :166-185 at v0.59.2), so
+		 * the receipt has to say which state each item started in. A reader can
+		 * then tell the seeded face from one the app produced.
+		 */
+		detailRead: detail.read === true,
+		items: spec.notifications.map((n) => ({ id: n.id, read: n.read === true })),
 	};
 }
 
@@ -568,6 +578,14 @@ export function seedRowsProblem(expect, body) {
 		.sort((a, b) => a - b);
 	if (JSON.stringify(got) !== JSON.stringify(expect.historyRevisions))
 		return `${expect.notificationId} history revisions ${JSON.stringify(got)}, expected ${JSON.stringify(expect.historyRevisions)}`;
+	// The seeded read face has to be the daemon's answer (core
+	// notifications/items.py serializes `read`), or the frame would depict a
+	// state that only the seed file claims.
+	if (
+		typeof expect.detailRead === "boolean" &&
+		result.item.read !== expect.detailRead
+	)
+		return `${expect.notificationId} came back read=${JSON.stringify(result.item.read)}, seeded read=${expect.detailRead}`;
 	return null;
 }
 

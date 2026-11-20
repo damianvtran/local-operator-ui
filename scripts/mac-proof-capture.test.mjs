@@ -25,6 +25,7 @@ import {
 	APP_ZIP_UNPACKED_CAP_BYTES,
 	CAPTUREPAGE_METHOD,
 	CODESIGN_CAP_MS,
+	COLLAPSED_GROUP_HEADER,
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
 	DOWNLOAD_FILE_DEFAULT,
@@ -393,6 +394,8 @@ http.createServer((req, res) => {
     const history = db.prepare("SELECT revision, at, title, excerpt FROM item_history WHERE item_id = ? ORDER BY revision DESC").all(id);
     db.close();
     if (!item) { res.statusCode = 404; return res.end("{}"); }
+    // core notifications/store.py:482: read = read_rev >= revision.
+    item.read = Number(item.read_rev || 0) >= Number(item.revision || 1);
     return res.end(JSON.stringify({ status: 200, message: "ok", result: { item, history, asks: [] } }));
   }
   // The files download route, landing like core (remote_session_files.py
@@ -1087,20 +1090,55 @@ test("update-detail: the drawer's Updates tab -> View details -> in-drawer detai
 		[
 			'[data-panel-rail-item="ask"][aria-pressed="false"]',
 			'[data-drawer-tab="updates"][aria-selected="false"]',
+			'[data-drawer-read-view="read"][aria-checked="false"]',
 		],
 	);
-	// The required tail: tab selected, the row's details pressed, the drawer detail
-	// painted and its read settled.
+	// The required tail: tab selected, the Read view checked, the item's row by
+	// its OWN read state, its details pressed, the drawer detail painted and its
+	// read face. The item is SEEDED read: an unfocused window's
+	// notifications.read is refused (desktop-ipc.ts:95-101, :166-185), so 79's
+	// run waited on a face that could never appear.
 	const required = steps
 		.filter((s) => !s.optional)
 		.map((s) => s.payload?.selector ?? s.payload);
-	assert.deepEqual(required.slice(-4), [
+	const row = `[data-drawer-view-list="read"] [data-drawer-update="${id}"]:not([data-unread])`;
+	assert.deepEqual(required.slice(-6), [
 		'[data-drawer-tab="updates"][aria-selected="true"]',
-		`[data-drawer-update="${id}"] [data-row-action="details"]`,
+		'[data-drawer-read-view="read"][aria-checked="true"]',
+		row,
+		`${row} [data-row-action="details"]`,
 		`[data-drawer-detail="${id}"] [data-notification-detail-title]`,
 		`[data-drawer-detail="${id}"] [data-notification-toggle-read] svg.lucide-circle`,
 	]);
 	assert.equal(steps.at(-3).verb, "press");
+	// DOM proof on drawer-updates.tsx-shaped fixtures (:952, :1033-1034, :1064,
+	// :1119-1120): the row wait reads the row's state attribute, so a row still
+	// unread - the face an unfocused window is left with - fails it, and so
+	// does the same row in the Unread list.
+	const drawer = (list, unread) =>
+		`<div><div role="radiogroup"><button role="radio" aria-checked="${list === "unread"}" data-drawer-read-view="unread"></button><button role="radio" aria-checked="${list === "read"}" data-drawer-read-view="read"></button></div><ul data-drawer-view-list="${list}"><li data-drawer-update="${id}" ${unread ? 'data-unread=""' : ""}><button data-row-action="details"></button></li></ul></div>`;
+	assert.equal(
+		matches(drawer("read", false), row),
+		true,
+		"read row, Read view",
+	);
+	assert.equal(matches(drawer("read", true), row), false, "still unread");
+	assert.equal(matches(drawer("unread", false), row), false, "Unread list");
+	assert.equal(
+		matches(
+			drawer("unread", false),
+			'[data-drawer-read-view="read"][aria-checked="false"]',
+		),
+		true,
+		"the Read radio is pressed only while unchecked",
+	);
+	assert.equal(
+		matches(
+			drawer("read", false),
+			'[data-drawer-read-view="read"][aria-checked="false"]',
+		),
+		false,
+	);
 	const { steps: built } = buildSteps({
 		scenes: ["update-detail"],
 		themes: ["dark"],
@@ -1938,9 +1976,21 @@ test("receipt limits: each run lists exactly the known measurement limits its sc
 		"files-paging-caption",
 		"files-attachments-only",
 		"preview-first-screen",
+		"preview-no-search",
 		"preview-no-decode-wait",
 		"selectors-fixture-proven",
 	]);
+	// The detail scenes' read face is seeded (79's update-detail failure): an
+	// unfocused window's notifications.read is refused by main's foreground guard.
+	assert.deepEqual(ids(["update-detail"]), [
+		"detail-read-seeded",
+		"selectors-fixture-proven",
+	]);
+	assert.deepEqual(ids(["notification-detail"]), ["detail-read-seeded"]);
+	assert.match(
+		MEASUREMENT_LIMITS.find((l) => l.id === "detail-read-seeded").text,
+		/foreground-receipt op refused outside focus \(desktop-ipc\.ts:95-101, :166-185\)\. The read face is seeded, not driven\./,
+	);
 	assert.deepEqual(ids(["files"]), [
 		"files-paging-caption",
 		"files-attachments-only",
@@ -3799,6 +3849,14 @@ it(
 			"/v1/desktop/notifications/n_macproofdetailaa",
 		);
 		assert.ok(receipt.seed.files.includes("notifications.db"));
+		// The seeded read state is in the receipt (79's update-detail failure):
+		// the detail frame's read face is SEEDED, never driven, and says so.
+		assert.deepEqual(receipt.seed.items[0], {
+			id: "n_macproofdetailaa",
+			read: true,
+		});
+		assert.ok(receipt.seed.items.some((i) => i.read === false));
+		assert.ok(receipt.limits.some((l) => l.id === "detail-read-seeded"));
 		assert.ok(
 			!receipt.seed.files.some((f) => /-wal$|-shm$|-journal$/.test(f)),
 			receipt.seed.files.join(","),
@@ -6018,6 +6076,49 @@ const V0592_ANCHORS = Object.freeze([
 		'onClick={tiled && item.row.media === "image" ? onExpand : onOpen}',
 		'button[aria-haspopup="menu"]',
 	],
+	// 79's run: the collapsed Working files group's header, by its own state.
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		912,
+		"<section",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		916,
+		"<h3",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		945,
+		"<button",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		984,
+		"aria-expanded={section.open}",
+		'[aria-expanded="false"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		985,
+		"aria-disabled={narrowing}",
+		'[aria-disabled="true"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+		18,
+		"workingOpen: false,",
+		'[aria-expanded="false"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+		224,
+		"open: prefs.workingOpen || narrowing,",
+		'[aria-expanded="false"]',
+	],
 	[
 		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
 		218,
@@ -6185,6 +6286,8 @@ test("v0.59.2 anchors: every attribute VALUE a selector matches is one a frozen 
 		'[aria-busy="false"]',
 		'[aria-haspopup="menu"]',
 		'[role="menu"]',
+		'[aria-expanded="false"]',
+		'[aria-disabled="true"]',
 	])
 		assert.ok(tokens.has(token), `${token} is in a scene selector`);
 	assert.ok(checked >= 7, `checked ${checked} valued tokens`);
@@ -6457,15 +6560,18 @@ test("file-preview: Files settled -> the row's menu -> Show in canvas -> the pai
 	const steps = filePreviewSceneSteps("image-1.png");
 	assert.deepEqual(
 		steps.map((s) => s.verb),
-		["navigate", "openCanvas", "waitFor", "press", "press", "waitFor"],
+		["navigate", "openCanvas", "waitFor", "press", "press", "press", "waitFor"],
 	);
 	assert.deepEqual(steps[1].payload, { view: "files" });
 	assert.equal(steps[2].payload.selector, FILES_READY);
-	assert.ok(
-		steps.every((s) => s.optional !== true),
-		"no optional step: a miss fails the run",
+	// The ONE optional step is the collapsed-group expand (79's run): with no
+	// collapsed group it is skipped, and every other miss still fails the run.
+	assert.deepEqual(
+		steps.filter((s) => s.optional).map((s) => s.payload.selector),
+		[COLLAPSED_GROUP_HEADER],
 	);
-	const [trigger, entry, preview] = [steps[3], steps[4], steps[5]].map(
+	assert.equal(steps[3].payload.selector, COLLAPSED_GROUP_HEADER);
+	const [trigger, entry, preview] = [steps[4], steps[5], steps[6]].map(
 		(s) => s.payload.selector,
 	);
 	const entry1 = (
@@ -6566,7 +6672,153 @@ test("file-preview: Files settled -> the row's menu -> Show in canvas -> the pai
 		false,
 		"the lightbox is not the canvas",
 	);
-	assert.equal(steps[5].payload.selector, filePreviewSelector("image-1.png"));
+	assert.equal(steps[6].payload.selector, filePreviewSelector("image-1.png"));
+});
+
+/*
+ * 79's Mac run (main 34a08e97, app 0.59.2): "step 10 press found no file-row
+ * with title image-1.png". 1043 files: Highlights (open, 1 row) and a
+ * COLLAPSED "Working files, 1,042" holding image-1.png, whose rows v0.59.2
+ * never renders (finder-layout.ts:227). These fixtures are shaped like that
+ * markup (finder-files-view.tsx:912 <section>, :916 <h3>, :945 <button>, :984
+ * aria-expanded, :985 aria-disabled), and `expand` replays what the header's
+ * click does (:986 -> :516 workingOpen) - it renders the group's rows.
+ */
+test("file-preview: a row inside the collapsed Working files group is reached by expanding the group", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	const [expand, trigger] = [steps[3], steps[4]].map((s) => s.payload.selector);
+	const fileRow = (title, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button><div><button aria-haspopup="menu" data-t="${id}">⋯</button></div></li>`;
+	const header = (open, label, narrowing = false) =>
+		`<h3 data-glass-plane="band-backdrop"><button type="button" aria-expanded="${open}" aria-disabled="${narrowing}" data-t="${label}">${label}<span>1</span></button></h3>`;
+	const view = ({ workingOpen, rows, narrowing = false }) => {
+		const highlights = `<section>${header(true, "Highlights", narrowing)}<ul data-tour-tag="files-grid">${fileRow("/Users/o/notes.md\nOn mac", "remote:h_1")}</ul></section>`;
+		const working = `<section>${header(workingOpen, "Working files", narrowing)}<ul data-tour-tag="files-grid"></ul></section>`;
+		const images = workingOpen
+			? `<section>${header(true, "Images", narrowing)}<ul data-tour-tag="files-grid">${rows.join("")}</ul></section>`
+			: "";
+		return `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div>${highlights}${working}${images}</div></section></section>`;
+	};
+	const pick = (html, sel) =>
+		new JSDOM(html).window.document
+			.querySelector(sel)
+			?.getAttribute("data-t") ?? null;
+	const target = fileRow("/Users/o/work/image-1.png\nOn mac", "remote:f_1");
+	// Before: the row is not in the DOM, so the row press cannot match - 79's failure.
+	const collapsed = view({ workingOpen: false, rows: [target] });
+	assert.equal(matches(collapsed, FILES_READY), true, "Files settled");
+	assert.equal(pick(collapsed, trigger), null, "collapsed: no row to press");
+	// The expand press lands on the COLLAPSED header, never the open Highlights.
+	assert.equal(pick(collapsed, expand), "Working files");
+	// After the press: the group is open and the row's menu is the press target.
+	const expanded = view({ workingOpen: true, rows: [target] });
+	assert.equal(pick(expanded, trigger), "remote:f_1");
+	// Already open (a second theme in the same run, or a session with no
+	// highlights): nothing collapsed, the optional press skips, the row still wins.
+	assert.equal(pick(expanded, expand), null);
+	assert.equal(
+		pick(
+			`<section data-tour-tag="files-scroller"><div><section>${header(true, "Images")}<ul>${target}</ul></section></div></section>`,
+			expand,
+		),
+		null,
+		"no Working files group",
+	);
+	// While the view is narrowing the header refuses its toggle (:516, :985),
+	// so the scene never presses it then (every group is open anyway).
+	assert.equal(
+		pick(view({ workingOpen: false, rows: [target], narrowing: true }), expand),
+		null,
+	);
+	// A collapsed header outside the Files scroller is not this list's.
+	assert.equal(
+		pick(
+			`<section><h3><button aria-expanded="false" data-t="x"></button></h3></section>`,
+			expand,
+		),
+		null,
+	);
+	// The expand names state attributes only, never the chevron icon.
+	assert.doesNotMatch(expand, /lucide|svg|chevron/i);
+	// Exact name and INDEX_ROW still hold inside the expanded group.
+	assert.equal(
+		pick(
+			view({
+				workingOpen: true,
+				rows: [
+					fileRow("/Users/o/image-1.png.bak\nOn mac", "remote:f_0"),
+					fileRow("/Users/me/image-1.png", "attachment:k1"),
+					target,
+				],
+			}),
+			trigger,
+		),
+		"remote:f_1",
+		".bak and an attachment of the same name never win the press",
+	);
+	// Loading: the scroller's lone heading, no sections - neither the Files wait,
+	// the expand nor the row press can match it.
+	const loading = `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div><p>Loading session files...</p></div></section></section>`;
+	assert.equal(matches(loading, FILES_READY), false);
+	assert.equal(pick(loading, expand), null);
+	assert.equal(pick(loading, trigger), null);
+});
+
+/*
+ * The search field would be the narrower door (typing makes the view
+ * `narrowing`, finder-files-view.tsx:271, which opens every group), but no
+ * v0.59.2 script verb can type into it (dev-driver-script.ts:62-71). So the
+ * scene must never depend on it: it names no input, and the receipt says so.
+ */
+test("file-preview: the search field is never used, because no shipped verb types, and the receipt says so", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	const shipped = [
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	];
+	assert.ok(steps.every((s) => shipped.includes(s.verb)));
+	for (const s of steps)
+		assert.doesNotMatch(
+			String(s.payload?.selector ?? ""),
+			/input|aria-label|placeholder/,
+		);
+	assert.ok(
+		receiptLimits(["file-preview"]).some((l) => l.id === "preview-no-search"),
+	);
+});
+
+test("file-preview: two rows of the exact name in the expanded group still refuse the frame", () => {
+	// The press takes the first match, so on screen both rows qualify...
+	const steps = filePreviewSceneSteps("image-1.png");
+	const trigger = steps[4].payload.selector;
+	const fileRow = (title, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button><div><button aria-haspopup="menu">⋯</button></div></li>`;
+	const html = `<section data-tour-tag="files-scroller"><div><section><h3><button aria-expanded="true">Highlights</button></h3><ul>${fileRow("/Users/o/a/image-1.png\nOn mac", "remote:f_1")}</ul></section><section><h3><button aria-expanded="true">Working files</button></h3><ul></ul></section><section><h3><button aria-expanded="true">Images</button></h3><ul>${fileRow("/Users/o/b/image-1.png\nOn mac", "remote:f_2")}</ul></section></div></section>`;
+	assert.equal(
+		new JSDOM(html).window.document.querySelectorAll(trigger).length,
+		2,
+	);
+	// ...and the read-back, which counts the daemon's listing (no groups there),
+	// refuses the run on two rows of the name, wherever the UI files them.
+	const peerRow = {
+		id: "f_1",
+		name: "image-1.png",
+		remote: true,
+		origin_device: { id: "d1", name: "Mac" },
+	};
+	const twice = imagePreviewCheck({
+		listing: { result: { rows: [peerRow, { ...peerRow, id: "f_2" }] } },
+		name: "image-1.png",
+		sessionOnRig: false,
+	});
+	assert.equal(twice.pass, false);
+	assert.match(twice.problem, /2 file rows are named image-1.png/);
 });
 
 test("file-preview: a name that would change the selector is refused, and the scene needs --session", () => {
