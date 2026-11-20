@@ -4,7 +4,7 @@ import {
 } from "@features/aida/use-aida-target";
 import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
-import { categorizeSendFailure } from "@shared/analytics/first-run-reasons";
+import { diagnoseSendFailure } from "@shared/analytics/first-run-reasons";
 import {
 	trackFirstMessageSent,
 	trackProductEvent,
@@ -2718,10 +2718,9 @@ function SessionPanel({
 			trackFirstMessageSent();
 			return true;
 		} catch (error) {
-			// The category only - status class or transport - never the text.
-			trackProductEvent("message_send_failed", {
-				reason_category: categorizeSendFailure(error),
-			});
+			// Closed categories only - status, structured code, transport - never
+			// the text (`diagnoseSendFailure` says why the status alone misled).
+			trackProductEvent("message_send_failed", diagnoseSendFailure(error));
 			/*
 			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
 			 * after the optimistic row was painted belongs to the row; before it, the
