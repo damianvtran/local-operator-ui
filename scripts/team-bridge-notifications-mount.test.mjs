@@ -2591,7 +2591,7 @@ const IDENTITY_ORG = {
 /** One coherent hub answer: list row, tenant unread row and account total agree. */
 const identityPoll = async (
 	mounted,
-	{ latestSeq, unreadCount, latestUnreadSeq, extra = {}, accountId },
+	{ latestSeq, unreadCount, latestUnreadSeq, extra = {} },
 ) => {
 	fixture.conversations = {
 		conversations: [

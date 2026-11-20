@@ -623,7 +623,9 @@ test("R-policy: mute, mention, non-member, #agents and quiet consume the reader 
 	]) {
 		const result = plan({
 			conversations: [conversation({ latest_seq: 6, ...patch })],
-			rows: [notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 })],
+			rows: [
+				notifyRow({ latest_seq: 6, unread_count: 1, latest_unread_seq: 6 }),
+			],
 			cursors: new Map([["bcv_1", 2]]),
 			quiet,
 		});
@@ -667,7 +669,10 @@ test("R-scope: cursors are per conversation, so one org's identity never suppres
 		cursors: new Map([["bcv_1", 6]]),
 	});
 	assert.deepEqual(
-		result.candidates.map((candidate) => [candidate.conversationId, candidate.tenantId]),
+		result.candidates.map((candidate) => [
+			candidate.conversationId,
+			candidate.tenantId,
+		]),
 		[["bcv_2", "tnt_2"]],
 	);
 	// After an account switch the hook drops every cursor and org seed; the

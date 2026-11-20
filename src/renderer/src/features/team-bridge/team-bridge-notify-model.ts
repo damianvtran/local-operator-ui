@@ -312,7 +312,13 @@ export function planTeamBridgeNotifications(
 		const previous = cursors.get(row.conversation_id);
 		const identity = teamBridgeNotifyIdentity(row);
 		if (identity.source === "reader") {
-			const candidate = planReaderRow(input, row, identity.seq, previous, cursors);
+			const candidate = planReaderRow(
+				input,
+				row,
+				identity.seq,
+				previous,
+				cursors,
+			);
 			if (candidate) candidates.push(candidate);
 			continue;
 		}
@@ -379,7 +385,8 @@ function advanceCursor(
 ): void {
 	if (seq <= 0) return;
 	const previous = cursors.get(conversationId);
-	if (previous === undefined || seq > previous) cursors.set(conversationId, seq);
+	if (previous === undefined || seq > previous)
+		cursors.set(conversationId, seq);
 }
 
 /**
@@ -420,7 +427,8 @@ function planReaderRow(
 	if (conversation.latest_seq !== row.latest_seq) return undefined;
 	// Silence sticks: muted, mention-only, non-member or quiet still consume.
 	cursors.set(row.conversation_id, seq);
-	if (!shouldNotifyTeamBridge(conversation, input.selfAccountId)) return undefined;
+	if (!shouldNotifyTeamBridge(conversation, input.selfAccountId))
+		return undefined;
 	if (input.quiet) return undefined;
 	/*
 	 * The summary describes the conversation's NEWEST message. When that is the
