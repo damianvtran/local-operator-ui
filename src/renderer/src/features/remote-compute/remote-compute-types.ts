@@ -307,6 +307,11 @@ export type RemoteRunPhase = "in-flight" | "succeeded" | "failed" | "cancelled";
  * what the card PRINTS when it is not one of the known ones, in the mono step, so an
  * unrecognised status still reaches the reader instead of being translated into a
  * sentence nobody's server said.
+ *
+ * HOW IT IS READ AND WHETHER IT HAS A WORD ARE TWO QUESTIONS. A token can be known
+ * to be UNFINISHED and still have no sentence of its own - `error` is exactly that
+ * (`remoteRunStatusKnown` says why) - so the phase below is never inferred from
+ * membership of the known set.
  */
 export function remoteRunPhase(status: string): RemoteRunPhase {
 	switch (status.toLowerCase()) {
@@ -331,8 +336,17 @@ export function remoteRunPhase(status: string): RemoteRunPhase {
 		 */
 		case "stopped":
 			return "succeeded";
-		case "failed":
+		/*
+		 * `error` IS NOT SETTLED: THE SWEEP RETRIES IT. The server's vocabulary calls the
+		 * row "a provider failure the sweep retries", so the deployment may re-drive it
+		 * and spend again on a later pass. Reading it as `failed` ended the run on this
+		 * side while the server had not: polling stopped, `Cancel` went away, and `Forget`
+		 * was offered over a run that could still cost money. In flight is the truthful
+		 * reading - the clock runs, `Cancel` stays, and `liveRuns` counts the row.
+		 */
 		case "error":
+			return "in-flight";
+		case "failed":
 		case "timed-out":
 		case "timed_out":
 		case "timeout":
@@ -360,7 +374,12 @@ export function remoteRunStatusKnown(status: string): boolean {
 		case "completed":
 		case "done":
 		case "failed":
-		case "error":
+		/*
+		 * NOT KNOWN, AND THAT IS THE POINT: `error` is in flight and retryable
+		 * (`remoteRunPhase`), and this client has no sentence for "failed, but the server
+		 * will try again" - so the card prints the server's own token in the mono step
+		 * rather than translating it into a word nobody's daemon said.
+		 */
 		case "timed-out":
 		case "timed_out":
 		case "timeout":

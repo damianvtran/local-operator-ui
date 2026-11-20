@@ -27,6 +27,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { ChatHeader } from "../chat/components/chat-header";
 import { ChatDeviceSlot } from "../chat/device/chat-device-slot";
 import { useChatDeviceStore } from "../chat/device/chat-device-store";
+import { remoteSheetDirectory } from "./remote-compute-model";
 import { RemoteComputeSheet } from "./remote-compute-sheet";
 import { remoteComputeRead } from "./remote-compute-types";
 import { RemoteRunCard } from "./remote-run-card";
@@ -44,6 +45,8 @@ const SESSION = "8c1d2f4a9b73";
 const SELF = "d_9f3ac1e0b7d2aa41";
 const PEER = "d_4b2a91c4e0b87f3a";
 const RUN_ID = "9f2c1a04e7b3";
+/** The path a pane's cwd chip paints, where the canonical row carries no cwd. */
+const PANE_CWD = "~/src/hello-world";
 const PROMPT = "Fix the failing test in the importer and open a pull request.";
 
 /* ---------------------------------------------------------------- the bridge */
@@ -224,14 +227,25 @@ const Band = ({
 const Pickers = ({
 	remote,
 	width = 1080,
+	paneCwd,
+	row,
 }: {
 	remote: Parameters<typeof installBridge>[0];
 	width?: number;
+	/** The directory this pane's cwd chip paints, as the chat page hands it down. */
+	paneCwd?: string;
+	/**
+	 * A canonical row for the pane. `cwd` ABSENT is the interesting case, not a
+	 * shorthand: that is what a conversation another client of the daemon created
+	 * carries, and the reason the sheet reads the pane before the row (Q-2).
+	 */
+	row?: { session_id: string; title: string; cwd?: string };
 }) => {
 	useLayoutEffect(() => {
 		installBridge(remote);
 		seed();
-	}, [remote]);
+		if (row) useCanonicalSessionsStore.setState({ sessions: [row] });
+	}, [remote, row]);
 	return (
 		<div className="flex flex-col bg-canvas">
 			<Band width={width}>
@@ -247,7 +261,7 @@ const Pickers = ({
 					onOpenOptions={() => undefined}
 					onToggleBrowser={() => undefined}
 					onOpenConsole={() => undefined}
-					deviceSlot={<ChatDeviceSlot sessionId={SESSION} />}
+					deviceSlot={<ChatDeviceSlot sessionId={SESSION} paneCwd={paneCwd} />}
 				/>
 			</Band>
 		</div>
@@ -299,6 +313,30 @@ export const RowNotOffered: Story = {
 	render: () => <Pickers remote={readOnly({ offered: false, capacity: [] })} />,
 };
 
+/**
+ * THE PANE Q-2 WAS ABOUT: its canonical row carries NO `cwd`, and its cwd chip paints
+ * a path.
+ *
+ * The row is what a conversation created by another client of the daemon looks like,
+ * and this is the pair the old row-first read got wrong. This frame mounts the REAL
+ * slot for it - the control must draw, and a row read is the first thing that could
+ * fall over on a row with no `cwd`.
+ *
+ * WHAT IT CANNOT SHOW IS THE SHEET'S DIRECTORY: the sheet is a second level that only
+ * a press on the picker row opens, and a story cannot press. `SheetPaneCwdWithoutRowCwd`
+ * photographs the directory the same resolver gives this pair, and the call site is
+ * pinned as source by `scripts/chat-device-model.test.mjs`.
+ */
+export const PaneCwdWithoutRowCwd: Story = {
+	render: () => (
+		<Pickers
+			remote={readOnly({})}
+			paneCwd={PANE_CWD}
+			row={{ session_id: SESSION, title: "hello world" }}
+		/>
+	),
+};
+
 /** The read is still in flight: the row says so rather than guessing. */
 export const RowChecking: Story = {
 	render: () => (
@@ -340,10 +378,13 @@ const refuseStart =
 const Sheet = ({
 	remote,
 	prompt = PROMPT,
+	directory = "~/src/importer",
 }: {
 	remote: Parameters<typeof installBridge>[0];
 	/** The composer's text: empty is a state the sheet must answer for. */
 	prompt?: string;
+	/** The directory the run would start in; a slide of the pane's own value. */
+	directory?: string;
 }) => {
 	useLayoutEffect(() => {
 		installBridge(remote);
@@ -361,7 +402,7 @@ const Sheet = ({
 				onOpenChange={() => undefined}
 				read={parsed}
 				prompt={prompt}
-				directory="~/src/importer"
+				directory={directory}
 				onSubmitted={() => undefined}
 				onViewRuns={() => undefined}
 			/>
@@ -372,6 +413,31 @@ const Sheet = ({
 /** The sheet with one network: the line is a statement, and Cloud run is live. */
 export const SheetReady: Story = {
 	render: () => <Sheet remote={readOnly({})} />,
+};
+
+/**
+ * A CANONICAL ROW WITH NO CWD, AND A PANE THAT KNOWS THREE: Q-2's frame.
+ *
+ * The row's `cwd` is written only by this app's own `createSession`, so a
+ * conversation another client of the daemon created carries none. The sheet's
+ * directory is the pane's own value with the row behind it, so this frame paints the
+ * chip's path and leaves the primary enabled - where the row-first read stood the
+ * sheet down with "this conversation has no directory yet" a few pixels under a chip
+ * that printed the path.
+ *
+ * THE PATH COMES FROM THE RESOLVER, not from a literal: a story that typed the
+ * directory in would photograph a value the app never computes, and would keep
+ * showing it after the resolver changed. The call site itself is pinned by
+ * `scripts/chat-device-model.test.mjs`'s source anchor, because a story cannot press
+ * the picker row that opens this sheet (see `PaneCwdWithoutRowCwd`).
+ */
+export const SheetPaneCwdWithoutRowCwd: Story = {
+	render: () => (
+		<Sheet
+			remote={readOnly({})}
+			directory={remoteSheetDirectory({ paneCwd: PANE_CWD, rowCwd: undefined })}
+		/>
+	),
 };
 
 /** Two networks and no default: the tiers stand down until one is chosen. */

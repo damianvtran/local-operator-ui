@@ -328,6 +328,55 @@ test("a bare stopped run is settled, and says only that it finished", () => {
 	assert.deepEqual(liveRuns([stopped]), []);
 });
 
+test("a retryable error is in flight: polling, Cancel, and the server's own token", () => {
+	/*
+	 * CROSS-PR (#4200 review round 2). The server's vocabulary has `error` as "a row a
+	 * provider failure left retryable" - the sweep re-drives it - so it is NOT a settled
+	 * outcome. Read as `failed`, this client stopped polling, hid `Cancel` and offered
+	 * `Forget` over a run that could still spend. Read as in flight, the run stays live
+	 * and the card has no sentence for it, which is the documented unknown-token
+	 * behaviour: the raw token, in the mono step.
+	 */
+	assert.equal(remoteRunPhase("error"), "in-flight");
+	assert.equal(remoteRunStatusKnown("error"), false);
+	const errored = remoteRun(
+		live({ id: "errored", status: "error", metered_seconds: 90 }),
+	);
+	const model = remoteRunCardModel(errored, {
+		now: Date.now() + 60_000,
+		networkName: null,
+	});
+	assert.equal(model.phase, "in-flight");
+	// Not a word this client wrote: the deployment's token, which the card prints in
+	// mono because `statusKnown` is false.
+	assert.equal(model.status, "error");
+	assert.equal(model.statusKnown, false);
+	assert.deepEqual(model.actions, { cancel: true, delete: false });
+	// The clock is running and the hold is still the number that is true now.
+	assert.ok(model.elapsed !== null);
+	assert.equal(model.amount?.kind, "held");
+	// The picker counts it, and the card's own timer keeps reading it.
+	assert.deepEqual(
+		liveRuns([errored]).map((run) => run.id),
+		["errored"],
+	);
+	assert.equal(
+		radientRowView({ read: answered(read({ active: [errored] })), now: NOW })
+			.kind,
+		"runs",
+	);
+	assert.equal(
+		remoteRunPollMs(errored, Date.now() + 60_000),
+		REMOTE_RUN_POLL_MS,
+	);
+	/*
+	 * AND `expired` STAYS SETTLED. The daemon publishes a deadline stop as `stopped`
+	 * and `expired`, and this token is the one that names a stop the deadline drove -
+	 * nothing retries it.
+	 */
+	assert.equal(remoteRunPhase("expired"), "failed");
+});
+
 /* -------------------------------------------------------------- the tier plan */
 
 test("cloud run is ready only when the capacity names that tier as ready", () => {
@@ -495,12 +544,16 @@ test("an empty composer or no directory stands the submit down with its own reas
 	);
 });
 
-test("a session row with no cwd still runs where the chip says it is", () => {
+test("the sheet's directory comes from the pane's path, with the row as its fallback", () => {
 	/*
 	 * Q-2: the canonical row's `cwd` is written only by this app's own
 	 * `createSession`, so a conversation another client of the daemon created carries
 	 * none - while the pane's chip (the stream's own directory) names the path. The
 	 * sheet reads the chip's value, so the two cannot disagree.
+	 *
+	 * The RESOLVER is what this test exercises; that the slot is wired to it at all is
+	 * `scripts/chat-device-model.test.mjs`'s source anchor, because a resolver test
+	 * cannot see a call site (review round 2, MINOR-1).
 	 */
 	const directory = remoteSheetDirectory({
 		paneCwd: "/src/hello-world",
@@ -527,6 +580,17 @@ test("a session row with no cwd still runs where the chip says it is", () => {
 	assert.equal(
 		remoteSheetDirectory({ paneCwd: undefined, rowCwd: undefined }),
 		"",
+	);
+	/*
+	 * AN EMPTY PANE VALUE IS KNOWN AND EMPTY, so it does not fall through to the row
+	 * (review round 2, NIT-1). The chip beside this sheet gates on `!== undefined` and
+	 * keeps an unset affordance for exactly this value; `||` would have the sheet name
+	 * a directory the chip had stopped painting.
+	 */
+	assert.equal(remoteSheetDirectory({ paneCwd: "", rowCwd: "/src/row" }), "");
+	assert.equal(
+		remoteSheetDirectory({ paneCwd: null, rowCwd: "/src/row" }),
+		"/src/row",
 	);
 });
 

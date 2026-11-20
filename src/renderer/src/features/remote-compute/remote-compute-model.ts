@@ -421,8 +421,18 @@ export type RemoteSheetModel = {
  * path (QA round 2, Q-2). The row still answers for the window before a stream's
  * first snapshot names a directory, which is the case it is good for.
  *
- * `""` when neither knows: that is the sheet's own no-directory case, and the submit
- * says why rather than starting a run with nowhere to run.
+ * `""` when the pane knows it is empty, or when neither knows: that is the sheet's
+ * own no-directory case, and the submit says why rather than starting a run with
+ * nowhere to run.
+ *
+ * `""` IS A VALUE, NOT AN ABSENCE, and `??` rather than `||` is what keeps it one.
+ * The chip beside this sheet gates on `!== undefined` and has an explicit unset
+ * affordance, because the staged cwd can legally be empty (`message-input.tsx`
+ * states the two unsatisfiable-condition bugs that `cwdToShow &&` produced):
+ * `undefined` is "no directory is known", `""` is "known, and empty". Falling
+ * through an empty pane value to the row put the sheet on a directory the chip had
+ * stopped painting - the Q-2 disagreement, in the direction the row-first read had
+ * it in.
  */
 export function remoteSheetDirectory(input: {
 	/**
@@ -434,7 +444,7 @@ export function remoteSheetDirectory(input: {
 	/** The canonical-sessions row's `cwd`; `undefined` for a row this app did not create. */
 	rowCwd: string | null | undefined;
 }): string {
-	return input.paneCwd || input.rowCwd || "";
+	return input.paneCwd ?? input.rowCwd ?? "";
 }
 
 /**
