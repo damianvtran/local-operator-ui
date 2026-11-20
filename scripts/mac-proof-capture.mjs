@@ -1608,6 +1608,14 @@ export const FILES_READY = `${FILES_SCROLLER} ${INDEX_ROW}, ${FILES_SCROLLER} > 
  * `onLoad` state, no `complete` attribute a selector can read), so a frame can
  * catch a not-yet-decoded picture. Stated in the receipt's `limits`.
  */
+/**
+ * The file-preview scene's one remote-menu press: a READ (the bytes go to the
+ * canvas, never to disk). One constant because `downloadStepsProblem` admits
+ * exactly this string, and only it, in a run that is not a download run.
+ */
+export const SHOW_IN_CANVAS_ITEM_SELECTOR =
+	'[role="menu"] [data-remote-action="show-in-canvas"]:not([data-disabled])';
+
 export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 	const problem = previewFileProblem(name);
 	if (problem) throw new Refusal(problem);
@@ -1631,8 +1639,7 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 		{
 			verb: "press",
 			payload: {
-				selector:
-					'[role="menu"] [data-remote-action="show-in-canvas"]:not([data-disabled])',
+				selector: SHOW_IN_CANVAS_ITEM_SELECTOR,
 				timeoutMs: 5000,
 			},
 		},
@@ -1651,6 +1658,18 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 export function filePreviewSelector(name) {
 	return `[data-tour-tag="canvas-container"] img[alt="${name}"]:not([data-image-viewport] img)`;
 }
+
+/**
+ * How long the scene waits for the download's outcome toast. Not a measured
+ * distribution: `downloadRemoteFile` re-POSTs a pending transfer on
+ * ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] (use-attachment-url.ts at
+ * v0.59.2), 30 s of backoff before it gives up, so this is twice that; the
+ * whole-run --timeout still bounds it. No Mac run has measured the real latency
+ * yet, so every receipt records it (`download.toastLatency`, review F4) and
+ * lists the gap under `limits` until a distribution exists. Declared here,
+ * above MEASUREMENT_LIMITS, because that frozen list's text reads it.
+ */
+export const DOWNLOAD_OUTCOME_WAIT_MS = 60_000;
 
 /*
  * What a frame of this run CANNOT prove, said in the receipt (`limits`) so a
@@ -1691,12 +1710,45 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 		]),
 		text: "Scene-wait selectors are read from the v0.59.2 source and proven on jsdom fixtures shaped like it, not in Chromium.",
 	}),
+	/*
+	 * The download scene's (release owner's request, #2012). `unless` names a
+	 * run option that, when set, makes the limit not apply: with
+	 * --check-operator-downloads the stray listing runs, so containment is no
+	 * longer destination-only.
+	 */
+	Object.freeze({
+		id: "toast-latency-unmeasured",
+		scenes: Object.freeze(["download"]),
+		text: `The outcome-toast wait (${DOWNLOAD_OUTCOME_WAIT_MS} ms) is derived from the app's retry backoff, not measured; no Mac run had measured it. download.toastLatency records this run's value.`,
+	}),
+	Object.freeze({
+		id: "config-root-only",
+		scenes: Object.freeze(["download"]),
+		text: "The download scene runs only with --backend-config-root (attach and isolated are refused); a download through the operator's own daemon, into their real ~/Downloads, is not exercised.",
+	}),
+	Object.freeze({
+		id: "containment-destination-based",
+		scenes: Object.freeze(["download"]),
+		unless: "checkOperatorDownloads",
+		text: "--check-operator-downloads off: ~/Downloads was neither listed nor resolved, so containment rests on destination + insideRig alone; a symlinked ~/Downloads is not followed.",
+	}),
+	Object.freeze({
+		id: "fixture-proven-actions",
+		scenes: Object.freeze(["download"]),
+		text: "The row trigger (exact label, single row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
+	}),
 ]);
 
-/** The `limits` this run's scenes hit, as `{id, text}`. */
-export function receiptLimits(scenes) {
-	return MEASUREMENT_LIMITS.filter((limit) =>
-		limit.scenes.some((scene) => scenes.includes(scene)),
+/**
+ * The `limits` this run's scenes hit, as `{id, text}` - the ONE assembly for
+ * every scene (the receipt's top-level `limits`, and `download.limits`, its
+ * download-scene view). `opts` drops a limit whose `unless` option is set.
+ */
+export function receiptLimits(scenes, opts = {}) {
+	return MEASUREMENT_LIMITS.filter(
+		(limit) =>
+			limit.scenes.some((scene) => scenes.includes(scene)) &&
+			!(limit.unless && opts[limit.unless]),
 	).map(({ id, text }) => ({ id, text }));
 }
 
@@ -2062,17 +2114,6 @@ export function asksSceneSteps() {
  * that offers no Download (only Save as) fails the run instead.
  */
 
-/**
- * How long the scene waits for the download's outcome toast. Not a measured
- * distribution: `downloadRemoteFile` re-POSTs a pending transfer on
- * ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] (use-attachment-url.ts at
- * v0.59.2), 30 s of backoff before it gives up, so this is twice that; the
- * whole-run --timeout still bounds it. No Mac run has measured the real latency
- * yet, so every receipt records it (`download.toastLatency`, review F4) and
- * lists the gap under `download.limits` until a distribution exists.
- */
-export const DOWNLOAD_OUTCOME_WAIT_MS = 60_000;
-
 /** The ONE remote action the harness may press. */
 export const DOWNLOAD_ITEM_SELECTOR =
 	'[role="menu"] [data-remote-action="download"]:not([data-disabled])';
@@ -2254,8 +2295,10 @@ export function downloadPressAllowlist(file = null) {
  *   `:nth-of-type`, each able to reach Save as, whose bytes Electron writes to
  *   the operator's real ~/Downloads. Other scenes' presses are refused in a
  *   download run too; run them separately.
- * - Any other run never presses a remote action or Save as at all (matched
- *   case-insensitively; those runs have no business in the remote menu).
+ * - Any other run never presses a remote action or Save as (matched
+ *   case-insensitively), except file-preview's byte-exact
+ *   SHOW_IN_CANVAS_ITEM_SELECTOR, which reads the bytes into the canvas and
+ *   writes nothing (#2013).
  */
 export function downloadStepsProblem(
 	steps,
@@ -2273,6 +2316,8 @@ export function downloadStepsProblem(
 				return `step ${i + 1} presses ${selector}: a download run may press only its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
 			continue;
 		}
+		// The one exception is byte-exact: file-preview's Show in canvas, a read.
+		if (selector === SHOW_IN_CANVAS_ITEM_SELECTOR) continue;
 		if (/save[-_ ]?as|copy-image|data-remote-action/i.test(selector))
 			return `step ${i + 1} presses ${selector}: only --scene download presses the remote file menu, and only its Download entry; the harness never presses Save as / Copy image, which hand the bytes to Electron, whose download folder is the operator's real ~/Downloads`;
 	}
@@ -2713,33 +2758,11 @@ export function operatorDownloadsVerdict(baseline, list = listNames) {
 }
 
 /**
- * What this run's download receipt cannot prove, stated in the receipt itself
- * so a reader does not have to know the harness's history (release owner's
- * request). `{id, text}` each; ids are stable for tooling.
+ * The download scene's limits: `receiptLimits` filtered to that scene (one
+ * implementation; the entries live in MEASUREMENT_LIMITS).
  */
 export function downloadLimits({ checkOperatorDownloads }) {
-	return [
-		{
-			id: "toast-latency-unmeasured",
-			text: `the outcome-toast wait (${DOWNLOAD_OUTCOME_WAIT_MS} ms) is derived from the app's retry backoff, not a measured distribution; no Mac run had measured the toast latency before the first one - download.toastLatency records this run's value`,
-		},
-		{
-			id: "config-root-only",
-			text: "the download scene runs only with --backend-config-root (attach and isolated are refused), so a download through the operator's own daemon, which lands in their real ~/Downloads, is not exercised",
-		},
-		...(checkOperatorDownloads
-			? []
-			: [
-					{
-						id: "containment-destination-based",
-						text: "--check-operator-downloads was off: the operator's ~/Downloads was neither listed nor resolved, so containment is proven by destination + insideRig (exactly one new file in the rig) alone, and the rig-inside-~/Downloads refusal compared its spelled path without following a symlinked ~/Downloads",
-					},
-				]),
-		{
-			id: "fixture-proven-actions",
-			text: "the row trigger (exact label, single row), the menu's Download entry and the toast sequence are proven against the test suite's fixture app, not against Chromium; a Mac run is their first real exercise",
-		},
-	];
+	return receiptLimits(["download"], { checkOperatorDownloads });
 }
 
 /**
@@ -5280,7 +5303,7 @@ export async function main(argv = process.argv.slice(2)) {
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
-		limits: receiptLimits(opts.scenes),
+		limits: receiptLimits(opts.scenes, opts),
 		disclosed: [
 			"the opened conversation's unread/seen marks may clear on the daemon that served it",
 			"a desktop presence beat (45 s TTL) is sent to that daemon",

@@ -331,7 +331,8 @@ rig sets - is reached only by **Save as...** (`guardDownloads`,
 the built step list is checked before launch against an exact **allowlist**: a
 download run may press only its own row trigger and the enabled Download entry
 (byte-for-byte; any other press, including another scene's, refuses the run),
-and any other run may not press a remote action or Save as at all.
+and any other run may not press a remote action or Save as at all - except
+`file-preview`'s byte-exact Show in canvas entry, a read into the canvas.
 
 ```sh
 # On the Mac: the rig device already joined to the mesh (see --backend-config-root),
@@ -367,7 +368,7 @@ distribution - the receipt records the measured `toastLatency`), then a required
 | `--manifest` not absolute, absent, not a regular file, not JSON, no `files` list, no (or a repeated) entry for the file, an entry without a 64-hex `sha256` and integer `bytes` | the comparison must be machine-checkable |
 | `<backend-home>/Downloads` or `<config-root>/downloads` a symlink, resolving outside its root, or inside the operator's `~/Downloads` | the write must land in the rig, and somewhere the stray check can see |
 | `<name>` already in either destination | the backend would reuse it and land nothing new; move it out first |
-| a download run pressing anything but its exact allowlist; any other run pressing a remote action, Save as or Copy image (case-insensitive) | Save as writes through Electron to the real `~/Downloads` |
+| a download run pressing anything but its exact allowlist; any other run pressing a remote action, Save as or Copy image (case-insensitive), file-preview's exact Show in canvas excepted | Save as writes through Electron to the real `~/Downloads` |
 | `MAC_PROOF_TEST_OPERATOR_DOWNLOADS` set outside `node --test`, or not absolute | a test-only seam (below) |
 | either rig destination unreadable before the run | a landing could not be told from what was there |
 

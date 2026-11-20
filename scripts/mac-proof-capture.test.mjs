@@ -41,6 +41,7 @@ import {
 	SCENE_READY,
 	SCREENCAPTURE_METHOD,
 	SCREEN_RECORDING_PREFLIGHT_JXA,
+	SHOW_IN_CANVAS_ITEM_SELECTOR,
 	STARTUP_WINDOW_MS,
 	TEST_OPERATOR_DOWNLOADS_ENV,
 	UNKNOWN_START,
@@ -5352,6 +5353,63 @@ test("download: the test-only ~/Downloads seam - real default when nothing is in
 		{ dir: join(dev, "home", "Downloads"), exists: false },
 		{ dir: join(dev, "config", "downloads"), exists: false },
 	]);
+});
+
+test("convergence (#2012 x #2013): file-preview's Show in canvas passes the press guard byte-exact only; download limits come from the one receiptLimits", () => {
+	// A real file-preview run was refused by the press guard after the rebase
+	// (dry-run exit 2, "step 10 presses ...show-in-canvas..."): its one remote
+	// press is a read, admitted by exact string and nothing looser.
+	const preview = buildSteps({
+		scenes: ["file-preview"],
+		themes: ["dark"],
+		session: "ce618964c88e",
+		capture: "capturepage",
+	});
+	assert.ok(
+		preview.steps.some(
+			(s) =>
+				s.verb === "press" &&
+				s.payload.selector === SHOW_IN_CANVAS_ITEM_SELECTOR,
+		),
+	);
+	assert.equal(downloadStepsProblem(preview.steps), null);
+	for (const selector of [
+		'[role="menu"] [data-remote-action="show-in-canvas"]',
+		'[ROLE="menu"] [DATA-REMOTE-ACTION="show-in-canvas"]:not([data-disabled])',
+		`${SHOW_IN_CANVAS_ITEM_SELECTOR} + *`,
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }]) ?? "",
+			/only --scene download presses the remote file menu/,
+			selector,
+		);
+	// A download run's allowlist does not admit it either.
+	assert.match(
+		downloadStepsProblem(
+			[{ verb: "press", payload: { selector: SHOW_IN_CANVAS_ITEM_SELECTOR } }],
+			{ download: true, file: null },
+		) ?? "",
+		/a download run may press only/,
+	);
+	// One assembly: download.limits is receiptLimits' download view, and a run
+	// of both scene families lists both sets.
+	for (const check of [false, true])
+		assert.deepEqual(
+			downloadLimits({ checkOperatorDownloads: check }),
+			receiptLimits(["download"], { checkOperatorDownloads: check }),
+		);
+	assert.deepEqual(
+		receiptLimits(["files", "download"], {}).map((l) => l.id),
+		[
+			"files-paging-caption",
+			"files-attachments-only",
+			"selectors-fixture-proven",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"containment-destination-based",
+			"fixture-proven-actions",
+		],
+	);
 });
 
 test("download: limits name what the receipt cannot prove; the toast latency is read from the run", () => {
