@@ -121310,30 +121310,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "97f65662ee5e2778d7c0be3d0ddab41e57ab84a582906d41809b52959fe2b2dc",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "5fe2dcd1dbf53712ff2c4a1138aa8f5a7bd70e2687e17ecab9130db26d3b119f",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-es-copy-c80a86dd",
+					"instance": "pr2017-r2-es-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-es-copy-c80a86dd.json",
-					"receipt_sha256": "d2163d3ceaae5f7c35231dc972a1cab785386e73600cc5225dc1c51de10981c6",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-es-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-es-copy-170e0100.json",
+					"receipt_sha256": "3b0a066e3b6217e41aeab2a606e134d88382e35c606dd877765196dea36542b1",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-es-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121361,36 +121362,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "97f65662ee5e2778d7c0be3d0ddab41e57ab84a582906d41809b52959fe2b2dc",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-es-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-es-copy-c80a86dd.json",
+							"receipt_sha256": "d2163d3ceaae5f7c35231dc972a1cab785386e73600cc5225dc1c51de10981c6",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-es-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "18aab4a0cb12612757a3459ac13252898523e71881da4c51db5b3358b3dbd0e0",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "d8980dab82efee07b9982bdddc3f26d7946a9a474dc9e7977dbf7092e69bf59e",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-fr-copy-c80a86dd",
+					"instance": "pr2017-r2-fr-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json",
-					"receipt_sha256": "a7811f0597195c04f8c4b9a63e9e3c6d5b5ff455597d46493b3b30205f8d0f39",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters, discarding) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-fr-copy-170e0100.json",
+					"receipt_sha256": "8b1c789af5336cd541c5a3ba78ade90e4dd6d22a7b608ccbd0483f74cc4efff8",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-fr-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121418,36 +121444,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "18aab4a0cb12612757a3459ac13252898523e71881da4c51db5b3358b3dbd0e0",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-fr-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json",
+							"receipt_sha256": "a7811f0597195c04f8c4b9a63e9e3c6d5b5ff455597d46493b3b30205f8d0f39",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters, discarding) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-fr-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "8c8bb553f955cd4df9ef3efffc3bdf08b656323d46753620d1c8f8a48d3f9d50",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "d61f3a3cdce04e85e17c984cb99c26f1223b8f0ea527195e17884caedb826d19",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-hi-copy-c80a86dd",
+					"instance": "pr2017-r2-hi-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json",
-					"receipt_sha256": "dbeffece826f521caf8cf6a6e90ccfdd1923ae366bb2b4e89468b8e219e4505b",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-hi-copy-170e0100.json",
+					"receipt_sha256": "a767f50ac343c6fa57fb657647e4e4765dd08e6280a436dc1e25e28d10fe10db",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-hi-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121475,36 +121526,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "8c8bb553f955cd4df9ef3efffc3bdf08b656323d46753620d1c8f8a48d3f9d50",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-hi-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json",
+							"receipt_sha256": "dbeffece826f521caf8cf6a6e90ccfdd1923ae366bb2b4e89468b8e219e4505b",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-hi-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "88f17fcec78da4e367b2a82d11dc953d4b0f77d4406445c31137d738659e87ca",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "928675efae5f5dbad970aedfb18d1e6ccf7c715ba17bbf72f4e15ec77543fa16",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "pr1981-r3-ru-copy-c80a86dd",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "pr2017-r2-ru-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json",
-					"receipt_sha256": "d74ca0115cad925d24d4e2b4dee317c83da88a8f3c4abfc57a5297cf6dfe0fb6",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-ru-copy-170e0100.json",
+					"receipt_sha256": "d8d6fc8963e2d37cfbf1da24ab5e04f5751a90e68be1159c8026ac6e61117775",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ru-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121532,36 +121608,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "88f17fcec78da4e367b2a82d11dc953d4b0f77d4406445c31137d738659e87ca",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "pr1981-r3-ru-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json",
+							"receipt_sha256": "d74ca0115cad925d24d4e2b4dee317c83da88a8f3c4abfc57a5297cf6dfe0fb6",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ru-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "8f5d0c59afb7be0e68f7f24341bb58039fc863f71da6054f0ff2e3e71238484c",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "87fc41936197fc8f2d06935c46dace29bd535a17c26249df48a9e5812398e4f5",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-ur-copy-c80a86dd",
+					"instance": "pr2017-r2-ur-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json",
-					"receipt_sha256": "f1fcf29fba9997a971a7eddbcbaa0e1f1417be2a7f3853913d2c9dc571129a37",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-ur-copy-170e0100.json",
+					"receipt_sha256": "13424a2ce5086f9fb5a73cdfd86ebb02f31d571e27ae965dcbdf0a25200a38b3",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ur-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121589,36 +121690,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "8f5d0c59afb7be0e68f7f24341bb58039fc863f71da6054f0ff2e3e71238484c",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-ur-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json",
+							"receipt_sha256": "f1fcf29fba9997a971a7eddbcbaa0e1f1417be2a7f3853913d2c9dc571129a37",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-ur-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "d3afcbd46697a6bdb1f83891e7836942342d0a5052702f8e360a65746b2a9410",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "cf82025e5dd4db1c5d402fdcce20047375d09c08ae0bfbfdecffd8f2bc95aed6",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-vi-copy-c80a86dd",
+					"instance": "pr2017-r2-vi-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json",
-					"receipt_sha256": "ed5bead21b09d599f3cb6b85d12211d4201636761e64faebdaecdddb30bd6954",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-vi-copy-170e0100.json",
+					"receipt_sha256": "7905304bbe6916bafca0edb8d4fda67b80f4354b04b54b71bfcd613de45a5414",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-vi-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121646,36 +121772,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "d3afcbd46697a6bdb1f83891e7836942342d0a5052702f8e360a65746b2a9410",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-vi-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json",
+							"receipt_sha256": "ed5bead21b09d599f3cb6b85d12211d4201636761e64faebdaecdddb30bd6954",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-vi-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
-			"target_sha256": "eafacaca15cf013b5134730792dc8bf34a9507230efd1188522ef16e85ac9591",
+			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+			"target_sha256": "5d3e5d31a31fc56cc0bfb17a6823b7e194e2af09428f06bc24312dc54be71d23",
 			"translator": {
-				"agent": "coder-fa67a4efec8b",
+				"agent": "coder-bd6780649ee8",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"date": "2026-11-20",
+				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
+					"date": "2026-11-20",
 					"result": "clean",
-					"instance": "pr1981-r3-zh-CN-copy-c80a86dd",
+					"instance": "pr2017-r2-zh-CN-copy-170e0100",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json",
-					"receipt_sha256": "7f0d360ffdb4fe0e291f6808da3be5842ec26bea3568890a77c4086d57218bbf",
-					"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
-					"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json"
+					"receipt": "i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json",
+					"receipt_sha256": "cca226e649bcc9677d9e5a7762e00576e2aaf748bef65af25009acaa8e691654",
+					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json"
 				}
 			],
 			"status": "audited",
@@ -121700,6 +121851,30 @@
 							"receipt_sha256": "01e89bd0435b41447070a4918eb575c5eebe029d229ea2a36e45adae02b038e5",
 							"scope": "PR #1981 copy-review round 2 at fc873f42a2: whole new namespace, 28 changed/new keys read in full, rest byte-identical to round-1 audited bytes",
 							"note": "PR #1981 copy audit r2, copy-reviewer session 448ec44e4dca; receipt i18n/receipts/pr1981-r2-zh-CN-copy-448ec44e.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+					"target_sha256": "eafacaca15cf013b5134730792dc8bf34a9507230efd1188522ef16e85ac9591",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean",
+							"instance": "pr1981-r3-zh-CN-copy-c80a86dd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json",
+							"receipt_sha256": "7f0d360ffdb4fe0e291f6808da3be5842ec26bea3568890a77c4086d57218bbf",
+							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
+							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json"
 						}
 					],
 					"status": "audited"
