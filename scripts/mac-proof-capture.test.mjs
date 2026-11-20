@@ -16,7 +16,7 @@ import {
 import { createServer } from "node:net";
 import os from "node:os";
 import { join } from "node:path";
-import { after, test } from "node:test";
+import { after, describe, test } from "node:test";
 import vm from "node:vm";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
@@ -101,8 +101,9 @@ import {
  *   - the spawn plan: allowlisted env, no inherited CMUX_/LOP_/LOCAL_OPERATOR_,
  *     switches after the absolute binary with no `--`, the token redacted;
  *   - END TO END against a FAKE app tree (a node script that speaks the
- *     `[window-mode]`/`[dev-driver]`/`[dev-driver-script]` protocol, IGNORES
- *     SIGTERM and RE-PARENTS a child carrying the profile) and a FAKE `lop serve`:
+ *     `[window-mode]`/`[dev-driver]`/`[dev-driver-script]` protocol, RE-PARENTS a
+ *     child carrying the profile and, when a case asks, IGNORES SIGTERM) and a
+ *     FAKE `lop serve`:
  *     frames named `<scene>-<theme>.png`, the receipt, the token never on stdout,
  *     argv or in the receipt, and a reap that leaves no process behind.
  *
@@ -153,6 +154,18 @@ const PNG_1X1 = Buffer.from(
  * A fake `.app` bundle whose executable is a node script. `behaviour` lands in
  * a JSON file beside it, because the harness passes the app an ALLOWLISTED env
  * and nothing a test exported could reach it - which is itself under test.
+ *
+ * `behaviour.ignoreTerm` makes the app a WEDGED one that ignores SIGTERM, so the
+ * reap must escalate to SIGKILL. It is opt-in, not the default, because that
+ * escalation costs the harness's full SIGTERM grace (`stopAppTree`: 5 s) on
+ * EVERY run that uses it: measured on this file, the default-wedged fake made
+ * the suite 197 s and pushed `Desktop Tests shard (2/5)` past its bound (Full
+ * Test Suite run 44748413720). The cases whose SUBJECT is the escalation keep
+ * it - the isolated end-to-end (asserts `reap.app.escalated`) and the
+ * --timeout/SIGTERM/SIGHUP interruption case (a hung renderer is the shape
+ * those paths clean up after) - and every other case's reap assertions
+ * (`clean`, the re-parented helper found by its profile, nothing left running)
+ * do not depend on how the leader died.
  */
 function fakeApp(name, behaviour = {}) {
 	const app = join(TREE, `${name}.app`);
@@ -191,7 +204,7 @@ fs.writeFileSync(path.join(rig, "fake-app-seen.json"), JSON.stringify({
   home: process.env.HOME,
   cwd: process.cwd(),
 }));
-process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
+if (behaviour.ignoreTerm) process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
 const log = (line) => process.stdout.write(line + "\\n");
 log("[window-mode] window mode " + mode + ": 1380x900, never shown, page throttling off");
 log("[dev-driver] ARMED; frames are written to " + out);
@@ -252,8 +265,16 @@ setInterval(() => {}, 1000);
  * node:sqlite. `dropSeed` makes both answer as if nothing were seeded (an empty
  * list, a 404) - the drift the harness must BLOCK on.
  */
+/**
+ * Written ONCE per variant: the script is deterministic, and the end-to-end
+ * cases run concurrently (see `it`), so rewriting it per call would
+ * truncate a file another run's harness may be exec'ing at that moment.
+ */
+const fakeLops = new Map();
 function fakeLop({ dropSeed = false } = {}) {
 	const lop = join(TREE, dropSeed ? "fake-lop-dropseed" : "fake-lop");
+	if (fakeLops.has(lop)) return lop;
+	fakeLops.set(lop, true);
 	writeFileSync(
 		lop,
 		`#!${process.execPath}
@@ -355,6 +376,59 @@ function runHarness(args, env = {}) {
 		env: harnessEnv(env),
 	});
 	return { ...run, all: `${run.stdout}\n${run.stderr}` };
+}
+
+/**
+ * `runHarness` without blocking the event loop, for the concurrent end-to-end
+ * cases: a `spawnSync` in one of them would stall every other case's exit
+ * events and timers (and inflate the elapsed-time bounds they assert). Same
+ * env, same 120 s bound and SIGTERM as `spawnSync`'s `timeout`, same result
+ * shape (`status`, `signal`, `stdout`, `stderr`, `all`).
+ */
+function runHarnessAsync(args, env = {}) {
+	return new Promise((resolve) => {
+		const child = spawn(process.execPath, [HARNESS, ...args], {
+			env: harnessEnv(env),
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		let stdout = "";
+		let stderr = "";
+		child.stdout.setEncoding("utf8").on("data", (c) => {
+			stdout += c;
+		});
+		child.stderr.setEncoding("utf8").on("data", (c) => {
+			stderr += c;
+		});
+		const bound = setTimeout(() => child.kill("SIGTERM"), 120_000);
+		// `close`, not `exit`: both pipes drained, so `all` is the whole output.
+		child.on("close", (status, signal) => {
+			clearTimeout(bound);
+			resolve({ status, signal, stdout, stderr, all: `${stdout}\n${stderr}` });
+		});
+	});
+}
+
+/**
+ * `it(name, [options], fn)`: an END-TO-END case (a real harness run against the
+ * fake app and fake lop). Same signature as node:test's `test` - whose own `it`
+ * alias is deliberately NOT imported here - but the case is DEFERRED and run, at
+ * the end of the file, inside ONE bounded concurrent group. The name is `it` so
+ * the formatter lays these calls out as test calls, exactly like the `test`
+ * cases around them. Why the group: each run is wall-clock bound, not CPU bound - the
+ * shared teardown's fixed settles (`stopAppTree`: 500 ms twice), the harness's
+ * real windows (the 20 s startup window, the 10 s seed read-back, a 6 s
+ * --timeout) - so run one after another they summed to ~116 s of a 121 s file
+ * and pushed `Desktop Tests shard (2/5)` past its bound (Full Test Suite run
+ * 44748413720). Nothing in a case is shortened: each keeps its own rig root,
+ * out dir and fake app, every sweep is scoped to its own rig / config root
+ * (`rigMatcher`), and fixtures are written once (`fakeLop`). The bound keeps
+ * the extra process load modest (each run is ~5 node processes) on a CI
+ * runner that is already running other test files beside this one.
+ */
+const E2E_CONCURRENCY = 4;
+const e2eCases = [];
+function it(...args) {
+	e2eCases.push(args);
 }
 
 /** Every fixture pid a run left a record of: app, re-parented helper, daemon, standby. */
@@ -1436,14 +1510,14 @@ test("--dry-run prints the plan with the token redacted and spawns nothing", () 
 	);
 });
 
-test("stale frame: two scenes photographed to the same bytes fail the run (exit 1), naming both", () => {
+it("stale frame: two scenes photographed to the same bytes fail the run (exit 1), naming both", async () => {
 	const app = fakeApp("SameFrame", { sameFrame: true });
 	const rigRoot = join(TREE, "same-rig");
 	const out = join(TREE, "same-out");
 	const seed = join(TREE, "same-seed");
 	mkdirSync(join(seed, "asks"), { recursive: true });
 	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -1476,14 +1550,14 @@ test("stale frame: two scenes photographed to the same bytes fail the run (exit 
 	assert.equal(receipt.exit, 1);
 });
 
-test("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", () => {
-	const app = fakeApp("Isolated");
+it("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", async () => {
+	const app = fakeApp("Isolated", { ignoreTerm: true });
 	const rigRoot = join(TREE, "iso-rig");
 	const out = join(TREE, "iso-out");
 	const seed = join(TREE, "iso-seed");
 	mkdirSync(join(seed, "asks"), { recursive: true });
 	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -1608,10 +1682,10 @@ test("isolated: our own lop serve + the fake app -> every frame, a receipt, no t
 	assert.equal(alive(served.pid), false);
 });
 
-test("an app that announces a normal window is aborted and reaped", () => {
+it("an app that announces a normal window is aborted and reaped", async () => {
 	const app = fakeApp("Normal", { reportMode: "normal" });
 	const rigRoot = join(TREE, "normal-rig");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -1637,7 +1711,7 @@ test("an app that announces a normal window is aborted and reaped", () => {
 	);
 });
 
-test("an app whose window takes focus, or whose step fails, is aborted before any frame", () => {
+it("an app whose window takes focus, or whose step fails, is aborted before any frame", async () => {
 	for (const [name, behaviour, why] of [
 		["Focused", { focused: true }, /took focus/],
 		["StepFails", { failVerb: "setTheme" }, /setTheme\) failed/],
@@ -1646,7 +1720,7 @@ test("an app whose window takes focus, or whose step fails, is aborted before an
 		const app = fakeApp(name, behaviour);
 		const rigRoot = join(TREE, `${name}-rig`);
 		const out = join(TREE, `${name}-out`);
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -1676,7 +1750,7 @@ test("an app whose window takes focus, or whose step fails, is aborted before an
 	}
 });
 
-test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a claimed one attaches", async () => {
+it("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a claimed one attaches", async () => {
 	// A fake daemon on a free port, with a serve record beside it.
 	const lop = fakeLop();
 	const cfg = join(TREE, "attach-daemon-cfg");
@@ -1709,7 +1783,7 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		record({ desktop: true, claim_key: "" });
 		const app = fakeApp("Attach");
 		const blockedRig = join(TREE, "attach-blocked-rig");
-		const blocked = runHarness([
+		const blocked = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -1742,7 +1816,7 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		record({ desktop: true, claim_key: "synthetic-claim-key-0123456789" });
 		const claimedRig = join(TREE, "attach-claimed-rig");
 		const claimedOut = join(TREE, "attach-claimed-out");
-		const claimed = runHarness([
+		const claimed = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -2213,10 +2287,10 @@ test("a rig root that is a dangling symlink into an operator root refuses with e
 	assert.equal(existsSync(target), false, "the operator dir was not created");
 });
 
-test("a rig root and --out containing spaces capture normally (review r1 R1-2)", () => {
+it("a rig root and --out containing spaces capture normally (review r1 R1-2)", async () => {
 	const rigRoot = join(TREE, "proof runs", "rig root");
 	const out = join(TREE, "proof runs", "out dir");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("Spaced"),
 		"--out",
@@ -2339,7 +2413,7 @@ function rigDevice(name, configYml) {
 	return { base, config: join(base, "config"), home: join(base, "home") };
 }
 
-test("config-root: relay on network.port, then serve, then the remote row; frames; every lop process reaped", () => {
+it("config-root: relay on network.port, then serve, then the remote row; frames; every lop process reaped", async () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
 	const device = rigDevice(
 		"cr-ok",
@@ -2352,7 +2426,7 @@ test("config-root: relay on network.port, then serve, then the remote row; frame
 	const app = fakeApp("ConfigRoot");
 	const rigRoot = join(TREE, "cr-ok-rig");
 	const out = join(TREE, "cr-ok-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -2422,7 +2496,7 @@ test("config-root: relay on network.port, then serve, then the remote row; frame
 	assert.equal(receipt.reap.lop.clean, true, JSON.stringify(receipt.reap.lop));
 });
 
-test("config-root: a session that never shows as remote fails the run before the app launches", () => {
+it("config-root: a session that never shows as remote fails the run before the app launches", async () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
 	const device = rigDevice(
 		"cr-miss",
@@ -2433,7 +2507,7 @@ test("config-root: a session that never shows as remote fails the run before the
 		JSON.stringify([{ id: "ce618964c88e", locality: "local" }]),
 	);
 	const rigRoot = join(TREE, "cr-miss-rig");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("Miss"),
 		"--out",
@@ -2560,14 +2634,14 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 
 /* ------------------------------------------- interruption: SIGTERM and --timeout */
 
-test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, the daemon and its standby", async () => {
+it("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, the daemon and its standby", async () => {
 	const lop = fakeLop();
-	const app = fakeApp("Hang", { hang: true });
+	const app = fakeApp("Hang", { hang: true, ignoreTerm: true });
 	const common = ["--app", app, "--capture", "capturepage", "--lop", lop];
 
 	// 1. The timeout path: a wedged app, --timeout 6 (whole-run: it includes the daemon start, so the app is up well before it).
 	const timeoutRoot = join(TREE, "hang-timeout-rig");
-	const timedOut = runHarness([
+	const timedOut = await runHarnessAsync([
 		...common,
 		"--out",
 		join(TREE, "hang-timeout-out"),
@@ -2675,7 +2749,7 @@ test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, t
 	}
 });
 
-test("--timeout bounds the WHOLE run from harness start, not just the app phase", () => {
+it("--timeout bounds the WHOLE run from harness start, not just the app phase", async () => {
 	// A config-root run whose remote row never appears: --peer-wait 30 would
 	// wait 30 s, but the whole-run --timeout 3 stops it first, before any app
 	// launch (review r1 R1-6, QA r1 Q4-3; before, `--timeout 5` measured 16 s).
@@ -2687,7 +2761,7 @@ test("--timeout bounds the WHOLE run from harness start, not just the app phase"
 	const rigRoot = join(TREE, "cr-wholerun-rig");
 	const out = join(TREE, "cr-wholerun-out");
 	const began = Date.now();
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("WholeRun"),
 		"--out",
@@ -2854,12 +2928,12 @@ test("startup window: a build with no [dev-driver-script] ARMED is named as pred
 	);
 });
 
-test(
+it(
 	"--app-zip end to end: extracted into the rig, receipt names the zip, removed after a clean reap",
 	{
 		skip: HAVE_ZIP_TOOLS ? false : "zip/unzip not on PATH",
 	},
-	() => {
+	async () => {
 		const app = fakeApp("Zipped");
 		const zip = zipTree(
 			TREE,
@@ -2869,7 +2943,7 @@ test(
 		const zipSha = createHash("sha256").update(readFileSync(zip)).digest("hex");
 		const rigRoot = join(TREE, "zip-rig");
 		const out = join(TREE, "zip-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--out",
@@ -2918,7 +2992,7 @@ test(
 		// --keep-rig keeps the extracted bundle; a zip of TWO bundles is refused
 		// (exit 2) after extraction and before any app is launched.
 		const keptRoot = join(TREE, "zip-keep-rig");
-		const kept = runHarness([
+		const kept = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--keep-rig",
@@ -2949,7 +3023,7 @@ test(
 			join(TREE, "two-apps.zip"),
 		);
 		const twoRoot = join(TREE, "zip-two-rig");
-		const two = runHarness([
+		const two = await runHarnessAsync([
 			"--app-zip",
 			twoZip,
 			"--out",
@@ -2977,11 +3051,11 @@ test(
 	},
 );
 
-test("a build that never arms the step runner fails inside the startup window, named as predating S1", () => {
+it("a build that never arms the step runner fails inside the startup window, named as predating S1", async () => {
 	const app = fakeApp("PreS1", { noScript: true });
 	const rigRoot = join(TREE, "pre-s1-rig");
 	const started = Date.now();
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -3189,10 +3263,10 @@ test("the asks and notification-detail scenes: exact steps, required waits on th
 	);
 });
 
-test("--seed ask-command end to end: generated into the rig, read back from the daemon, then the asks frame", () => {
+it("--seed ask-command end to end: generated into the rig, read back from the daemon, then the asks frame", async () => {
 	const rigRoot = join(TREE, "seed-ask-rig");
 	const out = join(TREE, "seed-ask-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("SeedAsk"),
 		"--out",
@@ -3251,7 +3325,7 @@ test("--seed ask-command end to end: generated into the rig, read back from the 
 		assert.equal(alive(pid), false, `pid ${pid} survived`);
 });
 
-test(
+it(
 	"--seed notification-details end to end: the detail is read back through the daemon, then the detail frame",
 	{
 		skip:
@@ -3260,10 +3334,10 @@ test(
 				? false
 				: "node:sqlite needs Node >= 22.13",
 	},
-	() => {
+	async () => {
 		const rigRoot = join(TREE, "seed-detail-rig");
 		const out = join(TREE, "seed-detail-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app",
 			fakeApp("SeedDetail"),
 			"--out",
@@ -3311,10 +3385,10 @@ test(
 	},
 );
 
-test("--seed whose rows the daemon does not read back is BLOCKED (exit 3) before any app launches", () => {
+it("--seed whose rows the daemon does not read back is BLOCKED (exit 3) before any app launches", async () => {
 	const rigRoot = join(TREE, "seed-blocked-rig");
 	const out = join(TREE, "seed-blocked-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("SeedBlocked"),
 		"--out",
@@ -3699,7 +3773,7 @@ test(
 	},
 );
 
-test(
+it(
 	"R3-4: a failed removal of the extracted bundle still writes the receipt and the closing line",
 	{
 		skip:
@@ -3707,7 +3781,7 @@ test(
 				? false
 				: "needs zip/unzip and a non-root user",
 	},
-	() => {
+	async () => {
 		fakeApp("Sticky");
 		// A read-only directory holding a file: rmSync cannot unlink inside it.
 		const locked = join(TREE, "Sticky.app", "Contents", "Resources", "locked");
@@ -3718,7 +3792,7 @@ test(
 		chmodSync(locked, 0o755);
 		const rigRoot = join(TREE, "sticky-rig");
 		const out = join(TREE, "sticky-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--out",
@@ -4114,5 +4188,15 @@ test(
 			appZipListingProblem(clean, { timeoutMs: 30_000, capBytes: 1 }) ?? "",
 			/over the 1 B cap/,
 		);
+	},
+);
+
+/* ---------------------------------- end to end, as one bounded concurrent group */
+
+describe(
+	"end to end against the fake app and fake lop",
+	{ concurrency: E2E_CONCURRENCY },
+	() => {
+		for (const args of e2eCases) test(...args);
 	},
 );
