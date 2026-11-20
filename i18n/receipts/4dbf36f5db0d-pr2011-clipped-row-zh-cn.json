@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #2011",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.clipped_row",
+  "pr": 2011,
+  "repo": "damianvtran/local-operator-ui",
+  "date": "2026-11-20",
+  "head": "55c932ef00fd",
+  "instance": "4dbf36f5db0d-pr2011-clipped-row-zh-cn",
+  "auditor": {
+    "agent": "reviewer",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "4dbf36f5db0d-pr2011-clipped-row-zh-cn",
+    "independence": "lopdev reviewer task subagent, session 4dbf36f5db0d, anthropic/claude-opus-5-5, no fallback observed; distinct agent from the translator (the PR's implementing coder, whose model PR #2011 does not state - lopdev coder rows elsewhere record anthropic/claude-opus-5-5, so auditor and translator are likely the SAME model family). Independence is by agent/session, per ledger-check."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "files": {
+    "en": "src/i18n/catalogues/en/ui.chat.clipped_row.json",
+    "context": "src/i18n/catalogues/en/ui.chat.clipped_row.context.json",
+    "target": "src/i18n/catalogues/zh-CN/ui.chat.clipped_row.json"
+  },
+  "sha256": {
+    "zh-CN": "d186fb473d7eac0cfb92152275acec5287aeb887c065f64bda4cfa5aeff99bd3",
+    "en": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+    "en_context": "db839e99f8f4427d8acf40826a1ba208f49f71ad192976ef5b8f382fe324e867"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (13 keys); placeholder names per key equal English ({shown},{total},{received}); no ICU plural/select in this namespace; leading/trailing whitespace parity; NFC; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Every key read in full against English and the en context sidecar (roles/tones; no length/maxCells budgets set): cannot_expand, final, marker, omitted, open, viewer.cancel, viewer.close, viewer.error, viewer.loading, viewer.progress_label, viewer.retry, viewer.size, viewer.title. Judged with core i18n/glossary.md, the locale style guide (local-operator i18n/style-guides) and catalogue precedent in this repo, especially the transcript neighbours ui.chat.canonical.tool_row.detail_section.output and tool_row.diff.truncated. No MT used."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "输出/已截断 match detail_section.output and diff.truncated (including the spaced ' — ' that neighbour uses); 展开 = expand precedent; 预览; 取消 52/53, 关闭 15/15, 重试 27/31 (guide prefers 重试); full-width ，。（） in prose."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.clipped_row.marker",
+      "current": "显示 {shown}，共 {total}",
+      "replacement": "显示{shown}，共{total}",
+      "status": "deferred - not fixed by the auditor (docs/I18N.md gives the auditor no catalogue-edit role); MINOR does not gate",
+      "note": "zh-CN style guide (Punctuation & typography): no space between Chinese text and Latin/digit runs; catalogue precedent 1145 unspaced vs 88 spaced placeholder joins (e.g. '第{step}个，共{total}个')."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.clipped_row.viewer.loading",
+      "current": "{received}，共 {total}",
+      "replacement": "{received}，共{total}",
+      "status": "deferred - not fixed by the auditor (docs/I18N.md gives the auditor no catalogue-edit role); MINOR does not gate",
+      "note": "same rule as marker"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.clipped_row.viewer.size",
+      "current": "共 {total}",
+      "replacement": "共{total}",
+      "status": "deferred - not fixed by the auditor (docs/I18N.md gives the auditor no catalogue-edit role); MINOR does not gate",
+      "note": "same rule as marker"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 0
+  },
+  "notes": "Audit notes, not an execution log. Auditor did not edit catalogues; MINOR findings deferred in the PR thread."
+}

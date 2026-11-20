@@ -122111,6 +122111,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "c50039fcb1b8a3d46a1d9aa1f4f792740e6fd360b55062a4dbbf5d9905bdc797",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean-with-findings",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-fr.json",
+					"receipt_sha256": "ff51a04806816b80668bdf42bd631dbf1f5acdb169f56544d5500a21c68c8e95",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-fr.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "31ad52c717233e16343785b3dfda38daf32e49cf6859dbf16cce5e0492596220",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-es.json",
+					"receipt_sha256": "1e6f9683255a6f478d4e938fee35342bfc029cc36445f831ec82dd87c896333e",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-es.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "d186fb473d7eac0cfb92152275acec5287aeb887c065f64bda4cfa5aeff99bd3",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean-with-findings",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-zh-cn.json",
+					"receipt_sha256": "32f0cbf2cbfbdef9d1ad4fe5e0585e5a43984cb307ecd2aec4359f1afb01423f",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-zh-cn.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "2ed8b0c8af71ea56b5092132e4aea5e65ff29c29b5d3b849e6d1de46c143b00a",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-ru.json",
+					"receipt_sha256": "1406e7584f19861359c4c7efdbcbd46e2b5afa01e8773caf652a00d4daf926ef",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-ru.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "419a7a36c8434ea1e15dc421f76eacf32539ca2c94e418fc952ae6c0dedbae3e",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-vi.json",
+					"receipt_sha256": "76eb1620a09779a77e443850038d5ab360ad1b2d7549dd54a8f489e233e02b95",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-vi.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "9b181598b49cf8f8d39acfc8f3365779504b4478a5ce07928e4947207d506176",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-ur.json",
+					"receipt_sha256": "c463cbf8f12e7e1eaac54a81bbf01af880e4b5ebaa3119a25e095f6d6ca101de",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-ur.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.clipped_row",
+			"source_sha256": "3168ebfe49c7591da2e7a8b44e9ac51a43b84522f617ab7797e57739a76e87ca",
+			"target_sha256": "1e23d706959ef2d31359ddf5de0ace635dbef73abd43c5cd5c7fb8f8b1248c72",
+			"translator": {
+				"agent": "coder",
+				"model": "undisclosed (PR #2011 implementing coder; body names no model)",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean-with-findings",
+					"instance": "4dbf36f5db0d-pr2011-clipped-row-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-hi.json",
+					"receipt_sha256": "13cb7bf783515d752c146013f85e18e57f081ff347c323ab814824475de62b3b",
+					"scope": "PR #2011 r1: new ui.chat.clipped_row, all 13 keys",
+					"note": "PR #2011 r1 independent audit (session 4dbf36f5db0d); translator = PR coder; receipt i18n/receipts/4dbf36f5db0d-pr2011-clipped-row-hi.json; minors/nits deferred in PR thread"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
