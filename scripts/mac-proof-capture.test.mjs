@@ -17,15 +17,21 @@ import { createServer } from "node:net";
 import os from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
+import vm from "node:vm";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	APP_ZIP_UNPACKED_CAP_BYTES,
+	CAPTUREPAGE_METHOD,
 	CODESIGN_CAP_MS,
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
 	FORBIDDEN_DAEMON_PATH,
+	RUNNER_MAX_STEPS,
 	Refusal,
+	SCENES,
+	SCENE_READY,
 	SCREENCAPTURE_METHOD,
+	SCREEN_RECORDING_PREFLIGHT_JXA,
 	STARTUP_WINDOW_MS,
 	UNKNOWN_START,
 	appNames,
@@ -45,6 +51,8 @@ import {
 	credentialMaterial,
 	daemonRequest,
 	daemonRequestProblem,
+	detailReadSelector,
+	duplicateFrameProblem,
 	envGovernedBlockedMessage,
 	extractedContainmentProblem,
 	extractedSymlinkProblem,
@@ -68,9 +76,13 @@ import {
 	rememberIdentities,
 	resolveAppBundle,
 	rigMatcher,
+	screenRecordingGrantHint,
 	screenRecordingVerdict,
 	selectServeRecord,
 	startupProblem,
+	stepCountProblem,
+	tccHostFromPsTable,
+	updateDetailSceneSteps,
 	validateOptions,
 	verifySeedRows,
 	windowModeProblem,
@@ -204,7 +216,10 @@ setTimeout(() => {
     if (behaviour.failVerb === step.verb) { log("[dev-driver-script] step=" + n + " verb=" + step.verb + " error: fake failure"); log("[dev-driver-script] FAILED step=" + n); return; }
     if (step.verb === "shutter") {
       const file = path.join(out, step.payload.label + ".png");
-      fs.writeFileSync(file, Buffer.from("${PNG_1X1.toString("hex")}", "hex"));
+      // Distinct bytes per label (trailing after IEND; pngSize reads only IHDR),
+      // as real scenes differ; behaviour.sameFrame reproduces #1907's stale shot.
+      const png = Buffer.from("${PNG_1X1.toString("hex")}", "hex");
+      fs.writeFileSync(file, behaviour.sameFrame ? png : Buffer.concat([png, Buffer.from(step.payload.label)]));
       log("[dev-driver-script] SHUTTER label=" + step.payload.label + " capture=capturepage path=" + file + " width=1 height=1 visible=false focused=false");
       log("[dev-driver-script] step=" + n + " verb=shutter ok {}");
       return;
@@ -822,6 +837,158 @@ test("one launch covers every scene x theme, one shutter each, named <scene>-<th
 		capture: "capturepage",
 	});
 	assert.ok(all.steps.length <= 64, `${all.steps.length} steps`);
+	assert.equal(stepCountProblem(all.steps), null);
+	const every = buildSteps({
+		scenes: [...SCENES],
+		themes: ["dark", "light"],
+		session: "fa1907000001",
+		notificationId: "n_macproofdetailaa",
+		capture: "capturepage",
+	});
+	assert.ok(every.steps.length > RUNNER_MAX_STEPS);
+	assert.match(
+		stepCountProblem(every.steps),
+		/caps it at 64; split the --scene list/,
+	);
+});
+
+test("route-only scenes wait for a positive selector of their settled state before the shutter (#1907 stale frame)", () => {
+	const { steps } = buildSteps({
+		scenes: ["notification-detail", "notifications", "library"],
+		themes: ["light"],
+		session: null,
+		notificationId: "n_macproofdetailaa",
+		capture: "capturepage",
+	});
+	for (const scene of ["notifications", "library"]) {
+		const shutter = steps.findIndex(
+			(s) => s.verb === "shutter" && s.payload.label === `${scene}-light`,
+		);
+		const before = steps[shutter - 1];
+		assert.equal(before.verb, "waitFor", scene);
+		assert.equal(before.payload.selector, SCENE_READY[scene]);
+		assert.notEqual(before.optional, true);
+		assert.deepEqual(steps[shutter - 2], {
+			verb: "navigate",
+			payload: `/${scene}`,
+		});
+	}
+	// Only markup that exists in the target state, never the previous detail.
+	assert.match(
+		SCENE_READY.notifications,
+		/^\[data-notifications-page\]:not\(:has\(\[data-notification-detail\], \[data-notification-open\]\)\)/,
+	);
+	assert.match(
+		SCENE_READY.notifications,
+		/\[data-notifications-list\], \[data-notifications-empty\]/,
+	);
+	assert.equal(
+		SCENE_READY.library,
+		"[data-library-page] [data-library-header]",
+	);
+	// The detail scene waits for the read-on-open to settle (design D7).
+	const detailShutter = steps.findIndex(
+		(s) => s.payload?.label === "notification-detail-light",
+	);
+	assert.equal(
+		steps[detailShutter - 1].payload.selector,
+		detailReadSelector("n_macproofdetailaa"),
+	);
+	assert.equal(
+		detailReadSelector("n_macproofdetailaa"),
+		'[data-notifications-page]:not(:has([data-notification-row="n_macproofdetailaa"][data-notification-unread])) [data-notification-detail="n_macproofdetailaa"] [data-notification-toggle-read] svg.lucide-circle',
+	);
+	// Every verb is one the v0.59.2 runner ships.
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+});
+
+test("update-detail: the drawer's Updates tab -> View details -> in-drawer detail, guarded presses, shipped verbs only", () => {
+	const id = "n_macproofdetailaa";
+	const steps = updateDetailSceneSteps(id);
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+	// Toggles are pressed only from the state they would change, and optionally.
+	const optional = steps.filter((s) => s.optional);
+	assert.deepEqual(
+		optional.map((s) => s.payload.selector),
+		[
+			'[data-panel-rail-item="ask"][aria-pressed="false"]',
+			'[data-drawer-tab="updates"][aria-selected="false"]',
+		],
+	);
+	// The required tail: tab selected, the row's details pressed, the drawer detail
+	// painted and its read settled.
+	const required = steps
+		.filter((s) => !s.optional)
+		.map((s) => s.payload?.selector ?? s.payload);
+	assert.deepEqual(required.slice(-4), [
+		'[data-drawer-tab="updates"][aria-selected="true"]',
+		`[data-drawer-update="${id}"] [data-row-action="details"]`,
+		`[data-drawer-detail="${id}"] [data-notification-detail-title]`,
+		`[data-drawer-detail="${id}"] [data-notification-toggle-read] svg.lucide-circle`,
+	]);
+	assert.equal(steps.at(-3).verb, "press");
+	const { steps: built } = buildSteps({
+		scenes: ["update-detail"],
+		themes: ["dark"],
+		session: "fa1907000001",
+		notificationId: id,
+		capture: "capturepage",
+	});
+	assert.equal(built.at(-1).payload.label, "update-detail-dark");
+	assert.equal(built.at(-2).payload.selector, steps.at(-1).payload.selector);
+	// Prerequisites: a conversation and an item.
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/o",
+					"--scene",
+					"update-detail",
+					"--notification-id",
+					id,
+				]),
+			),
+		/update-detail scenes need --session/,
+	);
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/o",
+					"--scene",
+					"update-detail",
+					"--session",
+					"fa1907000001",
+				]),
+			),
+		/update-detail scenes need --notification-id/,
+	);
 });
 
 test("the supervisor aborts on normal, focus, early shutters and the wrong conversation", () => {
@@ -1000,11 +1167,175 @@ test("Screen Recording: only an explicit boolean from the preflight is an answer
 		source.indexOf("export function screenRecordingVerdict"),
 	);
 	assert.doesNotMatch(probe, /kCGWindowName|CGWindowListCopyWindowInfo/);
-	assert.doesNotMatch(probe, /CGRequestScreenCaptureAccess\(/);
+	assert.doesNotMatch(probe, /CGRequest/);
 	assert.match(
 		source,
 		/verdict === "unknown"[\s\S]{0,800}return EXIT\.BLOCKED/,
 	);
+});
+
+/**
+ * Run the JXA preflight source in a vm with a fake `ObjC`/`$`, the way
+ * osascript would: its completion value is what `jxa()` prints.
+ */
+function runPreflight({
+	bridged,
+	bindable = true,
+	answer = true,
+	callThrows = false,
+}) {
+	const calls = [];
+	const $ = {};
+	const fn = () => {
+		calls.push("call");
+		if (callThrows) throw new Error("bridge");
+		return answer;
+	};
+	if (bridged) $.CGPreflightScreenCaptureAccess = fn;
+	const ObjC = {
+		import: (name) => calls.push(`import:${name}`),
+		bindFunction: (name, signature) => {
+			calls.push(`bind:${name}:${JSON.stringify(signature)}`);
+			if (!bindable) throw new Error("no symbol");
+			$[name] = fn;
+		},
+	};
+	const out = vm.runInNewContext(SCREEN_RECORDING_PREFLIGHT_JXA, { ObjC, $ });
+	return { out, calls };
+}
+
+test("Screen Recording preflight JXA: bridged, then ObjC.bindFunction, never a request, only {granted}", () => {
+	assert.match(
+		SCREEN_RECORDING_PREFLIGHT_JXA,
+		/ObjC\.bindFunction\('CGPreflightScreenCaptureAccess', \['bool', \[\]\]\)/,
+	);
+	assert.doesNotMatch(SCREEN_RECORDING_PREFLIGHT_JXA, /CGRequest/);
+	assert.doesNotMatch(
+		SCREEN_RECORDING_PREFLIGHT_JXA,
+		/kCGWindowName|CGWindowList/,
+	);
+	// The one output is the last statement and carries one key.
+	assert.match(
+		SCREEN_RECORDING_PREFLIGHT_JXA.trim(),
+		/JSON\.stringify\(\{granted: granted\}\);$/,
+	);
+	assert.equal(
+		SCREEN_RECORDING_PREFLIGHT_JXA.match(/JSON\.stringify/g).length,
+		1,
+	);
+	// Older macOS: the bridged symbol answers; no binding is attempted.
+	let r = runPreflight({ bridged: true, answer: false });
+	assert.equal(r.out, '{"granted":false}');
+	assert.ok(!r.calls.some((c) => c.startsWith("bind:")));
+	// macOS 27 (79's measurement: bindFunction returned {"granted":true}).
+	r = runPreflight({ bridged: false, answer: true });
+	assert.equal(r.out, '{"granted":true}');
+	assert.ok(
+		r.calls.includes('bind:CGPreflightScreenCaptureAccess:["bool",[]]'),
+	);
+	assert.equal(screenRecordingVerdict(r.out), "granted");
+	// The C bool as 0/1 is still an answer.
+	assert.equal(
+		runPreflight({ bridged: false, answer: 0 }).out,
+		'{"granted":false}',
+	);
+	// Unknowns stay unknown -> BLOCKED.
+	for (const opts of [
+		{ bridged: false, bindable: false },
+		{ bridged: false, callThrows: true },
+		{ bridged: true, callThrows: true },
+		{ bridged: false, answer: null },
+		{ bridged: false, answer: "yes" },
+	]) {
+		const { out } = runPreflight(opts);
+		assert.equal(out, '{"granted":null}', JSON.stringify(opts));
+		assert.equal(screenRecordingVerdict(out), "unknown");
+	}
+	assert.ok(
+		!runPreflight({ bridged: false, bindable: false }).calls.includes("call"),
+	);
+});
+
+test("TCC host: nearest .app up the ppid chain, else the top non-launchd process (79's real chain)", () => {
+	// Measured by 79 on the Mac (Darwin 27.2): no .app ancestor, a renamed title.
+	const lopChain = [
+		"    1     0 /sbin/launchd",
+		"20192     1 Local Operator [session] id=79bddc26",
+		"48300 20192 /opt/homebrew/bin/bash",
+		"48400 48300 node",
+	].join("\n");
+	assert.deepEqual(tccHostFromPsTable(lopChain, 48400), {
+		host: "Local Operator [session] id=79bddc26",
+		kind: "process",
+		pid: 20192,
+	});
+	const terminal = [
+		"    1     0 /sbin/launchd",
+		"  500     1 /System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+		"  600   500 login",
+		"  700   600 -zsh",
+		"  800   700 node",
+	].join("\n");
+	assert.deepEqual(tccHostFromPsTable(terminal, 800), {
+		host: "Terminal.app",
+		kind: "app",
+		pid: 500,
+	});
+	// A nested helper bundle names its outer app.
+	assert.equal(
+		tccHostFromPsTable(
+			"1 0 /sbin/launchd\n10 1 /Applications/Local Operator.app/Contents/Frameworks/Local Operator Helper.app/Contents/MacOS/Local Operator Helper\n11 10 node\n",
+			11,
+		).host,
+		"Local Operator.app",
+	);
+	// Nearest .app wins over an outer one; a cycle or a missing pid ends the walk.
+	assert.equal(
+		tccHostFromPsTable(
+			"1 0 launchd\n2 1 /Applications/iTerm.app/Contents/MacOS/iTerm2\n3 2 /Applications/cmux.app/Contents/MacOS/cmux\n4 3 node\n",
+			4,
+		).host,
+		"cmux.app",
+	);
+	assert.equal(tccHostFromPsTable("5 6 a\n6 5 b\n", 5).host, "b");
+	assert.equal(tccHostFromPsTable("", 5), null);
+	assert.match(
+		screenRecordingGrantHint({ host: "Terminal.app", kind: "app", pid: 500 }),
+		/^grant Screen & System Audio Recording to Terminal\.app in System Settings > Privacy & Security/,
+	);
+	assert.match(
+		screenRecordingGrantHint(tccHostFromPsTable(lopChain, 48400)),
+		/to Local Operator \[session\] id=79bddc26 \(pid 20192, .*no \.app ancestor/,
+	);
+	assert.match(screenRecordingGrantHint(null), /could not be read/);
+	assert.doesNotMatch(
+		readFileSync(HARNESS, "utf8"),
+		/tccutil|CGRequestScreenCaptureAccess\(/,
+	);
+});
+
+test("stale frames: two scenes with one sha256 fail; one scene's themes do not (run #1907 receipt)", () => {
+	// The real #1907 receipt's frames (sha256 abbreviated past the first 8 is fine).
+	const frames = [
+		{ label: "notification-detail-dark", theme: "dark", sha256: "5bdf872c" },
+		{ label: "notifications-dark", theme: "dark", sha256: "bc2ba447" },
+		{ label: "notification-detail-light", theme: "light", sha256: "cbbbcdc5" },
+		{ label: "notifications-light", theme: "light", sha256: "cbbbcdc5" },
+	];
+	assert.match(
+		duplicateFrameProblem(frames),
+		/notification-detail-light and notifications-light are byte-identical \(sha256 cbbbcdc5\)/,
+	);
+	assert.equal(duplicateFrameProblem(frames.slice(0, 3)), null);
+	assert.equal(
+		duplicateFrameProblem([
+			{ label: "asks-dark", theme: "dark", sha256: "aa" },
+			{ label: "asks-light", theme: "light", sha256: "aa" },
+		]),
+		null,
+		"the same scene in two themes is not a stale route",
+	);
+	assert.equal(duplicateFrameProblem([]), null);
 });
 
 test("a screencapture frame must measure the window's bounds at one backing scale", () => {
@@ -1105,6 +1436,46 @@ test("--dry-run prints the plan with the token redacted and spawns nothing", () 
 	);
 });
 
+test("stale frame: two scenes photographed to the same bytes fail the run (exit 1), naming both", () => {
+	const app = fakeApp("SameFrame", { sameFrame: true });
+	const rigRoot = join(TREE, "same-rig");
+	const out = join(TREE, "same-out");
+	const seed = join(TREE, "same-seed");
+	mkdirSync(join(seed, "asks"), { recursive: true });
+	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
+	const run = runHarness([
+		"--app",
+		app,
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--seed-config",
+		seed,
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"conversation",
+		"--scene",
+		"files",
+		"--theme",
+		"dark",
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/frames conversation-dark and files-dark are byte-identical \(sha256 [0-9a-f]{64}\)/,
+	);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.notEqual(receipt.verdict, "captured");
+	assert.equal(receipt.exit, 1);
+});
+
 test("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", () => {
 	const app = fakeApp("Isolated");
 	const rigRoot = join(TREE, "iso-rig");
@@ -1151,9 +1522,7 @@ test("isolated: our own lop serve + the fake app -> every frame, a receipt, no t
 	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
 	assert.equal(receipt.verdict, "captured");
 	assert.equal(receipt.frames.length, 4);
-	assert.ok(
-		receipt.frames.every((f) => f.method === "capturePage: no vibrancy claim"),
-	);
+	assert.ok(receipt.frames.every((f) => f.method === CAPTUREPAGE_METHOD));
 	assert.equal(receipt.reap.app.clean, true, JSON.stringify(receipt.reap));
 	assert.equal(
 		receipt.reap.app.escalated,
@@ -1771,7 +2140,10 @@ test("config-root: a port someone else already listens on is refused before the 
 	const squatter = createServer();
 	await new Promise((r) => squatter.listen(0, "127.0.0.1", r));
 	const { port } = squatter.address();
-	const device = rigDevice("cr-busyport", `network:\n  port: ${port}\n`);
+	const device = rigDevice(
+		"cr-busyport",
+		`values:\n  network:\n    port: ${port}\n`,
+	);
 	const rigRoot = join(TREE, "cr-busyport-rig");
 	try {
 		const run = spawnSync(
@@ -1889,26 +2261,70 @@ test("lop is only ever run as `serve` or `network serve`", () => {
 		assert.ok(lopArgvProblem(bad), bad.join(" "));
 });
 
-test("network.port: read from block YAML; unset or 4097 refuses", () => {
-	assert.equal(relayPortFromConfig("network:\n  port: 4197\n"), 4197);
+test("network.port: only values.network.port, as lop writes and core reads; anything else refuses", () => {
+	// The layout `lop config edit network.port 14097` writes (core config.py
+	// reads parsed["values"]; settings_io.py path ("network", "port")).
+	const lopWritten = "values:\n  network:\n    port: 14097\n";
+	assert.equal(relayPortFromConfig(lopWritten), 14097);
+	assert.equal(relayPortProblem(relayPortFromConfig(lopWritten)), null);
 	assert.equal(
 		relayPortFromConfig(
-			"a: 1\nnetwork:\n  enabled: true\n  port: '4198' # rig\nb:\n  port: 9\n",
+			"# rig device\nversion: 3\nvalues:\n  ui:\n    port: 9\n  network:\n    enabled: true\n    # the rig's relay\n    port: '4198' # rig\n    peers:\n      port: 4000\n  other: 1\nmeta:\n  port: 7\n",
 		),
 		4198,
+		"comments, a quoted port, siblings and a deeper peers.port",
 	);
 	assert.equal(
-		relayPortFromConfig("network:\n  peers:\n    port: 4000\n"),
-		null,
-		"a nested port is not network.port",
+		relayPortFromConfig('values:\r\n    network:\r\n        port: "14099"\r\n'),
+		14099,
+		"four-space indent, CRLF, double quotes",
 	);
-	assert.equal(relayPortFromConfig("port: 4197\n"), null);
-	assert.equal(
-		relayPortFromConfig("network: {port: 4197}\n"),
-		null,
-		"flow style fails closed",
+	// Refusals: nested 4097 is a real port, and still the operator's.
+	assert.match(
+		relayPortProblem(
+			relayPortFromConfig("values:\n  network:\n    port: 4097\n"),
+		),
+		/4097/,
 	);
+	for (const [why, text] of [
+		["top-level only (core ignores it)", "network:\n  port: 14097\n"],
+		["values: with no network", "values:\n  ui:\n    theme: dark\n"],
+		["network with no port", "values:\n  network:\n    enabled: true\n"],
+		[
+			"port under another parent",
+			"values:\n  network:\n    peers:\n      port: 4000\n",
+		],
+		["port under values directly", "values:\n  port: 14097\n"],
+		["dotted key", "values:\n  network.port: 14097\n"],
+		["flow values", "values: {network: {port: 14097}}\n"],
+		["flow network", "values:\n  network: {port: 14097}\n"],
+		["anchor", "values:\n  network: &n\n    port: 14097\n"],
+		["alias port", "values:\n  network:\n    port: *p\n"],
+		["tab indentation", "values:\n\tnetwork:\n\t\tport: 14097\n"],
+		[
+			"duplicated values",
+			"values:\n  ui: {}\nvalues:\n  network:\n    port: 14097\n",
+		],
+		[
+			"duplicated network",
+			"values:\n  network:\n    port: 14097\n  network:\n    port: 14098\n",
+		],
+		[
+			"duplicated port",
+			"values:\n  network:\n    port: 14097\n    port: 14098\n",
+		],
+		["document marker", "---\nvalues:\n  network:\n    port: 14097\n"],
+		[
+			"indent steps back",
+			"values:\n    network:\n      port: 14097\n  ui: 1\n",
+		],
+		["port not decimal", "values:\n  network:\n    port: 14097x\n"],
+		["port leading zero", "values:\n  network:\n    port: 014097\n"],
+		["empty", ""],
+	])
+		assert.equal(relayPortFromConfig(text), null, why);
 	assert.match(relayPortProblem(null), /network\.port/);
+	assert.match(relayPortProblem(null), /values:/);
 	assert.match(relayPortProblem(4097), /4097/);
 	assert.equal(relayPortProblem(4197), null);
 });
@@ -1925,7 +2341,10 @@ function rigDevice(name, configYml) {
 
 test("config-root: relay on network.port, then serve, then the remote row; frames; every lop process reaped", () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-ok", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-ok",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	writeFileSync(
 		join(device.config, "fake-sessions.json"),
 		JSON.stringify([{ id: "ce618964c88e", locality: "remote" }]),
@@ -2005,7 +2424,10 @@ test("config-root: relay on network.port, then serve, then the remote row; frame
 
 test("config-root: a session that never shows as remote fails the run before the app launches", () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-miss", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-miss",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	writeFileSync(
 		join(device.config, "fake-sessions.json"),
 		JSON.stringify([{ id: "ce618964c88e", locality: "local" }]),
@@ -2054,15 +2476,27 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 	const cases = [
 		[
 			"unset",
-			rigDevice("cr-unset", "network:\n  enabled: true\n"),
+			rigDevice("cr-unset", "values:\n  network:\n    enabled: true\n"),
 			[],
 			/network\.port/,
 		],
 		["no config.yml", rigDevice("cr-none", null), [], /network\.port/],
-		["4097", rigDevice("cr-4097", "network:\n  port: 4097\n"), [], /4097/],
+		[
+			// Core reads only `values:`; a top-level block leaves the relay on 4097.
+			"top-level only",
+			rigDevice("cr-toplevel", "network:\n  port: 4557\n"),
+			[],
+			/network\.port/,
+		],
+		[
+			"4097",
+			rigDevice("cr-4097", "values:\n  network:\n    port: 4097\n"),
+			[],
+			/4097/,
+		],
 		[
 			"real home",
-			rigDevice("cr-home", "network:\n  port: 4555\n"),
+			rigDevice("cr-home", "values:\n  network:\n    port: 4555\n"),
 			["--backend-home", os.userInfo().homedir],
 			/real home/,
 		],
@@ -2092,7 +2526,7 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 		);
 	}
 	// A root another process already runs on is refused, so the sweep can never kill it.
-	const busy = rigDevice("cr-busy", "network:\n  port: 4556\n");
+	const busy = rigDevice("cr-busy", "values:\n  network:\n    port: 4556\n");
 	const squatter = spawn(process.execPath, ["-e", CAP_ONLY], {
 		env: { PATH: process.env.PATH, LOCAL_OPERATOR_CONFIG_DIR: busy.config },
 		stdio: "ignore",
@@ -2246,7 +2680,10 @@ test("--timeout bounds the WHOLE run from harness start, not just the app phase"
 	// wait 30 s, but the whole-run --timeout 3 stops it first, before any app
 	// launch (review r1 R1-6, QA r1 Q4-3; before, `--timeout 5` measured 16 s).
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-wholerun", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-wholerun",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	const rigRoot = join(TREE, "cr-wholerun-rig");
 	const out = join(TREE, "cr-wholerun-out");
 	const began = Date.now();
@@ -2661,7 +3098,7 @@ test("--seed refusals: unknown scenario, with --seed-config, off the isolated ba
 		/isolated backend/,
 	);
 	refuses(["--scene", "asks"], /need --session/);
-	refuses(["--scene", "notification-detail"], /needs --notification-id/);
+	refuses(["--scene", "notification-detail"], /need --notification-id/);
 	refuses(
 		["--scene", "notification-detail", "--notification-id", "n_bad"],
 		/n_ \+ 16/,
@@ -2711,6 +3148,16 @@ test("the asks and notification-detail scenes: exact steps, required waits on th
 				selector:
 					'[data-notification-detail="n_macproofdetailaa"] [data-notification-detail-title]',
 			},
+		},
+		{
+			// Design D7: the read-on-open settled before the shutter.
+			verb: "waitFor",
+			payload: {
+				selector:
+					'[data-notifications-page]:not(:has([data-notification-row="n_macproofdetailaa"][data-notification-unread])) [data-notification-detail="n_macproofdetailaa"] [data-notification-toggle-read] svg.lucide-circle',
+				timeoutMs: 10000,
+			},
+			timeoutMs: 15000,
 		},
 		{
 			verb: "shutter",
