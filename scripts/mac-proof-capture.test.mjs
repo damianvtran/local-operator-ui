@@ -34,6 +34,7 @@ import {
 	EXIT,
 	FILES_READY,
 	FORBIDDEN_DAEMON_PATH,
+	INDEX_ROW,
 	MEASUREMENT_LIMITS,
 	PREVIEW_FILE_DEFAULT,
 	RUNNER_MAX_STEPS,
@@ -83,6 +84,7 @@ import {
 	extractedSymlinkProblem,
 	filePreviewSceneSteps,
 	filePreviewSelector,
+	filesRowReachSteps,
 	frameMatchesWindow,
 	imagePreviewCheck,
 	inspectLanding,
@@ -120,6 +122,7 @@ import {
 	resolveAppBundle,
 	rigMatcher,
 	rigNewEntries,
+	runAsync,
 	screenRecordingGrantHint,
 	screenRecordingVerdict,
 	selectServeRecord,
@@ -130,9 +133,40 @@ import {
 	updateDetailSceneSteps,
 	validateOptions,
 	verifySeedRows,
+	windowInfoAsync,
 	windowModeProblem,
 	windowWaitStep,
 } from "./mac-proof-capture.mjs";
+import {
+	APP_ENV_KEYS,
+	OPEN_BIN,
+	OPEN_ENV_KEYS,
+	PS_TZ,
+	TEST_LAUNCHD_PID_ENV,
+	TEST_LAUNCH_ENV,
+	attachedUrlOf,
+	buildOpenArgv,
+	createAttachCheck,
+	createEnvProof,
+	createFileTail,
+	createFrontmostWatch,
+	discoverAppPid,
+	emptyFrontmost,
+	interRunGateProblem,
+	launchMode,
+	openArgvProblem,
+	parseAppInfo,
+	parseFrontAsn,
+	parsePsRows,
+	profileToken,
+	psRows,
+	rigPidClassifier,
+	rigStyleProfilePattern,
+	sampleFrontmost,
+	startOf,
+	startSentinel,
+	stopLaunchedApp,
+} from "./mac-proof-focus.mjs";
 
 /**
  * Contract tests for `scripts/mac-proof-capture.mjs`, the one-command Mac proof
@@ -230,12 +264,15 @@ function fakeApp(name, behaviour = {}) {
 	writeFileSync(
 		exe,
 		`#!${process.execPath}
-${PARENT_WATCH}
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const behaviour = JSON.parse(fs.readFileSync(path.join(__dirname, "behaviour.json"), "utf8"));
+// behaviour.ls: launched by the fake \`open\` (fakeLaunchServices), so its parent
+// exits at once and the parent watch would end it; the cap alone bounds it.
+if (behaviour.ls) setTimeout(() => process.exit(0), ${FIXTURE_CAP_MS});
+else ${PARENT_WATCH}
 const arg = (name) => (process.argv.find((a) => a.startsWith(name + "=")) || "").slice(name.length + 1);
 const mode = behaviour.reportMode || arg("--window-mode");
 const profile = arg("--user-data-dir");
@@ -247,20 +284,46 @@ fs.writeFileSync(path.join(rig, "fake-app-seen.json"), JSON.stringify({
   envKeys: Object.keys(process.env).sort(),
   tokenSha: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ? crypto.createHash("sha256").update(process.env.LOCAL_OPERATOR_DESKTOP_TOKEN).digest("hex") : null,
   attachUrl: process.env.LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL,
+  configDir: process.env.LOCAL_OPERATOR_CONFIG_DIR,
+  logDir: process.env.LOCAL_OPERATOR_LOG_DIR,
+  managerOff: process.env.VITE_DISABLE_BACKEND_MANAGER,
   home: process.env.HOME,
   cwd: process.cwd(),
 }));
 if (behaviour.ignoreTerm) process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
 const log = (line) => process.stdout.write(line + "\\n");
 log("[window-mode] window mode " + mode + ": 1380x900, never shown, page throttling off");
-log("[dev-driver] ARMED; frames are written to " + out);
+// Under ls the real app's shape: the driver arms only when its env arrived,
+// and the attach line names the backend the launch env gave it.
+const armed = !behaviour.ls || Boolean(out);
+if (armed) log("[dev-driver] ARMED; frames are written to " + out);
+else log("[dev-driver] not armed (no LOCAL_OPERATOR_UI_DEV_DRIVER_OUT)");
 // noScript: a release that predates the S1 step runner never prints this.
-if (!behaviour.noScript) log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
+if (!behaviour.noScript && armed) log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
+const attachUrl = process.env.LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL;
+// v0.59.2's backend resolution (attach-backend.ts:117-125, index.ts:2663):
+// no attach URL is "managed" - the real app would claim the OPERATOR's daemon
+// from his config root (recorded here as the contact it would have made); a URL
+// with no token is "incomplete" - one [attach] line on stderr, exit 1, before
+// any backend or window.
+if (behaviour.ls && !attachUrl && behaviour.operatorMarker) fs.writeFileSync(behaviour.operatorMarker, "managed: would claim the daemon under " + (process.env.LOCAL_OPERATOR_CONFIG_DIR || path.join(process.env.HOME || "", ".local-operator")));
+if (behaviour.ls && attachUrl && !process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) { process.stderr.write("[attach] LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL names a backend to attach to, but LOCAL_OPERATOR_DESKTOP_TOKEN is not set, so this app has no credential for it.\\n"); process.exit(1); }
+// echoToken + lockLog: an app that prints the token into a log file the
+// harness then cannot rewrite (security review S2's silent-redaction case).
+if (behaviour.echoToken) log("echo " + process.env.LOCAL_OPERATOR_DESKTOP_TOKEN);
+if (behaviour.lockLog) fs.chmodSync(path.join(rig, "logs", "app-stdout.log"), 0o444);
+if (behaviour.ls && attachUrl) log("13:43:10.136 \u203a Attached to the backend this launch named: " + (behaviour.attachUrl || attachUrl) + " (pid 1, v0.0.0, fake)");
+if (behaviour.ls) log("13:43:11.563 \u203a [window-raise] trigger=initial-present mode=" + mode + " requested=" + mode + " applied=showInactive");
 // The re-parented helper: its own group, carrying the profile, outliving us.
-const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile], { detached: true, stdio: "ignore" });
+// Under ls it carries --type= like an Electron helper (pid discovery skips it).
+const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile, ...(behaviour.ls ? ["--type=gpu-process"] : [])], { detached: true, stdio: "ignore" });
 child.unref();
 fs.writeFileSync(path.join(rig, "fake-child.pid"), String(child.pid));
 fs.writeFileSync(path.join(rig, "fake-app.pid"), String(process.pid));
+// behaviour.steal: become (or make the helper) the frontmost app, the way the
+// fake lsappinfo reads it - 79's 1907b steal, on demand.
+if (behaviour.steal) setTimeout(() => fs.writeFileSync(behaviour.frontFile, String(behaviour.steal === "helper" ? child.pid : process.pid)), behaviour.stealAfterMs ?? 0);
+if (!armed) { setInterval(() => {}, 1000); return; }
 setTimeout(() => {
   log("[window-mode] state: visible=" + (mode === "inactive") + " focused=" + Boolean(behaviour.focused) + " focusable=false size=1380x900 content=1380x872");
   // A wedged renderer: armed, shown, and then nothing - the shape the
@@ -304,6 +367,136 @@ setInterval(() => {}, 1000);
 	);
 	chmodSync(exe, 0o755);
 	return app;
+}
+
+/**
+ * The darwin launch path's two macOS tools, faked for Linux (the
+ * `MAC_PROOF_TEST_LAUNCH` seam, mac-proof-focus.mjs `launchMode`):
+ *   - `open`: records its argv (and whether anything token-shaped or `--env` is
+ *     on it), then launches the bundle's executable DETACHED with its stdout and
+ *     stderr on the `--stdout`/`--stderr` files and its OWN env inherited (as
+ *     open(1) documents) - or a stripped env (`stripEnv`, the "LS did not pass
+ *     the env" case) - and exits, so the app is re-parented like a launchd child;
+ *   - `lsappinfo`: `front` answers the ASN of the pid in `<dir>/front` (the
+ *     fake app's `steal` behaviour rewrites it), `info -only name -only pid`
+ *     answers that pid under the name "Local Operator" for EVERY pid (the
+ *     capture Mac's measurement: the operator's own app shares the rig's name,
+ *     so only a pid match may count). `frontBroken` answers `[ NULL ]`.
+ */
+function fakeLaunchServices(
+	name,
+	{
+		front,
+		stripEnv = false,
+		frontBroken = false,
+		dropEnvFlags = false,
+		rejectEnv = false,
+		delayMs = 0,
+	} = {},
+) {
+	const dir = join(TREE, `${name}-ls`);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "front"), String(front));
+	writeFileSync(
+		join(dir, "open"),
+		`#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawn } = require("node:child_process");
+const argv = process.argv.slice(2);
+const options = argv.slice(0, argv.indexOf("--args"));
+// open(1)'s --env KEY=VALUE pairs, as the launched app's env additions.
+const pairs = [];
+for (let i = 0; i < options.length; i++) if (options[i] === "--env") pairs.push(options[++i]);
+fs.writeFileSync(path.join(__dirname, "open-argv.json"), JSON.stringify({ argv, tokenOnArgv: argv.some((a) => process.env.LOCAL_OPERATOR_DESKTOP_TOKEN && a.includes(process.env.LOCAL_OPERATOR_DESKTOP_TOKEN)), envOnArgv: argv.includes("--env"), envKeys: pairs.map((p) => p.slice(0, p.indexOf("="))) }));
+// rejectEnv: an open(1) that predates --env refuses the option and launches nothing.
+if (${rejectEnv}) { process.stderr.write("open: unrecognized option \\x60--env'\\n"); process.exit(1); }
+const at = (flag) => argv[argv.indexOf(flag) + 1];
+const bundle = at("-a");
+const plist = fs.readFileSync(path.join(bundle, "Contents", "Info.plist"), "utf8");
+const exe = path.join(bundle, "Contents", "MacOS", plist.match(/<key>CFBundleExecutable<\\/key><string>([^<]*)</)[1]);
+// stripEnv: LaunchServices did NOT pass the caller's env (only PATH survives);
+// the --env pairs still arrive unless dropEnvFlags (the pre-S1 argv's shape).
+const env = ${stripEnv ? "{ PATH: process.env.PATH }" : "{ ...process.env }"};
+if (!${dropEnvFlags}) for (const p of pairs) env[p.slice(0, p.indexOf("="))] = p.slice(p.indexOf("=") + 1);
+const appArgv = argv.slice(argv.indexOf("--args") + 1);
+const stdio = ["ignore", fs.openSync(at("--stdout"), "a"), fs.openSync(at("--stderr"), "a")];
+if (${delayMs} > 0) {
+  // A launch LaunchServices finishes LATE, after open returned: a detached
+  // launcher (no rig profile on ITS argv: the spec travels in env) starts the
+  // app after the delay and exits, so the app is still re-parented.
+  // The launcher records the late app's pid (late-app.pid) the instant it
+  // spawns it, so a test can follow a process the sentinel may reap before
+  // the app writes any file of its own.
+  const spec = JSON.stringify({ exe, appArgv, env, out: at("--stdout"), err: at("--stderr"), delayMs: ${delayMs}, pidFile: path.join(__dirname, "late-app.pid") });
+  const launcher = spawn(process.execPath, ["-e", "const s=JSON.parse(process.env.FAKE_LS_SPEC);const fs=require('fs');setTimeout(()=>{const c=require('child_process').spawn(s.exe,s.appArgv,{detached:true,env:s.env,cwd:'/',stdio:['ignore',fs.openSync(s.out,'a'),fs.openSync(s.err,'a')]});fs.writeFileSync(s.pidFile,String(c.pid));c.unref();process.exit(0);},s.delayMs);"], { detached: true, stdio: "ignore", env: { FAKE_LS_SPEC: spec, PATH: process.env.PATH } });
+  launcher.unref();
+  process.exit(0);
+}
+const child = spawn(exe, appArgv, { detached: true, env, cwd: "/", stdio });
+child.unref();
+process.exit(0);
+`,
+	);
+	writeFileSync(
+		join(dir, "lsappinfo"),
+		`#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const [verb, ...rest] = process.argv.slice(2);
+if (verb === "front") {
+  ${frontBroken ? 'process.stdout.write("[ NULL ]\\n");' : 'const pid = Number(fs.readFileSync(path.join(__dirname, "front"), "utf8")); process.stdout.write("ASN:0x0-0x" + pid.toString(16) + ":\\n");'}
+} else if (verb === "info") {
+  const asn = rest.at(-1);
+  const pid = parseInt(asn.split("-0x")[1], 16);
+  process.stdout.write('"LSDisplayName"="Local Operator"\\n"pid"=' + pid + "\\n");
+} else process.exit(1);
+`,
+	);
+	chmodSync(join(dir, "open"), 0o755);
+	chmodSync(join(dir, "lsappinfo"), 0o755);
+	return dir;
+}
+
+/**
+ * The pid an orphan of this process tree is re-parented to: launchd (1) on
+ * macOS, but often a subreaper on Linux (measured on this runner's host: not
+ * pid 1). The fake `open` leaves the app an orphan, so the harness's
+ * "launchd's child" rule is pointed at this pid through the seam.
+ */
+function orphanParent() {
+	const r = spawnSync(
+		"/bin/sh",
+		["-c", "sleep 2 </dev/null >/dev/null 2>&1 & echo $!"],
+		{ encoding: "utf8" },
+	);
+	const pid = Number(r.stdout.trim());
+	const deadline = Date.now() + 2000;
+	let ppid = null;
+	while (Date.now() < deadline) {
+		const ps = spawnSync("ps", ["-o", "ppid=", "-p", String(pid)], {
+			encoding: "utf8",
+		});
+		ppid = Number(ps.stdout.trim());
+		if (ppid && ppid !== process.pid) break;
+	}
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {}
+	return ppid;
+}
+const ORPHAN_PARENT = orphanParent();
+
+/** A process NAMED like the app, with no rig profile: the operator's own app (pid 18910 on the capture Mac). */
+function operatorStandIn() {
+	const child = spawn(
+		process.execPath,
+		["-e", CAP_ONLY, "--", "Local Operator"],
+		{ detached: true, stdio: "ignore" },
+	);
+	child.unref();
+	leftovers.push(child.pid);
+	return child.pid;
 }
 
 /**
@@ -438,7 +631,7 @@ http.createServer((req, res) => {
 }
 
 function harnessEnv(env = {}) {
-	return {
+	const out = {
 		PATH: process.env.PATH,
 		HOME: process.env.HOME,
 		// Present on purpose: the harness must not forward any of these.
@@ -447,8 +640,24 @@ function harnessEnv(env = {}) {
 		NODE_OPTIONS: "--max-old-space-size=64",
 		ELECTRON_RUN_AS_NODE: "1",
 		LOCAL_OPERATOR_FAKE_LEAK: "leak-me",
+		// On a Mac the harness launches through LaunchServices; a suite run there
+		// must never hand its FAKE bundles to the operator's LaunchServices, so the
+		// cases keep the direct spawn unless they pass the fake LS seam.
+		...(process.platform === "darwin"
+			? {
+					[TEST_LAUNCH_ENV]: "direct",
+					NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+					// The seam is honoured only for an app under the HARNESS's
+					// os.tmpdir() (review S3); the fixtures live under this one's.
+					TMPDIR: os.tmpdir(),
+				}
+			: {}),
 		...env,
 	};
+	// `null` removes a key (a case that must run WITHOUT one of the above).
+	for (const [key, value] of Object.entries(out))
+		if (value === null) delete out[key];
+	return out;
 }
 
 function runHarness(args, env = {}) {
@@ -1815,6 +2024,18 @@ test("--negative-control runs every refusal against the real guards and exits 0"
 		"an extracted zip with no .app",
 		"an extracted zip with two .app bundles",
 		"predates S1",
+		// The focus/launch refusals (QA Q1-6).
+		"open argv without -n",
+		"open argv without -g",
+		"open --env carrying the desktop token's key",
+		"open --env value carrying the token",
+		"open --env with a key off the non-secret allowlist",
+		"open --env in the NAME-only form",
+		"open argv missing --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+		"the launch test seam with a real app path",
+		"the launch test seam outside node --test",
+		"inter-run gate: a previous rig still running",
+		"inter-run gate: ps could not list processes",
 	])
 		assert.match(
 			run.stdout,
@@ -4355,6 +4576,11 @@ test("R1-1: every parsed ps/lsof runs under LC_ALL=C and LANG=C, and C lstart pa
 	});
 	assert.equal(env.LC_ALL, "C");
 	assert.equal(env.LANG, "C");
+	assert.equal(
+		cLocaleEnv({ TZ: "Asia/Tokyo" }).TZ,
+		PS_TZ,
+		"lstart is wall time: pinned to the zone startOf and the sentinel read (S5)",
+	);
 	assert.equal(env.PATH, "/bin", "the rest of the env is kept");
 	// Source pin: no `ps`/`lsof` spawn in the harness without the C env. A new
 	// one that forgets it fails here, not on a day-first Mac.
@@ -4822,15 +5048,21 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 	const presses = scene.filter((s) => s.verb === "press");
 	const labels = actionsForNameLabels("notes.md");
 	const exact = labels.map((l) => `[aria-label="${l}"]`).join(", ");
+	// 79's run at main 3673e88232: the row is reached as file-preview reaches its
+	// own (FILES_READY, then the collapsed-group expand), and only an INDEX row's
+	// trigger is pressed.
+	assert.deepEqual(scene.slice(0, 4), filesRowReachSteps());
+	assert.equal(scene[2].payload.selector, FILES_READY);
 	assert.deepEqual(
 		presses.map((s) => s.payload.selector),
 		[
-			`[data-tour-tag="file-row"] button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
+			COLLAPSED_GROUP_HEADER,
+			`[data-tour-tag="files-scroller"] ${INDEX_ROW} button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
 			DOWNLOAD_ITEM_SELECTOR,
 		],
 	);
 	// EXACT labels (F2 / S1-2): never a substring match.
-	assert.ok(!presses[0].payload.selector.includes("*="));
+	assert.ok(!presses[1].payload.selector.includes("*="));
 	assert.ok(labels.includes("Actions for notes.md"), labels.join(" | "));
 	assert.deepEqual(
 		downloadPressAllowlist(),
@@ -4840,9 +5072,11 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		DOWNLOAD_ITEM_SELECTOR,
 		'[role="menu"] [data-remote-action="download"]:not([data-disabled])',
 	);
-	assert.ok(
-		scene.every((s) => s.optional !== true),
-		"no optional step",
+	// The ONE optional step is the collapsed-group expand: with nothing
+	// collapsed it is skipped; the row, the entry and the toasts stay required.
+	assert.deepEqual(
+		scene.filter((s) => s.optional === true).map((s) => s.payload.selector),
+		[COLLAPSED_GROUP_HEADER],
 	);
 	// The entry is REQUIRED before it is pressed, and success is required after.
 	const at = scene.findIndex(
@@ -4857,6 +5091,34 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 	assert.equal(scene.at(-2).payload.timeoutMs, DOWNLOAD_OUTCOME_WAIT_MS);
 	const dl = { download: true, file: null };
 	assert.equal(downloadStepsProblem(steps, dl), null);
+	// The group-header press is admitted byte-for-byte, alone...
+	assert.equal(
+		downloadStepsProblem(
+			[{ verb: "press", payload: { selector: COLLAPSED_GROUP_HEADER } }],
+			dl,
+		),
+		null,
+	);
+	// ...and no near variant of it: each could reach another button (an open
+	// header, a nested caption, a sibling, a button outside the scroller).
+	for (const selector of [
+		'[data-tour-tag="files-scroller"] section > h3 > button',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="true"]',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]',
+		'[data-tour-tag="files-scroller"] section h3 button[aria-expanded="false"]:not([aria-disabled="true"])',
+		'section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])',
+		`${COLLAPSED_GROUP_HEADER} ~ *`,
+		`${COLLAPSED_GROUP_HEADER} *`,
+		` ${COLLAPSED_GROUP_HEADER}`,
+		COLLAPSED_GROUP_HEADER.toUpperCase(),
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"]), [data-remote-action="save-as"]',
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }], dl) ??
+				"",
+			/a download run may press only/,
+			selector,
+		);
 	// S1-1: an ALLOWLIST. The first three slipped past the old text blocklist.
 	for (const selector of [
 		'[role="menu"] [DATA-REMOTE-ACTION="save-as"]',
@@ -4929,9 +5191,21 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		gone: true,
 		timeoutMs: 1,
 	});
+	// Before the ROW press (the first press that touches a file); only the
+	// optional group-header expand, view state, may precede it.
 	assert.ok(
-		scene.indexOf(dup) < scene.findIndex((s) => s.verb === "press"),
-		"the single-row check runs before the first press",
+		scene.indexOf(dup) <
+			scene.findIndex(
+				(s) =>
+					s.verb === "press" && s.payload.selector !== COLLAPSED_GROUP_HEADER,
+			),
+		"the single-row check runs before the row press",
+	);
+	assert.ok(
+		scene
+			.slice(0, scene.indexOf(dup))
+			.filter((s) => s.verb === "press")
+			.every((s) => s.payload.selector === COLLAPSED_GROUP_HEADER),
 	);
 	assert.match(
 		downloadFailureHint(
@@ -4953,12 +5227,20 @@ test("download: the row trigger matches the EXACT label only, and two same-named
 	// label, the two-rows pair) - receipt limit `fixture-proven-actions`.
 	const { JSDOM } = await import("jsdom");
 	const scene = downloadSceneSteps("notes.md");
-	const trigger = scene[3].payload.selector;
+	const trigger = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
 	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
-	const row = (name, label = `Actions for ${name}`) =>
-		`<div data-tour-tag="file-row"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
+	// Shaped like v0.59.2's rows (finder-files-view.tsx:1437-1438, :1533-1534:
+	// `data-tour-tag="file-row"` and `data-file-id` on the same element).
+	const row = (name, label = `Actions for ${name}`, id = `remote:${name}`) =>
+		`<div data-tour-tag="file-row" data-file-id="${id}"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
 	const look = (html) => {
-		const doc = new JSDOM(`<body>${html}</body>`).window.document;
+		const doc = new JSDOM(
+			`<body><div data-tour-tag="files-scroller">${html}</div></body>`,
+		).window.document;
 		return {
 			rows: doc.querySelectorAll(trigger).length,
 			dup: doc.querySelector(dup) !== null,
@@ -4991,6 +5273,31 @@ test("download: the row trigger matches the EXACT label only, and two same-named
 	assert.deepEqual(
 		look(
 			`<section><h2>Working</h2>${row("notes.md")}</section><section><div>${row("notes.md")}</div></section>`,
+		),
+		{ rows: 2, dup: true },
+	);
+	// #2012 review C1: an ATTACHMENT of the same name (the person's upload; it
+	// shares data-tour-tag="file-row") is neither pressed nor a second row, so
+	// the one index row is downloaded instead of the run refusing two rows.
+	const attachment = row("notes.md", undefined, "attachment:k1");
+	assert.deepEqual(
+		look(
+			`<section><h3>Attachments</h3>${attachment}</section><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+	assert.deepEqual(look(`<section>${attachment}${row("notes.md")}</section>`), {
+		rows: 1,
+		dup: false,
+	});
+	assert.deepEqual(look(`<section>${attachment}</section>`), {
+		rows: 0,
+		dup: false,
+	});
+	// Two INDEX rows beside an attachment are still refused.
+	assert.deepEqual(
+		look(
+			`<section>${attachment}${row("notes.md")}</section><section>${row("notes.md")}</section>`,
 		),
 		{ rows: 2, dup: true },
 	);
@@ -5461,6 +5768,7 @@ test("convergence (#2012 x #2013): file-preview's Show in canvas passes the pres
 		[
 			"files-paging-caption",
 			"files-attachments-only",
+			"preview-first-screen",
 			"selectors-fixture-proven",
 			"toast-latency-unmeasured",
 			"config-root-only",
@@ -5472,13 +5780,19 @@ test("convergence (#2012 x #2013): file-preview's Show in canvas passes the pres
 
 test("download: limits name what the receipt cannot prove; the toast latency is read from the run", () => {
 	const ids = (o) => downloadLimits(o).map((l) => l.id);
+	// The download scene reaches its row as file-preview does (79's run at main
+	// 3673e88232), so file-preview's Files-wait and first-screen limits are its too.
 	assert.deepEqual(ids({ checkOperatorDownloads: false }), [
+		"files-attachments-only",
+		"preview-first-screen",
 		"toast-latency-unmeasured",
 		"config-root-only",
 		"containment-destination-based",
 		"fixture-proven-actions",
 	]);
 	assert.deepEqual(ids({ checkOperatorDownloads: true }), [
+		"files-attachments-only",
+		"preview-first-screen",
 		"toast-latency-unmeasured",
 		"config-root-only",
 		"fixture-proven-actions",
@@ -5737,6 +6051,8 @@ it("download e2e: the app's POST lands notes.md in the rig; the receipt records 
 	assert.deepEqual(
 		receipt.download.limits.map((l) => l.id),
 		[
+			"files-attachments-only",
+			"preview-first-screen",
 			"toast-latency-unmeasured",
 			"config-root-only",
 			"containment-destination-based",
@@ -5791,7 +6107,13 @@ it("download e2e: --check-operator-downloads lists the (test-injected) ~/Downloa
 	assert.notEqual(op.path, join(os.userInfo().homedir, "Downloads"));
 	assert.deepEqual(
 		receipt.download.limits.map((l) => l.id),
-		["toast-latency-unmeasured", "config-root-only", "fixture-proven-actions"],
+		[
+			"files-attachments-only",
+			"preview-first-screen",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"fixture-proven-actions",
+		],
 	);
 });
 
@@ -5835,7 +6157,10 @@ test("download: the test-only ~/Downloads seam set outside node --test refuses (
 			"dark",
 			"--check-operator-downloads",
 		],
-		{ [TEST_OPERATOR_DOWNLOADS_ENV]: join(TREE, "dl-seam-refuse-dl") },
+		{
+			[TEST_OPERATOR_DOWNLOADS_ENV]: join(TREE, "dl-seam-refuse-dl"),
+			NODE_TEST_CONTEXT: null,
+		},
 	);
 	assert.equal(run.status, 2, run.all);
 	assert.match(run.all, /test-only seam honoured only under node --test/);
@@ -5955,6 +6280,1419 @@ test("download: the operator-~/Downloads check is opt-in - off lists nothing, on
 			),
 		/apply only to --scene download/,
 	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Focus (mac-proof-focus.mjs): 79's run 1907b printed
+ *   [window-raise] trigger=initial-present mode=inactive requested=inactive applied=showInactive
+ *   [window-mode] state: visible=true focused=true ...
+ * - the rig app was the ACTIVE app. Prevention (open -g -n), the env proof, pid
+ * discovery, the sentinel, the inter-run gate and the frontmost watchdog.
+ * ---------------------------------------------------------------------------
+ */
+const RIG_PROFILE = "/Users/o/scratch/mac-proof-Ab12Cd/profile";
+
+test("focus: open argv always carries -g, -n and the rig's own --user-data-dir; dropping either flag is refused", () => {
+	const appArgv = buildAppArgv({
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		windowMode: "inactive",
+		size: "1380x900",
+		session: "ce618964c88e",
+	});
+	const appEnv = buildAppEnv({
+		base: {},
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		backendUrl: "http://127.0.0.1:60317",
+		token: "tok-secret",
+		windowMode: "inactive",
+	});
+	const argv = buildOpenArgv({
+		appBundle: "/Applications/Local Operator.app",
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		appArgv,
+		env: appEnv,
+	});
+	const options = argv.slice(0, argv.indexOf("--args"));
+	// -n is MANDATORY: without it open hands the launch to the operator's
+	// running app (its `activate` raises his window). -g: no front.
+	assert.ok(options.includes("-n"), argv.join(" "));
+	assert.ok(options.includes("-g"), argv.join(" "));
+	assert.deepEqual(argv.slice(argv.indexOf("--args") + 1), appArgv);
+	assert.ok(appArgv.includes(`--user-data-dir=${RIG_PROFILE}`));
+	assert.deepEqual(argv.slice(0, 8), [
+		"-g",
+		"-n",
+		"-a",
+		"/Applications/Local Operator.app",
+		"--stdout",
+		"/Users/o/scratch/mac-proof-Ab12Cd/logs/app-stdout.log",
+		"--stderr",
+		"/Users/o/scratch/mac-proof-Ab12Cd/logs/app-stderr.log",
+	]);
+	// Review S1: every NON-SECRET isolation key rides on --env KEY=VALUE, in
+	// table order, with the exact value the app env holds; the token never.
+	const pairs = [];
+	for (let i = 8; i < argv.indexOf("--args"); i += 2) {
+		assert.equal(argv[i], "--env", argv.join(" "));
+		pairs.push(argv[i + 1]);
+	}
+	assert.deepEqual(
+		pairs.map((p) => p.slice(0, p.indexOf("="))),
+		OPEN_ENV_KEYS.filter((k) => appEnv[k] !== undefined),
+	);
+	for (const p of pairs)
+		assert.equal(
+			p.slice(p.indexOf("=") + 1),
+			appEnv[p.slice(0, p.indexOf("="))],
+		);
+	for (const key of [
+		"LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+		"LOCAL_OPERATOR_CONFIG_DIR",
+		"HOME",
+		"LOCAL_OPERATOR_LOG_DIR",
+		"VITE_DISABLE_BACKEND_MANAGER",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER_OUT",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT",
+	])
+		assert.ok(
+			pairs.some((p) => p.startsWith(`${key}=`)),
+			key,
+		);
+	assert.ok(!OPEN_ENV_KEYS.includes("LOCAL_OPERATOR_DESKTOP_TOKEN"));
+	assert.equal(APP_ENV_KEYS.LOCAL_OPERATOR_DESKTOP_TOKEN.secret, true);
+	// Every key buildAppEnv sets is classified in the ONE table.
+	for (const key of Object.keys(appEnv).filter((k) =>
+		/^(HOME|LOCAL_OPERATOR_|VITE_)/.test(k),
+	))
+		assert.ok(key in APP_ENV_KEYS, `${key} is not classified in APP_ENV_KEYS`);
+	assert.ok(!argv.some((a) => a.includes("tok-secret")));
+	assert.equal(argv[argv.indexOf("--args") + 1], appArgv[0]);
+	const check = (a) =>
+		openArgvProblem(a, { profile: RIG_PROFILE, token: "tok-secret" });
+	assert.equal(check(argv), null);
+	const at = argv.indexOf("--args");
+	const withOptions = (extra) => [
+		...argv.slice(0, at),
+		...extra,
+		...argv.slice(at),
+	];
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_DESKTOP_TOKEN=tok-secret"])) ??
+			"",
+		/secret LOCAL_OPERATOR_DESKTOP_TOKEN on --env: it is inherited only/,
+	);
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_DESKTOP_TOKEN"])) ?? "",
+		/secret LOCAL_OPERATOR_DESKTOP_TOKEN/,
+		"the NAME-only form of the token is refused too",
+	);
+	assert.match(check(withOptions(["--env", "HOME"])) ?? "", /NAME-only/);
+	assert.match(
+		check(withOptions(["--env", "T=1"])) ?? "",
+		/not on the non-secret allowlist/,
+	);
+	assert.match(check(withOptions(["--env=HOME=/x"])) ?? "", /--env=<pair>/);
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_UI_TELEMETRY=tok-secret"])) ??
+			"",
+		/value carries the rig token/,
+	);
+	assert.match(check(withOptions(["-e"])) ?? "", /-e \(open with TextEdit\)/);
+	const dropEnv = (key) => {
+		const i = argv.findIndex((a) => a.startsWith(`${key}=`));
+		return argv.filter((_, j) => j !== i && j !== i - 1);
+	};
+	assert.match(
+		check(dropEnv("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL")) ?? "",
+		/lacks --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL/,
+	);
+	// The pre-S1 argv (no --env at all) is now refused: the app could fall back
+	// to the operator's daemon if LaunchServices dropped the env.
+	assert.match(
+		check(argv.filter((a, i) => i < 8 || i >= at)) ?? "",
+		/lacks --env .*falls back to the operator's daemon/,
+	);
+	const without = (flag) => argv.filter((a, i) => !(a === flag && i < 2));
+	assert.match(
+		check(without("-n")) ?? "",
+		/lacks -n: open would hand the launch to the operator's running Local Operator/,
+	);
+	assert.match(check(without("-g")) ?? "", /lacks -g/);
+	// A -n only AFTER --args is the app's argument, not open's flag.
+	assert.match(check([...without("-n"), "-n"]) ?? "", /lacks -n/);
+	assert.match(check([...argv, "--x=tok-secret"]) ?? "", /token/);
+	assert.match(
+		check(
+			argv.map((a) =>
+				a.startsWith("--user-data-dir=") ? "--user-data-dir=/elsewhere" : a,
+			),
+		) ?? "",
+		/lacks this rig's --user-data-dir/,
+	);
+	assert.match(
+		check([
+			"-g",
+			"-n",
+			"-a",
+			"Local Operator",
+			...pairs.flatMap((p) => ["--env", p]),
+			"--args",
+			`--user-data-dir=${RIG_PROFILE}`,
+		]) ?? "",
+		/absolute \.app/,
+	);
+});
+
+test("focus: lsappinfo output shapes parse; a NULL bundleID/path matches nothing; the name is never an identity", () => {
+	assert.equal(parseFrontAsn("ASN:0x0-0x1a01a:\n"), "ASN:0x0-0x1a01a:");
+	for (const bad of [
+		"[ NULL ]",
+		"",
+		"lsappinfo: error",
+		"ASN:0x0-0x1a01a",
+		"0x0-0x1a01a:",
+	])
+		assert.equal(parseFrontAsn(bad), null, bad);
+	// `-only name -only pid`: one key per line.
+	assert.deepEqual(
+		parseAppInfo('"LSDisplayName"="Local Operator"\n"pid"=18910\n'),
+		{ pid: 18910, name: "Local Operator" },
+	);
+	assert.deepEqual(parseAppInfo('"pid"=18910'), { pid: 18910, name: null });
+	// The full block, with the capture Mac's NULL bundleID and paths.
+	const full = [
+		'"Local Operator" ASN:0x0-0x1a01a: ',
+		"    bundleID=[ NULL ]",
+		"    bundle path=[ NULL ]",
+		"    executable path=[ NULL ]",
+		'    pid = 18910 type="Foreground" flavor=3 Version="0.59.2" fileType="APPL" creator="????" Arch=ARM64',
+	].join("\n");
+	assert.deepEqual(parseAppInfo(full), { pid: 18910, name: "Local Operator" });
+	assert.deepEqual(
+		parseAppInfo("    bundleID=[ NULL ]\n    bundle path=[ NULL ]"),
+		{
+			pid: null,
+			name: null,
+		},
+	);
+});
+
+test("focus: the watchdog aborts on the rig app's pid or a helper's, and never on a same-named stranger", async () => {
+	const helperArgv = `/x/Local Operator Helper (GPU).app/Contents/MacOS/x --type=gpu-process --user-data-dir=${RIG_PROFILE}`;
+	const argvs = new Map([
+		[18910, "/Applications/Local Operator.app/Contents/MacOS/Local Operator"],
+		[
+			501,
+			"/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+		],
+		[777, helperArgv],
+		[778, `/x/y --user-data-dir=${RIG_PROFILE}2`],
+	]);
+	const runWatch = async (pids, appPid = 4242) => {
+		const seq = [...pids];
+		const steals = [];
+		const blinds = [];
+		let clock = 0;
+		const watch = createFrontmostWatch({
+			sample: async () => {
+				const pid = seq.shift();
+				return pid === undefined || pid === null
+					? { unknown: 'lsappinfo front answered "[ NULL ]"' }
+					: {
+							asn: `ASN:0x0-0x${pid.toString(16)}:`,
+							pid,
+							name: "Local Operator",
+						};
+			},
+			isRig: rigPidClassifier({
+				profile: RIG_PROFILE,
+				appPid: () => appPid,
+				argvOf: async (pid) => argvs.get(pid) ?? null,
+			}),
+			onSteal: (s) => steals.push(s),
+			onBlind: (b) => blinds.push(b),
+			now: () => {
+				clock += 100;
+				return clock;
+			},
+		});
+		watch.markLaunched();
+		for (let i = 0; i < pids.length; i++) await watch.tick();
+		return { record: watch.record, steals, blinds };
+	};
+	// The operator's own "Local Operator" (pid 18910, no rig profile), then Terminal.
+	const clean = await runWatch([18910, 18910, 501, 18910, 778]);
+	assert.equal(clean.record.stolen, null);
+	assert.deepEqual(clean.steals, []);
+	assert.deepEqual(
+		clean.record.transitions.map((x) => [x.pid, x.rig]),
+		[
+			[18910, false],
+			[501, false],
+			[18910, false],
+			[778, false],
+		],
+	);
+	assert.equal(clean.record.baseline.pid, 18910);
+	assert.equal(clean.record.samples, 5);
+	assert.equal(clean.record.maxGapMs, 100);
+	// The rig app's own pid.
+	const app = await runWatch([18910, 4242, 4242]);
+	assert.equal(app.steals.length, 1);
+	assert.deepEqual(
+		{ pid: app.record.stolen.pid, helper: app.record.stolen.helper },
+		{ pid: 4242, helper: false },
+	);
+	assert.equal(app.record.transitions.at(-1).rig, true);
+	// A helper: found by the rig's exact --user-data-dir token.
+	const helper = await runWatch([501, 777]);
+	assert.deepEqual(
+		{ pid: helper.record.stolen.pid, helper: helper.record.stolen.helper },
+		{ pid: 777, helper: true },
+	);
+	// Before discovery the app is found the same way (its argv carries the token).
+	const early = await runWatch([501, 777], null);
+	assert.equal(early.record.stolen.pid, 777);
+	// Blind: more than FRONTMOST_BLIND_LIMIT unreadable samples in a row.
+	const blind = await runWatch([501, null, null, null, null, null, null]);
+	assert.equal(blind.blinds.length, 1);
+	assert.equal(blind.record.unknown, 6);
+	assert.equal(blind.record.stolen, null);
+	const brief = await runWatch([501, null, null, 501]);
+	assert.deepEqual(brief.blinds, []);
+	// The shape every receipt carries.
+	assert.deepEqual(Object.keys(emptyFrontmost("lsappinfo")), [
+		"tool",
+		"intervalMs",
+		"baseline",
+		"samples",
+		"unknown",
+		"maxGapMs",
+		"transitions",
+		"stolen",
+	]);
+});
+
+test("focus: a failed argv read is never remembered - the rig app in front before discovery is caught once discovery names it (review F1)", async () => {
+	// The reviewer's repro: front = 4242 (the rig app, before discovery), the
+	// first `ps` of its argv fails, then discovery names 4242.
+	let appPid = null;
+	let reads = 0;
+	const steals = [];
+	const fronts = [4242, 4242, 4242];
+	const watch = createFrontmostWatch({
+		sample: async () => {
+			const pid = fronts.shift() ?? 4242;
+			return {
+				asn: `ASN:0x0-0x${pid.toString(16)}:`,
+				pid,
+				name: "Local Operator",
+			};
+		},
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => appPid,
+			argvOf: async () => {
+				reads++;
+				return reads === 1 ? null : "/x/Local Operator --window-mode=inactive";
+			},
+		}),
+		onSteal: (s) => steals.push(s),
+	});
+	watch.markLaunched();
+	await watch.tick(); // argv unreadable: an UNKNOWN sample, nothing cached
+	assert.equal(watch.record.unknown, 1);
+	assert.deepEqual(watch.record.transitions, []);
+	appPid = 4242; // discovery
+	await watch.tick();
+	await watch.tick();
+	assert.equal(steals.length, 1, JSON.stringify(watch.record));
+	assert.equal(watch.record.stolen.pid, 4242);
+	assert.equal(watch.record.stolen.helper, false);
+	assert.deepEqual(
+		watch.record.transitions.map((x) => [x.pid, x.rig]),
+		[[4242, true]],
+	);
+	// The same pid judged NOT rig first (argv read fine, no token: e.g. the
+	// app's argv was read through a stale cache), then named by discovery:
+	// still caught, and the timeline shows the flip.
+	let app2 = null;
+	const steals2 = [];
+	const watch2 = createFrontmostWatch({
+		sample: async () => ({
+			asn: "ASN:0x0-0x1092:",
+			pid: 4242,
+			name: "Local Operator",
+		}),
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => app2,
+			argvOf: async () => "/x/Local Operator",
+		}),
+		onSteal: (s) => steals2.push(s),
+	});
+	await watch2.tick();
+	app2 = 4242;
+	await watch2.tick();
+	assert.equal(steals2.length, 1);
+	assert.deepEqual(
+		watch2.record.transitions.map((x) => [x.pid, x.rig]),
+		[
+			[4242, false],
+			[4242, true],
+		],
+	);
+	// Unreadable argv on every sample is blindness, not a clean run.
+	const blinds = [];
+	const blind = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => null,
+			argvOf: async () => null,
+		}),
+		onBlind: (b) => blinds.push(b),
+	});
+	for (let i = 0; i < 6; i++) await blind.tick();
+	assert.equal(blinds.length, 1);
+	assert.match(blinds[0], /could not read pid 501's argv/);
+});
+
+test("focus: the attach assertion compares the app's own attach line with THIS run's serve URL, and a mismatch sticks", () => {
+	assert.equal(
+		attachedUrlOf(
+			"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1131, v0.108.5, uv-tool)",
+		),
+		"http://127.0.0.1:60317",
+	);
+	assert.equal(attachedUrlOf("[window-mode] state: visible=true"), null);
+	// 1907b: the rig serve's port is dynamic (60317); never the operator's 1111.
+	const ok = createAttachCheck({ rigUrl: "http://127.0.0.1:60317/" });
+	assert.deepEqual(ok.record, {
+		url: null,
+		rigUrl: "http://127.0.0.1:60317",
+		match: null,
+	});
+	assert.equal(ok.feed("[dev-driver] ARMED; x"), false);
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1)",
+		),
+		false,
+	);
+	assert.deepEqual(ok.record, {
+		url: "http://127.0.0.1:60317",
+		rigUrl: "http://127.0.0.1:60317",
+		match: true,
+	});
+	// A later reattach elsewhere (the run's whole length) fails, and stays failed.
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:1111 (pid 9)",
+		),
+		true,
+	);
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1)",
+		),
+		false,
+	);
+	assert.deepEqual(ok.record, {
+		url: "http://127.0.0.1:1111",
+		rigUrl: "http://127.0.0.1:60317",
+		match: false,
+	});
+});
+
+test("focus: the per-frame window lookup is async, so the 100 ms watchdog keeps sampling while it runs (review F4)", async () => {
+	const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+	const watch = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: async () => ({ rig: false, helper: false }),
+		intervalMs: 50,
+	});
+	const slowLookup = (cmd, args, opts) =>
+		runAsync(
+			process.execPath,
+			[
+				"-e",
+				"setTimeout(()=>process.stdout.write(JSON.stringify({pid:7,layer:0,bounds:{X:0,Y:0,Width:1,Height:1}})),600)",
+			],
+			opts,
+		);
+	watch.start();
+	const before = watch.record.samples;
+	const info = await windowInfoAsync(12, slowLookup);
+	const during = watch.record.samples - before;
+	await watch.stop();
+	assert.equal(info.pid, 7);
+	assert.ok(during >= 5, `only ${during} samples during a 600 ms lookup`);
+	assert.ok(watch.record.maxGapMs < 400, `maxGapMs ${watch.record.maxGapMs}`);
+	// Control: the old spawnSync shape stalls every sample for the whole call.
+	const ctl = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: async () => ({ rig: false, helper: false }),
+		intervalMs: 50,
+	});
+	ctl.start();
+	await pause(120);
+	spawnSync(process.execPath, ["-e", "setTimeout(()=>{},600)"]);
+	await pause(120);
+	await ctl.stop();
+	assert.ok(
+		ctl.record.maxGapMs >= 550,
+		`control maxGapMs ${ctl.record.maxGapMs}`,
+	);
+});
+
+test("focus: sampleFrontmost asks info only when the ASN changes, and fails closed on an unparsable answer", async () => {
+	const calls = [];
+	const answers = {
+		front: "ASN:0x0-0x49de:\n",
+		info: '"LSDisplayName"="Local Operator"\n"pid"=18910\n',
+	};
+	const lsappinfo = async (args) => {
+		calls.push(args[0]);
+		return { ok: true, stdout: answers[args[0]] };
+	};
+	const cache = new Map();
+	assert.deepEqual(await sampleFrontmost(lsappinfo, cache), {
+		asn: "ASN:0x0-0x49de:",
+		pid: 18910,
+		name: "Local Operator",
+	});
+	await sampleFrontmost(lsappinfo, cache);
+	assert.deepEqual(calls, ["front", "info", "front"]);
+	answers.front = "[ NULL ]";
+	assert.ok((await sampleFrontmost(lsappinfo, cache)).unknown);
+	answers.front = "ASN:0x0-0x1:";
+	answers.info = "bundleID=[ NULL ]";
+	assert.match((await sampleFrontmost(lsappinfo, cache)).unknown, /no pid/);
+	// A missing binary (execFile ENOENT) is unknown, i.e. a refused preflight.
+	assert.ok(
+		(await sampleFrontmost(async () => ({ ok: false, stdout: "" }))).unknown,
+	);
+});
+
+test("focus: pid discovery takes exactly one launchd child carrying the rig profile; helpers and same-named strangers never", () => {
+	const ps = (rows) =>
+		parsePsRows(
+			rows
+				.map(
+					([pid, ppid, cmd]) =>
+						`${pid} ${ppid} Fri Nov 20 13:43:09 2026 ${cmd}`,
+				)
+				.join("\n"),
+		);
+	const exe =
+		"/Users/o/scratch/mac-proof-Ab12Cd/app/Local Operator.app/Contents/MacOS/Local Operator";
+	const app = [
+		3001,
+		1,
+		`${exe} --user-data-dir=${RIG_PROFILE} --window-mode=inactive`,
+	];
+	const gpu = [
+		3002,
+		3001,
+		`${exe} Helper --type=gpu-process --user-data-dir=${RIG_PROFILE}`,
+	];
+	const orphanHelper = [
+		3003,
+		1,
+		`${exe} Helper --type=renderer --user-data-dir=${RIG_PROFILE}`,
+	];
+	// The operator's own app: same name, no rig profile (pid 18910 on the capture Mac).
+	const operator = [
+		18910,
+		1,
+		"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+	];
+	const other = [3004, 1, `${exe} --user-data-dir=${RIG_PROFILE}-old`];
+	const found = discoverAppPid(ps([operator, gpu, orphanHelper, app, other]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(found.pid, 3001);
+	assert.equal(found.start, "Fri Nov 20 13:43:09 2026");
+	assert.deepEqual(found.carrying.map((r) => r.pid).sort(), [3001, 3002, 3003]);
+	const none = discoverAppPid(ps([operator, gpu, orphanHelper]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(none.pid, null);
+	assert.equal(none.candidates, 0);
+	assert.match(none.problem, /no process carrying/);
+	const two = discoverAppPid(ps([operator, app, [3005, 1, app[2]]]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(two.pid, null);
+	assert.equal(two.candidates, 2);
+	assert.match(two.problem, /2 processes .* refusing to guess/);
+	// Not launchd's child (still the harness's, say): not the LS instance.
+	assert.equal(
+		discoverAppPid(ps([[3001, 999, app[2]]]), { profile: RIG_PROFILE }).pid,
+		null,
+	);
+	assert.equal(
+		discoverAppPid(ps([[3001, 999, app[2]]]), {
+			profile: RIG_PROFILE,
+			launchdPid: 999,
+		}).pid,
+		3001,
+	);
+	// The operator's process is never "carrying", so no reap path selects it.
+	assert.ok(!found.carrying.some((r) => r.pid === 18910));
+	assert.equal(profileToken(RIG_PROFILE).test(operator[2]), false);
+});
+
+test("focus: the inter-run gate refuses a leftover rig process or a rig app in front, and nothing else", () => {
+	const rows = (cmds) =>
+		cmds.map(([pid, command]) => ({ pid, ppid: 1, start: "x", command }));
+	const any = rigStyleProfilePattern();
+	const leftover = [
+		77,
+		"/a/Local Operator --user-data-dir=/Users/o/scratch/mac-proof-Zz9Yy8/profile --window-mode=inactive",
+	];
+	const operator = [
+		18910,
+		"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+	];
+	const negative = [
+		78,
+		"x --user-data-dir=/tmp/mac-proof-negative-Ab12Cd/profile",
+	];
+	assert.equal(
+		interRunGateProblem({
+			rows: rows([operator, negative]),
+			front: { pid: 18910 },
+			pattern: any,
+		}),
+		null,
+	);
+	assert.match(
+		interRunGateProblem({
+			rows: rows([operator, leftover]),
+			front: { pid: 18910 },
+			pattern: any,
+		}) ?? "",
+		/a previous mac-proof rig is still running \(pids 77/,
+	);
+	// A root with a space still matches.
+	assert.match(
+		interRunGateProblem({
+			rows: rows([
+				[79, "x --user-data-dir=/Users/o/my scratch/mac-proof-Ab12Cd/profile"],
+			]),
+			front: null,
+			pattern: any,
+		}) ?? "",
+		/pids 79/,
+	);
+	assert.match(
+		interRunGateProblem({ rows: null, front: null, pattern: any }) ?? "",
+		/could not list processes/,
+	);
+	// Scoped to one rig root (the test seam): another root's rig is not this suite case's.
+	const scoped = rigStyleProfilePattern("/Users/o/other/");
+	assert.equal(
+		interRunGateProblem({
+			rows: rows([leftover]),
+			front: null,
+			pattern: scoped,
+		}),
+		null,
+	);
+	assert.ok(rigStyleProfilePattern("/Users/o/scratch").test(leftover[1]));
+});
+
+test("focus: the env proof needs both ARMED lines and the attach line naming THIS rig's serve", () => {
+	const proof = createEnvProof({ backendUrl: "http://127.0.0.1:60317" });
+	assert.equal(proof.record().verified, false);
+	proof.feed("[dev-driver] ARMED; frames are written to /r/frames");
+	proof.feed("[dev-driver-script] ARMED; steps from /r/steps.json");
+	proof.feed(
+		"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:4096 (pid 1, v0.1, uv-tool)",
+	);
+	assert.deepEqual(proof.missing(), [
+		"Attached to the backend this launch named: http://127.0.0.1:60317",
+	]);
+	assert.equal(proof.record().wrongBackend, "http://127.0.0.1:4096");
+	// 1907b's own line, rig serve port 60317.
+	proof.feed(
+		"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1131, v0.108.5, uv-tool)",
+	);
+	assert.deepEqual(proof.missing(), []);
+	assert.equal(proof.record().verified, true);
+});
+
+test("focus: launch mode - LaunchServices on darwin, direct elsewhere; the test seam only under node --test", () => {
+	assert.deepEqual(
+		(({ kind, open }) => ({ kind, open }))(launchMode({}, "darwin")),
+		{ kind: "launchservices", open: OPEN_BIN },
+	);
+	assert.equal(OPEN_BIN, "/usr/bin/open");
+	assert.equal(launchMode({}, "linux").kind, "direct");
+	assert.match(
+		launchMode({ [TEST_LAUNCH_ENV]: "direct" }, "darwin").problem,
+		/test-only seam/,
+	);
+	const fixture = { appPath: join(TREE, "Fixture.app") };
+	assert.equal(
+		launchMode(
+			{ [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" },
+			"darwin",
+			fixture,
+		).kind,
+		"direct",
+	);
+	// Review S3 / QA Q1-4: NODE_TEST_CONTEXT is a plain env var, so the seam
+	// also needs the app to be a fixture under the temp dir. The installed
+	// bundle (or no app, or a path that only LOOKS like it is under tmp) never
+	// leaves LaunchServices.
+	for (const appPath of [
+		"/Applications/Local Operator.app",
+		null,
+		join(os.tmpdir(), "..", "Applications", "x.app"),
+		os.tmpdir(),
+	])
+		assert.match(
+			launchMode(
+				{ [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" },
+				"darwin",
+				{ appPath },
+			).problem ?? "",
+			/drives only fixtures under the temp dir/,
+			String(appPath),
+		);
+	assert.match(
+		launchMode(
+			{ [TEST_LAUNCH_ENV]: "rel", NODE_TEST_CONTEXT: "x" },
+			"linux",
+			fixture,
+		).problem,
+		/absolute/,
+	);
+	const fake = launchMode(
+		{
+			[TEST_LAUNCH_ENV]: "/f",
+			[TEST_LAUNCHD_PID_ENV]: "3058",
+			NODE_TEST_CONTEXT: "x",
+		},
+		"linux",
+		fixture,
+	);
+	assert.deepEqual(
+		[
+			fake.kind,
+			fake.open,
+			fake.lsappinfo,
+			fake.launchdPid,
+			fake.gateScopedToRigRoot,
+		],
+		["launchservices", "/f/open", "/f/lsappinfo", 3058, true],
+	);
+	assert.equal(launchMode({}, "darwin").gateScopedToRigRoot, false);
+	// The limit is a darwin (LaunchServices) run's, for every scene.
+	for (const scene of SCENES)
+		assert.ok(
+			receiptLimits([scene], { launchServices: true }).some(
+				(l) => l.id === "focus-prevention-launchservices",
+			),
+			scene,
+		);
+	assert.deepEqual(receiptLimits(["conversation"]), []);
+});
+
+test("focus: the file tail returns whole lines per file, across partial writes", () => {
+	const file = join(TREE, "tail-test.log");
+	writeFileSync(file, "");
+	const tail = createFileTail(file);
+	writeFileSync(file, "[dev-driver] ARMED; x\n[window-mo");
+	assert.deepEqual(tail.read(), ["[dev-driver] ARMED; x"]);
+	writeFileSync(file, "[dev-driver] ARMED; x\n[window-mode] state: a\r\nlast");
+	assert.deepEqual(tail.read(), ["[window-mode] state: a"]);
+	assert.deepEqual(tail.read({ flush: true }), ["last"]);
+	assert.deepEqual(createFileTail(join(TREE, "absent.log")).read(), []);
+	// Review F3: the logger's `\u203a` (3 bytes, e2 80 ba) split across two
+	// reads still decodes as one character, not U+FFFD.
+	const split = join(TREE, "tail-utf8.log");
+	writeFileSync(split, "");
+	const utf8 = createFileTail(split);
+	const line = Buffer.from(
+		"13:43:11.563 \u203a [window-raise] trigger=initial-present\n",
+	);
+	const cut = line.indexOf(0xe2) + 1;
+	writeFileSync(split, line.subarray(0, cut));
+	assert.deepEqual(utf8.read(), []);
+	writeFileSync(split, line);
+	assert.deepEqual(utf8.read(), [
+		"13:43:11.563 \u203a [window-raise] trigger=initial-present",
+	]);
+});
+
+/** A detached process standing in for the harness, the app or a stranger; tracked for `after`. */
+function standIn(argv = [], { ignoreTerm = false } = {}) {
+	// `ready` is written after the TERM handler is installed, so a caller that
+	// waits for it never signals a still-booting process.
+	const ready = join(TREE, `standin-${process.hrtime.bigint()}.ready`);
+	const child = spawn(
+		process.execPath,
+		[
+			"-e",
+			`${ignoreTerm ? "process.on('SIGTERM',()=>{});" : ""}require('fs').writeFileSync(${JSON.stringify(ready)},'1');${CAP_ONLY}`,
+			"--",
+			...argv,
+		],
+		{ detached: true, stdio: "ignore" },
+	);
+	child.unref();
+	leftovers.push(child.pid);
+	child.ready = ready;
+	return child;
+}
+const waitFor = async (pred, ms) => {
+	const deadline = Date.now() + ms;
+	while (!pred() && Date.now() < deadline) await sleepMs(50);
+	return pred();
+};
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("focus: the sentinel, armed before open, sweeps every rig-profile carrier once the harness dies - late ones too - and nothing else", async () => {
+	const profile = join(TREE, "sentinel-rig", "profile");
+	// While the harness lives the sentinel only waits, carriers or not.
+	const harness = standIn();
+	await waitFor(() => startOf(harness.pid) !== null, 2000);
+	const app = standIn([`--user-data-dir=${profile}`], { ignoreTerm: true });
+	const helper = standIn(["--type=gpu-process", `--user-data-dir=${profile}`]);
+	const named = standIn(["Local Operator"]);
+	const otherRig = standIn([`--user-data-dir=${profile}2`]);
+	await waitFor(() => existsSync(app.ready) && existsSync(helper.ready), 5000);
+	const sentinel = startSentinel({
+		harnessPid: harness.pid,
+		harnessStart: startOf(harness.pid),
+		profile,
+		rig: join(TREE, "sentinel-rig"),
+		graceMs: 2500,
+	});
+	leftovers.push(sentinel.pid);
+	await sleepMs(500);
+	assert.ok(
+		alive(app.pid) && alive(helper.pid) && alive(sentinel.pid),
+		"nothing is touched while the harness lives",
+	);
+	process.kill(harness.pid, "SIGKILL");
+	// A carrier that starts AFTER the harness died (a late LaunchServices
+	// launch, review F2) is swept too.
+	await sleepMs(800);
+	const late = standIn([`--user-data-dir=${profile}`]);
+	assert.ok(
+		await waitFor(() => !alive(helper.pid), 3000),
+		"helper reaped (TERM)",
+	);
+	assert.ok(await waitFor(() => !alive(late.pid), 4000), "late carrier reaped");
+	assert.ok(
+		await waitFor(() => !alive(app.pid), 6000),
+		"a TERM-ignoring app is KILLed by pid + start",
+	);
+	assert.ok(
+		await waitFor(() => !alive(sentinel.pid), 6000),
+		"sentinel exits after its grace",
+	);
+	assert.ok(
+		alive(named.pid),
+		"a same-named process without the profile is never touched",
+	);
+	assert.ok(alive(otherRig.pid), "another profile is another run's");
+	// Review S4: a harness pid whose start no longer matches (a recycled pid)
+	// is a dead harness, so the sentinel does not wait on a stranger forever.
+	const liveStranger = standIn();
+	const carrier = standIn([`--user-data-dir=${profile}`]);
+	await waitFor(
+		() => existsSync(carrier.ready) && startOf(liveStranger.pid) !== null,
+		5000,
+	);
+	const s2 = startSentinel({
+		harnessPid: liveStranger.pid,
+		harnessStart: "Mon Jan  1 00:00:00 2001",
+		profile,
+		rig: join(TREE, "sentinel-rig"),
+		graceMs: 400,
+	});
+	leftovers.push(s2.pid);
+	assert.ok(
+		await waitFor(() => !alive(carrier.pid), 4000),
+		"swept: the recorded harness is gone",
+	);
+	assert.ok(
+		alive(liveStranger.pid),
+		"the recycled harness pid itself is never signalled",
+	);
+	assert.ok(await waitFor(() => !alive(s2.pid), 4000));
+	for (const c of [named, otherRig, liveStranger])
+		process.kill(c.pid, "SIGKILL");
+});
+
+test("focus: an operator TZ never makes the sentinel read the live harness as recycled - startOf and the sentinel share PS_TZ (security S5)", async () => {
+	// The real path: the harness inherits the operator's exported TZ, reads its
+	// own start with `startOf`, and the sentinel (env built from nothing) reads
+	// it again. Before PS_TZ the two disagreed by the zone offset, the sentinel
+	// took the live harness for a recycled pid and swept this carrier at once.
+	assert.equal(PS_TZ, "UTC");
+	const profile = join(TREE, "sentinel-tz-rig", "profile");
+	const harness = standIn();
+	const carrier = standIn([`--user-data-dir=${profile}`]);
+	await waitFor(
+		() => existsSync(carrier.ready) && startOf(harness.pid) !== null,
+		5000,
+	);
+	const saved = process.env.TZ;
+	// A zone far from the runner's (UTC on CI), so a mismatch cannot hide.
+	process.env.TZ = "Asia/Tokyo";
+	let harnessStart;
+	try {
+		harnessStart = startOf(harness.pid);
+	} finally {
+		// Not `= undefined`: process.env stores that as the string "undefined".
+		if (saved === undefined) Reflect.deleteProperty(process.env, "TZ");
+		else process.env.TZ = saved;
+	}
+	const sentinel = startSentinel({
+		harnessPid: harness.pid,
+		harnessStart,
+		profile,
+		rig: join(TREE, "sentinel-tz-rig"),
+		graceMs: 400,
+	});
+	leftovers.push(sentinel.pid);
+	// A mismatch sweeps on the sentinel's FIRST liveness check, before any
+	// 200 ms tick; 500 ms is that plus two ticks (negative control: with the
+	// pins removed this fails at this line).
+	await sleepMs(500);
+	assert.ok(alive(carrier.pid), "the harness is alive: nothing is swept");
+	assert.ok(alive(sentinel.pid), "the sentinel is still waiting on it");
+	// Control: the same sentinel DOES sweep once the harness is really gone.
+	process.kill(harness.pid, "SIGKILL");
+	assert.ok(
+		await waitFor(() => !alive(carrier.pid), 4000),
+		"swept after the harness died",
+	);
+	// Its grace exit is the subject of the sentinel case above; end it now.
+	sentinel.kill("SIGKILL");
+});
+
+test("focus: the LaunchServices reap kills the app by pid + start and helpers by the rig profile, never a same-named stranger", async () => {
+	const profile = join(TREE, "lsreap-rig", "profile");
+	const app = standIn([`--user-data-dir=${profile}`], { ignoreTerm: true });
+	const helper = standIn(["--type=gpu-process", `--user-data-dir=${profile}`]);
+	const operator = standIn(["Local Operator"]);
+	const otherRig = standIn([`--user-data-dir=${profile}2`]);
+	await waitFor(() => existsSync(app.ready), 5000);
+	const result = await stopLaunchedApp({
+		pid: app.pid,
+		start: startOf(app.pid),
+		profile,
+		deadlineMs: 300,
+	});
+	assert.equal(result.clean, true, JSON.stringify(result));
+	assert.equal(result.escalated, true, "TERM ignored, so KILL");
+	assert.ok(!alive(app.pid) && !alive(helper.pid));
+	assert.ok(
+		alive(operator.pid),
+		"the same-named non-rig process is never reaped",
+	);
+	assert.ok(alive(otherRig.pid), "another profile is another run's");
+	// A recorded start that no longer matches: no signal at all to that pid.
+	const recycled = standIn();
+	const r2 = await stopLaunchedApp({
+		pid: recycled.pid,
+		start: "Mon Jan  1 00:00:00 2001",
+		profile,
+		deadlineMs: 300,
+	});
+	assert.equal(r2.signalled, false);
+	assert.ok(alive(recycled.pid));
+	for (const c of [operator, otherRig, recycled])
+		process.kill(c.pid, "SIGKILL");
+	assert.ok(psRows() !== null);
+});
+
+/** One harness run on the darwin path, against the fake open + lsappinfo. */
+async function lsRun(
+	name,
+	{ behaviour = {}, ls = {}, args = [], front = null } = {},
+) {
+	const operator = front ?? operatorStandIn();
+	const lsDir = fakeLaunchServices(name, { front: operator, ...ls });
+	const operatorMarker = join(TREE, `${name}-operator-contact`);
+	const app = fakeApp(`Ls${name}`, {
+		ls: true,
+		frontFile: join(lsDir, "front"),
+		operatorMarker,
+		...behaviour,
+	});
+	const rigRoot = join(TREE, `${name}-rig`);
+	const out = join(TREE, `${name}-out`);
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			app,
+			"--out",
+			out,
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			...args,
+		],
+		{
+			[TEST_LAUNCH_ENV]: lsDir,
+			[TEST_LAUNCHD_PID_ENV]: String(ORPHAN_PARENT),
+			NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+			// The seam drives only fixtures under the harness's temp dir (S3).
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	const rigs = existsSync(rigRoot)
+		? readdirSync(rigRoot).filter((n) => n.startsWith("mac-proof-"))
+		: [];
+	const rig = rigs.length === 1 ? join(rigRoot, rigs[0]) : null;
+	if (rig) trackPids(rig);
+	const receiptPath = join(out, "receipt.json");
+	const receipt = existsSync(receiptPath)
+		? JSON.parse(readFileSync(receiptPath, "utf8"))
+		: null;
+	const openSeen = existsSync(join(lsDir, "open-argv.json"))
+		? JSON.parse(readFileSync(join(lsDir, "open-argv.json"), "utf8"))
+		: null;
+	const pids = rig ? fixturePids(rig) : {};
+	const seen =
+		rig && existsSync(join(rig, "fake-app-seen.json"))
+			? JSON.parse(readFileSync(join(rig, "fake-app-seen.json"), "utf8"))
+			: null;
+	return {
+		run,
+		receipt,
+		rig,
+		out,
+		operator,
+		lsDir,
+		openSeen,
+		pids,
+		seen,
+		operatorContact: existsSync(operatorMarker),
+	};
+}
+
+it("focus e2e: LaunchServices launch, env proven from the app's lines, the operator's same-named app frontmost throughout -> captured, focusEvents [], stolen null", async () => {
+	const { run, receipt, rig, operator, openSeen, pids, seen, operatorContact } =
+		await lsRun("LsClean");
+	assert.equal(run.status, 0, run.all);
+	assert.match(run.all, /through LaunchServices \(open -g -n\)/);
+	// The launch argv as `open` received it: -g -n before --args, the rig profile after, no token, no --env.
+	const options = openSeen.argv.slice(0, openSeen.argv.indexOf("--args"));
+	assert.ok(
+		options.includes("-g") && options.includes("-n"),
+		openSeen.argv.join(" "),
+	);
+	assert.ok(openSeen.argv.includes(`--user-data-dir=${join(rig, "profile")}`));
+	assert.equal(openSeen.tokenOnArgv, false);
+	// Review S1: the non-secret isolation keys ride on --env; the token never.
+	assert.equal(openSeen.envOnArgv, true);
+	assert.ok(
+		openSeen.envKeys.every((k) => OPEN_ENV_KEYS.includes(k)),
+		openSeen.envKeys.join(","),
+	);
+	assert.ok(!openSeen.envKeys.includes("LOCAL_OPERATOR_DESKTOP_TOKEN"));
+	assert.ok(openSeen.envKeys.includes("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL"));
+	assert.equal(seen.attachUrl, receipt.backend.url);
+	assert.equal(seen.home, join(rig, "home"));
+	assert.ok(seen.tokenSha, "the token arrived by inheritance");
+	assert.equal(operatorContact, false);
+	// The attach assertion (capture owner): the app's own line vs this run's serve.
+	assert.deepEqual(receipt.attach, {
+		url: receipt.backend.url,
+		rigUrl: receipt.backend.url,
+		match: true,
+	});
+	assert.equal(receipt.frontmost.baseline.source, "preflight");
+	assert.deepEqual(receipt.redaction, {
+		"app-stdout.log": "clean",
+		"app-stderr.log": "clean",
+	});
+	assert.equal(receipt.launch.mode, "launchservices");
+	assert.equal(
+		receipt.launch.app.pid,
+		pids.app,
+		"the discovered pid is the app, not its --type= helper",
+	);
+	assert.deepEqual(receipt.launch.envProof, {
+		verified: true,
+		driverArmed: true,
+		scriptArmed: true,
+		backend: receipt.backend.url,
+	});
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.equal(receipt.frontmost.stolen, null);
+	assert.equal(receipt.frontmost.tool, "lsappinfo");
+	assert.equal(receipt.frontmost.baseline.pid, operator);
+	assert.ok(receipt.frontmost.samples >= 3, String(receipt.frontmost.samples));
+	assert.ok(
+		receipt.frontmost.transitions.every(
+			(x) => x.rig === false && x.pid === operator,
+		),
+	);
+	assert.equal(receipt.reap.app.clean, true, JSON.stringify(receipt.reap));
+	assert.equal(receipt.reap.sentinel.clean, true);
+	assert.ok(
+		!alive(pids.app) && !alive(pids.reparented),
+		"app and helper reaped",
+	);
+	assert.ok(!alive(receipt.launch.sentinel.pid), "sentinel reaped");
+	assert.ok(alive(operator), "the operator's same-named app is never touched");
+	// The app's own log files, tailed: frames came from them; no token in them.
+	const stdout = readFileSync(join(rig, "logs", "app-stdout.log"), "utf8");
+	assert.match(stdout, /Attached to the backend this launch named/);
+	assert.ok(receipt.frames.length > 0);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: the rig app, or its helper, becoming frontmost aborts the run (exit 1), reaps it and records `stolen`", async () => {
+	for (const [name, steal, helper] of [
+		["LsStealApp", "app", false],
+		["LsStealHelper", "helper", true],
+	]) {
+		const { run, receipt, pids, operator } = await lsRun(name, {
+			behaviour: { steal, stealAfterMs: 800, hang: true },
+		});
+		assert.equal(run.status, 1, `${name}: ${run.all}`);
+		assert.match(run.all, /the rig app became frontmost/, name);
+		const want = steal === "helper" ? pids.reparented : pids.app;
+		assert.equal(receipt.frontmost.stolen.pid, want, name);
+		assert.equal(receipt.frontmost.stolen.helper, helper, name);
+		assert.equal(receipt.frontmost.transitions.at(-1).rig, true, name);
+		assert.equal(receipt.focusEvents.length, 1, name);
+		assert.equal(receipt.focusEvents[0].source, "lsappinfo", name);
+		assert.ok(receipt.frontmost.stolen.sinceLaunchMs < 20_000, name);
+		assert.deepEqual(receipt.frames, [], name);
+		assert.ok(!alive(pids.app) && !alive(pids.reparented), `${name}: reaped`);
+		assert.ok(alive(operator), name);
+		process.kill(operator, "SIGKILL");
+	}
+});
+
+it("focus e2e: LaunchServices drops the inherited env -> the --env keys still arrive, the token-less app exits at its attach check, BLOCKED (exit 3), never the operator's daemon", async () => {
+	const { run, receipt, rig, seen, operatorContact, openSeen, operator } =
+		await lsRun("LsNoEnv", { ls: { stripEnv: true } });
+	assert.equal(run.status, 3, run.all);
+	assert.match(run.all, /BLOCKED launch-env-not-inherited/);
+	assert.match(
+		run.all,
+		/\[attach\] LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL names a backend/,
+	);
+	assert.match(run.all, /the token is never put on argv/);
+	assert.equal(receipt.verdict, "blocked");
+	assert.equal(receipt.launch.envProof.verified, false);
+	assert.deepEqual(receipt.frames, []);
+	assert.deepEqual(receipt.steps, []);
+	// What the app actually got: every isolation key from --env (the rig's
+	// URL, config root, HOME, log dir, manager off), and no token.
+	assert.equal(seen.attachUrl, receipt.backend.url);
+	assert.equal(seen.configDir, join(rig, "config-app"));
+	assert.equal(seen.home, join(rig, "home"));
+	assert.equal(seen.logDir, join(rig, "logs"));
+	assert.equal(seen.managerOff, "true");
+	assert.equal(seen.tokenSha, null);
+	assert.equal(openSeen.tokenOnArgv, false);
+	assert.equal(operatorContact, false, "the app never resolved `managed`");
+	assert.deepEqual(
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command)),
+		[],
+	);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: control - the pre-S1 argv (no --env) with the env dropped reaches the operator's daemon stand-in, which is what S1 closes", async () => {
+	const { run, operatorContact, seen, operator } = await lsRun("LsNoEnvCtl", {
+		ls: { stripEnv: true, dropEnvFlags: true },
+	});
+	// The harness still blocks (no driver arming arrived), but too late: the
+	// app had already resolved `managed` against the operator's config root.
+	assert.equal(run.status, 3, run.all);
+	assert.equal(seen.attachUrl, undefined);
+	assert.equal(
+		operatorContact,
+		true,
+		"without --env the app falls back to the operator's daemon",
+	);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: an attach line naming another backend (the operator's :1111) fails the run the moment it is read: attach.match false, reaped", async () => {
+	const { run, receipt, pids, operator } = await lsRun("LsWrongAttach", {
+		behaviour: { attachUrl: "http://127.0.0.1:1111" },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/attached to http:\/\/127\.0\.0\.1:1111, not the backend this run started/,
+	);
+	assert.notEqual(receipt.backend.url, "http://127.0.0.1:1111");
+	assert.deepEqual(receipt.attach, {
+		url: "http://127.0.0.1:1111",
+		rigUrl: receipt.backend.url,
+		match: false,
+	});
+	assert.equal(receipt.verdict, "failed");
+	assert.deepEqual(receipt.frames, []);
+	assert.ok(!alive(pids.app) && !alive(pids.reparented));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a token the harness cannot redact from the app's own log fails the run and is recorded (review S2)", async () => {
+	const { run, receipt, out, rig, operator } = await lsRun("LsRedact", {
+		behaviour: { echoToken: true, lockLog: true },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(receipt.redaction["app-stdout.log"], /^failed: EACCES/);
+	assert.equal(receipt.redaction["app-stderr.log"], "clean");
+	assert.equal(receipt.verdict, "failed");
+	assert.match(receipt.error, /could not be redacted from app-stdout.log/);
+	assert.equal(
+		existsSync(join(out, "logs", "app-stdout.log")),
+		false,
+		"never copied to --out",
+	);
+	assert.ok(existsSync(join(rig, "logs", "app-stdout.log")));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: an open(1) that rejects --env fails the run before anything launches; no process carries the rig profile", async () => {
+	const { run, receipt, rig, openSeen, operator } = await lsRun("LsRejectEnv", {
+		ls: { rejectEnv: true },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/did not launch the app \(exit 1\): open: unrecognized option/,
+	);
+	assert.ok(openSeen.envOnArgv, "open was asked with --env");
+	assert.equal(
+		existsSync(join(rig, "fake-app-seen.json")),
+		false,
+		"no app ever ran",
+	);
+	assert.deepEqual(
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command)),
+		[],
+	);
+	assert.equal(receipt.reap.app.clean, true);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: the test launch seam with a real app path refuses (exit 2) before anything is planned or spawned (review S3)", async () => {
+	const out = join(TREE, "SeamReal-out");
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			"/Applications/Local Operator.app",
+			"--out",
+			out,
+			"--capture",
+			"capturepage",
+		],
+		{
+			[TEST_LAUNCH_ENV]: "direct",
+			NODE_TEST_CONTEXT: "child",
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	assert.equal(run.status, 2, run.all);
+	assert.match(
+		run.all,
+		/test-only seam that drives only fixtures under the temp dir/,
+	);
+	assert.equal(existsSync(join(out, "receipt.json")), false);
+});
+
+it("focus e2e: --dry-run on the LaunchServices path prints the open -g -n plan with the --env keys and no token (QA Q1-1)", async () => {
+	const lsDir = fakeLaunchServices("LsDry", { front: process.pid });
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			fakeApp("LsDry", { ls: true }),
+			"--out",
+			join(TREE, "LsDry-out"),
+			"--capture",
+			"capturepage",
+			// The fake, never PATH: --dry-run still resolves `lop` before it
+			// plans, and the CI runner has none on PATH (Full Test Suite run
+			// 44811315012 refused here with "no `lop` on PATH").
+			"--lop",
+			fakeLop(),
+			"--dry-run",
+		],
+		{
+			[TEST_LAUNCH_ENV]: lsDir,
+			NODE_TEST_CONTEXT: "child",
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	assert.equal(run.status, 0, run.all);
+	const plan = JSON.parse(run.stdout);
+	assert.equal(plan.launch.mode, "launchservices");
+	assert.equal(plan.launch.command, join(lsDir, "open"));
+	assert.deepEqual(plan.launch.argv.slice(0, 2), ["-g", "-n"]);
+	assert.equal(plan.launch.problem, null);
+	assert.ok(
+		plan.launch.envOnArgv.includes("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL"),
+	);
+	assert.deepEqual(plan.launch.envInheritedOnly, [
+		"LOCAL_OPERATOR_DESKTOP_TOKEN",
+	]);
+	assert.ok(
+		!run.stdout.includes("LOCAL_OPERATOR_DESKTOP_TOKEN="),
+		"no token pair on the plan's argv",
+	);
+	assert.equal(
+		existsSync(join(lsDir, "open-argv.json")),
+		false,
+		"dry-run spawns nothing",
+	);
+});
+
+it("focus e2e: the harness SIGKILLed before discovery - the sentinel armed before open still reaps the app LaunchServices starts late (review F2, QA Q1-5)", async () => {
+	const name = "LsLate";
+	const operator = operatorStandIn();
+	const lsDir = fakeLaunchServices(name, { front: operator, delayMs: 1500 });
+	const app = fakeApp(`Ls${name}`, {
+		ls: true,
+		frontFile: join(lsDir, "front"),
+		hang: true,
+	});
+	const rigRoot = join(TREE, `${name}-rig`);
+	const harness = spawn(
+		process.execPath,
+		[
+			HARNESS,
+			"--app",
+			app,
+			"--out",
+			join(TREE, `${name}-out`),
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+		],
+		{
+			env: harnessEnv({
+				[TEST_LAUNCH_ENV]: lsDir,
+				[TEST_LAUNCHD_PID_ENV]: String(ORPHAN_PARENT),
+				NODE_TEST_CONTEXT: "child",
+				TMPDIR: os.tmpdir(),
+			}),
+			stdio: "ignore",
+		},
+	);
+	leftovers.push(harness.pid);
+	assert.ok(
+		await waitFor(() => existsSync(join(lsDir, "open-argv.json")), 30_000),
+		"open ran",
+	);
+	const rig = rigOf(rigRoot);
+	process.kill(harness.pid, "SIGKILL");
+	const killedAt = Date.now();
+	const latePid = join(lsDir, "late-app.pid");
+	assert.equal(existsSync(latePid), false, "the app had not started yet");
+	assert.ok(
+		await waitFor(() => existsSync(latePid), 6000),
+		"LaunchServices starts it late",
+	);
+	const lateApp = Number(readFileSync(latePid, "utf8"));
+	leftovers.push(lateApp);
+	assert.ok(
+		await waitFor(() => !alive(lateApp), 8000),
+		`late app reaped by the sentinel (${Date.now() - killedAt} ms after the harness died)`,
+	);
+	trackPids(rig);
+	const carriers = () =>
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command));
+	assert.ok(
+		await waitFor(() => carriers().length === 0, 6000),
+		JSON.stringify(carriers()),
+	);
+	assert.ok(alive(operator), "the operator's same-named app is never touched");
+	process.kill(operator, "SIGKILL");
+	// The sentinel would exit on its own after its grace (~15 s); end it now
+	// (found by this run's unique rig path in its $0) so the suite leaves nothing.
+	for (const r of psRows() ?? [])
+		if (r.command.includes(`mac-proof-sentinel:${rig} `))
+			try {
+				process.kill(r.pid, "SIGKILL");
+			} catch {}
+});
+
+it("focus e2e: an unreadable lsappinfo refuses before launch (exit 2); the receipt still carries focusEvents and frontmost", async () => {
+	const { run, receipt, openSeen, operator } = await lsRun("LsBlind", {
+		ls: { frontBroken: true },
+	});
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /frontmost watchdog's preflight failed/);
+	assert.equal(openSeen, null, "open never ran");
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.deepEqual(receipt.frontmost, emptyFrontmost("lsappinfo"));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a leftover rig process under the rig root refuses the launch (exit 2) and is not touched", async () => {
+	const rigRoot = join(TREE, "LsGate-rig");
+	mkdirSync(join(rigRoot, "mac-proof-Zz9Yy8", "profile"), { recursive: true });
+	const leftover = standIn([
+		`--user-data-dir=${join(rigRoot, "mac-proof-Zz9Yy8", "profile")}`,
+	]);
+	await waitFor(() => startOf(leftover.pid) !== null, 2000);
+	const { run, openSeen, operator } = await lsRun("LsGate");
+	assert.equal(run.status, 2, run.all);
+	assert.match(
+		run.all,
+		new RegExp(
+			`a previous mac-proof rig is still running \\(pids ${leftover.pid}`,
+		),
+	);
+	assert.equal(openSeen, null, "open never ran");
+	assert.ok(
+		alive(leftover.pid),
+		"the gate refuses; it does not reap another run",
+	);
+	process.kill(leftover.pid, "SIGKILL");
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a Linux (direct) receipt carries focusEvents [] and a tool-less frontmost", async () => {
+	const rigRoot = join(TREE, "DirectFocus-rig");
+	const out = join(TREE, "DirectFocus-out");
+	const run = await runHarnessAsync([
+		"--app",
+		fakeApp("DirectFocus"),
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 0, run.all);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.deepEqual(receipt.frontmost, emptyFrontmost(null));
+	assert.equal(receipt.launch.mode, "direct");
 });
 
 /* ---------------------------------- end to end, as one bounded concurrent group */
@@ -6762,6 +8500,88 @@ test("file-preview: a row inside the collapsed Working files group is reached by
 	assert.equal(matches(loading, FILES_READY), false);
 	assert.equal(pick(loading, expand), null);
 	assert.equal(pick(loading, trigger), null);
+});
+
+/*
+ * 79's download run at main 3673e88232 (receipt download2/receipt.json): step 10
+ * "waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ * notes.md ... after 20000ms". The same 1043-file session as file-preview's
+ * failure: notes.md sat in the COLLAPSED Working files group, whose rows
+ * v0.59.2 never renders. Fixtures shaped like that markup, as above.
+ */
+test("download: a row inside the collapsed Working files group is reached by expanding the group", () => {
+	const scene = downloadSceneSteps("notes.md");
+	const expand = scene.find((s) => s.optional === true)?.payload.selector;
+	assert.equal(expand, COLLAPSED_GROUP_HEADER);
+	const wait = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const press = scene.find(
+		(s) =>
+			s.verb === "press" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
+	// The expand comes after the Files data wait and before the row is looked for.
+	const at = (sel) => scene.findIndex((s) => s.payload?.selector === sel);
+	assert.ok(at(FILES_READY) < at(expand) && at(expand) < at(wait));
+	const fileRow = (name, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="/Users/o/${name}">x</button><div><button aria-haspopup="menu" aria-label="Actions for ${name}" aria-expanded="false" data-t="${id}">⋯</button></div></li>`;
+	const header = (open, label) =>
+		`<h3 data-glass-plane="band-backdrop"><button type="button" aria-expanded="${open}" aria-disabled="false" data-t="${label}">${label}<span>1</span></button></h3>`;
+	const view = ({ workingOpen, rows, attachments = [] }) => {
+		const highlights = `<section>${header(true, "Highlights")}<ul data-tour-tag="files-grid">${fileRow("image-1.png", "remote:h_1")}</ul></section>`;
+		const working = `<section>${header(workingOpen, "Working files")}<ul data-tour-tag="files-grid"></ul></section>`;
+		const docs = workingOpen
+			? `<section>${header(true, "Documents")}<ul data-tour-tag="files-grid">${rows.join("")}</ul></section>`
+			: "";
+		const attached = attachments.length
+			? `<section>${header(true, "Attachments")}<ul data-tour-tag="files-grid">${attachments.join("")}</ul></section>`
+			: "";
+		return `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div>${highlights}${working}${docs}${attached}</div></section></section>`;
+	};
+	const doc = (html) => new JSDOM(html).window.document;
+	const pick = (html, sel) =>
+		doc(html).querySelector(sel)?.getAttribute("data-t") ?? null;
+	const target = fileRow("notes.md", "remote:f_1");
+	// Before the expand: Files settled, but no notes.md row to wait for - 79's failure.
+	const collapsed = view({ workingOpen: false, rows: [target] });
+	assert.equal(matches(collapsed, FILES_READY), true, "Files settled");
+	assert.equal(pick(collapsed, wait), null, "collapsed: no row");
+	// The expand lands on the COLLAPSED header, never the open Highlights.
+	assert.equal(pick(collapsed, expand), "Working files");
+	// After it: the row is waited on, single, and its trigger is the press.
+	const expanded = view({ workingOpen: true, rows: [target] });
+	assert.equal(pick(expanded, wait), "remote:f_1");
+	assert.equal(pick(expanded, press), "remote:f_1");
+	assert.equal(doc(expanded).querySelector(dup), null, "one row");
+	// Already open (a session without highlights): the optional press finds nothing.
+	assert.equal(pick(expanded, expand), null);
+	// Inside the expanded group, an attachment of the same name is neither the
+	// press nor a second row (C1), and a .bak beside it is another file.
+	const crowded = view({
+		workingOpen: true,
+		rows: [fileRow("notes.md.bak", "remote:f_0"), target],
+		attachments: [fileRow("notes.md", "attachment:k1")],
+	});
+	assert.equal(pick(crowded, press), "remote:f_1");
+	assert.equal(
+		doc(crowded).querySelector(dup),
+		null,
+		"no false two-row refusal",
+	);
+	// The header press can only ever be a group header: no row trigger, no menu
+	// item (Radix portals the menu to <body>), and no button outside the scroller.
+	const menuOpen = `${expanded.replace('aria-expanded="false" data-t="remote:f_1"', 'aria-expanded="true" data-t="remote:f_1"')}<div role="menu"><button role="menuitem" data-remote-action="save-as" aria-expanded="false" data-t="save-as"></button><button role="menuitem" data-remote-action="download" data-t="download"></button></div>`;
+	assert.equal(pick(menuOpen, expand), null);
+	assert.equal(
+		pick(view({ workingOpen: false, rows: [target] }), expand),
+		"Working files",
+	);
+	for (const el of doc(collapsed).querySelectorAll(expand))
+		assert.equal(el.parentElement.tagName, "H3");
 });
 
 /*

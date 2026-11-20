@@ -41,7 +41,7 @@
  *     before any frame can claim its state.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
 	closeSync,
@@ -81,6 +81,36 @@ import {
 } from "./app-tree-teardown.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	APP_ENV_KEYS,
+	DISCOVERY_TIMEOUT_MS,
+	OPEN_ENV_KEYS,
+	PRESENT_LINE,
+	PS_TZ,
+	TEST_LAUNCH_ENV,
+	attachMismatchMessage,
+	buildOpenArgv,
+	createAttachCheck,
+	createEnvProof,
+	createFileTail,
+	createFrontmostWatch,
+	discoverAppPid,
+	emptyFrontmost,
+	envNotInheritedMessage,
+	interRunGateProblem,
+	launchMode,
+	lsappinfoRunner,
+	openArgvProblem,
+	psArgvOf,
+	psRows,
+	reapLaunchedOnExit,
+	rigPidClassifier,
+	rigStyleProfilePattern,
+	sampleFrontmost,
+	startOf,
+	startSentinel,
+	stopLaunchedApp,
+} from "./mac-proof-focus.mjs";
 import {
 	NOTIFICATION_ID,
 	SEED_SCENARIOS,
@@ -1656,11 +1686,14 @@ export const SHOW_IN_CANVAS_ITEM_SELECTOR =
 export const COLLAPSED_GROUP_HEADER =
 	'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])';
 
-export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
-	const problem = previewFileProblem(name);
-	if (problem) throw new Refusal(problem);
-	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
-	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
+/**
+ * The Files view, settled, with a collapsed Working files group opened: the ONE
+ * way every row-pressing scene (file-preview, download) reaches its row. Shared,
+ * not copied, so a fix to how the list is reached lands in both (79's download
+ * run at main 3673e88232 failed exactly where file-preview had been fixed in
+ * #2015: its row sat in the collapsed group and was never rendered).
+ */
+export function filesRowReachSteps() {
 	return [
 		{ verb: "navigate", payload: "/chat" },
 		{ verb: "openCanvas", payload: { view: "files" } },
@@ -1681,6 +1714,16 @@ export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
 			payload: { selector: COLLAPSED_GROUP_HEADER, timeoutMs: 1500 },
 			optional: true,
 		},
+	];
+}
+
+export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
+	const problem = previewFileProblem(name);
+	if (problem) throw new Refusal(problem);
+	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
+	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
+	return [
+		...filesRowReachSteps(),
 		{
 			verb: "press",
 			payload: {
@@ -1738,13 +1781,16 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	}),
 	Object.freeze({
 		id: "files-attachments-only",
-		scenes: Object.freeze(["files", "file-preview"]),
+		// download waits on FILES_READY too (filesRowReachSteps).
+		scenes: Object.freeze(["files", "file-preview", "download"]),
 		text: "Attachment rows never satisfy the Files wait; a session whose index is empty but holds attachments times out and fails rather than being photographed.",
 	}),
 	Object.freeze({
 		id: "preview-first-screen",
-		scenes: Object.freeze(["file-preview"]),
-		text: "The previewed row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
+		// The id predates download sharing the reach (filesRowReachSteps); kept so
+		// earlier receipts still compare.
+		scenes: Object.freeze(["file-preview", "download"]),
+		text: "The previewed or downloaded row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
 	}),
 	Object.freeze({
 		id: "preview-no-search",
@@ -1779,6 +1825,36 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	 * --check-operator-downloads the stray listing runs, so containment is no
 	 * longer destination-only.
 	 */
+	/*
+	 * Every darwin run (`when`: only listed when the run launched through
+	 * LaunchServices, mac-proof-focus.mjs). Measured on the capture Mac
+	 * (2026-11-20): `lsappinfo front` + `lsappinfo info -only name -only pid`
+	 * answered in 0.08 s, rc 0, with no prompt - the watchdog's permission-free
+	 * read is confirmed. What stays inferred until the first watched Mac run is
+	 * that `open -g -n` prevents the come-forward (RCA R1).
+	 */
+	Object.freeze({
+		id: "focus-prevention-launchservices",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "open -g -n is the prevention, inferred from open(1) and the RCA until a watched Mac run shows no rig pid frontmost; lsappinfo was measured prompt-free (0.08 s). Matching is by pid only.",
+	}),
+	/*
+	 * Round-1 review (S1, S2, F2): what the LaunchServices launch's isolation
+	 * and cleanup rest on that no Linux run can measure.
+	 */
+	Object.freeze({
+		id: "focus-env-explicit-unmeasured",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "The non-secret isolation keys ride on open --env (documented by man open on macOS 27.2.1); that LaunchServices delivers them, and the inherited token, to a new instance is proven per run from the app's own lines, not measured in advance. A token that does not arrive makes v0.59.2 exit at its attach check before any backend or window.",
+	}),
+	Object.freeze({
+		id: "focus-crash-cleanup-bounded",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "If the harness itself is killed (SIGKILL, crash), the app's own log files keep the token unredacted inside the 0700 rig, and the sentinel sweeps rig-profile processes for 15 s only; a LaunchServices launch finishing later is caught by the next run's inter-run gate, not reaped.",
+	}),
 	Object.freeze({
 		id: "toast-latency-unmeasured",
 		scenes: Object.freeze(["download"]),
@@ -1798,7 +1874,7 @@ export const MEASUREMENT_LIMITS = Object.freeze([
 	Object.freeze({
 		id: "fixture-proven-actions",
 		scenes: Object.freeze(["download"]),
-		text: "The row trigger (exact label, single row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
+		text: "The group expand, the row trigger (exact label, one index row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
 	}),
 ]);
 
@@ -1811,7 +1887,8 @@ export function receiptLimits(scenes, opts = {}) {
 	return MEASUREMENT_LIMITS.filter(
 		(limit) =>
 			limit.scenes.some((scene) => scenes.includes(scene)) &&
-			!(limit.unless && opts[limit.unless]),
+			!(limit.unless && opts[limit.unless]) &&
+			!(limit.when && !opts[limit.when]),
 	).map(({ id, text }) => ({ id, text }));
 }
 
@@ -2309,10 +2386,15 @@ function rowTriggerButton(labels) {
  * the row-itself case is `row:has(button)` and the ancestor case is
  * `:has(row button)` - neither nests. Used with `waitFor {gone: true}`: the
  * run refuses rather than press the first of two same-named rows (S1-2).
+ *
+ * Only INDEX rows count (`INDEX_ROW`, #2012 review C1): the trigger the scene
+ * presses is restricted to them, so an attachment of the same name (the
+ * person's upload, which shares `data-tour-tag="file-row"`) is not a second
+ * candidate, and counting it refused a run that had exactly one row to press.
  */
 export function duplicateRowSelector(labels) {
 	const button = rowTriggerButton(labels);
-	const holder = `:is([data-tour-tag="file-row"]:has(${button}), :has([data-tour-tag="file-row"] ${button}))`;
+	const holder = `:is(${INDEX_ROW}:has(${button}), :has(${INDEX_ROW} ${button}))`;
 	return `${holder} ~ ${holder}`;
 }
 
@@ -2336,14 +2418,24 @@ export function downloadFileProblem(name) {
  * The download scene, from the shipped S2 verbs only (navigate, openCanvas,
  * waitFor, press - `DEV_DRIVER_SCRIPT_VERBS` at v0.59.2); no new renderer verb.
  *
- * - The Files view exactly as the `files` scene reaches it.
- * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside a
- *   `data-tour-tag="file-row"` (finder-files-view.tsx), whose accessible name is
+ * - The Files view as file-preview reaches it (`filesRowReachSteps`): the
+ *   settled-data wait (`FILES_READY`), then the OPTIONAL press of a collapsed
+ *   group header (`COLLAPSED_GROUP_HEADER`). 79's Mac run at main 3673e88232
+ *   ("waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ *   notes.md ... after 20000ms"): 1043 files, an open Highlights group of one
+ *   row and a collapsed "Working files, 1,042" holding notes.md, whose rows
+ *   v0.59.2 never renders (see "THE COLLAPSED GROUP" at file-preview). As
+ *   there, the row must then fall on the first screen (receipt limit
+ *   `preview-first-screen`).
+ * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside an
+ *   index row (`INDEX_ROW`, finder-files-view.tsx), whose accessible name is
  *   "Actions for <name>" (ui.common.actions.actions_for_name). The name is the
  *   only per-row marker the row carries (`data-file-id` is the owner's id, which
  *   the harness does not know), so the label is matched EXACTLY, in any shipped
  *   locale (`actionsForNameLabels`), never as a substring.
- * - Then the run REFUSES when more than one row carries that label
+ *   Attachment rows are excluded, as at file-preview: an attachment named
+ *   like the peer's file is the person's upload, not a peer row to download.
+ * - Then the run REFUSES when more than one INDEX row carries that label
  *   (`duplicateRowSelector`, a `gone` wait that fails at once if present).
  * - Pressed only while `aria-expanded="false"`; the press dispatches
  *   pointerdown, which opens a Radix DropdownMenu.
@@ -2358,11 +2450,9 @@ export function downloadSceneSteps(file = null) {
 	// --download-file as null, which a default parameter would keep.
 	const name = file ?? DOWNLOAD_FILE_DEFAULT;
 	const labels = actionsForNameLabels(name);
-	const trigger = `[data-tour-tag="file-row"] ${rowTriggerButton(labels)}`;
+	const trigger = `[data-tour-tag="files-scroller"] ${INDEX_ROW} ${rowTriggerButton(labels)}`;
 	return [
-		{ verb: "navigate", payload: "/chat" },
-		{ verb: "openCanvas", payload: { view: "files" } },
-		{ verb: "waitFor", payload: { selector: '[data-chat-region="header"]' } },
+		...filesRowReachSteps(),
 		{
 			verb: "waitFor",
 			payload: { selector: trigger, timeoutMs: 20000 },
@@ -2402,7 +2492,29 @@ export function downloadSceneSteps(file = null) {
 	];
 }
 
-/** The exact press selectors a download run may use: its own scene's two. */
+/**
+ * The exact press selectors a download run may use: its own scene's three - the
+ * collapsed-group header, the row trigger, the Download entry.
+ *
+ * WHY THE HEADER PRESS CANNOT REACH Save as / Copy image / Delete (read from
+ * v0.59.2). `COLLAPSED_GROUP_HEADER` matches only a `<button>` that is the
+ * direct child of an `<h3>` directly inside a `<section>` inside the Files
+ * scroller, with `aria-expanded="false"`: the group header
+ * (finder-files-view.tsx:912 section, :916 h3, :945 button). That button's
+ * click does one thing, `toggle(section.id)` (:986 -> :514-524), which sets the
+ * Working files preference or the closed-sections set - view state, no daemon
+ * call, no file I/O. Its content is a chevron icon, the label and a caption
+ * span ("a caption, never a control", :1061-1086); no menu or row lives in it.
+ * Every file action is a Radix menu ITEM, and the menu content is portalled to
+ * <body> (dropdown-menu.tsx:191 `DropdownMenuPrimitive.Portal`), so no menu
+ * item is ever inside the scroller, let alone `section > h3 > button`. The row
+ * triggers are `button[aria-haspopup="menu"]` inside a file row's `<div>`
+ * (:1430, :1528) under the section's `<ul>`, never a child of the `<h3>`. And
+ * `press` takes the selector's FIRST match only (dev-driver/install.ts:864
+ * `document.querySelector`), so it presses a header or nothing.
+ * The press is also skipped (optional) once the group is open. Each entry
+ * is still admitted byte-for-byte, never by pattern.
+ */
 export function downloadPressAllowlist(file = null) {
 	return downloadSceneSteps(file)
 		.filter((s) => s.verb === "press")
@@ -2415,7 +2527,8 @@ export function downloadPressAllowlist(file = null) {
  * through.
  *
  * - A DOWNLOAD run (`{download: true, file}`): an ALLOWLIST - every press must be
- *   byte-for-byte one of `downloadPressAllowlist(file)`. WHY not a blocklist
+ *   byte-for-byte one of `downloadPressAllowlist(file)` (the collapsed-group
+ *   header, the row trigger, the Download entry). WHY not a blocklist
  *   (review S1-1): a text blocklist was passed by an uppercase attribute, a
  *   sibling combinator (`[data-remote-action="download"] + *`) and
  *   `:nth-of-type`, each able to reach Save as, whose bytes Electron writes to
@@ -2439,7 +2552,7 @@ export function downloadStepsProblem(
 				: String(step.payload?.selector ?? "");
 		if (allowed) {
 			if (!allowed.has(selector))
-				return `step ${i + 1} presses ${selector}: a download run may press only its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
+				return `step ${i + 1} presses ${selector}: a download run may press only the collapsed Files group header, its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
 			continue;
 		}
 		// The one exception is byte-exact: file-preview's Show in canvas, a read.
@@ -3327,6 +3440,62 @@ export function redactEnv(env) {
 	return out;
 }
 
+/**
+ * The dry-run's `launch`: on the LaunchServices path, the exact `open` argv the
+ * run would spawn (with the placeholder rig, and an --app-zip bundle shown at
+ * its extraction dir), the keys that ride on it, the keys inherited only, and
+ * the verdict of the same `openArgvProblem` guard. The placeholder token is
+ * passed to the guard, so a token on that argv would show as a problem here.
+ */
+export function dryRunLaunch({
+	launch,
+	appBundle,
+	rig,
+	backendUrl,
+	token,
+	opts,
+}) {
+	if (launch.kind !== "launchservices")
+		return {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		};
+	const bundle = appBundle?.endsWith(".app")
+		? appBundle
+		: join(rig, "app", "<extracted from --app-zip>.app");
+	const env = buildAppEnv({
+		rig,
+		backendUrl,
+		token,
+		windowMode: opts.windowMode,
+	});
+	const argv = buildOpenArgv({
+		appBundle: bundle,
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: opts.windowMode,
+			size: opts.size,
+			session: opts.session,
+		}),
+		env,
+	});
+	return {
+		mode: "launchservices",
+		...(launch.injected ? { injected: true } : {}),
+		command: launch.open,
+		argv,
+		envOnArgv: OPEN_ENV_KEYS.filter((k) => env[k] !== undefined),
+		envInheritedOnly: Object.keys(APP_ENV_KEYS).filter(
+			(k) => APP_ENV_KEYS[k].secret,
+		),
+		problem: openArgvProblem(argv, {
+			profile: join(rig, "profile"),
+			token,
+		}),
+	};
+}
+
 /*
  * ---------------------------------------------------------------------------
  * The stdout supervisor: a pure state machine over the app's protocol lines.
@@ -3680,13 +3849,54 @@ export function frameMatchesWindow(pixels, bounds) {
 }
 
 /** Owner pid, layer and bounds of one on-screen window. Needs no Screen Recording. */
-export function windowInfo(windowId) {
-	const out = jxa(`
+/**
+ * One bounded command WITHOUT blocking the event loop: `{status, stdout,
+ * stderr}` (status null on a spawn error or timeout). The per-frame window
+ * lookup and screencapture use it so the 100 ms frontmost watchdog keeps
+ * sampling while a frame is shot (review F4); `spawnSync` there stalled every
+ * sample for up to 20 s + 30 s.
+ */
+export function runAsync(cmd, args, { timeout }) {
+	return new Promise((resolve) => {
+		execFile(
+			cmd,
+			args,
+			{ encoding: "utf8", timeout, maxBuffer: 16 << 20 },
+			(error, stdout, stderr) =>
+				resolve({
+					status: error
+						? typeof error.code === "number"
+							? error.code
+							: null
+						: 0,
+					stdout: String(stdout ?? ""),
+					stderr: String(stderr ?? ""),
+					error: error ? error.message : null,
+				}),
+		);
+	});
+}
+
+const WINDOW_INFO_JXA = (windowId) => `
 ObjC.import('CoreGraphics');
 var list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0))) || [];
 var w = list.filter(function (x) { return x.kCGWindowNumber === ${Number(windowId)}; })[0];
-JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`);
-	return JSON.parse(out);
+JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`;
+
+export function windowInfo(windowId) {
+	return JSON.parse(jxa(WINDOW_INFO_JXA(windowId)));
+}
+
+/** `windowInfo`, without blocking the event loop (the per-frame path; review F4). */
+export async function windowInfoAsync(windowId, run = runAsync) {
+	const r = await run(
+		"osascript",
+		["-l", "JavaScript", "-e", WINDOW_INFO_JXA(windowId)],
+		{ timeout: 20000 },
+	);
+	if (r.status !== 0)
+		throw new Error(`osascript failed: ${(r.stderr || r.error || "").trim()}`);
+	return JSON.parse(r.stdout.trim());
 }
 
 /** Width and height from a PNG's IHDR, or null when the bytes are not a PNG. */
@@ -4290,10 +4500,12 @@ export function processFactsMany(
  * setlocale(LC_ALL, "") (adv_cmds ps/print.c `lstarted`, ps/ps.c), so an en_GB
  * Mac answers `Mon 16 Nov 10:00:00 2026` and a de_DE one `Mo 16 Nov ...`, and
  * the inherited LANG/LC_ALL decide it. LC_ALL overrides every LC_* category;
- * LANG is pinned too so nothing falls back to the operator's locale.
+ * LANG is pinned too so nothing falls back to the operator's locale. TZ is
+ * pinned for the same reason: `lstart` is local wall time, and these starts
+ * meet `startOf`'s and the sentinel's, which read UTC (`PS_TZ`, security S5).
  */
 export function cLocaleEnv(env = process.env) {
-	return { ...env, LC_ALL: "C", LANG: "C" };
+	return { ...env, LC_ALL: "C", LANG: "C", TZ: PS_TZ };
 }
 
 /** The C-locale `lstart` (`Mon Nov 16 10:00:00 2026`) between pgid and command. */
@@ -4524,6 +4736,123 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * The negative-control self test: the refusal cases, against the real guards.
  * ---------------------------------------------------------------------------
  */
+
+/**
+ * The focus/launch refusals, each against the real guard, on a well-formed
+ * darwin launch with ONE thing wrong: the `open` argv without -n or -g, with
+ * the token's key or value on --env, with a key off the allowlist, with a
+ * required isolation key missing, the NAME-only --env form; the test seam with
+ * a real app path or outside node --test; and the inter-run gate (a leftover
+ * rig, an unlistable process table).
+ */
+export function focusRefusalCases(tree) {
+	const rig = join(tree, "mac-proof-Ab12Cd");
+	const profile = join(rig, "profile");
+	const token = "negative-control-token";
+	const env = buildAppEnv({
+		base: {},
+		rig,
+		backendUrl: "http://127.0.0.1:60317",
+		token,
+		windowMode: "inactive",
+	});
+	const argv = buildOpenArgv({
+		appBundle: "/Applications/Local Operator.app",
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: "inactive",
+			size: "1380x900",
+			session: null,
+		}),
+		env,
+	});
+	const check = (a) => openArgvProblem(a, { profile, token });
+	// The well-formed argv must pass, or every case below proves nothing.
+	if (check(argv) !== null)
+		throw new Error(
+			`the negative control's base open argv fails: ${check(argv)}`,
+		);
+	const at = argv.indexOf("--args");
+	const withOptions = (extra) => [
+		...argv.slice(0, at),
+		...extra,
+		...argv.slice(at),
+	];
+	const dropFlag = (flag) => argv.filter((a, i) => !(a === flag && i < at));
+	const dropEnv = (key) => {
+		const i = argv.findIndex((a) => String(a).startsWith(`${key}=`));
+		return argv.filter((_, j) => j !== i && j !== i - 1);
+	};
+	const leftover = [
+		{
+			pid: 4242,
+			ppid: 1,
+			start: "x",
+			command: `/x --user-data-dir=${profile}`,
+		},
+	];
+	const pattern = rigStyleProfilePattern(null);
+	const seam = { [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" };
+	return [
+		[
+			"open argv without -n (the operator's running app would take the launch)",
+			() => check(dropFlag("-n")),
+		],
+		[
+			"open argv without -g (LaunchServices would bring the rig app forward)",
+			() => check(dropFlag("-g")),
+		],
+		[
+			"open --env carrying the desktop token's key",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_DESKTOP_TOKEN=${token}`])),
+		],
+		[
+			"open --env value carrying the token",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_UI_TELEMETRY=${token}`])),
+		],
+		[
+			"open --env with a key off the non-secret allowlist",
+			() => check(withOptions(["--env", "PATH=/tmp/evil"])),
+		],
+		[
+			"open --env in the NAME-only form",
+			() => check(withOptions(["--env", "HOME"])),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+			() => check(dropEnv("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL")),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_CONFIG_DIR",
+			() => check(dropEnv("LOCAL_OPERATOR_CONFIG_DIR")),
+		],
+		[
+			"the launch test seam with a real app path",
+			() =>
+				launchMode(seam, "darwin", {
+					appPath: "/Applications/Local Operator.app",
+				}).problem,
+		],
+		[
+			"the launch test seam outside node --test",
+			() =>
+				launchMode({ [TEST_LAUNCH_ENV]: "direct" }, "darwin", {
+					appPath: join(os.tmpdir(), "x.app"),
+				}).problem,
+		],
+		[
+			"inter-run gate: a previous rig still running",
+			() => interRunGateProblem({ rows: leftover, front: null, pattern }),
+		],
+		[
+			"inter-run gate: ps could not list processes",
+			() => interRunGateProblem({ rows: null, front: null, pattern }),
+		],
+	];
+}
 
 /**
  * Each case must REFUSE. Built in a throwaway tree with a fake HOME so the
@@ -4960,6 +5289,8 @@ export function negativeControlCases() {
 					]),
 				),
 		],
+		// Focus and the LaunchServices launch (mac-proof-focus.mjs; QA Q1-6).
+		...focusRefusalCases(tree),
 	];
 	const results = cases.map(([name, fn]) => ({ name, refused: refuses(fn) }));
 	rmSync(tree, { recursive: true, force: true });
@@ -5187,6 +5518,19 @@ export async function main(argv = process.argv.slice(2)) {
 		return failed === 0 ? EXIT.OK : EXIT.FAILED;
 	}
 
+	// darwin launches through LaunchServices (`open -g -n`, mac-proof-focus.mjs);
+	// Linux/xvfb keeps the direct spawn. A misused test seam refuses here,
+	// before the plan is built: the seam is honoured only for an app under the
+	// temp dir (the suite's fixtures), never for a real bundle (review S3).
+	const launch = launchMode(process.env, process.platform, {
+		appPath: opts.app ?? opts.appZip,
+	});
+	if (launch.problem) {
+		console.error(`[mac-proof] refused: ${launch.problem}`);
+		return EXIT.REFUSED;
+	}
+	const viaLaunchServices = launch.kind === "launchservices";
+
 	const runDeadline = harnessStarted + opts.timeoutS * 1000;
 	let plan;
 	try {
@@ -5280,6 +5624,18 @@ export async function main(argv = process.argv.slice(2)) {
 					windowMode: opts.windowMode,
 				}),
 			),
+			// What actually execs on this platform (QA Q1-1): on darwin the app is
+			// not exec'd directly but through `open -g -n`, with the non-secret
+			// keys on --env and the token inherited only. Built by the same
+			// functions the run uses, and checked by the same guard.
+			launch: dryRunLaunch({
+				launch,
+				appBundle: plan.app.realpath ?? plan.app.zip ?? null,
+				rig: rigPlaceholder,
+				backendUrl,
+				token: placeholderToken,
+				opts,
+			}),
 			frames: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => `${s.payload.label}.png`),
@@ -5429,7 +5785,10 @@ export async function main(argv = process.argv.slice(2)) {
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
-		limits: receiptLimits(opts.scenes, opts),
+		limits: receiptLimits(opts.scenes, {
+			...opts,
+			launchServices: viaLaunchServices,
+		}),
 		disclosed: [
 			"the opened conversation's unread/seen marks may clear on the daemon that served it",
 			"a desktop presence beat (45 s TTL) is sent to that daemon",
@@ -5440,6 +5799,25 @@ export async function main(argv = process.argv.slice(2)) {
 				: []),
 		],
 		reap: {},
+		launch: {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		},
+		/*
+		 * Every focus event the run saw (a rig pid frontmost, a focused state or
+		 * SHUTTER line); [] on a clean run. `frontmost` is the watchdog's record
+		 * (mac-proof-focus.mjs `createFrontmostWatch`), present in EVERY receipt
+		 * so an early exit still says what was sampled; `tool: null` off darwin.
+		 */
+		focusEvents: [],
+		frontmost: emptyFrontmost(viaLaunchServices ? "lsappinfo" : null),
+		/*
+		 * The attach assertion (capture owner, 2026-11-20; mac-proof-focus.mjs
+		 * `createAttachCheck`): the URL the app's own attach line named, the serve
+		 * URL this run started, and whether they agree. `rigUrl` is filled once
+		 * the backend is up; a mismatch at any point fails the run.
+		 */
+		attach: { url: null, rigUrl: null, match: null },
 		...(plan.download
 			? {
 					download: {
@@ -5461,6 +5839,19 @@ export async function main(argv = process.argv.slice(2)) {
 	};
 	const children = { app: null };
 	let appExited = false;
+	/*
+	 * The LaunchServices launch's state (darwin; see mac-proof-focus.mjs): the
+	 * watchdog, the app as discovered (pid + start), its sentinel, the env proof,
+	 * the token to redact from the app's own log files, and the first focus
+	 * abort (set by the watchdog, read by the main loop and by `finalize`).
+	 */
+	let watch = null;
+	let launched = null;
+	let launchAttempted = false;
+	let sentinel = null;
+	let envProofRef = null;
+	let redactToken = null;
+	let focusAbort = null;
 	/*
 	 * Why the run ENDED early, when it did. `interrupted` is the signal name
 	 * (SIGINT/SIGTERM/SIGHUP), `childFailure` the first spawn 'error' (EACCES,
@@ -5561,6 +5952,31 @@ export async function main(argv = process.argv.slice(2)) {
 	/** Pids reaped with an UNKNOWN identity (start did not parse; review r1 R1-1), for the receipt. */
 	const unknownStart = new Set();
 	const reapEverything = async () => {
+		// The LaunchServices app is launchd's child, outside any group of ours:
+		// by pid + recorded start, then by the rig's exact --user-data-dir token
+		// (helpers, or an app discovery never singled out). Never by name.
+		if (viaLaunchServices && launchAttempted && !receipt.reap.app) {
+			const result = await stopLaunchedApp({
+				pid: launched?.pid ?? null,
+				start: launched?.start ?? null,
+				profile,
+			});
+			receipt.reap.app = {
+				clean: result.clean,
+				escalated: result.escalated,
+				reaped: result.reaped.length,
+				survivors: result.survivors.length,
+			};
+			if (sentinel && sentinel.pid !== undefined) {
+				// It exits on its own once the app is gone; this is the backstop.
+				// A ChildProcess handle, so the kill never reaches a recycled pid.
+				const gone = () =>
+					sentinel.exitCode !== null || sentinel.signalCode !== null;
+				if (!gone()) sentinel.kill("SIGKILL");
+				for (let i = 0; i < 20 && !gone(); i++) await sleep(50);
+				receipt.reap.sentinel = { pid: sentinel.pid, clean: gone() };
+			}
+		}
 		if (children.app && children.app.pid !== undefined && !receipt.reap.app) {
 			const result = await stopAppTree({
 				pid: children.app.pid,
@@ -5628,9 +6044,60 @@ export async function main(argv = process.argv.slice(2)) {
 	 * `process.exit`, so it must not rely on the `finally` getting there first).
 	 */
 	let finishing = null;
+	/** App log files the token could not be redacted from (S2): never copied to --out. */
+	const unredacted = new Set();
 	const finalize = () => {
 		finishing ??= (async () => {
 			await teardown();
+			// The watchdog runs until after the reap (a steal during the reap still
+			// counts), then the run's focus verdict: a rig pid frontmost fails it.
+			if (watch) await watch.stop();
+			if (envProofRef) receipt.launch.envProof = envProofRef.record();
+			if (receipt.frontmost.stolen) {
+				receipt.verdict = "failed";
+				if (!String(receipt.error ?? "").includes(focusAbort))
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${focusAbort}`;
+				receipt.exit = EXIT.FAILED;
+			}
+			// Under LaunchServices the app wrote its own log files: redact the token
+			// in place, after the reap, so nothing can still be writing them.
+			// Recorded per file, and a file that could not be read back or
+			// rewritten FAILS the run (security review S2): a silent miss would
+			// leave the token on disk under a "captured" verdict. Not covered: a
+			// harness killed before this point leaves the files unredacted in the
+			// 0700 rig (docs, limits).
+			if (viaLaunchServices && redactToken) {
+				receipt.redaction = {};
+				const failed = [];
+				for (const file of ["app-stdout.log", "app-stderr.log"]) {
+					const path = join(rig, "logs", file);
+					try {
+						const text = readFileSync(path, "utf8");
+						if (text.includes(redactToken)) {
+							writeFileSync(path, text.replaceAll(redactToken, "<redacted>"));
+							if (readFileSync(path, "utf8").includes(redactToken))
+								throw new Error(
+									"the token is still in the file after the rewrite",
+								);
+							receipt.redaction[file] = "redacted";
+						} else receipt.redaction[file] = "clean";
+					} catch (error) {
+						if (error.code === "ENOENT") {
+							receipt.redaction[file] = "absent";
+							continue;
+						}
+						receipt.redaction[file] = `failed: ${error.code ?? error.message}`;
+						failed.push(file);
+					}
+				}
+				for (const file of failed) unredacted.add(file);
+				if (failed.length > 0) {
+					const why = `the token could not be redacted from ${failed.join(", ")} (receipt.redaction); it is not copied to --out; delete the rig's logs by hand`;
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${why}`;
+					receipt.exit = EXIT.FAILED;
+				}
+			}
 			if (interrupted) {
 				receipt.verdict = "failed";
 				receipt.error = `interrupted by ${interrupted}`;
@@ -5690,7 +6157,12 @@ export async function main(argv = process.argv.slice(2)) {
 			if (receipt.verdict !== "captured" && receipt.exit === EXIT.BLOCKED)
 				receipt.verdict = "blocked";
 			try {
-				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
+				// A log the token could not be redacted from stays in the 0700
+				// rig only, never copied to --out (security review S2).
+				cpSync(join(rig, "logs"), join(opts.out, "logs"), {
+					recursive: true,
+					filter: (src) => !unredacted.has(basename(src)),
+				});
 			} catch {}
 			// The extracted release (a ~180 MB zip, more unpacked) goes once nothing of it can still be
 			// running: after a CLEAN reap only. A survivor keeps its tree, both for
@@ -5753,7 +6225,41 @@ export async function main(argv = process.argv.slice(2)) {
 		["SIGINT", "SIGTERM", "SIGHUP"],
 	);
 
+	/** The watchdog's lsappinfo runner and ASN->pid cache (darwin only). */
+	let lsappinfo = null;
+	const frontCache = new Map();
 	try {
+		// ---- focus: the watchdog preflight and the inter-run gate --------------
+		// Before anything is spawned. Fail closed: no readable frontmost app means
+		// no watchdog, so no launch (exit 2).
+		if (viaLaunchServices) {
+			lsappinfo = lsappinfoRunner(launch.lsappinfo);
+			const probe = await sampleFrontmost(lsappinfo, frontCache);
+			if (probe.unknown)
+				throw new Refusal(
+					`the frontmost watchdog's preflight failed (${probe.unknown}); refusing to launch without it (${launch.lsappinfo} front, then info -only name -only pid <ASN>)`,
+				);
+			// The receipt's baseline is this probe (review F6), so a run the
+			// inter-run gate refuses still says what was in front.
+			receipt.frontmost.baseline = {
+				asn: probe.asn,
+				pid: probe.pid,
+				name: probe.name,
+				atMs: 0,
+				source: "preflight",
+			};
+			// The test seam scopes the gate to this run's rig root: concurrent
+			// suite cases each own one (mac-proof-focus.mjs `launchMode`).
+			const gate = interRunGateProblem({
+				rows: psRows(),
+				front: probe,
+				pattern: rigStyleProfilePattern(
+					launch.gateScopedToRigRoot ? dirname(rig) : null,
+				),
+			});
+			if (gate) throw new Refusal(gate);
+		}
+
 		// ---- --app-zip: extract into the rig, then the --app guards -----------
 		if (opts.appZip !== null) {
 			plan.app = releaseZipApp(plan.app.zip, rig, {
@@ -5937,20 +6443,159 @@ export async function main(argv = process.argv.slice(2)) {
 			session: opts.session,
 		});
 		console.log(
-			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"}) for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
+			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"})${viaLaunchServices ? " through LaunchServices (open -g -n)" : ""} for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
 		);
-		const app = spawn(plan.app.executable, argvApp, {
-			cwd: rig,
-			env: buildAppEnv({ rig, backendUrl, token, windowMode: opts.windowMode }),
-			detached: true,
-			stdio: ["ignore", "pipe", "pipe"],
+		redactToken = token ?? null;
+		const appEnv = buildAppEnv({
+			rig,
+			backendUrl,
+			token,
+			windowMode: opts.windowMode,
 		});
-		children.app = app;
-		app.on("error", onChildError("the app"));
-		if (app.pid !== undefined) reapOnExit({ pid: app.pid, userData: profile });
-		app.on("exit", () => {
-			appExited = true;
-		});
+		/** The app's pid: the direct child's, or the LaunchServices instance discovered by its profile. */
+		let appPid;
+		/** The app's own --stdout/--stderr files (LaunchServices only), tailed into `onLine`. */
+		const tails = [];
+		receipt.attach.rigUrl = new URL(backendUrl).origin;
+		if (viaLaunchServices) {
+			// PREVENTION (mac-proof-focus.mjs): -g (no front) -n (a NEW instance,
+			// never the operator's running app), every non-secret isolation key on
+			// --env, the token inherited only (`APP_ENV_KEYS`).
+			const openArgv = buildOpenArgv({
+				appBundle: plan.app.realpath,
+				rig,
+				appArgv: argvApp,
+				env: appEnv,
+			});
+			const openProblem = openArgvProblem(openArgv, { profile, token });
+			if (openProblem) throw new Refusal(openProblem);
+			for (const file of ["app-stdout.log", "app-stderr.log"]) {
+				writeFileSync(join(rig, "logs", file), "");
+				tails.push(createFileTail(join(rig, "logs", file)));
+			}
+			// From just before the launch: the baseline is the operator's front app.
+			watch = createFrontmostWatch({
+				sample: () => sampleFrontmost(lsappinfo, frontCache),
+				isRig: rigPidClassifier({
+					profile,
+					appPid: () => launched?.pid ?? null,
+					argvOf: psArgvOf,
+				}),
+				record: receipt.frontmost,
+				onSteal: (stolen) => {
+					focusAbort ??= `the rig app became frontmost (pid ${stolen.pid}${stolen.helper ? ", a helper" : ""}, ${stolen.asn}) at +${stolen.sinceLaunchMs ?? stolen.atMs} ms after launch`;
+					receipt.focusEvents.push({
+						source: "lsappinfo",
+						at: new Date().toISOString(),
+						...stolen,
+					});
+					// Reap NOW, not at the main loop's next look: every 100 ms the
+					// rig app stays frontmost is 100 ms of the operator's input.
+					void teardown();
+				},
+				onBlind: (why) => {
+					focusAbort ??= why;
+				},
+			});
+			// The baseline sample first, then the 100 ms loop, then the launch.
+			await watch.tick();
+			watch.start();
+			launchAttempted = true;
+			// Both backstops BEFORE `open` (review F2, QA Q1-5): from here on any
+			// process carrying the rig profile is ours to reap, whether or not
+			// discovery ever names it and whether or not this process survives.
+			reapLaunchedOnExit({ launched: () => launched, profile });
+			sentinel = startSentinel({
+				harnessPid: process.pid,
+				harnessStart: startOf(process.pid),
+				profile,
+				rig,
+			});
+			receipt.launch.sentinel = { pid: sentinel.pid ?? null };
+			const opener = spawn(launch.open, openArgv, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			watch.markLaunched();
+			const openOut = [];
+			opener.stdout.on("data", (c) => openOut.push(c.toString()));
+			opener.stderr.on("data", (c) => openOut.push(c.toString()));
+			const discoveryDeadline = Date.now() + DISCOVERY_TIMEOUT_MS;
+			const openExit = await new Promise((resolve) => {
+				const bound = setTimeout(
+					() => resolve("no exit"),
+					Math.max(0, discoveryDeadline - Date.now()),
+				);
+				opener.on("error", (error) => {
+					clearTimeout(bound);
+					resolve(error.message);
+				});
+				opener.on("exit", (code, signal) => {
+					clearTimeout(bound);
+					resolve(code === 0 ? 0 : `exit ${code ?? signal}`);
+				});
+			});
+			writeFileSync(join(rig, "logs", "open.log"), openOut.join(""));
+			if (openExit !== 0) {
+				if (opener.exitCode === null && opener.signalCode === null)
+					opener.kill("SIGKILL");
+				throw new Error(
+					`${launch.open} did not launch the app (${openExit}): ${openOut.join("").trim().slice(0, 300)}`,
+				);
+			}
+			// Exactly ONE process: the rig profile, no --type=, launchd's child.
+			let found = null;
+			while (Date.now() < discoveryDeadline) {
+				checkpoint("finding the LaunchServices-launched app");
+				// A steal before discovery already reaped by profile: stop looking.
+				if (focusAbort) throw new Error(focusAbort);
+				const rows = psRows();
+				found =
+					rows === null
+						? {
+								pid: null,
+								candidates: 0,
+								problem: "ps could not list processes",
+							}
+						: discoverAppPid(rows, { profile, launchdPid: launch.launchdPid });
+				if (found.pid !== null || found.candidates > 1) break;
+				await sleep(100);
+			}
+			if (found?.pid == null)
+				// After the spawn, so an ordinary failure (exit 1), not a refusal:
+				// exit 2 means nothing was spawned (QA Q1-2). The reap
+				// (stopLaunchedApp) kills every pid carrying the profile.
+				throw new Error(
+					`${found?.problem ?? "no app appeared"}; every process carrying this rig's profile is reaped`,
+				);
+			launched = { pid: found.pid, start: found.start };
+			appPid = found.pid;
+			appRecorded.add(appPid);
+			rememberIdentities(identities, [appPid]);
+			receipt.launch = {
+				...receipt.launch,
+				open: launch.open,
+				argv: openArgv,
+				app: { pid: appPid, start: found.start },
+			};
+		} else {
+			const app = spawn(plan.app.executable, argvApp, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			children.app = app;
+			app.on("error", onChildError("the app"));
+			if (app.pid !== undefined)
+				reapOnExit({ pid: app.pid, userData: profile });
+			app.on("exit", () => {
+				appExited = true;
+			});
+			appPid = app.pid;
+		}
 		const supervisor = createSupervisor({
 			windowMode: opts.windowMode,
 			session: opts.session,
@@ -5968,13 +6613,67 @@ export async function main(argv = process.argv.slice(2)) {
 		});
 		const appLog = [];
 		let abort = null;
+		/** EXIT.BLOCKED for the env proof; null = an ordinary failure (exit 1). */
+		let abortCode = null;
 		let finished = false;
 		const work = [];
+		// The LaunchServices launch proves its env from the app's own lines
+		// (mac-proof-focus.mjs `createEnvProof`), complete BEFORE the present.
+		const envProof = viaLaunchServices ? createEnvProof({ backendUrl }) : null;
+		envProofRef = envProof;
+		const attachCheck = createAttachCheck({ rigUrl: receipt.attach.rigUrl });
+		receipt.attach = attachCheck.record;
+		const envBlocked = (when) => {
+			abort ??= envNotInheritedMessage(
+				envProof.missing(),
+				when,
+				envProof.state.wrongBackend,
+			);
+			abortCode = EXIT.BLOCKED;
+			void teardown();
+		};
 		const onLine = (line) => {
 			appLog.push(line);
+			// Judged on EVERY line, even after the run finished or aborted: an
+			// attach to any backend but this run's serve fails the run whenever
+			// it appears (receipt `attach.match: false`), and the moment it is
+			// read, not at the present (QA Q1-3).
+			if (attachCheck.feed(line)) {
+				abort = attachMismatchMessage(attachCheck.record);
+				abortCode = null;
+				void teardown();
+				return;
+			}
 			if (abort || finished) return;
+			if (envProof) {
+				envProof.feed(line);
+				if (line.startsWith("[dev-driver] not armed"))
+					return envBlocked(`(the app printed: ${line})`);
+				// v0.59.2's attach-pair failure (index.ts:1516-1519, then app.exit(1)
+				// at :2663): the URL arrived on --env, the inherited token did not.
+				if (line.startsWith("[attach] ") && envProof.missing().length > 0)
+					return envBlocked(`(the app printed: ${line})`);
+				// The step runner is ready only after the window loaded, which is
+				// after the attach (index.ts:4764 < :5106): no proof by then is a
+				// block before the first step runs.
+				if (
+					line.startsWith("[dev-driver-script] ready") &&
+					envProof.missing().length > 0
+				)
+					return envBlocked("before its step runner started");
+				if (PRESENT_LINE.test(line) && envProof.missing().length > 0)
+					return envBlocked("before its window was presented");
+			}
 			const action = supervisor.feed(line);
 			if (!action) return;
+			if (action.abort && /\bfocused=true\b/.test(line))
+				receipt.focusEvents.push({
+					source: line.startsWith("[window-mode] state:")
+						? "window-state"
+						: "shutter",
+					at: new Date().toISOString(),
+					line,
+				});
 			if (action.abort) abort = action.abort;
 			else if (action.done) finished = true;
 			else if (action.shutter) work.push(capture(action.shutter));
@@ -5983,23 +6682,25 @@ export async function main(argv = process.argv.slice(2)) {
 			const theme = shot.label.split("-").pop();
 			const file = join(opts.out, `${shot.label}.png`);
 			if (opts.capture === "screencapture") {
-				const info = windowInfo(shot.windowId);
+				const info = await windowInfoAsync(shot.windowId);
 				if (!info) throw new Error(`window ${shot.windowId} is not on screen`);
-				if (info.pid !== app.pid)
+				if (info.pid !== appPid)
 					throw new Error(
-						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${app.pid})`,
+						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${appPid})`,
 					);
 				if (info.layer !== 0)
 					throw new Error(
 						`window ${shot.windowId} is on layer ${info.layer}, not a normal window`,
 					);
-				const run = spawnSync(
+				const run = await runAsync(
 					"screencapture",
 					["-x", "-o", "-l", String(shot.windowId), file],
-					{ encoding: "utf8", timeout: 30000 },
+					{ timeout: 30000 },
 				);
 				if (run.status !== 0)
-					throw new Error(`screencapture failed: ${(run.stderr || "").trim()}`);
+					throw new Error(
+						`screencapture failed: ${(run.stderr || run.error || "").trim()}`,
+					);
 				const bytes = readFileSync(file);
 				const size = pngSize(bytes);
 				if (!size || bytes.length < 1000)
@@ -6053,18 +6754,36 @@ export async function main(argv = process.argv.slice(2)) {
 				at = buffered.indexOf("\n");
 			}
 		};
-		app.stdout.on("data", split);
-		app.stderr.on("data", split);
+		/** LaunchServices: whatever the app's own files gained, line by line. */
+		const pump = (options) => {
+			for (const tail of tails)
+				for (const line of tail.read(options)) onLine(line);
+		};
+		if (children.app) {
+			children.app.stdout.on("data", split);
+			children.app.stderr.on("data", split);
+		}
 
 		const started = Date.now();
 		let tick = 0;
 		while (!abort && !finished && !appExited && !endedBy()) {
+			pump();
+			abort ??= focusAbort;
+			if (
+				envProof &&
+				!abort &&
+				Date.now() - started > STARTUP_WINDOW_MS &&
+				envProof.missing().length > 0
+			)
+				envBlocked(`within ${STARTUP_WINDOW_MS / 1000} s of launch`);
 			abort ??= startupProblem(supervisor.state, Date.now() - started);
 			await sleep(100);
+			// launchd's child, not ours: no exit event, so it is looked at.
+			if (viaLaunchServices && !pidAlive(appPid)) appExited = true;
 			// Every ~2 s: record the app's descendants (and the lop processes'),
 			// so a helper that later leaves the group is still reaped by pid.
 			if (tick++ % 20 === 0) {
-				for (const pid of descendantsOf([app.pid])) appRecorded.add(pid);
+				for (const pid of descendantsOf([appPid])) appRecorded.add(pid);
 				rememberIdentities(identities, appRecorded);
 				recordDescendants();
 			}
@@ -6084,6 +6803,19 @@ export async function main(argv = process.argv.slice(2)) {
 				abort ??= `capture failed: ${error.message}`;
 			}
 		}
+		pump({ flush: true });
+		abort ??= focusAbort;
+		// An LS app that died with its env unproven: with the URL on --env and no
+		// token inherited, v0.59.2 exits at its attach check (index.ts:2663)
+		// before any backend or window, which is the fail-closed case.
+		if (
+			envProof &&
+			appExited &&
+			!abort &&
+			!finished &&
+			envProof.missing().length > 0
+		)
+			envBlocked("before it exited");
 		if (!abort && !finished)
 			abort =
 				endedBy() ??
@@ -6094,12 +6826,15 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
 		receipt.windowWait = supervisor.state.windowWait;
-		writeFileSync(
-			join(rig, "logs", "app-stdout.log"),
-			token
-				? appLog.join("\n").replaceAll(token, "<redacted>")
-				: appLog.join("\n"),
-		);
+		// Under LaunchServices the app writes this file itself (redacted in
+		// `finalize`, after the reap); the direct spawn's lines are written here.
+		if (!viaLaunchServices)
+			writeFileSync(
+				join(rig, "logs", "app-stdout.log"),
+				token
+					? appLog.join("\n").replaceAll(token, "<redacted>")
+					: appLog.join("\n"),
+			);
 		const expected = opts.scenes.length * opts.themes.length;
 		if (!abort && receipt.frames.length !== expected)
 			abort = `captured ${receipt.frames.length} of ${expected} frames`;
@@ -6142,7 +6877,11 @@ export async function main(argv = process.argv.slice(2)) {
 				steps.steps,
 				receipt.steps,
 			);
-		if (abort) throw new Error(abort);
+		abort ??= focusAbort;
+		if (abort)
+			throw abortCode === null
+				? new Error(abort)
+				: new Refusal(abort, abortCode);
 		receipt.verdict = "captured";
 	} catch (error) {
 		// A signal that landed mid-run is THE cause; what the main path saw next
