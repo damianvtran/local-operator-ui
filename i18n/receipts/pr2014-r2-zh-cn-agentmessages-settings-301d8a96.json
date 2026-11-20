@@ -1,0 +1,54 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 (copy-reviewer round 1 findings re-checked on final bytes)",
+	"locale": "zh-CN",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-20",
+	"head": "d16d7f83ec4c62d504f1bdd1ed82d0dc01d29359",
+	"instance": "pr2014-r2-zh-cn-agentmessages-settings-301d8a96",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 7bcc857d7769 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 11 new keys were drafted by the coder (implementer) per the PR #2014 body, and remediated by coder job 7aa83d555a35 at d16d7f83ec. Judgement from English, the context sidecar and the namespace's shipped glossary (kind_person, person_id, identifier_help_*); no MT used. This auditor authored no catalogue line.",
+		"instance": "pr2014-r2-zh-cn-agentmessages-settings-301d8a96"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"severity": "MINOR",
+			"id": "C4",
+			"key": "ui.agentMessages.settings.allowlist.directory_placeholder_person / directory_loading / directory_error / directory_empty_agent / directory_empty_person / directory_stale",
+			"issue": "'成员' and spaced ' ID' drifted from the namespace's '人员' / '人员ID'",
+			"fix": "'人员' and unspaced 'ID' in all six",
+			"fixed_in": "d16d7f83ec",
+			"authored_by": "coder (implementer), not this auditor"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_label": "从 {organization} 中选择",
+		"ui.agentMessages.settings.allowlist.directory_label_unnamed": "从你的组织中选择",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_agent": "选择智能体",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_person": "选择人员",
+		"ui.agentMessages.settings.allowlist.directory_agent_owner": "由 {owner} 运行",
+		"ui.agentMessages.settings.allowlist.directory_same_name": "与其他条目同名",
+		"ui.agentMessages.settings.allowlist.directory_loading": "正在加载人员和智能体…",
+		"ui.agentMessages.settings.allowlist.directory_error": "无法加载人员和智能体。你仍然可以输入ID。",
+		"ui.agentMessages.settings.allowlist.directory_empty_agent": "没有可选择的智能体。你仍然可以输入智能体ID。",
+		"ui.agentMessages.settings.allowlist.directory_empty_person": "没有可选择的人员。你仍然可以输入人员ID。",
+		"ui.agentMessages.settings.allowlist.directory_stale": "该选项已不可用。请重新选择或输入ID。"
+	},
+	"binding": "Verified at d16d7f83ec4c by sha256 of the committed bytes: target src/i18n/catalogues/zh-CN/ui.agentMessages.settings.json sha256 9009e23eb12c15cc219b7eab5f82852df36653eb12fb0f2418d0ea2970314c69; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe; context sha256 ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975. Key set equals English; ICU placeholders identical to English. Only the 11 allowlist.directory_* values differ from the bytes the prior ledger row audited (base 53d86477e3 target hash matched the ledger).",
+	"scope": "PR #2014: 11 new ui.agentMessages.settings.allowlist.directory_* keys (delta audit); previously audited unchanged messages retain their PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+	"context_sha256": "ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975",
+	"target_sha256": "9009e23eb12c15cc219b7eab5f82852df36653eb12fb0f2418d0ea2970314c69",
+	"sha256": {
+		"zh-CN": "9009e23eb12c15cc219b7eab5f82852df36653eb12fb0f2418d0ea2970314c69",
+		"en": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe"
+	}
+}

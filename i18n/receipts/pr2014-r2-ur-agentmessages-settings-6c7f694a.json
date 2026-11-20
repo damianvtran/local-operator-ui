@@ -1,0 +1,54 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 (copy-reviewer round 1 findings re-checked on final bytes)",
+	"locale": "ur",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-20",
+	"head": "d16d7f83ec4c62d504f1bdd1ed82d0dc01d29359",
+	"instance": "pr2014-r2-ur-agentmessages-settings-6c7f694a",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 7bcc857d7769 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 11 new keys were drafted by the coder (implementer) per the PR #2014 body, and remediated by coder job 7aa83d555a35 at d16d7f83ec. Judgement from English, the context sidecar and the namespace's shipped glossary (kind_person, person_id, identifier_help_*); no MT used. This auditor authored no catalogue line.",
+		"instance": "pr2014-r2-ur-agentmessages-settings-6c7f694a"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"severity": "NIT",
+			"id": "C7",
+			"key": "ui.agentMessages.settings.allowlist.directory_empty_person",
+			"issue": "'شخص ID' differed from shipped 'شخص کی ID'",
+			"fix": "'… شخص کی ID درج کر سکتے ہیں۔'",
+			"fixed_in": "d16d7f83ec",
+			"authored_by": "coder (implementer), not this auditor"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_label": "{organization} میں سے منتخب کریں",
+		"ui.agentMessages.settings.allowlist.directory_label_unnamed": "اپنی تنظیم میں سے منتخب کریں",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_agent": "ایجنٹ منتخب کریں",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_person": "شخص منتخب کریں",
+		"ui.agentMessages.settings.allowlist.directory_agent_owner": "چلانے والا: {owner}",
+		"ui.agentMessages.settings.allowlist.directory_same_name": "کسی اور اندراج جیسا نام",
+		"ui.agentMessages.settings.allowlist.directory_loading": "لوگ اور ایجنٹ لوڈ ہو رہے ہیں…",
+		"ui.agentMessages.settings.allowlist.directory_error": "لوگ اور ایجنٹ لوڈ نہیں ہو سکے۔ آپ اب بھی ID درج کر سکتے ہیں۔",
+		"ui.agentMessages.settings.allowlist.directory_empty_agent": "منتخب کرنے کے لیے کوئی ایجنٹ نہیں۔ آپ اب بھی ایجنٹ ID درج کر سکتے ہیں۔",
+		"ui.agentMessages.settings.allowlist.directory_empty_person": "منتخب کرنے کے لیے کوئی شخص نہیں۔ آپ اب بھی شخص کی ID درج کر سکتے ہیں۔",
+		"ui.agentMessages.settings.allowlist.directory_stale": "یہ انتخاب اب دستیاب نہیں۔ دوبارہ منتخب کریں یا ID درج کریں۔"
+	},
+	"binding": "Verified at d16d7f83ec4c by sha256 of the committed bytes: target src/i18n/catalogues/ur/ui.agentMessages.settings.json sha256 3eef629be017f247872ae9171925eaeb7780e7c8475cb2b6f3d1613abf25bdba; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe; context sha256 ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975. Key set equals English; ICU placeholders identical to English. Only the 11 allowlist.directory_* values differ from the bytes the prior ledger row audited (base 53d86477e3 target hash matched the ledger).",
+	"scope": "PR #2014: 11 new ui.agentMessages.settings.allowlist.directory_* keys (delta audit); previously audited unchanged messages retain their PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+	"context_sha256": "ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975",
+	"target_sha256": "3eef629be017f247872ae9171925eaeb7780e7c8475cb2b6f3d1613abf25bdba",
+	"sha256": {
+		"ur": "3eef629be017f247872ae9171925eaeb7780e7c8475cb2b6f3d1613abf25bdba",
+		"en": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe"
+	}
+}
