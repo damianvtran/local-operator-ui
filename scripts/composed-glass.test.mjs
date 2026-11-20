@@ -259,3 +259,25 @@ test("Bridge assigns the shared alpha owners without a second opaque header", ()
 		"negative control: removing the split loses the single-alpha owner",
 	);
 });
+
+/* The Agents dock must not paint its own ground: under Full app glass the
+ * `canvas-content` column is translucent, and an opaque `bg-*` on the wrapper
+ * around the docked composer stood out as a flat block (operator report,
+ * 2026-11-20). Source pin; the alpha itself is the CDP guard's to read. */
+const DOCK_WRAPPER = /<div className="([^"]*)">\s*<ConfigComposer\b/;
+const OWN_GROUND = /(^|\s)bg-/;
+test("Agents docked composer inherits the canvas-content ground", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+		"utf8",
+	);
+	assert.ok(page.includes('data-glass-region="canvas-content"'));
+	const dock = page.match(DOCK_WRAPPER);
+	assert.ok(dock, "the docked ConfigComposer wrapper is found");
+	assert.doesNotMatch(dock[1], OWN_GROUND, `dock wrapper: "${dock[1]}"`);
+	assert.match(
+		`${dock[1]} bg-canvas`,
+		OWN_GROUND,
+		"negative control: the pre-fix `bg-canvas` wrapper is caught",
+	);
+});
