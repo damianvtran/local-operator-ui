@@ -12,11 +12,13 @@ import {
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
+import type { TeamBridgeDirectory } from "../../../../../shared/team-bridge-contract";
 import {
 	browserDraftStorage,
 	reconcileDraftAccount,
 } from "../../store/team-bridge-draft-account";
 import { desktopResult } from "./desktop-api";
+import { TeamBridgeApi } from "./team-bridge-api";
 
 /** No Radient JWT or direct hub request crosses the renderer boundary. */
 export const agentMessagesApi = {
@@ -124,5 +126,21 @@ export const agentMessagesApi = {
 		value: boolean | string,
 	) {
 		return desktopResult<unknown>({ op: "settings.edit", key, value });
+	},
+	/**
+	 * One organization's people and their agents, for the Reach editor's
+	 * directory choices.
+	 *
+	 * WHY IT LIVES ON THIS API. The settings section takes its whole transport
+	 * as one injectable `api` prop (stories and the jsdom lane pass a fake), so
+	 * the directory read rides that same seam instead of the rail's react-query
+	 * hook: no QueryClient is needed to render the section, and a fake api that
+	 * omits this member simply gets the typed-ID form. It DELEGATES to
+	 * `TeamBridgeApi.directory` — same op, same schema — so the two readers can
+	 * never drift apart. The tenant is required for the same reason it is there:
+	 * an absent tenant would let the server pick its own default roster.
+	 */
+	directory(tenantId: string): Promise<TeamBridgeDirectory> {
+		return TeamBridgeApi.directory(tenantId);
 	},
 };

@@ -580,6 +580,87 @@
 		"placeholders": {},
 		"note": "Explains that the input expects a person's account id and shows its prefix. The id itself is never translated."
 	},
+	"ui.agentMessages.settings.allowlist.directory_label": {
+		"role": "reach editor directory picker accessible name",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {
+			"organization": "the organization's display name"
+		},
+		"note": "Names the list of people and agents in the operator's organization. {organization} is a proper name, never translated."
+	},
+	"ui.agentMessages.settings.allowlist.directory_label_unnamed": {
+		"role": "reach editor directory picker accessible name, no organization name",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Fallback when the organization has no display name."
+	},
+	"ui.agentMessages.settings.allowlist.directory_placeholder_agent": {
+		"role": "directory picker placeholder",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Shown in the closed picker before an agent is chosen. Choosing only fills the ID field; nothing is allowed or blocked until Add and Save."
+	},
+	"ui.agentMessages.settings.allowlist.directory_placeholder_person": {
+		"role": "directory picker placeholder",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Shown in the closed picker before a person is chosen."
+	},
+	"ui.agentMessages.settings.allowlist.directory_agent_owner": {
+		"role": "directory option secondary text",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {
+			"owner": "the display name of the person who runs the agent"
+		},
+		"note": "Names the human who runs this agent, so two agents with the same name can be told apart."
+	},
+	"ui.agentMessages.settings.allowlist.directory_same_name": {
+		"role": "directory option marker",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "Marks an option whose name repeats; the full ID beside it is what tells them apart."
+	},
+	"ui.agentMessages.settings.allowlist.directory_loading": {
+		"role": "directory status line",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "The organization's people and agents are being read; typing an ID still works."
+	},
+	"ui.agentMessages.settings.allowlist.directory_error": {
+		"role": "directory status line",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "The organization directory could not be read; the typed-ID field still works."
+	},
+	"ui.agentMessages.settings.allowlist.directory_empty_agent": {
+		"role": "directory status line",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "No agents are listed in the organization; the typed-ID field still works."
+	},
+	"ui.agentMessages.settings.allowlist.directory_empty_person": {
+		"role": "directory status line",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "No people are listed in the organization; the typed-ID field still works."
+	},
+	"ui.agentMessages.settings.allowlist.directory_stale": {
+		"role": "add-entry validation error",
+		"tone": "sentence case, plain, second person",
+		"length": "One short line or sentence.",
+		"placeholders": {},
+		"note": "The chosen person or agent left the list (organization or account changed, or they were removed). Nothing was added."
+	},
 	"ui.agentMessages.settings.error.no_changes": {
 		"role": "read-failure reassurance",
 		"tone": "sentence case, plain, factual",
