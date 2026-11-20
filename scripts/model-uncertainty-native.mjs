@@ -850,15 +850,13 @@ export async function startModelBackend({ output }) {
 		throw error;
 	}
 	const state = () => control("state");
-	const waitCapture = async (predicate) => {
+	const waitCapture = async (predicate, barrier = { sessionId }) => {
 		const end = Date.now() + 20_000;
 		for (;;) {
 			const x = await state();
 			const found = x.captures.find(predicate);
 			if (found) return found;
-			const opens = x.captures.filter(
-				(c) => c.path.endsWith("/events") && c.before_b_request && !selected(c),
-			);
+			const opens = x.captures.filter((c) => drainModelBarrier(c, barrier));
 			if (opens.length)
 				await control("release", { indices: opens.map((c) => c.id) });
 			assert(
@@ -902,6 +900,80 @@ export async function startModelBackend({ output }) {
 		},
 		close: closeOwnedCore,
 	};
+}
+
+/**
+ * Release transport barriers, never authority: the gateway awaits EACH raw
+ * chunk before capturing the next. Inspect every complete event; unknown,
+ * partial or mixed bytes remain held. Baseline A is drainable only while
+ * seeking B after its commit, never during initial-A acceptance.
+ */
+export function drainModelBarrier(
+	c,
+	{ sessionId, baseline, baselineBody, commit } = {},
+) {
+	if (c.path !== `/v1/desktop/sessions/${sessionId}/events`) return false;
+	const body = c.body.replaceAll("\r\n", "\n");
+	if (!body.endsWith("\n\n")) return false;
+	const events = body.slice(0, -2).split("\n\n");
+	return events.every((event) => {
+		const lines = event.split("\n");
+		if (!lines.length || lines.some((line) => !line.startsWith("data: ")))
+			return false;
+		let frame;
+		try {
+			frame = JSON.parse(lines.map((line) => line.slice(6)).join("\n"));
+		} catch {
+			return false;
+		}
+		if (
+			!frame ||
+			frame.session_id !== sessionId ||
+			typeof frame.epoch !== "string" ||
+			!frame.epoch ||
+			!Number.isSafeInteger(frame.seq) ||
+			frame.seq < 0
+		)
+			return false;
+		if (
+			commit &&
+			(frame.epoch !== commit.epoch || baseline?.epoch !== commit.epoch)
+		)
+			return false;
+		if (frame.type === "open") {
+			// Only the protocol's closed metadata shape, not arbitrary non-model JSON.
+			const p = frame.payload;
+			return (
+				Object.keys(frame).every((key) =>
+					["type", "session_id", "epoch", "seq", "payload"].includes(key),
+				) &&
+				p &&
+				Object.keys(p).every((key) =>
+					["subscription_id", "gap", "watch_ttl_seconds", "attaching"].includes(
+						key,
+					),
+				) &&
+				typeof p.subscription_id === "string" &&
+				p.subscription_id.length > 0 &&
+				typeof p.gap === "boolean" &&
+				Number.isFinite(p.watch_ttl_seconds) &&
+				p.watch_ttl_seconds > 0 &&
+				(p.attaching === undefined || typeof p.attaching === "boolean")
+			);
+		}
+		return Boolean(
+			baseline &&
+				commit &&
+				baselineBody?.replaceAll("\r\n", "\n").split("\n\n").includes(event) &&
+				c.before_b_request &&
+				frame.type === "snapshot" &&
+				baseline.sessionId === sessionId &&
+				frame.epoch === baseline.epoch &&
+				frame.seq === baseline.seq &&
+				selected({ body: JSON.stringify(frame) })?.model === baseline.model &&
+				baseline.model === "mock-model-a",
+		);
+	});
 }
 
 function selected(capture) {
@@ -1208,15 +1280,21 @@ export const modelUncertaintyCase = {
 		await wait("/could not be confirmed/i.test(document.body.innerText)");
 		await fence("model-unknown-1");
 		await fence("model-unknown-2");
+		const commit = (await backend.state()).commit;
 		const bSse = await backend.waitCapture(
 			(c) =>
 				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
 				!c.before_b_request &&
 				selected(c)?.model === "mock-model-b",
+			{
+				sessionId: backend.sessionId,
+				baseline: selected(initialA),
+				baselineBody: initialA.body,
+				commit,
+			},
 		);
 		const bAuthority = selected(bSse);
 		assert.equal(bAuthority.sessionId, backend.sessionId);
-		const commit = (await backend.state()).commit;
 		assert.equal(
 			bAuthority.epoch,
 			commit.epoch,
