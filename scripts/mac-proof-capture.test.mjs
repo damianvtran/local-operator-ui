@@ -42,10 +42,12 @@ import {
 	SCREENCAPTURE_METHOD,
 	SCREEN_RECORDING_PREFLIGHT_JXA,
 	STARTUP_WINDOW_MS,
+	TEST_OPERATOR_DOWNLOADS_ENV,
 	UNKNOWN_START,
 	WINDOW_WAIT_DEFAULT_S,
 	WINDOW_WAIT_MAX_S,
 	WINDOW_WAIT_SELECTOR,
+	actionsForNameLabels,
 	appNames,
 	appZipListingProblem,
 	appZipProblem,
@@ -66,10 +68,14 @@ import {
 	detailReadSelector,
 	downloadDestinations,
 	downloadFailureHint,
+	downloadLimits,
 	downloadPreflight,
+	downloadPressAllowlist,
 	downloadSceneSteps,
 	downloadStepsProblem,
+	downloadToastLatency,
 	duplicateFrameProblem,
+	duplicateRowSelector,
 	envGovernedBlockedMessage,
 	extractedContainmentProblem,
 	extractedSymlinkProblem,
@@ -86,12 +92,15 @@ import {
 	manifestEntry,
 	operatorDownloadsBaseline,
 	operatorDownloadsDir,
+	operatorDownloadsRefusals,
+	operatorDownloadsTarget,
 	operatorDownloadsVerdict,
 	operatorPathProblem,
 	operatorRoots,
 	parseArgs,
 	parsePsFactsLine,
 	physical,
+	physicalParent,
 	pngSize,
 	portListenerOwned,
 	previewFileProblem,
@@ -108,6 +117,7 @@ import {
 	rememberIdentities,
 	resolveAppBundle,
 	rigMatcher,
+	rigNewEntries,
 	screenRecordingGrantHint,
 	screenRecordingVerdict,
 	selectServeRecord,
@@ -279,7 +289,10 @@ setTimeout(() => {
       const post = require("node:child_process").spawnSync(process.execPath, ["-e", "fetch(process.argv[1], { method: 'POST', headers: { authorization: 'Bearer ' + process.env.T } }).then(async (r) => { process.stdout.write(String(r.status)); })", url], { env: { T: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN }, encoding: "utf8", timeout: 10000 });
       fs.writeFileSync(path.join(rig, "fake-download-post.txt"), post.stdout || "none");
     }
-    const value = step.verb === "state" ? { activeSessionId: behaviour.activeSessionId ?? (arg("--open-session") || null) } : { ok: true };
+    // toastWaitedMs: the outcome-toast wait answers with the renderer's own
+    // result shape (install.ts waitFor), so the receipt's toastLatency is read.
+    const toast = behaviour.toastWaitedMs !== undefined && step.verb === "waitFor" && String(step.payload && step.payload.selector).startsWith("[data-sonner-toast]:is(");
+    const value = step.verb === "state" ? { activeSessionId: behaviour.activeSessionId ?? (arg("--open-session") || null) } : toast ? { selector: step.payload.selector, gone: false, waitedMs: behaviour.toastWaitedMs, settleTimedOut: false } : { ok: true };
     log("[dev-driver-script] step=" + n + " verb=" + step.verb + " ok " + JSON.stringify(value));
   });
   if (!behaviour.failVerb) log("[dev-driver-script] DONE steps=" + steps.length);
@@ -4748,12 +4761,21 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 	assert.equal(DOWNLOAD_FILE_DEFAULT, "notes.md");
 	assert.deepEqual(downloadSceneSteps(null), downloadSceneSteps("notes.md"));
 	const presses = scene.filter((s) => s.verb === "press");
+	const labels = actionsForNameLabels("notes.md");
+	const exact = labels.map((l) => `[aria-label="${l}"]`).join(", ");
 	assert.deepEqual(
 		presses.map((s) => s.payload.selector),
 		[
-			'[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="notes.md"][aria-expanded="false"]',
+			`[data-tour-tag="file-row"] button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
 			DOWNLOAD_ITEM_SELECTOR,
 		],
+	);
+	// EXACT labels (F2 / S1-2): never a substring match.
+	assert.ok(!presses[0].payload.selector.includes("*="));
+	assert.ok(labels.includes("Actions for notes.md"), labels.join(" | "));
+	assert.deepEqual(
+		downloadPressAllowlist(),
+		presses.map((s) => s.payload.selector),
 	);
 	assert.equal(
 		DOWNLOAD_ITEM_SELECTOR,
@@ -4774,32 +4796,89 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		'[data-sonner-toast][data-type="success"]',
 	);
 	assert.equal(scene.at(-2).payload.timeoutMs, DOWNLOAD_OUTCOME_WAIT_MS);
-	assert.equal(downloadStepsProblem(steps), null);
+	const dl = { download: true, file: null };
+	assert.equal(downloadStepsProblem(steps, dl), null);
+	// S1-1: an ALLOWLIST. The first three slipped past the old text blocklist.
 	for (const selector of [
+		'[role="menu"] [DATA-REMOTE-ACTION="save-as"]',
+		'[role="menu"] [data-remote-action="download"] + [role="menuitem"]',
+		'[role="menu"] [role="menuitem"]:nth-of-type(2)',
+		'[role="menu"] [data-remote-action="download"]',
 		'[data-remote-action="save-as"]',
 		"[data-remote-action]",
 		'[data-remote-action^="down"]',
 		'[data-remote-action="copy-image"]',
 		'[data-remote-action="open-folder"]',
 		"button[aria-label='Save as…']",
-	])
+		'[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="notes.md"][aria-expanded="false"]',
+	]) {
 		assert.match(
-			downloadStepsProblem([
-				...steps,
-				{ verb: "press", payload: { selector } },
-			]) ?? "",
-			/never presses|only remote action/,
+			downloadStepsProblem(
+				[...steps, { verb: "press", payload: { selector } }],
+				dl,
+			) ?? "",
+			/a download run may press only/,
 			selector,
 		);
-	// Waiting on Save as is harmless; only a press is a write.
+		// The string payload form is checked the same way.
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: selector }], dl) ?? "",
+			/a download run may press only/,
+			selector,
+		);
+	}
+	// Another file's allowlist is not this file's.
+	assert.match(
+		downloadStepsProblem(steps, { download: true, file: "old-notes.md" }) ?? "",
+		/a download run may press only/,
+	);
+	// Any other run: no remote-menu press at all, case-insensitively.
+	for (const selector of [
+		'[DATA-REMOTE-ACTION="download"]',
+		'[data-remote-action="download"]',
+		"button[aria-label='SAVE AS']",
+		'[data-Remote-Action="copy-image"]',
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }]) ?? "",
+			/only --scene download presses the remote file menu/,
+			selector,
+		);
 	assert.equal(
 		downloadStepsProblem([
-			{
-				verb: "waitFor",
-				payload: { selector: '[data-remote-action="save-as"]' },
-			},
+			{ verb: "press", payload: { selector: '[data-chat-region="header"]' } },
 		]),
 		null,
+	);
+	// Waiting on Save as is harmless; only a press is a write.
+	assert.equal(
+		downloadStepsProblem(
+			[
+				{
+					verb: "waitFor",
+					payload: { selector: '[data-remote-action="save-as"]' },
+				},
+			],
+			dl,
+		),
+		null,
+	);
+	// Two rows labelled for the file: refused, with its own hint.
+	const dup = scene.find((s) => s.payload?.gone === true);
+	assert.deepEqual(dup.payload, {
+		selector: duplicateRowSelector(labels),
+		gone: true,
+		timeoutMs: 1,
+	});
+	assert.ok(
+		scene.indexOf(dup) < scene.findIndex((s) => s.verb === "press"),
+		"the single-row check runs before the first press",
+	);
+	assert.match(
+		downloadFailureHint(
+			`step 5 (waitFor) failed: error: ${dup.payload.selector} is still present after 1ms`,
+		) ?? "",
+		/more than one Files row is labelled for notes\.md/,
 	);
 	assert.match(
 		downloadFailureHint(
@@ -4808,6 +4887,83 @@ test("download: the steps use shipped verbs only, require an enabled Download en
 		/no enabled Download entry.*never falls back to Save as/,
 	);
 	assert.equal(downloadFailureHint("step 3 verb=navigate error: x"), null);
+});
+
+test("download: the row trigger matches the EXACT label only, and two same-named rows are seen (jsdom, F2 / S1-2)", async () => {
+	// jsdom's selector engine, not Chromium's: proves the selector LOGIC (exact
+	// label, the two-rows pair) - receipt limit `fixture-proven-actions`.
+	const { JSDOM } = await import("jsdom");
+	const scene = downloadSceneSteps("notes.md");
+	const trigger = scene[3].payload.selector;
+	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
+	const row = (name, label = `Actions for ${name}`) =>
+		`<div data-tour-tag="file-row"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
+	const look = (html) => {
+		const doc = new JSDOM(`<body>${html}</body>`).window.document;
+		return {
+			rows: doc.querySelectorAll(trigger).length,
+			dup: doc.querySelector(dup) !== null,
+		};
+	};
+	// old-notes.md / notes.md.bak are not notes.md's row.
+	assert.deepEqual(
+		look(`<section>${row("old-notes.md")}${row("notes.md.bak")}</section>`),
+		{ rows: 0, dup: false },
+	);
+	assert.deepEqual(
+		look(
+			`<section>${row("old-notes.md")}${row("notes.md")}${row("image-1.png")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+	// Another locale's exact label is accepted.
+	assert.deepEqual(
+		look(`<section>${row("notes.md", "Acciones de notes.md")}</section>`),
+		{ rows: 1, dup: false },
+	);
+	// Two rows: siblings, or in different sections at different depths.
+	assert.deepEqual(
+		look(`<section>${row("notes.md")}${row("notes.md")}</section>`),
+		{
+			rows: 2,
+			dup: true,
+		},
+	);
+	assert.deepEqual(
+		look(
+			`<section><h2>Working</h2>${row("notes.md")}</section><section><div>${row("notes.md")}</div></section>`,
+		),
+		{ rows: 2, dup: true },
+	);
+	// A same-labelled menu OUTSIDE the Files rows (a transcript chip) is not a row.
+	assert.deepEqual(
+		look(
+			`<main><button aria-haspopup="menu" aria-label="Actions for notes.md"></button></main><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+});
+
+test("download: actionsForNameLabels reads every shipped catalogue, skips unquotable templates, falls back to en", () => {
+	const dir = join(TREE, "dl-catalogues");
+	const put = (locale, template) => {
+		mkdirSync(join(dir, locale), { recursive: true });
+		writeFileSync(
+			join(dir, locale, "ui.common.actions.json"),
+			JSON.stringify({ "ui.common.actions.actions_for_name": template }),
+		);
+	};
+	put("en", "Actions for {name}");
+	put("xx", "{name} actions");
+	put("yy", 'Bad "{name}"');
+	put("zz", "no placeholder");
+	assert.deepEqual(actionsForNameLabels("a.md", dir), [
+		"Actions for a.md",
+		"a.md actions",
+	]);
+	assert.deepEqual(actionsForNameLabels("a.md", join(TREE, "absent")), [
+		"Actions for a.md",
+	]);
 });
 
 test("download: the harness's daemon client still refuses the download POST (the app sends it, never the harness)", () => {
@@ -4955,10 +5111,15 @@ test("download: destinations are vetted (symlink, outside, inside ~/Downloads, a
 	assert.match(none.problem, /no notes\.md appeared in the rig/);
 	assert.equal(none.result.verdict, "FAIL");
 	writeFileSync(join(home, "Downloads", "unrelated.txt"), "x");
+	const wrong = inspectLanding(plan, before, { rigRoots });
 	assert.match(
-		inspectLanding(plan, before, { rigRoots }).problem,
-		/no notes\.md/,
+		wrong.problem,
+		/the one new file in the rig is .*unrelated\.txt, not notes\.md/,
 	);
+	assert.deepEqual(wrong.result.newInRig, [
+		join(home, "Downloads", "unrelated.txt"),
+	]);
+	rmSync(join(home, "Downloads", "unrelated.txt"));
 	writeFileSync(join(home, "Downloads", "notes.md"), NOTES);
 	const pass = inspectLanding(plan, before, { rigRoots });
 	assert.equal(pass.problem, null);
@@ -4971,6 +5132,7 @@ test("download: destinations are vetted (symlink, outside, inside ~/Downloads, a
 			compared: pass.result.compared,
 			verdict: pass.result.verdict,
 			manifest: pass.result.manifest.entry,
+			newInRig: pass.result.newInRig,
 		},
 		{
 			destination: join(home, "Downloads", "notes.md"),
@@ -4984,6 +5146,7 @@ test("download: destinations are vetted (symlink, outside, inside ~/Downloads, a
 				bytes: Buffer.byteLength(NOTES),
 				sha256: NOTES_SHA,
 			},
+			newInRig: [join(home, "Downloads", "notes.md")],
 		},
 	);
 	writeFileSync(join(home, "Downloads", "notes.md"), `${NOTES}tampered`);
@@ -4997,7 +5160,7 @@ test("download: destinations are vetted (symlink, outside, inside ~/Downloads, a
 	writeFileSync(join(home, "Downloads", "notes (1).md"), NOTES);
 	assert.match(
 		inspectLanding(plan, before, { rigRoots }).problem,
-		/more than one new download landed/,
+		/more than one new file landed in the rig \(exactly one may\)/,
 	);
 	// Without a manifest the receipt says nothing was compared.
 	const loose = { ...plan, manifest: null };
@@ -5020,6 +5183,222 @@ test("download: destinations are vetted (symlink, outside, inside ~/Downloads, a
 		"notes (2).md",
 	]);
 	assert.equal(landingNames("README").at(-1), "README (99)");
+});
+
+test("download: EVERY new file across both destinations counts - notes.md + image-1.png + other.txt fails (review F1)", () => {
+	const dev = join(TREE, "dl-f1");
+	const home = join(dev, "home");
+	const config = join(dev, "config");
+	mkdirSync(join(home, "Downloads"), { recursive: true });
+	mkdirSync(join(config, "downloads"), { recursive: true });
+	const plan = downloadPreflight(
+		{ downloadFile: null, manifest: null, backendConfigRoot: config },
+		{
+			backendHome: home,
+			operatorDownloads: join(TREE, "dl-f1-op", "Downloads"),
+		},
+	);
+	const before = new Map(
+		plan.destinations.map((d) => [d.dir, listNames(d.dir)]),
+	);
+	const rigRoots = [home, config];
+	// The reviewer's fixture.
+	writeFileSync(join(home, "Downloads", "notes.md"), NOTES);
+	writeFileSync(join(home, "Downloads", "image-1.png"), "png");
+	writeFileSync(join(config, "downloads", "other.txt"), "x");
+	const all = inspectLanding(plan, before, { rigRoots });
+	assert.equal(all.result.verdict, "FAIL");
+	assert.match(all.problem, /more than one new file landed in the rig/);
+	assert.deepEqual(all.result.newInRig, [
+		join(home, "Downloads", "image-1.png"),
+		join(home, "Downloads", "notes.md"),
+		join(config, "downloads", "other.txt"),
+	]);
+	// One stray in the OTHER destination alone is enough.
+	rmSync(join(home, "Downloads", "image-1.png"));
+	const one = inspectLanding(plan, before, { rigRoots });
+	assert.equal(one.result.verdict, "FAIL");
+	assert.match(one.problem, /other\.txt/);
+	// A new sub-folder is a new entry too.
+	rmSync(join(config, "downloads", "other.txt"));
+	mkdirSync(join(config, "downloads", "sub"));
+	assert.match(
+		inspectLanding(plan, before, { rigRoots }).problem ?? "",
+		/more than one new file/,
+	);
+	rmSync(join(config, "downloads", "sub"), { recursive: true });
+	assert.equal(inspectLanding(plan, before, { rigRoots }).problem, null);
+	assert.deepEqual(rigNewEntries(plan.destinations, before), [
+		join(home, "Downloads", "notes.md"),
+	]);
+});
+
+test("download: with the check off the operator's ~/Downloads leaf is never resolved; the real default is always refused (S1-4, Q1-1)", () => {
+	// A ~/Downloads that is a symlink to where the rig sits: the off run compares
+	// the spelled path (leaf untouched), so it does not see through the link -
+	// the documented limit; the on run (which lists it anyway) resolves it.
+	const op = join(TREE, "dl-s14-op");
+	const target = join(TREE, "dl-s14-target");
+	const rig = join(target, "rig");
+	mkdirSync(join(rig, "home", "Downloads"), { recursive: true });
+	mkdirSync(join(rig, "config"), { recursive: true });
+	mkdirSync(op, { recursive: true });
+	symlinkSync(target, join(op, "Downloads"));
+	const link = join(op, "Downloads");
+	assert.equal(physicalParent(link), join(physical(op), "Downloads"));
+	const where = {
+		backendHome: join(rig, "home"),
+		configRoot: join(rig, "config"),
+	};
+	const real = { path: link, real: link, injected: false };
+	assert.deepEqual(operatorDownloadsRefusals(real, false), [link]);
+	assert.doesNotThrow(() =>
+		downloadDestinations({
+			...where,
+			operatorDownloads: operatorDownloadsRefusals(real, false),
+		}),
+	);
+	assert.throws(
+		() =>
+			downloadDestinations({
+				...where,
+				operatorDownloads: operatorDownloadsRefusals(real, true),
+			}),
+		/inside the operator's ~\/Downloads/,
+	);
+	// An injected test folder ADDS a comparison; the real default stays.
+	const injected = {
+		path: join(TREE, "dl-s14-inj"),
+		real: link,
+		injected: true,
+	};
+	assert.deepEqual(operatorDownloadsRefusals(injected, true), [
+		link,
+		join(TREE, "dl-s14-inj"),
+	]);
+	const nested = join(TREE, "dl-s14-real", "Downloads");
+	mkdirSync(join(nested, "r", "home", "Downloads"), { recursive: true });
+	mkdirSync(join(nested, "r", "config"), { recursive: true });
+	assert.throws(
+		() =>
+			downloadDestinations({
+				backendHome: join(nested, "r", "home"),
+				configRoot: join(nested, "r", "config"),
+				operatorDownloads: operatorDownloadsRefusals(
+					{ path: join(TREE, "dl-s14-inj"), real: nested, injected: true },
+					true,
+				),
+			}),
+		/inside the operator's ~\/Downloads/,
+	);
+});
+
+test("download: the test-only ~/Downloads seam - real default when nothing is injected, refused outside node --test or when relative (Q1-1)", () => {
+	const realDefault = join(os.userInfo().homedir, "Downloads");
+	for (const env of [
+		{},
+		{ NODE_TEST_CONTEXT: "child-v8" },
+		{ [TEST_OPERATOR_DOWNLOADS_ENV]: "" },
+	])
+		assert.deepEqual(operatorDownloadsTarget(env), {
+			path: realDefault,
+			real: realDefault,
+			injected: false,
+		});
+	assert.deepEqual(operatorDownloadsTarget({}, "/Users/u"), {
+		path: "/Users/u/Downloads",
+		real: "/Users/u/Downloads",
+		injected: false,
+	});
+	assert.deepEqual(
+		operatorDownloadsTarget({
+			NODE_TEST_CONTEXT: "child-v8",
+			[TEST_OPERATOR_DOWNLOADS_ENV]: "/tmp/x/Downloads",
+		}),
+		{ path: "/tmp/x/Downloads", real: realDefault, injected: true },
+	);
+	assert.throws(
+		() => operatorDownloadsTarget({ [TEST_OPERATOR_DOWNLOADS_ENV]: "/tmp/x" }),
+		(error) =>
+			error instanceof Refusal &&
+			error.code === EXIT.REFUSED &&
+			/test-only seam honoured only under node --test/.test(error.message),
+	);
+	assert.throws(
+		() =>
+			operatorDownloadsTarget({
+				NODE_TEST_CONTEXT: "child-v8",
+				[TEST_OPERATOR_DOWNLOADS_ENV]: "rel/Downloads",
+			}),
+		/must be an absolute path/,
+	);
+	// downloadPreflight with nothing injected targets the real default.
+	const dev = join(TREE, "dl-seam");
+	mkdirSync(join(dev, "home"), { recursive: true });
+	mkdirSync(join(dev, "config"), { recursive: true });
+	const plan = downloadPreflight(
+		{
+			downloadFile: null,
+			manifest: null,
+			backendConfigRoot: join(dev, "config"),
+		},
+		{ backendHome: join(dev, "home"), target: operatorDownloadsTarget({}) },
+	);
+	assert.deepEqual(plan.operatorDownloads, {
+		path: realDefault,
+		injected: false,
+	});
+	assert.deepEqual(plan.destinations, [
+		{ dir: join(dev, "home", "Downloads"), exists: false },
+		{ dir: join(dev, "config", "downloads"), exists: false },
+	]);
+});
+
+test("download: limits name what the receipt cannot prove; the toast latency is read from the run", () => {
+	const ids = (o) => downloadLimits(o).map((l) => l.id);
+	assert.deepEqual(ids({ checkOperatorDownloads: false }), [
+		"toast-latency-unmeasured",
+		"config-root-only",
+		"containment-destination-based",
+		"fixture-proven-actions",
+	]);
+	assert.deepEqual(ids({ checkOperatorDownloads: true }), [
+		"toast-latency-unmeasured",
+		"config-root-only",
+		"fixture-proven-actions",
+	]);
+	assert.ok(
+		downloadLimits({ checkOperatorDownloads: false }).every(
+			(l) => typeof l.text === "string" && l.text.length > 20,
+		),
+	);
+	const built = downloadSceneSteps();
+	const at =
+		built.findIndex((s) => s.payload?.timeoutMs === DOWNLOAD_OUTCOME_WAIT_MS) +
+		1;
+	const ran = [
+		{ step: at - 1, verb: "press", outcome: "ok", detail: "{}" },
+		{
+			step: at,
+			verb: "waitFor",
+			outcome: "ok",
+			detail:
+				'{"selector":"x","gone":false,"waitedMs":2731,"settleTimedOut":false}',
+		},
+	];
+	assert.deepEqual(downloadToastLatency(built, ran), {
+		step: at,
+		waitedMs: 2731,
+		boundMs: DOWNLOAD_OUTCOME_WAIT_MS,
+		source:
+			"the renderer's waitFor result for the step after the Download press (press to outcome toast)",
+	});
+	assert.equal(downloadToastLatency(built, ran.slice(0, 1)).waitedMs, null);
+	assert.equal(
+		downloadToastLatency(built, [{ ...ran[1], outcome: "error", detail: "x" }])
+			.waitedMs,
+		null,
+	);
 });
 
 test("download: any new name in the operator's ~/Downloads is a stray; names only", () => {
@@ -5121,7 +5500,13 @@ test("download: a --manifest that is a directory refuses with exit 2 before any 
 /** One config-root download run against the fake app + fake lop. */
 async function downloadRun(
 	name,
-	{ manifestSha = NOTES_SHA, post = true, extra = [] } = {},
+	{
+		manifestSha = NOTES_SHA,
+		post = true,
+		extra = [],
+		app = {},
+		status = 0,
+	} = {},
 ) {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
 	const device = rigDevice(
@@ -5146,38 +5531,54 @@ async function downloadRun(
 	]);
 	const rigRoot = join(TREE, `${name}-rig`);
 	const out = join(TREE, `${name}-out`);
-	const run = await runHarnessAsync([
-		"--app",
-		fakeApp(`Dl${name}`, { downloadPost: post }),
-		"--out",
-		out,
-		"--rig-root",
-		rigRoot,
-		"--capture",
-		"capturepage",
-		"--lop",
-		fakeLop(),
-		"--backend-config-root",
-		device.config,
-		"--session",
-		"ce618964c88e",
-		"--scene",
-		"download",
-		"--theme",
-		"dark",
-		"--manifest",
-		manifest,
-		"--peer-wait",
-		"30",
-		...extra,
-	]);
+	// QA Q1-1: the suite never lists the real ~/Downloads of whoever runs it.
+	// The test-only seam points the opt-in stray listing at a folder of this
+	// run's own; NODE_TEST_CONTEXT is forwarded because the harness honours the
+	// seam only under node --test (and harnessEnv passes no inherited env).
+	const strayDir = join(TREE, `${name}-operator-downloads`);
+	mkdirSync(strayDir, { recursive: true });
+	writeFileSync(join(strayDir, "already-here.pdf"), "x");
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			fakeApp(`Dl${name}`, { downloadPost: post, toastWaitedMs: 2731, ...app }),
+			"--out",
+			out,
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--backend-config-root",
+			device.config,
+			"--session",
+			"ce618964c88e",
+			"--scene",
+			"download",
+			"--theme",
+			"dark",
+			"--manifest",
+			manifest,
+			"--peer-wait",
+			"30",
+			...extra,
+		],
+		{
+			NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+			[TEST_OPERATOR_DOWNLOADS_ENV]: strayDir,
+		},
+	);
 	const rig = rigOf(rigRoot);
 	trackPids(rig, device.config);
+	// F3: the run's own status and output first, so a run that never reached
+	// the backend fails here with its output, not as ENOENT on a fixture file.
+	assert.equal(run.status, status, run.all);
+	const served = join(device.config, "fake-serve-requests.json");
+	assert.ok(existsSync(served), `no ${served}; run output:\n${run.all}`);
 	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
-	const requests = JSON.parse(
-		readFileSync(join(device.config, "fake-serve-requests.json"), "utf8"),
-	);
-	return { run, receipt, requests, device, manifest };
+	const requests = JSON.parse(readFileSync(served, "utf8"));
+	return { run, receipt, requests, device, manifest, strayDir };
 }
 
 it("download e2e: the app's POST lands notes.md in the rig; the receipt records path, bytes, sha256, manifest and ~/Downloads", async () => {
@@ -5207,6 +5608,25 @@ it("download e2e: the app's POST lands notes.md in the rig; the receipt records 
 	// Default OFF: the operator's ~/Downloads was not listed, and the receipt
 	// says so instead of implying a clean stray check.
 	assert.deepEqual(receipt.download.operatorDownloads, { checked: false });
+	// F6: the plan's destination objects, as the dry-run prints them.
+	assert.deepEqual(receipt.download.destinations, [
+		{ dir: join(device.home, "Downloads"), exists: true },
+		{ dir: join(device.config, "downloads"), exists: false },
+	]);
+	// S1-3: every new name in the rig, recorded after the reap.
+	assert.deepEqual(receipt.download.newInRig, [landed]);
+	// F4: the measured press-to-toast wait.
+	assert.equal(receipt.download.toastLatency.waitedMs, 2731);
+	assert.equal(receipt.download.toastLatency.boundMs, DOWNLOAD_OUTCOME_WAIT_MS);
+	assert.deepEqual(
+		receipt.download.limits.map((l) => l.id),
+		[
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"containment-destination-based",
+			"fixture-proven-actions",
+		],
+	);
 	// Exactly one write, and it came from the app; everything else was a GET.
 	const writes = requests.filter((r) => !r.startsWith("GET "));
 	assert.deepEqual(writes, [
@@ -5218,8 +5638,8 @@ it("download e2e: the app's POST lands notes.md in the rig; the receipt records 
 it("download e2e: a landed file whose sha256 differs from the manifest fails the run (exit 1)", async () => {
 	const { run, receipt } = await downloadRun("dl-sha", {
 		manifestSha: "0".repeat(64),
+		status: 1,
 	});
-	assert.equal(run.status, 1, run.all);
 	assert.match(run.all, /the manifest says \d+ B sha256 0{64}/);
 	assert.equal(receipt.download.compared, "mismatch");
 	assert.equal(receipt.download.verdict, "FAIL");
@@ -5227,24 +5647,83 @@ it("download e2e: a landed file whose sha256 differs from the manifest fails the
 });
 
 it("download e2e: no file landing in the rig fails the run (exit 1)", async () => {
-	const { run, receipt } = await downloadRun("dl-none", { post: false });
-	assert.equal(run.status, 1, run.all);
+	const { run, receipt } = await downloadRun("dl-none", {
+		post: false,
+		status: 1,
+	});
 	assert.match(run.all, /no notes\.md appeared in the rig/);
 	assert.equal(receipt.download.verdict, "FAIL");
 	assert.equal(receipt.download.destination, null);
 });
 
-it("download e2e: --check-operator-downloads lists the operator's ~/Downloads before/after and records the comparison", async () => {
-	const { run, receipt } = await downloadRun("dl-check", {
+it("download e2e: --check-operator-downloads lists the (test-injected) ~/Downloads before/after and records the comparison", async () => {
+	const { receipt, strayDir } = await downloadRun("dl-check", {
 		extra: ["--check-operator-downloads"],
 	});
-	assert.equal(run.status, 0, run.all);
 	assert.equal(receipt.download.verdict, "PASS");
 	const op = receipt.download.operatorDownloads;
-	assert.equal(op.checked, true);
-	assert.equal(op.path, join(os.userInfo().homedir, "Downloads"));
-	assert.deepEqual(op.newEntries, []);
-	assert.equal(op.before, op.after);
+	// Q1-1: the injected folder was listed, never the runner's real ~/Downloads,
+	// and the receipt says so.
+	assert.deepEqual(op, {
+		checked: true,
+		path: strayDir,
+		injected: true,
+		before: 1,
+		after: 1,
+		newEntries: [],
+	});
+	assert.notEqual(op.path, join(os.userInfo().homedir, "Downloads"));
+	assert.deepEqual(
+		receipt.download.limits.map((l) => l.id),
+		["toast-latency-unmeasured", "config-root-only", "fixture-proven-actions"],
+	);
+});
+
+it("download e2e: a run that aborts AFTER the file landed still records what landed (S1-3)", async () => {
+	const { run, receipt, device } = await downloadRun("dl-abort", {
+		app: { failVerb: "shutter" },
+		status: 1,
+	});
+	assert.match(run.all, /step \d+ \(shutter\) failed/);
+	assert.equal(receipt.download.verdict, "FAIL");
+	assert.deepEqual(receipt.download.newInRig, [
+		join(device.home, "Downloads", "notes.md"),
+	]);
+});
+
+test("download: the test-only ~/Downloads seam set outside node --test refuses (exit 2) before anything is spawned", () => {
+	const relayPort = 20000 + Math.floor(Math.random() * 20000);
+	const device = rigDevice(
+		"dl-seam-refuse",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
+	const run = runHarness(
+		[
+			"--app",
+			fakeApp("DlSeamRefuse"),
+			"--out",
+			join(TREE, "dl-seam-refuse-out"),
+			"--rig-root",
+			join(TREE, "dl-seam-refuse-rig"),
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--backend-config-root",
+			device.config,
+			"--session",
+			"ce618964c88e",
+			"--scene",
+			"download",
+			"--theme",
+			"dark",
+			"--check-operator-downloads",
+		],
+		{ [TEST_OPERATOR_DOWNLOADS_ENV]: join(TREE, "dl-seam-refuse-dl") },
+	);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /test-only seam honoured only under node --test/);
+	assert.ok(!existsSync(join(TREE, "dl-seam-refuse-rig")), "no rig was made");
 });
 
 test("download: the operator-~/Downloads check is opt-in - off lists nothing, on compares, BLOCKED only with the flag", () => {
@@ -5281,14 +5760,27 @@ test("download: the operator-~/Downloads check is opt-in - off lists nothing, on
 				check: true,
 				dir: "/Users/u/Downloads",
 				list: spy([denied]),
-				host: () => "Terminal",
+				// tccHost()'s real shape (Q1-2): the object rendered [object Object].
+				host: () => ({ host: "Terminal.app", kind: "app", pid: 812 }),
 			}),
 		(error) =>
 			error instanceof Refusal &&
 			error.code === EXIT.BLOCKED &&
-			/cannot list the operator's \/Users\/u\/Downloads \(EPERM\).*Terminal/.test(
+			!error.message.includes("[object Object]") &&
+			/cannot list the operator's \/Users\/u\/Downloads \(EPERM\).*grant Files and Folders > Downloads Folder to Terminal\.app in/.test(
 				error.message,
 			),
+	);
+	// An unreadable parent chain (tccHost() null) still names who to grant.
+	assert.throws(
+		() =>
+			operatorDownloadsBaseline({
+				check: true,
+				dir: "/Users/u/Downloads",
+				list: spy([denied]),
+				host: () => null,
+			}),
+		/to the terminal or agent app hosting this run/,
 	);
 	// ON: the listing is compared; a new name is a problem, none is not.
 	const on = operatorDownloadsBaseline({
@@ -5326,6 +5818,7 @@ test("download: the operator-~/Downloads check is opt-in - off lists nothing, on
 	assert.match(gone.problem, /could not be listed after the run \(EPERM\)/);
 	assert.equal(gone.record.after, null);
 	assert.deepEqual(calls, [
+		"/Users/u/Downloads",
 		"/Users/u/Downloads",
 		"/Users/u/Downloads",
 		"/Users/u/Downloads",

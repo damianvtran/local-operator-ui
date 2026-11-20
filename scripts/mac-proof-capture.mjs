@@ -1245,8 +1245,11 @@ function applySeedDefaults(opts) {
  * downloadSceneSteps). Before anything else of the run can be spawned:
  * - config-root only: `attach` would land the file in the operator's real
  *   ~/Downloads (its daemon runs as the operator), `isolated` has no peer;
- * - one theme: a second pass would find the file already landed (the backend
- *   reuses an identical file) and prove nothing;
+ * - one theme: the file lands once. A second theme's press would reach a
+ *   backend that reuses the identical file (`created: false`), so the app
+ *   shows its "already downloaded" success toast (remote-file-transfer.tsx,
+ *   ui.canvas.files.remoteAlreadyDownloaded), not a second download - that
+ *   frame would show a different toast from the first, and land nothing;
  * - --download-file / --manifest only with the scene, and a plain file name.
  */
 function downloadOptionsProblem(opts) {
@@ -1270,7 +1273,7 @@ function downloadOptionsProblem(opts) {
 		);
 	if (opts.themes.length !== 1)
 		throw new Refusal(
-			"--scene download takes exactly one --theme (it downloads once; a second theme would find the file already landed)",
+			'--scene download takes exactly one --theme (it downloads once; a second theme would show the app\'s "already downloaded" toast for the reused file, not a download)',
 		);
 	const nameProblem = downloadFileProblem(
 		opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT,
@@ -2064,7 +2067,9 @@ export function asksSceneSteps() {
  * distribution: `downloadRemoteFile` re-POSTs a pending transfer on
  * ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] (use-attachment-url.ts at
  * v0.59.2), 30 s of backoff before it gives up, so this is twice that; the
- * whole-run --timeout still bounds it.
+ * whole-run --timeout still bounds it. No Mac run has measured the real latency
+ * yet, so every receipt records it (`download.toastLatency`, review F4) and
+ * lists the gap under `download.limits` until a distribution exists.
  */
 export const DOWNLOAD_OUTCOME_WAIT_MS = 60_000;
 
@@ -2076,6 +2081,73 @@ export const DOWNLOAD_ITEM_SELECTOR =
 const DOWNLOAD_OUTCOME_TOAST =
 	'[data-sonner-toast]:is([data-type="success"], [data-type="error"], [data-type="info"])';
 const DOWNLOAD_SUCCESS_TOAST = '[data-sonner-toast][data-type="success"]';
+
+/**
+ * The en template of `ui.common.actions.actions_for_name`, used when the
+ * repository's catalogues cannot be read (the harness copied out of the tree).
+ * A label set that misses the app's locale matches nothing, so the run fails
+ * at the row wait - the safe direction.
+ */
+const ACTIONS_FOR_NAME_EN = "Actions for {name}";
+
+/**
+ * Every shipped locale's exact accessible name for the row trigger of `name`
+ * ("Actions for <name>", "Acciones de <name>", ...), from the repository's own
+ * catalogues beside this script. WHY exact labels (review F2 / S1-2): a
+ * substring match let `old-notes.md`'s row be the one pressed, downloading a
+ * file the run was never authorised to land before anything failed. The
+ * harness does not pin the app's locale, so it accepts any shipped locale's
+ * label - each still EXACT. A template carrying a quote, backslash or control
+ * character is skipped (it is quoted into a CSS attribute selector).
+ */
+export function actionsForNameLabels(
+	name,
+	catalogues = join(HERE, "..", "src", "i18n", "catalogues"),
+) {
+	const templates = new Set([ACTIONS_FOR_NAME_EN]);
+	let locales = [];
+	try {
+		locales = readdirSync(catalogues).sort();
+	} catch {}
+	for (const locale of locales) {
+		let template;
+		try {
+			template = JSON.parse(
+				readFileSync(
+					join(catalogues, locale, "ui.common.actions.json"),
+					"utf8",
+				),
+			)["ui.common.actions.actions_for_name"];
+		} catch {
+			continue;
+		}
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+		if (typeof template !== "string" || /["\\\u0000-\u001f]/.test(template))
+			continue;
+		if (template.includes("{name}")) templates.add(template);
+	}
+	return [...templates].map((t) => t.replaceAll("{name}", name));
+}
+
+/** The menu trigger of the row whose accessible name is EXACTLY one of `labels`. */
+function rowTriggerButton(labels) {
+	return `button[aria-haspopup="menu"]:is(${labels.map((l) => `[aria-label="${l}"]`).join(", ")})`;
+}
+
+/**
+ * Matches (something) only when TWO OR MORE file rows carry `name`'s trigger.
+ * Any two distinct rows have a lowest common ancestor with two distinct
+ * children c1 ~ c2, each the row itself or an ancestor of it, so the pair is
+ * `X ~ X` with X = "is such a row, or contains one". `:has()` may not nest, so
+ * the row-itself case is `row:has(button)` and the ancestor case is
+ * `:has(row button)` - neither nests. Used with `waitFor {gone: true}`: the
+ * run refuses rather than press the first of two same-named rows (S1-2).
+ */
+export function duplicateRowSelector(labels) {
+	const button = rowTriggerButton(labels);
+	const holder = `:is([data-tour-tag="file-row"]:has(${button}), :has([data-tour-tag="file-row"] ${button}))`;
+	return `${holder} ~ ${holder}`;
+}
 
 /**
  * A plain basename the backend could land: no separator, no `.`/`..`, no
@@ -2102,9 +2174,10 @@ export function downloadFileProblem(name) {
  *   `data-tour-tag="file-row"` (finder-files-view.tsx), whose accessible name is
  *   "Actions for <name>" (ui.common.actions.actions_for_name). The name is the
  *   only per-row marker the row carries (`data-file-id` is the owner's id, which
- *   the harness does not know), so it is matched as a substring of the label:
- *   every locale's label contains `{name}`. A wrong row cannot pass: the
- *   landed file must carry this name and the manifest's sha256.
+ *   the harness does not know), so the label is matched EXACTLY, in any shipped
+ *   locale (`actionsForNameLabels`), never as a substring.
+ * - Then the run REFUSES when more than one row carries that label
+ *   (`duplicateRowSelector`, a `gone` wait that fails at once if present).
  * - Pressed only while `aria-expanded="false"`; the press dispatches
  *   pointerdown, which opens a Radix DropdownMenu.
  * - The Download entry is REQUIRED enabled (`DOWNLOAD_ITEM_SELECTOR`): a local
@@ -2117,7 +2190,8 @@ export function downloadSceneSteps(file = null) {
 	// `?? default`, not a parameter default: parseArgs leaves an unset
 	// --download-file as null, which a default parameter would keep.
 	const name = file ?? DOWNLOAD_FILE_DEFAULT;
-	const trigger = `[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="${name}"]`;
+	const labels = actionsForNameLabels(name);
+	const trigger = `[data-tour-tag="file-row"] ${rowTriggerButton(labels)}`;
 	return [
 		{ verb: "navigate", payload: "/chat" },
 		{ verb: "openCanvas", payload: { view: "files" } },
@@ -2126,6 +2200,16 @@ export function downloadSceneSteps(file = null) {
 			verb: "waitFor",
 			payload: { selector: trigger, timeoutMs: 20000 },
 			timeoutMs: 25000,
+		},
+		// `gone` with a 1 ms bound: absent passes at the first look; present
+		// fails after one re-check (install.ts waitFor), naming the selector.
+		{
+			verb: "waitFor",
+			payload: {
+				selector: duplicateRowSelector(labels),
+				gone: true,
+				timeoutMs: 1,
+			},
 		},
 		{
 			verb: "press",
@@ -2151,34 +2235,63 @@ export function downloadSceneSteps(file = null) {
 	];
 }
 
+/** The exact press selectors a download run may use: its own scene's two. */
+export function downloadPressAllowlist(file = null) {
+	return downloadSceneSteps(file)
+		.filter((s) => s.verb === "press")
+		.map((s) => s.payload.selector);
+}
+
 /**
- * Refuse a step list that could press anything that writes outside the rig:
- * a `press` whose selector names a remote action other than `download`, or any
- * spelling of Save as. Run on the built list before launch, so a future edit to
- * the scene cannot slip a Save as press through.
+ * Refuse a step list that could press anything that writes outside the rig.
+ * Run on the built list before launch, so a future edit cannot slip a press
+ * through.
+ *
+ * - A DOWNLOAD run (`{download: true, file}`): an ALLOWLIST - every press must be
+ *   byte-for-byte one of `downloadPressAllowlist(file)`. WHY not a blocklist
+ *   (review S1-1): a text blocklist was passed by an uppercase attribute, a
+ *   sibling combinator (`[data-remote-action="download"] + *`) and
+ *   `:nth-of-type`, each able to reach Save as, whose bytes Electron writes to
+ *   the operator's real ~/Downloads. Other scenes' presses are refused in a
+ *   download run too; run them separately.
+ * - Any other run never presses a remote action or Save as at all (matched
+ *   case-insensitively; those runs have no business in the remote menu).
  */
-export function downloadStepsProblem(steps) {
+export function downloadStepsProblem(
+	steps,
+	{ download = false, file = null } = {},
+) {
+	const allowed = download ? new Set(downloadPressAllowlist(file)) : null;
 	for (const [i, step] of (steps ?? []).entries()) {
 		if (step?.verb !== "press") continue;
 		const selector =
 			typeof step.payload === "string"
 				? step.payload
 				: String(step.payload?.selector ?? "");
-		if (/save[-_ ]?as|copy-image/i.test(selector))
-			return `step ${i + 1} presses ${selector}: Save as / Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads, so the harness never presses them`;
-		for (const match of selector.matchAll(
-			/data-remote-action\s*(?:[~|^$*]?=\s*["']?([^"'\]]*))?/g,
-		))
-			if (match[1] !== "download")
-				return `step ${i + 1} presses ${selector}: the only remote action the harness may press is [data-remote-action="download"]`;
+		if (allowed) {
+			if (!allowed.has(selector))
+				return `step ${i + 1} presses ${selector}: a download run may press only its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
+			continue;
+		}
+		if (/save[-_ ]?as|copy-image|data-remote-action/i.test(selector))
+			return `step ${i + 1} presses ${selector}: only --scene download presses the remote file menu, and only its Download entry; the harness never presses Save as / Copy image, which hand the bytes to Electron, whose download folder is the operator's real ~/Downloads`;
 	}
 	return null;
 }
 
-/** A hint for the run's error when the Download entry never appeared. */
-export function downloadFailureHint(message) {
-	if (!String(message).includes(DOWNLOAD_ITEM_SELECTOR)) return null;
-	return "the row offered no enabled Download entry (a local row, an unreadable row, or one already landed in this profile); the harness never falls back to Save as, which would write to the operator's ~/Downloads";
+/** A hint for the run's error when the Download entry never appeared, or two rows matched. */
+export function downloadFailureHint(message, file = null) {
+	const text = String(message);
+	if (text.includes(DOWNLOAD_ITEM_SELECTOR))
+		return "the row offered no enabled Download entry (a local row, an unreadable row, or one already landed in this profile); the harness never falls back to Save as, which would write to the operator's ~/Downloads";
+	const name = file ?? DOWNLOAD_FILE_DEFAULT;
+	// The runner prints errors through oneLine (whitespace collapsed).
+	const flat = (s) => s.replace(/\s+/g, " ");
+	if (
+		flat(text).includes(flat(duplicateRowSelector(actionsForNameLabels(name))))
+	)
+		return `more than one Files row is labelled for ${name}; the harness refuses to guess which to download`;
+	return null;
 }
 
 /**
@@ -2226,15 +2339,35 @@ export function manifestEntry(path, name) {
 }
 
 /**
+ * `path` with its PARENT resolved physically and its last component kept as
+ * spelled: the leaf is never stat'ed or realpath'ed. WHY (review S1-4): on
+ * macOS ~/Downloads is TCC-protected, and with --check-operator-downloads off
+ * the harness promises to touch nothing in it - not even the realpath the
+ * rig-inside-~/Downloads refusal used to take. The cost, recorded under
+ * `download.limits`: a ~/Downloads that is itself a symlink is compared by its
+ * spelled location, so containment then rests on the receipt's destination +
+ * insideRig alone.
+ */
+export function physicalParent(path) {
+	return join(physical(dirname(resolve(path))), basename(path));
+}
+
+/**
  * The two folders core may land into for this rig, in core's order, each
  * vetted: not a symlink, and physically inside its own rig root. `exists`
  * says whether it is a directory now (core picks the home one only then).
+ * `operatorDownloads` is one folder or a list (see operatorDownloadsRefusals);
+ * each is compared through `physicalParent`, so its leaf is not touched.
  */
 export function downloadDestinations({
 	backendHome,
 	configRoot,
 	operatorDownloads = operatorDownloadsDir(),
 }) {
+	const refuse = [operatorDownloads].flat().map((p) => ({
+		spelled: p,
+		compared: comparablePath(physicalParent(p)),
+	}));
 	const candidates = [
 		{ dir: join(backendHome, "Downloads"), root: backendHome },
 		{ dir: join(configRoot, "downloads"), root: configRoot },
@@ -2254,40 +2387,105 @@ export function downloadDestinations({
 			throw new Refusal(`${dir} resolves outside ${root}`);
 		// A rig sited INSIDE the operator's ~/Downloads would add no top-level
 		// entry there, so the stray check could not see it: refused outright.
-		if (
-			within(
-				comparablePath(physical(dir)),
-				comparablePath(physical(operatorDownloads)),
-			)
-		)
+		const inside = refuse.find((r) =>
+			within(comparablePath(physical(dir)), r.compared),
+		);
+		if (inside)
 			throw new Refusal(
-				`${dir} is inside the operator's ~/Downloads (${operatorDownloads}); site the rig elsewhere`,
+				`${dir} is inside the operator's ~/Downloads (${inside.spelled}); site the rig elsewhere`,
 			);
 		return { dir, exists: Boolean(st) };
 	});
 }
 
 /**
+ * The folders the rig-inside-~/Downloads refusal compares against. ALWAYS the
+ * operator's real default (`target.real`), whatever the test seam injected -
+ * so the seam can add a comparison, never remove one. Its realpath (the leaf
+ * resolved, following a symlinked ~/Downloads) is added only when
+ * --check-operator-downloads is on against the real folder: that run lists it
+ * anyway, and an off run must not touch it (S1-4).
+ */
+export function operatorDownloadsRefusals(target, check) {
+	return [
+		target.real,
+		...(target.injected ? [target.path] : []),
+		...(check && !target.injected ? [physical(target.real)] : []),
+	];
+}
+
+/**
+ * TEST-ONLY seam (QA Q1-1): the folder the opt-in stray listing reads instead
+ * of the operator's real ~/Downloads, so the test suite's flag-on run never
+ * lists - and on a Mac never raises a Files and Folders prompt for - the real
+ * ~/Downloads of whoever runs it.
+ *
+ * WHY an env var and not an exported option: the end-to-end case runs the
+ * harness as a child process (the only way to exercise main, its signals and
+ * its exit codes), so an in-process option cannot reach it. WHY it cannot
+ * loosen the guard:
+ * - honoured ONLY when NODE_TEST_CONTEXT is set (node:test sets it in every
+ *   test-file process; the suite forwards it), else refused (exit 2) rather
+ *   than silently ignored, so an operator cannot believe they redirected it;
+ * - an absolute path only;
+ * - it redirects only the NEGATIVE listing; the rig-inside-~/Downloads refusal
+ *   still compares against the real default (operatorDownloadsRefusals) and
+ *   the positive proof (destination + insideRig) is untouched;
+ * - the receipt records the listed path and `injected: true`.
+ * `real` is always the passwd home's Downloads.
+ */
+export const TEST_OPERATOR_DOWNLOADS_ENV = "MAC_PROOF_TEST_OPERATOR_DOWNLOADS";
+export function operatorDownloadsTarget(
+	env = process.env,
+	homedir = os.userInfo().homedir,
+) {
+	const real = operatorDownloadsDir(homedir);
+	const injected = env[TEST_OPERATOR_DOWNLOADS_ENV];
+	if (injected === undefined || injected === "")
+		return { path: real, real, injected: false };
+	if (!env.NODE_TEST_CONTEXT)
+		throw new Refusal(
+			`${TEST_OPERATOR_DOWNLOADS_ENV} is a test-only seam honoured only under node --test (NODE_TEST_CONTEXT); unset it - the stray check always lists the operator's real ~/Downloads`,
+		);
+	if (!isAbsolute(injected))
+		throw new Refusal(
+			`${TEST_OPERATOR_DOWNLOADS_ENV} must be an absolute path (got ${JSON.stringify(injected)})`,
+		);
+	return { path: resolve(injected), real, injected: true };
+}
+
+/**
  * The rig side of preflight: the manifest entry (when given) and the vetted
  * destinations, refusing one that already holds the file.
  */
-export function downloadPreflight(opts, { backendHome, operatorDownloads }) {
+export function downloadPreflight(
+	opts,
+	{ backendHome, operatorDownloads, target = null },
+) {
 	const file = opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT;
 	const manifest =
 		opts.manifest === null
 			? null
 			: { path: opts.manifest, entry: manifestEntry(opts.manifest, file) };
+	const stray = target ?? operatorDownloadsTarget();
 	const destinations = downloadDestinations({
 		backendHome,
 		configRoot: opts.backendConfigRoot,
-		...(operatorDownloads ? { operatorDownloads } : {}),
+		operatorDownloads:
+			operatorDownloads ??
+			operatorDownloadsRefusals(stray, opts.checkOperatorDownloads === true),
 	});
 	for (const d of destinations)
 		if (d.exists && existsSync(join(d.dir, file)))
 			throw new Refusal(
 				`${join(d.dir, file)} already exists in the rig; move it out first (the backend would reuse it and land nothing new, so the run could not prove a download)`,
 			);
-	return { file, manifest, destinations };
+	return {
+		file,
+		manifest,
+		destinations,
+		operatorDownloads: { path: stray.path, injected: stray.injected },
+	};
 }
 
 /** The operator's real ~/Downloads: from the passwd home, never $HOME (which a rig may set). */
@@ -2327,20 +2525,28 @@ export function landingNames(name) {
 }
 
 /**
- * Read what landed, after the steps. `before` maps each destination dir to
- * its listing at run start. Exactly one new landing-named entry must exist
- * across the destinations, as a regular file physically inside the rig; its
- * bytes and sha256 are compared to the manifest entry when one was given.
- * Returns `{result, problem}`; `problem` is null only on a PASS.
+ * EVERY new entry, of any name, across the rig's destinations: `before` maps
+ * each destination dir to its listing at run start. Throws what listNames
+ * throws (an unreadable folder).
+ */
+export function rigNewEntries(destinations, before) {
+	const added = [];
+	for (const d of destinations)
+		for (const n of newEntries(before.get(d.dir), listNames(d.dir)))
+			added.push(join(d.dir, n));
+	return added;
+}
+
+/**
+ * Read what landed, after the steps. Exactly ONE new entry, of ANY name, may
+ * exist across both destinations (review F1: counting only `<name>` and its
+ * `(n)` variants let `other.txt` land beside `notes.md` and still PASS), it
+ * must carry the expected name (`<name>`, or core's `(n)` variant of it), and
+ * it must be a regular file physically inside the rig; its bytes and sha256
+ * are compared to the manifest entry when one was given. `newInRig` records
+ * every new path seen. Returns `{result, problem}`; null only on a PASS.
  */
 export function inspectLanding(plan, before, { rigRoots }) {
-	const names = new Set(landingNames(plan.file));
-	const landed = [];
-	for (const d of plan.destinations) {
-		const now = listNames(d.dir);
-		for (const n of newEntries(before.get(d.dir), now))
-			if (names.has(n)) landed.push(join(d.dir, n));
-	}
 	const result = {
 		file: plan.file,
 		destination: null,
@@ -2349,19 +2555,35 @@ export function inspectLanding(plan, before, { rigRoots }) {
 		sha256: null,
 		manifest: plan.manifest,
 		compared: plan.manifest ? null : "not compared (no --manifest)",
+		newInRig: null,
 		verdict: "FAIL",
 	};
-	if (landed.length === 0)
+	let added;
+	try {
+		added = rigNewEntries(plan.destinations, before);
+	} catch (error) {
+		return {
+			result,
+			problem: `the rig's downloads folders could not be listed after the steps (${error.code ?? error.message})`,
+		};
+	}
+	result.newInRig = added;
+	if (added.length === 0)
 		return {
 			result,
 			problem: `no ${plan.file} appeared in the rig (${plan.destinations.map((d) => d.dir).join(" or ")}) after the download's success toast`,
 		};
-	if (landed.length > 1)
+	if (added.length > 1)
 		return {
 			result,
-			problem: `more than one new download landed: ${landed.join(", ")}`,
+			problem: `more than one new file landed in the rig (exactly one may): ${added.join(", ")}`,
 		};
-	const [path] = landed;
+	const [path] = added;
+	if (!landingNames(plan.file).includes(basename(path)))
+		return {
+			result,
+			problem: `the one new file in the rig is ${path}, not ${plan.file}`,
+		};
 	result.destination = path;
 	const st = lstatSync(path);
 	const real = st.isFile() ? physical(path) : null;
@@ -2428,15 +2650,26 @@ export function strayDownloadsProblem(before, after) {
 export function operatorDownloadsBaseline({
 	check,
 	dir = operatorDownloadsDir(),
+	injected = false,
 	list = listNames,
 	host = () => tccHost(),
 }) {
 	if (!check) return { checked: false };
 	try {
-		return { checked: true, path: dir, before: list(dir) };
+		return {
+			checked: true,
+			path: dir,
+			...(injected ? { injected: true } : {}),
+			before: list(dir),
+		};
 	} catch (error) {
+		// tccHost() is `{host, kind, pid}` or null; its `host` string is the name
+		// to grant (QA Q1-2: the object itself rendered as [object Object]).
+		const who =
+			host()?.host ??
+			"the terminal or agent app hosting this run (its parent chain could not be read)";
 		throw new Refusal(
-			`BLOCKED: cannot list the operator's ${dir} (${error.code ?? error.message}), so --check-operator-downloads could not run; on macOS grant Files and Folders > Downloads Folder to ${host()} in System Settings > Privacy & Security, or run without the flag (containment is then proven by the receipt's destination alone)`,
+			`BLOCKED: cannot list the operator's ${dir} (${error.code ?? error.message}), so --check-operator-downloads could not run; on macOS grant Files and Folders > Downloads Folder to ${who} in System Settings > Privacy & Security, or run without the flag (containment is then proven by the receipt's destination alone)`,
 			EXIT.BLOCKED,
 		);
 	}
@@ -2457,6 +2690,7 @@ export function operatorDownloadsVerdict(baseline, list = listNames) {
 			record: {
 				checked: true,
 				path: baseline.path,
+				...(baseline.injected ? { injected: true } : {}),
 				before: baseline.before.names.length,
 				after: null,
 				newEntries: null,
@@ -2469,11 +2703,66 @@ export function operatorDownloadsVerdict(baseline, list = listNames) {
 		record: {
 			checked: true,
 			path: baseline.path,
+			...(baseline.injected ? { injected: true } : {}),
 			before: baseline.before.names.length,
 			after: after.names.length,
 			newEntries: stray.newEntries,
 		},
 		problem: stray.problem,
+	};
+}
+
+/**
+ * What this run's download receipt cannot prove, stated in the receipt itself
+ * so a reader does not have to know the harness's history (release owner's
+ * request). `{id, text}` each; ids are stable for tooling.
+ */
+export function downloadLimits({ checkOperatorDownloads }) {
+	return [
+		{
+			id: "toast-latency-unmeasured",
+			text: `the outcome-toast wait (${DOWNLOAD_OUTCOME_WAIT_MS} ms) is derived from the app's retry backoff, not a measured distribution; no Mac run had measured the toast latency before the first one - download.toastLatency records this run's value`,
+		},
+		{
+			id: "config-root-only",
+			text: "the download scene runs only with --backend-config-root (attach and isolated are refused), so a download through the operator's own daemon, which lands in their real ~/Downloads, is not exercised",
+		},
+		...(checkOperatorDownloads
+			? []
+			: [
+					{
+						id: "containment-destination-based",
+						text: "--check-operator-downloads was off: the operator's ~/Downloads was neither listed nor resolved, so containment is proven by destination + insideRig (exactly one new file in the rig) alone, and the rig-inside-~/Downloads refusal compared its spelled path without following a symlinked ~/Downloads",
+					},
+				]),
+		{
+			id: "fixture-proven-actions",
+			text: "the row trigger (exact label, single row), the menu's Download entry and the toast sequence are proven against the test suite's fixture app, not against Chromium; a Mac run is their first real exercise",
+		},
+	];
+}
+
+/**
+ * The outcome toast's measured latency (review F4): the renderer's own
+ * `waitedMs` for the wait that follows the Download press, read from that
+ * step's result line. `waitedMs` is null when the step did not run or its
+ * result carried no number (a truncated or fixture line).
+ */
+export function downloadToastLatency(builtSteps, ranSteps) {
+	const index = (builtSteps ?? []).findIndex(
+		(s) =>
+			s?.verb === "waitFor" && s.payload?.selector === DOWNLOAD_OUTCOME_TOAST,
+	);
+	const step = index === -1 ? null : index + 1;
+	const ran = (ranSteps ?? []).find((s) => s.step === step);
+	const waited =
+		ran?.outcome === "ok" ? ran.detail.match(/"waitedMs":(\d+)/) : null;
+	return {
+		step,
+		waitedMs: waited ? Number(waited[1]) : null,
+		boundMs: DOWNLOAD_OUTCOME_WAIT_MS,
+		source:
+			"the renderer's waitFor result for the step after the Download press (press to outcome toast)",
 	};
 }
 
@@ -4764,7 +5053,11 @@ export async function main(argv = process.argv.slice(2)) {
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
 	const stepProblem =
-		stepCountProblem(steps.steps) ?? downloadStepsProblem(steps.steps);
+		stepCountProblem(steps.steps) ??
+		downloadStepsProblem(steps.steps, {
+			download: Boolean(plan.download),
+			file: plan.download?.file ?? null,
+		});
 	if (stepProblem) {
 		console.error(`[mac-proof] refused: ${stepProblem}`);
 		return EXIT.REFUSED;
@@ -4859,8 +5152,15 @@ export async function main(argv = process.argv.slice(2)) {
 							destinations: plan.download.destinations,
 							manifest: plan.download.manifest,
 							operatorDownloads: opts.checkOperatorDownloads
-								? { checked: true, path: operatorDownloadsDir() }
+								? {
+										checked: true,
+										path: plan.download.operatorDownloads.path,
+										...(plan.download.operatorDownloads.injected
+											? { injected: true }
+											: {}),
+									}
 								: { checked: false },
+							limits: downloadLimits(opts),
 						},
 					}
 				: {}),
@@ -4915,21 +5215,32 @@ export async function main(argv = process.argv.slice(2)) {
 	 */
 	let downloadBefore = null;
 	if (plan.download) {
-		let operator;
 		try {
-			operator = operatorDownloadsBaseline({
+			const operator = operatorDownloadsBaseline({
 				check: opts.checkOperatorDownloads,
+				dir: plan.download.operatorDownloads.path,
+				injected: plan.download.operatorDownloads.injected,
 			});
+			// A permission error on the rig's own folders is a named refusal, not
+			// a raw throw (review S1-5): without this listing no landing can be
+			// told from what was already there.
+			const rigBefore = new Map();
+			for (const d of plan.download.destinations) {
+				try {
+					rigBefore.set(d.dir, listNames(d.dir));
+				} catch (error) {
+					throw new Refusal(
+						`cannot list the rig's ${d.dir} before the run (${error.code ?? error.message}); without that listing a landing cannot be told from what was already there`,
+					);
+				}
+			}
+			downloadBefore = { operator, rig: rigBefore };
 		} catch (error) {
-			console.error(`[mac-proof] ${error.message}`);
+			console.error(
+				`[mac-proof] ${error instanceof Refusal && error.code === EXIT.REFUSED ? "refused: " : ""}${error.message}`,
+			);
 			return error instanceof Refusal ? error.code : EXIT.BLOCKED;
 		}
-		downloadBefore = {
-			operator,
-			rig: new Map(
-				plan.download.destinations.map((d) => [d.dir, listNames(d.dir)]),
-			),
-		};
 	}
 
 	mkdirSync(opts.out, { recursive: true });
@@ -4986,11 +5297,13 @@ export async function main(argv = process.argv.slice(2)) {
 						route:
 							"POST /v1/desktop/sessions/<session>/files/<file id>/download (sent by the app with its own token; the harness's daemon client stays GET-only)",
 						file: plan.download.file,
-						destinations: plan.download.destinations.map((d) => d.dir),
+						// The plan's own objects, the dry-run's shape (review F6).
+						destinations: plan.download.destinations,
 						manifest: plan.download.manifest,
 						// Replaced after the reap; set now so an early end still
 						// says whether the stray check was asked for.
 						operatorDownloads: { checked: opts.checkOperatorDownloads },
+						limits: downloadLimits(opts),
 						verdict: "FAIL",
 					},
 				}
@@ -5180,6 +5493,32 @@ export async function main(argv = process.argv.slice(2)) {
 			// ~/Downloads fails the run; without it the receipt records
 			// {checked: false} and nothing is listed.
 			if (downloadBefore) {
+				// Every path ends here (pass, abort, signal, timeout), after the
+				// reap: record each new name in the rig, so a run that aborted
+				// AFTER a file landed still says what landed (review S1-3). A PASS
+				// that no longer sees exactly that one file is failed.
+				let landed;
+				try {
+					landed = rigNewEntries(
+						plan.download.destinations,
+						downloadBefore.rig,
+					);
+				} catch (error) {
+					landed = null;
+					receipt.download.newInRigError = error.code ?? error.message;
+				}
+				receipt.download.newInRig = landed;
+				if (
+					receipt.download.verdict === "PASS" &&
+					(landed === null ||
+						landed.length !== 1 ||
+						landed[0] !== receipt.download.destination)
+				) {
+					receipt.download.verdict = "FAIL";
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}after the reap the rig holds ${landed === null ? "an unreadable downloads folder" : `${landed.length} new file(s): ${landed.join(", ")}`}, not exactly ${receipt.download.destination}`;
+					receipt.exit = EXIT.FAILED;
+				}
 				const stray = operatorDownloadsVerdict(downloadBefore.operator);
 				receipt.download.operatorDownloads = stray.record;
 				if (stray.problem) {
@@ -5646,6 +5985,11 @@ export async function main(argv = process.argv.slice(2)) {
 			receipt.download = { ...receipt.download, ...landing.result };
 			abort = landing.problem;
 		}
+		if (plan.download)
+			receipt.download.toastLatency = downloadToastLatency(
+				steps.steps,
+				receipt.steps,
+			);
 		if (abort) throw new Error(abort);
 		receipt.verdict = "captured";
 	} catch (error) {
@@ -5654,7 +5998,9 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.error = interrupted
 			? `interrupted by ${interrupted}`
 			: error.message;
-		const hint = plan.download ? downloadFailureHint(receipt.error) : null;
+		const hint = plan.download
+			? downloadFailureHint(receipt.error, plan.download.file)
+			: null;
 		if (hint) receipt.error = `${receipt.error} (${hint})`;
 		receipt.exit = error instanceof Refusal ? error.code : EXIT.FAILED;
 		if (!interrupted && /exceeded --timeout/.test(receipt.error))

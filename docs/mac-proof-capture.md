@@ -328,8 +328,10 @@ so the only possible destinations are `<backend-home>/Downloads/<name>` (or its
 `app.getPath('downloads')` - the operator's real `~/Downloads` whatever HOME the
 rig sets - is reached only by **Save as...** (`guardDownloads`,
 `window-guards-electron.ts`), so the harness never presses Save as or Copy image:
-the built step list is checked before launch and any press of a remote action
-other than `download` refuses the run.
+the built step list is checked before launch against an exact **allowlist**: a
+download run may press only its own row trigger and the enabled Download entry
+(byte-for-byte; any other press, including another scene's, refuses the run),
+and any other run may not press a remote action or Save as at all.
 
 ```sh
 # On the Mac: the rig device already joined to the mesh (see --backend-config-root),
@@ -344,31 +346,37 @@ shasum -a 256 ~/lop-rig/home/Downloads/notes.md      # the receipt's destination
 
 The steps (shipped verbs only: `navigate`, `openCanvas`, `waitFor`, `press`): the
 Files view as the `files` scene reaches it; the row's `⋯` trigger
-(`[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="<name>"]`,
-the accessible name "Actions for <name>" is the only per-row marker), pressed
-only while `aria-expanded="false"`; the **enabled** Download entry, required and
-then pressed; the outcome toast (`[data-sonner-toast]` success/error/info, 60 s:
-twice the app's 30 s re-POST backoff, not a measured distribution), then a
-required **success** toast; then the shutter `download-<theme>`. A wrong row
-cannot pass: the landed file must carry `<name>` and the manifest's sha256.
+(`[data-tour-tag="file-row"] button[aria-haspopup="menu"]` whose `aria-label` is
+**exactly** "Actions for <name>" in any shipped locale, read from
+`src/i18n/catalogues/*/ui.common.actions.json` - never a substring, so
+`old-notes.md` is not `notes.md`'s row); the run **refuses** when more than one
+row carries that label (a `gone` wait on a two-rows selector); the trigger is
+pressed only while `aria-expanded="false"`; the **enabled** Download entry,
+required and then pressed; the outcome toast (`[data-sonner-toast]`
+success/error/info, 60 s: twice the app's 30 s re-POST backoff, not a measured
+distribution - the receipt records the measured `toastLatency`), then a required
+**success** toast; then the shutter `download-<theme>`.
 
 | Refused (exit 2, nothing spawned) | Why |
 |---|---|
 | `--backend attach` | that daemon runs as the operator: the file would land in the real `~/Downloads` |
 | `--backend isolated` (default) | no peer, and the route lands only a peer's row |
-| more than one `--theme` | a second pass finds the file already landed and proves nothing |
+| more than one `--theme` | the backend reuses the identical file (`created: false`), so a second pass shows the app's "already downloaded" toast, not a download |
 | `--download-file` with `/`, `\`, `"`, a control character, `.`/`..`, or given twice | one plain file name per run |
 | `--download-file`/`--manifest` without `--scene download`; no `--session` | |
 | `--manifest` not absolute, absent, not a regular file, not JSON, no `files` list, no (or a repeated) entry for the file, an entry without a 64-hex `sha256` and integer `bytes` | the comparison must be machine-checkable |
 | `<backend-home>/Downloads` or `<config-root>/downloads` a symlink, resolving outside its root, or inside the operator's `~/Downloads` | the write must land in the rig, and somewhere the stray check can see |
 | `<name>` already in either destination | the backend would reuse it and land nothing new; move it out first |
-| a step list pressing Save as, Copy image or any remote action but `download` | Save as writes through Electron to the real `~/Downloads` |
+| a download run pressing anything but its exact allowlist; any other run pressing a remote action, Save as or Copy image (case-insensitive) | Save as writes through Electron to the real `~/Downloads` |
+| `MAC_PROOF_TEST_OPERATOR_DOWNLOADS` set outside `node --test`, or not absolute | a test-only seam (below) |
+| either rig destination unreadable before the run | a landing could not be told from what was there |
 
 | Fails the run (exit 1) | |
 |---|---|
 | no enabled Download entry on the row (a local row, an unreadable row, only Save as) | the error says the harness never falls back to Save as |
 | an error/info toast instead of success | |
-| no new `<name>` (or `(n)` variant) in the rig's destinations after the success toast; more than one | |
+| more than one Files row labelled for `<name>` | the harness refuses to guess which row to download |
+| not exactly ONE new file, of any name, across both rig destinations after the success toast, or that one not named `<name>` (or its `(n)` variant); re-checked after the reap | |
 | the landed bytes/sha256 differ from the manifest entry | |
 | with `--check-operator-downloads` only: **any** new name in the operator's real `~/Downloads` between run start (before the backend or the app starts) and the end (after the reap) | names only; another process saving a file meanwhile also fails it, the safe direction |
 
@@ -386,13 +394,31 @@ the receipt records `operatorDownloads: {checked: false}`, so the missing check
 is visible rather than implied. With it, the folder (read from the passwd home,
 `os.userInfo().homedir`, never `$HOME`) is listed before and after, and one that
 cannot be listed is **BLOCKED (exit 3)** with the host to grant, never a pass.
+With the flag off the harness touches nothing in `~/Downloads` at all - not
+even a realpath: the rig-inside-`~/Downloads` refusal compares against
+`<realpath(home)>/Downloads` as spelled, so a symlinked `~/Downloads` is not
+followed, and the receipt's `limits` says containment is destination-based.
+
+**Test-only seam.** `MAC_PROOF_TEST_OPERATOR_DOWNLOADS=<abs dir>` makes the
+flag-on listing read that folder instead, so the test suite never lists the
+real `~/Downloads` of whoever runs it. It is honoured only under `node --test`
+(`NODE_TEST_CONTEXT`), refused otherwise; the rig-inside-`~/Downloads` refusal
+still compares against the real default, and the receipt records the listed
+`path` with `injected: true`.
 
 **The receipt** gains `download`: `route` (the template above, sent by the app),
-`file`, `destinations`, `destination` (the landed path), `insideRig`, `bytes`,
+`file`, `destinations` (`[{dir, exists}]`, the dry-run plan's shape),
+`destination` (the landed path), `newInRig` (every new path in the rig, recorded
+after the reap on every path, abort and signal included), `insideRig`, `bytes`,
 `sha256`, `manifest` (`{path, entry: {filename, bytes, sha256}}` or `null`),
 `compared` (`match`, `mismatch`, or `not compared (no --manifest)`),
 `operatorDownloads` (`{checked: false}` by default; with the flag `{checked:
-true, path, before, after, newEntries}` - counts and the new names only) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
+true, path, before, after, newEntries}` - counts and the new names only),
+`toastLatency` (`{step, waitedMs, boundMs, source}`: the press-to-outcome-toast
+wait the renderer measured), `limits` (`[{id, text}]`: what this run cannot
+prove - `toast-latency-unmeasured`, `config-root-only`,
+`containment-destination-based` when the stray check is off,
+`fixture-proven-actions`) and `verdict` (`PASS`/`FAIL`). Without `--manifest` the run checks
 landing and containment only and says so; the Mac proof passes `--manifest`.
 
 **Negative control:** `--negative-control` includes the download refusals
