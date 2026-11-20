@@ -159,7 +159,21 @@ test("an unanswered take times out and does not hold the queue", async () => {
 		post: () => {},
 		admissionTimeoutMs: 20,
 	});
-	await assert.rejects(backend.submit(work()), TIMED_OUT);
+	/*
+	 * The admission timer is unref'd ON PURPOSE (a pending take must not hold the
+	 * app open), so with nothing else alive the event loop empties and node
+	 * abandons this await ("Promise resolution is still pending but the event
+	 * loop has already resolved"), cancelling the whole file. That happened on
+	 * the CI runner (full-suite shard, run 44772960399) but not locally, where
+	 * the test runner's own handles keep the loop up. The test, not the timer,
+	 * owns keeping the loop alive for the span it deliberately waits on.
+	 */
+	const keepAlive = setTimeout(() => {}, 10_000);
+	try {
+		await assert.rejects(backend.submit(work()), TIMED_OUT);
+	} finally {
+		clearTimeout(keepAlive);
+	}
 	assert.equal(backend.status("task_1").state, "not_found");
 });
 
