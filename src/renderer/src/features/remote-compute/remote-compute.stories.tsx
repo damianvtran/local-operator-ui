@@ -8,10 +8,10 @@
  * not.
  *
  * HOW THE PICKER GETS OPEN, since a story cannot press: the control's own store door
- * (`useChatDeviceStore.requestPicker`) is the one the header's overflow item uses, so
- * the story opens the real popover through the real path rather than re-creating the
- * panel. That is also why the row states below are photographs of the control a user
- * sees rather than of a layout this file drew.
+ * (`useChatDeviceStore.requestPicker`), the same one the header's overflow item uses,
+ * so a frame that needs the menu on screen asks through that door and gets the real
+ * popover through the real path rather than a panel re-created here. Exactly one frame
+ * asks (`PaneCwdWithoutRowCwd`); the rest photograph the control at rest.
  *
  * THE STATE EACH STORY IS NAMED FOR IS THE STATE ITS READ ANSWERS: A (flag off) is
  * `{enabled: false}`, B is a signed-out account, and so on. Nothing here fakes a
@@ -223,12 +223,13 @@ const Band = ({
 	</div>
 );
 
-/** The header with its picker OPEN, through the control's own door. */
+/** The header, with its picker OPEN when a frame asks for it, through the door above. */
 const Pickers = ({
 	remote,
 	width = 1080,
 	paneCwd,
 	row,
+	open = false,
 }: {
 	remote: Parameters<typeof installBridge>[0];
 	width?: number;
@@ -240,12 +241,31 @@ const Pickers = ({
 	 * carries, and the reason the sheet reads the pane before the row (Q-2).
 	 */
 	row?: { session_id: string; title: string; cwd?: string };
+	/** Asks the control's own door to open the picker on this frame's first paint. */
+	open?: boolean;
 }) => {
 	useLayoutEffect(() => {
+		/*
+		 * THE TOKEN THE CONTROL WILL HAVE SEEDED ITSELF WITH. `ChatHeaderDevice` compares
+		 * a request against the value the store held when IT mounted - which is this
+		 * effect's `now`, since a child mounts before its parent's layout effect - and
+		 * opens only on a DIFFERENT number. `seed()` clears the counter, so the request
+		 * below has to be checked against that pre-seed value rather than assumed new: a
+		 * frame re-mounted over one that already asked at 1 would otherwise be served the
+		 * same 1 and stay shut.
+		 */
+		const served = useChatDeviceStore.getState().pickerRequests[SESSION];
 		installBridge(remote);
 		seed();
 		if (row) useCanonicalSessionsStore.setState({ sessions: [row] });
-	}, [remote, row]);
+		if (open) {
+			const request = useChatDeviceStore.getState().requestPicker;
+			request(SESSION);
+			if (useChatDeviceStore.getState().pickerRequests[SESSION] === served) {
+				request(SESSION);
+			}
+		}
+	}, [remote, row, open]);
 	return (
 		<div className="flex flex-col bg-canvas">
 			<Band width={width}>
@@ -322,10 +342,12 @@ export const RowNotOffered: Story = {
  * slot for it - the control must draw, and a row read is the first thing that could
  * fall over on a row with no `cwd`.
  *
- * WHAT IT CANNOT SHOW IS THE SHEET'S DIRECTORY: the sheet is a second level that only
- * a press on the picker row opens, and a story cannot press. `SheetPaneCwdWithoutRowCwd`
- * photographs the directory the same resolver gives this pair, and the call site is
- * pinned as source by `scripts/chat-device-model.test.mjs`.
+ * WHAT IT CANNOT SHOW IS THE SHEET'S DIRECTORY: the sheet is a second level that a
+ * press on the picker row opens, and this frame stops at the menu - which `open`
+ * genuinely puts on screen, where the first cut of this file photographed the closed
+ * chip and said the menu was open. `SheetPaneCwdWithoutRowCwd` photographs the
+ * directory the same resolver gives this pair by mounting that second level directly,
+ * and the call site is pinned as source by `scripts/chat-device-model.test.mjs`.
  */
 export const PaneCwdWithoutRowCwd: Story = {
 	render: () => (
@@ -333,6 +355,7 @@ export const PaneCwdWithoutRowCwd: Story = {
 			remote={readOnly({})}
 			paneCwd={PANE_CWD}
 			row={{ session_id: SESSION, title: "hello world" }}
+			open
 		/>
 	),
 };
@@ -428,8 +451,9 @@ export const SheetReady: Story = {
  * THE PATH COMES FROM THE RESOLVER, not from a literal: a story that typed the
  * directory in would photograph a value the app never computes, and would keep
  * showing it after the resolver changed. The call site itself is pinned by
- * `scripts/chat-device-model.test.mjs`'s source anchor, because a story cannot press
- * the picker row that opens this sheet (see `PaneCwdWithoutRowCwd`).
+ * `scripts/chat-device-model.test.mjs`'s source anchor, because this frame mounts the
+ * sheet directly instead of pressing the picker row that opens it (see
+ * `PaneCwdWithoutRowCwd`).
  */
 export const SheetPaneCwdWithoutRowCwd: Story = {
 	render: () => (

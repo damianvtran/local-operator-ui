@@ -55,6 +55,7 @@ const {
 	remoteRetrySeconds,
 	remoteRunPhase,
 	remoteRunStatusKnown,
+	remoteRunDeleted,
 	remoteComputeRead,
 	remoteRun,
 	remoteRunList,
@@ -375,6 +376,79 @@ test("a retryable error is in flight: polling, Cancel, and the server's own toke
 	 * nothing retries it.
 	 */
 	assert.equal(remoteRunPhase("expired"), "failed");
+});
+
+test("a deleted run is not drawn on any surface: the list, the count, the card", () => {
+	/*
+	 * THE ROW A DELETE LEAVES BEHIND (cross-PR decision with #4200/#4203). The daemon
+	 * publishes a deleted run as a STATUS - `deleted` - from both paths that can leave
+	 * one: a server row whose status is deleted, and this device's own record after a
+	 * `DELETE`. Read as a phase it took the unknown-token default and came out IN
+	 * FLIGHT: the card polled it and offered `Cancel`, the dialog printed the server's
+	 * raw token, and the picker counted it among the live runs. It is dropped at
+	 * `remoteRun`, the one place a row becomes a `RemoteRun`, so all four lose it
+	 * together - and no new copy or phase had to be invented for a run that is gone.
+	 */
+	const deleted = live({ id: "gone", status: "deleted" });
+	const shouted = live({ id: "gone-upper", status: "DELETED" });
+	const running = live({ id: "live", status: "running" });
+	// The runs dialog's rows, and the list-level verdict drawn beside them.
+	const list = remoteRunList({
+		server: "ok",
+		runs: [deleted, shouted, running],
+	});
+	assert.deepEqual(
+		list.runs.map((run) => run.id),
+		["live"],
+	);
+	assert.equal(list.server, "ok");
+	// The picker's own source: a deleted row is not a run, so state C, not state D.
+	assert.deepEqual(read({ active: [deleted, shouted] }).active, []);
+	assert.equal(
+		radientRowView({
+			read: answered(read({ active: [deleted, shouted] })),
+			now: NOW,
+		}).kind,
+		"ready",
+	);
+	// ... and beside a live one it is the live one that is counted, alone.
+	const withLive = read({ active: [deleted, shouted, running] });
+	assert.deepEqual(
+		withLive.active.map((run) => run.id),
+		["live"],
+	);
+	assert.deepEqual(
+		liveRuns(withLive.active).map((run) => run.id),
+		["live"],
+	);
+	const view = radientRowView({ read: answered(withLive), now: NOW });
+	assert.equal(view.kind, "runs");
+	assert.equal(view.count, 1);
+	// The card's own read answers "no row", which is the card's own "draw nothing".
+	assert.equal(remoteRunEnvelope({ run: deleted }), null);
+	assert.equal(remoteRunEnvelope({ run: running })?.id, "live");
+});
+
+test("the negative control: only the deleted token is dropped", () => {
+	/*
+	 * THE COMPARISON IS THE WHOLE TOKEN, not a prefix or a substring. A deployment that
+	 * says a run is `deleting` or `delete_requested` is describing a run that still
+	 * exists, and dropping that would hide a row a user can still act on - the opposite
+	 * error from the one above, and the one this rule must not make.
+	 */
+	assert.equal(remoteRunDeleted("deleted"), true);
+	assert.equal(remoteRunDeleted("DELETED"), true);
+	assert.equal(remoteRunDeleted("DeLeTeD"), true);
+	assert.equal(remoteRunDeleted("deleting"), false);
+	assert.equal(remoteRunDeleted("delete_requested"), false);
+	assert.equal(remoteRunDeleted("running"), false);
+	const list = remoteRunList({
+		runs: [live({ id: "deleting", status: "deleting" })],
+	});
+	assert.deepEqual(
+		list.runs.map((run) => run.id),
+		["deleting"],
+	);
 });
 
 /* -------------------------------------------------------------- the tier plan */

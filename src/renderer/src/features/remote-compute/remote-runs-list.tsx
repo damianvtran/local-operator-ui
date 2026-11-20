@@ -177,7 +177,18 @@ export const RemoteRunsDialog: FC<RemoteRunsDialogProps> = ({
 												{model.title}
 											</span>
 											<span className="flex flex-wrap items-baseline gap-x-1.5 text-meta text-ink-dim">
-												<span className={cn(phaseInk(run))}>
+												<span
+													/*
+													 * AN UNRECOGNISED TOKEN IS MACHINE VOICE HERE TOO (agent review round 3,
+													 * MINOR-1): the card's own rule, read off the card's own model, so the
+													 * server's raw token sits in mono on both surfaces instead of being set
+													 * in this app's body face like `Finished` or `Failed`.
+													 */
+													className={cn(
+														phaseInk(run),
+														!model.statusKnown && "font-mono",
+													)}
+												>
 													{model.status}
 												</span>
 												{/*

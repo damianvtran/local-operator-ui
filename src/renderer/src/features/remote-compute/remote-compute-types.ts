@@ -191,16 +191,51 @@ const serverVerdict = (value: unknown): RemoteRunsServer => {
 
 /* -------------------------------------------------------------- the readers */
 
-/** One run, or `null` when the row has no identity to file it under. */
+/**
+ * Whether a row states that its run was DELETED.
+ *
+ * THE ONE STATUS THIS CLIENT DOES NOT DRAW. A deleted run is not a phase of a run - it
+ * is the run's absence - and the daemon says so in the status itself: a server row
+ * whose status is `deleted`, and this device's own record after a `DELETE`, both
+ * arrive as that token. Read as a phase it would be an unknown token, and an unknown
+ * token is the SAFE reading here (`in-flight`: the clock runs, `Cancel` is offered),
+ * which is exactly wrong for a row that no longer exists - the GUI would poll it,
+ * offer to stop it, and print the server's raw token for it.
+ *
+ * THE COMPARISON IS CASE-INSENSITIVE because the token is a status, not a spelling -
+ * `remoteRunPhase` lower-cases for the same reason - and it is exact rather than a
+ * substring, so a `deleting` or `delete_requested` row is still a run.
+ */
+export function remoteRunDeleted(status: string): boolean {
+	return status.toLowerCase() === "deleted";
+}
+
+/**
+ * One run, or `null` when the row cannot be filed as one.
+ *
+ * TWO REASONS FOR `null`, and both are "there is no row to draw" rather than a
+ * failure: an identity-less row has nothing to key it under, and a DELETED run is
+ * gone (`remoteRunDeleted`).
+ *
+ * WHY THE DROP LIVES HERE. This function is the ONE place a run becomes a
+ * `RemoteRun`: the runs list, the capability read's `active[]` and the single-run
+ * envelope all come through it, so the card, the runs dialog, `liveRuns` and the
+ * picker's count lose a deleted row together and no second reader has to remember
+ * the rule. The envelope answering `null` is its existing "no row" answer - the same
+ * one a cancel whose record was already cleaned up earns - so the card draws nothing
+ * rather than a run the user deleted.
+ */
 export function remoteRun(value: unknown): RemoteRun | null {
 	if (!isRecord(value)) return null;
 	const id = text(value.id);
 	if (!id) return null;
+	const status = text(value.status);
+	if (remoteRunDeleted(status)) return null;
 	return {
 		id,
 		name: text(value.name),
 		tier: text(value.tier),
-		status: text(value.status),
+		status,
 		started_at: instant(value.started_at),
 		deadline_at: instant(value.deadline_at),
 		metered_seconds: amount(value.metered_seconds),
@@ -312,6 +347,10 @@ export type RemoteRunPhase = "in-flight" | "succeeded" | "failed" | "cancelled";
  * to be UNFINISHED and still have no sentence of its own - `error` is exactly that
  * (`remoteRunStatusKnown` says why) - so the phase below is never inferred from
  * membership of the known set.
+ *
+ * `deleted` IS NOT AN ARM HERE ON PURPOSE: a deleted run is the run's absence rather
+ * than a phase of it, and `remoteRun` drops the row before it is ever a `RemoteRun`
+ * (see `remoteRunDeleted`). So the default arm below is never asked about it.
  */
 export function remoteRunPhase(status: string): RemoteRunPhase {
 	switch (status.toLowerCase()) {
