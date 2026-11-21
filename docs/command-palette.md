@@ -305,10 +305,17 @@ pane is its only presenter.
   word is inside it" is a real answer and a weaker one than the query naming the
   row.
 - **Groups are ordered by their best row, then capped**: the answer to the
-  question leads the list, and no one source can bury the others. A scope gives
-  its group more room (24), and a scoped list PAGES: Down on the last row reaches
-  the first row of the next 24, Up on the first goes back, and the footer count
-  stops claiming "the best" once the reader has walked past rows.
+  question leads the list, and no one source can bury the others. The group's
+  best row is read off the fine-grained score, not off the tier above, so a
+  group led by a keyword hit can still outrank a group led by a name substring —
+  the tier orders ROWS inside a group, and the two orders are deliberately
+  different questions. A scope gives its group more room (24), and a scoped list
+  PAGES: the page is one offset across every group the scope admits (a group
+  with nothing at that offset draws nothing, never its first page twice), Down on
+  the last row reaches the first row of the next 24, Up on the first goes back,
+  and the footer count states `showing N of M` — never "the best", which is false
+  under the recent order and on any page past the first — with a `2/2` cue
+  whenever the list has more than one page.
 - **The reader may choose the clock over the tier** (`ctrl s`: *most recent*,
   default *best match*), taught in the footer beside the other keys and shown as
   a chip (`# Chats · Most recent`) only when it is not the default. The query is

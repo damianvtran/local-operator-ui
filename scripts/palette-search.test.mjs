@@ -1765,6 +1765,7 @@ test("a scoped list pages 24 at a time, and says whether another page exists", (
 	assert.equal(first.total, 30);
 	assert.equal(first.sections[0].items.length, 24);
 	assert.equal(first.page, 0);
+	assert.equal(first.pages, 2);
 	assert.equal(first.more, true);
 	const second = searchPalette({ items: rows, raw: "#robot", page: 1 });
 	assert.equal(second.page, 1);
@@ -1800,4 +1801,181 @@ test("a row's age reads now, minutes, hours, days, then the date it happened", (
 	);
 	// No clock, no label: the wire's 0.0 is "no claim", never 1970.
 	assert.equal(paletteAgeLabel(undefined, NOW), "");
+});
+
+/* ------------------------------------------------------------------ *
+ * Paging a scope that spans more than one group (agent review round 1, R1)
+ * ------------------------------------------------------------------ */
+
+/** An agent row as the source builds one, for the multi-group scope's fixture. */
+const alphaAgent = (index) => ({
+	id: `agent-alpha-${String(index).padStart(2, "0")}`,
+	kind: "agent",
+	group: "agents",
+	name: `Alpha agent ${String(index).padStart(2, "0")}`,
+	icon: "agents",
+	target: { type: "draft", kind: "agent", name: `alpha-${index}` },
+	order: index,
+	featured: true,
+});
+
+/** A team row, the same scope's second group. */
+const alphaTeam = (index) => ({
+	id: `team-alpha-${String(index).padStart(2, "0")}`,
+	kind: "team",
+	group: "teams",
+	name: `Alpha team ${String(index).padStart(2, "0")}`,
+	icon: "team",
+	target: { type: "draft", kind: "team", name: `alpha-${index}` },
+	order: index,
+	featured: true,
+});
+
+const ALPHA_SCOPE = [
+	...Array.from({ length: 30 }, (_, index) => alphaAgent(index)),
+	...Array.from({ length: 5 }, (_, index) => alphaTeam(index)),
+];
+
+test("a scope that spans two groups pages ONE offset across both, without repeating a short group", () => {
+	const first = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha" });
+	const firstIds = first.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	// Page 0 is the layout the palette always had: 24 agents, then all 5 teams.
+	assert.deepEqual(
+		first.sections.map((section) => section.group),
+		["agents", "teams"],
+	);
+	assert.equal(first.sections[0].items.length, 24);
+	assert.equal(first.sections[1].items.length, 5);
+	assert.equal(first.total, 35);
+	assert.equal(first.page, 0);
+	assert.equal(first.pages, 2);
+	assert.equal(first.more, true);
+	assert.equal(new Set(firstIds).size, firstIds.length, "no duplicate ids");
+
+	const second = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha", page: 1 });
+	const secondIds = second.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	/*
+	 * THE DEFECT THIS PINS: `page` applied per group drew the five teams AGAIN
+	 * under page 2's heading (duplicate ids, which also breaks selection by id),
+	 * and reported page 0. A group with nothing at this offset now contributes
+	 * nothing, and the page is the one asked for.
+	 */
+	assert.deepEqual(
+		second.sections.map((section) => section.group),
+		["agents"],
+	);
+	assert.equal(second.sections[0].items.length, 6);
+	assert.equal(second.sections[0].items[0].item.id, "agent-alpha-24");
+	assert.equal(second.page, 1);
+	assert.equal(second.more, false);
+	assert.equal(new Set(secondIds).size, secondIds.length, "no duplicate ids");
+	// The two pages together are the whole answer, each row once.
+	assert.deepEqual(
+		[...firstIds, ...secondIds].sort(),
+		ALPHA_SCOPE.map((row) => row.id).sort(),
+	);
+
+	// A page past the end falls back to the first, rather than drawing nothing.
+	const past = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha", page: 9 });
+	assert.equal(past.page, 0);
+	assert.equal(past.sections[0].items.length, 24);
+});
+
+test("a re-sort moves a row past the drawn page's edge, and that row's page still holds it", () => {
+	/*
+	 * U4, agent review round 1. The selection is a row ID, and `ctrl s` re-sorts
+	 * under the same query. Under `best` the exact-name row leads page 0; the
+	 * clock puts the same row last, past the page's edge, so the component's index
+	 * falls back to the head of the drawn page rather than running a row the
+	 * reader cannot see — and the row is still reachable, on page 1 of the other
+	 * order. That pair of facts is what "selection follows the id" can mean once
+	 * the row leaves the page.
+	 */
+	const rows = [
+		datedChat("exact", "Robot", 500, 0),
+		...Array.from({ length: 29 }, (_, index) =>
+			datedChat(
+				`c${String(index).padStart(2, "0")}`,
+				`Robot ${String(index).padStart(2, "0")}`,
+				index,
+				index + 1,
+			),
+		),
+	];
+	const best = searchPalette({ items: rows, raw: "#robot" });
+	assert.equal(best.sections[0].items[0].item.id, "chat-exact");
+	const recent = searchPalette({ items: rows, raw: "#robot", sort: "recent" });
+	assert.equal(
+		recent.sections[0].items.some((match) => match.item.id === "chat-exact"),
+		false,
+		"the exact-name row is not on page 0 of the recency order",
+	);
+	const tail = searchPalette({
+		items: rows,
+		raw: "#robot",
+		sort: "recent",
+		page: 1,
+	});
+	const tailIds = tail.sections[0].items.map((match) => match.item.id);
+	assert.equal(tailIds.includes("chat-exact"), true, "it is on the next page");
+	assert.equal(
+		tailIds.at(-1),
+		"chat-exact",
+		"and it is the oldest, so it is last there",
+	);
+});
+
+test("the final tie-break is code-unit order on the id, not the host's collation", () => {
+	/* Same tier, same clock, same ring, same group order: only the id can decide,
+	 * and it must decide the same way on every machine. `localeCompare` would put
+	 * these in a different order under a different locale's collation. */
+	const tie = (id) => ({
+		...datedChat(id, `Robot ${id}`, 4, 0),
+		id,
+	});
+	const uppercase = tie("B");
+	const lowercase = tie("a");
+	const forward = searchPalette({
+		items: [uppercase, lowercase],
+		raw: "#robot",
+	});
+	const backward = searchPalette({
+		items: [lowercase, uppercase],
+		raw: "#robot",
+	});
+	assert.deepEqual(
+		names(forward),
+		["Robot B", "Robot a"],
+		"code units put uppercase B before lowercase a",
+	);
+	assert.deepEqual(names(backward), names(forward));
+});
+
+test("an age from a previous year carries its year, and this year's does not", () => {
+	const label = (ms) =>
+		new Intl.DateTimeFormat("en", {
+			month: "short",
+			day: "numeric",
+			year:
+				new Date(ms).getFullYear() === new Date(NOW).getFullYear()
+					? undefined
+					: "numeric",
+		}).format(ms);
+	const lastYear = NOW - 400 * 24 * HOUR_MS;
+	assert.equal(paletteAgeLabel(lastYear, NOW), label(lastYear));
+	assert.match(
+		paletteAgeLabel(lastYear, NOW),
+		new RegExp(String(new Date(lastYear).getFullYear())),
+		"a date from another year names the year",
+	);
+	assert.equal(
+		paletteAgeLabel(NOW - 20 * 24 * HOUR_MS, NOW),
+		new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(
+			NOW - 20 * 24 * HOUR_MS,
+		),
+	);
 });

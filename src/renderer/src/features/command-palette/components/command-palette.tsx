@@ -49,9 +49,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { t } from "../../../../../i18n/messages";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
+	DEFAULT_PALETTE_SORT,
 	PALETTE_SECTION_TITLES,
 	type PaletteItem,
 	type PaletteMatch,
+	type PaletteSort,
 	SCOPE_LEGEND,
 	WORD_ONLY_SCOPES,
 	paletteAgeLabel,
@@ -228,11 +230,20 @@ export const CommandPalette: FC = () => {
 	/*
 	 * The scoped list's page, and what a page change should select once the new
 	 * rows exist: the row the reader was reaching for is the FIRST row of the next
-	 * page (paging down) or the LAST of the previous one (paging up). A page is
-	 * reset whenever the question changes — a new query or a different order is a
-	 * new list, and holding page 3 across it would open on its tail.
+	 * page (paging down) or the LAST of the previous one (paging up).
+	 *
+	 * THE PAGE IS KEYED BY THE QUESTION, not reset by an effect (agent review
+	 * round 1, R-minor4). An effect runs after the render that drew the new query,
+	 * so one frame showed the OLD page over the NEW query's rows — a flash on any
+	 * list longer than a page. Deriving it makes the wrong page unrepresentable:
+	 * a page recorded against another query or another order simply is not this
+	 * list's page.
 	 */
-	const [page, setPage] = useState(0);
+	const [paged, setPaged] = useState<{
+		query: string;
+		sort: PaletteSort;
+		page: number;
+	}>({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
 	const [pendingEdge, setPendingEdge] = useState<"first" | "last" | null>(null);
 	/*
 	 * The clock the age column reads. One tick a minute while the palette is open,
@@ -267,6 +278,18 @@ export const CommandPalette: FC = () => {
 	 * stays cheap no matter how many rows a previous query produced.
 	 */
 	const deferredQuery = useDeferredValue(localQuery);
+
+	/* This list's page: the recorded one only while the recorded question is still
+	 * the one on screen (`paged` above explains why it is derived, not reset). */
+	const page =
+		paged.query === deferredQuery && paged.sort === paletteSort
+			? paged.page
+			: 0;
+	const setPage = useCallback(
+		(next: number) =>
+			setPaged({ query: deferredQuery, sort: paletteSort, page: next }),
+		[deferredQuery, paletteSort],
+	);
 
 	// The store's copy is the persisted one, so it settles rather than
 	// following every character.
@@ -335,8 +358,20 @@ export const CommandPalette: FC = () => {
 	 * under it both read the same table the parser does, so a scope cannot
 	 * describe itself one way in the legend and another in the field.
 	 */
-	/* The palette's order is not the default, so the field's chip says so. */
-	const sortIsRecent = paletteSort === "recent";
+	/*
+	 * WHERE THE ORDER CAN ACTUALLY ACT: a TYPED search that shows conversations —
+	 * the `#` scope, or the unscoped list (which admits the chats group). Every
+	 * other answer has no clock in it, so the same preference cannot move a row
+	 * there, and a chip claiming `· Most recent` over an unchanged list (an `@`
+	 * roster, `>` commands, a browse with no terms) says something the list does
+	 * not honour. The chip, the footer legend and the `ctrl s` handler all read
+	 * THIS one flag, so the three cannot disagree (UX round 1 U2/U5, QA round 1
+	 * Q-2, agent review round 1 minor 1).
+	 */
+	const sortApplies =
+		hasTerms && (outcome.scope === null || outcome.scope === "chat");
+	/* The palette's order is not the default AND it can act here, so the chip says so. */
+	const sortIsRecent = sortApplies && paletteSort === "recent";
 	const scopeLegend =
 		outcome.scope === null
 			? null
@@ -775,12 +810,6 @@ export const CommandPalette: FC = () => {
 		setPendingEdge(null);
 	}, [pendingEdge, matches, matchCount]);
 
-	/* A new question is a new list: the page it was on means nothing to it. */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers, not values the body reads — the same shape as the selection reset above
-	useEffect(() => {
-		setPage(0);
-	}, [deferredQuery, paletteSort]);
-
 	useEffect(() => {
 		if (!isCommandPaletteOpen) return;
 		setNowMs(Date.now());
@@ -827,9 +856,22 @@ export const CommandPalette: FC = () => {
 				/*
 				 * `ctrl s` swaps the order under the same query, so the reader keeps
 				 * their place by ROW rather than by index: the selection follows the id
-				 * it was on (`selectedId`), and a row the other order no longer shows
-				 * leaves the list starting from its head.
+				 * it was on (`selectedId`).
+				 *
+				 * IT IS REFUSED WHERE IT CANNOT ACT (`sortApplies`): a list with no
+				 * conversation in it has no clock to sort by, so flipping the stored
+				 * preference there would change the next `#` search while changing nothing
+				 * on screen — a key that appears to do nothing and in fact did something
+				 * later (UX round 1, U2). The press is simply not consumed.
+				 *
+				 * WHAT IT DOES NOT DO (UX round 1, U4, measured rather than implied): a
+				 * row the other order pushes PAST the page boundary falls back to the head
+				 * of the page. The id-follow promise holds for every row still on the page;
+				 * carrying a selection across a page boundary would need the full ranked
+				 * list of the OTHER order in the handler, which is a scan this list does not
+				 * keep. `scripts/palette-search.test.mjs` pins the paging it falls back to.
 				 */
+				if (!sortApplies) return;
 				event.preventDefault();
 				setSelectedId(matches[selectedIndex]?.item.id ?? null);
 				setPaletteSort(paletteSort === "recent" ? "best" : "recent");
@@ -888,7 +930,9 @@ export const CommandPalette: FC = () => {
 		matches,
 		selectedIndex,
 		paletteSort,
+		sortApplies,
 		setPaletteSort,
+		setPage,
 		outcome.more,
 		outcome.page,
 		runItem,
@@ -1272,7 +1316,10 @@ export const CommandPalette: FC = () => {
 									 * glyph binds to the word it introduces while every cap keeps the one
 									 * uniform box.
 									 */
-									<span key={entry.scope} className="flex items-center gap-0">
+									<span
+										key={entry.scope}
+										className="flex shrink-0 items-center gap-0 whitespace-nowrap"
+									>
 										<KeyboardShortcut shortcut={entry.glyph} />
 										{entry.label}
 									</span>
@@ -1284,7 +1331,17 @@ export const CommandPalette: FC = () => {
 							</>
 						) : (
 							<>
-								<span className="flex items-center gap-1.5">
+								{/*
+								 * ONE ROW, NEVER TWO, at every width the dialog takes
+								 * (design round 1, D2). Every group is `whitespace-nowrap`
+								 * and `shrink-0`; the count is the elastic one, truncated
+								 * before anything else gives (`min-w-0` + `truncate`); and
+								 * below 560 px the two longest TEACHING groups drop to their
+								 * keys, which is where the wrap and the clipped `esc to close`
+								 * came from. The keys stay taught at every width; only the
+								 * verb beside them goes.
+								 */}
+								<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
 									<KeyboardShortcut shortcut="↑" />
 									<KeyboardShortcut shortcut="↓" />
 									{/*
@@ -1292,57 +1349,70 @@ export const CommandPalette: FC = () => {
 									 * the rail's chords draw — no spaced `+` between the caps, the
 									 * three-marks reading design round 1 fixed for ⌘K.
 									 */}
-									{stepCaps.map((cap) => (
-										<KeyboardShortcut key={cap} shortcut={cap} joined />
-									))}
+									<span className="flex items-center gap-1 max-[783px]:hidden">
+										{stepCaps.map((cap) => (
+											<KeyboardShortcut key={cap} shortcut={cap} joined />
+										))}
+									</span>
 									{t("ui.command_palette.command_palette.to_move")}
 								</span>
-								<span className="flex items-center gap-1.5">
+								<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
 									<KeyboardShortcut shortcut="↵" />
-									{t("ui.command_palette.command_palette.to_run")}
+									<span className="max-[783px]:hidden">
+										{t("ui.command_palette.command_palette.to_run")}
+									</span>
 								</span>
 								{/*
-								 * The order toggle, taught where the other keys are taught. It is
-								 * a search-state key (`hasTerms`): the browse list is the store's
-								 * own newest-first order and has no ranking to swap, so the same
-								 * press would change nothing on screen.
+								 * The order toggle, taught where the other keys are taught, and only
+								 * where it can act (`sortApplies`): the browse list is the store's own
+								 * newest-first order and has no ranking to swap, and neither does an
+								 * `@` roster or a `>` command list — teaching a key over a list it
+								 * cannot move is what UX round 1 U2/U5 measured.
 								 *
 								 * The verb is the one word every surface already uses for this
 								 * action (`ui.library.page.sort`), reused rather than re-spelled:
 								 * a second word for "sort" beside the library's would be the same
-								 * action described twice.
+								 * action described twice. `joined` like the walk's chords beside
+								 * it, so the bar does not spell one Control chord two ways (design
+								 * round 1, D5).
 								 */}
-								{hasTerms && (
-									<span className="flex items-center gap-1.5">
-										<KeyboardShortcut shortcut="Ctrl+S" />
-										{t("ui.library.page.sort")}
+								{sortApplies && (
+									<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+										<KeyboardShortcut shortcut="Ctrl+S" joined />
+										<span className="max-[783px]:hidden">
+											{t("ui.library.page.sort")}
+										</span>
 									</span>
 								)}
-								<span className="flex items-center gap-1.5">
+								{/*
+								 * THE ELASTIC ONE. `flex-1 min-w-0` is what makes the
+								 * `truncate` below bite: with an auto basis the count kept its
+								 * full width and pushed the bar past its own edge instead
+								 * (design round 1, D2 measured the bar's 460 px content in a 421 px box at a 468 px window).
+								 * Everything else in the bar is `shrink-0`.
+								 */}
+								<span className="flex min-w-0 flex-1 items-center gap-1.5 max-[559px]:hidden">
 									{outcome.clipped && (
 										/*
-										 * "Best" and "matches" are the SEARCH's words (review round 1,
-										 * D1): they hold under terms, where the list is ranked and every
-										 * row answered the query, and both are wrong for a browse list,
-										 * which is the store's own unranked order — a switcher's five
-										 * visible rows out of forty are not "the best" five of
-										 * anything, they are the newest five. The scoped count keeps
-										 * the noun; the browse count states the rows it dropped.
+										 * THE COUNT AGREES WITH THE MODE. It said "showing the best 24 of
+										 * 33" under an order that shows the newest 24 (design round 1, D6;
+										 * UX round 1, U3) — `matches.showing` states the same count without
+										 * claiming a ranking, and it is the same sentence the browse list
+										 * already used. The page cue beside it is numerals only, so it
+										 * needs no new copy: `2/2` says the list has pages and which one
+										 * this is, which is also the only on-screen sign that another
+										 * page exists (U1's continuation, as far as a footer can carry it).
 										 */
-										<span>
-											{/* A PAGED list is not "the best N": the reader has already
-											 * walked past the rows above this window, so the count says
-											 * how many are on screen rather than repeating the claim. */}
-											{hasTerms && outcome.page === 0
-												? t("ui.command_palette.matches.best", {
-														countText: String(matchCount),
-														total: outcome.total,
-														totalText: String(outcome.total),
-													})
-												: t("ui.command_palette.matches.showing", {
-														count: String(matchCount),
-														total: String(outcome.total),
-													})}
+										<span className="truncate">
+											{t("ui.command_palette.matches.showing", {
+												count: String(matchCount),
+												total: String(outcome.total),
+											})}
+											{outcome.pages > 1 && (
+												<span className="ml-1 tabular-nums">
+													{`${outcome.page + 1}/${outcome.pages}`}
+												</span>
+											)}
 										</span>
 									)}
 								</span>
@@ -1352,7 +1422,7 @@ export const CommandPalette: FC = () => {
 								 * statements sharing one right-aligned slot read as one sentence
 								 * (design round 1, D5).
 								 */}
-								<span className="ml-auto flex items-center gap-1.5">
+								<span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
 									<KeyboardShortcut shortcut="esc" />
 									{t("ui.command_palette.command_palette.to_close")}
 								</span>
@@ -1388,8 +1458,17 @@ export const CommandPalette: FC = () => {
  * selected itself on the way past would fight the keyboard.
  */
 /** The `· Most recent` half of the field's chip, when the order is not the default. */
+/**
+ * The `· Most recent` half of the field's chip, when the order is not the default.
+ *
+ * `ml-1` and not the parent's `gap-0`: the scoped chip joins the GLYPH to its word
+ * (`#` + `Chats`) with no gap on purpose, and that is also what left the dotted
+ * suffix touching the word — `# Chats· Most recent` (design round 1 D3, QA round 1
+ * Q-1). The margin spaces this suffix from whatever precedes it without touching
+ * the glyph's own join.
+ */
 const SortChipSuffix: FC = () => (
-	<span className="flex items-center gap-1">
+	<span className="ml-1 flex items-center gap-1">
 		<span aria-hidden="true">·</span>
 		{t("ui.chat.sidebar_view.most_recent")}
 	</span>
@@ -1460,7 +1539,14 @@ const PaletteRow: FC<{
 			</span>
 			<span
 				className={cn(
-					"shrink-0 truncate text-body-sm",
+					/*
+					 * SHRINKABLE, or the truncation never happens: `shrink-0` held the
+					 * title at its natural width, so a long one pushed the age, the hint
+					 * and the verb out of the row and grew a horizontal scrollbar
+					 * (design round 1, D1). The age and the verb are `shrink-0`; the
+					 * hint is the elastic slot that gives way FIRST.
+					 */
+					"min-w-0 shrink truncate text-body-sm",
 					item.destructive
 						? "text-danger"
 						: /* A loose match is dimmed rather than hidden: the row is a guess
@@ -1513,13 +1599,24 @@ const PaletteRow: FC<{
 					})}
 				/>
 			)}
-			{/* What Enter does, on the active row only. */}
-			{isActive && (
-				<span className="flex shrink-0 items-center gap-1.5 text-ink-dim text-meta">
-					{verb}
-					<KeyboardShortcut shortcut="↵" />
-				</span>
-			)}
+			{/*
+			 * What Enter does, on the active row only — but its SLOT is reserved on
+			 * every row (`invisible`, not conditional), so the age column keeps its x
+			 * position when the selection moves. Drawing it only on the active row put
+			 * its width INSIDE the row when selected and outside it otherwise, which
+			 * shifted the age by the verb's width on every Up/Down press (design round
+			 * 1, D4: measured 68 px).
+			 */}
+			<span
+				className={cn(
+					"flex shrink-0 items-center gap-1.5 text-ink-dim text-meta",
+					!isActive && "invisible",
+				)}
+				aria-hidden={!isActive}
+			>
+				{verb}
+				<KeyboardShortcut shortcut="↵" />
+			</span>
 		</button>
 	);
 };

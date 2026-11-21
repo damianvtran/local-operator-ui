@@ -78,3 +78,22 @@ bytecode plugin needs a babel plugin this tree does not install.
 - Hover, focus rings and every theme other than `localOperatorDark` are out of
   this set: the change adds no fill and no border, and the age reuses the row's
   existing `text-ink-dim`/`text-meta` roles.
+
+## Round 1 remediation (agent review, UX, design and QA findings)
+
+The frames below were taken on the remediation commit's build. The `before-*`
+pair is the previous head (`61207dbf90`) built from a detached worktree, so the
+two runs differ only in the change under review.
+
+| frame | what it shows | measured |
+| --- | --- | --- |
+| `footer-before-640.png` | `#robot`, Most recent, 640 px viewport | footer **87 px, two lines**, count `the best 24 of 30 matches` over an order that shows the newest |
+| `footer-after-640.png` | same query and width | footer **37 px, one line**, `showing 24 of 30 1/2`; scrollWidth 576 = clientWidth 576 |
+| `footer-before-468.png` | same, 468 px viewport | footer 87 px, **scrollWidth 541 in a 421 px box** (clipped) |
+| `footer-after-468.png` | same, 468 px viewport | footer 37 px, scrollWidth 421 = clientWidth 421; the walk caps and the count step out below 784/560 px, the arrows and `Ctrl S` stay |
+| `long-title-best.png` | a 130-character title in the list | title truncates in place, age `2d` right-aligned in its column, list scrollWidth 640 = clientWidth 640 (D1) |
+| `scoped-chip-recent.png` | `#robot` + `ctrl s` | chip `# Chats · Most recent` spaced in the scoped chip (D3/Q1), one-line footer |
+
+Both narrow runs emulate the viewport (`Emulation.setDeviceMetricsOverride`),
+because the app enforces a minimum window width; the numbers above are the
+dialog's own `clientWidth`, which is what the design round measured.

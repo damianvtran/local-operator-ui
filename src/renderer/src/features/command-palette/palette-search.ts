@@ -362,6 +362,11 @@ export type PaletteSearchOutcome = {
 	 * construction for an unscoped list (nothing there has pages).
 	 */
 	more: boolean;
+	/**
+	 * How many pages the scoped answer has, at least 1 — what the footer's page
+	 * cue reads (`2/2`). One for an unscoped list, which has no pages.
+	 */
+	pages: number;
 };
 
 /**
@@ -1101,7 +1106,10 @@ export function compareMatches(
 	const recency = byRecency(a.item, b.item);
 	const ring = byRecentRank(a.item, b.item);
 	const order = (a.item.order ?? 0) - (b.item.order ?? 0);
-	const id = a.item.id.localeCompare(b.item.id);
+	/* Code-unit order, NOT `localeCompare`: the last tie-break must not depend on
+	 * the host's locale, or the same two rows could order differently on two
+	 * machines running the same query (agent review round 1, minor). */
+	const id = a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0;
 	return sort === "recent"
 		? recency || rank || ring || order || id
 		: rank || recency || ring || order || id;
@@ -1532,6 +1540,8 @@ export function searchPalette({
 			clipped: rendered < total,
 			page: 0,
 			more: false,
+			/* A browse list has no pages: one window, in the store's own order. */
+			pages: 1,
 		};
 	}
 
@@ -1580,32 +1590,39 @@ export function searchPalette({
 	});
 
 	/*
-	 * THE PAGE. Only a scope has one (see `PaletteSearchInput.page`), and only its
-	 * own window is drawn: the rows before it are the same question's earlier
-	 * answers, and the reader reached this page by walking past them. A page whose
-	 * window holds nothing (the list shrank under a refetch) falls back to the first
-	 * page rather than drawing an empty list under a "no matches" sentence that
-	 * would be false.
+	 * THE PAGE. Only a scope has one (see `PaletteSearchInput.page`), and the window
+	 * starts at the SAME OFFSET in every group the scope admits.
+	 *
+	 * WHY ONE OFFSET AND NOT ONE WINDOW PER GROUP (agent review round 1, R1): a
+	 * scope can span several groups — `@` is agents AND teams, `>` commands AND
+	 * pages — so applying `page` per group drew the short group's first page again
+	 * under the second page's heading (duplicate ids, which also broke selection by
+	 * id), reported `page: 0` from whichever group was visited last, and left the
+	 * long group's earlier rows unreachable once the page stood past them. An
+	 * offset means a group with nothing there contributes NOTHING.
+	 *
+	 * A page whose window holds nothing (the list shrank under a refetch) falls
+	 * back to the first page rather than drawing an empty list under a "no matches"
+	 * sentence that would be false.
 	 */
-	let drawnPage = 0;
+	const stride = SCOPED_GROUP_CAP;
+	const wanted = allowed ? Math.max(0, page) : 0;
+	const anyAtPage = ordered.some(([, rows]) => rows.length > wanted * stride);
+	const drawnPage = allowed && anyAtPage ? wanted : 0;
+	const offset = drawnPage * stride;
 	let more = false;
 	const sections: PaletteSection[] = [];
 	let rendered = 0;
 	for (const [group, matches] of ordered) {
 		matches.sort((a, b) => compareMatches(a, b, sort));
+		/* A scoped list pages the whole answer; an unscoped one has no pages (its
+		 * caps are per-group browse budgets) and starts at 0. */
+		if (allowed && matches.length <= offset) continue;
 		const cap = capFor(group);
-		/* A scope draws one group, so the page is this group's: its rows past the
-		 * window are what the next Down reaches. Unscoped lists draw page 0 only and
-		 * answer `more: false` (the caps there are per-group browse budgets, not a
-		 * continuation of one answer). */
-		const wanted = allowed ? Math.max(0, page) : 0;
-		const from = wanted * cap;
-		const start = from < matches.length ? from : 0;
-		if (allowed) drawnPage = from === start ? wanted : 0;
 		const room = Math.max(0, Math.min(cap, TOTAL_CAP - rendered));
 		if (room === 0) continue;
-		const pageMatches = matches.slice(start, start + room);
-		if (allowed && start + pageMatches.length < matches.length) more = true;
+		const pageMatches = matches.slice(offset, offset + room);
+		if (allowed && offset + pageMatches.length < matches.length) more = true;
 		sections.push({ group, items: pageMatches });
 		rendered += pageMatches.length;
 		if (rendered >= TOTAL_CAP) break;
@@ -1625,6 +1642,7 @@ export function searchPalette({
 		clipped: rendered < total,
 		page: drawnPage,
 		more,
+		pages: allowed ? Math.max(1, Math.ceil(total / stride)) : 1,
 	};
 }
 
@@ -2001,5 +2019,16 @@ export function paletteAgeLabel(
 			unit: "day",
 			count: days,
 		});
-	return formatDate(updatedAt, { month: "short", day: "numeric" });
+	/*
+	 * A DATE, WITH THE YEAR when it is not this one: a conversation last moved in
+	 * November 2025 and one moved this November both read `Nov 8` otherwise, in a
+	 * list whose order is that very clock (design review round 1, D8).
+	 */
+	const sameYear =
+		new Date(updatedAt).getFullYear() === new Date(now).getFullYear();
+	return formatDate(updatedAt, {
+		month: "short",
+		day: "numeric",
+		...(sameYear ? {} : { year: "numeric" }),
+	});
 }
