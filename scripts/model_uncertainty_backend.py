@@ -16,6 +16,8 @@ import sys
 import threading
 import hashlib
 import re
+import time
+import uuid
 from urllib.parse import parse_qsl
 from typing import Any
 
@@ -51,6 +53,9 @@ class DeliveryGate:
         self.captured_bytes = 0
         self.feed_opens: list[dict[str, Any]] = []
         self.evidence_order = 0
+        # Synthetic diagnostic identity only; never propagated as a product or
+        # auth header. Renderer request-token correlation remains unavailable.
+        self.telemetry_id = uuid.uuid4().hex
         root = os.environ.get("LOCAL_OPERATOR_CONFIG_DIR", "")
         self.scope_id = hashlib.sha256(str(Path(root).resolve()).encode()).hexdigest() if root else None
         cwd = os.environ.get("MODEL_CASE_FIXTURE_CWD", "")
@@ -87,6 +92,12 @@ class DeliveryGate:
             self.hold_live_catalogue = False
         for index, event in self.held.items():
             if indices is None or index in indices:
+                telemetry = self.captures[index]["telemetry"]
+                if "release_ms" not in telemetry:
+                    telemetry["release_ms"] = time.monotonic() * 1000
+                    telemetry["elapsed_at_release_ms"] = telemetry["release_ms"] - telemetry["request_start_ms"]
+                    # ASGI does not expose the client's abort deadline.
+                    telemetry["remaining_client_budget_ms"] = None
                 event.set()
 
 
@@ -144,6 +155,12 @@ class ModelUncertaintyMiddleware:
         if index >= 4096:
             raise RuntimeError("model case attempt bound exceeded")
         attempt["order"] = self.gate.next_order()
+        attempt["telemetry"] = {
+            "clock": "python-monotonic-ms",
+            "correlation_token": f"gateway-{self.gate.telemetry_id}-{index}",
+            "renderer_request_token": "unavailable",
+            "request_start_ms": time.monotonic() * 1000,
+        }
         self.gate.attempts.append(attempt)
         is_presence = path == "/v1/desktop/presence"
         is_preview = path == "/v1/desktop/sessions/preview" and scope["method"] == "POST"
@@ -372,7 +389,8 @@ class ModelUncertaintyMiddleware:
                 capture_id = len(self.gate.captures)
                 event = asyncio.Event()
                 self.gate.held[capture_id] = event
-                capture = {"id": capture_id, "request_index": index, "path": path, "before_b_request": self.gate.b_request_index is None, "body": data.decode("utf-8"), "sha256": hashlib.sha256(data).hexdigest()}
+                telemetry = {**attempt["telemetry"], "hold_ms": time.monotonic() * 1000}
+                capture = {"telemetry": telemetry, "id": capture_id, "request_index": index, "path": path, "before_b_request": self.gate.b_request_index is None, "body": data.decode("utf-8"), "sha256": hashlib.sha256(data).hexdigest()}
                 self.gate.captured_bytes += len(data)
                 self.gate.captures.append(capture)
                 if drop_ack and buffered_start is not None and buffered_start["status"] == 200:
@@ -388,15 +406,29 @@ class ModelUncertaintyMiddleware:
                     await send({"type": "http.response.body", "body": b"owned test gateway discarded the committed ACK", "more_body": False})
                     return
                 if selected_read:
-                    await asyncio.wait_for(event.wait(), timeout=90)
+                    try:
+                        await asyncio.wait_for(event.wait(), timeout=90)
+                    except BaseException as error:
+                        telemetry["error_type"] = type(error).__name__ if isinstance(error, (TimeoutError, asyncio.CancelledError)) else "Error"
+                        telemetry["error_ms"] = time.monotonic() * 1000
+                        raise
                     self.gate.held.pop(capture_id, None)
                 if buffered_start is not None:
                     await send(buffered_start)
                     buffered_start = None
             await send(message)
+            if message["type"] == "http.response.body":
+                for capture in self.gate.captures:
+                    if capture["request_index"] == index:
+                        capture["telemetry"]["response_send_ms"] = time.monotonic() * 1000
+                        capture["telemetry"]["response_complete"] = not message.get("more_body", False)
 
         try:
             await self.app(scope, original_receive, deliver)
+        except BaseException as error:
+            attempt["telemetry"]["error_type"] = type(error).__name__ if isinstance(error, (TimeoutError, asyncio.CancelledError)) else "Error"
+            attempt["telemetry"]["error_ms"] = time.monotonic() * 1000
+            raise
         finally:
             if feed_open is not None and feed_open["close_order"] is None:
                 feed_open["close_order"] = self.gate.next_order()
