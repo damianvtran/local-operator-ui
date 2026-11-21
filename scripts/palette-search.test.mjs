@@ -2012,6 +2012,34 @@ test("the order is offered only where a conversation is actually on screen", () 
 	);
 });
 
+test("reopening the palette drops the page it was on (agent review round 3, M2)", () => {
+	/*
+	 * The palette stays mounted, so a close/reopen on the SAME persisted query
+	 * leaves the question unchanged and the page record rode along: `#robot`,
+	 * Down past row 24, Esc, reopen, and page 2 was back. The component cannot
+	 * be mounted in this harness, so the contract is pinned at its source: the
+	 * open effect resets the page record beside the query seed.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+		"utf8",
+	);
+	const openEffect = source.slice(
+		source.indexOf("if (!isCommandPaletteOpen) return;\n\t\tsetLocalQuery("),
+	);
+	assert.ok(
+		openEffect.startsWith(
+			"if (!isCommandPaletteOpen) return;\n\t\tsetLocalQuery(",
+		),
+		"the open effect seeds the query first",
+	);
+	assert.match(
+		openEffect.slice(0, 400),
+		/setPaged\(\{\s*query:\s*"",\s*sort:\s*DEFAULT_PALETTE_SORT,\s*page:\s*0\s*\}\)/,
+		"and drops the page with it, so a reopen reads page 0",
+	);
+});
+
 test("the selection falls back to the head when its row leaves the answer", () => {
 	/*
 	 * Agent review round 2 R2-4: the fall-back lived inline in the component and

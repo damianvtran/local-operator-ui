@@ -317,10 +317,17 @@ export const CommandPalette: FC = () => {
 		setCommandPaletteQuery(settledQuery);
 	}, [settledQuery, setCommandPaletteQuery]);
 
-	// Reopening seeds the field from the store, so a query is never silently
-	// dropped between sessions of the palette.
+	/*
+	 * Reopening seeds the field from the store, so a query is never silently
+	 * dropped between sessions of the palette — and drops the PAGE with it
+	 * (agent review round 3, M2): the palette stays mounted, so a reopen on the
+	 * same persisted query left `question` unchanged and page 2 came back. A
+	 * reopen is a fresh reading of the list, so it starts at its head.
+	 */
 	useEffect(() => {
-		if (isCommandPaletteOpen) setLocalQuery(commandPaletteQuery);
+		if (!isCommandPaletteOpen) return;
+		setLocalQuery(commandPaletteQuery);
+		setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
 	}, [isCommandPaletteOpen, commandPaletteQuery]);
 
 	const isOnChatPage = location.pathname.startsWith("/chat");
@@ -1384,11 +1391,24 @@ export const CommandPalette: FC = () => {
 											<KeyboardShortcut key={cap} shortcut={cap} joined />
 										))}
 									</span>
-									{t("ui.command_palette.command_palette.to_move")}
+									<span className={cn(outcome.clipped && "hidden")}>
+										{t("ui.command_palette.command_palette.to_move")}
+									</span>
 								</span>
 								<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
 									<KeyboardShortcut shortcut="↵" />
-									<span className="max-[783px]:hidden">
+									{/*
+									 * The verbs yield before the count does — the `↑↓` and `↵`
+									 * glyphs already say what the words said, while the count is the
+									 * only place the total and the page cue exist. `Sort` is the ONE
+									 * label kept, because `Ctrl S` alone reads as Save.
+									 */}
+									<span
+										className={cn(
+											"max-[783px]:hidden",
+											outcome.clipped && "hidden",
+										)}
+									>
 										{t("ui.command_palette.command_palette.to_run")}
 									</span>
 								</span>
@@ -1421,7 +1441,20 @@ export const CommandPalette: FC = () => {
 								 * (design round 1, D2 measured the bar's 460 px content in a 421 px box at a 468 px window).
 								 * Everything else in the bar is `shrink-0`.
 								 */}
-								<span className="flex min-w-0 flex-1 items-center gap-1.5 max-[559px]:hidden">
+								{/*
+								 * THE COUNT HAS PRIORITY (design round 3, D14). It was the elastic
+								 * item, so every language's longer legend ate it: at the 640 px
+								 * dialog `ru` left it 0 px wide, and `es`/`fr`/`hi`/`ur` cut the
+								 * total or the `1/2` cue — the only paging cue this PR has. It now
+								 * keeps its own width (`shrink-0`) and the legend's verbs yield
+								 * first (below); the caps already yield when the count is drawn.
+								 */}
+								<span
+									className={cn(
+										"flex items-center gap-1.5 whitespace-nowrap max-[559px]:hidden",
+										outcome.clipped ? "shrink-0" : "min-w-0 flex-1",
+									)}
+								>
 									{outcome.clipped && (
 										/*
 										 * THE COUNT AGREES WITH THE MODE. It said "showing the best 24 of

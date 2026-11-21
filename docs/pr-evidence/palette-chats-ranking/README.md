@@ -115,3 +115,33 @@ the frames below are the shipped configuration.
 
 Both round-2 runs use the same fixture (`stub-many-chats.mjs`: 30 chats, one
 132-character title, one 420-day-old chat) and the same rig as round 1.
+
+## Round 3 remediation (design D14/D15, review M1/M2)
+
+**The count is now the item that never gives.** When the count is drawn it is
+`shrink-0`, the `Ctrl N`/`Ctrl P` caps are hidden, and the `to move` / `to run`
+verbs step out — the `↑↓` and `↵` glyphs still say what the words said, while
+`Sort` stays because `Ctrl S` alone reads as Save. Everything below is measured
+at the shipped window minimum (800 px viewport → **640 px dialog**), page 1,
+dark, one launch per language, `navigator.language` overridden per run.
+
+| lang | footer | count box / text | cut |
+| --- | --- | --- | --- |
+| en | 37 px, `scrollWidth 640 = clientWidth 640` | 121 / 121 | none |
+| es | 37 px, 640 = 640 | 138 / 138 | none |
+| fr | 37 px, 640 = 640 | 151 / 151 | none |
+| vi | 37 px, 640 = 640 | 127 / 127 | none |
+| zh-CN | 37 px, 640 = 640 | 126 / 126 | none |
+| ru | 37 px, 640 = 640 | 131 / 131 | none |
+| hi | 37 px, 640 = 640 | 176 / 176 | none |
+| ur | 37 px, 640 = 640 | 186 / 186 | none |
+
+Every footer's own `scrollWidth` equals its `clientWidth` and no child reports
+`scrollWidth > clientWidth`; each run's text carries the total and the `1/2`.
+
+- `footer-ru-800.png`, `footer-hi-800.png`, `footer-ur-800.png`: the three
+  languages that were worst cut (0, 92 and 85 px short in round 2).
+- `footer-1380-page1.png` and `footer-1380-page2.png` are now genuinely
+  different renders (`md5 6a9ae37e…` and `f26e3b9d…`); the round-2 page-1 file
+  was a copy of page 2 because the rig's "best" shot ran after the page walk.
+  The rig now photographs page 1 before pressing Down.
