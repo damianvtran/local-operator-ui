@@ -1,0 +1,44 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 (copy-reviewer round 1 findings re-checked on final bytes)",
+	"locale": "ru",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-20",
+	"head": "d16d7f83ec4c62d504f1bdd1ed82d0dc01d29359",
+	"instance": "pr2014-r2-ru-agentmessages-settings-ef3d22e1",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 7bcc857d7769 (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 11 new keys were drafted by the coder (implementer) per the PR #2014 body, and remediated by coder job 7aa83d555a35 at d16d7f83ec. Judgement from English, the context sidecar and the namespace's shipped glossary (kind_person, person_id, identifier_help_*); no MT used. This auditor authored no catalogue line.",
+		"instance": "pr2014-r2-ru-agentmessages-settings-ef3d22e1"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_label": "Выбрать из {organization}",
+		"ui.agentMessages.settings.allowlist.directory_label_unnamed": "Выбрать из вашей организации",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_agent": "Выберите агента",
+		"ui.agentMessages.settings.allowlist.directory_placeholder_person": "Выберите человека",
+		"ui.agentMessages.settings.allowlist.directory_agent_owner": "Владелец: {owner}",
+		"ui.agentMessages.settings.allowlist.directory_same_name": "Такое же имя, как у другой записи",
+		"ui.agentMessages.settings.allowlist.directory_loading": "Загрузка людей и агентов…",
+		"ui.agentMessages.settings.allowlist.directory_error": "Не удалось загрузить людей и агентов. Вы по-прежнему можете ввести ID.",
+		"ui.agentMessages.settings.allowlist.directory_empty_agent": "Нет агентов для выбора. Вы по-прежнему можете ввести ID агента.",
+		"ui.agentMessages.settings.allowlist.directory_empty_person": "Нет людей для выбора. Вы по-прежнему можете ввести ID человека.",
+		"ui.agentMessages.settings.allowlist.directory_stale": "Этот вариант больше недоступен. Выберите снова или введите ID."
+	},
+	"binding": "Verified at d16d7f83ec4c by sha256 of the committed bytes: target src/i18n/catalogues/ru/ui.agentMessages.settings.json sha256 d473e623b253bccd89fdcf5322696caa0d3361be7c2249fc10ff4fdf2c133ce3; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe; context sha256 ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975. Key set equals English; ICU placeholders identical to English. Only the 11 allowlist.directory_* values differ from the bytes the prior ledger row audited (base 53d86477e3 target hash matched the ledger).",
+	"scope": "PR #2014: 11 new ui.agentMessages.settings.allowlist.directory_* keys (delta audit); previously audited unchanged messages retain their PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+	"context_sha256": "ccc98d3917064cda312c95d361658440374e1850c61f7d6f7fa0ad9f4f94a975",
+	"target_sha256": "d473e623b253bccd89fdcf5322696caa0d3361be7c2249fc10ff4fdf2c133ce3",
+	"sha256": {
+		"ru": "d473e623b253bccd89fdcf5322696caa0d3361be7c2249fc10ff4fdf2c133ce3",
+		"en": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe"
+	}
+}

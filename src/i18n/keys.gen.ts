@@ -2980,6 +2980,21 @@ export type MessageParams = {
 	"ui.agentMessages.settings.allowlist.cue_listed_only": undefined;
 	"ui.agentMessages.settings.allowlist.cue_remove": undefined;
 	"ui.agentMessages.settings.allowlist.description": undefined;
+	"ui.agentMessages.settings.allowlist.directory_agent_owner": {
+		owner: string;
+	};
+	"ui.agentMessages.settings.allowlist.directory_empty_agent": undefined;
+	"ui.agentMessages.settings.allowlist.directory_empty_person": undefined;
+	"ui.agentMessages.settings.allowlist.directory_error": undefined;
+	"ui.agentMessages.settings.allowlist.directory_label": {
+		organization: string;
+	};
+	"ui.agentMessages.settings.allowlist.directory_label_unnamed": undefined;
+	"ui.agentMessages.settings.allowlist.directory_loading": undefined;
+	"ui.agentMessages.settings.allowlist.directory_placeholder_agent": undefined;
+	"ui.agentMessages.settings.allowlist.directory_placeholder_person": undefined;
+	"ui.agentMessages.settings.allowlist.directory_same_name": undefined;
+	"ui.agentMessages.settings.allowlist.directory_stale": undefined;
 	"ui.agentMessages.settings.allowlist.identifier": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_empty": undefined;
 	"ui.agentMessages.settings.allowlist.identifier_help_agent": undefined;

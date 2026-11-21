@@ -11,6 +11,7 @@ import type {
 	AgentMessagesSettingsResult,
 	AgentMessagesStatus,
 } from "../../../../shared/agent-messages-contract";
+import { teamBridgeDirectorySchema } from "../../../../shared/team-bridge-contract";
 import type {
 	AgentMessagesSettingsApi,
 	AgentMessagesSettingsProps,
@@ -478,5 +479,114 @@ export const ScreeningModelNotEnrolledHere: Story = {
 		expect(
 			canvasElement.querySelector("[data-agent-messages-screening-model]"),
 		).toBeNull();
+	},
+};
+
+/* ---------------------------------------------------------------------------
+ * Reach editor: choosing people and agents from the organization directory.
+ *
+ * Each fake answer goes through the REAL `teamBridgeDirectorySchema`, so a
+ * story cannot show a row the contract would refuse. Two people share the name
+ * "Ada Park" and both run an agent named "Helper": the open list must keep them
+ * apart by owner and full id. Choosing only fills the ID field; nothing is
+ * written until Add and then Save.
+ * ------------------------------------------------------------------------- */
+const DIRECTORY_MEMBERS = {
+	members: [
+		{
+			account_id: "acc_ada_one",
+			display_label: "Ada Park",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: { endpoint_id: "bep_ada_one", name: "Helper", state: "active" },
+		},
+		{
+			account_id: "acc_ada_two",
+			display_label: "Ada Park",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: { endpoint_id: "bep_ada_two", name: "Helper", state: "active" },
+		},
+		{
+			account_id: "acc_bo_chen",
+			display_label: "Bo Chen",
+			role: "admin",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: {
+				endpoint_id: "bep_bo_research",
+				name: "Research desk",
+				state: "active",
+			},
+		},
+	],
+};
+
+function directoryStoryApi(
+	answer: () => Promise<unknown>,
+): AgentMessagesSettingsApi {
+	return {
+		...fakeApi(activeSettings),
+		directory: async () => teamBridgeDirectorySchema.parse(await answer()),
+	};
+}
+
+const directoryStatus = statusWith({
+	surface_state: "C",
+	local: { enabled: true, session: "aaaaaaaaaaaa" },
+});
+
+/** The roster read is in flight: the typed-ID path still works. */
+export const ReachDirectoryLoading: Story = {
+	args: {
+		status: directoryStatus,
+		api: directoryStoryApi(() => new Promise(() => {})),
+	},
+};
+
+/** The organization lists nobody to choose. */
+export const ReachDirectoryEmpty: Story = {
+	args: {
+		status: directoryStatus,
+		api: directoryStoryApi(async () => ({ members: [] })),
+	},
+};
+
+/** The roster read failed: said once, and the typed-ID path still works. */
+export const ReachDirectoryFailed: Story = {
+	args: {
+		status: directoryStatus,
+		api: directoryStoryApi(async () => {
+			throw new DesktopControlError(null, "Agent server unreachable");
+		}),
+	},
+};
+
+/** Populated: the picker sits beside the kind and the ID field. */
+export const ReachDirectoryPopulated: Story = {
+	args: {
+		status: directoryStatus,
+		api: directoryStoryApi(async () => DIRECTORY_MEMBERS),
+	},
+};
+
+/** The list open: owner, full id and the same-name marker on each "Helper". */
+export const ReachDirectoryOpen: Story = {
+	args: {
+		status: directoryStatus,
+		api: directoryStoryApi(async () => DIRECTORY_MEMBERS),
+	},
+	play: async ({ canvasElement }) => {
+		const picker = await waitFor(() => {
+			const found = canvasElement.querySelector<HTMLElement>(
+				"[data-agent-messages-direction='receive'] button[data-agent-messages-directory-picker]",
+			);
+			expect(found).not.toBeNull();
+			return found as HTMLElement;
+		});
+		await userEvent.click(picker);
+		await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(3));
 	},
 };

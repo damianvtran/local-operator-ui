@@ -20,7 +20,7 @@ import type { WithoutParams } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Save } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { FC } from "react";
 import {
 	type AgentMessagesAllowlistResult,
@@ -31,6 +31,7 @@ import {
 	agentMessagesDefaultOnBannerConsentText,
 	agentMessagesDefaultOnInForce,
 } from "../../../../shared/agent-messages-contract";
+import type { TeamBridgeDirectory } from "../../../../shared/team-bridge-contract";
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
 import { useTeamBridgeShareTypingStore } from "../team-bridge/team-bridge-typing-model";
 import { agentMessagesRefusal } from "./agent-messages-refusal";
@@ -52,6 +53,12 @@ import {
 	allowlistSignature,
 	settingsRefusalSentence,
 } from "./agent-messages-settings-model";
+import {
+	type AllowlistDirectorySelection,
+	allowlistDirectoryChoices,
+	allowlistDirectoryKey,
+	selectionIsCurrent,
+} from "./allowlist-directory";
 import { DefaultOnBanner } from "./default-on-banner";
 import {
 	checkAgentMessagesSurface,
@@ -72,9 +79,15 @@ export type AgentMessagesSettingsApi = Pick<
 	| "dismissOnboarding"
 > &
 	/* Optional so a story's fake api need not grow them: without one, its
-	   control (the typing switch, the Screening model row) is not offered. */
+	   control (the typing switch, the Screening model row, the Reach editor's
+	   directory choices) is not offered. Without `directory` the Reach editor
+	   keeps only the typed-ID form, which is why the jsdom lane's existing fakes
+	   need no change. */
 	Partial<
-		Pick<typeof agentMessagesApi, "setShareTyping" | "setScreeningModel">
+		Pick<
+			typeof agentMessagesApi,
+			"setShareTyping" | "setScreeningModel" | "directory"
+		>
 	>;
 
 type Load =
@@ -616,6 +629,12 @@ export function AgentMessagesSettings({
 							<AllowlistEditor
 								key={load.allowlist.view.tenant_id ?? "tenant"}
 								allowlist={load.allowlist}
+								organizationName={
+									status.status?.tenants.find(
+										(tenant) =>
+											tenant.tenant_id === load.allowlist?.allowlist.tenant_id,
+									)?.tenant_name
+								}
 								accountId={loadAccount ?? accountId}
 								accountMatches={accountMatches}
 								readOnly={
@@ -1353,6 +1372,8 @@ const SessionDesignation: FC<{
 type AllowlistEditorProps = {
 	allowlist: AgentMessagesAllowlistResult;
 	accountId: string;
+	/** The organization's display name, when status carries one. */
+	organizationName?: string;
 	/** False while the section's status belongs to a different account. */
 	accountMatches: boolean;
 	/** F's posture: the server admits only safety-increasing edits. */
@@ -1364,9 +1385,75 @@ type AllowlistEditorProps = {
 	onSaved: (allowlist: AgentMessagesAllowlistResult) => void;
 };
 
+/**
+ * What the Reach editor's directory choices can show. `key` is the
+ * tenant/account pairing the read belongs to (`allowlistDirectoryKey`).
+ */
+export type AllowlistDirectoryView =
+	| { key: string; state: "loading"; organizationName?: string }
+	| { key: string; state: "error"; organizationName?: string }
+	| {
+			key: string;
+			state: "ready";
+			directory: TeamBridgeDirectory;
+			organizationName?: string;
+	  };
+
+/**
+ * The organization directory for the Reach editor, read through the section's
+ * injected `api` (not the rail's react-query hook: see `agentMessagesApi.directory`).
+ *
+ * IDENTITY AND STALENESS. The read is keyed by tenant AND account. A settled
+ * answer is stored with the key it was asked for and shown only while that key
+ * is still current, and the effect's `live` flag drops an answer that lands
+ * after the pairing moved — so a slow read for one organization or account can
+ * never surface (or be chosen from) under another.
+ *
+ * NO READ WHILE INELIGIBLE. `enabled` is false whenever the editor itself is
+ * not writable for this account (read-only posture, a status that belongs to
+ * another account) or the api offers no directory; then nothing is fetched and
+ * the form shows only the typed-ID path.
+ */
+function useAllowlistDirectory(
+	read: AgentMessagesSettingsApi["directory"],
+	context: { tenantId: string; accountId: string },
+	enabled: boolean,
+	organizationName: string | undefined,
+): AllowlistDirectoryView | null {
+	const key = allowlistDirectoryKey(context);
+	const tenantId = context.tenantId;
+	// The latest reader, without making a fresh fake-api object (a story
+	// re-creating its api per render) restart the read on every render.
+	const reader = useRef(read);
+	reader.current = read;
+	const available = enabled && Boolean(read);
+	const [settled, setSettled] = useState<AllowlistDirectoryView | null>(null);
+	useEffect(() => {
+		const run = reader.current;
+		if (!available || !run) return;
+		let live = true;
+		run(tenantId).then(
+			(directory) => {
+				if (live) setSettled({ key, state: "ready", directory });
+			},
+			() => {
+				if (live) setSettled({ key, state: "error" });
+			},
+		);
+		return () => {
+			live = false;
+		};
+		// `key` folds tenant and account together, so either moving re-reads.
+	}, [available, key, tenantId]);
+	if (!available) return null;
+	if (settled?.key !== key) return { key, state: "loading", organizationName };
+	return { ...settled, organizationName };
+}
+
 const AllowlistEditor: FC<AllowlistEditorProps> = ({
 	allowlist,
 	accountId,
+	organizationName,
 	accountMatches,
 	readOnly,
 	pending,
@@ -1385,6 +1472,13 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 		}),
 	);
 	const disabled = pending || readOnly || !accountMatches;
+	// Not gated on `pending`: a save in flight must not discard the roster.
+	const directory = useAllowlistDirectory(
+		api.directory,
+		{ tenantId: allowlist.allowlist.tenant_id, accountId },
+		!readOnly && accountMatches,
+		organizationName,
+	);
 	const savedSignature = allowlistSignature(
 		allowlistReplaceSet(entriesFromWire(allowlist), modesFromView(allowlist)),
 	);
@@ -1452,6 +1546,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				mode={modes.receive}
 				cues={allowlist.view.cues}
 				entries={entries.filter((entry) => entry.direction === "receive")}
+				directory={directory}
 				disabled={disabled}
 				onMode={(mode) =>
 					setModes((current) => ({ ...current, receive: mode }))
@@ -1465,6 +1560,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				mode={modes.send}
 				cues={allowlist.view.cues}
 				entries={entries.filter((entry) => entry.direction === "send")}
+				directory={directory}
 				disabled={disabled}
 				onMode={(mode) => setModes((current) => ({ ...current, send: mode }))}
 				onAdd={(entry) => add({ ...entry, direction: "send" })}
@@ -1524,6 +1620,7 @@ type DirectionGroupProps = {
 	mode: AllowlistMode;
 	cues: AgentMessagesAllowlistResult["view"]["cues"];
 	entries: readonly AllowlistDraftEntry[];
+	directory: AllowlistDirectoryView | null;
 	disabled: boolean;
 	onMode: (mode: AllowlistMode) => void;
 	onAdd: (entry: {
@@ -1540,6 +1637,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 	mode,
 	cues,
 	entries,
+	directory,
 	disabled,
 	onMode,
 	onAdd,
@@ -1587,6 +1685,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 					))}
 					<AddEntryForm
 						label={t("ui.agentMessages.settings.allowlist.add_allowed")}
+						directory={directory}
 						disabled={disabled}
 						onAdd={(entry) => onAdd({ ...entry, effect: "allow" })}
 					/>
@@ -1612,6 +1711,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 				))}
 				<AddEntryForm
 					label={t("ui.agentMessages.settings.allowlist.add_blocked")}
+					directory={directory}
 					disabled={disabled}
 					onAdd={(entry) => onAdd({ ...entry, effect: "deny" })}
 				/>
@@ -1701,33 +1801,123 @@ const EntryRow: FC<{
 	</div>
 );
 
+/**
+ * One Add row: an optional directory choice, the typed-ID field, and Add.
+ *
+ * A directory choice only FILLS the ID field (the full id stays visible and
+ * editable) and is remembered with the tenant/account key and kind it was made
+ * under. Nothing is granted on choosing: Add still runs the same
+ * `allowlistIdentifierError` check, and only the editor's Save writes. Editing
+ * the field by hand turns the row back into a plain typed ID. If the held
+ * choice's context moves (another kind, organization or account) or its id
+ * leaves the directory now on screen, the choice and the id it filled are
+ * cleared, and an Add of a choice that went stale is refused — so a pick made
+ * under one organization can never be added under another.
+ */
 const AddEntryForm: FC<{
 	label: string;
+	directory: AllowlistDirectoryView | null;
 	disabled: boolean;
 	onAdd: (entry: { kind: AllowlistEntryKind; id: string }) => void;
-}> = ({ label, disabled, onAdd }) => {
+}> = ({ label, directory, disabled, onAdd }) => {
 	const [kind, setKind] = useState<AllowlistEntryKind>("endpoint");
 	const [value, setValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [selection, setSelection] =
+		useState<AllowlistDirectorySelection | null>(null);
 	const fieldId = useId();
 	const helpId = `${fieldId}-help`;
+	// The organization is shown, not just announced: the operator has to see
+	// whose people and agents the list holds. The picker is then named by that
+	// visible label plus its own visible text (aria-labelledby), so its
+	// accessible name contains what is on screen and speech input that says
+	// either "Choose from …" or "Choose an agent" reaches it.
+	const pickerLabelId = `${fieldId}-directory-label`;
+	const pickerTriggerId = `${fieldId}-directory-picker`;
+
+	const readyDirectory =
+		directory?.state === "ready" ? directory.directory : null;
+	const choices = useMemo(
+		() =>
+			readyDirectory ? allowlistDirectoryChoices(readyDirectory, kind) : [],
+		[readyDirectory, kind],
+	);
+	const current = directory
+		? { key: directory.key, kind, choices }
+		: { key: "", kind, choices };
+	const selectionLive =
+		selection !== null &&
+		directory?.state === "ready" &&
+		selectionIsCurrent(selection, current);
+
+	// Drop a choice whose context moved, together with the id it filled (a
+	// typed id is the operator's own and is left alone). While the directory
+	// is loading a held choice cannot be confirmed either way, so it waits.
+	const directoryKey = directory?.key ?? "";
+	const directoryState = directory?.state ?? "absent";
+	useEffect(() => {
+		if (!selection) return;
+		if (directoryState === "loading" && selection.key === directoryKey) return;
+		if (directoryState === "ready" && selectionLive) return;
+		setSelection(null);
+		setValue((typed) => (typed === selection.id ? "" : typed));
+	}, [selection, selectionLive, directoryKey, directoryState]);
 
 	const submit = () => {
+		if (selection && !selectionLive) {
+			setSelection(null);
+			setValue("");
+			setError(t("ui.agentMessages.settings.allowlist.directory_stale"));
+			return;
+		}
 		const problem = allowlistIdentifierError(value.trim());
 		setError(problem);
 		if (problem) return;
 		onAdd({ kind, id: value.trim() });
 		setValue("");
+		setSelection(null);
 	};
+
+	const choose = (id: string) => {
+		if (!directory || directory.state !== "ready") return;
+		setSelection({ key: directory.key, kind, id });
+		setValue(id);
+		setError(null);
+	};
+
+	const organization = directory?.organizationName?.trim();
+	const pickerLabel = organization
+		? t("ui.agentMessages.settings.allowlist.directory_label", {
+				organization,
+			})
+		: t("ui.agentMessages.settings.allowlist.directory_label_unnamed");
+	// Loading, failed and empty all leave the typed-ID path working, and say so.
+	const directoryNote =
+		directory?.state === "loading"
+			? t("ui.agentMessages.settings.allowlist.directory_loading")
+			: directory?.state === "error"
+				? t("ui.agentMessages.settings.allowlist.directory_error")
+				: directory?.state === "ready" && choices.length === 0
+					? kind === "endpoint"
+						? t("ui.agentMessages.settings.allowlist.directory_empty_agent")
+						: t("ui.agentMessages.settings.allowlist.directory_empty_person")
+					: null;
 
 	return (
 		<div className="flex flex-col gap-2">
 			<Label htmlFor={fieldId}>{label}</Label>
-			<div className="flex flex-wrap items-center gap-2">
+			{/* items-end: the picker carries its organization label above it, so
+			    the row aligns on the controls' baseline, not the column's middle. */}
+			<div className="flex flex-wrap items-end gap-2">
 				<Select
 					value={kind}
 					disabled={disabled}
-					onValueChange={(next) => setKind(next as AllowlistEntryKind)}
+					onValueChange={(next) => {
+						// A person's id is not an agent's: a kind switch drops the
+						// held choice (the effect above clears the id it filled).
+						setKind(next as AllowlistEntryKind);
+						setError(null);
+					}}
 				>
 					<SelectTrigger
 						className="w-32"
@@ -1744,6 +1934,80 @@ const AddEntryForm: FC<{
 						</SelectItem>
 					</SelectContent>
 				</Select>
+				{directory?.state === "ready" && choices.length > 0 && (
+					<div className="flex flex-col gap-1">
+						<span
+							id={pickerLabelId}
+							className="text-meta text-ink-dim"
+							data-agent-messages-directory-label=""
+						>
+							{pickerLabel}
+						</span>
+						<Select
+							value={selectionLive && selection ? selection.id : ""}
+							disabled={disabled}
+							onValueChange={choose}
+						>
+							<SelectTrigger
+								id={pickerTriggerId}
+								className="w-64"
+								aria-labelledby={`${pickerLabelId} ${pickerTriggerId}`}
+								data-agent-messages-directory-picker={kind}
+							>
+								<SelectValue
+									placeholder={
+										kind === "endpoint"
+											? t(
+													"ui.agentMessages.settings.allowlist.directory_placeholder_agent",
+												)
+											: t(
+													"ui.agentMessages.settings.allowlist.directory_placeholder_person",
+												)
+									}
+								>
+									{/* Closed, the trigger names the choice; the full id is
+								    in the ID field beside it, where it can be checked. */}
+									{choices.find((choice) => choice.id === selection?.id)?.label}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{choices.map((choice) => (
+									<SelectItem
+										key={choice.id}
+										value={choice.id}
+										data-agent-messages-directory-choice={choice.id}
+									>
+										<span className="flex min-w-0 flex-col">
+											<span className="text-ink">
+												{choice.label}
+												{choice.owner && (
+													<span className="ms-2 text-ink-dim">
+														{t(
+															"ui.agentMessages.settings.allowlist.directory_agent_owner",
+															{ owner: choice.owner },
+														)}
+													</span>
+												)}
+											</span>
+											{/* The id is the identity (names repeat), so every
+										    option shows it in full, in machine voice. */}
+											<span className="break-all font-mono text-meta text-ink-dim">
+												{choice.id}
+												{choice.duplicateLabel && (
+													<span className="ms-2 font-sans">
+														{t(
+															"ui.agentMessages.settings.allowlist.directory_same_name",
+														)}
+													</span>
+												)}
+											</span>
+										</span>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
 				<Input
 					id={fieldId}
 					aria-describedby={helpId}
@@ -1751,7 +2015,13 @@ const AddEntryForm: FC<{
 					value={value}
 					disabled={disabled}
 					placeholder={t("ui.agentMessages.settings.allowlist.identifier")}
-					onChange={(event) => setValue(event.target.value)}
+					onChange={(event) => {
+						setValue(event.target.value);
+						// Hand-edited, the field is a typed id again, not a choice.
+						if (selection && event.target.value !== selection.id) {
+							setSelection(null);
+						}
+					}}
 					onKeyDown={(event) => {
 						if (event.key === "Enter") {
 							event.preventDefault();
@@ -1768,6 +2038,14 @@ const AddEntryForm: FC<{
 					{t("ui.agentMessages.settings.allowlist.add")}
 				</Button>
 			</div>
+			{directoryNote && (
+				<p
+					className="text-meta text-ink-dim"
+					data-agent-messages-directory-note={directory?.state}
+				>
+					{directoryNote}
+				</p>
+			)}
 			<p id={helpId} className="text-meta text-ink-dim">
 				{kind === "endpoint"
 					? t("ui.agentMessages.settings.allowlist.identifier_help_agent")
