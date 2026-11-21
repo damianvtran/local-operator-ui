@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {Editar grupo…} other {Editar canal…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {Editar grupo} other {Editar canal}}",
+	"ui.teamBridge.edit.description": "Actualiza el nombre y la descripción. Todos los participantes de la conversación ven estos datos.",
+	"ui.teamBridge.edit.topic": "Descripción",
+	"ui.teamBridge.edit.error.topic_too_long": "La descripción puede tener hasta {max, number} caracteres.",
+	"ui.teamBridge.edit.error.topic_characters": "La descripción contiene un carácter que no se puede usar. Se permiten saltos de línea y tabulaciones.",
+	"ui.teamBridge.edit.error.invalid": "Estos datos no se pueden usar. Revisa el nombre y la descripción.",
+	"ui.teamBridge.edit.error.forbidden": "No tienes permiso para editar esta conversación.",
+	"ui.teamBridge.edit.error.archived": "Esta conversación se ha archivado y no se puede editar.",
+	"ui.teamBridge.edit.error.failed": "No se han guardado los cambios. Tu borrador sigue aquí. Vuelve a intentarlo."
+}

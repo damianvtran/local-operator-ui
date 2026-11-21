@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {Modifier le groupe…} other {Modifier le canal…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {Modifier le groupe} other {Modifier le canal}}",
+	"ui.teamBridge.edit.description": "Modifiez le nom et la description. Tous les participants à la conversation voient ces informations.",
+	"ui.teamBridge.edit.topic": "Description",
+	"ui.teamBridge.edit.error.topic_too_long": "La description peut contenir jusqu’à {max, number} caractères.",
+	"ui.teamBridge.edit.error.topic_characters": "La description contient un caractère non autorisé. Les sauts de ligne et les tabulations sont autorisés.",
+	"ui.teamBridge.edit.error.invalid": "Ces informations ne peuvent pas être utilisées. Vérifiez le nom et la description.",
+	"ui.teamBridge.edit.error.forbidden": "Vous n’avez pas l’autorisation de modifier cette conversation.",
+	"ui.teamBridge.edit.error.archived": "Cette conversation a été archivée et ne peut plus être modifiée.",
+	"ui.teamBridge.edit.error.failed": "Les modifications n’ont pas été enregistrées. Votre brouillon est toujours là. Réessayez."
+}

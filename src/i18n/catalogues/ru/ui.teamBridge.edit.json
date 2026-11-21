@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {Изменить группу…} other {Изменить канал…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {Изменить группу} other {Изменить канал}}",
+	"ui.teamBridge.edit.description": "Измените название и описание. Эти сведения видны всем участникам беседы.",
+	"ui.teamBridge.edit.topic": "Описание",
+	"ui.teamBridge.edit.error.topic_too_long": "Описание может содержать до {max, number} символов.",
+	"ui.teamBridge.edit.error.topic_characters": "Описание содержит недопустимый символ. Переносы строк и табуляция разрешены.",
+	"ui.teamBridge.edit.error.invalid": "Эти сведения нельзя использовать. Проверьте название и описание.",
+	"ui.teamBridge.edit.error.forbidden": "У вас нет права редактировать эту беседу.",
+	"ui.teamBridge.edit.error.archived": "Эта беседа в архиве, поэтому её нельзя редактировать.",
+	"ui.teamBridge.edit.error.failed": "Изменения не сохранены. Ваш черновик остался на месте. Попробуйте ещё раз."
+}

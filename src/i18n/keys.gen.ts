@@ -193,6 +193,7 @@ import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
+import enUiTeamBridgeEdit from "./catalogues/en/ui.teamBridge.edit.json";
 import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
@@ -374,6 +375,7 @@ import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
+import esUiTeamBridgeEdit from "./catalogues/es/ui.teamBridge.edit.json";
 import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
@@ -555,6 +557,7 @@ import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
+import frUiTeamBridgeEdit from "./catalogues/fr/ui.teamBridge.edit.json";
 import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
@@ -736,6 +739,7 @@ import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
+import hiUiTeamBridgeEdit from "./catalogues/hi/ui.teamBridge.edit.json";
 import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
@@ -917,6 +921,7 @@ import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
+import ruUiTeamBridgeEdit from "./catalogues/ru/ui.teamBridge.edit.json";
 import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
@@ -1098,6 +1103,7 @@ import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
+import urUiTeamBridgeEdit from "./catalogues/ur/ui.teamBridge.edit.json";
 import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
@@ -1279,6 +1285,7 @@ import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
+import viUiTeamBridgeEdit from "./catalogues/vi/ui.teamBridge.edit.json";
 import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
@@ -1460,6 +1467,7 @@ import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approvals.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
+import zhCNUiTeamBridgeEdit from "./catalogues/zh-CN/ui.teamBridge.edit.json";
 import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
@@ -1644,6 +1652,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiShellRail,
 	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
+	...enUiTeamBridgeEdit,
 	...enUiTeamBridgeHolds,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
@@ -1833,6 +1842,7 @@ export const bundledCatalogues: Readonly<
 		...esUiShellRail,
 		...esUiTeamBridgeApprovals,
 		...esUiTeamBridgeArchive,
+		...esUiTeamBridgeEdit,
 		...esUiTeamBridgeHolds,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
@@ -2016,6 +2026,7 @@ export const bundledCatalogues: Readonly<
 		...frUiShellRail,
 		...frUiTeamBridgeApprovals,
 		...frUiTeamBridgeArchive,
+		...frUiTeamBridgeEdit,
 		...frUiTeamBridgeHolds,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
@@ -2199,6 +2210,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiShellRail,
 		...hiUiTeamBridgeApprovals,
 		...hiUiTeamBridgeArchive,
+		...hiUiTeamBridgeEdit,
 		...hiUiTeamBridgeHolds,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
@@ -2382,6 +2394,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiShellRail,
 		...ruUiTeamBridgeApprovals,
 		...ruUiTeamBridgeArchive,
+		...ruUiTeamBridgeEdit,
 		...ruUiTeamBridgeHolds,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
@@ -2565,6 +2578,7 @@ export const bundledCatalogues: Readonly<
 		...urUiShellRail,
 		...urUiTeamBridgeApprovals,
 		...urUiTeamBridgeArchive,
+		...urUiTeamBridgeEdit,
 		...urUiTeamBridgeHolds,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
@@ -2748,6 +2762,7 @@ export const bundledCatalogues: Readonly<
 		...viUiShellRail,
 		...viUiTeamBridgeApprovals,
 		...viUiTeamBridgeArchive,
+		...viUiTeamBridgeEdit,
 		...viUiTeamBridgeHolds,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
@@ -2931,6 +2946,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiShellRail,
 		...zhCNUiTeamBridgeApprovals,
 		...zhCNUiTeamBridgeArchive,
+		...zhCNUiTeamBridgeEdit,
 		...zhCNUiTeamBridgeHolds,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
@@ -14157,6 +14173,16 @@ export type MessageParams = {
 	"ui.teamBridge.archive.thread.empty": undefined;
 	"ui.teamBridge.archive.thread.forbidden": undefined;
 	"ui.teamBridge.archive.toast.archive_failed": { name: string };
+	"ui.teamBridge.edit.description": undefined;
+	"ui.teamBridge.edit.error.archived": undefined;
+	"ui.teamBridge.edit.error.failed": undefined;
+	"ui.teamBridge.edit.error.forbidden": undefined;
+	"ui.teamBridge.edit.error.invalid": undefined;
+	"ui.teamBridge.edit.error.topic_characters": undefined;
+	"ui.teamBridge.edit.error.topic_too_long": { max: number };
+	"ui.teamBridge.edit.menu": { kind: string };
+	"ui.teamBridge.edit.title": { kind: string };
+	"ui.teamBridge.edit.topic": undefined;
 	"ui.teamBridge.holds.body_withheld": undefined;
 	"ui.teamBridge.holds.cannot_verify": undefined;
 	"ui.teamBridge.holds.confirm.cancel": undefined;

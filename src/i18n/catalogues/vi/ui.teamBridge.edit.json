@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {Chỉnh sửa nhóm…} other {Chỉnh sửa kênh…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {Chỉnh sửa nhóm} other {Chỉnh sửa kênh}}",
+	"ui.teamBridge.edit.description": "Cập nhật tên và mô tả. Mọi người trong cuộc trò chuyện đều thấy những thông tin này.",
+	"ui.teamBridge.edit.topic": "Mô tả",
+	"ui.teamBridge.edit.error.topic_too_long": "Mô tả có thể dài tối đa {max, number} ký tự.",
+	"ui.teamBridge.edit.error.topic_characters": "Mô tả chứa ký tự không được phép sử dụng. Có thể dùng ký tự xuống dòng và tab.",
+	"ui.teamBridge.edit.error.invalid": "Không thể dùng những thông tin này. Kiểm tra lại tên và mô tả.",
+	"ui.teamBridge.edit.error.forbidden": "Bạn không có quyền chỉnh sửa cuộc trò chuyện này.",
+	"ui.teamBridge.edit.error.archived": "Cuộc trò chuyện này đã được lưu trữ nên không thể chỉnh sửa.",
+	"ui.teamBridge.edit.error.failed": "Chưa lưu được thay đổi. Bản nháp vẫn còn ở đây. Thử lại."
+}
