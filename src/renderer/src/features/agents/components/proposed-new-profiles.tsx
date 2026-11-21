@@ -25,10 +25,16 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
  *   and no proposal request is sent.
  */
 import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
-import { proposedNewProfiles } from "@shared/api/local-operator/profile-proposals";
+import {
+	type ProfileProposalKind,
+	proposedNewProfiles,
+} from "@shared/api/local-operator/profile-proposals";
 import { cn } from "@shared/lib/utils";
 import { t } from "../../../../../i18n/messages";
-import { ProfileProposalPanel } from "./profile-proposal-panel";
+import {
+	ProfileProposalPanel,
+	type ProposalReveal,
+} from "./profile-proposal-panel";
 
 export function ProposedNewGroup({
 	kind,
@@ -95,7 +101,7 @@ export function ProposedNewGroup({
 
 /** True when `name` is a pending create proposal the roster does not list. */
 export function useIsProposedNew(
-	kind: "agent" | "team",
+	kind: ProfileProposalKind,
 	name: string | null,
 	existing: readonly string[] | undefined,
 	enabled: boolean,
@@ -111,10 +117,17 @@ export function ProposedNewPane({
 	kind,
 	name,
 	proposalId,
+	reveal,
 }: {
-	kind: "agent" | "team";
+	/*
+	 * `skill` as well (PR #2026 round 1, R2/U1): a skill create proposal has no
+	 * library card to open, and SkillDetail on the missing name returned its
+	 * load error before the panel slot, so Review led to "couldn't load skill".
+	 */
+	kind: ProfileProposalKind;
 	name: string;
 	proposalId: string | null;
+	reveal?: ProposalReveal | null;
 }) {
 	return (
 		<div data-testid="proposed-new-pane" className="space-y-4">
@@ -125,6 +138,7 @@ export function ProposedNewPane({
 				name={name}
 				enabled
 				proposalId={proposalId}
+				reveal={reveal}
 			/>
 		</div>
 	);
