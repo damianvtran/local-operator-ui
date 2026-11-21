@@ -123679,6 +123679,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "6fef6a40d743f0d748af12ef400861e1615578c8d3aaf1f32acbe852836fd5b1",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-fr.json",
+					"receipt_sha256": "26a2aabe39a1d3fec9a401debaa8d2f8b34a2074b6f4bbcb196f850d9cb75b4a",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "70dc2d0cda304dcc9580185a34cc0fed1c055ddfc1bdcf80c524926df0aafa5b",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-es.json",
+					"receipt_sha256": "b964784c4a8d0d8783e367acae2e571cdc3e3a9dd93ef981d44495346a74bc0c",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "f8754e7f75217ccd75736df0484e8f8ddce6de7b361b29898798446e467bd278",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-zh-CN.json",
+					"receipt_sha256": "4821b43da80e148e05b0dd4e218d831016be848743b92abfeb4142a0afd31539",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "363950303c36e8c238e1cae6f33840e9097ea89730539f20d87324cf26b54cf7",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-ru.json",
+					"receipt_sha256": "2d958ffc15e6be75b8a4b65f29434f5a31368abb076cd1abd187cf5221f7fbbf",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "ed9a5e8a586375678339f8e90fd36eb8a83c8c040cfaa6f4343dbcfd58b82189",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-vi.json",
+					"receipt_sha256": "07e94425cfc44035c6dc2f4bbba945e618d1f2764fdf77fa4d15e9ca87b42a62",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "5dea8a04f9885a0467543d7d861774ef72bb4379f18daa8969df4e2ac2845e52",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-ur.json",
+					"receipt_sha256": "05df487e969ac6a75a13f83c934463fe25e41186aff431f8a1d151d52643e07f",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "956410504bcfb7e60b5140cb99a83c16a2386b39e4a7deb66da88ec62e5b7eae",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-hi.json",
+					"receipt_sha256": "1b6ed11681c15c2c1af8fc1d1e86dc541553dc3bd4d86b20ac40bf98a5ddc560",
+					"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+					"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

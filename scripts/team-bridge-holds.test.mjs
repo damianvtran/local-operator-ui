@@ -28,6 +28,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
@@ -58,6 +59,18 @@ const api = await load(
 
 // Top-level regexes (biome useTopLevelRegex).
 const RE_PLATFORM = /Touch ID|Mac|Windows|biometric/i;
+const RE_REACT_SPECIFIER = /^react(?:\/.*)?$/;
+const RE_RECORD_CHANGED = /record changed/;
+const RE_UNSEEN_STALE_CLAIM = /shown|check it again/;
+const RE_BATCH_CONFIRM_ONE = /Dismiss the listed messages \(count: 1\)\?/;
+const RE_BATCH_PROGRESS_ZERO = /Messages processed: 0 of 1/;
+const RE_BATCH_FAILED_ONE = /Not confirmed: 1/;
+const RE_BATCH_RETRY = /Retry failed messages/;
+const RE_FIXED_REFUSAL = /Fixed refusal/;
+const RE_LOCAL_ONLY_STATUS =
+	/Discarded on this device without server confirmation/;
+const RE_NOTIFICATION_CLAIM = /sender (?:was|has been) notified/;
+const RE_UNARMED_INSTRUCTION = /Discard it so the sender/;
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
 const hold = (over = {}) => ({
@@ -946,7 +959,22 @@ test("a row core says is not actionable, or has no conversation, arms nothing (m
 const cacheDir = "node_modules/.cache";
 const viewOut = `${cacheDir}/team-bridge-holds-view-${process.pid}.mjs`;
 await mkdir(cacheDir, { recursive: true });
+const requireFromTest = createRequire(import.meta.url);
 const viewBundle = await build({
+	// The generated module lives inside the shared dependency cache. Pin its
+	// React imports to this test's actual React, so ESM package ancestry cannot
+	// pick up a different React from the operator's home node_modules.
+	plugins: [
+		{
+			name: "same-react-as-renderer",
+			setup(builder) {
+				builder.onResolve({ filter: RE_REACT_SPECIFIER }, ({ path }) => ({
+					path: requireFromTest.resolve(path),
+					external: true,
+				}));
+			},
+		},
+	],
 	stdin: {
 		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";`,
 		resolveDir: process.cwd(),
@@ -1017,5 +1045,344 @@ test("the pending Discard line states only what is known, in every locale (C2)",
 	for (const l of ["fr", "es", "zh-CN", "ru", "vi", "hi", "ur"]) {
 		const v = read(l);
 		assert.ok(v && v !== read("en"), `${l} translated`);
+	}
+});
+
+const batch = await load(
+	`export * from "./src/renderer/src/features/team-bridge/team-bridge-discard-batch";`,
+);
+
+test("batch captures only existing single-discard proofs, never loading/mismatched/fresh-unloadable rows", () => {
+	const source = [
+		hold({ message_id: "shown" }),
+		orphan({ message_id: "expired" }),
+		fresh700(),
+		hold({ message_id: "loading" }),
+		hold({ message_id: "mismatch" }),
+		hold({ message_id: "closed", can_discard: false }),
+	];
+	const details = (item) =>
+		item.message_id === "loading"
+			? { state: "loading" }
+			: ["expired", fresh700().message_id].includes(item.message_id)
+				? { state: "unavailable" }
+				: {
+						state: "ready",
+						binding:
+							item.message_id === "mismatch"
+								? { state: "mismatch" }
+								: { state: "shown", hash: "a".repeat(64) },
+					};
+	const snapshot = m.captureDiscardSnapshot(source, details, NOW);
+	assert.deepEqual(
+		new Set(snapshot.map(({ item }) => item.message_id)),
+		new Set(["shown", "expired"]),
+	);
+	assert.deepEqual(
+		snapshot.find(({ item }) => item.message_id === "shown").proof,
+		{ body_sha256: "a".repeat(64) },
+	);
+	assert.deepEqual(
+		snapshot.find(({ item }) => item.message_id === "expired").proof,
+		{ hold_receipt: RECEIPT },
+	);
+	source[0].conversation_id = "changed";
+	source[1].discard_receipt = "d".repeat(64);
+	source.push(hold({ message_id: "new-arrival" }));
+	assert.equal(snapshot.length, 2);
+	assert.equal(
+		snapshot.find(({ item }) => item.message_id === "shown").item
+			.conversation_id,
+		"bcv_abcdefgh",
+	);
+	assert.equal(
+		snapshot.find(({ item }) => item.message_id === "expired").proof
+			.hold_receipt,
+		RECEIPT,
+	);
+});
+
+test("batch accounts for each row serially, retains failures and stops requests after owner changes", async () => {
+	const entries = ["one", "two", "three", "four"].map((id) => ({
+		item: hold({ message_id: id }),
+		proof: { body_sha256: "a".repeat(64) },
+	}));
+	let current = true;
+	const requests = [];
+	const reported = [];
+	const results = await batch.discardSnapshot(
+		entries,
+		async (entry) => {
+			requests.push(entry.item.message_id);
+			if (entry.item.message_id === "two")
+				throw new Error("private upstream text");
+			if (entry.item.message_id === "three") current = false;
+			return {
+				state: "discarded",
+				message_id: entry.item.message_id,
+				decided_at: null,
+			};
+		},
+		() => current,
+		() => "Fixed refusal",
+		(result) => reported.push(result),
+	);
+	assert.deepEqual(requests, ["one", "two", "three"]);
+	assert.equal(results.length, 4);
+	assert.deepEqual(
+		results.map((result) => result.recorded),
+		[true, false, true, false],
+	);
+	assert.deepEqual(reported, results);
+	assert.ok(
+		results
+			.filter((result) => !result.recorded)
+			.every((result) => result.error === "Fixed refusal"),
+	);
+	assert.ok(!JSON.stringify(results).includes("private upstream text"));
+});
+
+test("receipt-specific stale wording never claims an unseen message was shown", () => {
+	assert.match(m.holdRefusalLabel("snapshot_stale", true), RE_RECORD_CHANGED);
+	assert.doesNotMatch(
+		m.holdRefusalLabel("snapshot_stale", true),
+		RE_UNSEEN_STALE_CLAIM,
+	);
+	assert.notEqual(
+		m.holdRefusalLabel("snapshot_stale", true),
+		m.holdRefusalLabel("snapshot_stale"),
+	);
+});
+
+test("shipped view renders batch confirmation, busy, failure and local-only completion without deciding", () => {
+	const entry = { item: orphan(), proof: { hold_receipt: RECEIPT } };
+	for (const phase of ["confirm", "busy", "result"]) {
+		let sends = 0;
+		const html = renderToStaticMarkup(
+			createElement(HeldMessagesView, {
+				listState: "ready",
+				items: [entry.item],
+				detail: () => ({ state: "unavailable" }),
+				now: NOW,
+				onDecide: () => {
+					sends++;
+				},
+				onBatchDecide: async () => {
+					sends++;
+				},
+				initialBatch: {
+					phase,
+					entries: [entry],
+					results:
+						phase === "result"
+							? [{ entry, recorded: false, error: "Fixed refusal" }]
+							: [],
+				},
+			}),
+		);
+		assert.equal(sends, 0);
+		if (phase === "confirm") assert.match(html, RE_BATCH_CONFIRM_ONE);
+		if (phase === "busy") assert.match(html, RE_BATCH_PROGRESS_ZERO);
+		if (phase === "result") {
+			assert.match(html, RE_BATCH_FAILED_ONE);
+			assert.match(html, RE_BATCH_RETRY);
+			assert.match(html, RE_FIXED_REFUSAL);
+		}
+	}
+	const local = renderRow(
+		orphan({
+			decision: {
+				word: "discard",
+				outcome: "discarded_local_unconfirmed",
+				decided_at: null,
+				key_id: null,
+			},
+		}),
+	);
+	assert.match(local.html, RE_LOCAL_ONLY_STATUS);
+	assert.doesNotMatch(local.html, RE_NOTIFICATION_CLAIM);
+	const oldCore = renderRow(orphan({ discard_receipt: null }));
+	assert.doesNotMatch(oldCore.html, RE_UNARMED_INSTRUCTION);
+});
+
+// Mounted DOM regression, not browser/native or core-HTTP evidence. The real
+// operation callback is controlled so fresh arrivals and same-turn duplicate
+// clicks can be injected while the shipped component is actually busy.
+test("mounted batch freezes identities/proofs, locks duplicate submits and retries only failures", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM(
+		"<!doctype html><html><body><div id='root'></div></body></html>",
+		{ url: "http://localhost" },
+	);
+	const saved = new Map(
+		["window", "document", "HTMLElement", "IS_REACT_ACT_ENVIRONMENT"].map(
+			(key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)],
+		),
+	);
+	for (const [key, value] of Object.entries({
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	}))
+		Object.defineProperty(globalThis, key, {
+			value,
+			configurable: true,
+			writable: true,
+		});
+	const root = createRoot(dom.window.document.getElementById("root"));
+	let finish;
+	let report;
+	let submitted;
+	let submits = 0;
+	let refreshes = 0;
+	const first = orphan({ message_id: "bcmsg_first" });
+	const second = orphan({ message_id: "bcmsg_second" });
+	const arrival = orphan({ message_id: "bcmsg_arrival" });
+	const props = {
+		listState: "ready",
+		onRetry: () => {
+			refreshes++;
+		},
+		items: [first, second],
+		detail: () => ({ state: "unavailable" }),
+		now: NOW,
+		onDecide: () =>
+			assert.fail("batch must never call single-row Deliver/Discard"),
+		onBatchDecide: (entries, onResult) => {
+			submits++;
+			submitted = entries;
+			report = onResult;
+			return new Promise((resolve) => {
+				finish = resolve;
+			});
+		},
+	};
+	const button = (label) =>
+		[...dom.window.document.querySelectorAll("button")].find(
+			(node) => node.textContent === label,
+		);
+	try {
+		await act(async () => root.render(createElement(HeldMessagesView, props)));
+		assert.equal(submits, 0);
+		await act(async () => button("Dismiss all…").click());
+		assert.ok(button("Dismiss listed messages (2)"));
+		// Background refresh replaces a receipt and adds a row after confirmation
+		// opened. Neither change may alter the operation that was just described.
+		await act(async () =>
+			root.render(
+				createElement(HeldMessagesView, {
+					...props,
+					items: [
+						first,
+						{ ...second, discard_receipt: "e".repeat(64) },
+						arrival,
+					],
+				}),
+			),
+		);
+		assert.ok(button("Dismiss listed messages (2)"));
+		await act(async () => {
+			const confirm = button("Dismiss listed messages (2)");
+			confirm.click();
+			confirm.click();
+		});
+		assert.equal(submits, 1);
+		assert.deepEqual(
+			submitted.map((entry) => entry.item.message_id),
+			["bcmsg_first", "bcmsg_second"],
+		);
+		assert.equal(submitted[1].proof.hold_receipt, RECEIPT);
+		assert.ok(
+			[...dom.window.document.querySelectorAll("button")]
+				.filter((node) => node.textContent === "Discard")
+				.every((node) => node.disabled),
+		);
+		await act(async () => {
+			report({ entry: submitted[0], recorded: true, error: null });
+			report({ entry: submitted[1], recorded: false, error: "Fixed refusal" });
+			finish();
+		});
+		assert.ok(
+			dom.window.document.body.textContent.includes(
+				"Recorded on this device: 1. Not confirmed: 1.",
+			),
+		);
+		// A lost response is not evidence that no write occurred. Keep the
+		// uncertain record visible without asserting it remains held remotely.
+		assert.ok(
+			dom.window.document.body.textContent.includes(
+				"Records without confirmation remain in this list.",
+			),
+		);
+		assert.ok(!dom.window.document.body.textContent.includes("Not recorded:"));
+		assert.ok(
+			!dom.window.document.body.textContent.includes(
+				"Messages that failed remain held.",
+			),
+		);
+		await act(async () => button("Retry failed messages…").click());
+		assert.ok(button("Dismiss listed messages (1)"));
+		await act(async () => button("Dismiss listed messages (1)").click());
+		assert.equal(submits, 2);
+		assert.deepEqual(
+			submitted.map((entry) => entry.item.message_id),
+			["bcmsg_second"],
+		);
+		assert.equal(submitted[0].proof.hold_receipt, "e".repeat(64));
+		await act(async () => {
+			report({ entry: submitted[0], recorded: true, error: null });
+			finish();
+		});
+		// Both recorded ids remain in this deliberately stale fixture list, but
+		// cannot be submitted again. Only the genuinely new arrival is offered.
+		await act(async () => button("Dismiss all…").click());
+		assert.ok(button("Dismiss listed messages (1)"));
+		// An error refreshing cached rows must not trap the human in confirm:
+		// Cancel remains usable and the list has an explicit refresh retry.
+		await act(async () =>
+			root.render(
+				createElement(HeldMessagesView, { ...props, listState: "error" }),
+			),
+		);
+		assert.equal(button("Cancel").disabled, false);
+		await act(async () => button("Cancel").click());
+		assert.equal(button("Dismiss all…").disabled, true);
+		await act(async () => button("Try again").click());
+		assert.equal(refreshes, 1);
+		assert.equal(submits, 2);
+		await act(async () =>
+			root.render(
+				createElement(HeldMessagesView, { ...props, key: "different-owner" }),
+			),
+		);
+		assert.equal(button("Dismiss listed messages (1)"), undefined);
+		assert.equal(submits, 2);
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		for (const [key, descriptor] of saved) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else Reflect.deleteProperty(globalThis, key);
+		}
+	}
+});
+
+test("batch does not count an unrelated or non-discard receipt as success", async () => {
+	const entry = { item: hold(), proof: { body_sha256: "a".repeat(64) } };
+	for (const receipt of [
+		{ state: "released", message_id: entry.item.message_id, decided_at: null },
+		{ state: "discarded", message_id: "another-message", decided_at: null },
+	]) {
+		const results = await batch.discardSnapshot(
+			[entry],
+			async () => receipt,
+			() => true,
+			() => "Fixed refusal",
+			() => {},
+		);
+		assert.equal(results[0].recorded, false);
 	}
 });
