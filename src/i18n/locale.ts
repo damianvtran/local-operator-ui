@@ -4,8 +4,9 @@
  * After a backend is reachable the renderer uses the RESOLVED language from
  * `GET /v1/capabilities` (`language`, gated on `features.i18n`); before one is
  * reachable it uses the device locale - or, in the renderer, the tag the
- * backend last confirmed (`applyRememberedLanguage`, fr census row 2). Those are the RFC's two documented
- * sources for this surface (the third, `LOP_LANG`, is backend/exec-side).
+ * backend last confirmed (`applyRememberedLanguage`, fr census row 2). Those
+ * are the RFC's two documented sources for this surface (the third,
+ * `LOP_LANG`, is backend/exec-side).
  *
  * The backend's resolver already normalises a raw preference to a SHIPPED
  * locale tag (`fr-CA` -> `fr`, an unsupported preference -> `en`), so this

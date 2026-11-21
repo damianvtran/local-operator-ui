@@ -7,9 +7,10 @@
  * re-polls by design, for the plane's own reasons). Before any answer, nothing
  * is applied and the store keeps what boot put there: the backend's last
  * confirmed tag when one is remembered (`./last-language`), else the device
- * locale - the RFC §2.5 pre-connection rule, not an oversight. An answer WITHOUT `features.i18n`
- * (an older backend) resolves the same way — the device stays — which is what
- * "ships dark" means for a client that predates the capability.
+ * locale - the RFC §2.5 pre-connection rule, not an oversight. An answer
+ * WITHOUT `features.i18n` (an older backend) resolves the same way — the device
+ * stays — which is what "ships dark" means for a client that predates the
+ * capability.
  */
 
 import {
