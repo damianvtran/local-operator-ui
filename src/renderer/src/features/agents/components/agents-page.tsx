@@ -1816,7 +1816,13 @@ function BrowseTab({
 				<span
 					className={cn(
 						"min-w-[2ch] font-normal text-ink-dim tabular-nums",
-						compact && "sr-only",
+						/*
+						 * With an attention count beside it the TOTAL steps aside (still
+						 * in the accessible name and `title`): label + total + badge did
+						 * not fit a third of the 256 px column, and the label is what
+						 * truncated ("Tea…"), which is the one word the mark is about.
+						 */
+						(compact || waiting > 0) && "sr-only",
 					)}
 				>
 					{count}

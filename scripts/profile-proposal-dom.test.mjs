@@ -525,7 +525,7 @@ test("summary: hidden with nothing waiting; names kind, record, fields and Revie
 	assert.match(text, /Waiting for your approval/);
 	assert.match(text, /1 change waiting for your approval/);
 	assert.match(text, /minervadev/);
-	assert.match(text, /Team · Proposed change/);
+	assert.match(text, /Team\s*·\s*Proposed change/);
 	assert.match(text, /Changes: instructions/);
 	const review = section.querySelector(
 		'[aria-label="Review the proposed change to minervadev"]',
@@ -557,7 +557,7 @@ test("summary: stale and create rows say so; beyond three rows it collapses behi
 			(n) => n.tagName === "LI",
 		);
 	assert.equal(rows().length, 3, "collapsed to three rows");
-	assert.match(rows()[0].textContent, /Agent · Proposed new/);
+	assert.match(rows()[0].textContent, /Agent\s*·\s*Proposed new/);
 	assert.ok(rows()[1].querySelector('[data-testid="pending-approval-stale"]'));
 	assert.match(rows()[1].textContent, /Out of date/);
 	assert.match(rows()[2].textContent, /Research/, "core's label is printed");

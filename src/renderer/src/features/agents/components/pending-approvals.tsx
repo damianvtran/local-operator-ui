@@ -113,26 +113,52 @@ export function PendingApprovalsSummary({
 							key={proposal.id}
 							data-testid={`pending-approval-${proposal.id}`}
 							data-proposal-kind={proposal.kind}
-							className="flex items-start gap-2 px-1 py-0.5"
+							/*
+							 * Review shares the NAME's line only; the detail lines run under it to
+							 * the panel's edge. Beside a full-height button column they had ~150 px
+							 * and "Agent · Proposed change" broke after the dot.
+							 */
+							className="px-1 py-0.5"
 						>
-							<Icon
-								aria-hidden="true"
-								className="mt-0.5 size-3.5 shrink-0 text-ink-muted"
-							/>
-							<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-2">
+								<Icon
+									aria-hidden="true"
+									className="size-3.5 shrink-0 text-ink-muted"
+								/>
 								<p
 									dir="auto"
-									className="truncate text-body-sm text-ink"
+									className="min-w-0 flex-1 truncate text-body-sm text-ink"
 									title={name}
 								>
 									{name}
 								</p>
-								<p className="truncate text-meta text-ink-muted">
-									{t(KIND_WORD[proposal.kind])}
-									<span className="text-ink-dim"> · </span>
-									{proposal.operation === "create"
-										? t("ui.agents.pending.operation.create")
-										: t("ui.agents.pending.operation.update")}
+								<Button
+									variant="outline"
+									size="sm"
+									className="shrink-0"
+									aria-label={t("ui.agents.pending.review_aria", { name })}
+									onClick={() => onReview(proposal)}
+								>
+									{t("ui.agents.pending.review")}
+								</Button>
+							</div>
+							{/* Indented to the name: the 14 px icon plus the 8 px gap. */}
+							<div className="ps-5.5">
+								{/*
+								 * WRAPS RATHER THAN TRUNCATES: the stale badge sits at the end of
+								 * this line, and a truncating line clipped it away in exactly the
+								 * row that most needs it (first render, "Proposed chan…").
+								 */}
+								<p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-meta text-ink-muted">
+									<span>{t(KIND_WORD[proposal.kind])}</span>
+									<span aria-hidden="true" className="text-ink-dim">
+										·
+									</span>
+									<span>
+										{proposal.operation === "create"
+											? t("ui.agents.pending.operation.create")
+											: t("ui.agents.pending.operation.update")}
+									</span>
 									{stale ? (
 										/*
 										 * The `warning` Badge, a contracted wash/border/ink triple:
@@ -141,7 +167,6 @@ export function PendingApprovalsSummary({
 										 */
 										<Badge
 											variant="warning"
-											className="ms-1.5 align-middle"
 											data-testid="pending-approval-stale"
 										>
 											{t("ui.agents.pending.stale")}
@@ -149,7 +174,10 @@ export function PendingApprovalsSummary({
 									) : null}
 								</p>
 								{proposal.fields.length ? (
-									<p className="truncate text-meta text-ink-dim">
+									<p
+										className="truncate text-meta text-ink-dim"
+										title={formatList(proposal.fields)}
+									>
 										{/* Field ids are core's identifiers; the panel shows their labels. */}
 										{t("ui.agents.proposals.fields", {
 											fields: formatList(proposal.fields),
@@ -157,15 +185,6 @@ export function PendingApprovalsSummary({
 									</p>
 								) : null}
 							</div>
-							<Button
-								variant="outline"
-								size="sm"
-								className="shrink-0"
-								aria-label={t("ui.agents.pending.review_aria", { name })}
-								onClick={() => onReview(proposal)}
-							>
-								{t("ui.agents.pending.review")}
-							</Button>
 						</li>
 					);
 				})}
