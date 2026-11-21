@@ -736,6 +736,59 @@ jobs:
       - name: Run the tree-wide guard tests
         run: pnpm test:guards
 
+  # The desktop shards do not run on each PR. Keep the owner-finish custody
+  # regression visible here without starting Electron or changing GUARD_TESTS.
+  browser-owner-finish:
+    name: Browser Owner Finish Regression
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.unit != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # The fixture aliases Electron to a stub; the lockfile supplies esbuild's
+      # platform package without running the app's Electron-fetching postinstall.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify the exact owner-finish regression on the PR head
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          checked_out="$(git rev-parse HEAD)"
+          test "$checked_out" = "$PR_HEAD"
+          printf 'Browser owner-finish PR head: %s\n' "$checked_out"
+
+          name='owner_finish stays pending during a passkey prompt and retries the exact allocation'
+          node --test --test-reporter=tap --test-name-pattern="^${name}$" scripts/browser-host.test.mjs \
+            | tee "$RUNNER_TEMP/browser-owner-finish.tap"
+          # Node can exit zero when a name filter matches nothing. Require the
+          # exact numbered passing row, with no SKIP/TODO directive.
+          grep -qEx "ok [0-9]+ - ${name}" "$RUNNER_TEMP/browser-owner-finish.tap"
+
   # The plain-JS bundle isolated native QA downloads. It used to ride on Desktop
   # Tests shard 0; the shard left pull-request CI, the artifact did not - QA
   # agents fetch it by name (`ui-qa-bundle-<pr>-<run>`), so the name is kept.
@@ -1530,6 +1583,7 @@ jobs:
       - runtime-deps
       - check-types
       - guards
+      - browser-owner-finish
       - qa-bundle
       - bytecode-build
       - bytecode-build-macos
