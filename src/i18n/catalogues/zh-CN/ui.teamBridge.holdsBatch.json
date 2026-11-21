@@ -1,11 +1,11 @@
 {
-  "ui.teamBridge.holdsBatch.action": "全部丢弃……",
-  "ui.teamBridge.holdsBatch.confirm": "要丢弃列出的消息（数量：{count}）吗？仅包含下方列出的消息，不包含新收到的消息。每条消息的丢弃操作都会记录在此设备上，且无法撤销。部分消息的文本可能不可用。这并不代表服务器或发送者已收到通知。",
-  "ui.teamBridge.holdsBatch.submit": "丢弃列出的消息（{count}）",
-  "ui.teamBridge.holdsBatch.progress": "已处理消息：{done}，共{total}。",
-  "ui.teamBridge.holdsBatch.result": "已在此设备上记录：{succeeded}。未确认：{failed}。未获确认的记录仍保留在此列表中。不包含新收到的消息。",
-  "ui.teamBridge.holdsBatch.retry": "重试失败的消息……",
-  "ui.teamBridge.holdsBatch.recorded": "已在此设备上记录丢弃。",
-  "ui.teamBridge.holdsBatch.stale_receipt": "这条暂扣消息的记录已更改。刷新列表后，再次确认丢弃。",
-  "ui.teamBridge.holdsBatch.local_unconfirmed": "已在此设备上丢弃，但未收到服务器确认。发送者可能尚未收到通知。此处无需进一步操作。"
+	"ui.teamBridge.holdsBatch.action": "全部丢弃……",
+	"ui.teamBridge.holdsBatch.confirm": "要丢弃列出的消息（数量：{count}）吗？仅包含下方列出的消息，不包含新收到的消息。每条消息的丢弃操作都会记录在此设备上，且无法撤销。部分消息的文本可能不可用。这并不代表服务器或发送者已收到通知。",
+	"ui.teamBridge.holdsBatch.submit": "丢弃列出的消息（{count}）",
+	"ui.teamBridge.holdsBatch.progress": "已处理消息：{done}，共{total}。",
+	"ui.teamBridge.holdsBatch.result": "已在此设备上记录：{succeeded}。未确认：{failed}。未获确认的记录仍保留在此列表中。不包含新收到的消息。",
+	"ui.teamBridge.holdsBatch.retry": "重试失败的消息……",
+	"ui.teamBridge.holdsBatch.recorded": "已在此设备上记录丢弃。",
+	"ui.teamBridge.holdsBatch.stale_receipt": "这条暂扣消息的记录已更改。刷新列表后，再次确认丢弃。",
+	"ui.teamBridge.holdsBatch.local_unconfirmed": "已在此设备上丢弃，但未收到服务器确认。发送者可能尚未收到通知。此处无需进一步操作。"
 }
