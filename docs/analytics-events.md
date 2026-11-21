@@ -53,22 +53,41 @@ sent empty, never as captured.
 
 Short free text (a session title, a word of a message) has no shape to catch, so
 user-content regions carry `USER_CONTENT_CLASS` (`ph-sensitive ph-mask`): the
-markdown renderer (messages, reasoning, asides), tool details, sidebar row titles
-and the chat header title. Inside one, posthog-js omits text and links, the hook
-drops every attribute except a structural allowlist (`id`, `class`, `role`,
-`type`, `data-state`, `data-testid`, `aria-expanded`...), and session replay
-masks the text. The click itself is still counted. A new surface that shows user
-content gets the class on its container, never on a control whose label a funnel
-counts.
+markdown renderer (messages, reasoning, asides) and Team Bridge message bodies,
+tool details (arguments, the output body, the bridge raw block), code execution
+output/log/error blocks, library and project file previews, run-child failure
+text, the raw-information view, attachment chips, whole sidebar row boxes
+(session, temporary and draft rows, with their pin, archive and discard acts,
+whose labels quote the title) and the chat header title. Inside one, posthog-js
+omits text and links, the hook drops every attribute except a structural
+allowlist (`id`, `class`, `role`, `type`, `data-state`, `data-testid`,
+`data-chat-row`, `data-tour-tag`, `aria-expanded`, `aria-pressed`...), and
+session replay masks the text. The click itself is still counted, and a sidebar
+row click still reads as one (`data-chat-row`, `data-tour-tag="chat-session-row"`).
+A new surface that shows user content gets the class on its container, never on
+a control whose label a funnel counts.
+
+**Replay masks text, not attributes.** rrweb records every attribute inside a
+marked region as captured: a transcript link's `href`, an image's `alt`/`src`, a
+`title`. Autocapture is covered (the hook drops those attributes), replay is
+not. Whether to block them in replay (`blockSelector` for region links, or
+`maskTextFn`) is an open decision for the operator.
 
 `$exception` keeps its message, with paths, emails, URL paths and long quoted
 strings replaced inline and the result capped at 500 characters; stack frame
-paths lose the account name (`/Users/[user]/...`).
+paths lose the account name (`/Users/[user]/...`). A quoted span holding a `/`
+or `\` is replaced whole (`open '[redacted:path]'`), so a file name with spaces
+cannot leave its middle words behind; an unquoted path may run across spaces
+when its segments end in a separator or a document extension. If the hook
+itself fails, it strips every element property and every exception message
+(`[redacted:unscrubbed]`) and still sends the event.
 
 What this costs: labels that are themselves content-shaped are redacted too
-("Node.js", a provider shown as `together.ai`). A funnel that needs one should
-use a named product event above, not a looser rule. Events ingested before this
-change are not rewritten; deleting them is a separate decision.
+("Node.js", a provider shown as `together.ai`, a "Data:"/"File:" prefix read as
+a URL scheme, a `/command` or a `11/21/2026` date read as a path). A funnel that
+needs one should use a named product event above, not a looser rule. Events
+ingested before this change are not rewritten; deleting them is a separate
+decision.
 
 ## Events
 

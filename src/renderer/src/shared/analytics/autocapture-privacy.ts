@@ -45,15 +45,20 @@
  * to mark still loses every path, file name, email, URL and long text here.
  *
  * KNOWN, ACCEPTED LOSSES. A label that is itself shaped like content is
- * redacted too: "Node.js" looks like a file name, a docs link loses its path.
- * Prefer that to a leak; if a funnel needs such a label, give the control a
- * stable `data-ph-capture-attribute-*` or a named product event
- * (`product-events.ts`) rather than loosening a shape here.
+ * redacted too: "Node.js" looks like a file name, a docs link loses its path,
+ * a "Data:"/"File:" prefix reads as a URL scheme, a `/command` or a date like
+ * `11/21/2026` reads as a path. Prefer that to a leak; if a funnel needs such a
+ * label, give the control a stable `data-ph-capture-attribute-*` holding a
+ * STATIC, app-defined value only (those are sent as top-level properties this
+ * hook never scrubs, so never interpolate a name or title into one), or a
+ * named product event (`product-events.ts`), rather than loosening a shape here.
  *
  * FAIL CLOSED. `$elements_chain` is a string posthog-js builds WITHOUT escaping
  * quotes in values, so it is parsed with a strict grammar and rebuilt from
  * scrubbed parts; a chain that does not parse is dropped (sent empty), never
- * passed through. Anything that throws drops the property, never the event.
+ * passed through. Anything that throws drops the property, never the event;
+ * a failure outside any one property's step strips every content-carrying
+ * property (`failClosed`) and still returns the event.
  *
  * HOW TO EXTEND. A new user-content surface: add `USER_CONTENT_CLASS` to its
  * root (a container, NOT a control whose label the funnel counts: the class
@@ -70,6 +75,12 @@ import type { CaptureResult, Properties } from "posthog-js";
  * omits the text and `href` of the region and everything in it, but still
  * reports the click. `ph-mask`: session replay masks its text. NOT
  * `ph-no-capture`, which would drop the click event entirely.
+ *
+ * LIMIT: replay masks TEXT only. rrweb still records every attribute inside a
+ * marked region (`href`, `title`, `alt`, `src`, `aria-label`), so a region is
+ * fully protected in autocapture (the hook drops those attributes) but not in
+ * replay. Blocking them there (`blockSelector`/`maskTextFn`) is an open product
+ * decision, see `docs/analytics-events.md`.
  */
 export const USER_CONTENT_CLASS = "ph-sensitive ph-mask";
 
@@ -265,6 +276,14 @@ const REGION_KEPT_KEYS = new Set([
 	"attr__data-state",
 	"attr__data-slot",
 	"attr__data-testid",
+	/*
+	 * Row identity without row content: `data-chat-row` is a bare marker and
+	 * `data-tour-tag` a static app-defined name (`chat-session-row`), so a click
+	 * on a sidebar row stays countable as a row click once the row box is a
+	 * region. Their values still pass `scrubElementValue`.
+	 */
+	"attr__data-chat-row",
+	"attr__data-tour-tag",
 	"attr__aria-expanded",
 	"attr__aria-selected",
 	"attr__aria-pressed",
@@ -378,6 +397,37 @@ export function scrubElementsArray(elements: unknown[]): unknown[] {
  * is redacted only for document/media extensions here, since `t.map is not a
  * function` is also "name.ext" shaped.
  */
+const DOC_EXT =
+	"(?:pdf|docx?|xlsx?|pptx?|csv|tsv|txt|md|rtf|odt|pages|numbers|key|json|ya?ml|xml|html?|png|jpe?g|gif|webp|heic|svg|mp3|mp4|m4a|wav|mov|zip|tar|gz|eml|msg)";
+/*
+ * UNQUOTED PATHS MAY CONTAIN SPACES (`/Users/jane/Client Notes/Acme Corp
+ * Contract.pdf`), and stopping at the first space left the middle words of a
+ * customer-named file in the message (review round 1, M2/Q1). So after a path
+ * root, a directory segment may run to six space-separated words as long as it
+ * ends in a separator, and the last segment may too when it ends in a document
+ * extension. Otherwise the last segment stops at whitespace: an extensionless
+ * unquoted name with spaces is indistinguishable from the sentence after it
+ * (`/tmp/x failed to open`), and eating the sentence is the diagnostic loss the
+ * inline approach exists to avoid. The quoted rule below covers that case.
+ * Bounded quantifiers keep the backtracking linear in practice.
+ */
+const PATH_SEG = String.raw`[^\s'"\x60/\\:;,()<>|]+`;
+const PATH_WORDS = String.raw`${PATH_SEG}(?: ${PATH_SEG}){0,5}`;
+const PATH_TAIL = String.raw`(?:${PATH_WORDS}[\\/])*(?:${PATH_WORDS}\.${DOC_EXT}\b|[^\s'"\x60]*)`;
+/*
+ * A QUOTED SPAN WITH A SEPARATOR IS A PATH, whole: Node's fs errors quote the
+ * path (`open '/Users/jane/Q3 plan'`), and the quotes are the only reliable
+ * boundary a spaced, extensionless name has. The quote must not touch a word
+ * character on its outer side, so an apostrophe (`can't`, `it's`) never opens
+ * or closes a span. An http(s) URL in quotes is left to the URL rule, which
+ * keeps its origin.
+ */
+const QUOTED_PATH =
+	/(?<!\w)(['"`])(?!https?:\/\/)((?:(?!\1)[^\n])*?[\\/](?:(?!\1)[^\n])*?)\1(?!\w)/g;
+const QUOTED_FILENAME = new RegExp(
+	String.raw`(?<!\w)(['"\x60])(?:(?!\1)[^\n])*?\.${DOC_EXT}\1(?!\w)`,
+	"gi",
+);
 const INLINE_RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [
 	[new RegExp(EMAIL.source, "g"), redacted("email")],
 	[/\bfile:\/\/\S+/gi, redacted("path")],
@@ -386,16 +436,32 @@ const INLINE_RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [
 		(_m, origin: string, rest: string) =>
 			rest === "" || rest === "/" ? origin : `${origin}/${redacted("url")}`,
 	],
-	[/\b[A-Za-z]:[\\/][^\s'"`]*/g, redacted("path")],
-	[/\\\\[^\s\\'"`]+\\[^\s'"`]*/g, redacted("path")],
+	// After the URL rule, so a quoted URL keeps its origin (its kept `//host`
+	// carries a `/`, hence the lookahead in `QUOTED_PATH`).
+	[QUOTED_PATH, (_m, quote: string) => `${quote}${redacted("path")}${quote}`],
+	[
+		QUOTED_FILENAME,
+		(_m, quote: string) => `${quote}${redacted("filename")}${quote}`,
+	],
+	[
+		new RegExp(String.raw`\b[A-Za-z]:[\\/]${PATH_TAIL}`, "gi"),
+		redacted("path"),
+	],
+	[
+		new RegExp(String.raw`\\\\[^\s\\'"\x60]+\\${PATH_TAIL}`, "gi"),
+		redacted("path"),
+	],
 	[
 		// No ":" lead here, unlike the label rule: it would eat the `//host` of an
 		// origin the rule above kept.
-		/(^|[\s(\[{"'`=,])((?:~|\.{1,2})?\/[^\s'"`]+)/g,
+		new RegExp(
+			String.raw`(^|[\s(\[{"'\x60=,])((?:~|\.{1,2})?\/(?=[^\s'"\x60])${PATH_TAIL})`,
+			"gi",
+		),
 		(_m, lead: string) => `${lead}${redacted("path")}`,
 	],
 	[
-		/[^\s'"`/\\]+\.(?:pdf|docx?|xlsx?|pptx?|csv|tsv|txt|md|rtf|odt|pages|numbers|key|json|ya?ml|xml|html?|png|jpe?g|gif|webp|heic|svg|mp3|mp4|m4a|wav|mov|zip|tar|gz|eml|msg)\b/gi,
+		new RegExp(String.raw`[^\s'"\x60/\\]+\.${DOC_EXT}\b`, "gi"),
 		redacted("filename"),
 	],
 	[/"[^"]{25,}"/g, `"${redacted("long-text")}"`],
@@ -455,14 +521,75 @@ function guarded(properties: Properties, key: string, step: () => void): void {
  * someone builds from them) and the message and frames of `$exception`. Every
  * other property is untouched, so named product events and replay snapshots
  * pass through unchanged. Never drops an event.
+ *
+ * FAIL CLOSED, WHOLE. posthog-js's `_runBeforeSend` has no catch, so a throw
+ * here would lose the event, and a throw between the per-property guards (a
+ * throwing getter on `properties` itself, review round 1, m3) would otherwise
+ * escape them. Any such failure strips every content-carrying property and
+ * still returns the event: a click counted without its text beats both a
+ * lost event and a leaked one.
  */
 export function scrubCaptureResult(
 	result: CaptureResult | null,
 ): CaptureResult | null {
 	if (result === null) return result;
-	const properties = result.properties;
+	let properties: Properties;
+	try {
+		properties = result.properties;
+	} catch {
+		return result;
+	}
 	if (properties === null || typeof properties !== "object") return result;
+	try {
+		scrubProperties(result, properties);
+	} catch {
+		failClosed(properties);
+	}
+	return result;
+}
 
+/** The element and exception keys whose values can carry user content. */
+const CONTENT_KEYS = [
+	"$el_text",
+	"$elements_chain",
+	"$elements",
+	"$external_click_url",
+	"$selected_content",
+] as const;
+
+/**
+ * The hook's last resort: every content key goes, and each exception keeps
+ * only its type (what failed, not what it said or where). Each step is guarded
+ * on its own, because the thing that just threw may throw again.
+ */
+function failClosed(properties: Properties): void {
+	for (const key of CONTENT_KEYS) {
+		try {
+			delete properties[key];
+		} catch {
+			// A non-deletable property: blank it instead, and move on if even that fails.
+			try {
+				properties[key] = null;
+			} catch {}
+		}
+	}
+	try {
+		const list = properties.$exception_list;
+		if (Array.isArray(list))
+			properties.$exception_list = list.map((exception) => ({
+				type: typeof exception?.type === "string" ? exception.type : "Error",
+				value: UNSCRUBBED,
+			}));
+	} catch {
+		try {
+			properties.$exception_list = undefined;
+		} catch {}
+	}
+}
+
+const UNSCRUBBED = "[redacted:unscrubbed]";
+
+function scrubProperties(result: CaptureResult, properties: Properties): void {
 	if (typeof properties.$el_text === "string")
 		guarded(properties, "$el_text", () => {
 			properties.$el_text = scrubLabel(properties.$el_text);
@@ -487,5 +614,4 @@ export function scrubCaptureResult(
 		});
 	if (result.event === "$exception")
 		guarded(properties, "$exception_list", () => scrubException(properties));
-	return result;
 }

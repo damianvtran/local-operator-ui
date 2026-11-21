@@ -16,7 +16,7 @@
  *    returns null, so nothing is sent anywhere.
  */
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -229,6 +229,154 @@ test("exceptions keep their sentence, lose paths, emails, URLs and the account n
 	);
 });
 
+/*
+ * Review round 1, M2/Q1: the path rule stopped at the first space, so a
+ * customer-named file kept its middle words (`'[redacted:path] Corp
+ * [redacted:filename]'`). These are the measured shapes: Node's quoted fs
+ * error on POSIX and Windows, an extensionless name, a quoted bare file name,
+ * and the unquoted spaced forms.
+ */
+test("exception paths with spaces are redacted whole, quoted or not", () => {
+	const cases = [
+		[
+			"ENOENT: no such file or directory, open '/Users/qa-alice/Documents/Acme Corp Contract.pdf'",
+			"ENOENT: no such file or directory, open '[redacted:path]'",
+		],
+		[
+			"EBUSY: resource busy or locked, open 'C:\\Users\\Jane Doe\\Documents\\Acme Board Minutes.docx'",
+			"EBUSY: resource busy or locked, open '[redacted:path]'",
+		],
+		[
+			"ENOENT: no such file or directory, open '/Users/jane/Client Notes/Q3 plan'",
+			"ENOENT: no such file or directory, open '[redacted:path]'",
+		],
+		[
+			'could not attach "Jane Smith Divorce Petition.pdf"',
+			'could not attach "[redacted:filename]"',
+		],
+		["open `~/Client Notes/Q3 plan` failed", "open `[redacted:path]` failed"],
+		[
+			"failed to read /Users/jane/Client Notes/Acme Corp Contract.pdf: permission denied",
+			"failed to read [redacted:path]: permission denied",
+		],
+		[
+			"C:\\Users\\Jane Doe\\Documents\\Board Minutes.docx is locked",
+			"[redacted:path] is locked",
+		],
+	];
+	for (const [message, expected] of cases) {
+		assert.equal(mod.scrubExceptionMessage(message), expected, message);
+		for (const word of ["Acme", "Corp", "Jane", "Client", "Q3", "Minutes"]) {
+			assert.ok(
+				!mod.scrubExceptionMessage(message).includes(word),
+				`${word} leaked from ${message}`,
+			);
+		}
+	}
+	// Ordinary sentences, apostrophes and a quoted URL's origin survive.
+	for (const sentence of [
+		"t.map is not a function",
+		"can't read properties of undefined (reading 'length')",
+		"Request failed with status code 503",
+	])
+		assert.equal(mod.scrubExceptionMessage(sentence), sentence);
+	assert.equal(
+		mod.scrubExceptionMessage("fetch 'https://api.example.com/v1/x' failed"),
+		"fetch 'https://api.example.com/[redacted:url]' failed",
+	);
+	assert.equal(
+		mod.scrubExceptionMessage("stack at /Users/jane/app.js:10:5 then retry"),
+		"stack at [redacted:path] then retry",
+	);
+});
+
+/*
+ * Review round 1, m3: posthog-js runs `before_send` with no catch, so a throw
+ * the per-property guards do not enclose would lose the event. The hook must
+ * strip every content key and still return the event.
+ */
+test("a throwing property fails closed and still returns the event", () => {
+	const properties = {
+		$elements_chain: 'span:text="Acme Corp"nth-child="1"nth-of-type="1"',
+		$elements: [{ $el_text: "Acme Corp" }],
+		$external_click_url: "https://acme.example.com/private",
+		$selected_content: "Acme Corp",
+		$exception_list: [
+			{
+				type: "TypeError",
+				value: "open '/Users/jane/Acme Corp.pdf'",
+				stacktrace: { frames: [{ filename: "/Users/jane/x.js" }] },
+			},
+		],
+		$current_url: "app://index.html#/chat",
+	};
+	Object.defineProperty(properties, "$el_text", {
+		configurable: true,
+		enumerable: true,
+		get() {
+			throw new Error("boom");
+		},
+	});
+	const event = { event: "$exception", properties };
+	const out = mod.scrubCaptureResult(event);
+	assert.equal(out, event, "the event is returned, not dropped");
+	const wire = JSON.stringify(out.properties);
+	assert.ok(!wire.includes("Acme"), wire);
+	assert.ok(!wire.includes("jane"), wire);
+	for (const key of [
+		"$el_text",
+		"$elements_chain",
+		"$elements",
+		"$external_click_url",
+		"$selected_content",
+	])
+		assert.ok(!(key in out.properties), `${key} kept: ${wire}`);
+	assert.deepEqual(out.properties.$exception_list, [
+		{ type: "TypeError", value: "[redacted:unscrubbed]" },
+	]);
+	assert.equal(out.properties.$current_url, "app://index.html#/chat");
+});
+
+/*
+ * The DOM half of the rule, guarded where it lives. The real-click test above
+ * proves a marked region keeps its content out; this pins WHICH surfaces are
+ * marked, so dropping the class from one (a refactor that rebuilds the row box)
+ * fails here instead of leaking quietly. Counts are uses past the import.
+ * Review round 1: M1 (sidebar rows), Q2 (tool, file and bridge bodies), Q3
+ * (attachment chips).
+ */
+test("user-content surfaces carry USER_CONTENT_CLASS", () => {
+	const surfaces = {
+		// Withdrawn and menu row boxes, both boundary Move items, draft row box,
+		// pin failure line.
+		"features/chat/components/chat-sidebar.tsx": 6,
+		"features/chat/components/sidebar-temporary-group.tsx": 1,
+		// Argument rows, output body, bridge raw block.
+		"features/chat/components/trace/tool-detail.tsx": 3,
+		"features/team-bridge/team-bridge-markdown.tsx": 1,
+		"features/team-bridge/inline-data-receipt.tsx": 1,
+		"features/chat/components/attachments-preview.tsx": 1,
+		"features/chat/components/message-item/output-block.tsx": 1,
+		"features/chat/components/message-item/log-block.tsx": 1,
+		"features/chat/components/message-item/error-block.tsx": 1,
+		"features/chat/components/raw-info-view.tsx": 1,
+		"features/chat/components/run-details/run-child-reader.tsx": 2,
+		"features/chat/canonical/canonical-transcript.tsx": 1,
+		"features/library/components/library-viewers.tsx": 1,
+		"features/projects/components/project-file-preview-dialog.tsx": 1,
+	};
+	for (const [file, expected] of Object.entries(surfaces)) {
+		const source = readFileSync(join(repo, "src/renderer/src", file), "utf8");
+		const uses = source
+			.split("\n")
+			.filter(
+				(line) =>
+					line.includes("USER_CONTENT_CLASS") && !line.startsWith("import "),
+			).length;
+		assert.ok(uses >= expected, `${file}: ${uses} uses, expected ${expected}`);
+	}
+});
+
 test("named product events and other properties pass through untouched", () => {
 	const event = {
 		event: "provider_connected",
@@ -325,7 +473,27 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			<div class="${mod.USER_CONTENT_CLASS}" title="Q3 board prep with Acme">
 				<button id="row" aria-label="Open Q3 board prep"><span>Q3 board prep</span></button>
 			</div>
-			<a id="link" href="https://acme.sharepoint.com/sites/legal/contract">Docs</a>`;
+			<a id="link" href="https://acme.sharepoint.com/sites/legal/contract">Docs</a>
+			<!-- Review round 1, M1: the sidebar's shapes. A temporary row (whole
+			     button, nested title, title attribute) and a session row box whose
+			     sibling pin act names the chat; both boxes are regions. -->
+			<ul><li data-temporary-row="tmp-1" class="${mod.USER_CONTENT_CLASS}">
+				<button id="temp" type="button" data-chat-row title="My Taxes 2025\nDeletes in 5 min"><span><span class="truncate">My Taxes 2025</span><span>Deletes in 5 min</span></span></button>
+			</li></ul>
+			<div data-session-row="s-1" class="group ${mod.USER_CONTENT_CLASS}">
+				<button id="sessionrow" type="button" data-chat-row data-tour-tag="chat-session-row"><span>My Taxes 2025</span></button>
+				<button id="pin" type="button" aria-pressed="false" aria-label="Pin “My Taxes 2025”" title="Pin “My Taxes 2025”"><svg></svg></button>
+			</div>
+			<!-- Review round 1, Q2/Q3: a tool's output body and an attachment chip,
+			     inside a clickable host (posthog-js only reports a click on a
+			     non-interactive element under an interactive or cursor:pointer
+			     ancestor), as the QA rig reproduced the leak. -->
+			<div role="button" tabindex="0" style="cursor: pointer"><div data-detail-section="output"><span>Output</span>
+				<div class="${mod.USER_CONTENT_CLASS}"><pre id="toolout" class="whitespace-pre font-mono">read 3 pages</pre></div>
+			</div></div>
+			<div role="button" tabindex="0" style="cursor: pointer"><div class="flex flex-wrap gap-3 ${mod.USER_CONTENT_CLASS}">
+				<div data-attachment-id="a-1"><span id="attach" title="Jane Smith Divorce Petition.pdf">Jane Smith Divorce Petition.pdf</span></div>
+			</div></div>`;
 		const click = (id) =>
 			body.querySelector(`#${id}`).dispatchEvent(
 				new dom.window.MouseEvent("click", {
@@ -334,16 +502,74 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 					clientY: 1,
 				}),
 			);
-		for (const id of ["check", "cjk", "chip", "long", "row", "link"]) click(id);
+		const ids = [
+			"check",
+			"cjk",
+			"chip",
+			"long",
+			"row",
+			"link",
+			"temp",
+			"sessionrow",
+			"pin",
+			"toolout",
+			"attach",
+		];
+		for (const id of ids) click(id);
 
 		const autocaptured = queued.filter((e) => e.event === "$autocapture");
 		assert.equal(
 			autocaptured.length,
-			6,
+			ids.length,
 			JSON.stringify(queued.map((e) => e.event)),
 		);
-		const [check, cjk, chip, long, row, link] = autocaptured.map(
-			(e) => e.properties,
+		const [
+			check,
+			cjk,
+			chip,
+			long,
+			row,
+			link,
+			temp,
+			sessionRow,
+			pin,
+			toolOut,
+			attach,
+		] = autocaptured.map((e) => e.properties);
+
+		for (const props of [temp, sessionRow, pin, toolOut, attach]) {
+			const wire = JSON.stringify(props);
+			for (const needle of [
+				"My Taxes",
+				"Deletes in",
+				"read 3 pages",
+				"Jane Smith",
+				"Divorce",
+				"tmp-1",
+				"s-1",
+			])
+				assert.ok(!wire.includes(needle), `${needle} leaked: ${wire}`);
+			assert.equal(props.$el_text, undefined, wire);
+		}
+		// Row clicks stay countable as row clicks through structural attributes.
+		assert.ok(
+			temp.$elements_chain.includes("attr__data-chat-row="),
+			temp.$elements_chain,
+		);
+		assert.ok(
+			sessionRow.$elements_chain.includes(
+				'attr__data-tour-tag="chat-session-row"',
+			),
+			sessionRow.$elements_chain,
+		);
+		assert.ok(
+			pin.$elements_chain.includes('attr__aria-pressed="false"'),
+			pin.$elements_chain,
+		);
+		// The section label outside the region is still reported.
+		assert.ok(
+			toolOut.$elements_chain.includes('attr__data-detail-section="output"'),
+			toolOut.$elements_chain,
 		);
 
 		// The labels the funnel counts, byte for byte.

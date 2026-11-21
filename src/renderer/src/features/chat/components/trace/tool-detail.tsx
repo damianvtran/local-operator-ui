@@ -438,7 +438,12 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 								? t("ui.chat.canonical.tool_row.detail_section.error")
 								: t("ui.chat.canonical.tool_row.detail_section.output")}
 					</span>
-					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
+					{/* The result body is user content: shell output, file text
+					    (review round 1, Q2). The section label above stays countable. */}
+					<div
+						ref={outputRef}
+						className={cn(SECTION_MAX, "overflow-auto", USER_CONTENT_CLASS)}
+					>
 						{structured ? (
 							<DetailLines lines={structured} section="result-json" />
 						) : (
@@ -571,6 +576,7 @@ export const BridgeDetail: FC<{
 							<pre
 								className={cn(
 									"mt-2 whitespace-pre-wrap break-words font-mono text-ink-dim",
+									USER_CONTENT_CLASS,
 								)}
 							>
 								{view.raw}

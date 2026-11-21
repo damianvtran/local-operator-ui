@@ -6,6 +6,8 @@
  * through the same react-router Link the rest of the app uses; MuiLink was
  * the only reason this file knew about MUI.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
+import { cn } from "@shared/lib/utils";
 
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -169,7 +171,13 @@ export const ErrorBlock: FC<ErrorBlockProps> = ({ error }) => {
 			<span className="mb-1 block text-danger text-meta">
 				{t("ui.chat.error_block.heading")}
 			</span>
-			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-danger-border bg-danger-wash p-3 font-mono text-danger text-mono-sm">
+			<pre
+				// Execution errors quote the code and data they ran on (review round 1, Q2).
+				className={cn(
+					"flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-danger-border bg-danger-wash p-3 font-mono text-danger text-mono-sm",
+					USER_CONTENT_CLASS,
+				)}
+			>
 				{error}
 			</pre>
 			{suggestion && (
