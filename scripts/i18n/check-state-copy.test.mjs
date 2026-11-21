@@ -1,17 +1,20 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
 import { after, test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
 	findAddedCopyViolations,
 	findStateCopyCandidates,
 } from "./check-added-strings.mjs";
 import { openSnapshot } from "./check-strings.mjs";
 
-// One tiny inferred project, no repo-wide diagnostics or second compiler. Keep
-// artifacts under the harness scratch so failures never leave renderer probes.
+// One tiny inferred project, no repo-wide diagnostics or second compiler. Prefer
+// harness-owned scratch, but ordinary CI/developer runs have only the OS temp root.
 const root = mkdtempSync(
-	join(process.env.LOCAL_OPERATOR_SCRATCHPAD, "state-copy-"),
+	join(process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(), "state-copy-"),
 );
 mkdirSync(join(root, "src/renderer"), { recursive: true });
 for (const name of ["tsconfig.app.json", "tsconfig.node.json"])
@@ -205,6 +208,46 @@ const parsed = (index) => {
 	assert.ok(file);
 	return { project, file };
 };
+// Run this same module in fresh processes: mutating the parent's environment
+// cannot catch a module-load crash, and selecting only the probe avoids recursion.
+const rootProbe = "fixture root uses configured temporary directory";
+const ONE_PASS_RE = /# pass 1\b/;
+test(rootProbe, () => {
+	assert.equal(
+		dirname(root),
+		process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+	);
+});
+for (const configured of [false, true])
+	test(`fixture initialization with scratch variable ${configured ? "present" : "absent"}`, () => {
+		const fallback = join(root, "portable-root");
+		const harness = join(root, "harness-root");
+		mkdirSync(fallback, { recursive: true });
+		mkdirSync(harness, { recursive: true });
+		const env = {
+			...process.env,
+			TMPDIR: fallback,
+			TMP: fallback,
+			TEMP: fallback,
+		};
+		// A nested runner must not inherit the parent's test-worker transport.
+		env.NODE_TEST_CONTEXT = undefined;
+		env.LOCAL_OPERATOR_SCRATCHPAD = undefined;
+		if (configured) env.LOCAL_OPERATOR_SCRATCHPAD = harness;
+		const result = spawnSync(
+			process.execPath,
+			[
+				"--test",
+				"--test-reporter=tap",
+				`--test-name-pattern=^${rootProbe}$`,
+				fileURLToPath(import.meta.url),
+			],
+			{ env, encoding: "utf8" },
+		);
+		assert.ifError(result.error);
+		assert.equal(result.status, 0, result.stdout + result.stderr);
+		assert.match(result.stdout, ONE_PASS_RE);
+	});
 let queryMs = 0;
 for (const [index, [name, , count]] of cases.entries())
 	test(name, () => {
