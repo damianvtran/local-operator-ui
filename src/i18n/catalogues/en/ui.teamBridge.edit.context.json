@@ -1,0 +1,68 @@
+{
+	"ui.teamBridge.edit.menu": {
+		"role": "menu item",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ICU kind is group or channel.",
+		"placeholders": {
+			"kind": "Conversation kind: group or channel."
+		}
+	},
+	"ui.teamBridge.edit.title": {
+		"role": "dialog title",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ICU kind is group or channel.",
+		"placeholders": {
+			"kind": "Conversation kind: group or channel."
+		}
+	},
+	"ui.teamBridge.edit.description": {
+		"role": "dialog description",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.topic": {
+		"role": "form label",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.error.topic_too_long": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {
+			"max": "Maximum Unicode code-point count, 512."
+		}
+	},
+	"ui.teamBridge.edit.error.topic_characters": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.error.invalid": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.error.forbidden": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.error.archived": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	},
+	"ui.teamBridge.edit.error.failed": {
+		"role": "validation message",
+		"tone": "Plain, concise, helpful.",
+		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"placeholders": {}
+	}
+}
