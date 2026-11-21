@@ -123854,6 +123854,216 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "5b015993f91fe2e5fb2a8fe254e44c57f141c14db30e6ebcb4e4569e9249c2d9",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-fr.json",
+					"receipt_sha256": "5a7b2bef7cf7bb7b4ade802e5a4eab496727f56fdb94716ced79f13b11524cd9",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "12660ec6b2da81307c1dd3e275d66480645a7fbf4af815ab7b059f32ae79d9f4",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-es.json",
+					"receipt_sha256": "0f8c9934fa6cdc296902a6d5d780677fdac6d6b0a5042c695e154a009e1a31ef",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "1427978b7d382e82f54c0913db4b6815759b6e5753d36a9325428563cc350290",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "d76a8497b66e-tb-edit-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-zh-CN.json",
+					"receipt_sha256": "9d14385cb7d0487509952b8453257292024dd40d905a1ab275754bccc83ae5fa",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "3334bd73bde9e710488e1771812015ce857d57092c7dbc68edeb24577a7380ad",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-ru.json",
+					"receipt_sha256": "62e1ca2cbe1b64336e083d9560b55efddddb7649f7031b90a0d4f0d7dc937cb6",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "626798d809955c5338d92f83f1a6f10e074bd0c5f5137139fb92837ba0ec4f8c",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-vi.json",
+					"receipt_sha256": "3d6502e9254a77c6d4343265a356ce1ca9da79189a3e6c9d8fd3837b9dd90be1",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "ea1878d763d6e2a7c9b8707c6f040f7e6b9181dfc9ec83fd0dbb9d1928b23f65",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-ur.json",
+					"receipt_sha256": "cd9cbc9dae61aa28bdfd53b5ba1bd35f965c8c22ce5d7ff5147a90c68b5ab028",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+			"target_sha256": "b2eb927ee8d9f7e083ddbb25fb5c5c19299f0860a83ae9938375eaee9b855122",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-hi.json",
+					"receipt_sha256": "012f10e1448462446f1d247764e7222658322a282df3116c3b189d27dbfea0fa",
+					"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
