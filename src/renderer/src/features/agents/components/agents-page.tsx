@@ -921,6 +921,8 @@ export function AgentsPage() {
 		skillMode ? selected : null,
 		skills.library.data ? skills.cards.map((card) => card.name) : undefined,
 		proposalsEnabled,
+		skillMode ? params.get("proposal") : null,
+		Boolean(skillDetail.data?.skill_detail),
 	);
 
 	if (agentId)
@@ -1412,9 +1414,7 @@ export function AgentsPage() {
 												retryingLabel={t("ui.agents.skills.retrying")}
 											/>
 										</div>
-									) : selected &&
-										!openSkillCard &&
-										selectedIsProposedNewSkill ? (
+									) : selected && selectedIsProposedNewSkill ? (
 										<ProposedNewPane
 											kind="skill"
 											name={selected}

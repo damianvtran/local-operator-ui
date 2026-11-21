@@ -37,7 +37,7 @@ const { MemoryRouter } = require("react-router-dom");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals"; export {ProposedNewPane} from "./src/renderer/src/features/agents/components/proposed-new-profiles";',
+			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals"; export {ProposedNewPane, useIsProposedNew} from "./src/renderer/src/features/agents/components/proposed-new-profiles"; export {useSkillsLibrary, useSkillDetail} from "./src/renderer/src/features/agents/hooks/use-skills-library";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -67,6 +67,9 @@ const {
 	PendingApprovalsSummary,
 	PendingProposalMark,
 	ProposedNewPane,
+	useIsProposedNew,
+	useSkillsLibrary,
+	useSkillDetail,
 } = module.exports;
 const h = React.createElement;
 const { act } = React;
@@ -735,6 +738,181 @@ test("panel reveal: a row click scrolls without stealing focus; Review focuses, 
 		proto.scrollIntoView = original;
 	}
 });
+// Mirror the page's root transition with the real hooks and panel, not a
+// pre-seeded success cache: detail starts refused, mutation changes the store,
+// and only invalidation/refetch can make the created skill visible.
+function SkillCreateLanding({ observed }) {
+	const name = "research-brief";
+	const library = useSkillsLibrary(true);
+	const detail = useSkillDetail(name, true);
+	const names = library.data?.skills.map((row) => row.name);
+	const proposed = useIsProposedNew(
+		"skill",
+		name,
+		names,
+		true,
+		id,
+		Boolean(detail.data?.skill_detail),
+	);
+	const exists = names?.includes(name);
+	const state = proposed
+		? "proposal"
+		: exists && detail.data?.skill_detail
+			? "created"
+			: detail.isError
+				? "missing"
+				: "loading";
+	observed.push(state);
+	return h(
+		"div",
+		{},
+		h("nav", { "data-testid": "skill-roster" }, names?.join(",")),
+		proposed
+			? h(ProposedNewPane, { kind: "skill", name, proposalId: id })
+			: state === "created"
+				? h(
+						"article",
+						{ "data-testid": "created-skill" },
+						detail.data.detail,
+						h(ProfileProposalPanel, {
+							kind: "skill",
+							name,
+							enabled: true,
+							proposalId: id,
+						}),
+					)
+				: h("output", {}, state),
+	);
+}
+
+for (const action of ["Accept", "Reject"]) {
+	test(`skill create: ${action} settles through mutation and refetch without a missing-skill landing (R7)`, async () => {
+		const calls = bridge({
+			kind: "skill",
+			name: "research-brief",
+			operation: "create",
+		});
+		const request = window.api.desktop.request;
+		let created = false;
+		let releaseDetail;
+		const detailReady = new Promise((resolve) => {
+			releaseDetail = resolve;
+		});
+		const skillReads = [];
+		window.api.desktop.request = async (ask) => {
+			if (ask.op !== "skills.list") {
+				const answer = await request(ask);
+				if (ask.op === "profileProposals.accept") created = true;
+				return answer;
+			}
+			skillReads.push({ name: ask.name, created });
+			if (created && ask.name) await detailReady;
+			if (ask.name && !created)
+				return {
+					status: 404,
+					body: {
+						detail: { code: "skill_not_found", message: "Missing skill" },
+					},
+				};
+			const row = { name: "research-brief", source: "local", installed: true };
+			return {
+				status: 200,
+				body: {
+					result: {
+						data: {
+							skills: created ? [row] : [],
+							...(ask.name
+								? { detail: "Created skill body", skill_detail: row }
+								: {}),
+						},
+					},
+				},
+			};
+		};
+		const observed = [];
+		await mount(SkillCreateLanding, { observed });
+		assert.ok(
+			client.getQueryState(["desktop", "skills", "library", "research-brief"])
+				.error,
+			"precondition: the active detail query cached a genuine missing-skill refusal",
+		);
+		assert.ok(document.querySelector('[data-testid="proposed-new-pane"]'));
+		observed.length = 0;
+		await click(button(action));
+		for (let i = 0; i < 6; i++) await act(flush);
+		if (action === "Accept") {
+			assert.match(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				/research-brief/,
+			);
+			assert.ok(
+				document.querySelector('[data-testid="proposed-new-pane"]'),
+				"fast roster/slow detail keeps the acknowledgement instead of the cached missing error",
+			);
+			assert.match(document.body.textContent, /Applied the proposed change/);
+		}
+		await act(async () => {
+			releaseDetail();
+			await flush();
+		});
+		for (let i = 0; i < 6; i++) await act(flush);
+		assert.equal(
+			calls.filter(
+				(ask) => ask.op === `profileProposals.${action.toLowerCase()}`,
+			).length,
+			1,
+		);
+		assert.deepEqual(
+			client.getQueryData(["desktop", "profile-proposals", "list"]).proposals,
+			[],
+		);
+		assert.ok(
+			!observed.includes("missing"),
+			`no missing-skill flash: ${observed}`,
+		);
+		if (action === "Accept") {
+			assert.match(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				/research-brief/,
+			);
+			assert.match(
+				document.querySelector('[data-testid="created-skill"]').textContent,
+				/Created skill body/,
+			);
+			assert.ok(
+				skillReads.some((read) => read.created && !read.name),
+				"roster refetched after creation",
+			);
+			assert.ok(
+				skillReads.some((read) => read.created && read.name),
+				"failed detail refetched after creation",
+			);
+			assert.match(document.body.textContent, /Applied the proposed change/);
+			assert.ok(
+				document
+					.querySelector('[data-testid="created-skill"]')
+					.contains(document.activeElement),
+				"focus lands in the created skill's routed decision panel",
+			);
+		} else {
+			assert.ok(
+				document.querySelector('[data-testid="proposed-new-pane"]'),
+				"rejection retains its acknowledgement root",
+			);
+			assert.match(document.body.textContent, /Rejected the proposed change/);
+			assert.equal(document.activeElement.tagName, "OUTPUT");
+			assert.match(
+				document.activeElement.textContent,
+				/Rejected the proposed change/,
+			);
+			assert.equal(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				"",
+			);
+		}
+	});
+}
+
 test("skill create: the proposed-new pane offers Accept/Reject for a skill (R2/U1)", async () => {
 	bridge({ kind: "skill", name: "research-brief", operation: "create" });
 	await mount(ProposedNewPane, {

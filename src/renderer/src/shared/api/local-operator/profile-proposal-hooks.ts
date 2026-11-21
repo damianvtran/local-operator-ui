@@ -98,7 +98,9 @@ export function useAcceptProposal() {
 		},
 		onSettled: () => {
 			void client.invalidateQueries({ queryKey: profileProposalKeys.all });
-			for (const key of ["profiles", "teams", "profile", "team"])
+			// Skill creates must refresh both the library roster and its failed detail
+			// read; both keys live under this existing shared skills prefix.
+			for (const key of ["profiles", "teams", "profile", "team", "skills"])
 				void client.invalidateQueries({ queryKey: ["desktop", key] });
 		},
 	});

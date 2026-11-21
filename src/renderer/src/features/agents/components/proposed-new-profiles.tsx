@@ -24,7 +24,10 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
  * - Capability-gated by the caller: without `profile_proposals` nothing renders
  *   and no proposal request is sent.
  */
-import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	useProfileProposal,
+	useProfileProposals,
+} from "@shared/api/local-operator/profile-proposal-hooks";
 import {
 	type ProfileProposalKind,
 	proposedNewProfiles,
@@ -99,15 +102,35 @@ export function ProposedNewGroup({
 	);
 }
 
-/** True when `name` is a pending create proposal the roster does not list. */
+/**
+ * Pending creates absent from the roster, plus a routed skill-create decision
+ * until its real detail is ready. Other callers keep their existing predicate.
+ */
 export function useIsProposedNew(
 	kind: ProfileProposalKind,
 	name: string | null,
 	existing: readonly string[] | undefined,
 	enabled: boolean,
+	proposalId: string | null = null,
+	detailReady = true,
 ): boolean {
 	const list = useProfileProposals(enabled);
+	const detail = useProfileProposal(
+		proposalId ?? "",
+		enabled && Boolean(proposalId),
+	);
 	if (!enabled || !name || !existing) return false;
+	// A decision removes a create from the pending list before the library can
+	// refetch. Keep its routed acknowledgement until both roster and detail exist;
+	// rejection has no row to replace it and must not land on a missing error.
+	const routed = detail.data;
+	if (
+		(!existing.includes(name) || !detailReady) &&
+		routed?.kind === kind &&
+		routed.name === name &&
+		routed.operation === "create"
+	)
+		return true;
 	return proposedNewProfiles(list.data, kind, existing).some(
 		(proposal) => proposal.name === name,
 	);
