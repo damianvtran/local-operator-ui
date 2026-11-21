@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "स्पीच प्रोवाइडर",
+	"ui.settings.speech.provider.description": "कौन सुनता और बोलता है — हैंड्स-फ़्री आवाज़ और संदेशों पर बोलकर सुनाने वाले बटन के लिए। सिर्फ़ वही इस्तेमाल होता है जो आप चुनें; कोई भी दूसरे की जगह नहीं लेता।",
+	"ui.settings.speech.provider.radient.label": "Radient क्लाउड",
+	"ui.settings.speech.provider.radient.description": "आपके Radient क्रेडिट से बिल बनता है।",
+	"ui.settings.speech.provider.elevenlabs.label": "मेरी ElevenLabs कुंजी",
+	"ui.settings.speech.provider.elevenlabs.description": "आपका अपना ElevenLabs खाता इस्तेमाल होता है, जिसका बिल ElevenLabs बनाता है।",
+	"ui.settings.speech.provider.ready": "तैयार",
+	"ui.settings.speech.provider.not_ready": "अभी तैयार नहीं।",
+	"ui.settings.speech.provider.setup": "प्रोवाइडर में सेट अप करें",
+	"ui.settings.speech.provider.none_chosen": "अभी कोई प्रोवाइडर नहीं चुना गया। जब तक आप एक न चुनें, हैंड्स-फ़्री आवाज़ बंद रहती है।",
+	"ui.settings.speech.provider.none_ready": "दोनों प्रोवाइडर में से अभी कोई तैयार नहीं। प्रोवाइडर में एक सेट अप करें, फिर उसे यहाँ चुनें।",
+	"ui.settings.speech.provider.save_failed": "चुनाव सहेजा नहीं जा सका।"
+}

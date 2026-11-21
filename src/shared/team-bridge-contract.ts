@@ -725,6 +725,24 @@ export type TeamBridgeUnreadOrganization = z.infer<
  * make every account read fail to parse, which is the opposite of the additive
  * rule this contract follows. `total` stays required in both scopes and is the
  * badge's number; the UI never derives the account badge from the per-org rows.
+ *
+ * `latest_unread_seq` (tenant rows, additive; agent-server PR #455) is the
+ * newest seq among the messages that are actually unread FOR THIS READER and
+ * eligible to count as such - own sends and replies in threads the reader does
+ * not follow never move it, while they do move `latest_seq`. `0` means "no such
+ * message" (nothing unread, or the server could not name one). Three server
+ * facts the client must respect, all stated by that PR:
+ *   - it is read against the thread cursors too, so it can be LOWER than the
+ *     row's timeline `last_read_seq` and still be genuinely unread (a reply at
+ *     seq 7 in a followed thread after the timeline was read to 9);
+ *   - `unread_count` and this field come from separate queries, so one answer
+ *     can carry `unread_count > 0` with `latest_unread_seq: 0`;
+ *   - an older (or not yet deployed) server omits it entirely.
+ * Optional and caught for that last reason: a missing or malformed value parses
+ * as `undefined`, which the notification planner reads as "legacy server" and
+ * keeps its pre-#455 behaviour for, rather than failing the whole unread read.
+ * The field is the notification EVENT identity only; `latest_seq` stays the
+ * activity signal that drives list patching and cache refresh.
  */
 export const teamBridgeUnreadSchema = z
 	.object({
@@ -737,6 +755,12 @@ export const teamBridgeUnreadSchema = z
 						unread_count: z.number().int().nonnegative(),
 						last_read_seq: z.number().int().nonnegative(),
 						latest_seq: z.number().int().nonnegative(),
+						latest_unread_seq: z
+							.number()
+							.int()
+							.nonnegative()
+							.optional()
+							.catch(undefined),
 						muted: z.boolean(),
 					})
 					.passthrough(),

@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "Jump to your message in turn {turn, number} of {total, number}",
 	"ui.chat.checkpoint.turn": "Turn {turn, number} of {total, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "team {team} owns this session: {speaker} is the speaker, so {agentCommand} is closed. Run {detachCommand} to detach the team first.",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "team {team} owns this session: its manager is the speaker, so {agentCommand} is closed. Run {detachCommand} to detach the team first.",
 	"ui.chat.header_identity.agent_seat_closed_title": "Agent seat closed by {team}",
 	"ui.chat.header_identity.aria_agent_assign": "Agent: {label}. Assign an agent",
 	"ui.chat.header_identity.aria_agent_closed": "Agent: {label}. {reason}",

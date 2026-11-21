@@ -2097,30 +2097,29 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "09a7be6fe882c2271acd1f571960b4e5eaa4694ea181e6df1b86cd5da1eeee9e",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "d5daf80861b43092e7d8a0abfe261f800d629fc4cfcad28f9eccf333629f100e",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job b193a292f9e5 / anthropic/claude-opus-5-5; independent audit by i18n-auditor a9ee8572dff0 / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "570145c5ee24",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "a9ee8572dff0",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/570145c5ee24.json",
-					"receipt_sha256": "6155347eab62dc223429ed7c27dde2551242850f25e79ef9dd242ba4df576b8c",
-					"scope": "ui.chat es: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/a9ee8572dff0.json",
+					"receipt_sha256": "2bb531c815a70207eb7171ef5135dc5e18231ef4b1e3ccda11afc9d39fa93b55"
 				}
 			],
 			"status": "audited",
@@ -2485,6 +2484,29 @@
 							},
 							"receipt": "i18n/receipts/1d24610435d4.json",
 							"receipt_sha256": "86bfd3c1342d76ccf504bfd421f1cfde44bb369ca68efbcaa5ff15cde70e9e7a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "09a7be6fe882c2271acd1f571960b4e5eaa4694ea181e6df1b86cd5da1eeee9e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "570145c5ee24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/570145c5ee24.json",
+							"receipt_sha256": "6155347eab62dc223429ed7c27dde2551242850f25e79ef9dd242ba4df576b8c",
+							"scope": "ui.chat es: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -5834,30 +5856,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "95292da14bfc71517cb99a4165a77cfca6eac83c47c03ce86475091d590ebdb8",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "575fa631c97a897fe64f97ee756aa5f5340954b3d35e800a8a50edd88cf3f97e",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-es."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-es",
+					"instance": "bcdb056e3f77-sy-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
-					"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-es.json",
+					"receipt_sha256": "03f61afba594ec76ec3499dfa62ccdc1e36760c86d8b2c59384ae8a0a35bc45e",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -5953,6 +5975,29 @@
 							"receipt_sha256": "6ea0b6b034a1a7da21873de5480c6d49d9f4d5f585d8fac385eb0f70b7dc3607",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/000a2504613d.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "95292da14bfc71517cb99a4165a77cfca6eac83c47c03ce86475091d590ebdb8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-es.json",
+							"receipt_sha256": "1781b07cd820476afe396e405ca903fd3fd20fd6a7dbe5be548067605b42ffd6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -15555,30 +15600,29 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "66f39672bc79c805f583b6eb2cc4753aafb3d4d6dd755c5ed6873f74e66cd36b",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "6ca2e6697f10102c86afabb969823b7032d7ac76218caeb57c3dac6963c74b04",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job d470fdaf8bde + remediation 8568e64c560b / anthropic/claude-opus-5-5; independent audit by i18n-auditor 16655c1d1913 / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "a6452613c515",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "16655c1d1913",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a6452613c515.json",
-					"receipt_sha256": "382e6ad1f938ab5b19dac09f76960fbd0a5478bff6a6d59195641e8bb72417d2",
-					"scope": "ui.chat fr: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/16655c1d1913.json",
+					"receipt_sha256": "47b3c235b305f0bb0bf5b82d801f6b4cf307e156953204aca2566b9d3fbe8cec"
 				}
 			],
 			"status": "audited",
@@ -15943,6 +15987,29 @@
 							},
 							"receipt": "i18n/receipts/dbb5dc1b3c45.json",
 							"receipt_sha256": "4b0baf02929792370b066e948481231565ac9ff3f8ebf4835813904f5fef5b3c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "66f39672bc79c805f583b6eb2cc4753aafb3d4d6dd755c5ed6873f74e66cd36b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "a6452613c515",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a6452613c515.json",
+							"receipt_sha256": "382e6ad1f938ab5b19dac09f76960fbd0a5478bff6a6d59195641e8bb72417d2",
+							"scope": "ui.chat fr: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -19574,30 +19641,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "dd1e6a4a642e8e0d25158b1079b4e8bb5375dc892db4bb5cb757813244805bdf",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "8571ca429358e44a26febca87da9b10d0b9466e90e4499a67732f3e80f7da2de",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-fr."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "68a3f14dde44-tc-fr",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "bcdb056e3f77-sy-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
-					"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-fr.json",
+					"receipt_sha256": "591039028f7e9bfd783d92c7ad675ee60227a5257cff09e3d1141dda487b100a",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -19710,6 +19777,29 @@
 							"receipt_sha256": "d9402ac40be61ca48a0820b0e82ede56e4bce8eb1a620cea4b94093097e46df3",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/92b74137fc35.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "dd1e6a4a642e8e0d25158b1079b4e8bb5375dc892db4bb5cb757813244805bdf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "68a3f14dde44-tc-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-fr.json",
+							"receipt_sha256": "132923423789ef512326275391ecbe202ef89baa71e65f693553450450955442",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -29603,30 +29693,29 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "eaadb0c7742e61c0ec07dfbabadc7d7880b2743d41d07a5c77b1a20d742e8562",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "bed2f85948dfc41ead2003ada72e3f3ee624f407f18e21f531add93b5609a60a",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job 1b710d2567d8 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 6c6609d4af4d / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "f840fffbbc43",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "6c6609d4af4d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/f840fffbbc43.json",
-					"receipt_sha256": "4361661403e0ab41c4fa48fe9a9c7b90404e0386550ef2bbd1fedecf26b80f0f",
-					"scope": "ui.chat hi: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/6c6609d4af4d.json",
+					"receipt_sha256": "219f87187c5f8a52db31224576b6be75f1deabbf73a8c6fe74b50cfd943c5980"
 				}
 			],
 			"status": "audited",
@@ -29970,6 +30059,29 @@
 							},
 							"receipt": "i18n/receipts/1c86c986d440.json",
 							"receipt_sha256": "2261f3ac96352686a9314beae0c662278e4d400ad03a930bad4ad2b5796b7912"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "eaadb0c7742e61c0ec07dfbabadc7d7880b2743d41d07a5c77b1a20d742e8562",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "f840fffbbc43",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/f840fffbbc43.json",
+							"receipt_sha256": "4361661403e0ab41c4fa48fe9a9c7b90404e0386550ef2bbd1fedecf26b80f0f",
+							"scope": "ui.chat hi: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -33507,30 +33619,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "edb6855b84e4fd87b53cbd3530d5f87e1148af8e82c3916c5d113d13cfc97ed5",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "63247b0e72e3f250a6105b37649501926bd3cae04c2a0e2e40c7589a83ddabc8",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-hi."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-hi-r2",
+					"instance": "bcdb056e3f77-sy-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
-					"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-hi.json",
+					"receipt_sha256": "f1ce36758c523e2240fd24188a483b3cf7d92ff52135618285803ae8503d1725",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -33626,6 +33738,29 @@
 							"receipt_sha256": "2b024feb7b9e1cb7694b29519a347566c52c6b3dbe7f15eaee275d387e0b578c",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/7a687a799437.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "edb6855b84e4fd87b53cbd3530d5f87e1148af8e82c3916c5d113d13cfc97ed5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-hi-r2.json",
+							"receipt_sha256": "3b953123bdf4ca867bcd207e4705cfd4814ee593d4436928d409c3dc711b27bf",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -43259,30 +43394,29 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "4ea6f8eea1fcd3247470435ca956f725f849f99b7b99d338efa484bb58e3a06d",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "1e8e5cffdafbc6a459ccd12977e4cf5931369400f29ec5a082f0a400dfb6ecb9",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job b74c566beb3f / anthropic/claude-opus-5-5; independent audit by i18n-auditor 2c6807f03acd / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "c0ef4a1ae341",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "2c6807f03acd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0ef4a1ae341.json",
-					"receipt_sha256": "13253c9c29c1f980bf84df0ee613c7e993d156f70a6fb35da7a2f25d5cb2138e",
-					"scope": "ui.chat ru: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/2c6807f03acd.json",
+					"receipt_sha256": "b2a1899991742448c12c771284ecc8da983db23fc3f771758c65d35dcdcd3b4c"
 				}
 			],
 			"status": "audited",
@@ -43648,6 +43782,29 @@
 							},
 							"receipt": "i18n/receipts/a97e051676ee.json",
 							"receipt_sha256": "deaebd6d03add9d8b8f6bc5656fe116a01abd53e344a84a895f8e6c887aacebc"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "4ea6f8eea1fcd3247470435ca956f725f849f99b7b99d338efa484bb58e3a06d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "c0ef4a1ae341",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c0ef4a1ae341.json",
+							"receipt_sha256": "13253c9c29c1f980bf84df0ee613c7e993d156f70a6fb35da7a2f25d5cb2138e",
+							"scope": "ui.chat ru: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -47077,30 +47234,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "773a6339e723ddbf05fbe1ad252871f3cc946170fce702cc04d1dfcfd30dbe77",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "32ff6908d6a43e84a2d147b42603eb684725bb6700beba54f015f208bc13dd58",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-ru."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "68a3f14dde44-tc-ru",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "bcdb056e3f77-sy-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
-					"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-ru.json",
+					"receipt_sha256": "892e9615042f34acf1f0cea52814f84594dff1f14d713a231b0f8aadc0cf75b0",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -47196,6 +47353,29 @@
 							"receipt_sha256": "8c5a3165f9cf695135e0664bf3a13238a470cee604537b0ff0d3ec115037d9f2",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/f48b342c2596.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "773a6339e723ddbf05fbe1ad252871f3cc946170fce702cc04d1dfcfd30dbe77",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "68a3f14dde44-tc-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ru.json",
+							"receipt_sha256": "7d5cfb7dd72a9245186119160bb7aa4b8350f1511a0a009a7c346bdbbae030c6",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -56795,30 +56975,29 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "bf734e56f62f3cc6d9e29c19ab47e7a4e8284a1913867758380a36cfc0d1f445",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "4473d81447365f7043aed7af50741c701c0924e26279f0df4bd9d136cb073127",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder; ur ui.chat re-authored in a second pass after the first audit"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job f4c12b16ee51 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 13b8374041bd / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "317156fde810",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "13b8374041bd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/317156fde810.json",
-					"receipt_sha256": "377b0fb58d5f8490e79c208beedd386df860a1b8ca287851d9f9b0f201d39a0e",
-					"scope": "ui.chat ur: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/13b8374041bd.json",
+					"receipt_sha256": "f2d55f00de942552da98fb7a53d4989330f4bca9f287c1c4333450d1b1824312"
 				}
 			],
 			"status": "audited",
@@ -57207,6 +57386,29 @@
 							},
 							"receipt": "i18n/receipts/ec4e9986d352.json",
 							"receipt_sha256": "099c119a16fcf5a78950f2da903976881b21b064b0e5345ed09077920ded5114"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "bf734e56f62f3cc6d9e29c19ab47e7a4e8284a1913867758380a36cfc0d1f445",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "317156fde810",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/317156fde810.json",
+							"receipt_sha256": "377b0fb58d5f8490e79c208beedd386df860a1b8ca287851d9f9b0f201d39a0e",
+							"scope": "ui.chat ur: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -60774,30 +60976,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "c7f7408830ea8512ed5ae3b52970784eb24e5342894fc9b60e7d84d2b1d62b49",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "c16330d33000a3175b22a7dc81c8e0895f5e19335c42d20e836cd24d31d0b28c",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-ur."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-ur",
+					"instance": "bcdb056e3f77-sy-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
-					"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-ur.json",
+					"receipt_sha256": "e489871193ec61c4067e5b435b0151c55afe6b593b0b33a074f44ecf367d883f",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -60893,6 +61095,29 @@
 							"receipt_sha256": "9578ee4f72e0666dbb75fbb8bf017e46e6cc666ffc7cfad89f473a7f53d23f80",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/a10dc55d2802.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "c7f7408830ea8512ed5ae3b52970784eb24e5342894fc9b60e7d84d2b1d62b49",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-ur.json",
+							"receipt_sha256": "136315374a7658f27624ab9ad3857ea6e7b2b2f08ccd27b6d15a217ee40b5c5b",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -70375,30 +70600,29 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "fcc4e95f8ed967a46e614a5103518b28498d71d5a3b97951eee7fb8c1ea73b2b",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "87a83e06ab73526d747d5bb1540fc80fbf0a61731e42a160529c4318e3725c29",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job e33cd1ae2a52 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 38831ad85d10 / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "18c945fec7c0",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "38831ad85d10",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/18c945fec7c0.json",
-					"receipt_sha256": "9f59f48c6f2912cecbf31c7392321aeff0fc2c3aea6a452b20154893777522b1",
-					"scope": "ui.chat vi: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/38831ad85d10.json",
+					"receipt_sha256": "bd41a374c34fd4020103f7e3def3698906b83cb0c4bb781cd28cfa7edcfa8c31"
 				}
 			],
 			"status": "audited",
@@ -70764,6 +70988,29 @@
 							},
 							"receipt": "i18n/receipts/2433453b7caf.json",
 							"receipt_sha256": "a15526cf8dc24c2c325cc479fb93f759249a63b6c9a55e71b99d780b9ac35c84"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "fcc4e95f8ed967a46e614a5103518b28498d71d5a3b97951eee7fb8c1ea73b2b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "18c945fec7c0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/18c945fec7c0.json",
+							"receipt_sha256": "9f59f48c6f2912cecbf31c7392321aeff0fc2c3aea6a452b20154893777522b1",
+							"scope": "ui.chat vi: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -74348,30 +74595,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "64bad8e7f311b2ee6bd78a71aff2d893c4d715f39c92fcef3ed876a31014c4db",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "d3e03584f58c7a3ae3823ccc43130c18fcfb21a81f99290df3f6d3f4007df952",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-vi."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-vi",
+					"instance": "bcdb056e3f77-sy-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
-					"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-vi.json",
+					"receipt_sha256": "93f8525e0cb9cb7cab6cf394012cc3709cdeaa7adab0aff51e32fd699544f65d",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -74484,6 +74731,29 @@
 							"receipt_sha256": "94bc492bd383ac60d15e1b90b2b99fef38cf74fcb4e096991d3936341b3abd1f",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/3f8a973b1d92.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "64bad8e7f311b2ee6bd78a71aff2d893c4d715f39c92fcef3ed876a31014c4db",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-vi.json",
+							"receipt_sha256": "a45052419da1f6ed09da9176280b3c2fba18b0cf4ebe6859165d422fdcddd7f2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -84679,30 +84949,29 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat",
-			"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
-			"target_sha256": "07c2f6cae3e44c4b1169ea83026d3e8449afc9e605e857e55bdaebe481effb85",
+			"source_sha256": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+			"target_sha256": "ee24a0521d41929a2e630654468d4f459c2f00d0fcc49e9f8895ed92c2504bf9",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-19",
+				"note": "W2 A10 translation lane: i18n-translator job 8cbd200f5083 / anthropic/claude-opus-5-5; independent audit by i18n-auditor d555eb73b874 / anthropic/claude-opus-5-5"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-17",
+					"date": "2026-11-19",
 					"result": "clean-with-findings",
-					"instance": "6566c3e8688e",
+					"instance": "d555eb73b874",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 2,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/6566c3e8688e.json",
-					"receipt_sha256": "62ab6ad8e5281e015d149a598d051881fc61b767048efd4cc883d75a4ca81b2d",
-					"scope": "ui.chat zh-CN: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/d555eb73b874.json",
+					"receipt_sha256": "2e3efe7f4bbc1ba64b78a7eef5636c33e7c8f000e9137300fe63462a9e92b6d2"
 				}
 			],
 			"status": "audited",
@@ -85067,6 +85336,29 @@
 							},
 							"receipt": "i18n/receipts/cab057a10033.json",
 							"receipt_sha256": "648dda63f74d103c3f43265d049b5b6cb97111214c8fb9795b0a4a8b5128a235"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+					"target_sha256": "07c2f6cae3e44c4b1169ea83026d3e8449afc9e605e857e55bdaebe481effb85",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-17",
+							"result": "clean-with-findings",
+							"instance": "6566c3e8688e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/6566c3e8688e.json",
+							"receipt_sha256": "62ab6ad8e5281e015d149a598d051881fc61b767048efd4cc883d75a4ca81b2d",
+							"scope": "ui.chat zh-CN: 15 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
 						}
 					],
 					"status": "audited"
@@ -88610,30 +88902,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar_view",
-			"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
-			"target_sha256": "58abe323c16fb0f97237311a24bd0b2975d2bc29c4a6c46c3681723c51b9b039",
+			"source_sha256": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+			"target_sha256": "f54810445acfafba2ac9d626dfcc97be440e29aed7c6e92a0643f6c0d639fef5",
 			"translator": {
 				"agent": "lopdev coder",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-12",
-				"note": "UI #1874 temporary-chat keys by lopdev coder subagents (manager dispatch: jobs 1d195a3344de, 12a4a5a9d3a2; hi fix d42cf5498b91). Older keys keep their earlier translator (ledger history). Auditor reviewer 68a3f14dde44 ran the same model: disclosed."
+				"model": "radient/auto",
+				"date": "2026-11-19",
+				"note": "Sidebar Yesterday key (2026-11-19): wording reused from this locale's audited ui.common.time.yesterday / ui.notifications.group.yesterday; independent audit bcdb056e3f77-sy-zh-cn."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
 					"result": "clean",
-					"instance": "68a3f14dde44-tc-zh-cn",
+					"instance": "bcdb056e3f77-sy-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
-					"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
-					"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
+					"receipt": "i18n/receipts/bcdb056e3f77-sy-zh-cn.json",
+					"receipt_sha256": "7004a3f16cebfb37461152a59e9b931919576798841526006de963f348e0f36b",
+					"scope": "1-key delta (ui.chat.sidebar_view.section.yesterday) audited on the committed head"
 				}
 			],
 			"status": "audited",
@@ -88746,6 +89038,29 @@
 							"receipt_sha256": "9dee401cd5db5d02512eb6254fb47bc00ca9ebbc855e683f3391756789df3ce3",
 							"scope": "the 7 keys PR #1827 added (chat data-object copy); second independent high-visibility pass at 165aebb1b73",
 							"note": "PR #1827 second audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Detail: i18n/receipts/70b5f856b963.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+					"target_sha256": "58abe323c16fb0f97237311a24bd0b2975d2bc29c4a6c46c3681723c51b9b039",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "68a3f14dde44-tc-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a3f14dde44-tc-zh-cn.json",
+							"receipt_sha256": "c88dd475c6e791970394a1bbf0543e9ca1313c57fe3215b46d0e3170495c13b2",
+							"scope": "temporary-chat copy, UI #1874 @ 8b2de66ae/9cfd4cd34"
 						}
 					],
 					"status": "audited"
@@ -122104,6 +122419,874 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "542c51b1362ce475db59b5f04c83b6e55d951a52e36b0bb38ea41d4b18d5505d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-es.json",
+					"receipt_sha256": "cdb0fa6c59a7796876cf12ac3bb322ad50b7142202f8b771e2f410859c9cb03e",
+					"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 2",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "a86de1ccd83fa0bca721b629cf7cfb0b4533b4cb68d7e0b5620fd290481d122b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-es.json",
+					"receipt_sha256": "cdb0fa6c59a7796876cf12ac3bb322ad50b7142202f8b771e2f410859c9cb03e",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "2fae84972b26e9466c932f4f09064fa5df29e8ec6a2230f51af762f568fa1a97",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-es.json",
+					"receipt_sha256": "cdb0fa6c59a7796876cf12ac3bb322ad50b7142202f8b771e2f410859c9cb03e",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "243ba89432e63ad0e29a4c0645293dacd0a191c32e4865df0049e9989b0a863d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-es.json",
+					"receipt_sha256": "cdb0fa6c59a7796876cf12ac3bb322ad50b7142202f8b771e2f410859c9cb03e",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "2c7db9c10fba79372c9bd2c718951ee8be17c8e14898ebfae37dcb37a1575426",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-fr.json",
+					"receipt_sha256": "f9340aa39af0ebb1633c26a2c256c958b7ba3b34fb169e11bb0b60e0bf2322b1",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "9f52b98f12f48606898feb85419c5af3b19292669e911fa62c263596acf7ad62",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-fr.json",
+					"receipt_sha256": "f9340aa39af0ebb1633c26a2c256c958b7ba3b34fb169e11bb0b60e0bf2322b1",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "73ea06b1a089b87f20ce5d143504f73ead2f3190febff81740903307df589246",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-fr.json",
+					"receipt_sha256": "f9340aa39af0ebb1633c26a2c256c958b7ba3b34fb169e11bb0b60e0bf2322b1",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "3341f710b599f46fd92ffd6e01d60939fd74017c091799e3d53abe319bd81ca7",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-hi.json",
+					"receipt_sha256": "eba21af1678f0d331dceb3ff2b2eb32924b9d535bdbe38bc0f91cb00c62b605e",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "2e4f748beae3f100d5d129e51e6555a096b1afa940a79142450499c40cba13fc",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-hi.json",
+					"receipt_sha256": "eba21af1678f0d331dceb3ff2b2eb32924b9d535bdbe38bc0f91cb00c62b605e",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "09fe765dbe06c4b33c3ef2aac221b8cb85e9f0e5da37b7724141b1118421f4ae",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-hi.json",
+					"receipt_sha256": "eba21af1678f0d331dceb3ff2b2eb32924b9d535bdbe38bc0f91cb00c62b605e",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "29c1acb18cbb73935953844e710601a5c2afd2f1aa60312c68f745547af9fa53",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ru.json",
+					"receipt_sha256": "40cb066f9bd10055de4857810eb3901f3bf53f9b138a5eb54cc4f15b6ff13578",
+					"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 2",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "9057fad7b56c68813adfc441508ac4dea5782abe6d107b456af46dfce94d9898",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ru.json",
+					"receipt_sha256": "40cb066f9bd10055de4857810eb3901f3bf53f9b138a5eb54cc4f15b6ff13578",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "567622f7f04a9b20c7b74273f0abf2470f9ac217537c54c24639760f02026cd4",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ru.json",
+					"receipt_sha256": "40cb066f9bd10055de4857810eb3901f3bf53f9b138a5eb54cc4f15b6ff13578",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 3",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "847c8e8f94973e859fa3eeb79436553219a32a159c7b991428bc54c39d768972",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ru.json",
+					"receipt_sha256": "40cb066f9bd10055de4857810eb3901f3bf53f9b138a5eb54cc4f15b6ff13578",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "723be1172bbf4ec8f649283cbb530895acd8304e2b028f41bef78c3fabc10402",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ur.json",
+					"receipt_sha256": "5682859a79053b93d390ccf1faf158b54f664ec1815b81aa6bb0c62df125e964",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "f5553ec0e1cbb19e95c731f81bd076cdaaf271f5c094eb607b8950b3eeed9528",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ur.json",
+					"receipt_sha256": "5682859a79053b93d390ccf1faf158b54f664ec1815b81aa6bb0c62df125e964",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "7936a0796243df7f9c33a6bc9d0dce133db35c724256b0e8af784d0e9e3700b9",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-ur.json",
+					"receipt_sha256": "5682859a79053b93d390ccf1faf158b54f664ec1815b81aa6bb0c62df125e964",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "dfa58a40e07b7b78831f4f5ed3e02446cb4b3ff993a51497d273a977d5bcd97a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-vi.json",
+					"receipt_sha256": "9b190faf1f2c78d67a2dca45f45bb7b598693a55287d5b3f4bf9408a004fefed",
+					"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "5588bc00958b14c49ed69edc896a7826af3ecb424bece9a0d3823456d6f70898",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-vi.json",
+					"receipt_sha256": "9b190faf1f2c78d67a2dca45f45bb7b598693a55287d5b3f4bf9408a004fefed",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "d4182013dbf2ba102bc41d96155697f8a7e7a141d71ae39c95977be867fd41a1",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-vi.json",
+					"receipt_sha256": "9b190faf1f2c78d67a2dca45f45bb7b598693a55287d5b3f4bf9408a004fefed",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "ace55a88537a63160c671aed9f7fe8ce5c82c0cb6241e1510b39439d39d7d14a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-vi.json",
+					"receipt_sha256": "9b190faf1f2c78d67a2dca45f45bb7b598693a55287d5b3f4bf9408a004fefed",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 3",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "3a67a9b3367106bea7d20df23e9aadb7326f3a08ac02ca30368f8fb2db816b3d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-zh-CN.json",
+					"receipt_sha256": "8ba80e610c15ac45d7ffa428a1dde139ff2032bfe5eeca25d3881acf911dcb65",
+					"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 3",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.voice",
+			"source_sha256": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497",
+			"target_sha256": "51dc0c16c6968f47e8c0e0358b3d119ad151e91ccade277955ffe8954feb874a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-zh-CN.json",
+					"receipt_sha256": "8ba80e610c15ac45d7ffa428a1dde139ff2032bfe5eeca25d3881acf911dcb65",
+					"scope": "ui.settings.voice: all 2 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.settings.speech.provider",
+			"source_sha256": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8",
+			"target_sha256": "979ad7f5cf13143734ff669180ddfb0290132bd46b9788c70e94dbf0541b4b7f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-zh-CN.json",
+					"receipt_sha256": "8ba80e610c15ac45d7ffa428a1dde139ff2032bfe5eeca25d3881acf911dcb65",
+					"scope": "ui.settings.speech.provider: all 12 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.providers.stored_key",
+			"source_sha256": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf",
+			"target_sha256": "1b41401225036ff13907e8635b9586e7187ce854d251ec922002d09838100f1e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-zh-CN.json",
+					"receipt_sha256": "8ba80e610c15ac45d7ffa428a1dde139ff2032bfe5eeca25d3881acf911dcb65",
+					"scope": "ui.providers.stored_key: all 5 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "22a684c9b70e0f983441edff8dd495670d8f64e497c247bf21f49cf359b7e9ea",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean-with-findings",
+					"instance": "090976849b8e-voiceui-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-fr.json",
+					"receipt_sha256": "29aad0271fd621f015576156e3e9ce744870e16409ffb2346dc53cc04fb73bec",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 1",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "fbe26d8c641c1682defd9ee286c49f928601c46ea6d4bbb8767a0f76950c352b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-hi.json",
+					"receipt_sha256": "ef2418b526d7d30208a345090d9e04c102f8521eff1ee8972580d5570fee16e9",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.voice",
+			"source_sha256": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a",
+			"target_sha256": "7911d6acc7d927b9900e6a1dbf8624cdb13bc53e2bfbfdee9a950618eae64bcf",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-19"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-19",
+					"result": "clean",
+					"instance": "090976849b8e-voiceui-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/090976849b8e-voiceui-r2-ur.json",
+					"receipt_sha256": "5da888fbb37c0a0a91bbbd16469b4078cba54a5f2269f01b7b00c66d48449f40",
+					"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

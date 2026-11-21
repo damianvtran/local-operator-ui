@@ -27,9 +27,12 @@ import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	type DesktopRefusalCode,
+	REQUEST_ID_PATTERN,
+	type VoiceRefusalCode,
 	desktopRefusalCodeForStatus,
 	isDesktopRefusalCode,
 	isServeReloadFence,
+	isVoiceRefusalCode,
 } from "../shared/desktop-contract";
 import { LINK_PREVIEW_ARTIFACT_ID } from "../shared/link-preview";
 
@@ -249,6 +252,61 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			op: z.literal("sessions.supplementDocument"),
 			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
+		})
+		.strict(),
+	// SESSION VOICE'S UTTERANCE DOOR (the frozen contract), in two shapes that
+	// differ by what accompanies the request: TEXT (the Qwen rig's transcript,
+	// form-encoded) or a RECORDING's bytes (bring-your-own-key voice, multipart;
+	// the server transcribes). Exactly one of the two is required - checked where
+	// the bytes are known, below, because the bytes are not part of this schema.
+	// The fields are NAMED rather than a free record, and the object is strict, so
+	// renderer code cannot add a field the route might one day read as authority
+	// (no `file`/`fileName`/`mimeType`: the route sniffs the audio itself). The
+	// route admits the words as an ordinary prompt/steer and has no path to a gate
+	// answer (V7).
+	z
+		.object({
+			op: z.literal("voice.utterance"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			// The route's own `RequestID`; refused here rather than as its 422.
+			requestId: z.string().regex(REQUEST_ID_PATTERN),
+			text: z.string().min(1).max(16_000).optional(),
+			textOrigin: z.literal("qwen_s2s").optional(),
+			// Pins the STT to one provider (a recording only). Closed: a new provider
+			// is a new literal here, in the contract type and in the route.
+			provider: z.literal("elevenlabs").optional(),
+		})
+		.strict(),
+	// ONE SEGMENT of a spoken reply: a source REFERENCE and an index, never text
+	// (V8) - the server re-resolves and re-segments the source. Answers audio
+	// bytes whose format is the response's `mimeType` (ElevenLabs answers MP3), so
+	// the caller must not assume WAV.
+	z
+		.object({
+			op: z.literal("voice.speech"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			source: z.discriminatedUnion("kind", [
+				z
+					.object({
+						kind: z.literal("message"),
+						messageId: z.string().min(1).max(128),
+					})
+					.strict(),
+				z
+					.object({
+						kind: z.literal("gate"),
+						requestId: z.string().min(1).max(128),
+					})
+					.strict(),
+				z
+					.object({
+						kind: z.literal("phrase"),
+						key: z.string().min(1).max(64),
+					})
+					.strict(),
+			]),
+			segment: z.number().int().min(0).max(1000),
+			provider: z.literal("elevenlabs").optional(),
 		})
 		.strict(),
 	/*
@@ -491,6 +549,8 @@ export type DesktopMediaResponse =
 			 * switches on them (see the relay's error branch).
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 	  };
 
 function endpoint(request: DesktopMediaRequest): {
@@ -565,6 +625,10 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/supplements/${request.digest}/document`,
 				method: "GET",
 			};
+		case "voice.utterance":
+			return { path: "/v1/desktop/voice/utterance", method: "POST" };
+		case "voice.speech":
+			return { path: "/v1/desktop/voice/speech", method: "POST" };
 		case "library.content":
 			return {
 				path: `/v1/desktop/library/assets/${request.assetId}/content${request.download ? "?download=1" : ""}`,
@@ -922,6 +986,89 @@ export async function requestDesktopMediaOutcome(
 	} else if (request.op === "speech.create" || request.op === "speech.agent") {
 		body = JSON.stringify(request.request);
 		contentType = "application/json";
+	} else if (request.op === "voice.speech") {
+		if (bytes) {
+			// Never sent: speech takes a source reference, not an upload.
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A voice speech request carries no file.",
+				},
+				answered: false,
+			};
+		}
+		const { source } = request;
+		body = JSON.stringify({
+			session_id: request.sessionId,
+			source:
+				source.kind === "message"
+					? { kind: "message", message_id: source.messageId }
+					: source.kind === "gate"
+						? { kind: "gate", request_id: source.requestId }
+						: { kind: "phrase", key: source.key },
+			segment: request.segment,
+			...(request.provider ? { provider: request.provider } : {}),
+		});
+		contentType = "application/json";
+	} else if (request.op === "voice.utterance") {
+		// Exactly one of text | a recording, as the route itself requires; a recording
+		// also takes no `text_origin` (the route refuses that pairing), and a pinned
+		// provider means nothing without one.
+		if ((bytes === null) === (request.text === undefined)) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A voice utterance carries text or a recording, not both.",
+				},
+				answered: false,
+			};
+		}
+		if (bytes && request.textOrigin !== undefined) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A recording carries no text origin.",
+				},
+				answered: false,
+			};
+		}
+		if (!bytes && request.provider !== undefined) {
+			return {
+				response: {
+					status: 422,
+					kind: "error",
+					detail: "A provider applies to a recording only.",
+				},
+				answered: false,
+			};
+		}
+		if (bytes) {
+			// The route's own field names; it sniffs the audio, so the part's type and
+			// filename are labels only.
+			const form = new FormData();
+			form.append("session_id", request.sessionId);
+			form.append("request_id", request.requestId);
+			if (request.provider) form.append("provider", request.provider);
+			form.append(
+				"file",
+				new Blob([bytes], { type: "audio/wav" }),
+				"utterance.wav",
+			);
+			body = form;
+			// fetch sets the multipart boundary itself; forcing the header breaks it.
+		} else {
+			// `URLSearchParams` is the form encoding FastAPI's `Form(...)` reads; the
+			// text door has no file part to carry.
+			const form = new URLSearchParams();
+			form.append("session_id", request.sessionId);
+			form.append("request_id", request.requestId);
+			form.append("text", request.text as string);
+			if (request.textOrigin) form.append("text_origin", request.textOrigin);
+			body = form;
+		}
 	} else {
 		if (!bytes) {
 			return {
@@ -1212,6 +1359,12 @@ export async function requestDesktopMediaOutcome(
 						declaredCode !== undefined && isDesktopRefusalCode(declaredCode)
 							? declaredCode
 							: desktopRefusalCodeForStatus(target.path, response.status),
+					// The voice routes' declared words, op-scoped, so the controller can
+					// act on "the slot moved" rather than parse a sentence.
+					...(request.op.startsWith("voice.") &&
+					isVoiceRefusalCode(declaredCode)
+						? { voiceCode: declaredCode }
+						: {}),
 					/*
 					 * A notification-sound upload's refusal is about the FILE (`too_long`,
 					 * `unsupported_format` with `params.format`, ...), and the settings

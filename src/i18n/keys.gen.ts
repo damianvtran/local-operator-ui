@@ -109,6 +109,7 @@ import enUiChatTrace from "./catalogues/en/ui.chat.trace.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiChatUsageReset from "./catalogues/en/ui.chat.usage_reset.json";
 import enUiChatUserTurn from "./catalogues/en/ui.chat.user_turn.json";
+import enUiChatVoice from "./catalogues/en/ui.chat.voice.json";
 import enUiCodeReview from "./catalogues/en/ui.code_review.json";
 import enUiCommandPalette from "./catalogues/en/ui.command_palette.json";
 import enUiCommonAccount from "./catalogues/en/ui.common.account.json";
@@ -162,6 +163,7 @@ import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProvidersBedrock from "./catalogues/en/ui.providers.bedrock.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
+import enUiProvidersStoredKey from "./catalogues/en/ui.providers.stored_key.json";
 import enUiRecovery from "./catalogues/en/ui.recovery.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
@@ -182,7 +184,9 @@ import enUiSettingsNotifications from "./catalogues/en/ui.settings.notifications
 import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
+import enUiSettingsSpeechProvider from "./catalogues/en/ui.settings.speech.provider.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
+import enUiSettingsVoice from "./catalogues/en/ui.settings.voice.json";
 import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
@@ -285,6 +289,7 @@ import esUiChatTrace from "./catalogues/es/ui.chat.trace.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiChatUsageReset from "./catalogues/es/ui.chat.usage_reset.json";
 import esUiChatUserTurn from "./catalogues/es/ui.chat.user_turn.json";
+import esUiChatVoice from "./catalogues/es/ui.chat.voice.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
 import esUiCommonAccount from "./catalogues/es/ui.common.account.json";
@@ -338,6 +343,7 @@ import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProvidersBedrock from "./catalogues/es/ui.providers.bedrock.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
+import esUiProvidersStoredKey from "./catalogues/es/ui.providers.stored_key.json";
 import esUiRecovery from "./catalogues/es/ui.recovery.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
@@ -358,7 +364,9 @@ import esUiSettingsNotifications from "./catalogues/es/ui.settings.notifications
 import esUiSettingsSearch from "./catalogues/es/ui.settings.search.json";
 import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
+import esUiSettingsSpeechProvider from "./catalogues/es/ui.settings.speech.provider.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
+import esUiSettingsVoice from "./catalogues/es/ui.settings.voice.json";
 import esUiSharedUnifiedDiff from "./catalogues/es/ui.shared.unified_diff.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
@@ -461,6 +469,7 @@ import frUiChatTrace from "./catalogues/fr/ui.chat.trace.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiChatUsageReset from "./catalogues/fr/ui.chat.usage_reset.json";
 import frUiChatUserTurn from "./catalogues/fr/ui.chat.user_turn.json";
+import frUiChatVoice from "./catalogues/fr/ui.chat.voice.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
 import frUiCommonAccount from "./catalogues/fr/ui.common.account.json";
@@ -514,6 +523,7 @@ import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProvidersBedrock from "./catalogues/fr/ui.providers.bedrock.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiProvidersStoredKey from "./catalogues/fr/ui.providers.stored_key.json";
 import frUiRecovery from "./catalogues/fr/ui.recovery.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
@@ -534,7 +544,9 @@ import frUiSettingsNotifications from "./catalogues/fr/ui.settings.notifications
 import frUiSettingsSearch from "./catalogues/fr/ui.settings.search.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
+import frUiSettingsSpeechProvider from "./catalogues/fr/ui.settings.speech.provider.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
+import frUiSettingsVoice from "./catalogues/fr/ui.settings.voice.json";
 import frUiSharedUnifiedDiff from "./catalogues/fr/ui.shared.unified_diff.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
@@ -637,6 +649,7 @@ import hiUiChatTrace from "./catalogues/hi/ui.chat.trace.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
 import hiUiChatUsageReset from "./catalogues/hi/ui.chat.usage_reset.json";
 import hiUiChatUserTurn from "./catalogues/hi/ui.chat.user_turn.json";
+import hiUiChatVoice from "./catalogues/hi/ui.chat.voice.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
 import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
@@ -690,6 +703,7 @@ import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProvidersBedrock from "./catalogues/hi/ui.providers.bedrock.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiProvidersStoredKey from "./catalogues/hi/ui.providers.stored_key.json";
 import hiUiRecovery from "./catalogues/hi/ui.recovery.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
@@ -710,7 +724,9 @@ import hiUiSettingsNotifications from "./catalogues/hi/ui.settings.notifications
 import hiUiSettingsSearch from "./catalogues/hi/ui.settings.search.json";
 import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
+import hiUiSettingsSpeechProvider from "./catalogues/hi/ui.settings.speech.provider.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
+import hiUiSettingsVoice from "./catalogues/hi/ui.settings.voice.json";
 import hiUiSharedUnifiedDiff from "./catalogues/hi/ui.shared.unified_diff.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
@@ -813,6 +829,7 @@ import ruUiChatTrace from "./catalogues/ru/ui.chat.trace.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiChatUsageReset from "./catalogues/ru/ui.chat.usage_reset.json";
 import ruUiChatUserTurn from "./catalogues/ru/ui.chat.user_turn.json";
+import ruUiChatVoice from "./catalogues/ru/ui.chat.voice.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
@@ -866,6 +883,7 @@ import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProvidersBedrock from "./catalogues/ru/ui.providers.bedrock.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiProvidersStoredKey from "./catalogues/ru/ui.providers.stored_key.json";
 import ruUiRecovery from "./catalogues/ru/ui.recovery.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
@@ -886,7 +904,9 @@ import ruUiSettingsNotifications from "./catalogues/ru/ui.settings.notifications
 import ruUiSettingsSearch from "./catalogues/ru/ui.settings.search.json";
 import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
+import ruUiSettingsSpeechProvider from "./catalogues/ru/ui.settings.speech.provider.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
+import ruUiSettingsVoice from "./catalogues/ru/ui.settings.voice.json";
 import ruUiSharedUnifiedDiff from "./catalogues/ru/ui.shared.unified_diff.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
@@ -989,6 +1009,7 @@ import urUiChatTrace from "./catalogues/ur/ui.chat.trace.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
 import urUiChatUsageReset from "./catalogues/ur/ui.chat.usage_reset.json";
 import urUiChatUserTurn from "./catalogues/ur/ui.chat.user_turn.json";
+import urUiChatVoice from "./catalogues/ur/ui.chat.voice.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
 import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
@@ -1042,6 +1063,7 @@ import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProvidersBedrock from "./catalogues/ur/ui.providers.bedrock.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiProvidersStoredKey from "./catalogues/ur/ui.providers.stored_key.json";
 import urUiRecovery from "./catalogues/ur/ui.recovery.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
@@ -1062,7 +1084,9 @@ import urUiSettingsNotifications from "./catalogues/ur/ui.settings.notifications
 import urUiSettingsSearch from "./catalogues/ur/ui.settings.search.json";
 import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
+import urUiSettingsSpeechProvider from "./catalogues/ur/ui.settings.speech.provider.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
+import urUiSettingsVoice from "./catalogues/ur/ui.settings.voice.json";
 import urUiSharedUnifiedDiff from "./catalogues/ur/ui.shared.unified_diff.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
@@ -1165,6 +1189,7 @@ import viUiChatTrace from "./catalogues/vi/ui.chat.trace.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
 import viUiChatUsageReset from "./catalogues/vi/ui.chat.usage_reset.json";
 import viUiChatUserTurn from "./catalogues/vi/ui.chat.user_turn.json";
+import viUiChatVoice from "./catalogues/vi/ui.chat.voice.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
@@ -1218,6 +1243,7 @@ import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProvidersBedrock from "./catalogues/vi/ui.providers.bedrock.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
+import viUiProvidersStoredKey from "./catalogues/vi/ui.providers.stored_key.json";
 import viUiRecovery from "./catalogues/vi/ui.recovery.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
@@ -1238,7 +1264,9 @@ import viUiSettingsNotifications from "./catalogues/vi/ui.settings.notifications
 import viUiSettingsSearch from "./catalogues/vi/ui.settings.search.json";
 import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
+import viUiSettingsSpeechProvider from "./catalogues/vi/ui.settings.speech.provider.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
+import viUiSettingsVoice from "./catalogues/vi/ui.settings.voice.json";
 import viUiSharedUnifiedDiff from "./catalogues/vi/ui.shared.unified_diff.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
@@ -1341,6 +1369,7 @@ import zhCNUiChatTrace from "./catalogues/zh-CN/ui.chat.trace.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiChatUsageReset from "./catalogues/zh-CN/ui.chat.usage_reset.json";
 import zhCNUiChatUserTurn from "./catalogues/zh-CN/ui.chat.user_turn.json";
+import zhCNUiChatVoice from "./catalogues/zh-CN/ui.chat.voice.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
 import zhCNUiCommonAccount from "./catalogues/zh-CN/ui.common.account.json";
@@ -1394,6 +1423,7 @@ import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProvidersBedrock from "./catalogues/zh-CN/ui.providers.bedrock.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiProvidersStoredKey from "./catalogues/zh-CN/ui.providers.stored_key.json";
 import zhCNUiRecovery from "./catalogues/zh-CN/ui.recovery.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
@@ -1414,7 +1444,9 @@ import zhCNUiSettingsNotifications from "./catalogues/zh-CN/ui.settings.notifica
 import zhCNUiSettingsSearch from "./catalogues/zh-CN/ui.settings.search.json";
 import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
+import zhCNUiSettingsSpeechProvider from "./catalogues/zh-CN/ui.settings.speech.provider.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
+import zhCNUiSettingsVoice from "./catalogues/zh-CN/ui.settings.voice.json";
 import zhCNUiSharedUnifiedDiff from "./catalogues/zh-CN/ui.shared.unified_diff.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
@@ -1520,6 +1552,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatTranscriptCopy,
 	...enUiChatUsageReset,
 	...enUiChatUserTurn,
+	...enUiChatVoice,
 	...enUiCodeReview,
 	...enUiCommandPalette,
 	...enUiCommonAccount,
@@ -1573,6 +1606,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiProjects,
 	...enUiProvidersBedrock,
 	...enUiProviders,
+	...enUiProvidersStoredKey,
 	...enUiRecovery,
 	...enUiSchedulesErrors,
 	...enUiSchedules,
@@ -1593,7 +1627,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsSearch,
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
+	...enUiSettingsSpeechProvider,
 	...enUiSettingsUpdates,
+	...enUiSettingsVoice,
 	...enUiSharedUnifiedDiff,
 	...enUiShell,
 	...enUiShellMenubar,
@@ -1704,6 +1740,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatTranscriptCopy,
 		...esUiChatUsageReset,
 		...esUiChatUserTurn,
+		...esUiChatVoice,
 		...esUiCodeReview,
 		...esUiCommandPalette,
 		...esUiCommonAccount,
@@ -1757,6 +1794,7 @@ export const bundledCatalogues: Readonly<
 		...esUiProjects,
 		...esUiProvidersBedrock,
 		...esUiProviders,
+		...esUiProvidersStoredKey,
 		...esUiRecovery,
 		...esUiSchedulesErrors,
 		...esUiSchedules,
@@ -1777,7 +1815,9 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsSearch,
 		...esUiSettingsShortcuts,
 		...esUiSettingsSpeech,
+		...esUiSettingsSpeechProvider,
 		...esUiSettingsUpdates,
+		...esUiSettingsVoice,
 		...esUiSharedUnifiedDiff,
 		...esUiShell,
 		...esUiShellMenubar,
@@ -1882,6 +1922,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatTranscriptCopy,
 		...frUiChatUsageReset,
 		...frUiChatUserTurn,
+		...frUiChatVoice,
 		...frUiCodeReview,
 		...frUiCommandPalette,
 		...frUiCommonAccount,
@@ -1935,6 +1976,7 @@ export const bundledCatalogues: Readonly<
 		...frUiProjects,
 		...frUiProvidersBedrock,
 		...frUiProviders,
+		...frUiProvidersStoredKey,
 		...frUiRecovery,
 		...frUiSchedulesErrors,
 		...frUiSchedules,
@@ -1955,7 +1997,9 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsSearch,
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
+		...frUiSettingsSpeechProvider,
 		...frUiSettingsUpdates,
+		...frUiSettingsVoice,
 		...frUiSharedUnifiedDiff,
 		...frUiShell,
 		...frUiShellMenubar,
@@ -2060,6 +2104,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatTranscriptCopy,
 		...hiUiChatUsageReset,
 		...hiUiChatUserTurn,
+		...hiUiChatVoice,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
 		...hiUiCommonAccount,
@@ -2113,6 +2158,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiProjects,
 		...hiUiProvidersBedrock,
 		...hiUiProviders,
+		...hiUiProvidersStoredKey,
 		...hiUiRecovery,
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
@@ -2133,7 +2179,9 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsSearch,
 		...hiUiSettingsShortcuts,
 		...hiUiSettingsSpeech,
+		...hiUiSettingsSpeechProvider,
 		...hiUiSettingsUpdates,
+		...hiUiSettingsVoice,
 		...hiUiSharedUnifiedDiff,
 		...hiUiShell,
 		...hiUiShellMenubar,
@@ -2238,6 +2286,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatTranscriptCopy,
 		...ruUiChatUsageReset,
 		...ruUiChatUserTurn,
+		...ruUiChatVoice,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
@@ -2291,6 +2340,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiProjects,
 		...ruUiProvidersBedrock,
 		...ruUiProviders,
+		...ruUiProvidersStoredKey,
 		...ruUiRecovery,
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
@@ -2311,7 +2361,9 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsSearch,
 		...ruUiSettingsShortcuts,
 		...ruUiSettingsSpeech,
+		...ruUiSettingsSpeechProvider,
 		...ruUiSettingsUpdates,
+		...ruUiSettingsVoice,
 		...ruUiSharedUnifiedDiff,
 		...ruUiShell,
 		...ruUiShellMenubar,
@@ -2416,6 +2468,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatTranscriptCopy,
 		...urUiChatUsageReset,
 		...urUiChatUserTurn,
+		...urUiChatVoice,
 		...urUiCodeReview,
 		...urUiCommandPalette,
 		...urUiCommonAccount,
@@ -2469,6 +2522,7 @@ export const bundledCatalogues: Readonly<
 		...urUiProjects,
 		...urUiProvidersBedrock,
 		...urUiProviders,
+		...urUiProvidersStoredKey,
 		...urUiRecovery,
 		...urUiSchedulesErrors,
 		...urUiSchedules,
@@ -2489,7 +2543,9 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsSearch,
 		...urUiSettingsShortcuts,
 		...urUiSettingsSpeech,
+		...urUiSettingsSpeechProvider,
 		...urUiSettingsUpdates,
+		...urUiSettingsVoice,
 		...urUiSharedUnifiedDiff,
 		...urUiShell,
 		...urUiShellMenubar,
@@ -2594,6 +2650,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatTranscriptCopy,
 		...viUiChatUsageReset,
 		...viUiChatUserTurn,
+		...viUiChatVoice,
 		...viUiCodeReview,
 		...viUiCommandPalette,
 		...viUiCommonAccount,
@@ -2647,6 +2704,7 @@ export const bundledCatalogues: Readonly<
 		...viUiProjects,
 		...viUiProvidersBedrock,
 		...viUiProviders,
+		...viUiProvidersStoredKey,
 		...viUiRecovery,
 		...viUiSchedulesErrors,
 		...viUiSchedules,
@@ -2667,7 +2725,9 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsSearch,
 		...viUiSettingsShortcuts,
 		...viUiSettingsSpeech,
+		...viUiSettingsSpeechProvider,
 		...viUiSettingsUpdates,
+		...viUiSettingsVoice,
 		...viUiSharedUnifiedDiff,
 		...viUiShell,
 		...viUiShellMenubar,
@@ -2772,6 +2832,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiChatUsageReset,
 		...zhCNUiChatUserTurn,
+		...zhCNUiChatVoice,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,
 		...zhCNUiCommonAccount,
@@ -2825,6 +2886,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiProjects,
 		...zhCNUiProvidersBedrock,
 		...zhCNUiProviders,
+		...zhCNUiProvidersStoredKey,
 		...zhCNUiRecovery,
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
@@ -2845,7 +2907,9 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsSearch,
 		...zhCNUiSettingsShortcuts,
 		...zhCNUiSettingsSpeech,
+		...zhCNUiSettingsSpeechProvider,
 		...zhCNUiSettingsUpdates,
+		...zhCNUiSettingsVoice,
 		...zhCNUiSharedUnifiedDiff,
 		...zhCNUiShell,
 		...zhCNUiShellMenubar,
@@ -6019,6 +6083,17 @@ export type MessageParams = {
 	"ui.chat.error_block.schema.before": undefined;
 	"ui.chat.error_block.unavailable.after": undefined;
 	"ui.chat.error_block.unavailable.before": undefined;
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": {
+		team: string;
+		speaker: string;
+		agentCommand: string;
+		detachCommand: string;
+	};
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": {
+		team: string;
+		agentCommand: string;
+		detachCommand: string;
+	};
 	"ui.chat.header_identity.agent_seat_closed_title": { team: string };
 	"ui.chat.header_identity.aria_agent_assign": { label: string };
 	"ui.chat.header_identity.aria_agent_closed": {
@@ -7868,6 +7943,7 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.section.temporary": { count: number };
 	"ui.chat.sidebar_view.section.today": undefined;
 	"ui.chat.sidebar_view.section.week": undefined;
+	"ui.chat.sidebar_view.section.yesterday": undefined;
 	"ui.chat.sidebar_view.sections": undefined;
 	"ui.chat.sidebar_view.tag": undefined;
 	"ui.chat.sidebar_view.temporary.deletes_in": { minutes: number };
@@ -8165,6 +8241,87 @@ export type MessageParams = {
 	"ui.chat.user_turn.stamp.answered": { date: string };
 	"ui.chat.user_turn.stamp.ran": { date: string };
 	"ui.chat.user_turn.stamp.sent": { date: string };
+	"ui.chat.voice.another_conversation": undefined;
+	"ui.chat.voice.approval_waiting": undefined;
+	"ui.chat.voice.approve_on_screen": undefined;
+	"ui.chat.voice.byok_rate_limited": undefined;
+	"ui.chat.voice.byok_speech_failed": undefined;
+	"ui.chat.voice.byok_speech_rate_limited": undefined;
+	"ui.chat.voice.byok_stt_failed": undefined;
+	"ui.chat.voice.card_pending": undefined;
+	"ui.chat.voice.card_pending_short": undefined;
+	"ui.chat.voice.choose_provider": undefined;
+	"ui.chat.voice.connecting_caption": undefined;
+	"ui.chat.voice.cut_chip": undefined;
+	"ui.chat.voice.cut_note": undefined;
+	"ui.chat.voice.dictation_off_voice": undefined;
+	"ui.chat.voice.dictation_off_voice_elsewhere": { title: string };
+	"ui.chat.voice.disable_failed": { reason: string };
+	"ui.chat.voice.empty_history": undefined;
+	"ui.chat.voice.empty_transcript": undefined;
+	"ui.chat.voice.enable_failed": { reason: string };
+	"ui.chat.voice.error_exited": undefined;
+	"ui.chat.voice.error_not_sent": undefined;
+	"ui.chat.voice.error_provider_unset": undefined;
+	"ui.chat.voice.error_start_failed": undefined;
+	"ui.chat.voice.go_there": undefined;
+	"ui.chat.voice.heard_label": undefined;
+	"ui.chat.voice.history": undefined;
+	"ui.chat.voice.history_clear": undefined;
+	"ui.chat.voice.history_hide": undefined;
+	"ui.chat.voice.history_last": { count: string };
+	"ui.chat.voice.idle_caption": undefined;
+	"ui.chat.voice.interrupted_at": { time: string };
+	"ui.chat.voice.interrupted_caption": { time: string };
+	"ui.chat.voice.marker": undefined;
+	"ui.chat.voice.mic_blocked": undefined;
+	"ui.chat.voice.mic_blocked_caption": undefined;
+	"ui.chat.voice.move_here": undefined;
+	"ui.chat.voice.mute": undefined;
+	"ui.chat.voice.not_enabled": undefined;
+	"ui.chat.voice.not_sent_approve": undefined;
+	"ui.chat.voice.notice_elsewhere_prefix": undefined;
+	"ui.chat.voice.notice_elsewhere_untitled": undefined;
+	"ui.chat.voice.open_session": undefined;
+	"ui.chat.voice.open_settings": undefined;
+	"ui.chat.voice.phase_connecting": undefined;
+	"ui.chat.voice.phase_error": undefined;
+	"ui.chat.voice.phase_hearing": undefined;
+	"ui.chat.voice.phase_interrupted": undefined;
+	"ui.chat.voice.phase_listening": undefined;
+	"ui.chat.voice.phase_mic_prompting": undefined;
+	"ui.chat.voice.phase_off": undefined;
+	"ui.chat.voice.phase_paused": undefined;
+	"ui.chat.voice.phase_silenced": undefined;
+	"ui.chat.voice.phase_speaking": undefined;
+	"ui.chat.voice.phase_starting": undefined;
+	"ui.chat.voice.phase_unheard": undefined;
+	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.provider_unset": undefined;
+	"ui.chat.voice.reply_ended": undefined;
+	"ui.chat.voice.retry": undefined;
+	"ui.chat.voice.said_label": undefined;
+	"ui.chat.voice.set_up_provider": undefined;
+	"ui.chat.voice.silenced_caption": undefined;
+	"ui.chat.voice.start_rig": undefined;
+	"ui.chat.voice.starting_caption": undefined;
+	"ui.chat.voice.stream_lost": undefined;
+	"ui.chat.voice.stream_reconnect": undefined;
+	"ui.chat.voice.strip_pause": undefined;
+	"ui.chat.voice.strip_resume": undefined;
+	"ui.chat.voice.switched_from": { title: string };
+	"ui.chat.voice.switched_from_untitled": undefined;
+	"ui.chat.voice.take_too_long": undefined;
+	"ui.chat.voice.toggle_off": undefined;
+	"ui.chat.voice.toggle_on": undefined;
+	"ui.chat.voice.toggle_switch": { title: string };
+	"ui.chat.voice.toggle_switch_untitled": undefined;
+	"ui.chat.voice.try_again": undefined;
+	"ui.chat.voice.unmute": undefined;
+	"ui.chat.voice.utterance_failed": { reason: string };
+	"ui.chat.voice.voice_label": undefined;
+	"ui.chat.voice.working_row": undefined;
+	"ui.chat.voice.you_label": undefined;
 	"ui.code_review.activity.close": undefined;
 	"ui.code_review.activity.comment": undefined;
 	"ui.code_review.activity.edit": undefined;
@@ -12100,6 +12257,11 @@ export type MessageParams = {
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": undefined;
 	"ui.providers.provider_labels.unavailable": undefined;
 	"ui.providers.sign_in_flow.sign_in_could_not_start": undefined;
+	"ui.providers.stored_key.remove": undefined;
+	"ui.providers.stored_key.remove_confirm": undefined;
+	"ui.providers.stored_key.remove_failed": undefined;
+	"ui.providers.stored_key.remove_yes": undefined;
+	"ui.providers.stored_key.replace": undefined;
 	"ui.recovery.approval.answer_hint": undefined;
 	"ui.recovery.approval.default_done": undefined;
 	"ui.recovery.approval.session_done": undefined;
@@ -13666,6 +13828,18 @@ export type MessageParams = {
 	"ui.settings.speech.speech_section.try_again": undefined;
 	"ui.settings.speech.speech_settings_model.no_provider": undefined;
 	"ui.settings.speech.speech_settings_model.radient_pass": undefined;
+	"ui.settings.speech.provider.description": undefined;
+	"ui.settings.speech.provider.elevenlabs.description": undefined;
+	"ui.settings.speech.provider.elevenlabs.label": undefined;
+	"ui.settings.speech.provider.label": undefined;
+	"ui.settings.speech.provider.none_chosen": undefined;
+	"ui.settings.speech.provider.none_ready": undefined;
+	"ui.settings.speech.provider.not_ready": undefined;
+	"ui.settings.speech.provider.radient.description": undefined;
+	"ui.settings.speech.provider.radient.label": undefined;
+	"ui.settings.speech.provider.ready": undefined;
+	"ui.settings.speech.provider.save_failed": undefined;
+	"ui.settings.speech.provider.setup": undefined;
 	"ui.settings.updates.app_updates_section.application_updates_and_info": undefined;
 	"ui.settings.updates.app_updates_section.application_version": undefined;
 	"ui.settings.updates.app_updates_section.check_for_updates_and_view_information_about_your_local_operator_": undefined;
@@ -13698,6 +13872,8 @@ export type MessageParams = {
 		choice: string;
 	};
 	"ui.settings.updates.update_following.update_notifications": undefined;
+	"ui.settings.voice.description": undefined;
+	"ui.settings.voice.label": undefined;
 	"ui.shared.unified_diff.accessible": undefined;
 	"ui.shared.unified_diff.changes": { count: number };
 	"ui.shared.unified_diff.hide_unchanged": { count: number };

@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "Заменить ключ",
+	"ui.providers.stored_key.remove": "Удалить ключ",
+	"ui.providers.stored_key.remove_confirm": "Удалить этот ключ?",
+	"ui.providers.stored_key.remove_yes": "Удалить",
+	"ui.providers.stored_key.remove_failed": "Не удалось удалить ключ."
+}

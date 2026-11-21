@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "Aller à votre message du tour {turn, number} sur {total, number}, {clock}",
 	"ui.chat.checkpoint.jump_user_no_clock": "Aller à votre message du tour {turn, number} sur {total, number}",
 	"ui.chat.checkpoint.turn": "Tour {turn, number} sur {total, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "L’équipe {team} gère cette session : c’est {speaker} qui prend la parole, donc {agentCommand} est fermé. Exécutez d’abord {detachCommand} pour détacher l’équipe.",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "L’équipe {team} gère cette session : c’est le responsable de l’équipe qui prend la parole, donc {agentCommand} est fermé. Exécutez d’abord {detachCommand} pour détacher l’équipe.",
 	"ui.chat.header_identity.agent_seat_closed_title": "Poste d’agent fermé par {team}",
 	"ui.chat.header_identity.aria_agent_assign": "Agent : {label}. Attribuer un agent",
 	"ui.chat.header_identity.aria_agent_closed": "Agent : {label}. {reason}",

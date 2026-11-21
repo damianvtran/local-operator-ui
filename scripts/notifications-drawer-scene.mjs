@@ -27,6 +27,35 @@ async function until(check, label, ms = 30_000) {
 	throw new Error(`${label}: timed out (${JSON.stringify(last)})`);
 }
 
+/** The title `revise()` writes: the one rendered sign that the revised revision arrived. */
+export const REVISED_TITLE = "New revision: still needs reading";
+
+/**
+ * WAIT FOR THE REVISED ROW TO BE RENDERED BEFORE PRESSING "MARK READ" ON IT.
+ *
+ * The partial-receipt step revises a row behind the drawer's back (`revise()`, a
+ * keyed notify = same id, revision + 1) while list reads are held. The drawer's
+ * Mark read names the rows AS RENDERED, id + revision (`tokensOf`,
+ * drawer-updates.tsx `markAllRead`), and core refuses a stale one as
+ * `stale_revision` - both by design. The drawer learns the new revision only from
+ * the feed frame's list refetch (or the 30 s interval), and every optimistic write
+ * cancels in-flight list reads (`beginOptimisticWrite`), so the Undo and its retry
+ * that follow can each throw that refetch away.
+ *
+ * Run 44677507218 (PR #2001) pressed the final Mark read while the drawer still drew
+ * "Drawer update 11" at revision 1: the refetch that would have carried revision 2
+ * was in flight and cancelled by the click itself, so core skipped the row and the
+ * "last unread empty state" wait timed out. Passing run 44669960961 sent revision 2
+ * only because that refetch happened to land first. The press is correct product
+ * behaviour (the operator had not seen revision 2); the scene was racing the
+ * refresh. So the scene waits for what the product guarantees - the revised title
+ * on screen - and never weakens the refusal or retries the press.
+ */
+export async function untilRevisionRendered(cdp, id, wait = until) {
+	const probe = `(()=>{const row=document.querySelector('[data-drawer-update="'+CSS.escape(${JSON.stringify(id)})+'"]');return Boolean(row&&row.textContent.includes(${JSON.stringify(REVISED_TITLE)}))})()`;
+	return wait(() => cdp.evaluate(probe), "revised revision rendered");
+}
+
 /** Faults are opt-in and session-scoped; the original scene's negatives stay real. */
 export async function prepareDrawerRemediation({
 	base,
@@ -274,7 +303,7 @@ export async function prepareDrawerRemediation({
 					"from local_operator.notifications.store import NotificationStore",
 					`s=NotificationStore(${JSON.stringify(config)})`,
 					`r=s.get(${JSON.stringify(row.id)})`,
-					`s.notify(${JSON.stringify(session)},key=r['key'],title='New revision: still needs reading',body_md='Concurrent keyed update',priority='normal')`,
+					`s.notify(${JSON.stringify(session)},key=r['key'],title=${JSON.stringify(REVISED_TITLE)},body_md='Concurrent keyed update',priority='normal')`,
 				].join("\n"),
 			);
 		},
@@ -814,6 +843,10 @@ export async function runDrawerRemediationScene({
 		});
 		assert.equal((await stateOf(cdp)).selected, "read");
 		await click(cdp, '[data-drawer-read-view="unread"]');
+		/* The row revised in the partial-receipt step must be drawn at its new
+		 * revision before this press, or the press names revision 1 and is refused
+		 * (see `untilRevisionRendered`). */
+		await untilRevisionRendered(cdp, stale.id);
 		await click(cdp, "[data-drawer-mark-all-read]");
 		await until(
 			async () => Boolean((await stateOf(cdp)).empty),

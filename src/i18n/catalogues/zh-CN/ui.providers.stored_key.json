@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "替换密钥",
+	"ui.providers.stored_key.remove": "移除密钥",
+	"ui.providers.stored_key.remove_confirm": "移除此密钥？",
+	"ui.providers.stored_key.remove_yes": "移除",
+	"ui.providers.stored_key.remove_failed": "无法移除该密钥。"
+}

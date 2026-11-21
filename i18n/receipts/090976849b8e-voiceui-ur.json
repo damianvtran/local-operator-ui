@@ -1,0 +1,94 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "090976849b8e",
+    "instance": "090976849b8e-voiceui-ur",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Same model family as the translator (anthropic/claude-sonnet-5-5), different session and agent role; not an independent model."
+  },
+  "locale": "ur",
+  "audit_date": "2026-11-19",
+  "scope": "Voice UI strings added on feat/qwen-voice-ui-2026-11-17 at translations commit bad1701b2d: ui.settings.voice (2 keys), ui.settings.speech.provider (12 keys), ui.providers.stored_key (5 keys) — ui.chat.voice deliberately NOT covered (changes requested, see audit hand-off)",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "namespaces": {
+    "ui.settings.voice": {
+      "status": "passed",
+      "sha256": {
+        "ur": "723be1172bbf4ec8f649283cbb530895acd8304e2b028f41bef78c3fabc10402",
+        "en": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497"
+      },
+      "context_sha256": "486cd3292afdddc3d4af9bc481af0e432e57030dceecf4ca9585f2990a3fb333",
+      "key_count": 2,
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.settings.voice.label",
+          "en": "Session voice",
+          "current": "سیشن آواز",
+          "problem": "«سیشن آواز» drops the izafat that Urdu needs for 'session voice'.",
+          "suggested": "سیشن کی آواز"
+        }
+      ]
+    },
+    "ui.settings.speech.provider": {
+      "status": "passed",
+      "sha256": {
+        "ur": "f5553ec0e1cbb19e95c731f81bd076cdaaf271f5c094eb607b8950b3eeed9528",
+        "en": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8"
+      },
+      "context_sha256": "f6d3835453c3477a7d40da11574165fcf16ab801a6db0d12410e627540681520",
+      "key_count": 12,
+      "findings": []
+    },
+    "ui.providers.stored_key": {
+      "status": "passed",
+      "sha256": {
+        "ur": "7936a0796243df7f9c33a6bc9d0dce133db35c724256b0e8af784d0e9e3700b9",
+        "en": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf"
+      },
+      "context_sha256": "7037b459a94c8acd004571f99a9fef5b53393dc8732b53f8aa8c9afc131714d9",
+      "key_count": 5,
+      "findings": []
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.settings.speech.provider.radient.description",
+      "target": "آپ کے Radient کریڈٹ سے بل بنتا ہے۔",
+      "back": "Billed to your Radient credit."
+    },
+    {
+      "key": "ui.settings.speech.provider.elevenlabs.description",
+      "target": "آپ کا اپنا ElevenLabs اکاؤنٹ استعمال ہوتا ہے، جس کا بل ElevenLabs بھیجتا ہے۔",
+      "back": "Your own ElevenLabs account is used, whose bill ElevenLabs sends."
+    },
+    {
+      "key": "ui.settings.speech.provider.none_ready",
+      "target": "دونوں فراہم کنندگان میں سے ابھی کوئی تیار نہیں۔ فراہم کنندگان میں ایک سیٹ اپ کریں، پھر اسے یہاں چنیں۔",
+      "back": "Of the two providers, none is ready yet. Set one up in Providers, then choose it here."
+    },
+    {
+      "key": "ui.providers.stored_key.remove_confirm",
+      "target": "یہ کلید ہٹائیں؟",
+      "back": "Remove this key?"
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at the worktree HEAD named in scope; each namespace block names exactly those bytes.",
+    "ICU parity: every message of the 4 namespaces (100 keys) parsed with the project's own @formatjs/icu-messageformat-parser (v3.5.21) and compared with English: same argument names/types ({title}, {reason}, {time}, {count}); key sets and key order equal English's; 700/700 (7 locales x 100 keys) clean. NFC on every message; no bidi control characters; no leading/trailing or doubled whitespace; no message identical to English; brand names (Radient, ElevenLabs, macOS, Local Operator), the 30-second figure, the ↑ arrow and ' · ' separators preserved wherever English has them; final-stop and ellipsis shape matches English (two ur/hi empty_history differences are the SOV verb after the closing quote, accepted).",
+    "Every string read against its English value and en .context.json sidecar (role, tone, note), against this locale's style guide and the core glossary (hashes in references), and against the sibling already-audited backend wording local_operator/i18n/catalogues/<locale>/wire.voice.json for provider/approval/conversation/key terms.",
+    "Neighbour consistency measured against existing UI catalogues of this locale: Retry, Settings, Providers (ui.settings.model.provider_callout.providers_link) / Provider, Reconnect, Pause, Approve/Deny (ui.chat.approval.option.*), Remove/Delete, Ready, Dictation, Speak aloud, API key, Radient credit, composer wording (ui.agents.config.banner.unavailable).",
+    "Register: es tú, fr vous, ru вы, vi bạn, zh 你, hi आप, ur آپ — consistent per style guide; no please-particles except where the zh style guide's 请 rule applies (checked per directive).",
+    "Length fit judged from character counts and from voice-composer.tsx layout (chips shrink-0, captions truncate); no rendered frame was produced or reviewed in this audit.",
+    "Back-translations of the 12 most consequential strings (approval, pending-card, voice-not-enabled, stream-lost, voice-elsewhere, provider-unset, rate limit, Radient/ElevenLabs billing, none-ready, key removal) recorded in back_translations for the namespaces this receipt covers."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+    "core_origin_main": "4a5aea9bd"
+  }
+}
