@@ -1,9 +1,9 @@
 {
   "ui.teamBridge.holdsBatch.action": "Loại bỏ tất cả…",
-  "ui.teamBridge.holdsBatch.confirm": "Loại bỏ {count} tin nhắn này? Chỉ áp dụng cho các tin nhắn trong danh sách bên dưới, không bao gồm tin nhắn mới đến. Mỗi lần loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác. Nội dung một số tin nhắn có thể không xem được. Việc này không xác nhận rằng máy chủ hay người gửi đã được thông báo.",
-  "ui.teamBridge.holdsBatch.submit": "Loại bỏ {count} tin nhắn",
-  "ui.teamBridge.holdsBatch.progress": "Đã xử lý {done} trên {total} tin nhắn.",
-  "ui.teamBridge.holdsBatch.result": "Đã ghi lại trên thiết bị này: {succeeded}. Chưa ghi lại: {failed}. Các tin nhắn chưa loại bỏ được vẫn bị giữ lại. Không bao gồm tin nhắn mới đến.",
+  "ui.teamBridge.holdsBatch.confirm": "Loại bỏ các tin nhắn trong danh sách (số lượng: {count})? Chỉ áp dụng cho các tin nhắn trong danh sách bên dưới, không bao gồm tin nhắn mới đến. Mỗi lần loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác. Nội dung một số tin nhắn có thể không xem được. Việc này không xác nhận rằng máy chủ hay người gửi đã được thông báo.",
+  "ui.teamBridge.holdsBatch.submit": "Loại bỏ tin nhắn trong danh sách ({count})",
+  "ui.teamBridge.holdsBatch.progress": "Tin nhắn đã xử lý: {done} trên {total}.",
+  "ui.teamBridge.holdsBatch.result": "Đã ghi lại trên thiết bị này: {succeeded}. Chưa xác nhận: {failed}. Các bản ghi chưa có xác nhận vẫn nằm trong danh sách này. Không bao gồm tin nhắn mới đến.",
   "ui.teamBridge.holdsBatch.retry": "Thử lại các tin nhắn bị lỗi…",
   "ui.teamBridge.holdsBatch.recorded": "Đã ghi lại việc loại bỏ trên thiết bị này.",
   "ui.teamBridge.holdsBatch.stale_receipt": "Bản ghi của tin nhắn bị giữ lại này đã thay đổi. Làm mới danh sách rồi xác nhận lại việc loại bỏ.",

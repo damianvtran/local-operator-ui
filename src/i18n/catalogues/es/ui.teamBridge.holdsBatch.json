@@ -1,9 +1,9 @@
 {
   "ui.teamBridge.holdsBatch.action": "Descartar todos…",
-  "ui.teamBridge.holdsBatch.confirm": "¿Descartar estos mensajes ({count})? Solo se incluyen los mensajes de la lista, no los que lleguen después. Cada descarte queda registrado en este dispositivo y no se puede deshacer. Puede que el texto de algunos mensajes no esté disponible. Esto no confirma que se haya notificado al servidor ni al remitente.",
-  "ui.teamBridge.holdsBatch.submit": "Descartar estos mensajes ({count})",
+  "ui.teamBridge.holdsBatch.confirm": "¿Descartar los mensajes de la lista (cantidad: {count})? Solo se incluyen los mensajes de la lista que aparece abajo, no los que lleguen después. Cada descarte queda registrado en este dispositivo y no se puede deshacer. Puede que el texto de algunos mensajes no esté disponible. Esto no confirma que se haya notificado al servidor ni al remitente.",
+  "ui.teamBridge.holdsBatch.submit": "Descartar mensajes de la lista ({count})",
   "ui.teamBridge.holdsBatch.progress": "Mensajes procesados: {done} de {total}.",
-  "ui.teamBridge.holdsBatch.result": "Descartes registrados en este dispositivo: {succeeded}. Sin registrar: {failed}. Los mensajes cuyo descarte falló siguen retenidos. No se incluyen los mensajes que llegaron después.",
+  "ui.teamBridge.holdsBatch.result": "Descartes registrados en este dispositivo: {succeeded}. Sin confirmar: {failed}. Los registros sin confirmación permanecen en esta lista. No se incluyen los mensajes que llegaron después.",
   "ui.teamBridge.holdsBatch.retry": "Reintentar los mensajes con errores…",
   "ui.teamBridge.holdsBatch.recorded": "Descarte registrado en este dispositivo.",
   "ui.teamBridge.holdsBatch.stale_receipt": "El registro de este mensaje retenido cambió. Actualiza la lista y vuelve a confirmar el descarte.",
