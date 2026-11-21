@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "2c1101b619bb",
+  "instance": "2c1101b619bb",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "No fallback. The model named in this session's system context ('Model: anthropic/claude-opus-5-5') is the one that served this audit.",
+  "independence": "Independent auditor (session 2c1101b619bb). I did not write or change any translation. The translator was a separate job (33eba2758122) running the same model, anthropic/claude-opus-5-5.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2c1101b619bb",
+    "instance": "2c1101b619bb",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": "No fallback. The model named in this session's system context ('Model: anthropic/claude-opus-5-5') is the one that served this audit.",
+    "independence": "Independent auditor (session 2c1101b619bb). I did not write or change any translation. The translator was a separate job (33eba2758122) running the same model, anthropic/claude-opus-5-5.",
+    "model_source": "Session system context: 'Model: anthropic/claude-opus-5-5'",
+    "independent_from_translator_session": true
+  },
+  "locale": "hi",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-agents-team-config-english",
+  "base": "1eec0703e662114f37e61e3b2c92cb2c04fb64d7",
+  "head": "f6e6260da1",
+  "round": 1,
+  "scope": "Round 1 audit of the 55 hi keys this branch adds (47 in ui.agents.config, 8 in ui.agents.teams), against the English, the translator context, the existing hi ui.agents.* glossary, hi CLDR plurals and Devanagari punctuation. Existing values are terminology context only and were not re-audited. The audited hi files are uncommitted working-tree edits on top of head f6e6260da1, identified by the sha256 values below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "id": "HI-1",
+        "severity": "minor",
+        "key": "ui.agents.config.summary.change.class_proactive, ui.agents.config.summary.change.class_reactive",
+        "finding": "'class' is rendered as श्रेणी, but in the existing hi ui.agents.* glossary श्रेणी already means 'tier' (प्रयास श्रेणी = effort tier: ui.agents.detail.read.effort_label, ui.agents.models.override.tier_field, ui.agents.models.reading.tier_layer 'श्रेणी {tier}'), and this branch's own summary.change.effort is 'प्रयास श्रेणी बदली'. Both phrases are joined into the same 'Updated <name> (<kind>):' summary, so 'प्रयास श्रेणी बदली, श्रेणी बदलकर पहल करने वाला की गई' reads as a tier change. The quoted label 'पहल करने वाला' (m., matching ui.agents.refusals.class.label.proactive) also sits unquoted before a feminine verb agreeing with श्रेणी, which reads awkwardly. Meaning is still recoverable from the label words, so not MAJOR. Suggested: follow ui.notices.agents.proactive/reactive, e.g. 'अब पहल कर सकता है' / 'अब सिर्फ़ जवाब देता है — अपनी ओर से संदेश भेजना बंद हुआ', or a distinct noun with the label in quotes. Disposition: recommend fix in remediation wave; non-gating"
+      }
+    ],
+    "nit": [
+      {
+        "id": "HI-2",
+        "severity": "nit",
+        "key": "ui.agents.teams.create.error_name_taken",
+        "finding": "'इसे बदलने के लिए उसे खोलें' refers to the same existing team with two different pronouns (इसे/उसे). Smoother: 'बदलाव करने के लिए उसे खोलें' or 'उसे बदलने के लिए उसे खोलें'. Disposition: optional"
+      },
+      {
+        "id": "HI-3",
+        "severity": "nit",
+        "key": "ui.agents.config.summary.change.tools_narrowed",
+        "finding": "'टूल का दायरा घटाकर एक सूची तक सीमित किया गया' is redundant (घटाकर + सीमित) and long for a comma-joined fragment ('A few words'). Shorter: 'टूल एक सूची तक सीमित किए गए'. Disposition: optional"
+      }
+    ]
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "checks": {
+    "meaning": "pass, except HI-1 terminology ambiguity (minor)",
+    "completeness_no_english": "pass. Only Latin text left is the product name 'Local Operator' (existing hi keeps it Latin, e.g. ui.agents.skills.alert.builtin_body) and placeholders {name}/{tool}/{field}/{count}/{before}/{after}. Loanwords in Devanagari follow existing hi copy: टूल (ui.agents.detail.section.tools), रन (ui.agents.config.action.watch 'रन चरण'), बैकएंड (ui.agents.config.banner.unavailable), बॉक्स (ui.agents.config.status.attached), मैनेजर (ui.agents.teams.section.manager), इंस्टॉल (ui.agents.detail.install.action.installing), अपडेट (ui.agents.config.summary.updated), कॉन्फ़िगरेशन (ui.agents.config.status.attached), कनेक्ट (common hi copy).",
+    "icu": "pass. Mechanical parse of all 55 values: braces balance; placeholder names and types identical to English; every select has agent/team/skill/other; both plurals have one/other with # in each arm (hi CLDR categories: one, other).",
+    "agreement": "pass. Select arms: एजेंट/कौशल m. (बनाया/किया जा रहा है, पढ़े जा रहे हैं, जाँचे गए), टीम/परिभाषा f. (बनाई/की जा रही है, पढ़ी जा रही हैं, जाँची गईं); oblique plurals एजेंटों/टीमों/कौशलों/परिभाषाओं before पर; श्रेणी f. → बदली; निर्देश/सदस्य pl. → बदले; पुष्टि f. → की; सूचियाँ → पढ़ी नहीं जा सकीं; टीम f. → सहेजी नहीं जा सकी, नई टीम.",
+    "register": "pass. आप imperatives (करें, भेजें, लिखें, खोलें, चुनें) and आपका/आपके.",
+    "glossary": "pass. कौशल=skill, परिभाषा=definition, प्रयास श्रेणी=effort tier, प्रकार=kind, काम सौंपना=delegation (ui.agents.detail.meta.delegates), पहल करने वाला/जवाब देने वाला=class labels, 'बदलाव के लिए कहें'=ui.agents.detail.action.ask_change, सहेजा/सहेजी नहीं जा सका=could not be saved (parallel to ui.agents.detail.edit.error_generic), 'एजेंट का नाम लिखें।' parallels; एजेंट/टीमें group headings match ui.hub.pages.tab.*. Exception: HI-1.",
+    "punctuation": "pass. Sentence-final । (no ASCII full stops), U+2026 ellipsis kept where English has it, headings/step lines unpunctuated, seed_prompt keeps trailing \": \", includes_team keeps leading \"· \", curly quotes “” as existing hi.",
+    "fit": "pass. Steps use the natural passive progressive (… जा रहा/रही है), longer than English but one line; HI-3 is the only noticeably verbose fragment.",
+    "existing_keys_unchanged": "pass. All 38 config and 40 teams keys present at HEAD are byte-equal in the working tree; 47+8 keys added; none removed; key set equals English.",
+    "plural_render": {
+      "tools_added": {
+        "0": "0 टूल जोड़ा गया (hi CLDR puts 0 in one; unreachable — context says count is always 2 or more)",
+        "1": "1 टूल जोड़ा गया",
+        "2": "2 टूल जोड़े गए",
+        "1000000": "10,00,000 टूल जोड़े गए"
+      },
+      "tools_removed": {
+        "0": "0 टूल हटाया गया (unreachable, as above)",
+        "1": "1 टूल हटाया गया",
+        "2": "2 टूल हटाए गए",
+        "1000000": "10,00,000 टूल हटाए गए"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201",
+        "hi": "5a3cbd6d0493e04059c846eaed6fd9650f0e938a201f44e7f65be1ed7a160eb3"
+      },
+      "context_sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3",
+      "keys_read": 47,
+      "reviewed_keys": [
+        "ui.agents.config.title.working",
+        "ui.agents.config.title.stopping",
+        "ui.agents.config.title.finished",
+        "ui.agents.config.title.finished_no_changes",
+        "ui.agents.config.title.stopped",
+        "ui.agents.config.title.stopped_error",
+        "ui.agents.config.title.finished_error",
+        "ui.agents.config.placeholder.working",
+        "ui.agents.config.seed_prompt",
+        "ui.agents.config.error.lists_unreadable",
+        "ui.agents.config.error.send_after_setup",
+        "ui.agents.config.error.start_failed",
+        "ui.agents.config.error.send_failed",
+        "ui.agents.config.error.stop_unacknowledged",
+        "ui.agents.config.disabled.connecting",
+        "ui.agents.config.disabled.needs_newer_backend",
+        "ui.agents.config.summary.step.creating_named",
+        "ui.agents.config.summary.step.creating",
+        "ui.agents.config.summary.step.updating_named",
+        "ui.agents.config.summary.step.updating",
+        "ui.agents.config.summary.step.editing_named",
+        "ui.agents.config.summary.step.editing",
+        "ui.agents.config.summary.step.installing_named",
+        "ui.agents.config.summary.step.installing",
+        "ui.agents.config.summary.step.reading_named",
+        "ui.agents.config.summary.step.reading",
+        "ui.agents.config.summary.step.working",
+        "ui.agents.config.summary.step.checked",
+        "ui.agents.config.summary.change.description",
+        "ui.agents.config.summary.change.kind",
+        "ui.agents.config.summary.change.effort",
+        "ui.agents.config.summary.change.manager",
+        "ui.agents.config.summary.change.instructions",
+        "ui.agents.config.summary.change.field",
+        "ui.agents.config.summary.change.tools",
+        "ui.agents.config.summary.change.tools_widened",
+        "ui.agents.config.summary.change.tools_narrowed",
+        "ui.agents.config.summary.change.tool_added",
+        "ui.agents.config.summary.change.tool_removed",
+        "ui.agents.config.summary.change.tools_added",
+        "ui.agents.config.summary.change.tools_removed",
+        "ui.agents.config.summary.change.tools_changed",
+        "ui.agents.config.summary.change.delegation_on",
+        "ui.agents.config.summary.change.delegation_off",
+        "ui.agents.config.summary.change.class_proactive",
+        "ui.agents.config.summary.change.class_reactive",
+        "ui.agents.config.summary.change.members"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "id": "HI-1",
+            "severity": "minor",
+            "key": "ui.agents.config.summary.change.class_proactive, ui.agents.config.summary.change.class_reactive",
+            "finding": "'class' is rendered as श्रेणी, but in the existing hi ui.agents.* glossary श्रेणी already means 'tier' (प्रयास श्रेणी = effort tier: ui.agents.detail.read.effort_label, ui.agents.models.override.tier_field, ui.agents.models.reading.tier_layer 'श्रेणी {tier}'), and this branch's own summary.change.effort is 'प्रयास श्रेणी बदली'. Both phrases are joined into the same 'Updated <name> (<kind>):' summary, so 'प्रयास श्रेणी बदली, श्रेणी बदलकर पहल करने वाला की गई' reads as a tier change. The quoted label 'पहल करने वाला' (m., matching ui.agents.refusals.class.label.proactive) also sits unquoted before a feminine verb agreeing with श्रेणी, which reads awkwardly. Meaning is still recoverable from the label words, so not MAJOR. Suggested: follow ui.notices.agents.proactive/reactive, e.g. 'अब पहल कर सकता है' / 'अब सिर्फ़ जवाब देता है — अपनी ओर से संदेश भेजना बंद हुआ', or a distinct noun with the label in quotes. Disposition: recommend fix in remediation wave; non-gating"
+          }
+        ],
+        "nit": [
+          {
+            "id": "HI-3",
+            "severity": "nit",
+            "key": "ui.agents.config.summary.change.tools_narrowed",
+            "finding": "'टूल का दायरा घटाकर एक सूची तक सीमित किया गया' is redundant (घटाकर + सीमित) and long for a comma-joined fragment ('A few words'). Shorter: 'टूल एक सूची तक सीमित किए गए'. Disposition: optional"
+          }
+        ]
+      },
+      "existing_keys_changed": 0
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c",
+        "hi": "017a2ffbb77647d7a1437d3aa148664a4b9f9f97654a597c7b60642cf4edda91"
+      },
+      "context_sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.agents.teams.create.error_name_required",
+        "ui.agents.teams.create.error_name_taken",
+        "ui.agents.teams.create.error_instructions_required",
+        "ui.agents.teams.edit.error_generic",
+        "ui.agents.teams.create.title_new",
+        "ui.agents.teams.includes_team",
+        "ui.agents.teams.group.agents",
+        "ui.agents.teams.group.teams"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "HI-2",
+            "severity": "nit",
+            "key": "ui.agents.teams.create.error_name_taken",
+            "finding": "'इसे बदलने के लिए उसे खोलें' refers to the same existing team with two different pronouns (इसे/उसे). Smoother: 'बदलाव करने के लिए उसे खोलें' or 'उसे बदलने के लिए उसे खोलें'. Disposition: optional"
+          }
+        ]
+      },
+      "existing_keys_changed": 0
+    }
+  }
+}

@@ -52,10 +52,21 @@ export type RunTargetKind = "agent" | "team" | "skill";
 export type RunTarget = { kind: RunTargetKind; name: string };
 
 import type { WireImage } from "@features/chat/utils/bound-image";
+import type { MessageKey } from "@shared/i18n";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
 
 /** A catalogue field that changed, in the operator's words. */
-export type RunChange = { label: string; before: string; after: string };
+/**
+ * A summary sentence as catalogue copy: the key and its parameters, painted by
+ * `summaryText` (summary.ts) at render so a stored result follows a language
+ * switch made after the run settled.
+ */
+export type SummaryText = {
+	key: MessageKey;
+	params?: Record<string, string | number>;
+};
+
+export type RunChange = { label: SummaryText; before: string; after: string };
 
 /** One result of the run: a definition it created or changed. */
 export type RunResult = {
