@@ -1,0 +1,59 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "session": "a538d5e2e21c",
+    "instance": "a538d5e2e21c-tbrename-r1-zh-cn",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Auditor model anthropic/claude-opus-5-5 (lop team lopdev, reviewer role, session a538d5e2e21c). Translator is the PR coder agent in a different session; its served model is recorded on the ledger row, not inferred here."
+  },
+  "locale": "zh-CN",
+  "audit_date": "2026-11-20",
+  "scope": "Full new-namespace audit of ui.teamBridge.rename (15 keys) for PR damianvtran/local-operator-ui#2019 at HEAD 5f5c7d343423 (scope f2d6d52602..5f5c7d343423); every key read side-by-side with English and its context note.",
+  "translator": {
+    "agent": "coder"
+  },
+  "namespaces": {
+    "ui.teamBridge.rename": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "dcd6f123a8c74dab276a996e2f3b705516c010d58b7446277df0b2ff9672aa06",
+        "en": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd"
+      },
+      "context_sha256": "47929ccdd1c0e137c29c8594f4865f303365ea2a2bc6f4b67a765ba6d6081911",
+      "key_count": 15,
+      "findings": []
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.teamBridge.rename.menu",
+      "target": "重命名频道……",
+      "back": "Rename channel…"
+    },
+    {
+      "key": "ui.teamBridge.rename.error.taken",
+      "target": "已存在名为#{name}的频道。请换一个名称。",
+      "back": "A channel named #{name} already exists. Please use another name."
+    },
+    {
+      "key": "ui.teamBridge.rename.error.failed",
+      "target": "新名称未保存。请重试。",
+      "back": "The new name was not saved. Please retry."
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes named here.",
+    "ICU parity: all 15 messages parsed with the project's @formatjs/icu-messageformat-parser; argument names/types (kind select [group,other], name, max number) equal English's in every key; key set and order equal English; NFC; no stray or doubled whitespace; no bidi control characters, NBSP or thin spaces other than T1's.",
+    "The literal # before {name} sits in a select (not plural) arm, so it renders as #, matching English and the existing ui.teamBridge.archive.confirm.title pattern.",
+    "Terminology checked against existing shipped copy in this locale: 频道/群组, 重命名, 保存/正在保存……, 取消, 已归档 (archive.*); 你 register, …… ellipsis, full-width punctuation.",
+    "Context notes honoured: menu keeps the locale ellipsis; title drops it; channel description states lowercase + hyphens; too_long counts characters; taken names the conversation; failed says nothing was saved.",
+    "Core glossary and the locale style guide (origin/main 1a8dae591691) read as binding; hashes under references.",
+    "No rendered frame, pseudo-localization or fit measurement was produced in this audit; no rendered-fit claim."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6",
+    "core_origin_main": "1a8dae591691"
+  }
+}
