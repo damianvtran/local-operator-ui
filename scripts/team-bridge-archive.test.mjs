@@ -420,6 +420,49 @@ test("rename settles to the server's CANONICAL name, not the typed one", async (
 
 test("rename sends the owner receipt and refuses once authority changed", async () => {
 	const { client } = seededClient({ conversations: [] });
+	/*
+	 * The receipt, end to end (review round 1, N1): the mutation goes through
+	 * `TeamBridgeApi.rename` and `teamBridgeWriteOwner` to the desktop transport,
+	 * and the request it hands over must carry the captured owner beside the
+	 * name. A stub transport stands in for main's IPC bridge; the capability
+	 * read the owner guard makes first answers that the guard is available.
+	 */
+	const sent = [];
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					sent.push(request);
+					return request.op === "capabilities"
+						? {
+								status: 200,
+								body: {
+									result: {
+										features: { team_bridge_conversation_owner_guard: 1 },
+									},
+								},
+							}
+						: { status: 200, body: { result: { id: "bcv_2", name: "x" } } };
+				},
+			},
+		},
+	};
+	try {
+		await ui
+			.renameMutationOptions(client, () => true)
+			.mutationFn({ conversationId: "bcv_2", tenantId: "tnt_1", name: "x" });
+	} finally {
+		globalThis.window = previousWindow;
+	}
+	const rename = sent.find(
+		(request) => request.op === "team_bridge.conversations.rename",
+	);
+	assert.ok(rename, "the rename request reached the transport");
+	assert.equal(rename.conversation_id, "bcv_2");
+	assert.equal(rename.name, "x");
+	assert.equal(rename.expected_account_id, "acct_self");
+	assert.equal(rename.tenant_id, "tnt_1");
 	const options = ui.renameMutationOptions(client, () => false);
 	assert.throws(
 		() =>

@@ -9,8 +9,8 @@ import {
 import { Input } from "@shared/components/ui/input";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import type { FC } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import type { FC, ReactNode } from "react";
+import { useId, useRef, useState } from "react";
 import { channelSlug } from "./team-bridge-create-dialog";
 
 /*
@@ -113,16 +113,58 @@ export function normalizedRenameName(
 		: typed.trim().replace(WHITESPACE_RUN, " ");
 }
 
+/*
+ * A placeholder the formatted sentence cannot otherwise contain (Private Use
+ * Area), so the interpolated name can be found again after ICU formatting.
+ */
+const NAME_SLOT = "\uE000";
+
+/**
+ * The taken-name sentence with `#name` (or `name`) isolated in a `<bdi>`
+ * (design review round 1, D2). In an RTL locale the neutral `#` otherwise takes
+ * the paragraph direction and renders on the far side of a Latin slug
+ * (`launch-crew#` in Urdu). Done at render so the audited catalogues stay
+ * byte-identical: the sentence is formatted with a placeholder name, split on
+ * it, and the real name (with the catalogue's own `#`, when it has one) is put
+ * back inside the isolate.
+ */
+export function takenSentence(
+	kind: "channel" | "group",
+	name: string,
+): ReactNode {
+	const formatted = t("ui.teamBridge.rename.error.taken", {
+		kind,
+		name: NAME_SLOT,
+	});
+	const at = formatted.indexOf(NAME_SLOT);
+	if (at < 0) return formatted;
+	const hash = formatted[at - 1] === "#" ? "#" : "";
+	return (
+		<>
+			{formatted.slice(0, at - hash.length)}
+			<bdi data-rename-name>
+				{hash}
+				{name}
+			</bdi>
+			{formatted.slice(at + NAME_SLOT.length)}
+		</>
+	);
+}
+
+/** Refusals no other name can fix: the dialog leaves only Cancel (D3). */
+export function isTerminalRenameFailure(
+	failure: TeamBridgeRenameFailure | null,
+): boolean {
+	return failure?.kind === "archived" || failure?.kind === "forbidden";
+}
+
 function failureText(
 	failure: TeamBridgeRenameFailure,
 	kind: "channel" | "group",
-): string {
+): ReactNode {
 	switch (failure.kind) {
 		case "taken":
-			return t("ui.teamBridge.rename.error.taken", {
-				kind,
-				name: failure.name,
-			});
+			return takenSentence(kind, failure.name);
 		case "empty":
 			return t("ui.teamBridge.rename.error.empty");
 		case "too_long":
@@ -165,10 +207,33 @@ export const TeamBridgeRenameDialog: FC<{
 	const errorId = useId();
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [typed, setTyped] = useState(currentName);
-	/* Every open starts from the stored name: a cancelled edit must not return. */
-	useEffect(() => {
+	/*
+	 * SEED ON THE OPEN TRANSITION ONLY (review round 1, R1/U1/Q1). Every open
+	 * starts from the stored name, so a cancelled edit does not return. But
+	 * `currentName` is the cached row, and the cache changes WHILE the dialog
+	 * is open: the optimistic write sets it to the new name and a refusal rolls
+	 * it back (a list refetch can also land). Re-seeding on those changes wiped
+	 * the person's text exactly when a refusal asked them to edit it. This is
+	 * React's "adjust state while rendering" pattern rather than an effect, so
+	 * the seeded value is on screen in the same frame the dialog opens.
+	 */
+	const [seededOpen, setSeededOpen] = useState(open);
+	if (open !== seededOpen) {
+		setSeededOpen(open);
 		if (open) setTyped(currentName);
-	}, [open, currentName]);
+	}
+	/*
+	 * The server refusal the person has since edited past (review round 1,
+	 * U2): it stops showing, and the field stops being aria-invalid, on the
+	 * first keystroke. The page hands a NEW object for every refusal, so the
+	 * next refusal shows again.
+	 */
+	const [editedPast, setEditedPast] = useState<TeamBridgeRenameFailure | null>(
+		null,
+	);
+	/* Archived or forbidden: no other name can succeed, so the field and Save
+	   are disabled and only Cancel is left (design round 1, D3). */
+	const terminal = isTerminalRenameFailure(error);
 	const next = normalizedRenameName(kind, typed);
 	const unchanged = next === normalizedRenameName(kind, currentName);
 	/* Too long is SAID, not only disabled: a Save that greys out with no reason
@@ -176,8 +241,11 @@ export const TeamBridgeRenameDialog: FC<{
 	const tooLong = renameNameLength(next) > TEAM_BRIDGE_RENAME_MAX;
 	const shown: TeamBridgeRenameFailure | null = tooLong
 		? { kind: "too_long" }
-		: error;
-	const canSave = next.length > 0 && !tooLong && !unchanged && !pending;
+		: error && error !== editedPast
+			? error
+			: null;
+	const canSave =
+		next.length > 0 && !tooLong && !unchanged && !pending && !terminal;
 	const submit = () => {
 		if (canSave) onSave(next);
 	};
@@ -219,7 +287,14 @@ export const TeamBridgeRenameDialog: FC<{
 							ref={inputRef}
 							id={fieldId}
 							value={typed}
-							onChange={(event) => setTyped(event.target.value)}
+							onChange={(event) => {
+								setTyped(event.target.value);
+								if (error) setEditedPast(error);
+							}}
+							/* Locked while saving (D4) so the field cannot drift from the
+							   name the server is about to return. */
+							readOnly={pending}
+							disabled={terminal}
 							aria-invalid={shown ? true : undefined}
 							aria-describedby={shown ? errorId : undefined}
 							data-rename-field

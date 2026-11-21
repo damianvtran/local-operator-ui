@@ -51,3 +51,20 @@ export const Forbidden: Story = { args: { error: { kind: "forbidden" } } };
 export const InvalidCharacters: Story = {
 	args: { error: { kind: "characters" } },
 };
+/** Over the 64-code-point bound: the reason is said inline and Save is off
+   (design round 1, D5). */
+export const TooLong: Story = {
+	args: { currentName: "launch-".repeat(10) },
+};
+/*
+ * Right to left (design round 1, D2/D5): `#launch-crew` stays one token in the
+ * Urdu sentence because the name renders inside a `<bdi>`. `locale` is the
+ * preview's global arg (see `.storybook/preview.tsx`), not a dialog prop, so it
+ * is passed through an untyped spread.
+ */
+export const NameTakenUrdu: Story = {
+	args: {
+		error: { kind: "taken", name: "launch-crew" },
+		...({ locale: "ur" } as Record<string, unknown>),
+	},
+};

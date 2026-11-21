@@ -1301,9 +1301,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 
 	const [deleting, setDeleting] = useState(false);
-	/* The rename dialog's own in-flight and refusal state. Cleared on every
-	   open, so a refusal from one rename never shows under the next. */
+	/* The rename dialog's refusal, cleared on every open so a refusal from one
+	   rename never shows under the next. `renaming` belongs to the REQUEST, not
+	   to an open: reopening while a save is in flight keeps Save disabled. */
 	const [renaming, setRenaming] = useState(false);
+	/*
+	 * Which open of the rename dialog is on screen (review round 1, R3/U3).
+	 * Bumped on every open and every close; a save captures it, and its outcome
+	 * acts on the dialog only if that same open is still showing. Otherwise a
+	 * late success would close a newer dialog and a late refusal would annotate
+	 * it; a refusal for a dialog that is gone is announced with a toast instead,
+	 * because the rail has just silently flipped back.
+	 */
+	const renameOpen = useRef(0);
 	const [renameFailed, setRenameFailed] =
 		useState<TeamBridgeRenameFailure | null>(null);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
@@ -3003,7 +3013,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				setMembersOpen(true);
 			},
 			onRename: () => {
-				setRenaming(false);
+				renameOpen.current += 1;
 				setRenameFailed(null);
 				setDialog({ kind: "rename", conversationId: conversation.id });
 			},
@@ -5059,19 +5069,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							currentName={subject.name?.trim() ?? ""}
 							pending={renaming}
 							error={renameFailed}
-							onClose={() => setDialog(null)}
+							onClose={() => {
+								renameOpen.current += 1;
+								setDialog(null);
+							}}
 							onSave={(next) => {
 								if (!onRename || renaming) return;
+								const sentFrom = renameOpen.current;
 								setRenaming(true);
 								setRenameFailed(null);
 								onRename(subject, next).then(
 									() => {
 										setRenaming(false);
-										setDialog(null);
+										if (renameOpen.current === sentFrom) setDialog(null);
 									},
 									(failure: unknown) => {
 										setRenaming(false);
-										setRenameFailed(renameFailure(failure, next));
+										if (renameOpen.current === sentFrom) {
+											setRenameFailed(renameFailure(failure, next));
+										} else {
+											showErrorToast(t("ui.teamBridge.rename.error.failed"));
+										}
 									},
 								);
 							}}

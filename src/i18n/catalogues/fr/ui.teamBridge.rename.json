@@ -12,6 +12,6 @@
 	"ui.teamBridge.rename.error.characters": "Le nom contient un caractère non autorisé, comme une tabulation, un saut de ligne ou un caractère invisible.",
 	"ui.teamBridge.rename.error.invalid": "Ce nom ne peut pas être utilisé. Essayez-en un autre.",
 	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {Vous n’avez pas l’autorisation de renommer ce groupe.} other {Vous n’avez pas l’autorisation de renommer ce canal.}}",
-	"ui.teamBridge.rename.error.archived": "{kind, select, group {Ce groupe a été archivé : il ne peut plus être renommé.} other {Ce canal a été archivé : il ne peut plus être renommé.}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {Ce groupe a été archivé : il ne peut plus être renommé.} other {Ce canal a été archivé : il ne peut plus être renommé.}}",
 	"ui.teamBridge.rename.error.failed": "Le nouveau nom n’a pas été enregistré. Réessayez."
 }
