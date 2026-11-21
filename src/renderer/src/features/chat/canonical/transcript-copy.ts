@@ -33,6 +33,7 @@
  * loose paragraph.
  */
 
+import { t } from "@shared/i18n";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
@@ -286,7 +287,9 @@ export function copyTextForRecord(record: TranscriptRecord): string {
 				const answers = record.answers[question.id] ?? [];
 				return [
 					question.question,
-					answers.length > 0 ? answers.join(", ") : "No answer given",
+					answers.length > 0
+						? answers.join(", ")
+						: t("ui.chat.canonical.transcript.no_answer_given"),
 				].join("\n");
 			});
 			return [askResponseSummary(record), ...answered]

@@ -13,21 +13,44 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import os from "node:os";
 import { join } from "node:path";
-import { after, test } from "node:test";
+import { after, describe, test } from "node:test";
+import vm from "node:vm";
+import { JSDOM } from "jsdom";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	APP_ZIP_UNPACKED_CAP_BYTES,
+	CAPTUREPAGE_METHOD,
 	CODESIGN_CAP_MS,
+	COLLAPSED_GROUP_HEADER,
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
+	DOWNLOAD_FILE_DEFAULT,
+	DOWNLOAD_ITEM_SELECTOR,
+	DOWNLOAD_OUTCOME_WAIT_MS,
+	EXIT,
+	FILES_READY,
 	FORBIDDEN_DAEMON_PATH,
+	INDEX_ROW,
+	MEASUREMENT_LIMITS,
+	PREVIEW_FILE_DEFAULT,
+	RUNNER_MAX_STEPS,
 	Refusal,
+	SCENES,
+	SCENE_READY,
 	SCREENCAPTURE_METHOD,
+	SCREEN_RECORDING_PREFLIGHT_JXA,
+	SHOW_IN_CANVAS_ITEM_SELECTOR,
 	STARTUP_WINDOW_MS,
+	TEST_OPERATOR_DOWNLOADS_ENV,
 	UNKNOWN_START,
+	WINDOW_WAIT_DEFAULT_S,
+	WINDOW_WAIT_MAX_S,
+	WINDOW_WAIT_SELECTOR,
+	actionsForNameLabels,
 	appNames,
 	appZipListingProblem,
 	appZipProblem,
@@ -45,22 +68,52 @@ import {
 	credentialMaterial,
 	daemonRequest,
 	daemonRequestProblem,
+	detailReadSelector,
+	downloadDestinations,
+	downloadFailureHint,
+	downloadLimits,
+	downloadPreflight,
+	downloadPressAllowlist,
+	downloadSceneSteps,
+	downloadStepsProblem,
+	downloadToastLatency,
+	duplicateFrameProblem,
+	duplicateRowSelector,
 	envGovernedBlockedMessage,
 	extractedContainmentProblem,
 	extractedSymlinkProblem,
+	filePreviewSceneSteps,
+	filePreviewSelector,
+	filesRowReachSteps,
 	frameMatchesWindow,
+	imagePreviewCheck,
+	inspectLanding,
 	killRigMatched,
+	landingNames,
+	libraryProvenanceCheck,
+	listNames,
 	lopArgvProblem,
+	manifestEntry,
+	operatorDownloadsBaseline,
+	operatorDownloadsDir,
+	operatorDownloadsRefusals,
+	operatorDownloadsTarget,
+	operatorDownloadsVerdict,
 	operatorPathProblem,
 	operatorRoots,
 	parseArgs,
 	parsePsFactsLine,
 	physical,
+	physicalParent,
 	pngSize,
 	portListenerOwned,
+	previewFileProblem,
 	processFacts,
 	processFactsMany,
 	quarantineProblem,
+	readImagePreview,
+	readLibraryProvenance,
+	receiptLimits,
 	redactEnv,
 	relayPortFromConfig,
 	relayPortProblem,
@@ -68,13 +121,52 @@ import {
 	rememberIdentities,
 	resolveAppBundle,
 	rigMatcher,
+	rigNewEntries,
+	runAsync,
+	screenRecordingGrantHint,
 	screenRecordingVerdict,
 	selectServeRecord,
 	startupProblem,
+	stepCountProblem,
+	strayDownloadsProblem,
+	tccHostFromPsTable,
+	updateDetailSceneSteps,
 	validateOptions,
 	verifySeedRows,
+	windowInfoAsync,
 	windowModeProblem,
+	windowWaitStep,
 } from "./mac-proof-capture.mjs";
+import {
+	APP_ENV_KEYS,
+	OPEN_BIN,
+	OPEN_ENV_KEYS,
+	PS_TZ,
+	TEST_LAUNCHD_PID_ENV,
+	TEST_LAUNCH_ENV,
+	attachedUrlOf,
+	buildOpenArgv,
+	createAttachCheck,
+	createEnvProof,
+	createFileTail,
+	createFrontmostWatch,
+	discoverAppPid,
+	emptyFrontmost,
+	interRunGateProblem,
+	launchMode,
+	openArgvProblem,
+	parseAppInfo,
+	parseFrontAsn,
+	parsePsRows,
+	profileToken,
+	psRows,
+	rigPidClassifier,
+	rigStyleProfilePattern,
+	sampleFrontmost,
+	startOf,
+	startSentinel,
+	stopLaunchedApp,
+} from "./mac-proof-focus.mjs";
 
 /**
  * Contract tests for `scripts/mac-proof-capture.mjs`, the one-command Mac proof
@@ -89,8 +181,9 @@ import {
  *   - the spawn plan: allowlisted env, no inherited CMUX_/LOP_/LOCAL_OPERATOR_,
  *     switches after the absolute binary with no `--`, the token redacted;
  *   - END TO END against a FAKE app tree (a node script that speaks the
- *     `[window-mode]`/`[dev-driver]`/`[dev-driver-script]` protocol, IGNORES
- *     SIGTERM and RE-PARENTS a child carrying the profile) and a FAKE `lop serve`:
+ *     `[window-mode]`/`[dev-driver]`/`[dev-driver-script]` protocol, RE-PARENTS a
+ *     child carrying the profile and, when a case asks, IGNORES SIGTERM) and a
+ *     FAKE `lop serve`:
  *     frames named `<scene>-<theme>.png`, the receipt, the token never on stdout,
  *     argv or in the receipt, and a reap that leaves no process behind.
  *
@@ -141,6 +234,18 @@ const PNG_1X1 = Buffer.from(
  * A fake `.app` bundle whose executable is a node script. `behaviour` lands in
  * a JSON file beside it, because the harness passes the app an ALLOWLISTED env
  * and nothing a test exported could reach it - which is itself under test.
+ *
+ * `behaviour.ignoreTerm` makes the app a WEDGED one that ignores SIGTERM, so the
+ * reap must escalate to SIGKILL. It is opt-in, not the default, because that
+ * escalation costs the harness's full SIGTERM grace (`stopAppTree`: 5 s) on
+ * EVERY run that uses it: measured on this file, the default-wedged fake made
+ * the suite 197 s and pushed `Desktop Tests shard (2/5)` past its bound (Full
+ * Test Suite run 44748413720). The cases whose SUBJECT is the escalation keep
+ * it - the isolated end-to-end (asserts `reap.app.escalated`) and the
+ * --timeout/SIGTERM/SIGHUP interruption case (a hung renderer is the shape
+ * those paths clean up after) - and every other case's reap assertions
+ * (`clean`, the re-parented helper found by its profile, nothing left running)
+ * do not depend on how the leader died.
  */
 function fakeApp(name, behaviour = {}) {
 	const app = join(TREE, `${name}.app`);
@@ -159,12 +264,15 @@ function fakeApp(name, behaviour = {}) {
 	writeFileSync(
 		exe,
 		`#!${process.execPath}
-${PARENT_WATCH}
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const crypto = require("node:crypto");
 const behaviour = JSON.parse(fs.readFileSync(path.join(__dirname, "behaviour.json"), "utf8"));
+// behaviour.ls: launched by the fake \`open\` (fakeLaunchServices), so its parent
+// exits at once and the parent watch would end it; the cap alone bounds it.
+if (behaviour.ls) setTimeout(() => process.exit(0), ${FIXTURE_CAP_MS});
+else ${PARENT_WATCH}
 const arg = (name) => (process.argv.find((a) => a.startsWith(name + "=")) || "").slice(name.length + 1);
 const mode = behaviour.reportMode || arg("--window-mode");
 const profile = arg("--user-data-dir");
@@ -176,20 +284,46 @@ fs.writeFileSync(path.join(rig, "fake-app-seen.json"), JSON.stringify({
   envKeys: Object.keys(process.env).sort(),
   tokenSha: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN ? crypto.createHash("sha256").update(process.env.LOCAL_OPERATOR_DESKTOP_TOKEN).digest("hex") : null,
   attachUrl: process.env.LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL,
+  configDir: process.env.LOCAL_OPERATOR_CONFIG_DIR,
+  logDir: process.env.LOCAL_OPERATOR_LOG_DIR,
+  managerOff: process.env.VITE_DISABLE_BACKEND_MANAGER,
   home: process.env.HOME,
   cwd: process.cwd(),
 }));
-process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
+if (behaviour.ignoreTerm) process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
 const log = (line) => process.stdout.write(line + "\\n");
 log("[window-mode] window mode " + mode + ": 1380x900, never shown, page throttling off");
-log("[dev-driver] ARMED; frames are written to " + out);
+// Under ls the real app's shape: the driver arms only when its env arrived,
+// and the attach line names the backend the launch env gave it.
+const armed = !behaviour.ls || Boolean(out);
+if (armed) log("[dev-driver] ARMED; frames are written to " + out);
+else log("[dev-driver] not armed (no LOCAL_OPERATOR_UI_DEV_DRIVER_OUT)");
 // noScript: a release that predates the S1 step runner never prints this.
-if (!behaviour.noScript) log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
+if (!behaviour.noScript && armed) log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
+const attachUrl = process.env.LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL;
+// v0.59.2's backend resolution (attach-backend.ts:117-125, index.ts:2663):
+// no attach URL is "managed" - the real app would claim the OPERATOR's daemon
+// from his config root (recorded here as the contact it would have made); a URL
+// with no token is "incomplete" - one [attach] line on stderr, exit 1, before
+// any backend or window.
+if (behaviour.ls && !attachUrl && behaviour.operatorMarker) fs.writeFileSync(behaviour.operatorMarker, "managed: would claim the daemon under " + (process.env.LOCAL_OPERATOR_CONFIG_DIR || path.join(process.env.HOME || "", ".local-operator")));
+if (behaviour.ls && attachUrl && !process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) { process.stderr.write("[attach] LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL names a backend to attach to, but LOCAL_OPERATOR_DESKTOP_TOKEN is not set, so this app has no credential for it.\\n"); process.exit(1); }
+// echoToken + lockLog: an app that prints the token into a log file the
+// harness then cannot rewrite (security review S2's silent-redaction case).
+if (behaviour.echoToken) log("echo " + process.env.LOCAL_OPERATOR_DESKTOP_TOKEN);
+if (behaviour.lockLog) fs.chmodSync(path.join(rig, "logs", "app-stdout.log"), 0o444);
+if (behaviour.ls && attachUrl) log("13:43:10.136 \u203a Attached to the backend this launch named: " + (behaviour.attachUrl || attachUrl) + " (pid 1, v0.0.0, fake)");
+if (behaviour.ls) log("13:43:11.563 \u203a [window-raise] trigger=initial-present mode=" + mode + " requested=" + mode + " applied=showInactive");
 // The re-parented helper: its own group, carrying the profile, outliving us.
-const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile], { detached: true, stdio: "ignore" });
+// Under ls it carries --type= like an Electron helper (pid discovery skips it).
+const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile, ...(behaviour.ls ? ["--type=gpu-process"] : [])], { detached: true, stdio: "ignore" });
 child.unref();
 fs.writeFileSync(path.join(rig, "fake-child.pid"), String(child.pid));
 fs.writeFileSync(path.join(rig, "fake-app.pid"), String(process.pid));
+// behaviour.steal: become (or make the helper) the frontmost app, the way the
+// fake lsappinfo reads it - 79's 1907b steal, on demand.
+if (behaviour.steal) setTimeout(() => fs.writeFileSync(behaviour.frontFile, String(behaviour.steal === "helper" ? child.pid : process.pid)), behaviour.stealAfterMs ?? 0);
+if (!armed) { setInterval(() => {}, 1000); return; }
 setTimeout(() => {
   log("[window-mode] state: visible=" + (mode === "inactive") + " focused=" + Boolean(behaviour.focused) + " focusable=false size=1380x900 content=1380x872");
   // A wedged renderer: armed, shown, and then nothing - the shape the
@@ -204,12 +338,26 @@ setTimeout(() => {
     if (behaviour.failVerb === step.verb) { log("[dev-driver-script] step=" + n + " verb=" + step.verb + " error: fake failure"); log("[dev-driver-script] FAILED step=" + n); return; }
     if (step.verb === "shutter") {
       const file = path.join(out, step.payload.label + ".png");
-      fs.writeFileSync(file, Buffer.from("${PNG_1X1.toString("hex")}", "hex"));
+      // Distinct bytes per label (trailing after IEND; pngSize reads only IHDR),
+      // as real scenes differ; behaviour.sameFrame reproduces #1907's stale shot.
+      const png = Buffer.from("${PNG_1X1.toString("hex")}", "hex");
+      fs.writeFileSync(file, behaviour.sameFrame ? png : Buffer.concat([png, Buffer.from(step.payload.label)]));
       log("[dev-driver-script] SHUTTER label=" + step.payload.label + " capture=capturepage path=" + file + " width=1 height=1 visible=false focused=false");
       log("[dev-driver-script] step=" + n + " verb=shutter ok {}");
       return;
     }
-    const value = step.verb === "state" ? { activeSessionId: behaviour.activeSessionId ?? (arg("--open-session") || null) } : { ok: true };
+    // downloadPost: the press on the Download entry sends what the real app
+    // sends (desktop op sessions.files.download) - from the APP, with the
+    // app's own token, to the backend it attached to; the harness never does.
+    if (behaviour.downloadPost && step.verb === "press" && String(step.payload && step.payload.selector).includes('data-remote-action="download"')) {
+      const url = process.env.LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL + "/v1/desktop/sessions/" + arg("--open-session") + "/files/f1/download";
+      const post = require("node:child_process").spawnSync(process.execPath, ["-e", "fetch(process.argv[1], { method: 'POST', headers: { authorization: 'Bearer ' + process.env.T } }).then(async (r) => { process.stdout.write(String(r.status)); })", url], { env: { T: process.env.LOCAL_OPERATOR_DESKTOP_TOKEN }, encoding: "utf8", timeout: 10000 });
+      fs.writeFileSync(path.join(rig, "fake-download-post.txt"), post.stdout || "none");
+    }
+    // toastWaitedMs: the outcome-toast wait answers with the renderer's own
+    // result shape (install.ts waitFor), so the receipt's toastLatency is read.
+    const toast = behaviour.toastWaitedMs !== undefined && step.verb === "waitFor" && String(step.payload && step.payload.selector).startsWith("[data-sonner-toast]:is(");
+    const value = step.verb === "state" ? { activeSessionId: behaviour.activeSessionId ?? (arg("--open-session") || null) } : toast ? { selector: step.payload.selector, gone: false, waitedMs: behaviour.toastWaitedMs, settleTimedOut: false } : { ok: true };
     log("[dev-driver-script] step=" + n + " verb=" + step.verb + " ok " + JSON.stringify(value));
   });
   if (!behaviour.failVerb) log("[dev-driver-script] DONE steps=" + steps.length);
@@ -219,6 +367,136 @@ setInterval(() => {}, 1000);
 	);
 	chmodSync(exe, 0o755);
 	return app;
+}
+
+/**
+ * The darwin launch path's two macOS tools, faked for Linux (the
+ * `MAC_PROOF_TEST_LAUNCH` seam, mac-proof-focus.mjs `launchMode`):
+ *   - `open`: records its argv (and whether anything token-shaped or `--env` is
+ *     on it), then launches the bundle's executable DETACHED with its stdout and
+ *     stderr on the `--stdout`/`--stderr` files and its OWN env inherited (as
+ *     open(1) documents) - or a stripped env (`stripEnv`, the "LS did not pass
+ *     the env" case) - and exits, so the app is re-parented like a launchd child;
+ *   - `lsappinfo`: `front` answers the ASN of the pid in `<dir>/front` (the
+ *     fake app's `steal` behaviour rewrites it), `info -only name -only pid`
+ *     answers that pid under the name "Local Operator" for EVERY pid (the
+ *     capture Mac's measurement: the operator's own app shares the rig's name,
+ *     so only a pid match may count). `frontBroken` answers `[ NULL ]`.
+ */
+function fakeLaunchServices(
+	name,
+	{
+		front,
+		stripEnv = false,
+		frontBroken = false,
+		dropEnvFlags = false,
+		rejectEnv = false,
+		delayMs = 0,
+	} = {},
+) {
+	const dir = join(TREE, `${name}-ls`);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "front"), String(front));
+	writeFileSync(
+		join(dir, "open"),
+		`#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawn } = require("node:child_process");
+const argv = process.argv.slice(2);
+const options = argv.slice(0, argv.indexOf("--args"));
+// open(1)'s --env KEY=VALUE pairs, as the launched app's env additions.
+const pairs = [];
+for (let i = 0; i < options.length; i++) if (options[i] === "--env") pairs.push(options[++i]);
+fs.writeFileSync(path.join(__dirname, "open-argv.json"), JSON.stringify({ argv, tokenOnArgv: argv.some((a) => process.env.LOCAL_OPERATOR_DESKTOP_TOKEN && a.includes(process.env.LOCAL_OPERATOR_DESKTOP_TOKEN)), envOnArgv: argv.includes("--env"), envKeys: pairs.map((p) => p.slice(0, p.indexOf("="))) }));
+// rejectEnv: an open(1) that predates --env refuses the option and launches nothing.
+if (${rejectEnv}) { process.stderr.write("open: unrecognized option \\x60--env'\\n"); process.exit(1); }
+const at = (flag) => argv[argv.indexOf(flag) + 1];
+const bundle = at("-a");
+const plist = fs.readFileSync(path.join(bundle, "Contents", "Info.plist"), "utf8");
+const exe = path.join(bundle, "Contents", "MacOS", plist.match(/<key>CFBundleExecutable<\\/key><string>([^<]*)</)[1]);
+// stripEnv: LaunchServices did NOT pass the caller's env (only PATH survives);
+// the --env pairs still arrive unless dropEnvFlags (the pre-S1 argv's shape).
+const env = ${stripEnv ? "{ PATH: process.env.PATH }" : "{ ...process.env }"};
+if (!${dropEnvFlags}) for (const p of pairs) env[p.slice(0, p.indexOf("="))] = p.slice(p.indexOf("=") + 1);
+const appArgv = argv.slice(argv.indexOf("--args") + 1);
+const stdio = ["ignore", fs.openSync(at("--stdout"), "a"), fs.openSync(at("--stderr"), "a")];
+if (${delayMs} > 0) {
+  // A launch LaunchServices finishes LATE, after open returned: a detached
+  // launcher (no rig profile on ITS argv: the spec travels in env) starts the
+  // app after the delay and exits, so the app is still re-parented.
+  // The launcher records the late app's pid (late-app.pid) the instant it
+  // spawns it, so a test can follow a process the sentinel may reap before
+  // the app writes any file of its own.
+  const spec = JSON.stringify({ exe, appArgv, env, out: at("--stdout"), err: at("--stderr"), delayMs: ${delayMs}, pidFile: path.join(__dirname, "late-app.pid") });
+  const launcher = spawn(process.execPath, ["-e", "const s=JSON.parse(process.env.FAKE_LS_SPEC);const fs=require('fs');setTimeout(()=>{const c=require('child_process').spawn(s.exe,s.appArgv,{detached:true,env:s.env,cwd:'/',stdio:['ignore',fs.openSync(s.out,'a'),fs.openSync(s.err,'a')]});fs.writeFileSync(s.pidFile,String(c.pid));c.unref();process.exit(0);},s.delayMs);"], { detached: true, stdio: "ignore", env: { FAKE_LS_SPEC: spec, PATH: process.env.PATH } });
+  launcher.unref();
+  process.exit(0);
+}
+const child = spawn(exe, appArgv, { detached: true, env, cwd: "/", stdio });
+child.unref();
+process.exit(0);
+`,
+	);
+	writeFileSync(
+		join(dir, "lsappinfo"),
+		`#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const [verb, ...rest] = process.argv.slice(2);
+if (verb === "front") {
+  ${frontBroken ? 'process.stdout.write("[ NULL ]\\n");' : 'const pid = Number(fs.readFileSync(path.join(__dirname, "front"), "utf8")); process.stdout.write("ASN:0x0-0x" + pid.toString(16) + ":\\n");'}
+} else if (verb === "info") {
+  const asn = rest.at(-1);
+  const pid = parseInt(asn.split("-0x")[1], 16);
+  process.stdout.write('"LSDisplayName"="Local Operator"\\n"pid"=' + pid + "\\n");
+} else process.exit(1);
+`,
+	);
+	chmodSync(join(dir, "open"), 0o755);
+	chmodSync(join(dir, "lsappinfo"), 0o755);
+	return dir;
+}
+
+/**
+ * The pid an orphan of this process tree is re-parented to: launchd (1) on
+ * macOS, but often a subreaper on Linux (measured on this runner's host: not
+ * pid 1). The fake `open` leaves the app an orphan, so the harness's
+ * "launchd's child" rule is pointed at this pid through the seam.
+ */
+function orphanParent() {
+	const r = spawnSync(
+		"/bin/sh",
+		["-c", "sleep 2 </dev/null >/dev/null 2>&1 & echo $!"],
+		{ encoding: "utf8" },
+	);
+	const pid = Number(r.stdout.trim());
+	const deadline = Date.now() + 2000;
+	let ppid = null;
+	while (Date.now() < deadline) {
+		const ps = spawnSync("ps", ["-o", "ppid=", "-p", String(pid)], {
+			encoding: "utf8",
+		});
+		ppid = Number(ps.stdout.trim());
+		if (ppid && ppid !== process.pid) break;
+	}
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {}
+	return ppid;
+}
+const ORPHAN_PARENT = orphanParent();
+
+/** A process NAMED like the app, with no rig profile: the operator's own app (pid 18910 on the capture Mac). */
+function operatorStandIn() {
+	const child = spawn(
+		process.execPath,
+		["-e", CAP_ONLY, "--", "Local Operator"],
+		{ detached: true, stdio: "ignore" },
+	);
+	child.unref();
+	leftovers.push(child.pid);
+	return child.pid;
 }
 
 /**
@@ -237,8 +515,16 @@ setInterval(() => {}, 1000);
  * node:sqlite. `dropSeed` makes both answer as if nothing were seeded (an empty
  * list, a 404) - the drift the harness must BLOCK on.
  */
+/**
+ * Written ONCE per variant: the script is deterministic, and the end-to-end
+ * cases run concurrently (see `it`), so rewriting it per call would
+ * truncate a file another run's harness may be exec'ing at that moment.
+ */
+const fakeLops = new Map();
 function fakeLop({ dropSeed = false } = {}) {
 	const lop = join(TREE, dropSeed ? "fake-lop-dropseed" : "fake-lop");
+	if (fakeLops.has(lop)) return lop;
+	fakeLops.set(lop, true);
 	writeFileSync(
 		lop,
 		`#!${process.execPath}
@@ -301,7 +587,21 @@ http.createServer((req, res) => {
     const history = db.prepare("SELECT revision, at, title, excerpt FROM item_history WHERE item_id = ? ORDER BY revision DESC").all(id);
     db.close();
     if (!item) { res.statusCode = 404; return res.end("{}"); }
+    // core notifications/store.py:482: read = read_rev >= revision.
+    item.read = Number(item.read_rev || 0) >= Number(item.revision || 1);
     return res.end(JSON.stringify({ status: 200, message: "ok", result: { item, history, asks: [] } }));
+  }
+  // The files download route, landing like core (remote_session_files.py
+  // downloads_dir): $HOME/Downloads when a directory, else <config>/downloads.
+  // The bytes come from <config>/fake-download.json {name, text}.
+  if (req.method === "POST" && req.url.startsWith("/v1/desktop/sessions/") && req.url.includes("/files/") && req.url.endsWith("/download")) {
+    if (!authorized) { res.statusCode = 401; return res.end("{}"); }
+    const spec = JSON.parse(fs.readFileSync(path.join(config, "fake-download.json"), "utf8"));
+    const home = path.join(process.env.HOME, "Downloads");
+    const dir = fs.existsSync(home) && fs.statSync(home).isDirectory() ? home : path.join(config, "downloads");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, spec.name), spec.text);
+    return res.end(JSON.stringify({ status: 200, message: "ok", result: { path: path.join(dir, spec.name), name: spec.name, created: true } }));
   }
   if (req.url.startsWith("/v1/desktop/sessions?")) {
     if (req.headers.authorization !== "Bearer " + process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) { res.statusCode = 401; return res.end("{}"); }
@@ -309,6 +609,17 @@ http.createServer((req, res) => {
     const file = path.join(config, "fake-sessions.json");
     const rows = reads >= 3 && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
     return res.end(JSON.stringify({ status: 200, message: "ok", result: { sessions: rows } }));
+  }
+  // The Library provenance read-back: a PEER row unless the rig's config
+  // carries fake-library.json (a row to serve instead, e.g. a local one).
+  if (req.url.startsWith("/v1/desktop/library/assets")) {
+    if (req.headers.authorization !== "Bearer " + process.env.LOCAL_OPERATOR_DESKTOP_TOKEN) { res.statusCode = 401; return res.end("{}"); }
+    const file = path.join(config, "fake-library.json");
+    const row = fs.existsSync(file)
+      ? JSON.parse(fs.readFileSync(file, "utf8"))
+      : { id: "la_00000000000000aa", ref: { type: "path", path: null }, origin: "generated", remote: { device_id: "d1", device_name: "Owner" } };
+    const result = req.url.startsWith("/v1/desktop/library/assets?") ? { state: "ready", rows: [row] } : row;
+    return res.end(JSON.stringify({ status: 200, message: "ok", result }));
   }
   res.statusCode = 404;
   res.end("{}");
@@ -320,7 +631,7 @@ http.createServer((req, res) => {
 }
 
 function harnessEnv(env = {}) {
-	return {
+	const out = {
 		PATH: process.env.PATH,
 		HOME: process.env.HOME,
 		// Present on purpose: the harness must not forward any of these.
@@ -329,8 +640,24 @@ function harnessEnv(env = {}) {
 		NODE_OPTIONS: "--max-old-space-size=64",
 		ELECTRON_RUN_AS_NODE: "1",
 		LOCAL_OPERATOR_FAKE_LEAK: "leak-me",
+		// On a Mac the harness launches through LaunchServices; a suite run there
+		// must never hand its FAKE bundles to the operator's LaunchServices, so the
+		// cases keep the direct spawn unless they pass the fake LS seam.
+		...(process.platform === "darwin"
+			? {
+					[TEST_LAUNCH_ENV]: "direct",
+					NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+					// The seam is honoured only for an app under the HARNESS's
+					// os.tmpdir() (review S3); the fixtures live under this one's.
+					TMPDIR: os.tmpdir(),
+				}
+			: {}),
 		...env,
 	};
+	// `null` removes a key (a case that must run WITHOUT one of the above).
+	for (const [key, value] of Object.entries(out))
+		if (value === null) delete out[key];
+	return out;
 }
 
 function runHarness(args, env = {}) {
@@ -340,6 +667,59 @@ function runHarness(args, env = {}) {
 		env: harnessEnv(env),
 	});
 	return { ...run, all: `${run.stdout}\n${run.stderr}` };
+}
+
+/**
+ * `runHarness` without blocking the event loop, for the concurrent end-to-end
+ * cases: a `spawnSync` in one of them would stall every other case's exit
+ * events and timers (and inflate the elapsed-time bounds they assert). Same
+ * env, same 120 s bound and SIGTERM as `spawnSync`'s `timeout`, same result
+ * shape (`status`, `signal`, `stdout`, `stderr`, `all`).
+ */
+function runHarnessAsync(args, env = {}) {
+	return new Promise((resolve) => {
+		const child = spawn(process.execPath, [HARNESS, ...args], {
+			env: harnessEnv(env),
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		let stdout = "";
+		let stderr = "";
+		child.stdout.setEncoding("utf8").on("data", (c) => {
+			stdout += c;
+		});
+		child.stderr.setEncoding("utf8").on("data", (c) => {
+			stderr += c;
+		});
+		const bound = setTimeout(() => child.kill("SIGTERM"), 120_000);
+		// `close`, not `exit`: both pipes drained, so `all` is the whole output.
+		child.on("close", (status, signal) => {
+			clearTimeout(bound);
+			resolve({ status, signal, stdout, stderr, all: `${stdout}\n${stderr}` });
+		});
+	});
+}
+
+/**
+ * `it(name, [options], fn)`: an END-TO-END case (a real harness run against the
+ * fake app and fake lop). Same signature as node:test's `test` - whose own `it`
+ * alias is deliberately NOT imported here - but the case is DEFERRED and run, at
+ * the end of the file, inside ONE bounded concurrent group. The name is `it` so
+ * the formatter lays these calls out as test calls, exactly like the `test`
+ * cases around them. Why the group: each run is wall-clock bound, not CPU bound - the
+ * shared teardown's fixed settles (`stopAppTree`: 500 ms twice), the harness's
+ * real windows (the 20 s startup window, the 10 s seed read-back, a 6 s
+ * --timeout) - so run one after another they summed to ~116 s of a 121 s file
+ * and pushed `Desktop Tests shard (2/5)` past its bound (Full Test Suite run
+ * 44748413720). Nothing in a case is shortened: each keeps its own rig root,
+ * out dir and fake app, every sweep is scoped to its own rig / config root
+ * (`rigMatcher`), and fixtures are written once (`fakeLop`). The bound keeps
+ * the extra process load modest (each run is ~5 node processes) on a CI
+ * runner that is already running other test files beside this one.
+ */
+const E2E_CONCURRENCY = 4;
+const e2eCases = [];
+function it(...args) {
+	e2eCases.push(args);
 }
 
 /** Every fixture pid a run left a record of: app, re-parented helper, daemon, standby. */
@@ -822,6 +1202,433 @@ test("one launch covers every scene x theme, one shutter each, named <scene>-<th
 		capture: "capturepage",
 	});
 	assert.ok(all.steps.length <= 64, `${all.steps.length} steps`);
+	assert.equal(stepCountProblem(all.steps), null);
+	const every = buildSteps({
+		scenes: [...SCENES],
+		themes: ["dark", "light"],
+		session: "fa1907000001",
+		notificationId: "n_macproofdetailaa",
+		capture: "capturepage",
+	});
+	assert.ok(every.steps.length > RUNNER_MAX_STEPS);
+	assert.match(
+		stepCountProblem(every.steps),
+		/caps it at 64; split the --scene list/,
+	);
+});
+
+test("route-only scenes wait for a positive selector of their settled state before the shutter (#1907 stale frame)", () => {
+	const { steps } = buildSteps({
+		scenes: ["notification-detail", "notifications", "library"],
+		themes: ["light"],
+		session: null,
+		notificationId: "n_macproofdetailaa",
+		capture: "capturepage",
+	});
+	for (const scene of ["notifications", "library"]) {
+		const shutter = steps.findIndex(
+			(s) => s.verb === "shutter" && s.payload.label === `${scene}-light`,
+		);
+		const before = steps[shutter - 1];
+		assert.equal(before.verb, "waitFor", scene);
+		assert.equal(before.payload.selector, SCENE_READY[scene]);
+		assert.notEqual(before.optional, true);
+		assert.deepEqual(steps[shutter - 2], {
+			verb: "navigate",
+			payload: `/${scene}`,
+		});
+	}
+	// Only markup that exists in the target state, never the previous detail.
+	assert.match(
+		SCENE_READY.notifications,
+		/^\[data-notifications-page\]:not\(:has\(\[data-notification-detail\], \[data-notification-open\]\)\)/,
+	);
+	assert.match(
+		SCENE_READY.notifications,
+		/\[data-notifications-list\], \[data-notifications-empty\]/,
+	);
+	// The RESULTS settled, never the header alone (it paints before the rows).
+	assert.equal(
+		SCENE_READY.library,
+		'[data-library-page]:not(:has([data-library-building], [data-library-skeleton])) [data-library-results][aria-busy="false"]',
+	);
+	// The detail scene waits for the read-on-open to settle (design D7).
+	const detailShutter = steps.findIndex(
+		(s) => s.payload?.label === "notification-detail-light",
+	);
+	assert.equal(
+		steps[detailShutter - 1].payload.selector,
+		detailReadSelector("n_macproofdetailaa"),
+	);
+	assert.equal(
+		detailReadSelector("n_macproofdetailaa"),
+		'[data-notifications-page]:not(:has([data-notification-row="n_macproofdetailaa"][data-notification-unread])) [data-notification-detail="n_macproofdetailaa"] [data-notification-toggle-read] svg.lucide-circle',
+	);
+	// Every verb is one the v0.59.2 runner ships.
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+});
+
+test("update-detail: the drawer's Updates tab -> View details -> in-drawer detail, guarded presses, shipped verbs only", () => {
+	const id = "n_macproofdetailaa";
+	const steps = updateDetailSceneSteps(id);
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+	// Toggles are pressed only from the state they would change, and optionally.
+	const optional = steps.filter((s) => s.optional);
+	assert.deepEqual(
+		optional.map((s) => s.payload.selector),
+		[
+			'[data-panel-rail-item="ask"][aria-pressed="false"]',
+			'[data-drawer-tab="updates"][aria-selected="false"]',
+			'[data-drawer-read-view="read"][aria-checked="false"]',
+		],
+	);
+	// The required tail: tab selected, the Read view checked, the item's row by
+	// its OWN read state, its details pressed, the drawer detail painted and its
+	// read face. The item is SEEDED read: an unfocused window's
+	// notifications.read is refused (desktop-ipc.ts:95-101, :166-185), so 79's
+	// run waited on a face that could never appear.
+	const required = steps
+		.filter((s) => !s.optional)
+		.map((s) => s.payload?.selector ?? s.payload);
+	const row = `[data-drawer-view-list="read"] [data-drawer-update="${id}"]:not([data-unread])`;
+	assert.deepEqual(required.slice(-6), [
+		'[data-drawer-tab="updates"][aria-selected="true"]',
+		'[data-drawer-read-view="read"][aria-checked="true"]',
+		row,
+		`${row} [data-row-action="details"]`,
+		`[data-drawer-detail="${id}"] [data-notification-detail-title]`,
+		`[data-drawer-detail="${id}"] [data-notification-toggle-read] svg.lucide-circle`,
+	]);
+	assert.equal(steps.at(-3).verb, "press");
+	// DOM proof on drawer-updates.tsx-shaped fixtures (:952, :1033-1034, :1064,
+	// :1119-1120): the row wait reads the row's state attribute, so a row still
+	// unread - the face an unfocused window is left with - fails it, and so
+	// does the same row in the Unread list.
+	const drawer = (list, unread) =>
+		`<div><div role="radiogroup"><button role="radio" aria-checked="${list === "unread"}" data-drawer-read-view="unread"></button><button role="radio" aria-checked="${list === "read"}" data-drawer-read-view="read"></button></div><ul data-drawer-view-list="${list}"><li data-drawer-update="${id}" ${unread ? 'data-unread=""' : ""}><button data-row-action="details"></button></li></ul></div>`;
+	assert.equal(
+		matches(drawer("read", false), row),
+		true,
+		"read row, Read view",
+	);
+	assert.equal(matches(drawer("read", true), row), false, "still unread");
+	assert.equal(matches(drawer("unread", false), row), false, "Unread list");
+	assert.equal(
+		matches(
+			drawer("unread", false),
+			'[data-drawer-read-view="read"][aria-checked="false"]',
+		),
+		true,
+		"the Read radio is pressed only while unchecked",
+	);
+	assert.equal(
+		matches(
+			drawer("read", false),
+			'[data-drawer-read-view="read"][aria-checked="false"]',
+		),
+		false,
+	);
+	const { steps: built } = buildSteps({
+		scenes: ["update-detail"],
+		themes: ["dark"],
+		session: "fa1907000001",
+		notificationId: id,
+		capture: "capturepage",
+	});
+	assert.equal(built.at(-1).payload.label, "update-detail-dark");
+	assert.equal(built.at(-2).payload.selector, steps.at(-1).payload.selector);
+	// Prerequisites: a conversation and an item.
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/o",
+					"--scene",
+					"update-detail",
+					"--notification-id",
+					id,
+				]),
+			),
+		/update-detail scenes need --session/,
+	);
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/o",
+					"--scene",
+					"update-detail",
+					"--session",
+					"fa1907000001",
+				]),
+			),
+		/update-detail scenes need --notification-id/,
+	);
+});
+
+/*
+ * The window wait (79's first default-mode Mac run: `the window is not visible
+ * at the shutter (... visible=false focused=false ...)`, 0 frames). A window
+ * opened for --session is held until its conversation paints, bounded by
+ * CONVERSATION_PAINT_FALLBACK_MS = 3 s (src/main/index.ts:1252/2347); the
+ * readiness steps finished inside that hold. The harness spends one bounded wait
+ * in the app's own runner before the first scene and NEVER shows or focuses.
+ */
+describe("window wait before the first shutter", () => {
+	// validateOptions refuses screencapture off macOS, so the range checks run
+	// on a capturepage argv; the flag's bound does not depend on the capture.
+	const argv = [
+		"--app",
+		"/x.app",
+		"--out",
+		"/tmp/o",
+		"--capture",
+		"capturepage",
+		"--window-mode",
+		"headless",
+	];
+	const onMac = (opts) => ({ ...opts, capture: "screencapture" });
+	const waitIndex = (steps) =>
+		steps.findIndex((s) => s.payload?.selector === WINDOW_WAIT_SELECTOR);
+
+	test("default --window-wait 6: one optional never-matching waitFor after the readiness state, before every scene", () => {
+		const opts = parseArgs(argv);
+		assert.equal(opts.windowWaitS, 6);
+		assert.equal(WINDOW_WAIT_DEFAULT_S, 6);
+		validateOptions(opts);
+		const { steps } = buildSteps({
+			scenes: ["conversation", "library"],
+			themes: ["dark", "light"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: opts.windowWaitS,
+		});
+		const i = waitIndex(steps);
+		assert.equal(
+			steps.filter((s) => s.payload?.selector === WINDOW_WAIT_SELECTOR).length,
+			1,
+		);
+		assert.equal(
+			steps[i - 1].verb,
+			"state",
+			"after the conversation is verified",
+		);
+		assert.ok(
+			i < steps.findIndex((s) => s.verb === "shutter"),
+			"before the first shutter",
+		);
+		assert.deepEqual(steps[i], {
+			verb: "waitFor",
+			payload: { selector: ":not(*)", timeoutMs: 6000 },
+			timeoutMs: 11000,
+			optional: true,
+		});
+		// The scene's own positive selector stays the last step before its frame.
+		const first = steps.findIndex((s) => s.verb === "shutter");
+		assert.equal(
+			steps[first - 1].payload.selector,
+			'[data-chat-region="header"]',
+		);
+		// buildSteps' own default is the same wait, so no caller can drop it by omission.
+		assert.deepEqual(
+			buildSteps({
+				scenes: ["conversation"],
+				themes: ["dark"],
+				session: "ce618964c88e",
+				capture: "screencapture",
+			}).steps[i],
+			steps[i],
+		);
+		// A selector that can never match: the step can end only by its own bound.
+		assert.equal(WINDOW_WAIT_SELECTOR, ":not(*)");
+		// capturepage is headless and never visible: no wait is spent there.
+		assert.equal(
+			windowWaitStep({ capture: "capturepage", windowWaitS: 6 }),
+			null,
+		);
+		assert.equal(
+			waitIndex(
+				buildSteps({
+					scenes: ["conversation"],
+					themes: ["dark"],
+					session: "ce618964c88e",
+					capture: "capturepage",
+					windowWaitS: 6,
+				}).steps,
+			),
+			-1,
+		);
+	});
+
+	test("max --window-wait 15 is accepted; above it, negative or non-numeric is refused", () => {
+		assert.equal(WINDOW_WAIT_MAX_S, 15);
+		const max = parseArgs([...argv, "--window-wait", "15"]);
+		validateOptions(max);
+		assert.deepEqual(windowWaitStep(onMac(max)), {
+			verb: "waitFor",
+			payload: { selector: ":not(*)", timeoutMs: 15000 },
+			timeoutMs: 20000,
+			optional: true,
+		});
+		for (const bad of ["15.5", "16", "-1", "soon"])
+			assert.throws(
+				() => validateOptions(parseArgs([...argv, "--window-wait", bad])),
+				/--window-wait must be between 0 and 15 seconds/,
+				bad,
+			);
+	});
+
+	const lines = [
+		"[window-mode] window mode inactive: 1380x900, window shown without activating the app",
+		"[dev-driver] ARMED; frames",
+		"[dev-driver-script] ARMED; steps",
+		"[dev-driver-script] ready verbs=8",
+		"[dev-driver-script] step=1 verb=skipOnboarding ok {}",
+		"[dev-driver-script] step=2 verb=waitFor ok {}",
+		"[dev-driver-script] step=3 verb=waitFor ok {}",
+		'[dev-driver-script] step=4 verb=state ok {"activeSessionId":"ce618964c88e"}',
+	];
+	const clocked = (windowWait) => {
+		let t = 1000;
+		const clock = {
+			set: (ms) => {
+				t = ms;
+			},
+		};
+		const sup = createSupervisor({
+			windowMode: "inactive",
+			session: "ce618964c88e",
+			capture: "screencapture",
+			framesDir: "/o",
+			labels: ["conversation-dark"],
+			windowWait,
+			now: () => t,
+		});
+		for (const line of lines) assert.equal(sup.feed(line), null, line);
+		return { sup, clock };
+	};
+	const shutter = (visible, focused = false) =>
+		`[dev-driver-script] SHUTTER label=conversation-dark media=window:7139:0 visible=${visible} focused=${focused} ack=/o/conversation-dark.ack`;
+
+	test("still hidden after the bound: the run fails naming the elapsed wait and the last facts", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7012);
+		assert.equal(
+			sup.feed(
+				"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+			),
+			null,
+		);
+		const { abort } = sup.feed(shutter(false));
+		assert.match(
+			abort,
+			/^the window is not visible at the shutter after a 6012 ms window wait \(--window-wait 6\): visible=false focused=false; /,
+		);
+		assert.match(
+			abort,
+			/retry with a longer --window-wait \(max 15\) - never a focused or normal-mode run/,
+		);
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 6012,
+			visibleAtShutter: false,
+		});
+		// The run's exit for any supervisor abort.
+		assert.equal(EXIT.FAILED, 1);
+	});
+
+	test("visible as soon as the wait is spent: the frame is taken, the receipt records the wait", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7100);
+		sup.feed(
+			"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+		);
+		assert.deepEqual(sup.feed(shutter(true)), {
+			shutter: {
+				label: "conversation-dark",
+				windowId: 7139,
+				ack: "/o/conversation-dark.ack",
+			},
+		});
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 6100,
+			visibleAtShutter: true,
+		});
+	});
+
+	test("visibility already there and --window-wait 0: no wait step, no delay, the frame is taken", () => {
+		const opts = parseArgs([...argv, "--window-wait", "0"]);
+		validateOptions(opts);
+		assert.equal(windowWaitStep(onMac(opts)), null);
+		const withWait = buildSteps({
+			scenes: ["conversation"],
+			themes: ["dark"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: 6,
+		}).steps;
+		const none = buildSteps({
+			scenes: ["conversation"],
+			themes: ["dark"],
+			session: "ce618964c88e",
+			capture: "screencapture",
+			windowWaitS: 0,
+		}).steps;
+		assert.equal(waitIndex(none), -1);
+		assert.deepEqual(
+			none,
+			withWait.filter((s) => s.payload?.selector !== WINDOW_WAIT_SELECTOR),
+		);
+		const { sup } = clocked(null);
+		assert.deepEqual(sup.feed(shutter(true)).shutter.windowId, 7139);
+		assert.deepEqual(sup.state.windowWait, {
+			waitedMs: 0,
+			visibleAtShutter: true,
+		});
+		// And the hidden case without a wait still names that there was none.
+		const { sup: bare } = clocked(null);
+		assert.match(
+			bare.feed(shutter(false)).abort,
+			/not visible at the shutter with no window wait \(--window-wait 0\): visible=false focused=false/,
+		);
+	});
+
+	test("the wait never relaxes the focus guard", () => {
+		const { sup, clock } = clocked({ step: 5, s: 6 });
+		clock.set(7012);
+		sup.feed(
+			"[dev-driver-script] step=5 verb=waitFor skipped (optional): nothing matches :not(*) after 6000ms of waiting",
+		);
+		assert.match(
+			sup.feed(shutter(true, true)).abort,
+			/the window is focused at the shutter/,
+		);
+	});
 });
 
 test("the supervisor aborts on normal, focus, early shutters and the wrong conversation", () => {
@@ -1000,11 +1807,175 @@ test("Screen Recording: only an explicit boolean from the preflight is an answer
 		source.indexOf("export function screenRecordingVerdict"),
 	);
 	assert.doesNotMatch(probe, /kCGWindowName|CGWindowListCopyWindowInfo/);
-	assert.doesNotMatch(probe, /CGRequestScreenCaptureAccess\(/);
+	assert.doesNotMatch(probe, /CGRequest/);
 	assert.match(
 		source,
 		/verdict === "unknown"[\s\S]{0,800}return EXIT\.BLOCKED/,
 	);
+});
+
+/**
+ * Run the JXA preflight source in a vm with a fake `ObjC`/`$`, the way
+ * osascript would: its completion value is what `jxa()` prints.
+ */
+function runPreflight({
+	bridged,
+	bindable = true,
+	answer = true,
+	callThrows = false,
+}) {
+	const calls = [];
+	const $ = {};
+	const fn = () => {
+		calls.push("call");
+		if (callThrows) throw new Error("bridge");
+		return answer;
+	};
+	if (bridged) $.CGPreflightScreenCaptureAccess = fn;
+	const ObjC = {
+		import: (name) => calls.push(`import:${name}`),
+		bindFunction: (name, signature) => {
+			calls.push(`bind:${name}:${JSON.stringify(signature)}`);
+			if (!bindable) throw new Error("no symbol");
+			$[name] = fn;
+		},
+	};
+	const out = vm.runInNewContext(SCREEN_RECORDING_PREFLIGHT_JXA, { ObjC, $ });
+	return { out, calls };
+}
+
+test("Screen Recording preflight JXA: bridged, then ObjC.bindFunction, never a request, only {granted}", () => {
+	assert.match(
+		SCREEN_RECORDING_PREFLIGHT_JXA,
+		/ObjC\.bindFunction\('CGPreflightScreenCaptureAccess', \['bool', \[\]\]\)/,
+	);
+	assert.doesNotMatch(SCREEN_RECORDING_PREFLIGHT_JXA, /CGRequest/);
+	assert.doesNotMatch(
+		SCREEN_RECORDING_PREFLIGHT_JXA,
+		/kCGWindowName|CGWindowList/,
+	);
+	// The one output is the last statement and carries one key.
+	assert.match(
+		SCREEN_RECORDING_PREFLIGHT_JXA.trim(),
+		/JSON\.stringify\(\{granted: granted\}\);$/,
+	);
+	assert.equal(
+		SCREEN_RECORDING_PREFLIGHT_JXA.match(/JSON\.stringify/g).length,
+		1,
+	);
+	// Older macOS: the bridged symbol answers; no binding is attempted.
+	let r = runPreflight({ bridged: true, answer: false });
+	assert.equal(r.out, '{"granted":false}');
+	assert.ok(!r.calls.some((c) => c.startsWith("bind:")));
+	// macOS 27 (79's measurement: bindFunction returned {"granted":true}).
+	r = runPreflight({ bridged: false, answer: true });
+	assert.equal(r.out, '{"granted":true}');
+	assert.ok(
+		r.calls.includes('bind:CGPreflightScreenCaptureAccess:["bool",[]]'),
+	);
+	assert.equal(screenRecordingVerdict(r.out), "granted");
+	// The C bool as 0/1 is still an answer.
+	assert.equal(
+		runPreflight({ bridged: false, answer: 0 }).out,
+		'{"granted":false}',
+	);
+	// Unknowns stay unknown -> BLOCKED.
+	for (const opts of [
+		{ bridged: false, bindable: false },
+		{ bridged: false, callThrows: true },
+		{ bridged: true, callThrows: true },
+		{ bridged: false, answer: null },
+		{ bridged: false, answer: "yes" },
+	]) {
+		const { out } = runPreflight(opts);
+		assert.equal(out, '{"granted":null}', JSON.stringify(opts));
+		assert.equal(screenRecordingVerdict(out), "unknown");
+	}
+	assert.ok(
+		!runPreflight({ bridged: false, bindable: false }).calls.includes("call"),
+	);
+});
+
+test("TCC host: nearest .app up the ppid chain, else the top non-launchd process (79's real chain)", () => {
+	// Measured by 79 on the Mac (Darwin 27.2): no .app ancestor, a renamed title.
+	const lopChain = [
+		"    1     0 /sbin/launchd",
+		"20192     1 Local Operator [session] id=79bddc26",
+		"48300 20192 /opt/homebrew/bin/bash",
+		"48400 48300 node",
+	].join("\n");
+	assert.deepEqual(tccHostFromPsTable(lopChain, 48400), {
+		host: "Local Operator [session] id=79bddc26",
+		kind: "process",
+		pid: 20192,
+	});
+	const terminal = [
+		"    1     0 /sbin/launchd",
+		"  500     1 /System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+		"  600   500 login",
+		"  700   600 -zsh",
+		"  800   700 node",
+	].join("\n");
+	assert.deepEqual(tccHostFromPsTable(terminal, 800), {
+		host: "Terminal.app",
+		kind: "app",
+		pid: 500,
+	});
+	// A nested helper bundle names its outer app.
+	assert.equal(
+		tccHostFromPsTable(
+			"1 0 /sbin/launchd\n10 1 /Applications/Local Operator.app/Contents/Frameworks/Local Operator Helper.app/Contents/MacOS/Local Operator Helper\n11 10 node\n",
+			11,
+		).host,
+		"Local Operator.app",
+	);
+	// Nearest .app wins over an outer one; a cycle or a missing pid ends the walk.
+	assert.equal(
+		tccHostFromPsTable(
+			"1 0 launchd\n2 1 /Applications/iTerm.app/Contents/MacOS/iTerm2\n3 2 /Applications/cmux.app/Contents/MacOS/cmux\n4 3 node\n",
+			4,
+		).host,
+		"cmux.app",
+	);
+	assert.equal(tccHostFromPsTable("5 6 a\n6 5 b\n", 5).host, "b");
+	assert.equal(tccHostFromPsTable("", 5), null);
+	assert.match(
+		screenRecordingGrantHint({ host: "Terminal.app", kind: "app", pid: 500 }),
+		/^grant Screen & System Audio Recording to Terminal\.app in System Settings > Privacy & Security/,
+	);
+	assert.match(
+		screenRecordingGrantHint(tccHostFromPsTable(lopChain, 48400)),
+		/to Local Operator \[session\] id=79bddc26 \(pid 20192, .*no \.app ancestor/,
+	);
+	assert.match(screenRecordingGrantHint(null), /could not be read/);
+	assert.doesNotMatch(
+		readFileSync(HARNESS, "utf8"),
+		/tccutil|CGRequestScreenCaptureAccess\(/,
+	);
+});
+
+test("stale frames: two scenes with one sha256 fail; one scene's themes do not (run #1907 receipt)", () => {
+	// The real #1907 receipt's frames (sha256 abbreviated past the first 8 is fine).
+	const frames = [
+		{ label: "notification-detail-dark", theme: "dark", sha256: "5bdf872c" },
+		{ label: "notifications-dark", theme: "dark", sha256: "bc2ba447" },
+		{ label: "notification-detail-light", theme: "light", sha256: "cbbbcdc5" },
+		{ label: "notifications-light", theme: "light", sha256: "cbbbcdc5" },
+	];
+	assert.match(
+		duplicateFrameProblem(frames),
+		/notification-detail-light and notifications-light are byte-identical \(sha256 cbbbcdc5\)/,
+	);
+	assert.equal(duplicateFrameProblem(frames.slice(0, 3)), null);
+	assert.equal(
+		duplicateFrameProblem([
+			{ label: "asks-dark", theme: "dark", sha256: "aa" },
+			{ label: "asks-light", theme: "light", sha256: "aa" },
+		]),
+		null,
+		"the same scene in two themes is not a stale route",
+	);
+	assert.equal(duplicateFrameProblem([]), null);
 });
 
 test("a screencapture frame must measure the window's bounds at one backing scale", () => {
@@ -1053,6 +2024,18 @@ test("--negative-control runs every refusal against the real guards and exits 0"
 		"an extracted zip with no .app",
 		"an extracted zip with two .app bundles",
 		"predates S1",
+		// The focus/launch refusals (QA Q1-6).
+		"open argv without -n",
+		"open argv without -g",
+		"open --env carrying the desktop token's key",
+		"open --env value carrying the token",
+		"open --env with a key off the non-secret allowlist",
+		"open --env in the NAME-only form",
+		"open argv missing --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+		"the launch test seam with a real app path",
+		"the launch test seam outside node --test",
+		"inter-run gate: a previous rig still running",
+		"inter-run gate: ps could not list processes",
 	])
 		assert.match(
 			run.stdout,
@@ -1105,14 +2088,154 @@ test("--dry-run prints the plan with the token redacted and spawns nothing", () 
 	);
 });
 
-test("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", () => {
-	const app = fakeApp("Isolated");
+it("stale frame: two scenes photographed to the same bytes fail the run (exit 1), naming both", async () => {
+	const app = fakeApp("SameFrame", { sameFrame: true });
+	const rigRoot = join(TREE, "same-rig");
+	const out = join(TREE, "same-out");
+	const seed = join(TREE, "same-seed");
+	mkdirSync(join(seed, "asks"), { recursive: true });
+	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
+	const run = await runHarnessAsync([
+		"--app",
+		app,
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--seed-config",
+		seed,
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"conversation",
+		"--scene",
+		"files",
+		"--theme",
+		"dark",
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/frames conversation-dark and files-dark are byte-identical \(sha256 [0-9a-f]{64}\)/,
+	);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.notEqual(receipt.verdict, "captured");
+	assert.equal(receipt.exit, 1);
+});
+
+it("library provenance: a LOCAL first row fails the run (exit 1) with the judged subset in the receipt", async () => {
+	const app = fakeApp("LocalLibrary");
+	const rigRoot = join(TREE, "locallib-rig");
+	const out = join(TREE, "locallib-out");
+	const seed = join(TREE, "locallib-seed");
+	mkdirSync(seed, { recursive: true });
+	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
+	// The fake daemon serves this row instead of its default peer row.
+	writeFileSync(
+		join(seed, "fake-library.json"),
+		JSON.stringify({
+			id: "la_00000000000000bb",
+			ref: { type: "path", path: "/Users/rig/report.pdf" },
+			origin: "mentioned",
+			remote: null,
+		}),
+	);
+	const run = await runHarnessAsync([
+		"--app",
+		app,
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--seed-config",
+		seed,
+		"--scene",
+		"library",
+		"--theme",
+		"dark",
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/library provenance: library row la_00000000000000bb is not a peer row \(remote is null\)/,
+	);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.equal(receipt.exit, 1);
+	assert.deepEqual(receipt.libraryProvenance, {
+		assetId: "la_00000000000000bb",
+		remote: false,
+		localPath: true,
+		source: "mentioned",
+		pass: false,
+		problem:
+			"library row la_00000000000000bb is not a peer row (remote is null)",
+	});
+	// S1: a boolean, never the absolute local path, anywhere in the receipt.
+	assert.ok(
+		!readFileSync(join(out, "receipt.json"), "utf8").includes("/Users/rig"),
+	);
+	// NEW (release owner): the run's known measurement limits, by scene.
+	assert.deepEqual(
+		receipt.limits.map((l) => l.id),
+		["selectors-fixture-proven"],
+	);
+});
+
+test("receipt limits: each run lists exactly the known measurement limits its scenes hit", () => {
+	const ids = (scenes) => receiptLimits(scenes).map((l) => l.id);
+	assert.deepEqual(ids(["file-preview"]), [
+		"files-paging-caption",
+		"files-attachments-only",
+		"preview-first-screen",
+		"preview-no-search",
+		"preview-no-decode-wait",
+		"selectors-fixture-proven",
+	]);
+	// The detail scenes' read face is seeded (79's update-detail failure): an
+	// unfocused window's notifications.read is refused by main's foreground guard.
+	assert.deepEqual(ids(["update-detail"]), [
+		"detail-read-seeded",
+		"selectors-fixture-proven",
+	]);
+	assert.deepEqual(ids(["notification-detail"]), ["detail-read-seeded"]);
+	assert.match(
+		MEASUREMENT_LIMITS.find((l) => l.id === "detail-read-seeded").text,
+		/foreground-receipt op refused outside focus \(desktop-ipc\.ts:95-101, :166-185\)\. The read face is seeded, not driven\./,
+	);
+	assert.deepEqual(ids(["files"]), [
+		"files-paging-caption",
+		"files-attachments-only",
+		"selectors-fixture-proven",
+	]);
+	assert.deepEqual(ids(["library"]), ["selectors-fixture-proven"]);
+	assert.deepEqual(ids(["conversation", "canvas"]), []);
+	for (const limit of receiptLimits(SCENES)) {
+		assert.deepEqual(Object.keys(limit), ["id", "text"]);
+		assert.ok(limit.text.length > 0 && limit.text.length <= 200, limit.id);
+	}
+	// Every scene a limit names is a real scene.
+	for (const limit of MEASUREMENT_LIMITS)
+		for (const scene of limit.scenes) assert.ok(SCENES.includes(scene));
+});
+
+it("isolated: our own lop serve + the fake app -> every frame, a receipt, no token leak, nothing left running", async () => {
+	const app = fakeApp("Isolated", { ignoreTerm: true });
 	const rigRoot = join(TREE, "iso-rig");
 	const out = join(TREE, "iso-out");
 	const seed = join(TREE, "iso-seed");
 	mkdirSync(join(seed, "asks"), { recursive: true });
 	writeFileSync(join(seed, "config.yml"), "synthetic: true\n");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -1151,9 +2274,7 @@ test("isolated: our own lop serve + the fake app -> every frame, a receipt, no t
 	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
 	assert.equal(receipt.verdict, "captured");
 	assert.equal(receipt.frames.length, 4);
-	assert.ok(
-		receipt.frames.every((f) => f.method === "capturePage: no vibrancy claim"),
-	);
+	assert.ok(receipt.frames.every((f) => f.method === CAPTUREPAGE_METHOD));
 	assert.equal(receipt.reap.app.clean, true, JSON.stringify(receipt.reap));
 	assert.equal(
 		receipt.reap.app.escalated,
@@ -1239,10 +2360,10 @@ test("isolated: our own lop serve + the fake app -> every frame, a receipt, no t
 	assert.equal(alive(served.pid), false);
 });
 
-test("an app that announces a normal window is aborted and reaped", () => {
+it("an app that announces a normal window is aborted and reaped", async () => {
 	const app = fakeApp("Normal", { reportMode: "normal" });
 	const rigRoot = join(TREE, "normal-rig");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -1268,7 +2389,7 @@ test("an app that announces a normal window is aborted and reaped", () => {
 	);
 });
 
-test("an app whose window takes focus, or whose step fails, is aborted before any frame", () => {
+it("an app whose window takes focus, or whose step fails, is aborted before any frame", async () => {
 	for (const [name, behaviour, why] of [
 		["Focused", { focused: true }, /took focus/],
 		["StepFails", { failVerb: "setTheme" }, /setTheme\) failed/],
@@ -1277,7 +2398,7 @@ test("an app whose window takes focus, or whose step fails, is aborted before an
 		const app = fakeApp(name, behaviour);
 		const rigRoot = join(TREE, `${name}-rig`);
 		const out = join(TREE, `${name}-out`);
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -1307,7 +2428,7 @@ test("an app whose window takes focus, or whose step fails, is aborted before an
 	}
 });
 
-test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a claimed one attaches", async () => {
+it("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched; a claimed one attaches", async () => {
 	// A fake daemon on a free port, with a serve record beside it.
 	const lop = fakeLop();
 	const cfg = join(TREE, "attach-daemon-cfg");
@@ -1316,7 +2437,13 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		lop,
 		["serve", "--host", "127.0.0.1", "--port", String(port)],
 		{
-			env: { PATH: process.env.PATH, LOCAL_OPERATOR_CONFIG_DIR: cfg },
+			// The claimed record's key is the token the harness attaches with, so
+			// the Library provenance read-back (an authorized GET) can answer.
+			env: {
+				PATH: process.env.PATH,
+				LOCAL_OPERATOR_CONFIG_DIR: cfg,
+				LOCAL_OPERATOR_DESKTOP_TOKEN: "synthetic-claim-key-0123456789",
+			},
 			stdio: "ignore",
 		},
 	);
@@ -1340,7 +2467,7 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		record({ desktop: true, claim_key: "" });
 		const app = fakeApp("Attach");
 		const blockedRig = join(TREE, "attach-blocked-rig");
-		const blocked = runHarness([
+		const blocked = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -1373,7 +2500,7 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		record({ desktop: true, claim_key: "synthetic-claim-key-0123456789" });
 		const claimedRig = join(TREE, "attach-claimed-rig");
 		const claimedOut = join(TREE, "attach-claimed-out");
-		const claimed = runHarness([
+		const claimed = await runHarnessAsync([
 			"--app",
 			app,
 			"--out",
@@ -1396,6 +2523,25 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 		const rig = rigOf(claimedRig);
 		trackPids(rig);
 		assert.equal(claimed.status, 0, claimed.all);
+		// The Library frame's row was read back as a PEER row, and recorded.
+		assert.deepEqual(
+			JSON.parse(readFileSync(join(claimedOut, "receipt.json"), "utf8"))
+				.libraryProvenance,
+			{
+				assetId: "la_00000000000000aa",
+				remote: true,
+				localPath: false,
+				source: "generated",
+				pass: true,
+			},
+		);
+		// S1: the peer's device id/name never reach the (public) receipt.
+		const claimedReceipt = readFileSync(
+			join(claimedOut, "receipt.json"),
+			"utf8",
+		);
+		assert.ok(!claimedReceipt.includes('"Owner"'), "no device name");
+		assert.ok(!claimedReceipt.includes('"d1"'), "no device id");
 		const seen = JSON.parse(
 			readFileSync(join(rig, "fake-app-seen.json"), "utf8"),
 		);
@@ -1494,8 +2640,11 @@ test("the daemon client: its allowlist holds no prompt/send/engage path, and it 
 	assert.deepEqual(DAEMON_ROUTES.map((r) => r.path).sort(), [
 		"/health",
 		"/v1/desktop/asks",
+		"/v1/desktop/library/assets",
+		"/v1/desktop/library/assets/{id}",
 		"/v1/desktop/notifications/{id}",
 		"/v1/desktop/sessions",
+		"/v1/desktop/sessions/{id}/files",
 	]);
 	// The --seed read-backs: the aggregate with no query, one notification id
 	// (one segment, core's own id shape), nothing past it.
@@ -1771,7 +2920,10 @@ test("config-root: a port someone else already listens on is refused before the 
 	const squatter = createServer();
 	await new Promise((r) => squatter.listen(0, "127.0.0.1", r));
 	const { port } = squatter.address();
-	const device = rigDevice("cr-busyport", `network:\n  port: ${port}\n`);
+	const device = rigDevice(
+		"cr-busyport",
+		`values:\n  network:\n    port: ${port}\n`,
+	);
 	const rigRoot = join(TREE, "cr-busyport-rig");
 	try {
 		const run = spawnSync(
@@ -1841,10 +2993,10 @@ test("a rig root that is a dangling symlink into an operator root refuses with e
 	assert.equal(existsSync(target), false, "the operator dir was not created");
 });
 
-test("a rig root and --out containing spaces capture normally (review r1 R1-2)", () => {
+it("a rig root and --out containing spaces capture normally (review r1 R1-2)", async () => {
 	const rigRoot = join(TREE, "proof runs", "rig root");
 	const out = join(TREE, "proof runs", "out dir");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("Spaced"),
 		"--out",
@@ -1889,26 +3041,70 @@ test("lop is only ever run as `serve` or `network serve`", () => {
 		assert.ok(lopArgvProblem(bad), bad.join(" "));
 });
 
-test("network.port: read from block YAML; unset or 4097 refuses", () => {
-	assert.equal(relayPortFromConfig("network:\n  port: 4197\n"), 4197);
+test("network.port: only values.network.port, as lop writes and core reads; anything else refuses", () => {
+	// The layout `lop config edit network.port 14097` writes (core config.py
+	// reads parsed["values"]; settings_io.py path ("network", "port")).
+	const lopWritten = "values:\n  network:\n    port: 14097\n";
+	assert.equal(relayPortFromConfig(lopWritten), 14097);
+	assert.equal(relayPortProblem(relayPortFromConfig(lopWritten)), null);
 	assert.equal(
 		relayPortFromConfig(
-			"a: 1\nnetwork:\n  enabled: true\n  port: '4198' # rig\nb:\n  port: 9\n",
+			"# rig device\nversion: 3\nvalues:\n  ui:\n    port: 9\n  network:\n    enabled: true\n    # the rig's relay\n    port: '4198' # rig\n    peers:\n      port: 4000\n  other: 1\nmeta:\n  port: 7\n",
 		),
 		4198,
+		"comments, a quoted port, siblings and a deeper peers.port",
 	);
 	assert.equal(
-		relayPortFromConfig("network:\n  peers:\n    port: 4000\n"),
-		null,
-		"a nested port is not network.port",
+		relayPortFromConfig('values:\r\n    network:\r\n        port: "14099"\r\n'),
+		14099,
+		"four-space indent, CRLF, double quotes",
 	);
-	assert.equal(relayPortFromConfig("port: 4197\n"), null);
-	assert.equal(
-		relayPortFromConfig("network: {port: 4197}\n"),
-		null,
-		"flow style fails closed",
+	// Refusals: nested 4097 is a real port, and still the operator's.
+	assert.match(
+		relayPortProblem(
+			relayPortFromConfig("values:\n  network:\n    port: 4097\n"),
+		),
+		/4097/,
 	);
+	for (const [why, text] of [
+		["top-level only (core ignores it)", "network:\n  port: 14097\n"],
+		["values: with no network", "values:\n  ui:\n    theme: dark\n"],
+		["network with no port", "values:\n  network:\n    enabled: true\n"],
+		[
+			"port under another parent",
+			"values:\n  network:\n    peers:\n      port: 4000\n",
+		],
+		["port under values directly", "values:\n  port: 14097\n"],
+		["dotted key", "values:\n  network.port: 14097\n"],
+		["flow values", "values: {network: {port: 14097}}\n"],
+		["flow network", "values:\n  network: {port: 14097}\n"],
+		["anchor", "values:\n  network: &n\n    port: 14097\n"],
+		["alias port", "values:\n  network:\n    port: *p\n"],
+		["tab indentation", "values:\n\tnetwork:\n\t\tport: 14097\n"],
+		[
+			"duplicated values",
+			"values:\n  ui: {}\nvalues:\n  network:\n    port: 14097\n",
+		],
+		[
+			"duplicated network",
+			"values:\n  network:\n    port: 14097\n  network:\n    port: 14098\n",
+		],
+		[
+			"duplicated port",
+			"values:\n  network:\n    port: 14097\n    port: 14098\n",
+		],
+		["document marker", "---\nvalues:\n  network:\n    port: 14097\n"],
+		[
+			"indent steps back",
+			"values:\n    network:\n      port: 14097\n  ui: 1\n",
+		],
+		["port not decimal", "values:\n  network:\n    port: 14097x\n"],
+		["port leading zero", "values:\n  network:\n    port: 014097\n"],
+		["empty", ""],
+	])
+		assert.equal(relayPortFromConfig(text), null, why);
 	assert.match(relayPortProblem(null), /network\.port/);
+	assert.match(relayPortProblem(null), /values:/);
 	assert.match(relayPortProblem(4097), /4097/);
 	assert.equal(relayPortProblem(4197), null);
 });
@@ -1923,9 +3119,12 @@ function rigDevice(name, configYml) {
 	return { base, config: join(base, "config"), home: join(base, "home") };
 }
 
-test("config-root: relay on network.port, then serve, then the remote row; frames; every lop process reaped", () => {
+it("config-root: relay on network.port, then serve, then the remote row; frames; every lop process reaped", async () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-ok", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-ok",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	writeFileSync(
 		join(device.config, "fake-sessions.json"),
 		JSON.stringify([{ id: "ce618964c88e", locality: "remote" }]),
@@ -1933,7 +3132,7 @@ test("config-root: relay on network.port, then serve, then the remote row; frame
 	const app = fakeApp("ConfigRoot");
 	const rigRoot = join(TREE, "cr-ok-rig");
 	const out = join(TREE, "cr-ok-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -2003,15 +3202,18 @@ test("config-root: relay on network.port, then serve, then the remote row; frame
 	assert.equal(receipt.reap.lop.clean, true, JSON.stringify(receipt.reap.lop));
 });
 
-test("config-root: a session that never shows as remote fails the run before the app launches", () => {
+it("config-root: a session that never shows as remote fails the run before the app launches", async () => {
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-miss", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-miss",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	writeFileSync(
 		join(device.config, "fake-sessions.json"),
 		JSON.stringify([{ id: "ce618964c88e", locality: "local" }]),
 	);
 	const rigRoot = join(TREE, "cr-miss-rig");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("Miss"),
 		"--out",
@@ -2054,15 +3256,27 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 	const cases = [
 		[
 			"unset",
-			rigDevice("cr-unset", "network:\n  enabled: true\n"),
+			rigDevice("cr-unset", "values:\n  network:\n    enabled: true\n"),
 			[],
 			/network\.port/,
 		],
 		["no config.yml", rigDevice("cr-none", null), [], /network\.port/],
-		["4097", rigDevice("cr-4097", "network:\n  port: 4097\n"), [], /4097/],
+		[
+			// Core reads only `values:`; a top-level block leaves the relay on 4097.
+			"top-level only",
+			rigDevice("cr-toplevel", "network:\n  port: 4557\n"),
+			[],
+			/network\.port/,
+		],
+		[
+			"4097",
+			rigDevice("cr-4097", "values:\n  network:\n    port: 4097\n"),
+			[],
+			/4097/,
+		],
 		[
 			"real home",
-			rigDevice("cr-home", "network:\n  port: 4555\n"),
+			rigDevice("cr-home", "values:\n  network:\n    port: 4555\n"),
 			["--backend-home", os.userInfo().homedir],
 			/real home/,
 		],
@@ -2092,7 +3306,7 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 		);
 	}
 	// A root another process already runs on is refused, so the sweep can never kill it.
-	const busy = rigDevice("cr-busy", "network:\n  port: 4556\n");
+	const busy = rigDevice("cr-busy", "values:\n  network:\n    port: 4556\n");
 	const squatter = spawn(process.execPath, ["-e", CAP_ONLY], {
 		env: { PATH: process.env.PATH, LOCAL_OPERATOR_CONFIG_DIR: busy.config },
 		stdio: "ignore",
@@ -2126,14 +3340,14 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 
 /* ------------------------------------------- interruption: SIGTERM and --timeout */
 
-test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, the daemon and its standby", async () => {
+it("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, the daemon and its standby", async () => {
 	const lop = fakeLop();
-	const app = fakeApp("Hang", { hang: true });
+	const app = fakeApp("Hang", { hang: true, ignoreTerm: true });
 	const common = ["--app", app, "--capture", "capturepage", "--lop", lop];
 
 	// 1. The timeout path: a wedged app, --timeout 6 (whole-run: it includes the daemon start, so the app is up well before it).
 	const timeoutRoot = join(TREE, "hang-timeout-rig");
-	const timedOut = runHarness([
+	const timedOut = await runHarnessAsync([
 		...common,
 		"--out",
 		join(TREE, "hang-timeout-out"),
@@ -2241,16 +3455,19 @@ test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, t
 	}
 });
 
-test("--timeout bounds the WHOLE run from harness start, not just the app phase", () => {
+it("--timeout bounds the WHOLE run from harness start, not just the app phase", async () => {
 	// A config-root run whose remote row never appears: --peer-wait 30 would
 	// wait 30 s, but the whole-run --timeout 3 stops it first, before any app
 	// launch (review r1 R1-6, QA r1 Q4-3; before, `--timeout 5` measured 16 s).
 	const relayPort = 20000 + Math.floor(Math.random() * 20000);
-	const device = rigDevice("cr-wholerun", `network:\n  port: ${relayPort}\n`);
+	const device = rigDevice(
+		"cr-wholerun",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
 	const rigRoot = join(TREE, "cr-wholerun-rig");
 	const out = join(TREE, "cr-wholerun-out");
 	const began = Date.now();
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("WholeRun"),
 		"--out",
@@ -2417,12 +3634,12 @@ test("startup window: a build with no [dev-driver-script] ARMED is named as pred
 	);
 });
 
-test(
+it(
 	"--app-zip end to end: extracted into the rig, receipt names the zip, removed after a clean reap",
 	{
 		skip: HAVE_ZIP_TOOLS ? false : "zip/unzip not on PATH",
 	},
-	() => {
+	async () => {
 		const app = fakeApp("Zipped");
 		const zip = zipTree(
 			TREE,
@@ -2432,7 +3649,7 @@ test(
 		const zipSha = createHash("sha256").update(readFileSync(zip)).digest("hex");
 		const rigRoot = join(TREE, "zip-rig");
 		const out = join(TREE, "zip-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--out",
@@ -2481,7 +3698,7 @@ test(
 		// --keep-rig keeps the extracted bundle; a zip of TWO bundles is refused
 		// (exit 2) after extraction and before any app is launched.
 		const keptRoot = join(TREE, "zip-keep-rig");
-		const kept = runHarness([
+		const kept = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--keep-rig",
@@ -2512,7 +3729,7 @@ test(
 			join(TREE, "two-apps.zip"),
 		);
 		const twoRoot = join(TREE, "zip-two-rig");
-		const two = runHarness([
+		const two = await runHarnessAsync([
 			"--app-zip",
 			twoZip,
 			"--out",
@@ -2540,11 +3757,11 @@ test(
 	},
 );
 
-test("a build that never arms the step runner fails inside the startup window, named as predating S1", () => {
+it("a build that never arms the step runner fails inside the startup window, named as predating S1", async () => {
 	const app = fakeApp("PreS1", { noScript: true });
 	const rigRoot = join(TREE, "pre-s1-rig");
 	const started = Date.now();
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		app,
 		"--out",
@@ -2661,7 +3878,7 @@ test("--seed refusals: unknown scenario, with --seed-config, off the isolated ba
 		/isolated backend/,
 	);
 	refuses(["--scene", "asks"], /need --session/);
-	refuses(["--scene", "notification-detail"], /needs --notification-id/);
+	refuses(["--scene", "notification-detail"], /need --notification-id/);
 	refuses(
 		["--scene", "notification-detail", "--notification-id", "n_bad"],
 		/n_ \+ 16/,
@@ -2713,6 +3930,16 @@ test("the asks and notification-detail scenes: exact steps, required waits on th
 			},
 		},
 		{
+			// Design D7: the read-on-open settled before the shutter.
+			verb: "waitFor",
+			payload: {
+				selector:
+					'[data-notifications-page]:not(:has([data-notification-row="n_macproofdetailaa"][data-notification-unread])) [data-notification-detail="n_macproofdetailaa"] [data-notification-toggle-read] svg.lucide-circle',
+				timeoutMs: 10000,
+			},
+			timeoutMs: 15000,
+		},
+		{
 			verb: "shutter",
 			payload: { label: "notification-detail-dark", capture: "capturepage" },
 		},
@@ -2742,10 +3969,10 @@ test("the asks and notification-detail scenes: exact steps, required waits on th
 	);
 });
 
-test("--seed ask-command end to end: generated into the rig, read back from the daemon, then the asks frame", () => {
+it("--seed ask-command end to end: generated into the rig, read back from the daemon, then the asks frame", async () => {
 	const rigRoot = join(TREE, "seed-ask-rig");
 	const out = join(TREE, "seed-ask-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("SeedAsk"),
 		"--out",
@@ -2804,7 +4031,7 @@ test("--seed ask-command end to end: generated into the rig, read back from the 
 		assert.equal(alive(pid), false, `pid ${pid} survived`);
 });
 
-test(
+it(
 	"--seed notification-details end to end: the detail is read back through the daemon, then the detail frame",
 	{
 		skip:
@@ -2813,10 +4040,10 @@ test(
 				? false
 				: "node:sqlite needs Node >= 22.13",
 	},
-	() => {
+	async () => {
 		const rigRoot = join(TREE, "seed-detail-rig");
 		const out = join(TREE, "seed-detail-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app",
 			fakeApp("SeedDetail"),
 			"--out",
@@ -2843,6 +4070,14 @@ test(
 			"/v1/desktop/notifications/n_macproofdetailaa",
 		);
 		assert.ok(receipt.seed.files.includes("notifications.db"));
+		// The seeded read state is in the receipt (79's update-detail failure):
+		// the detail frame's read face is SEEDED, never driven, and says so.
+		assert.deepEqual(receipt.seed.items[0], {
+			id: "n_macproofdetailaa",
+			read: true,
+		});
+		assert.ok(receipt.seed.items.some((i) => i.read === false));
+		assert.ok(receipt.limits.some((l) => l.id === "detail-read-seeded"));
 		assert.ok(
 			!receipt.seed.files.some((f) => /-wal$|-shm$|-journal$/.test(f)),
 			receipt.seed.files.join(","),
@@ -2864,10 +4099,10 @@ test(
 	},
 );
 
-test("--seed whose rows the daemon does not read back is BLOCKED (exit 3) before any app launches", () => {
+it("--seed whose rows the daemon does not read back is BLOCKED (exit 3) before any app launches", async () => {
 	const rigRoot = join(TREE, "seed-blocked-rig");
 	const out = join(TREE, "seed-blocked-out");
-	const run = runHarness([
+	const run = await runHarnessAsync([
 		"--app",
 		fakeApp("SeedBlocked"),
 		"--out",
@@ -3252,7 +4487,7 @@ test(
 	},
 );
 
-test(
+it(
 	"R3-4: a failed removal of the extracted bundle still writes the receipt and the closing line",
 	{
 		skip:
@@ -3260,7 +4495,7 @@ test(
 				? false
 				: "needs zip/unzip and a non-root user",
 	},
-	() => {
+	async () => {
 		fakeApp("Sticky");
 		// A read-only directory holding a file: rmSync cannot unlink inside it.
 		const locked = join(TREE, "Sticky.app", "Contents", "Resources", "locked");
@@ -3271,7 +4506,7 @@ test(
 		chmodSync(locked, 0o755);
 		const rigRoot = join(TREE, "sticky-rig");
 		const out = join(TREE, "sticky-out");
-		const run = runHarness([
+		const run = await runHarnessAsync([
 			"--app-zip",
 			zip,
 			"--out",
@@ -3341,6 +4576,11 @@ test("R1-1: every parsed ps/lsof runs under LC_ALL=C and LANG=C, and C lstart pa
 	});
 	assert.equal(env.LC_ALL, "C");
 	assert.equal(env.LANG, "C");
+	assert.equal(
+		cLocaleEnv({ TZ: "Asia/Tokyo" }).TZ,
+		PS_TZ,
+		"lstart is wall time: pinned to the zone startOf and the sentinel read (S5)",
+	);
 	assert.equal(env.PATH, "/bin", "the rest of the env is kept");
 	// Source pin: no `ps`/`lsof` spawn in the harness without the C env. A new
 	// one that forgets it fails here, not on a day-first Mac.
@@ -3669,3 +4909,4077 @@ test(
 		);
 	},
 );
+
+/* -------------------------- the download scene: the harness's one write */
+
+const NOTES = "line one of the fixture\nline two of fixture\n";
+const NOTES_SHA = createHash("sha256").update(NOTES).digest("hex");
+const downloadArgs = (extra = []) => [
+	"--app",
+	"/x.app",
+	"--out",
+	"/tmp/x",
+	"--session",
+	"ce618964c88e",
+	"--scene",
+	"download",
+	"--theme",
+	"dark",
+	...extra,
+];
+function manifestFile(name, files) {
+	const path = join(TREE, `${name}.json`);
+	writeFileSync(path, JSON.stringify({ files }));
+	return path;
+}
+
+test("download: refused off --backend-config-root (attach lands in the operator's ~/Downloads), with one theme, plain names", () => {
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs(
+					downloadArgs([
+						"--backend",
+						"attach",
+						"--backend-url",
+						"http://127.0.0.1:5555",
+					]),
+				),
+			),
+		/refuses --backend attach.*operator's real ~\/Downloads/,
+	);
+	assert.throws(
+		() => validateOptions(parseArgs(downloadArgs())),
+		/--scene download needs --backend-config-root.*got --backend isolated/,
+	);
+	const cr = ["--backend-config-root", "/rig/config"];
+	assert.doesNotThrow(() => validateOptions(parseArgs(downloadArgs(cr))));
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([...downloadArgs(cr), "--theme", "dark,light"]),
+			),
+		/exactly one --theme/,
+	);
+	for (const bad of ["../x", "a/b", 'q"', "a\\b", "..", "\u0007"])
+		assert.throws(
+			() =>
+				validateOptions(
+					parseArgs([...downloadArgs(cr), "--download-file", bad]),
+				),
+			/--download-file must be/,
+			bad,
+		);
+	assert.throws(
+		() =>
+			parseArgs([
+				...downloadArgs(cr),
+				"--download-file",
+				"notes.md",
+				"--download-file",
+				"image-1.png",
+			]),
+		/more than once \(one file per run\)/,
+	);
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([...downloadArgs(cr), "--manifest", "relative.json"]),
+			),
+		/--manifest must be an absolute path/,
+	);
+	// The download flags without the scene are a mistake, not a no-op.
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/x",
+					"--download-file",
+					"notes.md",
+				]),
+			),
+		/apply only to --scene download/,
+	);
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/x",
+					"--scene",
+					"download",
+					"--backend-config-root",
+					"/rig/config",
+					"--theme",
+					"dark",
+				]),
+			),
+		/need --session/,
+	);
+});
+
+test("download: the steps use shipped verbs only, require an enabled Download entry, and never press Save as", () => {
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	const { steps } = buildSteps({
+		...parseArgs(downloadArgs(["--backend-config-root", "/rig/config"])),
+		capture: "capturepage",
+	});
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+	const scene = downloadSceneSteps();
+	assert.deepEqual(steps.slice(-scene.length - 1, -1), scene);
+	assert.equal(steps.at(-1).payload.label, "download-dark");
+	// Defaults to the authorised fixture, also when parseArgs left null.
+	assert.equal(DOWNLOAD_FILE_DEFAULT, "notes.md");
+	assert.deepEqual(downloadSceneSteps(null), downloadSceneSteps("notes.md"));
+	const presses = scene.filter((s) => s.verb === "press");
+	const labels = actionsForNameLabels("notes.md");
+	const exact = labels.map((l) => `[aria-label="${l}"]`).join(", ");
+	// 79's run at main 3673e88232: the row is reached as file-preview reaches its
+	// own (FILES_READY, then the collapsed-group expand), and only an INDEX row's
+	// trigger is pressed.
+	assert.deepEqual(scene.slice(0, 4), filesRowReachSteps());
+	assert.equal(scene[2].payload.selector, FILES_READY);
+	assert.deepEqual(
+		presses.map((s) => s.payload.selector),
+		[
+			COLLAPSED_GROUP_HEADER,
+			`[data-tour-tag="files-scroller"] ${INDEX_ROW} button[aria-haspopup="menu"]:is(${exact})[aria-expanded="false"]`,
+			DOWNLOAD_ITEM_SELECTOR,
+		],
+	);
+	// EXACT labels (F2 / S1-2): never a substring match.
+	assert.ok(!presses[1].payload.selector.includes("*="));
+	assert.ok(labels.includes("Actions for notes.md"), labels.join(" | "));
+	assert.deepEqual(
+		downloadPressAllowlist(),
+		presses.map((s) => s.payload.selector),
+	);
+	assert.equal(
+		DOWNLOAD_ITEM_SELECTOR,
+		'[role="menu"] [data-remote-action="download"]:not([data-disabled])',
+	);
+	// The ONE optional step is the collapsed-group expand: with nothing
+	// collapsed it is skipped; the row, the entry and the toasts stay required.
+	assert.deepEqual(
+		scene.filter((s) => s.optional === true).map((s) => s.payload.selector),
+		[COLLAPSED_GROUP_HEADER],
+	);
+	// The entry is REQUIRED before it is pressed, and success is required after.
+	const at = scene.findIndex(
+		(s) => s.verb === "press" && s.payload.selector === DOWNLOAD_ITEM_SELECTOR,
+	);
+	assert.equal(scene[at - 1].verb, "waitFor");
+	assert.equal(scene[at - 1].payload.selector, DOWNLOAD_ITEM_SELECTOR);
+	assert.equal(
+		scene.at(-1).payload.selector,
+		'[data-sonner-toast][data-type="success"]',
+	);
+	assert.equal(scene.at(-2).payload.timeoutMs, DOWNLOAD_OUTCOME_WAIT_MS);
+	const dl = { download: true, file: null };
+	assert.equal(downloadStepsProblem(steps, dl), null);
+	// The group-header press is admitted byte-for-byte, alone...
+	assert.equal(
+		downloadStepsProblem(
+			[{ verb: "press", payload: { selector: COLLAPSED_GROUP_HEADER } }],
+			dl,
+		),
+		null,
+	);
+	// ...and no near variant of it: each could reach another button (an open
+	// header, a nested caption, a sibling, a button outside the scroller).
+	for (const selector of [
+		'[data-tour-tag="files-scroller"] section > h3 > button',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="true"]',
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]',
+		'[data-tour-tag="files-scroller"] section h3 button[aria-expanded="false"]:not([aria-disabled="true"])',
+		'section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])',
+		`${COLLAPSED_GROUP_HEADER} ~ *`,
+		`${COLLAPSED_GROUP_HEADER} *`,
+		` ${COLLAPSED_GROUP_HEADER}`,
+		COLLAPSED_GROUP_HEADER.toUpperCase(),
+		'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"]), [data-remote-action="save-as"]',
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }], dl) ??
+				"",
+			/a download run may press only/,
+			selector,
+		);
+	// S1-1: an ALLOWLIST. The first three slipped past the old text blocklist.
+	for (const selector of [
+		'[role="menu"] [DATA-REMOTE-ACTION="save-as"]',
+		'[role="menu"] [data-remote-action="download"] + [role="menuitem"]',
+		'[role="menu"] [role="menuitem"]:nth-of-type(2)',
+		'[role="menu"] [data-remote-action="download"]',
+		'[data-remote-action="save-as"]',
+		"[data-remote-action]",
+		'[data-remote-action^="down"]',
+		'[data-remote-action="copy-image"]',
+		'[data-remote-action="open-folder"]',
+		"button[aria-label='Save as…']",
+		'[data-tour-tag="file-row"] button[aria-haspopup="menu"][aria-label*="notes.md"][aria-expanded="false"]',
+	]) {
+		assert.match(
+			downloadStepsProblem(
+				[...steps, { verb: "press", payload: { selector } }],
+				dl,
+			) ?? "",
+			/a download run may press only/,
+			selector,
+		);
+		// The string payload form is checked the same way.
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: selector }], dl) ?? "",
+			/a download run may press only/,
+			selector,
+		);
+	}
+	// Another file's allowlist is not this file's.
+	assert.match(
+		downloadStepsProblem(steps, { download: true, file: "old-notes.md" }) ?? "",
+		/a download run may press only/,
+	);
+	// Any other run: no remote-menu press at all, case-insensitively.
+	for (const selector of [
+		'[DATA-REMOTE-ACTION="download"]',
+		'[data-remote-action="download"]',
+		"button[aria-label='SAVE AS']",
+		'[data-Remote-Action="copy-image"]',
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }]) ?? "",
+			/only --scene download presses the remote file menu/,
+			selector,
+		);
+	assert.equal(
+		downloadStepsProblem([
+			{ verb: "press", payload: { selector: '[data-chat-region="header"]' } },
+		]),
+		null,
+	);
+	// Waiting on Save as is harmless; only a press is a write.
+	assert.equal(
+		downloadStepsProblem(
+			[
+				{
+					verb: "waitFor",
+					payload: { selector: '[data-remote-action="save-as"]' },
+				},
+			],
+			dl,
+		),
+		null,
+	);
+	// Two rows labelled for the file: refused, with its own hint.
+	const dup = scene.find((s) => s.payload?.gone === true);
+	assert.deepEqual(dup.payload, {
+		selector: duplicateRowSelector(labels),
+		gone: true,
+		timeoutMs: 1,
+	});
+	// Before the ROW press (the first press that touches a file); only the
+	// optional group-header expand, view state, may precede it.
+	assert.ok(
+		scene.indexOf(dup) <
+			scene.findIndex(
+				(s) =>
+					s.verb === "press" && s.payload.selector !== COLLAPSED_GROUP_HEADER,
+			),
+		"the single-row check runs before the row press",
+	);
+	assert.ok(
+		scene
+			.slice(0, scene.indexOf(dup))
+			.filter((s) => s.verb === "press")
+			.every((s) => s.payload.selector === COLLAPSED_GROUP_HEADER),
+	);
+	assert.match(
+		downloadFailureHint(
+			`step 5 (waitFor) failed: error: ${dup.payload.selector} is still present after 1ms`,
+		) ?? "",
+		/more than one Files row is labelled for notes\.md/,
+	);
+	assert.match(
+		downloadFailureHint(
+			`step 12 verb=waitFor error: nothing matches ${DOWNLOAD_ITEM_SELECTOR} after 5000ms of waiting`,
+		) ?? "",
+		/no enabled Download entry.*never falls back to Save as/,
+	);
+	assert.equal(downloadFailureHint("step 3 verb=navigate error: x"), null);
+});
+
+test("download: the row trigger matches the EXACT label only, and two same-named rows are seen (jsdom, F2 / S1-2)", async () => {
+	// jsdom's selector engine, not Chromium's: proves the selector LOGIC (exact
+	// label, the two-rows pair) - receipt limit `fixture-proven-actions`.
+	const { JSDOM } = await import("jsdom");
+	const scene = downloadSceneSteps("notes.md");
+	const trigger = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
+	// Shaped like v0.59.2's rows (finder-files-view.tsx:1437-1438, :1533-1534:
+	// `data-tour-tag="file-row"` and `data-file-id` on the same element).
+	const row = (name, label = `Actions for ${name}`, id = `remote:${name}`) =>
+		`<div data-tour-tag="file-row" data-file-id="${id}"><span>${name}</span><button aria-haspopup="menu" aria-label="${label}" aria-expanded="false"></button></div>`;
+	const look = (html) => {
+		const doc = new JSDOM(
+			`<body><div data-tour-tag="files-scroller">${html}</div></body>`,
+		).window.document;
+		return {
+			rows: doc.querySelectorAll(trigger).length,
+			dup: doc.querySelector(dup) !== null,
+		};
+	};
+	// old-notes.md / notes.md.bak are not notes.md's row.
+	assert.deepEqual(
+		look(`<section>${row("old-notes.md")}${row("notes.md.bak")}</section>`),
+		{ rows: 0, dup: false },
+	);
+	assert.deepEqual(
+		look(
+			`<section>${row("old-notes.md")}${row("notes.md")}${row("image-1.png")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+	// Another locale's exact label is accepted.
+	assert.deepEqual(
+		look(`<section>${row("notes.md", "Acciones de notes.md")}</section>`),
+		{ rows: 1, dup: false },
+	);
+	// Two rows: siblings, or in different sections at different depths.
+	assert.deepEqual(
+		look(`<section>${row("notes.md")}${row("notes.md")}</section>`),
+		{
+			rows: 2,
+			dup: true,
+		},
+	);
+	assert.deepEqual(
+		look(
+			`<section><h2>Working</h2>${row("notes.md")}</section><section><div>${row("notes.md")}</div></section>`,
+		),
+		{ rows: 2, dup: true },
+	);
+	// #2012 review C1: an ATTACHMENT of the same name (the person's upload; it
+	// shares data-tour-tag="file-row") is neither pressed nor a second row, so
+	// the one index row is downloaded instead of the run refusing two rows.
+	const attachment = row("notes.md", undefined, "attachment:k1");
+	assert.deepEqual(
+		look(
+			`<section><h3>Attachments</h3>${attachment}</section><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+	assert.deepEqual(look(`<section>${attachment}${row("notes.md")}</section>`), {
+		rows: 1,
+		dup: false,
+	});
+	assert.deepEqual(look(`<section>${attachment}</section>`), {
+		rows: 0,
+		dup: false,
+	});
+	// Two INDEX rows beside an attachment are still refused.
+	assert.deepEqual(
+		look(
+			`<section>${attachment}${row("notes.md")}</section><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 2, dup: true },
+	);
+	// A same-labelled menu OUTSIDE the Files rows (a transcript chip) is not a row.
+	assert.deepEqual(
+		look(
+			`<main><button aria-haspopup="menu" aria-label="Actions for notes.md"></button></main><section>${row("notes.md")}</section>`,
+		),
+		{ rows: 1, dup: false },
+	);
+});
+
+test("download: actionsForNameLabels reads every shipped catalogue, skips unquotable templates, falls back to en", () => {
+	const dir = join(TREE, "dl-catalogues");
+	const put = (locale, template) => {
+		mkdirSync(join(dir, locale), { recursive: true });
+		writeFileSync(
+			join(dir, locale, "ui.common.actions.json"),
+			JSON.stringify({ "ui.common.actions.actions_for_name": template }),
+		);
+	};
+	put("en", "Actions for {name}");
+	put("xx", "{name} actions");
+	put("yy", 'Bad "{name}"');
+	put("zz", "no placeholder");
+	assert.deepEqual(actionsForNameLabels("a.md", dir), [
+		"Actions for a.md",
+		"a.md actions",
+	]);
+	assert.deepEqual(actionsForNameLabels("a.md", join(TREE, "absent")), [
+		"Actions for a.md",
+	]);
+});
+
+test("download: the harness's daemon client still refuses the download POST (the app sends it, never the harness)", () => {
+	assert.match(
+		daemonRequestProblem(
+			"POST",
+			"/v1/desktop/sessions/ce618964c88e/files/f1/download",
+		) ?? "",
+		/./,
+	);
+	assert.ok(
+		DAEMON_ROUTES.every((r) => r.method === "GET"),
+		JSON.stringify(DAEMON_ROUTES),
+	);
+});
+
+test("download: the manifest entry is picked by name; a non-file, a missing entry or a bad entry refuses", () => {
+	const good = manifestFile("m-good", [
+		{ filename: "image-1.png", bytes: 194, sha256: "a".repeat(64) },
+		{ filename: "notes.md", bytes: 46, sha256: NOTES_SHA },
+	]);
+	assert.deepEqual(manifestEntry(good, "notes.md"), {
+		filename: "notes.md",
+		bytes: 46,
+		sha256: NOTES_SHA,
+	});
+	assert.throws(() => manifestEntry(TREE, "notes.md"), /not a regular file/);
+	assert.throws(
+		() => manifestEntry(join(TREE, "absent.json"), "notes.md"),
+		/does not exist/,
+	);
+	assert.throws(
+		() => manifestEntry(good, "tone.wav"),
+		/no entry for tone\.wav/,
+	);
+	const notJson = join(TREE, "m-bad.json");
+	writeFileSync(notJson, "{");
+	assert.throws(() => manifestEntry(notJson, "notes.md"), /not JSON/);
+	assert.throws(
+		() =>
+			manifestEntry(manifestFile("m-nolist", []).replace(/$/, ""), "notes.md"),
+		/no entry/,
+	);
+	assert.throws(
+		() =>
+			manifestEntry(
+				manifestFile("m-twice", [
+					{ filename: "notes.md", bytes: 46, sha256: NOTES_SHA },
+					{ filename: "notes.md", bytes: 46, sha256: NOTES_SHA },
+				]),
+				"notes.md",
+			),
+		/more than once/,
+	);
+	assert.throws(
+		() =>
+			manifestEntry(
+				manifestFile("m-shape", [
+					{ filename: "notes.md", bytes: "46", sha256: "x" },
+				]),
+				"notes.md",
+			),
+		/64-hex sha256 and an integer bytes/,
+	);
+});
+
+test("download: destinations are vetted (symlink, outside, inside ~/Downloads, already present) and the landing is compared", () => {
+	const dev = join(TREE, "dl-dev");
+	const home = join(dev, "home");
+	const config = join(dev, "config");
+	const operatorDownloads = join(TREE, "dl-operator", "Downloads");
+	mkdirSync(join(home, "Downloads"), { recursive: true });
+	mkdirSync(config, { recursive: true });
+	mkdirSync(operatorDownloads, { recursive: true });
+	const opts = {
+		downloadFile: null,
+		manifest: manifestFile("m-dest", [
+			{
+				filename: "notes.md",
+				bytes: Buffer.byteLength(NOTES),
+				sha256: NOTES_SHA,
+			},
+		]),
+		backendConfigRoot: config,
+	};
+	const plan = downloadPreflight(opts, {
+		backendHome: home,
+		operatorDownloads,
+	});
+	assert.deepEqual(
+		plan.destinations.map((d) => [d.dir, d.exists]),
+		[
+			[join(home, "Downloads"), true],
+			[join(config, "downloads"), false],
+		],
+	);
+	assert.equal(plan.manifest.entry.sha256, NOTES_SHA);
+	// A symlinked downloads folder (e.g. to the real ~/Downloads) is refused.
+	const linked = join(TREE, "dl-linked");
+	mkdirSync(join(linked, "home"), { recursive: true });
+	mkdirSync(join(linked, "config"), { recursive: true });
+	symlinkSync(operatorDownloads, join(linked, "home", "Downloads"));
+	assert.throws(
+		() =>
+			downloadDestinations({
+				backendHome: join(linked, "home"),
+				configRoot: join(linked, "config"),
+				operatorDownloads,
+			}),
+		/is a symlink/,
+	);
+	// A rig sited inside the operator's ~/Downloads.
+	const nested = join(operatorDownloads, "rig");
+	mkdirSync(join(nested, "home", "Downloads"), { recursive: true });
+	mkdirSync(join(nested, "config"), { recursive: true });
+	assert.throws(
+		() =>
+			downloadDestinations({
+				backendHome: join(nested, "home"),
+				configRoot: join(nested, "config"),
+				operatorDownloads,
+			}),
+		/inside the operator's ~\/Downloads/,
+	);
+	// A file already there: the backend would reuse it and land nothing new.
+	const pre = join(TREE, "dl-pre");
+	mkdirSync(join(pre, "home", "Downloads"), { recursive: true });
+	mkdirSync(join(pre, "config"), { recursive: true });
+	writeFileSync(join(pre, "home", "Downloads", "notes.md"), NOTES);
+	assert.throws(
+		() =>
+			downloadPreflight(
+				{ ...opts, backendConfigRoot: join(pre, "config") },
+				{ backendHome: join(pre, "home"), operatorDownloads },
+			),
+		/already exists in the rig/,
+	);
+
+	// The landing: nothing, a match, a mismatch, a (1) variant, two files.
+	const before = new Map(
+		plan.destinations.map((d) => [d.dir, listNames(d.dir)]),
+	);
+	const rigRoots = [home, config];
+	const none = inspectLanding(plan, before, { rigRoots });
+	assert.match(none.problem, /no notes\.md appeared in the rig/);
+	assert.equal(none.result.verdict, "FAIL");
+	writeFileSync(join(home, "Downloads", "unrelated.txt"), "x");
+	const wrong = inspectLanding(plan, before, { rigRoots });
+	assert.match(
+		wrong.problem,
+		/the one new file in the rig is .*unrelated\.txt, not notes\.md/,
+	);
+	assert.deepEqual(wrong.result.newInRig, [
+		join(home, "Downloads", "unrelated.txt"),
+	]);
+	rmSync(join(home, "Downloads", "unrelated.txt"));
+	writeFileSync(join(home, "Downloads", "notes.md"), NOTES);
+	const pass = inspectLanding(plan, before, { rigRoots });
+	assert.equal(pass.problem, null);
+	assert.deepEqual(
+		{
+			destination: pass.result.destination,
+			insideRig: pass.result.insideRig,
+			bytes: pass.result.bytes,
+			sha256: pass.result.sha256,
+			compared: pass.result.compared,
+			verdict: pass.result.verdict,
+			manifest: pass.result.manifest.entry,
+			newInRig: pass.result.newInRig,
+		},
+		{
+			destination: join(home, "Downloads", "notes.md"),
+			insideRig: true,
+			bytes: Buffer.byteLength(NOTES),
+			sha256: NOTES_SHA,
+			compared: "match",
+			verdict: "PASS",
+			manifest: {
+				filename: "notes.md",
+				bytes: Buffer.byteLength(NOTES),
+				sha256: NOTES_SHA,
+			},
+			newInRig: [join(home, "Downloads", "notes.md")],
+		},
+	);
+	writeFileSync(join(home, "Downloads", "notes.md"), `${NOTES}tampered`);
+	const bad = inspectLanding(plan, before, { rigRoots });
+	assert.match(
+		bad.problem,
+		new RegExp(`the manifest says ${Buffer.byteLength(NOTES)} B sha256 `),
+	);
+	assert.equal(bad.result.compared, "mismatch");
+	assert.equal(bad.result.verdict, "FAIL");
+	writeFileSync(join(home, "Downloads", "notes (1).md"), NOTES);
+	assert.match(
+		inspectLanding(plan, before, { rigRoots }).problem,
+		/more than one new file landed in the rig \(exactly one may\)/,
+	);
+	// Without a manifest the receipt says nothing was compared.
+	const loose = { ...plan, manifest: null };
+	const looseBefore = new Map([
+		[join(home, "Downloads"), listNames(join(home, "Downloads"))],
+		[join(config, "downloads"), { exists: false, names: [] }],
+	]);
+	mkdirSync(join(config, "downloads"));
+	writeFileSync(join(config, "downloads", "notes.md"), NOTES);
+	const fallback = inspectLanding(loose, looseBefore, { rigRoots });
+	assert.equal(fallback.problem, null);
+	assert.equal(
+		fallback.result.destination,
+		join(config, "downloads", "notes.md"),
+	);
+	assert.equal(fallback.result.compared, "not compared (no --manifest)");
+	assert.deepEqual(landingNames("notes.md").slice(0, 3), [
+		"notes.md",
+		"notes (1).md",
+		"notes (2).md",
+	]);
+	assert.equal(landingNames("README").at(-1), "README (99)");
+});
+
+test("download: EVERY new file across both destinations counts - notes.md + image-1.png + other.txt fails (review F1)", () => {
+	const dev = join(TREE, "dl-f1");
+	const home = join(dev, "home");
+	const config = join(dev, "config");
+	mkdirSync(join(home, "Downloads"), { recursive: true });
+	mkdirSync(join(config, "downloads"), { recursive: true });
+	const plan = downloadPreflight(
+		{ downloadFile: null, manifest: null, backendConfigRoot: config },
+		{
+			backendHome: home,
+			operatorDownloads: join(TREE, "dl-f1-op", "Downloads"),
+		},
+	);
+	const before = new Map(
+		plan.destinations.map((d) => [d.dir, listNames(d.dir)]),
+	);
+	const rigRoots = [home, config];
+	// The reviewer's fixture.
+	writeFileSync(join(home, "Downloads", "notes.md"), NOTES);
+	writeFileSync(join(home, "Downloads", "image-1.png"), "png");
+	writeFileSync(join(config, "downloads", "other.txt"), "x");
+	const all = inspectLanding(plan, before, { rigRoots });
+	assert.equal(all.result.verdict, "FAIL");
+	assert.match(all.problem, /more than one new file landed in the rig/);
+	assert.deepEqual(all.result.newInRig, [
+		join(home, "Downloads", "image-1.png"),
+		join(home, "Downloads", "notes.md"),
+		join(config, "downloads", "other.txt"),
+	]);
+	// One stray in the OTHER destination alone is enough.
+	rmSync(join(home, "Downloads", "image-1.png"));
+	const one = inspectLanding(plan, before, { rigRoots });
+	assert.equal(one.result.verdict, "FAIL");
+	assert.match(one.problem, /other\.txt/);
+	// A new sub-folder is a new entry too.
+	rmSync(join(config, "downloads", "other.txt"));
+	mkdirSync(join(config, "downloads", "sub"));
+	assert.match(
+		inspectLanding(plan, before, { rigRoots }).problem ?? "",
+		/more than one new file/,
+	);
+	rmSync(join(config, "downloads", "sub"), { recursive: true });
+	assert.equal(inspectLanding(plan, before, { rigRoots }).problem, null);
+	assert.deepEqual(rigNewEntries(plan.destinations, before), [
+		join(home, "Downloads", "notes.md"),
+	]);
+});
+
+test("download: with the check off the operator's ~/Downloads leaf is never resolved; the real default is always refused (S1-4, Q1-1)", () => {
+	// A ~/Downloads that is a symlink to where the rig sits: the off run compares
+	// the spelled path (leaf untouched), so it does not see through the link -
+	// the documented limit; the on run (which lists it anyway) resolves it.
+	const op = join(TREE, "dl-s14-op");
+	const target = join(TREE, "dl-s14-target");
+	const rig = join(target, "rig");
+	mkdirSync(join(rig, "home", "Downloads"), { recursive: true });
+	mkdirSync(join(rig, "config"), { recursive: true });
+	mkdirSync(op, { recursive: true });
+	symlinkSync(target, join(op, "Downloads"));
+	const link = join(op, "Downloads");
+	assert.equal(physicalParent(link), join(physical(op), "Downloads"));
+	const where = {
+		backendHome: join(rig, "home"),
+		configRoot: join(rig, "config"),
+	};
+	const real = { path: link, real: link, injected: false };
+	assert.deepEqual(operatorDownloadsRefusals(real, false), [link]);
+	assert.doesNotThrow(() =>
+		downloadDestinations({
+			...where,
+			operatorDownloads: operatorDownloadsRefusals(real, false),
+		}),
+	);
+	assert.throws(
+		() =>
+			downloadDestinations({
+				...where,
+				operatorDownloads: operatorDownloadsRefusals(real, true),
+			}),
+		/inside the operator's ~\/Downloads/,
+	);
+	// An injected test folder ADDS a comparison; the real default stays.
+	const injected = {
+		path: join(TREE, "dl-s14-inj"),
+		real: link,
+		injected: true,
+	};
+	assert.deepEqual(operatorDownloadsRefusals(injected, true), [
+		link,
+		join(TREE, "dl-s14-inj"),
+	]);
+	const nested = join(TREE, "dl-s14-real", "Downloads");
+	mkdirSync(join(nested, "r", "home", "Downloads"), { recursive: true });
+	mkdirSync(join(nested, "r", "config"), { recursive: true });
+	assert.throws(
+		() =>
+			downloadDestinations({
+				backendHome: join(nested, "r", "home"),
+				configRoot: join(nested, "r", "config"),
+				operatorDownloads: operatorDownloadsRefusals(
+					{ path: join(TREE, "dl-s14-inj"), real: nested, injected: true },
+					true,
+				),
+			}),
+		/inside the operator's ~\/Downloads/,
+	);
+});
+
+test("download: the test-only ~/Downloads seam - real default when nothing is injected, refused outside node --test or when relative (Q1-1)", () => {
+	const realDefault = join(os.userInfo().homedir, "Downloads");
+	for (const env of [
+		{},
+		{ NODE_TEST_CONTEXT: "child-v8" },
+		{ [TEST_OPERATOR_DOWNLOADS_ENV]: "" },
+	])
+		assert.deepEqual(operatorDownloadsTarget(env), {
+			path: realDefault,
+			real: realDefault,
+			injected: false,
+		});
+	assert.deepEqual(operatorDownloadsTarget({}, "/Users/u"), {
+		path: "/Users/u/Downloads",
+		real: "/Users/u/Downloads",
+		injected: false,
+	});
+	assert.deepEqual(
+		operatorDownloadsTarget({
+			NODE_TEST_CONTEXT: "child-v8",
+			[TEST_OPERATOR_DOWNLOADS_ENV]: "/tmp/x/Downloads",
+		}),
+		{ path: "/tmp/x/Downloads", real: realDefault, injected: true },
+	);
+	assert.throws(
+		() => operatorDownloadsTarget({ [TEST_OPERATOR_DOWNLOADS_ENV]: "/tmp/x" }),
+		(error) =>
+			error instanceof Refusal &&
+			error.code === EXIT.REFUSED &&
+			/test-only seam honoured only under node --test/.test(error.message),
+	);
+	assert.throws(
+		() =>
+			operatorDownloadsTarget({
+				NODE_TEST_CONTEXT: "child-v8",
+				[TEST_OPERATOR_DOWNLOADS_ENV]: "rel/Downloads",
+			}),
+		/must be an absolute path/,
+	);
+	// downloadPreflight with nothing injected targets the real default.
+	const dev = join(TREE, "dl-seam");
+	mkdirSync(join(dev, "home"), { recursive: true });
+	mkdirSync(join(dev, "config"), { recursive: true });
+	const plan = downloadPreflight(
+		{
+			downloadFile: null,
+			manifest: null,
+			backendConfigRoot: join(dev, "config"),
+		},
+		{ backendHome: join(dev, "home"), target: operatorDownloadsTarget({}) },
+	);
+	assert.deepEqual(plan.operatorDownloads, {
+		path: realDefault,
+		injected: false,
+	});
+	assert.deepEqual(plan.destinations, [
+		{ dir: join(dev, "home", "Downloads"), exists: false },
+		{ dir: join(dev, "config", "downloads"), exists: false },
+	]);
+});
+
+test("convergence (#2012 x #2013): file-preview's Show in canvas passes the press guard byte-exact only; download limits come from the one receiptLimits", () => {
+	// A real file-preview run was refused by the press guard after the rebase
+	// (dry-run exit 2, "step 10 presses ...show-in-canvas..."): its one remote
+	// press is a read, admitted by exact string and nothing looser.
+	const preview = buildSteps({
+		scenes: ["file-preview"],
+		themes: ["dark"],
+		session: "ce618964c88e",
+		capture: "capturepage",
+	});
+	assert.ok(
+		preview.steps.some(
+			(s) =>
+				s.verb === "press" &&
+				s.payload.selector === SHOW_IN_CANVAS_ITEM_SELECTOR,
+		),
+	);
+	assert.equal(downloadStepsProblem(preview.steps), null);
+	for (const selector of [
+		'[role="menu"] [data-remote-action="show-in-canvas"]',
+		'[ROLE="menu"] [DATA-REMOTE-ACTION="show-in-canvas"]:not([data-disabled])',
+		`${SHOW_IN_CANVAS_ITEM_SELECTOR} + *`,
+	])
+		assert.match(
+			downloadStepsProblem([{ verb: "press", payload: { selector } }]) ?? "",
+			/only --scene download presses the remote file menu/,
+			selector,
+		);
+	// A download run's allowlist does not admit it either.
+	assert.match(
+		downloadStepsProblem(
+			[{ verb: "press", payload: { selector: SHOW_IN_CANVAS_ITEM_SELECTOR } }],
+			{ download: true, file: null },
+		) ?? "",
+		/a download run may press only/,
+	);
+	// One assembly: download.limits is receiptLimits' download view, and a run
+	// of both scene families lists both sets.
+	for (const check of [false, true])
+		assert.deepEqual(
+			downloadLimits({ checkOperatorDownloads: check }),
+			receiptLimits(["download"], { checkOperatorDownloads: check }),
+		);
+	assert.deepEqual(
+		receiptLimits(["files", "download"], {}).map((l) => l.id),
+		[
+			"files-paging-caption",
+			"files-attachments-only",
+			"preview-first-screen",
+			"selectors-fixture-proven",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"containment-destination-based",
+			"fixture-proven-actions",
+		],
+	);
+});
+
+test("download: limits name what the receipt cannot prove; the toast latency is read from the run", () => {
+	const ids = (o) => downloadLimits(o).map((l) => l.id);
+	// The download scene reaches its row as file-preview does (79's run at main
+	// 3673e88232), so file-preview's Files-wait and first-screen limits are its too.
+	assert.deepEqual(ids({ checkOperatorDownloads: false }), [
+		"files-attachments-only",
+		"preview-first-screen",
+		"toast-latency-unmeasured",
+		"config-root-only",
+		"containment-destination-based",
+		"fixture-proven-actions",
+	]);
+	assert.deepEqual(ids({ checkOperatorDownloads: true }), [
+		"files-attachments-only",
+		"preview-first-screen",
+		"toast-latency-unmeasured",
+		"config-root-only",
+		"fixture-proven-actions",
+	]);
+	assert.ok(
+		downloadLimits({ checkOperatorDownloads: false }).every(
+			(l) => typeof l.text === "string" && l.text.length > 20,
+		),
+	);
+	const built = downloadSceneSteps();
+	const at =
+		built.findIndex((s) => s.payload?.timeoutMs === DOWNLOAD_OUTCOME_WAIT_MS) +
+		1;
+	const ran = [
+		{ step: at - 1, verb: "press", outcome: "ok", detail: "{}" },
+		{
+			step: at,
+			verb: "waitFor",
+			outcome: "ok",
+			detail:
+				'{"selector":"x","gone":false,"waitedMs":2731,"settleTimedOut":false}',
+		},
+	];
+	assert.deepEqual(downloadToastLatency(built, ran), {
+		step: at,
+		waitedMs: 2731,
+		boundMs: DOWNLOAD_OUTCOME_WAIT_MS,
+		source:
+			"the renderer's waitFor result for the step after the Download press (press to outcome toast)",
+	});
+	assert.equal(downloadToastLatency(built, ran.slice(0, 1)).waitedMs, null);
+	assert.equal(
+		downloadToastLatency(built, [{ ...ran[1], outcome: "error", detail: "x" }])
+			.waitedMs,
+		null,
+	);
+});
+
+test("download: any new name in the operator's ~/Downloads is a stray; names only", () => {
+	const dir = join(TREE, "dl-stray", "Downloads");
+	assert.deepEqual(listNames(dir), { exists: false, names: [] });
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, "b.pdf"), "x");
+	writeFileSync(join(dir, "a.txt"), "x");
+	const before = listNames(dir);
+	assert.deepEqual(before, { exists: true, names: ["a.txt", "b.pdf"] });
+	assert.deepEqual(strayDownloadsProblem(before, listNames(dir)), {
+		newEntries: [],
+		problem: null,
+	});
+	writeFileSync(join(dir, "notes.md"), NOTES);
+	const stray = strayDownloadsProblem(before, listNames(dir));
+	assert.deepEqual(stray.newEntries, ["notes.md"]);
+	assert.match(
+		stray.problem,
+		/new entry appeared in the operator's ~\/Downloads.*notes\.md/,
+	);
+	// A folder that did not exist at start and does at end: all of it is new.
+	assert.deepEqual(
+		strayDownloadsProblem(
+			{ exists: false, names: [] },
+			{ exists: true, names: ["x"] },
+		).newEntries,
+		["x"],
+	);
+	// The passwd home, never $HOME (a rig may set HOME).
+	assert.equal(operatorDownloadsDir("/Users/u"), join("/Users/u", "Downloads"));
+	assert.equal(
+		operatorDownloadsDir(),
+		join(os.userInfo().homedir, "Downloads"),
+	);
+});
+
+test("download: a --manifest that is a directory refuses with exit 2 before any lop process", () => {
+	const relayPort = 20000 + Math.floor(Math.random() * 20000);
+	const device = rigDevice(
+		"dl-refuse",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
+	const run = runHarness([
+		"--app",
+		fakeApp("DlRefuse"),
+		"--out",
+		join(TREE, "dl-refuse-out"),
+		"--rig-root",
+		join(TREE, "dl-refuse-rig"),
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--backend-config-root",
+		device.config,
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"download",
+		"--theme",
+		"dark",
+		"--manifest",
+		TREE,
+	]);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /--manifest .* is not a regular file/);
+	assert.ok(
+		!existsSync(join(device.config, "fake-relay-seen.json")),
+		"no relay",
+	);
+	assert.ok(!existsSync(join(TREE, "dl-refuse-rig")), "no rig was made");
+	// attach: refused by the flags alone, nothing spawned, no rig.
+	const attach = runHarness([
+		"--app",
+		fakeApp("DlRefuse"),
+		"--out",
+		join(TREE, "dl-refuse-out2"),
+		"--rig-root",
+		join(TREE, "dl-refuse-rig2"),
+		"--capture",
+		"capturepage",
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"download",
+		"--theme",
+		"dark",
+		"--backend",
+		"attach",
+		"--backend-url",
+		"http://127.0.0.1:5555",
+	]);
+	assert.equal(attach.status, 2, attach.all);
+	assert.match(attach.all, /refuses --backend attach/);
+	assert.ok(!existsSync(join(TREE, "dl-refuse-rig2")));
+});
+
+/** One config-root download run against the fake app + fake lop. */
+async function downloadRun(
+	name,
+	{
+		manifestSha = NOTES_SHA,
+		post = true,
+		extra = [],
+		app = {},
+		status = 0,
+	} = {},
+) {
+	const relayPort = 20000 + Math.floor(Math.random() * 20000);
+	const device = rigDevice(
+		name,
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
+	mkdirSync(join(device.home, "Downloads"));
+	writeFileSync(
+		join(device.config, "fake-sessions.json"),
+		JSON.stringify([{ id: "ce618964c88e", locality: "remote" }]),
+	);
+	writeFileSync(
+		join(device.config, "fake-download.json"),
+		JSON.stringify({ name: "notes.md", text: NOTES }),
+	);
+	const manifest = manifestFile(`${name}-manifest`, [
+		{
+			filename: "notes.md",
+			bytes: Buffer.byteLength(NOTES),
+			sha256: manifestSha,
+		},
+	]);
+	const rigRoot = join(TREE, `${name}-rig`);
+	const out = join(TREE, `${name}-out`);
+	// QA Q1-1: the suite never lists the real ~/Downloads of whoever runs it.
+	// The test-only seam points the opt-in stray listing at a folder of this
+	// run's own; NODE_TEST_CONTEXT is forwarded because the harness honours the
+	// seam only under node --test (and harnessEnv passes no inherited env).
+	const strayDir = join(TREE, `${name}-operator-downloads`);
+	mkdirSync(strayDir, { recursive: true });
+	writeFileSync(join(strayDir, "already-here.pdf"), "x");
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			fakeApp(`Dl${name}`, { downloadPost: post, toastWaitedMs: 2731, ...app }),
+			"--out",
+			out,
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--backend-config-root",
+			device.config,
+			"--session",
+			"ce618964c88e",
+			"--scene",
+			"download",
+			"--theme",
+			"dark",
+			"--manifest",
+			manifest,
+			"--peer-wait",
+			"30",
+			...extra,
+		],
+		{
+			NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+			[TEST_OPERATOR_DOWNLOADS_ENV]: strayDir,
+		},
+	);
+	const rig = rigOf(rigRoot);
+	trackPids(rig, device.config);
+	// F3: the run's own status and output first, so a run that never reached
+	// the backend fails here with its output, not as ENOENT on a fixture file.
+	assert.equal(run.status, status, run.all);
+	const served = join(device.config, "fake-serve-requests.json");
+	assert.ok(existsSync(served), `no ${served}; run output:\n${run.all}`);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	const requests = JSON.parse(readFileSync(served, "utf8"));
+	return { run, receipt, requests, device, manifest, strayDir };
+}
+
+it("download e2e: the app's POST lands notes.md in the rig; the receipt records path, bytes, sha256, manifest and ~/Downloads", async () => {
+	const { run, receipt, requests, device, manifest } =
+		await downloadRun("dl-ok");
+	assert.equal(run.status, 0, run.all);
+	const landed = join(device.home, "Downloads", "notes.md");
+	assert.equal(readFileSync(landed, "utf8"), NOTES);
+	assert.equal(receipt.download.destination, landed);
+	assert.equal(receipt.download.insideRig, true);
+	assert.equal(receipt.download.bytes, Buffer.byteLength(NOTES));
+	assert.equal(receipt.download.sha256, NOTES_SHA);
+	assert.equal(receipt.download.compared, "match");
+	assert.equal(receipt.download.verdict, "PASS");
+	assert.deepEqual(receipt.download.manifest, {
+		path: manifest,
+		entry: {
+			filename: "notes.md",
+			bytes: Buffer.byteLength(NOTES),
+			sha256: NOTES_SHA,
+		},
+	});
+	assert.match(
+		receipt.download.route,
+		/^POST \/v1\/desktop\/sessions\/<session>\/files\/<file id>\/download/,
+	);
+	// Default OFF: the operator's ~/Downloads was not listed, and the receipt
+	// says so instead of implying a clean stray check.
+	assert.deepEqual(receipt.download.operatorDownloads, { checked: false });
+	// F6: the plan's destination objects, as the dry-run prints them.
+	assert.deepEqual(receipt.download.destinations, [
+		{ dir: join(device.home, "Downloads"), exists: true },
+		{ dir: join(device.config, "downloads"), exists: false },
+	]);
+	// S1-3: every new name in the rig, recorded after the reap.
+	assert.deepEqual(receipt.download.newInRig, [landed]);
+	// F4: the measured press-to-toast wait.
+	assert.equal(receipt.download.toastLatency.waitedMs, 2731);
+	assert.equal(receipt.download.toastLatency.boundMs, DOWNLOAD_OUTCOME_WAIT_MS);
+	assert.deepEqual(
+		receipt.download.limits.map((l) => l.id),
+		[
+			"files-attachments-only",
+			"preview-first-screen",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"containment-destination-based",
+			"fixture-proven-actions",
+		],
+	);
+	// Exactly one write, and it came from the app; everything else was a GET.
+	const writes = requests.filter((r) => !r.startsWith("GET "));
+	assert.deepEqual(writes, [
+		"POST /v1/desktop/sessions/ce618964c88e/files/f1/download",
+	]);
+	assert.ok(existsSync(join(TREE, "dl-ok-out", "download-dark.png")));
+});
+
+it("download e2e: a landed file whose sha256 differs from the manifest fails the run (exit 1)", async () => {
+	const { run, receipt } = await downloadRun("dl-sha", {
+		manifestSha: "0".repeat(64),
+		status: 1,
+	});
+	assert.match(run.all, /the manifest says \d+ B sha256 0{64}/);
+	assert.equal(receipt.download.compared, "mismatch");
+	assert.equal(receipt.download.verdict, "FAIL");
+	assert.equal(receipt.download.sha256, NOTES_SHA);
+});
+
+it("download e2e: no file landing in the rig fails the run (exit 1)", async () => {
+	const { run, receipt } = await downloadRun("dl-none", {
+		post: false,
+		status: 1,
+	});
+	assert.match(run.all, /no notes\.md appeared in the rig/);
+	assert.equal(receipt.download.verdict, "FAIL");
+	assert.equal(receipt.download.destination, null);
+});
+
+it("download e2e: --check-operator-downloads lists the (test-injected) ~/Downloads before/after and records the comparison", async () => {
+	const { receipt, strayDir } = await downloadRun("dl-check", {
+		extra: ["--check-operator-downloads"],
+	});
+	assert.equal(receipt.download.verdict, "PASS");
+	const op = receipt.download.operatorDownloads;
+	// Q1-1: the injected folder was listed, never the runner's real ~/Downloads,
+	// and the receipt says so.
+	assert.deepEqual(op, {
+		checked: true,
+		path: strayDir,
+		injected: true,
+		before: 1,
+		after: 1,
+		newEntries: [],
+	});
+	assert.notEqual(op.path, join(os.userInfo().homedir, "Downloads"));
+	assert.deepEqual(
+		receipt.download.limits.map((l) => l.id),
+		[
+			"files-attachments-only",
+			"preview-first-screen",
+			"toast-latency-unmeasured",
+			"config-root-only",
+			"fixture-proven-actions",
+		],
+	);
+});
+
+it("download e2e: a run that aborts AFTER the file landed still records what landed (S1-3)", async () => {
+	const { run, receipt, device } = await downloadRun("dl-abort", {
+		app: { failVerb: "shutter" },
+		status: 1,
+	});
+	assert.match(run.all, /step \d+ \(shutter\) failed/);
+	assert.equal(receipt.download.verdict, "FAIL");
+	assert.deepEqual(receipt.download.newInRig, [
+		join(device.home, "Downloads", "notes.md"),
+	]);
+});
+
+test("download: the test-only ~/Downloads seam set outside node --test refuses (exit 2) before anything is spawned", () => {
+	const relayPort = 20000 + Math.floor(Math.random() * 20000);
+	const device = rigDevice(
+		"dl-seam-refuse",
+		`values:\n  network:\n    port: ${relayPort}\n`,
+	);
+	const run = runHarness(
+		[
+			"--app",
+			fakeApp("DlSeamRefuse"),
+			"--out",
+			join(TREE, "dl-seam-refuse-out"),
+			"--rig-root",
+			join(TREE, "dl-seam-refuse-rig"),
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--backend-config-root",
+			device.config,
+			"--session",
+			"ce618964c88e",
+			"--scene",
+			"download",
+			"--theme",
+			"dark",
+			"--check-operator-downloads",
+		],
+		{
+			[TEST_OPERATOR_DOWNLOADS_ENV]: join(TREE, "dl-seam-refuse-dl"),
+			NODE_TEST_CONTEXT: null,
+		},
+	);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /test-only seam honoured only under node --test/);
+	assert.ok(!existsSync(join(TREE, "dl-seam-refuse-rig")), "no rig was made");
+});
+
+test("download: the operator-~/Downloads check is opt-in - off lists nothing, on compares, BLOCKED only with the flag", () => {
+	const calls = [];
+	const spy = (answers) => (dir) => {
+		calls.push(dir);
+		const next = answers.shift();
+		if (next instanceof Error) throw next;
+		return next;
+	};
+	const denied = Object.assign(new Error("denied"), { code: "EPERM" });
+	// OFF (the default): no listing attempted, even of an unreadable folder.
+	const off = operatorDownloadsBaseline({
+		check: false,
+		dir: "/Users/u/Downloads",
+		list: spy([denied]),
+	});
+	assert.deepEqual(off, { checked: false });
+	assert.deepEqual(operatorDownloadsVerdict(off, spy([denied])), {
+		record: { checked: false },
+		problem: null,
+	});
+	assert.deepEqual(calls, [], "nothing listed when the check is off");
+	assert.equal(parseArgs(downloadArgs()).checkOperatorDownloads, false);
+	assert.equal(
+		parseArgs(downloadArgs(["--check-operator-downloads"]))
+			.checkOperatorDownloads,
+		true,
+	);
+	// ON: an unreadable folder is BLOCKED (exit 3), naming the host to grant.
+	assert.throws(
+		() =>
+			operatorDownloadsBaseline({
+				check: true,
+				dir: "/Users/u/Downloads",
+				list: spy([denied]),
+				// tccHost()'s real shape (Q1-2): the object rendered [object Object].
+				host: () => ({ host: "Terminal.app", kind: "app", pid: 812 }),
+			}),
+		(error) =>
+			error instanceof Refusal &&
+			error.code === EXIT.BLOCKED &&
+			!error.message.includes("[object Object]") &&
+			/cannot list the operator's \/Users\/u\/Downloads \(EPERM\).*grant Files and Folders > Downloads Folder to Terminal\.app in/.test(
+				error.message,
+			),
+	);
+	// An unreadable parent chain (tccHost() null) still names who to grant.
+	assert.throws(
+		() =>
+			operatorDownloadsBaseline({
+				check: true,
+				dir: "/Users/u/Downloads",
+				list: spy([denied]),
+				host: () => null,
+			}),
+		/to the terminal or agent app hosting this run/,
+	);
+	// ON: the listing is compared; a new name is a problem, none is not.
+	const on = operatorDownloadsBaseline({
+		check: true,
+		dir: "/Users/u/Downloads",
+		list: spy([{ exists: true, names: ["a.pdf"] }]),
+	});
+	assert.deepEqual(on, {
+		checked: true,
+		path: "/Users/u/Downloads",
+		before: { exists: true, names: ["a.pdf"] },
+	});
+	const clean = operatorDownloadsVerdict(
+		on,
+		spy([{ exists: true, names: ["a.pdf"] }]),
+	);
+	assert.equal(clean.problem, null);
+	assert.deepEqual(clean.record, {
+		checked: true,
+		path: "/Users/u/Downloads",
+		before: 1,
+		after: 1,
+		newEntries: [],
+	});
+	const dirty = operatorDownloadsVerdict(
+		on,
+		spy([{ exists: true, names: ["a.pdf", "notes.md"] }]),
+	);
+	assert.match(
+		dirty.problem,
+		/appeared in the operator's ~\/Downloads.*notes\.md/,
+	);
+	assert.deepEqual(dirty.record.newEntries, ["notes.md"]);
+	const gone = operatorDownloadsVerdict(on, spy([denied]));
+	assert.match(gone.problem, /could not be listed after the run \(EPERM\)/);
+	assert.equal(gone.record.after, null);
+	assert.deepEqual(calls, [
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+		"/Users/u/Downloads",
+	]);
+	// The flag without the scene is a mistake, not a no-op.
+	assert.throws(
+		() =>
+			validateOptions(
+				parseArgs([
+					"--app",
+					"/x.app",
+					"--out",
+					"/tmp/x",
+					"--check-operator-downloads",
+				]),
+			),
+		/apply only to --scene download/,
+	);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * Focus (mac-proof-focus.mjs): 79's run 1907b printed
+ *   [window-raise] trigger=initial-present mode=inactive requested=inactive applied=showInactive
+ *   [window-mode] state: visible=true focused=true ...
+ * - the rig app was the ACTIVE app. Prevention (open -g -n), the env proof, pid
+ * discovery, the sentinel, the inter-run gate and the frontmost watchdog.
+ * ---------------------------------------------------------------------------
+ */
+const RIG_PROFILE = "/Users/o/scratch/mac-proof-Ab12Cd/profile";
+
+test("focus: open argv always carries -g, -n and the rig's own --user-data-dir; dropping either flag is refused", () => {
+	const appArgv = buildAppArgv({
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		windowMode: "inactive",
+		size: "1380x900",
+		session: "ce618964c88e",
+	});
+	const appEnv = buildAppEnv({
+		base: {},
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		backendUrl: "http://127.0.0.1:60317",
+		token: "tok-secret",
+		windowMode: "inactive",
+	});
+	const argv = buildOpenArgv({
+		appBundle: "/Applications/Local Operator.app",
+		rig: "/Users/o/scratch/mac-proof-Ab12Cd",
+		appArgv,
+		env: appEnv,
+	});
+	const options = argv.slice(0, argv.indexOf("--args"));
+	// -n is MANDATORY: without it open hands the launch to the operator's
+	// running app (its `activate` raises his window). -g: no front.
+	assert.ok(options.includes("-n"), argv.join(" "));
+	assert.ok(options.includes("-g"), argv.join(" "));
+	assert.deepEqual(argv.slice(argv.indexOf("--args") + 1), appArgv);
+	assert.ok(appArgv.includes(`--user-data-dir=${RIG_PROFILE}`));
+	assert.deepEqual(argv.slice(0, 8), [
+		"-g",
+		"-n",
+		"-a",
+		"/Applications/Local Operator.app",
+		"--stdout",
+		"/Users/o/scratch/mac-proof-Ab12Cd/logs/app-stdout.log",
+		"--stderr",
+		"/Users/o/scratch/mac-proof-Ab12Cd/logs/app-stderr.log",
+	]);
+	// Review S1: every NON-SECRET isolation key rides on --env KEY=VALUE, in
+	// table order, with the exact value the app env holds; the token never.
+	const pairs = [];
+	for (let i = 8; i < argv.indexOf("--args"); i += 2) {
+		assert.equal(argv[i], "--env", argv.join(" "));
+		pairs.push(argv[i + 1]);
+	}
+	assert.deepEqual(
+		pairs.map((p) => p.slice(0, p.indexOf("="))),
+		OPEN_ENV_KEYS.filter((k) => appEnv[k] !== undefined),
+	);
+	for (const p of pairs)
+		assert.equal(
+			p.slice(p.indexOf("=") + 1),
+			appEnv[p.slice(0, p.indexOf("="))],
+		);
+	for (const key of [
+		"LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+		"LOCAL_OPERATOR_CONFIG_DIR",
+		"HOME",
+		"LOCAL_OPERATOR_LOG_DIR",
+		"VITE_DISABLE_BACKEND_MANAGER",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER_OUT",
+		"LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT",
+	])
+		assert.ok(
+			pairs.some((p) => p.startsWith(`${key}=`)),
+			key,
+		);
+	assert.ok(!OPEN_ENV_KEYS.includes("LOCAL_OPERATOR_DESKTOP_TOKEN"));
+	assert.equal(APP_ENV_KEYS.LOCAL_OPERATOR_DESKTOP_TOKEN.secret, true);
+	// Every key buildAppEnv sets is classified in the ONE table.
+	for (const key of Object.keys(appEnv).filter((k) =>
+		/^(HOME|LOCAL_OPERATOR_|VITE_)/.test(k),
+	))
+		assert.ok(key in APP_ENV_KEYS, `${key} is not classified in APP_ENV_KEYS`);
+	assert.ok(!argv.some((a) => a.includes("tok-secret")));
+	assert.equal(argv[argv.indexOf("--args") + 1], appArgv[0]);
+	const check = (a) =>
+		openArgvProblem(a, { profile: RIG_PROFILE, token: "tok-secret" });
+	assert.equal(check(argv), null);
+	const at = argv.indexOf("--args");
+	const withOptions = (extra) => [
+		...argv.slice(0, at),
+		...extra,
+		...argv.slice(at),
+	];
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_DESKTOP_TOKEN=tok-secret"])) ??
+			"",
+		/secret LOCAL_OPERATOR_DESKTOP_TOKEN on --env: it is inherited only/,
+	);
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_DESKTOP_TOKEN"])) ?? "",
+		/secret LOCAL_OPERATOR_DESKTOP_TOKEN/,
+		"the NAME-only form of the token is refused too",
+	);
+	assert.match(check(withOptions(["--env", "HOME"])) ?? "", /NAME-only/);
+	assert.match(
+		check(withOptions(["--env", "T=1"])) ?? "",
+		/not on the non-secret allowlist/,
+	);
+	assert.match(check(withOptions(["--env=HOME=/x"])) ?? "", /--env=<pair>/);
+	assert.match(
+		check(withOptions(["--env", "LOCAL_OPERATOR_UI_TELEMETRY=tok-secret"])) ??
+			"",
+		/value carries the rig token/,
+	);
+	assert.match(check(withOptions(["-e"])) ?? "", /-e \(open with TextEdit\)/);
+	const dropEnv = (key) => {
+		const i = argv.findIndex((a) => a.startsWith(`${key}=`));
+		return argv.filter((_, j) => j !== i && j !== i - 1);
+	};
+	assert.match(
+		check(dropEnv("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL")) ?? "",
+		/lacks --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL/,
+	);
+	// The pre-S1 argv (no --env at all) is now refused: the app could fall back
+	// to the operator's daemon if LaunchServices dropped the env.
+	assert.match(
+		check(argv.filter((a, i) => i < 8 || i >= at)) ?? "",
+		/lacks --env .*falls back to the operator's daemon/,
+	);
+	const without = (flag) => argv.filter((a, i) => !(a === flag && i < 2));
+	assert.match(
+		check(without("-n")) ?? "",
+		/lacks -n: open would hand the launch to the operator's running Local Operator/,
+	);
+	assert.match(check(without("-g")) ?? "", /lacks -g/);
+	// A -n only AFTER --args is the app's argument, not open's flag.
+	assert.match(check([...without("-n"), "-n"]) ?? "", /lacks -n/);
+	assert.match(check([...argv, "--x=tok-secret"]) ?? "", /token/);
+	assert.match(
+		check(
+			argv.map((a) =>
+				a.startsWith("--user-data-dir=") ? "--user-data-dir=/elsewhere" : a,
+			),
+		) ?? "",
+		/lacks this rig's --user-data-dir/,
+	);
+	assert.match(
+		check([
+			"-g",
+			"-n",
+			"-a",
+			"Local Operator",
+			...pairs.flatMap((p) => ["--env", p]),
+			"--args",
+			`--user-data-dir=${RIG_PROFILE}`,
+		]) ?? "",
+		/absolute \.app/,
+	);
+});
+
+test("focus: lsappinfo output shapes parse; a NULL bundleID/path matches nothing; the name is never an identity", () => {
+	assert.equal(parseFrontAsn("ASN:0x0-0x1a01a:\n"), "ASN:0x0-0x1a01a:");
+	for (const bad of [
+		"[ NULL ]",
+		"",
+		"lsappinfo: error",
+		"ASN:0x0-0x1a01a",
+		"0x0-0x1a01a:",
+	])
+		assert.equal(parseFrontAsn(bad), null, bad);
+	// `-only name -only pid`: one key per line.
+	assert.deepEqual(
+		parseAppInfo('"LSDisplayName"="Local Operator"\n"pid"=18910\n'),
+		{ pid: 18910, name: "Local Operator" },
+	);
+	assert.deepEqual(parseAppInfo('"pid"=18910'), { pid: 18910, name: null });
+	// The full block, with the capture Mac's NULL bundleID and paths.
+	const full = [
+		'"Local Operator" ASN:0x0-0x1a01a: ',
+		"    bundleID=[ NULL ]",
+		"    bundle path=[ NULL ]",
+		"    executable path=[ NULL ]",
+		'    pid = 18910 type="Foreground" flavor=3 Version="0.59.2" fileType="APPL" creator="????" Arch=ARM64',
+	].join("\n");
+	assert.deepEqual(parseAppInfo(full), { pid: 18910, name: "Local Operator" });
+	assert.deepEqual(
+		parseAppInfo("    bundleID=[ NULL ]\n    bundle path=[ NULL ]"),
+		{
+			pid: null,
+			name: null,
+		},
+	);
+});
+
+test("focus: the watchdog aborts on the rig app's pid or a helper's, and never on a same-named stranger", async () => {
+	const helperArgv = `/x/Local Operator Helper (GPU).app/Contents/MacOS/x --type=gpu-process --user-data-dir=${RIG_PROFILE}`;
+	const argvs = new Map([
+		[18910, "/Applications/Local Operator.app/Contents/MacOS/Local Operator"],
+		[
+			501,
+			"/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+		],
+		[777, helperArgv],
+		[778, `/x/y --user-data-dir=${RIG_PROFILE}2`],
+	]);
+	const runWatch = async (pids, appPid = 4242) => {
+		const seq = [...pids];
+		const steals = [];
+		const blinds = [];
+		let clock = 0;
+		const watch = createFrontmostWatch({
+			sample: async () => {
+				const pid = seq.shift();
+				return pid === undefined || pid === null
+					? { unknown: 'lsappinfo front answered "[ NULL ]"' }
+					: {
+							asn: `ASN:0x0-0x${pid.toString(16)}:`,
+							pid,
+							name: "Local Operator",
+						};
+			},
+			isRig: rigPidClassifier({
+				profile: RIG_PROFILE,
+				appPid: () => appPid,
+				argvOf: async (pid) => argvs.get(pid) ?? null,
+			}),
+			onSteal: (s) => steals.push(s),
+			onBlind: (b) => blinds.push(b),
+			now: () => {
+				clock += 100;
+				return clock;
+			},
+		});
+		watch.markLaunched();
+		for (let i = 0; i < pids.length; i++) await watch.tick();
+		return { record: watch.record, steals, blinds };
+	};
+	// The operator's own "Local Operator" (pid 18910, no rig profile), then Terminal.
+	const clean = await runWatch([18910, 18910, 501, 18910, 778]);
+	assert.equal(clean.record.stolen, null);
+	assert.deepEqual(clean.steals, []);
+	assert.deepEqual(
+		clean.record.transitions.map((x) => [x.pid, x.rig]),
+		[
+			[18910, false],
+			[501, false],
+			[18910, false],
+			[778, false],
+		],
+	);
+	assert.equal(clean.record.baseline.pid, 18910);
+	assert.equal(clean.record.samples, 5);
+	assert.equal(clean.record.maxGapMs, 100);
+	// The rig app's own pid.
+	const app = await runWatch([18910, 4242, 4242]);
+	assert.equal(app.steals.length, 1);
+	assert.deepEqual(
+		{ pid: app.record.stolen.pid, helper: app.record.stolen.helper },
+		{ pid: 4242, helper: false },
+	);
+	assert.equal(app.record.transitions.at(-1).rig, true);
+	// A helper: found by the rig's exact --user-data-dir token.
+	const helper = await runWatch([501, 777]);
+	assert.deepEqual(
+		{ pid: helper.record.stolen.pid, helper: helper.record.stolen.helper },
+		{ pid: 777, helper: true },
+	);
+	// Before discovery the app is found the same way (its argv carries the token).
+	const early = await runWatch([501, 777], null);
+	assert.equal(early.record.stolen.pid, 777);
+	// Blind: more than FRONTMOST_BLIND_LIMIT unreadable samples in a row.
+	const blind = await runWatch([501, null, null, null, null, null, null]);
+	assert.equal(blind.blinds.length, 1);
+	assert.equal(blind.record.unknown, 6);
+	assert.equal(blind.record.stolen, null);
+	const brief = await runWatch([501, null, null, 501]);
+	assert.deepEqual(brief.blinds, []);
+	// The shape every receipt carries.
+	assert.deepEqual(Object.keys(emptyFrontmost("lsappinfo")), [
+		"tool",
+		"intervalMs",
+		"baseline",
+		"samples",
+		"unknown",
+		"maxGapMs",
+		"transitions",
+		"stolen",
+	]);
+});
+
+test("focus: a failed argv read is never remembered - the rig app in front before discovery is caught once discovery names it (review F1)", async () => {
+	// The reviewer's repro: front = 4242 (the rig app, before discovery), the
+	// first `ps` of its argv fails, then discovery names 4242.
+	let appPid = null;
+	let reads = 0;
+	const steals = [];
+	const fronts = [4242, 4242, 4242];
+	const watch = createFrontmostWatch({
+		sample: async () => {
+			const pid = fronts.shift() ?? 4242;
+			return {
+				asn: `ASN:0x0-0x${pid.toString(16)}:`,
+				pid,
+				name: "Local Operator",
+			};
+		},
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => appPid,
+			argvOf: async () => {
+				reads++;
+				return reads === 1 ? null : "/x/Local Operator --window-mode=inactive";
+			},
+		}),
+		onSteal: (s) => steals.push(s),
+	});
+	watch.markLaunched();
+	await watch.tick(); // argv unreadable: an UNKNOWN sample, nothing cached
+	assert.equal(watch.record.unknown, 1);
+	assert.deepEqual(watch.record.transitions, []);
+	appPid = 4242; // discovery
+	await watch.tick();
+	await watch.tick();
+	assert.equal(steals.length, 1, JSON.stringify(watch.record));
+	assert.equal(watch.record.stolen.pid, 4242);
+	assert.equal(watch.record.stolen.helper, false);
+	assert.deepEqual(
+		watch.record.transitions.map((x) => [x.pid, x.rig]),
+		[[4242, true]],
+	);
+	// The same pid judged NOT rig first (argv read fine, no token: e.g. the
+	// app's argv was read through a stale cache), then named by discovery:
+	// still caught, and the timeline shows the flip.
+	let app2 = null;
+	const steals2 = [];
+	const watch2 = createFrontmostWatch({
+		sample: async () => ({
+			asn: "ASN:0x0-0x1092:",
+			pid: 4242,
+			name: "Local Operator",
+		}),
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => app2,
+			argvOf: async () => "/x/Local Operator",
+		}),
+		onSteal: (s) => steals2.push(s),
+	});
+	await watch2.tick();
+	app2 = 4242;
+	await watch2.tick();
+	assert.equal(steals2.length, 1);
+	assert.deepEqual(
+		watch2.record.transitions.map((x) => [x.pid, x.rig]),
+		[
+			[4242, false],
+			[4242, true],
+		],
+	);
+	// Unreadable argv on every sample is blindness, not a clean run.
+	const blinds = [];
+	const blind = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: rigPidClassifier({
+			profile: RIG_PROFILE,
+			appPid: () => null,
+			argvOf: async () => null,
+		}),
+		onBlind: (b) => blinds.push(b),
+	});
+	for (let i = 0; i < 6; i++) await blind.tick();
+	assert.equal(blinds.length, 1);
+	assert.match(blinds[0], /could not read pid 501's argv/);
+});
+
+test("focus: the attach assertion compares the app's own attach line with THIS run's serve URL, and a mismatch sticks", () => {
+	assert.equal(
+		attachedUrlOf(
+			"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1131, v0.108.5, uv-tool)",
+		),
+		"http://127.0.0.1:60317",
+	);
+	assert.equal(attachedUrlOf("[window-mode] state: visible=true"), null);
+	// 1907b: the rig serve's port is dynamic (60317); never the operator's 1111.
+	const ok = createAttachCheck({ rigUrl: "http://127.0.0.1:60317/" });
+	assert.deepEqual(ok.record, {
+		url: null,
+		rigUrl: "http://127.0.0.1:60317",
+		match: null,
+	});
+	assert.equal(ok.feed("[dev-driver] ARMED; x"), false);
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1)",
+		),
+		false,
+	);
+	assert.deepEqual(ok.record, {
+		url: "http://127.0.0.1:60317",
+		rigUrl: "http://127.0.0.1:60317",
+		match: true,
+	});
+	// A later reattach elsewhere (the run's whole length) fails, and stays failed.
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:1111 (pid 9)",
+		),
+		true,
+	);
+	assert.equal(
+		ok.feed(
+			"Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1)",
+		),
+		false,
+	);
+	assert.deepEqual(ok.record, {
+		url: "http://127.0.0.1:1111",
+		rigUrl: "http://127.0.0.1:60317",
+		match: false,
+	});
+});
+
+test("focus: the per-frame window lookup is async, so the 100 ms watchdog keeps sampling while it runs (review F4)", async () => {
+	const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+	const watch = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: async () => ({ rig: false, helper: false }),
+		intervalMs: 50,
+	});
+	const slowLookup = (cmd, args, opts) =>
+		runAsync(
+			process.execPath,
+			[
+				"-e",
+				"setTimeout(()=>process.stdout.write(JSON.stringify({pid:7,layer:0,bounds:{X:0,Y:0,Width:1,Height:1}})),600)",
+			],
+			opts,
+		);
+	watch.start();
+	const before = watch.record.samples;
+	const info = await windowInfoAsync(12, slowLookup);
+	const during = watch.record.samples - before;
+	await watch.stop();
+	assert.equal(info.pid, 7);
+	assert.ok(during >= 5, `only ${during} samples during a 600 ms lookup`);
+	assert.ok(watch.record.maxGapMs < 400, `maxGapMs ${watch.record.maxGapMs}`);
+	// Control: the old spawnSync shape stalls every sample for the whole call.
+	const ctl = createFrontmostWatch({
+		sample: async () => ({ asn: "ASN:0x0-0x1f5:", pid: 501, name: "Terminal" }),
+		isRig: async () => ({ rig: false, helper: false }),
+		intervalMs: 50,
+	});
+	ctl.start();
+	await pause(120);
+	spawnSync(process.execPath, ["-e", "setTimeout(()=>{},600)"]);
+	await pause(120);
+	await ctl.stop();
+	assert.ok(
+		ctl.record.maxGapMs >= 550,
+		`control maxGapMs ${ctl.record.maxGapMs}`,
+	);
+});
+
+test("focus: sampleFrontmost asks info only when the ASN changes, and fails closed on an unparsable answer", async () => {
+	const calls = [];
+	const answers = {
+		front: "ASN:0x0-0x49de:\n",
+		info: '"LSDisplayName"="Local Operator"\n"pid"=18910\n',
+	};
+	const lsappinfo = async (args) => {
+		calls.push(args[0]);
+		return { ok: true, stdout: answers[args[0]] };
+	};
+	const cache = new Map();
+	assert.deepEqual(await sampleFrontmost(lsappinfo, cache), {
+		asn: "ASN:0x0-0x49de:",
+		pid: 18910,
+		name: "Local Operator",
+	});
+	await sampleFrontmost(lsappinfo, cache);
+	assert.deepEqual(calls, ["front", "info", "front"]);
+	answers.front = "[ NULL ]";
+	assert.ok((await sampleFrontmost(lsappinfo, cache)).unknown);
+	answers.front = "ASN:0x0-0x1:";
+	answers.info = "bundleID=[ NULL ]";
+	assert.match((await sampleFrontmost(lsappinfo, cache)).unknown, /no pid/);
+	// A missing binary (execFile ENOENT) is unknown, i.e. a refused preflight.
+	assert.ok(
+		(await sampleFrontmost(async () => ({ ok: false, stdout: "" }))).unknown,
+	);
+});
+
+test("focus: pid discovery takes exactly one launchd child carrying the rig profile; helpers and same-named strangers never", () => {
+	const ps = (rows) =>
+		parsePsRows(
+			rows
+				.map(
+					([pid, ppid, cmd]) =>
+						`${pid} ${ppid} Fri Nov 20 13:43:09 2026 ${cmd}`,
+				)
+				.join("\n"),
+		);
+	const exe =
+		"/Users/o/scratch/mac-proof-Ab12Cd/app/Local Operator.app/Contents/MacOS/Local Operator";
+	const app = [
+		3001,
+		1,
+		`${exe} --user-data-dir=${RIG_PROFILE} --window-mode=inactive`,
+	];
+	const gpu = [
+		3002,
+		3001,
+		`${exe} Helper --type=gpu-process --user-data-dir=${RIG_PROFILE}`,
+	];
+	const orphanHelper = [
+		3003,
+		1,
+		`${exe} Helper --type=renderer --user-data-dir=${RIG_PROFILE}`,
+	];
+	// The operator's own app: same name, no rig profile (pid 18910 on the capture Mac).
+	const operator = [
+		18910,
+		1,
+		"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+	];
+	const other = [3004, 1, `${exe} --user-data-dir=${RIG_PROFILE}-old`];
+	const found = discoverAppPid(ps([operator, gpu, orphanHelper, app, other]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(found.pid, 3001);
+	assert.equal(found.start, "Fri Nov 20 13:43:09 2026");
+	assert.deepEqual(found.carrying.map((r) => r.pid).sort(), [3001, 3002, 3003]);
+	const none = discoverAppPid(ps([operator, gpu, orphanHelper]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(none.pid, null);
+	assert.equal(none.candidates, 0);
+	assert.match(none.problem, /no process carrying/);
+	const two = discoverAppPid(ps([operator, app, [3005, 1, app[2]]]), {
+		profile: RIG_PROFILE,
+	});
+	assert.equal(two.pid, null);
+	assert.equal(two.candidates, 2);
+	assert.match(two.problem, /2 processes .* refusing to guess/);
+	// Not launchd's child (still the harness's, say): not the LS instance.
+	assert.equal(
+		discoverAppPid(ps([[3001, 999, app[2]]]), { profile: RIG_PROFILE }).pid,
+		null,
+	);
+	assert.equal(
+		discoverAppPid(ps([[3001, 999, app[2]]]), {
+			profile: RIG_PROFILE,
+			launchdPid: 999,
+		}).pid,
+		3001,
+	);
+	// The operator's process is never "carrying", so no reap path selects it.
+	assert.ok(!found.carrying.some((r) => r.pid === 18910));
+	assert.equal(profileToken(RIG_PROFILE).test(operator[2]), false);
+});
+
+test("focus: the inter-run gate refuses a leftover rig process or a rig app in front, and nothing else", () => {
+	const rows = (cmds) =>
+		cmds.map(([pid, command]) => ({ pid, ppid: 1, start: "x", command }));
+	const any = rigStyleProfilePattern();
+	const leftover = [
+		77,
+		"/a/Local Operator --user-data-dir=/Users/o/scratch/mac-proof-Zz9Yy8/profile --window-mode=inactive",
+	];
+	const operator = [
+		18910,
+		"/Applications/Local Operator.app/Contents/MacOS/Local Operator",
+	];
+	const negative = [
+		78,
+		"x --user-data-dir=/tmp/mac-proof-negative-Ab12Cd/profile",
+	];
+	assert.equal(
+		interRunGateProblem({
+			rows: rows([operator, negative]),
+			front: { pid: 18910 },
+			pattern: any,
+		}),
+		null,
+	);
+	assert.match(
+		interRunGateProblem({
+			rows: rows([operator, leftover]),
+			front: { pid: 18910 },
+			pattern: any,
+		}) ?? "",
+		/a previous mac-proof rig is still running \(pids 77/,
+	);
+	// A root with a space still matches.
+	assert.match(
+		interRunGateProblem({
+			rows: rows([
+				[79, "x --user-data-dir=/Users/o/my scratch/mac-proof-Ab12Cd/profile"],
+			]),
+			front: null,
+			pattern: any,
+		}) ?? "",
+		/pids 79/,
+	);
+	assert.match(
+		interRunGateProblem({ rows: null, front: null, pattern: any }) ?? "",
+		/could not list processes/,
+	);
+	// Scoped to one rig root (the test seam): another root's rig is not this suite case's.
+	const scoped = rigStyleProfilePattern("/Users/o/other/");
+	assert.equal(
+		interRunGateProblem({
+			rows: rows([leftover]),
+			front: null,
+			pattern: scoped,
+		}),
+		null,
+	);
+	assert.ok(rigStyleProfilePattern("/Users/o/scratch").test(leftover[1]));
+});
+
+test("focus: the env proof needs both ARMED lines and the attach line naming THIS rig's serve", () => {
+	const proof = createEnvProof({ backendUrl: "http://127.0.0.1:60317" });
+	assert.equal(proof.record().verified, false);
+	proof.feed("[dev-driver] ARMED; frames are written to /r/frames");
+	proof.feed("[dev-driver-script] ARMED; steps from /r/steps.json");
+	proof.feed(
+		"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:4096 (pid 1, v0.1, uv-tool)",
+	);
+	assert.deepEqual(proof.missing(), [
+		"Attached to the backend this launch named: http://127.0.0.1:60317",
+	]);
+	assert.equal(proof.record().wrongBackend, "http://127.0.0.1:4096");
+	// 1907b's own line, rig serve port 60317.
+	proof.feed(
+		"13:43:10.136 \u203a Attached to the backend this launch named: http://127.0.0.1:60317 (pid 1131, v0.108.5, uv-tool)",
+	);
+	assert.deepEqual(proof.missing(), []);
+	assert.equal(proof.record().verified, true);
+});
+
+test("focus: launch mode - LaunchServices on darwin, direct elsewhere; the test seam only under node --test", () => {
+	assert.deepEqual(
+		(({ kind, open }) => ({ kind, open }))(launchMode({}, "darwin")),
+		{ kind: "launchservices", open: OPEN_BIN },
+	);
+	assert.equal(OPEN_BIN, "/usr/bin/open");
+	assert.equal(launchMode({}, "linux").kind, "direct");
+	assert.match(
+		launchMode({ [TEST_LAUNCH_ENV]: "direct" }, "darwin").problem,
+		/test-only seam/,
+	);
+	const fixture = { appPath: join(TREE, "Fixture.app") };
+	assert.equal(
+		launchMode(
+			{ [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" },
+			"darwin",
+			fixture,
+		).kind,
+		"direct",
+	);
+	// Review S3 / QA Q1-4: NODE_TEST_CONTEXT is a plain env var, so the seam
+	// also needs the app to be a fixture under the temp dir. The installed
+	// bundle (or no app, or a path that only LOOKS like it is under tmp) never
+	// leaves LaunchServices.
+	for (const appPath of [
+		"/Applications/Local Operator.app",
+		null,
+		join(os.tmpdir(), "..", "Applications", "x.app"),
+		os.tmpdir(),
+	])
+		assert.match(
+			launchMode(
+				{ [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" },
+				"darwin",
+				{ appPath },
+			).problem ?? "",
+			/drives only fixtures under the temp dir/,
+			String(appPath),
+		);
+	assert.match(
+		launchMode(
+			{ [TEST_LAUNCH_ENV]: "rel", NODE_TEST_CONTEXT: "x" },
+			"linux",
+			fixture,
+		).problem,
+		/absolute/,
+	);
+	const fake = launchMode(
+		{
+			[TEST_LAUNCH_ENV]: "/f",
+			[TEST_LAUNCHD_PID_ENV]: "3058",
+			NODE_TEST_CONTEXT: "x",
+		},
+		"linux",
+		fixture,
+	);
+	assert.deepEqual(
+		[
+			fake.kind,
+			fake.open,
+			fake.lsappinfo,
+			fake.launchdPid,
+			fake.gateScopedToRigRoot,
+		],
+		["launchservices", "/f/open", "/f/lsappinfo", 3058, true],
+	);
+	assert.equal(launchMode({}, "darwin").gateScopedToRigRoot, false);
+	// The limit is a darwin (LaunchServices) run's, for every scene.
+	for (const scene of SCENES)
+		assert.ok(
+			receiptLimits([scene], { launchServices: true }).some(
+				(l) => l.id === "focus-prevention-launchservices",
+			),
+			scene,
+		);
+	assert.deepEqual(receiptLimits(["conversation"]), []);
+});
+
+test("focus: the file tail returns whole lines per file, across partial writes", () => {
+	const file = join(TREE, "tail-test.log");
+	writeFileSync(file, "");
+	const tail = createFileTail(file);
+	writeFileSync(file, "[dev-driver] ARMED; x\n[window-mo");
+	assert.deepEqual(tail.read(), ["[dev-driver] ARMED; x"]);
+	writeFileSync(file, "[dev-driver] ARMED; x\n[window-mode] state: a\r\nlast");
+	assert.deepEqual(tail.read(), ["[window-mode] state: a"]);
+	assert.deepEqual(tail.read({ flush: true }), ["last"]);
+	assert.deepEqual(createFileTail(join(TREE, "absent.log")).read(), []);
+	// Review F3: the logger's `\u203a` (3 bytes, e2 80 ba) split across two
+	// reads still decodes as one character, not U+FFFD.
+	const split = join(TREE, "tail-utf8.log");
+	writeFileSync(split, "");
+	const utf8 = createFileTail(split);
+	const line = Buffer.from(
+		"13:43:11.563 \u203a [window-raise] trigger=initial-present\n",
+	);
+	const cut = line.indexOf(0xe2) + 1;
+	writeFileSync(split, line.subarray(0, cut));
+	assert.deepEqual(utf8.read(), []);
+	writeFileSync(split, line);
+	assert.deepEqual(utf8.read(), [
+		"13:43:11.563 \u203a [window-raise] trigger=initial-present",
+	]);
+});
+
+/** A detached process standing in for the harness, the app or a stranger; tracked for `after`. */
+function standIn(argv = [], { ignoreTerm = false } = {}) {
+	// `ready` is written after the TERM handler is installed, so a caller that
+	// waits for it never signals a still-booting process.
+	const ready = join(TREE, `standin-${process.hrtime.bigint()}.ready`);
+	const child = spawn(
+		process.execPath,
+		[
+			"-e",
+			`${ignoreTerm ? "process.on('SIGTERM',()=>{});" : ""}require('fs').writeFileSync(${JSON.stringify(ready)},'1');${CAP_ONLY}`,
+			"--",
+			...argv,
+		],
+		{ detached: true, stdio: "ignore" },
+	);
+	child.unref();
+	leftovers.push(child.pid);
+	child.ready = ready;
+	return child;
+}
+const waitFor = async (pred, ms) => {
+	const deadline = Date.now() + ms;
+	while (!pred() && Date.now() < deadline) await sleepMs(50);
+	return pred();
+};
+const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test("focus: the sentinel, armed before open, sweeps every rig-profile carrier once the harness dies - late ones too - and nothing else", async () => {
+	const profile = join(TREE, "sentinel-rig", "profile");
+	// While the harness lives the sentinel only waits, carriers or not.
+	const harness = standIn();
+	await waitFor(() => startOf(harness.pid) !== null, 2000);
+	const app = standIn([`--user-data-dir=${profile}`], { ignoreTerm: true });
+	const helper = standIn(["--type=gpu-process", `--user-data-dir=${profile}`]);
+	const named = standIn(["Local Operator"]);
+	const otherRig = standIn([`--user-data-dir=${profile}2`]);
+	await waitFor(() => existsSync(app.ready) && existsSync(helper.ready), 5000);
+	const sentinel = startSentinel({
+		harnessPid: harness.pid,
+		harnessStart: startOf(harness.pid),
+		profile,
+		rig: join(TREE, "sentinel-rig"),
+		graceMs: 2500,
+	});
+	leftovers.push(sentinel.pid);
+	await sleepMs(500);
+	assert.ok(
+		alive(app.pid) && alive(helper.pid) && alive(sentinel.pid),
+		"nothing is touched while the harness lives",
+	);
+	process.kill(harness.pid, "SIGKILL");
+	// A carrier that starts AFTER the harness died (a late LaunchServices
+	// launch, review F2) is swept too.
+	await sleepMs(800);
+	const late = standIn([`--user-data-dir=${profile}`]);
+	assert.ok(
+		await waitFor(() => !alive(helper.pid), 3000),
+		"helper reaped (TERM)",
+	);
+	assert.ok(await waitFor(() => !alive(late.pid), 4000), "late carrier reaped");
+	assert.ok(
+		await waitFor(() => !alive(app.pid), 6000),
+		"a TERM-ignoring app is KILLed by pid + start",
+	);
+	assert.ok(
+		await waitFor(() => !alive(sentinel.pid), 6000),
+		"sentinel exits after its grace",
+	);
+	assert.ok(
+		alive(named.pid),
+		"a same-named process without the profile is never touched",
+	);
+	assert.ok(alive(otherRig.pid), "another profile is another run's");
+	// Review S4: a harness pid whose start no longer matches (a recycled pid)
+	// is a dead harness, so the sentinel does not wait on a stranger forever.
+	const liveStranger = standIn();
+	const carrier = standIn([`--user-data-dir=${profile}`]);
+	await waitFor(
+		() => existsSync(carrier.ready) && startOf(liveStranger.pid) !== null,
+		5000,
+	);
+	const s2 = startSentinel({
+		harnessPid: liveStranger.pid,
+		harnessStart: "Mon Jan  1 00:00:00 2001",
+		profile,
+		rig: join(TREE, "sentinel-rig"),
+		graceMs: 400,
+	});
+	leftovers.push(s2.pid);
+	assert.ok(
+		await waitFor(() => !alive(carrier.pid), 4000),
+		"swept: the recorded harness is gone",
+	);
+	assert.ok(
+		alive(liveStranger.pid),
+		"the recycled harness pid itself is never signalled",
+	);
+	assert.ok(await waitFor(() => !alive(s2.pid), 4000));
+	for (const c of [named, otherRig, liveStranger])
+		process.kill(c.pid, "SIGKILL");
+});
+
+test("focus: an operator TZ never makes the sentinel read the live harness as recycled - startOf and the sentinel share PS_TZ (security S5)", async () => {
+	// The real path: the harness inherits the operator's exported TZ, reads its
+	// own start with `startOf`, and the sentinel (env built from nothing) reads
+	// it again. Before PS_TZ the two disagreed by the zone offset, the sentinel
+	// took the live harness for a recycled pid and swept this carrier at once.
+	assert.equal(PS_TZ, "UTC");
+	const profile = join(TREE, "sentinel-tz-rig", "profile");
+	const harness = standIn();
+	const carrier = standIn([`--user-data-dir=${profile}`]);
+	await waitFor(
+		() => existsSync(carrier.ready) && startOf(harness.pid) !== null,
+		5000,
+	);
+	const saved = process.env.TZ;
+	// A zone far from the runner's (UTC on CI), so a mismatch cannot hide.
+	process.env.TZ = "Asia/Tokyo";
+	let harnessStart;
+	try {
+		harnessStart = startOf(harness.pid);
+	} finally {
+		// Not `= undefined`: process.env stores that as the string "undefined".
+		if (saved === undefined) Reflect.deleteProperty(process.env, "TZ");
+		else process.env.TZ = saved;
+	}
+	const sentinel = startSentinel({
+		harnessPid: harness.pid,
+		harnessStart,
+		profile,
+		rig: join(TREE, "sentinel-tz-rig"),
+		graceMs: 400,
+	});
+	leftovers.push(sentinel.pid);
+	// A mismatch sweeps on the sentinel's FIRST liveness check, before any
+	// 200 ms tick; 500 ms is that plus two ticks (negative control: with the
+	// pins removed this fails at this line).
+	await sleepMs(500);
+	assert.ok(alive(carrier.pid), "the harness is alive: nothing is swept");
+	assert.ok(alive(sentinel.pid), "the sentinel is still waiting on it");
+	// Control: the same sentinel DOES sweep once the harness is really gone.
+	process.kill(harness.pid, "SIGKILL");
+	assert.ok(
+		await waitFor(() => !alive(carrier.pid), 4000),
+		"swept after the harness died",
+	);
+	// Its grace exit is the subject of the sentinel case above; end it now.
+	sentinel.kill("SIGKILL");
+});
+
+test("focus: the LaunchServices reap kills the app by pid + start and helpers by the rig profile, never a same-named stranger", async () => {
+	const profile = join(TREE, "lsreap-rig", "profile");
+	const app = standIn([`--user-data-dir=${profile}`], { ignoreTerm: true });
+	const helper = standIn(["--type=gpu-process", `--user-data-dir=${profile}`]);
+	const operator = standIn(["Local Operator"]);
+	const otherRig = standIn([`--user-data-dir=${profile}2`]);
+	await waitFor(() => existsSync(app.ready), 5000);
+	const result = await stopLaunchedApp({
+		pid: app.pid,
+		start: startOf(app.pid),
+		profile,
+		deadlineMs: 300,
+	});
+	assert.equal(result.clean, true, JSON.stringify(result));
+	assert.equal(result.escalated, true, "TERM ignored, so KILL");
+	assert.ok(!alive(app.pid) && !alive(helper.pid));
+	assert.ok(
+		alive(operator.pid),
+		"the same-named non-rig process is never reaped",
+	);
+	assert.ok(alive(otherRig.pid), "another profile is another run's");
+	// A recorded start that no longer matches: no signal at all to that pid.
+	const recycled = standIn();
+	const r2 = await stopLaunchedApp({
+		pid: recycled.pid,
+		start: "Mon Jan  1 00:00:00 2001",
+		profile,
+		deadlineMs: 300,
+	});
+	assert.equal(r2.signalled, false);
+	assert.ok(alive(recycled.pid));
+	for (const c of [operator, otherRig, recycled])
+		process.kill(c.pid, "SIGKILL");
+	assert.ok(psRows() !== null);
+});
+
+/** One harness run on the darwin path, against the fake open + lsappinfo. */
+async function lsRun(
+	name,
+	{ behaviour = {}, ls = {}, args = [], front = null } = {},
+) {
+	const operator = front ?? operatorStandIn();
+	const lsDir = fakeLaunchServices(name, { front: operator, ...ls });
+	const operatorMarker = join(TREE, `${name}-operator-contact`);
+	const app = fakeApp(`Ls${name}`, {
+		ls: true,
+		frontFile: join(lsDir, "front"),
+		operatorMarker,
+		...behaviour,
+	});
+	const rigRoot = join(TREE, `${name}-rig`);
+	const out = join(TREE, `${name}-out`);
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			app,
+			"--out",
+			out,
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			...args,
+		],
+		{
+			[TEST_LAUNCH_ENV]: lsDir,
+			[TEST_LAUNCHD_PID_ENV]: String(ORPHAN_PARENT),
+			NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? "child",
+			// The seam drives only fixtures under the harness's temp dir (S3).
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	const rigs = existsSync(rigRoot)
+		? readdirSync(rigRoot).filter((n) => n.startsWith("mac-proof-"))
+		: [];
+	const rig = rigs.length === 1 ? join(rigRoot, rigs[0]) : null;
+	if (rig) trackPids(rig);
+	const receiptPath = join(out, "receipt.json");
+	const receipt = existsSync(receiptPath)
+		? JSON.parse(readFileSync(receiptPath, "utf8"))
+		: null;
+	const openSeen = existsSync(join(lsDir, "open-argv.json"))
+		? JSON.parse(readFileSync(join(lsDir, "open-argv.json"), "utf8"))
+		: null;
+	const pids = rig ? fixturePids(rig) : {};
+	const seen =
+		rig && existsSync(join(rig, "fake-app-seen.json"))
+			? JSON.parse(readFileSync(join(rig, "fake-app-seen.json"), "utf8"))
+			: null;
+	return {
+		run,
+		receipt,
+		rig,
+		out,
+		operator,
+		lsDir,
+		openSeen,
+		pids,
+		seen,
+		operatorContact: existsSync(operatorMarker),
+	};
+}
+
+it("focus e2e: LaunchServices launch, env proven from the app's lines, the operator's same-named app frontmost throughout -> captured, focusEvents [], stolen null", async () => {
+	const { run, receipt, rig, operator, openSeen, pids, seen, operatorContact } =
+		await lsRun("LsClean");
+	assert.equal(run.status, 0, run.all);
+	assert.match(run.all, /through LaunchServices \(open -g -n\)/);
+	// The launch argv as `open` received it: -g -n before --args, the rig profile after, no token, no --env.
+	const options = openSeen.argv.slice(0, openSeen.argv.indexOf("--args"));
+	assert.ok(
+		options.includes("-g") && options.includes("-n"),
+		openSeen.argv.join(" "),
+	);
+	assert.ok(openSeen.argv.includes(`--user-data-dir=${join(rig, "profile")}`));
+	assert.equal(openSeen.tokenOnArgv, false);
+	// Review S1: the non-secret isolation keys ride on --env; the token never.
+	assert.equal(openSeen.envOnArgv, true);
+	assert.ok(
+		openSeen.envKeys.every((k) => OPEN_ENV_KEYS.includes(k)),
+		openSeen.envKeys.join(","),
+	);
+	assert.ok(!openSeen.envKeys.includes("LOCAL_OPERATOR_DESKTOP_TOKEN"));
+	assert.ok(openSeen.envKeys.includes("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL"));
+	assert.equal(seen.attachUrl, receipt.backend.url);
+	assert.equal(seen.home, join(rig, "home"));
+	assert.ok(seen.tokenSha, "the token arrived by inheritance");
+	assert.equal(operatorContact, false);
+	// The attach assertion (capture owner): the app's own line vs this run's serve.
+	assert.deepEqual(receipt.attach, {
+		url: receipt.backend.url,
+		rigUrl: receipt.backend.url,
+		match: true,
+	});
+	assert.equal(receipt.frontmost.baseline.source, "preflight");
+	assert.deepEqual(receipt.redaction, {
+		"app-stdout.log": "clean",
+		"app-stderr.log": "clean",
+	});
+	assert.equal(receipt.launch.mode, "launchservices");
+	assert.equal(
+		receipt.launch.app.pid,
+		pids.app,
+		"the discovered pid is the app, not its --type= helper",
+	);
+	assert.deepEqual(receipt.launch.envProof, {
+		verified: true,
+		driverArmed: true,
+		scriptArmed: true,
+		backend: receipt.backend.url,
+	});
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.equal(receipt.frontmost.stolen, null);
+	assert.equal(receipt.frontmost.tool, "lsappinfo");
+	assert.equal(receipt.frontmost.baseline.pid, operator);
+	assert.ok(receipt.frontmost.samples >= 3, String(receipt.frontmost.samples));
+	assert.ok(
+		receipt.frontmost.transitions.every(
+			(x) => x.rig === false && x.pid === operator,
+		),
+	);
+	assert.equal(receipt.reap.app.clean, true, JSON.stringify(receipt.reap));
+	assert.equal(receipt.reap.sentinel.clean, true);
+	assert.ok(
+		!alive(pids.app) && !alive(pids.reparented),
+		"app and helper reaped",
+	);
+	assert.ok(!alive(receipt.launch.sentinel.pid), "sentinel reaped");
+	assert.ok(alive(operator), "the operator's same-named app is never touched");
+	// The app's own log files, tailed: frames came from them; no token in them.
+	const stdout = readFileSync(join(rig, "logs", "app-stdout.log"), "utf8");
+	assert.match(stdout, /Attached to the backend this launch named/);
+	assert.ok(receipt.frames.length > 0);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: the rig app, or its helper, becoming frontmost aborts the run (exit 1), reaps it and records `stolen`", async () => {
+	for (const [name, steal, helper] of [
+		["LsStealApp", "app", false],
+		["LsStealHelper", "helper", true],
+	]) {
+		const { run, receipt, pids, operator } = await lsRun(name, {
+			behaviour: { steal, stealAfterMs: 800, hang: true },
+		});
+		assert.equal(run.status, 1, `${name}: ${run.all}`);
+		assert.match(run.all, /the rig app became frontmost/, name);
+		const want = steal === "helper" ? pids.reparented : pids.app;
+		assert.equal(receipt.frontmost.stolen.pid, want, name);
+		assert.equal(receipt.frontmost.stolen.helper, helper, name);
+		assert.equal(receipt.frontmost.transitions.at(-1).rig, true, name);
+		assert.equal(receipt.focusEvents.length, 1, name);
+		assert.equal(receipt.focusEvents[0].source, "lsappinfo", name);
+		assert.ok(receipt.frontmost.stolen.sinceLaunchMs < 20_000, name);
+		assert.deepEqual(receipt.frames, [], name);
+		assert.ok(!alive(pids.app) && !alive(pids.reparented), `${name}: reaped`);
+		assert.ok(alive(operator), name);
+		process.kill(operator, "SIGKILL");
+	}
+});
+
+it("focus e2e: LaunchServices drops the inherited env -> the --env keys still arrive, the token-less app exits at its attach check, BLOCKED (exit 3), never the operator's daemon", async () => {
+	const { run, receipt, rig, seen, operatorContact, openSeen, operator } =
+		await lsRun("LsNoEnv", { ls: { stripEnv: true } });
+	assert.equal(run.status, 3, run.all);
+	assert.match(run.all, /BLOCKED launch-env-not-inherited/);
+	assert.match(
+		run.all,
+		/\[attach\] LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL names a backend/,
+	);
+	assert.match(run.all, /the token is never put on argv/);
+	assert.equal(receipt.verdict, "blocked");
+	assert.equal(receipt.launch.envProof.verified, false);
+	assert.deepEqual(receipt.frames, []);
+	assert.deepEqual(receipt.steps, []);
+	// What the app actually got: every isolation key from --env (the rig's
+	// URL, config root, HOME, log dir, manager off), and no token.
+	assert.equal(seen.attachUrl, receipt.backend.url);
+	assert.equal(seen.configDir, join(rig, "config-app"));
+	assert.equal(seen.home, join(rig, "home"));
+	assert.equal(seen.logDir, join(rig, "logs"));
+	assert.equal(seen.managerOff, "true");
+	assert.equal(seen.tokenSha, null);
+	assert.equal(openSeen.tokenOnArgv, false);
+	assert.equal(operatorContact, false, "the app never resolved `managed`");
+	assert.deepEqual(
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command)),
+		[],
+	);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: control - the pre-S1 argv (no --env) with the env dropped reaches the operator's daemon stand-in, which is what S1 closes", async () => {
+	const { run, operatorContact, seen, operator } = await lsRun("LsNoEnvCtl", {
+		ls: { stripEnv: true, dropEnvFlags: true },
+	});
+	// The harness still blocks (no driver arming arrived), but too late: the
+	// app had already resolved `managed` against the operator's config root.
+	assert.equal(run.status, 3, run.all);
+	assert.equal(seen.attachUrl, undefined);
+	assert.equal(
+		operatorContact,
+		true,
+		"without --env the app falls back to the operator's daemon",
+	);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: an attach line naming another backend (the operator's :1111) fails the run the moment it is read: attach.match false, reaped", async () => {
+	const { run, receipt, pids, operator } = await lsRun("LsWrongAttach", {
+		behaviour: { attachUrl: "http://127.0.0.1:1111" },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/attached to http:\/\/127\.0\.0\.1:1111, not the backend this run started/,
+	);
+	assert.notEqual(receipt.backend.url, "http://127.0.0.1:1111");
+	assert.deepEqual(receipt.attach, {
+		url: "http://127.0.0.1:1111",
+		rigUrl: receipt.backend.url,
+		match: false,
+	});
+	assert.equal(receipt.verdict, "failed");
+	assert.deepEqual(receipt.frames, []);
+	assert.ok(!alive(pids.app) && !alive(pids.reparented));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a token the harness cannot redact from the app's own log fails the run and is recorded (review S2)", async () => {
+	const { run, receipt, out, rig, operator } = await lsRun("LsRedact", {
+		behaviour: { echoToken: true, lockLog: true },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(receipt.redaction["app-stdout.log"], /^failed: EACCES/);
+	assert.equal(receipt.redaction["app-stderr.log"], "clean");
+	assert.equal(receipt.verdict, "failed");
+	assert.match(receipt.error, /could not be redacted from app-stdout.log/);
+	assert.equal(
+		existsSync(join(out, "logs", "app-stdout.log")),
+		false,
+		"never copied to --out",
+	);
+	assert.ok(existsSync(join(rig, "logs", "app-stdout.log")));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: an open(1) that rejects --env fails the run before anything launches; no process carries the rig profile", async () => {
+	const { run, receipt, rig, openSeen, operator } = await lsRun("LsRejectEnv", {
+		ls: { rejectEnv: true },
+	});
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/did not launch the app \(exit 1\): open: unrecognized option/,
+	);
+	assert.ok(openSeen.envOnArgv, "open was asked with --env");
+	assert.equal(
+		existsSync(join(rig, "fake-app-seen.json")),
+		false,
+		"no app ever ran",
+	);
+	assert.deepEqual(
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command)),
+		[],
+	);
+	assert.equal(receipt.reap.app.clean, true);
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: the test launch seam with a real app path refuses (exit 2) before anything is planned or spawned (review S3)", async () => {
+	const out = join(TREE, "SeamReal-out");
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			"/Applications/Local Operator.app",
+			"--out",
+			out,
+			"--capture",
+			"capturepage",
+		],
+		{
+			[TEST_LAUNCH_ENV]: "direct",
+			NODE_TEST_CONTEXT: "child",
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	assert.equal(run.status, 2, run.all);
+	assert.match(
+		run.all,
+		/test-only seam that drives only fixtures under the temp dir/,
+	);
+	assert.equal(existsSync(join(out, "receipt.json")), false);
+});
+
+it("focus e2e: --dry-run on the LaunchServices path prints the open -g -n plan with the --env keys and no token (QA Q1-1)", async () => {
+	const lsDir = fakeLaunchServices("LsDry", { front: process.pid });
+	const run = await runHarnessAsync(
+		[
+			"--app",
+			fakeApp("LsDry", { ls: true }),
+			"--out",
+			join(TREE, "LsDry-out"),
+			"--capture",
+			"capturepage",
+			// The fake, never PATH: --dry-run still resolves `lop` before it
+			// plans, and the CI runner has none on PATH (Full Test Suite run
+			// 44811315012 refused here with "no `lop` on PATH").
+			"--lop",
+			fakeLop(),
+			"--dry-run",
+		],
+		{
+			[TEST_LAUNCH_ENV]: lsDir,
+			NODE_TEST_CONTEXT: "child",
+			TMPDIR: os.tmpdir(),
+		},
+	);
+	assert.equal(run.status, 0, run.all);
+	const plan = JSON.parse(run.stdout);
+	assert.equal(plan.launch.mode, "launchservices");
+	assert.equal(plan.launch.command, join(lsDir, "open"));
+	assert.deepEqual(plan.launch.argv.slice(0, 2), ["-g", "-n"]);
+	assert.equal(plan.launch.problem, null);
+	assert.ok(
+		plan.launch.envOnArgv.includes("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL"),
+	);
+	assert.deepEqual(plan.launch.envInheritedOnly, [
+		"LOCAL_OPERATOR_DESKTOP_TOKEN",
+	]);
+	assert.ok(
+		!run.stdout.includes("LOCAL_OPERATOR_DESKTOP_TOKEN="),
+		"no token pair on the plan's argv",
+	);
+	assert.equal(
+		existsSync(join(lsDir, "open-argv.json")),
+		false,
+		"dry-run spawns nothing",
+	);
+});
+
+it("focus e2e: the harness SIGKILLed before discovery - the sentinel armed before open still reaps the app LaunchServices starts late (review F2, QA Q1-5)", async () => {
+	const name = "LsLate";
+	const operator = operatorStandIn();
+	const lsDir = fakeLaunchServices(name, { front: operator, delayMs: 1500 });
+	const app = fakeApp(`Ls${name}`, {
+		ls: true,
+		frontFile: join(lsDir, "front"),
+		hang: true,
+	});
+	const rigRoot = join(TREE, `${name}-rig`);
+	const harness = spawn(
+		process.execPath,
+		[
+			HARNESS,
+			"--app",
+			app,
+			"--out",
+			join(TREE, `${name}-out`),
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+		],
+		{
+			env: harnessEnv({
+				[TEST_LAUNCH_ENV]: lsDir,
+				[TEST_LAUNCHD_PID_ENV]: String(ORPHAN_PARENT),
+				NODE_TEST_CONTEXT: "child",
+				TMPDIR: os.tmpdir(),
+			}),
+			stdio: "ignore",
+		},
+	);
+	leftovers.push(harness.pid);
+	assert.ok(
+		await waitFor(() => existsSync(join(lsDir, "open-argv.json")), 30_000),
+		"open ran",
+	);
+	const rig = rigOf(rigRoot);
+	process.kill(harness.pid, "SIGKILL");
+	const killedAt = Date.now();
+	const latePid = join(lsDir, "late-app.pid");
+	assert.equal(existsSync(latePid), false, "the app had not started yet");
+	assert.ok(
+		await waitFor(() => existsSync(latePid), 6000),
+		"LaunchServices starts it late",
+	);
+	const lateApp = Number(readFileSync(latePid, "utf8"));
+	leftovers.push(lateApp);
+	assert.ok(
+		await waitFor(() => !alive(lateApp), 8000),
+		`late app reaped by the sentinel (${Date.now() - killedAt} ms after the harness died)`,
+	);
+	trackPids(rig);
+	const carriers = () =>
+		psRows().filter((r) => profileToken(join(rig, "profile")).test(r.command));
+	assert.ok(
+		await waitFor(() => carriers().length === 0, 6000),
+		JSON.stringify(carriers()),
+	);
+	assert.ok(alive(operator), "the operator's same-named app is never touched");
+	process.kill(operator, "SIGKILL");
+	// The sentinel would exit on its own after its grace (~15 s); end it now
+	// (found by this run's unique rig path in its $0) so the suite leaves nothing.
+	for (const r of psRows() ?? [])
+		if (r.command.includes(`mac-proof-sentinel:${rig} `))
+			try {
+				process.kill(r.pid, "SIGKILL");
+			} catch {}
+});
+
+it("focus e2e: an unreadable lsappinfo refuses before launch (exit 2); the receipt still carries focusEvents and frontmost", async () => {
+	const { run, receipt, openSeen, operator } = await lsRun("LsBlind", {
+		ls: { frontBroken: true },
+	});
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /frontmost watchdog's preflight failed/);
+	assert.equal(openSeen, null, "open never ran");
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.deepEqual(receipt.frontmost, emptyFrontmost("lsappinfo"));
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a leftover rig process under the rig root refuses the launch (exit 2) and is not touched", async () => {
+	const rigRoot = join(TREE, "LsGate-rig");
+	mkdirSync(join(rigRoot, "mac-proof-Zz9Yy8", "profile"), { recursive: true });
+	const leftover = standIn([
+		`--user-data-dir=${join(rigRoot, "mac-proof-Zz9Yy8", "profile")}`,
+	]);
+	await waitFor(() => startOf(leftover.pid) !== null, 2000);
+	const { run, openSeen, operator } = await lsRun("LsGate");
+	assert.equal(run.status, 2, run.all);
+	assert.match(
+		run.all,
+		new RegExp(
+			`a previous mac-proof rig is still running \\(pids ${leftover.pid}`,
+		),
+	);
+	assert.equal(openSeen, null, "open never ran");
+	assert.ok(
+		alive(leftover.pid),
+		"the gate refuses; it does not reap another run",
+	);
+	process.kill(leftover.pid, "SIGKILL");
+	process.kill(operator, "SIGKILL");
+});
+
+it("focus e2e: a Linux (direct) receipt carries focusEvents [] and a tool-less frontmost", async () => {
+	const rigRoot = join(TREE, "DirectFocus-rig");
+	const out = join(TREE, "DirectFocus-out");
+	const run = await runHarnessAsync([
+		"--app",
+		fakeApp("DirectFocus"),
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+	]);
+	trackPids(rigOf(rigRoot));
+	assert.equal(run.status, 0, run.all);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.deepEqual(receipt.focusEvents, []);
+	assert.deepEqual(receipt.frontmost, emptyFrontmost(null));
+	assert.equal(receipt.launch.mode, "direct");
+});
+
+/* ---------------------------------- end to end, as one bounded concurrent group */
+
+describe(
+	"end to end against the fake app and fake lop",
+	{ concurrency: E2E_CONCURRENCY },
+	() => {
+		for (const args of e2eCases) test(...args);
+	},
+);
+
+/*
+ * ---------------------------------------------------------------------------
+ * Scene waits on SETTLED data (79's be9379d8 Mac run) and the file-preview
+ * scene. The app under capture is v0.59.2, so every selector is anchored to that
+ * tag's source: the anchors below are frozen here (file:line + the text on that
+ * line) so the selector check runs in any clone, and the full-checkout test
+ * re-reads each line from the tag itself. A SOURCE-LEVEL proof plus a DOM proof
+ * on fixtures shaped like that markup (jsdom); the live Mac run is the frame proof.
+ * ---------------------------------------------------------------------------
+ */
+const V0592_ANCHORS = Object.freeze([
+	// [file, line, text on that line at v0.59.2, the selector fragment it backs]
+	[
+		"src/renderer/src/features/chat/components/canvas/index.tsx",
+		836,
+		'data-tour-tag="canvas-container"',
+		'[data-tour-tag="canvas-container"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		811,
+		'data-tour-tag="files-scroller"',
+		'[data-tour-tag="files-scroller"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		860,
+		'<p className={cn("text-heading text-ink")}>',
+		"> div > p",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		875,
+		'<p className={cn("max-w-prose text-body-sm text-ink-muted")}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		882,
+		'<p className={cn("max-w-80 text-body-sm text-ink-muted")}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		887,
+		'<Button variant="outline" size="sm" onClick={index.refresh}>',
+		"p + :is(p, button)",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1073,
+		'<span className={cn("text-meta text-ink-dim")}>',
+		"span.text-ink-dim",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1080,
+		'title={t("ui.canvas.files.attachmentsPartialReason")}',
+		":not([title])",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1437,
+		'data-tour-tag="file-row"',
+		'[data-tour-tag="file-row"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1533,
+		'data-tour-tag="file-row"',
+		'[data-tour-tag="file-row"]',
+	],
+	// F1: index rows vs attachment rows, told apart by the row id.
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1438,
+		"data-file-id={doc.id}",
+		"[data-file-id]",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1534,
+		"data-file-id={doc.id}",
+		"[data-file-id]",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/attachment-items.ts",
+		41,
+		'export const ATTACHMENT_ID_PREFIX = "attachment:";',
+		'[data-file-id^="attachment:"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/attachment-items.ts",
+		140,
+		"id: `${ATTACHMENT_ID_PREFIX}${item.key}`,",
+		'[data-file-id^="attachment:"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1552,
+		"title={tooltip}",
+		"[title^=",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		1553,
+		'onClick={tiled && item.row.media === "image" ? onExpand : onOpen}',
+		'button[aria-haspopup="menu"]',
+	],
+	// 79's run: the collapsed Working files group's header, by its own state.
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		912,
+		"<section",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		916,
+		"<h3",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		945,
+		"<button",
+		"section > h3 > button",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		984,
+		"aria-expanded={section.open}",
+		'[aria-expanded="false"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-files-view.tsx",
+		985,
+		"aria-disabled={narrowing}",
+		'[aria-disabled="true"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+		18,
+		"workingOpen: false,",
+		'[aria-expanded="false"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/finder-layout.ts",
+		224,
+		"open: prefs.workingOpen || narrowing,",
+		'[aria-expanded="false"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		218,
+		"<DropdownMenuTrigger asChild>",
+		'button[aria-haspopup="menu"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		262,
+		"data-remote-action={action.id}",
+		'[data-remote-action="show-in-canvas"]',
+	],
+	// The VALUE `action.id` takes for the canvas entry (F3: values, not names).
+	[
+		"src/renderer/src/features/chat/components/remote-file-actions-menu.tsx",
+		130,
+		'case "show-in-canvas":',
+		'[data-remote-action="show-in-canvas"]',
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/image-preview.tsx",
+		129,
+		"alt={document.title}",
+		"img[alt=",
+	],
+	[
+		"src/renderer/src/features/chat/components/canvas/image-preview.tsx",
+		240,
+		"alt={document.title}",
+		"img[alt=",
+	],
+	[
+		"src/renderer/src/shared/components/common/image-lightbox.tsx",
+		716,
+		'data-image-viewport=""',
+		":not([data-image-viewport] img)",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		789,
+		'data-library-page=""',
+		"[data-library-page]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1002,
+		'data-library-building=""',
+		"[data-library-building]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1019,
+		'data-library-results=""',
+		"[data-library-results]",
+	],
+	[
+		"src/renderer/src/features/library/components/library-page.tsx",
+		1021,
+		"aria-busy={listing.isLoading || listing.isFetching}",
+		'[aria-busy="false"]',
+	],
+	[
+		"src/renderer/src/features/library/components/library-card.tsx",
+		521,
+		'data-library-skeleton=""',
+		"[data-library-skeleton]",
+	],
+	["src/main/dev-driver-script.ts", 65, '"press",', "press"],
+	["src/main/dev-driver-script.ts", 67, '"waitFor",', "waitFor"],
+	[
+		"src/renderer/src/dev-driver/install.ts",
+		263,
+		'element.dispatchEvent(new MouseEvent("click"',
+		"press",
+	],
+	[
+		"src/renderer/src/dev-driver/install.ts",
+		903,
+		"const present = document.querySelector(selector) !== null;",
+		"waitFor",
+	],
+]);
+
+/** Every selector the three scenes' waits and presses use, at the default preview file. */
+function sceneSelectors() {
+	const preview = filePreviewSceneSteps(PREVIEW_FILE_DEFAULT);
+	return [
+		FILES_READY,
+		SCENE_READY.library,
+		...preview
+			.filter((s) => s.payload?.selector)
+			.map((s) => s.payload.selector),
+	].join("\n");
+}
+
+test("v0.59.2 anchors: every selector fragment is backed by a frozen tag line, and every verb is shipped", () => {
+	const all = sceneSelectors();
+	for (const [file, line, , fragment] of V0592_ANCHORS)
+		if (!["press", "waitFor"].includes(fragment))
+			assert.ok(
+				all.includes(fragment),
+				`${file}:${line} backs ${fragment}, which no selector uses`,
+			);
+	// And the other way: each attribute a selector names is one an anchor names.
+	const attrs = new Set(
+		all.match(/\[(?:data-[a-z-]+|aria-[a-z]+|role|title|alt)/g),
+	);
+	const anchored = [...V0592_ANCHORS, ...RADIX_ANCHORS]
+		.map((a) => a[3])
+		.join("\n");
+	for (const attr of attrs)
+		assert.ok(anchored.includes(attr), `${attr} has no v0.59.2 anchor`);
+	const shipped = new Set([
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	]);
+	const { steps } = buildSteps({
+		scenes: ["files", "file-preview", "library"],
+		themes: ["dark", "light"],
+		session: "ce618964c88e",
+		capture: "capturepage",
+	});
+	assert.ok(steps.every((s) => shipped.has(s.verb)));
+});
+
+/*
+ * F3: VALUE-level coverage. The test above checks attribute NAMES, so a
+ * selector reading `[data-tour-tag="file-rows"]` or `[data-file-id^="attachmnt:"]`
+ * would still pass it. Here every `[attr op "value"]` token the scene waits and
+ * presses use must be, verbatim, the fragment of an anchor whose frozen v0.59.2
+ * line SHOWS that value - the literal string, or for a boolean ARIA value an
+ * expression assigned to that attribute (React renders it "true"/"false").
+ * `title`/`alt` values are exempt: they are the --preview-file name, not markup
+ * (their exact-name behaviour is pinned by the file-preview tests).
+ */
+test("v0.59.2 anchors: every attribute VALUE a selector matches is one a frozen tag line shows", () => {
+	const anchors = [...V0592_ANCHORS, ...RADIX_ANCHORS];
+	const tokens = new Set(sceneSelectors().match(/\[[a-z-]+[\^$*]?="[^"]*"\]/g));
+	let checked = 0;
+	for (const token of tokens) {
+		const [, attr, value] = token.match(/^\[([a-z-]+)[\^$*]?="([^"]*)"\]$/);
+		if (attr === "title" || attr === "alt") continue;
+		const backing = anchors.filter((a) => a[3] === token);
+		assert.ok(backing.length, `${token} is no anchor's fragment`);
+		const shown = backing.some(
+			([, , text]) =>
+				text.includes(`"${value}"`) ||
+				(["true", "false"].includes(value) && text.includes(`${attr}={`)),
+		);
+		assert.ok(shown, `no anchor line for ${token} shows the value ${value}`);
+		checked++;
+	}
+	// The tokens this PR introduced, named so a refactor cannot drop them unseen.
+	for (const token of [
+		'[data-tour-tag="files-scroller"]',
+		'[data-tour-tag="file-row"]',
+		'[data-file-id^="attachment:"]',
+		'[data-remote-action="show-in-canvas"]',
+		'[aria-busy="false"]',
+		'[aria-haspopup="menu"]',
+		'[role="menu"]',
+		'[aria-expanded="false"]',
+		'[aria-disabled="true"]',
+	])
+		assert.ok(tokens.has(token), `${token} is in a scene selector`);
+	assert.ok(checked >= 7, `checked ${checked} valued tokens`);
+	// And the check bites: a misspelt value has no anchor.
+	assert.equal(
+		anchors.some((a) => a[3] === '[data-tour-tag="file-rows"]'),
+		false,
+	);
+});
+
+/*
+ * The menu's own attributes come from Radix, not from app source: the
+ * versions v0.59.2's pnpm-lock.yaml pins (radix-ui 1.6.7 ->
+ * @radix-ui/react-dropdown-menu 2.1.24 / react-menu) render them. Checked
+ * against the INSTALLED package when it is that pinned version.
+ */
+const RADIX_DROPDOWN = "@radix-ui/react-dropdown-menu@2.1.24";
+const RADIX_ANCHORS = Object.freeze([
+	[
+		"@radix-ui/react-dropdown-menu/dist/index.mjs",
+		null,
+		'"aria-haspopup": "menu"',
+		'[aria-haspopup="menu"]',
+	],
+	[
+		"@radix-ui/react-menu/dist/index.mjs",
+		null,
+		'role: "menu"',
+		'[role="menu"]',
+	],
+	[
+		"@radix-ui/react-menu/dist/index.mjs",
+		null,
+		'"data-disabled": disabled ? "" : void 0',
+		"[data-disabled]",
+	],
+]);
+
+test("Radix anchors: the pinned dropdown renders aria-haspopup, role=menu and data-disabled", () => {
+	const lock = readFileSync(
+		new URL("../pnpm-lock.yaml", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		lock.includes(`'${RADIX_DROPDOWN}'`),
+		`the lockfile pins ${RADIX_DROPDOWN}`,
+	);
+	const dropdown = join(process.cwd(), "node_modules/.pnpm");
+	const dir = readdirSync(dropdown).find((d) => d.startsWith("radix-ui@1.6.7"));
+	assert.ok(dir, "radix-ui@1.6.7 is installed");
+	for (const [file, , text] of RADIX_ANCHORS) {
+		const source = readFileSync(
+			join(dropdown, dir, "node_modules", file),
+			"utf8",
+		);
+		assert.ok(source.includes(text), `${file} renders ${text}`);
+	}
+});
+
+test("v0.59.2 anchors match the tag's own source, line for line (full checkout)", (t) => {
+	const repo = new URL("..", import.meta.url).pathname;
+	if (
+		spawnSync("git", ["cat-file", "-e", "v0.59.2^{commit}"], { cwd: repo })
+			.status !== 0
+	) {
+		// A LOCAL-ONLY guarantee (F3). CI checks out with `fetch-depth: 2` and no
+		// tags (.github/workflows/ci.yml), so in CI this test always skips and the
+		// selectors are bound by the frozen anchors and the name- and value-level
+		// tests above - which prove the selectors agree with the anchor TEXT, not
+		// that the text is still what v0.59.2 says. That second half is checked
+		// here, where the anchors are edited: a full local checkout with tags.
+		// Said loudly, never a silent pass.
+		t.skip(
+			"v0.59.2 is not in this clone (shallow, no tags); the line-for-line re-read runs in a full checkout",
+		);
+		return;
+	}
+	const cache = new Map();
+	for (const [file, line, text] of V0592_ANCHORS) {
+		if (!cache.has(file)) {
+			const shown = spawnSync("git", ["show", `v0.59.2:${file}`], {
+				cwd: repo,
+				encoding: "utf8",
+			});
+			assert.equal(shown.status, 0, `git show v0.59.2:${file}`);
+			cache.set(file, shown.stdout.split("\n"));
+		}
+		assert.ok(
+			cache.get(file)[line - 1].includes(text),
+			`v0.59.2:${file}:${line} no longer reads ${text}`,
+		);
+	}
+});
+
+/* Fixtures shaped like v0.59.2's markup (finder-files-view.tsx :811-:895, :912-:1089, :1533-:1553). */
+const fileRows = (ids) =>
+	ids
+		.map(
+			(id) =>
+				`<div data-tour-tag="file-row" data-file-id="${id}"><button title="${id}">x</button></div>`,
+		)
+		.join("");
+// The Attachments <section> has no attribute of its own (:912-915).
+const attachmentsSection = (...ids) =>
+	`<section><h3><button>Attachments<span class="text-meta text-ink-muted">${ids.length}</span></button></h3><ul data-tour-tag="files-grid"><li><div class="grid">${fileRows(ids)}</div></li></ul></section>`;
+const imagesSection = (...ids) =>
+	`<section><h3><button>Images<span class="text-meta text-ink-muted">${ids.length}</span></button></h3><ul data-tour-tag="files-grid"><li><div class="grid">${fileRows(ids)}</div></li></ul></section>`;
+const chatHeader = '<header data-chat-region="header"></header>';
+const filesShell = (inner) =>
+	`${chatHeader}<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller">${inner}</section></section>`;
+const FILES_FACES = Object.freeze({
+	loading: [
+		filesShell('<div><p class="text-heading">Loading session files…</p></div>'),
+		false,
+	],
+	building: [
+		filesShell(
+			'<div><p class="text-heading">Building the file index…</p></div>',
+		),
+		false,
+	],
+	empty: [
+		filesShell(
+			'<div><p class="text-heading">No files yet</p><p class="max-w-80">Files the agent creates…</p></div>',
+		),
+		true,
+	],
+	error: [
+		filesShell(
+			'<div><p class="text-heading">Could not load session files</p><button>Retry</button></div>',
+		),
+		true,
+	],
+	unsupported: [
+		filesShell(
+			'<div><p class="text-heading">Remote files are unavailable here</p><p class="max-w-prose">How to fix</p><button>Retry</button></div>',
+		),
+		true,
+	],
+	rows: [
+		filesShell(
+			'<section><h3><button>Images<span class="text-meta text-ink-muted">1</span></button></h3><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"><button title="/Users/o/image-1.png\nOn mac">i</button></div></ul></section>',
+		),
+		true,
+	],
+	"rows, attachments still loading": [
+		filesShell(
+			'<section><h3><button>Attachments<span class="text-meta text-ink-muted">0</span><span class="text-meta text-ink-dim">Loading session files…</span></button></h3></section><section><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"></div></ul></section>',
+		),
+		false,
+	],
+	"rows, attachments partial": [
+		filesShell(
+			'<section><h3><button>Attachments<span class="text-meta text-ink-dim" title="why">May be incomplete</span></button></h3></section><section><ul><div data-tour-tag="file-row" data-file-id="remote:f_1"></div></ul></section>',
+		),
+		true,
+	],
+	// F1 (the reviewer's jsdom repro): attachments arrived, the INDEX is still
+	// loading - the Attachments section has no caption, the count line is blank
+	// (:693), and its rows carry the same data-tour-tag. Must NOT pass.
+	"attachments only (index still loading)": [
+		filesShell(attachmentsSection("attachment:k1", "attachment:k2")),
+		false,
+	],
+	"attachments + index rows": [
+		filesShell(
+			`${attachmentsSection("attachment:k1")}${imagesSection("artifact:9277c383aa", "remote:f_2")}`,
+		),
+		true,
+	],
+	"index rows only (local session)": [
+		filesShell(imagesSection("/Users/me/work/image-1.png")),
+		true,
+	],
+	"a row with no data-file-id": [
+		filesShell(
+			'<section><ul><div data-tour-tag="file-row"></div></ul></section>',
+		),
+		false,
+	],
+	// F2: the two v0.59.2 states where a button follows a loading/building
+	// heading. They DO pass - pinned so the comment's claim stays true - and the
+	// harness cannot reach either (fresh profile: no filter; 20 s wait: far
+	// before the 60th building poll).
+	"building + Continue (after 60 polls; unreachable in 20 s)": [
+		filesShell(
+			'<div><p class="text-heading">Building the file index…</p><button>Continue</button></div>',
+		),
+		true,
+	],
+	"loading + Clear (an active filter; unreachable on a fresh profile)": [
+		filesShell(
+			'<div><p class="text-heading">Loading session files…</p><button>Clear</button></div>',
+		),
+		true,
+	],
+});
+const matches = (html, selector) =>
+	new JSDOM(html).window.document.querySelector(selector) !== null;
+
+test("files: the wait passes on rows, the empty state or an explicit error, and never on a loading face", () => {
+	for (const [face, [html, settled]] of Object.entries(FILES_FACES))
+		assert.equal(matches(html, FILES_READY), settled, face);
+	const { steps } = buildSteps({
+		scenes: ["files"],
+		themes: ["light"],
+		session: "ce618964c88e",
+		capture: "screencapture",
+		windowWaitS: 0,
+	});
+	const shutter = steps.findIndex((s) => s.payload?.label === "files-light");
+	assert.deepEqual(steps[shutter - 1], {
+		verb: "waitFor",
+		payload: { selector: FILES_READY, timeoutMs: 20000 },
+		timeoutMs: 25000,
+	});
+});
+
+test("files: the base step list (no data wait) would have shuttered the loading face 79 photographed", () => {
+	// Quoted from origin/main 53d86477e3 `buildSteps({scenes:["files"]})`, the
+	// steps behind 79's files-light.png ("Loading session files…"):
+	const base = [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { view: "files" } },
+		{ verb: "waitFor", payload: { selector: '[data-chat-region="header"]' } },
+		{ verb: "shutter", payload: { label: "files-light", capture: "external" } },
+	];
+	const loading = FILES_FACES.loading[0];
+	assert.equal(
+		matches(loading, base[2].payload.selector),
+		true,
+		"the base wait passes on the loading face",
+	);
+	assert.equal(matches(loading, FILES_READY), false, "the new wait does not");
+});
+
+test("library: the wait needs settled results; the base header wait passed over the skeleton", () => {
+	const page = (busy, inner = "", header = "") =>
+		`<div data-library-page><header data-library-header>${header}</header><section data-library-results aria-busy="${busy}">${inner}</section></div>`;
+	const faces = {
+		skeleton: [page("true", "<div data-library-skeleton></div>"), false],
+		"refetching (busy)": [
+			page("true", '<div data-library-card-id="la_0000000000000001"></div>'),
+			false,
+		],
+		"indexing (building line)": [
+			page(
+				"false",
+				'<div data-library-card-id="la_0000000000000001"></div>',
+				"<div data-library-building></div>",
+			),
+			false,
+		],
+		cards: [
+			page("false", '<div data-library-card-id="la_0000000000000001"></div>'),
+			true,
+		],
+		empty: [page("false", "<div><p>Nothing here yet</p></div>"), true],
+	};
+	for (const [face, [html, settled]] of Object.entries(faces))
+		assert.equal(matches(html, SCENE_READY.library), settled, face);
+	// origin/main 53d86477e3's library wait, `[data-library-page] [data-library-header]`:
+	assert.equal(
+		matches(faces.skeleton[0], "[data-library-page] [data-library-header]"),
+		true,
+	);
+});
+
+test("file-preview: Files settled -> the row's menu -> Show in canvas -> the painted canvas picture", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	assert.deepEqual(
+		steps.map((s) => s.verb),
+		["navigate", "openCanvas", "waitFor", "press", "press", "press", "waitFor"],
+	);
+	assert.deepEqual(steps[1].payload, { view: "files" });
+	assert.equal(steps[2].payload.selector, FILES_READY);
+	// The ONE optional step is the collapsed-group expand (79's run): with no
+	// collapsed group it is skipped, and every other miss still fails the run.
+	assert.deepEqual(
+		steps.filter((s) => s.optional).map((s) => s.payload.selector),
+		[COLLAPSED_GROUP_HEADER],
+	);
+	assert.equal(steps[3].payload.selector, COLLAPSED_GROUP_HEADER);
+	const [trigger, entry, preview] = [steps[4], steps[5], steps[6]].map(
+		(s) => s.payload.selector,
+	);
+	const entry1 = (
+		title,
+		menu = '<div><button aria-haspopup="menu" data-t="menu">⋯</button></div>',
+		id = "remote:f_1",
+		t = "menu",
+	) =>
+		`<div data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button>${menu.replace('data-t="menu"', `data-t="${t}"`)}</div>`;
+	const row = (title, menu, id) =>
+		`<section data-tour-tag="files-scroller">${entry1(title, menu, id)}</section>`;
+	const pick = (html, sel) =>
+		new JSDOM(html).window.document
+			.querySelector(sel)
+			?.getAttribute("data-t") ?? null;
+	assert.equal(
+		pick(row("/Users/o/work/image-1.png\nOn mac"), trigger),
+		"menu",
+		"owner's path row",
+	);
+	assert.equal(
+		pick(row("image-1.png · 9277c383 · Image"), trigger),
+		"menu",
+		"artifact row",
+	);
+	assert.equal(
+		pick(row("/Users/o/image-2.png"), trigger),
+		null,
+		"another picture",
+	);
+	// F4 / QA Q1-2: the EXACT name - a prefix or suffix of it is another file.
+	for (const [title, want, why] of [
+		["/Users/o/image-1.png.bak\nOn mac", null, ".bak beside it"],
+		["/Users/o/image-1.png.orig", null, ".orig, last line"],
+		[
+			"image-1.png.bak · 9277c383 · Generated image, kept in this session",
+			null,
+			"artifact .bak",
+		],
+		["/Users/o/copy image-1.png", null, "a longer name ending in it"],
+		["/Users/o/image-1.png", "menu", "local path row, one line"],
+		["image-1.png\nOn mac", "menu", "bare owner path, then the device line"],
+		["image-1.png", "menu", "bare name, one line"],
+		[
+			"image-1.png · 9277c383 · Generated image, kept in this session",
+			"menu",
+			"artifact tooltip (artifact-identity.ts:200-211)",
+		],
+	])
+		assert.equal(pick(row(title), trigger), want, why);
+	// The .bak row FIRST in the list no longer wins the press.
+	assert.equal(
+		pick(
+			`<section data-tour-tag="files-scroller">${entry1("/Users/o/image-1.png.bak", undefined, "remote:f_0", "bak")}${entry1("/Users/o/image-1.png\nOn mac", undefined, "remote:f_1", "real")}</section>`,
+			trigger,
+		),
+		"real",
+	);
+	// F1: an attachment row of the same name is the person's upload, never pressed.
+	assert.equal(
+		pick(row("/Users/me/image-1.png", undefined, "attachment:k1"), trigger),
+		null,
+		"attachment row",
+	);
+	assert.equal(
+		pick(
+			row("/Users/o/image-1.png", "<div><button>Expand</button></div>"),
+			trigger,
+		),
+		null,
+		"no menu, no press",
+	);
+	const menu = (disabled) =>
+		`<div role="menu"><div role="menuitem" data-remote-action="show-in-canvas" ${disabled ? 'data-disabled=""' : ""} data-t="show"></div></div>`;
+	assert.equal(pick(menu(false), entry), "show");
+	assert.equal(
+		pick(menu(true), entry),
+		null,
+		"a disabled entry (above the relay ceiling) fails the run",
+	);
+	const canvas = (inner) =>
+		`<section data-tour-tag="canvas-container">${inner}</section>`;
+	assert.equal(
+		matches(canvas('<img alt="image-1.png" src="blob:x">'), preview),
+		true,
+		"painted in the canvas",
+	);
+	assert.equal(
+		matches(canvas('<div><p>Opening…</p></div><img alt="">'), preview),
+		false,
+		"still opening; grid thumbnails have an empty alt",
+	);
+	assert.equal(
+		matches(
+			`${canvas("")}<div data-image-viewport><img alt="image-1.png"></div>`,
+			preview,
+		),
+		false,
+		"the lightbox is not the canvas",
+	);
+	assert.equal(steps[6].payload.selector, filePreviewSelector("image-1.png"));
+});
+
+/*
+ * 79's Mac run (main 34a08e97, app 0.59.2): "step 10 press found no file-row
+ * with title image-1.png". 1043 files: Highlights (open, 1 row) and a
+ * COLLAPSED "Working files, 1,042" holding image-1.png, whose rows v0.59.2
+ * never renders (finder-layout.ts:227). These fixtures are shaped like that
+ * markup (finder-files-view.tsx:912 <section>, :916 <h3>, :945 <button>, :984
+ * aria-expanded, :985 aria-disabled), and `expand` replays what the header's
+ * click does (:986 -> :516 workingOpen) - it renders the group's rows.
+ */
+test("file-preview: a row inside the collapsed Working files group is reached by expanding the group", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	const [expand, trigger] = [steps[3], steps[4]].map((s) => s.payload.selector);
+	const fileRow = (title, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button><div><button aria-haspopup="menu" data-t="${id}">⋯</button></div></li>`;
+	const header = (open, label, narrowing = false) =>
+		`<h3 data-glass-plane="band-backdrop"><button type="button" aria-expanded="${open}" aria-disabled="${narrowing}" data-t="${label}">${label}<span>1</span></button></h3>`;
+	const view = ({ workingOpen, rows, narrowing = false }) => {
+		const highlights = `<section>${header(true, "Highlights", narrowing)}<ul data-tour-tag="files-grid">${fileRow("/Users/o/notes.md\nOn mac", "remote:h_1")}</ul></section>`;
+		const working = `<section>${header(workingOpen, "Working files", narrowing)}<ul data-tour-tag="files-grid"></ul></section>`;
+		const images = workingOpen
+			? `<section>${header(true, "Images", narrowing)}<ul data-tour-tag="files-grid">${rows.join("")}</ul></section>`
+			: "";
+		return `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div>${highlights}${working}${images}</div></section></section>`;
+	};
+	const pick = (html, sel) =>
+		new JSDOM(html).window.document
+			.querySelector(sel)
+			?.getAttribute("data-t") ?? null;
+	const target = fileRow("/Users/o/work/image-1.png\nOn mac", "remote:f_1");
+	// Before: the row is not in the DOM, so the row press cannot match - 79's failure.
+	const collapsed = view({ workingOpen: false, rows: [target] });
+	assert.equal(matches(collapsed, FILES_READY), true, "Files settled");
+	assert.equal(pick(collapsed, trigger), null, "collapsed: no row to press");
+	// The expand press lands on the COLLAPSED header, never the open Highlights.
+	assert.equal(pick(collapsed, expand), "Working files");
+	// After the press: the group is open and the row's menu is the press target.
+	const expanded = view({ workingOpen: true, rows: [target] });
+	assert.equal(pick(expanded, trigger), "remote:f_1");
+	// Already open (a second theme in the same run, or a session with no
+	// highlights): nothing collapsed, the optional press skips, the row still wins.
+	assert.equal(pick(expanded, expand), null);
+	assert.equal(
+		pick(
+			`<section data-tour-tag="files-scroller"><div><section>${header(true, "Images")}<ul>${target}</ul></section></div></section>`,
+			expand,
+		),
+		null,
+		"no Working files group",
+	);
+	// While the view is narrowing the header refuses its toggle (:516, :985),
+	// so the scene never presses it then (every group is open anyway).
+	assert.equal(
+		pick(view({ workingOpen: false, rows: [target], narrowing: true }), expand),
+		null,
+	);
+	// A collapsed header outside the Files scroller is not this list's.
+	assert.equal(
+		pick(
+			`<section><h3><button aria-expanded="false" data-t="x"></button></h3></section>`,
+			expand,
+		),
+		null,
+	);
+	// The expand names state attributes only, never the chevron icon.
+	assert.doesNotMatch(expand, /lucide|svg|chevron/i);
+	// Exact name and INDEX_ROW still hold inside the expanded group.
+	assert.equal(
+		pick(
+			view({
+				workingOpen: true,
+				rows: [
+					fileRow("/Users/o/image-1.png.bak\nOn mac", "remote:f_0"),
+					fileRow("/Users/me/image-1.png", "attachment:k1"),
+					target,
+				],
+			}),
+			trigger,
+		),
+		"remote:f_1",
+		".bak and an attachment of the same name never win the press",
+	);
+	// Loading: the scroller's lone heading, no sections - neither the Files wait,
+	// the expand nor the row press can match it.
+	const loading = `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div><p>Loading session files...</p></div></section></section>`;
+	assert.equal(matches(loading, FILES_READY), false);
+	assert.equal(pick(loading, expand), null);
+	assert.equal(pick(loading, trigger), null);
+});
+
+/*
+ * 79's download run at main 3673e88232 (receipt download2/receipt.json): step 10
+ * "waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ * notes.md ... after 20000ms". The same 1043-file session as file-preview's
+ * failure: notes.md sat in the COLLAPSED Working files group, whose rows
+ * v0.59.2 never renders. Fixtures shaped like that markup, as above.
+ */
+test("download: a row inside the collapsed Working files group is reached by expanding the group", () => {
+	const scene = downloadSceneSteps("notes.md");
+	const expand = scene.find((s) => s.optional === true)?.payload.selector;
+	assert.equal(expand, COLLAPSED_GROUP_HEADER);
+	const wait = scene.find(
+		(s) =>
+			s.verb === "waitFor" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const press = scene.find(
+		(s) =>
+			s.verb === "press" &&
+			String(s.payload.selector).includes('aria-haspopup="menu"'),
+	).payload.selector;
+	const dup = scene.find((s) => s.payload?.gone === true).payload.selector;
+	// The expand comes after the Files data wait and before the row is looked for.
+	const at = (sel) => scene.findIndex((s) => s.payload?.selector === sel);
+	assert.ok(at(FILES_READY) < at(expand) && at(expand) < at(wait));
+	const fileRow = (name, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="/Users/o/${name}">x</button><div><button aria-haspopup="menu" aria-label="Actions for ${name}" aria-expanded="false" data-t="${id}">⋯</button></div></li>`;
+	const header = (open, label) =>
+		`<h3 data-glass-plane="band-backdrop"><button type="button" aria-expanded="${open}" aria-disabled="false" data-t="${label}">${label}<span>1</span></button></h3>`;
+	const view = ({ workingOpen, rows, attachments = [] }) => {
+		const highlights = `<section>${header(true, "Highlights")}<ul data-tour-tag="files-grid">${fileRow("image-1.png", "remote:h_1")}</ul></section>`;
+		const working = `<section>${header(workingOpen, "Working files")}<ul data-tour-tag="files-grid"></ul></section>`;
+		const docs = workingOpen
+			? `<section>${header(true, "Documents")}<ul data-tour-tag="files-grid">${rows.join("")}</ul></section>`
+			: "";
+		const attached = attachments.length
+			? `<section>${header(true, "Attachments")}<ul data-tour-tag="files-grid">${attachments.join("")}</ul></section>`
+			: "";
+		return `<section data-tour-tag="canvas-container"><section data-tour-tag="files-scroller"><div>${highlights}${working}${docs}${attached}</div></section></section>`;
+	};
+	const doc = (html) => new JSDOM(html).window.document;
+	const pick = (html, sel) =>
+		doc(html).querySelector(sel)?.getAttribute("data-t") ?? null;
+	const target = fileRow("notes.md", "remote:f_1");
+	// Before the expand: Files settled, but no notes.md row to wait for - 79's failure.
+	const collapsed = view({ workingOpen: false, rows: [target] });
+	assert.equal(matches(collapsed, FILES_READY), true, "Files settled");
+	assert.equal(pick(collapsed, wait), null, "collapsed: no row");
+	// The expand lands on the COLLAPSED header, never the open Highlights.
+	assert.equal(pick(collapsed, expand), "Working files");
+	// After it: the row is waited on, single, and its trigger is the press.
+	const expanded = view({ workingOpen: true, rows: [target] });
+	assert.equal(pick(expanded, wait), "remote:f_1");
+	assert.equal(pick(expanded, press), "remote:f_1");
+	assert.equal(doc(expanded).querySelector(dup), null, "one row");
+	// Already open (a session without highlights): the optional press finds nothing.
+	assert.equal(pick(expanded, expand), null);
+	// Inside the expanded group, an attachment of the same name is neither the
+	// press nor a second row (C1), and a .bak beside it is another file.
+	const crowded = view({
+		workingOpen: true,
+		rows: [fileRow("notes.md.bak", "remote:f_0"), target],
+		attachments: [fileRow("notes.md", "attachment:k1")],
+	});
+	assert.equal(pick(crowded, press), "remote:f_1");
+	assert.equal(
+		doc(crowded).querySelector(dup),
+		null,
+		"no false two-row refusal",
+	);
+	// The header press can only ever be a group header: no row trigger, no menu
+	// item (Radix portals the menu to <body>), and no button outside the scroller.
+	const menuOpen = `${expanded.replace('aria-expanded="false" data-t="remote:f_1"', 'aria-expanded="true" data-t="remote:f_1"')}<div role="menu"><button role="menuitem" data-remote-action="save-as" aria-expanded="false" data-t="save-as"></button><button role="menuitem" data-remote-action="download" data-t="download"></button></div>`;
+	assert.equal(pick(menuOpen, expand), null);
+	assert.equal(
+		pick(view({ workingOpen: false, rows: [target] }), expand),
+		"Working files",
+	);
+	for (const el of doc(collapsed).querySelectorAll(expand))
+		assert.equal(el.parentElement.tagName, "H3");
+});
+
+/*
+ * The search field would be the narrower door (typing makes the view
+ * `narrowing`, finder-files-view.tsx:271, which opens every group), but no
+ * v0.59.2 script verb can type into it (dev-driver-script.ts:62-71). So the
+ * scene must never depend on it: it names no input, and the receipt says so.
+ */
+test("file-preview: the search field is never used, because no shipped verb types, and the receipt says so", () => {
+	const steps = filePreviewSceneSteps("image-1.png");
+	const shipped = [
+		"navigate",
+		"setTheme",
+		"press",
+		"state",
+		"waitFor",
+		"openCanvas",
+		"skipOnboarding",
+		"shutter",
+	];
+	assert.ok(steps.every((s) => shipped.includes(s.verb)));
+	for (const s of steps)
+		assert.doesNotMatch(
+			String(s.payload?.selector ?? ""),
+			/input|aria-label|placeholder/,
+		);
+	assert.ok(
+		receiptLimits(["file-preview"]).some((l) => l.id === "preview-no-search"),
+	);
+});
+
+test("file-preview: two rows of the exact name in the expanded group still refuse the frame", () => {
+	// The press takes the first match, so on screen both rows qualify...
+	const steps = filePreviewSceneSteps("image-1.png");
+	const trigger = steps[4].payload.selector;
+	const fileRow = (title, id) =>
+		`<li data-tour-tag="file-row" data-file-id="${id}"><button title="${title}">x</button><div><button aria-haspopup="menu">⋯</button></div></li>`;
+	const html = `<section data-tour-tag="files-scroller"><div><section><h3><button aria-expanded="true">Highlights</button></h3><ul>${fileRow("/Users/o/a/image-1.png\nOn mac", "remote:f_1")}</ul></section><section><h3><button aria-expanded="true">Working files</button></h3><ul></ul></section><section><h3><button aria-expanded="true">Images</button></h3><ul>${fileRow("/Users/o/b/image-1.png\nOn mac", "remote:f_2")}</ul></section></div></section>`;
+	assert.equal(
+		new JSDOM(html).window.document.querySelectorAll(trigger).length,
+		2,
+	);
+	// ...and the read-back, which counts the daemon's listing (no groups there),
+	// refuses the run on two rows of the name, wherever the UI files them.
+	const peerRow = {
+		id: "f_1",
+		name: "image-1.png",
+		remote: true,
+		origin_device: { id: "d1", name: "Mac" },
+	};
+	const twice = imagePreviewCheck({
+		listing: { result: { rows: [peerRow, { ...peerRow, id: "f_2" }] } },
+		name: "image-1.png",
+		sessionOnRig: false,
+	});
+	assert.equal(twice.pass, false);
+	assert.match(twice.problem, /2 file rows are named image-1.png/);
+});
+
+test("file-preview: a name that would change the selector is refused, and the scene needs --session", () => {
+	assert.equal(previewFileProblem("image-1.png"), null);
+	for (const bad of [
+		'a"]',
+		"a\\b",
+		"dir/a.png",
+		"a\nb",
+		"",
+		".hidden",
+		"x".repeat(129),
+	])
+		assert.ok(previewFileProblem(bad), JSON.stringify(bad));
+	assert.throws(() => filePreviewSceneSteps('x"] , *'), Refusal);
+	const opts = parseArgs([
+		"--app",
+		"/Applications/Local Operator.app",
+		"--out",
+		"/tmp/x",
+		"--scene",
+		"file-preview",
+	]);
+	assert.equal(opts.previewFile, PREVIEW_FILE_DEFAULT);
+	assert.throws(() => validateOptions(opts), /file-preview.*need --session/);
+	const named = parseArgs([
+		"--app",
+		"/Applications/Local Operator.app",
+		"--out",
+		"/tmp/x",
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"file-preview",
+		"--preview-file",
+		'a"b',
+	]);
+	assert.throws(
+		() => validateOptions(named),
+		/--preview-file must be a plain file name/,
+	);
+	const { steps } = buildSteps({
+		scenes: ["file-preview"],
+		themes: ["dark", "light"],
+		session: "ce618964c88e",
+		capture: "screencapture",
+		previewFile: "clip-2.png",
+	});
+	assert.deepEqual(
+		steps.filter((s) => s.verb === "shutter").map((s) => s.payload.label),
+		["file-preview-dark", "file-preview-light"],
+	);
+	assert.ok(
+		steps.some(
+			(s) => s.payload?.selector === filePreviewSelector("clip-2.png"),
+		),
+	);
+});
+
+test("provenance: a peer library row passes; a local row or a row with a local path fails", () => {
+	const listing = (id) => ({ result: { rows: id ? [{ id }] : [] } });
+	const peer = {
+		result: {
+			id: "la_00000000000000aa",
+			ref: { type: "path", path: null },
+			origin: "generated",
+			remote: { device_id: "d1", device_name: "Mac" },
+		},
+	};
+	assert.deepEqual(
+		libraryProvenanceCheck(listing("la_00000000000000aa"), peer),
+		{
+			assetId: "la_00000000000000aa",
+			remote: true,
+			localPath: false,
+			source: "generated",
+			pass: true,
+		},
+	);
+	const local = {
+		result: {
+			...peer.result,
+			remote: null,
+			ref: { type: "path", path: "/rig/home/a.png" },
+		},
+	};
+	const r1 = libraryProvenanceCheck(listing("la_00000000000000aa"), local);
+	assert.equal(r1.pass, false);
+	assert.match(r1.problem, /not a peer row/);
+	const pathed = {
+		result: { ...peer.result, ref: { type: "path", path: "/rig/home/a.png" } },
+	};
+	const r2 = libraryProvenanceCheck(listing("la_00000000000000aa"), pathed);
+	assert.equal(r2.pass, false);
+	assert.match(r2.problem, /has a local path/);
+	assert.equal(r2.localPath, true);
+	// S1: the receipt is public - no device id/name, no absolute local path,
+	// not even in `problem`.
+	for (const result of [
+		libraryProvenanceCheck(listing("la_00000000000000aa"), peer),
+		r1,
+		r2,
+	]) {
+		const json = JSON.stringify(result);
+		for (const leak of ['"d1"', "Mac", "/rig/home"])
+			assert.ok(!json.includes(leak), `${leak} in ${json}`);
+	}
+	assert.equal(libraryProvenanceCheck(listing(null), null).pass, false);
+	assert.equal(
+		libraryProvenanceCheck(listing("la_00000000000000aa"), null).pass,
+		false,
+	);
+});
+
+test("provenance: the previewed row must be a peer row in a session the rig does not hold", () => {
+	const listing = (row) => ({
+		result: {
+			rows: [
+				{ id: "f_other", name: "notes.md", remote: true },
+				...(row ? [row] : []),
+			],
+		},
+	});
+	const peerRow = {
+		id: "f_1",
+		name: "image-1.png",
+		remote: true,
+		origin_device: { id: "d1", name: "Mac" },
+	};
+	assert.deepEqual(
+		imagePreviewCheck({
+			listing: listing(peerRow),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}),
+		{
+			assetId: "f_1",
+			remote: true,
+			matchingRows: 1,
+			originDeviceKnown: true,
+			sessionOnRig: false,
+			pass: true,
+		},
+	);
+	// S2: whether an origin device is known, never which one.
+	assert.ok(
+		!/d1|Mac/.test(
+			JSON.stringify(
+				imagePreviewCheck({
+					listing: listing(peerRow),
+					name: "image-1.png",
+					sessionOnRig: false,
+				}),
+			),
+		),
+	);
+	// F4: exact name; a `.bak` beside it is another file, and two rows with the
+	// name (two folders) fail the run - the frame cannot say which it shows.
+	const bak = { ...peerRow, id: "f_0", name: "image-1.png.bak" };
+	assert.equal(
+		imagePreviewCheck({
+			listing: { result: { rows: [bak, peerRow] } },
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).assetId,
+		"f_1",
+	);
+	assert.match(
+		imagePreviewCheck({
+			listing: { result: { rows: [bak] } },
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/no file row named image-1.png/,
+	);
+	const twice = imagePreviewCheck({
+		listing: { result: { rows: [peerRow, { ...peerRow, id: "f_2" }] } },
+		name: "image-1.png",
+		sessionOnRig: false,
+	});
+	assert.equal(twice.pass, false);
+	assert.equal(twice.matchingRows, 2);
+	assert.match(twice.problem, /2 file rows are named image-1.png/);
+	const localRow = { id: "f_1", name: "image-1.png" };
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(localRow),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/not remote/,
+	);
+	const onRig = imagePreviewCheck({
+		listing: listing(peerRow),
+		name: "image-1.png",
+		sessionOnRig: true,
+	});
+	assert.equal(onRig.pass, false);
+	assert.match(onRig.problem, /present in the rig's own <config>\/sessions/);
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(peerRow),
+			name: "image-1.png",
+			sessionOnRig: null,
+		}).problem,
+		/attach mode/,
+	);
+	assert.match(
+		imagePreviewCheck({
+			listing: listing(null),
+			name: "image-1.png",
+			sessionOnRig: false,
+		}).problem,
+		/no file row named image-1.png/,
+	);
+});
+
+test("provenance readers: allowlisted GETs only, against a real HTTP daemon, and the session dir is read off disk", async () => {
+	const seen = [];
+	const server = createHttpServer((req, res) => {
+		seen.push(`${req.method} ${req.url} ${req.headers.authorization ?? ""}`);
+		const body = req.url.startsWith("/v1/desktop/library/assets?")
+			? { result: { rows: [{ id: "la_00000000000000aa" }] } }
+			: req.url === "/v1/desktop/library/assets/la_00000000000000aa"
+				? {
+						result: {
+							id: "la_00000000000000aa",
+							ref: { path: null },
+							origin: "generated",
+							remote: { device_id: "d1" },
+						},
+					}
+				: req.url.startsWith("/v1/desktop/sessions/ce618964c88e/files?")
+					? {
+							result: {
+								rows: [{ id: "f_1", name: "image-1.png", remote: true }],
+							},
+						}
+					: null;
+		res.writeHead(body ? 200 : 404, { "content-type": "application/json" });
+		res.end(JSON.stringify(body ?? {}));
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const base = `http://127.0.0.1:${server.address().port}`;
+	const cfg = mkdtempSync(join(os.tmpdir(), "mac-proof-prov-"));
+	try {
+		const lib = await readLibraryProvenance(base, "tok", { timeoutMs: 5000 });
+		assert.equal(lib.pass, true);
+		const absent = await readImagePreview(base, "tok", {
+			session: "ce618964c88e",
+			name: "image-1.png",
+			configRoot: cfg,
+			timeoutMs: 5000,
+		});
+		assert.equal(absent.pass, true);
+		assert.equal(absent.sessionOnRig, false);
+		mkdirSync(join(cfg, "sessions", "ce618964c88e"), { recursive: true });
+		const present = await readImagePreview(base, "tok", {
+			session: "ce618964c88e",
+			name: "image-1.png",
+			configRoot: cfg,
+			timeoutMs: 5000,
+		});
+		assert.equal(present.pass, false);
+		assert.equal(present.sessionOnRig, true);
+		assert.deepEqual(seen, [
+			"GET /v1/desktop/library/assets?scope=final&limit=1 Bearer tok",
+			"GET /v1/desktop/library/assets/la_00000000000000aa Bearer tok",
+			"GET /v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50 Bearer tok",
+			"GET /v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50 Bearer tok",
+		]);
+	} finally {
+		server.close();
+		rmSync(cfg, { recursive: true, force: true });
+	}
+	// The three new routes: exactly one id segment each, only their query keys, GET only.
+	for (const ok of [
+		"/v1/desktop/library/assets?scope=final&limit=1",
+		"/v1/desktop/library/assets/la_00000000000000aa",
+		"/v1/desktop/sessions/ce618964c88e/files?q=image-1.png&limit=50",
+	])
+		assert.equal(daemonRequestProblem("GET", ok), null, ok);
+	for (const [method, path] of [
+		["PATCH", "/v1/desktop/library/assets/la_00000000000000aa"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/content"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/chat"],
+		["GET", "/v1/desktop/library/assets/la_short"],
+		["GET", "/v1/desktop/library/assets?q=x"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files?cursor=x"],
+		["GET", "/v1/desktop/sessions/CE618964C88E/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/x/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/f_1"],
+		["POST", "/v1/desktop/sessions/ce618964c88e/files"],
+		// S3: an encoded slash is not a separator - the `{id}` segment must
+		// match the id pattern whole, `%2F` and all.
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa%2Fcontent"],
+		["GET", "/v1/desktop/library/assets%2Fla_00000000000000aa"],
+		["GET", "/v1/desktop/sessions/ce618964c88e%2Ffiles"],
+		["GET", "/v1/desktop/sessions%2Fce618964c88e/files"],
+		// S3: empty segments (a doubled or trailing slash) change the segment count.
+		["GET", "/v1/desktop/library/assets//la_00000000000000aa"],
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/"],
+		["GET", "/v1/desktop/library/assets/"],
+		["GET", "/v1/desktop/sessions//ce618964c88e/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e//files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/"],
+		// S3: dot-segments resolving OFF an allowed route, plain or encoded.
+		["GET", "/v1/desktop/library/assets/la_00000000000000aa/.."],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/.."],
+		["GET", "/v1/desktop/library/assets/%2e%2e/la_00000000000000aa"],
+		["GET", "/v1/desktop/sessions/%2E%2E/ce618964c88e/files"],
+		["GET", "/v1/desktop/sessions/ce618964c88e/files/%2e%2e/x"],
+		[
+			"GET",
+			"/v1/desktop/library/assets/la_00000000000000aa/../../../sessions/ce618964c88e/runs",
+		],
+	])
+		assert.ok(
+			daemonRequestProblem(method, path),
+			`${method} ${path} must be refused`,
+		);
+	// S3: a dot-segment that resolves ONTO an allowed route is judged by its
+	// resolution - which is exactly what `daemonRequest` sends (it fetches
+	// `new URL(path, base)`, the same WHATWG resolution), so the daemon never
+	// sees a path the allowlist did not judge.
+	for (const [path, sent] of [
+		[
+			"/v1/desktop/library/assets/./la_00000000000000aa",
+			"/v1/desktop/library/assets/la_00000000000000aa",
+		],
+		[
+			"/v1/desktop/library/assets/x/../la_00000000000000aa",
+			"/v1/desktop/library/assets/la_00000000000000aa",
+		],
+		[
+			"/v1/desktop/sessions/ce618964c88e/./files",
+			"/v1/desktop/sessions/ce618964c88e/files",
+		],
+	]) {
+		assert.equal(daemonRequestProblem("GET", path), null, path);
+		assert.equal(new URL(path, "http://127.0.0.1").pathname, sent);
+		assert.equal(daemonRequestProblem("GET", sent), null, sent);
+	}
+});

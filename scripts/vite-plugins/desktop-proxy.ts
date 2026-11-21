@@ -326,19 +326,26 @@ export function desktopProxyPlugin(): Plugin {
 					} else {
 						res.setHeader("Content-Type", "application/json");
 						/*
+						 * A voice refusal keeps its declared code in the core's envelope
+						 * shape, so the renderer's reader (`desktopMedia`) recovers the
+						 * same `voiceCode` main's relay hands it directly.
+						 */
+						/*
 						 * A notification-sound upload's refusal travels as the daemon's
 						 * own envelope, so the browser reader below gets `too_long` and its
 						 * params exactly as main's IPC answer carries them (review n1).
 						 */
 						res.end(
 							JSON.stringify({
-								detail: result.refusal
-									? {
-											code: result.refusal.code,
-											params: result.refusal.params,
-											text: result.detail,
-										}
-									: result.detail,
+								detail: result.voiceCode
+									? { code: result.voiceCode, text: result.detail }
+									: result.refusal
+										? {
+												code: result.refusal.code,
+												params: result.refusal.params,
+												text: result.detail,
+											}
+										: result.detail,
 							}),
 						);
 					}

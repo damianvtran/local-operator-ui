@@ -22,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/canonical/supplement-model"; export * from "./src/shared/supplement-frame-url";',
+			'export * from "./src/renderer/src/features/chat/canonical/supplement-model"; export * from "./src/shared/supplement-frame-url"; export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -312,38 +312,43 @@ test("display text strips control sequences, collapses whitespace, trims", () =>
 });
 
 test("the copy table is byte-identical to the TUI's constants", () => {
-	assert.equal(model.COPY_PREPARING, "Preparing highlights…");
-	assert.equal(model.COPY_CANCELLED, "Highlights cancelled");
-	assert.equal(model.COPY_FAILED, "Couldn't prepare highlights");
-	assert.equal(model.COPY_FRAME_FALLBACK, "Couldn't render this graphic");
-	assert.equal(model.COPY_ADJUST, "Adjust…");
-	assert.equal(model.COPY_CANCEL, "Cancel");
-	assert.equal(model.COPY_RETRY, "Retry");
+	/* Read through `t()` now (functions, so a locale switch is seen); English
+	 * must still be the TUI's exact bytes. */
+	assert.equal(model.copyPreparing(), "Preparing highlights…");
+	assert.equal(model.copyCancelled(), "Highlights cancelled");
+	assert.equal(model.copyFailed(), "Couldn't prepare highlights");
+	assert.equal(model.copyFrameFallback(), "Couldn't render this graphic");
+	assert.equal(model.copyAdjust(), "Adjust…");
+	assert.equal(model.copyCancel(), "Cancel");
+	assert.equal(model.copyRetry(), "Retry");
 	assert.equal(model.moreText(1), "1 more file");
 	assert.equal(model.moreText(3), "3 more files");
-	assert.equal(model.countClause(1, "file"), "1 file");
-	assert.equal(model.countClause(2, "file"), "2 files");
-	assert.equal(model.countClause(1, "graphic"), "1 graphic");
-	assert.equal(model.countClause(2, "graphic"), "2 graphics");
+	assert.equal(model.moreText(0), "0 more files");
+	// Ungrouped, as the old template literal printed it.
+	assert.equal(model.moreText(1200), "1200 more files");
+	assert.equal(model.sourceLine("notes\n  draft.md"), "Source: notes draft.md");
 });
 
 test("the failed line's cause phrases are the TUI's one word list, byte-identical", () => {
-	assert.equal(model.CAUSE_PHRASES.provider_quota, "provider limit reached");
-	assert.equal(model.CAUSE_PHRASES.provider_auth, "provider sign-in needed");
+	assert.equal(model.causePhrase("provider_quota"), "provider limit reached");
+	assert.equal(model.causePhrase("provider_auth"), "provider sign-in needed");
 	assert.equal(
-		model.CAUSE_PHRASES.provider_transient,
+		model.causePhrase("provider_transient"),
 		"provider temporarily unavailable",
 	);
-	assert.equal(model.CAUSE_PHRASES.provider_timeout, "provider timed out");
+	assert.equal(model.causePhrase("provider_timeout"), "provider timed out");
 	assert.equal(
-		model.CAUSE_PHRASES.provider_request,
+		model.causePhrase("provider_request"),
 		"provider refused the request",
 	);
 	assert.equal(
-		model.CAUSE_PHRASES.provider_content,
+		model.causePhrase("provider_content"),
 		"provider blocked the content",
 	);
-	assert.equal(model.CAUSE_PHRASES.provider_context, "provider context limit");
+	assert.equal(model.causePhrase("provider_context"), "provider context limit");
+	// A prototype member is not a vocabulary token.
+	assert.equal(model.causePhrase("constructor"), "");
+	assert.equal(model.causePhrase("toString"), "");
 	/*
 	 * Unknown, empty and malformed tokens render NO phrase (design round 1,
 	 * D2): the catch-all folds `aborted` in, and the bare sentence is the
@@ -359,6 +364,76 @@ test("the failed line's cause phrases are the TUI's one word list, byte-identica
 	]) {
 		assert.equal(model.causePhrase(token), "", String(token));
 	}
+});
+
+/*
+ * The copy follows the reader's locale at CALL time. A marked French catalogue
+ * is registered over the bundled one: every status line, cause phrase,
+ * explanation, attempt line and count reveal must come back from it, so a
+ * module-load constant (the old `COPY_*` strings) or a hand-built English
+ * plural would fail here. French CLDR puts 0 and 1 in `one`, which English
+ * does not — the count arms prove the plural is the locale's, not a ternary.
+ */
+test("supplement copy is read through the active locale, with its plural rules", () => {
+	const P = "ui.chat.canonical.supplement.";
+	const M = "⟦fr⟧";
+	const plural = (one, other) =>
+		`{count, plural, one {${M} ${one}} other {${M} ${other}}}`;
+	model.registerCatalogue("fr", {
+		[`${P}status.preparing`]: `${M} preparing`,
+		[`${P}status.cancelled`]: `${M} cancelled`,
+		[`${P}status.failed`]: `${M} failed`,
+		[`${P}actions.adjust`]: `${M} adjust`,
+		[`${P}cause.provider_quota`]: `${M} quota`,
+		[`${P}explanation.cost_limit`]: `${M} cost`,
+		[`${P}explanation.retryable`]: `${M} retry`,
+		[`${P}details.attempt`]: `${M} {attempt}/{kind}`,
+		[`${P}details.attempt_http`]: `${M} {attempt}/{kind}/{status}`,
+		[`${P}more_files`]: plural("# file", "# files"),
+		[`${P}graphics.show_all`]: plural("all #", "all # (pl)"),
+		[`${P}graphics.show`]: plural("show #", "show # (pl)"),
+		[`${P}graphics.show_head`]: plural("{head}/#", "{head}/# (pl)"),
+		[`${P}graphics.hide`]: plural("hide #", "hide # (pl)"),
+	});
+	model.setLocale("fr");
+	try {
+		assert.equal(model.copyPreparing(), `${M} preparing`);
+		assert.equal(model.copyCancelled(), `${M} cancelled`);
+		assert.equal(model.copyFailed(), `${M} failed`);
+		assert.equal(model.copyAdjust(), `${M} adjust`);
+		assert.equal(model.causePhrase("provider_quota"), `${M} quota`);
+		assert.equal(
+			model.failureExplanation({ error: "bound:cost", detail: [] }),
+			`${M} cost`,
+		);
+		assert.equal(model.failureExplanation({ detail: [] }), `${M} retry`);
+		// The wire tokens pass through verbatim; only the sentence is copy.
+		assert.equal(
+			model.diagnosticDisplay("turn 1: ProviderError status=None kind=quota"),
+			`${M} 1/quota`,
+		);
+		assert.equal(
+			model.diagnosticDisplay(
+				"turn 2: ProviderError status=503 kind=transient",
+			),
+			`${M} 2/transient/503`,
+		);
+		assert.equal(model.moreText(0), `${M} 0 file`);
+		assert.equal(model.moreText(1), `${M} 1 file`);
+		assert.equal(model.moreText(2), `${M} 2 files`);
+		assert.equal(model.showAllText(1), `${M} all 1`);
+		assert.equal(model.showAllText(4), `${M} all 4 (pl)`);
+		assert.equal(model.graphicRevealText(1, false), `${M} show 1`);
+		assert.equal(model.graphicRevealText(3, false), `${M} show 3 (pl)`);
+		assert.equal(model.graphicRevealText(3, false, 1), `${M} 1/3 (pl)`);
+		assert.equal(model.graphicRevealText(3, true, 1), `${M} hide 3 (pl)`);
+	} finally {
+		model.setLocale("en");
+		model.clearRegisteredCatalogues();
+	}
+	// Back in English the same calls read the TUI's bytes again.
+	assert.equal(model.copyPreparing(), "Preparing highlights…");
+	assert.equal(model.graphicRevealText(3, false, 1), "Show 1 of 3 graphics");
 });
 
 test("the typed cause is read bounded, additive, and version-reset like the error", () => {

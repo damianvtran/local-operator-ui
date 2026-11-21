@@ -26,7 +26,9 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 
 async function load(contents) {
@@ -575,4 +577,445 @@ test("the list parse keeps optional fields optional and drops unknown keys", () 
 	// A missing required flag fails the read rather than inventing a button.
 	const { can_deliver: _cd, ...broken } = hold();
 	assert.throws(() => api.parseHoldsPage({ enabled: true, items: [broken] }));
+});
+
+// -- local-operator #4358: core's `actionable`, the receipt Discard ----------
+
+const RECEIPT = "c".repeat(64);
+/* The operator's stuck row, rebuilt synthetically (never read from or written
+   to a live config): model_hold, held 2026-11-10 09:23Z, 168 h window long
+   past, no release row, its body no longer loadable. */
+const orphan = (over = {}) =>
+	hold({
+		message_id: "bcmsg_5ac4b3e8deadbeef",
+		held_at: "2026-11-10T14:23:00Z",
+		can_deliver: false,
+		deliver_until: "2026-11-17T14:23:00Z",
+		actionable: true,
+		discard_receipt: RECEIPT,
+		...over,
+	});
+
+test("the badge counts core's `actionable` when served, and only it", () => {
+	const fresh = hold({
+		message_id: "bcmsg_647",
+		held_at: "2026-11-18T09:00:00Z",
+		actionable: true,
+	});
+	// The operator's 2: the stuck expired row and a new valid hold.
+	assert.equal(m.actionableHoldCount({ items: [orphan(), fresh] }, NOW), 2);
+	// The orphan discarded (core: release row present -> actionable false,
+	// decision pending): 2 -> 1, never 0 while the valid hold remains.
+	const settled = orphan({
+		actionable: false,
+		discard_receipt: null,
+		decision: {
+			word: "discard",
+			decided_at: "2026-11-20T12:00:00Z",
+			outcome: "pending",
+			key_id: "k1",
+		},
+	});
+	assert.equal(m.actionableHoldCount({ items: [settled, fresh] }, NOW), 1);
+	// A refused decision is settled from the person's side too.
+	const refused = orphan({
+		actionable: false,
+		decision: { ...settled.decision, outcome: "refused" },
+	});
+	assert.equal(m.actionableHoldCount({ items: [refused] }, NOW), 0);
+	// Core wins in both directions over the legacy flags.
+	assert.equal(m.isActionableHold(hold({ actionable: false }), NOW), false);
+	assert.equal(
+		m.isActionableHold(
+			hold({ can_deliver: false, can_discard: false, actionable: true }),
+			NOW,
+		),
+		true,
+	);
+	// Older core (no `actionable`): the legacy rule, unchanged.
+	assert.equal(m.isActionableHold(hold(), NOW), true);
+	assert.equal(m.isActionableHold(hold({ conversation_id: "" }), NOW), false);
+	// Repeated reads of the same page give the same number.
+	const page = { items: [orphan(), fresh, settled] };
+	assert.equal(
+		m.actionableHoldCount(page, NOW),
+		m.actionableHoldCount(page, NOW),
+	);
+});
+
+test("a receipt arms Discard only when the body cannot be shown (#4358)", () => {
+	const a = m.holdAffordance(orphan(), NOW);
+	assert.equal(a.state, "deliver_expired");
+	assert.equal(m.receiptDiscardArmed(orphan(), a, "unavailable", null), true);
+	assert.equal(
+		m.receiptDiscardArmed(orphan(), a, "ready", { state: "none" }),
+		true,
+	);
+	// Still loading: nothing acts on load, and a body about to arrive wins.
+	assert.equal(m.receiptDiscardArmed(orphan(), a, "loading", null), false);
+	// A body on screen (or withheld with a hash) binds its hash, as before.
+	for (const binding of [
+		{ state: "shown", hash: "a".repeat(64) },
+		{ state: "withheld", hash: "a".repeat(64) },
+		// A differing served hash arms nothing (QA Q2), receipt or not.
+		{ state: "mismatch" },
+	])
+		assert.equal(m.receiptDiscardArmed(orphan(), a, "ready", binding), false);
+	// No receipt, a malformed one, no Discard, or a decided row: nothing.
+	for (const receipt of [null, undefined, "C".repeat(64), "c".repeat(63)])
+		assert.equal(
+			m.receiptDiscardArmed(
+				orphan({ discard_receipt: receipt }),
+				a,
+				"unavailable",
+				null,
+			),
+			false,
+		);
+	const noDiscard = orphan({ can_discard: false });
+	assert.equal(
+		m.receiptDiscardArmed(
+			noDiscard,
+			m.holdAffordance(noDiscard, NOW),
+			"unavailable",
+			null,
+		),
+		false,
+	);
+	const decided = orphan({
+		decision: {
+			word: "discard",
+			decided_at: null,
+			outcome: "pending",
+			key_id: null,
+		},
+	});
+	assert.equal(
+		m.receiptDiscardArmed(
+			decided,
+			m.holdAffordance(decided, NOW),
+			"unavailable",
+			null,
+		),
+		false,
+	);
+});
+
+test("Deliver never carries a receipt; Discard prefers the shown hash (S-11)", () => {
+	const both = { deliver: true, discard: true };
+	const shown = { state: "shown", hash: "a".repeat(64) };
+	assert.deepEqual(
+		m.holdDecideProof("deliver", {
+			armed: both,
+			binding: shown,
+			receipt: RECEIPT,
+		}),
+		{ body_sha256: "a".repeat(64) },
+	);
+	// No shown body: Deliver has no proof at all, whatever the receipt.
+	for (const binding of [
+		null,
+		{ state: "none" },
+		{ state: "withheld", hash: "a".repeat(64) },
+		{ state: "mismatch" },
+	])
+		assert.equal(
+			m.holdDecideProof("deliver", { armed: both, binding, receipt: RECEIPT }),
+			null,
+		);
+	assert.deepEqual(
+		m.holdDecideProof("discard", {
+			armed: both,
+			binding: shown,
+			receipt: RECEIPT,
+		}),
+		{ body_sha256: "a".repeat(64) },
+	);
+	assert.deepEqual(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: true },
+			binding: null,
+			receipt: RECEIPT,
+		}),
+		{ hold_receipt: RECEIPT },
+	);
+	assert.equal(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: false },
+			binding: null,
+			receipt: RECEIPT,
+		}),
+		null,
+	);
+});
+
+test("the receipt Discard reaches its route with exactly one proof", () => {
+	const base = {
+		op: "team_bridge.holds.discard",
+		expected_account_id: "acct_1",
+		message_id: "bcmsg_1",
+		conversation_id: "bcv_abcdefgh",
+	};
+	const ok = { ...base, hold_receipt: RECEIPT };
+	assert.equal(c.desktopRequestSchema.safeParse(ok).success, true);
+	assert.deepEqual(c.desktopEndpoint(ok).body, {
+		expected_account_id: "acct_1",
+		conversation_id: "bcv_abcdefgh",
+		hold_receipt: RECEIPT,
+	});
+	const parse = (request) => c.desktopRequestSchema.safeParse(request).success;
+	// Both or neither: refused before IPC (the route answers 422).
+	assert.equal(parse({ ...ok, body_sha256: "a".repeat(64) }), false);
+	assert.equal(parse(base), false);
+	assert.equal(parse({ ...base, hold_receipt: "C".repeat(64) }), false);
+	assert.equal(parse({ ...base, hold_receipt: null }), false);
+	// Deliver has no receipt field at all.
+	assert.equal(parse({ ...ok, op: "team_bridge.holds.deliver" }), false);
+	assert.equal(
+		parse({
+			...base,
+			op: "team_bridge.holds.deliver",
+			body_sha256: "a".repeat(64),
+			hold_receipt: RECEIPT,
+		}),
+		false,
+	);
+});
+
+test("the list parse carries `actionable` and a well-formed receipt only", () => {
+	const page = api.parseHoldsPage({
+		enabled: true,
+		items: [
+			orphan(),
+			orphan({ message_id: "bcmsg_2", discard_receipt: "NOT-HEX" }),
+			orphan({ message_id: "bcmsg_3", discard_receipt: null }),
+			hold({ message_id: "bcmsg_4" }),
+		],
+	});
+	assert.equal(page.items[0].actionable, true);
+	assert.equal(page.items[0].discard_receipt, RECEIPT);
+	// A malformed receipt reads as none rather than failing the whole list.
+	assert.equal(page.items[1].discard_receipt, null);
+	assert.equal(page.items[2].discard_receipt, null);
+	// An older core: both absent, still parses.
+	assert.equal(page.items[3].actionable, undefined);
+	assert.equal(page.items[3].discard_receipt, null);
+	assert.throws(() =>
+		api.parseHoldsPage({
+			enabled: true,
+			items: [orphan({ actionable: "yes" })],
+		}),
+	);
+});
+
+test("order is stable by hold time then id, whatever order the list arrives in", () => {
+	const items = [
+		hold({
+			message_id: "bcmsg_b",
+			held_at: "2026-11-02T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_a",
+			held_at: "2026-11-02T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_old",
+			held_at: "2026-10-01T00:00:00Z",
+			can_deliver: false,
+			deliver_until: null,
+		}),
+		hold({
+			message_id: "bcmsg_nt",
+			held_at: null,
+			can_deliver: false,
+			deliver_until: null,
+		}),
+	];
+	const want = ["bcmsg_old", "bcmsg_a", "bcmsg_b", "bcmsg_nt"];
+	assert.deepEqual(
+		m.sortHolds(items, NOW).map((i) => i.message_id),
+		want,
+	);
+	assert.deepEqual(
+		m.sortHolds([...items].reverse(), NOW).map((i) => i.message_id),
+		want,
+	);
+	// The order reads metadata only: the same list sorts the same way twice.
+	assert.deepEqual(
+		m.sortHolds(m.sortHolds(items, NOW), NOW).map((i) => i.message_id),
+		want,
+	);
+});
+
+test("a row's reference is short, stable and the message's own", () => {
+	// Copy C4: the START of the bare id, as `lop team-bridge holds` prints it.
+	assert.equal(m.holdReference("bcmsg_5ac4b3e8deadbeef"), "5ac4b3e8");
+	// The operator's real stuck row: never its suffix, never the tag.
+	const real = "bcmsg_5ac4b3e8a40641c4b90eafaf71a0dba7";
+	assert.equal(m.holdReference(real), "5ac4b3e8");
+	assert.notEqual(m.holdReference(real), "71a0dba7");
+	assert.notEqual(m.holdReference(real), "bcmsg_5a");
+	assert.equal(m.holdReference("bmsg_41abcdef99"), "41abcdef");
+	assert.equal(m.holdReference("bcmsg_abc"), "abc");
+	assert.equal(
+		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
+		m.holdReference("bcmsg_5ac4b3e8deadbeef"),
+	);
+});
+
+// -- PR #2017 round 1 remediation (code M1/m1, security S-1, QA Q-1, copy C2) --
+
+const fresh700 = (over = {}) =>
+	hold({
+		message_id: "bcmsg_700",
+		held_at: "2026-11-18T09:00:00Z",
+		actionable: true,
+		discard_receipt: RECEIPT,
+		...over,
+	});
+
+test("a still-deliverable hold that fails to load arms no receipt Discard (M1/S-1/Q-1)", () => {
+	const item = fresh700();
+	const a = m.holdAffordance(item, NOW);
+	assert.equal(a.state, "open");
+	assert.equal(a.deliver, true);
+	for (const [detail, binding] of [
+		["unavailable", null],
+		["ready", { state: "none" }],
+	]) {
+		assert.equal(m.receiptDiscardArmed(item, a, detail, binding), false);
+		// So no proof reaches the wire for either word.
+		for (const word of ["deliver", "discard"])
+			assert.equal(
+				m.holdDecideProof(word, {
+					armed: { deliver: false, discard: false },
+					binding,
+					receipt: null,
+				}),
+				null,
+			);
+	}
+	// An in-window Discard-only hold (Deliver never open) keeps the fallback.
+	const discardOnly = fresh700({
+		hold_code: "screening_failed",
+		releasable: false,
+		can_deliver: false,
+	});
+	const b = m.holdAffordance(discardOnly, NOW);
+	assert.equal(b.deliver, false);
+	assert.equal(
+		m.receiptDiscardArmed(discardOnly, b, "unavailable", null),
+		true,
+	);
+	// The expired hold (701) still arms it, and only on an explicit press.
+	const expired = orphan({ message_id: "bcmsg_701" });
+	const e = m.holdAffordance(expired, NOW);
+	assert.equal(e.state, "deliver_expired");
+	assert.equal(m.receiptDiscardArmed(expired, e, "unavailable", null), true);
+});
+
+test("a row core says is not actionable, or has no conversation, arms nothing (m1)", () => {
+	for (const over of [
+		{ actionable: false },
+		{ conversation_id: "" },
+		{ conversation_id: null },
+	]) {
+		const item = orphan(over);
+		const a = m.holdAffordance(item, NOW);
+		assert.equal(m.receiptDiscardArmed(item, a, "unavailable", null), false);
+	}
+	// Older core (no `actionable`) with a conversation: still the fallback.
+	const legacy = orphan({ actionable: undefined });
+	assert.equal(
+		m.receiptDiscardArmed(
+			legacy,
+			m.holdAffordance(legacy, NOW),
+			"unavailable",
+			null,
+		),
+		true,
+	);
+});
+
+// The rendered row, from the shipped view (esbuild to a temp module, as
+// `account-profile.test.mjs` does), so "Retry stays" is the DOM, not a flag.
+const cacheDir = "node_modules/.cache";
+const viewOut = `${cacheDir}/team-bridge-holds-view-${process.pid}.mjs`;
+await mkdir(cacheDir, { recursive: true });
+const viewBundle = await build({
+	stdin: {
+		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";`,
+		resolveDir: process.cwd(),
+		loader: "tsx",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+	write: false,
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+});
+await writeFile(viewOut, viewBundle.outputFiles[0].text);
+after(() => unlink(viewOut));
+const { HeldMessagesView } = await import(
+	new URL(`../${viewOut}`, import.meta.url)
+);
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const RE_RETRY = />Try again</;
+const RE_RECEIPT_ONLY = /couldn’t be loaded\. It can no longer be delivered/;
+const RE_UNREAD_BUTTON = /without reading it"/;
+const RE_DELIVER_BUTTON = />Deliver</;
+const RE_OVERCLAIM = /applied|yet|sender|notif|told|will/i;
+
+function renderRow(item) {
+	const calls = [];
+	const html = renderToStaticMarkup(
+		createElement(HeldMessagesView, {
+			listState: "ready",
+			items: [item],
+			detail: () => ({ state: "unavailable" }),
+			onDecide: (...args) => calls.push(args),
+			onRetryDetails: () => {},
+			now: NOW,
+		}),
+	);
+	return { html, calls };
+}
+
+test("Try again stays on every row whose details failed to load (M1/S-1/Q-1)", () => {
+	const fresh = renderRow(fresh700());
+	assert.match(fresh.html, RE_RETRY);
+	assert.doesNotMatch(fresh.html, RE_RECEIPT_ONLY);
+	assert.doesNotMatch(fresh.html, RE_UNREAD_BUTTON);
+	const expired = renderRow(orphan({ message_id: "bcmsg_701" }));
+	assert.match(expired.html, RE_RETRY);
+	assert.match(expired.html, RE_RECEIPT_ONLY);
+	assert.match(expired.html, RE_UNREAD_BUTTON);
+	assert.doesNotMatch(expired.html, RE_DELIVER_BUTTON);
+	// Rendering is not deciding: nothing is sent without a press.
+	assert.equal(fresh.calls.length + expired.calls.length, 0);
+});
+
+test("the pending Discard line states only what is known, in every locale (C2)", () => {
+	const key = "ui.teamBridge.holds.state.discard_recorded";
+	const read = (l) =>
+		JSON.parse(
+			readFileSync(`src/i18n/catalogues/${l}/ui.teamBridge.holds.json`, "utf8"),
+		)[key];
+	assert.equal(
+		read("en"),
+		"Discard recorded on this device. No server confirmation has been received.",
+	);
+	assert.doesNotMatch(read("en"), RE_OVERCLAIM);
+	for (const l of ["fr", "es", "zh-CN", "ru", "vi", "hi", "ur"]) {
+		const v = read(l);
+		assert.ok(v && v !== read("en"), `${l} translated`);
+	}
 });

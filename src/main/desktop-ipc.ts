@@ -713,3 +713,85 @@ export function registerDesktopIPC(
 		});
 	}
 }
+
+/**
+ * THE QWEN VOICE CHANNELS (`src/main/voice/qwen-voice.ts`; the main <-> renderer
+ * contract in `shared/desktop-contract.ts`, `QwenVoiceBridge`). Admitted for the
+ * MAIN window's own document only - the mini view has no voice - by the same
+ * frame check every desktop channel uses. The renderer's values are untrusted:
+ * `QwenVoice` validates each one, and `speak` is honoured only for a text main
+ * relayed itself.
+ */
+export function registerQwenVoiceIPC(
+	window: () => BrowserWindow | null,
+	expectedUrl: string,
+	voice: {
+		/** The person's switch (default off); see `qwen-voice-setting.ts`. */
+		getEnabled: () => boolean;
+		setEnabled: (on: boolean) => Promise<boolean>;
+		result: (input: unknown) => boolean;
+		speak: (input: unknown) => { spoken: boolean; reason?: string };
+		start: (reason: "renderer") => Promise<unknown>;
+		getStatus: () => unknown;
+		/** Open the OS microphone pane (macOS); a fixed main-only URL. */
+		openMicSettings: () => void;
+		/**
+		 * The strip's two controls. Pause closes the hidden page (releasing the
+		 * microphone) and keeps the models warm; mute silences the page's own
+		 * playback. Both answer the new status, which is what the strip paints.
+		 */
+		pause: () => unknown;
+		resume: () => unknown;
+		setMuted: (muted: boolean) => unknown;
+	},
+): void {
+	const authorize = (event: IpcMainInvokeEvent): void => {
+		if (!isAdmittedSender(event, [{ window: window(), url: expectedUrl }])) {
+			throw new Error("This window cannot use desktop controls.");
+		}
+	};
+	ipcMain.handle("voice.qwen.enabled.get", (event) => {
+		authorize(event);
+		return voice.getEnabled();
+	});
+	ipcMain.handle("voice.qwen.enabled.set", (event, on: unknown) => {
+		authorize(event);
+		return voice.setEnabled(on === true);
+	});
+	ipcMain.handle("voice.qwen.result", (event, input: unknown) => {
+		authorize(event);
+		return voice.result(input);
+	});
+	ipcMain.handle("voice.qwen.speak", (event, input: unknown) => {
+		authorize(event);
+		return voice.speak(input);
+	});
+	ipcMain.handle("voice.qwen.start", (event) => {
+		authorize(event);
+		return voice.start("renderer");
+	});
+	ipcMain.handle("voice.qwen.status.get", (event) => {
+		authorize(event);
+		return voice.getStatus();
+	});
+	ipcMain.handle("voice.qwen.open-mic-settings", (event) => {
+		authorize(event);
+		voice.openMicSettings();
+	});
+	ipcMain.handle("voice.qwen.pause", (event) => {
+		authorize(event);
+		return voice.pause();
+	});
+	ipcMain.handle("voice.qwen.resume", (event) => {
+		authorize(event);
+		return voice.resume();
+	});
+	/**
+	 * MUTE IS TYPED, not passed through: the renderer's value is untrusted, and
+	 * the only two meanings here are "muted" and "not muted".
+	 */
+	ipcMain.handle("voice.qwen.mute", (event, muted: unknown) => {
+		authorize(event);
+		return voice.setMuted(muted === true);
+	});
+}

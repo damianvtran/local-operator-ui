@@ -25,7 +25,7 @@
  *  - The body was moved mechanically and kept as written, including its
  *    comments, so a later edit to a floor's reasoning has one place to go.
  */
-import { deltaE, isHex, over, r2, ratio, toLab } from "./color.mjs";
+import { deltaE, isHex, mixOklab, over, r2, ratio, toLab } from "./color.mjs";
 import {
 	ADJACENT,
 	ALT_ACCENT_CHROMA_FLOOR,
@@ -68,6 +68,7 @@ import {
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
 	MESSAGE_SURFACE_LIGHTNESS_STEP,
+	MIXED_FILLS,
 	PAIR_PINS,
 	PANEL_SEAM_ALPHA,
 	PERCEPTIBLE,
@@ -1147,6 +1148,40 @@ export const evaluatePalette = (run, entry) => {
 		for (const g of GRAPHICS) {
 			for (const ground of g.on) {
 				assertPair(id, p, g.fg, ground, g.floor ?? FLOOR.nonText, g.name);
+			}
+		}
+
+		/*
+		 * MIXED FILLS: a ground the stylesheet builds with `color-mix(in oklab, …)`
+		 * rather than names, measured as the hex the browser paints (`mixOklab`). A
+		 * row here is the only way such a pair is asserted at all - `CONTROLS` and
+		 * `GRAPHICS` read tokens - so a component that mixes its own ground lists it
+		 * here or is not covered.
+		 */
+		for (const m of MIXED_FILLS) {
+			const a = p[m.mix[0]];
+			const b = p[m.mix[1]];
+			const fg = p[m.ink];
+			if (!isHex(a) || !isHex(b) || !isHex(fg)) continue;
+			const fill = mixOklab(a, b, m.mix[2]);
+			run.assertions++;
+			const got = r2(ratio(fg, fill));
+			if (got < m.floor && !findException(id, m.ink, m.name, got)) {
+				fail(
+					`${id}: ${m.name} — ${m.ink} ${fg} on color-mix(${m.mix[0]} ${m.mix[2] * 100}%, ${m.mix[1]}) ${fill} = ${got}:1, need ${m.floor}:1`,
+				);
+			}
+			for (const [other, floor] of m.apartFrom ?? []) {
+				const otherHex = Array.isArray(other)
+					? mixOklab(p[other[0]], p[other[1]], other[2])
+					: p[other];
+				if (!isHex(otherHex)) continue;
+				run.assertions++;
+				const d = r2(deltaE(fill, otherHex));
+				if (d < floor)
+					fail(
+						`${id}: ${m.name} — the fill ${fill} is ΔE00 ${d} from ${Array.isArray(other) ? `color-mix(${other.join(", ")})` : other} ${otherHex}, need ${floor}: the two states would read as one`,
+					);
 			}
 		}
 

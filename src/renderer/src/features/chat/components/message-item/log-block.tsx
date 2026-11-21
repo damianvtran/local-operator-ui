@@ -4,6 +4,8 @@
  * Same shape as OutputBlock; `[No logger output]` is a backend placeholder
  * with zero information, so it renders nothing.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
+import { cn } from "@shared/lib/utils";
 
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -26,7 +28,13 @@ export const LogBlock: FC<LogBlockProps> = ({ log }) => {
 			<span className="mb-1 block text-ink-dim text-meta">
 				{t("ui.chat.transcript_copy.block.logs")}
 			</span>
-			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm">
+			<pre
+				// Execution logs are user content (review round 1, Q2).
+				className={cn(
+					"flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-hairline bg-sunken p-3 font-mono text-ink-muted text-mono-sm",
+					USER_CONTENT_CLASS,
+				)}
+			>
 				{log}
 			</pre>
 		</div>

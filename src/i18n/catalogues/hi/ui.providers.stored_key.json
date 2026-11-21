@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "कुंजी बदलें",
+	"ui.providers.stored_key.remove": "कुंजी हटाएँ",
+	"ui.providers.stored_key.remove_confirm": "यह कुंजी हटाएँ?",
+	"ui.providers.stored_key.remove_yes": "हटाएँ",
+	"ui.providers.stored_key.remove_failed": "कुंजी हटाई नहीं जा सकी।"
+}

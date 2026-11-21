@@ -2565,3 +2565,221 @@ test("a banner whose read joins a background warm that predates the message read
 		await mounted.teardown();
 	}
 });
+
+// ---------------------------------------------------------------------------
+// Reader unread identity (agent-server #455 `latest_unread_seq`), MOUNTED.
+//
+// The planner tests prove the decision; these prove the shipped hook carries
+// the field to it and that delivery announces the message the identity names.
+// When a NEWER non-eligible message (the reader's own send, a reply in a thread
+// they do not follow) sits above the eligible one, the newest message must not
+// suppress the banner (own send) or relabel it (someone else's reply).
+// ---------------------------------------------------------------------------
+
+/* Top-level, per this suite's lint rule against per-call regex allocation. */
+const BODY_OF_FIVE = /: body bcmsg_5$/;
+const ALICE_LABEL = /Alice/;
+const CY_LABEL = /Cy|reply bcmsg_r6/;
+
+const IDENTITY_ORG = {
+	tenant_id: "tnt_id",
+	tenant_name: "Identity Org",
+	unread: 0,
+	eligible: true,
+};
+
+/** One coherent hub answer: list row, tenant unread row and account total agree. */
+const identityPoll = async (
+	mounted,
+	{ latestSeq, unreadCount, latestUnreadSeq, extra = {} },
+) => {
+	fixture.conversations = {
+		conversations: [
+			{ ...conversation("bcv_id", "tnt_id"), latest_seq: latestSeq, ...extra },
+		],
+	};
+	fixture.account = {
+		total: unreadCount,
+		organizations: [{ ...IDENTITY_ORG, unread: unreadCount }],
+	};
+	fixture.tenants.tnt_id = {
+		total: unreadCount,
+		conversations: [
+			{
+				...notifyRow("bcv_id", latestSeq),
+				unread_count: unreadCount,
+				last_read_seq: 3,
+				latest_unread_seq: latestUnreadSeq,
+			},
+		],
+	};
+	if (mounted) {
+		await act(async () => {
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
+			});
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await settle();
+	}
+};
+
+const seededIdentityMount = async () => {
+	resetFixture();
+	fixture.messages = { messages: [message("bcmsg_4", "bcv_id", 4)] };
+	await identityPoll(null, {
+		latestSeq: 4,
+		unreadCount: 1,
+		latestUnreadSeq: 4,
+	});
+	const mounted = await mount();
+	await until(
+		() => fixture.calls.unread.includes("tnt_id"),
+		"the seed's tenant read",
+	);
+	await settle();
+	assert.equal(mounted.notifications.length, 0, "first answer only seeds");
+	return mounted;
+};
+
+const ownSend = (id, seq) =>
+	message(id, "bcv_id", seq, {
+		sender: { account_id: "acct_alice", kind: "human", display_label: "Alice" },
+	});
+
+test("ID1 an own send above a new eligible message banners the eligible one, and a further own send stays quiet", async () => {
+	const mounted = await seededIdentityMount();
+	try {
+		fixture.messages = {
+			messages: [
+				ownSend("bcmsg_6", 6),
+				message("bcmsg_5", "bcv_id", 5),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 6,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_sender_label: "Alice" },
+		});
+		await until(() => mounted.notifications.length === 1, "the banner for 5");
+		const [banner] = mounted.notifications;
+		assert.equal(banner.messageId, "bcmsg_5", "the eligible message, exactly");
+		// The count line is existing copy; the preview is the announced message.
+		assert.match(banner.body, BODY_OF_FIVE);
+		assert.equal(banner.seq, 5);
+		assert.doesNotMatch(JSON.stringify(banner), ALICE_LABEL);
+
+		// The reader sends again: the room moves, their unread set does not.
+		fixture.messages = {
+			messages: [ownSend("bcmsg_7", 7), ...fixture.messages.messages],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 7,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_sender_label: "Alice" },
+		});
+		await settle();
+		assert.equal(mounted.notifications.length, 1, "own send is not an event");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("ID2 an unfollowed reply above a new eligible message neither relabels nor re-raises the banner", async () => {
+	const mounted = await seededIdentityMount();
+	const root = message("bcmsg_root_u", "bcv_id", 2);
+	const cyReply = (id, seq) =>
+		message(id, "bcv_id", seq, {
+			thread_root_id: root.id,
+			sender: { account_id: "acct_cy", kind: "human", display_label: "Cy" },
+			body: `reply ${id}`,
+		});
+	try {
+		// Timeline history excludes replies, so the page holds 5 and 4 only.
+		fixture.messages = {
+			messages: [
+				message("bcmsg_5", "bcv_id", 5),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		fixture.thread = { root, replies: [cyReply("bcmsg_r6", 6)] };
+		await identityPoll(mounted, {
+			latestSeq: 6,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_thread_root_id: root.id, last_sender_label: "Cy" },
+		});
+		await until(() => mounted.notifications.length === 1, "the banner for 5");
+		const [banner] = mounted.notifications;
+		assert.equal(banner.messageId, "bcmsg_5");
+		// The count line is existing copy; the preview is the announced message.
+		assert.match(banner.body, BODY_OF_FIVE);
+		assert.doesNotMatch(JSON.stringify(banner), CY_LABEL);
+		assert.equal(
+			fixture.calls.replies.length,
+			0,
+			"the unfollowed thread is not read for a timeline message's banner",
+		);
+
+		fixture.thread = {
+			root,
+			replies: [cyReply("bcmsg_r6", 6), cyReply("bcmsg_r7", 7)],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 7,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_thread_root_id: root.id, last_sender_label: "Cy" },
+		});
+		await settle();
+		assert.equal(mounted.notifications.length, 1, "unfollowed reply is quiet");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("ID3 an account switch reseeds: the next account's existing unread is silent, its next eligible message banners", async () => {
+	const mounted = await seededIdentityMount();
+	try {
+		fixture.identity = "acct_carol";
+		// Carol already has eligible unread up to 8 when she signs in.
+		fixture.messages = {
+			messages: [
+				message("bcmsg_8", "bcv_id", 8),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		await identityPoll(null, {
+			latestSeq: 8,
+			unreadCount: 3,
+			latestUnreadSeq: 8,
+		});
+		const readsBefore = fixture.calls.unread.length;
+		await switchAccount(mounted, "acct_carol");
+		await until(
+			() => fixture.calls.unread.slice(readsBefore).includes("tnt_id"),
+			"carol's tenant read",
+		);
+		await settle();
+		assert.equal(mounted.notifications.length, 0, "carol's backlog is a seed");
+
+		fixture.messages = {
+			messages: [message("bcmsg_9", "bcv_id", 9), ...fixture.messages.messages],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 9,
+			unreadCount: 4,
+			latestUnreadSeq: 9,
+		});
+		await until(() => mounted.notifications.length === 1, "carol's banner");
+		assert.equal(mounted.notifications[0].messageId, "bcmsg_9");
+		assert.equal(mounted.notifications[0].owner.accountId, "acct_carol");
+	} finally {
+		await mounted.teardown();
+	}
+});

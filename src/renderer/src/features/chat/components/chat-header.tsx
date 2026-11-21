@@ -3,6 +3,7 @@ import {
 	useAgentSlotMark,
 } from "@shared/agent-avatar/agent-avatar-slot";
 import { agentSuggestsPicture } from "@shared/agent-avatar/avatar-presence";
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -1214,6 +1215,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 											 * event the editor opens on.
 											 */
 											"cursor-default select-none",
+											// The conversation's own name: no text in analytics or replay.
+											USER_CONTENT_CLASS,
 										)}
 									>
 										{agentName}
@@ -1428,6 +1431,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 */
 				className="ms-auto flex items-center gap-2"
 			>
+				{/*
+				 * SESSION VOICE IS NOT HERE ANY MORE (design spec
+				 * `voice-composer/SPEC.md` §1): the toggle and the phase word moved into
+				 * the composer, where the box they describe is. The sidebar row marker
+				 * (`VoiceRowMarker`) stays - it is the only voice mark outside the pane.
+				 */}
 				{/*
 				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
 				 *

@@ -1,4 +1,5 @@
 import { dataUrlHeader, mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { Button, Tooltip } from "@shared/components/ui";
 import {
 	previewFailureReason,
@@ -515,7 +516,10 @@ const AttachmentRow: FC<{
 
 	return (
 		<div className={cn("flex flex-col gap-1 py-2")}>
-			<div className={cn("flex flex-wrap gap-3")}>
+			{/* The chips name the user's files, in text and in `title` (review
+			    round 1, Q3): text and attributes stay out of autocapture, text out
+			    of replay. */}
+			<div className={cn("flex flex-wrap gap-3", USER_CONTENT_CLASS)}>
 				{chips.map((chip) =>
 					chip.image || chip.video ? (
 						<AttachmentTile

@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "Провайдер речи",
+	"ui.settings.speech.provider.description": "Кто слушает и говорит — для голоса без рук и кнопки «Озвучить» у сообщений. Используется только выбранный вами провайдер; запасного нет.",
+	"ui.settings.speech.provider.radient.label": "Облако Radient",
+	"ui.settings.speech.provider.radient.description": "Оплачивается из вашего баланса Radient.",
+	"ui.settings.speech.provider.elevenlabs.label": "Мой ключ ElevenLabs",
+	"ui.settings.speech.provider.elevenlabs.description": "Используется ваш аккаунт ElevenLabs, и счёт выставляет ElevenLabs.",
+	"ui.settings.speech.provider.ready": "Готово",
+	"ui.settings.speech.provider.not_ready": "Пока не готово.",
+	"ui.settings.speech.provider.setup": "Настроить в провайдерах",
+	"ui.settings.speech.provider.none_chosen": "Провайдер пока не выбран. Голос без рук остаётся выключенным, пока вы не выберете его.",
+	"ui.settings.speech.provider.none_ready": "Ни один из провайдеров пока не готов. Настройте один в «Провайдерах», затем выберите его здесь.",
+	"ui.settings.speech.provider.save_failed": "Не удалось сохранить выбор."
+}

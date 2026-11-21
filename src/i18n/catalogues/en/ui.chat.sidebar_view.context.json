@@ -109,6 +109,12 @@
 		"maxCells": 20,
 		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit."
 	},
+	"ui.chat.sidebar_view.section.yesterday": {
+		"role": "section visibility switch label",
+		"tone": "short section/category noun",
+		"maxCells": 20,
+		"note": "Same section name is interpolated into reorder accessible names. Stable section IDs never change with locale. maxCells is advisory, not measured fit. The local calendar day before today, not a duration; prefer the wording this locale already uses for Yesterday in the notifications and common-time catalogues."
+	},
 	"ui.chat.sidebar_view.section.week": {
 		"role": "section visibility switch label",
 		"tone": "short section/category noun",

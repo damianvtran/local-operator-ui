@@ -13,6 +13,7 @@
 import { z } from "zod";
 import type {
 	HoldItem,
+	HoldProof,
 	HoldReceipt,
 	HoldWord,
 	HoldsPage,
@@ -20,6 +21,7 @@ import type {
 import { desktopResult } from "./desktop-api";
 
 const str = z.string().nullable();
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 const holdItem = z.object({
 	message_id: z.string(),
@@ -41,6 +43,23 @@ const holdItem = z.object({
 		})
 		.nullable(),
 	unscreened: z.boolean().optional(),
+	/*
+	 * local-operator #4358, both optional so an older core still parses:
+	 * `actionable` is core's ONE "the person owes this an answer" predicate,
+	 * which the badge, the nav and the section all count from; `discard_receipt`
+	 * binds the local hold record for a Discard when the body can no longer be
+	 * loaded. A receipt that is not lowercase sha256 hex reads as absent rather
+	 * than failing the whole list: the safe reading of a bad receipt is "no
+	 * receipt Discard", and the daemon re-checks any receipt it is sent.
+	 */
+	actionable: z.boolean().optional(),
+	discard_receipt: z
+		.string()
+		.nullable()
+		.optional()
+		.transform((value) =>
+			typeof value === "string" && SHA256_HEX.test(value) ? value : null,
+		),
 });
 
 const holdsPage = z.object({
@@ -73,18 +92,34 @@ export const TeamBridgeHoldsApi = {
 		accountId: string,
 		word: HoldWord,
 		item: { message_id: string; conversation_id: string },
-		bodySha256: string,
+		proof: HoldProof,
 	): Promise<HoldReceipt> {
+		const target = {
+			expected_account_id: accountId,
+			message_id: item.message_id,
+			conversation_id: item.conversation_id,
+		};
+		/* Deliver only ever carries the shown body's hash: the contract has no
+		   receipt field on Deliver, and a receipt proof for it is refused here
+		   too, before IPC (S-11). */
+		if (word === "deliver") {
+			if (!("body_sha256" in proof))
+				throw new Error("A Deliver must bind the shown body."); // i18n: ignore programming-error diagnostic, never shown
+			return receipt.parse(
+				await desktopResult<unknown>({
+					op: "team_bridge.holds.deliver",
+					...target,
+					body_sha256: proof.body_sha256,
+				}),
+			);
+		}
 		return receipt.parse(
 			await desktopResult<unknown>({
-				op:
-					word === "deliver"
-						? "team_bridge.holds.deliver"
-						: "team_bridge.holds.discard",
-				expected_account_id: accountId,
-				message_id: item.message_id,
-				conversation_id: item.conversation_id,
-				body_sha256: bodySha256,
+				op: "team_bridge.holds.discard",
+				...target,
+				...("hold_receipt" in proof
+					? { hold_receipt: proof.hold_receipt }
+					: { body_sha256: proof.body_sha256 }),
 			}),
 		);
 	},

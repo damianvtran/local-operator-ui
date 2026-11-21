@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "Nhà cung cấp giọng nói",
+	"ui.settings.speech.provider.description": "Ai nghe và nói, cho giọng nói rảnh tay và nút đọc to trên tin nhắn. Chỉ nhà cung cấp bạn chọn được dùng; không có nhà cung cấp nào thay thế cho nhà cung cấp kia.",
+	"ui.settings.speech.provider.radient.label": "Radient trên đám mây",
+	"ui.settings.speech.provider.radient.description": "Tính vào tín dụng Radient của bạn.",
+	"ui.settings.speech.provider.elevenlabs.label": "Khóa ElevenLabs của tôi",
+	"ui.settings.speech.provider.elevenlabs.description": "Dùng tài khoản ElevenLabs của chính bạn, do ElevenLabs tính phí.",
+	"ui.settings.speech.provider.ready": "Sẵn sàng",
+	"ui.settings.speech.provider.not_ready": "Chưa sẵn sàng.",
+	"ui.settings.speech.provider.setup": "Thiết lập trong Nhà cung cấp",
+	"ui.settings.speech.provider.none_chosen": "Chưa chọn nhà cung cấp. Giọng nói rảnh tay vẫn tắt cho đến khi bạn chọn.",
+	"ui.settings.speech.provider.none_ready": "Cả hai nhà cung cấp đều chưa sẵn sàng. Hãy thiết lập một nhà cung cấp trong Nhà cung cấp, rồi chọn tại đây.",
+	"ui.settings.speech.provider.save_failed": "Không lưu được lựa chọn."
+}

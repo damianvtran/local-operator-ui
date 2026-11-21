@@ -14,6 +14,10 @@ import { z } from "zod";
 import type { WithoutParams } from "../i18n";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
+import type {
+	SpeechProvider,
+	SpeechProviderReadiness,
+} from "./desktop-control-contract";
 // The sidebar's destination vocabulary is the same list the route validates
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
@@ -276,9 +280,15 @@ const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
-const requestId = z
-	.string()
-	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * The backend's `RequestID` (`desktop_sessions.py`): a dashed lowercase UUID, the
+ * shape `crypto.randomUUID()` returns. Exported so the media relay validates the
+ * voice utterance's id against the SAME pattern rather than a second spelling of
+ * it - a dashless id passes a looser local check and is refused 422 by the route.
+ */
+export const REQUEST_ID_PATTERN =
+	/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const requestId = z.string().regex(REQUEST_ID_PATTERN);
 /**
  * An OPAQUE definition-revision token, echoed verbatim on a definition write.
  *
@@ -4493,6 +4503,43 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * RENAME a channel or group (agent-server POST
+	 * /messaging/conversations/{id}/rename; operator 2026-11-20: "There doesn't
+	 * seem to be a way to rename a channel in team bridge"). Its own op, not a
+	 * `lifecycle` action, because it carries a VALUE (the new name) where every
+	 * lifecycle action is a bare verb. Because it carries a body, the owner
+	 * receipt (`tenant_id`, `expected_account_id`) rides IN THE BODY beside
+	 * `name`, as create and send do — not the query string the bodyless
+	 * `lifecycle`/`delete` use. The daemon's `ConversationRenameIn`
+	 * (local-operator #4368) reads it only from the body and refuses a query
+	 * copy with 422, so a receipt in the wrong place can never be silently
+	 * dropped and rename without the owner guard. The hub sanitises the name and answers the
+	 * canonical one; it refuses with 400 `invalid_request` + `details.rule`, which
+	 * core passes through unchanged. The server alone decides
+	 * who may rename (owner, or an org owner/admin on a channel); the UI offers it
+	 * only where it offers archive (`can_administer`), and only when the daemon
+	 * advertises `team_bridge_conversation_rename`.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.rename"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+			// The hub's bound is 64 CODE POINTS (its rename sanitiser); `max` counts
+			// UTF-16 units, so the check here is by code point too. Everything else
+			// (control, invisible, unusual spaces) is the hub's to refuse, with a
+			// `details.rule` the dialog words.
+			name: z
+				.string()
+				.trim()
+				.min(1)
+				.refine((value) => [...value].length <= 64, {
+					message: "name is longer than 64 characters", // i18n: ignore wire validation diagnostic
+				}),
+		})
+		.strict(),
+	/*
 	 * Self-join and the notification preference are their own ops rather than
 	 * `lifecycle` actions: the tenant is part of the request (a merge-view row
 	 * can name a channel the caller has not joined, and the default tenant
@@ -4815,6 +4862,51 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * SESSION VOICE'S SLOT AND TEXT (the frozen contract in the backend's
+	 * `desktop_voice.py`): one read and one control on `/v1/desktop/voice`,
+	 * mirroring Aida's pair above and gated the same way, on its OWN key
+	 * (`features.voice`), plus `/voice/text`.
+	 *
+	 * The control names its session even for `disable`: a disable from a session
+	 * that does not hold the slot is a no-op that answers the current slot
+	 * unchanged, so a stale window cannot turn off a slot another window moved.
+	 *
+	 * `voice.text` names a SOURCE REFERENCE and never text: the server resolves the
+	 * words from its own journal or pending card, so no renderer bug can make the
+	 * rig say words the agent never wrote. The utterance is NOT here: the route
+	 * takes a form, so it rides `desktop-media.ts`'s relay.
+	 */
+	z
+		.object({ op: z.literal("voice.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.control"),
+			action: z.enum(["enable", "disable"]),
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.text"),
+			sessionId,
+			source: z.discriminatedUnion("kind", [
+				z
+					.object({
+						kind: z.literal("message"),
+						messageId: z.string().min(1).max(128),
+					})
+					.strict(),
+				z
+					.object({
+						kind: z.literal("gate"),
+						requestId: z.string().min(1).max(128),
+					})
+					.strict(),
+			]),
+		})
+		.strict(),
+	/*
 	 * Discard one STAGED upload (a chip the author removed before sending). JSON,
 	 * not the media relay: there are no bytes either way. Idempotent 204 on the
 	 * hub, so a retry after a lost answer is harmless.
@@ -4889,11 +4981,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
-			op: z.enum(["team_bridge.holds.deliver", "team_bridge.holds.discard"]),
+			op: z.literal("team_bridge.holds.deliver"),
 			expected_account_id: id,
 			message_id: id,
 			conversation_id: id,
 			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
+	 * Discard binds EXACTLY ONE of `body_sha256` (the body on screen) or
+	 * `hold_receipt` (local-operator #4358): the list's `discard_receipt` for a
+	 * hold whose body can no longer be loaded (expired at the hub, owner-audit
+	 * unavailable). The receipt names the local hold RECORD, not bytes anyone
+	 * read, so Deliver has no receipt field at all (S-11): a Deliver always
+	 * proves the shown body. "Exactly one" is enforced in the union's
+	 * `superRefine` below, mirroring the route's own 422.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.discard"),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+			hold_receipt: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
 		})
 		.strict(),
 	/*
@@ -6124,6 +6241,21 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * body-shaped mistake, and the view would paint that as a failure of a spend
 		 * that was never attempted. Refusing here means it is never sent.
 		 */
+		/* A held-message Discard binds exactly one proof (#4358 route grammar):
+		   both or neither is a body-shaped mistake the daemon answers 422, so it
+		   is refused before IPC rather than painted as a failed decision. */
+		if (
+			request.op === "team_bridge.holds.discard" &&
+			(request.body_sha256 === undefined) ===
+				(request.hold_receipt === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A held-message discard binds exactly one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
+				path: ["body_sha256"],
+			});
+		}
 		if (
 			request.op === "usage.reset" &&
 			!request.credentialRef &&
@@ -8725,6 +8857,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// Reads the phone password and changes nothing; a timeout gets the read sentence.
 	"mobile.password",
 	"usage.get",
+	// The voice slot's read: which session holds it.
+	"voice.status",
 ]);
 
 /**
@@ -9254,7 +9388,133 @@ export type DesktopMediaRequest =
 			op: "sessions.supplementDocument";
 			sessionId: string;
 			digest: string;
+	  }
+	/*
+	 * SESSION VOICE'S UTTERANCE DOOR (the frozen contract): the person's words as
+	 * TEXT (the Qwen rig's transcript, form-encoded) or as a RECORDING's bytes
+	 * (bring-your-own-key voice; the server transcribes, multipart). Exactly one of
+	 * `text` | the bytes argument; the bytes are never a field of the request.
+	 */
+	| {
+			op: "voice.utterance";
+			sessionId: string;
+			requestId: string;
+			text?: string;
+			textOrigin?: "qwen_s2s";
+			/** Pins the transcription to one provider; a recording only. */
+			provider?: "elevenlabs";
+	  }
+	/*
+	 * ONE SEGMENT of a spoken reply, by source reference and index (V8: never
+	 * text). Answers `kind: "bytes"` whose `mimeType` is the audio's real format.
+	 */
+	| {
+			op: "voice.speech";
+			sessionId: string;
+			source:
+				| { kind: "message"; messageId: string }
+				| { kind: "gate"; requestId: string }
+				| { kind: "phrase"; key: string };
+			segment: number;
+			provider?: "elevenlabs";
 	  };
+
+/**
+ * The refusal codes the voice routes declare (the frozen contract). Carried to
+ * the renderer as `voiceCode` - only for `voice.*` ops, and only these words -
+ * because the controller ACTS on them: `voice_not_enabled` means the slot moved
+ * away under this window and the exchange must stop, which a sentence cannot
+ * tell it. Every other declared code is still dropped, as before.
+ */
+export const VOICE_REFUSAL_CODES = [
+	"voice_not_enabled",
+	"voice_store_busy",
+	"unknown_session",
+	"unknown_source",
+	"invalid_voice_request",
+	// The take held no words: nothing was admitted.
+	"empty_transcript",
+	// A card is pending on the session (backend V13): words are refused, not
+	// admitted as a steer, so they cannot cancel the card. Answered on screen.
+	"approval_pending",
+	// Bring-your-own-key voice: the provider's own limits and failures, which the
+	// strip names rather than showing as "failed".
+	"voice_rate_limited",
+	"stt_unavailable",
+	"voice_unavailable",
+	"voice_upload_too_large",
+	"unknown_segment",
+	// No speech provider is chosen (backend `speech.provider`): the recording and
+	// the reply are refused before anything is sent anywhere. Its sentence names
+	// both choices, so it travels as the refusal's own text.
+	"voice_provider_unset",
+] as const;
+export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
+
+export function isVoiceRefusalCode(
+	code: string | undefined,
+): code is VoiceRefusalCode {
+	return (
+		code !== undefined &&
+		(VOICE_REFUSAL_CODES as readonly string[]).includes(code)
+	);
+}
+
+/** The speech providers, in the order Settings lists them. */
+export const SPEECH_PROVIDERS = ["radient", "elevenlabs"] as const;
+
+export function isSpeechProvider(value: unknown): value is SpeechProvider {
+	return (
+		typeof value === "string" &&
+		(SPEECH_PROVIDERS as readonly string[]).includes(value)
+	);
+}
+
+/** What a `voice.status` answer says about the one speech provider. */
+export type VoiceProviderStatus = {
+	/** The chosen provider; null when none is chosen OR the value is not one of ours. */
+	provider: SpeechProvider | null;
+	/** Each provider's readiness; null when the backend sent none (an older one). */
+	providers: Record<SpeechProvider, SpeechProviderReadiness> | null;
+};
+
+function readReadiness(value: unknown): SpeechProviderReadiness {
+	const entry = value as { ready?: unknown; reason?: unknown } | null;
+	return {
+		ready: entry?.ready === true,
+		reason:
+			typeof entry?.reason === "string" && entry.reason.trim()
+				? entry.reason
+				: null,
+	};
+}
+
+/**
+ * The provider half of a `voice.status` result, tolerant of every shape it has
+ * had. An older backend sends neither field; a value left behind by an earlier
+ * build of this app (an engine word) or by a hand edit is not one of the two
+ * providers. All of those read as "none chosen", which is the one reading that
+ * starts nothing: hands-free voice only ever starts for a provider this function
+ * names.
+ */
+export function readVoiceProviderStatus(result: unknown): VoiceProviderStatus {
+	const value = result as {
+		provider?: unknown;
+		providers?: unknown;
+	} | null;
+	const provider = isSpeechProvider(value?.provider) ? value.provider : null;
+	const raw = value?.providers;
+	const providers =
+		typeof raw === "object" && raw !== null
+			? {
+					radient: readReadiness((raw as Record<string, unknown>).radient),
+					elevenlabs: readReadiness(
+						(raw as Record<string, unknown>).elevenlabs,
+					),
+				}
+			: null;
+	return { provider, providers };
+}
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -9273,6 +9533,8 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 			/**
 			 * The daemon's own refusal code and params, forwarded only for
 			 * `notification_sounds.upload` and `sessions.files.content` (main
@@ -9282,6 +9544,150 @@ export type DesktopMediaResponse =
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
+
+/**
+ * THE MAIN <-> RENDERER VOICE CONTRACT (the backend's docs/design/qwen-voice.md,
+ * "Frozen contract delta"), plus `start`, which the manager approved for the
+ * relaunch case: an app restarted while the slot is still held does NOT start
+ * the rig by itself (it loads gigabytes of models), and the indicator offers
+ * "Start voice", which calls this.
+ *
+ * - event `voice.qwen.take {taskId, text}`: the rig heard a take (`onTake`).
+ * - invoke `voice.qwen.result {taskId, ok | code}`: the take's admission.
+ * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
+ *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
+ *   the last 10 minutes; anything else answers `{spoken: false}`.
+ * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?, mic?, paused?, muted?}`
+ *   (`onStatus`, `getStatus`). `mic` is additive: the macOS microphone verdict,
+ *   which is what turns "unheard" into "Microphone blocked" (plan §2/§4).
+ *   `paused` and `muted` are additive too, and they are MAIN's: the hidden page
+ *   is main's, so a renderer that reloaded cannot paint a stale answer over it.
+ * - invoke `voice.qwen.pause` / `voice.qwen.resume`: close the hidden page (the
+ *   microphone is released; the models stay loaded) and recreate it. Both answer
+ *   the new status.
+ * - invoke `voice.qwen.mute {muted}`: `webContents.setAudioMuted` on the page,
+ *   which silences Qwen's own speech and nothing else. Remembered across a
+ *   recreate and answered with the new status.
+ * - invoke `voice.qwen.start`: start the rig for the slot already held; on a
+ *   rig that is already ready, recreate the hidden voice page instead.
+ * - invoke `voice.qwen.open-mic-settings`: open the OS microphone pane. Main's
+ *   own fixed URL, never a renderer-supplied one.
+ * - event `voice.qwen.event {type, at, reason?}` (plan §10): one allowlisted
+ *   thing the voice did - the rig hearing, the rig speaking, a response
+ *   finishing, a task moving. A type, a Gateway time and at most a one-word
+ *   reason; no message text crosses.
+ */
+export type QwenRigState = "stopped" | "starting" | "ready" | "error";
+export type QwenVoiceStatus = {
+	rig: QwenRigState;
+	webui_url: string | null;
+	reason?: string | null;
+	/**
+	 * The provider a `provider_not_ready` error is about, so the strip can send the
+	 * person to that provider's own page. Null/absent for every other state.
+	 */
+	provider?: SpeechProvider | null;
+	/**
+	 * Voice pages connected to the Gateway (the launcher's `client_attached` /
+	 * `client_detached`). "Listening" is true only with one or more: a ready rig
+	 * with no page open hears nothing.
+	 */
+	clients?: number;
+	/**
+	 * Why the rig is in `error` when it was not a start failure.
+	 * `provider_unset`: no speech provider is chosen, so nothing listens.
+	 * `provider_not_ready`: the chosen provider cannot hear and speak yet; `reason`
+	 * is the backend's own sentence (absent when it sent none) and `provider`
+	 * names it.
+	 * `page_failed` / `no_window`: the app's own voice page stopped, or this run
+	 * has no window to hear with. Main's `reason` for these is a log line in
+	 * English; the strip shows its own translated words for the cause.
+	 */
+	cause?:
+		| "unexpected_exit"
+		| "provider_unset"
+		| "provider_not_ready"
+		| "page_failed"
+		| "no_window"
+		| null;
+	/**
+	 * The macOS microphone verdict for this app's identity. `prompting` is the
+	 * bounded wait: the OS dialog is up and unanswered.
+	 */
+	mic?: "granted" | "denied" | "prompting" | "unknown";
+	/**
+	 * PAUSED: the hidden page is closed, so the microphone is released and
+	 * dictation may use it, while the Gateway and the speech models stay warm.
+	 * Main owns it because the page is main's.
+	 */
+	paused?: boolean;
+	/** The page's own playback silenced (`webContents.setAudioMuted`). */
+	muted?: boolean;
+};
+export type QwenVoiceTake = { taskId: string; text: string };
+export type QwenVoiceEvent = {
+	type: string;
+	/** ISO-8601, the Gateway's own clock. */
+	at: string;
+	reason?: string;
+	/** The Gateway's playback receipt: `false` means it was not this page's. */
+	accepted?: boolean;
+};
+export type QwenVoiceResult =
+	| { taskId: string; ok: true }
+	| { taskId: string; ok: false; code: string };
+/**
+ * What main pushes about a take or a reply on the app-owned voice page
+ * (`voice.qwen.byok`). Main hears and uploads the recording itself, so the
+ * renderer is TOLD about a take rather than sending it: `take_start` BEFORE the
+ * upload (so the V14 binding is armed first), then `take_done` with the words the
+ * server heard or `take_failed` with the route's declared word.
+ */
+export type QwenByokMessage =
+	| { kind: "take_start"; sessionId: string; requestId: string }
+	| { kind: "take_done"; sessionId: string; requestId: string; text: string }
+	| {
+			kind: "take_failed";
+			sessionId: string;
+			requestId: string;
+			status: number;
+			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
+	  }
+	| {
+			kind: "speech_failed";
+			sessionId: string;
+			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
+	  };
+
+export type QwenVoiceBridge = {
+	/** The person's voice switch (default OFF), owned by main. */
+	getEnabled: () => Promise<boolean>;
+	setEnabled: (on: boolean) => Promise<boolean>;
+	onEnabled: (listener: (enabled: boolean) => void) => () => void;
+	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
+	result: (result: QwenVoiceResult) => Promise<boolean>;
+	speak: (input: {
+		text: string;
+		kind: "reply" | "gate";
+	}) => Promise<{ spoken: boolean; reason?: string }>;
+	start: () => Promise<QwenVoiceStatus>;
+	getStatus: () => Promise<QwenVoiceStatus>;
+	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
+	openMicrophoneSettings: () => Promise<void>;
+	/** Close the hidden page (releasing the microphone), keeping the rig warm. */
+	pause: () => Promise<QwenVoiceStatus>;
+	/** Recreate the hidden page, re-applying the remembered mute. */
+	resume: () => Promise<QwenVoiceStatus>;
+	/** Silence the page's own speech; remembered across a recreate. */
+	setMuted: (muted: boolean) => Promise<QwenVoiceStatus>;
+	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
+	/** The app-owned page's takes and reply failures, pushed by main. */
+	onByok: (listener: (message: QwenByokMessage) => void) => () => void;
+};
 
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
@@ -9420,6 +9826,12 @@ export type DesktopAPI = {
 		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
 		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
 	};
+	/**
+	 * THE QWEN VOICE RIG, owned by main (`src/main/voice/qwen-voice.ts`). Absent in
+	 * browser development, where there is no rig: the toggle still drives the slot
+	 * and nothing is heard. See `QwenVoiceBridge` for the verbs.
+	 */
+	qwenVoice?: QwenVoiceBridge;
 	/**
 	 * The conversation main was launched to display, or null.
 	 *
@@ -12240,6 +12652,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 						}
 					: {}),
 			};
+		case "team_bridge.conversations.rename":
+			return {
+				// No `conversationOwnerQuery` here: the daemon refuses a query receipt
+				// on this route (see the op's schema comment); the body carries it.
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/rename`,
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+				},
+			};
 		case "team_bridge.conversations.join":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/join`,
@@ -12591,10 +13017,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
 				method: "POST",
+				/* Only the proof the request carries: the route's strict body
+				   refuses both, and a `null` key would read as "present". */
 				body: {
 					expected_account_id: request.expected_account_id,
 					conversation_id: request.conversation_id,
-					body_sha256: request.body_sha256,
+					...(request.op === "team_bridge.holds.discard" &&
+					request.hold_receipt !== undefined
+						? { hold_receipt: request.hold_receipt }
+						: { body_sha256: request.body_sha256 }),
 				},
 			};
 		case "team_bridge.requests.authorize":
@@ -12982,6 +13413,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "voice.status":
+			return { path: "/v1/desktop/voice", method: "GET" };
+		case "voice.control":
+			return {
+				path: "/v1/desktop/voice",
+				method: "POST",
+				// The route's own field names (`op`, `session_id`), as `aida.control` does.
+				body: { op: request.action, session_id: request.sessionId },
+			};
+		case "voice.text":
+			return {
+				path: "/v1/desktop/voice/text",
+				method: "POST",
+				body: {
+					session_id: request.sessionId,
+					source:
+						request.source.kind === "message"
+							? { kind: "message", message_id: request.source.messageId }
+							: { kind: "gate", request_id: request.source.requestId },
+				},
+			};
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
 		case "aida.control":

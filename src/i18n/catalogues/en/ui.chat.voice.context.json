@@ -1,0 +1,405 @@
+{
+	"ui.chat.voice.toggle_on": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "Turns hands-free voice on for this one conversation."
+	},
+	"ui.chat.voice.toggle_off": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "Shown while this conversation holds voice."
+	},
+	"ui.chat.voice.toggle_switch": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "{title} is the title of the conversation that holds voice now and will lose it; it is quoted."
+	},
+	"ui.chat.voice.marker": {
+		"role": "screen-reader text after a sidebar row's title",
+		"tone": "short noun phrase",
+		"note": "Announced for the one row whose conversation holds voice."
+	},
+	"ui.chat.voice.phase_starting": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "The local speech models are loading (about 15-20 s)."
+	},
+	"ui.chat.voice.phase_listening": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "Voice is on, the models are loaded and a voice page is connected, so the microphone is live."
+	},
+	"ui.chat.voice.phase_hearing": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The local speech recogniser says someone is speaking right now."
+	},
+	"ui.chat.voice.phase_speaking": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The voice is playing a reply right now; it returns to Listening when the reply ends."
+	},
+	"ui.chat.voice.phase_working": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "Spoken words were sent and the conversation is answering."
+	},
+	"ui.chat.voice.phase_error": {
+		"role": "status word beside the voice button",
+		"tone": "short status, sentence case",
+		"note": "The voice rig or the last step failed; the tooltip carries the reason."
+	},
+	"ui.chat.voice.start_rig": {
+		"role": "small button beside the voice button",
+		"tone": "imperative, sentence case",
+		"note": "Shown after an app restart while voice is still on: starts the speech models."
+	},
+	"ui.chat.voice.switched_from": {
+		"role": "info toast",
+		"tone": "one sentence",
+		"note": "{title} is the conversation that lost voice to this one."
+	},
+	"ui.chat.voice.enable_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "{reason} is a server sentence, shown verbatim."
+	},
+	"ui.chat.voice.disable_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "{reason} is a server sentence, shown verbatim."
+	},
+	"ui.chat.voice.utterance_failed": {
+		"role": "error toast",
+		"tone": "one sentence, then the reason",
+		"note": "Spoken words did not reach the conversation. {reason} is a server or app sentence."
+	},
+	"ui.chat.voice.not_enabled": {
+		"role": "error toast",
+		"tone": "one sentence",
+		"note": "Voice moved to another conversation or was turned off while words were in flight."
+	},
+	"ui.chat.voice.empty_transcript": {
+		"role": "info toast",
+		"tone": "short, friendly",
+		"note": "The speech recognizer heard no words."
+	},
+	"ui.chat.voice.approval_waiting": {
+		"role": "warning toast",
+		"tone": "two short sentences",
+		"note": "An approval card appeared; voice announces it but only the on-screen card can answer it."
+	},
+	"ui.chat.voice.card_pending": {
+		"role": "warning toast and status line",
+		"tone": "one sentence",
+		"note": "Words spoken while a card is pending are refused; the card must be answered on screen."
+	},
+	"ui.chat.voice.stream_lost": {
+		"role": "persistent warning toast",
+		"tone": "two sentences",
+		"note": "The app stopped receiving this conversation's updates, so replies cannot be spoken."
+	},
+	"ui.chat.voice.stream_reconnect": {
+		"role": "toast action button",
+		"tone": "single verb",
+		"note": "Retries the conversation's update stream."
+	},
+	"ui.chat.voice.toggle_switch_untitled": {
+		"role": "icon button label and tooltip in the conversation header",
+		"tone": "imperative, sentence case",
+		"note": "The conversation that holds voice now has no title."
+	},
+	"ui.chat.voice.switched_from_untitled": {
+		"role": "toast",
+		"tone": "plain statement, one sentence",
+		"note": "Voice moved to this conversation from one that has no title."
+	},
+	"ui.chat.voice.phase_unheard": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The speech models are loaded, but the hidden voice page is not connected, so nothing can hear yet. Followed by a Retry action."
+	},
+	"ui.chat.voice.try_again": {
+		"role": "small text button beside the error",
+		"tone": "imperative, sentence case",
+		"note": "Restarts the local speech models."
+	},
+	"ui.chat.voice.error_start_failed": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The local speech models failed to start; the detail is in the tooltip."
+	},
+	"ui.chat.voice.error_exited": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The local speech models stopped while voice was on."
+	},
+	"ui.chat.voice.error_not_sent": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain statement, one sentence",
+		"note": "The last thing the user said could not be delivered to the conversation."
+	},
+	"ui.chat.voice.card_pending_short": {
+		"role": "status hint beside the voice button",
+		"tone": "imperative, short",
+		"note": "An approval or question is on screen; spoken words are refused until it is answered there."
+	},
+	"ui.chat.voice.open_session": {
+		"role": "toast action button",
+		"tone": "one word, imperative",
+		"note": "Opens the conversation that holds voice, where an approval or question waits."
+	},
+	"ui.chat.voice.mic_blocked": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "macOS has denied the app the microphone, so the voice page cannot hear. Followed by an Open Settings action."
+	},
+	"ui.chat.voice.open_settings": {
+		"role": "small text button beside the status word",
+		"tone": "imperative, sentence case",
+		"note": "Opens the macOS Microphone privacy pane where the app can be allowed."
+	},
+	"ui.chat.voice.retry": {
+		"role": "small text button beside the status word",
+		"tone": "single verb",
+		"note": "Recreates the hidden voice page and reconnects it to the local speech models."
+	},
+	"ui.chat.voice.phase_mic_prompting": {
+		"role": "status word beside the voice control",
+		"tone": "short status, sentence case",
+		"note": "The OS microphone prompt is up and has not been answered yet. Followed by an Open Settings action."
+	},
+	"ui.chat.voice.take_too_long": {
+		"role": "one-line notice in the voice strip",
+		"tone": "plain statement plus one short instruction",
+		"note": "A take was discarded because it ran past the speech VAD cap. Rare; the person should keep takes shorter."
+	},
+	"ui.chat.voice.phase_interrupted": {
+		"role": "status chip in the composer strip",
+		"tone": "short status, sentence case",
+		"note": "The reply being played was cut off — by speech, by a new take, or by turning voice off."
+	},
+	"ui.chat.voice.phase_off": {
+		"role": "status chip in the composer strip",
+		"tone": "short status, sentence case",
+		"note": "Voice holds this conversation but the speech rig is stopped (the app was relaunched). Followed by a “Start voice” action."
+	},
+	"ui.chat.voice.starting_caption": {
+		"role": "caption beside the strip’s status chip",
+		"tone": "plain statement, sentence case",
+		"note": "The local speech models are loading; about 15-20 seconds the first time."
+	},
+	"ui.chat.voice.idle_caption": {
+		"role": "caption beside the strip’s status chip",
+		"tone": "plain instruction, sentence case",
+		"note": "The microphone is live: the person can speak, or type in the box below."
+	},
+	"ui.chat.voice.heard_label": {
+		"role": "lead-in before the words a take was heard as",
+		"tone": "two words, sentence case",
+		"note": "Followed by the take’s transcript, quoted by the surrounding markup."
+	},
+	"ui.chat.voice.said_label": {
+		"role": "lead-in before the words a reply was spoken as",
+		"tone": "one word, sentence case",
+		"note": "Followed by the spoken text; the server may have cut it at the character cap."
+	},
+	"ui.chat.voice.reply_ended": {
+		"role": "status chip in the composer strip, shown for 1.5 s",
+		"tone": "short status, sentence case",
+		"note": "The reply finished playing; the strip returns to “Listening” by itself. Never shown when a reply was cancelled."
+	},
+	"ui.chat.voice.interrupted_caption": {
+		"role": "caption beside the strip’s “Interrupted” chip",
+		"tone": "plain statement, em dash",
+		"note": "{time} is m:ss into the reply, e.g. 0:24, so a real barge-in is distinguishable from a phantom cut."
+	},
+	"ui.chat.voice.interrupted_at": {
+		"role": "event row in the voice history panel",
+		"tone": "plain statement",
+		"note": "{time} is m:ss into the reply, e.g. 0:24. The row stays in the history after the strip’s chip has gone."
+	},
+	"ui.chat.voice.not_sent_approve": {
+		"role": "caption beside the strip’s approval chip, and an event row in the history",
+		"tone": "two words, sentence case",
+		"note": "Words spoken while an approval or question card is on screen are refused; the card must be answered there. May be followed by the refused transcript."
+	},
+	"ui.chat.voice.approve_on_screen": {
+		"role": "chip that is itself a button, in the composer strip",
+		"tone": "imperative, sentence case",
+		"note": "Pressing it scrolls the conversation to the card that is waiting for an answer."
+	},
+	"ui.chat.voice.mic_blocked_caption": {
+		"role": "caption beside the strip’s “Microphone blocked” chip",
+		"tone": "plain statement, second person",
+		"note": "macOS denied microphone access to this app; the Open Settings action is beside it."
+	},
+	"ui.chat.voice.cut_chip": {
+		"role": "chip-shaped button in the composer strip",
+		"tone": "short label with an arrow",
+		"note": "The reply that was just spoken was cut at the character cap; the rest is in the message above. Pressing it scrolls there. Stays until the next take."
+	},
+	"ui.chat.voice.cut_note": {
+		"role": "note under the spoken half of a voice history row",
+		"tone": "plain statement",
+		"note": "The number is deliberately absent: the cap is a server setting the renderer does not read on this surface."
+	},
+	"ui.chat.voice.history_hide": {
+		"role": "text on the history toggle while the panel is open",
+		"tone": "imperative, sentence case",
+		"note": "Collapses the voice history panel above the strip."
+	},
+	"ui.chat.voice.history_clear": {
+		"role": "text on a small button in the header of the voice history panel",
+		"tone": "imperative, one word, sentence case",
+		"note": "Empties the rows listed in the history panel (what was heard and said, interruptions, refused takes). It does not turn voice off or end the conversation."
+	},
+	"ui.chat.voice.history_last": {
+		"role": "count beside the voice history panel’s heading",
+		"tone": "lower-case fragment",
+		"note": "{count} is how many rows the panel holds, at most five."
+	},
+	"ui.chat.voice.empty_history": {
+		"role": "empty state inside the voice history panel",
+		"tone": "short invitation",
+		"note": "Nothing has been said through voice in this window yet. The example in quotes is a real thing to try."
+	},
+	"ui.chat.voice.you_label": {
+		"role": "row label in the voice history panel",
+		"tone": "single word",
+		"note": "The person’s own speech, transcribed by the local recogniser."
+	},
+	"ui.chat.voice.voice_label": {
+		"role": "row label in the voice history panel",
+		"tone": "single word",
+		"note": "What the assistant said back through the speakers."
+	},
+	"ui.chat.voice.working_row": {
+		"role": "placeholder under the Voice label while a take is being answered",
+		"tone": "single word with an ellipsis",
+		"note": "The answer is not known yet; it is replaced by the spoken text when it arrives."
+	},
+	"ui.chat.voice.notice_elsewhere_prefix": {
+		"role": "the “voice is on elsewhere” notice in the composer, before the conversation title",
+		"tone": "plain statement, sentence case",
+		"note": "The title follows in bold, then two actions: move the slot here, or go there."
+	},
+	"ui.chat.voice.notice_elsewhere_untitled": {
+		"role": "the “voice is on elsewhere” notice when that conversation has no title",
+		"tone": "plain statement, sentence case",
+		"note": "Used in place of the prefix plus a title."
+	},
+	"ui.chat.voice.move_here": {
+		"role": "text action in the “voice is on elsewhere” notice",
+		"tone": "imperative, two words",
+		"note": "Moves the voice slot to the conversation on screen; the other conversation loses it."
+	},
+	"ui.chat.voice.go_there": {
+		"role": "text action in the “voice is on elsewhere” notice",
+		"tone": "imperative, two words",
+		"note": "Opens the conversation that holds voice now."
+	},
+	"ui.chat.voice.another_conversation": {
+		"role": "fragment inside the dictation tooltip",
+		"tone": "lower-case noun phrase",
+		"note": "Stands in for a conversation title when the holder has none."
+	},
+	"ui.chat.voice.dictation_off_voice": {
+		"role": "tooltip on the dictation microphone while voice holds this conversation",
+		"tone": "two sentences, second person",
+		"note": "Voice and dictation cannot both hold the microphone. The escape named is turning voice off."
+	},
+	"ui.chat.voice.dictation_off_voice_elsewhere": {
+		"role": "tooltip on the dictation microphone while voice holds another conversation",
+		"tone": "two sentences, second person",
+		"note": "{title} is the conversation that holds voice; it is quoted. Moving the slot here keeps dictation off, turning voice off restores it."
+	},
+	"ui.chat.voice.history": {
+		"role": "text on the voice strip's history toggle, and the heading of the panel it opens",
+		"tone": "single word",
+		"note": "Opens this window's list of spoken exchanges; the same word labels it once open."
+	},
+	"ui.chat.voice.phase_paused": {
+		"role": "status chip in the composer strip",
+		"note": "Voice is paused: the hidden page is closed so nothing is heard or spoken, and the speech models stay loaded. The action beside it is Resume."
+	},
+	"ui.chat.voice.strip_pause": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Stops the voice from listening and speaking and releases the microphone, without unloading the models. Dictation can then be used again."
+	},
+	"ui.chat.voice.strip_resume": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Recreates the hidden voice page and starts listening again, keeping any mute the person had set."
+	},
+	"ui.chat.voice.mute": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Silences the assistant’s own spoken replies only - not this app and not any other sound on the machine."
+	},
+	"ui.chat.voice.unmute": {
+		"role": "icon button in the composer strip, and its tooltip",
+		"note": "Brings the assistant’s spoken replies back after they were silenced."
+	},
+	"ui.chat.voice.phase_connecting": {
+		"role": "composer strip chip",
+		"tone": "present participle, sentence case",
+		"note": "Shown for a few seconds on a successful start while the hidden page loads and connects; not a failure, so it offers no action."
+	},
+	"ui.chat.voice.phase_silenced": {
+		"role": "composer strip chip",
+		"tone": "past participle, one word",
+		"note": "The reply is playing but the speaker is muted, so nothing is audible."
+	},
+	"ui.chat.voice.connecting_caption": {
+		"role": "strip caption beside the chip",
+		"tone": "present participle, no full stop",
+		"note": "Says what the connecting chip is waiting on."
+	},
+	"ui.chat.voice.silenced_caption": {
+		"role": "strip caption beside the chip",
+		"tone": "sentence, no full stop",
+		"note": "Where the words the person cannot hear are; the reply is in the transcript."
+	},
+	"ui.chat.voice.error_provider_unset": {
+		"role": "visible reason after 'Voice error'",
+		"tone": "plain instruction, one sentence",
+		"note": "Voice is on but no speech provider is chosen yet. Names the one place to fix it: the app's Settings page. Radient and ElevenLabs are product names."
+	},
+	"ui.chat.voice.byok_rate_limited": {
+		"role": "error toast",
+		"tone": "plain, calm, one or two short sentences",
+		"note": "The speech provider the person chose refused a request for hitting its limit while their words were being heard. Their spoken words were not sent."
+	},
+	"ui.chat.voice.byok_stt_failed": {
+		"role": "error toast",
+		"tone": "plain, one short sentence then a hint",
+		"note": "The chosen speech provider could not turn the recording into words, with no sentence of its own to show. Settings is the app's settings page. Their spoken words were not sent."
+	},
+	"ui.chat.voice.byok_speech_failed": {
+		"role": "warning toast",
+		"tone": "plain, two short sentences",
+		"note": "A reply could not be read aloud. The reply is already in the conversation."
+	},
+	"ui.chat.voice.byok_speech_rate_limited": {
+		"role": "warning toast",
+		"tone": "plain, one sentence",
+		"note": "The chosen speech provider's limit stopped a reply being read aloud. The reply is already on screen."
+	},
+	"ui.chat.voice.provider_unset": {
+		"role": "error toast",
+		"tone": "plain instruction, two short sentences",
+		"length": "Wrapping toast.",
+		"note": "The backend's own refusal sentence, used only when it sent none: no speech provider is chosen. Radient and ElevenLabs are product names; the person picks exactly one and nothing falls back to the other."
+	},
+	"ui.chat.voice.choose_provider": {
+		"role": "text button in the voice strip",
+		"tone": "imperative, sentence case",
+		"length": "Two short words; English is 15 characters.",
+		"note": "Opens the Speech section of Settings, where the one speech provider is chosen. Shown when none is chosen."
+	},
+	"ui.chat.voice.set_up_provider": {
+		"role": "text button in the voice strip",
+		"tone": "imperative, sentence case",
+		"length": "Three words; English is 19 characters.",
+		"note": "Opens the Providers section of Settings for the speech provider that is not ready, where its key or sign-in is set up. 'Providers' is that section's name."
+	}
+}

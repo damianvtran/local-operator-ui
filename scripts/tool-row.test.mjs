@@ -2715,6 +2715,8 @@ const detailBundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-detail-model";',
 			'export * from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			// The same i18n instance the models see, for the locale-switch case.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "@shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -2745,6 +2747,7 @@ const {
 	wakeIsCatchup,
 	wakePromptBody,
 	wakeReceiptHeadline,
+	...detailI18n
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(detailBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2915,6 +2918,44 @@ test("a capped section says how much of itself is not shown", () => {
 	assert.equal(detailOverflowLabel(1), "… 1 more line");
 	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 	assert.equal(detailOverflowLabel(0), "… 0 more lines");
+});
+
+test("a subtree past the walk's depth cap says so, in the reader's words", () => {
+	// Nine levels: deeper than `MAX_DEPTH` (8), so the walk prints the marker
+	// in place of the leaves rather than recursing.
+	let deep = { leaf: "x" };
+	for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+	const values = argumentLines({ deep }).map((line) => line.value);
+	assert.ok(values.includes("… deeper values not shown"), values.join("|"));
+	assert.equal(values.includes("x"), false);
+});
+
+/*
+ * Both markers are read through `t()` per call (a module constant would be
+ * frozen in the locale active at import), and the count takes the locale's
+ * plural arms: French CLDR puts 0 in `one`, English does not.
+ */
+test("the detail pane's overflow markers follow the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.more_lines":
+			"{count, plural, one {⟦fr⟧ # ligne} other {⟦fr⟧ # lignes}}",
+		"ui.chat.canonical.tool_row.detail.deeper_values": "⟦fr⟧ deeper",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailOverflowLabel(0), "⟦fr⟧ 0 ligne");
+		assert.equal(detailOverflowLabel(3), "⟦fr⟧ 3 lignes");
+		let deep = { leaf: "x" };
+		for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+		assert.ok(
+			argumentLines({ deep }).some((line) => line.value === "⟦fr⟧ deeper"),
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 });
 
 test("a sub-pixel overhang is not a line below the fold", () => {
@@ -6955,6 +6996,26 @@ test("a pure locale switch repaints a collapsed fold's live clause: the row grou
 		/\}, \[visible, paneIsLive, paneGap, recordIndex, locale\]\);/,
 		"rowGroups is keyed on the locale",
 	);
+});
+
+/*
+ * The empty-container marker is the UI's own (the producer's `(empty)` stream
+ * bodies never reach `resultLines`), so it is keyed and read per call.
+ */
+test("the detail pane's empty-result marker follows the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.empty": "(⟦fr⟧ vide)",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailText(resultLines("{}")), "(⟦fr⟧ vide)");
+		assert.equal(detailText(resultLines('{"a": {}}')), "(⟦fr⟧ vide)");
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailText(resultLines("{}")), "(empty)");
 });
 
 test("C3: painted argument-summary words are keyed, and stay bidi-free for the copy path", () => {

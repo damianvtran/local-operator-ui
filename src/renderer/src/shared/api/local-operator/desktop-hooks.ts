@@ -405,6 +405,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_leave_withdraws_agent"
 	/**
+	 * RENAME a channel or group: core's `POST .../conversations/{id}/rename`
+	 * desktop route over the hub's rename. Absent: the conversation menu draws
+	 * no Rename item, because every save would be refused by a runtime that has
+	 * no route for it.
+	 */
+	| "team_bridge_conversation_rename"
+	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
 	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the
@@ -1151,6 +1158,14 @@ export type DesktopFeature =
 	 * exactly as it did before.
 	 */
 	| "aida"
+	/*
+	 * PER-SESSION VOICE (`features.voice`; `docs/design/session-voice.md`): the slot
+	 * read/control, the utterance upload, the speech download and the feed's
+	 * `voice` frame. ITS OWN KEY: absent means no toggle, no sidebar marker, no
+	 * voice push-to-talk handler and no call to any `/v1/desktop/voice` route -
+	 * the app is exactly the pre-voice one.
+	 */
+	| "voice"
 	/**
 	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
 	 * availability report a speak control asks before it offers itself.

@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { formatNumber, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useMemo, useState } from "react";
@@ -686,6 +687,8 @@ function Receipt({ body, span }: { body: string; span: Span }) {
 						   ends. Same step `markdown.css` gives a fenced block. */
 						className={cn(
 							"my-1 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md bg-sunken p-2 text-mono-sm",
+							// Inline data a bridge message carried (review round 1, Q2).
+							USER_CONTENT_CLASS,
 						)}
 					>
 						{body.slice(

@@ -97,6 +97,7 @@ import {
 import {
 	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
+	headerRosterRowText,
 	hostPublishRecord,
 	isColdFrame,
 	resolveHeaderIdentity,
@@ -143,6 +144,12 @@ type HeaderEntityRow = {
 	name?: string;
 	kind?: string;
 	description?: string;
+	/**
+	 * Where the profile came from (`builtin` / `installed` / `custom`). The
+	 * description resolver reads it: only a pristine shipped seed's sentence is
+	 * swapped for the catalogue's translation (`agentDescriptionText`).
+	 */
+	source?: string | null;
 	/** A team's free-text display name, when the row carries one. */
 	label?: string;
 	/**
@@ -408,6 +415,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						delegate: row.delegate,
 						teamOwnsSeat: constraint.closed !== undefined,
 					});
+				/* Localized description and kind tag (fr census, row 3): the same
+				 * resolvers the composer's `/agent` rows use - see the helper. */
+				const text = headerRosterRowText(row, kind);
 				return {
 					value: row.value,
 					/*
@@ -431,11 +441,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					description: blocked
 						? identityAgentNotSettableReason()
 						: shown !== row.value
-							? row.description
-								? `${row.value} · ${row.description}`
+							? text.description
+								? `${row.value} · ${text.description}`
 								: row.value
-							: row.description,
-					meta: row.kind,
+							: text.description,
+					meta: text.meta,
 					current: row.value === menuValue(current),
 					/* While a switch is in flight every row is inert: a second switch would
 					 * be a second command against a session already answering one. A row the
@@ -465,7 +475,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	/*
 	 * THE CHIP'S ACCESSIBLE NAME, one WHOLE sentence per state (design D6's
 	 * clause split, kept): the role and the visible label lead, then either the
-	 * action or the runtime's closure reason. Each state is its own catalogue
+	 * action or the caption explaining why the seat is closed. Each state is its own catalogue
 	 * message rather than a sentence assembled from translated fragments - the
 	 * role noun, its article and the word order are the locale's, and "Switch
 	 * agent" cannot be built from "Agent" in every language. `label` is the
@@ -557,7 +567,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						closedReason !== null
 							? /*
 								 * The closed chip's tooltip: the label leads (which profile this
-								 * is about), then the runtime's own closure sentence - the SAME
+								 * is about), then the localized closure sentence - the SAME
 								 * string the panel states, as the flagged chip does for its rule.
 								 */
 								`${label} — ${closedReason}`

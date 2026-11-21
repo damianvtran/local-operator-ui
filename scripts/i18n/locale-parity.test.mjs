@@ -1977,6 +1977,46 @@ const IDENTICAL_OK = new Map([
 		"The cheaper interruptible option's own name, Spot, kept as the product's term: no vi guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Vietnamese only.",
 	],
 	[
+		"es:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.canvas.artifact.fallback_name.image",
+		"French « Image » has the same spelling as English (a common noun), followed by the untranslatable digest; not skipped copy; independently audited in W2 B3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.chat.canonical.segment.group.mixed",
+		"French « Messages » has the same spelling as English (plural common noun), not skipped copy; independently audited in W2 B3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.canvas.artifact.fallback_name.video",
+		"Vietnamese « Video » is the standard loanword for a video file (same spelling as English), followed by the untranslatable digest; not skipped copy; independently audited in W2 B3 (38831ad85d10). Scoped to Vietnamese only.",
+	],
+	[
+		"vi:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
 		"es:ui.chat.run_details.tally.unrecognised",
 		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
 	],

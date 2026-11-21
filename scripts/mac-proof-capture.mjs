@@ -41,7 +41,7 @@
  *     before any frame can claim its state.
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
 	closeSync,
@@ -81,6 +81,36 @@ import {
 } from "./app-tree-teardown.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	APP_ENV_KEYS,
+	DISCOVERY_TIMEOUT_MS,
+	OPEN_ENV_KEYS,
+	PRESENT_LINE,
+	PS_TZ,
+	TEST_LAUNCH_ENV,
+	attachMismatchMessage,
+	buildOpenArgv,
+	createAttachCheck,
+	createEnvProof,
+	createFileTail,
+	createFrontmostWatch,
+	discoverAppPid,
+	emptyFrontmost,
+	envNotInheritedMessage,
+	interRunGateProblem,
+	launchMode,
+	lsappinfoRunner,
+	openArgvProblem,
+	psArgvOf,
+	psRows,
+	reapLaunchedOnExit,
+	rigPidClassifier,
+	rigStyleProfilePattern,
+	sampleFrontmost,
+	startOf,
+	startSentinel,
+	stopLaunchedApp,
+} from "./mac-proof-focus.mjs";
 import {
 	NOTIFICATION_ID,
 	SEED_SCENARIOS,
@@ -127,22 +157,60 @@ export const OPERATOR_PORT = 1111;
 export const SCREENCAPTURE_METHOD =
 	"screencapture -l (real vibrancy, pending Mac measurement)";
 
+/**
+ * What a capturePage frame is (design D5): the app's own `capturePage()` keeps
+ * the window's alpha, so glass regions are translucent RGBA. Viewers
+ * composite that over white, so dark
+ * frames look mid-grey and contrast reads falsely low (designer's frame review
+ * of #1907, alpha 0.59-0.77 on glass). The bytes stay as
+ * captured; the receipt says so on the run and on every frame.
+ */
+export const CAPTUREPAGE_METHOD =
+	"capturePage: no vibrancy claim; RGBA with translucent glass; do not judge contrast from this mode";
+
 export const SCENES = Object.freeze([
 	"conversation",
 	"files",
 	"canvas",
+	// One picture from --session's Files view opened in the canvas (--preview-file).
+	"file-preview",
 	"library",
 	"notifications",
 	// #1902: the asks drawer of --session, opened on its suggested-command ask.
 	"asks",
 	// #1907: one notification's details page (/notifications/<--notification-id>).
 	"notification-detail",
+	// #1907: the same item's details INSIDE --session's drawer (Updates tab).
+	"update-detail",
+	// The harness's ONE write: --session's Files row -> "Download to this
+	// device", landed by the rig's backend inside the rig (see
+	// downloadSceneSteps). --backend-config-root only.
+	"download",
 ]);
+/** The `file-preview` scene's default row: the picture 79's remote session holds. */
+export const PREVIEW_FILE_DEFAULT = "image-1.png";
+/*
+ * A plain file name, because it is interpolated into CSS attribute selectors
+ * (`[title*="/<name>"]`, `img[alt="<name>"]`): a quote, backslash, slash or
+ * control character would change the selector rather than name a file.
+ */
+const PREVIEW_FILE = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,127}$/;
+
+export function previewFileProblem(name) {
+	return typeof name === "string" && PREVIEW_FILE.test(name)
+		? null
+		: `--preview-file must be a plain file name (letters, digits, . _ - and space; got ${JSON.stringify(name)})`;
+}
+
+/** The file the download scene takes when --download-file is not given (the authorised fixture). */
+export const DOWNLOAD_FILE_DEFAULT = "notes.md";
 export const THEMES = Object.freeze({
 	dark: "localOperatorDark",
 	light: "localOperatorLight",
 });
 const SESSION_ID = /^[a-f0-9]{12}$/;
+/** A library row id, as core's route pins it (desktop_library.py:62 `AssetID`). */
+const LIBRARY_ASSET_ID = /^la_[0-9a-f]{16}$/;
 
 /*
  * ---------------------------------------------------------------------------
@@ -724,6 +792,55 @@ export function releaseZipApp(
  * prints `[window-mode]`, so it always lands inside that window.
  */
 export const STARTUP_WINDOW_MS = 20_000;
+
+/*
+ * WHY A WINDOW WAIT BEFORE THE FIRST SCENE (79's first default-mode Mac run,
+ * installed 0.59.2, harness 00e18cd6: `the window is not visible at the shutter
+ * (SHUTTER label=conversation-dark media=window:7139:0 visible=false
+ * focused=false ...)`, 0 frames, every DOM step ok).
+ *
+ * The harness passes `--open-session`, and a window created to show a specific
+ * conversation HOLDS its first present (src/main/index.ts:1252,
+ * `holdPresentUntilConversation`) until the renderer reports that conversation
+ * is up, or `CONVERSATION_PAINT_FALLBACK_MS = 3_000` (src/main/index.ts:2347)
+ * after the window was created. The readiness steps finish inside that hold, so
+ * the first SHUTTER reported `window.isVisible()` false (`windowFacts`,
+ * src/main/index.ts:1775) and the guard below rightly refused it.
+ *
+ * The app has no shutter-free probe verb for its window facts (the shipped verbs
+ * are DEV_DRIVER_SCRIPT_VERBS in src/main/dev-driver-script.ts, and `state`'s
+ * `visibilityState` is not `isVisible()`), and the step list is read once at
+ * launch, so the harness cannot poll mid-run. It therefore spends ONE bounded,
+ * honest wait in the app's own runner before the first scene: a `waitFor` on a
+ * selector that never matches (`:not(*)`), marked optional so its expected
+ * timeout reads `skipped (optional)` instead of failing the run. Nothing here
+ * shows, focuses or activates the window - the app presents it on its own
+ * schedule - and the per-SHUTTER `visible=true` / `focused=false` guard is
+ * unchanged: a window still hidden after the wait fails the run naming the wait.
+ *
+ * 6 s default = 2x the 3 s fallback bound, which is a code constant (not a
+ * measured distribution); 15 s max keeps the wait well inside --timeout (180 s
+ * default) and the app's 300 s script cap. 0 disables it (the pre-fix behaviour).
+ * capturepage runs are headless and never visible, so they get no wait.
+ */
+export const WINDOW_WAIT_DEFAULT_S = 6;
+export const WINDOW_WAIT_MAX_S = 15;
+/** Matches no element, ever: the wait step can only end by its own bound. */
+export const WINDOW_WAIT_SELECTOR = ":not(*)";
+
+/** The runner step that spends the window wait, or null when none is due. */
+export function windowWaitStep({ capture, windowWaitS }) {
+	if (capture !== "screencapture" || !(windowWaitS > 0)) return null;
+	const ms = Math.round(windowWaitS * 1000);
+	return {
+		verb: "waitFor",
+		payload: { selector: WINDOW_WAIT_SELECTOR, timeoutMs: ms },
+		// Above the verb's own bound, so the step ends by the verb's timeout
+		// (100 ms polls in install.ts `waitFor`), not the runner's.
+		timeoutMs: ms + 5000,
+		optional: true,
+	};
+}
 export function startupProblem(state, elapsedMs) {
 	if (elapsedMs <= STARTUP_WINDOW_MS) return null;
 	if (!state.windowModeLine)
@@ -916,6 +1033,9 @@ Captures every --scene x --theme of the real app in ONE inactive launch.
                                capturepage (elsewhere, "no vibrancy claim")
   --window-mode <mode>         inactive (default for screencapture) | headless (capturepage only)
   --size WxH                   window size (default 1380x900)
+  --window-wait <s>            screencapture only: bounded wait before the first scene so the
+                               app's conversation-paint hold (3 s) releases the window first
+                               (default ${WINDOW_WAIT_DEFAULT_S}, max ${WINDOW_WAIT_MAX_S}, 0 = none); it never shows or focuses it
   --timeout <s>                whole-run bound from harness start (default 180, max 290);
                                the reap runs after it. SIGKILL cannot be caught: run this
                                as a background job or with a caller timeout >= --timeout + 60
@@ -933,7 +1053,17 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
                                starts, copy it in the same way, and BLOCK (exit 3) unless the
                                daemon reads the seeded rows back. Defaults --session (and
                                --notification-id) to the seed's own ids
-  --notification-id <n_...>    the item the notification-detail scene opens
+  --notification-id <n_...>    the item the notification-detail and update-detail scenes open
+  --preview-file <name>        the --session Files row the file-preview scene shows in the canvas
+                               (default ${PREVIEW_FILE_DEFAULT}); the receipt proves it is a PEER row
+  --download-file <name>       --scene download (config-root only, one --theme): the Files row
+                               to download (default ${DOWNLOAD_FILE_DEFAULT}); one per run
+  --manifest <abs json>        --scene download: {files:[{filename,bytes,sha256}]}; the landed
+                               file must match the --download-file entry (refused if absent)
+  --check-operator-downloads   --scene download, OFF by default: also compare a names-only listing
+                               of the operator's real ~/Downloads before/after (exit 3 if it cannot
+                               be listed). Off because on macOS that listing can raise a TCC
+                               "Files and Folders" prompt; containment is proven by destination
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -971,6 +1101,7 @@ export function parseArgs(argv) {
 		capture: process.platform === "darwin" ? "screencapture" : "capturepage",
 		windowMode: null,
 		size: "1380x900",
+		windowWaitS: WINDOW_WAIT_DEFAULT_S,
 		timeoutS: 180,
 		rigRoot: null,
 		backend: "isolated",
@@ -982,6 +1113,10 @@ export function parseArgs(argv) {
 		seedConfig: null,
 		seed: null,
 		notificationId: null,
+		previewFile: PREVIEW_FILE_DEFAULT,
+		downloadFile: null,
+		manifest: null,
+		checkOperatorDownloads: false,
 		serveRecordDir: null,
 		tokenFromOperatorProfile: false,
 		dryRun: false,
@@ -1040,6 +1175,9 @@ export function parseArgs(argv) {
 			case "--size":
 				opts.size = take();
 				break;
+			case "--window-wait":
+				opts.windowWaitS = Number(take());
+				break;
 			case "--timeout":
 				opts.timeoutS = Number(take());
 				break;
@@ -1073,8 +1211,25 @@ export function parseArgs(argv) {
 			case "--notification-id":
 				opts.notificationId = take();
 				break;
+			case "--preview-file":
+				opts.previewFile = take();
+				break;
 			case "--serve-record-dir":
 				opts.serveRecordDir = take();
+				break;
+			case "--download-file":
+				// One file per run: the authorisation covers one, never both.
+				if (opts.downloadFile !== null)
+					throw new Refusal(
+						"--download-file is given more than once (one file per run)",
+					);
+				opts.downloadFile = take();
+				break;
+			case "--manifest":
+				opts.manifest = take();
+				break;
+			case "--check-operator-downloads":
+				opts.checkOperatorDownloads = true;
 				break;
 			case "--token-from-operator-profile":
 				opts.tokenFromOperatorProfile = true;
@@ -1115,6 +1270,47 @@ function applySeedDefaults(opts) {
 	if (spec.detailId) opts.notificationId ??= spec.detailId;
 }
 
+/**
+ * The download scene's flag refusals (the harness's one write; see
+ * downloadSceneSteps). Before anything else of the run can be spawned:
+ * - config-root only: `attach` would land the file in the operator's real
+ *   ~/Downloads (its daemon runs as the operator), `isolated` has no peer;
+ * - one theme: the file lands once. A second theme's press would reach a
+ *   backend that reuses the identical file (`created: false`), so the app
+ *   shows its "already downloaded" success toast (remote-file-transfer.tsx,
+ *   ui.canvas.files.remoteAlreadyDownloaded), not a second download - that
+ *   frame would show a different toast from the first, and land nothing;
+ * - --download-file / --manifest only with the scene, and a plain file name.
+ */
+function downloadOptionsProblem(opts) {
+	const download = opts.scenes.includes("download");
+	if (!download) {
+		if (
+			opts.downloadFile !== null ||
+			opts.manifest !== null ||
+			opts.checkOperatorDownloads
+		)
+			throw new Refusal(
+				"--download-file, --manifest and --check-operator-downloads apply only to --scene download",
+			);
+		return;
+	}
+	if (opts.backend !== "config-root")
+		throw new Refusal(
+			opts.backend === "attach"
+				? "--scene download refuses --backend attach: that daemon runs as the operator, so the file would land in the operator's real ~/Downloads; use --backend-config-root (the rig's own HOME)"
+				: `--scene download needs --backend-config-root (the download route lands a PEER's row, and only that mode's HOME keeps it inside the rig; got --backend ${opts.backend})`,
+		);
+	if (opts.themes.length !== 1)
+		throw new Refusal(
+			'--scene download takes exactly one --theme (it downloads once; a second theme would show the app\'s "already downloaded" toast for the reused file, not a download)',
+		);
+	const nameProblem = downloadFileProblem(
+		opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT,
+	);
+	if (nameProblem) throw new Refusal(nameProblem);
+}
+
 /** Every refusal that needs no filesystem state beyond the flags themselves. */
 /** --peer-wait was given explicitly (its default must not trip the mode check). */
 function argvHasPeerWait(opts) {
@@ -1153,11 +1349,24 @@ export function validateOptions(opts) {
 		);
 	if (
 		opts.session === null &&
-		opts.scenes.some((s) => s === "files" || s === "canvas" || s === "asks")
+		opts.scenes.some(
+			(s) =>
+				s === "files" ||
+				s === "canvas" ||
+				s === "file-preview" ||
+				s === "asks" ||
+				s === "update-detail" ||
+				s === "download",
+		)
 	)
 		throw new Refusal(
-			"the files, canvas and asks scenes need --session (the canvas and the asks belong to a conversation)",
+			"the files, canvas, file-preview, asks, download and update-detail scenes need --session (the canvas, the asks and the drawer's updates belong to a conversation)",
 		);
+	if (opts.scenes.includes("file-preview")) {
+		const problem = previewFileProblem(opts.previewFile);
+		if (problem) throw new Refusal(problem);
+	}
+	downloadOptionsProblem(opts);
 	if (opts.seed !== null && opts.seedConfig !== null)
 		throw new Refusal(
 			"--seed and --seed-config are alternatives (one generates the template, the other copies yours)",
@@ -1175,10 +1384,12 @@ export function validateOptions(opts) {
 		);
 	if (
 		opts.notificationId === null &&
-		opts.scenes.includes("notification-detail")
+		opts.scenes.some(
+			(s) => s === "notification-detail" || s === "update-detail",
+		)
 	)
 		throw new Refusal(
-			"the notification-detail scene needs --notification-id (or --seed notification-details)",
+			"the notification-detail and update-detail scenes need --notification-id (or --seed notification-details)",
 		);
 	const mode = windowModeProblem(opts.windowMode);
 	if (mode) throw new Refusal(mode);
@@ -1186,6 +1397,14 @@ export function validateOptions(opts) {
 	if (capture) throw new Refusal(capture);
 	if (!/^\d{3,4}x\d{3,4}$/.test(opts.size))
 		throw new Refusal(`--size must be WxH (got ${opts.size})`);
+	if (
+		!Number.isFinite(opts.windowWaitS) ||
+		opts.windowWaitS < 0 ||
+		opts.windowWaitS > WINDOW_WAIT_MAX_S
+	)
+		throw new Refusal(
+			`--window-wait must be between 0 and ${WINDOW_WAIT_MAX_S} seconds (got ${opts.windowWaitS})`,
+		);
 	if (
 		!Number.isFinite(opts.timeoutS) ||
 		opts.timeoutS <= 0 ||
@@ -1248,6 +1467,7 @@ export function validateOptions(opts) {
 		["--backend-config-root", opts.backendConfigRoot],
 		["--backend-home", opts.backendHome],
 		["--serve-record-dir", opts.serveRecordDir],
+		["--manifest", opts.manifest],
 	])
 		if (path !== null && !isAbsolute(path))
 			throw new Refusal(`${flag} must be an absolute path (got ${path})`);
@@ -1262,6 +1482,616 @@ export function validateOptions(opts) {
  */
 
 /**
+ * The positive "this scene is on screen" selector for the scenes that are only
+ * a route. WHY (run #1907, measured): with no wait after `navigate`, the
+ * `notifications` shutter fired while the previous scene's detail pane was
+ * still painted - `notifications-light.png` had the same sha256 (cbbbcdc5...) as
+ * `notification-detail-light.png`. `navigate` only waits for the hash route,
+ * not for React to repaint, so each scene waits for markup that exists ONLY in
+ * its target state.
+ *
+ * CONSTRAINT: the installed app may be an older release, so these use only the
+ * shipped `waitFor` (selector + timeoutMs; `document.querySelector`, renderer
+ * dev-driver/install.ts at v0.59.2) and attributes present at v0.59.2:
+ * - notifications: the page (`data-notifications-page`) WITHOUT a detail pane
+ *   inside it (`data-notification-detail`, notification-detail.tsx), holding
+ *   either the loaded list (`data-notifications-list`) or its empty state
+ *   (`data-notifications-empty`) - so neither the skeleton nor a detail frame
+ *   can take the shot. The "Select a notification" placeholder has no stable
+ *   attribute at v0.59.2, so it is not used.
+ * - library: the RESULTS, settled - not the header. The header
+ *   (`data-library-header`, library-page.tsx:834) paints with the route, before
+ *   the listing answers, so it proved the route and nothing about the rows.
+ *   `[data-library-results]` (library-page.tsx:1019) carries
+ *   `aria-busy={listing.isLoading || listing.isFetching}` (:1021), and its only
+ *   loading content is `LibraryGridSkeleton` (`data-library-skeleton`,
+ *   library-card.tsx:521/543); while the catalogue is still indexing the header
+ *   shows `data-library-building` (:1002). So the wait is: results not busy, no
+ *   skeleton, no building line - which leaves exactly the settled faces: cards
+ *   (`data-library-card-id`), the empty state, or the listing error. A timeout
+ *   means the library never settled in 20 s and the run fails with no frame;
+ *   it never means "photograph the skeleton".
+ */
+export const SCENE_READY = Object.freeze({
+	// `:not(:has(... [data-notification-open]))` too (design D7): #1907's
+	// notifications-dark still had the previous scene's row lit as open while
+	// the pane already showed the empty placeholder - mid-transition.
+	notifications:
+		"[data-notifications-page]:not(:has([data-notification-detail], [data-notification-open])) :is([data-notifications-list], [data-notifications-empty])",
+	library:
+		'[data-library-page]:not(:has([data-library-building], [data-library-skeleton])) [data-library-results][aria-busy="false"]',
+});
+
+/*
+ * The canvas's Files view, SETTLED (79's be9379d8 Mac run: `files-light.png`
+ * was shuttered on "Loading session files..." - the scene waited only for the
+ * chat header, which is up long before the session's file index answers).
+ *
+ * Every selector below is markup of the app at v0.59.2
+ * (src/renderer/src/features/chat/components/canvas/finder-files-view.tsx), and
+ * the shipped `waitFor` is `document.querySelector`, so a selector LIST is one
+ * wait that passes on the first settled face it finds:
+ * - rows: `[data-tour-tag="file-row"]` (:1437 audio, :1533 every other kind),
+ *   only rendered once the list has items, inside the scroller section
+ *   `[data-tour-tag="files-scroller"]` (:811) - but only rows of the session's
+ *   file INDEX, never the person's attachments (agent review F1). Attachments
+ *   load on their own request and render their own "Attachments" section with
+ *   the SAME `data-tour-tag="file-row"` (one `FinderEntry`, :1437/:1533), and
+ *   once they arrive that section has no caption while the index can still be
+ *   loading (the count line is then blank, :693) - a frame of the person's own
+ *   uploads with the peer's files still missing. The Attachments `<section>`
+ *   carries no attribute at v0.59.2 (:912-915, `key` and `style` only), so the
+ *   exclusion is on the row's `data-file-id` (:1438/:1534): every attachment row's
+ *   id is `attachment:<key>` (attachment-items.ts:41 `ATTACHMENT_ID_PREFIX`,
+ *   :140 - one id per attachment, never the file's), and no index row's is
+ *   (session-files.ts:113 `remote:<row id>` for a peer's path row, :123
+ *   `artifact:<digest>` for any artifact row, the path itself for a local one).
+ *   `remote:` alone would be the narrower anchor but the wrong one: a peer's
+ *   ARTIFACT rows carry `artifact:` (:123) and a local session's rows neither,
+ *   so it would time out on both; the remote claim is the provenance
+ *   read-back's job (`imagePreviewCheck`). Consequence, fail-closed: a session
+ *   whose index is settled EMPTY but which holds attachments shows neither an
+ *   index row nor the empty block (:854 needs no attachments either), so the
+ *   wait times out and the run fails - it cannot be told from "index still
+ *   loading" by any v0.59.2 attribute, so it is never photographed;
+ * - the empty state, or an explicit error: the scroller's no-rows block is ONE
+ *   `<div>` whose first `<p>` is the heading (:860) - "Loading session files...",
+ *   "Building the file index...", "No files yet", or the error sentence. The
+ *   heading's TEXT is the only difference between those states (no attribute
+ *   at v0.59.2), but what FOLLOWS it is not: the settled empty state adds its
+ *   detail `<p>` (:882, rendered only when `index.state === "ready"` and the
+ *   attachments are not loading), an unsupported index adds its explanation
+ *   `<p>` (:875), and an error adds its Retry/Continue `<button>` (:887). The
+ *   loading and building headings stand alone EXCEPT in two v0.59.2 states,
+ *   where a `<button>` follows them and the wait would pass (agent review F2):
+ *   "Building the file index..." + Continue, once the index hook gives up after
+ *   60 building polls (use-session-files.ts:152, :247 back-off 1.1-5 s, ~3.7 min,
+ *   then :257-259 sets `error`, so :887 renders), and "Loading session files..."
+ *   + Clear while a search or kind filter is active (`narrowing`, :893). The
+ *   harness reaches neither: its profile is fresh (no saved filter, no query
+ *   typed) and its wait gives up at 20 s, long before the 60th poll. So
+ *   `> div > p + :is(p, button)` matches every settled face the harness can
+ *   reach and no loading one - there is no other `<p>` in the scroller, rows
+ *   are spans and buttons;
+ * - and, for both, no Attachments section still captioned "Loading session
+ *   files..." (:1073: a `text-ink-dim` span in the section's `<h3><button>`; its
+ *   one settled sibling caption, "partial", carries a `title`, :1081).
+ * A timeout means none of those within 20 s: the run fails and no frame is
+ * taken under the scene's name.
+ *
+ * NOT COVERED, and why: while an index is still PAGING with rows already on
+ * screen, the count line above the scroller appends " - Loading session
+ * files..." (:718) as bare text in an attribute-less span; no v0.59.2 selector
+ * can see it. The rows that frame shows are real, settled rows.
+ */
+const FILES_SCROLLER =
+	'[data-tour-tag="canvas-container"] [data-tour-tag="files-scroller"]:not(:has(h3 > button > span.text-ink-dim:not([title])))';
+/** A row of the session's file INDEX: any file row that is not an attachment (F1). */
+export const INDEX_ROW =
+	'[data-tour-tag="file-row"][data-file-id]:not([data-file-id^="attachment:"])';
+export const FILES_READY = `${FILES_SCROLLER} ${INDEX_ROW}, ${FILES_SCROLLER} > div > p + :is(p, button)`;
+
+/**
+ * The `file-preview` scene: --session's Files view, the `name` row shown IN THE
+ * CANVAS, positive-waited on the painted picture. Shipped v0.59.2 verbs only
+ * (`press`, `waitFor`, `openCanvas`, `navigate`: dev-driver-script.ts:62-71).
+ *
+ * WHY THE ROW'S MENU, NOT THE ROW. A picture in the grouped Images grid (the
+ * default, finder-layout.ts:17 `group: true`) is a TILE, and a tile's own click
+ * is EXPAND - the lightbox, not the canvas (finder-files-view.tsx:1553
+ * `tiled && media === "image" ? onExpand : onOpen`). The canvas door every row
+ * has is its menu's "Show in canvas" (remote rows: remote-file-actions-menu.tsx,
+ * entry `data-remote-action="show-in-canvas"` :262, wired to the same `onOpen`,
+ * finder-files-view.tsx:1363). `press` dispatches pointerdown...click
+ * (install.ts:206-263): the trigger is a Radix `DropdownMenuTrigger` (`aria-
+ * haspopup="menu"`, opens on pointerdown, button 0), the entry a Radix item
+ * (selects on click; `data-disabled` while disabled - above the relay's size
+ * ceiling - which the selector refuses, so a disabled entry fails the run).
+ *
+ * WHICH ROW. Row ids are opaque (`remote:<row id>` / `artifact:<digest>`,
+ * session-files.ts:113/123), so the row is found by its button's tooltip
+ * (`title`, :1552), matched on the EXACT name (agent review F4 / QA Q1-2: a
+ * prefix match picked `image-1.png.bak` first). The tooltip's first line is
+ * the identity (:1275-1281) and any further line follows a "\n" (:1295-1303:
+ * the remote row's "On <device>", an attachment status):
+ * - a path row: the identity is the (owner's display) path, so the title ends
+ *   in `/<name>` or has `/<name>` right before a newline - or IS the bare name;
+ * - an artifact row: `artifactTooltip` (artifact-identity.ts:200-211) is
+ *   `<name> \u00b7 <digest head> \u00b7 <cue>`, so the title starts `<name> \u00b7 `.
+ * Attachment rows are excluded (`INDEX_ROW`): an attachment named like the
+ * peer's file is the person's upload, not the peer's file. The shipped verbs
+ * cannot count matches, so "exactly one row of that name" is the provenance
+ * read-back's check (`imagePreviewCheck` fails the run on two or more).
+ * Rows are virtualised (only bands in view render), so the row must be on the
+ * first screen of the list - if it is not, `press` fails with "nothing matches".
+ *
+ * THE COLLAPSED GROUP (79's Mac run at main 34a08e97, app 0.59.2: "step 10
+ * press found no file-row with title image-1.png"). That session lists 1043
+ * files: an expanded Highlights group of one row and a COLLAPSED "Working
+ * files, 1,042" group, and `image-1.png` was inside the collapsed one - so its
+ * row was never rendered and no selector could reach it. At v0.59.2, once a
+ * session has any highlighted file, every other file sits under "Working
+ * files", and that group starts CLOSED (finder-layout.ts:18 `workingOpen:
+ * false`; :224 `open: prefs.workingOpen || narrowing`; :227 returns before any
+ * of its rows are laid out). Two ways in:
+ * - the search field (finder-files-view.tsx:568-575, an `<Input>`; typing makes
+ *   the view `narrowing`, :271, which opens every group). Not usable: no
+ *   v0.59.2 script verb types into a field (dev-driver-script.ts:62-71 ships
+ *   navigate/setTheme/press/state/waitFor/openCanvas/skipOnboarding/shutter,
+ *   and `press`, install.ts:206-263, only dispatches pointer and mouse events);
+ * - pressing the group's header, which is what the scene does
+ *   (`COLLAPSED_GROUP_HEADER`). The header is a `<button>` directly inside the
+ *   section's `<h3>` (:912 `<section>`, :916 `<h3>`, :945 `<button>`); its
+ *   click toggles the group (:986 -> :514-517 `setPrefs({ workingOpen })`),
+ *   and it carries the group's OWN state as `aria-expanded` (:984) and
+ *   `aria-disabled={narrowing}` (:985, where the toggle refuses, :516).
+ *   The press is OPTIONAL: a session with no highlights has no Working files
+ *   group (finder-layout.ts:217 needs both), and the second theme of one run
+ *   finds the group already open (the preference persists), so "nothing
+ *   collapsed" is expected and skipped. The header has no id attribute and its
+ *   label is localized, so the selector names "a collapsed header" rather than
+ *   "Working files". In the harness's fresh profile Working files is the only
+ *   group that can start collapsed: every other group starts open
+ *   (`closedSections: []`, finder-layout.ts:19) and closes only when a person
+ *   presses it. Once the group is expanded, its rows are virtualised like any
+ *   others, so the row still has to fall on the first screen.
+ *
+ * THE SETTLED STATE. The canvas viewer renders `<img alt={document.title}>`
+ * only once the bytes arrived (image-preview.tsx:127-129 artifact, :238-240
+ * path; loading/failure render `FileViewerState` instead), inside
+ * `[data-tour-tag="canvas-container"]` (canvas/index.tsx:836). The lightbox
+ * (`data-image-viewport`, image-lightbox.tsx:716) portals to <body>, and is
+ * excluded anyway, so an Expand can never pass for the canvas. The Files
+ * grid's own thumbnails are `alt=""`. A timeout means the picture never
+ * reached the canvas (unreachable owner, refused read) and no frame.
+ * NOT COVERED (QA Q1-1): the `<img>` exists as soon as its URL is set, BEFORE
+ * the browser decodes it, and no v0.59.2 attribute marks the decode (no
+ * `onLoad` state, no `complete` attribute a selector can read), so a frame can
+ * catch a not-yet-decoded picture. Stated in the receipt's `limits`.
+ */
+/**
+ * The file-preview scene's one remote-menu press: a READ (the bytes go to the
+ * canvas, never to disk). One constant because `downloadStepsProblem` admits
+ * exactly this string, and only it, in a run that is not a download run.
+ */
+export const SHOW_IN_CANVAS_ITEM_SELECTOR =
+	'[role="menu"] [data-remote-action="show-in-canvas"]:not([data-disabled])';
+
+/**
+ * A Files group header whose group is collapsed and may be opened. See "THE
+ * COLLAPSED GROUP" above: in the harness's profile this can only be Working
+ * files. It names state attributes, never the chevron icon, so an icon change
+ * cannot break it.
+ */
+export const COLLAPSED_GROUP_HEADER =
+	'[data-tour-tag="files-scroller"] section > h3 > button[aria-expanded="false"]:not([aria-disabled="true"])';
+
+/**
+ * The Files view, settled, with a collapsed Working files group opened: the ONE
+ * way every row-pressing scene (file-preview, download) reaches its row. Shared,
+ * not copied, so a fix to how the list is reached lands in both (79's download
+ * run at main 3673e88232 failed exactly where file-preview had been fixed in
+ * #2015: its row sat in the collapsed group and was never rendered).
+ */
+export function filesRowReachSteps() {
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { view: "files" } },
+		{
+			verb: "waitFor",
+			payload: { selector: FILES_READY, timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		// Open the collapsed Working files group (79's run: the row was in it).
+		// Optional, so "no collapsed group" is skipped. 1.5 s is the bound every
+		// optional guarded toggle here uses (the asks and update-detail scenes).
+		// It is not a measured latency: FILES_READY has already passed, and
+		// the headers come from the same render as the rows (one `sections` memo,
+		// finder-files-view.tsx:301), so the header is already in the DOM or it
+		// never will be.
+		{
+			verb: "press",
+			payload: { selector: COLLAPSED_GROUP_HEADER, timeoutMs: 1500 },
+			optional: true,
+		},
+	];
+}
+
+export function filePreviewSceneSteps(name = PREVIEW_FILE_DEFAULT) {
+	const problem = previewFileProblem(name);
+	if (problem) throw new Refusal(problem);
+	// `\a ` is CSS for a newline (the space ends the escape); `\b7 ` is U+00B7.
+	const titled = `:is([title="${name}"], [title$="/${name}"], [title*="/${name}\\a "], [title^="${name}\\a "], [title^="${name} \\b7  "])`;
+	return [
+		...filesRowReachSteps(),
+		{
+			verb: "press",
+			payload: {
+				selector: `[data-tour-tag="files-scroller"] ${INDEX_ROW}:has(button${titled}) button[aria-haspopup="menu"]`,
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: SHOW_IN_CANVAS_ITEM_SELECTOR,
+				timeoutMs: 5000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: filePreviewSelector(name),
+				timeoutMs: 20000,
+			},
+			timeoutMs: 25000,
+		},
+	];
+}
+
+/** The canvas picture of `name` (see `filePreviewSceneSteps`). */
+export function filePreviewSelector(name) {
+	return `[data-tour-tag="canvas-container"] img[alt="${name}"]:not([data-image-viewport] img)`;
+}
+
+/**
+ * How long the scene waits for the download's outcome toast. Not a measured
+ * distribution: `downloadRemoteFile` re-POSTs a pending transfer on
+ * ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] (use-attachment-url.ts at
+ * v0.59.2), 30 s of backoff before it gives up, so this is twice that; the
+ * whole-run --timeout still bounds it. No Mac run has measured the real latency
+ * yet, so every receipt records it (`download.toastLatency`, review F4) and
+ * lists the gap under `limits` until a distribution exists. Declared here,
+ * above MEASUREMENT_LIMITS, because that frozen list's text reads it.
+ */
+export const DOWNLOAD_OUTCOME_WAIT_MS = 60_000;
+
+/*
+ * What a frame of this run CANNOT prove, said in the receipt (`limits`) so a
+ * reader judging the frames does not have to know these waits' source. Each
+ * entry names the scenes it applies to; a run lists only those its scenes hit.
+ * Factual and short: the reasoning lives beside each selector above and in
+ * docs/mac-proof-capture.md, "Scene waits".
+ */
+export const MEASUREMENT_LIMITS = Object.freeze([
+	Object.freeze({
+		id: "files-paging-caption",
+		scenes: Object.freeze(["files", "file-preview"]),
+		text: 'While the file index is still paging with rows on screen, the count line can read "Loading session files…"; no v0.59.2 attribute exposes it, so the wait cannot exclude it.',
+	}),
+	Object.freeze({
+		id: "files-attachments-only",
+		// download waits on FILES_READY too (filesRowReachSteps).
+		scenes: Object.freeze(["files", "file-preview", "download"]),
+		text: "Attachment rows never satisfy the Files wait; a session whose index is empty but holds attachments times out and fails rather than being photographed.",
+	}),
+	Object.freeze({
+		id: "preview-first-screen",
+		// The id predates download sharing the reach (filesRowReachSteps); kept so
+		// earlier receipts still compare.
+		scenes: Object.freeze(["file-preview", "download"]),
+		text: "The previewed or downloaded row must be on the Files view's first screen (rows are virtualised), after a collapsed Working files group is expanded; otherwise the run fails.",
+	}),
+	Object.freeze({
+		id: "preview-no-search",
+		scenes: Object.freeze(["file-preview"]),
+		text: "The Files search field is never used: no v0.59.2 script verb types into a field, so a row is reached by expanding its group, not by filtering.",
+	}),
+	Object.freeze({
+		id: "preview-no-decode-wait",
+		scenes: Object.freeze(["file-preview"]),
+		text: "The wait sees the canvas <img> once its URL is set, not once it has decoded; there is no image-decode wait.",
+	}),
+	// Why the detail scenes show a SEEDED read face: `detailReadSelector`.
+	Object.freeze({
+		id: "detail-read-seeded",
+		scenes: Object.freeze(["notification-detail", "update-detail"]),
+		text: "The unread->read flip cannot run in an unfocused window: notifications.read is a foreground-receipt op refused outside focus (desktop-ipc.ts:95-101, :166-185). The read face is seeded, not driven.",
+	}),
+	Object.freeze({
+		id: "selectors-fixture-proven",
+		scenes: Object.freeze([
+			"files",
+			"file-preview",
+			"library",
+			"notifications",
+			"update-detail",
+		]),
+		text: "Scene-wait selectors are read from the v0.59.2 source and proven on jsdom fixtures shaped like it, not in Chromium.",
+	}),
+	/*
+	 * The download scene's (release owner's request, #2012). `unless` names a
+	 * run option that, when set, makes the limit not apply: with
+	 * --check-operator-downloads the stray listing runs, so containment is no
+	 * longer destination-only.
+	 */
+	/*
+	 * Every darwin run (`when`: only listed when the run launched through
+	 * LaunchServices, mac-proof-focus.mjs). Measured on the capture Mac
+	 * (2026-11-20): `lsappinfo front` + `lsappinfo info -only name -only pid`
+	 * answered in 0.08 s, rc 0, with no prompt - the watchdog's permission-free
+	 * read is confirmed. What stays inferred until the first watched Mac run is
+	 * that `open -g -n` prevents the come-forward (RCA R1).
+	 */
+	Object.freeze({
+		id: "focus-prevention-launchservices",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "open -g -n is the prevention, inferred from open(1) and the RCA until a watched Mac run shows no rig pid frontmost; lsappinfo was measured prompt-free (0.08 s). Matching is by pid only.",
+	}),
+	/*
+	 * Round-1 review (S1, S2, F2): what the LaunchServices launch's isolation
+	 * and cleanup rest on that no Linux run can measure.
+	 */
+	Object.freeze({
+		id: "focus-env-explicit-unmeasured",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "The non-secret isolation keys ride on open --env (documented by man open on macOS 27.2.1); that LaunchServices delivers them, and the inherited token, to a new instance is proven per run from the app's own lines, not measured in advance. A token that does not arrive makes v0.59.2 exit at its attach check before any backend or window.",
+	}),
+	Object.freeze({
+		id: "focus-crash-cleanup-bounded",
+		scenes: SCENES,
+		when: "launchServices",
+		text: "If the harness itself is killed (SIGKILL, crash), the app's own log files keep the token unredacted inside the 0700 rig, and the sentinel sweeps rig-profile processes for 15 s only; a LaunchServices launch finishing later is caught by the next run's inter-run gate, not reaped.",
+	}),
+	Object.freeze({
+		id: "toast-latency-unmeasured",
+		scenes: Object.freeze(["download"]),
+		text: `The outcome-toast wait (${DOWNLOAD_OUTCOME_WAIT_MS} ms) is derived from the app's retry backoff, not measured; no Mac run had measured it. download.toastLatency records this run's value.`,
+	}),
+	Object.freeze({
+		id: "config-root-only",
+		scenes: Object.freeze(["download"]),
+		text: "The download scene runs only with --backend-config-root (attach and isolated are refused); a download through the operator's own daemon, into their real ~/Downloads, is not exercised.",
+	}),
+	Object.freeze({
+		id: "containment-destination-based",
+		scenes: Object.freeze(["download"]),
+		unless: "checkOperatorDownloads",
+		text: "--check-operator-downloads off: ~/Downloads was neither listed nor resolved, so containment rests on destination + insideRig alone; a symlinked ~/Downloads is not followed.",
+	}),
+	Object.freeze({
+		id: "fixture-proven-actions",
+		scenes: Object.freeze(["download"]),
+		text: "The group expand, the row trigger (exact label, one index row), the Download entry and the toast sequence are proven on the fixture app and jsdom, not in Chromium; a Mac run is their first real test.",
+	}),
+]);
+
+/**
+ * The `limits` this run's scenes hit, as `{id, text}` - the ONE assembly for
+ * every scene (the receipt's top-level `limits`, and `download.limits`, its
+ * download-scene view). `opts` drops a limit whose `unless` option is set.
+ */
+export function receiptLimits(scenes, opts = {}) {
+	return MEASUREMENT_LIMITS.filter(
+		(limit) =>
+			limit.scenes.some((scene) => scenes.includes(scene)) &&
+			!(limit.unless && opts[limit.unless]) &&
+			!(limit.when && !opts[limit.when]),
+	).map(({ id, text }) => ({ id, text }));
+}
+
+/**
+ * "This notification's detail shows it READ" (design D7), from markup present
+ * at v0.59.2.
+ *
+ * WHY THE ITEM IS SEEDED READ, NOT OPENED UNREAD (79's Mac run at main
+ * 34a08e97, app 0.59.2: "Step 16 waitFor `[data-drawer-detail="n_macproofdetailaa"]
+ * [data-notification-toggle-read] svg.lucide-circle` timed out"). It was not
+ * icon drift: lucide-react is 0.507.0 at v0.59.2 and on main, and its
+ * createLucideIcon still emits `lucide-circle`. Opening an unread item fires
+ * `notifications.read` (notification-detail.tsx:871-891 `useOpenedDetailRead`,
+ * drawer-updates.tsx:371, through notifications-api.ts:879 `useNotificationsWrite`),
+ * and main REFUSES that op unless the window is focused: it is a
+ * foreground-receipt op (desktop-ipc.ts:95-101 `FOREGROUND_RECEIPT_OPS`, refused
+ * at :166-185 on `!owner.isFocused()`). This harness only ever runs an
+ * unfocused window, and refuses a focused one on purpose, so the optimistic
+ * flip is rolled back (notifications-api.ts:892 `onError`) and the item never
+ * becomes read. #1907's "Unread 3 in dark, 4 in light" fits that: one frame
+ * caught the optimistic flip, the other caught the rollback. So the live
+ * unread->read flip cannot be exercised here at all, and the notification-
+ * details seed stores the item ALREADY READ: `useOpenedDetailRead` returns
+ * before writing (notification-detail.tsx:889), the read face is there from
+ * the first paint, and the frame shows the seeded state. It does not show the
+ * app flipping it. Any --notification-id these scenes open must likewise
+ * already be read.
+ *
+ * The facts, one selector:
+ * - the detail's own toggle shows its READ face. The toggle
+ *   (notification-detail.tsx:351-378, a `<Button data-notification-toggle-read="">`)
+ *   carries NO read-state attribute at v0.59.2, only `aria-disabled`, `title`
+ *   and the marker. `item.read` switches only its icon (:371-375, `<Circle>` when
+ *   read, `<Check>` when unread) and its label text (localized), so the icon
+ *   class is the only selector-visible proxy. No attribute is invented here.
+ * - the ROW's own state attribute, wherever a row is on screen: on the page, no
+ *   list row for it is still `data-notification-unread` (notification-row.tsx:203;
+ *   the Unread count comes from those rows), and a narrow window hides the
+ *   list, so an absent row passes. In the drawer the detail REPLACES the list
+ *   (drawer-updates.tsx:779), so the row's `data-unread` (:1120) is checked
+ *   BEFORE the detail opens (`updateDetailSceneSteps`), not here.
+ * `scope` is the detail container: the page's `[data-notification-detail=id]`
+ * or the drawer's `[data-drawer-detail=id]`.
+ */
+export function detailReadSelector(
+	id,
+	scope = `[data-notification-detail="${id}"]`,
+) {
+	const toggle = `${scope} [data-notification-toggle-read] svg.lucide-circle`;
+	return scope.startsWith("[data-notification-detail=")
+		? `[data-notifications-page]:not(:has([data-notification-row="${id}"][data-notification-unread])) ${toggle}`
+		: toggle;
+}
+
+/**
+ * The update-detail scene (#1907, design D6): the item's details INSIDE the
+ * conversation's drawer (Updates tab -> View details -> in-drawer detail with
+ * "Back to updates" and "Open in Notifications"), from shipped verbs only.
+ *
+ * WHY THE RAIL, NOT THE CHIP. The asks scene presses the composer chip
+ * `[data-status-asks]`, but that chip renders only when the conversation has
+ * asks (composer-status-row.tsx `showAsks`), and the notification-details seed
+ * has none. The panel rail's ask item (`[data-panel-rail-item="ask"]`,
+ * panel-rail.tsx/panel-rail-item.tsx) opens the drawer in the conversation's
+ * scope regardless, and a door-opened drawer is not auto-closed on an empty
+ * queue. Every press is guarded by the state it would change, as in the asks
+ * scene: the rail item only while `aria-pressed="false"`, the Updates tab only
+ * while `aria-selected="false"` (with no asks the drawer DEFAULTS to Updates,
+ * drawer-updates.tsx `defaultDrawerTab`; pressing it from the fleet drawer's
+ * strip re-scopes to this conversation). Then the required waits: the tab
+ * selected, the item's row, the in-drawer detail with its title, and its read
+ * face (`detailReadSelector`).
+ *
+ * THE READ VIEW. The item is seeded read (see `detailReadSelector` for why an
+ * unfocused window cannot make it read), and the drawer opens on its Unread
+ * view (drawer-updates.tsx:301 `initialView = "unread"`, :404-408 lists only
+ * unread rows there). So the scene switches to the Read view. That is a radio
+ * (:1033 `role="radio"`, :1034 `aria-checked`, :1064 `data-drawer-read-view`),
+ * pressed only while unchecked, and then it waits for the item's row in that
+ * list (:952 `data-drawer-view-list`) WITHOUT the row's own unread state
+ * attribute (:1119 `data-drawer-update`, :1120 `data-unread`, present only
+ * while unread). The row is checked by state attribute here because the detail
+ * replaces the list once it opens.
+ */
+export function updateDetailSceneSteps(id) {
+	const row = `[data-drawer-view-list="read"] [data-drawer-update="${id}"]:not([data-unread])`;
+	const detail = `[data-drawer-detail="${id}"]`;
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { open: false } },
+		{
+			verb: "waitFor",
+			payload: { selector: '[data-panel-rail-item="ask"]', timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-panel-rail-item="ask"][aria-pressed="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: '[data-drawer-tab="updates"]', timeoutMs: 10000 },
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-drawer-tab="updates"][aria-selected="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: '[data-drawer-tab="updates"][aria-selected="true"]',
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-drawer-read-view="read"][aria-checked="false"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: '[data-drawer-read-view="read"][aria-checked="true"]',
+				timeoutMs: 10000,
+			},
+		},
+		// The row, by its OWN read state (no `data-unread`): an item that is still
+		// unread fails here, naming the row, rather than at the icon wait.
+		{
+			verb: "waitFor",
+			payload: { selector: row, timeoutMs: 15000 },
+			timeoutMs: 20000,
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: `${row} [data-row-action="details"]`,
+				timeoutMs: 5000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: `${detail} [data-notification-detail-title]`,
+				timeoutMs: 10000,
+			},
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: detailReadSelector(id, detail), timeoutMs: 10000 },
+		},
+	];
+}
+
+/**
+ * Two DIFFERENT scenes photographed to the same bytes mean one of them is a
+ * stale frame (run #1907: notifications-light == notification-detail-light,
+ * sha256 cbbbcdc5...). Answers the problem naming both, else null. Frames of
+ * the SAME scene in two themes are not compared here: that is a theme question,
+ * not a stale route. The scene is the label minus its `-<theme>` suffix.
+ */
+export function duplicateFrameProblem(frames) {
+	const byHash = new Map();
+	for (const frame of frames ?? []) {
+		if (!frame?.sha256) continue;
+		const suffix = `-${frame.theme}`;
+		const scene = frame.label.endsWith(suffix)
+			? frame.label.slice(0, -suffix.length)
+			: frame.label;
+		const prior = byHash.get(frame.sha256);
+		if (prior && prior.scene !== scene)
+			return `frames ${prior.label} and ${frame.label} are byte-identical (sha256 ${frame.sha256}); two different scenes cannot be the same picture, so one is a stale frame`;
+		if (!prior) byHash.set(frame.sha256, { scene, label: frame.label });
+	}
+	return null;
+}
+
+/** The shipped runner's cap (src/main/dev-driver-script.ts DEV_DRIVER_SCRIPT_MAX_STEPS at v0.59.2). */
+export const RUNNER_MAX_STEPS = 64;
+
+/**
+ * A step list over the cap is refused by the app only AFTER its window is up;
+ * refuse it here first, naming the fix. The drawer scenes are long (update-detail
+ * is 15 steps a theme: the Read view switch and the row's state wait), so every
+ * scene x both themes no longer fits one launch.
+ */
+export function stepCountProblem(steps) {
+	if (steps.length <= RUNNER_MAX_STEPS) return null;
+	return `the step list has ${steps.length} steps and the app's runner caps it at ${RUNNER_MAX_STEPS}; split the --scene list across runs`;
+}
+
+/**
  * The step list the app's S1 runner walks. One launch: onboarding out of the
  * way, readiness, then per theme every scene with one shutter each. Frames are
  * labelled `<scene>-<theme>` (also the PNG name).
@@ -1272,6 +2102,9 @@ export function buildSteps({
 	session,
 	capture,
 	notificationId = null,
+	windowWaitS = WINDOW_WAIT_DEFAULT_S,
+	previewFile = PREVIEW_FILE_DEFAULT,
+	downloadFile = null,
 }) {
 	const shutter = (label) => ({
 		verb: "shutter",
@@ -1298,6 +2131,10 @@ export function buildSteps({
 		// The harness reads this result: with --session, activeSessionId must match.
 		{ verb: "state" },
 	];
+	// Before the first scene, not right before the shutter: each scene's own
+	// positive-selector waitFor stays the last step before its frame (#1907).
+	const wait = windowWaitStep({ capture, windowWaitS });
+	if (wait) steps.push(wait);
 	for (const theme of themes) {
 		steps.push({ verb: "setTheme", payload: THEMES[theme] });
 		for (const scene of scenes) {
@@ -1312,10 +2149,23 @@ export function buildSteps({
 								payload: { view: scene === "files" ? "files" : "documents" },
 							},
 				);
-				steps.push({
-					verb: "waitFor",
-					payload: { selector: '[data-chat-region="header"]' },
-				});
+				// `files` waits for its DATA, not the header: the header is up long
+				// before the file index answers (79's files-light.png, "Loading
+				// session files..."). See FILES_READY for the settled faces.
+				steps.push(
+					scene === "files"
+						? {
+								verb: "waitFor",
+								payload: { selector: FILES_READY, timeoutMs: 20000 },
+								timeoutMs: 25000,
+							}
+						: {
+								verb: "waitFor",
+								payload: { selector: '[data-chat-region="header"]' },
+							},
+				);
+			} else if (scene === "file-preview") {
+				steps.push(...filePreviewSceneSteps(previewFile));
 			} else if (scene === "asks") {
 				steps.push(...asksSceneSteps());
 			} else if (scene === "notification-detail") {
@@ -1335,8 +2185,32 @@ export function buildSteps({
 					verb: "waitFor",
 					payload: { selector: `${selector} [data-notification-detail-title]` },
 				});
+				// The read face (design D7). The item is SEEDED read: an unfocused
+				// window's `notifications.read` is refused by main's foreground guard
+				// (desktop-ipc.ts:95-101, :166-185), so opening an unread one flips it
+				// optimistically and rolls it back (#1907's Unread 3 vs 4). See
+				// `detailReadSelector`.
+				steps.push({
+					verb: "waitFor",
+					payload: {
+						selector: detailReadSelector(notificationId),
+						timeoutMs: 10000,
+					},
+					timeoutMs: 15000,
+				});
+			} else if (scene === "update-detail") {
+				steps.push(...updateDetailSceneSteps(notificationId));
+			} else if (scene === "download") {
+				steps.push(
+					...downloadSceneSteps(downloadFile ?? DOWNLOAD_FILE_DEFAULT),
+				);
 			} else {
 				steps.push({ verb: "navigate", payload: `/${scene}` });
+				steps.push({
+					verb: "waitFor",
+					payload: { selector: SCENE_READY[scene], timeoutMs: 20000 },
+					timeoutMs: 25000,
+				});
 			}
 			steps.push(shutter(label));
 		}
@@ -1393,6 +2267,765 @@ export function asksSceneSteps() {
 			},
 		},
 	];
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * The download scene: the harness's FIRST (and only) write.
+ * ---------------------------------------------------------------------------
+ *
+ * WHY IT EXISTS. The remote-files real-path plan needs proof that ONE file a
+ * peer owns can be downloaded through the desktop app, on the Mac, without
+ * touching the operator's app, profile or ~/Downloads. Every other scene only
+ * looks; this one presses the Files row's "Download to this device".
+ *
+ * WHO WRITES, AND WHERE (read from the code, cited so a reviewer can re-check):
+ * - The menu entry (`[data-remote-action="download"]`,
+ *   remote-file-actions-menu.tsx at v0.59.2) calls `downloadRemoteFile`
+ *   (remote-file-transfer.tsx), which sends the desktop op
+ *   `sessions.files.download` = `POST /v1/desktop/sessions/<sid>/files/<fid>/download`
+ *   (desktop-contract.ts) from the APP to the rig's `lop serve`, with the
+ *   app's own token. The harness's daemon client is NOT on that path and its
+ *   allowlist (`DAEMON_ROUTES`) gains no route: it stays GET-only, and a test
+ *   pins that it still refuses that POST.
+ * - The BACKEND lands the file (core
+ *   `local_operator/server/routes/desktop_session_files.py` remote_file_download,
+ *   `server/utils/remote_session_files.py` downloads_dir): `Path.home()/Downloads`
+ *   when that is a directory, else `<config>/downloads`; never overwriting (an
+ *   identical file is reused, `created: false`; a different one goes to
+ *   `name (1).ext` ... `name (99).ext`).
+ *
+ * WHY --backend-config-root ONLY. In that mode the rig's lop processes run with
+ * `HOME=--backend-home` and `LOCAL_OPERATOR_CONFIG_DIR=--backend-config-root`,
+ * so both possible destinations are inside the rig. `--backend attach` talks to
+ * a daemon running as the operator, whose `Path.home()/Downloads` IS the
+ * operator's real ~/Downloads; `--backend isolated` has no peer, so the route
+ * (remote rows only) has nothing to land. Both are refused before anything is
+ * spawned.
+ *
+ * WHAT THE WRITE CAN REACH: exactly one new file, `<backend-home>/Downloads/<name>`
+ * (or its `(n)` variant), or `<config-root>/downloads/<name>` when the former
+ * is not a directory. Preflight refuses a destination that is a symlink or
+ * resolves outside its rig root, and one that already holds `<name>` (a reused
+ * identical file would land nothing new and prove nothing).
+ *
+ * WHY "Save as..." IS NEVER PRESSED. Save as reads the bytes into the window and
+ * hands them to Electron's download manager, whose default folder is
+ * `app.getPath('downloads')` - the operator's real ~/Downloads, whatever HOME
+ * the rig set (window-guards-electron.ts guardDownloads). So the only remote
+ * action this harness may press is `download` (`downloadStepsProblem`), and a row
+ * that offers no Download (only Save as) fails the run instead.
+ */
+
+/** The ONE remote action the harness may press. */
+export const DOWNLOAD_ITEM_SELECTOR =
+	'[role="menu"] [data-remote-action="download"]:not([data-disabled])';
+
+/** Sonner 2.0.3 marks each toast `data-sonner-toast` with `data-type` = its kind. */
+const DOWNLOAD_OUTCOME_TOAST =
+	'[data-sonner-toast]:is([data-type="success"], [data-type="error"], [data-type="info"])';
+const DOWNLOAD_SUCCESS_TOAST = '[data-sonner-toast][data-type="success"]';
+
+/**
+ * The en template of `ui.common.actions.actions_for_name`, used when the
+ * repository's catalogues cannot be read (the harness copied out of the tree).
+ * A label set that misses the app's locale matches nothing, so the run fails
+ * at the row wait - the safe direction.
+ */
+const ACTIONS_FOR_NAME_EN = "Actions for {name}";
+
+/**
+ * Every shipped locale's exact accessible name for the row trigger of `name`
+ * ("Actions for <name>", "Acciones de <name>", ...), from the repository's own
+ * catalogues beside this script. WHY exact labels (review F2 / S1-2): a
+ * substring match let `old-notes.md`'s row be the one pressed, downloading a
+ * file the run was never authorised to land before anything failed. The
+ * harness does not pin the app's locale, so it accepts any shipped locale's
+ * label - each still EXACT. A template carrying a quote, backslash or control
+ * character is skipped (it is quoted into a CSS attribute selector).
+ */
+export function actionsForNameLabels(
+	name,
+	catalogues = join(HERE, "..", "src", "i18n", "catalogues"),
+) {
+	const templates = new Set([ACTIONS_FOR_NAME_EN]);
+	let locales = [];
+	try {
+		locales = readdirSync(catalogues).sort();
+	} catch {}
+	for (const locale of locales) {
+		let template;
+		try {
+			template = JSON.parse(
+				readFileSync(
+					join(catalogues, locale, "ui.common.actions.json"),
+					"utf8",
+				),
+			)["ui.common.actions.actions_for_name"];
+		} catch {
+			continue;
+		}
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+		if (typeof template !== "string" || /["\\\u0000-\u001f]/.test(template))
+			continue;
+		if (template.includes("{name}")) templates.add(template);
+	}
+	return [...templates].map((t) => t.replaceAll("{name}", name));
+}
+
+/** The menu trigger of the row whose accessible name is EXACTLY one of `labels`. */
+function rowTriggerButton(labels) {
+	return `button[aria-haspopup="menu"]:is(${labels.map((l) => `[aria-label="${l}"]`).join(", ")})`;
+}
+
+/**
+ * Matches (something) only when TWO OR MORE file rows carry `name`'s trigger.
+ * Any two distinct rows have a lowest common ancestor with two distinct
+ * children c1 ~ c2, each the row itself or an ancestor of it, so the pair is
+ * `X ~ X` with X = "is such a row, or contains one". `:has()` may not nest, so
+ * the row-itself case is `row:has(button)` and the ancestor case is
+ * `:has(row button)` - neither nests. Used with `waitFor {gone: true}`: the
+ * run refuses rather than press the first of two same-named rows (S1-2).
+ *
+ * Only INDEX rows count (`INDEX_ROW`, #2012 review C1): the trigger the scene
+ * presses is restricted to them, so an attachment of the same name (the
+ * person's upload, which shares `data-tour-tag="file-row"`) is not a second
+ * candidate, and counting it refused a run that had exactly one row to press.
+ */
+export function duplicateRowSelector(labels) {
+	const button = rowTriggerButton(labels);
+	const holder = `:is(${INDEX_ROW}:has(${button}), :has(${INDEX_ROW} ${button}))`;
+	return `${holder} ~ ${holder}`;
+}
+
+/**
+ * A plain basename the backend could land: no separator, no `.`/`..`, no
+ * control character, no quote or backslash (it is quoted into a CSS attribute
+ * selector).
+ */
+export function downloadFileProblem(name) {
+	if (typeof name !== "string" || name.length === 0 || name.length > 255)
+		return "--download-file must be a file name (1-255 characters)";
+	if (name === "." || name === "..")
+		return `--download-file must be a file name (got ${name})`;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: refusing them is the point
+	if (/[/\\"\u0000-\u001f\u007f]/.test(name))
+		return `--download-file must be a plain file name: no /, \\, " or control characters (got ${JSON.stringify(name)})`;
+	return null;
+}
+
+/**
+ * The download scene, from the shipped S2 verbs only (navigate, openCanvas,
+ * waitFor, press - `DEV_DRIVER_SCRIPT_VERBS` at v0.59.2); no new renderer verb.
+ *
+ * - The Files view as file-preview reaches it (`filesRowReachSteps`): the
+ *   settled-data wait (`FILES_READY`), then the OPTIONAL press of a collapsed
+ *   group header (`COLLAPSED_GROUP_HEADER`). 79's Mac run at main 3673e88232
+ *   ("waitFor failed: nothing matches [data-tour-tag="file-row"] ... Actions for
+ *   notes.md ... after 20000ms"): 1043 files, an open Highlights group of one
+ *   row and a collapsed "Working files, 1,042" holding notes.md, whose rows
+ *   v0.59.2 never renders (see "THE COLLAPSED GROUP" at file-preview). As
+ *   there, the row must then fall on the first screen (receipt limit
+ *   `preview-first-screen`).
+ * - The row's `⋯` trigger: the Radix trigger (`aria-haspopup="menu"`) inside an
+ *   index row (`INDEX_ROW`, finder-files-view.tsx), whose accessible name is
+ *   "Actions for <name>" (ui.common.actions.actions_for_name). The name is the
+ *   only per-row marker the row carries (`data-file-id` is the owner's id, which
+ *   the harness does not know), so the label is matched EXACTLY, in any shipped
+ *   locale (`actionsForNameLabels`), never as a substring.
+ *   Attachment rows are excluded, as at file-preview: an attachment named
+ *   like the peer's file is the person's upload, not a peer row to download.
+ * - Then the run REFUSES when more than one INDEX row carries that label
+ *   (`duplicateRowSelector`, a `gone` wait that fails at once if present).
+ * - Pressed only while `aria-expanded="false"`; the press dispatches
+ *   pointerdown, which opens a Radix DropdownMenu.
+ * - The Download entry is REQUIRED enabled (`DOWNLOAD_ITEM_SELECTOR`): a local
+ *   row's menu has none, an unreadable row's is disabled, and a row that offers
+ *   only Save as fails here. Then it is pressed (Radix selects on click).
+ * - The outcome toast (one id: loading, then success/error/info in place), and
+ *   then a REQUIRED success toast, so an error fails fast and names itself.
+ */
+export function downloadSceneSteps(file = null) {
+	// `?? default`, not a parameter default: parseArgs leaves an unset
+	// --download-file as null, which a default parameter would keep.
+	const name = file ?? DOWNLOAD_FILE_DEFAULT;
+	const labels = actionsForNameLabels(name);
+	const trigger = `[data-tour-tag="files-scroller"] ${INDEX_ROW} ${rowTriggerButton(labels)}`;
+	return [
+		...filesRowReachSteps(),
+		{
+			verb: "waitFor",
+			payload: { selector: trigger, timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		// `gone` with a 1 ms bound: absent passes at the first look; present
+		// fails after one re-check (install.ts waitFor), naming the selector.
+		{
+			verb: "waitFor",
+			payload: {
+				selector: duplicateRowSelector(labels),
+				gone: true,
+				timeoutMs: 1,
+			},
+		},
+		{
+			verb: "press",
+			payload: { selector: `${trigger}[aria-expanded="false"]` },
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: DOWNLOAD_ITEM_SELECTOR, timeoutMs: 5000 },
+		},
+		{ verb: "press", payload: { selector: DOWNLOAD_ITEM_SELECTOR } },
+		{
+			verb: "waitFor",
+			payload: {
+				selector: DOWNLOAD_OUTCOME_TOAST,
+				timeoutMs: DOWNLOAD_OUTCOME_WAIT_MS,
+			},
+			timeoutMs: DOWNLOAD_OUTCOME_WAIT_MS + 5000,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: DOWNLOAD_SUCCESS_TOAST, timeoutMs: 1000 },
+		},
+	];
+}
+
+/**
+ * The exact press selectors a download run may use: its own scene's three - the
+ * collapsed-group header, the row trigger, the Download entry.
+ *
+ * WHY THE HEADER PRESS CANNOT REACH Save as / Copy image / Delete (read from
+ * v0.59.2). `COLLAPSED_GROUP_HEADER` matches only a `<button>` that is the
+ * direct child of an `<h3>` directly inside a `<section>` inside the Files
+ * scroller, with `aria-expanded="false"`: the group header
+ * (finder-files-view.tsx:912 section, :916 h3, :945 button). That button's
+ * click does one thing, `toggle(section.id)` (:986 -> :514-524), which sets the
+ * Working files preference or the closed-sections set - view state, no daemon
+ * call, no file I/O. Its content is a chevron icon, the label and a caption
+ * span ("a caption, never a control", :1061-1086); no menu or row lives in it.
+ * Every file action is a Radix menu ITEM, and the menu content is portalled to
+ * <body> (dropdown-menu.tsx:191 `DropdownMenuPrimitive.Portal`), so no menu
+ * item is ever inside the scroller, let alone `section > h3 > button`. The row
+ * triggers are `button[aria-haspopup="menu"]` inside a file row's `<div>`
+ * (:1430, :1528) under the section's `<ul>`, never a child of the `<h3>`. And
+ * `press` takes the selector's FIRST match only (dev-driver/install.ts:864
+ * `document.querySelector`), so it presses a header or nothing.
+ * The press is also skipped (optional) once the group is open. Each entry
+ * is still admitted byte-for-byte, never by pattern.
+ */
+export function downloadPressAllowlist(file = null) {
+	return downloadSceneSteps(file)
+		.filter((s) => s.verb === "press")
+		.map((s) => s.payload.selector);
+}
+
+/**
+ * Refuse a step list that could press anything that writes outside the rig.
+ * Run on the built list before launch, so a future edit cannot slip a press
+ * through.
+ *
+ * - A DOWNLOAD run (`{download: true, file}`): an ALLOWLIST - every press must be
+ *   byte-for-byte one of `downloadPressAllowlist(file)` (the collapsed-group
+ *   header, the row trigger, the Download entry). WHY not a blocklist
+ *   (review S1-1): a text blocklist was passed by an uppercase attribute, a
+ *   sibling combinator (`[data-remote-action="download"] + *`) and
+ *   `:nth-of-type`, each able to reach Save as, whose bytes Electron writes to
+ *   the operator's real ~/Downloads. Other scenes' presses are refused in a
+ *   download run too; run them separately.
+ * - Any other run never presses a remote action or Save as (matched
+ *   case-insensitively), except file-preview's byte-exact
+ *   SHOW_IN_CANVAS_ITEM_SELECTOR, which reads the bytes into the canvas and
+ *   writes nothing (#2013).
+ */
+export function downloadStepsProblem(
+	steps,
+	{ download = false, file = null } = {},
+) {
+	const allowed = download ? new Set(downloadPressAllowlist(file)) : null;
+	for (const [i, step] of (steps ?? []).entries()) {
+		if (step?.verb !== "press") continue;
+		const selector =
+			typeof step.payload === "string"
+				? step.payload
+				: String(step.payload?.selector ?? "");
+		if (allowed) {
+			if (!allowed.has(selector))
+				return `step ${i + 1} presses ${selector}: a download run may press only the collapsed Files group header, its own row trigger and ${DOWNLOAD_ITEM_SELECTOR} (an exact allowlist; Save as and Copy image hand the bytes to Electron, whose download folder is the operator's real ~/Downloads)`;
+			continue;
+		}
+		// The one exception is byte-exact: file-preview's Show in canvas, a read.
+		if (selector === SHOW_IN_CANVAS_ITEM_SELECTOR) continue;
+		if (/save[-_ ]?as|copy-image|data-remote-action/i.test(selector))
+			return `step ${i + 1} presses ${selector}: only --scene download presses the remote file menu, and only its Download entry; the harness never presses Save as / Copy image, which hand the bytes to Electron, whose download folder is the operator's real ~/Downloads`;
+	}
+	return null;
+}
+
+/** A hint for the run's error when the Download entry never appeared, or two rows matched. */
+export function downloadFailureHint(message, file = null) {
+	const text = String(message);
+	if (text.includes(DOWNLOAD_ITEM_SELECTOR))
+		return "the row offered no enabled Download entry (a local row, an unreadable row, or one already landed in this profile); the harness never falls back to Save as, which would write to the operator's ~/Downloads";
+	const name = file ?? DOWNLOAD_FILE_DEFAULT;
+	// The runner prints errors through oneLine (whitespace collapsed).
+	const flat = (s) => s.replace(/\s+/g, " ");
+	if (
+		flat(text).includes(flat(duplicateRowSelector(actionsForNameLabels(name))))
+	)
+		return `more than one Files row is labelled for ${name}; the harness refuses to guess which to download`;
+	return null;
+}
+
+/**
+ * The manifest entry for `name`: `{files: [{filename, bytes, sha256}, ...]}`
+ * (the remote-files proof manifest's shape). Throws a Refusal for a path that
+ * is not a regular file, unparseable JSON, no entry, or an entry without a
+ * 64-hex sha256 and an integer byte count.
+ */
+export function manifestEntry(path, name) {
+	let stat;
+	try {
+		stat = statSync(path);
+	} catch {
+		throw new Refusal(`--manifest ${path} does not exist`);
+	}
+	if (!stat.isFile())
+		throw new Refusal(`--manifest ${path} is not a regular file`);
+	let parsed;
+	try {
+		parsed = JSON.parse(readFileSync(path, "utf8"));
+	} catch (error) {
+		throw new Refusal(`--manifest ${path} is not JSON (${error.message})`);
+	}
+	const files = Array.isArray(parsed?.files) ? parsed.files : null;
+	if (!files)
+		throw new Refusal(`--manifest ${path} has no "files" list of entries`);
+	const hits = files.filter((f) => f?.filename === name);
+	if (hits.length === 0)
+		throw new Refusal(
+			`--manifest ${path} has no entry for ${name} (it lists ${files.map((f) => f?.filename).join(", ") || "nothing"})`,
+		);
+	if (hits.length > 1)
+		throw new Refusal(`--manifest ${path} lists ${name} more than once`);
+	const [entry] = hits;
+	if (
+		typeof entry.sha256 !== "string" ||
+		!/^[0-9a-f]{64}$/.test(entry.sha256) ||
+		!Number.isInteger(entry.bytes) ||
+		entry.bytes < 0
+	)
+		throw new Refusal(
+			`--manifest ${path}: the ${name} entry needs a lowercase 64-hex sha256 and an integer bytes`,
+		);
+	return { filename: name, bytes: entry.bytes, sha256: entry.sha256 };
+}
+
+/**
+ * `path` with its PARENT resolved physically and its last component kept as
+ * spelled: the leaf is never stat'ed or realpath'ed. WHY (review S1-4): on
+ * macOS ~/Downloads is TCC-protected, and with --check-operator-downloads off
+ * the harness promises to touch nothing in it - not even the realpath the
+ * rig-inside-~/Downloads refusal used to take. The cost, recorded under
+ * `download.limits`: a ~/Downloads that is itself a symlink is compared by its
+ * spelled location, so containment then rests on the receipt's destination +
+ * insideRig alone.
+ */
+export function physicalParent(path) {
+	return join(physical(dirname(resolve(path))), basename(path));
+}
+
+/**
+ * The two folders core may land into for this rig, in core's order, each
+ * vetted: not a symlink, and physically inside its own rig root. `exists`
+ * says whether it is a directory now (core picks the home one only then).
+ * `operatorDownloads` is one folder or a list (see operatorDownloadsRefusals);
+ * each is compared through `physicalParent`, so its leaf is not touched.
+ */
+export function downloadDestinations({
+	backendHome,
+	configRoot,
+	operatorDownloads = operatorDownloadsDir(),
+}) {
+	const refuse = [operatorDownloads].flat().map((p) => ({
+		spelled: p,
+		compared: comparablePath(physicalParent(p)),
+	}));
+	const candidates = [
+		{ dir: join(backendHome, "Downloads"), root: backendHome },
+		{ dir: join(configRoot, "downloads"), root: configRoot },
+	];
+	return candidates.map(({ dir, root }) => {
+		let st = null;
+		try {
+			st = lstatSync(dir);
+		} catch {}
+		if (st?.isSymbolicLink())
+			throw new Refusal(
+				`${dir} is a symlink; the download must land in the rig itself, so a linked downloads folder is refused`,
+			);
+		if (st && !st.isDirectory())
+			return { dir, exists: false, notADirectory: true };
+		if (st && !within(physical(dir), physical(root)))
+			throw new Refusal(`${dir} resolves outside ${root}`);
+		// A rig sited INSIDE the operator's ~/Downloads would add no top-level
+		// entry there, so the stray check could not see it: refused outright.
+		const inside = refuse.find((r) =>
+			within(comparablePath(physical(dir)), r.compared),
+		);
+		if (inside)
+			throw new Refusal(
+				`${dir} is inside the operator's ~/Downloads (${inside.spelled}); site the rig elsewhere`,
+			);
+		return { dir, exists: Boolean(st) };
+	});
+}
+
+/**
+ * The folders the rig-inside-~/Downloads refusal compares against. ALWAYS the
+ * operator's real default (`target.real`), whatever the test seam injected -
+ * so the seam can add a comparison, never remove one. Its realpath (the leaf
+ * resolved, following a symlinked ~/Downloads) is added only when
+ * --check-operator-downloads is on against the real folder: that run lists it
+ * anyway, and an off run must not touch it (S1-4).
+ */
+export function operatorDownloadsRefusals(target, check) {
+	return [
+		target.real,
+		...(target.injected ? [target.path] : []),
+		...(check && !target.injected ? [physical(target.real)] : []),
+	];
+}
+
+/**
+ * TEST-ONLY seam (QA Q1-1): the folder the opt-in stray listing reads instead
+ * of the operator's real ~/Downloads, so the test suite's flag-on run never
+ * lists - and on a Mac never raises a Files and Folders prompt for - the real
+ * ~/Downloads of whoever runs it.
+ *
+ * WHY an env var and not an exported option: the end-to-end case runs the
+ * harness as a child process (the only way to exercise main, its signals and
+ * its exit codes), so an in-process option cannot reach it. WHY it cannot
+ * loosen the guard:
+ * - honoured ONLY when NODE_TEST_CONTEXT is set (node:test sets it in every
+ *   test-file process; the suite forwards it), else refused (exit 2) rather
+ *   than silently ignored, so an operator cannot believe they redirected it;
+ * - an absolute path only;
+ * - it redirects only the NEGATIVE listing; the rig-inside-~/Downloads refusal
+ *   still compares against the real default (operatorDownloadsRefusals) and
+ *   the positive proof (destination + insideRig) is untouched;
+ * - the receipt records the listed path and `injected: true`.
+ * `real` is always the passwd home's Downloads.
+ */
+export const TEST_OPERATOR_DOWNLOADS_ENV = "MAC_PROOF_TEST_OPERATOR_DOWNLOADS";
+export function operatorDownloadsTarget(
+	env = process.env,
+	homedir = os.userInfo().homedir,
+) {
+	const real = operatorDownloadsDir(homedir);
+	const injected = env[TEST_OPERATOR_DOWNLOADS_ENV];
+	if (injected === undefined || injected === "")
+		return { path: real, real, injected: false };
+	if (!env.NODE_TEST_CONTEXT)
+		throw new Refusal(
+			`${TEST_OPERATOR_DOWNLOADS_ENV} is a test-only seam honoured only under node --test (NODE_TEST_CONTEXT); unset it - the stray check always lists the operator's real ~/Downloads`,
+		);
+	if (!isAbsolute(injected))
+		throw new Refusal(
+			`${TEST_OPERATOR_DOWNLOADS_ENV} must be an absolute path (got ${JSON.stringify(injected)})`,
+		);
+	return { path: resolve(injected), real, injected: true };
+}
+
+/**
+ * The rig side of preflight: the manifest entry (when given) and the vetted
+ * destinations, refusing one that already holds the file.
+ */
+export function downloadPreflight(
+	opts,
+	{ backendHome, operatorDownloads, target = null },
+) {
+	const file = opts.downloadFile ?? DOWNLOAD_FILE_DEFAULT;
+	const manifest =
+		opts.manifest === null
+			? null
+			: { path: opts.manifest, entry: manifestEntry(opts.manifest, file) };
+	const stray = target ?? operatorDownloadsTarget();
+	const destinations = downloadDestinations({
+		backendHome,
+		configRoot: opts.backendConfigRoot,
+		operatorDownloads:
+			operatorDownloads ??
+			operatorDownloadsRefusals(stray, opts.checkOperatorDownloads === true),
+	});
+	for (const d of destinations)
+		if (d.exists && existsSync(join(d.dir, file)))
+			throw new Refusal(
+				`${join(d.dir, file)} already exists in the rig; move it out first (the backend would reuse it and land nothing new, so the run could not prove a download)`,
+			);
+	return {
+		file,
+		manifest,
+		destinations,
+		operatorDownloads: { path: stray.path, injected: stray.injected },
+	};
+}
+
+/** The operator's real ~/Downloads: from the passwd home, never $HOME (which a rig may set). */
+export function operatorDownloadsDir(homedir = os.userInfo().homedir) {
+	return join(homedir, "Downloads");
+}
+
+/**
+ * Names only, sorted; `{exists: false}` when absent. EPERM/EACCES throws: on
+ * macOS ~/Downloads is TCC-protected, and an unreadable listing can prove
+ * nothing, so the caller turns it into BLOCKED rather than a pass.
+ */
+export function listNames(dir) {
+	try {
+		return { exists: true, names: readdirSync(dir).sort() };
+	} catch (error) {
+		if (error.code === "ENOENT") return { exists: false, names: [] };
+		throw error;
+	}
+}
+
+/** The names `after` has that `before` did not. */
+export function newEntries(before, after) {
+	const seen = new Set(before?.names ?? []);
+	return (after?.names ?? []).filter((n) => !seen.has(n));
+}
+
+/** core `_candidates`: `name`, then `stem (1).ext` ... `stem (99).ext`. */
+export function landingNames(name) {
+	const dot = name.lastIndexOf(".");
+	const [stem, ext] =
+		dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+	return [
+		name,
+		...Array.from({ length: 99 }, (_, i) => `${stem} (${i + 1})${ext}`),
+	];
+}
+
+/**
+ * EVERY new entry, of any name, across the rig's destinations: `before` maps
+ * each destination dir to its listing at run start. Throws what listNames
+ * throws (an unreadable folder).
+ */
+export function rigNewEntries(destinations, before) {
+	const added = [];
+	for (const d of destinations)
+		for (const n of newEntries(before.get(d.dir), listNames(d.dir)))
+			added.push(join(d.dir, n));
+	return added;
+}
+
+/**
+ * Read what landed, after the steps. Exactly ONE new entry, of ANY name, may
+ * exist across both destinations (review F1: counting only `<name>` and its
+ * `(n)` variants let `other.txt` land beside `notes.md` and still PASS), it
+ * must carry the expected name (`<name>`, or core's `(n)` variant of it), and
+ * it must be a regular file physically inside the rig; its bytes and sha256
+ * are compared to the manifest entry when one was given. `newInRig` records
+ * every new path seen. Returns `{result, problem}`; null only on a PASS.
+ */
+export function inspectLanding(plan, before, { rigRoots }) {
+	const result = {
+		file: plan.file,
+		destination: null,
+		insideRig: null,
+		bytes: null,
+		sha256: null,
+		manifest: plan.manifest,
+		compared: plan.manifest ? null : "not compared (no --manifest)",
+		newInRig: null,
+		verdict: "FAIL",
+	};
+	let added;
+	try {
+		added = rigNewEntries(plan.destinations, before);
+	} catch (error) {
+		return {
+			result,
+			problem: `the rig's downloads folders could not be listed after the steps (${error.code ?? error.message})`,
+		};
+	}
+	result.newInRig = added;
+	if (added.length === 0)
+		return {
+			result,
+			problem: `no ${plan.file} appeared in the rig (${plan.destinations.map((d) => d.dir).join(" or ")}) after the download's success toast`,
+		};
+	if (added.length > 1)
+		return {
+			result,
+			problem: `more than one new file landed in the rig (exactly one may): ${added.join(", ")}`,
+		};
+	const [path] = added;
+	if (!landingNames(plan.file).includes(basename(path)))
+		return {
+			result,
+			problem: `the one new file in the rig is ${path}, not ${plan.file}`,
+		};
+	result.destination = path;
+	const st = lstatSync(path);
+	const real = st.isFile() ? physical(path) : null;
+	result.insideRig =
+		real !== null && rigRoots.some((root) => within(real, physical(root)));
+	if (!result.insideRig)
+		return {
+			result,
+			problem: `${path} is not a regular file inside the rig`,
+		};
+	const bytes = readFileSync(path);
+	result.bytes = bytes.length;
+	result.sha256 = sha256(bytes);
+	if (plan.manifest) {
+		const want = plan.manifest.entry;
+		const ok = result.sha256 === want.sha256 && result.bytes === want.bytes;
+		result.compared = ok ? "match" : "mismatch";
+		if (!ok)
+			return {
+				result,
+				problem: `${path} is ${result.bytes} B sha256 ${result.sha256}; the manifest says ${want.bytes} B sha256 ${want.sha256}`,
+			};
+	}
+	result.verdict = "PASS";
+	return { result, problem: null };
+}
+
+/**
+ * The stray-download check, after the reap: any name in the operator's real
+ * ~/Downloads that was not there at run start fails the run. Names only: the
+ * harness never opens or hashes the operator's files, and the receipt lists
+ * only the NEW names. Something else on the machine saving a file meanwhile
+ * also fails it - a false alarm is the safe direction.
+ */
+export function strayDownloadsProblem(before, after) {
+	const added = newEntries(before, after);
+	return {
+		newEntries: added,
+		problem:
+			added.length === 0
+				? null
+				: `new entr${added.length === 1 ? "y" : "ies"} appeared in the operator's ~/Downloads during the run: ${added.join(", ")}`,
+	};
+}
+
+/**
+ * The operator-~/Downloads baseline, taken before the backend or the app starts.
+ *
+ * OPT-IN (`--check-operator-downloads`), default OFF. WHY: on macOS ~/Downloads
+ * is TCC-protected, and listing it from the hosting app (Terminal, an agent
+ * host) can raise a "Files and Folders" access prompt on the operator's own
+ * screen before the app has even started - exactly the class of prompt this
+ * harness promises never to raise on an unattended run. The containment proof
+ * the scene needs is POSITIVE and does not need the listing: exactly one new
+ * file, inside the rig (`destination` + `insideRig` in the receipt). The
+ * absence-of-strays listing is a second, negative check an operator can ask
+ * for when a prompt (or a granted host) is acceptable.
+ *
+ * Off: returns `{checked: false}` WITHOUT touching the folder, so the receipt
+ * says the check did not run rather than implying it passed. On: the listing,
+ * or a BLOCKED Refusal (exit 3) when it cannot be read - an unreadable folder
+ * proves nothing. `list` is injectable so tests can prove "no listing attempted".
+ */
+export function operatorDownloadsBaseline({
+	check,
+	dir = operatorDownloadsDir(),
+	injected = false,
+	list = listNames,
+	host = () => tccHost(),
+}) {
+	if (!check) return { checked: false };
+	try {
+		return {
+			checked: true,
+			path: dir,
+			...(injected ? { injected: true } : {}),
+			before: list(dir),
+		};
+	} catch (error) {
+		// tccHost() is `{host, kind, pid}` or null; its `host` string is the name
+		// to grant (QA Q1-2: the object itself rendered as [object Object]).
+		const who =
+			host()?.host ??
+			"the terminal or agent app hosting this run (its parent chain could not be read)";
+		throw new Refusal(
+			`BLOCKED: cannot list the operator's ${dir} (${error.code ?? error.message}), so --check-operator-downloads could not run; on macOS grant Files and Folders > Downloads Folder to ${who} in System Settings > Privacy & Security, or run without the flag (containment is then proven by the receipt's destination alone)`,
+			EXIT.BLOCKED,
+		);
+	}
+}
+
+/**
+ * The after-the-reap half: `{record, problem}`. Off: `{checked: false}` and no
+ * listing. On: before/after counts and the NEW names only; an unreadable
+ * folder after the run, or any new name, is a problem (exit 1).
+ */
+export function operatorDownloadsVerdict(baseline, list = listNames) {
+	if (!baseline?.checked) return { record: { checked: false }, problem: null };
+	let after;
+	try {
+		after = list(baseline.path);
+	} catch (error) {
+		return {
+			record: {
+				checked: true,
+				path: baseline.path,
+				...(baseline.injected ? { injected: true } : {}),
+				before: baseline.before.names.length,
+				after: null,
+				newEntries: null,
+			},
+			problem: `the operator's ${baseline.path} could not be listed after the run (${error.code ?? error.message})`,
+		};
+	}
+	const stray = strayDownloadsProblem(baseline.before, after);
+	return {
+		record: {
+			checked: true,
+			path: baseline.path,
+			...(baseline.injected ? { injected: true } : {}),
+			before: baseline.before.names.length,
+			after: after.names.length,
+			newEntries: stray.newEntries,
+		},
+		problem: stray.problem,
+	};
+}
+
+/**
+ * The download scene's limits: `receiptLimits` filtered to that scene (one
+ * implementation; the entries live in MEASUREMENT_LIMITS).
+ */
+export function downloadLimits({ checkOperatorDownloads }) {
+	return receiptLimits(["download"], { checkOperatorDownloads });
+}
+
+/**
+ * The outcome toast's measured latency (review F4): the renderer's own
+ * `waitedMs` for the wait that follows the Download press, read from that
+ * step's result line. `waitedMs` is null when the step did not run or its
+ * result carried no number (a truncated or fixture line).
+ */
+export function downloadToastLatency(builtSteps, ranSteps) {
+	const index = (builtSteps ?? []).findIndex(
+		(s) =>
+			s?.verb === "waitFor" && s.payload?.selector === DOWNLOAD_OUTCOME_TOAST,
+	);
+	const step = index === -1 ? null : index + 1;
+	const ran = (ranSteps ?? []).find((s) => s.step === step);
+	const waited =
+		ran?.outcome === "ok" ? ran.detail.match(/"waitedMs":(\d+)/) : null;
+	return {
+		step,
+		waitedMs: waited ? Number(waited[1]) : null,
+		boundMs: DOWNLOAD_OUTCOME_WAIT_MS,
+		source:
+			"the renderer's waitFor result for the step after the Download press (press to outcome toast)",
+	};
 }
 
 /**
@@ -1557,15 +3190,56 @@ export const DAEMON_ROUTES = Object.freeze([
 		segment: NOTIFICATION_ID,
 		query: Object.freeze([]),
 	}),
+	/*
+	 * The provenance read-backs (`libraryProvenance`, `imagePreview` in the
+	 * receipt), NEW with the file-preview scene and read-only GETs, all three:
+	 * - the library listing, asked exactly as the desktop asks it
+	 *   (`scope=final`) for its first row - core desktop_library.py:225. On a
+	 *   catalogue not yet indexed it can START the background index build, which
+	 *   writes the catalogue under the rig's config root - the same build the
+	 *   app's own Library route starts when it opens, so after the `library`
+	 *   scene it is a no-op (the build is already running or done);
+	 * - one library row - desktop_library.py:296, `service.get_asset`, a store
+	 *   read; `{id}` is ONE `la_<16 hex>` segment (the route's own AssetID);
+	 * - --session's file index, filtered by name - desktop_session_files.py:135;
+	 *   for a peer's conversation core asks the OWNER for its index
+	 *   (`peer_session_files`) and stamps `remote` on each row
+	 *   (server/utils/remote_session_files.py `_stamp`). The same read the app's
+	 *   Files view makes; it starts no runtime.
+	 */
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/library/assets",
+		query: Object.freeze(["scope", "limit"]),
+	}),
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/library/assets/{id}",
+		segment: LIBRARY_ASSET_ID,
+		query: Object.freeze([]),
+	}),
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/sessions/{id}/files",
+		segment: SESSION_ID,
+		query: Object.freeze(["q", "limit"]),
+	}),
 ]);
 
-/** Whether `pathname` is `route.path`, with a `{id}` tail standing for one `segment` match. */
+/**
+ * Whether `pathname` is `route.path`, segment for segment, a `{id}` segment
+ * standing for exactly ONE path segment that matches `route.segment` (never a
+ * free suffix, never two segments).
+ */
 function routeMatches(route, pathname) {
-	if (!route.path.endsWith("/{id}")) return route.path === pathname;
-	const prefix = route.path.slice(0, -"{id}".length);
+	if (!route.path.includes("{id}")) return route.path === pathname;
+	const want = route.path.split("/");
+	const got = pathname.split("/");
 	return (
-		pathname.startsWith(prefix) &&
-		route.segment.test(pathname.slice(prefix.length))
+		want.length === got.length &&
+		want.every((part, i) =>
+			part === "{id}" ? route.segment.test(got[i]) : part === got[i],
+		)
 	);
 }
 
@@ -1651,36 +3325,98 @@ export async function daemonRequest(
 export const OPERATOR_RELAY_PORT = 4097;
 
 /**
- * `network.port` from `<root>/config.yml`, read without a YAML dependency: the
- * block-style `network:` mapping and its indented `port:` key. Anything else
- * (flow style, anchors) answers null, which REFUSES - fail closed, because an
- * unset port makes the relay advertise :4097 and peers then dial the operator's
- * real relay (measured on node2: writes reached the real audit log).
+ * `values.network.port` from `<root>/config.yml`, read without a YAML dependency.
+ *
+ * WHERE THE PORT LIVES. lop keeps every setting under a top-level `values:`
+ * mapping: `lop config edit network.port 14097` writes
+ *
+ *     values:
+ *       network:
+ *         port: 14097
+ *
+ * and core reads ONLY that mapping (local_operator/config.py `values =
+ * parsed.get("values", {})`; settings_io.py `key="network.port", path=("network",
+ * "port"), default=4097`). The first real Mac runs (2026-11) exited 2 on
+ * every lop-written config because this read a top-level `network:` block.
+ * A top-level `network.port` is NOT honoured: core ignores it (and reports the
+ * stray key), so the relay would still advertise 4097. It answers null here,
+ * which refuses, rather than pass a port the relay never uses.
+ *
+ * FAIL CLOSED. Only plain block style is read: two-space-or-any consistent
+ * space indentation, bare `values:` and `network:` keys, and a decimal port,
+ * optionally quoted, optionally followed by ` # comment`. Anything else -
+ * flow style, anchors/aliases, tabs, document markers or directives, a
+ * duplicated `values`/`network`/`port` key, a top-level line that is not a
+ * plain `key:`, an indentation that steps back inside a block, or a port under
+ * any other parent - answers null, which REFUSES. An unset port makes the relay
+ * advertise :4097 and peers then dial the operator's real relay (measured on
+ * node2: writes reached the real audit log), so guessing is never safe.
  */
 export function relayPortFromConfig(text) {
-	const lines = text.split(/\r?\n/);
-	let inNetwork = false;
-	let indent = null;
-	for (const line of lines) {
-		if (/^\S/.test(line)) {
-			inNetwork = /^network:\s*(#.*)?$/.test(line);
-			indent = null;
+	if (typeof text !== "string") return null;
+	const KEY = /^( *)([A-Za-z0-9_.-]+):(?: +(.*?))? *$/;
+	// A mapping key whose value is a nested block: nothing after the colon but
+	// an optional comment. `values: {..}`, `network: &a`, `network: *a` are not.
+	const bare = (value) => value === undefined || value.startsWith("#");
+	let state = "top"; // top | values | network
+	let valuesSeen = false;
+	let networkSeen = false;
+	let portSeen = false;
+	let childIndent = null;
+	let grandIndent = null;
+	let port = null;
+	for (const line of text.split(/\r?\n/)) {
+		if (/^[ \t]*(#.*)?$/.test(line)) continue;
+		if (/^\s*/.exec(line)[0].includes("\t")) return null;
+		if (/^(---|\.\.\.|%)/.test(line)) return null;
+		const indent = line.length - line.trimStart().length;
+		const m = line.match(KEY);
+		if (indent === 0) {
+			if (!m) return null;
+			state = "top";
+			if (m[2] === "values") {
+				if (valuesSeen || !bare(m[3])) return null;
+				valuesSeen = true;
+				state = "values";
+			}
 			continue;
 		}
-		if (!inNetwork || line.trim() === "" || line.trim().startsWith("#"))
-			continue;
-		const lead = line.match(/^(\s+)/)[1].length;
-		indent ??= lead;
-		if (lead !== indent) continue;
-		const match = line.match(/^\s+port:\s*["']?(\d+)["']?\s*(#.*)?$/);
-		if (match) return Number(match[1]);
+		if (state === "top") continue;
+		if (state === "network") {
+			if (indent > childIndent) {
+				grandIndent ??= indent;
+				if (indent < grandIndent) return null;
+				if (indent > grandIndent) continue;
+				if (!m) return null;
+				if (m[2] === "port") {
+					if (portSeen) return null;
+					portSeen = true;
+					const value = (m[3] ?? "").match(
+						/^(?:(0|[1-9]\d*)|"(0|[1-9]\d*)"|'(0|[1-9]\d*)')(?: +#.*)?$/,
+					);
+					if (!value) return null;
+					port = Number(value[1] ?? value[2] ?? value[3]);
+				}
+				continue;
+			}
+			state = "values";
+		}
+		childIndent ??= indent;
+		if (indent < childIndent) return null;
+		if (indent > childIndent) continue;
+		if (!m) return null;
+		if (m[2] === "network") {
+			if (networkSeen || !bare(m[3])) return null;
+			networkSeen = true;
+			state = "network";
+		}
 	}
-	return null;
+	return port;
 }
 
 export function relayPortProblem(port) {
 	if (port === null || !Number.isInteger(port) || port <= 0 || port > 65535)
-		return "--backend-config-root needs network.port set in <root>/config.yml (unset, the relay advertises the operator's :4097 and peers dial it)";
+		return "--backend-config-root needs network.port set in <root>/config.yml as `values:` > `network:` > `port:` (what `lop config edit network.port <n>` writes; a top-level `network:` block is ignored by core), and unset the relay advertises the operator's :4097 and peers dial it";
 	if (port === OPERATOR_RELAY_PORT)
 		return `network.port is ${OPERATOR_RELAY_PORT}, the operator's own relay port; a rig device's relay must use another`;
 	return null;
@@ -1702,6 +3438,62 @@ export function redactEnv(env) {
 	if (out.LOCAL_OPERATOR_DESKTOP_TOKEN !== undefined)
 		out.LOCAL_OPERATOR_DESKTOP_TOKEN = "<redacted>";
 	return out;
+}
+
+/**
+ * The dry-run's `launch`: on the LaunchServices path, the exact `open` argv the
+ * run would spawn (with the placeholder rig, and an --app-zip bundle shown at
+ * its extraction dir), the keys that ride on it, the keys inherited only, and
+ * the verdict of the same `openArgvProblem` guard. The placeholder token is
+ * passed to the guard, so a token on that argv would show as a problem here.
+ */
+export function dryRunLaunch({
+	launch,
+	appBundle,
+	rig,
+	backendUrl,
+	token,
+	opts,
+}) {
+	if (launch.kind !== "launchservices")
+		return {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		};
+	const bundle = appBundle?.endsWith(".app")
+		? appBundle
+		: join(rig, "app", "<extracted from --app-zip>.app");
+	const env = buildAppEnv({
+		rig,
+		backendUrl,
+		token,
+		windowMode: opts.windowMode,
+	});
+	const argv = buildOpenArgv({
+		appBundle: bundle,
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: opts.windowMode,
+			size: opts.size,
+			session: opts.session,
+		}),
+		env,
+	});
+	return {
+		mode: "launchservices",
+		...(launch.injected ? { injected: true } : {}),
+		command: launch.open,
+		argv,
+		envOnArgv: OPEN_ENV_KEYS.filter((k) => env[k] !== undefined),
+		envInheritedOnly: Object.keys(APP_ENV_KEYS).filter(
+			(k) => APP_ENV_KEYS[k].secret,
+		),
+		problem: openArgvProblem(argv, {
+			profile: join(rig, "profile"),
+			token,
+		}),
+	};
 }
 
 /*
@@ -1727,6 +3519,8 @@ const FRAME_LABEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
  */
 const SHUTTER_EXTERNAL =
 	/^SHUTTER label=(\S+) media=(\S+) visible=(true|false) focused=(true|false) ack=.+$/;
+/** The window facts a SHUTTER line carries, quoted in the not-visible abort. */
+const SHUTTER_FACTS = /visible=\S+ focused=\S+/;
 const SHUTTER_CAPTUREPAGE =
 	/^SHUTTER label=(\S+) capture=capturepage path=.+ width=(\d+) height=(\d+) visible=(true|false) focused=(true|false)$/;
 
@@ -1736,6 +3530,10 @@ export function createSupervisor({
 	capture,
 	framesDir,
 	labels = null,
+	// The runner step (1-based) that spends the window wait, and its --window-wait;
+	// null when the run has none. See WINDOW_WAIT_DEFAULT_S for why it exists.
+	windowWait = null,
+	now = Date.now,
 }) {
 	if (typeof framesDir !== "string" || !isAbsolute(framesDir))
 		throw new TypeError(
@@ -1752,6 +3550,19 @@ export function createSupervisor({
 		stateChecked: session === null,
 		done: false,
 		steps: [],
+		// The receipt's `windowWait`: how long the wait step actually took (harness
+		// clock, from the line before it to its own line) and the first SHUTTER's
+		// `visible`, so a run that still failed says whether the wait was spent.
+		windowWait: { waitedMs: 0, visibleAtShutter: null },
+	};
+	let lastRunnerLineAt = null;
+	const notVisible = (body) => {
+		const facts = body.match(SHUTTER_FACTS)?.[0] ?? "";
+		const waited =
+			windowWait === null
+				? "with no window wait (--window-wait 0)"
+				: `after a ${state.windowWait.waitedMs} ms window wait (--window-wait ${windowWait.s})`;
+		return `the window is not visible at the shutter ${waited}: ${facts}; the app had not presented its window yet (a window opened for a conversation is held until it paints, src/main/index.ts holdPresentUntilConversation), so retry with a longer --window-wait (max ${WINDOW_WAIT_MAX_S}) - never a focused or normal-mode run (${body})`;
 	};
 	const feed = (line) => {
 		if (line.startsWith("[window-mode] window mode ")) {
@@ -1787,11 +3598,16 @@ export function createSupervisor({
 			return { abort: `the step runner refused: ${body}` };
 		if (body.startsWith("ready ")) {
 			state.ready = true;
+			lastRunnerLineAt = now();
 			return null;
 		}
 		const step = body.match(/^step=(\d+) verb=(\S+) (ok|error:|skipped)(.*)$/);
 		if (step) {
 			const [, n, verb, outcome, rest] = step;
+			const at = now();
+			if (windowWait !== null && Number(n) === windowWait.step)
+				state.windowWait.waitedMs = at - (lastRunnerLineAt ?? at);
+			lastRunnerLineAt = at;
 			state.steps.push({
 				step: Number(n),
 				verb,
@@ -1836,13 +3652,12 @@ export function createSupervisor({
 			if (shot.has(label))
 				return { abort: `a second SHUTTER for ${label} (${body})` };
 			const [visible, focused] = external ? [m[3], m[4]] : [m[4], m[5]];
+			if (state.windowWait.visibleAtShutter === null)
+				state.windowWait.visibleAtShutter = visible === "true";
 			if (focused !== "false")
 				return { abort: `the window is focused at the shutter (${body})` };
 			if (external) {
-				if (visible !== "true")
-					return {
-						abort: `the window is not visible at the shutter (${body})`,
-					};
+				if (visible !== "true") return { abort: notVisible(body) };
 				const id = m[2].match(/^window:(\d+):/)?.[1];
 				if (!id)
 					return { abort: `the SHUTTER line carries no window id (${body})` };
@@ -1895,25 +3710,106 @@ function jxa(source) {
 
 /**
  * Screen Recording, asked WITHOUT a prompt: `CGPreflightScreenCaptureAccess`
- * never prompts (its sibling `CGRequestScreenCaptureAccess` would put a dialog on
- * the operator's screen and is never called).
+ * never prompts (its request-side sibling would put a dialog on the operator's
+ * screen, so this source never names it - a test asserts that).
  *
- * Answers "granted", "denied" or "unknown". UNKNOWN - the JXA bridge could not
- * call the preflight - is BLOCKED by the caller, never guessed. An earlier
- * fallback read "another process's window has a kCGWindowName" as granted, but
- * system UI (Menubar, Dock, Window Server) reports names without the
- * permission, so it could answer yes while ungranted; `screencapture -l` would
- * then raise the TCC prompt on the operator's screen and photograph an empty
- * window (review r1 R1-1). Not being able to ask safely is a stop.
+ * TWO WAYS TO REACH THE SAME C FUNCTION. `ObjC.import('CoreGraphics')` bridges
+ * the symbol on older macOS; on macOS 27 the bridged `$` has no function by
+ * that name, so the first real Mac run answered unknown and exited 3 BLOCKED.
+ * JXA's documented C binding, `ObjC.bindFunction(name, [returnType,
+ * [argTypes]])`, declares the signature itself (`bool (void)`) and then `$.<name>`
+ * calls it. Measured by manager 79bddc262663 on Damian's Mac (Darwin 27.2): the
+ * bindFunction path returned `{"granted":true}`. Each step is in its own try,
+ * and only a boolean (or the C bool's 0/1) is an answer.
+ *
+ * Output is exactly `{"granted": true|false|null}`. Null - neither path could
+ * call the preflight - is UNKNOWN and BLOCKED by the caller, never guessed. An
+ * earlier fallback read "another process's window has a kCGWindowName" as
+ * granted, but system UI (Menubar, Dock, Window Server) reports names without
+ * the permission, so it could answer yes while ungranted; `screencapture -l`
+ * would then raise the TCC prompt on the operator's screen and photograph an
+ * empty window (review r1 R1-1). Not being able to ask safely is a stop.
  */
-export function screenRecordingGranted() {
-	return screenRecordingVerdict(
-		jxa(`
+export const SCREEN_RECORDING_PREFLIGHT_JXA = `
 ObjC.import('CoreGraphics');
 var granted = null;
-try { if (typeof $.CGPreflightScreenCaptureAccess === 'function') granted = !!$.CGPreflightScreenCaptureAccess(); } catch (e) {}
-JSON.stringify({granted: granted});`),
-	);
+var callable = false;
+try { callable = typeof $.CGPreflightScreenCaptureAccess === 'function'; } catch (e) {}
+if (!callable) {
+	try { ObjC.bindFunction('CGPreflightScreenCaptureAccess', ['bool', []]); callable = true; } catch (e) {}
+}
+if (callable) {
+	try {
+		var answer = $.CGPreflightScreenCaptureAccess();
+		if (answer === true || answer === false) granted = answer;
+		else if (answer === 0 || answer === 1) granted = answer === 1;
+	} catch (e) {}
+}
+JSON.stringify({granted: granted});`;
+
+/** Runs `SCREEN_RECORDING_PREFLIGHT_JXA`: "granted", "denied" or "unknown". */
+export function screenRecordingGranted() {
+	return screenRecordingVerdict(jxa(SCREEN_RECORDING_PREFLIGHT_JXA));
+}
+
+/**
+ * Who macOS asks about Screen Recording: the TCC "responsible" app is the
+ * nearest `.app` bundle up this process's parent chain (Terminal, iTerm, the
+ * agent's own app). The BLOCKED/denied messages name it so the operator knows
+ * which row to tick; the harness itself never requests or changes TCC.
+ *
+ * `psTable` is `ps -A -o pid=,ppid=,comm=` output (C locale). Walks from `pid`
+ * to the first ancestor whose `comm` is a `<X>.app/Contents/MacOS/...`
+ * executable and answers `{ host: "<X>.app", kind: "app" }` (the OUTERMOST
+ * bundle in the path, so a nested Helper.app names its parent app). With no
+ * .app ancestor it answers the top non-launchd entry as `kind: "process"`:
+ * measured by 79bddc262663 on the Mac, the agent shell's chain was
+ * `48300 /opt/homebrew/bin/bash` -> `20192 Local Operator [session]
+ * id=79bddc26` -> launchd, a renamed process title with no bundle path, so the
+ * title is the best name available. Null when the chain cannot be read.
+ */
+export function tccHostFromPsTable(psTable, pid) {
+	const rows = new Map();
+	for (const line of String(psTable ?? "").split("\n")) {
+		const m = line.match(/^\s*(\d+)\s+(\d+)\s+(.*?)\s*$/);
+		if (m) rows.set(Number(m[1]), { ppid: Number(m[2]), comm: m[3] });
+	}
+	const launchd = (at, row) => at === 1 || /(^|\/)launchd$/.test(row.comm);
+	let top = null;
+	const seen = new Set();
+	for (let at = pid; rows.has(at) && !seen.has(at); at = rows.get(at).ppid) {
+		seen.add(at);
+		const row = rows.get(at);
+		if (launchd(at, row)) break;
+		const bundle = row.comm.match(/^(?:.*?\/)?([^/]+?\.app)\/Contents\//);
+		if (bundle && /\.app\/Contents\/MacOS\/[^/]+$/.test(row.comm))
+			return { host: bundle[1], kind: "app", pid: at };
+		top = { host: row.comm, kind: "process", pid: at };
+	}
+	return top;
+}
+
+/** The TCC host of this process, from one `ps` snapshot; null if unreadable. */
+export function tccHost(pid = process.pid) {
+	try {
+		const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid=,comm="], {
+			encoding: "utf8",
+			env: cLocaleEnv(),
+			timeout: 10000,
+		});
+		if (ps.error || ps.status !== 0) return null;
+		return tccHostFromPsTable(ps.stdout, pid);
+	} catch {
+		return null;
+	}
+}
+
+/** The operator-facing instruction naming the TCC host (never a request). */
+export function screenRecordingGrantHint(host) {
+	const who = host?.host
+		? `${host.host}${host.kind === "process" ? ` (pid ${host.pid}, the top of this process's parent chain; no .app ancestor was found)` : ""}`
+		: "this process's host (the terminal or agent app; its parent chain could not be read)";
+	return `grant Screen & System Audio Recording to ${who} in System Settings > Privacy & Security; this harness never requests or changes it (that would prompt)`;
 }
 
 /** The JXA preflight's output, read strictly: only a boolean is an answer. */
@@ -1953,13 +3849,54 @@ export function frameMatchesWindow(pixels, bounds) {
 }
 
 /** Owner pid, layer and bounds of one on-screen window. Needs no Screen Recording. */
-export function windowInfo(windowId) {
-	const out = jxa(`
+/**
+ * One bounded command WITHOUT blocking the event loop: `{status, stdout,
+ * stderr}` (status null on a spawn error or timeout). The per-frame window
+ * lookup and screencapture use it so the 100 ms frontmost watchdog keeps
+ * sampling while a frame is shot (review F4); `spawnSync` there stalled every
+ * sample for up to 20 s + 30 s.
+ */
+export function runAsync(cmd, args, { timeout }) {
+	return new Promise((resolve) => {
+		execFile(
+			cmd,
+			args,
+			{ encoding: "utf8", timeout, maxBuffer: 16 << 20 },
+			(error, stdout, stderr) =>
+				resolve({
+					status: error
+						? typeof error.code === "number"
+							? error.code
+							: null
+						: 0,
+					stdout: String(stdout ?? ""),
+					stderr: String(stderr ?? ""),
+					error: error ? error.message : null,
+				}),
+		);
+	});
+}
+
+const WINDOW_INFO_JXA = (windowId) => `
 ObjC.import('CoreGraphics');
 var list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0))) || [];
 var w = list.filter(function (x) { return x.kCGWindowNumber === ${Number(windowId)}; })[0];
-JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`);
-	return JSON.parse(out);
+JSON.stringify(w ? {pid: w.kCGWindowOwnerPID, layer: w.kCGWindowLayer, bounds: w.kCGWindowBounds} : null);`;
+
+export function windowInfo(windowId) {
+	return JSON.parse(jxa(WINDOW_INFO_JXA(windowId)));
+}
+
+/** `windowInfo`, without blocking the event loop (the per-frame path; review F4). */
+export async function windowInfoAsync(windowId, run = runAsync) {
+	const r = await run(
+		"osascript",
+		["-l", "JavaScript", "-e", WINDOW_INFO_JXA(windowId)],
+		{ timeout: 20000 },
+	);
+	if (r.status !== 0)
+		throw new Error(`osascript failed: ${(r.stderr || r.error || "").trim()}`);
+	return JSON.parse(r.stdout.trim());
 }
 
 /** Width and height from a PNG's IHDR, or null when the bytes are not a PNG. */
@@ -2045,6 +3982,153 @@ export async function waitForRemoteSession(
 			);
 		await sleep(pollMs);
 	}
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Provenance: what makes a Library or file-preview frame proof of the REMOTE
+ * path rather than a picture of local data that happens to look the same.
+ * ---------------------------------------------------------------------------
+ *
+ * WHY. Both frames are meant to show a PEER's files through this device. A
+ * library row with a local path, or a session whose transcript the rig holds in
+ * its own `<config>/sessions`, renders the same pixels while proving nothing
+ * about the remote route. So after the frames, while the rig daemon is still up,
+ * the harness reads the data behind them back (allowlisted GETs only) and the
+ * run FAILS (exit 1) when either is not remote. The receipt keeps what it
+ * judged, so a reader can check the verdict without the rig.
+ *
+ * PRIVACY (security review S1/S2). Receipts and frames are attached to PRs in a
+ * PUBLIC repository, so the receipt records only booleans about the peer and
+ * the local disk - `remote`, `originDeviceKnown`, `localPath` - never the
+ * peer's device id or name, nor an absolute local path (not even in a
+ * `problem` sentence). The opaque row ids (`la_...`, the index row id) stay: they
+ * name nothing outside the daemon that issued them.
+ */
+
+/**
+ * `libraryProvenance` from the first row of the desktop's own listing and that
+ * row's detail. A peer row: `remote` set and NO local `ref.path` (core keeps no
+ * local path identity for a row only a peer references). `source` is the row's
+ * `origin` (LibraryRow has no field named `source`). `remote` and `localPath`
+ * are booleans: whether the row carries a remote block / a local path.
+ */
+export function libraryProvenanceCheck(listing, detail) {
+	const first = (listing?.result ?? listing)?.rows?.[0] ?? null;
+	const row = detail?.result ?? detail ?? null;
+	if (!first?.id || !row)
+		return {
+			assetId: first?.id ?? null,
+			remote: null,
+			localPath: null,
+			source: null,
+			pass: false,
+			problem: first?.id
+				? `library row ${first.id} could not be read back`
+				: "the library listing has no row to check",
+		};
+	const remote = (row.remote ?? null) !== null;
+	const localPath = (row.ref?.path ?? null) !== null;
+	const pass = remote && !localPath;
+	return {
+		assetId: row.id ?? first.id,
+		remote,
+		localPath,
+		source: row.origin ?? null,
+		pass,
+		...(pass
+			? {}
+			: {
+					problem: !remote
+						? `library row ${first.id} is not a peer row (remote is null)`
+						: `library row ${first.id} has a local path`,
+				}),
+	};
+}
+
+/**
+ * `imagePreview` from --session's file index row named `name` and whether the
+ * rig holds that session itself. Passes only for a row the daemon stamped
+ * `remote` (a peer's index) in a session the rig's config root does NOT hold:
+ * a session present under `<config>/sessions` could have been served from this
+ * disk, so its picture would not prove the remote read.
+ */
+export function imagePreviewCheck({ listing, name, sessionOnRig }) {
+	const rows = (listing?.result ?? listing)?.rows ?? [];
+	// EXACT name, and exactly one (F4): the scene's row selector cannot count,
+	// so two same-named rows (two folders) would make the frame ambiguous.
+	const named = rows.filter((r) => r?.name === name);
+	const row = named.length === 1 ? named[0] : null;
+	const remote = row ? row.remote === true : null;
+	const problems = [];
+	if (named.length > 1)
+		problems.push(
+			`${named.length} file rows are named ${name} in the session's index (the frame cannot say which one it shows)`,
+		);
+	else if (!row)
+		problems.push(`no file row named ${name} in the session's index`);
+	else if (!remote) problems.push(`file row ${row.id} is not remote`);
+	if (sessionOnRig !== false)
+		problems.push(
+			sessionOnRig === null
+				? "no rig config root to check the session against (attach mode)"
+				: "the session is present in the rig's own <config>/sessions",
+		);
+	return {
+		assetId: row?.id ?? null,
+		remote,
+		matchingRows: named.length,
+		// Whether the daemon named an origin device - never which one (S2).
+		originDeviceKnown: row ? (row.origin_device ?? null) !== null : null,
+		sessionOnRig,
+		pass: problems.length === 0,
+		...(problems.length ? { problem: problems.join("; ") } : {}),
+	};
+}
+
+/** Read the first library row back (the one the Library frame shows first). */
+export async function readLibraryProvenance(base, token, { timeoutMs }) {
+	const listing = await daemonRequest(
+		base,
+		"GET",
+		"/v1/desktop/library/assets?scope=final&limit=1",
+		{ token, timeoutMs },
+	);
+	const id = (listing?.result ?? listing)?.rows?.[0]?.id;
+	const detail =
+		typeof id === "string" && LIBRARY_ASSET_ID.test(id)
+			? await daemonRequest(base, "GET", `/v1/desktop/library/assets/${id}`, {
+					token,
+					timeoutMs,
+				})
+			: null;
+	return libraryProvenanceCheck(listing, detail);
+}
+
+/**
+ * Core's own bound on the peer index call it makes for this read
+ * (network/file_index.py:48 `INDEX_CLIENT_TIMEOUT_S = 45.0`), plus margin, so
+ * the harness never abandons a read core is still allowed to finish.
+ */
+export const PEER_INDEX_READ_MS = 50_000;
+
+/** Read the previewed row back from --session's index; `configRoot` null = attach. */
+export async function readImagePreview(
+	base,
+	token,
+	{ session, name, configRoot, timeoutMs },
+) {
+	const listing = await daemonRequest(
+		base,
+		"GET",
+		`/v1/desktop/sessions/${session}/files?q=${encodeURIComponent(name)}&limit=50`,
+		{ token, timeoutMs: Math.min(PEER_INDEX_READ_MS, timeoutMs) },
+	);
+	const sessionOnRig =
+		configRoot === null
+			? null
+			: existsSync(join(configRoot, "sessions", session));
+	return imagePreviewCheck({ listing, name, sessionOnRig });
 }
 
 /**
@@ -2416,10 +4500,12 @@ export function processFactsMany(
  * setlocale(LC_ALL, "") (adv_cmds ps/print.c `lstarted`, ps/ps.c), so an en_GB
  * Mac answers `Mon 16 Nov 10:00:00 2026` and a de_DE one `Mo 16 Nov ...`, and
  * the inherited LANG/LC_ALL decide it. LC_ALL overrides every LC_* category;
- * LANG is pinned too so nothing falls back to the operator's locale.
+ * LANG is pinned too so nothing falls back to the operator's locale. TZ is
+ * pinned for the same reason: `lstart` is local wall time, and these starts
+ * meet `startOf`'s and the sentinel's, which read UTC (`PS_TZ`, security S5).
  */
 export function cLocaleEnv(env = process.env) {
-	return { ...env, LC_ALL: "C", LANG: "C" };
+	return { ...env, LC_ALL: "C", LANG: "C", TZ: PS_TZ };
 }
 
 /** The C-locale `lstart` (`Mon Nov 16 10:00:00 2026`) between pgid and command. */
@@ -2652,6 +4738,123 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 
 /**
+ * The focus/launch refusals, each against the real guard, on a well-formed
+ * darwin launch with ONE thing wrong: the `open` argv without -n or -g, with
+ * the token's key or value on --env, with a key off the allowlist, with a
+ * required isolation key missing, the NAME-only --env form; the test seam with
+ * a real app path or outside node --test; and the inter-run gate (a leftover
+ * rig, an unlistable process table).
+ */
+export function focusRefusalCases(tree) {
+	const rig = join(tree, "mac-proof-Ab12Cd");
+	const profile = join(rig, "profile");
+	const token = "negative-control-token";
+	const env = buildAppEnv({
+		base: {},
+		rig,
+		backendUrl: "http://127.0.0.1:60317",
+		token,
+		windowMode: "inactive",
+	});
+	const argv = buildOpenArgv({
+		appBundle: "/Applications/Local Operator.app",
+		rig,
+		appArgv: buildAppArgv({
+			rig,
+			windowMode: "inactive",
+			size: "1380x900",
+			session: null,
+		}),
+		env,
+	});
+	const check = (a) => openArgvProblem(a, { profile, token });
+	// The well-formed argv must pass, or every case below proves nothing.
+	if (check(argv) !== null)
+		throw new Error(
+			`the negative control's base open argv fails: ${check(argv)}`,
+		);
+	const at = argv.indexOf("--args");
+	const withOptions = (extra) => [
+		...argv.slice(0, at),
+		...extra,
+		...argv.slice(at),
+	];
+	const dropFlag = (flag) => argv.filter((a, i) => !(a === flag && i < at));
+	const dropEnv = (key) => {
+		const i = argv.findIndex((a) => String(a).startsWith(`${key}=`));
+		return argv.filter((_, j) => j !== i && j !== i - 1);
+	};
+	const leftover = [
+		{
+			pid: 4242,
+			ppid: 1,
+			start: "x",
+			command: `/x --user-data-dir=${profile}`,
+		},
+	];
+	const pattern = rigStyleProfilePattern(null);
+	const seam = { [TEST_LAUNCH_ENV]: "direct", NODE_TEST_CONTEXT: "x" };
+	return [
+		[
+			"open argv without -n (the operator's running app would take the launch)",
+			() => check(dropFlag("-n")),
+		],
+		[
+			"open argv without -g (LaunchServices would bring the rig app forward)",
+			() => check(dropFlag("-g")),
+		],
+		[
+			"open --env carrying the desktop token's key",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_DESKTOP_TOKEN=${token}`])),
+		],
+		[
+			"open --env value carrying the token",
+			() =>
+				check(withOptions(["--env", `LOCAL_OPERATOR_UI_TELEMETRY=${token}`])),
+		],
+		[
+			"open --env with a key off the non-secret allowlist",
+			() => check(withOptions(["--env", "PATH=/tmp/evil"])),
+		],
+		[
+			"open --env in the NAME-only form",
+			() => check(withOptions(["--env", "HOME"])),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL",
+			() => check(dropEnv("LOCAL_OPERATOR_UI_ATTACH_BACKEND_URL")),
+		],
+		[
+			"open argv missing --env LOCAL_OPERATOR_CONFIG_DIR",
+			() => check(dropEnv("LOCAL_OPERATOR_CONFIG_DIR")),
+		],
+		[
+			"the launch test seam with a real app path",
+			() =>
+				launchMode(seam, "darwin", {
+					appPath: "/Applications/Local Operator.app",
+				}).problem,
+		],
+		[
+			"the launch test seam outside node --test",
+			() =>
+				launchMode({ [TEST_LAUNCH_ENV]: "direct" }, "darwin", {
+					appPath: join(os.tmpdir(), "x.app"),
+				}).problem,
+		],
+		[
+			"inter-run gate: a previous rig still running",
+			() => interRunGateProblem({ rows: leftover, front: null, pattern }),
+		],
+		[
+			"inter-run gate: ps could not list processes",
+			() => interRunGateProblem({ rows: null, front: null, pattern }),
+		],
+	];
+}
+
+/**
  * Each case must REFUSE. Built in a throwaway tree with a fake HOME so the
  * operator-root cases (equal, inside, containing, symlink) are exercised for
  * real without touching the operator's directories. The two runtime cases
@@ -2882,11 +5085,28 @@ export function negativeControlCases() {
 		[
 			"config-root relay with network.port unset",
 			() =>
-				relayPortProblem(relayPortFromConfig("network:\n  enabled: true\n")),
+				relayPortProblem(
+					relayPortFromConfig("values:\n  network:\n    enabled: true\n"),
+				),
 		],
 		[
 			"config-root relay with network.port 4097",
-			() => relayPortProblem(relayPortFromConfig("network:\n  port: 4097\n")),
+			() =>
+				relayPortProblem(
+					relayPortFromConfig("values:\n  network:\n    port: 4097\n"),
+				),
+		],
+		[
+			// Core reads only `values:`; a top-level port leaves the relay on 4097.
+			"config-root relay with network.port only at top level",
+			() => relayPortProblem(relayPortFromConfig("network:\n  port: 14097\n")),
+		],
+		[
+			"config-root relay with values: but no network",
+			() =>
+				relayPortProblem(
+					relayPortFromConfig("values:\n  ui:\n    port: 14097\n"),
+				),
 		],
 		[
 			"daemon call to an engage path",
@@ -2906,6 +5126,69 @@ export function negativeControlCases() {
 			() => daemonRequestProblem("GET", "/v1/desktop/config"),
 		],
 		["lop network start", () => lopArgvProblem(["network", "start"])],
+		[
+			// The download is the APP's request; the harness's client never sends it.
+			"daemon call to the files download route (the app's write, never the harness's)",
+			() =>
+				daemonRequestProblem(
+					"POST",
+					"/v1/desktop/sessions/ce618964c88e/files/f1/download",
+				),
+		],
+		[
+			"--scene download on --backend attach (the operator's real ~/Downloads)",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/x",
+						"--session",
+						"ce618964c88e",
+						"--scene",
+						"download",
+						"--theme",
+						"dark",
+						"--backend",
+						"attach",
+						"--backend-url",
+						"http://127.0.0.1:5555",
+					]),
+				),
+		],
+		[
+			"--scene download on the isolated backend",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/x",
+						"--session",
+						"ce618964c88e",
+						"--scene",
+						"download",
+						"--theme",
+						"dark",
+					]),
+				),
+		],
+		[
+			"a --manifest that is a directory",
+			() => manifestEntry(tree, DOWNLOAD_FILE_DEFAULT),
+		],
+		[
+			"a step list that presses Save as",
+			() =>
+				downloadStepsProblem([
+					{
+						verb: "press",
+						payload: { selector: '[data-remote-action="save-as"]' },
+					},
+				]),
+		],
 		[
 			"daemon call to an absolute URL on another host",
 			() => daemonRequestProblem("GET", "http://10.255.255.1:9/health"),
@@ -3006,6 +5289,8 @@ export function negativeControlCases() {
 					]),
 				),
 		],
+		// Focus and the LaunchServices launch (mac-proof-focus.mjs; QA Q1-6).
+		...focusRefusalCases(tree),
 	];
 	const results = cases.map(([name, fn]) => ({ name, refused: refuses(fn) }));
 	rmSync(tree, { recursive: true, force: true });
@@ -3159,7 +5444,11 @@ export function preflight(opts, { roots = operatorRoots() } = {}) {
 				`--backend-config-root is already in use by pid(s) ${[...new Set(busy)].join(", ")}; stop them first (the harness reaps every process on its root, so it never shares one)`,
 			);
 	}
-	return { app, rigRoot, lop, relayPort, backendHome };
+	// Last, so every backend refusal above names its own cause first.
+	const download = opts.scenes.includes("download")
+		? downloadPreflight(opts, { backendHome })
+		: null;
+	return { app, rigRoot, lop, relayPort, backendHome, download };
 }
 
 /** Resolve the token for attach mode. Never prints it. */
@@ -3229,6 +5518,19 @@ export async function main(argv = process.argv.slice(2)) {
 		return failed === 0 ? EXIT.OK : EXIT.FAILED;
 	}
 
+	// darwin launches through LaunchServices (`open -g -n`, mac-proof-focus.mjs);
+	// Linux/xvfb keeps the direct spawn. A misused test seam refuses here,
+	// before the plan is built: the seam is honoured only for an app under the
+	// temp dir (the suite's fixtures), never for a real bundle (review S3).
+	const launch = launchMode(process.env, process.platform, {
+		appPath: opts.app ?? opts.appZip,
+	});
+	if (launch.problem) {
+		console.error(`[mac-proof] refused: ${launch.problem}`);
+		return EXIT.REFUSED;
+	}
+	const viaLaunchServices = launch.kind === "launchservices";
+
 	const runDeadline = harnessStarted + opts.timeoutS * 1000;
 	let plan;
 	try {
@@ -3243,6 +5545,16 @@ export async function main(argv = process.argv.slice(2)) {
 
 	const rigPlaceholder = join(plan.rigRoot, "mac-proof-XXXXXX");
 	const steps = buildSteps(opts);
+	const stepProblem =
+		stepCountProblem(steps.steps) ??
+		downloadStepsProblem(steps.steps, {
+			download: Boolean(plan.download),
+			file: plan.download?.file ?? null,
+		});
+	if (stepProblem) {
+		console.error(`[mac-proof] refused: ${stepProblem}`);
+		return EXIT.REFUSED;
+	}
 	if (opts.dryRun) {
 		const placeholderToken = "<minted-at-run>";
 		const backendUrl =
@@ -3296,7 +5608,7 @@ export async function main(argv = process.argv.slice(2)) {
 			capture:
 				opts.capture === "screencapture"
 					? SCREENCAPTURE_METHOD
-					: "capturePage: no vibrancy claim",
+					: CAPTUREPAGE_METHOD,
 			command: plan.app.executable,
 			argv: buildAppArgv({
 				rig: rigPlaceholder,
@@ -3312,6 +5624,18 @@ export async function main(argv = process.argv.slice(2)) {
 					windowMode: opts.windowMode,
 				}),
 			),
+			// What actually execs on this platform (QA Q1-1): on darwin the app is
+			// not exec'd directly but through `open -g -n`, with the non-secret
+			// keys on --env and the token inherited only. Built by the same
+			// functions the run uses, and checked by the same guard.
+			launch: dryRunLaunch({
+				launch,
+				appBundle: plan.app.realpath ?? plan.app.zip ?? null,
+				rig: rigPlaceholder,
+				backendUrl,
+				token: placeholderToken,
+				opts,
+			}),
 			frames: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => `${s.payload.label}.png`),
@@ -3321,6 +5645,27 @@ export async function main(argv = process.argv.slice(2)) {
 							scenario: opts.seed,
 							generatedInto: join(rigPlaceholder, "seed"),
 							check: seedExpectations(loadSeedSpec(opts.seed)),
+						},
+					}
+				: {}),
+			...(plan.download
+				? {
+						download: {
+							file: plan.download.file,
+							route:
+								"POST /v1/desktop/sessions/<session>/files/<file id>/download, sent by the app; the harness's daemon client stays GET-only",
+							destinations: plan.download.destinations,
+							manifest: plan.download.manifest,
+							operatorDownloads: opts.checkOperatorDownloads
+								? {
+										checked: true,
+										path: plan.download.operatorDownloads.path,
+										...(plan.download.operatorDownloads.injected
+											? { injected: true }
+											: {}),
+									}
+								: { checked: false },
+							limits: downloadLimits(opts),
 						},
 					}
 				: {}),
@@ -3347,23 +5692,59 @@ export async function main(argv = process.argv.slice(2)) {
 			verdict = screenRecordingGranted();
 		} catch (error) {
 			console.error(
-				`[mac-proof] BLOCKED: could not read Screen Recording permission without a prompt (${error.message})`,
+				`[mac-proof] BLOCKED: could not read Screen Recording permission without a prompt (${error.message}). ` +
+					`Once it can be read: ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
 		}
 		if (verdict === "unknown") {
 			console.error(
-				"[mac-proof] BLOCKED: CGPreflightScreenCaptureAccess is not callable from JXA here, so Screen Recording cannot be read without risking a prompt. " +
-					"Use --capture capturepage (no vibrancy claim), or report this macOS version so the harness can learn another prompt-free probe.",
+				`[mac-proof] BLOCKED: CGPreflightScreenCaptureAccess is not callable from JXA here (neither bridged nor via ObjC.bindFunction), so Screen Recording cannot be read without risking a prompt. Use --capture capturepage (no vibrancy claim), or report this macOS version so the harness can learn another prompt-free probe. If it is a permission gap: ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
 		}
 		if (verdict !== "granted") {
 			console.error(
-				"[mac-proof] BLOCKED: Screen Recording is not granted to this process's host (the terminal or agent app). " +
-					"Grant it in System Settings > Privacy & Security > Screen Recording; this harness never requests it (that would prompt).",
+				`[mac-proof] BLOCKED: Screen Recording is not granted to this process's host; ${screenRecordingGrantHint(tccHost())}.`,
 			);
 			return EXIT.BLOCKED;
+		}
+	}
+
+	/*
+	 * The download scene's "before" listings, taken before the backend or the
+	 * app starts: names only, of the rig's two possible destinations (to tell
+	 * the new landing from what was there) and - only with
+	 * --check-operator-downloads (see operatorDownloadsBaseline for why it is
+	 * opt-in) - of the operator's real ~/Downloads.
+	 */
+	let downloadBefore = null;
+	if (plan.download) {
+		try {
+			const operator = operatorDownloadsBaseline({
+				check: opts.checkOperatorDownloads,
+				dir: plan.download.operatorDownloads.path,
+				injected: plan.download.operatorDownloads.injected,
+			});
+			// A permission error on the rig's own folders is a named refusal, not
+			// a raw throw (review S1-5): without this listing no landing can be
+			// told from what was already there.
+			const rigBefore = new Map();
+			for (const d of plan.download.destinations) {
+				try {
+					rigBefore.set(d.dir, listNames(d.dir));
+				} catch (error) {
+					throw new Refusal(
+						`cannot list the rig's ${d.dir} before the run (${error.code ?? error.message}); without that listing a landing cannot be told from what was already there`,
+					);
+				}
+			}
+			downloadBefore = { operator, rig: rigBefore };
+		} catch (error) {
+			console.error(
+				`[mac-proof] ${error instanceof Refusal && error.code === EXIT.REFUSED ? "refused: " : ""}${error.message}`,
+			);
+			return error instanceof Refusal ? error.code : EXIT.BLOCKED;
 		}
 	}
 
@@ -3400,10 +5781,14 @@ export async function main(argv = process.argv.slice(2)) {
 		capture:
 			opts.capture === "screencapture"
 				? SCREENCAPTURE_METHOD
-				: "capturePage: no vibrancy claim",
+				: CAPTUREPAGE_METHOD,
 		backend: { mode: opts.backend },
 		frames: [],
 		steps: [],
+		limits: receiptLimits(opts.scenes, {
+			...opts,
+			launchServices: viaLaunchServices,
+		}),
 		disclosed: [
 			"the opened conversation's unread/seen marks may clear on the daemon that served it",
 			"a desktop presence beat (45 s TTL) is sent to that daemon",
@@ -3414,10 +5799,59 @@ export async function main(argv = process.argv.slice(2)) {
 				: []),
 		],
 		reap: {},
+		launch: {
+			mode: launch.kind,
+			...(launch.injected ? { injected: true } : {}),
+		},
+		/*
+		 * Every focus event the run saw (a rig pid frontmost, a focused state or
+		 * SHUTTER line); [] on a clean run. `frontmost` is the watchdog's record
+		 * (mac-proof-focus.mjs `createFrontmostWatch`), present in EVERY receipt
+		 * so an early exit still says what was sampled; `tool: null` off darwin.
+		 */
+		focusEvents: [],
+		frontmost: emptyFrontmost(viaLaunchServices ? "lsappinfo" : null),
+		/*
+		 * The attach assertion (capture owner, 2026-11-20; mac-proof-focus.mjs
+		 * `createAttachCheck`): the URL the app's own attach line named, the serve
+		 * URL this run started, and whether they agree. `rigUrl` is filled once
+		 * the backend is up; a mismatch at any point fails the run.
+		 */
+		attach: { url: null, rigUrl: null, match: null },
+		...(plan.download
+			? {
+					download: {
+						route:
+							"POST /v1/desktop/sessions/<session>/files/<file id>/download (sent by the app with its own token; the harness's daemon client stays GET-only)",
+						file: plan.download.file,
+						// The plan's own objects, the dry-run's shape (review F6).
+						destinations: plan.download.destinations,
+						manifest: plan.download.manifest,
+						// Replaced after the reap; set now so an early end still
+						// says whether the stray check was asked for.
+						operatorDownloads: { checked: opts.checkOperatorDownloads },
+						limits: downloadLimits(opts),
+						verdict: "FAIL",
+					},
+				}
+			: {}),
 		verdict: "failed",
 	};
 	const children = { app: null };
 	let appExited = false;
+	/*
+	 * The LaunchServices launch's state (darwin; see mac-proof-focus.mjs): the
+	 * watchdog, the app as discovered (pid + start), its sentinel, the env proof,
+	 * the token to redact from the app's own log files, and the first focus
+	 * abort (set by the watchdog, read by the main loop and by `finalize`).
+	 */
+	let watch = null;
+	let launched = null;
+	let launchAttempted = false;
+	let sentinel = null;
+	let envProofRef = null;
+	let redactToken = null;
+	let focusAbort = null;
 	/*
 	 * Why the run ENDED early, when it did. `interrupted` is the signal name
 	 * (SIGINT/SIGTERM/SIGHUP), `childFailure` the first spawn 'error' (EACCES,
@@ -3518,6 +5952,31 @@ export async function main(argv = process.argv.slice(2)) {
 	/** Pids reaped with an UNKNOWN identity (start did not parse; review r1 R1-1), for the receipt. */
 	const unknownStart = new Set();
 	const reapEverything = async () => {
+		// The LaunchServices app is launchd's child, outside any group of ours:
+		// by pid + recorded start, then by the rig's exact --user-data-dir token
+		// (helpers, or an app discovery never singled out). Never by name.
+		if (viaLaunchServices && launchAttempted && !receipt.reap.app) {
+			const result = await stopLaunchedApp({
+				pid: launched?.pid ?? null,
+				start: launched?.start ?? null,
+				profile,
+			});
+			receipt.reap.app = {
+				clean: result.clean,
+				escalated: result.escalated,
+				reaped: result.reaped.length,
+				survivors: result.survivors.length,
+			};
+			if (sentinel && sentinel.pid !== undefined) {
+				// It exits on its own once the app is gone; this is the backstop.
+				// A ChildProcess handle, so the kill never reaches a recycled pid.
+				const gone = () =>
+					sentinel.exitCode !== null || sentinel.signalCode !== null;
+				if (!gone()) sentinel.kill("SIGKILL");
+				for (let i = 0; i < 20 && !gone(); i++) await sleep(50);
+				receipt.reap.sentinel = { pid: sentinel.pid, clean: gone() };
+			}
+		}
 		if (children.app && children.app.pid !== undefined && !receipt.reap.app) {
 			const result = await stopAppTree({
 				pid: children.app.pid,
@@ -3585,14 +6044,105 @@ export async function main(argv = process.argv.slice(2)) {
 	 * `process.exit`, so it must not rely on the `finally` getting there first).
 	 */
 	let finishing = null;
+	/** App log files the token could not be redacted from (S2): never copied to --out. */
+	const unredacted = new Set();
 	const finalize = () => {
 		finishing ??= (async () => {
 			await teardown();
+			// The watchdog runs until after the reap (a steal during the reap still
+			// counts), then the run's focus verdict: a rig pid frontmost fails it.
+			if (watch) await watch.stop();
+			if (envProofRef) receipt.launch.envProof = envProofRef.record();
+			if (receipt.frontmost.stolen) {
+				receipt.verdict = "failed";
+				if (!String(receipt.error ?? "").includes(focusAbort))
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${focusAbort}`;
+				receipt.exit = EXIT.FAILED;
+			}
+			// Under LaunchServices the app wrote its own log files: redact the token
+			// in place, after the reap, so nothing can still be writing them.
+			// Recorded per file, and a file that could not be read back or
+			// rewritten FAILS the run (security review S2): a silent miss would
+			// leave the token on disk under a "captured" verdict. Not covered: a
+			// harness killed before this point leaves the files unredacted in the
+			// 0700 rig (docs, limits).
+			if (viaLaunchServices && redactToken) {
+				receipt.redaction = {};
+				const failed = [];
+				for (const file of ["app-stdout.log", "app-stderr.log"]) {
+					const path = join(rig, "logs", file);
+					try {
+						const text = readFileSync(path, "utf8");
+						if (text.includes(redactToken)) {
+							writeFileSync(path, text.replaceAll(redactToken, "<redacted>"));
+							if (readFileSync(path, "utf8").includes(redactToken))
+								throw new Error(
+									"the token is still in the file after the rewrite",
+								);
+							receipt.redaction[file] = "redacted";
+						} else receipt.redaction[file] = "clean";
+					} catch (error) {
+						if (error.code === "ENOENT") {
+							receipt.redaction[file] = "absent";
+							continue;
+						}
+						receipt.redaction[file] = `failed: ${error.code ?? error.message}`;
+						failed.push(file);
+					}
+				}
+				for (const file of failed) unredacted.add(file);
+				if (failed.length > 0) {
+					const why = `the token could not be redacted from ${failed.join(", ")} (receipt.redaction); it is not copied to --out; delete the rig's logs by hand`;
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${why}`;
+					receipt.exit = EXIT.FAILED;
+				}
+			}
 			if (interrupted) {
 				receipt.verdict = "failed";
 				receipt.error = `interrupted by ${interrupted}`;
 				receipt.endedBy = { signal: interrupted };
 				receipt.exit = EXIT.FAILED;
+			}
+			// After the reap, so nothing of this run can still be writing. With
+			// --check-operator-downloads any new name in the operator's real
+			// ~/Downloads fails the run; without it the receipt records
+			// {checked: false} and nothing is listed.
+			if (downloadBefore) {
+				// Every path ends here (pass, abort, signal, timeout), after the
+				// reap: record each new name in the rig, so a run that aborted
+				// AFTER a file landed still says what landed (review S1-3). A PASS
+				// that no longer sees exactly that one file is failed.
+				let landed;
+				try {
+					landed = rigNewEntries(
+						plan.download.destinations,
+						downloadBefore.rig,
+					);
+				} catch (error) {
+					landed = null;
+					receipt.download.newInRigError = error.code ?? error.message;
+				}
+				receipt.download.newInRig = landed;
+				if (
+					receipt.download.verdict === "PASS" &&
+					(landed === null ||
+						landed.length !== 1 ||
+						landed[0] !== receipt.download.destination)
+				) {
+					receipt.download.verdict = "FAIL";
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}after the reap the rig holds ${landed === null ? "an unreadable downloads folder" : `${landed.length} new file(s): ${landed.join(", ")}`}, not exactly ${receipt.download.destination}`;
+					receipt.exit = EXIT.FAILED;
+				}
+				const stray = operatorDownloadsVerdict(downloadBefore.operator);
+				receipt.download.operatorDownloads = stray.record;
+				if (stray.problem) {
+					receipt.download.verdict = "FAIL";
+					receipt.verdict = "failed";
+					receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}${stray.problem}`;
+					receipt.exit = EXIT.FAILED;
+				}
 			}
 			const leaked = Object.values(receipt.reap).some(
 				(r) => r && r.clean === false,
@@ -3607,7 +6157,12 @@ export async function main(argv = process.argv.slice(2)) {
 			if (receipt.verdict !== "captured" && receipt.exit === EXIT.BLOCKED)
 				receipt.verdict = "blocked";
 			try {
-				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
+				// A log the token could not be redacted from stays in the 0700
+				// rig only, never copied to --out (security review S2).
+				cpSync(join(rig, "logs"), join(opts.out, "logs"), {
+					recursive: true,
+					filter: (src) => !unredacted.has(basename(src)),
+				});
 			} catch {}
 			// The extracted release (a ~180 MB zip, more unpacked) goes once nothing of it can still be
 			// running: after a CLEAN reap only. A survivor keeps its tree, both for
@@ -3670,7 +6225,41 @@ export async function main(argv = process.argv.slice(2)) {
 		["SIGINT", "SIGTERM", "SIGHUP"],
 	);
 
+	/** The watchdog's lsappinfo runner and ASN->pid cache (darwin only). */
+	let lsappinfo = null;
+	const frontCache = new Map();
 	try {
+		// ---- focus: the watchdog preflight and the inter-run gate --------------
+		// Before anything is spawned. Fail closed: no readable frontmost app means
+		// no watchdog, so no launch (exit 2).
+		if (viaLaunchServices) {
+			lsappinfo = lsappinfoRunner(launch.lsappinfo);
+			const probe = await sampleFrontmost(lsappinfo, frontCache);
+			if (probe.unknown)
+				throw new Refusal(
+					`the frontmost watchdog's preflight failed (${probe.unknown}); refusing to launch without it (${launch.lsappinfo} front, then info -only name -only pid <ASN>)`,
+				);
+			// The receipt's baseline is this probe (review F6), so a run the
+			// inter-run gate refuses still says what was in front.
+			receipt.frontmost.baseline = {
+				asn: probe.asn,
+				pid: probe.pid,
+				name: probe.name,
+				atMs: 0,
+				source: "preflight",
+			};
+			// The test seam scopes the gate to this run's rig root: concurrent
+			// suite cases each own one (mac-proof-focus.mjs `launchMode`).
+			const gate = interRunGateProblem({
+				rows: psRows(),
+				front: probe,
+				pattern: rigStyleProfilePattern(
+					launch.gateScopedToRigRoot ? dirname(rig) : null,
+				),
+			});
+			if (gate) throw new Refusal(gate);
+		}
+
 		// ---- --app-zip: extract into the rig, then the --app guards -----------
 		if (opts.appZip !== null) {
 			plan.app = releaseZipApp(plan.app.zip, rig, {
@@ -3730,6 +6319,9 @@ export async function main(argv = process.argv.slice(2)) {
 					scenario: opts.seed,
 					generatedAt: generated.now,
 					files: generated.files,
+					// `{id, read}` per seeded notification: the detail scenes' read
+					// face is SEEDED (`detailReadSelector`), so the receipt says so.
+					...(generated.expect?.items ? { items: generated.expect.items } : {}),
 				};
 				cpSync(generated.out, configRoot, { recursive: true });
 			}
@@ -3851,20 +6443,159 @@ export async function main(argv = process.argv.slice(2)) {
 			session: opts.session,
 		});
 		console.log(
-			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"}) for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
+			`[mac-proof] launching ONE ${opts.windowMode} window (${plan.app.kind} ${plan.app.version ?? "?"})${viaLaunchServices ? " through LaunchServices (open -g -n)" : ""} for ${opts.scenes.length * opts.themes.length} frame(s); it is reaped when the run ends`,
 		);
-		const app = spawn(plan.app.executable, argvApp, {
-			cwd: rig,
-			env: buildAppEnv({ rig, backendUrl, token, windowMode: opts.windowMode }),
-			detached: true,
-			stdio: ["ignore", "pipe", "pipe"],
+		redactToken = token ?? null;
+		const appEnv = buildAppEnv({
+			rig,
+			backendUrl,
+			token,
+			windowMode: opts.windowMode,
 		});
-		children.app = app;
-		app.on("error", onChildError("the app"));
-		if (app.pid !== undefined) reapOnExit({ pid: app.pid, userData: profile });
-		app.on("exit", () => {
-			appExited = true;
-		});
+		/** The app's pid: the direct child's, or the LaunchServices instance discovered by its profile. */
+		let appPid;
+		/** The app's own --stdout/--stderr files (LaunchServices only), tailed into `onLine`. */
+		const tails = [];
+		receipt.attach.rigUrl = new URL(backendUrl).origin;
+		if (viaLaunchServices) {
+			// PREVENTION (mac-proof-focus.mjs): -g (no front) -n (a NEW instance,
+			// never the operator's running app), every non-secret isolation key on
+			// --env, the token inherited only (`APP_ENV_KEYS`).
+			const openArgv = buildOpenArgv({
+				appBundle: plan.app.realpath,
+				rig,
+				appArgv: argvApp,
+				env: appEnv,
+			});
+			const openProblem = openArgvProblem(openArgv, { profile, token });
+			if (openProblem) throw new Refusal(openProblem);
+			for (const file of ["app-stdout.log", "app-stderr.log"]) {
+				writeFileSync(join(rig, "logs", file), "");
+				tails.push(createFileTail(join(rig, "logs", file)));
+			}
+			// From just before the launch: the baseline is the operator's front app.
+			watch = createFrontmostWatch({
+				sample: () => sampleFrontmost(lsappinfo, frontCache),
+				isRig: rigPidClassifier({
+					profile,
+					appPid: () => launched?.pid ?? null,
+					argvOf: psArgvOf,
+				}),
+				record: receipt.frontmost,
+				onSteal: (stolen) => {
+					focusAbort ??= `the rig app became frontmost (pid ${stolen.pid}${stolen.helper ? ", a helper" : ""}, ${stolen.asn}) at +${stolen.sinceLaunchMs ?? stolen.atMs} ms after launch`;
+					receipt.focusEvents.push({
+						source: "lsappinfo",
+						at: new Date().toISOString(),
+						...stolen,
+					});
+					// Reap NOW, not at the main loop's next look: every 100 ms the
+					// rig app stays frontmost is 100 ms of the operator's input.
+					void teardown();
+				},
+				onBlind: (why) => {
+					focusAbort ??= why;
+				},
+			});
+			// The baseline sample first, then the 100 ms loop, then the launch.
+			await watch.tick();
+			watch.start();
+			launchAttempted = true;
+			// Both backstops BEFORE `open` (review F2, QA Q1-5): from here on any
+			// process carrying the rig profile is ours to reap, whether or not
+			// discovery ever names it and whether or not this process survives.
+			reapLaunchedOnExit({ launched: () => launched, profile });
+			sentinel = startSentinel({
+				harnessPid: process.pid,
+				harnessStart: startOf(process.pid),
+				profile,
+				rig,
+			});
+			receipt.launch.sentinel = { pid: sentinel.pid ?? null };
+			const opener = spawn(launch.open, openArgv, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			watch.markLaunched();
+			const openOut = [];
+			opener.stdout.on("data", (c) => openOut.push(c.toString()));
+			opener.stderr.on("data", (c) => openOut.push(c.toString()));
+			const discoveryDeadline = Date.now() + DISCOVERY_TIMEOUT_MS;
+			const openExit = await new Promise((resolve) => {
+				const bound = setTimeout(
+					() => resolve("no exit"),
+					Math.max(0, discoveryDeadline - Date.now()),
+				);
+				opener.on("error", (error) => {
+					clearTimeout(bound);
+					resolve(error.message);
+				});
+				opener.on("exit", (code, signal) => {
+					clearTimeout(bound);
+					resolve(code === 0 ? 0 : `exit ${code ?? signal}`);
+				});
+			});
+			writeFileSync(join(rig, "logs", "open.log"), openOut.join(""));
+			if (openExit !== 0) {
+				if (opener.exitCode === null && opener.signalCode === null)
+					opener.kill("SIGKILL");
+				throw new Error(
+					`${launch.open} did not launch the app (${openExit}): ${openOut.join("").trim().slice(0, 300)}`,
+				);
+			}
+			// Exactly ONE process: the rig profile, no --type=, launchd's child.
+			let found = null;
+			while (Date.now() < discoveryDeadline) {
+				checkpoint("finding the LaunchServices-launched app");
+				// A steal before discovery already reaped by profile: stop looking.
+				if (focusAbort) throw new Error(focusAbort);
+				const rows = psRows();
+				found =
+					rows === null
+						? {
+								pid: null,
+								candidates: 0,
+								problem: "ps could not list processes",
+							}
+						: discoverAppPid(rows, { profile, launchdPid: launch.launchdPid });
+				if (found.pid !== null || found.candidates > 1) break;
+				await sleep(100);
+			}
+			if (found?.pid == null)
+				// After the spawn, so an ordinary failure (exit 1), not a refusal:
+				// exit 2 means nothing was spawned (QA Q1-2). The reap
+				// (stopLaunchedApp) kills every pid carrying the profile.
+				throw new Error(
+					`${found?.problem ?? "no app appeared"}; every process carrying this rig's profile is reaped`,
+				);
+			launched = { pid: found.pid, start: found.start };
+			appPid = found.pid;
+			appRecorded.add(appPid);
+			rememberIdentities(identities, [appPid]);
+			receipt.launch = {
+				...receipt.launch,
+				open: launch.open,
+				argv: openArgv,
+				app: { pid: appPid, start: found.start },
+			};
+		} else {
+			const app = spawn(plan.app.executable, argvApp, {
+				cwd: rig,
+				env: appEnv,
+				detached: true,
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+			children.app = app;
+			app.on("error", onChildError("the app"));
+			if (app.pid !== undefined)
+				reapOnExit({ pid: app.pid, userData: profile });
+			app.on("exit", () => {
+				appExited = true;
+			});
+			appPid = app.pid;
+		}
 		const supervisor = createSupervisor({
 			windowMode: opts.windowMode,
 			session: opts.session,
@@ -3873,16 +6604,76 @@ export async function main(argv = process.argv.slice(2)) {
 			labels: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => s.payload.label),
+			windowWait: (() => {
+				const i = steps.steps.findIndex(
+					(s) => s.payload?.selector === WINDOW_WAIT_SELECTOR,
+				);
+				return i < 0 ? null : { step: i + 1, s: opts.windowWaitS };
+			})(),
 		});
 		const appLog = [];
 		let abort = null;
+		/** EXIT.BLOCKED for the env proof; null = an ordinary failure (exit 1). */
+		let abortCode = null;
 		let finished = false;
 		const work = [];
+		// The LaunchServices launch proves its env from the app's own lines
+		// (mac-proof-focus.mjs `createEnvProof`), complete BEFORE the present.
+		const envProof = viaLaunchServices ? createEnvProof({ backendUrl }) : null;
+		envProofRef = envProof;
+		const attachCheck = createAttachCheck({ rigUrl: receipt.attach.rigUrl });
+		receipt.attach = attachCheck.record;
+		const envBlocked = (when) => {
+			abort ??= envNotInheritedMessage(
+				envProof.missing(),
+				when,
+				envProof.state.wrongBackend,
+			);
+			abortCode = EXIT.BLOCKED;
+			void teardown();
+		};
 		const onLine = (line) => {
 			appLog.push(line);
+			// Judged on EVERY line, even after the run finished or aborted: an
+			// attach to any backend but this run's serve fails the run whenever
+			// it appears (receipt `attach.match: false`), and the moment it is
+			// read, not at the present (QA Q1-3).
+			if (attachCheck.feed(line)) {
+				abort = attachMismatchMessage(attachCheck.record);
+				abortCode = null;
+				void teardown();
+				return;
+			}
 			if (abort || finished) return;
+			if (envProof) {
+				envProof.feed(line);
+				if (line.startsWith("[dev-driver] not armed"))
+					return envBlocked(`(the app printed: ${line})`);
+				// v0.59.2's attach-pair failure (index.ts:1516-1519, then app.exit(1)
+				// at :2663): the URL arrived on --env, the inherited token did not.
+				if (line.startsWith("[attach] ") && envProof.missing().length > 0)
+					return envBlocked(`(the app printed: ${line})`);
+				// The step runner is ready only after the window loaded, which is
+				// after the attach (index.ts:4764 < :5106): no proof by then is a
+				// block before the first step runs.
+				if (
+					line.startsWith("[dev-driver-script] ready") &&
+					envProof.missing().length > 0
+				)
+					return envBlocked("before its step runner started");
+				if (PRESENT_LINE.test(line) && envProof.missing().length > 0)
+					return envBlocked("before its window was presented");
+			}
 			const action = supervisor.feed(line);
 			if (!action) return;
+			if (action.abort && /\bfocused=true\b/.test(line))
+				receipt.focusEvents.push({
+					source: line.startsWith("[window-mode] state:")
+						? "window-state"
+						: "shutter",
+					at: new Date().toISOString(),
+					line,
+				});
 			if (action.abort) abort = action.abort;
 			else if (action.done) finished = true;
 			else if (action.shutter) work.push(capture(action.shutter));
@@ -3891,23 +6682,25 @@ export async function main(argv = process.argv.slice(2)) {
 			const theme = shot.label.split("-").pop();
 			const file = join(opts.out, `${shot.label}.png`);
 			if (opts.capture === "screencapture") {
-				const info = windowInfo(shot.windowId);
+				const info = await windowInfoAsync(shot.windowId);
 				if (!info) throw new Error(`window ${shot.windowId} is not on screen`);
-				if (info.pid !== app.pid)
+				if (info.pid !== appPid)
 					throw new Error(
-						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${app.pid})`,
+						`window ${shot.windowId} belongs to pid ${info.pid}, not the app this run launched (${appPid})`,
 					);
 				if (info.layer !== 0)
 					throw new Error(
 						`window ${shot.windowId} is on layer ${info.layer}, not a normal window`,
 					);
-				const run = spawnSync(
+				const run = await runAsync(
 					"screencapture",
 					["-x", "-o", "-l", String(shot.windowId), file],
-					{ encoding: "utf8", timeout: 30000 },
+					{ timeout: 30000 },
 				);
 				if (run.status !== 0)
-					throw new Error(`screencapture failed: ${(run.stderr || "").trim()}`);
+					throw new Error(
+						`screencapture failed: ${(run.stderr || run.error || "").trim()}`,
+					);
 				const bytes = readFileSync(file);
 				const size = pngSize(bytes);
 				if (!size || bytes.length < 1000)
@@ -3944,7 +6737,7 @@ export async function main(argv = process.argv.slice(2)) {
 					label: shot.label,
 					theme,
 					file,
-					method: "capturePage: no vibrancy claim",
+					method: CAPTUREPAGE_METHOD,
 					sha256: sha256(bytes),
 					pixels: size,
 					at: new Date().toISOString(),
@@ -3961,18 +6754,36 @@ export async function main(argv = process.argv.slice(2)) {
 				at = buffered.indexOf("\n");
 			}
 		};
-		app.stdout.on("data", split);
-		app.stderr.on("data", split);
+		/** LaunchServices: whatever the app's own files gained, line by line. */
+		const pump = (options) => {
+			for (const tail of tails)
+				for (const line of tail.read(options)) onLine(line);
+		};
+		if (children.app) {
+			children.app.stdout.on("data", split);
+			children.app.stderr.on("data", split);
+		}
 
 		const started = Date.now();
 		let tick = 0;
 		while (!abort && !finished && !appExited && !endedBy()) {
+			pump();
+			abort ??= focusAbort;
+			if (
+				envProof &&
+				!abort &&
+				Date.now() - started > STARTUP_WINDOW_MS &&
+				envProof.missing().length > 0
+			)
+				envBlocked(`within ${STARTUP_WINDOW_MS / 1000} s of launch`);
 			abort ??= startupProblem(supervisor.state, Date.now() - started);
 			await sleep(100);
+			// launchd's child, not ours: no exit event, so it is looked at.
+			if (viaLaunchServices && !pidAlive(appPid)) appExited = true;
 			// Every ~2 s: record the app's descendants (and the lop processes'),
 			// so a helper that later leaves the group is still reaped by pid.
 			if (tick++ % 20 === 0) {
-				for (const pid of descendantsOf([app.pid])) appRecorded.add(pid);
+				for (const pid of descendantsOf([appPid])) appRecorded.add(pid);
 				rememberIdentities(identities, appRecorded);
 				recordDescendants();
 			}
@@ -3992,6 +6803,19 @@ export async function main(argv = process.argv.slice(2)) {
 				abort ??= `capture failed: ${error.message}`;
 			}
 		}
+		pump({ flush: true });
+		abort ??= focusAbort;
+		// An LS app that died with its env unproven: with the URL on --env and no
+		// token inherited, v0.59.2 exits at its attach check (index.ts:2663)
+		// before any backend or window, which is the fail-closed case.
+		if (
+			envProof &&
+			appExited &&
+			!abort &&
+			!finished &&
+			envProof.missing().length > 0
+		)
+			envBlocked("before it exited");
 		if (!abort && !finished)
 			abort =
 				endedBy() ??
@@ -4001,16 +6825,63 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.steps = supervisor.state.steps;
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
-		writeFileSync(
-			join(rig, "logs", "app-stdout.log"),
-			token
-				? appLog.join("\n").replaceAll(token, "<redacted>")
-				: appLog.join("\n"),
-		);
+		receipt.windowWait = supervisor.state.windowWait;
+		// Under LaunchServices the app writes this file itself (redacted in
+		// `finalize`, after the reap); the direct spawn's lines are written here.
+		if (!viaLaunchServices)
+			writeFileSync(
+				join(rig, "logs", "app-stdout.log"),
+				token
+					? appLog.join("\n").replaceAll(token, "<redacted>")
+					: appLog.join("\n"),
+			);
 		const expected = opts.scenes.length * opts.themes.length;
 		if (!abort && receipt.frames.length !== expected)
 			abort = `captured ${receipt.frames.length} of ${expected} frames`;
-		if (abort) throw new Error(abort);
+		if (!abort) abort = duplicateFrameProblem(receipt.frames);
+		// Provenance (see `libraryProvenanceCheck`): after the frames, while the
+		// rig daemon is still up, and bounded by what is left of --timeout. A
+		// non-remote answer FAILS the run: the frame would not prove the remote path.
+		if (!abort && opts.scenes.includes("library")) {
+			checkpoint("reading the library row's provenance back");
+			receipt.libraryProvenance = await readLibraryProvenance(
+				backendUrl,
+				token,
+				{ timeoutMs: Math.max(1000, runDeadline - Date.now()) },
+			);
+			if (!receipt.libraryProvenance.pass)
+				abort = `library provenance: ${receipt.libraryProvenance.problem}`;
+		}
+		if (!abort && opts.scenes.includes("file-preview")) {
+			checkpoint("reading the previewed file's provenance back");
+			receipt.imagePreview = await readImagePreview(backendUrl, token, {
+				session: opts.session,
+				name: opts.previewFile,
+				configRoot: opts.backend === "attach" ? null : lopRun.configRoot,
+				timeoutMs: Math.max(1000, runDeadline - Date.now()),
+			});
+			if (!receipt.imagePreview.pass)
+				abort = `file-preview provenance: ${receipt.imagePreview.problem}`;
+		}
+		// The landing is read while the run is still whole (the steps are done,
+		// the reap has not started), so a FAIL names the file it saw.
+		if (!abort && plan.download) {
+			const landing = inspectLanding(plan.download, downloadBefore.rig, {
+				rigRoots: [plan.backendHome, opts.backendConfigRoot],
+			});
+			receipt.download = { ...receipt.download, ...landing.result };
+			abort = landing.problem;
+		}
+		if (plan.download)
+			receipt.download.toastLatency = downloadToastLatency(
+				steps.steps,
+				receipt.steps,
+			);
+		abort ??= focusAbort;
+		if (abort)
+			throw abortCode === null
+				? new Error(abort)
+				: new Refusal(abort, abortCode);
 		receipt.verdict = "captured";
 	} catch (error) {
 		// A signal that landed mid-run is THE cause; what the main path saw next
@@ -4018,6 +6889,10 @@ export async function main(argv = process.argv.slice(2)) {
 		receipt.error = interrupted
 			? `interrupted by ${interrupted}`
 			: error.message;
+		const hint = plan.download
+			? downloadFailureHint(receipt.error, plan.download.file)
+			: null;
+		if (hint) receipt.error = `${receipt.error} (${hint})`;
 		receipt.exit = error instanceof Refusal ? error.code : EXIT.FAILED;
 		if (!interrupted && /exceeded --timeout/.test(receipt.error))
 			receipt.endedBy = { timeoutS: opts.timeoutS };

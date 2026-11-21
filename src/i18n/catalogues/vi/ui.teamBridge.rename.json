@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {Đổi tên nhóm…} other {Đổi tên kênh…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {Đổi tên nhóm} other {Đổi tên kênh}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {Mọi thành viên trong nhóm sẽ thấy tên mới.} other {Mọi thành viên trong kênh sẽ thấy tên mới. Tên kênh viết thường và dùng dấu gạch ngang thay cho dấu cách.}}",
+	"ui.teamBridge.rename.name": "Tên",
+	"ui.teamBridge.rename.cancel": "Hủy",
+	"ui.teamBridge.rename.save": "Lưu",
+	"ui.teamBridge.rename.saving": "Đang lưu…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {Đã có nhóm tên {name}. Hãy chọn tên khác.} other {Đã có kênh tên #{name}. Hãy chọn tên khác.}}",
+	"ui.teamBridge.rename.error.empty": "Hãy nhập tên.",
+	"ui.teamBridge.rename.error.too_long": "Tên có thể dài tối đa {max, number} ký tự.",
+	"ui.teamBridge.rename.error.characters": "Tên chứa ký tự không dùng được, chẳng hạn ký tự tab, ngắt dòng hoặc ký tự ẩn.",
+	"ui.teamBridge.rename.error.invalid": "Không thể dùng tên này. Hãy thử tên khác.",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {Bạn không có quyền đổi tên nhóm này.} other {Bạn không có quyền đổi tên kênh này.}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {Nhóm này đã được lưu trữ nên không thể đổi tên.} other {Kênh này đã được lưu trữ nên không thể đổi tên.}}",
+	"ui.teamBridge.rename.error.failed": "Chưa lưu được tên mới. Hãy thử lại."
+}

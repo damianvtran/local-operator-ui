@@ -1,0 +1,46 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "bcdb056e3f77-sy-zh-cn",
+	"date": "2026-11-19",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer session bcdb056e3f77, model anthropic/claude-sonnet-5-5 as served; no provider fallback). Did not translate or implement this change: values were reused by the coder from existing catalogues. Read only the committed bytes at the head below; edited nothing but this receipt.",
+	"references": {
+		"glossary": "damianvtran/local-operator@56662d28b33f i18n/glossary.md (last touched at that commit; origin/main ebad0e1da46e)",
+		"style_guide": "damianvtran/local-operator@56662d28b33f i18n/style-guides/zh-CN.md",
+		"shipped_terms": "src/i18n/catalogues/{en,zh-CN}/ui.common.time.json ui.common.time.yesterday; src/i18n/catalogues/{en,zh-CN}/ui.notifications.json ui.notifications.group.yesterday (both identical to the new value)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"head": "cef617797717103a9bf322bbf0aee5cd65007c8b",
+	"worktree": "~/workspace/repos/local-operator-ui/.worktrees/sidebar-yesterday",
+	"scope": "One new key, ui.chat.sidebar_view.section.yesterday, read against the en value 'Yesterday', its .context.json entry (role: section visibility switch label; maxCells 20; same name interpolated into reorder accessible names), the core glossary, this locale's style guide, and the locale's neighbouring Today/This week/Older values. Mechanical: NFC, no Cc/Cf characters, value equals the audited ui.common.time.yesterday and ui.notifications.group.yesterday, uppercase transform checked (heading element in chat-sidebar.tsx uses CSS `uppercase tracking-wide`). sha256 recomputed with shasum -a 256 over each whole namespace catalogue file on disk, equal to the values frozen by the coder.",
+	"namespace": "ui.chat.sidebar_view",
+	"keys_audited": 1,
+	"keys": [
+		"ui.chat.sidebar_view.section.yesterday"
+	],
+	"en_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+	"target_path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar_view.json",
+	"value": "昨天",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "2c6b244e72831b381cfc7b1db09aa50fc59ff59c22db6242e7bd2810056eb098",
+		"zh-CN": "f54810445acfafba2ac9d626dfcc97be440e29aed7c6e92a0643f6c0d639fef5"
+	},
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		{
+			"severity": "INFO",
+			"id": "zh-CN-O1",
+			"point": "Fitness as sidebar section heading",
+			"detail": "Standard word; Han script is caseless so CSS uppercase is a no-op; no sentence-final punctuation, matching the style guide for short labels. Length 2 code points vs maxCells 20. Value is byte-identical to the already-audited ui.common.time.yesterday and ui.notifications.group.yesterday in this locale; matches the 今天 / 本周 neighbours."
+		}
+	]
+}
