@@ -16,7 +16,10 @@ import type { HeldMessageDetail } from "./use-team-bridge-holds";
  * hold, a decided one and one whose details could not load; empty; error;
  * loading; release turned off. Presentational only: reasons, buttons and
  * refusals come from the same model the container uses, and the body shown is
- * the owner-audit body, never anything the hold list carries.
+ * the owner-audit body, never anything the hold list carries. The
+ * `Unloadable*` stories at the end cover local-operator #4358's receipt
+ * Discard. There is deliberately no "discard all" story: a frozen-cutoff
+ * batch Discard is a separate backend plan, not part of this section.
  */
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
@@ -347,5 +350,134 @@ export const HiddenCharacters: Story = {
 			tenantId: "tnt_story",
 			binding: { state: "shown", hash: SHA },
 		}),
+	},
+};
+
+/*
+ * local-operator #4358: THE OPERATOR'S STUCK ROW, rebuilt synthetically. A
+ * model_hold held 2026-11-10 09:23 whose 7-day Deliver window passed and whose
+ * sender and text the owner-audit read can no longer serve: before this change
+ * it read "Unknown sender ... can't be delivered or discarded yet" and still
+ * held the badge. Core now serves a `discard_receipt`, so the row offers ONE
+ * Discard (never Deliver) and names itself by reference. Beside it: a valid
+ * new hold (the operator's #647), a long one that must be opened before
+ * Deliver, and the orphan's own settled state after a Discard is recorded.
+ */
+const RECEIPT = "c".repeat(64);
+const orphan = hold("bcmsg_5ac4b3e8deadbeef", {
+	held_at: "2026-11-10T14:23:00Z",
+	can_deliver: false,
+	deliver_until: "2026-11-17T14:23:00Z",
+	actionable: true,
+	discard_receipt: RECEIPT,
+});
+const fresh = hold("bcmsg_647", {
+	held_at: "2026-11-18T09:00:00Z",
+	deliver_until: "2026-11-25T09:00:00Z",
+	actionable: true,
+});
+const orphanDetail = (item: HoldItem): HeldMessageDetail =>
+	item.message_id === "bcmsg_5ac4b3e8deadbeef" ||
+	item.message_id === "bcmsg_orphan_settled" ||
+	item.message_id === "bcmsg_orphan_legacy"
+		? { state: "unavailable" }
+		: item.message_id === "bcmsg_647"
+			? {
+					state: "ready",
+					message: audit(
+						"bcmsg_647",
+						"Renee Park",
+						"Can you check whether the Q4 vendor list is final before Friday?",
+					),
+					tenantId: "tnt_story",
+					binding: { state: "shown", hash: SHA },
+				}
+			: detail(item);
+
+export const UnloadableExpired: Story = {
+	args: { items: [orphan, fresh], detail: orphanDetail },
+};
+
+/* PR #2017 r1 (M1/S-1/Q-1): a still-deliverable hold whose details failed to
+   load (a 429 or network blip) keeps "Try again" and arms NO receipt Discard,
+   even though core serves it a receipt. */
+export const UnloadableFresh: Story = {
+	args: {
+		items: [{ ...fresh, discard_receipt: RECEIPT }],
+		detail: () => ({ state: "unavailable" }),
+		onRetryDetails: () => {},
+	},
+};
+
+/* Mixed: the unloadable expired row, a valid one, a long one awaiting
+   expansion, and a settled (recorded, not yet applied) Discard. */
+export const UnloadableMixed: Story = {
+	args: {
+		items: [
+			orphan,
+			fresh,
+			{ ...extra[0], actionable: true },
+			hold("bcmsg_orphan_settled", {
+				held_at: "2026-11-09T08:00:00Z",
+				can_deliver: false,
+				deliver_until: "2026-11-16T08:00:00Z",
+				actionable: false,
+				discard_receipt: null,
+				decision: {
+					word: "discard",
+					decided_at: "2026-11-20T12:00:00Z",
+					outcome: "pending",
+					key_id: "k1",
+				},
+			}),
+		],
+		detail: orphanDetail,
+	},
+};
+
+/* The confirm step names the ONE message by reference and promises nothing
+   about the sender. */
+export const UnloadableConfirm: Story = {
+	args: {
+		items: [orphan],
+		detail: orphanDetail,
+		initialConfirm: { bcmsg_5ac4b3e8deadbeef: "discard" },
+	},
+};
+
+export const UnloadableBusy: Story = {
+	args: {
+		items: [orphan, fresh],
+		detail: orphanDetail,
+		initialConfirm: { bcmsg_5ac4b3e8deadbeef: "discard" },
+		busy: { id: "bcmsg_5ac4b3e8deadbeef", word: "discard" },
+	},
+};
+
+/* A stale receipt (re-screened or re-enrolled since the list was read): the
+   daemon answers `snapshot_stale` and writes nothing; the row keeps its
+   Discard for a fresh confirm on the refreshed record. */
+export const UnloadableStaleReceipt: Story = {
+	args: {
+		items: [orphan],
+		detail: orphanDetail,
+		refusals: {
+			bcmsg_5ac4b3e8deadbeef: holdRefusalLabel("snapshot_stale"),
+		},
+	},
+};
+
+/* An older core serves no receipt: the row stays as it was (nothing armed,
+   "can't be delivered or discarded yet"); this side cannot settle it. */
+export const UnloadableOlderCore: Story = {
+	args: {
+		items: [
+			hold("bcmsg_orphan_legacy", {
+				held_at: "2026-11-10T14:23:00Z",
+				can_deliver: false,
+				deliver_until: "2026-11-17T14:23:00Z",
+			}),
+		],
+		detail: orphanDetail,
 	},
 };

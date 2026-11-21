@@ -4961,11 +4961,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
-			op: z.enum(["team_bridge.holds.deliver", "team_bridge.holds.discard"]),
+			op: z.literal("team_bridge.holds.deliver"),
 			expected_account_id: id,
 			message_id: id,
 			conversation_id: id,
 			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
+	 * Discard binds EXACTLY ONE of `body_sha256` (the body on screen) or
+	 * `hold_receipt` (local-operator #4358): the list's `discard_receipt` for a
+	 * hold whose body can no longer be loaded (expired at the hub, owner-audit
+	 * unavailable). The receipt names the local hold RECORD, not bytes anyone
+	 * read, so Deliver has no receipt field at all (S-11): a Deliver always
+	 * proves the shown body. "Exactly one" is enforced in the union's
+	 * `superRefine` below, mirroring the route's own 422.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.discard"),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+			hold_receipt: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
 		})
 		.strict(),
 	/*
@@ -6099,6 +6124,21 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * body-shaped mistake, and the view would paint that as a failure of a spend
 		 * that was never attempted. Refusing here means it is never sent.
 		 */
+		/* A held-message Discard binds exactly one proof (#4358 route grammar):
+		   both or neither is a body-shaped mistake the daemon answers 422, so it
+		   is refused before IPC rather than painted as a failed decision. */
+		if (
+			request.op === "team_bridge.holds.discard" &&
+			(request.body_sha256 === undefined) ===
+				(request.hold_receipt === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A held-message discard binds exactly one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
+				path: ["body_sha256"],
+			});
+		}
 		if (
 			request.op === "usage.reset" &&
 			!request.credentialRef &&
@@ -12791,10 +12831,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
 				method: "POST",
+				/* Only the proof the request carries: the route's strict body
+				   refuses both, and a `null` key would read as "present". */
 				body: {
 					expected_account_id: request.expected_account_id,
 					conversation_id: request.conversation_id,
-					body_sha256: request.body_sha256,
+					...(request.op === "team_bridge.holds.discard" &&
+					request.hold_receipt !== undefined
+						? { hold_receipt: request.hold_receipt }
+						: { body_sha256: request.body_sha256 }),
 				},
 			};
 		case "team_bridge.requests.authorize":

@@ -21,6 +21,7 @@ import {
 } from "./team-bridge-holds-keys";
 import {
 	type HoldItem,
+	type HoldProof,
 	type HoldWord,
 	type JoinedDetail,
 	bindShownBody,
@@ -239,12 +240,12 @@ export function useHoldDecide() {
 	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
 	const [refusals, setRefusals] = useState<Record<string, string>>({});
 	const run = useCallback(
-		async (item: HoldItem, word: HoldWord, bodySha256: string) => {
+		async (item: HoldItem, word: HoldWord, proof: HoldProof) => {
 			if (!accountId || busy) return;
 			setBusy({ id: item.message_id, word });
 			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
 			try {
-				await TeamBridgeHoldsApi.decide(accountId, word, item, bodySha256);
+				await TeamBridgeHoldsApi.decide(accountId, word, item, proof);
 			} catch (error) {
 				const code =
 					error instanceof DesktopControlError ? (error.code ?? null) : null;

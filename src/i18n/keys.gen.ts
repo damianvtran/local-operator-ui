@@ -14163,6 +14163,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.confirm.deliver_action": undefined;
 	"ui.teamBridge.holds.confirm.discard": undefined;
 	"ui.teamBridge.holds.confirm.discard_action": undefined;
+	"ui.teamBridge.holds.confirm.discard_unread": { reference: string };
 	"ui.teamBridge.holds.deliver": undefined;
 	"ui.teamBridge.holds.deliver_label": { sender: string };
 	"ui.teamBridge.holds.deliver_until": { time: string };
@@ -14170,6 +14171,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.details_unavailable": undefined;
 	"ui.teamBridge.holds.discard": undefined;
 	"ui.teamBridge.holds.discard_label": { sender: string };
+	"ui.teamBridge.holds.discard_unread_label": { reference: string };
 	"ui.teamBridge.holds.discarding": undefined;
 	"ui.teamBridge.holds.empty": undefined;
 	"ui.teamBridge.holds.from_agent": { agent: string; person: string };
@@ -14193,6 +14195,8 @@ export type MessageParams = {
 	"ui.teamBridge.holds.reason.unreadable": undefined;
 	"ui.teamBridge.holds.reason.unscreened": undefined;
 	"ui.teamBridge.holds.reason.waiting": undefined;
+	"ui.teamBridge.holds.receipt_only": undefined;
+	"ui.teamBridge.holds.reference": { reference: string };
 	"ui.teamBridge.holds.refusal.already_decided": undefined;
 	"ui.teamBridge.holds.refusal.deliver_expired": undefined;
 	"ui.teamBridge.holds.refusal.generic": undefined;
@@ -14207,6 +14211,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.state.chose_deliver": undefined;
 	"ui.teamBridge.holds.state.chose_discard": undefined;
 	"ui.teamBridge.holds.state.deliver_expired": undefined;
+	"ui.teamBridge.holds.state.discard_recorded": undefined;
 	"ui.teamBridge.holds.state.not_applied": undefined;
 	"ui.teamBridge.holds.state.not_releasable": undefined;
 	"ui.teamBridge.holds.title": undefined;
