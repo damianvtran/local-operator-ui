@@ -767,7 +767,8 @@ export const TeamBridgeApi = {
 	 * rename dialog names come back as `DesktopControlError` codes:
 	 * `conversation_name_taken` (409, `details.name`), `conversation_archived`
 	 * (409), 403, and 400 `field=name`. Carries the captured-owner receipt like
-	 * every conversation write.
+	 * every conversation write; the contract route puts it in the request BODY
+	 * beside `name` (the daemon refuses a query receipt on rename).
 	 */
 	async rename(
 		conversationId: string,

@@ -3990,7 +3990,15 @@ test("team_bridge archive: the list takes a closed status and delete is a DELETE
 	);
 });
 
-test("team_bridge rename: POST .../rename with the owner receipt in the query and only the name in the body", () => {
+test("team_bridge rename: POST .../rename with the owner receipt in the body beside the name and an empty query", () => {
+	/*
+	 * Unlike the bodyless lifecycle/delete ops (receipt in the query via
+	 * conversationOwnerQuery), rename carries a body, so the daemon's
+	 * ConversationRenameIn (local-operator #4368) reads tenant_id and
+	 * expected_account_id from the BODY and refuses 422 if either appears in the
+	 * query. A query receipt would therefore fail every guarded rename; this pins
+	 * the placement so a later "make it match archive" edit cannot regress it.
+	 */
 	const route = jobsCancelEndpoint(
 		desktopRequestSchema.parse({
 			op: "team_bridge.conversations.rename",
@@ -4003,12 +4011,18 @@ test("team_bridge rename: POST .../rename with the owner receipt in the query an
 	assert.equal(route.method, "POST");
 	assert.equal(
 		route.path,
-		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename?tenant_id=tnt_2&expected_account_id=acc_a",
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+		"no query string: the daemon refuses a query receipt on rename",
 	);
+	assert.equal(route.path.includes("?"), false);
 	assert.deepEqual(
 		route.body,
-		{ name: "launch-crew" },
-		"trimmed at the boundary",
+		{
+			name: "launch-crew",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		},
+		"name trimmed at the boundary; receipt in the body",
 	);
 	const bare = jobsCancelEndpoint(
 		desktopRequestSchema.parse({
@@ -4020,6 +4034,11 @@ test("team_bridge rename: POST .../rename with the owner receipt in the query an
 	assert.equal(
 		bare.path,
 		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+	);
+	assert.deepEqual(
+		bare.body,
+		{ name: "x" },
+		"no receipt keys when none was captured",
 	);
 	const parse = (name) =>
 		desktopRequestSchema.safeParse({
