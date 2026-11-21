@@ -60,6 +60,15 @@
 		},
 		"note": "Lower case: follows a separator in one line, e.g. 'Fired 3 times · last 14:12'."
 	},
+	"ui.teamBridge.alerts.resolved_at": {
+		"role": "meta text at the end of a resolved alert card's first line",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"time": "a localized clock time"
+		},
+		"note": "When the alert recovered. Lower case: follows a separator in one line, e.g. 'Fired 3 times · resolved 14:24'. Replaces the 'last {time}' clock on a resolved card."
+	},
 	"ui.teamBridge.alerts.more_labels": {
 		"role": "overflow chip",
 		"tone": "plain",
@@ -68,15 +77,6 @@
 			"count": "number of hidden labels"
 		},
 		"note": "Count of label chips hidden for space; full list in the tooltip."
-	},
-	"ui.teamBridge.alerts.fingerprint": {
-		"role": "monospace id on an alert card",
-		"tone": "plain",
-		"length": "Short; one line.",
-		"placeholders": {
-			"id": "shortened identifier, never translated"
-		},
-		"note": "Short identifier of the incident, so people can match it in the monitoring tool. Keep `id` short."
 	},
 	"ui.teamBridge.alerts.fingerprint_title": {
 		"role": "tooltip",
@@ -111,7 +111,7 @@
 		"tone": "plain",
 		"length": "Short; one line.",
 		"placeholders": {},
-		"note": "Opens the dialog where you choose whether your own agent responds to alerts in this channel."
+		"note": "Button on an alert card. Opens the dialog where you choose whether your OWN agent responds to alerts in this channel; it is not a list of who is responding. Use the same name as the menu item and the dialog title (ui.teamBridge.alerts.responder.menu, .title)."
 	},
 	"ui.teamBridge.alerts.review_ask": {
 		"role": "primary button",
@@ -173,7 +173,7 @@
 			"state": "`claimed`, `waiting`, `escalated`; selects the arm. Never shown.",
 			"who": "agent name, possibly 'agent for person'"
 		},
-		"note": "Who is working on the alert. waiting = the agent asked its owner to approve an action; escalated = the server escalated it because nobody acted in time."
+		"note": "Who is working on the alert. waiting = the agent asked its owner to approve an action; escalated = the server escalated it because nobody acted in time. The other arm is a label + value ('Claimed: {who}') so it reads correctly when {who} is the capitalised fallback 'A responder'."
 	},
 	"ui.teamBridge.alerts.responder.menu": {
 		"role": "menu item in a channel's menu",
@@ -189,7 +189,7 @@
 		"placeholders": {
 			"channel": "channel name, never translated; keep the # before it"
 		},
-		"note": "See the key name."
+		"note": "Dialog title. Same name as the menu item and the card button (ui.teamBridge.alerts.responder.menu, ui.teamBridge.alerts.responders), so the reader sees one destination."
 	},
 	"ui.teamBridge.alerts.responder.description": {
 		"role": "dialog description",
@@ -198,7 +198,7 @@
 		"placeholders": {
 			"agent": "the reader's agent name"
 		},
-		"note": "Each alert starts a new agent session; model usage is billed to the reader's own account."
+		"note": "Each alert will start a new agent session; model usage will be billed to the reader's own account. Future tense: the dialog is read-only in this build and nothing runs yet."
 	},
 	"ui.teamBridge.alerts.responder.read_only": {
 		"role": "notice in the dialog",

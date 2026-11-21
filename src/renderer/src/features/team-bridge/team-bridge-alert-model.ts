@@ -71,8 +71,18 @@ export type TeamBridgeAlertCardView = {
 	tone: TeamBridgeAlertTone;
 	fireCount: number;
 	lastFiredAt: string | null;
+	/**
+	 * When the hub saw the recovery, for a resolved card only (design D1): on-call
+	 * must tell a recovery from a minute ago from one this morning without opening
+	 * the thread. Null on any other status, so a stale `resolved_at` left on a
+	 * re-fired root can never claim a recovery the badge does not.
+	 */
+	resolvedAt: string | null;
 	isTest: boolean;
-	/** A group card: one claimable root for a burst (`storm`, PR 2d). */
+	/**
+	 * A group card: one claimable root for a burst (`storm`, PR 2d). Null for
+	 * every non-storm root, whatever its `grouped_count` says (review R1).
+	 */
 	group: { total: number; resolved: number } | null;
 	labels: { key: string; value: string }[];
 	links: TeamBridgeAlertLink[];
@@ -89,6 +99,11 @@ export function alertSeverity(
 	return SEVERITY_SET.has(v) ? (v as TeamBridgeAlertSeverity) : "unknown";
 }
 
+/*
+ * `mitigated` is forward-compatibility only: the hub's vocabulary today is
+ * `firing`/`resolved` (agent-server `integrationhooks/normalize.go`), so no
+ * served payload reaches that arm yet (review R4).
+ */
 export function alertStatus(
 	value: string | undefined,
 ): TeamBridgeAlertStatus | "unknown" {
@@ -194,9 +209,17 @@ export function teamBridgeAlertCard(
 		return null;
 	const severity = alertSeverity(meta.severity);
 	const status = alertStatus(meta.status);
-	const total = meta.grouped_count ?? 0;
+	/*
+	 * GROUP ONLY ON `storm === true` (review R1). The hub clamps `grouped_count`
+	 * to >= 1 and writes it on EVERY root (agent-server `normalize.go`,
+	 * `hookWriter.meta`, no omitempty), and only storm groups ever increment
+	 * `group_resolved_count`. So `grouped_count: 1` is the ordinary single-alert
+	 * shape; reading it as a group printed "1 alert, 0 resolved" and hid "Fired 4
+	 * times" on every real card.
+	 */
+	const total = Math.max(meta.grouped_count ?? 0, 0);
 	const group =
-		meta.storm || total > 0
+		meta.storm === true
 			? {
 					total,
 					/* Clamped: a count above the total is a hub race, never "5 of 4". */
@@ -210,6 +233,7 @@ export function teamBridgeAlertCard(
 		tone: alertTone(severity, status),
 		fireCount: Math.max(meta.fire_count ?? 1, 1),
 		lastFiredAt: meta.last_fired_at ?? meta.first_fired_at ?? null,
+		resolvedAt: status === "resolved" ? (meta.resolved_at ?? null) : null,
 		isTest: meta.is_test === true,
 		group,
 		labels: (meta.labels ?? [])
@@ -233,11 +257,39 @@ export function shortFingerprint(value: string): string {
  * that ask is pending in THIS machine's fleet index. That is what makes it the
  * owner's button - an ask lives on the device of the agent's owner, so every
  * other member's fleet index lacks it and draws nothing.
+ *
+ * THE SESSION COMES FROM THIS DEVICE, NOT THE HUB (review R3). The claim's
+ * `session_id` is relayed from the holder's heartbeat, i.e. another endpoint's
+ * word; only the `ask_id` is used to match. The session opened is the one this
+ * machine's own fleet row records for that ask, so a stale or mismatched hub
+ * value can never open the wrong local session. A fleet row with no session has
+ * nowhere to go, so it draws no button.
  */
 export function alertAskOnThisDevice(
 	claim: TeamBridgeAlertClaimView,
-	pendingAskIds: ReadonlySet<string>,
+	pendingAsks: ReadonlyMap<string, string>,
 ): { askId: string; sessionId: string } | null {
 	if (claim.kind === "unreported" || claim.kind === "unclaimed") return null;
-	return claim.ask && pendingAskIds.has(claim.ask.askId) ? claim.ask : null;
+	if (!claim.ask) return null;
+	const sessionId = pendingAsks.get(claim.ask.askId);
+	return sessionId ? { askId: claim.ask.askId, sessionId } : null;
+}
+
+/** `ask_id -> session_id` for this device's OPEN fleet asks (R3's source). */
+export function pendingFleetAskSessions(
+	rows:
+		| readonly {
+				ask_id: string;
+				session_id?: string | null;
+				status: string;
+		  }[]
+		| null
+		| undefined,
+): Map<string, string> {
+	const map = new Map<string, string>();
+	for (const row of rows ?? []) {
+		if (row.status !== "open" || !row.ask_id || !row.session_id) continue;
+		map.set(row.ask_id, row.session_id);
+	}
+	return map;
 }

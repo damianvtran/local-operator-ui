@@ -649,7 +649,7 @@ export const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
-	/* "Review ask in Local Operator" (U1) sits on the waiting strip's wash:
+	/* "Review in Local Operator" (U1) sits on the waiting strip's wash:
 	   the primary button's fill must still clear 3:1 there. */
 	{
 		name: "team bridge alert review-ask button",
@@ -659,24 +659,28 @@ export const CONTROLS = [
 		ink: "onAccent",
 	},
 	/*
-	 * THE RESPONDER DIALOG's option cards (D1), on the dialog's `elevated`
-	 * ground. Selected is a ground step to `sunken` plus the same
-	 * `border-control` edge (never `row-selected` / `accent-wash`, which fail
-	 * separation on `elevated`); unselected keeps the edge alone.
+	 * THE RESPONDER DIALOG's summary rows (design D1, D6), on the dialog's
+	 * `elevated` ground. The dialog is read-only, so the rows are a static
+	 * summary on `hairline` (decoration, `edge: false`), never the 3:1
+	 * `border-control` edge that would say "this is a control". The default row
+	 * is a ground step to `sunken` (never `row-selected` / `accent-wash`, which
+	 * fail separation on `elevated`); its ink is asserted on that ground.
 	 */
 	{
-		name: "team bridge responder option card",
+		name: "team bridge responder summary row",
 		on: ["elevated"],
 		fill: null,
-		border: "borderControl",
+		border: "hairline",
 		ink: "ink",
+		edge: false,
 	},
 	{
-		name: "team bridge responder option card (selected)",
+		name: "team bridge responder summary row (default)",
 		on: ["elevated"],
 		fill: "sunken",
-		border: "borderControl",
+		border: "hairline",
 		ink: "ink",
+		edge: false,
 	},
 	{
 		name: "team bridge responder read-only notice",

@@ -14066,7 +14066,6 @@ export type MessageParams = {
 	"ui.teamBridge.alerts.claim.taken_by": { state: string; who: string };
 	"ui.teamBridge.alerts.claim.unclaimed": undefined;
 	"ui.teamBridge.alerts.claim.unreported": undefined;
-	"ui.teamBridge.alerts.fingerprint": { id: string };
 	"ui.teamBridge.alerts.fingerprint_title": { id: string };
 	"ui.teamBridge.alerts.fire_count": { count: number };
 	"ui.teamBridge.alerts.group_count": { total: number; resolved: number };
@@ -14074,6 +14073,7 @@ export type MessageParams = {
 	"ui.teamBridge.alerts.more_labels": { count: number };
 	"ui.teamBridge.alerts.open_labelled": { label: string; host: string };
 	"ui.teamBridge.alerts.open_on": { host: string };
+	"ui.teamBridge.alerts.resolved_at": { time: string };
 	"ui.teamBridge.alerts.responder.close": undefined;
 	"ui.teamBridge.alerts.responder.default_badge": undefined;
 	"ui.teamBridge.alerts.responder.description": { agent: string };

@@ -12,7 +12,7 @@ import { build } from "esbuild";
  *    claim states (including "unreported" on today's hub), link verification,
  *    and the owner-only ask CTA;
  *  - the render: a card replaces the bare body, an app row draws no link
- *    preview, and every claim state renders line E and line F;
+ *    preview, and every claim state renders line E, while line F exists only for actions;
  *  - the menu: "Manage apps" only with `can_manage_integrations`, "Alert
  *    responder" only where the reader's own agent is an active member.
  * Geometry (0px reflow) is measured in the browser capture, not jsdom.
@@ -21,7 +21,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 export { TeamBridgeMessageList } from './src/renderer/src/features/team-bridge/team-bridge-message-list';
-export { TeamBridgeAlertCard } from './src/renderer/src/features/team-bridge/team-bridge-alert-card';
+export { TeamBridgeAlertCard, TeamBridgeAlertCardContainer, TeamBridgeAlertActionsContext } from './src/renderer/src/features/team-bridge/team-bridge-alert-card';
 export { TeamBridgeResponderDialog } from './src/renderer/src/features/team-bridge/team-bridge-responder-dialog';
 export * from './src/renderer/src/features/team-bridge/team-bridge-alert-model';
 export { conversationMenuSections } from './src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model';
@@ -63,7 +63,9 @@ const meta = (extra = {}) => ({
 	fire_count: 3,
 	first_fired_at: "2026-11-21T14:02:00Z",
 	last_fired_at: "2026-11-21T14:12:00Z",
-	grouped_count: 0,
+	/* The hub clamps grouped_count to >= 1 and writes it on every root
+	   (agent-server normalize.go, hookWriter.meta): 1 is a SINGLE alert (R1). */
+	grouped_count: 1,
 	labels: [
 		{ key: "service", value: "scraper-api" },
 		{ key: "env", value: "prod" },
@@ -166,6 +168,35 @@ test("a group card reports the count and clamps resolved to the total (C2)", () 
 	assert.equal(card(alertRow()).group, null);
 });
 
+test("a card is a group only when storm === true, whatever grouped_count says (R1)", () => {
+	/* The hub's real single-alert shape: grouped_count 1, re-fired 4 times. */
+	const single = card(
+		alertRow({}, { severity: "sev2", grouped_count: 1, fire_count: 4 }),
+	);
+	assert.equal(single.group, null);
+	assert.equal(single.fireCount, 4);
+	/* A non-storm root with grouped_count > 1 is still one alert's card. */
+	assert.equal(card(alertRow({}, { grouped_count: 3 })).group, null);
+	assert.equal(
+		card(alertRow({}, { storm: false, grouped_count: 3 })).group,
+		null,
+	);
+	/* A resolved single alert is not "1 alert, 0 resolved". */
+	assert.equal(
+		card(alertRow({}, { status: "resolved", grouped_count: 1 })).group,
+		null,
+	);
+});
+
+test("resolvedAt is carried only on a resolved card (D1)", () => {
+	const at = "2026-11-21T14:24:00Z";
+	assert.equal(
+		card(alertRow({}, { status: "resolved", resolved_at: at })).resolvedAt,
+		at,
+	);
+	assert.equal(card(alertRow({}, { resolved_at: at })).resolvedAt, null);
+});
+
 test("links render only for https with a matching verified host", () => {
 	const ok = m.safeAlertLink({
 		host: "App.Datadoghq.com",
@@ -244,12 +275,66 @@ test("the ask CTA is the owner's: only an ask pending on THIS device", () => {
 			},
 		),
 	).claim;
-	assert.deepEqual(m.alertAskOnThisDevice(claim, new Set(["ask_1"])), {
+	const fleet = (rows) => m.pendingFleetAskSessions(rows);
+	assert.deepEqual(
+		m.alertAskOnThisDevice(
+			claim,
+			fleet([{ ask_id: "ask_1", session_id: "s_1", status: "open" }]),
+		),
+		{ askId: "ask_1", sessionId: "s_1" },
+	);
+	assert.equal(
+		m.alertAskOnThisDevice(
+			claim,
+			fleet([{ ask_id: "ask_2", session_id: "s_1", status: "open" }]),
+		),
+		null,
+	);
+	assert.equal(m.alertAskOnThisDevice(claim, fleet([])), null);
+	assert.equal(m.alertAskOnThisDevice(claim, fleet(null)), null);
+	/* An answered ask is no longer pending, and a row with no session has
+	   nowhere to open. */
+	assert.equal(
+		m.alertAskOnThisDevice(
+			claim,
+			fleet([{ ask_id: "ask_1", session_id: "s_1", status: "answered" }]),
+		),
+		null,
+	);
+	assert.equal(
+		m.alertAskOnThisDevice(
+			claim,
+			fleet([{ ask_id: "ask_1", session_id: null, status: "open" }]),
+		),
+		null,
+	);
+});
+
+test("the ask CTA opens THIS device's session for the ask, not the hub's (R3)", () => {
+	/* The hub relays the holder's heartbeat; its session_id is another
+	   endpoint's word. Only ask_id matches; the session is the fleet row's. */
+	const claim = card(
+		alertRow(
+			{},
+			{
+				claim_summary: {
+					state: "claimed",
+					waiting_approval_for: {
+						ask_id: "ask_1",
+						session_id: "s_from_hub_stale",
+					},
+				},
+			},
+		),
+	).claim;
+	const pending = m.pendingFleetAskSessions([
+		{ ask_id: "ask_0", session_id: "s_other", status: "open" },
+		{ ask_id: "ask_1", session_id: "s_local", status: "open" },
+	]);
+	assert.deepEqual(m.alertAskOnThisDevice(claim, pending), {
 		askId: "ask_1",
-		sessionId: "s_1",
+		sessionId: "s_local",
 	});
-	assert.equal(m.alertAskOnThisDevice(claim, new Set(["ask_2"])), null);
-	assert.equal(m.alertAskOnThisDevice(claim, new Set()), null);
 });
 
 /* -------------------------------------------------------------- RENDER */
@@ -271,9 +356,39 @@ test("the card draws severity, status, counts, chips, fingerprint and host link"
 	assert.match(html, />Firing</);
 	assert.match(html, /Fired 3 times/);
 	assert.match(html, />\+1</);
-	assert.match(html, /id 7a3c9f…c4e1/);
+	assert.match(html, />7a3c9f…c4e1</);
+	assert.doesNotMatch(html, /id 7a3c9f/);
+	assert.match(html, /Incident fingerprint: 7a3c9f/);
 	assert.match(html, /Open on app\.datadoghq\.com/);
-	assert.match(html, /No claim reported yet/);
+	assert.match(html, /Responder not known yet/);
+});
+
+test("the hub's real single alert renders as one card: Fired 4 times, no group text (R1)", () => {
+	const html = renderCard(
+		alertRow({}, { severity: "sev2", grouped_count: 1, fire_count: 4 }),
+	);
+	assert.match(html, /Fired 4 times/);
+	assert.match(html, />SEV2</);
+	assert.doesNotMatch(html, /Worst/);
+	assert.doesNotMatch(html, /\d+ alerts?, \d+ resolved/);
+	assert.doesNotMatch(html, /data-alert-group/);
+	const resolved = renderCard(
+		alertRow({}, { status: "resolved", grouped_count: 1, fire_count: 1 }),
+	);
+	assert.doesNotMatch(resolved, /1 alert, 0 resolved/);
+});
+
+test("a resolved card says when it resolved and mutes its SEV badge (D1, D4)", () => {
+	const html = renderCard(
+		alertRow({}, { status: "resolved", resolved_at: "2026-11-21T14:24:00Z" }),
+	);
+	assert.match(html, /data-alert-clock="resolved"/);
+	assert.match(html, /resolved \d{1,2}:24/);
+	assert.doesNotMatch(html, /data-alert-clock="last"/);
+	/* The SEV1 badge is neutral once resolved; a firing SEV1 keeps danger. */
+	const sev = (h) => h.match(/<span[^>]*>SEV1<\/span>/)?.[0] ?? "";
+	assert.doesNotMatch(sev(html), /danger/);
+	assert.match(sev(renderCard(alertRow())), /danger/);
 });
 
 test("a group card names its worst severity and N alerts, M resolved", () => {
@@ -297,9 +412,9 @@ test("every claim state renders line E and line F (fixed boxes, D1)", () => {
 	]) {
 		const html = renderCard(alertRow({}, { claim_summary: summary }));
 		assert.equal(html.match(/data-alert-claim-strip=/g)?.length, 1);
+		/* Line F depends on links and the reader, never on the claim. */
 		assert.equal(html.match(/data-alert-actions=""/g)?.length, 1);
 		assert.match(html, /min-h-9/);
-		assert.match(html, /h-7/);
 	}
 	assert.match(
 		renderCard(
@@ -314,7 +429,7 @@ test("every claim state renders line E and line F (fixed boxes, D1)", () => {
 				},
 			),
 		),
-		/Taken by Aida for Ada/,
+		/Claimed: Aida for Ada/,
 	);
 });
 
@@ -329,14 +444,35 @@ test("the Review ask button renders only with an ask and a handler", () => {
 			},
 		},
 	);
-	assert.doesNotMatch(renderCard(row), /Review ask/);
+	assert.doesNotMatch(renderCard(row), /Review in Local Operator/);
 	assert.match(
 		renderCard(row, {
 			ask: { askId: "a", sessionId: "s" },
 			onReviewAsk: () => {},
 		}),
-		/Review ask in Local Operator/,
+		/Review in Local Operator/,
 	);
+});
+
+test("line F is not drawn when it has nothing to hold (D3)", () => {
+	const bare = renderCard(alertRow({}, { links: [] }));
+	assert.doesNotMatch(bare, /data-alert-actions/);
+	const withResponder = renderCard(alertRow({}, { links: [] }), {
+		onResponders: () => {},
+	});
+	assert.match(withResponder, /data-alert-actions=""/);
+	assert.match(withResponder, /Alert responder/);
+});
+
+test("lines A, D and F wrap by width instead of truncating (D2)", () => {
+	const html = renderCard(alertRow(), { onResponders: () => {} });
+	for (const line of ["A", "D"])
+		assert.match(
+			html,
+			new RegExp(`data-alert-line="${line}" class="[^"]*flex-wrap`),
+		);
+	assert.match(html, /data-alert-actions="" class="[^"]*flex-wrap/);
+	assert.match(html, /data-alert-clock="last" class="[^"]*shrink-0/);
 });
 
 test("the message list draws an alert root as a card with no link preview", () => {
@@ -469,4 +605,34 @@ test("Alert responder needs the reader's own agent active in the channel", () =>
 			}),
 		).includes("responder"),
 	);
+});
+
+/* A synthetic server ask id must not turn into a live navigation affordance.
+ * There is no served alert-to-local-ask correlation yet; failing closed is
+ * safer than opening an unrelated session because this machine has asks. */
+test("the live container never invents an alert-to-local-ask correlation", () => {
+	const row = alertRow(
+		{},
+		{
+			claim_summary: {
+				state: "claimed",
+				waiting_approval_for: {
+					ask_id: "remote_ask",
+					session_id: "remote_session",
+				},
+			},
+		},
+	);
+	const html = m.renderToStaticMarkup(
+		m.createElement(
+			m.TeamBridgeAlertActionsContext.Provider,
+			{ value: { onReviewAsk: () => {} } },
+			m.createElement(m.TeamBridgeAlertCardContainer, {
+				card: card(row),
+				body: "BODY",
+				locale: "en",
+			}),
+		),
+	);
+	assert.equal(html.includes("Review in Local Operator"), false);
 });

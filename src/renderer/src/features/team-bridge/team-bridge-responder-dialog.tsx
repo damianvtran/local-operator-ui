@@ -10,7 +10,7 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Check, Info, Lock } from "lucide-react";
+import { Info, Lock } from "lucide-react";
 import type { FC } from "react";
 import {
 	TEAM_BRIDGE_ALERT_SEVERITIES,
@@ -34,11 +34,12 @@ import {
  * that nothing can be saved yet and that the agent is not responding, and
  * offers only Close. When the daemon ships the op, `onSave` is the one seam.
  *
- * SELECTION IS A GROUND STEP, NOT A WASH (D1). On the dialog's `elevated`
- * ground, `row-selected` and `accent-wash` fail 59-palette separation, so a
- * selected card is `bg-sunken` + `border-control` + a check + `font-medium`;
- * an unselected one keeps `border-control` (3:1 floor) on the dialog ground.
- * Rows: "responder option card (selected)" in `contract-tables.mjs`.
+ * THE DEFAULT IS A GROUND STEP, NOT A WASH (D1), AND NOTHING LOOKS LIVE (D6).
+ * On the dialog's `elevated` ground, `row-selected` and `accent-wash` fail
+ * 59-palette separation, so the default row is `bg-sunken` + `font-medium` +
+ * the Default badge. Rows carry `hairline`, never `border-control`: the 3:1
+ * control edge says "you can change this", and here nothing can be changed.
+ * Rows: "responder summary row" in `contract-tables.mjs`.
  */
 
 export type TeamBridgeResponderTier =
@@ -52,7 +53,7 @@ const TIERS: TeamBridgeResponderTier[] = [
 	"prepare",
 	"runbooks",
 ];
-/** Locked in v1 (RFC §15 Q2): drawn so the ladder is legible, never selectable. */
+/** Not available yet (RFC §15 Q2): drawn so the ladder is legible, never selectable. */
 const LOCKED_TIERS = new Set<TeamBridgeResponderTier>(["runbooks"]);
 
 /** The RFC's defaults (§7.1, §7.2): Triage, and sev2 and above. */
@@ -112,123 +113,108 @@ export const TeamBridgeResponderDialog: FC<TeamBridgeResponderDialogProps> = ({
 						})}
 					</span>
 				</p>
-				<fieldset className="flex flex-col gap-2" disabled>
-					<legend className="mb-2 font-medium text-[13px] text-ink">
+				{/* A STATIC SUMMARY, NOT A FORM (design D6). Nothing here can be
+				    changed, so nothing wears a control's affordance: rows sit on
+				    `hairline` (decoration, not the 3:1 control edge), there is no
+				    radio or checkbox glyph, and the defaults are marked by a ground
+				    step plus the Default badge. A list, so a screen reader hears
+				    items rather than disabled inputs it might try to change. */}
+				<section
+					className="flex flex-col gap-2"
+					aria-labelledby="responder-tier-heading"
+				>
+					<h3
+						id="responder-tier-heading"
+						className="font-medium text-[13px] text-ink"
+					>
 						{t("ui.teamBridge.alerts.responder.tier_label", {
 							agent: agentName,
 						})}
-					</legend>
-					{/* Native inputs, disabled by the fieldset: the read-only state is
-					    announced by the platform rather than by hand-rolled ARIA. */}
-					<div className="flex flex-col gap-2">
+					</h3>
+					<ul className="flex flex-col gap-2">
 						{TIERS.map((option) => {
 							const selected = option === tier;
 							const locked = LOCKED_TIERS.has(option);
 							return (
-								<label
+								<li
 									key={option}
 									data-responder-tier={option}
 									data-selected={selected || undefined}
 									className={cn(
-										"flex gap-3 rounded-sm border border-control px-3 py-2",
+										"flex flex-col gap-0.5 rounded-sm border border-hairline px-3 py-2",
 										selected && "bg-sunken",
 									)}
 								>
-									<input
-										type="radio"
-										name="responder-tier"
-										value={option}
-										checked={selected}
-										readOnly
-										className="sr-only"
-									/>
-									<span
-										aria-hidden="true"
-										className={cn(
-											"mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
-											selected
-												? "border-ink bg-ink text-elevated"
-												: "border-control",
-										)}
-									>
-										{selected && <Check size={12} strokeWidth={3} />}
-									</span>
-									<span className="flex min-w-0 flex-col gap-0.5">
-										<span className="flex items-center gap-2">
-											<span
-												className={cn(
-													"text-[13px]",
-													selected ? "font-medium text-ink" : "text-ink",
-													locked && "text-ink-muted",
-												)}
-											>
-												{t("ui.teamBridge.alerts.responder.tier_name", {
-													tier: option,
-												})}
-											</span>
-											{option === RESPONDER_DEFAULT_TIER && (
-												<Badge variant="neutral" className="py-0 leading-4">
-													{t("ui.teamBridge.alerts.responder.default_badge")}
-												</Badge>
+									<span className="flex items-center gap-2">
+										<span
+											className={cn(
+												"text-[13px] text-ink",
+												selected && "font-medium",
+												locked && "text-ink-muted",
 											)}
-											{locked && (
-												<Badge variant="neutral" className="py-0 leading-4">
-													<Lock aria-hidden="true" />
-													{t("ui.teamBridge.alerts.responder.locked_badge")}
-												</Badge>
-											)}
-										</span>
-										<span className="text-meta text-ink-muted">
-											{t("ui.teamBridge.alerts.responder.tier_detail", {
+										>
+											{t("ui.teamBridge.alerts.responder.tier_name", {
 												tier: option,
 											})}
 										</span>
+										{option === RESPONDER_DEFAULT_TIER && (
+											<Badge variant="neutral" className="py-0 leading-4">
+												{t("ui.teamBridge.alerts.responder.default_badge")}
+											</Badge>
+										)}
+										{locked && (
+											<Badge variant="neutral" className="py-0 leading-4">
+												<Lock aria-hidden="true" />
+												{t("ui.teamBridge.alerts.responder.locked_badge")}
+											</Badge>
+										)}
 									</span>
-								</label>
+									<span className="text-meta text-ink-muted">
+										{t("ui.teamBridge.alerts.responder.tier_detail", {
+											tier: option,
+										})}
+									</span>
+								</li>
 							);
 						})}
-					</div>
-				</fieldset>
-				<fieldset className="flex flex-col gap-2" disabled>
-					<legend className="mb-2 font-medium text-[13px] text-ink">
+					</ul>
+				</section>
+				<section
+					className="flex flex-col gap-2"
+					aria-labelledby="responder-severity-heading"
+				>
+					<h3
+						id="responder-severity-heading"
+						className="font-medium text-[13px] text-ink"
+					>
 						{t("ui.teamBridge.alerts.responder.severity_label", {
 							agent: agentName,
 						})}
-					</legend>
-					<div className="flex gap-2" data-responder-severities="">
-						{TEAM_BRIDGE_ALERT_SEVERITIES.map((severity, index) => {
-							const selected = index <= minIndex;
-							return (
-								<label
+					</h3>
+					{/* Only the severities that wake the agent are listed: static
+					    text chips, no checkmarks, no unselected "options". */}
+					<ul className="flex flex-wrap gap-2" data-responder-severities="">
+						{TEAM_BRIDGE_ALERT_SEVERITIES.slice(0, minIndex + 1).map(
+							(severity) => (
+								<li
 									key={severity}
-									data-selected={selected || undefined}
-									className={cn(
-										"flex h-7 items-center gap-1 rounded-sm border border-control px-2.5 text-meta text-ink",
-										selected && "bg-sunken font-medium",
-									)}
+									data-selected=""
+									className="flex h-7 items-center rounded-sm border border-hairline bg-sunken px-2.5 text-meta text-ink"
 								>
-									<input
-										type="checkbox"
-										value={severity}
-										checked={selected}
-										readOnly
-										className="sr-only"
-									/>
-									{selected && <Check size={12} aria-hidden="true" />}
 									{t("ui.teamBridge.alerts.severity", {
 										level: severity.slice(3),
 										worst: "no",
 									})}
-								</label>
-							);
-						})}
-					</div>
+								</li>
+							),
+						)}
+					</ul>
 					<p className="text-meta text-ink-muted">
 						{t("ui.teamBridge.alerts.responder.severity_hint", {
 							agent: agentName,
 						})}
 					</p>
-				</fieldset>
+				</section>
 				<DialogFooter>
 					<Button type="button" variant="tonal" onClick={onClose}>
 						{t("ui.teamBridge.alerts.responder.close")}

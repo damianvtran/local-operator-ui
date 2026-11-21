@@ -8,6 +8,11 @@ import type {
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeAlertActionsContext } from "./team-bridge-alert-card";
+import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
+import {
+	menuConversation,
+	menuSectionsFor,
+} from "./team-bridge-conversation-menu.fixtures";
 import {
 	TeamBridgeMessageList,
 	TeamBridgeMessageSkeleton,
@@ -23,7 +28,7 @@ import { TeamBridgeResponderDialog } from "./team-bridge-responder-dialog";
  * `alert_meta` is transcribed from agent-server `models.BridgeAlertMeta`
  * (origin/main 2026-11-21). `claim_summary` follows the RFC §6.1 shape: the
  * hub does NOT serve it yet, which is exactly the `SingleFiring` state (no
- * claim block -> "No claim reported yet"). Switch the toolbar theme for
+ * claim block -> "Responder not known yet"). Switch the toolbar theme for
  * light/dark.
  */
 
@@ -41,7 +46,8 @@ const baseMeta: TeamBridgeAlertMeta = {
 	fire_count: 3,
 	first_fired_at: at(2),
 	last_fired_at: at(12),
-	grouped_count: 0,
+	/* The hub clamps this to >= 1 on every root: 1 is a single alert (R1). */
+	grouped_count: 1,
 	labels: [
 		{ key: "service", value: "scraper-api" },
 		{ key: "env", value: "prod" },
@@ -92,7 +98,7 @@ const claimed = {
 };
 
 /* This device's fleet index holds the responder's pending ask: the owner's
-   view, so the "Review ask" CTA draws. */
+   view, so the "Review in Local Operator" CTA draws. */
 const ownerClient = () => {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -107,12 +113,17 @@ const ListFrame: FC<{
 	messages: TeamBridgeMessage[];
 	owner?: boolean;
 	width?: number;
-}> = ({ messages, owner = false, width = 760 }) => {
+	/** False: a reader whose own agent is not in the channel (no entry). */
+	responders?: boolean;
+}> = ({ messages, owner = false, width = 760, responders = true }) => {
 	const [client] = useState(() => (owner ? ownerClient() : new QueryClient()));
 	return (
 		<QueryClientProvider client={client}>
 			<TeamBridgeAlertActionsContext.Provider
-				value={{ onResponders: () => {}, onReviewAsk: () => {} }}
+				value={{
+					onResponders: responders ? () => {} : undefined,
+					onReviewAsk: () => {},
+				}}
 			>
 				{/* `bg-canvas`: the channel timeline's real ground. */}
 				<div
@@ -147,7 +158,9 @@ export const Claimed: Story = {
 	args: { messages: [alert({ claim_summary: claimed })] },
 };
 
-/* The owner's view of a responder waiting on a T2 approval (U1). */
+/* Synthetic future claim metadata, NOT proof of a live alert-to-ask
+   correlation. The production container deliberately draws no Review CTA until
+   a supported local correlation exists; an unrelated fleet ask is not one. */
 export const WaitingForOwnerApproval: Story = {
 	args: {
 		owner: true,
@@ -242,9 +255,35 @@ export const Loading: Story = {
 	),
 };
 
-/* Narrowest thread width the RFC names (320px): lines A, D and F stay one line. */
+/* Narrow threads (D2): lines A, D and F wrap rather than clip, so every
+   chip, the fingerprint, the links and the clock stay legible. 320px is the
+   narrowest thread the RFC names. */
 export const Narrow: Story = {
 	args: { width: 360, messages: [alert({ claim_summary: claimed })] },
+};
+export const Narrow320: Story = {
+	args: { width: 320, messages: [alert({ claim_summary: claimed })] },
+};
+export const Narrow320Resolved: Story = {
+	args: {
+		width: 320,
+		messages: [
+			alert({
+				status: "resolved",
+				resolved_at: at(24),
+				claim_summary: claimed,
+			}),
+		],
+	},
+};
+
+/* A reader whose own agent is not in #alerts-prod, on a card with no links:
+   line F has nothing to hold, so it is not drawn (D3). */
+export const NoActions: Story = {
+	args: {
+		responders: false,
+		messages: [alert({ links: [] })],
+	},
 };
 
 /*
@@ -318,4 +357,43 @@ export const ResponderDialog: Story = {
 			onClose={() => {}}
 		/>
 	),
+};
+
+/*
+ * The conversation menu on #alerts-prod with both Team Integrations entries:
+ * "Manage apps…" (the reader may manage integrations) and "Alert responder…"
+ * (the reader's own agent is an active member). Sections come from the real
+ * model through the menu fixtures.
+ */
+export const ChannelMenuWithIntegrations: Story = {
+	args: { messages: [] },
+	render: () => {
+		const conversation = menuConversation({
+			name: "alerts-prod",
+			can_manage_integrations: true,
+		});
+		const base = menuSectionsFor(conversation, { integrations: true });
+		return (
+			<div className="flex h-[620px] w-[420px] justify-end bg-surface p-4 text-ink">
+				<TeamBridgeConversationMenu
+					sections={base}
+					conversation={{ notify: "all", muted: false }}
+					agentNotify="all"
+					handlers={{
+						onNotifyChange: () => {},
+						onAgentNotifyChange: () => {},
+						onViewMembers: () => {},
+						onAddMembers: () => {},
+						onJoin: () => {},
+						onOwnAgent: () => {},
+						onLeave: () => {},
+						onArchive: () => {},
+						onManageApps: () => {},
+						onResponder: () => {},
+					}}
+					defaultOpen
+				/>
+			</div>
+		);
+	},
 };
