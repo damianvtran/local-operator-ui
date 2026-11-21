@@ -66,6 +66,7 @@
  * already carries as an outcome.
  */
 
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -184,7 +185,8 @@ export type ToolDetailProps = {
  */
 const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => (
 	<div
-		className={cn("whitespace-pre-wrap break-words")}
+		// Tool arguments and output are user content: no text in analytics or replay.
+		className={cn("whitespace-pre-wrap break-words", USER_CONTENT_CLASS)}
 		style={{ paddingInlineStart: (line.depth - 1) * NEST_STEP_PX }}
 	>
 		{/* The LABEL is the identity and the value is the detail, which is the slot

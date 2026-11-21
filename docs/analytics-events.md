@@ -23,6 +23,53 @@ path, URL or error sentence has a property to ride in. Adding a reason means
 adding it to that file (one place, so two branches cannot spell the same fact
 two ways).
 
+## Autocapture and exceptions carry no user content
+
+PostHog's own autocapture (`$autocapture`, `$rageclick`, `$dead_click`) and
+exception capture run through ONE `before_send` hook,
+`scrubCaptureResult` in `src/renderer/src/shared/analytics/autocapture-privacy.ts`,
+wired in `src/renderer/src/main.tsx`. Analytics consent covers product usage, not
+what users write or open; before this hook, 8 days of external desktop events
+(project 145863, measured 2026-11-21) carried file paths and customer-named file
+names (141 events, 19 users), emails, and element text up to 360 characters.
+
+The rule, applied to `$el_text`, every text and attribute value in
+`$elements_chain` and `$elements`, `$external_click_url` and `$selected_content`:
+
+| A value that... | is sent as |
+|---|---|
+| contains a path (POSIX, `~/`, `./`, `a/b/c`, `C:\`, `\\host\`) | `[redacted:path]` |
+| contains a file name (`name.ext`, extension starts with a letter) | `[redacted:filename]` |
+| contains an email | `[redacted:email]` |
+| contains a URL (`scheme://`, `www.`, `file:`, `mailto:`) | `[redacted:url]` |
+| contains a 24+ character id mixing letters and digits (keys, UUIDs) | `[redacted:token]` |
+| contains a line break or tab | `[redacted:multiline]` |
+| is wider than 64 (a CJK character counts 2) | `[redacted:long-text]` |
+| is anything else: a short control label | unchanged, byte for byte |
+
+Links keep only an http(s) origin (`https://docs.example.com/[redacted:url]`) or
+the first segment of an in-app route (`#/chat`). A chain that does not parse is
+sent empty, never as captured.
+
+Short free text (a session title, a word of a message) has no shape to catch, so
+user-content regions carry `USER_CONTENT_CLASS` (`ph-sensitive ph-mask`): the
+markdown renderer (messages, reasoning, asides), tool details, sidebar row titles
+and the chat header title. Inside one, posthog-js omits text and links, the hook
+drops every attribute except a structural allowlist (`id`, `class`, `role`,
+`type`, `data-state`, `data-testid`, `aria-expanded`...), and session replay
+masks the text. The click itself is still counted. A new surface that shows user
+content gets the class on its container, never on a control whose label a funnel
+counts.
+
+`$exception` keeps its message, with paths, emails, URL paths and long quoted
+strings replaced inline and the result capped at 500 characters; stack frame
+paths lose the account name (`/Users/[user]/...`).
+
+What this costs: labels that are themselves content-shaped are redacted too
+("Node.js", a provider shown as `together.ai`). A funnel that needs one should
+use a named product event above, not a looser rule. Events ingested before this
+change are not rewritten; deleting them is a separate decision.
+
 ## Events
 
 | Event | Properties | Fired from |
