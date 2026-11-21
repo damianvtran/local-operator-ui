@@ -405,6 +405,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_leave_withdraws_agent"
 	/**
+	 * RENAME a channel or group: core's `POST .../conversations/{id}/rename`
+	 * desktop route over the hub's rename. Absent: the conversation menu draws
+	 * no Rename item, because every save would be refused by a runtime that has
+	 * no route for it.
+	 */
+	| "team_bridge_conversation_rename"
+	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
 	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the

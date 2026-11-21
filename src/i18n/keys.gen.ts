@@ -196,6 +196,7 @@ import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
+import enUiTeamBridgeRename from "./catalogues/en/ui.teamBridge.rename.json";
 import enUiTeamBridgeThreadRow from "./catalogues/en/ui.teamBridge.threadRow.json";
 import enUiTeamBridgeTrial from "./catalogues/en/ui.teamBridgeTrial.json";
 import enUiUpdatesPanel from "./catalogues/en/ui.updates.panel.json";
@@ -376,6 +377,7 @@ import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
+import esUiTeamBridgeRename from "./catalogues/es/ui.teamBridge.rename.json";
 import esUiTeamBridgeThreadRow from "./catalogues/es/ui.teamBridge.threadRow.json";
 import esUiTeamBridgeTrial from "./catalogues/es/ui.teamBridgeTrial.json";
 import esUiUpdatesPanel from "./catalogues/es/ui.updates.panel.json";
@@ -556,6 +558,7 @@ import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
+import frUiTeamBridgeRename from "./catalogues/fr/ui.teamBridge.rename.json";
 import frUiTeamBridgeThreadRow from "./catalogues/fr/ui.teamBridge.threadRow.json";
 import frUiTeamBridgeTrial from "./catalogues/fr/ui.teamBridgeTrial.json";
 import frUiUpdatesPanel from "./catalogues/fr/ui.updates.panel.json";
@@ -736,6 +739,7 @@ import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
+import hiUiTeamBridgeRename from "./catalogues/hi/ui.teamBridge.rename.json";
 import hiUiTeamBridgeThreadRow from "./catalogues/hi/ui.teamBridge.threadRow.json";
 import hiUiTeamBridgeTrial from "./catalogues/hi/ui.teamBridgeTrial.json";
 import hiUiUpdatesPanel from "./catalogues/hi/ui.updates.panel.json";
@@ -916,6 +920,7 @@ import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
+import ruUiTeamBridgeRename from "./catalogues/ru/ui.teamBridge.rename.json";
 import ruUiTeamBridgeThreadRow from "./catalogues/ru/ui.teamBridge.threadRow.json";
 import ruUiTeamBridgeTrial from "./catalogues/ru/ui.teamBridgeTrial.json";
 import ruUiUpdatesPanel from "./catalogues/ru/ui.updates.panel.json";
@@ -1096,6 +1101,7 @@ import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
+import urUiTeamBridgeRename from "./catalogues/ur/ui.teamBridge.rename.json";
 import urUiTeamBridgeThreadRow from "./catalogues/ur/ui.teamBridge.threadRow.json";
 import urUiTeamBridgeTrial from "./catalogues/ur/ui.teamBridgeTrial.json";
 import urUiUpdatesPanel from "./catalogues/ur/ui.updates.panel.json";
@@ -1276,6 +1282,7 @@ import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
+import viUiTeamBridgeRename from "./catalogues/vi/ui.teamBridge.rename.json";
 import viUiTeamBridgeThreadRow from "./catalogues/vi/ui.teamBridge.threadRow.json";
 import viUiTeamBridgeTrial from "./catalogues/vi/ui.teamBridgeTrial.json";
 import viUiUpdatesPanel from "./catalogues/vi/ui.updates.panel.json";
@@ -1456,6 +1463,7 @@ import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.js
 import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
+import zhCNUiTeamBridgeRename from "./catalogues/zh-CN/ui.teamBridge.rename.json";
 import zhCNUiTeamBridgeThreadRow from "./catalogues/zh-CN/ui.teamBridge.threadRow.json";
 import zhCNUiTeamBridgeTrial from "./catalogues/zh-CN/ui.teamBridgeTrial.json";
 import zhCNUiUpdatesPanel from "./catalogues/zh-CN/ui.updates.panel.json";
@@ -1639,6 +1647,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeHolds,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
+	...enUiTeamBridgeRename,
 	...enUiTeamBridgeThreadRow,
 	...enUiTeamBridgeTrial,
 	...enUiUpdatesPanel,
@@ -1827,6 +1836,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeHolds,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
+		...esUiTeamBridgeRename,
 		...esUiTeamBridgeThreadRow,
 		...esUiTeamBridgeTrial,
 		...esUiUpdatesPanel,
@@ -2009,6 +2019,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeHolds,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
+		...frUiTeamBridgeRename,
 		...frUiTeamBridgeThreadRow,
 		...frUiTeamBridgeTrial,
 		...frUiUpdatesPanel,
@@ -2191,6 +2202,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeHolds,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
+		...hiUiTeamBridgeRename,
 		...hiUiTeamBridgeThreadRow,
 		...hiUiTeamBridgeTrial,
 		...hiUiUpdatesPanel,
@@ -2373,6 +2385,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeHolds,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
+		...ruUiTeamBridgeRename,
 		...ruUiTeamBridgeThreadRow,
 		...ruUiTeamBridgeTrial,
 		...ruUiUpdatesPanel,
@@ -2555,6 +2568,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeHolds,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
+		...urUiTeamBridgeRename,
 		...urUiTeamBridgeThreadRow,
 		...urUiTeamBridgeTrial,
 		...urUiUpdatesPanel,
@@ -2737,6 +2751,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeHolds,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
+		...viUiTeamBridgeRename,
 		...viUiTeamBridgeThreadRow,
 		...viUiTeamBridgeTrial,
 		...viUiUpdatesPanel,
@@ -2919,6 +2934,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeHolds,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
+		...zhCNUiTeamBridgeRename,
 		...zhCNUiTeamBridgeThreadRow,
 		...zhCNUiTeamBridgeTrial,
 		...zhCNUiUpdatesPanel,
@@ -14680,6 +14696,21 @@ export type MessageParams = {
 	"ui.teamBridge.leave.back_shortcut": { shortcut: string };
 	"ui.teamBridge.leave.name": undefined;
 	"ui.teamBridge.leave.name_attention": { count: number };
+	"ui.teamBridge.rename.cancel": undefined;
+	"ui.teamBridge.rename.description": { kind: string };
+	"ui.teamBridge.rename.error.archived": { kind: string };
+	"ui.teamBridge.rename.error.characters": undefined;
+	"ui.teamBridge.rename.error.empty": undefined;
+	"ui.teamBridge.rename.error.failed": undefined;
+	"ui.teamBridge.rename.error.forbidden": { kind: string };
+	"ui.teamBridge.rename.error.invalid": undefined;
+	"ui.teamBridge.rename.error.taken": { kind: string; name: string };
+	"ui.teamBridge.rename.error.too_long": { max: number };
+	"ui.teamBridge.rename.menu": { kind: string };
+	"ui.teamBridge.rename.name": undefined;
+	"ui.teamBridge.rename.save": undefined;
+	"ui.teamBridge.rename.saving": undefined;
+	"ui.teamBridge.rename.title": { kind: string };
 	"ui.teamBridge.threadRow.label": {
 		count: number;
 		unread: number;

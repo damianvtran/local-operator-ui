@@ -1,0 +1,69 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "session": "a538d5e2e21c",
+    "instance": "a538d5e2e21c-tbrename-r1-fr",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Auditor model anthropic/claude-opus-5-5 (lop team lopdev, reviewer role, session a538d5e2e21c). Translator is the PR coder agent in a different session; its served model is recorded on the ledger row, not inferred here."
+  },
+  "locale": "fr",
+  "audit_date": "2026-11-20",
+  "scope": "Full new-namespace audit of ui.teamBridge.rename (15 keys) for PR damianvtran/local-operator-ui#2019 at HEAD 5f5c7d343423 (scope f2d6d52602..5f5c7d343423); every key read side-by-side with English and its context note. fr is bound to the corrected bytes (T1 applied); the PR-head fr bytes 7ead4861… differ only by the two U+0020→U+202F replacements.",
+  "translator": {
+    "agent": "coder"
+  },
+  "namespaces": {
+    "ui.teamBridge.rename": {
+      "status": "passed",
+      "sha256": {
+        "fr": "42648738fb444e70b669bff8b78c39173f95147c79443b03eff04e3360b9c64e",
+        "en": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd"
+      },
+      "context_sha256": "47929ccdd1c0e137c29c8594f4865f303365ea2a2bc6f4b67a765ba6d6081911",
+      "key_count": 15,
+      "findings": [
+        {
+          "id": "T1",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.rename.error.archived",
+          "rule": "fr style guide, Punctuation & typography: espace fine insécable (U+202F) before : ; ! ? is required in prose; every other fr ui.teamBridge colon uses U+202F (25 of 25)",
+          "was": "U+0020 before the colon in both arms (« archivé : il »)",
+          "fix": "U+202F before the colon in both arms (« archivé : il »); no other byte changes",
+          "disposition": "correction applied in the audited target bytes named in sha256.fr (scratch fr-corrected/ui.teamBridge.rename.json); commit those bytes verbatim"
+        }
+      ]
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.teamBridge.rename.menu",
+      "target": "Renommer le canal…",
+      "back": "Rename the channel…"
+    },
+    {
+      "key": "ui.teamBridge.rename.error.archived",
+      "target": "Ce canal a été archivé : il ne peut plus être renommé.",
+      "back": "This channel was archived: it can no longer be renamed."
+    },
+    {
+      "key": "ui.teamBridge.rename.error.characters",
+      "target": "Le nom contient un caractère non autorisé, comme une tabulation, un saut de ligne ou un caractère invisible.",
+      "back": "The name contains a disallowed character, such as a tab, a line break or an invisible character."
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes named here.",
+    "ICU parity: all 15 messages parsed with the project's @formatjs/icu-messageformat-parser; argument names/types (kind select [group,other], name, max number) equal English's in every key; key set and order equal English; NFC; no stray or doubled whitespace; no bidi control characters, NBSP or thin spaces other than T1's.",
+    "The literal # before {name} sits in a select (not plural) arm, so it renders as #, matching English and the existing ui.teamBridge.archive.confirm.title pattern.",
+    "Terminology checked against existing shipped copy in this locale: canal/groupe, Renommer (ui.chat.* precedent), Enregistrer/Enregistrement…, Annuler; vous register.",
+    "Context notes honoured: menu keeps the locale ellipsis; title drops it; channel description states lowercase + hyphens; too_long counts characters; taken names the conversation; failed says nothing was saved.",
+    "Core glossary and the locale style guide (origin/main 1a8dae591691) read as binding; hashes under references.",
+    "No rendered frame, pseudo-localization or fit measurement was produced in this audit; no rendered-fit claim."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+    "core_origin_main": "1a8dae591691"
+  }
+}

@@ -182,6 +182,7 @@ import {
 	builtinTopicKey,
 	canArchiveConversation,
 	canManageArchivedConversation,
+	canRenameConversation,
 	chiefsOfStaff,
 	composeChiefLabel,
 	conversationMemberCount,
@@ -266,6 +267,11 @@ import {
 import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
+	TeamBridgeRenameDialog,
+	type TeamBridgeRenameFailure,
+	renameFailure,
+} from "./team-bridge-rename-dialog";
+import {
 	TeamBridgeEarlyColumn,
 	TeamBridgeRouteColumn,
 } from "./team-bridge-route-column";
@@ -339,6 +345,7 @@ import {
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
 	useRemoveTeamBridgeMember,
+	useRenameTeamBridgeConversation,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeAgentNotify,
 	useSetTeamBridgeNotify,
@@ -945,6 +952,22 @@ export type TeamBridgePageViewProps = {
 	onArchive?: (conversation: TeamBridgeConversation) => void;
 	onUnarchive?: (conversation: TeamBridgeConversation) => void;
 	onDelete?: (conversation: TeamBridgeConversation) => Promise<unknown>;
+	/**
+	 * RENAME a channel or group. Resolves when the server accepted the name and
+	 * rejects with its refusal: the dialog stays open on the promise so a taken
+	 * name (or lost authority) is explained where it was typed. The rail is
+	 * already updated optimistically by the container's mutation.
+	 */
+	onRename?: (
+		conversation: TeamBridgeConversation,
+		name: string,
+	) => Promise<unknown>;
+	/**
+	 * The `team_bridge_conversation_rename` capability answer. Anything but
+	 * `enabled` hides the menu item: a runtime without the route would refuse
+	 * every save. Defaults to `unknown` (fail closed) like its siblings.
+	 */
+	renameCapabilityState?: DesktopFeatureState;
 	unarchiveFailed?: boolean;
 	/** The Archived channels view's read (loaded the first time it is opened). */
 	archivedState?: "loading" | "error" | "ready";
@@ -975,7 +998,10 @@ export type TeamBridgePageViewProps = {
 	onViewMemory?: (
 		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => void;
-	initialDialog?: { kind: "archive" | "delete"; conversationId: string };
+	initialDialog?: {
+		kind: "archive" | "delete" | "rename";
+		conversationId: string;
+	};
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
 	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
@@ -1182,6 +1208,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onArchive,
 	onUnarchive,
 	onDelete,
+	onRename,
+	renameCapabilityState = "unknown",
 	unarchiveFailed = false,
 	archivedState = "ready",
 	archivedConversations = [],
@@ -1248,7 +1276,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
-		kind: "archive" | "delete";
+		kind: "archive" | "delete" | "rename";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
@@ -1273,6 +1301,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 
 	const [deleting, setDeleting] = useState(false);
+	/* The rename dialog's refusal, cleared on every open so a refusal from one
+	   rename never shows under the next. `renaming` belongs to the REQUEST, not
+	   to an open: reopening while a save is in flight keeps Save disabled. */
+	const [renaming, setRenaming] = useState(false);
+	/*
+	 * Which open of the rename dialog is on screen (review round 1, R3/U3).
+	 * Bumped on every open and every close; a save captures it, and its outcome
+	 * acts on the dialog only if that same open is still showing. Otherwise a
+	 * late success would close a newer dialog and a late refusal would annotate
+	 * it; a refusal for a dialog that is gone is announced with a toast instead,
+	 * because the rail has just silently flipped back.
+	 */
+	const renameOpen = useRef(0);
+	const [renameFailed, setRenameFailed] =
+		useState<TeamBridgeRenameFailure | null>(null);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
 	);
@@ -2930,9 +2973,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					readOnly,
 					agentNotifyEnabled: agentNotify !== undefined,
 					archivable: canArchiveConversation(conversation),
+					renamable:
+						renameCapabilityState === "enabled" &&
+						canRenameConversation(conversation),
 					wiring: {
 						viewMembers: true,
 						addMembers: Boolean(onAddMembers),
+						rename: Boolean(onRename),
 						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
 						notify: Boolean(notifyWrite),
 						agentNotify: Boolean(onAgentNotifyChange) && selectedRow,
@@ -2964,6 +3011,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				}
 				setMemberActionFailed(false);
 				setMembersOpen(true);
+			},
+			onRename: () => {
+				renameOpen.current += 1;
+				setRenameFailed(null);
+				setDialog({ kind: "rename", conversationId: conversation.id });
 			},
 			onJoin: () => {
 				if (onMenuJoin) onMenuJoin(conversation);
@@ -5008,6 +5060,42 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					? selectable.find((row) => row.id === dialog.conversationId)
 					: undefined;
 				if (!dialog || !subject) return null;
+				if (dialog.kind === "rename") {
+					const kind = subject.kind === "group" ? "group" : "channel";
+					return (
+						<TeamBridgeRenameDialog
+							open
+							kind={kind}
+							currentName={subject.name?.trim() ?? ""}
+							pending={renaming}
+							error={renameFailed}
+							onClose={() => {
+								renameOpen.current += 1;
+								setDialog(null);
+							}}
+							onSave={(next) => {
+								if (!onRename || renaming) return;
+								const sentFrom = renameOpen.current;
+								setRenaming(true);
+								setRenameFailed(null);
+								onRename(subject, next).then(
+									() => {
+										setRenaming(false);
+										if (renameOpen.current === sentFrom) setDialog(null);
+									},
+									(failure: unknown) => {
+										setRenaming(false);
+										if (renameOpen.current === sentFrom) {
+											setRenameFailed(renameFailure(failure, next));
+										} else {
+											showErrorToast(t("ui.teamBridge.rename.error.failed"));
+										}
+									},
+								);
+							}}
+						/>
+					);
+				}
 				const name = archiveChannelName(subject);
 				/* Only a selection ON the removed channel has to move: archiving a
 				   channel from another row's menu leaves the reader where they are. */
@@ -6692,6 +6780,7 @@ const TeamBridgeOwnedPage: FC<{
 		accountId,
 	);
 	const archive = useArchiveTeamBridgeConversation();
+	const rename = useRenameTeamBridgeConversation();
 	const unarchive = useUnarchiveTeamBridgeConversation();
 	const deleteConversation = useDeleteTeamBridgeConversation();
 
@@ -7402,6 +7491,10 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_agent_notify",
 				)}
+				renameCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_conversation_rename",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				/* The remembered quick view and reading position apply only to the
 				   target they were recorded on: a view mounted for any other target
@@ -7470,6 +7563,17 @@ const TeamBridgeOwnedPage: FC<{
 				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate(undefined);
+				}}
+				onRename={(conversation, name) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return rename.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						name,
+					});
 				}}
 				onArchive={(conversation) => {
 					if (!isCurrentOwner()) return;

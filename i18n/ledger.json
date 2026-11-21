@@ -123287,6 +123287,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "42648738fb444e70b669bff8b78c39173f95147c79443b03eff04e3360b9c64e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean-with-findings",
+					"instance": "a538d5e2e21c-tbrename-r1-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-fr.json",
+					"receipt_sha256": "cdc0ff31d16a53a3e7ece4dbf86d54d538d16fbb04a6d698f4369123a717684f",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-fr.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "c28b5ff8b35f912006a30570d7f10ecd8472129252f9f260429dc0ca8b7b68ad",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-es.json",
+					"receipt_sha256": "cc026a6702e87945333c6784f2218d42df36088c7476e8a525d9473d4c0b327d",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-es.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "dcd6f123a8c74dab276a996e2f3b705516c010d58b7446277df0b2ff9672aa06",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-zh-cn.json",
+					"receipt_sha256": "114a44f3f2a131e814659382ab24e20d4efad61cd8ae1c82282bd200de896738",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-zh-cn.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "471fde52133337c9e09f8ac5ffae4002bf8cc408f5e34dbb4030f82e8baec698",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-ru.json",
+					"receipt_sha256": "e27ac315caf36f2a2a6f05f0e140d0de3cd8ec24a5ab8f5b56705762954d3610",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-ru.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "455a74503cbddbc9561349473c4f15f346c0c25a3ada814f5e140dd892e12bbf",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-vi.json",
+					"receipt_sha256": "ff47331d719ca84a7e60fb584d37f65dad62eda7508496cfd46c730cd68b6de8",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-vi.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "fb8558ec34c817356eddca1dbd1c82aa30d3351cb6ba4f2067298657220a549d",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-ur.json",
+					"receipt_sha256": "77821245faebea1f17cedacd6d9d911ca1871d3aee7ea26fd17d33f4b04587dc",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-ur.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.rename",
+			"source_sha256": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd",
+			"target_sha256": "4068e0709d624cf0133895caf489f05d6ee7b7501dd6f62b4a673dcab9748cd0",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-20"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-20",
+					"result": "clean",
+					"instance": "a538d5e2e21c-tbrename-r1-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/a538d5e2e21c-tbrename-r1-hi.json",
+					"receipt_sha256": "61ed1d93dd6d86a8e7f14f0c881eb6fc5a9c694b1fd915c23f1f349fe199aaa8",
+					"scope": "ui.teamBridge.rename: all 15 keys, new namespace, PR #2019 at 5f5c7d343423",
+					"note": "Independent R1 audit by lopdev reviewer (anthropic/claude-opus-5-5). Record: i18n/receipts/a538d5e2e21c-tbrename-r1-hi.json. No rendered-fit claim."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

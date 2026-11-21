@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {گروپ کا نام بدلیں…} other {چینل کا نام بدلیں…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {گروپ کا نام بدلیں} other {چینل کا نام بدلیں}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {گروپ کے تمام ارکان کو نیا نام نظر آئے گا۔} other {چینل کے تمام ارکان کو نیا نام نظر آئے گا۔ چینل کے نام چھوٹے حروف میں ہوتے ہیں، اور ان میں خالی جگہ کی بجائے ہائفن ہوتے ہیں۔}}",
+	"ui.teamBridge.rename.name": "نام",
+	"ui.teamBridge.rename.cancel": "منسوخ کریں",
+	"ui.teamBridge.rename.save": "محفوظ کریں",
+	"ui.teamBridge.rename.saving": "محفوظ ہو رہا ہے…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {{name} نام کا گروپ پہلے سے موجود ہے۔ کوئی اور نام منتخب کریں۔} other {#{name} نام کا چینل پہلے سے موجود ہے۔ کوئی اور نام منتخب کریں۔}}",
+	"ui.teamBridge.rename.error.empty": "کوئی نام درج کریں۔",
+	"ui.teamBridge.rename.error.too_long": "نام میں زیادہ سے زیادہ {max, number} حروف ہو سکتے ہیں۔",
+	"ui.teamBridge.rename.error.characters": "نام میں ایسا حرف ہے جو استعمال نہیں کیا جا سکتا، جیسے ٹیب، لائن بریک یا کوئی نظر نہ آنے والا حرف۔",
+	"ui.teamBridge.rename.error.invalid": "یہ نام استعمال نہیں کیا جا سکتا۔ کوئی اور نام آزمائیں۔",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {آپ کو اس گروپ کا نام بدلنے کی اجازت نہیں ہے۔} other {آپ کو اس چینل کا نام بدلنے کی اجازت نہیں ہے۔}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {یہ گروپ آرکائیو ہو چکا ہے، اس لیے اس کا نام نہیں بدلا جا سکتا۔} other {یہ چینل آرکائیو ہو چکا ہے، اس لیے اس کا نام نہیں بدلا جا سکتا۔}}",
+	"ui.teamBridge.rename.error.failed": "نیا نام محفوظ نہیں ہوا۔ دوبارہ کوشش کریں۔"
+}

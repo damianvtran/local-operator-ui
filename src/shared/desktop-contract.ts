@@ -4483,6 +4483,43 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * RENAME a channel or group (agent-server POST
+	 * /messaging/conversations/{id}/rename; operator 2026-11-20: "There doesn't
+	 * seem to be a way to rename a channel in team bridge"). Its own op, not a
+	 * `lifecycle` action, because it carries a VALUE (the new name) where every
+	 * lifecycle action is a bare verb. Because it carries a body, the owner
+	 * receipt (`tenant_id`, `expected_account_id`) rides IN THE BODY beside
+	 * `name`, as create and send do — not the query string the bodyless
+	 * `lifecycle`/`delete` use. The daemon's `ConversationRenameIn`
+	 * (local-operator #4368) reads it only from the body and refuses a query
+	 * copy with 422, so a receipt in the wrong place can never be silently
+	 * dropped and rename without the owner guard. The hub sanitises the name and answers the
+	 * canonical one; it refuses with 400 `invalid_request` + `details.rule`, which
+	 * core passes through unchanged. The server alone decides
+	 * who may rename (owner, or an org owner/admin on a channel); the UI offers it
+	 * only where it offers archive (`can_administer`), and only when the daemon
+	 * advertises `team_bridge_conversation_rename`.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.rename"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+			// The hub's bound is 64 CODE POINTS (its rename sanitiser); `max` counts
+			// UTF-16 units, so the check here is by code point too. Everything else
+			// (control, invisible, unusual spaces) is the hub's to refuse, with a
+			// `details.rule` the dialog words.
+			name: z
+				.string()
+				.trim()
+				.min(1)
+				.refine((value) => [...value].length <= 64, {
+					message: "name is longer than 64 characters", // i18n: ignore wire validation diagnostic
+				}),
+		})
+		.strict(),
+	/*
 	 * Self-join and the notification preference are their own ops rather than
 	 * `lifecycle` actions: the tenant is part of the request (a merge-view row
 	 * can name a channel the caller has not joined, and the default tenant
@@ -12388,6 +12425,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 							},
 						}
 					: {}),
+			};
+		case "team_bridge.conversations.rename":
+			return {
+				// No `conversationOwnerQuery` here: the daemon refuses a query receipt
+				// on this route (see the op's schema comment); the body carries it.
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/rename`,
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+				},
 			};
 		case "team_bridge.conversations.join":
 			return {
