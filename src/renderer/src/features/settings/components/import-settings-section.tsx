@@ -53,7 +53,7 @@ const reason = (error: unknown): string =>
 	error instanceof Error ? error.message : String(error);
 
 export const ImportSettingsSection: FC = () => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [sources, setSources] = useState<ImportSource[]>([]);
 	const [activeSource, setActiveSource] = useState<ImportSourceName | null>(
 		null,
@@ -128,9 +128,18 @@ export const ImportSettingsSection: FC = () => {
 		}
 	}, []);
 
+	/*
+	 * `locale` is a reload trigger, not an input (fr census, row 1): each
+	 * source's `detail` ("no Claude store at <path>") is rendered by the backend
+	 * in its resolved language, and this list lives in component state where the
+	 * language-change query refresh cannot reach it. The store only moves to a
+	 * new backend tag after the backend confirmed it, so the reload reads the new
+	 * language.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the reload trigger described above
 	useEffect(() => {
 		void loadSources();
-	}, [loadSources]);
+	}, [loadSources, locale]);
 
 	const loadSessions = useCallback(async (source: ImportSourceName) => {
 		const request = ++sessionRequest.current;

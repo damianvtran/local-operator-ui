@@ -26,6 +26,7 @@ import { RegistrationToasts } from "./mini-view/registration-toasts";
 import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
+import { restoreLastBackendLanguage } from "./shared/i18n/last-language";
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { installConversationInputSync } from "./shared/store/conversation-input-sync";
@@ -65,6 +66,15 @@ installDevDriver();
  * no-op write) and owns every later change.
  */
 applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
+
+/*
+ * THE CHOSEN LANGUAGE BEFORE THE SERVER ANSWERS (fr census, row 2). Until
+ * capabilities answer, the locale store holds the device language, so a French
+ * reader on an English OS met the offline/booting screens in English. The tag
+ * the backend last confirmed is read back here, synchronously, before the first
+ * render; the first capabilities answer replaces it (`./shared/i18n/last-language`).
+ */
+restoreLastBackendLanguage();
 
 /*
  * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half

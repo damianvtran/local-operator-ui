@@ -193,9 +193,14 @@ The mechanics:
   interface-language picker writes it through `settings.edit`; the UI reads the
   resolved tag from `GET /v1/capabilities` when `features.i18n` is advertised.
   `auto` follows the backend's OS-locale resolver (subject to its override and
-  shipped-locale rules). Before negotiation, or with an older backend, the UI
-  uses `navigator.language`, then `en`. Do not add a localStorage preference or
-  use `setLocale()` as a production override; backend choices own availability.
+  shipped-locale rules). Before negotiation, the main window uses the tag the
+  backend last confirmed (a localStorage CACHE written only from a capabilities
+  answer, `src/renderer/src/shared/i18n/last-language.ts`), else
+  `navigator.language`, then `en`; with an older backend, the device. Do not add
+  a localStorage preference or use `setLocale()` as a production override;
+  backend choices own availability. A change of the backend's resolved language
+  invalidates every cached query (`refreshServerLocalizedQueries`), because the
+  backend renders much of its copy per request in that language.
 - **Add a string:** put a stable semantic `ui.<area>.<name>` key in
   `src/i18n/catalogues/en/ui.<area>.json` (for example
   `ui.settings.language.external_notice` in `ui.settings.json`), and translate it
