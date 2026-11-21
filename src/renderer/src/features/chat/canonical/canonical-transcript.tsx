@@ -42,6 +42,7 @@
  * Scroll paging inherits that rule rather than restating it — a reader
  * following the tail neither loads a page nor has their offset corrected.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import {
 	FlagLine,
@@ -2853,6 +2854,8 @@ const ToolRow = memo(function ToolRow({
 					className={cn(
 						"whitespace-pre font-mono",
 						interruptedNotRun ? "text-ink" : "text-danger",
+						// The reason a call did not run quotes the call (review round 1, Q2).
+						USER_CONTENT_CLASS,
 					)}
 				>
 					{record.notRunReason}

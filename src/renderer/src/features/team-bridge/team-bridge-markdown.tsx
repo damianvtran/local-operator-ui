@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { cn } from "@shared/lib/utils";
 import type { CSSProperties, FC } from "react";
 import { memo, useMemo } from "react";
@@ -71,7 +72,12 @@ export const TeamBridgeMarkdown: FC<{
 		[mentions],
 	);
 	return (
-		<div className={cn("lo-markdown", className)} style={style}>
+		/* A Team Bridge message body: user content, as the chat transcript's
+		   `MarkdownRenderer` (review round 1, Q2). */
+		<div
+			className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
+			style={style}
+		>
 			<ReactMarkdown remarkPlugins={plugins} components={COMPONENTS}>
 				{children}
 			</ReactMarkdown>
