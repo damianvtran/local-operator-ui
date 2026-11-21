@@ -1,0 +1,11 @@
+{
+  "ui.teamBridge.holdsBatch.action": "Tout écarter…",
+  "ui.teamBridge.holdsBatch.confirm": "Écarter les messages suivants ({count}) ? Seuls les messages listés ci-dessous sont inclus, pas les nouveaux messages reçus. Chaque choix est enregistré sur cet appareil et ne peut pas être annulé. Le texte de certains messages peut être indisponible. Cela ne confirme pas que le serveur ou l’expéditeur a été averti.",
+  "ui.teamBridge.holdsBatch.submit": "Écarter ces messages ({count})",
+  "ui.teamBridge.holdsBatch.progress": "Messages traités : {done} sur {total}.",
+  "ui.teamBridge.holdsBatch.result": "Choix enregistrés sur cet appareil : {succeeded}. Non enregistrés : {failed}. Les messages pour lesquels l’enregistrement a échoué restent retenus. Les nouveaux messages reçus ne sont pas inclus.",
+  "ui.teamBridge.holdsBatch.retry": "Réessayer pour les messages en échec…",
+  "ui.teamBridge.holdsBatch.recorded": "Votre choix Écarter est enregistré sur cet appareil.",
+  "ui.teamBridge.holdsBatch.stale_receipt": "L’enregistrement de ce message retenu a changé. Actualisez la liste et confirmez de nouveau votre choix de l’écarter.",
+  "ui.teamBridge.holdsBatch.local_unconfirmed": "Message écarté sur cet appareil sans confirmation du serveur. L’expéditeur n’a peut-être pas été averti. Aucune autre action n’est nécessaire ici."
+}
