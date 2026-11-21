@@ -136,7 +136,10 @@ import {
 	PendingApprovalsSummary,
 	PendingProposalMark,
 } from "./pending-approvals";
-import { ProfileProposalPanel } from "./profile-proposal-panel";
+import {
+	ProfileProposalPanel,
+	type ProposalReveal,
+} from "./profile-proposal-panel";
 import {
 	ProposedNewGroup,
 	ProposedNewPane,
@@ -407,6 +410,14 @@ export function AgentsPage() {
 	 * fix is the key, and this is the question that goes with it (D1/U1/Q1).
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
+	/*
+	 * The last navigation that named a proposal, as a reveal request for the
+	 * record's review panel (`ProposalReveal`: R3's nonce, U5's focus choice).
+	 * Set in `go()`, i.e. only once the dirty-edit guard let the move happen.
+	 */
+	const [proposalReveal, setProposalReveal] = useState<ProposalReveal | null>(
+		null,
+	);
 	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
@@ -523,7 +534,15 @@ export function AgentsPage() {
 			if (next.duplicate) search.set("duplicate", next.duplicate);
 			// The record's `ProfileProposalPanel` reads it to open and scroll to
 			// that proposal (the pending-approvals summary and marked rows set it).
-			if (next.proposal) search.set("proposal", next.proposal);
+			if (next.proposal) {
+				search.set("proposal", next.proposal);
+				const id = next.proposal;
+				setProposalReveal((last) => ({
+					id,
+					request: (last?.request ?? 0) + 1,
+					focus: next.revealFocus !== false,
+				}));
+			}
 			// Any real navigation resolves a pending question, whichever route asked
 			// for it (the guard's own button, a browser Back, a deep link).
 			setPendingNav(null);
@@ -586,6 +605,7 @@ export function AgentsPage() {
 				name={itemName}
 				enabled={desktopFeatureEnabled(capabilities.data, "profile_proposals")}
 				proposalId={params.get("proposal")}
+				reveal={proposalReveal}
 			/>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
 			    retain the existing pending-only path without receiving skill rows. */}
@@ -875,12 +895,31 @@ export function AgentsPage() {
 	const openRecord = (
 		records: ReadonlyMap<string, readonly ProfileProposalSummary[]>,
 		rowName: string,
-	) => requestGo({ name: rowName, proposal: records.get(rowName)?.[0]?.id });
+	) =>
+		requestGo({
+			name: rowName,
+			proposal: records.get(rowName)?.[0]?.id,
+			// A row click keeps focus on the row (U5); Review is the focus move.
+			revealFocus: false,
+		});
 
 	const selectedIsProposedNew = useIsProposedNew(
 		teamMode ? "team" : "agent",
 		skillMode ? null : selected,
 		(teamMode ? teams.data : profiles.data)?.map((row) => row.name),
+		proposalsEnabled,
+	);
+	/*
+	 * A SKILL CREATE PROPOSAL HAS NO CARD TO OPEN (PR #2026 round 1, R2/U1).
+	 * Only once the library has loaded (`existing` undefined until then, so a
+	 * slow list never flashes the proposal pane over a real skill), and only for
+	 * a name the library does not list: an existing skill's proposals stay in
+	 * its own SkillDetail panel.
+	 */
+	const selectedIsProposedNewSkill = useIsProposedNew(
+		"skill",
+		skillMode ? selected : null,
+		skills.library.data ? skills.cards.map((card) => card.name) : undefined,
 		proposalsEnabled,
 	);
 
@@ -954,6 +993,13 @@ export function AgentsPage() {
 				 */}
 				<PendingApprovalsSummary
 					proposals={waiting}
+					currentProposalId={params.get("proposal")}
+					/*
+					 * Without `skill_library` there is no Skills tab or pane to review a
+					 * skill proposal in (R5/U2/D2): the row stays (the nav badge counts
+					 * it, so the summary must too) but says to update instead of Review.
+					 */
+					reviewable={(proposal) => proposal.kind !== "skill" || skillsOffered}
 					onReview={(proposal) =>
 						requestGo({
 							kind: proposal.kind,
@@ -990,7 +1036,7 @@ export function AgentsPage() {
 								label={t("ui.agents.pages.tab.agents")}
 								count={profiles.data?.length ?? null}
 								waiting={waitingByKind.agent}
-								compact={skillsOffered}
+								compact={skillsOffered || waitingByKind.skill > 0}
 							/>
 							<BrowseTab
 								value="team"
@@ -999,7 +1045,7 @@ export function AgentsPage() {
 								label={t("ui.agents.pages.tab.teams")}
 								count={teams.data?.length ?? null}
 								waiting={waitingByKind.team}
-								compact={skillsOffered}
+								compact={skillsOffered || waitingByKind.skill > 0}
 							/>
 							{/*
 							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
@@ -1008,10 +1054,14 @@ export function AgentsPage() {
 							 * as its siblings (`BrowseTab`), so all three fit the 256 px
 							 * column by one rule rather than the new one being the odd one.
 							 */}
-							{skillsOffered ? (
+							{/* A disabled Skills tab still accounts for waiting skill proposals on
+							 * legacy cores: tab counts reconcile with the summary, but no
+							 * unusable navigation is offered (R5/U2/D2). */}
+							{skillsOffered || waitingByKind.skill > 0 ? (
 								<BrowseTab
 									value="skill"
 									testId="skills-tab"
+									disabled={!skillsOffered}
 									noPanel
 									compact
 									icon={<Sparkles className="size-3.5" />}
@@ -1128,7 +1178,13 @@ export function AgentsPage() {
 					 * so rows dissolve into the footer instead of being sliced at it.
 					 */
 					data-lo-pane-edge-cues
-					className="min-h-0 flex-1 overflow-y-auto"
+					/*
+					 * `min-h-32` IS THE ROSTER'S FLOOR (PR #2026 round 1, D1/U3): the
+					 * pending-approvals summary above shrinks (its list scrolls inside it)
+					 * before this region drops below ~3 rows, so at the 600 px window
+					 * minimum the roster and the footer button stay on screen.
+					 */
+					className="min-h-32 flex-1 overflow-y-auto"
 				>
 					{skillMode ? (
 						<SkillsRosterBody
@@ -1356,6 +1412,15 @@ export function AgentsPage() {
 												retryingLabel={t("ui.agents.skills.retrying")}
 											/>
 										</div>
+									) : selected &&
+										!openSkillCard &&
+										selectedIsProposedNewSkill ? (
+										<ProposedNewPane
+											kind="skill"
+											name={selected}
+											proposalId={params.get("proposal")}
+											reveal={proposalReveal}
+										/>
 									) : selected ? (
 										<SkillDetail
 											key={selected}
@@ -1391,6 +1456,7 @@ export function AgentsPage() {
 															"profile_proposals",
 														)}
 														proposalId={params.get("proposal")}
+														reveal={proposalReveal}
 													/>
 												)
 											}
@@ -1508,6 +1574,7 @@ export function AgentsPage() {
 										kind={teamMode ? "team" : "agent"}
 										name={selected}
 										proposalId={params.get("proposal")}
+										reveal={proposalReveal}
 									/>
 								) : selected && detailError ? (
 									<MissingDefinitionError
@@ -1770,6 +1837,7 @@ function BrowseTab({
 	label,
 	count,
 	waiting = 0,
+	disabled = false,
 	compact,
 	noPanel = false,
 }: {
@@ -1784,6 +1852,8 @@ function BrowseTab({
 	 * it; it is what tells someone on the Agents tab that the badge's 1 is a team.
 	 */
 	waiting?: number;
+	/** Count-only Skills tab on a legacy core; its summary row explains updating. */
+	disabled?: boolean;
 	compact: boolean;
 	/**
 	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
@@ -1796,16 +1866,20 @@ function BrowseTab({
 	return (
 		<TabsTrigger
 			value={value}
+			disabled={disabled}
 			data-testid={testId}
 			{...(noPanel ? { "aria-controls": undefined } : {})}
-			title={[
-				count === null ? label : `${label} ${count}`,
+			title={
 				waiting > 0
-					? t("ui.agents.pending.count_aria", { count: waiting })
-					: null,
-			]
-				.filter(Boolean)
-				.join(" - ")}
+					? // The separator is the catalogue's (R6/Q1), so RTL locales order it.
+						t("ui.agents.pending.tab_title", {
+							tab: count === null ? label : `${label} ${count}`,
+							waiting: t("ui.agents.pending.count_aria", { count: waiting }),
+						})
+					: count === null
+						? label
+						: `${label} ${count}`
+			}
 			className={cn("min-w-0", compact ? "flex-auto px-2" : "flex-1")}
 		>
 			{compact ? null : icon}
@@ -1853,6 +1927,11 @@ type NavIntent = {
 	duplicate?: string;
 	/** A proposal id the opened record's review panel should open and scroll to. */
 	proposal?: string;
+	/**
+	 * Whether that panel also takes focus (default true). False for a roster
+	 * row click, which keeps focus in the list (U5); see `ProposalReveal`.
+	 */
+	revealFocus?: boolean;
 };
 
 /**

@@ -1,3 +1,4 @@
+import { rowCurrent } from "@features/chat/components/chat-sidebar";
 /**
  * "Waiting for your approval": the Agents page's answer to the nav badge.
  *
@@ -40,14 +41,15 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { formatList, formatNumber } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { Bot, Sparkles, Users } from "lucide-react";
 import { useId, useState } from "react";
 import { t } from "../../../../../i18n/messages";
 
 /**
- * Rows shown before "Show all". Three keeps the summary to roughly the height of
- * the tab/search cluster below it, so the roster stays the column's main body
- * even with a long queue; the brief asked for ~3.
+ * Rows shown before "Show all"; the brief asked for ~3. Three rows run ~230 px,
+ * more than the tab/search cluster below, so this is not what keeps the roster
+ * the column's main body: the section's height cap is (see its className).
  */
 export const PENDING_SUMMARY_COLLAPSED_ROWS = 3;
 
@@ -63,12 +65,35 @@ function displayName(proposal: ProfileProposalSummary): string {
 	return proposal.label?.trim() || proposal.name;
 }
 
+/**
+ * Review's accessible name, per operation AND kind (PR #2026 round 1, D4/U4):
+ * a create is not "a change to" a record that does not exist yet, and an
+ * agent and a team may share a name, so the button must say which it opens.
+ */
+function reviewLabel(proposal: ProfileProposalSummary, name: string): string {
+	return proposal.operation === "create"
+		? t("ui.agents.pending.review_create_aria", { kind: proposal.kind, name })
+		: t("ui.agents.pending.review_aria", { kind: proposal.kind, name });
+}
+
 export function PendingApprovalsSummary({
 	proposals,
+	currentProposalId = null,
+	reviewable = () => true,
 	onReview,
 }: {
 	/** `pendingProposals(list)`: newest first, all kinds, pending + stale. */
 	proposals: readonly ProfileProposalSummary[];
+	/** `?proposal=`: the proposal open in the detail pane, marked current (D6). */
+	currentProposalId?: string | null;
+	/**
+	 * Whether the page has somewhere to review this proposal. False only for a
+	 * skill proposal on a core without `skill_library` (R5/U2/D2): the row stays,
+	 * because the nav badge counts it and the summary's total must match the
+	 * badge, but Review gives way to a one-line "update to review" note rather
+	 * than a button that goes nowhere.
+	 */
+	reviewable?: (proposal: ProfileProposalSummary) => boolean;
 	onReview: (proposal: ProfileProposalSummary) => void;
 }) {
 	useI18nLocale();
@@ -89,7 +114,15 @@ export function PendingApprovalsSummary({
 			 * treatment), not a floating surface's shadow. The count carries the
 			 * accent; the panel itself stays quiet so it reads as part of the column.
 			 */
-			className="rounded-md border border-hairline bg-sunken p-2"
+			/*
+			 * BOUNDED (PR #2026 round 1, D1/U3): at most 30% of the column, and it
+			 * shrinks first (`min-h-0`) when the column is short; the roster below
+			 * keeps a floor (`min-h-32`). Only the list scrolls, so the heading and
+			 * Show all/fewer stay put. Unbounded, five rows cost 307 px collapsed
+			 * and 449 px expanded, and at the 600 px window minimum the roster got
+			 * 0 px and "Add agent manually" fell off-screen.
+			 */
+			className="flex max-h-[30%] min-h-0 flex-col rounded-md border border-hairline bg-sunken p-2"
 		>
 			<h2
 				id={headingId}
@@ -103,22 +136,30 @@ export function PendingApprovalsSummary({
 					{t("ui.agents.pending.count_aria", { count: proposals.length })}
 				</span>
 			</h2>
-			<ul className="space-y-1">
+			<ul
+				data-testid="pending-approvals-list"
+				className="min-h-0 space-y-1 overflow-y-auto"
+			>
 				{shown.map((proposal) => {
 					const Icon = KIND_ICON[proposal.kind];
 					const name = displayName(proposal);
 					const stale = proposal.stale || proposal.state === "stale";
+					const current = proposal.id === currentProposalId;
+					const canReview = reviewable(proposal);
 					return (
 						<li
 							key={proposal.id}
 							data-testid={`pending-approval-${proposal.id}`}
 							data-proposal-kind={proposal.kind}
+							// The proposal open on the right reads as selected (D6), with the
+							// roster's own current-row ground rather than a new mark.
+							aria-current={current ? "true" : undefined}
 							/*
 							 * Review shares the NAME's line only; the detail lines run under it to
 							 * the panel's edge. Beside a full-height button column they had ~150 px
 							 * and "Agent · Proposed change" broke after the dot.
 							 */
-							className="px-1 py-0.5"
+							className={cn("rounded-sm px-1 py-0.5", current && rowCurrent)}
 						>
 							<div className="flex items-center gap-2">
 								<Icon
@@ -132,23 +173,20 @@ export function PendingApprovalsSummary({
 								>
 									{name}
 								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="shrink-0"
-									aria-label={t("ui.agents.pending.review_aria", { name })}
-									onClick={() => onReview(proposal)}
-								>
-									{t("ui.agents.pending.review")}
-								</Button>
+								{canReview ? (
+									<Button
+										variant="outline"
+										size="sm"
+										className="shrink-0"
+										aria-label={reviewLabel(proposal, name)}
+										onClick={() => onReview(proposal)}
+									>
+										{t("ui.agents.pending.review")}
+									</Button>
+								) : null}
 							</div>
 							{/* Indented to the name: the 14 px icon plus the 8 px gap. */}
 							<div className="ps-5.5">
-								{/*
-								 * WRAPS RATHER THAN TRUNCATES: the stale badge sits at the end of
-								 * this line, and a truncating line clipped it away in exactly the
-								 * row that most needs it (first render, "Proposed chan…").
-								 */}
 								<p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-meta text-ink-muted">
 									<span>{t(KIND_WORD[proposal.kind])}</span>
 									<span aria-hidden="true" className="text-ink-dim">
@@ -159,31 +197,51 @@ export function PendingApprovalsSummary({
 											? t("ui.agents.pending.operation.create")
 											: t("ui.agents.pending.operation.update")}
 									</span>
-									{stale ? (
-										/*
-										 * The `warning` Badge, a contracted wash/border/ink triple:
-										 * warning ink loose on `sunken` is a pair no contrast row
-										 * covers. Stale still counts as waiting (it can be rejected).
-										 */
-										<Badge
-											variant="warning"
-											data-testid="pending-approval-stale"
-										>
-											{t("ui.agents.pending.stale")}
-										</Badge>
-									) : null}
 								</p>
-								{proposal.fields.length ? (
-									<p
-										className="truncate text-meta text-ink-dim"
-										title={formatList(proposal.fields)}
-									>
-										{/* Field ids are core's identifiers; the panel shows their labels. */}
-										{t("ui.agents.proposals.fields", {
-											fields: formatList(proposal.fields),
-										})}
-									</p>
+								{/*
+								 * THE STALE BADGE LEADS THE FIELDS LINE (D3) instead of ending the
+								 * detail line: "Team · Proposed change" plus the 83 px badge did not
+								 * fit 208 px, so it wrapped onto a line of its own (92 px rows vs
+								 * 67 px). Here the badge is `shrink-0` and the field list truncates
+								 * beside it, so the badge is never the part that gets clipped.
+								 */}
+								{stale || proposal.fields.length ? (
+									<div className="flex min-w-0 items-center gap-1">
+										{stale ? (
+											/*
+											 * The `warning` Badge, a contracted wash/border/ink triple:
+											 * warning ink loose on `sunken` is a pair no contrast row
+											 * covers. Stale still counts as waiting (it can be rejected).
+											 */
+											<Badge
+												variant="warning"
+												className="shrink-0"
+												data-testid="pending-approval-stale"
+											>
+												{t("ui.agents.pending.stale")}
+											</Badge>
+										) : null}
+										{proposal.fields.length ? (
+											<p
+												className="min-w-0 truncate text-meta text-ink-dim"
+												title={formatList(proposal.fields)}
+											>
+												{/* Field ids are core's identifiers; the panel shows their labels. */}
+												{t("ui.agents.proposals.fields", {
+													fields: formatList(proposal.fields),
+												})}
+											</p>
+										) : null}
+									</div>
 								) : null}
+								{canReview ? null : (
+									<p
+										className="text-meta text-ink-muted"
+										data-testid="pending-approval-unreviewable"
+									>
+										{t("ui.agents.pending.skill_needs_update")}
+									</p>
+								)}
 							</div>
 						</li>
 					);

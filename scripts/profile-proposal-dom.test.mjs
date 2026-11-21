@@ -37,7 +37,7 @@ const { MemoryRouter } = require("react-router-dom");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals";',
+			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals"; export {ProposedNewPane} from "./src/renderer/src/features/agents/components/proposed-new-profiles";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -66,6 +66,7 @@ const {
 	ProfileProposalPanel,
 	PendingApprovalsSummary,
 	PendingProposalMark,
+	ProposedNewPane,
 } = module.exports;
 const h = React.createElement;
 const { act } = React;
@@ -128,11 +129,13 @@ function bridge({
 	error = false,
 	acceptError = false,
 	operation = "update",
+	kind = "team",
+	name = "lopdev",
 } = {}) {
 	let proposal = {
 		id,
-		kind: "team",
-		name: "lopdev",
+		kind,
+		name,
 		operation,
 		fields: ["instructions"],
 		state,
@@ -528,7 +531,7 @@ test("summary: hidden with nothing waiting; names kind, record, fields and Revie
 	assert.match(text, /Team\s*·\s*Proposed change/);
 	assert.match(text, /Changes: instructions/);
 	const review = section.querySelector(
-		'[aria-label="Review the proposed change to minervadev"]',
+		'[aria-label="Review the proposed change to team minervadev"]',
 	);
 	await click(review);
 	assert.deepEqual(reviewed, ["pp_t1"]);
@@ -586,4 +589,166 @@ test("row mark: draws the accent count with words for a screen reader, nothing a
 		"true",
 	);
 	assert.match(mark.textContent, /2 changes waiting for your approval/);
+});
+
+/* PR #2026 round 1 remediation. */
+test("summary: Review names kind and operation; the open proposal is current; stale leads the fields line (D4/U4, D6, D3)", async () => {
+	await mount(PendingApprovalsSummary, {
+		proposals: [
+			waitingProposal({
+				id: "a",
+				kind: "agent",
+				name: "press",
+				operation: "create",
+			}),
+			waitingProposal({ id: "b", kind: "team", name: "helpdesk" }),
+			waitingProposal({
+				id: "c",
+				kind: "agent",
+				name: "helpdesk",
+				state: "stale",
+				stale: true,
+			}),
+		],
+		currentProposalId: "b",
+		onReview: () => {},
+	});
+	const labels = [
+		...document.querySelectorAll('[data-testid="pending-approvals"] button'),
+	]
+		.map((n) => n.getAttribute("aria-label"))
+		.filter(Boolean);
+	assert.deepEqual(labels, [
+		"Review the proposed new agent press",
+		"Review the proposed change to team helpdesk",
+		"Review the proposed change to agent helpdesk",
+	]);
+	const row = (rid) =>
+		document.querySelector(`[data-testid="pending-approval-${rid}"]`);
+	assert.equal(row("b").getAttribute("aria-current"), "true");
+	assert.match(row("b").className, /bg-row-selected/);
+	assert.equal(row("a").getAttribute("aria-current"), null);
+	// The badge no longer ends the "Agent · Proposed change" line (it wrapped
+	// there); it leads the fields line, which truncates beside it.
+	const stale = row("c").querySelector(
+		'[data-testid="pending-approval-stale"]',
+	);
+	assert.equal(stale.parentElement.tagName, "DIV");
+	assert.match(
+		stale.parentElement.textContent,
+		/Out of date\s*Changes: instructions/,
+	);
+	assert.doesNotMatch(
+		row("c").querySelector("p.flex-wrap").textContent,
+		/Out of date/,
+	);
+});
+test("summary: bounded, the list scrolls inside it (D1/U3)", async () => {
+	await mount(PendingApprovalsSummary, {
+		proposals: [waitingProposal()],
+		onReview: () => {},
+	});
+	const section = document.querySelector('[data-testid="pending-approvals"]');
+	assert.match(section.className, /max-h-\[30%\]/);
+	assert.match(section.className, /min-h-0/);
+	const list = document.querySelector('[data-testid="pending-approvals-list"]');
+	assert.match(list.className, /overflow-y-auto/);
+	assert.match(list.className, /min-h-0/);
+});
+test("summary: a proposal the page cannot open says so instead of a dead Review (R5/U2/D2)", async () => {
+	const reviewed = [];
+	await mount(PendingApprovalsSummary, {
+		proposals: [
+			waitingProposal({ id: "s", kind: "skill", name: "research-brief" }),
+			waitingProposal({ id: "t" }),
+		],
+		reviewable: (p) => p.kind !== "skill",
+		onReview: (p) => reviewed.push(p.id),
+	});
+	const skillRow = document.querySelector('[data-testid="pending-approval-s"]');
+	assert.equal(
+		skillRow.querySelector("button"),
+		null,
+		"no Review that goes nowhere",
+	);
+	assert.match(
+		skillRow.querySelector('[data-testid="pending-approval-unreviewable"]')
+			.textContent,
+		/Update Local Operator to review skill changes here/,
+	);
+	// Still counted: the total matches the nav badge, which counts every kind.
+	assert.match(
+		document.querySelector('[data-testid="pending-approvals"] h2').textContent,
+		/2 changes waiting for your approval/,
+	);
+	await click(
+		document.querySelector('[data-testid="pending-approval-t"] button'),
+	);
+	assert.deepEqual(reviewed, ["t"]);
+});
+test("panel reveal: a row click scrolls without stealing focus; Review focuses, and again on a repeat (U5, R3)", async () => {
+	const scrolled = [];
+	const proto = dom.window.HTMLElement.prototype;
+	const original = proto.scrollIntoView;
+	proto.scrollIntoView = function () {
+		scrolled.push(this.getAttribute("data-proposal-id"));
+	};
+	try {
+		bridge();
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+		await mount(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 1, focus: false },
+		});
+		assert.deepEqual(scrolled, [id], "the card is brought into view");
+		assert.equal(
+			document.activeElement,
+			outside,
+			"focus stays where the click left it",
+		);
+		await rerender(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 2, focus: true },
+		});
+		const heading = document.querySelector(`[data-proposal-id="${id}"] h3`);
+		assert.equal(
+			document.activeElement,
+			heading,
+			"Review moves focus to the card",
+		);
+		// Same proposal, same URL: only the nonce changes. Before the fix this
+		// re-render changed nothing and the click was a silent no-op.
+		outside.focus();
+		await rerender(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 3, focus: true },
+		});
+		assert.equal(document.activeElement, heading);
+		assert.equal(scrolled.length, 3);
+		outside.remove();
+	} finally {
+		proto.scrollIntoView = original;
+	}
+});
+test("skill create: the proposed-new pane offers Accept/Reject for a skill (R2/U1)", async () => {
+	bridge({ kind: "skill", name: "research-brief", operation: "create" });
+	await mount(ProposedNewPane, {
+		kind: "skill",
+		name: "research-brief",
+		proposalId: id,
+	});
+	const pane = document.querySelector('[data-testid="proposed-new-pane"]');
+	assert.ok(pane, "the review pane renders for a skill");
+	assert.match(pane.querySelector("h2").textContent, /research-brief/);
+	assert.ok(
+		pane.querySelector(`[data-proposal-id="${id}"]`),
+		"the proposal card is shown",
+	);
+	assert.ok(button("Accept"), "Accept is offered");
+	assert.ok(button("Reject"), "Reject is offered");
 });

@@ -1,14 +1,17 @@
 {
 	"ui.agents.pending.heading": "En attente de votre approbation",
-	"ui.agents.pending.count_aria": "{count, plural, one {# modification en attente de votre approbation} other {# modifications en attente de votre approbation}}",
+	"ui.agents.pending.count_aria": "{count, plural, one {# modification en attente de votre approbation} many {# de modifications en attente de votre approbation} other {# modifications en attente de votre approbation}}",
 	"ui.agents.pending.kind.agent": "Agent",
 	"ui.agents.pending.kind.team": "Équipe",
 	"ui.agents.pending.kind.skill": "Compétence",
 	"ui.agents.pending.operation.create": "Création proposée",
 	"ui.agents.pending.operation.update": "Modification proposée",
 	"ui.agents.pending.stale": "Obsolète",
+	"ui.agents.pending.skill_needs_update": "Mettez à jour Local Operator pour examiner ici les modifications de compétences.",
 	"ui.agents.pending.review": "Examiner",
-	"ui.agents.pending.review_aria": "Examiner la modification proposée pour {name}",
+	"ui.agents.pending.review_aria": "{kind, select, agent {Examiner la modification proposée pour l’agent {name}} team {Examiner la modification proposée pour l’équipe {name}} other {Examiner la modification proposée pour la compétence {name}}}",
+	"ui.agents.pending.review_create_aria": "{kind, select, agent {Examiner la création proposée de l’agent {name}} team {Examiner la création proposée de l’équipe {name}} other {Examiner la création proposée de la compétence {name}}}",
 	"ui.agents.pending.show_all": "Tout afficher ({count})",
-	"ui.agents.pending.show_fewer": "Afficher moins"
+	"ui.agents.pending.show_fewer": "Afficher moins",
+	"ui.agents.pending.tab_title": "{tab} · {waiting}"
 }

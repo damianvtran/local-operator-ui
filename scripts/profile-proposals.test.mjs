@@ -269,3 +269,33 @@ test("proposed-new rows: pending/stale creates for unknown names only, one per n
 	);
 	assert.deepEqual(m.proposedNewProfiles(undefined, "agent", []), []);
 });
+test("proposedNewProfiles: a skill create the library lacks is new; one it lists is not (PR #2026 R2/U1)", () => {
+	// The Skills pane renders the review panel instead of SkillDetail's load
+	// error exactly when this returns the selected name.
+	const skill = (over) => ({
+		id: "pp_2222222222222222",
+		kind: "skill",
+		name: "research-brief",
+		operation: "create",
+		fields: [],
+		state: "pending",
+		stale: false,
+		origin: { trust: "agent" },
+		...over,
+	});
+	const list = {
+		proposals: [
+			skill({}),
+			skill({ id: "pp_3333333333333333", name: "installed" }),
+			skill({ id: "pp_4444444444444444", name: "edit", operation: "update" }),
+			skill({ id: "pp_5555555555555555", name: "agentish", kind: "agent" }),
+		],
+		counts: {},
+	};
+	assert.deepEqual(
+		m
+			.proposedNewProfiles(list, "skill", ["installed", "edit"])
+			.map((p) => p.name),
+		["research-brief"],
+	);
+});

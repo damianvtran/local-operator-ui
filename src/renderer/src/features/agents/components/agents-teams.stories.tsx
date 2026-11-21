@@ -7,6 +7,7 @@ import { AgentsPage } from "@features/agents/components/agents-page";
 import { useConfigRunStore } from "@features/agents/config-run/config-run-store";
 import type { ReusableTeam } from "@shared/api/local-operator/profile-hooks";
 import { GlobalScrollbarStyles } from "@shared/components/common/global-scrollbar-styles";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	type FC,
@@ -375,6 +376,55 @@ const answerProposals = (proposals: readonly WaitingProposal[]) => {
 	};
 };
 
+/**
+ * Answer `skills.list` from a list of names, over whatever bridge is in place
+ * (the proposal answerer included), delegating every other op to it.
+ */
+const answerSkills = (names: readonly string[]) => {
+	const page = window as unknown as {
+		api: {
+			desktop: { request: (r: DesktopRequest) => Promise<DesktopResponse> };
+		};
+	};
+	const inner = page.api.desktop.request;
+	page.api.desktop.request = async (request) => {
+		if (request.op !== "skills.list") return inner(request);
+		const named = (request as { name?: string }).name;
+		if (named && !names.includes(named))
+			return {
+				status: 404,
+				body: { detail: { code: "not_found", message: `No skill ${named}.` } },
+			};
+		return {
+			status: 200,
+			body: {
+				result: {
+					data: {
+						skills: names.map((name) => ({
+							name,
+							description: `What ${name} does.`,
+							source: "installed",
+							editable: true,
+							installed: true,
+						})),
+					},
+				},
+			},
+		};
+	};
+};
+
+/** A skill CREATE proposal: no library card exists for its name yet. */
+const SKILL_CREATE_PROPOSAL = [
+	waiting({
+		id: "pp_skill_new",
+		kind: "skill",
+		name: "press-digest",
+		operation: "create",
+		fields: ["description", "body"],
+	}),
+];
+
 /** The operator's case: one TEAM proposal, read from the Agents tab. */
 const ONE_TEAM_PROPOSAL = [
 	waiting({
@@ -466,6 +516,18 @@ const Scene: FC<{
 	 * this list; omitted, the capability is off, as in every other frame here.
 	 */
 	proposals?: readonly WaitingProposal[];
+	/**
+	 * Skill names the library lists. Present, the backend advertises
+	 * `skill_library` and answers `skills.list` from it (a named read for a
+	 * name it lacks is core's 404); omitted, there is no Skills tab.
+	 */
+	skills?: readonly string[];
+	/**
+	 * The frame's height in px instead of the whole viewport: the 600 px
+	 * window minimum (`WINDOW_MIN_HEIGHT`, `src/main/window-mode.ts`) is a
+	 * height a default Storybook canvas never has (PR #2026 round 1, D1).
+	 */
+	frameHeight?: number;
 }> = ({
 	at,
 	children,
@@ -474,6 +536,8 @@ const Scene: FC<{
 	effectiveFails,
 	agentOverrides,
 	proposals,
+	skills,
+	frameHeight,
 }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
 	rows.current ??= AGENTS.map((row) => ({
@@ -484,18 +548,27 @@ const Scene: FC<{
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
 			teams: [...TEAMS, ...extraTeams],
-			capabilities: proposals
-				? {
-						...capabilities,
-						features: { ...capabilities.features, profile_proposals: 1 },
-					}
-				: capabilities,
+			capabilities: {
+				...capabilities,
+				features: {
+					...capabilities.features,
+					...(proposals ? { profile_proposals: 1 } : {}),
+					...(skills ? { skill_library: 1 } : {}),
+				},
+			},
 			effectiveFails,
 		});
 		if (proposals) answerProposals(proposals);
-	}, [extraTeams, capabilities, effectiveFails, proposals]);
+		if (skills) answerSkills(skills);
+	}, [extraTeams, capabilities, effectiveFails, proposals, skills]);
 	return (
-		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
+		<div
+			className={cn(
+				"flex flex-col overflow-hidden bg-canvas",
+				frameHeight === undefined && "h-screen",
+			)}
+			style={frameHeight === undefined ? undefined : { height: frameHeight }}
+		>
 			{/*
 			 * THE APP'S REAL 8 PX SCROLLBAR SHEET (`main.tsx` mounts it for every
 			 * window). The pane's 24 px edge is `px-4` plus a stable 8 px gutter on each
@@ -1266,6 +1339,81 @@ export const PendingReviewOpened: Story = {
 			proposals={ONE_TEAM_PROPOSAL}
 		>
 			<HoldShutterUntil done={paneSays("Proposed change to")} />
+		</Scene>
+	),
+};
+
+/*
+ * PR #2026 round 1 remediation frames.
+ */
+
+/** Press "Show all" once the summary offers it (the expanded geometry). */
+const ExpandSummary: FC = () => {
+	useEffect(() => {
+		const press = () => {
+			const more = [
+				...document.querySelectorAll<HTMLButtonElement>(
+					'[data-testid="pending-approvals"] button[aria-expanded="false"]',
+				),
+			][0];
+			if (!more) return false;
+			more.click();
+			return true;
+		};
+		if (press()) return;
+		const observer = new MutationObserver(() => {
+			if (press()) observer.disconnect();
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, []);
+	return null;
+};
+
+/**
+ * D1/U3: five waiting, "Show all" open, in a 600 px frame (the window
+ * minimum). The summary stops at its cap and scrolls inside; the roster keeps
+ * its floor and "Add agent manually" stays on screen.
+ */
+export const PendingMixedExpandedAt600: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS} frameHeight={600}>
+			<ExpandSummary />
+			<HoldShutterUntil done={summaryShows("Show fewer")} />
+		</Scene>
+	),
+};
+
+/** The same at 600 px, collapsed: the first thing an operator sees. */
+export const PendingMixedAt600: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS} frameHeight={600}>
+			<HoldShutterUntil done={summaryShows("trend-scout")} />
+		</Scene>
+	),
+};
+
+/**
+ * R2/U1: Review on a skill CREATE proposal, skill library ON. The skill does
+ * not exist yet, so the pane is the review panel (Accept / Edit & accept /
+ * Reject), not SkillDetail's "couldn't load" error.
+ */
+export const PendingSkillCreateReview: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=skill&name=press-digest&proposal=pp_skill_new"
+			proposals={SKILL_CREATE_PROPOSAL}
+			skills={["summarize", "web-research"]}
+		>
+			<HoldShutterUntil
+				done={() =>
+					Boolean(
+						document.querySelector(
+							'[data-testid="proposed-new-pane"] [data-proposal-id="pp_skill_new"] button',
+						),
+					)
+				}
+			/>
 		</Scene>
 	),
 };

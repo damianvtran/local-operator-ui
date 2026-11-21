@@ -3432,10 +3432,13 @@ export type MessageParams = {
 	"ui.agents.pending.operation.create": undefined;
 	"ui.agents.pending.operation.update": undefined;
 	"ui.agents.pending.review": undefined;
-	"ui.agents.pending.review_aria": { name: string };
+	"ui.agents.pending.review_aria": { kind: string; name: string };
+	"ui.agents.pending.review_create_aria": { kind: string; name: string };
 	"ui.agents.pending.show_all": { count: string };
 	"ui.agents.pending.show_fewer": undefined;
+	"ui.agents.pending.skill_needs_update": undefined;
 	"ui.agents.pending.stale": undefined;
+	"ui.agents.pending.tab_title": { tab: string; waiting: string };
 	"ui.agents.proposals.accept": undefined;
 	"ui.agents.proposals.accept_edits": undefined;
 	"ui.agents.proposals.accepted": { name: string };

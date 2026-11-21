@@ -288,7 +288,12 @@ export function proposalReviewPath(
  */
 export function proposedNewProfiles(
 	list: ProfileProposalList | undefined,
-	kind: "agent" | "team",
+	/*
+	 * `skill` too (PR #2026 round 1, R2/U1): the Skills pane uses this to tell a
+	 * pending skill CREATE from a missing skill, so Review on one opens the
+	 * review panel instead of SkillDetail's "couldn't load" error.
+	 */
+	kind: ProfileProposalKind,
 	existing: readonly string[],
 ): ProfileProposalSummary[] {
 	const known = new Set(existing);

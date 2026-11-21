@@ -39,15 +39,25 @@
 		"tone": "Short status",
 		"note": "The proposal can no longer be accepted as is; the operator can still reject it. Not an error of the app."
 	},
+	"ui.agents.pending.skill_needs_update": {
+		"role": "One-line note on a pending skill proposal row, shown instead of the Review button",
+		"tone": "Plain instruction, one sentence",
+		"note": "Shown when the Local Operator service is too old to open skills on this page, so the skill proposal cannot be reviewed here. Says what to do (update), like ui.agents.skills.composer.gate_backend. 'Local Operator' is the product name: keep it untranslated. Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+	},
 	"ui.agents.pending.review": {
 		"role": "Button on a pending-proposal row that opens its review panel",
 		"tone": "Imperative, one word if possible",
 		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
 	},
 	"ui.agents.pending.review_aria": {
-		"role": "Accessible label of the Review button",
+		"role": "Accessible label of the Review button on a proposal that would CHANGE an existing definition",
 		"tone": "Imperative",
-		"note": "{name} is a definition name, an identifier: do not translate it. Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+		"note": "ICU select on {kind}: agent, team, or other (= skill); keep all three arms and name the kind in each, using the singular of the tab terms, so an agent and a team with the same name get different labels. {name} is a definition name, an identifier: do not translate it. Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+	},
+	"ui.agents.pending.review_create_aria": {
+		"role": "Accessible label of the Review button on a proposal that would CREATE a new definition",
+		"tone": "Imperative",
+		"note": "ICU select on {kind}: agent, team, or other (= skill); keep all three arms and name the kind in each. The definition does not exist yet, so do not call it a change to an existing one; use the vocabulary of ui.agents.pending.operation.create. {name} is the proposed definition name, an identifier: do not translate it. Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
 	},
 	"ui.agents.pending.show_all": {
 		"role": "Button that expands the pending-proposal list",
@@ -58,5 +68,10 @@
 		"role": "Button that collapses the pending-proposal list back to its first rows",
 		"tone": "Imperative, short",
 		"note": "Counterpart of ui.agents.pending.show_all."
+	},
+	"ui.agents.pending.tab_title": {
+		"role": "Hover tooltip on an Agents / Teams / Skills tab that has proposals waiting",
+		"tone": "Machine facts, middle dot separator, no sentence",
+		"note": "{tab} is the tab label with its total (e.g. 'Teams 4'); {waiting} is the already-translated ui.agents.pending.count_aria sentence. Keep both placeholders; keep the middle dot or use the language's equivalent separator; the order may change."
 	}
 }

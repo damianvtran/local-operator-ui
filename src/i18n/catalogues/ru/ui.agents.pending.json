@@ -7,8 +7,11 @@
 	"ui.agents.pending.operation.create": "Предложено к созданию",
 	"ui.agents.pending.operation.update": "Предложено изменение",
 	"ui.agents.pending.stale": "Устарело",
-	"ui.agents.pending.review": "Просмотреть",
-	"ui.agents.pending.review_aria": "Просмотреть предложенное изменение для {name}",
+	"ui.agents.pending.skill_needs_update": "Обновите Local Operator, чтобы проверять изменения навыков здесь.",
+	"ui.agents.pending.review": "Проверить",
+	"ui.agents.pending.review_aria": "{kind, select, agent {Проверить предложенное изменение для агента {name}} team {Проверить предложенное изменение для команды {name}} other {Проверить предложенное изменение для навыка {name}}}",
+	"ui.agents.pending.review_create_aria": "{kind, select, agent {Проверить предложение создать агента {name}} team {Проверить предложение создать команду {name}} other {Проверить предложение создать навык {name}}}",
 	"ui.agents.pending.show_all": "Показать все ({count})",
-	"ui.agents.pending.show_fewer": "Свернуть"
+	"ui.agents.pending.show_fewer": "Свернуть",
+	"ui.agents.pending.tab_title": "{tab} · {waiting}"
 }
