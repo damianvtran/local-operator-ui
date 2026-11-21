@@ -38,5 +38,13 @@
 	"ui.agents.teams.action.create": "ٹیم بنائیں",
 	"ui.agents.teams.action.creating": "بنایا جا رہا ہے…",
 	"ui.agents.teams.action.discard_question": "یہ ٹیم رد کریں؟",
-	"ui.agents.teams.empty.description": "ابھی کوئی تفصیل نہیں۔"
+	"ui.agents.teams.empty.description": "ابھی کوئی تفصیل نہیں۔",
+	"ui.agents.teams.create.error_name_required": "ٹیم کا نام درج کریں۔",
+	"ui.agents.teams.create.error_name_taken": "“{name}” نام کی ٹیم پہلے سے موجود ہے۔ اس میں تبدیلی کے لیے اسے کھولیں، یا کوئی اور نام چنیں۔",
+	"ui.agents.teams.create.error_instructions_required": "ٹیم کی ہدایات درج کریں۔",
+	"ui.agents.teams.edit.error_generic": "ٹیم محفوظ نہیں کی جا سکی۔",
+	"ui.agents.teams.create.title_new": "نئی ٹیم",
+	"ui.agents.teams.includes_team": "· ایک ٹیم شامل ہے",
+	"ui.agents.teams.group.agents": "ایجنٹس",
+	"ui.agents.teams.group.teams": "ٹیمیں"
 }

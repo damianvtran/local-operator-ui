@@ -555,7 +555,16 @@ const SeedRun: FC<{
 					{
 						target: { kind: "team", name: "content" },
 						created: false,
-						changes: [{ label: "members", before: "5", after: "6" }],
+						changes: [
+							{
+								label: {
+									key: "ui.agents.config.summary.change.members",
+									params: { before: 1, after: 1 },
+								},
+								before: "agent:coderx1",
+								after: "agent:coderx2",
+							},
+						],
 					},
 				],
 				"done",
