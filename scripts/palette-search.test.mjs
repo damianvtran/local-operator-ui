@@ -2012,31 +2012,38 @@ test("the order is offered only where a conversation is actually on screen", () 
 	);
 });
 
-test("reopening the palette drops the page it was on (agent review round 3, M2)", () => {
+test("reopening the palette drops the page it was on, and only a reopen does", () => {
 	/*
 	 * The palette stays mounted, so a close/reopen on the SAME persisted query
 	 * leaves the question unchanged and the page record rode along: `#robot`,
-	 * Down past row 24, Esc, reopen, and page 2 was back. The component cannot
-	 * be mounted in this harness, so the contract is pinned at its source: the
-	 * open effect resets the page record beside the query seed.
+	 * Down past row 24, Esc, reopen, and page 2 was back (review round 3, M2).
+	 *
+	 * The reset must fire on the open TRANSITION only. Keyed on the query too, it
+	 * also fired on the 200 ms write-back that follows every keystroke, and a
+	 * page reached inside that window snapped back to page 1 (review round 4 /
+	 * QA round 4, R4-1/Q-6). The dependency list is the contract, so it is what
+	 * this test reads: a reset effect whose deps include the query is the bug.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/command-palette/components/command-palette.tsx",
 		"utf8",
 	);
-	const openEffect = source.slice(
-		source.indexOf("if (!isCommandPaletteOpen) return;\n\t\tsetLocalQuery("),
+	const at = source.lastIndexOf(
+		'setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });',
 	);
-	assert.ok(
-		openEffect.startsWith(
-			"if (!isCommandPaletteOpen) return;\n\t\tsetLocalQuery(",
-		),
-		"the open effect seeds the query first",
-	);
+	assert.ok(at > 0, "the open transition resets the page record");
+	const effect = source.slice(source.lastIndexOf("useEffect(", at), at + 400);
 	assert.match(
-		openEffect.slice(0, 400),
-		/setPaged\(\{\s*query:\s*"",\s*sort:\s*DEFAULT_PALETTE_SORT,\s*page:\s*0\s*\}\)/,
-		"and drops the page with it, so a reopen reads page 0",
+		effect,
+		/if \(!isCommandPaletteOpen\) return;/,
+		"it resets on open, not on close",
+	);
+	const deps = effect.match(/\}, \[([^\]]*)\]\);/);
+	assert.ok(deps, "the effect declares its dependencies");
+	assert.equal(
+		deps[1].trim(),
+		"isCommandPaletteOpen",
+		"the dependency list is the open flag ALONE — a query in it re-fires on the write-back",
 	);
 });
 

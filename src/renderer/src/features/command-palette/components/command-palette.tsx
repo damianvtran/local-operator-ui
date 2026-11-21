@@ -317,18 +317,25 @@ export const CommandPalette: FC = () => {
 		setCommandPaletteQuery(settledQuery);
 	}, [settledQuery, setCommandPaletteQuery]);
 
+	// Reopening seeds the field from the store, so a query is never silently
+	// dropped between sessions of the palette.
+	useEffect(() => {
+		if (isCommandPaletteOpen) setLocalQuery(commandPaletteQuery);
+	}, [isCommandPaletteOpen, commandPaletteQuery]);
+
 	/*
-	 * Reopening seeds the field from the store, so a query is never silently
-	 * dropped between sessions of the palette — and drops the PAGE with it
-	 * (agent review round 3, M2): the palette stays mounted, so a reopen on the
-	 * same persisted query left `question` unchanged and page 2 came back. A
-	 * reopen is a fresh reading of the list, so it starts at its head.
+	 * A REOPEN IS A FRESH READING, so it drops the page (agent review round 3,
+	 * M2) — but only on the open TRANSITION, never because the query changed.
+	 * Keyed on `commandPaletteQuery` this effect also fired on the 200 ms
+	 * write-back that follows every keystroke, so a page reached inside that
+	 * window snapped back to page 1 under the reader's hands (agent review
+	 * round 4 / QA round 4, R4-1/Q-6). Its dependency list is `[isCommandPaletteOpen]`
+	 * alone; the anchor test pins that.
 	 */
 	useEffect(() => {
 		if (!isCommandPaletteOpen) return;
-		setLocalQuery(commandPaletteQuery);
 		setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
-	}, [isCommandPaletteOpen, commandPaletteQuery]);
+	}, [isCommandPaletteOpen]);
 
 	const isOnChatPage = location.pathname.startsWith("/chat");
 	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
@@ -393,6 +400,15 @@ export const CommandPalette: FC = () => {
 	 * footer legend and the `ctrl s` handler read this one flag.
 	 */
 	const sortApplies = sortAppliesTo(outcome);
+	/*
+	 * WHEN THE LEGEND GIVES WAY. The `Ctrl S` group is this PR's addition, and
+	 * with it a long language's footer ran past the 640 px dialog on an ordinary
+	 * short result (`ru` 756 px of content in a 640 box, `hi` 664, `ur` 651 — the
+	 * `esc` label cut) even though nothing was clipped (design round 4, D16). So
+	 * the compact legend is driven by EITHER reason it can be needed: the Sort
+	 * group is drawn, or the count is.
+	 */
+	const compactLegend = sortApplies || outcome.clipped;
 	/* The palette's order is not the default AND it can act here, so the chip says so. */
 	const sortIsRecent = sortApplies && paletteSort === "recent";
 	const scopeLegend =
@@ -1384,14 +1400,19 @@ export const CommandPalette: FC = () => {
 									<span
 										className={cn(
 											"flex items-center gap-1 max-[783px]:hidden",
-											outcome.clipped && "hidden",
+											compactLegend && "hidden",
 										)}
 									>
 										{stepCaps.map((cap) => (
 											<KeyboardShortcut key={cap} shortcut={cap} joined />
 										))}
 									</span>
-									<span className={cn(outcome.clipped && "hidden")}>
+									{/*
+									 * `sr-only`, not `hidden`: a screen reader keeps the words for
+									 * `↑↓` while sighted readers get the glyphs (design round 4,
+									 * NIT-1).
+									 */}
+									<span className={cn(compactLegend && "sr-only")}>
 										{t("ui.command_palette.command_palette.to_move")}
 									</span>
 								</span>
@@ -1406,7 +1427,7 @@ export const CommandPalette: FC = () => {
 									<span
 										className={cn(
 											"max-[783px]:hidden",
-											outcome.clipped && "hidden",
+											compactLegend && "sr-only",
 										)}
 									>
 										{t("ui.command_palette.command_palette.to_run")}

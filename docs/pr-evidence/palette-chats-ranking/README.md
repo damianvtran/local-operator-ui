@@ -145,3 +145,28 @@ Every footer's own `scrollWidth` equals its `clientWidth` and no child reports
   different renders (`md5 6a9ae37e…` and `f26e3b9d…`); the round-2 page-1 file
   was a copy of page 2 because the rig's "best" shot ran after the page walk.
   The rig now photographs page 1 before pressing Down.
+
+## Round 4 remediation (design D16, review R4-1/R4-2, QA Q-6)
+
+The compact legend is now driven by `sortApplies || outcome.clipped`: whenever the
+`Ctrl S Sort` group is drawn, the `Ctrl N`/`Ctrl P` caps step out and the
+`to move` / `to run` words become visually hidden (`sr-only`, so a screen reader
+still hears them). Two states, eight languages, 800 px window → **640 px dialog**,
+page 1, one launch per run:
+
+| lang | short result (1 row, `#fixture 02`) | clipped (`#robot`, 24 of 30) |
+| --- | --- | --- |
+| en | 37 px, 640 = 640, `esc` at 624–704 | 37 px, 640 = 640 |
+| es | 37 px, 640 = 640, `esc` at 606–704 | 37 px, 640 = 640 |
+| fr | 37 px, 640 = 640, `esc` at 602–704 | 37 px, 640 = 640 |
+| vi | 37 px, 640 = 640, `esc` at 621–704 | 37 px, 640 = 640 |
+| zh-CN | 37 px, 640 = 640, `esc` at 644–704 | 37 px, 640 = 640 |
+| ru | 37 px, 640 = 640, `esc` at 581–704 | 37 px, 640 = 640 |
+| hi | 37 px, 640 = 640, `esc` at 591–704 | 37 px, 640 = 640 |
+| ur | 37 px, 640 = 640, `esc` at 96–206 (rtl) | 37 px, 640 = 640 |
+
+The bar spans 80–720 px, so every `esc` group sits inside the dialog's content
+box; no child reports `scrollWidth > clientWidth`. Before this round `ru` drew
+756 px of content in the 640 box on the short result and cut `esc чтобы закрыть`
+entirely; `hi` cut the last word, `ur` cut the tail of its label.
+`footer-ru-1row-800.png` is that short-result state in Russian.
