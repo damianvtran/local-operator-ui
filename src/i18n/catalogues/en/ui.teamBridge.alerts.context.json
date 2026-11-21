@@ -1,0 +1,285 @@
+{
+	"ui.teamBridge.alerts.severity": {
+		"role": "badge on an alert card and severity toggle",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"level": "1-4, the severity digit.",
+			"worst": "`yes` or `no`; selects the arm. Never shown."
+		},
+		"note": "SEV1..SEV4 is the on-call severity scale; keep the literal `SEV` prefix and the digit. `worst=yes` is on a group card that bundles several alerts and shows the most severe one."
+	},
+	"ui.teamBridge.alerts.severity_unknown": {
+		"role": "badge on an alert card",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The monitoring tool sent a severity this app cannot map."
+	},
+	"ui.teamBridge.alerts.status": {
+		"role": "badge on an alert card",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"status": "`firing`, `mitigated`, `resolved`; selects the arm. Never shown."
+		},
+		"note": "State of the monitored incident reported by the monitoring tool (Datadog, Grafana). Firing = the alert condition is active."
+	},
+	"ui.teamBridge.alerts.test_badge": {
+		"role": "badge",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Marks a sample alert sent to test the integration; it wakes nobody."
+	},
+	"ui.teamBridge.alerts.group_count": {
+		"role": "meta text on a group alert card",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"total": "number of grouped alerts",
+			"resolved": "how many of them have resolved"
+		},
+		"note": "A group card bundles a burst of alerts from one app. Reads like '6 alerts, 2 resolved'."
+	},
+	"ui.teamBridge.alerts.fire_count": {
+		"role": "meta text",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"count": "number of times"
+		},
+		"note": "How many times the monitoring tool re-sent this alert while it stayed active."
+	},
+	"ui.teamBridge.alerts.last_fired": {
+		"role": "meta text after the count",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"time": "a localized clock time"
+		},
+		"note": "Lower case: follows a separator in one line, e.g. 'Fired 3 times · last 14:12'."
+	},
+	"ui.teamBridge.alerts.more_labels": {
+		"role": "overflow chip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"count": "number of hidden labels"
+		},
+		"note": "Count of label chips hidden for space; full list in the tooltip."
+	},
+	"ui.teamBridge.alerts.fingerprint": {
+		"role": "monospace id on an alert card",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"id": "shortened identifier, never translated"
+		},
+		"note": "Short identifier of the incident, so people can match it in the monitoring tool. Keep `id` short."
+	},
+	"ui.teamBridge.alerts.fingerprint_title": {
+		"role": "tooltip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"id": "identifier, never translated"
+		},
+		"note": "Full incident identifier."
+	},
+	"ui.teamBridge.alerts.open_on": {
+		"role": "link button",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"host": "a hostname such as app.datadoghq.com, never translated"
+		},
+		"note": "Opens the alert in the monitoring tool. The host is shown so the reader knows where the link goes."
+	},
+	"ui.teamBridge.alerts.open_labelled": {
+		"role": "link button",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"label": "link name from the monitoring tool, never translated",
+			"host": "hostname, never translated"
+		},
+		"note": "Same as open_on, when the tool gave the link a name (e.g. 'Runbook on wiki.example.com')."
+	},
+	"ui.teamBridge.alerts.responders": {
+		"role": "small button on an alert card",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens the dialog where you choose whether your own agent responds to alerts in this channel."
+	},
+	"ui.teamBridge.alerts.review_ask": {
+		"role": "primary button",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Your agent prepared a change and is waiting for your approval on this device; opens that question. 'Local Operator' is the product name, never translated."
+	},
+	"ui.teamBridge.alerts.claim.unreported": {
+		"role": "status strip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The server has not reported whether any agent has taken this alert. Must not claim nobody has."
+	},
+	"ui.teamBridge.alerts.claim.resolved_unreported": {
+		"role": "status strip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The alert has recovered."
+	},
+	"ui.teamBridge.alerts.claim.unclaimed": {
+		"role": "status strip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "No agent has taken responsibility for this alert yet."
+	},
+	"ui.teamBridge.alerts.claim.resolved_unclaimed": {
+		"role": "status strip",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "The alert recovered before any agent took it."
+	},
+	"ui.teamBridge.alerts.claim.holder_for_owner": {
+		"role": "fragment",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"holder": "agent name",
+			"owner": "person name"
+		},
+		"note": "An agent acting for its owner, e.g. 'Aida for Ada'. Inserted into claim.taken_by."
+	},
+	"ui.teamBridge.alerts.claim.holder_unknown": {
+		"role": "fragment",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Used when the server did not name the agent. Inserted into claim.taken_by."
+	},
+	"ui.teamBridge.alerts.claim.taken_by": {
+		"role": "status strip",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"state": "`claimed`, `waiting`, `escalated`; selects the arm. Never shown.",
+			"who": "agent name, possibly 'agent for person'"
+		},
+		"note": "Who is working on the alert. waiting = the agent asked its owner to approve an action; escalated = the server escalated it because nobody acted in time."
+	},
+	"ui.teamBridge.alerts.responder.menu": {
+		"role": "menu item in a channel's menu",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens the responder dialog. Keep the ellipsis (locale ellipsis character)."
+	},
+	"ui.teamBridge.alerts.responder.title": {
+		"role": "dialog title",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"channel": "channel name, never translated; keep the # before it"
+		},
+		"note": "See the key name."
+	},
+	"ui.teamBridge.alerts.responder.description": {
+		"role": "dialog description",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"agent": "the reader's agent name"
+		},
+		"note": "Each alert starts a new agent session; model usage is billed to the reader's own account."
+	},
+	"ui.teamBridge.alerts.responder.read_only": {
+		"role": "notice in the dialog",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"agent": "agent name"
+		},
+		"note": "Honest statement that saving is not possible in this version and the agent is NOT responding. Keep it plain, not apologetic."
+	},
+	"ui.teamBridge.alerts.responder.tier_label": {
+		"role": "group label over four option cards",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "agent name"
+		},
+		"note": "See the key name."
+	},
+	"ui.teamBridge.alerts.responder.tier_name": {
+		"role": "option card title",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"tier": "`watch`, `triage`, `prepare`, `runbooks`; selects the arm. Never shown."
+		},
+		"note": "Autonomy levels for the agent. Canonical names from the product RFC; keep them short."
+	},
+	"ui.teamBridge.alerts.responder.tier_detail": {
+		"role": "option card description",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"tier": "selects the arm. Never shown."
+		},
+		"note": "One sentence each, describing what the agent may do at that level. 'v1' means the first version of the feature."
+	},
+	"ui.teamBridge.alerts.responder.default_badge": {
+		"role": "badge",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Marks the default option."
+	},
+	"ui.teamBridge.alerts.responder.locked_badge": {
+		"role": "badge with a lock icon",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Option is not available."
+	},
+	"ui.teamBridge.alerts.responder.severity_label": {
+		"role": "group label over severity toggles",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"agent": "agent name"
+		},
+		"note": "Which alert severities wake the agent."
+	},
+	"ui.teamBridge.alerts.responder.severity_hint": {
+		"role": "helper text",
+		"tone": "plain",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"agent": "agent name"
+		},
+		"note": "See the key name."
+	},
+	"ui.teamBridge.alerts.responder.close": {
+		"role": "button",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Closes the dialog."
+	},
+	"ui.teamBridge.alerts.apps.menu": {
+		"role": "menu item in a channel's menu",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens the Radient console page where organization admins add monitoring apps (Datadog, Grafana) to channels. Keep the ellipsis."
+	}
+}

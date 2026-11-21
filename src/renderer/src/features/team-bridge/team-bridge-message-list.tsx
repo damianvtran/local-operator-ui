@@ -24,6 +24,8 @@ import { TeamBridgeMessageAttachments } from "./attachments/member-attachments";
 import { InlineDataBody } from "./inline-data-receipt";
 import { TeamBridgeMessageLinkPreviews } from "./link-preview/team-bridge-message-link-previews";
 import { useMessageMentions } from "./mentions/use-message-mentions";
+import { TeamBridgeAlertCardContainer } from "./team-bridge-alert-card";
+import { teamBridgeAlertCard } from "./team-bridge-alert-model";
 import {
 	type TeamBridgeArrivalIdentity,
 	teamBridgeArrivalStreamKey,
@@ -1155,6 +1157,65 @@ const MessageRowView: FC<MessageRowProps> = ({
 			(!agent || member.agent),
 	);
 	const messagePerson = () => onMessagePerson?.(message.sender);
+	/*
+	 * AN ALERT ROOT IS A CARD (Team Integrations RFC §10 item 4). Only an
+	 * integration-origin root carrying `alert_meta` qualifies; its deterministic
+	 * body still renders through the one prose renderer, inside the card.
+	 */
+	const alertCard = teamBridgeAlertCard(message);
+	const bodyNode: ReactNode =
+		message.body === null ||
+		(decoration?.withheldCopy !== undefined &&
+			message.body.trim() === "" &&
+			(message.attachments?.length ?? 0) === 0 &&
+			decoration.attachments === undefined) ? (
+			<p className="text-[14px] text-ink-dim italic">
+				{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
+			</p>
+		) : message.body.trim() === "" &&
+			((message.attachments?.length ?? 0) > 0 ||
+				decoration?.attachments !== undefined) ? null : (
+			/* An image-only message has an empty body: no empty prose block. */
+			/*
+			 * PENDING IS A COLOUR, NOT A FADE (design round 1, D3). The clock at
+			 * `opacity-50` measured 2.15:1 light / 2.52:1 dark - under the floor for
+			 * 11-12px text - and `docs/branding.md` says a state changes ink, never
+			 * opacity. The BODY carries it instead, in `ink-muted` (8.67:1 light,
+			 * 7.85:1 dark), which also survives a continuation row where the clock
+			 * only shows on hover. It returns to `ink` in one transition on confirm.
+			 */
+			/*
+			 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
+			 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
+			 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
+			 * `@layer utilities` - so an unlayered rule wins no matter what order the
+			 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
+			 * pending row (measured `rgb(56,58,66)`), which is why the state was
+			 * invisible. The value is driven on the row instead, scoped to it: the
+			 * stylesheet keeps styling every other markdown surface in the app.
+			 */
+			<InlineDataBody
+				body={message.body}
+				renderText={(text) => (
+					<TeamBridgeMarkdown
+						/* `transition-colors` is restored rather than the comment rewritten: the
+						   comment describes a settle, and no rule on `.lo-markdown` competes with a
+						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
+						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
+						   not read as motion, which is what a 150 ms colour fade gives. */
+						className="team-bridge-message-body text-[14px] transition-colors duration-fast"
+						style={{
+							...(delivery?.status === "pending"
+								? { "--md-ink": "var(--lo-ink-muted)" }
+								: {}),
+						}}
+						mentions={mentionRuns}
+					>
+						{text}
+					</TeamBridgeMarkdown>
+				)}
+			/>
+		);
 	const avatar = member ? (
 		<TeamBridgeProfileCard
 			member={member}
@@ -1374,57 +1435,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 				    rather than rendering an empty row. A caller with its own absence
 				    copy (the audit) gets the same placeholder for a BLANK body with
 				    nothing attached; see `withheldCopy`. */}
-				{message.body === null ||
-				(decoration?.withheldCopy !== undefined &&
-					message.body.trim() === "" &&
-					(message.attachments?.length ?? 0) === 0 &&
-					decoration.attachments === undefined) ? (
-					<p className="text-[14px] text-ink-dim italic">
-						{decoration?.withheldCopy ?? t("ui.teamBridge.thread.withheld")}
-					</p>
-				) : message.body.trim() === "" &&
-					((message.attachments?.length ?? 0) > 0 ||
-						decoration?.attachments !== undefined) ? null : (
-					/* An image-only message has an empty body: no empty prose block. */
-					/*
-					 * PENDING IS A COLOUR, NOT A FADE (design round 1, D3). The clock at
-					 * `opacity-50` measured 2.15:1 light / 2.52:1 dark - under the floor for
-					 * 11-12px text - and `docs/branding.md` says a state changes ink, never
-					 * opacity. The BODY carries it instead, in `ink-muted` (8.67:1 light,
-					 * 7.85:1 dark), which also survives a continuation row where the clock
-					 * only shows on hover. It returns to `ink` in one transition on confirm.
-					 */
-					/*
-					 * THE INK TRAVELS THROUGH `--md-ink`, NOT A `text-*` UTILITY (design
-					 * round 2, D3). `.lo-markdown { color: var(--md-ink, var(--lo-ink)) }`
-					 * in `markdown.css` is UNLAYERED, and Tailwind's utilities live in
-					 * `@layer utilities` - so an unlayered rule wins no matter what order the
-					 * two are in. `text-ink-muted` computed as full `--lo-ink` on a live
-					 * pending row (measured `rgb(56,58,66)`), which is why the state was
-					 * invisible. The value is driven on the row instead, scoped to it: the
-					 * stylesheet keeps styling every other markdown surface in the app.
-					 */
-					<InlineDataBody
-						body={message.body}
-						renderText={(text) => (
-							<TeamBridgeMarkdown
-								/* `transition-colors` is restored rather than the comment rewritten: the
-						   comment describes a settle, and no rule on `.lo-markdown` competes with a
-						   TRANSITION (only its `color` is unlayered). Design round 3 measured the
-						   step at 1.19:1 light / 1.63:1 dark - quiet enough that the settle must
-						   not read as motion, which is what a 150 ms colour fade gives. */
-								className="team-bridge-message-body text-[14px] transition-colors duration-fast"
-								style={{
-									...(delivery?.status === "pending"
-										? { "--md-ink": "var(--lo-ink-muted)" }
-										: {}),
-								}}
-								mentions={mentionRuns}
-							>
-								{text}
-							</TeamBridgeMarkdown>
-						)}
+				{alertCard ? (
+					<TeamBridgeAlertCardContainer
+						card={alertCard}
+						locale={locale}
+						body={bodyNode}
 					/>
+				) : (
+					bodyNode
 				)}
 				{/* THE STATE IN WORDS, for a reader who cannot see the ink: the row is
 				    otherwise only quieter, and a screen reader announces status changes when
@@ -1441,7 +1459,10 @@ const MessageRowView: FC<MessageRowProps> = ({
 				    account this subtree was rendered under as their receipt - the value
 				    the attachment route below already carries, never a default. A null
 				    body is a withheld message, and nothing withheld is previewed. */}
-				{message.body !== null && (
+				{/* No unfurls on an app's post (RFC S-35): vendor text is written by
+				    whoever can influence a monitor, and a preview would fetch and
+				    dress up a URL nobody chose. The card draws only verified hosts. */}
+				{message.body !== null && !app && (
 					<TeamBridgeMessageLinkPreviews
 						body={message.body}
 						expectedAccountId={accountId}

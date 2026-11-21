@@ -596,6 +596,97 @@ export const CONTROLS = [
 		edge: false,
 	},
 	/*
+	 * TEAM BRIDGE ALERT CARD (Team Integrations RFC §10 items 3-4, design D1/D2,
+	 * R8; `team-bridge-alert-card.tsx`). The card is an in-flow `surface` block.
+	 *
+	 * THE RAIL is the severity's 3px ink, the card's only semantic hue besides
+	 * the SEV badge. It is a graphic, so it is modelled as a BORDER on `surface`
+	 * (no fill): the edge term asserts the 3:1 non-text floor for each of the
+	 * five inks it can wear, and the ink term is the card's own text on its
+	 * ground. One row per role, because a palette can pass four and fail one.
+	 */
+	...[
+		["danger", "sev1"],
+		["warning", "sev2"],
+		["info", "sev3"],
+		["inkDim", "sev4/unknown"],
+		["success", "resolved"],
+	].map(([role, label]) => ({
+		name: `team bridge alert card rail (${label})`,
+		on: ["surface"],
+		fill: null,
+		border: role,
+		ink: "ink",
+	})),
+	/*
+	 * THE CLAIM STRIP (line E). Its separation from the card is a ground step
+	 * (`sunken`) or a semantic wash, never a boundary, so `edge: false`; what the
+	 * rows hold is the strip's one line of `ink` on each ground it can wear. The
+	 * wash grounds are the two states that ask for attention: waiting on the
+	 * owner's approval (warning) and escalated past its SLA (danger).
+	 */
+	{
+		name: "team bridge alert claim strip",
+		on: ["surface"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge alert claim strip (warning)",
+		on: ["surface"],
+		fill: "warningWash",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "team bridge alert claim strip (danger)",
+		on: ["surface"],
+		fill: "dangerWash",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	/* "Review ask in Local Operator" (U1) sits on the waiting strip's wash:
+	   the primary button's fill must still clear 3:1 there. */
+	{
+		name: "team bridge alert review-ask button",
+		on: ["warningWash"],
+		fill: "accent",
+		border: null,
+		ink: "onAccent",
+	},
+	/*
+	 * THE RESPONDER DIALOG's option cards (D1), on the dialog's `elevated`
+	 * ground. Selected is a ground step to `sunken` plus the same
+	 * `border-control` edge (never `row-selected` / `accent-wash`, which fail
+	 * separation on `elevated`); unselected keeps the edge alone.
+	 */
+	{
+		name: "team bridge responder option card",
+		on: ["elevated"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		name: "team bridge responder option card (selected)",
+		on: ["elevated"],
+		fill: "sunken",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		name: "team bridge responder read-only notice",
+		on: ["elevated"],
+		fill: "infoWash",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	/*
 	 * TEAM BRIDGE THREAD ROW (`team-bridge-thread-row.tsx`, design round 1 on
 	 * #1672, D1/D2). Transparent at rest, so at rest its fill IS the host. Since
 	 * the visual refresh (#1668) the hosts are the channel timeline's `canvas`,
