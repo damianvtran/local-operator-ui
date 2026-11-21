@@ -323,20 +323,6 @@ export const CommandPalette: FC = () => {
 		if (isCommandPaletteOpen) setLocalQuery(commandPaletteQuery);
 	}, [isCommandPaletteOpen, commandPaletteQuery]);
 
-	/*
-	 * A REOPEN IS A FRESH READING, so it drops the page (agent review round 3,
-	 * M2) — but only on the open TRANSITION, never because the query changed.
-	 * Keyed on `commandPaletteQuery` this effect also fired on the 200 ms
-	 * write-back that follows every keystroke, so a page reached inside that
-	 * window snapped back to page 1 under the reader's hands (agent review
-	 * round 4 / QA round 4, R4-1/Q-6). Its dependency list is `[isCommandPaletteOpen]`
-	 * alone; the anchor test pins that.
-	 */
-	useEffect(() => {
-		if (!isCommandPaletteOpen) return;
-		setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
-	}, [isCommandPaletteOpen]);
-
 	const isOnChatPage = location.pathname.startsWith("/chat");
 	const effectiveAgentId = currentAgentIdFromRoute || getLastAgentId("chat");
 
@@ -705,6 +691,16 @@ export const CommandPalette: FC = () => {
 		identityAtOpen.current = currentPanelIdentity();
 		bridgePicked.current = false;
 		clearTeamBridgeComposerFocusRequest();
+		/*
+		 * A reopen is a fresh reading of the list, so it drops the page (agent
+		 * review round 3, M2) — and it belongs in THIS effect, which runs on the
+		 * open transition alone. As its own effect keyed on the query as well, it
+		 * also fired on the 200 ms write-back after every keystroke, so a page
+		 * reached inside that window snapped back to page 1 under the reader's
+		 * hands (round 4, R4-1/Q-6). The dependency list here is the open flag,
+		 * which is what makes that impossible.
+		 */
+		setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
 	}, [isCommandPaletteOpen]);
 
 	/*
