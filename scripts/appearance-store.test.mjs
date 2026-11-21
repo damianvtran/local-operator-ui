@@ -94,7 +94,7 @@ test("a v4 profile migrates to the identity appearance and keeps its theme", asy
 	assert.equal(JSON.parse(memory.get(KEY)).version, UI_PREFERENCES_VERSION);
 });
 
-test("the v5 step is idempotent over values a newer build already wrote", () => {
+test("the v5 step is idempotent over values a newer build already wrote, and the chain runs on to the newest step", () => {
 	const blob = {
 		contrast: { dark: 50, light: -100 },
 		accent: {
@@ -112,6 +112,8 @@ test("the v5 step is idempotent over values a newer build already wrote", () => 
 		},
 		customAccents: ["#FF5733"],
 		customThemeId: "custom-abc",
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 });
 
