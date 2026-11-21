@@ -100549,212 +100549,387 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "512f8636c6186b4d99ecda30e20661a92b067e83beaebd7d229c2cdeb4623444",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "3d0bbbc9c4be12a740cfe52ccbc29b00779db51451c680ceba0b175b2cf53224",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "512f8636c6186b4d99ecda30e20661a92b067e83beaebd7d229c2cdeb4623444",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "e1b0228efacbbdbd024082bc72cec85dcb6583982b1c46948e8c0479fdcf8e04",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "6e75e0a7a2f3924fb5e0dd1d9593b23de6ac7a7674af4d85181d832a34915d0b",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "e1b0228efacbbdbd024082bc72cec85dcb6583982b1c46948e8c0479fdcf8e04",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "5908d5cb248ecf423bf54fcc814779ed7f8bc16a3f695954acc08ae2aaddb312",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "38b49f168f40e529680ec208fb7d59392597d33ace2dea7eee6e0e034f761545",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "5908d5cb248ecf423bf54fcc814779ed7f8bc16a3f695954acc08ae2aaddb312",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "22e0349fab32225573f847e56b8c66e591db473e41669dc933040044c7907327",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "64efc51facdec555df2e05e9cd8126c39bd0f303772b711d2a6edde29c51d926",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "22e0349fab32225573f847e56b8c66e591db473e41669dc933040044c7907327",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "c2790df88e4f47e1985085eb38b44c3d31bec92a1b85bb180b79a66ac4e6dd84",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "0e33a8f0ff949b869db97ccd329e4d396615b81fd2ecfc412b758ab9249afa2b",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "c2790df88e4f47e1985085eb38b44c3d31bec92a1b85bb180b79a66ac4e6dd84",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "a5ccd969095982bcf0a71882700e946e3d2f9962256be9296c616b43a951a594",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "00ba12d813af11fe4ddcc3e5783fa3a021e0bb748cc13b4635ec4d18cac5fb70",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "a5ccd969095982bcf0a71882700e946e3d2f9962256be9296c616b43a951a594",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.bridgeReceipt",
-			"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
-			"target_sha256": "bbc307141d04ad1fa053581007cbafc09ae5ec6eb5ddab1245b6b01a7c98c921",
+			"source_sha256": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+			"target_sha256": "31b3fca0fa6b83f9a51a0dec8dc41c3aacc3336ba0feb2d2a61d1b0436e32d11",
 			"translator": {
-				"agent": "coder (lopdev, job 03676e0ff293); held_transient/offline ported from local-operator tui.bridge_card translator job 3cb35d7fd971",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-18"
+				"agent": "i18n-translator (lopdev translation pass), session e896d2db9139",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-18",
-					"result": "clean-with-findings",
-					"instance": "7a964b27683c",
+					"agent": "independent-translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "9af46213ad99",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7a964b27683c.json",
-					"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
-					"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+					"receipt": "i18n/receipts/9af46213ad99.json",
+					"receipt_sha256": "4485a1a13baaca3c1655a0307de002a31557ba2aebeecdb24c820f2581ba8898",
+					"scope": "Bridge-card changed keys: pending, held, offline, thread_reply; untouched values retain historical audits"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "4c1a5cf3793cf175020049f2953e4db4716c76a0987e665b5e1f42172cee1b49",
+					"target_sha256": "bbc307141d04ad1fa053581007cbafc09ae5ec6eb5ddab1245b6b01a7c98c921",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-18",
+							"result": "clean-with-findings",
+							"instance": "7a964b27683c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7a964b27683c.json",
+							"receipt_sha256": "9cc8d468d5e3f308fb055183925030ec90461114b3354d387d49c6bfdf34dc11",
+							"scope": "18 bridge-receipt keys incl. card-body states; R18-R24 deferred in PR #1977 (core+UI screening term follow-up)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
