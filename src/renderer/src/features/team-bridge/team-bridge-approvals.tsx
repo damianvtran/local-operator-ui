@@ -32,6 +32,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info, ShieldAlert } from "lucide-react";
 import {
+	Fragment,
 	type ReactNode,
 	useCallback,
 	useEffect,
@@ -173,6 +174,10 @@ export function TeamBridgeRequestsView({
 	const statusRef = useRef<HTMLDivElement>(null);
 	const inFlight = flow.phase === "authorizing" || flow.phase === "deciding";
 	const heldFirst = heldCount > 0 && rows.length === 0;
+	// A new approval or the last hold settling moves this section between the
+	// two sibling slots below. Its stable keyed boundary must move with it:
+	// remounting would abandon a human-confirmed batch and erase its results.
+	const heldSection = <Fragment key="held-messages">{held}</Fragment>;
 	/*
 	 * Once the daemon says batch deciding needs a presence signature this
 	 * computer cannot make, the batch controls and the row buttons go away and
@@ -302,7 +307,7 @@ export function TeamBridgeRequestsView({
 							onDismiss={onDismissFlow}
 						/>
 					</div>
-					{heldFirst && held}
+					{heldFirst && heldSection}
 					{listState === "loading" && rows.length === 0 ? (
 						<Spinner size="sm" label={t("ui.teamBridge.approvals.loading")} />
 					) : listState === "error" && rows.length === 0 ? (
@@ -421,7 +426,7 @@ export function TeamBridgeRequestsView({
 							</ul>
 						</>
 					)}
-					{!heldFirst && held}
+					{!heldFirst && heldSection}
 				</TabsContent>
 				<TabsContent value="history">
 					<DecisionHistory

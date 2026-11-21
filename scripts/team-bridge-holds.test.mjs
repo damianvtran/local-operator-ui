@@ -976,7 +976,7 @@ const viewBundle = await build({
 		},
 	],
 	stdin: {
-		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";`,
+		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages"; export { TeamBridgeRequestsView } from "./src/renderer/src/features/team-bridge/team-bridge-approvals";`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -987,11 +987,14 @@ const viewBundle = await build({
 	jsx: "automatic",
 	loader: { ".css": "empty" },
 	write: false,
-	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
 });
 await writeFile(viewOut, viewBundle.outputFiles[0].text);
 after(() => unlink(viewOut));
-const { HeldMessagesView } = await import(
+const { HeldMessagesView, TeamBridgeRequestsView } = await import(
 	new URL(`../${viewOut}`, import.meta.url)
 );
 const { createElement } = await import("react");
@@ -1384,5 +1387,137 @@ test("batch does not count an unrelated or non-discard receipt as success", asyn
 			() => {},
 		);
 		assert.equal(results[0].recorded, false);
+	}
+});
+
+// Exercise the actual exported parent: testing HeldMessagesView alone cannot
+// catch a remount when the requests/holds queries reorder the held section.
+test("parent retains the confirmed batch across approval arrival and last-held-count transition", async () => {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const dom = new JSDOM(
+		"<!doctype html><html><body><div id='root'></div></body></html>",
+		{ url: "http://localhost", pretendToBeVisual: true },
+	);
+	const values = {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		MutationObserver: dom.window.MutationObserver,
+		getComputedStyle: dom.window.getComputedStyle,
+		requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+		cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+		IS_REACT_ACT_ENVIRONMENT: true,
+	};
+	const saved = new Map(
+		Object.keys(values).map((key) => [
+			key,
+			Object.getOwnPropertyDescriptor(globalThis, key),
+		]),
+	);
+	for (const [key, value] of Object.entries(values))
+		Object.defineProperty(globalThis, key, {
+			value,
+			configurable: true,
+			writable: true,
+		});
+	const root = createRoot(dom.window.document.getElementById("root"));
+	let finish;
+	let report;
+	let entries;
+	let submits = 0;
+	const heldProps = {
+		listState: "ready",
+		items: [orphan()],
+		detail: () => ({ state: "unavailable" }),
+		now: NOW,
+		hideWhenEmpty: true,
+		onDecide: () => assert.fail("no single decision"),
+		onBatchDecide: (snapshot, onResult) => {
+			submits++;
+			entries = snapshot;
+			report = onResult;
+			return new Promise((resolve) => {
+				finish = resolve;
+			});
+		},
+	};
+	const parentProps = {
+		listState: "ready",
+		rows: [],
+		flow: { phase: "idle" },
+		history: { state: "ready", rows: [] },
+		onDecide: () => {},
+		heldCount: 1,
+		// Deliberately unkeyed, as production supplies it. The shared parent's
+		// stable boundary must preserve the subtree, not a test-only caller key.
+		held: createElement(HeldMessagesView, heldProps),
+	};
+	const request = {
+		message_id: "bcmsg_new_request",
+		thread_id: "bct_probe",
+		created_at: "2026-11-21T00:00:00Z",
+		excerpt: "Probe approval",
+		request: { state: "pending", expires_at: "2026-12-01T00:00:00Z" },
+		sender: {
+			account_id: "acct_probe",
+			endpoint_id: null,
+			name: "Probe",
+			email: "probe@example.com",
+		},
+		ask: { session_id: "probe", ask_id: "probe", status: "open" },
+		decidable: true,
+		unsent_decision: null,
+	};
+	const button = (label) =>
+		[...dom.window.document.querySelectorAll("button")].find(
+			(node) => node.textContent === label,
+		);
+	const text = () => dom.window.document.body.textContent;
+	try {
+		await act(async () =>
+			root.render(createElement(TeamBridgeRequestsView, parentProps)),
+		);
+		await act(async () => button("Dismiss all…").click());
+		await act(async () => button("Dismiss listed messages (1)").click());
+		assert.equal(submits, 1);
+		assert.ok(text().includes("Messages processed: 0 of 1."));
+		await act(async () =>
+			root.render(
+				createElement(TeamBridgeRequestsView, {
+					...parentProps,
+					rows: [request],
+				}),
+			),
+		);
+		assert.ok(
+			text().includes("Messages processed: 0 of 1."),
+			"new approval must not abandon in-flight batch",
+		);
+		// A concurrent refresh can remove the last hold while its request is
+		// still in flight. Preserve the frozen operation and its eventual result.
+		const emptied = {
+			...parentProps,
+			heldCount: 0,
+			held: createElement(HeldMessagesView, { ...heldProps, items: [] }),
+		};
+		await act(async () =>
+			root.render(createElement(TeamBridgeRequestsView, emptied)),
+		);
+		assert.ok(text().includes("Messages processed: 0 of 1."));
+		await act(async () => {
+			report({ entry: entries[0], recorded: true, error: null });
+			finish();
+		});
+		assert.ok(text().includes("Recorded on this device: 1. Not confirmed: 0."));
+		assert.equal(submits, 1);
+	} finally {
+		await act(async () => root.unmount());
+		dom.window.close();
+		for (const [key, descriptor] of saved) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else Reflect.deleteProperty(globalThis, key);
+		}
 	}
 });
