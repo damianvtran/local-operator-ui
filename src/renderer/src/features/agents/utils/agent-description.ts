@@ -248,3 +248,23 @@ export function withAgentDescriptionText<
 		}),
 	};
 }
+
+/**
+ * A profile KIND (`role` / `specialist`, the backend's wire token) in the
+ * active language, for the lowercase detail/meta column the pickers print
+ * beside a row.
+ *
+ * WHY IT LIVES HERE. Two surfaces print the same column for the same roster:
+ * the composer's `/agent` argument rows and the chat header's agent picker.
+ * The header used to print the wire token raw, so every non-English reader saw
+ * "role" beside a translated description (fr census, row 3). One resolver keeps
+ * the two from drifting again. The column is machine voice, so these are the
+ * lowercase `ui.chat.slash.arg.kind_*` keys rather than the hub roster's
+ * capitalised `ui.hub.teams.kind.*` labels. An unknown kind is shown as stored:
+ * it is the backend's own word and has no translation to invent.
+ */
+export function agentKindText(kind: string): string {
+	if (kind === "role") return t("ui.chat.slash.arg.kind_role");
+	if (kind === "specialist") return t("ui.chat.slash.arg.kind_specialist");
+	return kind;
+}
