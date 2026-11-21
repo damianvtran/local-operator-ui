@@ -21,7 +21,7 @@ import { createRoot } from "react-dom/client";
  */
 const inputs = {
 	"@shared/i18n/use-locale": "export const useI18nLocale = () => 'en';",
-	"@shared/i18n": `export { t } from ${JSON.stringify(`${process.cwd()}/src/i18n/messages.ts`)};`,
+	"@shared/i18n": `export const currentLocale = () => "en"; export { t } from ${JSON.stringify(`${process.cwd()}/src/i18n/messages.ts`)};`,
 	"@shared/hooks/use-agents": `
 const data = { total: 2, agents: [
  { id: "tb-helper", name: "tb-helper", tags: [] },

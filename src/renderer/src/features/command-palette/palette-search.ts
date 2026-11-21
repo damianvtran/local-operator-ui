@@ -1,4 +1,5 @@
 // Search stays React-free; display copy reads the same core runtime as the renderer.
+import { formatDate } from "../../../../i18n/format";
 import { t } from "../../../../i18n/messages";
 /**
  * The command palette's search: what a query means, which rows it admits, and
@@ -233,6 +234,20 @@ export type PaletteItem = {
 	target: PaletteTarget;
 	/** Order within a group when two rows score identically. */
 	order?: number;
+	/**
+	 * When the conversation last moved, in epoch MILLISECONDS.
+	 *
+	 * The wire's `updated_at` is epoch SECONDS (the backend's Python float, mapped
+	 * straight into `CanonicalSessionRow`), so the source that sets this field
+	 * scales it and refuses a non-positive value — `0.0` is the wire's "no claim",
+	 * not 1970 (`rowTimeMs`, `chat-list-sections.ts`, holds the same rule). Set at
+	 * the source for the same import-free reason as `unread`/`recentRank`: this
+	 * module is the ranking's one home and must stay renderable in Node.
+	 *
+	 * It is the second sort key, and the only one a reader can see on the row: the
+	 * age column is drawn from this field (`paletteAgeLabel`).
+	 */
+	updatedAt?: number;
 	/** Offered in the browse layout (no query), as opposed to only on a search. */
 	featured?: boolean;
 	/**
@@ -296,6 +311,14 @@ export type PaletteMatch = {
 	item: PaletteItem;
 	score: number;
 	/**
+	 * The row's COARSE tier (`PALETTE_RANK`), which is what orders the list before
+	 * any recency: an exact name beats a word-start, which beats a substring, which
+	 * beats a keyword/hint match, which beats a body or loose match. A number
+	 * rather than the score because the score is continuous and fine-grained; a
+	 * reader's question ("why is this row above that one?") has five answers, not
+	 * a floating-point ordering. */
+	rank: number;
+	/**
 	 * True when the row was admitted by the loosest tier (a subsequence, or the
 	 * backend's own soft rank). Surfaced because a matched row whose name shares
 	 * no visible substring with the query reads as a bug unless it is marked.
@@ -326,6 +349,24 @@ export type PaletteSearchOutcome = {
 	total: number;
 	/** Whether the caps dropped rows that matched. */
 	clipped: boolean;
+	/**
+	 * The page actually drawn, 0-based. It is the request again except when the
+	 * list shrank under it — a refetch that returned fewer rows than the page
+	 * started at falls back to the first page, and says so here so the view cannot
+	 * hold a page the list has no rows for.
+	 */
+	page: number;
+	/**
+	 * Whether a scoped list has rows past the page drawn. It is what makes Down on
+	 * the last row page in rather than wrap to the top, and it is false by
+	 * construction for an unscoped list (nothing there has pages).
+	 */
+	more: boolean;
+	/**
+	 * How many pages the scoped answer has, at least 1 — what the footer's page
+	 * cue reads (`2/2`). One for an unscoped list, which has no pages.
+	 */
+	pages: number;
 };
 
 /**
@@ -941,6 +982,139 @@ const TIER_ONLY_BASE = 0.55;
 /** The backend's soft tier, which marks its row the way a loose text match is. */
 export const SOFT_TIER = 3;
 
+/**
+ * The palette's coarse ranking tiers, best first.
+ *
+ * WHY TIERS AND NOT JUST A SCORE (operator report, 2026-11-20). The score is a
+ * per-token mean across fields, so it compared things a reader does not compare:
+ * a whole-query `startsWith` bonus of +0.15 made an OLD conversation titled
+ * `Robotnik: force the approval latch fix` outrank a RECENT one titled `Dr.
+ * Robotnik` for `#robot`, purely because its title begins with the query. Which
+ * word a matched name starts at is not evidence about which conversation the
+ * reader wants; HOW WELL the query names the row is, and so is how recently the
+ * row moved.
+ *
+ * So the ordering question is asked in five steps instead of one continuous
+ * number: is the row's whole name the query (0); does a word of the name begin
+ * with it, wherever in the name that word sits (1); does the name contain it
+ * (2); did only a keyword, alias or hint match (3); or did nothing better than a
+ * body preview or a loose subsequence match (4). Inside a tier recency decides
+ * (`compareMatches`), which is why an honourific, a longer name or a leading
+ * `Dr.` can no longer move a row.
+ */
+export const PALETTE_RANK = {
+	exactName: 0,
+	nameWordStart: 1,
+	nameSubstring: 2,
+	keywordOrHint: 3,
+	bodyOrSoft: 4,
+} as const;
+
+/**
+ * A row's rank: the WORST of its tokens' best tiers.
+ *
+ * Worst, not best, because every token must match for the row to be admitted at
+ * all (an AND, see `scoreHaystacks`), so the row is only as good an answer as its
+ * weakest word: `robotnik law` should not rank as a name match on the strength of
+ * `robotnik` alone, when `law` had to be found in a keyword.
+ */
+function rankOf(haystacks: Haystacks, tokens: string[], query: string): number {
+	if (haystacks.name === query) return PALETTE_RANK.exactName;
+	let worst: number = PALETTE_RANK.nameWordStart;
+	for (const token of tokens) {
+		const inName = matchQuality(haystacks.name, token);
+		if (inName === "exact" || inName === "prefix") continue;
+		if (inName === "substring") {
+			worst = Math.max(worst, PALETTE_RANK.nameSubstring);
+			continue;
+		}
+		/*
+		 * Keywords, the hint and the group label are the app's own vocabulary for the
+		 * row — the words a reader types INSTEAD of the name — so they rank together,
+		 * above a body preview and below the name. The loose subsequence tier is not
+		 * evidence of a word here: it is the guess tier, and it stays at the bottom
+		 * with `soft` (see `matchQuality`'s own refusal below three characters).
+		 */
+		const elsewhere = [
+			...haystacks.keywords,
+			...haystacks.hint,
+			...haystacks.group,
+		];
+		if (
+			elsewhere.some((value) => {
+				const quality = matchQuality(value, token);
+				return quality !== null && quality !== "subsequence";
+			})
+		)
+			worst = Math.max(worst, PALETTE_RANK.keywordOrHint);
+		else worst = PALETTE_RANK.bodyOrSoft;
+	}
+	return worst;
+}
+
+/**
+ * The two orders the palette offers, as a preference: relevance, or recency.
+ *
+ * `best` is the default and the only order this surface had before the
+ * preference existed; `recent` is the operator's second answer for the case the
+ * tiers cannot settle ("I know which chat I want, and it was the last one").
+ */
+export type PaletteSort = "best" | "recent";
+
+export const DEFAULT_PALETTE_SORT: PaletteSort = "best";
+
+/** Recency first, then the tier order — the shared half of both comparators. */
+function byRecency(a: PaletteItem, b: PaletteItem): number {
+	// A row with no clock (a page, an action, an agent) sorts after every row that
+	// has one, and among themselves they keep their definition order below.
+	const at = a.updatedAt ?? Number.NEGATIVE_INFINITY;
+	const bt = b.updatedAt ?? Number.NEGATIVE_INFINITY;
+	if (at !== bt) return bt - at;
+	return 0;
+}
+
+/** The visited ring, 0 being the most recently visited; an unranked row last. */
+function byRecentRank(a: PaletteItem, b: PaletteItem): number {
+	const ar = a.recentRank ?? Number.POSITIVE_INFINITY;
+	const br = b.recentRank ?? Number.POSITIVE_INFINITY;
+	if (ar !== br) return ar - br;
+	return 0;
+}
+
+/**
+ * The list's order, under one of the two preferences.
+ *
+ * `best` reads: tier, then recency (`updatedAt`, newest first), then the visited
+ * ring, then the group's own definition order, then the id so the result cannot
+ * depend on the input array's order. `recent` reads the same keys with the last
+ * two swapped — recency first, then the tier — because a reader who chose
+ * recency is asking for the newest matching conversation, not the best-named one.
+ *
+ * WHY `order` SURVIVES BESIDE THE ID. For a conversation `order` is its index in
+ * the store's own newest-first answer (`searchChats`), so it agrees with
+ * `updatedAt` and only decides exact ties; for a STATIC row it is the definition
+ * order the group was built in (the settings rail's, the actions list's). Sorting
+ * those by id would alphabetise the palette's own vocabulary — a change to the
+ * browse order and to every static search result that nothing asked for.
+ */
+export function compareMatches(
+	a: PaletteMatch,
+	b: PaletteMatch,
+	sort: PaletteSort,
+): number {
+	const rank = a.rank - b.rank;
+	const recency = byRecency(a.item, b.item);
+	const ring = byRecentRank(a.item, b.item);
+	const order = (a.item.order ?? 0) - (b.item.order ?? 0);
+	/* Code-unit order, NOT `localeCompare`: the last tie-break must not depend on
+	 * the host's locale, or the same two rows could order differently on two
+	 * machines running the same query (agent review round 1, minor). */
+	const id = a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0;
+	return sort === "recent"
+		? recency || rank || ring || order || id
+		: rank || recency || ring || order || id;
+}
+
 export function scoreItem(
 	item: PaletteItem,
 	haystacks: Haystacks,
@@ -948,34 +1122,37 @@ export function scoreItem(
 ): PaletteMatch | null {
 	const matched = scoreHaystacks(haystacks, tokens);
 	const tierBonus = item.tier === undefined ? 0 : (TIER_BONUS[item.tier] ?? 0);
+	const query = tokens.join(" ");
 	if (!matched) {
 		// No local field matched. The only thing that can still admit this row is a
-		// source outside the renderer saying it did.
+		// source outside the renderer saying it did — the store's own tier, which is
+		// weaker evidence than any local field and ranks with the body matches.
 		if (item.tier === undefined) return null;
 		return {
 			item,
 			score: TIER_ONLY_BASE + tierBonus,
+			rank: PALETTE_RANK.bodyOrSoft,
 			soft: item.tier === SOFT_TIER,
 		};
 	}
 	/*
-	 * Whole-query bonuses, on top of the per-token mean: a row whose name IS the
-	 * query, and a row whose name begins with it, are both better answers than a
-	 * row that merely contains the words. Without these, "chat" ranks "Clear
-	 * conversation" and "Chat" identically, and the palette's first row stops
-	 * being predictable.
+	 * ONE whole-query bonus survives: a row whose name IS the query. It is kept on
+	 * the score (not the rank, which already separates the two) so the two agree
+	 * for every other reader of `score`, and so an exact name still beats a longer
+	 * name that begins with the query when a group's rows are ordered by their best
+	 * score (`bestScore`). The `startsWith` bonus that used to sit beside it is
+	 * GONE: it made `Robotnik: …` outrank `Dr. Robotnik`, which is the defect this
+	 * ranking exists to fix.
 	 */
-	const query = tokens.join(" ");
-	let bonus = 0;
-	if (haystacks.name === query) bonus += 0.3;
-	else if (
-		haystacks.name.startsWith(`${query} `) ||
-		haystacks.name.startsWith(query)
-	)
-		bonus += 0.15;
+	const bonus = haystacks.name === query ? 0.3 : 0;
+	const rank =
+		tokens.length === 0
+			? PALETTE_RANK.exactName
+			: rankOf(haystacks, tokens, query);
 	return {
 		item,
 		score: matched.score + tierBonus + bonus,
+		rank,
 		soft: matched.soft || item.tier === SOFT_TIER,
 	};
 }
@@ -1144,6 +1321,15 @@ export type PaletteSearchInput = {
 	 * swap the list under the reader when it lands.
 	 */
 	chatsAwaiting?: boolean;
+	/** The reader's order preference; `best` (relevance) when absent. */
+	sort?: PaletteSort;
+	/**
+	 * Which page of a SCOPED list to draw, 0-based. Only a scope has pages: it
+	 * narrows the answer to one group, so the rows past the cap are the same
+	 * question continued rather than a different group's five. Unscoped lists
+	 * always draw page 0 — a page key that mixed groups would mean nothing.
+	 */
+	page?: number;
 };
 
 /**
@@ -1165,6 +1351,8 @@ export function searchPalette({
 	raw,
 	bridgeScope = false,
 	chatsAwaiting = false,
+	sort = DEFAULT_PALETTE_SORT,
+	page = 0,
 }: PaletteSearchInput): PaletteSearchOutcome {
 	const { scope, terms } = parsePaletteQuery(raw, { bridgeScope });
 	const allowed = scope ? SCOPE_GROUPS[scope] : null;
@@ -1236,6 +1424,7 @@ export function searchPalette({
 						items: shown.map((item) => ({
 							item,
 							score: 0,
+							rank: PALETTE_RANK.exactName,
 							soft: item.tier === SOFT_TIER,
 						})),
 					});
@@ -1303,6 +1492,7 @@ export function searchPalette({
 						items: shown.map((item) => ({
 							item,
 							score: 0,
+							rank: PALETTE_RANK.exactName,
 							soft: item.tier === SOFT_TIER,
 						})),
 					});
@@ -1327,6 +1517,7 @@ export function searchPalette({
 			const items = featured.slice(0, room).map((item) => ({
 				item,
 				score: 0,
+				rank: PALETTE_RANK.exactName,
 				soft: item.tier === SOFT_TIER,
 			}));
 			sections.push({ group, items });
@@ -1341,7 +1532,17 @@ export function searchPalette({
 		 * search branch below, now over the one running budget both layouts draw
 		 * from.
 		 */
-		return { sections, scope, terms: "", total, clipped: rendered < total };
+		return {
+			sections,
+			scope,
+			terms: "",
+			total,
+			clipped: rendered < total,
+			page: 0,
+			more: false,
+			/* A browse list has no pages: one window, in the store's own order. */
+			pages: 1,
+		};
 	}
 
 	const byGroup = new Map<PaletteGroup, PaletteMatch[]>();
@@ -1388,15 +1589,42 @@ export function searchPalette({
 		);
 	});
 
+	/*
+	 * THE PAGE. Only a scope has one (see `PaletteSearchInput.page`), and the window
+	 * starts at the SAME OFFSET in every group the scope admits.
+	 *
+	 * WHY ONE OFFSET AND NOT ONE WINDOW PER GROUP (agent review round 1, R1): a
+	 * scope can span several groups — `@` is agents AND teams, `>` commands AND
+	 * pages — so applying `page` per group drew the short group's first page again
+	 * under the second page's heading (duplicate ids, which also broke selection by
+	 * id), reported `page: 0` from whichever group was visited last, and left the
+	 * long group's earlier rows unreachable once the page stood past them. An
+	 * offset means a group with nothing there contributes NOTHING.
+	 *
+	 * A page whose window holds nothing (the list shrank under a refetch) falls
+	 * back to the first page rather than drawing an empty list under a "no matches"
+	 * sentence that would be false.
+	 */
+	const stride = SCOPED_GROUP_CAP;
+	const wanted = allowed ? Math.max(0, page) : 0;
+	const anyAtPage = ordered.some(([, rows]) => rows.length > wanted * stride);
+	const drawnPage = allowed && anyAtPage ? wanted : 0;
+	const offset = drawnPage * stride;
+	let more = false;
 	const sections: PaletteSection[] = [];
 	let rendered = 0;
 	for (const [group, matches] of ordered) {
-		matches.sort((a, b) => b.score - a.score || byOrder(a.item, b.item));
+		matches.sort((a, b) => compareMatches(a, b, sort));
+		/* A scoped list pages the whole answer; an unscoped one has no pages (its
+		 * caps are per-group browse budgets) and starts at 0. */
+		if (allowed && matches.length <= offset) continue;
 		const cap = capFor(group);
 		const room = Math.max(0, Math.min(cap, TOTAL_CAP - rendered));
 		if (room === 0) continue;
-		sections.push({ group, items: matches.slice(0, room) });
-		rendered += sections[sections.length - 1].items.length;
+		const pageMatches = matches.slice(offset, offset + room);
+		if (allowed && offset + pageMatches.length < matches.length) more = true;
+		sections.push({ group, items: pageMatches });
+		rendered += pageMatches.length;
 		if (rendered >= TOTAL_CAP) break;
 	}
 	/*
@@ -1406,7 +1634,69 @@ export function searchPalette({
 	 * sentence that contradicts itself, produced by a flag that meant "a cap was
 	 * consulted" (round 1, R-3).
 	 */
-	return { sections, scope, terms, total, clipped: rendered < total };
+	return {
+		sections,
+		scope,
+		terms,
+		total,
+		clipped: rendered < total,
+		page: drawnPage,
+		more,
+		/*
+		 * THE PAGE COUNT IS THE LONGEST GROUP'S, not the list's divided by the
+		 * stride (agent review round 2, R2-1): the offset runs along each group, so
+		 * 30 agents + 24 teams are two pages (24 then 6), not three — `ceil(54/24)`
+		 * promised a page 3 that `more` never offered and `wanted` fell back from.
+		 */
+		pages: allowed
+			? Math.max(
+					1,
+					...[...byGroup.values()].map((rows) =>
+						Math.ceil(rows.length / stride),
+					),
+				)
+			: 1,
+	};
+}
+
+/**
+ * Whether the `Ctrl S` order can move a row in THIS answer.
+ *
+ * The order is recency inside a match tier, so it needs two things: a typed
+ * question (a browse list is the store's own order) and at least one
+ * conversation on screen (static rows have no clock, and `recent`/`best` order
+ * them identically). Both the field's chip, the footer's key legend and the
+ * `ctrl s` handler read this one function, so they cannot disagree — round 1
+ * keyed them on a flag that said "typed and in the chat scope", which still
+ * claimed an order over `settings` or a query that found nothing (agent review
+ * round 2 R2-2, design D11, QA Q-5).
+ */
+export function sortAppliesTo(answer: {
+	terms: string;
+	sections: PaletteSection[];
+}): boolean {
+	if (answer.terms.trim() === "") return false;
+	return answer.sections.some(
+		(section) => section.group === "chats" && section.items.length > 0,
+	);
+}
+
+/**
+ * Which row Enter would run: the selected row's index, or the head when the
+ * answer no longer holds that row.
+ *
+ * The fallback is the promise the list makes when a re-sort or a refetch moves
+ * the selected row off the drawn page: the reader sees the answer's first row
+ * selected rather than a row they never looked at (agent review round 2, R2-4
+ * — this used to live inline in the component, untested).
+ */
+export function selectionIndexOf(
+	matches: PaletteMatch[],
+	selectedId: string | null,
+): number {
+	if (selectedId === null) return 0;
+	const at = matches.findIndex((match) => match.item.id === selectedId);
+	return at >= 0 ? at : 0;
 }
 
 function bestScore(matches: PaletteMatch[]): number {
@@ -1415,9 +1705,19 @@ function bestScore(matches: PaletteMatch[]): number {
 	return best;
 }
 
-/** Definition order for static rows, recency for conversations. */
+/**
+ * Definition order for static rows, recency for conversations.
+ *
+ * The id tie is a plain code-unit compare, not `localeCompare`: two rows the
+ * store gave the same order index must land the same way on every machine, and
+ * the host's collation is not part of the answer (agent review round 1, minor 2
+ * — `compareMatches`' final tie was fixed then; this is the same rule for the
+ * browse order, agent review round 2).
+ */
 function byOrder(a: PaletteItem, b: PaletteItem): number {
-	return (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id);
+	const order = (a.order ?? 0) - (b.order ?? 0);
+	if (order !== 0) return order;
+	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /* ------------------------------------------------------------------ *
@@ -1738,4 +2038,60 @@ export function buildChatItem(
 		hint: binding || undefined,
 		target: { type: "session", sessionId: row.session_id },
 	};
+}
+
+/**
+ * A conversation row's age, in the palette row's compact register: `now`, `5m`,
+ * `2h`, `3d`, and past a week the date it last moved (`Mar 4`).
+ *
+ * The first three are the sidebar's own relative form (`ui.chat.sidebar_view.
+ * relative_short`), reused rather than re-spelled: it is already translated into
+ * every shipped locale, its units go through `Intl` per language (`5分` in
+ * zh-CN, `5 мин` in ru), and a second spelling of "2h" beside the sidebar's would
+ * be the same fact written twice.
+ *
+ * PAST A WEEK IT STOPS COUNTING. A rolling `5w` beside a conversation the reader
+ * remembers from March is a puzzle, not a date — and the row has room for one.
+ * The date is `formatDate`'s, so the month and the day order follow the locale
+ * rather than English. A row with no clock prints nothing: the wire's `0.0` is
+ * "no claim", never 1970 (`rowTimeMs`, `chat-list-sections.ts`, refuses it the
+ * same way).
+ */
+export function paletteAgeLabel(
+	updatedAt: number | undefined,
+	now: number,
+): string {
+	if (updatedAt === undefined) return "";
+	const minutes = Math.floor(Math.max(0, now - updatedAt) / 60_000);
+	if (minutes < 1)
+		return t("ui.chat.sidebar_view.relative_short", { unit: "now", count: 0 });
+	if (minutes < 60)
+		return t("ui.chat.sidebar_view.relative_short", {
+			unit: "minute",
+			count: minutes,
+		});
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24)
+		return t("ui.chat.sidebar_view.relative_short", {
+			unit: "hour",
+			count: hours,
+		});
+	const days = Math.floor(hours / 24);
+	if (days < 7)
+		return t("ui.chat.sidebar_view.relative_short", {
+			unit: "day",
+			count: days,
+		});
+	/*
+	 * A DATE, WITH THE YEAR when it is not this one: a conversation last moved in
+	 * November 2025 and one moved this November both read `Nov 8` otherwise, in a
+	 * list whose order is that very clock (design review round 1, D8).
+	 */
+	const sameYear =
+		new Date(updatedAt).getFullYear() === new Date(now).getFullYear();
+	return formatDate(updatedAt, {
+		month: "short",
+		day: "numeric",
+		...(sameYear ? {} : { year: "numeric" }),
+	});
 }
