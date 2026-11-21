@@ -4,7 +4,7 @@
 	"ui.chat.bridgeReceipt.provenance": "Внешнее сообщение · недоверенное содержимое",
 	"ui.chat.bridgeReceipt.loading": "Загрузка сообщения…",
 	"ui.chat.bridgeReceipt.pending": "Ожидает доставки вашему агенту.",
-	"ui.chat.bridgeReceipt.held": "Задержано до проверки.",
+	"ui.chat.bridgeReceipt.held": "Задержано для проверки.",
 	"ui.chat.bridgeReceipt.held_transient": "Ожидает фильтрации — пока не показано вашему агенту.",
 	"ui.chat.bridgeReceipt.refused": "Отклонено модерацией.",
 	"ui.chat.bridgeReceipt.not_admitted": "Не доставлено этому агенту.",
