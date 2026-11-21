@@ -3322,6 +3322,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 			})
 		: "";
 	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	/*
+	 * The open pane's headline says WHERE the message sits as well as who sent
+	 * it: a reply inside a thread reads differently from a top-level post, and the
+	 * body below it is otherwise context-free. The collapsed row keeps its
+	 * shorter summary.
+	 */
+	const thread = receipt.thread ? t("ui.chat.bridgeReceipt.thread_reply") : "";
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3334,7 +3341,7 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 					<BridgeDetailPane
 						isError={false}
 						view={{
-							headline: [received, target].filter(Boolean).join(" · "),
+							headline: [received, target, thread].filter(Boolean).join(" · "),
 							body: null,
 							/*
 							 * When the read is offered, the body section below owns the

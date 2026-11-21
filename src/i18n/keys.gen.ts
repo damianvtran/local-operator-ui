@@ -5054,6 +5054,7 @@ export type MessageParams = {
 	"ui.chat.bridgeReceipt.refused": undefined;
 	"ui.chat.bridgeReceipt.show_less": undefined;
 	"ui.chat.bridgeReceipt.show_more": undefined;
+	"ui.chat.bridgeReceipt.thread_reply": undefined;
 	"ui.chat.bridgeReceipt.unavailable": undefined;
 	"ui.chat.bridgeReceipt.unavailable_reason.deleted": undefined;
 	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": undefined;
