@@ -287,20 +287,39 @@ pane is its only presenter.
 
 ## How matches are ranked
 
-- **Tiers, not booleans**: exact word > word prefix > substring > subsequence
-  (`rta` → "Retention analysis"). The loose tier is refused below three
-  characters, because a one- or two-letter subsequence matches nearly every row.
+- **Tiers, then the clock**: the row's whole name IS the query beats a word of
+  the name beginning with it — the FIRST word or a later one, the same — which
+  beats the name containing it, which beats a keyword/alias/hint match, which
+  beats a body preview or a loose subsequence (`rta` → "Retention analysis"; the
+  loose tier is refused below three characters, because a one- or two-letter
+  subsequence matches nearly every row). INSIDE a tier the newest conversation
+  wins (`PaletteItem.updatedAt`), then the visited ring, then the group's own
+  order. Which word of a title the query starts at is not a fact about the
+  answer, so an honourific, a longer name or a leading `Dr.` moves nothing.
 - **Every token must match**, so a second word narrows rather than broadens.
-- **Field weights**: name > keywords/aliases > hint > group > help text.
-- **The backend's tier outranks text**: a conversation the store knows by content
-  outranks one whose title merely contains the letters, which is the same order
-  the sidebar uses.
+- **Field weights** decide the SCORE a row is admitted with and the order the
+  GROUPS appear in (name > keywords/aliases > hint > group > help text); they do
+  not decide the order of rows inside a group, which is the tier's job above.
+- **A conversation the store knows only by CONTENT** (no local field matched it)
+  is admitted at the bottom tier, with the body matches: "the store knows this
+  word is inside it" is a real answer and a weaker one than the query naming the
+  row.
 - **Groups are ordered by their best row, then capped**: the answer to the
   question leads the list, and no one source can bury the others. A scope gives
-  its group more room, because naming a source is the user saying which they mean.
+  its group more room (24), and a scoped list PAGES: Down on the last row reaches
+  the first row of the next 24, Up on the first goes back, and the footer count
+  stops claiming "the best" once the reader has walked past rows.
+- **The reader may choose the clock over the tier** (`ctrl s`: *most recent*,
+  default *best match*), taught in the footer beside the other keys and shown as
+  a chip (`# Chats · Most recent`) only when it is not the default. The query is
+  still the filter; the preference is persisted (`paletteSort`, ui-preferences
+  v7) and applies to the whole list rather than per scope.
 - **Loose matches are dimmed**, and a conversation matched on its body says so
   ("In conversation") — a row whose name shares nothing visible with the query
   reads as a bug unless it is marked.
+- **Every chat row carries its age** (`now`, `5m`, `2h`, `3d`, then the locale's
+  date): the fact the order's second key reads, so the order is legible rather
+  than merely obeyed.
 
 ## Performance contract
 
@@ -316,7 +335,6 @@ a network round trip:
 - the rendered list is capped (6 per group, 24 for a scoped group, 48 total) and
   the footer's count line says when a TYPED search's answer was clipped — a
   browse is clipped silently (the count renders only beside the key legend).
-
 ## Focus
 
 - The query field takes focus on open, from every door — either chord, the rail row,
