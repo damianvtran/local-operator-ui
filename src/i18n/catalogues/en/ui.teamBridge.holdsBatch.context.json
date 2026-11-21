@@ -13,7 +13,7 @@
 		"placeholders": {
 			"count": "number of messages in the frozen snapshot, a number"
 		},
-		"note": "The human confirms exactly the listed snapshot, not future arrivals. Each discard is irreversible and local recording does not prove server or sender notification. Some bodies may be unavailable. Dismiss and Discard refer to the same non-delivery action."
+		"note": "The human confirms exactly the listed snapshot, not future arrivals. The explicit count label works for any number, including one; do not infer a plural selector. Each discard is irreversible and local recording does not prove server or sender notification. Some bodies may be unavailable. Dismiss and Discard refer to the same non-delivery action."
 	},
 	"ui.teamBridge.holdsBatch.submit": {
 		"role": "confirmation button",
@@ -22,7 +22,7 @@
 		"placeholders": {
 			"count": "number of messages in the frozen snapshot, a number"
 		},
-		"note": "Explicitly executes the confirmed snapshot. Dismiss is the batch name for the existing Discard decision; never deliver or delete a conversation."
+		"note": "Explicitly executes the confirmed snapshot. The parenthesized count works for any number, including one, without a plural selector. Dismiss is the batch name for the existing Discard decision; never deliver or delete a conversation."
 	},
 	"ui.teamBridge.holdsBatch.progress": {
 		"role": "live progress status",
@@ -32,7 +32,7 @@
 			"done": "number of completed row attempts, a number",
 			"total": "number of messages in the frozen snapshot, a number"
 		},
-		"note": "Counts attempted decisions, including failed attempts, not confirmed deliveries or notifications."
+		"note": "Counts attempted decisions, including failed attempts, not confirmed deliveries or notifications. The count-label construction works for any numbers without a plural selector."
 	},
 	"ui.teamBridge.holdsBatch.result": {
 		"role": "completion status",
@@ -40,9 +40,9 @@
 		"length": "short paragraph",
 		"placeholders": {
 			"succeeded": "number of locally recorded decisions, a number",
-			"failed": "number of decisions not recorded, a number"
+			"failed": "number of attempts without a confirmed local-record receipt, a number; a write may still have occurred if its response was lost"
 		},
-		"note": "Per-row result accounting after the frozen batch. Successful means recorded locally, not server-applied or sender-notified. Failed rows remain available for retry. New arrivals were never part of this operation."
+		"note": "Per-row result accounting after the frozen batch. Successful means a matching local-record receipt was received, not server-applied or sender-notified. A failed or lost response does not prove that no write occurred or that the message is still held remotely. Unconfirmed result records stay in the displayed batch result list; retry is offered only for identities still eligible in the current hold list. New arrivals were never part of this operation."
 	},
 	"ui.teamBridge.holdsBatch.retry": {
 		"role": "button label",
