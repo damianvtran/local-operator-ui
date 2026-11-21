@@ -137,6 +137,25 @@ const STALE_SESSION =
  * frame resolver re-attaches ONCE on it (frames.ts); anything else surfaces it. */
 export const FRAME_DETACHED = "frame_detached";
 
+/** Diagnostic evidence, NOT a readiness verdict or a cross-site mechanism fix.
+ * Raw debugger failures may contain URLs, DOM, credentials or session identity.
+ * Only an exact, already observed protocol message (frames.ts, enterFrame) is
+ * classified; never copy name/message/data/stack or invoke message accessors.
+ * Unknown shapes fail closed, including objects imitating an Error. This is
+ * source-only observability: the live attach cause remains unproven until a
+ * separately authorized native run observes it. */
+function frameAttachErrorClass(error: unknown): "target_not_found" | "unknown" {
+	try {
+		if (!(error instanceof Error)) return "unknown";
+		const message = Object.getOwnPropertyDescriptor(error, "message")?.value;
+		return message === "No target with given id found"
+			? "target_not_found"
+			: "unknown";
+	} catch {
+		return "unknown";
+	}
+}
+
 export interface CdpSendOptions {
 	deadlineMs?: number;
 	/** A child frame's flattened session (`attachFrame`). Absent for the page's
@@ -560,14 +579,21 @@ export class CdpPool {
 				{ targetId: frameId, flatten: true },
 			);
 		} catch (error) {
-			// A conflict or a closed tab keeps its own typed answer; Chromium's own
-			// "No target with given id" means the frame went between the DOM read
-			// and the attach, which is the frame's state, not a host fault.
+			// Keep typed answers and the existing public message/retry discriminator.
+			// That legacy readiness wording is not proof of why attachment failed:
+			// expose only allowlisted evidence, never the raw rejection or target id.
 			if (error instanceof BrowserHostError) throw error;
 			throw new BrowserHostError(
 				"element_not_found",
 				"that frame is gone or still loading; take a new snapshot and retry",
-				{ reason: FRAME_DETACHED },
+				{
+					reason: FRAME_DETACHED,
+					attach_diagnostic: {
+						error_class: frameAttachErrorClass(error),
+						operation: "Target.attachToTarget",
+						context: "child_frame_session_acquisition",
+					},
+				},
 			);
 		}
 		const sessionId = attached?.sessionId;
