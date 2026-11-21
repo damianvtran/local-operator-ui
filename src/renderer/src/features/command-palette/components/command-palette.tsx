@@ -59,6 +59,8 @@ import {
 	paletteAgeLabel,
 	paletteEmptyStateCopy,
 	searchPalette,
+	selectionIndexOf,
+	sortAppliesTo,
 } from "../palette-search";
 import {
 	paletteReachableStepCaps,
@@ -279,8 +281,25 @@ export const CommandPalette: FC = () => {
 	 */
 	const deferredQuery = useDeferredValue(localQuery);
 
-	/* This list's page: the recorded one only while the recorded question is still
-	 * the one on screen (`paged` above explains why it is derived, not reset). */
+	/*
+	 * A NEW QUESTION DROPS THE RECORD rather than merely failing to match it
+	 * (agent review round 2, R2-3): comparing alone let a page 2 come BACK when
+	 * `ctrl s` was pressed twice, or when a character was typed and deleted —
+	 * the question matched the old record again and the stale page returned.
+	 *
+	 * The reset happens during the render that sees the change, which is not an
+	 * effect: React re-renders with the new state before committing, so no frame
+	 * draws the old page over the new question (round 1, R-minor4's requirement,
+	 * kept).
+	 */
+	const question = `${deferredQuery}\u0000${paletteSort}`;
+	const [questionAt, setQuestionAt] = useState(question);
+	if (questionAt !== question) {
+		setQuestionAt(question);
+		setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });
+	}
+	/* This list's page: the recorded one only while the recorded question is
+	 * still the one on screen. */
 	const page =
 		paged.query === deferredQuery && paged.sort === paletteSort
 			? paged.page
@@ -342,11 +361,10 @@ export const CommandPalette: FC = () => {
 	 * that left the list (a filter change, a deletion, the other order hiding it)
 	 * falls back to the head, which is the nearest thing to "where I was" the list
 	 * still has. */
-	const selectedIndex = useMemo(() => {
-		if (selectedId === null) return 0;
-		const at = matches.findIndex((match) => match.item.id === selectedId);
-		return at >= 0 ? at : 0;
-	}, [matches, selectedId]);
+	const selectedIndex = useMemo(
+		() => selectionIndexOf(matches, selectedId),
+		[matches, selectedId],
+	);
 
 	const activeMatch = matches[selectedIndex];
 	const hasTerms = outcome.terms.length > 0;
@@ -359,17 +377,15 @@ export const CommandPalette: FC = () => {
 	 * describe itself one way in the legend and another in the field.
 	 */
 	/*
-	 * WHERE THE ORDER CAN ACTUALLY ACT: a TYPED search that shows conversations —
-	 * the `#` scope, or the unscoped list (which admits the chats group). Every
-	 * other answer has no clock in it, so the same preference cannot move a row
-	 * there, and a chip claiming `· Most recent` over an unchanged list (an `@`
-	 * roster, `>` commands, a browse with no terms) says something the list does
-	 * not honour. The chip, the footer legend and the `ctrl s` handler all read
-	 * THIS one flag, so the three cannot disagree (UX round 1 U2/U5, QA round 1
-	 * Q-2, agent review round 1 minor 1).
+	 * WHERE THE ORDER CAN ACTUALLY ACT, read off the ANSWER rather than the
+	 * scope: a typed question that left at least one conversation on screen
+	 * (`sortAppliesTo`). A scope-shaped flag was not enough — `settings` and a
+	 * query that found nothing are unscoped and have no clock in them, so they
+	 * still claimed `· Most recent` and taught `Ctrl S` over a list that could
+	 * not move (agent review round 2 R2-2, design D11, QA Q-5). The chip, the
+	 * footer legend and the `ctrl s` handler read this one flag.
 	 */
-	const sortApplies =
-		hasTerms && (outcome.scope === null || outcome.scope === "chat");
+	const sortApplies = sortAppliesTo(outcome);
 	/* The palette's order is not the default AND it can act here, so the chip says so. */
 	const sortIsRecent = sortApplies && paletteSort === "recent";
 	const scopeLegend =
@@ -1349,7 +1365,21 @@ export const CommandPalette: FC = () => {
 									 * the rail's chords draw — no spaced `+` between the caps, the
 									 * three-marks reading design round 1 fixed for ⌘K.
 									 */}
-									<span className="flex items-center gap-1 max-[783px]:hidden">
+									{/*
+									 * THE ALIAS PAIR YIELDS TO THE COUNT. The dialog stops growing
+									 * at 640 px and the app's minimum window is 800, so the count's
+									 * box is what pays for every fixed group beside it: with the
+									 * caps drawn it was 97 px against a ~135 px sentence, and the
+									 * total and the page cue — the only paging cue this PR has — were
+									 * exactly what got cut (design round 2 D9, QA Q-3). Arrows still
+									 * teach the walk; `Ctrl N`/`Ctrl P` are the alias.
+									 */}
+									<span
+										className={cn(
+											"flex items-center gap-1 max-[783px]:hidden",
+											outcome.clipped && "hidden",
+										)}
+									>
 										{stepCaps.map((cap) => (
 											<KeyboardShortcut key={cap} shortcut={cap} joined />
 										))}
@@ -1457,7 +1487,6 @@ export const CommandPalette: FC = () => {
  * stationary pointer as the user walks it with the arrows — and a row that
  * selected itself on the way past would fight the keyboard.
  */
-/** The `· Most recent` half of the field's chip, when the order is not the default. */
 /**
  * The `· Most recent` half of the field's chip, when the order is not the default.
  *
@@ -1579,7 +1608,7 @@ const PaletteRow: FC<{
 			 * stays next to the tag it dates.
 			 */}
 			{item.updatedAt !== undefined && (
-				<span className="w-12 shrink-0 whitespace-nowrap text-right text-ink-dim text-meta tabular-nums">
+				<span className="min-w-12 shrink-0 whitespace-nowrap text-right text-ink-dim text-meta tabular-nums">
 					{paletteAgeLabel(item.updatedAt, now)}
 				</span>
 			)}

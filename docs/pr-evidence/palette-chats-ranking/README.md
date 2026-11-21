@@ -97,3 +97,21 @@ two runs differ only in the change under review.
 Both narrow runs emulate the viewport (`Emulation.setDeviceMetricsOverride`),
 because the app enforces a minimum window width; the numbers above are the
 dialog's own `clientWidth`, which is what the design round measured.
+
+## Round 2 remediation (design D9/D10/D11, QA Q-3/Q-4/Q-5, review R2-1/R2-2/R2-3/R2-4)
+
+**The reachable width is the 640 px dialog.** `WINDOW_MIN_WIDTH = 800`
+(`src/main/window-mode.ts`), so every window the app allows draws a 640 px
+dialog; the 640/468 *viewport* frames in the round-1 table above show a width
+the app cannot have. They are kept as extra evidence of the elastic rules, and
+the frames below are the shipped configuration.
+
+| frame | what it shows | measured |
+| --- | --- | --- |
+| `footer-1380-page1.png` | `#robot`, 1380 viewport (dialog 640) | footer 37 px, one line, count box **221 px**, `showing 24 of 30 1/2` — the total and the page cue are both visible; the `Ctrl N`/`Ctrl P` caps yield to the count |
+| `footer-1380-page2.png` | same, Down past row 24 | `showing 6 of 30 2/2`; `chat-many25` … `chat-many01`, no row twice |
+| `year-age-row-800.png` | a chat last touched 420 days ago, 800 viewport | age `Sep 27, 2025`, box **77 px** with its right edge at 636 and the verb's left at 648 — no overprint; the slot is `min-w-12 w-auto text-right`, so short labels keep the 48 px column (measured 48 px, right edge 628 on every short row) |
+| `footer-after-640.png`, `footer-after-468.png` | below the app's minimum, kept as extra | one line, `scrollWidth == clientWidth` at both |
+
+Both round-2 runs use the same fixture (`stub-many-chats.mjs`: 30 chats, one
+132-character title, one 420-day-old chat) and the same rig as round 1.

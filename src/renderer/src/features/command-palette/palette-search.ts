@@ -1642,8 +1642,61 @@ export function searchPalette({
 		clipped: rendered < total,
 		page: drawnPage,
 		more,
-		pages: allowed ? Math.max(1, Math.ceil(total / stride)) : 1,
+		/*
+		 * THE PAGE COUNT IS THE LONGEST GROUP'S, not the list's divided by the
+		 * stride (agent review round 2, R2-1): the offset runs along each group, so
+		 * 30 agents + 24 teams are two pages (24 then 6), not three — `ceil(54/24)`
+		 * promised a page 3 that `more` never offered and `wanted` fell back from.
+		 */
+		pages: allowed
+			? Math.max(
+					1,
+					...[...byGroup.values()].map((rows) =>
+						Math.ceil(rows.length / stride),
+					),
+				)
+			: 1,
 	};
+}
+
+/**
+ * Whether the `Ctrl S` order can move a row in THIS answer.
+ *
+ * The order is recency inside a match tier, so it needs two things: a typed
+ * question (a browse list is the store's own order) and at least one
+ * conversation on screen (static rows have no clock, and `recent`/`best` order
+ * them identically). Both the field's chip, the footer's key legend and the
+ * `ctrl s` handler read this one function, so they cannot disagree — round 1
+ * keyed them on a flag that said "typed and in the chat scope", which still
+ * claimed an order over `settings` or a query that found nothing (agent review
+ * round 2 R2-2, design D11, QA Q-5).
+ */
+export function sortAppliesTo(answer: {
+	terms: string;
+	sections: PaletteSection[];
+}): boolean {
+	if (answer.terms.trim() === "") return false;
+	return answer.sections.some(
+		(section) => section.group === "chats" && section.items.length > 0,
+	);
+}
+
+/**
+ * Which row Enter would run: the selected row's index, or the head when the
+ * answer no longer holds that row.
+ *
+ * The fallback is the promise the list makes when a re-sort or a refetch moves
+ * the selected row off the drawn page: the reader sees the answer's first row
+ * selected rather than a row they never looked at (agent review round 2, R2-4
+ * — this used to live inline in the component, untested).
+ */
+export function selectionIndexOf(
+	matches: PaletteMatch[],
+	selectedId: string | null,
+): number {
+	if (selectedId === null) return 0;
+	const at = matches.findIndex((match) => match.item.id === selectedId);
+	return at >= 0 ? at : 0;
 }
 
 function bestScore(matches: PaletteMatch[]): number {
@@ -1652,9 +1705,19 @@ function bestScore(matches: PaletteMatch[]): number {
 	return best;
 }
 
-/** Definition order for static rows, recency for conversations. */
+/**
+ * Definition order for static rows, recency for conversations.
+ *
+ * The id tie is a plain code-unit compare, not `localeCompare`: two rows the
+ * store gave the same order index must land the same way on every machine, and
+ * the host's collation is not part of the answer (agent review round 1, minor 2
+ * — `compareMatches`' final tie was fixed then; this is the same rule for the
+ * browse order, agent review round 2).
+ */
 function byOrder(a: PaletteItem, b: PaletteItem): number {
-	return (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id);
+	const order = (a.order ?? 0) - (b.order ?? 0);
+	if (order !== 0) return order;
+	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /* ------------------------------------------------------------------ *

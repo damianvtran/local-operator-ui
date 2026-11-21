@@ -315,7 +315,12 @@ pane is its only presenter.
   the last row reaches the first row of the next 24, Up on the first goes back,
   and the footer count states `showing N of M` — never "the best", which is false
   under the recent order and on any page past the first — with a `2/2` cue
-  whenever the list has more than one page.
+  whenever the list has more than one page. The page count is the longest
+  group's, not the list's divided by the page size: the offset walks each
+  group, so two full groups are two pages, not three. `ctrl s` on page 2 keeps
+  the selected ROW but not the page — the flip is a new question, so it opens on
+  page 1 of the other order, and a row that is not on that page selects the
+  head (agent review round 2, R2-4).
 - **The reader may choose the clock over the tier** (`ctrl s`: *most recent*,
   default *best match*), taught in the footer beside the other keys and shown as
   a chip (`# Chats · Most recent`) only when it is not the default. The query is

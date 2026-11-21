@@ -45,7 +45,9 @@ const {
 	RECENTS_PIN_CAP,
 	SCOPE_LEGEND,
 	searchPalette,
+	selectionIndexOf,
 	SOFT_TIER,
+	sortAppliesTo,
 	TOTAL_CAP,
 } = module;
 
@@ -1879,6 +1881,32 @@ test("a scope that spans two groups pages ONE offset across both, without repeat
 		ALPHA_SCOPE.map((row) => row.id).sort(),
 	);
 
+	/*
+	 * BOTH GROUPS LONGER THAN THE STRIDE (agent review round 2, R2-1): the page
+	 * count is the longest group's, not `ceil(total / 24)`. 30 agents + 24 teams
+	 * is 54 rows and TWO pages (24 then 6), not three — the old formula promised
+	 * a page 3 that `more` never offered and that `page` fell back from.
+	 */
+	const wide = [
+		...ALPHA_SCOPE.filter((row) => row.group !== "teams"),
+		...Array.from({ length: 24 }, (_, index) => alphaTeam(index)),
+	];
+	const wideFirst = searchPalette({ items: wide, raw: "@alpha" });
+	assert.deepEqual(
+		wideFirst.sections.map((section) => section.items.length),
+		[24, 24],
+	);
+	assert.equal(wideFirst.pages, 2, "two pages, not ceil(54/24) = 3");
+	assert.equal(wideFirst.more, true);
+	const wideSecond = searchPalette({ items: wide, raw: "@alpha", page: 1 });
+	assert.equal(wideSecond.page, 1);
+	assert.equal(wideSecond.pages, 2);
+	assert.equal(wideSecond.more, false, "page 1 is the last page");
+	assert.deepEqual(
+		wideSecond.sections.map((section) => section.items.length),
+		[6],
+	);
+
 	// A page past the end falls back to the first, rather than drawing nothing.
 	const past = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha", page: 9 });
 	assert.equal(past.page, 0);
@@ -1926,6 +1954,87 @@ test("a re-sort moves a row past the drawn page's edge, and that row's page stil
 		tailIds.at(-1),
 		"chat-exact",
 		"and it is the oldest, so it is last there",
+	);
+});
+
+test("the order is offered only where a conversation is actually on screen", () => {
+	/*
+	 * Agent review round 2 R2-2, design D11, QA Q-5: the flag was "typed, in the
+	 * chat scope", so `settings` (commands and pages, no conversation anywhere)
+	 * still read `Chats · Most recent` and taught `Ctrl S`, and `#zzzz` consumed
+	 * the key with nothing to move. The predicate now asks the ANSWER.
+	 */
+	const chats = Array.from({ length: 3 }, (_, index) =>
+		datedChat(`c${index}`, `Robot ${index}`, index, index),
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#robot" })),
+		true,
+		"a scoped chat search",
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "robot" })),
+		true,
+		"an unscoped search that found conversations",
+	);
+	const settings = searchPalette({
+		items: buildSettingKeyItems([
+			{
+				key: "general.theme",
+				label: "Settings theme",
+				section: "General",
+				help: "",
+			},
+			{
+				key: "general.language",
+				label: "Settings language",
+				section: "General",
+				help: "",
+			},
+		]),
+		raw: "settings",
+	});
+	assert.equal(
+		settings.sections.some((section) => section.group === "chats"),
+		false,
+		"no conversation in that answer",
+	);
+	assert.equal(sortAppliesTo(settings), false, "so no order is offered");
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#zzzz" })),
+		false,
+		"a query that found nothing offers no order",
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#" })),
+		false,
+		"a bare scope browses: the store's own order, no clock",
+	);
+});
+
+test("the selection falls back to the head when its row leaves the answer", () => {
+	/*
+	 * Agent review round 2 R2-4: the fall-back lived inline in the component and
+	 * no test reached it. It is the promise Enter makes after a re-sort or a
+	 * refetch takes the selected row off the drawn page.
+	 */
+	const rows = [
+		datedChat("a", "Robot a", 1, 0),
+		datedChat("b", "Robot b", 2, 1),
+		datedChat("c", "Robot c", 3, 2),
+	];
+	const outcome = searchPalette({ items: rows, raw: "#robot" });
+	const matches = outcome.sections[0].items;
+	assert.equal(selectionIndexOf(matches, null), 0, "nothing chosen yet");
+	assert.equal(
+		selectionIndexOf(matches, "chat-b"),
+		1,
+		"the row keeps its place",
+	);
+	assert.equal(
+		selectionIndexOf(matches, "chat-gone"),
+		0,
+		"a row the answer no longer holds selects the head",
 	);
 });
 
