@@ -209,7 +209,7 @@ export const TeamBridgeAlertCard: FC<TeamBridgeAlertCardProps> = ({
 							<Badge
 								key={`${label.key}=${label.value}`}
 								variant="neutral"
-								className="min-w-0 max-w-[12rem] py-0 leading-4"
+								className="min-w-0 max-w-[12rem] shrink py-0 leading-4"
 								title={`${label.key}: ${label.value}`}
 							>
 								<span className="truncate">
