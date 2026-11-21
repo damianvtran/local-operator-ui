@@ -419,13 +419,15 @@ const PATH_TAIL = String.raw`(?:${PATH_WORDS}[\\/])*(?:${PATH_WORDS}\.${DOC_EXT}
  * path (`open '/Users/jane/Q3 plan'`), and the quotes are the only reliable
  * boundary a spaced, extensionless name has. The quote must not touch a word
  * character on its outer side, so an apostrophe (`can't`, `it's`) never opens
- * or closes a span. An http(s) URL in quotes is left to the URL rule, which
- * keeps its origin.
+ * or closes a span. Use that same closing boundary inside the body: Node fs
+ * errors do not escape an internal apostrophe (`Client's Notes`), so rejecting
+ * every matching quote lets the unquoted fallback leak the rest of the path.
+ * An http(s) URL in quotes is left to the URL rule, which keeps its origin.
  */
 const QUOTED_PATH =
-	/(?<!\w)(['"`])(?!https?:\/\/)((?:(?!\1)[^\n])*?[\\/](?:(?!\1)[^\n])*?)\1(?!\w)/g;
+	/(?<!\w)(['"`])(?!https?:\/\/)((?:(?!\1(?!\w))[^\n])*?[\\/](?:(?!\1(?!\w))[^\n])*?)\1(?!\w)/g;
 const QUOTED_FILENAME = new RegExp(
-	String.raw`(?<!\w)(['"\x60])(?:(?!\1)[^\n])*?\.${DOC_EXT}\1(?!\w)`,
+	String.raw`(?<!\w)(['"\x60])(?:(?!\1(?!\w))[^\n])*?\.${DOC_EXT}\1(?!\w)`,
 	"gi",
 );
 const INLINE_RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [

@@ -256,6 +256,19 @@ test("exception paths with spaces are redacted whole, quoted or not", () => {
 		],
 		["open `~/Client Notes/Q3 plan` failed", "open `[redacted:path]` failed"],
 		[
+			"open '/nonexistent-privacy-review/Client's Notes/Q3 plan' failed",
+			"open '[redacted:path]' failed",
+		],
+		[
+			"open 'C:\\Client's Notes\\Q3 plan' failed",
+			"open '[redacted:path]' failed",
+		],
+		['open "/Client\'s Notes/Q3 plan" failed', 'open "[redacted:path]" failed'],
+		[
+			"could not attach 'Client's Board Minutes.pdf'",
+			"could not attach '[redacted:filename]'",
+		],
+		[
 			"failed to read /Users/jane/Client Notes/Acme Corp Contract.pdf: permission denied",
 			"failed to read [redacted:path]: permission denied",
 		],
@@ -273,10 +286,31 @@ test("exception paths with spaces are redacted whole, quoted or not", () => {
 			);
 		}
 	}
+	// Exercise the actual Node fs-error shape through the public before_send hook,
+	// not only hand-written messages: fs leaves internal apostrophes unescaped.
+	assert.throws(
+		() => readFileSync("/nonexistent-privacy-review/Client's Notes/Q3 plan"),
+		(error) => {
+			assert.equal(error.code, "ENOENT");
+			assert.ok(error.message.includes("Client's Notes/Q3 plan"));
+			const result = mod.scrubCaptureResult({
+				event: "$exception",
+				properties: {
+					$exception_list: [{ type: "Error", value: error.message }],
+				},
+			});
+			assert.equal(
+				result.properties.$exception_list[0].value,
+				"ENOENT: no such file or directory, open '[redacted:path]'",
+			);
+			return true;
+		},
+	);
 	// Ordinary sentences, apostrophes and a quoted URL's origin survive.
 	for (const sentence of [
 		"t.map is not a function",
 		"can't read properties of undefined (reading 'length')",
+		"Client's request failed (reading 'status')",
 		"Request failed with status code 503",
 	])
 		assert.equal(mod.scrubExceptionMessage(sentence), sentence);
