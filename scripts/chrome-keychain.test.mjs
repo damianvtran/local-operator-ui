@@ -566,6 +566,12 @@ const CHROME_LAUNCH_SITES = [
 		"runs the supplement mount's escape attempts - script execution, parent/top DOM, cookies, storage, bridge, navigation, popup, form, download, blob self-nav, clipboard, fullscreen, fetch/xhr/beacon/websocket/img/import/file - against the app's own sandbox from one private headless Chrome, its target server and profile its own and everything reaped by exact pid",
 	),
 	guarded(
+		"scripts/remote-compute-stopping-frames.mjs",
+		"spawn",
+		1,
+		"photographs and READS the run card's stopping window (design round 4, D15), the picker opened through the control's own door (QA round 4, Q-1) and an unknown token in the runs dialog (D17) - one private headless Chrome against with-storybook.mjs, its profile its own and killed on exit",
+	),
+	guarded(
 		"docs/evidence/library-tab/harness/measure-claims.mjs",
 		"spawn",
 		1,

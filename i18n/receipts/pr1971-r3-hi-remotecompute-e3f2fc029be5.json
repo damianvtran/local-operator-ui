@@ -1,0 +1,84 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "e3f2fc029be5",
+		"instance": "pr1971-r3-hi-remotecompute-e3f2fc029be5",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session wrote none of the strings it read. The translator was the PR's remediation coder (deepseek/deepseek-flash) in another session; this round corrected only the strings it rejected, listed under `corrections`.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r3-hi-remotecompute-e3f2fc029be5",
+	"locale": "hi",
+	"namespace": "ui.chat.remote_compute",
+	"date": "2026-11-18",
+	"head": "5a9e3fbe38cfd5ed497ffc2f0855f6bf20838e69",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"scope": "Round-3 delta audit of the three ui.chat.remote_compute keys this delta re-staled (row.network_remedy, row.sentence.network, sheet.network.not_enforced), against the English source, its context sidecars, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58, plus the shipped corpus in this locale for reused terms. The other 80 keys are unchanged bytes and were not re-read; regressions inside the delta were looked for directly.",
+	"status": "passed",
+	"result": "clean",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+		"english_sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+		"context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+		"context_sha256": "7111555c46586f33d402ab763b55e580586ddd4b70eee8f7bac555a88dea7fa2",
+		"target": "src/i18n/catalogues/hi/ui.chat.remote_compute.json",
+		"target_sha256": "66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/hi.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"style_guide_sha256": "82292dc8d13f"
+	},
+	"sha256": {
+		"en": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237",
+		"hi": "66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private, and none may say access is restricted by the network",
+		"sweep": "83 values scanned for अलग, सुरक्षित, निजी, खंडित, प्रतिबंधित, सीमित — 0 matches",
+		"result": "0 matches in all 83 values of the namespace"
+	},
+	"quoting_check": {
+		"rule": "the token's quoting must render as ONE pair of single quotes in every locale (UX round 2, U7)",
+		"engine": "intl-messageformat 12.1.3, `new IntlMessageFormat(source, locale)` with no options — the constructor src/i18n/messages.ts `formatterFor` uses",
+		"rendered": "both keys render `lop network join '<token>'` — one pair, no triple apostrophe, no ICU tag error",
+		"spans": "the two backticked runs render as [`lop network init`, `lop network join '<token>'`], byte-identical to English in every locale",
+		"evidence": "i18n/audits/evidence/pr1971-r3-icu-render.txt"
+	},
+	"subject_check": {
+		"rule": "sheet.network.not_enforced must name what is recorded (design round 2, D2), because it stands alone when no network is chosen (remote-compute-model.ts: note = chosen ? recorded : not_enforced)",
+		"result": "names its own subject — रन का नेटवर्क — so it reads as a claim about the binding, not about the user's pick"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.row.network_remedy",
+			"ui.chat.remote_compute.row.sentence.network",
+			"ui.chat.remote_compute.sheet.network.not_enforced"
+		],
+		"english_bytes": {
+			"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`.",
+			"ui.chat.remote_compute.row.sentence.network": "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`.",
+			"ui.chat.remote_compute.sheet.network.not_enforced": "A run's network is recorded, not enforced in this version."
+		},
+		"record": "i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r3-hi-remotecompute-e3f2fc029be5/delta-keys.json"
+	},
+	"corrections": [],
+	"findings": [
+		{
+			"severity": "INFO",
+			"key": "ui.chat.remote_compute.sheet.network.not_enforced",
+			"issue": "Repeats the habitual (दर्ज होता है … लागू नहीं होता) where the three siblings say “लागू नहीं”. Hindi carries the repetition naturally and the subject fix is what this key needed; the sibling form is shorter but supplies no subject, which is the defect D2 named."
+		}
+	],
+	"out_of_scope": {
+		"what": "ui.chat.device.sentence.pairing_guidance still carries the pre-U7 quoting: `lop network join '<token>'` in all eight catalogues",
+		"evidence": "the pairing sentence renders `lop network join <token>` with no quotes, while the Radient row now renders `lop network join '<token>'` — the same defect U7 fixed, in a sentence that paints through the same `messageRuns`",
+		"counted": false,
+		"why_not_fixed": "repairing it changes the English source and seven targets, so it re-stales the ui.chat.device ledger row for every locale and needs its own translation and audit round; an auditor that edited those strings could not then audit them",
+		"route": "deferred — one edit per catalogue ('' -> '''') plus a ui.chat.device audit round; not in this delta's key set"
+	},
+	"notes": "Counts are the residual findings on the corrected bytes. Severity INFO marks a verified observation that is not a defect, so it is not counted; NIT marks a real, un-churned deviation. The fr typography deviation was corrected in this round and is listed under corrections, not counted. Translator provenance stays the row's (coder / deepseek/deepseek-flash): this round retranslated nothing."
+}

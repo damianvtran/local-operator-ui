@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-fr-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-fr-382f3765de49",
+  "locale": "fr",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in fr: glossary, the fr style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/fr/ui.chat.remote_compute.json",
+    "target_sha256": "53585481adc4816ea30c7ee449d22d6daea5757ffeec689cd5fca08fa9a24d22",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/fr.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "fr": "53585481adc4816ea30c7ee449d22d6daea5757ffeec689cd5fca08fa9a24d22"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.label",
+      "from": "Invite",
+      "to": "Prompt",
+      "reason": "prompt is on the fr guide's kept-English list and the shipped corpus uses it 30 times"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.prompt.empty",
+      "from": "Le composeur est vide ; une exécution a besoin d'une invite.",
+      "to": "La zone de saisie est vide ; une exécution a besoin d'un prompt.",
+      "reason": "prompt kept English; composer rendered with the corpus's own 'zone de saisie' (0 attestations for 'composeur')"
+    },
+    {
+      "key": "ui.chat.remote_compute.sheet.submit.why_prompt",
+      "from": "Saisissez d'abord une invite dans le composeur.",
+      "to": "Saisissez d'abord un prompt dans la zone de saisie.",
+      "reason": "same two calls"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.sign_in",
+      "from": "Radient : connectez-vous pour exécuter l'invite de cette conversation sur une capacité louée. Sélectionner cette ligne lance la connexion.",
+      "to": "Radient : connectez-vous pour exécuter le prompt de cette conversation sur une capacité louée. Sélectionner cette ligne lance la connexion.",
+      "reason": "prompt kept English"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch",
+      "from": "Pousser cette branche",
+      "to": "Faire un push de cette branche",
+      "reason": "push is on the fr guide's kept-English list (corpus: 'avez fait un push', 'Push automatique')"
+    },
+    {
+      "key": "ui.chat.remote_compute.remedy.push_branch_help",
+      "from": "L'exécution démarrerait sur un commit absent de tout dépôt distant. Poussez la branche, puis relancez l'exécution.",
+      "to": "L'exécution démarrerait sur un commit absent de tout dépôt distant. Faites un push de la branche, puis relancez l'exécution.",
+      "reason": "push kept English"
+    },
+    {
+      "key": "(22 keys)",
+      "from": "ASCII ' and plain space before : ;",
+      "to": "’ (U+2019) and espace fine insécable (U+202F)",
+      "reason": "fr guide 'Punctuation & typography': apostrophe ’ not '; U+202F required before : ; ! ? — corpus uses U+2019 3793x and U+202F 1410x; code spans left byte-identical"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.binding",
+        "issue": "'non appliquée' leaves the enforced object implicit and could be read as 'not yet applied'; kept because 'appliquer' is the standard verb for enforcing a rule and the sheet sentence carries the full claim."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.charged",
+        "issue": "'facturé' reads as invoiced rather than debited; no attested money verb for this family exists in the fr corpus, so it is recorded rather than churned."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}

@@ -1,0 +1,19 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "vi",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "A run's network is recorded, not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: không có mạng nào để gắn một lần chạy. Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Mạng của lần chạy được ghi lại, nhưng không được áp dụng trong phiên bản này."
+	},
+	"counts": {
+		"keys": 3,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}
