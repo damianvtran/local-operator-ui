@@ -54,11 +54,13 @@ import {
 	type PaletteMatch,
 	SCOPE_LEGEND,
 	WORD_ONLY_SCOPES,
+	paletteAgeLabel,
 	paletteEmptyStateCopy,
 	searchPalette,
 } from "../palette-search";
 import {
 	paletteReachableStepCaps,
+	paletteSortIntent,
 	paletteStepIndex,
 	paletteStepIntent,
 } from "../palette-shortcut";
@@ -195,6 +197,10 @@ export const CommandPalette: FC = () => {
 	const setCommandPaletteQuery = useUiPreferencesStore(
 		(state) => state.setCommandPaletteQuery,
 	);
+	/* The palette's row order and its setter: read here, toggled by `ctrl s`
+	 * inside the palette, persisted by the store. */
+	const paletteSort = useUiPreferencesStore((state) => state.paletteSort);
+	const setPaletteSort = useUiPreferencesStore((state) => state.setPaletteSort);
 	const isCanvasOpen = useUiPreferencesStore((state) => state.isCanvasOpen);
 	const setCanvasOpen = useUiPreferencesStore((state) => state.setCanvasOpen);
 	const isCreateAgentDialogOpen = useUiPreferencesStore(
@@ -209,7 +215,31 @@ export const CommandPalette: FC = () => {
 	const clearConversationMutation = useClearAgentConversation();
 
 	const [localQuery, setLocalQuery] = useState(commandPaletteQuery);
-	const [selectedIndex, setSelectedIndex] = useState(0);
+	/*
+	 * THE SELECTION IS THE ROW'S ID, not an index into the array the last render
+	 * produced. Rows re-sort under the reader for reasons that are not theirs: a
+	 * catalogue refetch, a `ctrl s` order swap, a page turn. An index would point
+	 * at a DIFFERENT row after any of those and Enter would run the wrong one; the
+	 * id keeps the selection on the row it was on, which is the promise the list
+	 * makes. `null` means "nothing chosen yet" — the first row, which is what a
+	 * fresh query means.
+	 */
+	const [selectedId, setSelectedId] = useState<string | null>(null);
+	/*
+	 * The scoped list's page, and what a page change should select once the new
+	 * rows exist: the row the reader was reaching for is the FIRST row of the next
+	 * page (paging down) or the LAST of the previous one (paging up). A page is
+	 * reset whenever the question changes — a new query or a different order is a
+	 * new list, and holding page 3 across it would open on its tail.
+	 */
+	const [page, setPage] = useState(0);
+	const [pendingEdge, setPendingEdge] = useState<"first" | "last" | null>(null);
+	/*
+	 * The clock the age column reads. One tick a minute while the palette is open,
+	 * so a row that read `now` becomes `1m` without a keystroke — the ages are
+	 * relative to the moment of reading, not to the moment the palette opened.
+	 */
+	const [nowMs, setNowMs] = useState(() => Date.now());
 	/*
 	 * Whether the LIST overflows its viewport — a different question from whether
 	 * the RESULT was capped, and the reason the fold's fade is measured rather
@@ -269,8 +299,10 @@ export const CommandPalette: FC = () => {
 				raw: deferredQuery,
 				bridgeScope,
 				chatsAwaiting: chats.awaiting,
+				sort: paletteSort,
+				page,
 			}),
-		[items, deferredQuery, bridgeScope, chats.awaiting],
+		[items, deferredQuery, bridgeScope, chats.awaiting, paletteSort, page],
 	);
 
 	/*
@@ -283,6 +315,15 @@ export const CommandPalette: FC = () => {
 		[outcome],
 	);
 	const matchCount = matches.length;
+	/* The index the walk, the scroll and Enter read, DERIVED from the id. A row
+	 * that left the list (a filter change, a deletion, the other order hiding it)
+	 * falls back to the head, which is the nearest thing to "where I was" the list
+	 * still has. */
+	const selectedIndex = useMemo(() => {
+		if (selectedId === null) return 0;
+		const at = matches.findIndex((match) => match.item.id === selectedId);
+		return at >= 0 ? at : 0;
+	}, [matches, selectedId]);
 
 	const activeMatch = matches[selectedIndex];
 	const hasTerms = outcome.terms.length > 0;
@@ -294,6 +335,8 @@ export const CommandPalette: FC = () => {
 	 * under it both read the same table the parser does, so a scope cannot
 	 * describe itself one way in the legend and another in the field.
 	 */
+	/* The palette's order is not the default, so the field's chip says so. */
+	const sortIsRecent = paletteSort === "recent";
 	const scopeLegend =
 		outcome.scope === null
 			? null
@@ -677,7 +720,7 @@ export const CommandPalette: FC = () => {
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers, not values the body reads
 	useEffect(() => {
-		setSelectedIndex(0);
+		setSelectedId(null);
 	}, [deferredQuery, isCommandPaletteOpen]);
 
 	/*
@@ -718,15 +761,32 @@ export const CommandPalette: FC = () => {
 	}, []);
 
 	/*
-	 * Keep the index inside the list. The list can shrink without the query
-	 * changing — a chat is deleted, a chat-only action disappears when the route
-	 * changes — and an index past the end selects nothing at all.
+	 * A page change lands the selection on the edge the reader was walking to,
+	 * once the new page's rows exist. Not inside the key handler, because the rows
+	 * it is selecting from are the ones the next render produces.
 	 */
 	useEffect(() => {
-		setSelectedIndex((current) =>
-			current >= matchCount ? Math.max(matchCount - 1, 0) : current,
-		);
-	}, [matchCount]);
+		if (pendingEdge === null) return;
+		const edge =
+			pendingEdge === "first"
+				? matches[0]
+				: matches[Math.max(matchCount - 1, 0)];
+		setSelectedId(edge?.item.id ?? null);
+		setPendingEdge(null);
+	}, [pendingEdge, matches, matchCount]);
+
+	/* A new question is a new list: the page it was on means nothing to it. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers, not values the body reads — the same shape as the selection reset above
+	useEffect(() => {
+		setPage(0);
+	}, [deferredQuery, paletteSort]);
+
+	useEffect(() => {
+		if (!isCommandPaletteOpen) return;
+		setNowMs(Date.now());
+		const tick = setInterval(() => setNowMs(Date.now()), 60_000);
+		return () => clearInterval(tick);
+	}, [isCommandPaletteOpen]);
 
 	/* ------------------------------------------------------------- keyboard */
 
@@ -763,10 +823,45 @@ export const CommandPalette: FC = () => {
 			 */
 			const count = matches.length;
 			const step = paletteStepIntent(event);
-			if (step !== null) {
+			if (paletteSortIntent(event)) {
+				/*
+				 * `ctrl s` swaps the order under the same query, so the reader keeps
+				 * their place by ROW rather than by index: the selection follows the id
+				 * it was on (`selectedId`), and a row the other order no longer shows
+				 * leaves the list starting from its head.
+				 */
 				event.preventDefault();
-				setSelectedIndex(
-					(current) => paletteStepIndex(current, count, step) ?? current,
+				setSelectedId(matches[selectedIndex]?.item.id ?? null);
+				setPaletteSort(paletteSort === "recent" ? "best" : "recent");
+			} else if (step !== null) {
+				event.preventDefault();
+				/*
+				 * The walk's ENDS are the pager, in a scoped list. Down on the last row
+				 * of page 1 reaches the first row of page 2 (the next 24 answers to the
+				 * same question) instead of wrapping to the top; Up on the first row
+				 * goes back a page. Unscoped lists have no pages (`more` is false by
+				 * construction), so their ends wrap exactly as before — the wrap is the
+				 * behaviour every walk of this list has had, and a reader with no page
+				 * to reach must not lose it.
+				 */
+				if (step === "next" && count > 0 && selectedIndex >= count - 1) {
+					if (outcome.more) {
+						setPendingEdge("first");
+						setPage(outcome.page + 1);
+						return;
+					}
+				} else if (
+					step === "previous" &&
+					selectedIndex <= 0 &&
+					outcome.page > 0
+				) {
+					setPendingEdge("last");
+					setPage(outcome.page - 1);
+					return;
+				}
+				setSelectedId(
+					matches[paletteStepIndex(selectedIndex, count, step) ?? selectedIndex]
+						?.item.id ?? null,
 				);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
@@ -792,6 +887,10 @@ export const CommandPalette: FC = () => {
 		isCreateAgentDialogOpen,
 		matches,
 		selectedIndex,
+		paletteSort,
+		setPaletteSort,
+		outcome.more,
+		outcome.page,
 		runItem,
 		closeCommandPalette,
 	]);
@@ -966,15 +1065,36 @@ export const CommandPalette: FC = () => {
 							 * legend already share — `gap-0` for the same reason the legend uses
 							 * it: these are typed prefixes, and the glyph reads as the head of
 							 * its own token rather than as stray punctuation.
+							 *
+							 * THE ORDER RIDES IN THE SAME CHIP when it is not the default, so a
+							 * reader sees `# Chats · Most recent` and knows the list below is
+							 * ordered rather than ranked. The default needs no word: "best match"
+							 * is what a palette does, and a chip restating a default is noise on
+							 * every open.
 							 */
 							<span className="flex shrink-0 items-center gap-0 text-ink-dim text-meta">
 								<KeyboardShortcut shortcut={scopeLegend.glyph} />
 								{scopeLegend.label}
+								{sortIsRecent && <SortChipSuffix />}
 							</span>
 						)}
 						{wordScope && (
 							<span className="flex shrink-0 items-center text-ink-dim text-meta">
 								{wordScope.label}
+								{sortIsRecent && <SortChipSuffix />}
+							</span>
+						)}
+						{/*
+						 * No scope at all, but a chosen order: the chip still has to say
+						 * WHICH rows the order applies to, because in the unscoped list it is
+						 * the conversations that have a clock. That is the same sentence the
+						 * scoped chip spells with its section name.
+						 */}
+						{sortIsRecent && !scopeLegend && !wordScope && (
+							<span className="flex shrink-0 items-center gap-1 text-ink-dim text-meta">
+								{PALETTE_SECTION_TITLES.chats}
+								<span aria-hidden="true">·</span>
+								{t("ui.chat.sidebar_view.most_recent")}
 							</span>
 						)}
 						{localQuery && (
@@ -1046,9 +1166,8 @@ export const CommandPalette: FC = () => {
 													key={match.item.id}
 													match={match}
 													isActive={match.item.id === activeItem?.id}
-													onHover={() =>
-														setSelectedIndex(matches.indexOf(match))
-													}
+													now={nowMs}
+													onHover={() => setSelectedId(match.item.id)}
 													onRun={() => runItem(match.item)}
 												/>
 											))}
@@ -1182,6 +1301,23 @@ export const CommandPalette: FC = () => {
 									<KeyboardShortcut shortcut="↵" />
 									{t("ui.command_palette.command_palette.to_run")}
 								</span>
+								{/*
+								 * The order toggle, taught where the other keys are taught. It is
+								 * a search-state key (`hasTerms`): the browse list is the store's
+								 * own newest-first order and has no ranking to swap, so the same
+								 * press would change nothing on screen.
+								 *
+								 * The verb is the one word every surface already uses for this
+								 * action (`ui.library.page.sort`), reused rather than re-spelled:
+								 * a second word for "sort" beside the library's would be the same
+								 * action described twice.
+								 */}
+								{hasTerms && (
+									<span className="flex items-center gap-1.5">
+										<KeyboardShortcut shortcut="Ctrl+S" />
+										{t("ui.library.page.sort")}
+									</span>
+								)}
 								<span className="flex items-center gap-1.5">
 									{outcome.clipped && (
 										/*
@@ -1194,7 +1330,10 @@ export const CommandPalette: FC = () => {
 										 * the noun; the browse count states the rows it dropped.
 										 */
 										<span>
-											{hasTerms
+											{/* A PAGED list is not "the best N": the reader has already
+											 * walked past the rows above this window, so the count says
+											 * how many are on screen rather than repeating the claim. */}
+											{hasTerms && outcome.page === 0
 												? t("ui.command_palette.matches.best", {
 														countText: String(matchCount),
 														total: outcome.total,
@@ -1248,12 +1387,22 @@ export const CommandPalette: FC = () => {
  * stationary pointer as the user walks it with the arrows — and a row that
  * selected itself on the way past would fight the keyboard.
  */
+/** The `· Most recent` half of the field's chip, when the order is not the default. */
+const SortChipSuffix: FC = () => (
+	<span className="flex items-center gap-1">
+		<span aria-hidden="true">·</span>
+		{t("ui.chat.sidebar_view.most_recent")}
+	</span>
+);
+
 const PaletteRow: FC<{
 	match: PaletteMatch;
 	isActive: boolean;
+	/** The reading clock the age column measures against; see `nowMs` above. */
+	now: number;
 	onHover: () => void;
 	onRun: () => void;
-}> = ({ match, isActive, onHover, onRun }) => {
+}> = ({ match, isActive, now, onHover, onRun }) => {
 	const { item, soft } = match;
 	const verb = item.verb ?? KIND_VERBS[item.kind];
 	return (
@@ -1330,6 +1479,24 @@ const PaletteRow: FC<{
 				</span>
 			)}
 			{!item.hint && <span className="flex-1" />}
+			{/*
+			 * WHEN THE CONVERSATION LAST MOVED, on every chat row — the fact the
+			 * ranking's second key reads, drawn so the order is legible rather than
+			 * merely obeyed: a reader who sees `2h` above `3d` has the reason on screen.
+			 * A fixed width, right-aligned and tabular, so the column is a column: `Mar 4`
+			 * and `5m` are different lengths in the same slot, and the titles beside them
+			 * do not shift between rows. One `text-meta` line inside the row's own `h-9`,
+			 * so no row grows.
+			 *
+			 * It sits AFTER the binding hint and BEFORE the unread badge, so the mark the
+			 * rail also draws keeps the trailing edge of the row's qualifiers and the age
+			 * stays next to the tag it dates.
+			 */}
+			{item.updatedAt !== undefined && (
+				<span className="w-12 shrink-0 whitespace-nowrap text-right text-ink-dim text-meta tabular-nums">
+					{paletteAgeLabel(item.updatedAt, now)}
+				</span>
+			)}
 			{/*
 			 * The rail's unread mark, on Team Bridge rows only (the only rows that
 			 * carry `attention`), and in the rail's own register: the shared
