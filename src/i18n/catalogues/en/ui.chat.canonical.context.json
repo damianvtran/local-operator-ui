@@ -3825,5 +3825,341 @@
 		"length": "One word; a section label.",
 		"note": "Names the block of text the tool returned (the block itself is shown verbatim, untranslated). Same slot as 'Error' and 'Interrupted'; only one of the three is ever shown.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.status.preparing": {
+		"role": "muted loading line under an answer while its highlights block is being generated",
+		"tone": "plain progress statement, sentence case, keeps the trailing ellipsis",
+		"length": "One short line.",
+		"note": "'Highlights' is the product's name for the generated summary block (graphics and pinned files) shown under an answer; translate it the way the rest of the supplement copy does.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.status.cancelled": {
+		"role": "muted line under an answer whose highlights generation was cancelled; a Retry button follows it",
+		"tone": "plain statement, sentence case, no trailing punctuation",
+		"length": "One short line.",
+		"note": "'Highlights' is the product's name for the generated summary block (graphics and pinned files) shown under an answer; translate it the way the rest of the supplement copy does.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.status.failed": {
+		"role": "line under an answer whose highlights generation failed; a cause phrase and a Retry button may follow it",
+		"tone": "plain statement, sentence case, no trailing punctuation, no apology",
+		"length": "One short line.",
+		"note": "'Highlights' is the product's name for the generated summary block (graphics and pinned files) shown under an answer; translate it the way the rest of the supplement copy does.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.actions.adjust": {
+		"role": "button beside a running highlights job that opens a box to steer what the graphic should show",
+		"tone": "imperative verb, sentence case, keeps the ellipsis because it opens an input",
+		"length": "One word.",
+		"note": "Paired with a Cancel button on the same row.",
+		"maxCells": 12,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_quota": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_auth": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_transient": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_timeout": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_request": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_content": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.cause.provider_context": {
+		"role": "muted cause phrase after the failed highlights line",
+		"tone": "lower case noun phrase, no trailing punctuation",
+		"length": "A few words.",
+		"note": "One muted phrase appended after the failed line ('Couldn't prepare highlights · <phrase>'). Lower case because it continues the line; it names the wall a retry would meet. Keep it a short noun phrase, not a sentence. 'provider' means the AI model provider.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.explanation.model_unavailable": {
+		"role": "explanation in a failed highlights row's details panel: the provider refused access to the model that generates highlights",
+		"tone": "calm, plain full sentences",
+		"length": "Two short sentences.",
+		"note": "Shown when the operator opens the failed highlights row's Details. Every variant reassures that the answer and files were not changed; keep that reassurance.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.explanation.service_unresponsive": {
+		"role": "explanation in a failed highlights row's details panel: the provider service did not answer",
+		"tone": "calm, plain full sentences",
+		"length": "Two short sentences.",
+		"note": "Shown when the operator opens the failed highlights row's Details. Every variant reassures that the answer and files were not changed; keep that reassurance.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.explanation.cost_limit": {
+		"role": "explanation in a failed highlights row's details panel: generation hit the spending cap, or the model's price is unknown",
+		"tone": "calm, plain full sentences",
+		"length": "Two short sentences.",
+		"note": "Shown when the operator opens the failed highlights row's Details. Every variant reassures that the answer and files were not changed; keep that reassurance.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.explanation.time_limit": {
+		"role": "explanation in a failed highlights row's details panel: generation ran out of its time budget",
+		"tone": "calm, plain full sentences",
+		"length": "Two short sentences.",
+		"note": "Shown when the operator opens the failed highlights row's Details. Every variant reassures that the answer and files were not changed; keep that reassurance.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.explanation.retryable": {
+		"role": "explanation in a failed highlights row's details panel: any other failure; the Retry button is on the same row",
+		"tone": "calm, plain full sentences",
+		"length": "Two short sentences.",
+		"note": "Shown when the operator opens the failed highlights row's Details. Every variant reassures that the answer and files were not changed; keep that reassurance.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.details.attempt": {
+		"role": "one diagnostic line per generation attempt in a failed highlights row's details panel",
+		"tone": "terse diagnostic, sentence case",
+		"length": "One short line.",
+		"note": "Listed under 'Attempts:'. {kind} is a technical token kept in English.",
+		"placeholders": {
+			"attempt": "1-based attempt number, already a plain integer string",
+			"kind": "the provider's failure kind as a short lower-case wire token (quota, transient, timeout…); deliberate English identifier, shown verbatim, never translated"
+		}
+	},
+	"ui.chat.canonical.supplement.details.attempt_http": {
+		"role": "one diagnostic line per generation attempt that carried an HTTP status, in a failed highlights row's details panel",
+		"tone": "terse diagnostic, sentence case",
+		"length": "One short line.",
+		"note": "Same line as details.attempt with the HTTP status appended. 'HTTP' is a protocol name and stays as is.",
+		"placeholders": {
+			"attempt": "1-based attempt number, already a plain integer string",
+			"kind": "the provider's failure kind as a short lower-case wire token (quota, transient, timeout…); deliberate English identifier, shown verbatim, never translated",
+			"status": "HTTP status code digits, e.g. 503"
+		}
+	},
+	"ui.chat.canonical.supplement.more_files": {
+		"role": "disclosure button under a highlights block's file list that reveals the remaining files",
+		"tone": "terse count, no trailing punctuation",
+		"length": "Short; one line.",
+		"note": "Reads '3 more files'.",
+		"placeholders": {
+			"count": "number of files not yet listed; CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.supplement.graphics.show_all": {
+		"role": "button under a highlights block that reveals every remaining graphic past the loading budget",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; one line.",
+		"note": "'graphic' means a generated chart or diagram. Singular arm reads 'Show all 1 graphic'.",
+		"placeholders": {
+			"count": "number of graphics behind the button; CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.supplement.graphics.show": {
+		"role": "toggle that expands a collapsed highlights graphics group",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; one line.",
+		"note": "Counterpart of graphics.hide.",
+		"placeholders": {
+			"count": "number of graphics in the group; CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.supplement.graphics.show_head": {
+		"role": "toggle that expands a collapsed highlights graphics group when only the first few will load",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; one line.",
+		"note": "Reads 'Show 1 of 3 graphics': it promises only the first {head}, not the rest.",
+		"placeholders": {
+			"count": "total graphics in the group; CLDR plural selector",
+			"head": "how many graphics the toggle will show, always fewer than count"
+		}
+	},
+	"ui.chat.canonical.supplement.graphics.hide": {
+		"role": "toggle that collapses an expanded highlights graphics group",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; one line.",
+		"note": "Counterpart of graphics.show.",
+		"placeholders": {
+			"count": "number of graphics being hidden; CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.tool_row.detail.deeper_values": {
+		"role": "marker in the expanded tool-call detail where a deeply nested argument was cut off",
+		"tone": "terse, mirrors the terminal's overflow marker; keep the leading ellipsis",
+		"length": "Short; one line.",
+		"note": "Stands in for the leaves of a nested value past the display depth limit.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail.more_lines": {
+		"role": "marker under a capped section of the expanded tool-call detail saying how many lines are not shown",
+		"tone": "terse, mirrors the terminal's overflow marker; keep the leading ellipsis",
+		"length": "Short; one line.",
+		"note": "Reads '… 27 more lines'. Zero uses the plural arm in English ('… 0 more lines').",
+		"placeholders": {
+			"count": "number of rows hidden below the cap; CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.segment.label.wake": {
+		"role": "label of a condensed transcript section that a scheduled wake or a monitor prompt started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.peer": {
+		"role": "label of a condensed transcript section that a message from another agent session started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.job": {
+		"role": "label of a condensed transcript section that a background job's result started",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "A condensed section bar's label, painted before its counts (e.g. 'Wake · 8 actions · 20m'). Other clients may spell it their own way; what must match is which label a section earns, not the word.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.label.ask": {
+		"role": "label of a condensed transcript section holding the agent's own questions to the user and their answers",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Same bar slot as 'Wake' and 'Peer message'. 'Ask' names the product's question-to-the-user feature; a noun here, not an imperative.",
+		"maxCells": 18,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.peer": {
+		"role": "label of a bar grouping consecutive messages from other agent sessions",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.wake": {
+		"role": "label of a bar grouping consecutive scheduled-wake messages",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.monitor": {
+		"role": "label of a bar grouping consecutive monitor prompts (change reports from a watcher)",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.job": {
+		"role": "label of a bar grouping consecutive background-job results",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.segment.group.mixed": {
+		"role": "label of a bar grouping consecutive incoming messages of mixed kinds",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "One or two words.",
+		"note": "Label of a bar standing for a run of several consecutive incoming messages of one kind, followed by a bare count and a time span (e.g. 'Peer messages · 12 · 2h 14m'). Plural noun phrase; the count is not part of this string.",
+		"maxCells": 22,
+		"placeholders": {}
+	},
+	"ui.chat.canonical.turn_summary.actions_at_least": {
+		"role": "tooltip and accessible name of a condensed bar's action count when earlier rows of the turn are not loaded yet (the bar shows e.g. '2+ actions')",
+		"tone": "plain factual statement, sentence case, no trailing period",
+		"length": "One sentence.",
+		"note": "'At least' is the point: the true total may be higher. Keep the em dash clause or rephrase it naturally; the count is the number of tool calls counted so far.",
+		"placeholders": {
+			"count": "number of actions counted in the loaded rows, a whole number"
+		}
+	},
+	"ui.chat.canonical.turn_summary.messages_at_least": {
+		"role": "tooltip and accessible name of a grouped-messages bar's count when earlier rows are not loaded yet",
+		"tone": "plain factual statement, sentence case, no trailing period",
+		"length": "One sentence.",
+		"note": "'At least' is the point: the true number of messages may be higher.",
+		"placeholders": {
+			"count": "number of incoming messages counted in the loaded rows, a whole number"
+		}
+	},
+	"ui.chat.canonical.condense.turn_condensed": {
+		"role": "screen-reader announcement lead when a finished turn's work collapses into a summary bar; also the bar's copied text",
+		"tone": "plain past-tense statement, sentence case",
+		"length": "Two or three words.",
+		"note": "Never painted. Fills {lead} in the condense sentence when the bar has no label of its own.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.condense.at_least": {
+		"role": "wrapper marking a spoken count as a minimum in the condense announcement",
+		"tone": "lower case, mid-sentence",
+		"length": "A few words.",
+		"note": "Never painted; screen-reader text. Used when earlier rows are not loaded, so the count is a lower bound.",
+		"placeholders": {
+			"stated": "an already-localized count phrase such as '2 actions' or a bare number such as '2'"
+		}
+	},
+	"ui.chat.canonical.condense.sentence": {
+		"role": "screen-reader announcement when a turn's work collapses into a summary bar, and that bar's copied text",
+		"tone": "terse, one sentence",
+		"length": "One sentence.",
+		"note": "Never painted. Adjust colon spacing and the final stop to the language's punctuation rules.",
+		"placeholders": {
+			"lead": "the bar's localized label (e.g. 'Wake') or 'Turn condensed'",
+			"parts": "comma-separated, already-localized clauses such as 'took 3s, 1 action'"
+		}
+	},
+	"ui.chat.canonical.condense.sentence_bare": {
+		"role": "screen-reader announcement when a turn collapses into a summary bar that has no counts to state",
+		"tone": "terse",
+		"length": "One short sentence.",
+		"note": "Never painted. Only adds the language's sentence-final punctuation.",
+		"placeholders": {
+			"lead": "the bar's localized label or 'Turn condensed'"
+		}
+	},
+	"ui.chat.canonical.checkpoint_jump.miss": {
+		"role": "info toast when the user clicks a turn marker or search result that is older than the loaded transcript",
+		"tone": "calm, explanatory, no apology, ends with what to do",
+		"length": "Two short sentences.",
+		"note": "The reader's own action (scrolling up loads older history) is the fix; keep that instruction. 'Turn' is the word the cards and tick labels use for one exchange.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail.empty": {
+		"role": "single line in a tool call's detail pane when the tool's structured result held no values",
+		"tone": "terse marker in parentheses",
+		"length": "One word.",
+		"note": "Shown in place of an empty object or list. Keep the parentheses or the language's equivalent marker for 'nothing here'.",
+		"maxCells": 12,
+		"placeholders": {}
 	}
 }

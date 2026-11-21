@@ -381,5 +381,14 @@
 	"ui.canvas.files.remoteReadOnly": "{device} से · केवल पढ़ने के लिए",
 	"ui.canvas.files.remoteTooLargeToOpen": "{device} से खोलने के लिए बहुत बड़ी है। इसके बजाय इसे इस डिवाइस पर डाउनलोड करें।",
 	"ui.canvas.files.remotePeerUpdateHow": "इस डिवाइस पर lop network update {device} चलाएँ, या {device} पर Local Operator अपडेट करें, फिर से कोशिश करें।",
-	"ui.canvas.files.remotePlay": "{device} से चलाएँ"
+	"ui.canvas.files.remotePlay": "{device} से चलाएँ",
+	"ui.canvas.files.remoteUnsupported": "रिमोट फ़ाइलें इस डिवाइस पर नहीं खोली जा सकतीं।",
+	"ui.canvas.artifact.fallback_name.video": "वीडियो {digest}",
+	"ui.canvas.artifact.fallback_name.image": "तस्वीर {digest}",
+	"ui.canvas.artifact.fallback_name.audio": "ऑडियो {digest}",
+	"ui.canvas.artifact.fallback_name.file": "फ़ाइल {digest}",
+	"ui.canvas.artifact.cue.file": "इस सत्र में सहेजी गई फ़ाइल",
+	"ui.canvas.artifact.cue.image": "बनाई गई तस्वीर, इस सत्र में सहेजी गई",
+	"ui.canvas.artifact.cue.video": "बनाया गया वीडियो, इस सत्र में सहेजा गया",
+	"ui.canvas.artifact.cue.audio": "बनाया गया ऑडियो, इस सत्र में सहेजा गया"
 }

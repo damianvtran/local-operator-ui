@@ -4323,6 +4323,14 @@ export type MessageParams = {
 	"ui.browser.media_permission.message": { devices: string; site: string };
 	"ui.browser.media_permission.system_blocked": { devices: string };
 	"ui.browser.media_permission.system_blocked_hint": undefined;
+	"ui.canvas.artifact.cue.audio": undefined;
+	"ui.canvas.artifact.cue.file": undefined;
+	"ui.canvas.artifact.cue.image": undefined;
+	"ui.canvas.artifact.cue.video": undefined;
+	"ui.canvas.artifact.fallback_name.audio": { digest: string };
+	"ui.canvas.artifact.fallback_name.file": { digest: string };
+	"ui.canvas.artifact.fallback_name.image": { digest: string };
+	"ui.canvas.artifact.fallback_name.video": { digest: string };
 	"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op": {
 		title: string;
 	};
@@ -4486,6 +4494,7 @@ export type MessageParams = {
 	"ui.canvas.files.remoteTooLargeToOpen": { device: string };
 	"ui.canvas.files.remoteUnreachable": { device: string };
 	"ui.canvas.files.remoteUnreachableUnnamed": undefined;
+	"ui.canvas.files.remoteUnsupported": undefined;
 	"ui.canvas.files.reset": undefined;
 	"ui.canvas.files.retry": undefined;
 	"ui.canvas.files.saveError": undefined;
@@ -5036,7 +5045,12 @@ export type MessageParams = {
 	"ui.chat.bridgeReceipt.unavailable_reason.offline": undefined;
 	"ui.chat.bridgeReceipt.unavailable_reason.other_account": undefined;
 	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": undefined;
+	"ui.chat.canonical.checkpoint_jump.miss": undefined;
 	"ui.chat.canonical.checkpoint_rail.label": undefined;
+	"ui.chat.canonical.condense.at_least": { stated: string };
+	"ui.chat.canonical.condense.sentence": { lead: string; parts: string };
+	"ui.chat.canonical.condense.sentence_bare": { lead: string };
+	"ui.chat.canonical.condense.turn_condensed": undefined;
 	"ui.chat.canonical.fold.bridge.one": undefined;
 	"ui.chat.canonical.fold.bridge.other": undefined;
 	"ui.chat.canonical.fold.bridge_post.one": undefined;
@@ -5187,6 +5201,15 @@ export type MessageParams = {
 	"ui.chat.canonical.security_notice.aria": undefined;
 	"ui.chat.canonical.security_notice.blocked": undefined;
 	"ui.chat.canonical.security_notice.show_code": undefined;
+	"ui.chat.canonical.segment.group.job": undefined;
+	"ui.chat.canonical.segment.group.mixed": undefined;
+	"ui.chat.canonical.segment.group.monitor": undefined;
+	"ui.chat.canonical.segment.group.peer": undefined;
+	"ui.chat.canonical.segment.group.wake": undefined;
+	"ui.chat.canonical.segment.label.ask": undefined;
+	"ui.chat.canonical.segment.label.job": undefined;
+	"ui.chat.canonical.segment.label.peer": undefined;
+	"ui.chat.canonical.segment.label.wake": undefined;
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
@@ -5230,20 +5253,53 @@ export type MessageParams = {
 	"ui.chat.canonical.sound.stop.question": undefined;
 	"ui.chat.canonical.sound.stop.request_stop": undefined;
 	"ui.chat.canonical.sound.stop.warning": undefined;
+	"ui.chat.canonical.supplement.actions.adjust": undefined;
 	"ui.chat.canonical.supplement.adjust_placeholder": undefined;
+	"ui.chat.canonical.supplement.cause.provider_auth": undefined;
+	"ui.chat.canonical.supplement.cause.provider_content": undefined;
+	"ui.chat.canonical.supplement.cause.provider_context": undefined;
+	"ui.chat.canonical.supplement.cause.provider_quota": undefined;
+	"ui.chat.canonical.supplement.cause.provider_request": undefined;
+	"ui.chat.canonical.supplement.cause.provider_timeout": undefined;
+	"ui.chat.canonical.supplement.cause.provider_transient": undefined;
+	"ui.chat.canonical.supplement.details.attempt": {
+		attempt: string;
+		kind: string;
+	};
+	"ui.chat.canonical.supplement.details.attempt_http": {
+		attempt: string;
+		kind: string;
+		status: string;
+	};
 	"ui.chat.canonical.supplement.details.attempts": { count: number };
 	"ui.chat.canonical.supplement.details.model": { name: string };
 	"ui.chat.canonical.supplement.details.summary": undefined;
+	"ui.chat.canonical.supplement.explanation.cost_limit": undefined;
+	"ui.chat.canonical.supplement.explanation.model_unavailable": undefined;
+	"ui.chat.canonical.supplement.explanation.retryable": undefined;
+	"ui.chat.canonical.supplement.explanation.service_unresponsive": undefined;
+	"ui.chat.canonical.supplement.explanation.time_limit": undefined;
 	"ui.chat.canonical.supplement.file_actions.open_in_canvas": undefined;
 	"ui.chat.canonical.supplement.file_actions.open_in_default_app": undefined;
 	"ui.chat.canonical.supplement.file_actions.reveal_in_finder": undefined;
 	"ui.chat.canonical.supplement.frame.failed": undefined;
 	"ui.chat.canonical.supplement.frame.loading": undefined;
 	"ui.chat.canonical.supplement.frame.source": { name: string };
+	"ui.chat.canonical.supplement.graphics.hide": { count: number };
+	"ui.chat.canonical.supplement.graphics.show": { count: number };
+	"ui.chat.canonical.supplement.graphics.show_all": { count: number };
+	"ui.chat.canonical.supplement.graphics.show_head": {
+		count: number;
+		head: number;
+	};
+	"ui.chat.canonical.supplement.more_files": { count: number };
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
 	"ui.chat.canonical.supplement.show_fewer": undefined;
 	"ui.chat.canonical.supplement.sound_fallback_label": undefined;
+	"ui.chat.canonical.supplement.status.cancelled": undefined;
+	"ui.chat.canonical.supplement.status.failed": undefined;
+	"ui.chat.canonical.supplement.status.preparing": undefined;
 	"ui.chat.canonical.supplement.withheld.line": {
 		count: number;
 		reason: string;
@@ -5363,6 +5419,9 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.failed": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.running": undefined;
 	"ui.chat.canonical.tool_row.bridge.verb.unknown.settled": undefined;
+	"ui.chat.canonical.tool_row.detail.deeper_values": undefined;
+	"ui.chat.canonical.tool_row.detail.empty": undefined;
+	"ui.chat.canonical.tool_row.detail.more_lines": { count: number };
 	"ui.chat.canonical.tool_row.detail_section.error": undefined;
 	"ui.chat.canonical.tool_row.detail_section.interrupted": undefined;
 	"ui.chat.canonical.tool_row.detail_section.output": undefined;
@@ -5609,7 +5668,9 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.took_duration": { duration: string };
 	"ui.chat.canonical.transcript.worked": undefined;
 	"ui.chat.canonical.transcript.worked_for": { duration: string };
+	"ui.chat.canonical.turn_summary.actions_at_least": { count: number };
 	"ui.chat.canonical.turn_summary.completed": undefined;
+	"ui.chat.canonical.turn_summary.messages_at_least": { count: number };
 	"ui.chat.canonical.turn_summary.took": { duration: string };
 	"ui.chat.canonical.untitled": undefined;
 	"ui.chat.canonical.working_line.compacting": undefined;
