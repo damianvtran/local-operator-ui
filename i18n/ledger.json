@@ -123504,6 +123504,209 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "7ab54ebe7e3ed78859f456488b2abdcedc5087417e5788eac158ebb3a7e26db7",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-fr.json",
+					"receipt_sha256": "3aede376a348543b5249a6623054f83650edc7dfe40c1485fae803994d31d94b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "ac7b6450aeb0fd2e21e8081ca5d8cd926f14f1f8e58f0fbe1c2a1d18c3e585e9",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-es.json",
+					"receipt_sha256": "4154afcc8e2fff4af92c03c381849cc828a0111b5defc87cc76f261867263c4a"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "2bf8eb889bddcbcbcf758bc0468d84fec07a568c9b38311b42825544cd4a027c",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-zh-cn.json",
+					"receipt_sha256": "e4b16abb0097ea8719a74fa5a6722c8f8559a7664de9fe5cb19ba9e45ff5d2eb"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "ef3040f39b0205692de0dd34cb47803365d2a9d52b0d214efe5b6327ebb509f6",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-ru.json",
+					"receipt_sha256": "785349cac3fa07a3cf5a9bd2c80fa17bff019946588b0337ff18c53a6921977a"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "3bf9e5e6eb2fc742f279db7c359804b39d22254d3d99a5d5869adc6c2f967a46",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-vi.json",
+					"receipt_sha256": "9d2d18db8d63d6236c4aac2a53392c610dbc9e6b2a1abb4215a75eb2aeb90b20"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "616acab5696bf0b26885353b515279edc362b60e265ca8ed670d2bd40451932f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-ur.json",
+					"receipt_sha256": "735cfba27d6900092421717e3020d5bbe99d7f9980031e908887a753cec1583e"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.alerts",
+			"source_sha256": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+			"target_sha256": "7aef1fc91229c8dcdc3a461386a1371ddf49a2e8f54cf4ec63ab608cd0d2470c",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "82b84532d1e1-alerts-r1-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/82b84532d1e1-alerts-r1-hi.json",
+					"receipt_sha256": "f95b597d129150115d4e391d269e572ca5da74048f64881cbd2974402ecf1eb7"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

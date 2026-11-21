@@ -1,0 +1,55 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-vi",
+	"date": "2026-11-21",
+	"locale": "vi",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/vi.md sha256:99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51",
+		"shipped_terms": "src/i18n/catalogues/vi/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"vi": "3bf9e5e6eb2fc742f279db7c359804b39d22254d3d99a5d5869adc6c2f967a46"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-VI1",
+			"severity": "MINOR",
+			"keys": [
+				"ui.teamBridge.alerts.responders",
+				"ui.teamBridge.alerts.claim.holder_unknown",
+				"ui.teamBridge.alerts.responder.menu",
+				"ui.teamBridge.alerts.responder.title"
+			],
+			"current": "'Người phản hồi', 'Một người phản hồi', 'Phản hồi cảnh báo…', 'Phản hồi cảnh báo trong #{channel}'",
+			"replacement": "'Ứng phó', 'Một tác nhân', 'Ứng phó cảnh báo…', 'Ứng phó cảnh báo trong #{channel}'",
+			"note": "'phản hồi' is reply/feedback and 'người' is a person; incident response is 'ứng phó', and the responder here is an agent (glossary agent -> tác nhân)."
+		},
+		{
+			"id": "T-VI2",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.responder.severity_label",
+			"current": "Đánh thức {agent} cho",
+			"replacement": "Đánh thức {agent} khi có",
+			"note": "Shipped sibling ui.teamBridge.agentNotify.label is 'Đánh thức tác nhân khi có'; trailing 'cho' does not introduce the SEV toggles."
+		},
+		{
+			"id": "T-VI3",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.claim.taken_by",
+			"current": "escalated {Đã chuyển cấp: {who} không xong kịp thời}",
+			"replacement": "escalated {Đã chuyển cấp: {who} không hoàn thành kịp}",
+			"note": "'không xong kịp thời' is ungrammatical register; 'không hoàn thành kịp' is the idiomatic 'did not finish in time'."
+		}
+	]
+}
