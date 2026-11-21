@@ -5,6 +5,10 @@ import { cn } from "@shared/lib/utils";
 import { type FC, memo, useEffect, useState } from "react";
 import { TeamBridgeMarkdown } from "../../../team-bridge/team-bridge-markdown";
 import {
+	bridgeCardBodyIsFinal,
+	bridgeCardRereadDelay,
+} from "./bridge-card-reread";
+import {
 	type BridgeCardBody,
 	type BridgeCardBodyItem,
 	bridgeBodyPreview,
@@ -20,7 +24,10 @@ import {
  * mounts content on open), so a transcript of a hundred cards makes no request
  * until a reader opens one, and each open re-reads: revocation is live (design
  * §2 C), so an answer is never cached past the open that asked for it. Two
- * mounts of the same card share one in-flight read.
+ * mounts of the same card share one in-flight read. While the pane stays open
+ * and the answer can still change (pending, held, offline), it reads again on
+ * the backoff in `bridge-card-reread.ts`, so a body handed off minutes or hours
+ * later appears without closing and reopening the card.
  *
  * WHAT IT NEVER DOES. It never derives a moderation outcome (design §2 D): every
  * sentence comes from the server's closed `state`/`reason` vocabulary, and a
@@ -61,7 +68,13 @@ const desktopTransport: BridgeCardBodyTransport = async ({
 	return response.body;
 };
 
-/** Read one card's body, never throwing; `null` on any failure. */
+/**
+ * Read one card's body, never throwing; `null` on any failure.
+ *
+ * Concurrent callers for one card share the request in flight; the entry is
+ * dropped as soon as it settles, so the next scheduled re-read always issues a
+ * NEW request rather than replaying an old answer.
+ */
 export function readBridgeCardBody(
 	sessionId: string,
 	entryId: string,
@@ -111,6 +124,21 @@ function stateSentence(item: BridgeCardBodyItem): string {
 			}
 	}
 }
+
+/**
+ * The timer the re-read schedule runs on. Injectable so tests drive the backoff
+ * with a fake clock instead of waiting real minutes.
+ */
+export type BridgeCardRereadClock = {
+	setTimeout: (run: () => void, ms: number) => unknown;
+	clearTimeout: (handle: unknown) => void;
+};
+
+const realClock: BridgeCardRereadClock = {
+	setTimeout: (run, ms) => globalThis.setTimeout(run, ms),
+	clearTimeout: (handle) =>
+		globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /** The muted outcome line, in `BridgeDetail`'s own outcome idiom. */
 const Outcome: FC<{ text: string; state: string }> = ({ text, state }) => (
@@ -219,25 +247,64 @@ export const BridgeCardBodySection: FC<{
 	enabled: boolean;
 	/** Test seam; production uses the desktop transport. */
 	transport?: BridgeCardBodyTransport;
-}> = memo(({ sessionId, entryId, enabled, transport }) => {
+	/** Test seam; production uses the real timers. */
+	clock?: BridgeCardRereadClock;
+}> = memo(({ sessionId, entryId, enabled, transport, clock = realClock }) => {
 	useI18nLocale();
 	const active = enabled && Boolean(sessionId) && Boolean(entryId);
 	// `undefined` = still loading; `null` = the read failed or was malformed.
 	const [answer, setAnswer] = useState<Read | undefined>(undefined);
-	// The card-level fold (D2). Resets with each read, like the body itself.
+	// The card-level fold (D2). Resets with each open, like the body itself;
+	// a re-read while open keeps it, so a reader's "Show more" is not undone.
 	const [cardExpanded, setCardExpanded] = useState(false);
 	useEffect(() => {
 		if (!active || !sessionId) return;
+		// `live` ends the schedule on close/unmount or when the entry changes: a
+		// read still in flight then lands nowhere and schedules nothing.
 		let live = true;
+		let attempt = 0;
+		let timer: unknown = null;
+		let reading = false;
+		let settled = false;
+		// Only the first read of an open shows "Loading…". A re-read keeps the
+		// last answer on screen until the new one lands, so a pending pane never
+		// flashes back to loading every few seconds.
 		setAnswer(undefined);
 		setCardExpanded(false);
-		void readBridgeCardBody(sessionId, entryId, transport).then((read) => {
-			if (live) setAnswer(read);
-		});
+		const read = () => {
+			timer = null;
+			reading = true;
+			void readBridgeCardBody(sessionId, entryId, transport).then((next) => {
+				reading = false;
+				if (!live) return;
+				setAnswer(next);
+				if (bridgeCardBodyIsFinal(next)) {
+					settled = true;
+					return;
+				}
+				timer = clock.setTimeout(read, bridgeCardRereadDelay(attempt));
+				attempt += 1;
+			});
+		};
+		// Coming back to the window is when a reader looks again, so a waiting
+		// pane asks at once instead of on its next tick (which may be a minute
+		// away). The backoff position is kept: regaining focus is not progress.
+		const regain = () => {
+			if (!live || settled || reading) return;
+			if (document.hidden) return;
+			if (timer !== null) clock.clearTimeout(timer);
+			read();
+		};
+		window.addEventListener("focus", regain);
+		document.addEventListener("visibilitychange", regain);
+		read();
 		return () => {
 			live = false;
+			if (timer !== null) clock.clearTimeout(timer);
+			window.removeEventListener("focus", regain);
+			document.removeEventListener("visibilitychange", regain);
 		};
-	}, [active, sessionId, entryId, transport]);
+	}, [active, sessionId, entryId, transport, clock]);
 
 	if (!active)
 		return (

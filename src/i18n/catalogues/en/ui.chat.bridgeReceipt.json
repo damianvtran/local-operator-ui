@@ -3,8 +3,8 @@
 	"ui.chat.bridgeReceipt.unavailable": "Message body unavailable.",
 	"ui.chat.bridgeReceipt.provenance": "External message · untrusted content",
 	"ui.chat.bridgeReceipt.loading": "Loading message…",
-	"ui.chat.bridgeReceipt.pending": "Still being delivered.",
-	"ui.chat.bridgeReceipt.held": "Held by moderation.",
+	"ui.chat.bridgeReceipt.pending": "Waiting to be delivered to your agent.",
+	"ui.chat.bridgeReceipt.held": "Held for review.",
 	"ui.chat.bridgeReceipt.held_transient": "Waiting for screening — not shown to your agent yet.",
 	"ui.chat.bridgeReceipt.refused": "Refused by moderation.",
 	"ui.chat.bridgeReceipt.not_admitted": "Not delivered to this agent.",
@@ -13,8 +13,9 @@
 	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "Message body unavailable. You are no longer in this conversation.",
 	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "This message was deleted.",
 	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "Message body unavailable. Team Bridge cannot load this older message.",
-	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Couldn't reach Radient — close and reopen to retry.",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Couldn't reach Radient — retrying.",
 	"ui.chat.bridgeReceipt.show_more": "Show more",
 	"ui.chat.bridgeReceipt.show_less": "Show less",
-	"ui.chat.bridgeReceipt.more": "{count, plural, one {And {count, number} more message} other {And {count, number} more messages}}"
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {And {count, number} more message} other {And {count, number} more messages}}",
+	"ui.chat.bridgeReceipt.thread_reply": "Thread reply"
 }

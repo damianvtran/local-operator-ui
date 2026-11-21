@@ -3,8 +3,8 @@
 	"ui.chat.bridgeReceipt.unavailable": "Contenu du message indisponible.",
 	"ui.chat.bridgeReceipt.provenance": "Message externe · contenu non fiable",
 	"ui.chat.bridgeReceipt.loading": "Chargement du message…",
-	"ui.chat.bridgeReceipt.pending": "Remise en cours.",
-	"ui.chat.bridgeReceipt.held": "Retenu par la modération.",
+	"ui.chat.bridgeReceipt.pending": "En attente de transmission à votre agent.",
+	"ui.chat.bridgeReceipt.held": "Retenu pour examen.",
 	"ui.chat.bridgeReceipt.held_transient": "En attente de filtrage — pas encore transmis à votre agent.",
 	"ui.chat.bridgeReceipt.refused": "Refusé par la modération.",
 	"ui.chat.bridgeReceipt.not_admitted": "Non transmis à cet agent.",
@@ -13,8 +13,9 @@
 	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "Contenu du message indisponible. Vous ne faites plus partie de cette conversation.",
 	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "Ce message a été supprimé.",
 	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "Contenu du message indisponible. Team Bridge ne peut pas charger cet ancien message.",
-	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Impossible de joindre Radient — fermez et rouvrez pour réessayer.",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Impossible de joindre Radient — nouvelle tentative en cours.",
 	"ui.chat.bridgeReceipt.show_more": "Afficher plus",
 	"ui.chat.bridgeReceipt.show_less": "Afficher moins",
-	"ui.chat.bridgeReceipt.more": "{count, plural, one {Et {count, number} autre message} many {Et {count, number} d’autres messages} other {Et {count, number} autres messages}}"
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {Et {count, number} autre message} many {Et {count, number} d’autres messages} other {Et {count, number} autres messages}}",
+	"ui.chat.bridgeReceipt.thread_reply": "Réponse dans un fil"
 }
