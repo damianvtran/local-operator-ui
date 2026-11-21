@@ -1,0 +1,257 @@
+import { Button } from "@shared/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogTitle,
+} from "@shared/components/ui/dialog";
+import { Input } from "@shared/components/ui/input";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import type { FC } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { channelSlug } from "./team-bridge-create-dialog";
+
+/*
+ * RENAME A CHANNEL OR GROUP (operator 2026-11-20: "There doesn't seem to be a
+ * way to rename a channel in team bridge").
+ *
+ * ONE NAME RULE WITH CREATE. A channel name is normalised the way the create
+ * form normalises it (`channelSlug`: lower case, spaces to hyphens, no leading
+ * #), so renaming cannot produce a name the create form would never have sent.
+ * A group's name is free text (groups show a person-style title, not a `#`
+ * slug), so it is only trimmed and its whitespace runs collapsed.
+ *
+ * THE SERVER'S RULES, MIRRORED (agent-server rename contract, 2026-11-20).
+ * Create only trims, so rename has its own server-side sanitiser: trim,
+ * collapse space runs, at most 64 CODE POINTS, and refuse blank, control,
+ * invisible and non-U+0020 space characters (400 `invalid_request`,
+ * `details.rule`). The dialog checks the two it can state before sending
+ * (empty, too long) and maps every rule the server can return to a sentence;
+ * the server stays the authority. Length counts code points (`[...s]`), not
+ * UTF-16 units, so an emoji counts once here as it does there.
+ *
+ * NOT OPTIMISTIC IN THE DIALOG. The rail is updated optimistically by the
+ * mutation, but the dialog stays open on the promise: the refusals worth
+ * explaining (a taken name, lost authority, an archive that landed meanwhile)
+ * are best explained where the name was typed, with the text still there to
+ * edit. Escape and the corner button stay usable while saving: closing does not
+ * cancel the write, and the rail already shows its result.
+ */
+
+/** Why a rename was refused, as the dialog words it. */
+export type TeamBridgeRenameFailure =
+	| { kind: "taken"; name: string }
+	| { kind: "empty" }
+	| { kind: "too_long" }
+	| { kind: "characters" }
+	| { kind: "invalid" }
+	| { kind: "forbidden" }
+	| { kind: "archived" }
+	| { kind: "failed" };
+
+/**
+ * Map the hub's refusal (relayed by core; `DesktopControlError.code`/`status`,
+ * the body intact as `detail`) to one sentence. `attempted` names the taken
+ * room when the server's `details.name` is absent.
+ */
+export function renameFailure(
+	error: unknown,
+	attempted: string,
+): TeamBridgeRenameFailure {
+	const candidate = error as {
+		status?: unknown;
+		code?: unknown;
+		detail?: { details?: { name?: unknown; rule?: unknown } };
+	} | null;
+	const status =
+		typeof candidate?.status === "number" ? candidate.status : null;
+	const code = typeof candidate?.code === "string" ? candidate.code : null;
+	if (code === "conversation_name_taken") {
+		const served = candidate?.detail?.details?.name;
+		return {
+			kind: "taken",
+			name: typeof served === "string" && served ? served : attempted,
+		};
+	}
+	if (code === "conversation_archived") return { kind: "archived" };
+	if (status === 403 || code === "forbidden") return { kind: "forbidden" };
+	if (status === 400 || code === "invalid_request") {
+		const rule = candidate?.detail?.details?.rule;
+		if (rule === "empty") return { kind: "empty" };
+		if (rule === "too_long") return { kind: "too_long" };
+		if (
+			rule === "control_character" ||
+			rule === "invisible_character" ||
+			rule === "unsupported_space" ||
+			rule === "invalid_utf8"
+		)
+			return { kind: "characters" };
+		return { kind: "invalid" };
+	}
+	return { kind: "failed" };
+}
+
+const WHITESPACE_RUN = /\s+/g;
+
+/** The server's bound, in code points (agent-server rename sanitiser). */
+export const TEAM_BRIDGE_RENAME_MAX = 64;
+
+/** Code points, as the server counts them. */
+export function renameNameLength(name: string): number {
+	return [...name].length;
+}
+
+/** The name exactly as it would be sent for this kind. */
+export function normalizedRenameName(
+	kind: "channel" | "group",
+	typed: string,
+): string {
+	return kind === "channel"
+		? channelSlug(typed)
+		: typed.trim().replace(WHITESPACE_RUN, " ");
+}
+
+function failureText(
+	failure: TeamBridgeRenameFailure,
+	kind: "channel" | "group",
+): string {
+	switch (failure.kind) {
+		case "taken":
+			return t("ui.teamBridge.rename.error.taken", {
+				kind,
+				name: failure.name,
+			});
+		case "empty":
+			return t("ui.teamBridge.rename.error.empty");
+		case "too_long":
+			return t("ui.teamBridge.rename.error.too_long", {
+				max: TEAM_BRIDGE_RENAME_MAX,
+			});
+		case "characters":
+			return t("ui.teamBridge.rename.error.characters");
+		case "invalid":
+			return t("ui.teamBridge.rename.error.invalid");
+		case "forbidden":
+			return t("ui.teamBridge.rename.error.forbidden", { kind });
+		case "archived":
+			return t("ui.teamBridge.rename.error.archived", { kind });
+		case "failed":
+			return t("ui.teamBridge.rename.error.failed");
+	}
+}
+
+export const TeamBridgeRenameDialog: FC<{
+	open: boolean;
+	kind: "channel" | "group";
+	/** The current stored name ("" for a group that never had one). */
+	currentName: string;
+	pending?: boolean;
+	error?: TeamBridgeRenameFailure | null;
+	onSave: (name: string) => void;
+	onClose: () => void;
+}> = ({
+	open,
+	kind,
+	currentName,
+	pending = false,
+	error = null,
+	onSave,
+	onClose,
+}) => {
+	useI18nLocale();
+	const fieldId = useId();
+	const errorId = useId();
+	const inputRef = useRef<HTMLInputElement>(null);
+	const [typed, setTyped] = useState(currentName);
+	/* Every open starts from the stored name: a cancelled edit must not return. */
+	useEffect(() => {
+		if (open) setTyped(currentName);
+	}, [open, currentName]);
+	const next = normalizedRenameName(kind, typed);
+	const unchanged = next === normalizedRenameName(kind, currentName);
+	/* Too long is SAID, not only disabled: a Save that greys out with no reason
+	   while the person is still typing reads as a bug. Empty only disables. */
+	const tooLong = renameNameLength(next) > TEAM_BRIDGE_RENAME_MAX;
+	const shown: TeamBridgeRenameFailure | null = tooLong
+		? { kind: "too_long" }
+		: error;
+	const canSave = next.length > 0 && !tooLong && !unchanged && !pending;
+	const submit = () => {
+		if (canSave) onSave(next);
+	};
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={(value) => {
+				if (!value) onClose();
+			}}
+		>
+			<DialogContent
+				className="gap-4"
+				/* Prefilled AND selected, so typing replaces the old name outright
+				   (the common case) while an arrow key still edits it. */
+				onOpenAutoFocus={(event) => {
+					event.preventDefault();
+					inputRef.current?.focus();
+					inputRef.current?.select();
+				}}
+			>
+				<DialogTitle>{t("ui.teamBridge.rename.title", { kind })}</DialogTitle>
+				<DialogDescription className="text-[13px] text-ink-muted">
+					{t("ui.teamBridge.rename.description", { kind })}
+				</DialogDescription>
+				<form
+					className="flex flex-col gap-4"
+					onSubmit={(event) => {
+						event.preventDefault();
+						submit();
+					}}
+				>
+					<label
+						htmlFor={fieldId}
+						className="flex flex-col gap-1 text-[13px] text-ink-muted"
+					>
+						{t("ui.teamBridge.rename.name")}
+						<Input
+							ref={inputRef}
+							id={fieldId}
+							value={typed}
+							onChange={(event) => setTyped(event.target.value)}
+							aria-invalid={shown ? true : undefined}
+							aria-describedby={shown ? errorId : undefined}
+							data-rename-field
+						/>
+					</label>
+					{shown && (
+						<p
+							id={errorId}
+							role="alert"
+							className="text-[13px] text-danger"
+							data-rename-error={shown.kind}
+						>
+							{failureText(shown, kind)}
+						</p>
+					)}
+					<DialogFooter>
+						<Button type="button" variant="ghost" onClick={onClose}>
+							{t("ui.teamBridge.rename.cancel")}
+						</Button>
+						<Button
+							type="submit"
+							variant="primary"
+							disabled={!canSave}
+							data-rename-save
+						>
+							{pending
+								? t("ui.teamBridge.rename.saving")
+								: t("ui.teamBridge.rename.save")}
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
+	);
+};

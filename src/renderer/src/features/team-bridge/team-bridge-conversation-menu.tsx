@@ -28,6 +28,7 @@ import {
 	LogIn,
 	LogOut,
 	MoreHorizontal,
+	Pencil,
 	UserPlus,
 	Users,
 } from "lucide-react";
@@ -85,6 +86,8 @@ export type TeamBridgeConversationMenuHandlers = {
 	onAgentNotifyChange?: (notify: TeamBridgeNotify) => void;
 	onViewMembers?: () => void;
 	onAddMembers?: () => void;
+	/** Opens the rename dialog (only offered with `can_administer`). */
+	onRename?: () => void;
 	onJoin?: () => void;
 	/** Opens the own-agent confirm; the menu itself writes nothing. */
 	onOwnAgent?: (
@@ -183,6 +186,15 @@ export const TeamBridgeConversationMenuItems: FC<{
 						icon={<UserPlus size={16} aria-hidden="true" />}
 						label={t("ui.teamBridge.members.menu")}
 						onSelect={handlers.onAddMembers}
+					/>
+				);
+			case "rename":
+				return (
+					<ActionRow
+						testId={item.id}
+						icon={<Pencil size={16} aria-hidden="true" />}
+						label={t("ui.teamBridge.rename.menu", { kind: item.kind })}
+						onSelect={handlers.onRename}
 					/>
 				);
 			case "join":

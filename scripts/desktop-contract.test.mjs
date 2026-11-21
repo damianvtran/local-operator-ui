@@ -3990,6 +3990,62 @@ test("team_bridge archive: the list takes a closed status and delete is a DELETE
 	);
 });
 
+test("team_bridge rename: POST .../rename with the owner receipt in the query and only the name in the body", () => {
+	const route = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "  launch-crew ",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(route.method, "POST");
+	assert.equal(
+		route.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename?tenant_id=tnt_2&expected_account_id=acc_a",
+	);
+	assert.deepEqual(
+		route.body,
+		{ name: "launch-crew" },
+		"trimmed at the boundary",
+	);
+	const bare = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+		}),
+	);
+	assert.equal(
+		bare.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+	);
+	const parse = (name) =>
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name,
+		}).success;
+	assert.equal(parse("   "), false, "blank after trim is refused");
+	assert.equal(
+		parse("🚀".repeat(64)),
+		true,
+		"64 code points (128 UTF-16 units)",
+	);
+	assert.equal(parse("🚀".repeat(65)), false, "65 code points");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+			topic: "y",
+		}).success,
+		false,
+		"strict: no other field rides along",
+	);
+});
+
 test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
 	/*
 	 * Threads (agent-server #164, local-operator #2757). The replies op reads

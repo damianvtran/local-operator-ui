@@ -39,8 +39,12 @@ import {
 const WHITESPACE_RUN = /\s+/g;
 const LEADING_HASHES = /^#+/;
 
-/** "QA coordination" / "#qa coordination" → "qa-coordination". */
-function channelSlug(name: string): string {
+/**
+ * "QA coordination" / "#qa coordination" → "qa-coordination". Exported so the
+ * rename dialog applies the SAME rule: a channel renamed to a name the create
+ * form would have normalised must not be the one way around it.
+ */
+export function channelSlug(name: string): string {
 	return name
 		.trim()
 		.toLowerCase()

@@ -762,6 +762,28 @@ export const TeamBridgeApi = {
 	},
 
 	/**
+	 * Rename a channel or group. Answers the updated conversation (the hub's
+	 * GET-conversation shape); the same name is a 200 no-op. The refusals the
+	 * rename dialog names come back as `DesktopControlError` codes:
+	 * `conversation_name_taken` (409, `details.name`), `conversation_archived`
+	 * (409), 403, and 400 `field=name`. Carries the captured-owner receipt like
+	 * every conversation write.
+	 */
+	async rename(
+		conversationId: string,
+		name: string,
+		tenantId?: string,
+		expectedAccountId?: string,
+	): Promise<unknown> {
+		return desktopResult<unknown>({
+			op: "team_bridge.conversations.rename",
+			conversation_id: conversationId,
+			name,
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
+		});
+	},
+
+	/**
 	 * PERMANENTLY delete an ARCHIVED conversation. Irreversible.
 	 *
 	 * Carries the captured-owner receipt like every conversation write, so the call

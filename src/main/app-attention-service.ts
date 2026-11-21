@@ -152,6 +152,8 @@ export class AppAttentionService {
 			"team_bridge.conversations.leave",
 			"team_bridge.conversations.delete",
 			"team_bridge.conversations.lifecycle",
+			// A rename changes the name attention rows and the rail show.
+			"team_bridge.conversations.rename",
 			"team_bridge.conversations.consent",
 			"team_bridge.messages.send",
 		]);

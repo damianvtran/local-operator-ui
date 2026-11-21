@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {समूह का नाम बदलें…} other {चैनल का नाम बदलें…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {समूह का नाम बदलें} other {चैनल का नाम बदलें}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {समूह के सभी सदस्यों को नया नाम दिखेगा।} other {चैनल के सभी सदस्यों को नया नाम दिखेगा। चैनल के नाम छोटे अक्षरों में होते हैं, और उनमें स्पेस की जगह हाइफ़न होते हैं।}}",
+	"ui.teamBridge.rename.name": "नाम",
+	"ui.teamBridge.rename.cancel": "रद्द करें",
+	"ui.teamBridge.rename.save": "सहेजें",
+	"ui.teamBridge.rename.saving": "सहेजा जा रहा है…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {{name} नाम का समूह पहले से मौजूद है। कोई दूसरा नाम चुनें।} other {#{name} नाम का चैनल पहले से मौजूद है। कोई दूसरा नाम चुनें।}}",
+	"ui.teamBridge.rename.error.empty": "कोई नाम लिखें।",
+	"ui.teamBridge.rename.error.too_long": "नाम में ज़्यादा से ज़्यादा {max, number} वर्ण हो सकते हैं।",
+	"ui.teamBridge.rename.error.characters": "नाम में ऐसा वर्ण है जिसका इस्तेमाल नहीं किया जा सकता, जैसे टैब, लाइन ब्रेक या कोई अदृश्य वर्ण।",
+	"ui.teamBridge.rename.error.invalid": "यह नाम इस्तेमाल नहीं किया जा सकता। कोई दूसरा नाम आज़माएँ।",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {आपको इस समूह का नाम बदलने की अनुमति नहीं है।} other {आपको इस चैनल का नाम बदलने की अनुमति नहीं है।}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {यह समूह आर्काइव हो चुका है, इसलिए इसका नाम नहीं बदला जा सकता।} other {यह चैनल आर्काइव हो चुका है, इसलिए इसका नाम नहीं बदला जा सकता।}}",
+	"ui.teamBridge.rename.error.failed": "नया नाम सहेजा नहीं गया। फिर से कोशिश करें।"
+}
