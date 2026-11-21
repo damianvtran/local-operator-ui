@@ -73,13 +73,14 @@ marked region as captured: a transcript link's `href`, an image's `alt`/`src`, a
 not. Whether to block them in replay (`blockSelector` for region links, or
 `maskTextFn`) is an open decision for the operator.
 
-`$exception` keeps its message, with paths, emails, URL paths and long quoted
-strings replaced inline and the result capped at 500 characters; stack frame
-paths lose the account name (`/Users/[user]/...`). A quoted span holding a `/`
-or `\` is replaced whole (`open '[redacted:path]'`), so a file name with spaces
-cannot leave its middle words behind; an unquoted path may run across spaces
-when its segments end in a separator or a document extension. If the hook
-itself fails, it strips every element property and every exception message
+`$exception` replaces every exception `value`/`message` wholesale with the
+fixed marker `[redacted:exception-message]`. Free-form exception prose can contain
+arbitrary user content; no regex can reliably separate it from diagnostics.
+Losing all exception message prose (even ordinary product errors) is an
+intentional privacy tradeoff. Exception type/count metadata and existing
+sanitized stack structure remain: stack frame paths lose the account name
+(`/Users/[user]/...`). Named product events are unchanged. If the hook itself
+fails, it strips every element property and every exception message
 (`[redacted:unscrubbed]`) and still sends the event.
 
 What this costs: labels that are themselves content-shaped are redacted too

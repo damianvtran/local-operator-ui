@@ -190,7 +190,7 @@ test("inside a ph-sensitive region only structural attributes survive", () => {
 	);
 });
 
-test("exceptions keep their sentence, lose paths, emails, URLs and the account name", () => {
+test("exceptions lose all message prose but keep sanitized stack structure", () => {
 	const props = {
 		$exception_list: [
 			{
@@ -214,114 +214,92 @@ test("exceptions keep their sentence, lose paths, emails, URLs and the account n
 		properties: props,
 	});
 	const [exception] = result.properties.$exception_list;
-	assert.equal(
-		exception.value,
-		"ENOENT: no such file, open '[redacted:path]' ([redacted:email]) at https://api.acme.com/[redacted:url]",
-	);
+	assert.equal(exception.value, "[redacted:exception-message]");
 	assert.ok(!exception.stacktrace.frames[0].filename.includes("jane"));
 	assert.ok(
 		exception.stacktrace.frames[0].filename.endsWith("out/renderer/index.js"),
 	);
 	assert.ok(!exception.stacktrace.frames[0].abs_path.includes("Jane"));
-	assert.equal(
-		mod.scrubExceptionMessage("t.map is not a function"),
-		"t.map is not a function",
-	);
+	assert.equal(exception.type, "Error");
 });
 
 /*
- * Review round 1, M2/Q1: the path rule stopped at the first space, so a
- * customer-named file kept its middle words (`'[redacted:path] Corp
- * [redacted:filename]'`). These are the measured shapes: Node's quoted fs
- * error on POSIX and Windows, an extensionless name, a quoted bare file name,
- * and the unquoted spaced forms.
+ * M2: no message grammar can distinguish user prose from diagnostics. Exercise
+ * the installed SDK's error conversion and the public hook, including real fs
+ * errors whose plural-possessive apostrophe defeated the earlier path regex.
  */
-test("exception paths with spaces are redacted whole, quoted or not", () => {
-	const cases = [
-		[
-			"ENOENT: no such file or directory, open '/Users/qa-alice/Documents/Acme Corp Contract.pdf'",
-			"ENOENT: no such file or directory, open '[redacted:path]'",
+test("all exception message shapes become the same fixed marker", async () => {
+	const sdk = await build({
+		entryPoints: [
+			join(
+				repo,
+				"node_modules/posthog-js/lib/src/extensions/exception-autocapture/error-conversion.js",
+			),
 		],
-		[
-			"EBUSY: resource busy or locked, open 'C:\\Users\\Jane Doe\\Documents\\Acme Board Minutes.docx'",
-			"EBUSY: resource busy or locked, open '[redacted:path]'",
-		],
-		[
-			"ENOENT: no such file or directory, open '/Users/jane/Client Notes/Q3 plan'",
-			"ENOENT: no such file or directory, open '[redacted:path]'",
-		],
-		[
-			'could not attach "Jane Smith Divorce Petition.pdf"',
-			'could not attach "[redacted:filename]"',
-		],
-		["open `~/Client Notes/Q3 plan` failed", "open `[redacted:path]` failed"],
-		[
-			"open '/nonexistent-privacy-review/Client's Notes/Q3 plan' failed",
-			"open '[redacted:path]' failed",
-		],
-		[
-			"open 'C:\\Client's Notes\\Q3 plan' failed",
-			"open '[redacted:path]' failed",
-		],
-		['open "/Client\'s Notes/Q3 plan" failed', 'open "[redacted:path]" failed'],
-		[
-			"could not attach 'Client's Board Minutes.pdf'",
-			"could not attach '[redacted:filename]'",
-		],
-		[
+		bundle: true,
+		format: "esm",
+		platform: "browser",
+		write: false,
+	});
+	const { errorToProperties } = await import(
+		`data:text/javascript;base64,${Buffer.from(sdk.outputFiles[0].text).toString("base64")}`
+	);
+	const marker = "[redacted:exception-message]";
+	const errors = [
+		new Error("open 'C:\\Clients' Notes\\Q3 plan' failed"),
+		new Error("open 'C:\\Client's Notes\\Q3 plan' failed"),
+		new Error('could not attach "Jane Smith Divorce Petition.pdf"'),
+		new Error("could not attach 'Client's Board Minutes.pdf'"),
+		new Error(
 			"failed to read /Users/jane/Client Notes/Acme Corp Contract.pdf: permission denied",
-			"failed to read [redacted:path]: permission denied",
-		],
-		[
-			"C:\\Users\\Jane Doe\\Documents\\Board Minutes.docx is locked",
-			"[redacted:path] is locked",
-		],
+		),
+		new Error("confidential unquoted arbitrary customer prose"),
+		new Error("t.map is not a function"),
+		new Error("can't read properties of undefined (reading 'length')"),
+		new Error("fetch 'https://api.example.com/v1/x' failed"),
 	];
-	for (const [message, expected] of cases) {
-		assert.equal(mod.scrubExceptionMessage(message), expected, message);
-		for (const word of ["Acme", "Corp", "Jane", "Client", "Q3", "Minutes"]) {
-			assert.ok(
-				!mod.scrubExceptionMessage(message).includes(word),
-				`${word} leaked from ${message}`,
-			);
+	for (const path of [
+		"/nonexistent-privacy-review/Client's Notes/Q3 plan",
+		"/nonexistent-privacy-review/Clients' Notes/Q3 plan",
+	]) {
+		assert.throws(
+			() => readFileSync(path),
+			(error) => {
+				assert.equal(error.code, "ENOENT");
+				assert.ok(error.message.includes(path));
+				errors.push(error);
+				return true;
+			},
+		);
+	}
+	for (const error of errors) {
+		const properties = errorToProperties({ error });
+		assert.equal(
+			properties.$exception_list[0].value,
+			error.message,
+			"negative control: SDK actually carries the original message",
+		);
+		// Cover every list item and both message-bearing fields, including a
+		// non-string value: there must be no conditional prose passthrough.
+		properties.$exception_list.push({
+			type: "TypeError",
+			value: error.message,
+			message: error.message,
+		});
+		properties.$exception_list.push({
+			type: "Error",
+			value: { private: error.message },
+			message: null,
+		});
+		const count = properties.$exception_list.length;
+		const result = mod.scrubCaptureResult({ event: "$exception", properties });
+		assert.equal(result.properties.$exception_list.length, count);
+		for (const exception of result.properties.$exception_list) {
+			assert.equal(exception.value, marker);
+			if ("message" in exception) assert.equal(exception.message, marker);
+			assert.ok(["Error", "TypeError"].includes(exception.type));
 		}
 	}
-	// Exercise the actual Node fs-error shape through the public before_send hook,
-	// not only hand-written messages: fs leaves internal apostrophes unescaped.
-	assert.throws(
-		() => readFileSync("/nonexistent-privacy-review/Client's Notes/Q3 plan"),
-		(error) => {
-			assert.equal(error.code, "ENOENT");
-			assert.ok(error.message.includes("Client's Notes/Q3 plan"));
-			const result = mod.scrubCaptureResult({
-				event: "$exception",
-				properties: {
-					$exception_list: [{ type: "Error", value: error.message }],
-				},
-			});
-			assert.equal(
-				result.properties.$exception_list[0].value,
-				"ENOENT: no such file or directory, open '[redacted:path]'",
-			);
-			return true;
-		},
-	);
-	// Ordinary sentences, apostrophes and a quoted URL's origin survive.
-	for (const sentence of [
-		"t.map is not a function",
-		"can't read properties of undefined (reading 'length')",
-		"Client's request failed (reading 'status')",
-		"Request failed with status code 503",
-	])
-		assert.equal(mod.scrubExceptionMessage(sentence), sentence);
-	assert.equal(
-		mod.scrubExceptionMessage("fetch 'https://api.example.com/v1/x' failed"),
-		"fetch 'https://api.example.com/[redacted:url]' failed",
-	);
-	assert.equal(
-		mod.scrubExceptionMessage("stack at /Users/jane/app.js:10:5 then retry"),
-		"stack at [redacted:path] then retry",
-	);
 });
 
 /*

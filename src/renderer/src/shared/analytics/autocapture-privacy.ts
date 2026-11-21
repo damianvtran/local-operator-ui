@@ -93,8 +93,8 @@ export const USER_CONTENT_CLASS = "ph-sensitive ph-mask";
  */
 export const MAX_LABEL_CHARS = 64;
 
-/** Exception messages are kept for debugging, scrubbed inline, then capped. */
-export const MAX_EXCEPTION_CHARS = 500;
+/** Free-form exception prose has no reliable content boundary: never send it. */
+export const REDACTED_EXCEPTION_MESSAGE = "[redacted:exception-message]";
 
 export type RedactionKind =
 	| "long-text"
@@ -390,98 +390,11 @@ export function scrubElementsArray(elements: unknown[]): unknown[] {
 }
 
 /*
- * Exceptions keep their message (it is how a failure is diagnosed) but not the
- * user content messages carry: `ENOENT ... '/Users/jane/Acme.pdf'`, a fetch
- * URL's path, an address, a JSON error quoting the text it failed on. Inline
- * replacement, because the rest of the sentence is the useful part; a file name
- * is redacted only for document/media extensions here, since `t.map is not a
- * function` is also "name.ext" shaped.
+ * Exception prose can contain arbitrary user content, even without paths or
+ * quotes. Redact it wholesale rather than trying to parse exception sentences.
+ * Losing diagnostic prose is intentional; type/count and sanitized stack
+ * structure still locate failures without sending the original message.
  */
-const DOC_EXT =
-	"(?:pdf|docx?|xlsx?|pptx?|csv|tsv|txt|md|rtf|odt|pages|numbers|key|json|ya?ml|xml|html?|png|jpe?g|gif|webp|heic|svg|mp3|mp4|m4a|wav|mov|zip|tar|gz|eml|msg)";
-/*
- * UNQUOTED PATHS MAY CONTAIN SPACES (`/Users/jane/Client Notes/Acme Corp
- * Contract.pdf`), and stopping at the first space left the middle words of a
- * customer-named file in the message (review round 1, M2/Q1). So after a path
- * root, a directory segment may run to six space-separated words as long as it
- * ends in a separator, and the last segment may too when it ends in a document
- * extension. Otherwise the last segment stops at whitespace: an extensionless
- * unquoted name with spaces is indistinguishable from the sentence after it
- * (`/tmp/x failed to open`), and eating the sentence is the diagnostic loss the
- * inline approach exists to avoid. The quoted rule below covers that case.
- * Bounded quantifiers keep the backtracking linear in practice.
- */
-const PATH_SEG = String.raw`[^\s'"\x60/\\:;,()<>|]+`;
-const PATH_WORDS = String.raw`${PATH_SEG}(?: ${PATH_SEG}){0,5}`;
-const PATH_TAIL = String.raw`(?:${PATH_WORDS}[\\/])*(?:${PATH_WORDS}\.${DOC_EXT}\b|[^\s'"\x60]*)`;
-/*
- * A QUOTED SPAN WITH A SEPARATOR IS A PATH, whole: Node's fs errors quote the
- * path (`open '/Users/jane/Q3 plan'`), and the quotes are the only reliable
- * boundary a spaced, extensionless name has. The quote must not touch a word
- * character on its outer side, so an apostrophe (`can't`, `it's`) never opens
- * or closes a span. Use that same closing boundary inside the body: Node fs
- * errors do not escape an internal apostrophe (`Client's Notes`), so rejecting
- * every matching quote lets the unquoted fallback leak the rest of the path.
- * An http(s) URL in quotes is left to the URL rule, which keeps its origin.
- */
-const QUOTED_PATH =
-	/(?<!\w)(['"`])(?!https?:\/\/)((?:(?!\1(?!\w))[^\n])*?[\\/](?:(?!\1(?!\w))[^\n])*?)\1(?!\w)/g;
-const QUOTED_FILENAME = new RegExp(
-	String.raw`(?<!\w)(['"\x60])(?:(?!\1(?!\w))[^\n])*?\.${DOC_EXT}\1(?!\w)`,
-	"gi",
-);
-const INLINE_RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [
-	[new RegExp(EMAIL.source, "g"), redacted("email")],
-	[/\bfile:\/\/\S+/gi, redacted("path")],
-	[
-		/\b(https?:\/\/[^\s/'"`]+)([^\s'"`]*)/gi,
-		(_m, origin: string, rest: string) =>
-			rest === "" || rest === "/" ? origin : `${origin}/${redacted("url")}`,
-	],
-	// After the URL rule, so a quoted URL keeps its origin (its kept `//host`
-	// carries a `/`, hence the lookahead in `QUOTED_PATH`).
-	[QUOTED_PATH, (_m, quote: string) => `${quote}${redacted("path")}${quote}`],
-	[
-		QUOTED_FILENAME,
-		(_m, quote: string) => `${quote}${redacted("filename")}${quote}`,
-	],
-	[
-		new RegExp(String.raw`\b[A-Za-z]:[\\/]${PATH_TAIL}`, "gi"),
-		redacted("path"),
-	],
-	[
-		new RegExp(String.raw`\\\\[^\s\\'"\x60]+\\${PATH_TAIL}`, "gi"),
-		redacted("path"),
-	],
-	[
-		// No ":" lead here, unlike the label rule: it would eat the `//host` of an
-		// origin the rule above kept.
-		new RegExp(
-			String.raw`(^|[\s(\[{"'\x60=,])((?:~|\.{1,2})?\/(?=[^\s'"\x60])${PATH_TAIL})`,
-			"gi",
-		),
-		(_m, lead: string) => `${lead}${redacted("path")}`,
-	],
-	[
-		new RegExp(String.raw`[^\s'"\x60/\\]+\.${DOC_EXT}\b`, "gi"),
-		redacted("filename"),
-	],
-	[/"[^"]{25,}"/g, `"${redacted("long-text")}"`],
-];
-
-export function scrubExceptionMessage(message: string): string {
-	let out = message;
-	for (const [pattern, replacement] of INLINE_RULES) {
-		out =
-			typeof replacement === "string"
-				? out.replace(pattern, replacement)
-				: out.replace(pattern, replacement as (...m: string[]) => string);
-	}
-	if ([...out].length > MAX_EXCEPTION_CHARS)
-		out = `${[...out].slice(0, MAX_EXCEPTION_CHARS).join("")}…`;
-	return out;
-}
-
 /** A stack frame's file: the bundle path stays, the account name does not. */
 export function scrubFramePath(path: string): string {
 	return path
@@ -494,8 +407,11 @@ function scrubException(properties: Properties): void {
 	if (!Array.isArray(list)) return;
 	for (const exception of list) {
 		if (exception === null || typeof exception !== "object") continue;
-		if (typeof exception.value === "string")
-			exception.value = scrubExceptionMessage(exception.value);
+		// posthog-js emits `value`; also cover message-bearing exception shapes
+		// without inspecting their contents or preserving any original substring.
+		for (const key of ["value", "message"] as const) {
+			if (key in exception) exception[key] = REDACTED_EXCEPTION_MESSAGE;
+		}
 		const frames = exception.stacktrace?.frames;
 		if (!Array.isArray(frames)) continue;
 		for (const frame of frames) {
