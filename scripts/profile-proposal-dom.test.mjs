@@ -37,7 +37,7 @@ const { MemoryRouter } = require("react-router-dom");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel";',
+			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -61,7 +61,12 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 	module,
 	module.exports,
 );
-const { UnifiedDiff, ProfileProposalPanel } = module.exports;
+const {
+	UnifiedDiff,
+	ProfileProposalPanel,
+	PendingApprovalsSummary,
+	PendingProposalMark,
+} = module.exports;
 const h = React.createElement;
 const { act } = React;
 const root = createRoot(document.getElementById("root"));
@@ -485,4 +490,100 @@ test("diff: expanded context folds again (D2) and editing keeps folds and positi
 		after: after.join("\n"),
 	});
 	assert.doesNotMatch(document.body.textContent, /Change 1 of 2/);
+});
+
+/*
+ * The Agents page's "Waiting for your approval" summary and row mark (operator
+ * report 2026-11-21: the nav badge said 1 and the page showed nothing to do).
+ */
+const waitingProposal = (over = {}) => ({
+	id: "pp_t1",
+	kind: "team",
+	name: "minervadev",
+	label: null,
+	operation: "update",
+	fields: ["instructions"],
+	state: "pending",
+	stale: false,
+	origin: { trust: "agent" },
+	...over,
+});
+test("summary: hidden with nothing waiting; names kind, record, fields and Review per proposal", async () => {
+	await mount(PendingApprovalsSummary, { proposals: [], onReview: () => {} });
+	assert.equal(
+		document.querySelector('[data-testid="pending-approvals"]'),
+		null,
+	);
+	const reviewed = [];
+	await mount(PendingApprovalsSummary, {
+		proposals: [waitingProposal()],
+		onReview: (p) => reviewed.push(p.id),
+	});
+	const section = document.querySelector('[data-testid="pending-approvals"]');
+	assert.ok(section, "a waiting team proposal is visible");
+	const text = section.textContent;
+	assert.match(text, /Waiting for your approval/);
+	assert.match(text, /1 change waiting for your approval/);
+	assert.match(text, /minervadev/);
+	assert.match(text, /Team · Proposed change/);
+	assert.match(text, /Changes: instructions/);
+	const review = section.querySelector(
+		'[aria-label="Review the proposed change to minervadev"]',
+	);
+	await click(review);
+	assert.deepEqual(reviewed, ["pp_t1"]);
+});
+test("summary: stale and create rows say so; beyond three rows it collapses behind Show all", async () => {
+	const proposals = [
+		waitingProposal({
+			id: "a",
+			kind: "agent",
+			name: "scout",
+			operation: "create",
+		}),
+		waitingProposal({ id: "b", state: "stale", stale: true }),
+		waitingProposal({
+			id: "c",
+			kind: "skill",
+			name: "research",
+			label: "Research",
+		}),
+		waitingProposal({ id: "d", kind: "agent", name: "writer" }),
+		waitingProposal({ id: "e", kind: "team", name: "content" }),
+	];
+	await mount(PendingApprovalsSummary, { proposals, onReview: () => {} });
+	const rows = () =>
+		[...document.querySelectorAll('[data-testid^="pending-approval-"]')].filter(
+			(n) => n.tagName === "LI",
+		);
+	assert.equal(rows().length, 3, "collapsed to three rows");
+	assert.match(rows()[0].textContent, /Agent · Proposed new/);
+	assert.ok(rows()[1].querySelector('[data-testid="pending-approval-stale"]'));
+	assert.match(rows()[1].textContent, /Out of date/);
+	assert.match(rows()[2].textContent, /Research/, "core's label is printed");
+	assert.match(
+		document.querySelector('[data-testid="pending-approvals"] h2').textContent,
+		/5 changes waiting for your approval/,
+	);
+	const more = button("Show all 5");
+	assert.equal(more.getAttribute("aria-expanded"), "false");
+	await click(more);
+	assert.equal(rows().length, 5);
+	await click(button("Show fewer"));
+	assert.equal(rows().length, 3);
+});
+test("row mark: draws the accent count with words for a screen reader, nothing at zero", async () => {
+	await mount(PendingProposalMark, { count: 0, kind: "team" });
+	assert.equal(
+		document.querySelector('[data-testid="roster-row-pending"]'),
+		null,
+	);
+	await mount(PendingProposalMark, { count: 2, kind: "team" });
+	const mark = document.querySelector('[data-testid="roster-row-pending"]');
+	assert.ok(mark.querySelector("[data-attention-badge]"));
+	assert.equal(
+		mark.querySelector("[data-attention-badge]").getAttribute("aria-hidden"),
+		"true",
+	);
+	assert.match(mark.textContent, /2 changes waiting for your approval/);
 });

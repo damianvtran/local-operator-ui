@@ -1,0 +1,14 @@
+{
+	"ui.agents.pending.heading": "Ожидает вашего одобрения",
+	"ui.agents.pending.count_aria": "{count, plural, one {# изменение ожидает вашего одобрения} few {# изменения ожидают вашего одобрения} many {# изменений ожидают вашего одобрения} other {# изменения ожидают вашего одобрения}}",
+	"ui.agents.pending.kind.agent": "Агент",
+	"ui.agents.pending.kind.team": "Команда",
+	"ui.agents.pending.kind.skill": "Навык",
+	"ui.agents.pending.operation.create": "Предложено к созданию",
+	"ui.agents.pending.operation.update": "Предложено изменение",
+	"ui.agents.pending.stale": "Устарело",
+	"ui.agents.pending.review": "Просмотреть",
+	"ui.agents.pending.review_aria": "Просмотреть предложенное изменение для {name}",
+	"ui.agents.pending.show_all": "Показать все ({count})",
+	"ui.agents.pending.show_fewer": "Свернуть"
+}

@@ -1,0 +1,62 @@
+{
+	"ui.agents.pending.heading": {
+		"role": "Heading of the Agents page panel listing pending proposals",
+		"tone": "Short label, sentence case",
+		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel. Addresses the operator ('your')."
+	},
+	"ui.agents.pending.count_aria": {
+		"role": "Accessible label for the pending-approval count: the panel, a tab count badge or a roster row mark",
+		"tone": "Plain, factual",
+		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel. ICU plural on {count} (1 or more). Give every CLDR plural category the language needs."
+	},
+	"ui.agents.pending.kind.agent": {
+		"role": "Kind word on a pending-proposal row",
+		"tone": "Single noun",
+		"note": "The kind of definition the proposal changes. Use the same term as the Agents tab (ui.agents.pages.tab.agents) in the singular."
+	},
+	"ui.agents.pending.kind.team": {
+		"role": "Kind word on a pending-proposal row",
+		"tone": "Single noun",
+		"note": "The kind of definition the proposal changes. Use the same term as the Teams tab (ui.agents.pages.tab.teams) in the singular."
+	},
+	"ui.agents.pending.kind.skill": {
+		"role": "Kind word on a pending-proposal row",
+		"tone": "Single noun",
+		"note": "The kind of definition the proposal changes. Use the same term as the Skills tab (ui.agents.skills.tab) in the singular."
+	},
+	"ui.agents.pending.operation.create": {
+		"role": "Status phrase on a pending-proposal row: the proposal would create a new definition",
+		"tone": "Short status",
+		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel. Use the same vocabulary as ui.agents.proposals.new_group, in the singular."
+	},
+	"ui.agents.pending.operation.update": {
+		"role": "Status phrase on a pending-proposal row: the proposal would change an existing definition",
+		"tone": "Short status",
+		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+	},
+	"ui.agents.pending.stale": {
+		"role": "Marker on a pending-proposal row whose definition changed after it was proposed",
+		"tone": "Short status",
+		"note": "The proposal can no longer be accepted as is; the operator can still reject it. Not an error of the app."
+	},
+	"ui.agents.pending.review": {
+		"role": "Button on a pending-proposal row that opens its review panel",
+		"tone": "Imperative, one word if possible",
+		"note": "Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+	},
+	"ui.agents.pending.review_aria": {
+		"role": "Accessible label of the Review button",
+		"tone": "Imperative",
+		"note": "{name} is a definition name, an identifier: do not translate it. Agents page summary of profile proposals (changes an agent proposed to an agent, team or skill definition) that wait for the operator to accept or reject them. Nothing is applied until the operator accepts in the review panel."
+	},
+	"ui.agents.pending.show_all": {
+		"role": "Button that expands the pending-proposal list",
+		"tone": "Imperative, short",
+		"note": "{count} is the total number of pending proposals (always 4 or more)."
+	},
+	"ui.agents.pending.show_fewer": {
+		"role": "Button that collapses the pending-proposal list back to its first rows",
+		"tone": "Imperative, short",
+		"note": "Counterpart of ui.agents.pending.show_all."
+	}
+}

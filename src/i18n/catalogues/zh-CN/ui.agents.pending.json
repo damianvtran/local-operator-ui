@@ -1,0 +1,14 @@
+{
+	"ui.agents.pending.heading": "等待你批准",
+	"ui.agents.pending.count_aria": "{count, plural, other {# 项更改等待你批准}}",
+	"ui.agents.pending.kind.agent": "智能体",
+	"ui.agents.pending.kind.team": "团队",
+	"ui.agents.pending.kind.skill": "技能",
+	"ui.agents.pending.operation.create": "提议新建",
+	"ui.agents.pending.operation.update": "提议更改",
+	"ui.agents.pending.stale": "已过期",
+	"ui.agents.pending.review": "审阅",
+	"ui.agents.pending.review_aria": "审阅对 {name} 的提议更改",
+	"ui.agents.pending.show_all": "全部显示（{count}）",
+	"ui.agents.pending.show_fewer": "收起"
+}

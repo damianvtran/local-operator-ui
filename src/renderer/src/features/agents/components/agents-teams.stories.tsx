@@ -15,6 +15,10 @@ import {
 	useLayoutEffect,
 	useRef,
 } from "react";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../../shared/desktop-contract";
 import {
 	CAPABILITIES,
 	HoldShutterUntil,
@@ -303,6 +307,127 @@ const LIVE_CAPABILITIES = {
 	},
 };
 
+/* ------------------------------------------------- waiting proposals -- */
+
+/** A proposal summary as `profileProposals.list` sends it. */
+type WaitingProposal = {
+	id: string;
+	kind: "agent" | "team" | "skill";
+	name: string;
+	label?: string | null;
+	operation: string;
+	fields: string[];
+	state: "pending" | "stale";
+	stale: boolean;
+	origin: { trust: "agent" | "owner" | "untrusted"; session_id?: string };
+	created_at: number;
+};
+
+const waiting = (
+	over: Partial<WaitingProposal> &
+		Pick<WaitingProposal, "id" | "kind" | "name">,
+): WaitingProposal => ({
+	operation: "update",
+	fields: ["instructions"],
+	state: "pending",
+	stale: false,
+	origin: { trust: "agent", session_id: "synthetic-conversation" },
+	created_at: 1794232800,
+	...over,
+});
+
+/**
+ * Answer the proposal reads over the bridge `installBridge` just put in place,
+ * delegating every other op to it. The detail read builds a one-paragraph diff
+ * per field, enough for the review panel a Review press opens to draw its card.
+ */
+const answerProposals = (proposals: readonly WaitingProposal[]) => {
+	const page = window as unknown as {
+		api: {
+			desktop: { request: (r: DesktopRequest) => Promise<DesktopResponse> };
+		};
+	};
+	const inner = page.api.desktop.request;
+	const ok = (result: unknown): DesktopResponse => ({
+		status: 200,
+		body: { result },
+	});
+	page.api.desktop.request = async (request) => {
+		if (request.op === "profileProposals.list")
+			return ok({ proposals, counts: {} });
+		if (request.op === "profileProposals.get") {
+			const hit = proposals.find(
+				(p) => p.id === (request as { proposalId?: string }).proposalId,
+			);
+			if (!hit) return inner(request);
+			return ok({
+				...hit,
+				changes: hit.fields.map((field) => ({
+					field,
+					label: field,
+					before_text: "Be direct and cite sources.",
+					after_text: "Be concise and cite primary sources.",
+					format: "text",
+				})),
+			});
+		}
+		return inner(request);
+	};
+};
+
+/** The operator's case: one TEAM proposal, read from the Agents tab. */
+const ONE_TEAM_PROPOSAL = [
+	waiting({
+		id: "pp_team_content",
+		kind: "team",
+		name: "content",
+		label: "Content",
+	}),
+];
+
+/** Every kind, a stale one, a create, and more than the three rows shown collapsed. */
+const MIXED_PROPOSALS = [
+	waiting({
+		id: "pp_agent_scout",
+		kind: "agent",
+		name: "trend-scout",
+		fields: ["instructions", "tools"],
+		created_at: 1794232900,
+	}),
+	waiting({
+		id: "pp_team_content",
+		kind: "team",
+		name: "content",
+		label: "Content",
+		state: "stale",
+		stale: true,
+		fields: ["members"],
+		created_at: 1794232850,
+	}),
+	waiting({
+		id: "pp_agent_new",
+		kind: "agent",
+		name: "press-officer",
+		operation: "create",
+		fields: ["description", "instructions"],
+		created_at: 1794232800,
+	}),
+	waiting({
+		id: "pp_skill_research",
+		kind: "skill",
+		name: "research-brief",
+		fields: ["body"],
+		created_at: 1794232700,
+	}),
+	waiting({
+		id: "pp_team_helpdesk",
+		kind: "team",
+		name: "helpdesk",
+		fields: ["instructions"],
+		created_at: 1794232600,
+	}),
+];
+
 /* --------------------------------------------------------------- the rig -- */
 
 /**
@@ -335,6 +460,12 @@ const Scene: FC<{
 	 * change every other frame this world draws, so the patch is per story.
 	 */
 	agentOverrides?: Record<string, Partial<WorldProfile>>;
+	/**
+	 * Profile proposals waiting for the operator. Present (even empty), the
+	 * backend advertises `profile_proposals` and answers the proposal reads from
+	 * this list; omitted, the capability is off, as in every other frame here.
+	 */
+	proposals?: readonly WaitingProposal[];
 }> = ({
 	at,
 	children,
@@ -342,6 +473,7 @@ const Scene: FC<{
 	capabilities = LIVE_CAPABILITIES,
 	effectiveFails,
 	agentOverrides,
+	proposals,
 }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
 	rows.current ??= AGENTS.map((row) => ({
@@ -352,10 +484,16 @@ const Scene: FC<{
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
 			teams: [...TEAMS, ...extraTeams],
-			capabilities,
+			capabilities: proposals
+				? {
+						...capabilities,
+						features: { ...capabilities.features, profile_proposals: 1 },
+					}
+				: capabilities,
 			effectiveFails,
 		});
-	}, [extraTeams, capabilities, effectiveFails]);
+		if (proposals) answerProposals(proposals);
+	}, [extraTeams, capabilities, effectiveFails, proposals]);
 	return (
 		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
 			{/*
@@ -1067,6 +1205,67 @@ export const TeamMemberOverridesEditing: Story = {
 			extraTeams={OVERRIDES_EXTRA}
 		>
 			<PressEdit />
+		</Scene>
+	),
+};
+
+/*
+ * WAITING FOR YOUR APPROVAL (operator report, 2026-11-21): the Agents nav badge
+ * counted a pending proposal and the page showed nothing to do. These frames are
+ * the page with proposals waiting; `PendingNone` is the control (capability on,
+ * nothing waiting: no summary, no marks).
+ */
+const summaryShows = (text: string) => () =>
+	Boolean(
+		document
+			.querySelector('[data-testid="pending-approvals"]')
+			?.textContent?.includes(text),
+	);
+
+/** Capability on, nothing waiting: the page is exactly as before. */
+export const PendingNone: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={[]}>
+			<HoldShutterUntil done={rowExists("manager")} />
+		</Scene>
+	),
+};
+
+/** One TEAM proposal while the AGENTS tab is open: the operator's screen. */
+export const PendingOneTeamOnAgentsTab: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={ONE_TEAM_PROPOSAL}>
+			<HoldShutterUntil done={summaryShows("Content")} />
+		</Scene>
+	),
+};
+
+/** Mixed kinds, a stale one and a create: three rows, then "Show all 5". */
+export const PendingMixed: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS}>
+			<HoldShutterUntil done={summaryShows("trend-scout")} />
+		</Scene>
+	),
+};
+
+/** Mixed, on the Teams tab: the marked row and the tab's count. */
+export const PendingMixedTeamsTab: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team" proposals={MIXED_PROPOSALS}>
+			<HoldShutterUntil done={rowExists("content")} />
+		</Scene>
+	),
+};
+
+/** Where Review lands: the team, its review panel open at the proposal. */
+export const PendingReviewOpened: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=team&name=content&proposal=pp_team_content"
+			proposals={ONE_TEAM_PROPOSAL}
+		>
+			<HoldShutterUntil done={paneSays("Proposed change to")} />
 		</Scene>
 	),
 };

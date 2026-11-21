@@ -1,0 +1,14 @@
+{
+	"ui.agents.pending.heading": "En attente de votre approbation",
+	"ui.agents.pending.count_aria": "{count, plural, one {# modification en attente de votre approbation} other {# modifications en attente de votre approbation}}",
+	"ui.agents.pending.kind.agent": "Agent",
+	"ui.agents.pending.kind.team": "Équipe",
+	"ui.agents.pending.kind.skill": "Compétence",
+	"ui.agents.pending.operation.create": "Création proposée",
+	"ui.agents.pending.operation.update": "Modification proposée",
+	"ui.agents.pending.stale": "Obsolète",
+	"ui.agents.pending.review": "Examiner",
+	"ui.agents.pending.review_aria": "Examiner la modification proposée pour {name}",
+	"ui.agents.pending.show_all": "Tout afficher ({count})",
+	"ui.agents.pending.show_fewer": "Afficher moins"
+}

@@ -57,12 +57,21 @@ import {
 	useTeamDetail,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	type ProfileProposalKind,
+	type ProfileProposalSummary,
+	pendingProposalCountsByKind,
+	pendingProposals,
+	pendingProposalsByRecord,
+} from "@shared/api/local-operator/profile-proposals";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	Alert,
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -123,6 +132,10 @@ import {
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
 import { MissingDefinitionError } from "./missing-definition-error";
+import {
+	PendingApprovalsSummary,
+	PendingProposalMark,
+} from "./pending-approvals";
 import { ProfileProposalPanel } from "./profile-proposal-panel";
 import {
 	ProposedNewGroup,
@@ -508,6 +521,9 @@ export function AgentsPage() {
 			if (next.create !== null && next.create !== undefined)
 				search.set("create", next.create);
 			if (next.duplicate) search.set("duplicate", next.duplicate);
+			// The record's `ProfileProposalPanel` reads it to open and scroll to
+			// that proposal (the pending-approvals summary and marked rows set it).
+			if (next.proposal) search.set("proposal", next.proposal);
 			// Any real navigation resolves a pending question, whichever route asked
 			// for it (the guard's own button, a browser Back, a deep link).
 			setPendingNav(null);
@@ -835,6 +851,32 @@ export function AgentsPage() {
 		capabilities.data,
 		"profile_proposals",
 	);
+	/*
+	 * WHAT IS WAITING FOR THE OPERATOR, read once for the whole page (operator
+	 * report, 2026-11-21: the nav badge said 1, the page showed nothing to do).
+	 * The same cached list the nav badge polls (`useProfileProposals` shares one
+	 * query key), run through the same `pendingProposals` filter, so the summary,
+	 * the tab counts and the row marks cannot disagree with the badge. With the
+	 * capability off the read never runs and every derivation below is empty.
+	 */
+	const proposalList = useProfileProposals(proposalsEnabled);
+	const proposalData = proposalsEnabled ? proposalList.data : undefined;
+	const waiting = pendingProposals(proposalData);
+	const waitingByKind = pendingProposalCountsByKind(proposalData);
+	const waitingFor = (kind: ProfileProposalKind) =>
+		pendingProposalsByRecord(proposalData, kind);
+	/*
+	 * A ROW WITH A PROPOSAL WAITING OPENS AT THAT PROPOSAL: the newest one goes in
+	 * `?proposal=`, which the record's panel highlights and scrolls into view, so
+	 * the click that follows the mark lands on Accept/Reject rather than on the
+	 * top of a long editor with the panel below the fold. Still through the
+	 * dirty-edit guard, like every other roster click.
+	 */
+	const openRecord = (
+		records: ReadonlyMap<string, readonly ProfileProposalSummary[]>,
+		rowName: string,
+	) => requestGo({ name: rowName, proposal: records.get(rowName)?.[0]?.id });
+
 	const selectedIsProposedNew = useIsProposedNew(
 		teamMode ? "team" : "agent",
 		skillMode ? null : selected,
@@ -906,6 +948,22 @@ export function AgentsPage() {
 				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
 
 				{/*
+				 * ABOVE THE TABS, SO IT IS ON EVERY TAB: a proposal for a team must be
+				 * visible from the Agents tab (the operator's case), and Review switches
+				 * to the right tab and record itself.
+				 */}
+				<PendingApprovalsSummary
+					proposals={waiting}
+					onReview={(proposal) =>
+						requestGo({
+							kind: proposal.kind,
+							name: proposal.name,
+							proposal: proposal.id,
+						})
+					}
+				/>
+
+				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
 				 * tabs, search and scope are one control stack, so they sit closer to each
 				 * other than to the list below and the button beneath it. Each is
@@ -931,6 +989,7 @@ export function AgentsPage() {
 								icon={<Bot className="size-3.5" />}
 								label={t("ui.agents.pages.tab.agents")}
 								count={profiles.data?.length ?? null}
+								waiting={waitingByKind.agent}
 								compact={skillsOffered}
 							/>
 							<BrowseTab
@@ -939,6 +998,7 @@ export function AgentsPage() {
 								icon={<Users className="size-3.5" />}
 								label={t("ui.agents.pages.tab.teams")}
 								count={teams.data?.length ?? null}
+								waiting={waitingByKind.team}
 								compact={skillsOffered}
 							/>
 							{/*
@@ -957,6 +1017,7 @@ export function AgentsPage() {
 									icon={<Sparkles className="size-3.5" />}
 									label={t("ui.agents.skills.tab")}
 									count={skills.library.data ? skills.cards.length : null}
+									waiting={waitingByKind.skill}
 								/>
 							) : null}
 						</TabsList>
@@ -1082,7 +1143,8 @@ export function AgentsPage() {
 							marked={
 								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
 							}
-							onOpen={(rowName) => requestGo({ name: rowName })}
+							pending={waitingFor("skill")}
+							onOpen={(rowName) => openRecord(waitingFor("skill"), rowName)}
 						/>
 					) : listError ? null : !profiles.data && !teams.data ? (
 						<RosterSkeleton />
@@ -1108,7 +1170,10 @@ export function AgentsPage() {
 							 * row being left has to be asked about (D1/U1/Q1), and the pane is
 							 * keyed by record, so the navigation IS the discard.
 							 */
-							onOpen={(rowName) => requestGo({ name: rowName })}
+							pending={waitingFor(teamMode ? "team" : "agent")}
+							onOpen={(rowName) =>
+								openRecord(waitingFor(teamMode ? "team" : "agent"), rowName)
+							}
 						/>
 					)}
 					{/*
@@ -1704,6 +1769,7 @@ function BrowseTab({
 	icon,
 	label,
 	count,
+	waiting = 0,
 	compact,
 	noPanel = false,
 }: {
@@ -1712,6 +1778,12 @@ function BrowseTab({
 	icon: ReactNode;
 	label: string;
 	count: number | null;
+	/**
+	 * Proposals of this kind waiting for the operator. An ATTENTION count, so it
+	 * is the shared accent `AttentionBadge`, never the subtle total numeral beside
+	 * it; it is what tells someone on the Agents tab that the badge's 1 is a team.
+	 */
+	waiting?: number;
 	compact: boolean;
 	/**
 	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
@@ -1726,7 +1798,14 @@ function BrowseTab({
 			value={value}
 			data-testid={testId}
 			{...(noPanel ? { "aria-controls": undefined } : {})}
-			title={count === null ? label : `${label} ${count}`}
+			title={[
+				count === null ? label : `${label} ${count}`,
+				waiting > 0
+					? t("ui.agents.pending.count_aria", { count: waiting })
+					: null,
+			]
+				.filter(Boolean)
+				.join(" - ")}
 			className={cn("min-w-0", compact ? "flex-auto px-2" : "flex-1")}
 		>
 			{compact ? null : icon}
@@ -1743,6 +1822,18 @@ function BrowseTab({
 					{count}
 				</span>
 			)}
+			{waiting > 0 ? (
+				<>
+					<AttentionBadge
+						aria-hidden="true"
+						count={waiting}
+						data-testid={`${testId}-pending`}
+					/>
+					<span className="sr-only">
+						{t("ui.agents.pending.count_aria", { count: waiting })}
+					</span>
+				</>
+			) : null}
 		</TabsTrigger>
 	);
 }
@@ -1754,6 +1845,8 @@ type NavIntent = {
 	create?: "agent" | "team" | null;
 	/** The name a "Duplicate as new agent" form starts from. */
 	duplicate?: string;
+	/** A proposal id the opened record's review panel should open and scroll to. */
+	proposal?: string;
 };
 
 /**
@@ -1932,10 +2025,13 @@ function Roster({
 	name,
 	teamMode,
 	marked,
+	pending,
 	printName,
 	onOpen,
 }: {
 	rows: readonly (ReusableProfile | ReusableTeam)[];
+	/** Waiting proposals by record name (`pendingProposalsByRecord`): the row marks. */
+	pending?: ReadonlyMap<string, readonly ProfileProposalSummary[]>;
 	/** The definition the page is showing, or null. */
 	name: string | null;
 	teamMode: boolean;
@@ -2068,6 +2164,11 @@ function Roster({
 								>
 									{rowLabel(row)}
 								</span>
+								{/* Proposals waiting on this record (the missing tree-row dot). */}
+								<PendingProposalMark
+									kind={teamMode ? "team" : "agent"}
+									count={pending?.get(row.name)?.length ?? 0}
+								/>
 								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
 										{/*

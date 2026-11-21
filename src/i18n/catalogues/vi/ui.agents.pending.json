@@ -1,0 +1,14 @@
+{
+	"ui.agents.pending.heading": "Đang chờ bạn phê duyệt",
+	"ui.agents.pending.count_aria": "{count, plural, other {# thay đổi đang chờ bạn phê duyệt}}",
+	"ui.agents.pending.kind.agent": "Tác nhân",
+	"ui.agents.pending.kind.team": "Nhóm",
+	"ui.agents.pending.kind.skill": "Kỹ năng",
+	"ui.agents.pending.operation.create": "Đề xuất tạo mới",
+	"ui.agents.pending.operation.update": "Đề xuất thay đổi",
+	"ui.agents.pending.stale": "Đã lỗi thời",
+	"ui.agents.pending.review": "Xem xét",
+	"ui.agents.pending.review_aria": "Xem xét thay đổi được đề xuất cho {name}",
+	"ui.agents.pending.show_all": "Hiện tất cả ({count})",
+	"ui.agents.pending.show_fewer": "Thu gọn"
+}
