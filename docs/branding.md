@@ -552,10 +552,10 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 edge holds the right-slot doors - the four panel triggers since #872, and the asks
 drawer's door since #896 - and it stands on the sidebar's rung: `surface`.
 Its leading edge carries the same 1px `hairline` seam as the sidebar's inner
-edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it. The
-seam was added on 2026-10-30 because the step alone did not read in light
-themes; the paragraph here used to argue the absence, and what is still true of
-that argument is its measurement, which is the reason the seam exists. The
+edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it, except
+in the [Shared inset chat workspace](#shared-inset-chat-workspace), where the
+rail has no seam. The seam was added on 2026-10-30 because the step alone did
+not read in light themes. The measurements below explain why. The
 ladder asserts these pairs at the 2.0 field floor, and
 `REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
 stronger bar it sets for two full-height planes with no line between them.
@@ -582,9 +582,10 @@ survives a theme whose `rowSelected` sits close to `surface`. No new role:
 `canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
 draws **no border at rest**: the step is what separates it, and the accent ring
 is reserved for `:focus-visible`. Where it sits over scrolled content, the
-transcript gets a 24px fade mask to `canvas` at the pane's top edge and a
-matching mask above the composer — not the shared shadow, which this section
-reserves for objects that float (menus, popovers, dialogs).
+transcript uses edge fades rather than the shared shadow, which this section
+reserves for objects that float (menus, popovers, dialogs). In the [Shared inset
+chat workspace](#shared-inset-chat-workspace), the fades belong to the transcript
+scroller, not the composer.
 
 Why the step rather than an edge, recorded because the two look interchangeable:
 the five reference composers at this size get their separation from a lightness
@@ -598,9 +599,11 @@ focus, not on the frame of an empty field.
 
 A full-height panel is a region that owns a ground at the window's edge — the app
 sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
-popover.
+popover. These are the edge-to-edge panel defaults; the [Shared inset chat
+workspace](#shared-inset-chat-workspace) has one intentional inner frame and
+uses no decorative panel seams.
 
-- **A full-height panel draws one seam, and still no border.** The tone step is
+- **An edge-to-edge panel draws one seam, and still no border.** The tone step is
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
   75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
   alone is not enough between two full-height planes: `canvas` to `surface`
@@ -627,9 +630,10 @@ popover.
     route rather than against the window edge (a card, an inspector inside a
     page) has no seam: the tone step is the whole boundary there, because it is
     one object on a page, not a column of the window.
-  - **The sidebar's seam is the shell column's edge, on every route.** It marks
-    where the app sidebar ends, so on a route whose own leading column is also
-    `surface` — the Settings nav, the Agents roster — it is the only boundary
+  - **Outside the Shared inset, the sidebar's seam is the shell column's
+    edge.** It marks where the app sidebar ends, so on a route whose own
+    leading column is also `surface` — the Settings nav, the Agents roster —
+    it is the only boundary
     between the two chrome planes, and those two keep the flat join *under* the
     seam. The route column's own edge to its content keeps the tone step alone;
     a seam inside a route's own layout is out of this change's scope.
@@ -637,15 +641,15 @@ popover.
     facing the content in RTL; the class is pinned in
     `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
     this change.
-- **Full-height panels extend through the titlebar strip; no top inset on the
+- **Edge-to-edge panels extend through the titlebar strip; no top inset on the
   panel; the scroll region clips and fades under it.** A panel that owns its
   ground (the app sidebar, a route's leading rail, the Library filter rail, the
   asset-details dock, the right-slot panes and canvas tabs, the panel rail,
   Team Bridge's columns) starts at y0 and paints its own ground through the
   traffic lights' band. Its first content row is padded by
   `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
-  content column for every route, so no route needs its own inset and none may
-  compute one.
+  content column for every route. Use that shared clearance rather than
+  computing a route-specific titlebar inset.
   - The mechanism is two utilities in `styles/index.css`, defined once:
     `panel-flush` on a route root that owns the whole window height (it cancels
     the shell's ordinary-content pad) and `panel-top-pad` on a full-height
@@ -693,8 +697,63 @@ full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
 padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
 and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
 and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
-enforces that no route computes its own titlebar inset; agent-facing detail is
-in `docs/AGENTS.md`.
+enforces shared titlebar clearance; see the
+[agent guardrails](../AGENTS.md#panels-run-to-the-window-edge).
+
+### Shared inset chat workspace
+
+- **One inner frame, not an inset window.** Keep the chat shell's native chrome
+  edge-to-edge. Below the titlebar, the chat and docked inspector share one
+  boundary (an 8px side and bottom gutter, a 10px corner radius). Use the shell's
+  shared titlebar clearance once, not `panel-top-pad` again inside the frame.
+  Tone and spacing separate the shell, sidebar, rail and workspace: no outlining
+  border, `PanelEdge` seams, extra card/backing or shell shadow. This is a chat
+  workspace rule, not a new palette or a ban on content cards, native menus,
+  or necessary focus and forced-colors boundaries. Other routes keep their
+  edge-to-edge panel rules.
+- **Only tabs have a resting fill in the workspace controls.** Keep it quiet
+  and borderless. Show the conversation title once in the chrome, in its tab;
+  keep rename in the existing actions. Team/Agent/Device selectors and other
+  workspace chrome buttons rest transparent and borderless. Keep focus-visible
+  outlines, a non-colour selected cue and the existing hit areas.
+- **Use the actual OS titlebar band where integrated chrome is available.**
+  Fit the tabs between the existing native exclusion zones and leave empty
+  space draggable. Make the controls and their full hit areas no-drag. Keep
+  pinned tabs in a lane independent of regular scrolling, with scrollable
+  overflow bounded to its lane. Reorder within a lane by drag or accessible
+  move actions; crossing lanes requires explicit pin/unpin.
+- **Tab close only removes workspace membership.** Keep the conversation, its
+  draft and its runtime. Automatic cleanup is opt-in for inactive regular tabs
+  confirmed at rest. Pinned tabs never auto-close; if rest cannot be confirmed,
+  keep the tab open. This is the intended cleanup contract; end-to-end
+  verification against Core is pending.
+- **Keep the transcript edges honest and the dock matte.** Fade each transcript
+  edge only while more content can scroll past that edge. Empty or short
+  transcripts have no fade, the adjacent edge clears at its endpoint, and
+  composer, focused content and controls stay clear of the mask. Preserve the
+  Nested dock's directory shelf, editor, controls and activity geometry; reduce
+  frost and gloss instead of adding an edge. Keep the actual coverage of
+  **Off**, **Sidebars only** and **Full app**; no opaque backing over glass
+  (see [Window glass](#window-glass-translucency-on-by-default-where-supported)).
+- **Teams and Agents are quiet launchers.** Make the avatar/name a clearly
+  actionable but unobtrusive way to launch a targeted draft. Keep history,
+  edit/manage and Hub subscription (where available) distinct. No resting row
+  fill, cards or pills. Use the same `SidebarSectionHeading` primitive,
+  typography, inset and spacing within and between sections as Today, Running
+  and the other conversation groups. Match their uppercase display on the
+  group label only, not in translation strings or on a containing section.
+
+#### Shared inset evidence
+
+Compare rendered standard, narrow and RTL layouts: measure heading insets and
+row gaps, and check bounded overflow and titlebar control hit geometry. Use the
+[renderer driver](agent-driver.md) for frames and geometry,
+[`scripts/window-glass-cdp.test.mjs`](../scripts/window-glass-cdp.test.mjs) for
+coverage geometry, [`scripts/workspace-tabs.test.mjs`](../scripts/workspace-tabs.test.mjs)
+for tab behavior, and [`scripts/chat-sidebar-sections.test.mjs`](../scripts/chat-sidebar-sections.test.mjs)
+for sidebar structure. A hidden Electron capture proves renderer behavior, not
+native pointer delivery or dragging: check clicks and empty-space drag in the
+actual OS titlebar before claiming native coverage.
 
 ### Accent
 
@@ -837,7 +896,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
 | `rowHover` and `rowSelected` against `surface` | ΔE00 2.0 each (the 4.0 band is withdrawn: with the hue and the cast held at the panel's own, it is reachable on 40 of 59 — see § 2) |
 | `rowSelected`'s `L*` step off `surface`: the direction, at least `1.5 L*`, and at most `5 L*` | 1.5–5.0 `L*` |
-| The panel seam: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
+| The edge-to-edge panel seam, where drawn: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
 | `rowHover`'s `L*` step off `surface`: the direction, and at least `1.5 L*` | 1.5 `L*` |
 | `rowHover`'s share of `rowSelected`'s step | at least 50% (the shipped hover spent 30% of its headroom) |
 | `rowHover`'s cast against the panel's: floor and ceiling | at least `max(2.5, 0.5 × C*(surface))`, at most `max(C*(surface), 2.5)` |
@@ -1647,8 +1706,10 @@ Full treatment in the kit's `voice.md`. The rules that bite hardest in an app:
 - **Errors say what happened, what it means, and what to do** — in that order,
   in the user's terms. An error that only quotes an exception is unfinished.
 - **No emojis**, anywhere: UI copy, code, comments, commit messages.
-- Sentence case for everything — buttons, headings, menu items, labels. Title
-  Case is a marketing register and it makes a tool shout.
+- Write copy in sentence case — buttons, headings, menu items, labels. Title
+  Case is a marketing register and it makes a tool shout. The [Shared inset
+  group labels](#shared-inset-chat-workspace) use uppercase presentation only;
+  their translation strings are unchanged.
 
   **The one carve-out, and why it is not a precedent.** A *value chip* that
   prints a named setting beside the model's own name — the composer's reasoning
