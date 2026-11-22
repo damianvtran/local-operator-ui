@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "बदले गए टेक्स्ट",
 	"ui.chat.message_controls.thinking_label": "सोच रहा है",
 	"ui.chat.scroll_to_bottom.label": "नीचे तक स्क्रॉल करें",
-	"ui.chat.scroll_to_bottom.label_new_activity": "नई गतिविधि, नीचे तक स्क्रॉल करें",
+	"ui.chat.scroll_to_bottom.label_new_activity": "नई गतिविधि, नवीनतम पर जाएँ",
 	"ui.chat.session_status.last_reading_note": "फिर कनेक्ट होने से पहले की पिछली रीडिंग।",
 	"ui.chat.session_status.readings_aria_held": "सत्र की रीडिंग। {note}",
 	"ui.chat.session_status.commands_off": "इस सर्वर पर स्लैश कमांड बंद हैं, इसलिए यह रीडिंग यहाँ से खोली नहीं जा सकती।",

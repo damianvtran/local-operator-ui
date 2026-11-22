@@ -17,7 +17,7 @@
 	"ui.chat.page_chrome.options.rename": "Rename",
 	"ui.chat.page_chrome.options.resume": "Resume",
 	"ui.chat.page_chrome.options.settings": "Settings",
-	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "New activity",
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Jump to latest",
 	"ui.chat.page_chrome.status_strip.connection": "Connection",
 	"ui.chat.page_chrome.status_strip.offline": "Offline",
 	"ui.chat.page_chrome.status_strip.outcome_refused": "The server is running, but this app's credential is still refused.",

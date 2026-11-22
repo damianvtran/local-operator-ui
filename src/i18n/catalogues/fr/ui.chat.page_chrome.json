@@ -17,7 +17,7 @@
 	"ui.chat.page_chrome.options.rename": "Renommer",
 	"ui.chat.page_chrome.options.resume": "Reprendre",
 	"ui.chat.page_chrome.options.settings": "Paramètres",
-	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Nouvelle activité",
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Aller au plus récent",
 	"ui.chat.page_chrome.status_strip.connection": "Connexion",
 	"ui.chat.page_chrome.status_strip.offline": "Hors ligne",
 	"ui.chat.page_chrome.status_strip.outcome_refused": "Le serveur est en cours d’exécution, mais l’identifiant de cette application est toujours refusé.",

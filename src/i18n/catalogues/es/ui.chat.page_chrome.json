@@ -17,7 +17,7 @@
 	"ui.chat.page_chrome.options.rename": "Renombrar",
 	"ui.chat.page_chrome.options.resume": "Reanudar",
 	"ui.chat.page_chrome.options.settings": "Ajustes",
-	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Actividad nueva",
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Ir a lo más reciente",
 	"ui.chat.page_chrome.status_strip.connection": "Conexión",
 	"ui.chat.page_chrome.status_strip.offline": "Sin conexión",
 	"ui.chat.page_chrome.status_strip.outcome_refused": "El servidor está en ejecución, pero sigue rechazando la credencial de esta app.",

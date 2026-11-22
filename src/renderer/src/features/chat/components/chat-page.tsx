@@ -145,6 +145,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { activityFingerprint } from "../canonical/new-activity";
 import { editDraftOf } from "../canonical/skill-row";
 import { useSoundStopGate } from "../canonical/sound-stop-confirmation";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
@@ -894,11 +895,23 @@ function SessionPanel({
 	const interruptAvailable = sessionInterruptEnabled(panelCapabilities.data);
 	const [options, setOptions] = useState(false);
 	const [tab, setTab] = useState<"chat" | "raw">("chat");
-	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
-		50,
-		container,
-		canonical.transcript.records.length,
+	/*
+	 * The jump-to-latest control reads two facts from the transcript: where the
+	 * reader is (`container`, below) and what the tail is doing (the fingerprint
+	 * here, recomputed only when the records array changes). `streamId` is the
+	 * CONVERSATION's identity, so a conversation switch resets the chip and a
+	 * new record does not - the record count used to be passed here and every
+	 * arriving row blanked the control for a frame.
+	 */
+	const newActivityFingerprint = useMemo(
+		() => activityFingerprint(canonical.transcript.records),
+		[canonical.transcript.records],
 	);
+	const { isFarFromBottom, hasNewActivity, scrollToBottom, snapToBottom } =
+		useScrollToBottom(container, {
+			contentKey: streamId,
+			activity: newActivityFingerprint,
+		});
 	/*
 	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
 	 * for the CLAIM surfaces AND, since round 1's D2, for every consumer that
@@ -2692,6 +2705,19 @@ function SessionPanel({
 				),
 			);
 			if (!id) return false;
+			/*
+			 * SENDING PUTS THE NEWEST ROW UNDER THE READER, immediately: the echo was
+			 * just painted in this commit, and a smooth scroll would spend the first
+			 * frames of the reader's own message travelling down through the turn
+			 * above it. This is the ONE place every send door passes (the composer's
+			 * own submit only covers its own), so the suggestion grid and the
+			 * dictated deliverer snap by the same rule.
+			 *
+			 * NOT for an origin-bound send: that door finishes a dictated press in a
+			 * conversation this pane is NOT showing, and snapping the visible pane
+			 * would move a reader who never sent anything.
+			 */
+			if (!originBound) snapToBottom();
 			/*
 			 * The composer's own attachments, written to the Files panel here because
 			 * this is the only place they exist. They are NOT on the wire: a canonical
@@ -5342,6 +5368,7 @@ function SessionPanel({
 					isLoading={false}
 					isLoadingMessages={false}
 					isFarFromBottom={isFarFromBottom}
+					hasNewActivity={hasNewActivity}
 					messagesContainerRef={container}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}
