@@ -341,24 +341,32 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 type HoldContent = {
 	body?: string | null;
-	images?: readonly unknown[] | null;
+	attachments?: readonly unknown[] | null;
+	attachment_count?: number | null;
 	files?: readonly unknown[] | null;
+	file_count?: number | null;
 };
 
-export function hasLocalHoldContent(
-	detail: JoinedDetail<HoldContent>,
-): boolean {
+/** A count-only audit receipt is still shown by the attachment disclosure. */
+export function holdAttachmentCounts(message: HoldContent | null) {
+	return {
+		images: message?.attachments?.length || message?.attachment_count || 0,
+		files: Math.max(message?.files?.length ?? 0, message?.file_count ?? 0),
+	};
+}
+
+function hasLocalHoldContent(detail: JoinedDetail<HoldContent>): boolean {
 	if (detail.state !== "ready") return false;
-	const { body, images, files } = detail.message;
-	return Boolean(body?.length || images?.length || files?.length);
+	const { images, files } = holdAttachmentCounts(detail.message);
+	return Boolean(detail.message.body?.length || images + files > 0);
 }
 
 function canMatchLocalHide(
 	item: HoldItem,
+	now?: number,
 ): item is HoldItem & { discard_receipt: string } {
 	return (
-		!item.decision &&
-		!item.can_deliver &&
+		holdAffordance(item, now).state === "deliver_expired" &&
 		typeof item.discard_receipt === "string" &&
 		SHA256_HEX.test(item.discard_receipt)
 	);
@@ -367,9 +375,10 @@ function canMatchLocalHide(
 export function canHideHoldLocally(
 	item: HoldItem,
 	detail: JoinedDetail<HoldContent>,
+	now?: number,
 ): boolean {
 	return (
-		canMatchLocalHide(item) &&
+		canMatchLocalHide(item, now) &&
 		detail.state !== "loading" &&
 		!hasLocalHoldContent(detail)
 	);

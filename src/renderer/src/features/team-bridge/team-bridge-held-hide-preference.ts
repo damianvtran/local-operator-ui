@@ -33,20 +33,24 @@ export function createHeldHidePreference(storage: () => HideStorage) {
 		// Missing, malformed or blocked preferences must leave all holds visible.
 	}
 	const listeners = new Set<() => void>();
-	const commit = (next: ReadonlySet<string>, recovered = false) => {
+	let recoveryPending = false;
+	const publish = (next: ReadonlySet<string>, pending: boolean) => {
+		revisions = next;
+		recoveryPending = pending;
+		for (const listener of listeners) listener();
+	};
+	const commit = (next: ReadonlySet<string>) => {
 		try {
 			storage().setItem(HELD_HIDE_STORAGE_KEY, JSON.stringify([...next]));
 		} catch {
-			// A user action must be durable before the UI claims it worked. But
-			// recovery has precedence over a stale hide even when disk is blocked.
-			if (!recovered) return false;
+			return false;
 		}
-		revisions = next;
-		for (const listener of listeners) listener();
+		publish(next, false);
 		return true;
 	};
 	return {
 		snapshot: () => revisions,
+		recoveryPending: () => recoveryPending,
 		subscribe(listener: () => void) {
 			listeners.add(listener);
 			return () => {
@@ -67,7 +71,12 @@ export function createHeldHidePreference(storage: () => HideStorage) {
 		revealRecovered(recovered: readonly string[]) {
 			const next = new Set(revisions);
 			for (const revision of recovered) next.delete(revision);
-			if (next.size !== revisions.size) commit(next, true);
+			// Recovery wins in memory even if storage still holds the old hide.
+			// Keep the effective state dirty until a later save actually succeeds.
+			if (next.size !== revisions.size && !commit(next)) publish(next, true);
+		},
+		flushRecovery() {
+			if (recoveryPending) commit(revisions);
 		},
 	};
 }
@@ -81,6 +90,14 @@ export function useHeldHideRevisions() {
 		heldHidePreference.subscribe,
 		heldHidePreference.snapshot,
 		() => EMPTY,
+	);
+}
+
+export function useHeldHideRecoveryPending() {
+	return useSyncExternalStore(
+		heldHidePreference.subscribe,
+		heldHidePreference.recoveryPending,
+		() => false,
 	);
 }
 

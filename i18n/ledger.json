@@ -123354,31 +123354,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "5fe2dcd1dbf53712ff2c4a1138aa8f5a7bd70e2687e17ecab9130db26d3b119f",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "9efdb5bf68e8ec1fac98be06409e56f177f8d4f8456743067151e3690f68ea12",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean",
-					"instance": "pr2017-r2-es-copy-170e0100",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean-with-findings",
+					"instance": "pr2041-r1-es-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2017-r2-es-copy-170e0100.json",
-					"receipt_sha256": "3b0a066e3b6217e41aeab2a606e134d88382e35c606dd877765196dea36542b1",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-es-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-es-copy-07dcde6c5e33.json",
+					"receipt_sha256": "f3708a5003ca0c88559e4141f1e855c6fdf42189a42a86f1b42125ae04fa7e8c",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123430,37 +123430,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "5fe2dcd1dbf53712ff2c4a1138aa8f5a7bd70e2687e17ecab9130db26d3b119f",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-es-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-es-copy-170e0100.json",
+							"receipt_sha256": "3b0a066e3b6217e41aeab2a606e134d88382e35c606dd877765196dea36542b1",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-es-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "d8980dab82efee07b9982bdddc3f26d7946a9a474dc9e7977dbf7092e69bf59e",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "89156255a4bd3bc2e5e7f1dd35762e991731fbbe863b9b747ee2305a7e93da91",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean",
-					"instance": "pr2017-r2-fr-copy-170e0100",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean-with-findings",
+					"instance": "pr2041-r1-fr-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr2017-r2-fr-copy-170e0100.json",
-					"receipt_sha256": "8b1c789af5336cd541c5a3ba78ade90e4dd6d22a7b608ccbd0483f74cc4efff8",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-fr-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-fr-copy-07dcde6c5e33.json",
+					"receipt_sha256": "886ff6476d413e8285550352bbf2127e42826cfa67b1721dcf6b028d367f5b7f",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123512,37 +123536,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "d8980dab82efee07b9982bdddc3f26d7946a9a474dc9e7977dbf7092e69bf59e",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-fr-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-fr-copy-170e0100.json",
+							"receipt_sha256": "8b1c789af5336cd541c5a3ba78ade90e4dd6d22a7b608ccbd0483f74cc4efff8",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-fr-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "d61f3a3cdce04e85e17c984cb99c26f1223b8f0ea527195e17884caedb826d19",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "6655af66852ff82e65323a03ded279f4dd5fe4c6eda75d463509ad4e92ca8f3a",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
 					"result": "clean",
-					"instance": "pr2017-r2-hi-copy-170e0100",
+					"instance": "pr2041-r1-hi-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2017-r2-hi-copy-170e0100.json",
-					"receipt_sha256": "a767f50ac343c6fa57fb657647e4e4765dd08e6280a436dc1e25e28d10fe10db",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-hi-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-hi-copy-07dcde6c5e33.json",
+					"receipt_sha256": "5c8bb787801777c73e480d22f409ab15f0f5c3e240ac2b07c9fee453afdd7118",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123594,37 +123642,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "d61f3a3cdce04e85e17c984cb99c26f1223b8f0ea527195e17884caedb826d19",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-hi-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-hi-copy-170e0100.json",
+							"receipt_sha256": "a767f50ac343c6fa57fb657647e4e4765dd08e6280a436dc1e25e28d10fe10db",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-hi-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "928675efae5f5dbad970aedfb18d1e6ccf7c715ba17bbf72f4e15ec77543fa16",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "83bf425b0d6591fa78122bbcde272eed589e542dd87b27d3a01bda1ee6c1d9ff",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
 					"result": "clean",
-					"instance": "pr2017-r2-ru-copy-170e0100",
+					"instance": "pr2041-r1-ru-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2017-r2-ru-copy-170e0100.json",
-					"receipt_sha256": "d8d6fc8963e2d37cfbf1da24ab5e04f5751a90e68be1159c8026ac6e61117775",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ru-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-ru-copy-07dcde6c5e33.json",
+					"receipt_sha256": "485293a6ea1c824d214a671b1150236650622e1898d5e6e025be990a88a2f18d",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123676,37 +123748,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "928675efae5f5dbad970aedfb18d1e6ccf7c715ba17bbf72f4e15ec77543fa16",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-ru-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-ru-copy-170e0100.json",
+							"receipt_sha256": "d8d6fc8963e2d37cfbf1da24ab5e04f5751a90e68be1159c8026ac6e61117775",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ru-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "87fc41936197fc8f2d06935c46dace29bd535a17c26249df48a9e5812398e4f5",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "a3488db64dc257bf842d0fd843f554d77f5f21d51f8a3d16e540be90271a4cfb",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
 					"result": "clean",
-					"instance": "pr2017-r2-ur-copy-170e0100",
+					"instance": "pr2041-r1-ur-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2017-r2-ur-copy-170e0100.json",
-					"receipt_sha256": "13424a2ce5086f9fb5a73cdfd86ebb02f31d571e27ae965dcbdf0a25200a38b3",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ur-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-ur-copy-07dcde6c5e33.json",
+					"receipt_sha256": "177ada372bf5978685f5e28c79a6dfc6541f29ae47daf0172b4cd52251646753",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123758,37 +123854,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "87fc41936197fc8f2d06935c46dace29bd535a17c26249df48a9e5812398e4f5",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-ur-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-ur-copy-170e0100.json",
+							"receipt_sha256": "13424a2ce5086f9fb5a73cdfd86ebb02f31d571e27ae965dcbdf0a25200a38b3",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-ur-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "cf82025e5dd4db1c5d402fdcce20047375d09c08ae0bfbfdecffd8f2bc95aed6",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "130541fbd822939808f7cfaa6da31a7228ea9c178bf20afd56b76bca6ee3f4a6",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
 					"result": "clean",
-					"instance": "pr2017-r2-vi-copy-170e0100",
+					"instance": "pr2041-r1-vi-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2017-r2-vi-copy-170e0100.json",
-					"receipt_sha256": "7905304bbe6916bafca0edb8d4fda67b80f4354b04b54b71bfcd613de45a5414",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-vi-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-vi-copy-07dcde6c5e33.json",
+					"receipt_sha256": "cc0f69686ad25f66405850492651d11fe2f96fd9e39dad87e668072d7e060538",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123840,37 +123960,61 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "cf82025e5dd4db1c5d402fdcce20047375d09c08ae0bfbfdecffd8f2bc95aed6",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-vi-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-vi-copy-170e0100.json",
+							"receipt_sha256": "7905304bbe6916bafca0edb8d4fda67b80f4354b04b54b71bfcd613de45a5414",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-vi-copy-170e0100.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge.holds",
-			"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
-			"target_sha256": "5d3e5d31a31fc56cc0bfb17a6823b7e194e2af09428f06bc24312dc54be71d23",
+			"source_sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+			"target_sha256": "80f621e6f1c740aa59a9e09a9e73acfba53023880a79c454af413a97d2ed657a",
 			"translator": {
-				"agent": "coder-bd6780649ee8",
-				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-20",
-				"note": "Latest translation edit: coder session bd6780649ee8 (PR #2017 r1 remediation). Earlier bytes: coder fe54bb47dbe1; C2 bytes proposed by copy-reviewer 804fc7330294. Audit 170e01005c8b is distinct from all three."
+				"agent": "coder-c63c590378ad",
+				"model": "openai/gpt-6.2-sol",
+				"date": "2026-11-22",
+				"note": "PR #2041 manager verified original coder transcript aba456328b91: coder c63c590378ad authored the six added keys in each target catalogue at a5234b71348; prior keys unchanged (original ledger: coder-bd6780649ee8, anthropic/claude-opus-5-5)."
 			},
 			"auditors": [
 				{
 					"agent": "copy-reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean",
-					"instance": "pr2017-r2-zh-CN-copy-170e0100",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean-with-findings",
+					"instance": "pr2041-r1-zh-CN-copy-07dcde6c5e33",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json",
-					"receipt_sha256": "cca226e649bcc9677d9e5a7762e00576e2aaf748bef65af25009acaa8e691654",
-					"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
-					"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json"
+					"receipt": "i18n/receipts/pr2041-r1-zh-CN-copy-07dcde6c5e33.json",
+					"receipt_sha256": "9962dddcd14d53eeb66f7dde001c4dd461b17d1bbfa7e99e2c77186f89694d73",
+					"scope": "PR #2041: six added local Hide/Restore keys; retains byte-identical prior values",
+					"note": "Independent audit record: i18n/audits/evidence/en/ui.teamBridge.holds/pr2041-r1-copy-07dcde6c5e33/record.json"
 				}
 			],
 			"status": "audited",
@@ -123919,6 +124063,30 @@
 							"receipt_sha256": "7f0d360ffdb4fe0e291f6808da3be5842ec26bea3568890a77c4086d57218bbf",
 							"scope": "PR #1981 copy-review round 3 at 7fd051b62f: delta keys (hidden_characters) read in full; rest byte-identical to r2-audited bytes",
 							"note": "PR #1981 copy audit r3, copy-reviewer session c80a86dde70e; receipt i18n/receipts/pr1981-r3-zh-CN-copy-c80a86dd.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+					"target_sha256": "5d3e5d31a31fc56cc0bfb17a6823b7e194e2af09428f06bc24312dc54be71d23",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2017-r2-zh-CN-copy-170e0100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json",
+							"receipt_sha256": "cca226e649bcc9677d9e5a7762e00576e2aaf748bef65af25009acaa8e691654",
+							"scope": "PR #2017 copy-review round 2 at 2ee1470f02: the 5 new held-message keys read in full; the other 57 keys byte-identical to the PR #1981 r3-audited source",
+							"note": "PR #2017 copy audit r2, copy-reviewer session 170e01005c8b (wrote no translation bytes); receipt i18n/receipts/pr2017-r2-zh-CN-copy-170e0100.json"
 						}
 					],
 					"status": "audited"

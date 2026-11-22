@@ -17,6 +17,7 @@ import {
 	type DiscardBatchResult,
 	discardSnapshot,
 } from "./team-bridge-discard-batch";
+import { heldHidePreference } from "./team-bridge-held-hide-preference";
 import {
 	holdBindingKey,
 	holdDetailKey,
@@ -74,13 +75,18 @@ export function useHeldMessages(
 	const { accountId } = useTeamBridgeAccount();
 	return useQuery({
 		queryKey: holdsKey(accountId),
-		queryFn: () =>
-			readForBridgeOwner(client, accountId, async () =>
+		queryFn: async () => {
+			const page = await readForBridgeOwner(client, accountId, async () =>
 				addLocalHoldRevisions(
 					accountId as string,
 					await TeamBridgeHoldsApi.list(accountId as string),
 				),
-			),
+			);
+			// Reuse the ordinary list poll even when Approvals is closed; a render
+			// or a refused read must not spin on an unavailable preference store.
+			heldHidePreference.flushRecovery();
+			return page;
+		},
 		enabled: enabled && supported && Boolean(accountId),
 		staleTime: 30_000,
 		refetchInterval: pollInterval,

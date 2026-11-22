@@ -35,6 +35,7 @@ import type { DiscardBatchResult } from "./team-bridge-discard-batch";
 import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
 import {
 	heldHidePreference,
+	useHeldHideRecoveryPending,
 	useHeldHideRevisions,
 } from "./team-bridge-held-hide-preference";
 import { holdsKey } from "./team-bridge-holds-keys";
@@ -48,6 +49,7 @@ import {
 	decisionNotApplied,
 	hasHiddenCharacters,
 	holdAffordance,
+	holdAttachmentCounts,
 	holdDecideProof,
 	holdReason,
 	holdReasonLabel,
@@ -75,6 +77,7 @@ type ListState = "loading" | "error" | "ready";
 type Busy = { id: string; word: HoldWord } | null;
 type LocalHideControls = {
 	hiddenItems: readonly HoldItem[];
+	recoveryPending?: boolean;
 	onChange: (item: HoldItem, hide: boolean) => boolean;
 };
 
@@ -106,13 +109,6 @@ export function heldSenderLine(message: OwnerAuditMessage | null): string {
 			: t("ui.teamBridge.holds.from_agent_unnamed", { person });
 	}
 	return t("ui.teamBridge.holds.from_person", { person });
-}
-
-function attachmentCount(message: OwnerAuditMessage | null): number {
-	if (!message) return 0;
-	const images = message.attachments?.length || message.attachment_count || 0;
-	const files = Math.max(message.files?.length ?? 0, message.file_count ?? 0);
-	return images + files;
 }
 
 export function HeldMessagesView({
@@ -191,6 +187,7 @@ export function HeldMessagesView({
 		hideWhenEmpty &&
 		!batchBlocking &&
 		!batchStarted &&
+		!localHide?.recoveryPending &&
 		listState === "ready" &&
 		items.length === 0 &&
 		hiddenItems.length === 0
@@ -257,18 +254,14 @@ export function HeldMessagesView({
 					)}
 				</div>
 			)}
-			{hideFailed && (
+			{(hideFailed || localHide?.recoveryPending) && (
 				<p role="alert" className="text-sm text-ink-muted">
 					{t("ui.teamBridge.holds.hide_failed")}
 				</p>
 			)}
-			{listState === "loading" &&
-			items.length === 0 &&
-			hiddenItems.length === 0 ? (
+			{listState === "loading" && items.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
-			) : listState === "error" &&
-				items.length === 0 &&
-				hiddenItems.length === 0 ? (
+			) : listState === "error" && items.length === 0 ? (
 				<div role="alert" className="flex flex-col items-start gap-2">
 					<p className="text-sm text-ink-muted">
 						{t("ui.teamBridge.holds.load_failed")}
@@ -390,7 +383,8 @@ function HeldRow({
 	const affordance = holdAffordance(item, now);
 	const held = stamp(item.held_at);
 	const until = stamp(item.deliver_until);
-	const attachments = attachmentCount(message);
+	const { images, files } = holdAttachmentCounts(message);
+	const attachments = images + files;
 	const clampable = needsExpand(message?.body, attachments);
 	const seenInFull = !clampable || seen;
 	const hidden = hasHiddenCharacters(message?.body);
@@ -441,7 +435,7 @@ function HeldRow({
 		affordance.state === "open" || affordance.state === "deliver_expired";
 	const mine = busy?.id === item.message_id;
 	const disabled = busy !== null;
-	const canHide = onHideLocal && canHideHoldLocally(item, detail);
+	const canHide = onHideLocal && canHideHoldLocally(item, detail, now);
 
 	/* UX U4: when this row's decision settles, the buttons unmount; move focus
 	   to the row's status line rather than dropping it to <body>. */
@@ -528,12 +522,9 @@ function HeldRow({
 				<AuditAttachmentGroup
 					scope={attachmentScope}
 					attachments={message.attachments ?? []}
-					count={message.attachments?.length || message.attachment_count || 0}
+					count={images}
 					files={(message.files ?? []).map(toBridgeFileDescriptor)}
-					fileCount={Math.max(
-						message.files?.length ?? 0,
-						message.file_count ?? 0,
-					)}
+					fileCount={files}
 				/>
 			)}
 			{message && clampable && (
@@ -783,6 +774,7 @@ export function TeamBridgeHeldMessages({
 	const { accountId, epoch } = useTeamBridgeAccount();
 	const client = useQueryClient();
 	const hiddenRevisions = useHeldHideRevisions();
+	const recoveryPending = useHeldHideRecoveryPending();
 	const { visible, hidden, recovered } = projectHeldMessages(
 		items,
 		hiddenRevisions,
@@ -814,11 +806,17 @@ export function TeamBridgeHeldMessages({
 			items={visible}
 			localHide={{
 				hiddenItems: hidden,
+				recoveryPending,
 				onChange: (item, hide) => {
 					const revision = item.localHideRevision;
 					if (!revision || !isCurrentAccount()) return false;
-					const current = client.getQueryData<HoldsPage>(holdsKey(accountId));
-					if (!current?.items.some((row) => row.localHideRevision === revision))
+					const current = client
+						.getQueryData<HoldsPage>(holdsKey(accountId))
+						?.items.find((row) => row.localHideRevision === revision);
+					if (
+						!current ||
+						(hide && !canHideHoldLocally(current, detail(current)))
+					)
 						return false;
 					return hide
 						? heldHidePreference.hide(revision)
