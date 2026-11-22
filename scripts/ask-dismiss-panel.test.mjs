@@ -277,6 +277,117 @@ test("cancel returns the keyboard to the trigger it re-mounts", async () => {
 	await rig.unmount();
 });
 
+/*
+ * THE BAND IS THE CARD'S FOOTER, AND DISMISS RIDES IN IT (#1901 band x #1363 trigger).
+ *
+ * Measured on real 2x Mac frames: the pinned band bleeds the card's whole bottom
+ * padding (`-mb-3`), so whatever renders AFTER it starts 4 px under a `z-[1]` plate
+ * (card `gap-2` 8 px minus 12 px). The old `self-start` trigger did, and the band
+ * painted over its top 4 px and took the clicks there. jsdom does no layout, so the
+ * contract is asserted as DOM order and classes: the trigger is inside the band as
+ * its trailing quiet action, the answer pair is its own wrapping group, and nothing
+ * after the band in the card is (or holds) a control. Without `onDismiss` the band
+ * is still the last child, so the guard is not only about this one trigger.
+ */
+const WHITESPACE = /\s+/;
+const CONTROL =
+	"button, a[href], input, select, textarea, [tabindex], [role='button']";
+const controlsAfter = (band) => {
+	const found = [];
+	for (let node = band.nextElementSibling; node; node = node.nextElementSibling)
+		if (node.matches(CONTROL) || node.querySelector(CONTROL)) found.push(node);
+	return found;
+};
+
+test("dismiss is the band's trailing quiet action and nothing below the band is a control", async () => {
+	const rig = await mount(
+		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),
+	);
+	const row = rowOf(rig.container, "a-1");
+	const band = row.querySelector("[data-lo-ask-actions]");
+	assert.ok(band, "the pinned band is mounted");
+	assert.equal(band.parentElement, row, "the band is still the card's child");
+	const trigger = buttonWithText(row, "Dismiss…");
+	assert.ok(trigger, "the trigger is offered");
+	assert.equal(
+		band.contains(trigger),
+		true,
+		"the trigger lives inside the band",
+	);
+	assert.equal(
+		band.lastElementChild,
+		trigger,
+		"it is the band's trailing action",
+	);
+	for (const cls of ["ms-auto", "shrink-0", "text-ink-muted"])
+		assert.ok(
+			trigger.className.split(WHITESPACE).includes(cls),
+			`trigger is ${cls}`,
+		);
+	const send = buttonWithText(band, "Send answer");
+	assert.ok(send, "send answer is in the band");
+	const group = send.parentElement;
+	assert.equal(group.parentElement, band, "the answer pair is one group");
+	assert.equal(
+		group.contains(trigger),
+		false,
+		"dismiss is parked outside the pair so `ms-auto` sends it to the end",
+	);
+	const decline = buttonWithText(band, "Decline");
+	assert.ok(decline, "an open ask can be declined");
+	assert.equal(decline.parentElement, group, "decline rides with send");
+	const bandClasses = band.className.split(WHITESPACE);
+	// The wrap is new; every transform and ground the band already had stays, so
+	// its 34 px footprint and the card's at-rest height do not move.
+	for (const cls of [
+		"flex-wrap",
+		"gap-y-1",
+		"sticky",
+		"bottom-0",
+		"z-[1]",
+		"-mx-3",
+		"-mt-2",
+		"-mb-3",
+		"pt-2",
+		"pb-3",
+		"bg-elevated",
+	])
+		assert.ok(bandClasses.includes(cls), `band keeps ${cls}`);
+	assert.equal(
+		band.nextElementSibling,
+		null,
+		"the band is the card's last child: its full bottom bleed covers nothing",
+	);
+	assert.deepEqual(
+		controlsAfter(band),
+		[],
+		"no control renders where the band overlaps it",
+	);
+	assert.equal(
+		row.querySelectorAll("button").length,
+		[...row.querySelectorAll("button")].filter(
+			(b) => band.contains(b) || b.compareDocumentPosition(band) & 4,
+		).length,
+		"every button in the card sits in or above the band",
+	);
+	await rig.unmount();
+
+	const plain = await mount(panelElement([openAsk("a-1")]));
+	const plainRow = rowOf(plain.container, "a-1");
+	const plainBand = plainRow.querySelector("[data-lo-ask-actions]");
+	assert.equal(
+		buttonWithText(plainRow, "Dismiss…"),
+		undefined,
+		"no trigger without the capability",
+	);
+	assert.deepEqual(
+		controlsAfter(plainBand),
+		[],
+		"still nothing under the band",
+	);
+	await plain.unmount();
+});
+
 test("escape closes the chooser and nothing above it", async () => {
 	const rig = await mount(
 		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),

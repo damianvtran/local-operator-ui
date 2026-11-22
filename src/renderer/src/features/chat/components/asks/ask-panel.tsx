@@ -1804,58 +1804,91 @@ const AskRow = ({
 				 * question text under the bar (design round 1, D3).
 				 *
 				 * NO BORDER: a plate's own step is the edge the contract asks for here.
+				 *
+				 * THE BAND IS THE CARD'S LAST CHILD, SO DISMISS LIVES INSIDE IT. The full
+				 * bottom bleed above only holds while nothing renders after the band, and
+				 * `Dismiss…` (#1363) predates the band (#1901) and did: card `gap-2` (8 px)
+				 * plus `-mb-3` (-12 px) left the trigger 4 px UNDER a `z-[1]` band, which
+				 * painted over its top 4 px and took clicks there on real 2x frames, and the
+				 * band read as a mid-card strip instead of the footer. A conditional bleed
+				 * (drop `-mb-3` when Dismiss follows) is not the fix: nothing below a sticky
+				 * band can hold a control, because at maximum scroll it passes under the
+				 * band's glass ground. So Dismiss is the row's trailing QUIET action, parked
+				 * `ms-auto` with wrap like the inline dock's quiet actions (`ask-command`),
+				 * and the row keeps its 34 px footprint; `flex-wrap gap-y-1` lets a narrow
+				 * drawer drop it to a second line inside the same band instead of overflowing.
 				 */
 				<div
 					ref={actionsRef}
 					{...{ [ASK_ACTIONS_ATTR]: "" }}
 					data-glass-plane="band-backdrop"
-					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex items-center gap-2 bg-elevated px-3 pt-2 pb-3"
+					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex flex-wrap items-center gap-2 gap-y-1 bg-elevated px-3 pt-2 pb-3"
 				>
-					{/*
-					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
-					 * a retryable failure stands, Retry beside the sentence sends exactly
-					 * this answer, and a filled Send answer below it was a second primary
-					 * for the same act. Send answer is DISABLED (not hidden, so the row does
-					 * not reflow under the pointer) until the reader edits the answer, which
-					 * makes it a different act than the one Retry repeats.
-					 */}
-					<button
-						type="button"
-						disabled={disabled || !ready || retryPending}
-						onClick={sendAnswer}
-						className={cn(
-							"rounded-md px-3 py-1.5 text-sm",
-							/*
-							 * The disabled state changes COLOUR, never opacity (branding §2),
-							 * and it keeps an EDGE: without one it rendered as body text of the
-							 * same weight as `Decline` beside it, so the card's one action that
-							 * becomes enabled was also its quietest element (design round 1,
-							 * D7).
-							 */
-							disabled || !ready || retryPending
-								? "border border-hairline bg-surface text-ink-dim"
-								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
-						)}
-					>
-						{t("ui.chat.asks.send_answer")}
-					</button>
-					{canDecline ? (
-						/*
-						 * `border-transparent` so the ROW BASELINES (design round 1, D4). The
-						 * accent sibling wears a 1px border in both of its states, so without one
-						 * here the two controls in one `items-center` row measured 34px and 32px
-						 * and the pair sat 1px apart. Fixed here AND on the change row's own
-						 * `Cancel`, which inherited the same pair - the finding's own condition is
-						 * fix both or neither, because one row alone would leave the drawer drawing
-						 * two differently-aligned action rows.
-						 */
+					<div className="flex min-w-0 flex-wrap items-center gap-2">
+						{/*
+						 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
+						 * a retryable failure stands, Retry beside the sentence sends exactly
+						 * this answer, and a filled Send answer below it was a second primary
+						 * for the same act. Send answer is DISABLED (not hidden, so the row does
+						 * not reflow under the pointer) until the reader edits the answer, which
+						 * makes it a different act than the one Retry repeats.
+						 */}
 						<button
 							type="button"
-							disabled={busy}
-							onClick={() => onDecline(ask)}
-							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+							disabled={disabled || !ready || retryPending}
+							onClick={sendAnswer}
+							className={cn(
+								"rounded-md px-3 py-1.5 text-sm",
+								/*
+								 * The disabled state changes COLOUR, never opacity (branding §2),
+								 * and it keeps an EDGE: without one it rendered as body text of the
+								 * same weight as `Decline` beside it, so the card's one action that
+								 * becomes enabled was also its quietest element (design round 1,
+								 * D7).
+								 */
+								disabled || !ready || retryPending
+									? "border border-hairline bg-surface text-ink-dim"
+									: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
+							)}
 						>
-							{t("ui.chat.asks.decline")}
+							{t("ui.chat.asks.send_answer")}
+						</button>
+						{canDecline ? (
+							/*
+							 * `border-transparent` so the ROW BASELINES (design round 1, D4). The
+							 * accent sibling wears a 1px border in both of its states, so without one
+							 * here the two controls in one `items-center` row measured 34px and 32px
+							 * and the pair sat 1px apart. Fixed here AND on the change row's own
+							 * `Cancel`, which inherited the same pair - the finding's own condition is
+							 * fix both or neither, because one row alone would leave the drawer drawing
+							 * two differently-aligned action rows.
+							 */
+							<button
+								type="button"
+								disabled={busy}
+								onClick={() => onDecline(ask)}
+								className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+							>
+								{t("ui.chat.asks.decline")}
+							</button>
+						) : null}
+					</div>
+					{/*
+					 * The closed-state door to the dismiss chooser below. Same gate as the
+					 * chooser (`onDismiss` wired AND the live-arm `canAnswer`), and the band
+					 * unmounts while the chooser is open, so the two never coexist; the
+					 * `dismissTrigger` ref still re-attaches here on Cancel before the
+					 * return-focus effect reads it.
+					 */}
+					{onDismiss !== undefined && canAnswer ? (
+						<button
+							ref={dismissTrigger}
+							type="button"
+							disabled={busy}
+							onClick={() => setDismissOpen(true)}
+							className="ms-auto shrink-0 rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink disabled:text-ink-dim"
+						>
+							{t("ui.chat.asks.dismiss.trigger")}
 						</button>
 					) : null}
 				</div>
@@ -1977,82 +2010,72 @@ const AskRow = ({
 			 * inside it answers the key first — the sibling TUI does the same with `esc
 			 * back`. The claim is cancelled here so the drawer's handler does not also fire.
 			 */}
-			{onDismiss !== undefined && canAnswer ? (
+			{/*
+			 * OPEN STATE ONLY: the closed-state trigger is the action band's trailing
+			 * quiet action (see the band above for why it cannot sit below it).
+			 */}
+			{onDismiss !== undefined && canAnswer && dismissOpen ? (
 				<div className="flex flex-col gap-2">
-					{dismissOpen ? (
-						<>
-							<p className="text-ink-muted text-meta">
-								{t("ui.chat.asks.dismiss.heading")}
-							</p>
-							{DISMISS_REASONS.map((reason) => (
-								<button
-									key={reason}
-									ref={reason === "moot" ? dismissFirstReason : undefined}
-									type="button"
-									/*
-									 * `aria-disabled`, NOT `disabled` (UX round 2, U2). A native `disabled`
-									 * drops the focused button out of the tab order and the browser resets
-									 * `document.activeElement` to BODY for the whole POST; the reader loses
-									 * their place on the very press that is supposed to keep it. The control
-									 * stays focusable, announces its disabled state, and ignores activation
-									 * in the handler.
-									 */
-									aria-disabled={busy ? true : undefined}
-									onClick={() => {
-										if (busy) return;
-										/*
-										 * THE REASON PRESS LEAVES THE CHOOSER UP (UX round 1, U3/U6): while the
-										 * POST is in flight the pressed row says so, and a refusal keeps the
-										 * choice on screen instead of collapsing the door the reader must
-										 * re-open and re-pick.
-										 */
-										setPressedReason(reason);
-										onDismiss(ask, reason);
-									}}
-									data-lo-ask-dismiss-reason={reason}
-									className={cn(
-										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-sunken",
-										busy && "text-ink-dim",
-										pressedReason === reason && "bg-sunken",
-									)}
-								>
-									<span className="flex min-w-0 items-center gap-1.5 text-ink text-sm">
-										{pressedReason === reason ? (
-											<Check
-												aria-hidden="true"
-												className="size-3.5 shrink-0 text-ink-muted"
-											/>
-										) : null}
-										<span className="min-w-0 break-words">
-											{dismissReasonTitle(reason)}
-										</span>
-									</span>
-									<span className="truncate text-ink-muted text-meta">
-										{dismissSending && pressedReason === reason
-											? t("ui.chat.asks.dismiss.in_flight")
-											: dismissReasonNote(reason)}
-									</span>
-								</button>
-							))}
-							<button
-								type="button"
-								onClick={closeDismiss}
-								className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
-							>
-								{t("ui.chat.asks.dismiss.cancel")}
-							</button>
-						</>
-					) : (
+					<p className="text-ink-muted text-meta">
+						{t("ui.chat.asks.dismiss.heading")}
+					</p>
+					{DISMISS_REASONS.map((reason) => (
 						<button
-							ref={dismissTrigger}
+							key={reason}
+							ref={reason === "moot" ? dismissFirstReason : undefined}
 							type="button"
-							disabled={busy}
-							onClick={() => setDismissOpen(true)}
-							className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink disabled:text-ink-dim"
+							/*
+							 * `aria-disabled`, NOT `disabled` (UX round 2, U2). A native `disabled`
+							 * drops the focused button out of the tab order and the browser resets
+							 * `document.activeElement` to BODY for the whole POST; the reader loses
+							 * their place on the very press that is supposed to keep it. The control
+							 * stays focusable, announces its disabled state, and ignores activation
+							 * in the handler.
+							 */
+							aria-disabled={busy ? true : undefined}
+							onClick={() => {
+								if (busy) return;
+								/*
+								 * THE REASON PRESS LEAVES THE CHOOSER UP (UX round 1, U3/U6): while the
+								 * POST is in flight the pressed row says so, and a refusal keeps the
+								 * choice on screen instead of collapsing the door the reader must
+								 * re-open and re-pick.
+								 */
+								setPressedReason(reason);
+								onDismiss(ask, reason);
+							}}
+							data-lo-ask-dismiss-reason={reason}
+							className={cn(
+								"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-sunken",
+								busy && "text-ink-dim",
+								pressedReason === reason && "bg-sunken",
+							)}
 						>
-							{t("ui.chat.asks.dismiss.trigger")}
+							<span className="flex min-w-0 items-center gap-1.5 text-ink text-sm">
+								{pressedReason === reason ? (
+									<Check
+										aria-hidden="true"
+										className="size-3.5 shrink-0 text-ink-muted"
+									/>
+								) : null}
+								<span className="min-w-0 break-words">
+									{dismissReasonTitle(reason)}
+								</span>
+							</span>
+							<span className="truncate text-ink-muted text-meta">
+								{dismissSending && pressedReason === reason
+									? t("ui.chat.asks.dismiss.in_flight")
+									: dismissReasonNote(reason)}
+							</span>
 						</button>
-					)}
+					))}
+					<button
+						type="button"
+						onClick={closeDismiss}
+						className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+					>
+						{t("ui.chat.asks.dismiss.cancel")}
+					</button>
 				</div>
 			) : null}
 		</div>
