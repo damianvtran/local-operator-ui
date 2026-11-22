@@ -99,9 +99,18 @@ const BarTable: FC<{
 	rows: BarRow[];
 	/** `Calls` is a column only where the rows are aggregates of calls. */
 	withCalls: boolean;
+	withCacheHitRate?: boolean;
 	empty: string;
 	metric: SessionMetric;
-}> = ({ label, firstHeader, rows, withCalls, empty, metric }) => {
+}> = ({
+	label,
+	firstHeader,
+	rows,
+	withCalls,
+	withCacheHitRate,
+	empty,
+	metric,
+}) => {
 	useI18nLocale();
 	const columns: Column<BarRow>[] = [
 		{ key: "row", header: firstHeader, cell: (row) => row.label },
@@ -127,6 +136,14 @@ const BarTable: FC<{
 		numeric: true,
 		cell: (row) => row.value,
 	});
+	if (withCacheHitRate) {
+		columns.push({
+			key: "cacheHitRate",
+			header: t("ui.chat.pickers.session_panel.cache_hit_rate"),
+			numeric: true,
+			cell: (row) => formatPercent(row.cacheHitRate),
+		});
+	}
 	if (rows.length === 0) return <PanelNotice kind="empty" text={empty} />;
 	return (
 		<DataTable<BarRow>
@@ -499,6 +516,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 										firstHeader={t("ui.chat.pickers.session_panel.model")}
 										rows={modelRows(report, metric)}
 										withCalls
+										withCacheHitRate
 										empty={t(
 											"ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session",
 										)}

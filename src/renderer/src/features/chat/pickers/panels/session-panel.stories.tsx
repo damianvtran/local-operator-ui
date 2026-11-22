@@ -25,12 +25,15 @@ import {
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, within } from "@storybook/test";
+import { useState } from "react";
 import type {
 	DesktopSessionReport,
 	DesktopUsageAggregate,
 } from "../../../../../../shared/desktop-contract";
 import "../../../../styles/index.css";
 import { SessionPanel } from "./session-panel";
+import type { SessionMetric } from "./session-report-model";
 import { scrollPanelToSection } from "./story-scroll";
 
 const noop = () => {};
@@ -95,6 +98,7 @@ const report = (
 				calls: 34,
 				ok_calls: 32,
 				context_tokens: 462_000,
+				cache_read_tokens: 312_000,
 				output_tokens: 74_000,
 				cost_micro: 6_820_000,
 				cost_known_calls: 34,
@@ -222,6 +226,91 @@ type Story = StoryObj<typeof SessionPanel>;
 /** The default state: nine sections, one ledger snapshot. */
 export const Populated: Story = {
 	args: { ...base, report: report() },
+};
+
+/** Shared model names must keep their providers' independent hit rates. */
+export const ModelCacheHitRate: Story = {
+	args: {
+		...base,
+		report: report({
+			aggregate: aggregate({
+				calls: 3,
+				ok_calls: 3,
+				context_tokens: 1_000,
+				cache_read_tokens: 720,
+				cost_micro: 2_000,
+				cost_known_calls: 3,
+			}),
+			by_model: [
+				{
+					provider: "openrouter",
+					model_id: "gpt-5-codex",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						context_tokens: 900,
+						cache_read_tokens: 720,
+						cost_micro: 500,
+						cost_known_calls: 1,
+					}),
+				},
+				{
+					provider: "openai",
+					model_id: "gpt-5-codex",
+					aggregate: aggregate({
+						calls: 1,
+						ok_calls: 1,
+						context_tokens: 100,
+						cost_micro: 1_500,
+						cost_known_calls: 1,
+					}),
+				},
+				{
+					provider: "openai",
+					model_id: "gpt-5",
+					aggregate: aggregate({ calls: 1, ok_calls: 1, cost_known_calls: 1 }),
+				},
+			],
+		}),
+	},
+	render: function ModelCacheHitRatePanel(args) {
+		const [metric, setMetric] = useState<SessionMetric>(args.metric);
+		return (
+			<SessionPanel {...args} metric={metric} onMetricChange={setMetric} />
+		);
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement.ownerDocument.body);
+		const table = within(
+			await canvas.findByRole("table", {
+				name: "Usage by model in this session",
+			}),
+		);
+		const checkCacheColumn = async () => {
+			await expect(
+				table.getByRole("columnheader", { name: "Cache hit rate" }),
+			).toBeInTheDocument();
+			for (const [model, rate] of [
+				["openrouter/gpt-5-codex", "80%"],
+				["openai/gpt-5-codex", "0%"],
+				["openai/gpt-5", "—"],
+			]) {
+				const row = table.getByRole("row", { name: new RegExp(`${model} `) });
+				await expect(within(row).getAllByRole("cell").at(-1)?.textContent).toBe(
+					rate,
+				);
+			}
+		};
+		// 720 / 1,000, not the unweighted mean of 80% and 0%.
+		await expect(canvas.getByText("72%", { exact: true })).toBeInTheDocument();
+		await checkCacheColumn();
+		await userEvent.click(canvas.getByText("Cost", { selector: "label" }));
+		await expect(
+			table.getByRole("columnheader", { name: "Cost" }),
+		).toBeInTheDocument();
+		await checkCacheColumn();
+		await userEvent.click(canvas.getByText("Tokens", { selector: "label" }));
+	},
 };
 
 /** A subtree that could be walked: the headline becomes the tree's money. */
