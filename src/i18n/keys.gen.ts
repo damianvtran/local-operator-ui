@@ -14360,6 +14360,10 @@ export type MessageParams = {
 	"ui.teamBridge.holds.from_person": { person: string };
 	"ui.teamBridge.holds.held_at": { time: string };
 	"ui.teamBridge.holds.hidden_characters": undefined;
+	"ui.teamBridge.holds.hidden_local": { count: number };
+	"ui.teamBridge.holds.hide_failed": undefined;
+	"ui.teamBridge.holds.hide_local": undefined;
+	"ui.teamBridge.holds.hide_local_label": { reference: string };
 	"ui.teamBridge.holds.intro": undefined;
 	"ui.teamBridge.holds.key_file_only": undefined;
 	"ui.teamBridge.holds.load_failed": undefined;
@@ -14386,6 +14390,8 @@ export type MessageParams = {
 	"ui.teamBridge.holds.refusal.signing_unavailable": undefined;
 	"ui.teamBridge.holds.refusal.stale": undefined;
 	"ui.teamBridge.holds.release_off": undefined;
+	"ui.teamBridge.holds.restore_local": undefined;
+	"ui.teamBridge.holds.restore_local_label": { reference: string };
 	"ui.teamBridge.holds.show_full": undefined;
 	"ui.teamBridge.holds.show_full_attachments": { count: number };
 	"ui.teamBridge.holds.show_less": undefined;

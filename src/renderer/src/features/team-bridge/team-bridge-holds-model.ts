@@ -64,6 +64,8 @@ export type HoldItem = {
 	 * means no receipt Discard is offered.
 	 */
 	discard_receipt?: string | null;
+	/** Renderer-only fingerprint; never supplied by the holds API. */
+	localHideRevision?: string;
 };
 
 export type HoldsPage = {
@@ -336,6 +338,109 @@ export function holdRefusalLabel(
 // -- the body hash the decide binds ---------------------------------------------
 
 const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+type HoldContent = {
+	body?: string | null;
+	images?: readonly unknown[] | null;
+	files?: readonly unknown[] | null;
+};
+
+export function hasLocalHoldContent(
+	detail: JoinedDetail<HoldContent>,
+): boolean {
+	if (detail.state !== "ready") return false;
+	const { body, images, files } = detail.message;
+	return Boolean(body?.length || images?.length || files?.length);
+}
+
+function canMatchLocalHide(
+	item: HoldItem,
+): item is HoldItem & { discard_receipt: string } {
+	return (
+		!item.decision &&
+		!item.can_deliver &&
+		typeof item.discard_receipt === "string" &&
+		SHA256_HEX.test(item.discard_receipt)
+	);
+}
+
+export function canHideHoldLocally(
+	item: HoldItem,
+	detail: JoinedDetail<HoldContent>,
+): boolean {
+	return (
+		canMatchLocalHide(item) &&
+		detail.state !== "loading" &&
+		!hasLocalHoldContent(detail)
+	);
+}
+
+/** Store a separate fingerprint, never the receipt used by a disposition. */
+export async function addLocalHoldRevisions(
+	accountId: string,
+	page: HoldsPage,
+): Promise<HoldsPage> {
+	const items = await Promise.all(
+		page.items.map(async (item) => {
+			if (!accountId || !canMatchLocalHide(item)) return item;
+			try {
+				const digest = await crypto.subtle.digest(
+					"SHA-256",
+					new TextEncoder().encode(
+						JSON.stringify([
+							"team-bridge-local-hold-hide-v1",
+							accountId,
+							item.message_id,
+							item.discard_receipt,
+						]),
+					),
+				);
+				const localHideRevision = Array.from(new Uint8Array(digest), (byte) =>
+					byte.toString(16).padStart(2, "0"),
+				).join("");
+				return { ...item, localHideRevision };
+			} catch {
+				// A local presentation feature must not make the server's queue unreadable.
+				return item;
+			}
+		}),
+	);
+	return { ...page, items };
+}
+
+/** Same projection for the queue and both badges. A different receipt never matches. */
+export function isHoldHiddenLocally(
+	item: HoldItem,
+	revisions: ReadonlySet<string>,
+): boolean {
+	return Boolean(
+		item.localHideRevision &&
+			canMatchLocalHide(item) &&
+			revisions.has(item.localHideRevision),
+	);
+}
+
+/** Presentation-only: do not use this projection to drive detail queries. */
+export function projectHeldMessages(
+	items: readonly HoldItem[],
+	revisions: ReadonlySet<string>,
+	detail: (item: HoldItem) => JoinedDetail<HoldContent>,
+) {
+	const visible: HoldItem[] = [];
+	const hidden: HoldItem[] = [];
+	const recovered: string[] = [];
+	for (const item of items) {
+		if (item.localHideRevision && isHoldHiddenLocally(item, revisions)) {
+			if (!hasLocalHoldContent(detail(item))) {
+				hidden.push(item);
+				continue;
+			}
+			recovered.push(item.localHideRevision);
+		}
+		visible.push(item);
+	}
+	return { visible, hidden, recovered };
+}
 
 /**
  * What the decide may bind, from the body the person was SHOWN. The daemon

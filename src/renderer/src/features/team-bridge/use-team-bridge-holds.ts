@@ -28,6 +28,7 @@ import {
 	type HoldProof,
 	type HoldWord,
 	type JoinedDetail,
+	addLocalHoldRevisions,
 	bindShownBody,
 	holdRefusalLabel,
 	resolveHoldDetail,
@@ -74,8 +75,11 @@ export function useHeldMessages(
 	return useQuery({
 		queryKey: holdsKey(accountId),
 		queryFn: () =>
-			readForBridgeOwner(client, accountId, () =>
-				TeamBridgeHoldsApi.list(accountId as string),
+			readForBridgeOwner(client, accountId, async () =>
+				addLocalHoldRevisions(
+					accountId as string,
+					await TeamBridgeHoldsApi.list(accountId as string),
+				),
 			),
 		enabled: enabled && supported && Boolean(accountId),
 		staleTime: 30_000,
@@ -205,6 +209,8 @@ export function useHeldMessageDetails(
 	return (item) => {
 		const lookup = lookupById.get(item.message_id);
 		const binding = bindingById.get(item.message_id);
+		if (item.conversation_id && capabilities.isPending)
+			return { state: "loading" };
 		return resolveHoldDetail(item, {
 			auditSupported,
 			lookup: lookup && {
