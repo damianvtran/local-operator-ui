@@ -116,8 +116,8 @@ export class NativePasskeyNotice {
 		return false;
 	}
 
-	/** Navigation, ownership transfer, close or an explicit continue makes all
-	 * outstanding projections for this tab irrelevant, without settling them. */
+	/** Tab teardown or document replacement makes its projections irrelevant.
+	 * Copying the page into another tab does not affect this tab's requests. */
 	clearTab(tabId: number): boolean {
 		for (const [requestId, request] of this.pending) {
 			if (request.tabId === tabId) this.pending.delete(requestId);

@@ -926,7 +926,11 @@ async function initializeBrowserHost(
 				: record.view.webContents.getTitle();
 			// A page that has not been titled yet reports its URL as its title; both are
 			// honest, and an empty string is not a title at all.
-			return { tabId: record.tabId, pageTitle: title || null };
+			return {
+				tabId: record.tabId,
+				pageTitle: title || null,
+				documentEpoch: record.documentEpoch,
+			};
 		};
 		const engagement = new TabEngagement();
 		const nativePasskeyNotice = new NativePasskeyNotice();
@@ -1575,11 +1579,19 @@ async function initializeBrowserHost(
 		};
 		// R1-4: a hand-over away from the user re-applies the subframe rule to
 		// frames that loaded while the tab was the user's, by reloading it.
-		registry.ownerChanged = (record) => {
-			// A hand-over is not the person who engaged the tab still being in it.
-			engagement.clear(record.tabId);
-			webauthn.cancelForTab(record.tabId);
-			nativePasskeyNotice.clearTab(record.tabId);
+		registry.ownerChanged = (record, departedDocumentEpoch) => {
+			const isCurrent = () =>
+				registry.get(record.tabId) === record &&
+				record.documentEpoch === departedDocumentEpoch + 1;
+			// Engagement belongs to the old authority. Don't clear newer engagement
+			// if an epoch listener has already made another transition.
+			if (isCurrent()) engagement.clear(record.tabId);
+			// Settlement also removes that request's notice via onSettled. A bulk
+			// clear here could hide new requests opened by epoch or settle callbacks.
+			webauthn.cancelForTab(record.tabId, departedDocumentEpoch);
+			// A callback may have closed or changed ownership again. Only the
+			// current agent generation may need the subframe policy re-applied.
+			if (!isCurrent() || record.owner === "user") return;
 			const contents = record.view
 				.webContents as unknown as Electron.WebContents;
 			if (contents.isDestroyed()) return;
@@ -2184,12 +2196,9 @@ async function initializeBrowserHost(
 						tabId,
 						at,
 						ownerOf: (id) => registry.get(id)?.owner ?? null,
-						openUserTab: async (id) => {
-							const result = await host.continueAgentTabInUserTab(id);
-							if (result.ok && nativePasskeyNotice.clearTab(id))
-								syncPasskeyNotice();
-							return result;
-						},
+						// Copying a URL neither moves nor settles a native chooser request
+						// in the original tab, including one that starts during the copy.
+						openUserTab: (id) => host.continueAgentTabInUserTab(id),
 						log,
 					}),
 			},

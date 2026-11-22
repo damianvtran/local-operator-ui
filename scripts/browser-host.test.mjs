@@ -34,7 +34,8 @@ import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { build, transformSync } from "esbuild";
 
 const bundle = await build({
 	stdin: {
@@ -2166,6 +2167,149 @@ test("a tab the user opens in a conversation belongs to it, and still gives no a
 		true,
 		"hand-over is still the one authority transfer",
 	);
+});
+
+test("hand-over and revoke settle only departing chooser generations", (t) => {
+	const { host, registry } = makeHost();
+	const tab = registry.create({ owner: "user", sessionId: "synthetic-home" });
+	const other = registry.create({
+		owner: "agent",
+		sessionId: "synthetic-other",
+	});
+	const contents = tab.view.webContents;
+	contents.mainFrame = {
+		framesInSubtree: [{ url: "chrome-extension://fixture/index.html" }],
+	};
+	const reloads = [];
+	contents.reload = () => reloads.push(tab.documentEpoch);
+	const notices = new NativePasskeyNotice();
+	const answers = [];
+	let nextId;
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	const source = wiring.match(/const describeSource = ([\s\S]*?\n\t{2}\});/);
+	const changed = wiring.match(/registry\.ownerChanged = ([\s\S]*?\n\t{2}\});/);
+	assert.ok(
+		source && changed,
+		"exercise production source and lifecycle wiring",
+	);
+	const replay = (body, deps) =>
+		runInNewContext(transformSync(`(${body})`, { loader: "ts" }).code, {
+			registry,
+			...deps,
+		});
+	const chooser = new WebauthnChooser({
+		nextRequestId: () => nextId,
+		describeSource: replay(source[1], {
+			webContents: { fromFrame: ({ contents }) => contents },
+		}),
+		notify: (request, { tab: record }) =>
+			notices.started(
+				request,
+				null,
+				{ has: () => false },
+				{
+					owner: record.owner,
+					documentEpoch: record.documentEpoch,
+					origin: "https://rp.example",
+				},
+			),
+		onSettled: (requestId) => notices.settled(requestId),
+		log: () => {},
+	});
+	t.after(() => chooser.dispose());
+	registry.ownerChanged = replay(changed[1], {
+		engagement: { clear: () => {} },
+		webauthn: chooser,
+		nativePasskeyNotice: notices,
+		mustReloadOnOwnerChange: (owner) => owner === "agent",
+	});
+	const arrive = (requestId, record = tab, onAnswer = () => {}) => {
+		nextId = requestId;
+		chooser.handle(
+			{
+				frame: { tab: record, contents: record.view.webContents },
+				accounts: [{ credentialId: "fixture-credential" }],
+			},
+			(value) => {
+				answers.push([requestId, value]);
+				onAnswer();
+			},
+		);
+	};
+	const pending = () => chooser.pendingRequests().map((r) => r.requestId);
+	const active = registry.activeTab?.tabId;
+	host.handOver(tab.tabId, "synthetic-first");
+	const oldEpoch = tab.documentEpoch;
+	const oldToken = surfaceToken(tab);
+	arrive("other", other);
+	arrive("departed", tab, () => {
+		assert.equal(chooser.respond("departed", "fixture-credential"), false);
+		arrive("during-callback");
+	});
+	arrive("also-departed");
+	let arrivalOnBump = "after-revoke-bump";
+	registry.onEpoch((tabId) => {
+		if (tabId === tab.tabId) arrive(arrivalOnBump);
+	});
+	host.revokeHandOver(tab.tabId);
+	assert.equal(tab.documentEpoch, oldEpoch + 1);
+	assert.equal(tab.owner, "user");
+	assert.equal(tab.sessionId, "synthetic-home");
+	assert.equal(surfaceToken(tab), null);
+	assert.throws(() => registry.requireSurface(oldToken), {
+		code: "tab_closed",
+	});
+	assert.deepEqual(answers, [
+		["departed", undefined],
+		["also-departed", undefined],
+	]);
+	assert.equal(chooser.respond("departed", "fixture-credential"), false);
+	assert.deepEqual(pending(), [
+		"other",
+		"after-revoke-bump",
+		"during-callback",
+	]);
+	assert.deepEqual(notices.pendingFor(tab.tabId, oldEpoch), []);
+	assert.deepEqual(reloads, [oldEpoch], "revoke does not reload the human tab");
+
+	host.revokeHandOver(tab.tabId);
+	assert.equal(
+		tab.documentEpoch,
+		oldEpoch + 1,
+		"repeated revoke does not retire human work",
+	);
+	assert.deepEqual(pending(), [
+		"other",
+		"after-revoke-bump",
+		"during-callback",
+	]);
+	arrivalOnBump = "new-agent-generation";
+	host.handOver(tab.tabId, "synthetic-next");
+	assert.equal(tab.documentEpoch, oldEpoch + 2);
+	assert.equal(tab.owner, "agent");
+	assert.equal(registry.mayDrive(tab, "synthetic-next"), true);
+	assert.notEqual(surfaceToken(tab), oldToken);
+	assert.equal(registry.activeTab?.tabId, active);
+	assert.deepEqual(
+		reloads,
+		[oldEpoch, oldEpoch + 2],
+		"agent subframe recheck still runs",
+	);
+	assert.deepEqual(pending(), ["other", "new-agent-generation"]);
+	assert.deepEqual(
+		notices.pendingFor(tab.tabId, tab.documentEpoch).map((r) => r.requestId),
+		["new-agent-generation"],
+	);
+	assert.deepEqual(
+		notices.pendingFor(other.tabId).map((r) => r.requestId),
+		["other"],
+	);
+	assert.deepEqual(answers, [
+		["departed", undefined],
+		["also-departed", undefined],
+		["after-revoke-bump", undefined],
+		["during-callback", undefined],
+	]);
 });
 
 test("revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)", async () => {

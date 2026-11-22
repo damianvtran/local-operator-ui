@@ -693,6 +693,7 @@ export class TabRegistry {
 		// boundary's capture: a re-hand must not move it, so an agent's tab that is
 		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
 		// capture keys on this, not on `handedTo`).
+		const departedDocumentEpoch = record.documentEpoch;
 		if (record.handedFrom === null) record.handedFrom = record.owner;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
@@ -704,14 +705,16 @@ export class TabRegistry {
 		record.nonce = mintNonce();
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
-		this.ownerChanged?.(record);
+		this.ownerChanged?.(record, departedDocumentEpoch);
 		this.onChanged();
 	}
 
-	/** Called after a hand-over moves a tab away from the user; index.ts uses
-	 * it to re-apply the extension-subframe rule to frames that loaded while the
-	 * tab was the user's (extensions/subframe-policy.ts, review R1-4). */
-	ownerChanged: ((record: TabRecord) => void) | null = null;
+	/** Runs after authority and epoch change. The previous document epoch is
+	 * captured before the bump so its listeners may start new work without that
+	 * work being mistaken for a departing request. */
+	ownerChanged:
+		| ((record: TabRecord, departedDocumentEpoch: number) => void)
+		| null = null;
 
 	/** Revoke a hand-over: nulls the nonce, so the session's next action on that
 	 * handle gets the ordinary `tab_closed` refusal, and puts the tab back in the
@@ -727,7 +730,9 @@ export class TabRegistry {
 	 * `null`, which is the behaviour it always had. */
 	revokeHandOver(tabId: number): void {
 		const record = this.tabs.get(tabId);
-		if (!record) return;
+		// Repeating a revoke on a user's tab doesn't end its document generation.
+		if (!record || record.owner === "user") return;
+		const departedDocumentEpoch = record.documentEpoch;
 		record.nonce = null;
 		record.owner = "user";
 		record.sessionId = record.homeSessionId;
@@ -737,6 +742,7 @@ export class TabRegistry {
 		record.handedFrom = null;
 		record.allocationId = "";
 		this.bumpEpoch(record.tabId);
+		this.ownerChanged?.(record, departedDocumentEpoch);
 		this.onChanged();
 	}
 
