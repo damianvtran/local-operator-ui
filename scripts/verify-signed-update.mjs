@@ -570,7 +570,8 @@ try {
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	await command("/usr/sbin/spctl", ["-a", "-t", "exec", "-vvv", app]);
 	// Classify the publisher-verified incumbent before running any of its code.
-	// This is a limit of the harness's control path, not a candidate failure.
+	// Even a framework read failure means the harness cannot establish control,
+	// not that the candidate failed. The probe returns a path-free state.
 	const inspectorCapability = incumbentInspectorCapability(app);
 	if (!inspectorCapability.supported)
 		blocked(incumbentInspectorRefusal(tag, inspectorCapability));
