@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "Этот разговор выполняется на {name}: последний запрос чтения остался без ответа ({reason}).",
 	"ui.chat.device.fact.this_device": "это устройство",
-	"ui.chat.device.footer.move_deletes_copy": "Копия на этом устройстве удаляется, когда перемещение завершится.",
+	"ui.chat.device.footer.move_deletes_copy": "Как только перемещение зафиксировано, копия на этом устройстве удаляется.",
 	"ui.chat.device.label.this_device": "Это устройство",
 	"ui.chat.device.notice.move_hold_detail": "перемещение · разговор продолжится там; отсюда это не остановить",
 	"ui.chat.device.picker.heading.move": "Переместить этот разговор на",

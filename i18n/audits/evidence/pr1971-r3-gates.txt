@@ -1,0 +1,49 @@
+# PR #1971 round-3 i18n audit — actual gate output
+
+Execution log, not notes: every block below is the command the auditor ran and the
+line it printed, in this order, from <repo-root> on head 5a9e3fbe38 (plus the fr
+typography correction this round made, which is why the catalogue hashes in the
+receipts are the post-correction ones). Machine-local paths are elided as
+<repo-root>; nothing else is edited.
+
+Auditor: Local Operator session e3f2fc029be5, model deepseek/deepseek-flash (the
+model the harness served this session, no fallback).
+
+The U7 quoting proof is a separate file, because it is a render rather than a
+gate: i18n/audits/evidence/pr1971-r3-icu-render.txt.
+
+$ node scripts/i18n/generate.mjs --check
+<repo-root>/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+exit=0
+
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1595 file(s) scanned, 0 duplicate key(s)
+exit=0
+
+$ node scripts/i18n/check-strings.mjs
+check-strings.mjs: ok — 1780 file(s) scanned, 0 literal(s) at or below the baseline; 18 literal(s) in the data shapes, all listed in i18n/literal-allowance.json (shrink-only)
+exit=0
+
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: ok — 1225 entr(ies) complete, fresh and independently audited
+exit=0
+
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+
+$ node scripts/i18n/check-coverage.mjs
+coverage-check: ok — 7 gated language(s) over 175 namespace(s); 0 allowed key(s) remain across 0 pair(s) (shrink-only; see i18n/coverage-allowance.json).
+exit=0
+
+$ node --test --test-concurrency=1 scripts/i18n/locale-parity.test.mjs
+ℹ tests 44
+ℹ pass 44
+ℹ fail 0
+exit=0
+
+$ node --test --test-concurrency=1 scripts/remote-compute-model.test.mjs
+ℹ tests 45
+ℹ pass 45
+ℹ fail 0
+exit=0

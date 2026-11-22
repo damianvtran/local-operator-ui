@@ -3,8 +3,10 @@
  *
  * After a backend is reachable the renderer uses the RESOLVED language from
  * `GET /v1/capabilities` (`language`, gated on `features.i18n`); before one is
- * reachable it uses the device locale. Those are the RFC's two documented
- * sources for this surface (the third, `LOP_LANG`, is backend/exec-side).
+ * reachable it uses the device locale - or, in the renderer, the tag the
+ * backend last confirmed (`applyRememberedLanguage`, fr census row 2). Those
+ * are the RFC's two documented sources for this surface (the third,
+ * `LOP_LANG`, is backend/exec-side).
  *
  * The backend's resolver already normalises a raw preference to a SHIPPED
  * locale tag (`fr-CA` -> `fr`, an unsupported preference -> `en`), so this
@@ -49,8 +51,18 @@ export type LocaleCapabilities = {
  * R1-5). Precedence between a manual pin and a later capabilities answer is
  * the override slice's decision; today a capabilities answer re-resolves the
  * store.
+ *
+ * `remembered` is the BACKEND's last confirmed answer, read back from the
+ * renderer's local cache before this launch's backend has answered
+ * (`applyRememberedLanguage`). It is a bootstrap, not a preference: the next
+ * capabilities answer replaces it, whatever it says.
  */
-export type LocaleSource = "backend" | "device" | "default" | "manual";
+export type LocaleSource =
+	| "backend"
+	| "remembered"
+	| "device"
+	| "default"
+	| "manual";
 
 export type LocaleState = {
 	/**
@@ -246,4 +258,28 @@ export function applyDeviceLocale(tag: unknown): boolean {
  */
 export function setLocale(locale: string): void {
 	setState({ locale, source: "manual" });
+}
+
+/**
+ * Apply the language the backend LAST confirmed, before it answers this time.
+ *
+ * WHY (fr census, row 2). Until `GET /v1/capabilities` answers, the store holds
+ * the device locale. For someone who chose French on an English OS, every
+ * screen shown while the server is down or still booting - the offline error,
+ * its Retry, the whole shell - read English, the one moment they most need to
+ * understand what is happening. The renderer keeps the backend's last resolved
+ * tag (`src/renderer/src/shared/i18n/last-language.ts`) and hands it here at
+ * boot, so the language they chose holds across that gap.
+ *
+ * THE BACKEND STAYS THE OWNER. This never overrides a real answer: once the
+ * store's source is `backend` the call is refused, and the next capabilities
+ * answer re-resolves the store over a remembered tag exactly as it would over
+ * the device. Structurally validated like the main process's sources, because
+ * the cache is a store a user or an older build can write.
+ */
+export function applyRememberedLanguage(tag: unknown): boolean {
+	if (state.source === "backend") return false;
+	if (!isLanguageTag(tag)) return false;
+	setState({ locale: tag, source: "remembered" });
+	return true;
 }

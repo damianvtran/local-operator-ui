@@ -3,8 +3,8 @@
 	"ui.chat.bridgeReceipt.unavailable": "پیغام کا متن دستیاب نہیں۔",
 	"ui.chat.bridgeReceipt.provenance": "بیرونی پیغام · ناقابلِ اعتماد مواد",
 	"ui.chat.bridgeReceipt.loading": "پیغام لوڈ ہو رہا ہے…",
-	"ui.chat.bridgeReceipt.pending": "ابھی پہنچایا جا رہا ہے۔",
-	"ui.chat.bridgeReceipt.held": "ماڈریشن نے روک رکھا ہے۔",
+	"ui.chat.bridgeReceipt.pending": "آپ کے ایجنٹ تک پہنچائے جانے کا منتظر۔",
+	"ui.chat.bridgeReceipt.held": "جائزے کے لیے روکا گیا ہے۔",
 	"ui.chat.bridgeReceipt.held_transient": "اسکریننگ کا انتظار ہے — ابھی آپ کے ایجنٹ کو نہیں دکھایا گیا۔",
 	"ui.chat.bridgeReceipt.refused": "ماڈریشن نے مسترد کر دیا۔",
 	"ui.chat.bridgeReceipt.not_admitted": "اس ایجنٹ کو نہیں پہنچایا گیا۔",
@@ -13,8 +13,9 @@
 	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "پیغام کا متن دستیاب نہیں۔ آپ اب اس گفتگو میں شامل نہیں ہیں۔",
 	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "یہ پیغام حذف کر دیا گیا۔",
 	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "پیغام کا متن دستیاب نہیں۔ Team Bridge یہ پرانا پیغام لوڈ نہیں کر سکتا۔",
-	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Radient سے رابطہ نہیں ہوا — دوبارہ کوشش کے لیے بند کر کے کھولیں۔",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Radient سے رابطہ نہیں ہوا — دوبارہ کوشش جاری ہے۔",
 	"ui.chat.bridgeReceipt.show_more": "مزید دکھائیں",
 	"ui.chat.bridgeReceipt.show_less": "کم دکھائیں",
-	"ui.chat.bridgeReceipt.more": "{count, plural, one {اور {count, number} مزید پیغام} other {اور {count, number} مزید پیغامات}}"
+	"ui.chat.bridgeReceipt.more": "{count, plural, one {اور {count, number} مزید پیغام} other {اور {count, number} مزید پیغامات}}",
+	"ui.chat.bridgeReceipt.thread_reply": "تھریڈ میں جواب"
 }

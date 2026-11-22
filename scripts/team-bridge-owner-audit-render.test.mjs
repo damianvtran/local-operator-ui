@@ -3118,6 +3118,9 @@ test("attachments are named, never fetched, through the shared list", async () =
  * differences. Keep comparing every other byte, including content and structure.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
+ * Privacy markers added to shared markdown are asserted independently, then only
+ * that exact class pair is removed for comparison with the immutable baseline.
+ * This keeps privacy mandatory without hiding any unrelated channel/audit drift.
  */
 const PARITY_GOLDEN = `${process.cwd()}/scripts/fixtures/team-bridge-message-list-parity.golden.html`;
 const TIME_TEXT = /(<time[^>]*>)[^<]*(<\/time>)/g;
@@ -3179,11 +3182,32 @@ test("a channel renders byte-identically with the audit props omitted", async ()
 	)
 		.replace(TIME_TEXT, "$1$2")
 		.replace(TIME_TITLE, "$1$2");
+	const rendered = document.createElement("div");
+	rendered.innerHTML = markup;
+	const markdownRoots = rendered.querySelectorAll(".lo-markdown");
+	assert.equal(
+		markdownRoots.length,
+		3,
+		"all three non-null channel bodies render",
+	);
+	for (const root of markdownRoots) {
+		assert.ok(
+			root.classList.contains("ph-sensitive"),
+			"channel body is sensitive",
+		);
+		assert.ok(root.classList.contains("ph-mask"), "channel body is masked");
+	}
+	// Normalize the exact independently checked marker pair on markdown roots,
+	// not arbitrary classes or DOM serialization: every other byte stays gated.
+	const parityMarkup = markup.replaceAll(
+		'class="lo-markdown ph-sensitive ph-mask ',
+		'class="lo-markdown ',
+	);
 	if (process.env.UPDATE_PARITY_GOLDEN === "1") {
 		const { writeFileSync } = await import("node:fs");
-		writeFileSync(PARITY_GOLDEN, `${markup}\n`);
+		writeFileSync(PARITY_GOLDEN, `${parityMarkup}\n`);
 	}
-	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
+	assert.equal(`${parityMarkup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
 });
 
 /* The actual private-read hook must emit only operation/status class while never

@@ -38,7 +38,10 @@ import { teamDisplayName } from "../../../shared/api/local-operator/team-display
  * without path aliases). The resolver itself reaches `@shared/i18n`, which the
  * bundling tests already alias.
  */
-import { agentDescriptionText } from "../../agents/utils/agent-description";
+import {
+	agentDescriptionText,
+	agentKindText,
+} from "../../agents/utils/agent-description";
 import { brandOf } from "../../providers/provider-catalog";
 /*
  * The picker's own validation, limits and duplicate rule. Imported rather than
@@ -969,22 +972,6 @@ const MCP_OFFER_ACTIONS: Record<string, readonly string[]> = {
 };
 
 /**
- * The `/agent` row's detail column: the profile KIND in the active language.
- *
- * The backend sends the wire token (`role` / `specialist`) and the column used to
- * print it raw, so every other language still read English there. The column is
- * lowercase machine voice (see `mcpStatusWord`), so these are their own keys
- * rather than the hub roster's capitalised `ui.hub.teams.kind.*` labels, which
- * would have changed the English frame. An unknown kind is shown as stored: it is
- * the backend's own word and has no translation to invent.
- */
-function profileKindDetail(kind: string): string {
-	if (kind === "role") return t("ui.chat.slash.arg.kind_role");
-	if (kind === "specialist") return t("ui.chat.slash.arg.kind_specialist");
-	return kind;
-}
-
-/**
  * The catalog's status enum in the composer's own words. The detail column is
  * machine voice (`argumentRowContent`), so these stay lowercase; `not_started`
  * reads "not connected", the word the integrations page uses for the same
@@ -1183,7 +1170,7 @@ export function argumentRows(
 					// than an invented count. The two kinds the registry defines read
 					// through the catalogue (lowercase, like every other word in this
 					// monospace column); anything else stays as stored.
-					detail: profileKindDetail(asText(row.kind)) || undefined,
+					detail: agentKindText(asText(row.kind)) || undefined,
 					current: Boolean(current) && current === value,
 				};
 			});

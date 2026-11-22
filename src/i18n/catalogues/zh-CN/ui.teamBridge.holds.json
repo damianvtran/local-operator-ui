@@ -55,5 +55,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "丢弃消息",
 	"ui.teamBridge.holds.confirm.cancel": "取消",
 	"ui.teamBridge.holds.delivering": "正在送达…",
-	"ui.teamBridge.holds.discarding": "正在丢弃…"
+	"ui.teamBridge.holds.discarding": "正在丢弃…",
+	"ui.teamBridge.holds.receipt_only": "无法加载这条消息。它已不能再送达。你仍可以不阅读就丢弃它。",
+	"ui.teamBridge.holds.reference": "编号 {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "要在不阅读的情况下仅丢弃这条消息（{reference}）吗？它不会到达你的智能体。丢弃操作会记录在此设备上，且无法撤销。",
+	"ui.teamBridge.holds.discard_unread_label": "不阅读，直接丢弃消息 {reference}",
+	"ui.teamBridge.holds.state.discard_recorded": "已在此设备上记录丢弃。未收到服务器的确认。"
 }

@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا۔",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا ({reason})۔",
 	"ui.chat.device.fact.this_device": "یہ ڈیوائس",
-	"ui.chat.device.footer.move_deletes_copy": "منتقلی مکمل ہونے پر اس ڈیوائس کی کاپی حذف ہو جاتی ہے۔",
+	"ui.chat.device.footer.move_deletes_copy": "منتقلی مکمل ہونے پر اس ڈیوائس کی کاپی حذف کر دیتی ہے۔",
 	"ui.chat.device.label.this_device": "یہ ڈیوائس",
 	"ui.chat.device.notice.move_hold_detail": "حوالے کیا جا رہا ہے · وہیں جاری رہے گی؛ یہاں سے اسے روکا نہیں جا سکتا",
 	"ui.chat.device.picker.heading.move": "اس گفتگو کو کہاں منتقل کریں",

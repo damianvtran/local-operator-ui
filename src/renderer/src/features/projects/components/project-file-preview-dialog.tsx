@@ -23,6 +23,8 @@
  * a path on disk, so "it moved or was deleted" is the honest reading, and a
  * browser dev build has no bridge at all — a different fact, said differently.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
+import { cn } from "@shared/lib/utils";
 
 import { isMarkdownFile } from "@features/chat/utils/is-markdown-file";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
@@ -167,7 +169,13 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 					) : markdown ? (
 						<ProjectMarkdown>{state.text}</ProjectMarkdown>
 					) : (
-						<pre className="whitespace-pre-wrap font-mono text-ink text-mono-sm">
+						<pre
+							// A project file's text is user content (review round 1, Q2).
+							className={cn(
+								"whitespace-pre-wrap font-mono text-ink text-mono-sm",
+								USER_CONTENT_CLASS,
+							)}
+						>
 							{state.text}
 						</pre>
 					)}

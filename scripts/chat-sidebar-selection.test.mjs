@@ -339,7 +339,17 @@ const merged = (file, expression, stubs) => {
 	 * expressions, and the held state is the one where every predicate this helper merges for
 	 * is live.
 	 */
-	const withDefaults = { menuOpen: true, pinned: true, ...stubs };
+	/*
+	 * `USER_CONTENT_CLASS` is the analytics region mark the row boxes carry
+	 * (`autocapture-privacy.ts`): a constant, not a predicate, so it is bound to
+	 * its real value. It paints nothing; PostHog reads it.
+	 */
+	const withDefaults = {
+		menuOpen: true,
+		pinned: true,
+		USER_CONTENT_CLASS: "ph-sensitive ph-mask",
+		...stubs,
+	};
 	const names = Object.keys(withDefaults);
 	// biome-ignore lint/security/noGlobalEval: the evaluated text is this repository's own source, read two assertions above, and the sandbox is a `new Function` over stub predicates.
 	const call = new Function("cn", ...names, `return cn(${expression});`);

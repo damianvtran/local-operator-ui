@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { TOOLTIP_DELAY_MS } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
@@ -286,6 +287,8 @@ export function ChatRowTitle({ text }: { text: string }) {
 			data-session-title
 			className={cn(
 				"min-w-0 flex-1",
+				// A title the user (or their agent) wrote: no text in analytics or replay.
+				USER_CONTENT_CLASS,
 				/* The shipped rest state, ellipsis and all - and the pan's own clip, which
 				   is the same box without the ellipsis over moving text. */
 				panning ? "overflow-hidden whitespace-nowrap" : "truncate",

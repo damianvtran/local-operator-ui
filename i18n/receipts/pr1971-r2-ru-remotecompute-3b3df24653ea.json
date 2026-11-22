@@ -1,0 +1,95 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "3b3df24653ea",
+		"instance": "pr1971-r2-ru-remotecompute-3b3df24653ea",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session did not write the translations. The translator was the PR's remediation coder (deepseek/deepseek-flash) in a different session; this round read the bytes at bec0906c52 and corrected only strings it rejected, listed under `corrections`.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r2-ru-remotecompute-3b3df24653ea",
+	"locale": "ru",
+	"namespace": "ui.chat.remote_compute",
+	"date": "2026-11-18",
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"scope": "Round-2 delta audit of the 10 ui.chat.remote_compute keys the round-1 remediation added or changed (row.network_remedy, sheet.network.not_enforced/recorded, sheet.tier.cloud_run.selected/group_label, store.accepted_without_run/refused/transport, card.binding, card.binding_none), against the English source, its context sidecars, the glossary and the locale guide at damianvtran/local-operator 066f8e58, plus the shipped corpus for reused terms. Regressions introduced by the remediation were looked for directly. The other 73 keys are unchanged bytes and were not re-read.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+		"english_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+		"context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+		"context_sha256": "b406e50f5e18d4142006e9af578b6884ba570a6f81d1964ae7c50b0d6c4d18b1",
+		"target": "src/i18n/catalogues/ru/ui.chat.remote_compute.json",
+		"target_sha256": "4754857b0b3d296787c342452ca361d7474d805ef7d729dfe05a3492090cd604",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/ru.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0"
+	},
+	"sha256": {
+		"en": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+		"ru": "4754857b0b3d296787c342452ca361d7474d805ef7d729dfe05a3492090cd604"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "every value of ui.chat.remote_compute in the locale was scanned for isolé/sécurisé/privé/segment, aislad/segur/privat/segment, 隔离/安全/私有/分段, изолир/защищ/приватн/сегмент/огранич, cô lập/an toàn/riêng tư/phân đoạn/bảo mật, الگ تھلگ/محفوظ/نجی/منقسم/پابند, अलग/सुरक्षित/निजी/खंडित/प्रतिबंधित — zero matches",
+		"store_transport": "no locale claims the run failed or that nothing was charged; all say only that the request did not reach the server, then ask for a retry",
+		"store_accepted_without_run": "no locale claims nothing was started; all say the server accepted the run and did not return it",
+		"result": "passes in all seven locales"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.row.network_remedy",
+			"ui.chat.remote_compute.sheet.network.not_enforced",
+			"ui.chat.remote_compute.sheet.network.recorded",
+			"ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"ui.chat.remote_compute.sheet.tier.group_label",
+			"ui.chat.remote_compute.store.accepted_without_run",
+			"ui.chat.remote_compute.store.refused",
+			"ui.chat.remote_compute.store.transport",
+			"ui.chat.remote_compute.card.binding",
+			"ui.chat.remote_compute.card.binding_none"
+		],
+		"english_bytes": {
+			"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+			"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+			"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+			"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+			"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+			"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+			"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+			"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+			"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+			"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+		},
+		"record": "i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r2-ru-remotecompute-3b3df24653ea/delta-keys.json"
+	},
+	"corrections": [
+		{
+			"key": "ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"from": "Этот запуск будет использовать Запуск в облаке.",
+			"to": "Этот запуск будет использовать режим «Запуск в облаке».",
+			"reason": "the accusative was grammatical but Russian requires «ёлочки» around a capitalised name of this kind mid-sentence, and 'использовать Запуск' repeated запуск. 'режим' is corpus-attested (39 values, 4 in the 'в режиме …' frame). Tier name verbatim inside the quotes."
+		}
+	],
+	"findings": {
+		"minor": [
+			{
+				"key": "ui.chat.remote_compute.row.network_remedy",
+				"issue": "measures 112 cells against the sidecar's maxCells 92 (22% over) with this audit's cell counter; the two command spans alone are 61 of the 92, and the shortest correct Russian keeping both verbs ('присоединитесь') and the network noun is still over. The note span wraps rather than clips (no truncate on data-radient-row-note), so this costs a taller row, not lost text. Not shortened: the alternative is either a telegraphic colon fragment in a picker whose neighbours are full sentences, or dropping the verb the CLI is named after. A ru width-exception entry belongs in the core style guide, which this PR does not own — recorded here as the durable finding."
+			}
+		],
+		"nit": [
+			{
+				"key": "ui.chat.remote_compute.row.network_remedy",
+				"issue": "'Создайте её' leaves the object to the visible 'нужна сеть' line above; round 1 recorded the same shape as its 'create_one' nit and accepted it for the same reason."
+			}
+		]
+	},
+	"notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same round and are listed under corrections; they are not counted as unresolved. Translator metadata is the round-1 remediation coder (coder, deepseek/deepseek-flash), recorded on the ledger row by ledger-assemble."
+}

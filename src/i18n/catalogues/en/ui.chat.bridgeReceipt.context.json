@@ -20,11 +20,11 @@
 	},
 	"ui.chat.bridgeReceipt.pending": {
 		"role": "Incoming Bridge body pending",
-		"note": "The message has not finished moderation/delivery yet; the body may appear later. Neutral, not an error."
+		"note": "The message reached this computer but has not been handed to the agent yet (that happens at its next turn, often minutes or hours later); the open card updates by itself when it is. Neutral, not an error. Same words as core tui.bridge_card.body.pending and relay.transcript.bridge.pending."
 	},
 	"ui.chat.bridgeReceipt.held": {
 		"role": "Incoming Bridge body held",
-		"note": "Moderation is holding the message for this agent. Never name a reason or category."
+		"note": "Moderation is holding the message for a person to review; it may still be released or refused, and the open card updates by itself. Never name a reason or category."
 	},
 	"ui.chat.bridgeReceipt.held_transient": {
 		"role": "Incoming Bridge body held, transient",
@@ -60,7 +60,7 @@
 	},
 	"ui.chat.bridgeReceipt.unavailable_reason.offline": {
 		"role": "Incoming Bridge body unavailable: offline",
-		"note": "Radient (the Team Bridge hub) could not be reached to load the body. Closing and reopening the card retries the read. Same words as core tui.bridge_card.body.offline."
+		"note": "Radient (the hub) could not be reached to load this message's body. The open card keeps trying by itself, so do not tell the reader to close or reopen anything. 'Radient' is a product name; do not translate."
 	},
 	"ui.chat.bridgeReceipt.show_more": {
 		"role": "Expand long Bridge body",
@@ -76,5 +76,9 @@
 		"placeholders": {
 			"count": "Number of further messages in this card that are not listed."
 		}
+	},
+	"ui.chat.bridgeReceipt.thread_reply": {
+		"role": "Incoming Bridge receipt thread-reply marker",
+		"note": "Shown in the open card's headline after the sender and conversation, joined by ' · ', when the message is a reply inside a thread rather than a top-level post. Short noun phrase, no final punctuation."
 	}
 }
