@@ -26,8 +26,10 @@ import { toast } from "sonner";
 import "../../../styles/index.css";
 import {
 	TranscriptionRequestError,
+	retakeOfferFor,
 	transcriptionFailureMessage,
 } from "@shared/api/local-operator/transcription-failure";
+import { DictationTakeRow } from "@shared/components/composer/dictation-take-row";
 import { resetToastDedup, showErrorToast } from "@shared/utils/toast-manager";
 
 /** The copy the app shipped before this change, in both call sites' words. */
@@ -161,4 +163,122 @@ export const ServerMessageClipped: Story = {
 export const NoReasonGiven: Story = {
 	parameters: { toastDuration: Number.POSITIVE_INFINITY },
 	render: () => <Refusal status={503} detail="" />,
+};
+
+/*
+ * THE ROW, AND WHY IT NEEDS ITS OWN FRAMES.
+ *
+ * The toast stories above are about a sentence. These are about a control: the
+ * row under the composer is the only place a failed take can be discarded, and
+ * before this change it offered Retry-only or nothing - so a recording the app
+ * refused for its size (413) or a request the server rejected (422) had copy
+ * telling the reader to try again and no surface at all to try again from.
+ *
+ * EACH STORY DRIVES THE SHIPPED ROW THROUGH THE SHIPPED POLICY. `retakeOfferFor`
+ * decides the sentence and whether Retry exists; the story passes its answer to
+ * `DictationTakeRow`, the component the composer renders, and does not restate
+ * either. A story that hard-coded "no Retry" would photograph a claim rather than
+ * the code making it.
+ *
+ * THE FRAME SHOWS THE ROW IN ITS SLOT. The box above it is a stand-in for the
+ * composer band - the same ground, border and measure - because mounting the real
+ * composer in a story needs a microphone and a relay; the row's own geometry,
+ * controls and copy are the real ones. Behaviour (what Discard does, what Retry
+ * re-sends) is driven in `scripts/shared-composer.test.mjs`, not claimed here.
+ */
+const RowFrame = ({ children }: { children: React.ReactNode }) => (
+	<div className="min-h-screen bg-canvas p-8">
+		<div className="mx-auto max-w-3xl">
+			<div className="rounded-xl border border-control bg-surface p-3">
+				<div className="px-2 py-2 text-body text-ink-dim">
+					Type a message, or hold to dictate…
+				</div>
+				{children}
+			</div>
+		</div>
+	</div>
+);
+
+/** The row the policy chose for one failure, rendered by the shipped component. */
+const PolicyRow = ({ status, detail }: { status: number; detail: string }) => {
+	const offer = retakeOfferFor(new TranscriptionRequestError(status, detail));
+	return (
+		<DictationTakeRow
+			message={offer.message}
+			retry={offer.retry}
+			onRetry={() => undefined}
+			onDiscard={() => undefined}
+		/>
+	);
+};
+
+/**
+ * The row this branch replaces: Retry beside the transient sentence, and no way
+ * out for a take the app or the server will not accept.
+ *
+ * Reproduced from the markup at `origin/main` rather than imported, because the
+ * component it lived in no longer renders it - and a "before" frame that called
+ * the new component would be a photograph of the after.
+ */
+const BeforeRow = ({ message }: { message: string }) => (
+	<div className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]">
+		<svg
+			aria-hidden="true"
+			className="size-3.5 shrink-0 text-danger"
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+		>
+			<circle cx="12" cy="12" r="10" />
+			<path d="M12 8v4M12 16h.01" />
+		</svg>
+		<span className="font-medium text-body-sm text-ink-muted">{message}</span>
+		<button type="button" className="h-7 shrink-0 px-2 text-body-sm underline">
+			Retry
+		</button>
+	</div>
+);
+
+/** The transient class: Retry AND Discard, the take kept across a spent burst. */
+export const RowTransientRetryAndDiscard: Story = {
+	parameters: { layout: "fullscreen" },
+	render: () => (
+		<RowFrame>
+			<PolicyRow
+				status={502}
+				detail='Transcription failed upstream. Upstream responded 500: {"error":"failed to check billing account"}'
+			/>
+		</RowFrame>
+	),
+};
+
+/** HTTP 413: the app's own plane refused the bytes before sending them. */
+export const RowTooLongDiscardOnly: Story = {
+	parameters: { layout: "fullscreen" },
+	render: () => (
+		<RowFrame>
+			<PolicyRow status={413} detail="This file is too large." />
+		</RowFrame>
+	),
+};
+
+/** HTTP 422: the server rejected the request itself; its reason is quoted. */
+export const RowRejectedDiscardOnly: Story = {
+	parameters: { layout: "fullscreen" },
+	render: () => (
+		<RowFrame>
+			<PolicyRow status={422} detail="The audio track is missing." />
+		</RowFrame>
+	),
+};
+
+/** The shape this branch replaces: one sentence, Retry, and nothing else. */
+export const RowBeforeRetryOnly: Story = {
+	parameters: { layout: "fullscreen" },
+	render: () => (
+		<RowFrame>
+			<BeforeRow message="Dictation failed: the transcription service had a temporary fault. Your recording is kept — Retry sends it again." />
+		</RowFrame>
+	),
 };

@@ -6,6 +6,7 @@
 	"ui.common.actions.dismiss": "Скрыть",
 	"ui.common.actions.more_info": "Подробнее",
 	"ui.common.actions.retry": "Повторить",
+	"ui.common.actions.discard": "Отклонить",
 	"ui.common.actions.retry_again": "Повторить",
 	"ui.common.actions.retrying": "Повторная попытка…",
 	"ui.common.actions.date_time_picker.select_date": "Выберите дату",

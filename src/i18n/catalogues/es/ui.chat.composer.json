@@ -35,6 +35,7 @@
 	"ui.chat.composer.processing_audio": "Procesando audio",
 	"ui.chat.composer.dictation_failed_transient": "Error de dictado: el servicio de transcripción sufrió un fallo temporal. Vuelve a intentarlo.",
 	"ui.chat.composer.dictation_failed_transient_take_kept": "Error de dictado: el servicio de transcripción sufrió un fallo temporal. Tu grabación se conserva: Reintentar la envía de nuevo.",
+	"ui.chat.composer.dictation_failed_too_long_take_kept": "Error de dictado: la grabación es demasiado larga para enviarla. Descártala y graba una más corta.",
 	"ui.chat.composer.suggestion.code_review_agent": "Crea un agente de revisión de código",
 	"ui.chat.composer.suggestion.create_team": "Crea un equipo de agentes",
 	"ui.chat.composer.suggestion.last_turn": "Muéstrame el último turno del agente",

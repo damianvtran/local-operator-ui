@@ -338,6 +338,114 @@ export function transcriptionFailureRowMessage(error: unknown): string {
 }
 
 /**
+ * What a failed dictation may offer, decided once for the row, the toast and the
+ * sentence that names the controls.
+ *
+ * WHY IT IS ONE FUNCTION. The composer renders a row under the box, raises a
+ * toast, and carries two controls whose names the sentence itself gives. Three
+ * places reading two predicates is how the old shapes disagreed: a refusal that
+ * showed a Retry control offering to re-send the bytes that had just been
+ * rejected, and a recording too large or too malformed to send at all that was
+ * told to "try again" while the take it belonged to stayed in state with no
+ * control able to reach it. Every surface now asks this function, so a status
+ * cannot be retryable in the row and final in the toast.
+ *
+ * THE ARMS, in precedence order, each one a policy decision rather than a case
+ * the caller is expected to re-derive:
+ *
+ * 1. The TRANSIENT class (`isTransientTranscriptionFailure`) keeps the row with
+ *    Retry AND Discard. It is the one failure sending the same bytes can fix, so
+ *    it is the only arm whose `retry` is true. Discard is offered beside Retry
+ *    because a person whose network is down may want their screen back more than
+ *    they want the recording.
+ * 2. 413 keeps the row with Discard only. The app's own plane refuses audio over
+ *    16 MiB before it sends (`src/main/desktop-media.ts`, `MAX_UPLOAD_BYTES`), so
+ *    the take cannot be sent however often it is re-sent; the fix is a shorter
+ *    recording, and the copy says that instead of "try again".
+ * 3. 422 keeps the row with Discard only, quoting the refusal's own reason. A
+ *    rejected request is not a temporary fault, but the recording is still the
+ *    user's and throwing it away is the only action left - so the row exists to
+ *    carry that action, not to promise a retry. An empty 422 body has no reason
+ *    to quote, and a row without one would be the app guessing at a cause it was
+ *    not given, so that shape falls through to the toast.
+ * 4. EVERYTHING ELSE - 401/402/403, the credit families, the desktop plane's
+ *    pairing refusals, and the remaining 4xx - has no row and no control. Those
+ *    are decisions (`isTransientTranscriptionFailure`'s own note), and a control
+ *    beside a decision that reproduces it is the "try again" lie this module
+ *    exists to delete. The toast carries the sentence; the caller drops the bytes
+ *    (see the composer), because without a row nothing can reach them.
+ *
+ * `message` is the only sentence either surface shows, so the row and the toast
+ * cannot say different things about one failure.
+ */
+export interface RetakeOffer {
+	/** Whether sending the same bytes again can change the answer. */
+	retry: boolean;
+	/** Whether the kept take gets a row under the composer at all. */
+	keepRow: boolean;
+	/** What the row says, or - when there is no row - what the toast says. */
+	message: string;
+}
+
+/** The offer for one failure. See `RetakeOffer` for the table and its reasons. */
+export function retakeOfferFor(error: unknown): RetakeOffer {
+	if (isTransientTranscriptionFailure(error)) {
+		return {
+			retry: true,
+			keepRow: true,
+			message: transcriptionFailureRowMessage(error),
+		};
+	}
+	const status =
+		error instanceof TranscriptionRequestError ? error.status : null;
+	if (status === 413) {
+		return { retry: false, keepRow: true, message: tooLongTakeKept() };
+	}
+	if (status === 422) {
+		const refused = refusedTakeKept(error);
+		if (refused !== null)
+			return { retry: false, keepRow: true, message: refused };
+	}
+	return {
+		retry: false,
+		keepRow: false,
+		message: transcriptionFailureMessage(error),
+	};
+}
+
+/**
+ * The row a take too large or too malformed to send gets.
+ *
+ * It says what the plane did ("too long to send") rather than reproducing the
+ * machine detail (`This file is too large.`), because the reader's question is
+ * what to do about it, and the answer is a shorter take rather than a retry.
+ */
+const tooLongTakeKept = (): string =>
+	t("ui.chat.composer.dictation_failed_too_long_take_kept");
+
+/**
+ * The row a 422 gets: the refusal's own reason, then the one action left.
+ *
+ * Null when the body carried no reason - `transcriptionFailureMessage`'s own
+ * absence sentence is the honest answer then, and it goes to the toast (see
+ * `retakeOfferFor` arm 3).
+ *
+ * The reason is quoted through the same helpers the toast uses (`reasonFrom`,
+ * `lowerOpening`, the trailing-full-stop rule, and the clipped sibling), so the
+ * row and the toast read as one voice even though they say different things about
+ * a different failure.
+ */
+function refusedTakeKept(error: unknown): string | null {
+	const detail = error instanceof Error ? error.message : "";
+	const flat = flatten(detail);
+	if (flat === "") return null;
+	const reason = lowerOpening(reasonFrom(flat)).replace(TRAILING_FULL_STOP, "");
+	return reason.endsWith("…")
+		? t("ui.common.errors.dictation_refused_take_kept_clipped", { reason })
+		: t("ui.common.errors.dictation_refused_take_kept", { reason });
+}
+
+/**
  * The reason's own opening capital, lowered into the family's shape.
  *
  * Every sibling sentence starts lowercase after `Dictation failed: ` (round 2,

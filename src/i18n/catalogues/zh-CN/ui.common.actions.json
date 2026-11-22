@@ -6,6 +6,7 @@
 	"ui.common.actions.dismiss": "忽略",
 	"ui.common.actions.more_info": "更多信息",
 	"ui.common.actions.retry": "重试",
+	"ui.common.actions.discard": "丢弃",
 	"ui.common.actions.retry_again": "再试一次",
 	"ui.common.actions.retrying": "正在重试……",
 	"ui.common.actions.date_time_picker.select_date": "选择日期",

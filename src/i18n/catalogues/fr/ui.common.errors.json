@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "Échec de la dictée : le compte {provider} utilisé pour la dictée n’a plus de crédits. S’il s’agit du vôtre, rechargez-le via {destination}.",
 	"ui.common.errors.dictation_unknown": "Échec de la dictée : {reason}. Réessayez, ou signalez le problème avec le journal de l’application.",
 	"ui.common.errors.dictation_unknown_clipped": "Échec de la dictée : {reason} Réessayez, ou signalez le problème avec le journal de l’application.",
+	"ui.common.errors.dictation_refused_take_kept": "Échec de la dictée : {reason}. Écartez l’enregistrement, ou signalez le problème avec le journal de l’application.",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "Échec de la dictée : {reason} Écartez l’enregistrement, ou signalez le problème avec le journal de l’application.",
 	"ui.common.errors.dictation_empty": "Aucun mot n’a été détecté. Réessayez un peu plus près du microphone.",
 	"ui.common.errors.speech_failure": "Impossible de lire ce texte à voix haute. Réessayez.",
 	"ui.common.errors.speech_radient_sign_in": "Votre connexion à Radient ne fonctionne plus. Authentifiez-vous à nouveau dans les paramètres.",
