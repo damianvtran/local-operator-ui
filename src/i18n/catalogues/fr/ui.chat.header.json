@@ -1,5 +1,5 @@
 {
-	"ui.chat.header.auto_close_inactive_tabs": "Fermer les onglets inactifs après {minutes, number} min",
+	"ui.chat.header.auto_close_inactive_tabs": "Fermer les onglets inactifs après {minutes, number} min",
 	"ui.chat.header.actions": "Actions de la conversation",
 	"ui.chat.header.archive_conversation": "Archiver la conversation",
 	"ui.chat.header.archived": "Archivée",

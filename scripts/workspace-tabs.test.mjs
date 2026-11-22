@@ -5,7 +5,11 @@ import { build } from "esbuild";
 
 const { outputFiles } = await build({
 	stdin: {
-		contents: `export * from "./workspace-tabs-model"; export * from "./workspace-tab-cleanup";`,
+		contents: `
+			export * from "./workspace-tabs-model";
+			export * from "./workspace-tab-cleanup";
+			export { translate } from "../../../../i18n/messages";
+		`,
 		resolveDir: new URL("../src/renderer/src/features/chat/", import.meta.url)
 			.pathname,
 	},
@@ -15,6 +19,7 @@ const { outputFiles } = await build({
 	write: false,
 });
 const {
+	WORKSPACE_INACTIVE_MINUTES,
 	WORKSPACE_INACTIVE_MS,
 	advanceWorkspaceCleanup,
 	confirmedWorkspaceRest,
@@ -24,6 +29,7 @@ const {
 	sanitizeSavedWorkspaceTabs,
 	saveWorkspaceTabs,
 	syncWorkspaceTabs,
+	translate,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
 	workspaceTarget,
@@ -224,6 +230,35 @@ test("the fake clock confirms expiry at exactly the configured interval and rese
 	const interrupted = check(start.wakeAt - 1, start.next, () => undefined);
 	assert.equal(check(start.wakeAt, interrupted.next).expired.size, 0);
 });
+
+// This label sits next to manual Close tab in a narrow menu. Keep the tab
+// terminology consistent and the timeout's number/unit together where the locale calls for it.
+for (const [locale, check] of Object.entries({
+	fr: (label) => label.endsWith(`${WORKSPACE_INACTIVE_MINUTES}\u202fmin`),
+	ur: (label, closeTab) =>
+		label.includes(
+			`${WORKSPACE_INACTIVE_MINUTES} منٹ تک غیر فعال رہنے کے بعد`,
+		) && label.endsWith(closeTab),
+	vi: (label, closeTab) =>
+		label.startsWith(`${closeTab} sau ${WORKSPACE_INACTIVE_MINUTES} phút`),
+	"zh-CN": (label) => label.startsWith(`闲置${WORKSPACE_INACTIVE_MINUTES}分钟`),
+})) {
+	test(`cleanup menu label follows ${locale} terminology and number spacing`, () => {
+		const label = translate(
+			"ui.chat.header.auto_close_inactive_tabs",
+			{
+				minutes: WORKSPACE_INACTIVE_MINUTES,
+			},
+			locale,
+		);
+		const closeTab = translate(
+			"ui.browser.browser_tab_strip.close_tab",
+			{},
+			locale,
+		);
+		assert.ok(check(label, closeTab), label);
+	});
+}
 
 test("titlebar activation and actions keep one navigation owner and never trust a drop payload", () => {
 	const strip = source(`${modelPath}workspace-tabs.tsx`);
