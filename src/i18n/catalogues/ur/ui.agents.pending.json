@@ -1,0 +1,17 @@
+{
+	"ui.agents.pending.heading": "آپ کی منظوری کی منتظر",
+	"ui.agents.pending.count_aria": "{count, plural, one {# تبدیلی آپ کی منظوری کی منتظر ہے} other {# تبدیلیاں آپ کی منظوری کی منتظر ہیں}}",
+	"ui.agents.pending.kind.agent": "ایجنٹ",
+	"ui.agents.pending.kind.team": "ٹیم",
+	"ui.agents.pending.kind.skill": "مہارت",
+	"ui.agents.pending.operation.create": "بنانے کی تجویز",
+	"ui.agents.pending.operation.update": "مجوزہ تبدیلی",
+	"ui.agents.pending.stale": "پرانی",
+	"ui.agents.pending.skill_needs_update": "یہاں مہارت کی تبدیلیوں کا جائزہ لینے کے لیے Local Operator اپ ڈیٹ کریں۔",
+	"ui.agents.pending.review": "جائزہ لیں",
+	"ui.agents.pending.review_aria": "{kind, select, agent {ایجنٹ {name} میں مجوزہ تبدیلی کا جائزہ لیں} team {ٹیم {name} میں مجوزہ تبدیلی کا جائزہ لیں} other {مہارت {name} میں مجوزہ تبدیلی کا جائزہ لیں}}",
+	"ui.agents.pending.review_create_aria": "{kind, select, agent {ایجنٹ {name} بنانے کی تجویز کا جائزہ لیں} team {ٹیم {name} بنانے کی تجویز کا جائزہ لیں} other {مہارت {name} بنانے کی تجویز کا جائزہ لیں}}",
+	"ui.agents.pending.show_all": "سب دکھائیں ({count})",
+	"ui.agents.pending.show_fewer": "کم دکھائیں",
+	"ui.agents.pending.tab_title": "{tab} · {waiting}"
+}

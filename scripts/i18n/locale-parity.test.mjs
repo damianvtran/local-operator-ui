@@ -251,6 +251,10 @@ const IDENTICAL_OK = new Map([
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
 	[
+		"fr:ui.agents.pending.kind.agent",
+		"French glossary term for agent is « Agent » — the kind word on an Agents-page pending-approval row, same spelling as English; scoped to fr so other locales still translate it (local-operator-ui #2026)",
+	],
+	[
 		"fr:ui.community.message.agent_badge",
 		"French glossary term for agent is « Agent » — the community badge mirrors fr:ui.teamBridge.profile.agent_badge (exempted above); scoped to fr so other locales still translate it",
 	],
@@ -265,6 +269,14 @@ const IDENTICAL_OK = new Map([
 		// note requires every locale to keep it identical, so a differing value
 		// would be invented punctuation rather than a translation.
 		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.agents.pending.tab_title",
+		// `{tab} · {waiting}`: an Agents-page tab's tooltip, two placeholders (each
+		// already translated) and the middle dot the catalogue uses as a list
+		// separator elsewhere. Keyed so a locale MAY reorder or swap the separator
+		// (local-operator-ui #2026, R6/Q1), but no word in it needs translating.
+		"language-neutral layout: two placeholders and a middle dot, no words",
 	],
 	[
 		"ui.notifications.filter.chip",

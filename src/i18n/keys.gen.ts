@@ -35,6 +35,7 @@ import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsPending from "./catalogues/en/ui.agents.pending.json";
 import enUiAgentsProposals from "./catalogues/en/ui.agents.proposals.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
@@ -218,6 +219,7 @@ import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
+import esUiAgentsPending from "./catalogues/es/ui.agents.pending.json";
 import esUiAgentsProposals from "./catalogues/es/ui.agents.proposals.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
@@ -401,6 +403,7 @@ import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
+import frUiAgentsPending from "./catalogues/fr/ui.agents.pending.json";
 import frUiAgentsProposals from "./catalogues/fr/ui.agents.proposals.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
@@ -584,6 +587,7 @@ import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
 import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
+import hiUiAgentsPending from "./catalogues/hi/ui.agents.pending.json";
 import hiUiAgentsProposals from "./catalogues/hi/ui.agents.proposals.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
@@ -767,6 +771,7 @@ import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
+import ruUiAgentsPending from "./catalogues/ru/ui.agents.pending.json";
 import ruUiAgentsProposals from "./catalogues/ru/ui.agents.proposals.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
@@ -950,6 +955,7 @@ import urUiAgents from "./catalogues/ur/ui.agents.json";
 import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
 import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
+import urUiAgentsPending from "./catalogues/ur/ui.agents.pending.json";
 import urUiAgentsProposals from "./catalogues/ur/ui.agents.proposals.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
@@ -1133,6 +1139,7 @@ import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
 import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
+import viUiAgentsPending from "./catalogues/vi/ui.agents.pending.json";
 import viUiAgentsProposals from "./catalogues/vi/ui.agents.proposals.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
@@ -1316,6 +1323,7 @@ import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
 import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
+import zhCNUiAgentsPending from "./catalogues/zh-CN/ui.agents.pending.json";
 import zhCNUiAgentsProposals from "./catalogues/zh-CN/ui.agents.proposals.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
@@ -1502,6 +1510,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsPages,
+	...enUiAgentsPending,
 	...enUiAgentsProposals,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
@@ -1693,6 +1702,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
 		...esUiAgentsPages,
+		...esUiAgentsPending,
 		...esUiAgentsProposals,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
@@ -1878,6 +1888,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
 		...frUiAgentsPages,
+		...frUiAgentsPending,
 		...frUiAgentsProposals,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
@@ -2063,6 +2074,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsModels,
 		...hiUiAgentsNavigation,
 		...hiUiAgentsPages,
+		...hiUiAgentsPending,
 		...hiUiAgentsProposals,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
@@ -2248,6 +2260,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
 		...ruUiAgentsPages,
+		...ruUiAgentsPending,
 		...ruUiAgentsProposals,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
@@ -2433,6 +2446,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsModels,
 		...urUiAgentsNavigation,
 		...urUiAgentsPages,
+		...urUiAgentsPending,
 		...urUiAgentsProposals,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
@@ -2618,6 +2632,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsModels,
 		...viUiAgentsNavigation,
 		...viUiAgentsPages,
+		...viUiAgentsPending,
 		...viUiAgentsProposals,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
@@ -2803,6 +2818,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsModels,
 		...zhCNUiAgentsNavigation,
 		...zhCNUiAgentsPages,
+		...zhCNUiAgentsPending,
 		...zhCNUiAgentsProposals,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
@@ -3493,6 +3509,21 @@ export type MessageParams = {
 	"ui.agents.pages.search_aria": undefined;
 	"ui.agents.pages.tab.agents": undefined;
 	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.pending.count_aria": { count: number };
+	"ui.agents.pending.heading": undefined;
+	"ui.agents.pending.kind.agent": undefined;
+	"ui.agents.pending.kind.skill": undefined;
+	"ui.agents.pending.kind.team": undefined;
+	"ui.agents.pending.operation.create": undefined;
+	"ui.agents.pending.operation.update": undefined;
+	"ui.agents.pending.review": undefined;
+	"ui.agents.pending.review_aria": { kind: string; name: string };
+	"ui.agents.pending.review_create_aria": { kind: string; name: string };
+	"ui.agents.pending.show_all": { count: string };
+	"ui.agents.pending.show_fewer": undefined;
+	"ui.agents.pending.skill_needs_update": undefined;
+	"ui.agents.pending.stale": undefined;
+	"ui.agents.pending.tab_title": { tab: string; waiting: string };
 	"ui.agents.proposals.accept": undefined;
 	"ui.agents.proposals.accept_edits": undefined;
 	"ui.agents.proposals.accepted": { name: string };
