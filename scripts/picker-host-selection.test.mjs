@@ -807,6 +807,70 @@ test("model load errors do not advertise Enter despite retained rows", () => {
 	}
 });
 
+test("a query entered with no model catalogue does not pin the recovered list", async () => {
+	const haiku = {
+		value: "anthropic/claude-haiku-4-5",
+		label: "Claude Haiku 4.5",
+	};
+	const calls = [];
+	const base = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		matcher: matchModelPickerOptions,
+		onPick: (value) => calls.push(value),
+	};
+	const failed = { ...base, options: [], loadError: "Catalogue failed" };
+	const view = mount(failed);
+	try {
+		const input = document.querySelector('input[role="combobox"]');
+		const error = [...document.querySelectorAll("p")].find(
+			(node) => node.textContent === failed.loadError,
+		);
+		// jsdom has no layout; give the error envelope a nonzero measurement
+		// so an accidental reservation is observable after the list mounts.
+		error.parentElement.getBoundingClientRect = () => ({ height: 51.5 });
+		await type(input, "haiku");
+		key(input, "Enter");
+		assert.deepEqual(calls, []);
+		view.render({ ...base, options: [], loading: true });
+		view.render({ ...base, options: [haiku], notice: "Some providers failed" });
+		assert.equal(input.value, "haiku");
+		assert.equal(document.activeElement, input);
+		const row = announced(input);
+		assert.equal(labelOf(row), haiku.label);
+		const envelope = row.closest('[role="listbox"]').parentElement;
+		assert.equal(envelope.style.height, "");
+		key(input, "Enter");
+		assert.deepEqual(calls, [haiku.value]);
+
+		// A search that starts on a real list can reserve space even through
+		// zero hits, but a different notice must not inherit that budget.
+		await type(input, "");
+		envelope.getBoundingClientRect = () => ({ height: 128 });
+		await type(input, "haiku");
+		assert.equal(envelope.style.height, "128px");
+		await type(input, "no results");
+		assert.equal(envelope.style.height, "128px");
+		await type(input, "");
+		assert.equal(envelope.style.height, "");
+		await type(input, "no results");
+		assert.equal(envelope.style.height, "128px");
+		view.render({ ...base, options: [haiku] });
+		assert.equal(envelope.style.height, "");
+		view.render({ ...base, options: [haiku], notice: "Some providers failed" });
+		assert.equal(envelope.style.height, "");
+		await type(input, "");
+		assert.equal(
+			announced(input).querySelector(".truncate")?.textContent,
+			haiku.label,
+		);
+	} finally {
+		view.unmount();
+	}
+});
+
 test("literal exact model labels and selectors cannot redirect Enter to another provider", async () => {
 	const original = {
 		value: "anthropic/claude-haiku-4-5",

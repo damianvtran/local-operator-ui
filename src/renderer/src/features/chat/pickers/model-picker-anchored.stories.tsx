@@ -7,7 +7,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { type FC, useRef, useState } from "react";
+import { type FC, useEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { useSlashDispatch } from "../components/slash-dispatch";
 import { pickerStoryFixture } from "./model-picker.stories";
@@ -51,6 +51,8 @@ const ROUTED_HAIKU = `openrouter/${DIRECT_HAIKU}`;
 const MODEL_DEFAULT = /default for new sessions/i;
 const SET_DEFAULT = /Set current model as default/;
 const DEFAULT_REFUSED = /The default was not saved: unexpected settings.edit/;
+const CATALOGUE_UNAVAILABLE = "Catalogue unavailable";
+const PARTIAL_CATALOGUE = /One provider did not answer/;
 const HIGH = /^High\b/;
 const SIGN_IN_MODEL = /GLM-5\.2/;
 const SHOW_ALL = /Show all supported models/i;
@@ -69,7 +71,13 @@ const AnchoredFrame: FC<{
 	scrolled?: boolean;
 	acceptDefault?: boolean;
 	holdFirstModel?: boolean;
-}> = ({ scrolled = false, acceptDefault = false, holdFirstModel = false }) => {
+	recoverCatalogue?: boolean;
+}> = ({
+	scrolled = false,
+	acceptDefault = false,
+	holdFirstModel = false,
+	recoverCatalogue = false,
+}) => {
 	const [selected, setSelected] = useState(
 		scrolled ? EXTENDED_MODEL : acceptDefault ? LONG_MODEL : CATALOGUE[0],
 	);
@@ -79,18 +87,30 @@ const AnchoredFrame: FC<{
 		"idle" | "pending" | "released" | "settled"
 	>("idle");
 	const releaseModel = useRef<(() => void) | null>(null);
+	const failedLiveListing = useRef(false);
 	const commandsKey = desktopKeys.commandsFor(useI18nLocale());
 	const fetchingCommands = useIsFetching({ queryKey: commandsKey });
 	const queryClient = useQueryClient();
+	useEffect(() => {
+		// This story's isolated client must expose the failed read before the
+		// manual refresh, not let a transport retry consume its next reply.
+		if (recoverCatalogue)
+			queryClient.setQueryDefaults(desktopKeys.catalogue, { retry: false });
+	}, [queryClient, recoverCatalogue]);
 	const commandsReady =
 		!fetchingCommands &&
 		queryClient.getQueryState(commandsKey)?.status === "success";
 
-	const listing = scrolled
-		? SCROLLED_CATALOGUE
-		: acceptDefault
-			? catalogue({ models: [...CATALOGUE, LONG_MODEL] })
-			: catalogue();
+	const listing = recoverCatalogue
+		? catalogue({
+				source: "live",
+				errors: { openrouter: "listing unavailable" },
+			})
+		: scrolled
+			? SCROLLED_CATALOGUE
+			: acceptDefault
+				? catalogue({ models: [...CATALOGUE, LONG_MODEL] })
+				: catalogue();
 	const frontend = {
 		selected_model: {
 			provider: selected.provider,
@@ -166,6 +186,13 @@ const AnchoredFrame: FC<{
 					},
 				});
 			}
+		}
+		// Neither the shipped registry nor the first provider pass has data.
+		// Only a subsequent live refresh may recover with a partial catalogue.
+		if (recoverCatalogue && request.op === "models.catalogue") {
+			if (request.live && failedLiveListing.current) return ok(listing);
+			if (request.live) failedLiveListing.current = true;
+			return { status: 503, body: { detail: CATALOGUE_UNAVAILABLE } };
 		}
 		return catalogueOnly(listing)(request);
 	});
@@ -443,6 +470,36 @@ export const AnchoredModelDefaultLongLabelNarrow: Story = {
 	parameters: { viewport: narrowViewport },
 	render: () => <AnchoredFrame acceptDefault />,
 	play: () => defaultGeometry(true),
+};
+
+export const AnchoredModelCatalogueRecovery: Story = {
+	parameters: { viewport: narrowViewport },
+	render: () => <AnchoredFrame recoverCatalogue />,
+	play: async () => {
+		const { dialog, input } = await openFromChip("model");
+		const picker = within(dialog);
+		await picker.findByText(CATALOGUE_UNAVAILABLE, { exact: false });
+		const refresh = await picker.findByRole("button", {
+			name: "Refresh from providers",
+		});
+		await waitFor(() => expect(refresh).toBeEnabled());
+		await userEvent.keyboard("haiku");
+		expect(picker.queryByRole("listbox")).toBeNull();
+		await userEvent.click(refresh);
+		await picker.findByText(PARTIAL_CATALOGUE);
+		const list = await picker.findByRole("listbox");
+		await waitFor(() => {
+			const active = within(list).getByRole("option", { selected: true });
+			expect(input).toHaveValue("haiku");
+			expect(input).toHaveAttribute("aria-activedescendant", active.id);
+			expect(active).toHaveTextContent("Claude Haiku 4.5");
+			expect(box(active).top).toBeGreaterThanOrEqual(box(list).top);
+			expect(box(active).bottom).toBeLessThanOrEqual(box(list).bottom);
+		});
+		await userEvent.click(input);
+		await userEvent.keyboard("{Enter}");
+		await assertWrites(DIRECT_HAIKU, "medium", [`model ${DIRECT_HAIKU}`]);
+	},
 };
 
 export const ComposerSlashAndConnect: Story = {

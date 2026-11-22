@@ -980,11 +980,16 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// Anchored popups instead use PopoverContent's measured overlap policy.
 	useSuppressBrowserView(open && !anchor, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
-	// Reserve only the space the stock model listing actually used. Filtering
-	// changes content inside that scrollport, not the height above the chip.
+	// Reserve the populated model envelope while filtering, but not across a
+	// catalogue status or notice change: the old chrome could leave less than
+	// one row's worth of space for the recovered list.
 	const modelBodyRef = useRef<HTMLDivElement>(null);
 	const modelReceiptRef = useRef<HTMLDivElement>(null);
 	const [modelSearchHeight, setModelSearchHeight] = useState<number>();
+	// biome-ignore lint/correctness/useExhaustiveDependencies: catalogue status and notice invalidate the measured envelope, regardless of their new values.
+	useLayoutEffect(() => {
+		if (isModel) setModelSearchHeight(undefined);
+	}, [isModel, loading, loadError, notice]);
 	const parkedEffortFocus = useRef(false);
 	const effortListFocused = useRef(false);
 	// The keyboard's selection: the row Enter picks, and the row
@@ -1704,10 +1709,14 @@ export const PickerHost: FC<PickerHostProps> = ({
 								onChange={(event) => {
 									const value = event.target.value;
 									if (isQuick) clearHovered();
-									if (isModel && !query && value && modelBodyRef.current)
-										setModelSearchHeight(
-											modelBodyRef.current.getBoundingClientRect().height,
-										);
+									if (isModel) {
+										if (!value) setModelSearchHeight(undefined);
+										else if (!query && bodyKind === "list") {
+											const height =
+												modelBodyRef.current?.getBoundingClientRect().height;
+											if (height) setModelSearchHeight(height);
+										}
+									}
 									setQuery(value);
 								}}
 								onKeyDown={onKeyDown}
