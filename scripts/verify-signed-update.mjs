@@ -50,6 +50,13 @@ import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
+	assertNoLegacyNamespaces,
+	hashPreSplitVenv,
+	makePreSplitVenvInert,
+	recordSignedUpdateFailure,
+	resolveIncumbentRuntime,
+} from "./incumbent-runtime.mjs";
+import {
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -566,22 +573,27 @@ try {
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	await command("/usr/sbin/spctl", ["-a", "-t", "exec", "-vvv", app]);
 	const executable = join(app, "Contents", "MacOS", "Local Operator");
-	const legacyPython = join(
-		app,
-		"Contents",
-		"Resources",
-		process.arch === "arm64" ? "python_aarch64" : "python",
-		"bin",
-		"python3",
-	);
+	const runtime = resolveIncumbentRuntime(app, process.arch);
 	const legacy = join(support, "local-operator-venv");
-	await execute(legacyPython, ["-B", "-m", "venv", "--without-pip", legacy], {
-		env: safeEnv({
-			PYTHONDONTWRITEBYTECODE: "1",
-			PYTHONPYCACHEPREFIX: join(scratch, "old-bytecode"),
-		}),
-		timeout: 60_000,
-	});
+	await execute(
+		runtime.interpreter,
+		["-B", "-m", "venv", "--without-pip", legacy],
+		{
+			env: safeEnv({
+				PYTHONDONTWRITEBYTECODE: "1",
+				PYTHONPYCACHEPREFIX: join(scratch, "old-bytecode"),
+			}),
+			timeout: 60_000,
+		},
+	);
+	let preSplitHash;
+	if (runtime.kind === "seed") {
+		// Only the harness uses the signed seed to construct the fixture. The
+		// field venv did not point at the seed, so don't let it survive the swap
+		// through a path that the candidate itself is supposed to ship again.
+		makePreSplitVenvInert(legacy, runtime.legacyInterpreter);
+		preSplitHash = hashPreSplitVenv(legacy);
+	}
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	record(
 		"Incumbent identity",
@@ -589,12 +601,15 @@ try {
 		`${tag}: published ZIP hash verified; original Developer ID signature unchanged after synthetic legacy venv setup`,
 	);
 	const trigger = join(scratch, "after-swap");
-	const pendingScript = `import os,sys,time\nwhile not os.path.exists(${JSON.stringify(trigger)}): time.sleep(.1)\nsys.dont_write_bytecode=False\nimport webbrowser\n`;
-	const oldConsumer = startOwned(
-		join(legacy, "bin", "python"),
-		["-B", "-c", pendingScript],
-		"old-consumer-across-swap",
-	);
+	let oldConsumer;
+	if (runtime.kind === "legacy") {
+		const pendingScript = `import os,sys,time\nwhile not os.path.exists(${JSON.stringify(trigger)}): time.sleep(.1)\nsys.dont_write_bytecode=False\nimport webbrowser\n`;
+		oldConsumer = startOwned(
+			join(legacy, "bin", "python"),
+			["-B", "-c", pendingScript],
+			"old-consumer-across-swap",
+		);
+	}
 	const port = 19473;
 	const incumbent = startOwned(
 		executable,
@@ -677,37 +692,41 @@ try {
 	);
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	assert.equal(privatePythonSeedCheck(app).passed, true);
-	writeFileSync(trigger, "go");
-	await until(() => oldConsumer.exitCode !== null);
-	assert.notEqual(
-		oldConsumer.exitCode,
-		0,
-		"A stale process must not import through legacy bundle paths",
-	);
-	for (const flag of ["-E", "-I"]) {
-		try {
-			await execute(
-				join(legacy, "bin", "python"),
-				[flag, "-c", "import webbrowser"],
-				{ env: safeEnv(), timeout: 10_000 },
-			);
-			throw new Error(
-				"Legacy interpreter unexpectedly survived the namespace swap",
-			);
-		} catch (error) {
-			if (
-				error.code !== "ENOENT" &&
-				!(typeof error.code === "number" && error.code !== 0)
-			)
-				throw error;
+	if (runtime.kind === "legacy") {
+		writeFileSync(trigger, "go");
+		await until(() => oldConsumer.exitCode !== null);
+		assert.notEqual(
+			oldConsumer.exitCode,
+			0,
+			"A stale process must not import through legacy bundle paths",
+		);
+		for (const flag of ["-E", "-I"]) {
+			try {
+				await execute(
+					join(legacy, "bin", "python"),
+					[flag, "-c", "import webbrowser"],
+					{ env: safeEnv(), timeout: 10_000 },
+				);
+				throw new Error(
+					"Legacy interpreter unexpectedly survived the namespace swap",
+				);
+			} catch (error) {
+				if (
+					error.code !== "ENOENT" &&
+					!(typeof error.code === "number" && error.code !== 0)
+				)
+					throw error;
+			}
 		}
+		await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
+		record(
+			"Swap before candidate launch",
+			"PASS",
+			"Incumbent updater installed exact candidate; stale running/new -E/-I consumers fail closed; candidate remains signed",
+		);
+	} else {
+		assertNoLegacyNamespaces(app);
 	}
-	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
-	record(
-		"Swap before candidate launch",
-		"PASS",
-		"Incumbent updater installed exact candidate; stale running/new -E/-I consumers fail closed; candidate remains signed",
-	);
 	/*
 	 * The candidate is relaunched WITHOUT `--inspect`: its fuse turns that switch
 	 * off, so an inspector wait could only time out (native QA, PR #1948, Q1).
@@ -772,9 +791,23 @@ try {
 		await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 		child.kill("SIGTERM");
 		await until(() => ended(child));
+		if (runtime.kind === "seed") {
+			assert.equal(
+				hashPreSplitVenv(legacy),
+				preSplitHash,
+				`${label} changed the inert pre-split environment`,
+			);
+		}
 	};
 	await launchAndCheck("candidate");
 	await launchAndCheck("second-launch");
+	if (runtime.kind === "seed") {
+		record(
+			"Pre-split environment",
+			"PASS",
+			`Incumbent ${tag} resolved the seed interpreter (${runtime.interpreter}); pre-split venv reconstructed inert (legacy home dangling); candidate ships no legacy namespaces and remains signed; env byte-identical across both launches`,
+		);
+	}
 	record(
 		"Candidate first and second launch",
 		"PASS",
@@ -792,9 +825,7 @@ try {
 		))
 			writeFileSync(join(evidence, name), readFileSync(join(shipIt, name)));
 } catch (error) {
-	if (!error.blocked)
-		record("Exact signed update", "FAIL", error.stack ?? String(error));
-	process.exitCode = error.blocked ? 2 : 1;
+	process.exitCode = recordSignedUpdateFailure(error, record);
 } finally {
 	inspector?.close();
 	feed?.close();
