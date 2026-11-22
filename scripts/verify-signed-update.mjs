@@ -836,7 +836,7 @@ try {
 		record(
 			"Pre-split environment",
 			"PASS",
-			`Incumbent ${tag} resolved the seed interpreter (${runtime.interpreter}); pre-split venv reconstructed inert (legacy home dangling); candidate ships no legacy namespaces and remains signed; env byte-identical across both launches`,
+			`Incumbent ${tag} resolved the seed interpreter (${runtime.interpreter}); pre-split venv reconstructed inert (legacy home dangling); candidate ships no legacy namespaces and remains signed; venv hash matched the post-swap baseline after each candidate launch`,
 		);
 	}
 	record(

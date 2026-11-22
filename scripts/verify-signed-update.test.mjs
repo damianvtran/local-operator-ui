@@ -23,6 +23,10 @@ import {
 	resolveIncumbentRuntime,
 } from "./incumbent-runtime.mjs";
 
+// Published legacy bundles predate checkoutSeedNames. Keep their paths
+// independent so a manifest swap cannot move the fixture with the resolver.
+const historicalLegacy = { arm64: "python_aarch64", x64: "python" };
+
 function fixture(t, arch = "arm64") {
 	const root = mkdtempSync(
 		join(
@@ -38,12 +42,7 @@ function fixture(t, arch = "arm64") {
 		app,
 		resources,
 		arch,
-		legacy: join(
-			resources,
-			layout.python.checkoutSeedNames[arch],
-			"bin",
-			"python3",
-		),
+		legacy: join(resources, historicalLegacy[arch], "bin", "python3"),
 		seed: join(resources, layout.python.seedNamespace, arch, "bin", "python3"),
 	};
 }
@@ -66,14 +65,27 @@ test("seed-only incumbent resolves an existing interpreter", (t) => {
 	});
 });
 
-test("legacy-only Intel incumbent resolves its own legacy interpreter", (t) => {
-	const { app, arch, legacy } = fixture(t, "x64");
-	installInterpreter(legacy);
-	assert.deepEqual(resolveIncumbentRuntime(app, arch), {
-		kind: "legacy",
-		interpreter: legacy,
-		legacyInterpreter: legacy,
-	});
+test("legacy-only incumbents resolve only their historical architecture path", (t) => {
+	for (const arch of ["arm64", "x64"]) {
+		const { app, resources, legacy, seed } = fixture(t, arch);
+		const otherArch = arch === "arm64" ? "x64" : "arm64";
+		installInterpreter(
+			join(resources, historicalLegacy[otherArch], "bin", "python3"),
+		);
+		assert.throws(
+			() => resolveIncumbentRuntime(app, arch),
+			(error) => {
+				assert.deepEqual(error.message.split("\n").slice(1), [legacy, seed]);
+				return true;
+			},
+		);
+		installInterpreter(legacy);
+		assert.deepEqual(resolveIncumbentRuntime(app, arch), {
+			kind: "legacy",
+			interpreter: legacy,
+			legacyInterpreter: legacy,
+		});
+	}
 });
 
 test("legacy wins if both exist, preserving the real across-swap consumer", (t) => {
