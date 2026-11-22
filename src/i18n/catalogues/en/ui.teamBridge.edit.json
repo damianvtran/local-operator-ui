@@ -8,5 +8,5 @@
 	"ui.teamBridge.edit.error.invalid": "These details can’t be used. Check the name and description.",
 	"ui.teamBridge.edit.error.forbidden": "You don’t have permission to edit this conversation.",
 	"ui.teamBridge.edit.error.archived": "This conversation was archived, so it can’t be edited.",
-	"ui.teamBridge.edit.error.failed": "The changes weren’t saved. Your draft is still here. Try again."
+	"ui.teamBridge.edit.error.failed": "We couldn’t confirm whether the changes were saved. Your draft is still here. Try again."
 }

@@ -62,7 +62,7 @@
 	"ui.teamBridge.edit.error.failed": {
 		"role": "validation message",
 		"tone": "Plain, concise, helpful.",
-		"note": "Team Bridge channel/group metadata editor. Description maps only to existing topic, is optional and multiline. Name errors and Save/Cancel reuse rename strings. Never imply membership/settings editing. ",
+		"note": "Unknown save outcome: the request may have committed before its response was lost or rejected. Do not assert that changes were not saved. The draft is retained and the user may retry. Description maps only to the existing optional multiline topic; never imply membership/settings editing.",
 		"placeholders": {}
 	}
 }
