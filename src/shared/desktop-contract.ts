@@ -2969,7 +2969,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 					z
 						.object({
 							sessionId: z.string().regex(bulkReceiptSessionIdPattern, {
-								message: `String should match pattern '${bulkReceiptSessionIdPattern.source}'`,
+								message: `String should match pattern '${bulkReceiptSessionIdPattern.source}'`, // i18n: ignore wire validation diagnostic; the regex describes the accepted request format
 							}),
 							// A REAL uuid, like `sessions.seen`: a token that is not one cannot
 							// name a completion, so it is refused here rather than round-tripped
