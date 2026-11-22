@@ -2950,9 +2950,11 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 		background-color: color-mix(in srgb, var(--lo-ink) 8%, transparent);
 	}
 
-	/* The ghost button's accent ink is for its own pressed treatment. A bad
-	 * directory still speaks in danger ink, including while it is pressed. */
-	&[aria-invalid="true"]:active {
+	/* The neutral veil pulls the ground toward the danger text and can wash
+	 * out the path. Give this recovery state a faint danger tint on the shelf
+	 * role itself so its contrast does not depend on what is behind glass. */
+	&[aria-invalid="true"]:is(:active, [aria-expanded="true"]) {
+		background-color: color-mix(in srgb, var(--lo-danger) 4%, var(--lo-surface));
 		color: var(--lo-danger);
 	}
 
