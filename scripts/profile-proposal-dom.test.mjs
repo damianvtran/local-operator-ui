@@ -785,8 +785,13 @@ function SkillCreateLanding({ observed }) {
 	);
 }
 
-for (const action of ["Accept", "Reject"]) {
-	test(`skill create: ${action} settles through mutation and refetch without a missing-skill landing (R7)`, async () => {
+for (const [action, initialDetailInFlight, finding] of [
+	["Accept", false, "R7"],
+	["Reject", false, "R7"],
+	["Accept", true, "R8"],
+]) {
+	const initialDetail = initialDetailInFlight ? "in flight" : "refused";
+	test(`skill create: ${action} settles with initial detail ${initialDetail} (${finding})`, async () => {
 		const calls = bridge({
 			kind: "skill",
 			name: "research-brief",
@@ -798,6 +803,10 @@ for (const action of ["Accept", "Reject"]) {
 		const detailReady = new Promise((resolve) => {
 			releaseDetail = resolve;
 		});
+		let releaseInitialDetail;
+		const initialDetailReady = new Promise((resolve) => {
+			releaseInitialDetail = resolve;
+		});
 		const skillReads = [];
 		window.api.desktop.request = async (ask) => {
 			if (ask.op !== "skills.list") {
@@ -807,13 +816,17 @@ for (const action of ["Accept", "Reject"]) {
 			}
 			skillReads.push({ name: ask.name, created });
 			if (created && ask.name) await detailReady;
-			if (ask.name && !created)
+			if (ask.name && !created) {
+				// The server already saw the missing skill; only delivery of its
+				// answer is delayed. Accept must not turn this read into a 200.
+				if (initialDetailInFlight) await initialDetailReady;
 				return {
 					status: 404,
 					body: {
 						detail: { code: "skill_not_found", message: "Missing skill" },
 					},
 				};
+			}
 			const row = { name: "research-brief", source: "local", installed: true };
 			return {
 				status: 200,
@@ -831,11 +844,16 @@ for (const action of ["Accept", "Reject"]) {
 		};
 		const observed = [];
 		await mount(SkillCreateLanding, { observed });
-		assert.ok(
-			client.getQueryState(["desktop", "skills", "library", "research-brief"])
-				.error,
-			"precondition: the active detail query cached a genuine missing-skill refusal",
-		);
+		const skillDetailKey = ["desktop", "skills", "library", "research-brief"];
+		const initial = client.getQueryState(skillDetailKey);
+		if (initialDetailInFlight) {
+			assert.equal(initial.status, "pending");
+			assert.equal(initial.fetchStatus, "fetching");
+			assert.equal(initial.data, undefined);
+			assert.ok(skillReads.some((read) => !read.created && read.name));
+		} else {
+			assert.ok(initial.error, "precondition: detail cached a genuine 404");
+		}
 		assert.ok(document.querySelector('[data-testid="proposed-new-pane"]'));
 		observed.length = 0;
 		await click(button(action));
@@ -847,9 +865,22 @@ for (const action of ["Accept", "Reject"]) {
 			);
 			assert.ok(
 				document.querySelector('[data-testid="proposed-new-pane"]'),
-				"fast roster/slow detail keeps the acknowledgement instead of the cached missing error",
+				"fast roster/slow detail keeps the acknowledgement visible",
 			);
 			assert.match(document.body.textContent, /Applied the proposed change/);
+		}
+		// Deliver the stale pre-Accept 404 only after the roster and decision
+		// have settled; the newly requested detail is still held back.
+		if (initialDetailInFlight) {
+			await act(async () => {
+				releaseInitialDetail();
+				await flush();
+			});
+			assert.equal(
+				client.getQueryState(skillDetailKey).fetchStatus,
+				"fetching",
+				`fresh detail must still be in flight after the old 404: ${JSON.stringify(skillReads)}`,
+			);
 		}
 		await act(async () => {
 			releaseDetail();
@@ -885,7 +916,7 @@ for (const action of ["Accept", "Reject"]) {
 			);
 			assert.ok(
 				skillReads.some((read) => read.created && read.name),
-				"failed detail refetched after creation",
+				"named detail refetched after creation",
 			);
 			assert.match(document.body.textContent, /Applied the proposed change/);
 			assert.ok(

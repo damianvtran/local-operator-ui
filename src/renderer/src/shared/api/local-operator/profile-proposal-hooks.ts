@@ -25,6 +25,7 @@ import {
 	profileProposalListSchema,
 	profileProposalRejectSchema,
 } from "./profile-proposals";
+import { skillDetailKey } from "./skills-library-keys";
 
 export const profileProposalKeys = {
 	all: ["desktop", "profile-proposals"] as const,
@@ -96,10 +97,18 @@ export function useAcceptProposal() {
 				answer.proposal,
 			);
 		},
-		onSettled: () => {
+		onSettled: async (answer) => {
+			const proposal = answer?.proposal;
+			if (proposal?.kind === "skill" && proposal.operation === "create") {
+				// Invalidation joins an in-flight first read with no cached data.
+				// That read can still carry a pre-Accept 404, so discard just this
+				// skill's read before the shared prefix refreshes roster and detail.
+				await client.cancelQueries({
+					queryKey: skillDetailKey(proposal.name),
+					exact: true,
+				});
+			}
 			void client.invalidateQueries({ queryKey: profileProposalKeys.all });
-			// Skill creates must refresh both the library roster and its failed detail
-			// read; both keys live under this existing shared skills prefix.
 			for (const key of ["profiles", "teams", "profile", "team", "skills"])
 				void client.invalidateQueries({ queryKey: ["desktop", key] });
 		},
