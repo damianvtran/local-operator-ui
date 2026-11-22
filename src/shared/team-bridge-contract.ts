@@ -461,6 +461,27 @@ export type TeamBridgeMessageOrigin = z.infer<
 >;
 export type TeamBridgeSenderKind = z.infer<typeof teamBridgeSenderKindSchema>;
 
+/* Host-captured, owner-attested DISPLAY ONLY: never a principal, grant or
+ * endpoint alias. A future/invalid leaf must not discard the history message.
+ * Keep this object closed so unsupported wire shapes fall back neutrally. */
+const AGENT_SESSION_CONTROL = /[\p{Cc}\p{Cf}]/u;
+const agentSessionEncoder = new TextEncoder();
+export const teamBridgeAgentSessionSchema = z
+	.object({
+		display_label: z
+			.string()
+			// Match the host's bridgeConversationLabelMax: 64 UTF-8 bytes,
+			// not UTF-16 code units. Check raw controls BEFORE trimming so an
+			// edge newline cannot be laundered into an acceptable name.
+			.refine((label) => !AGENT_SESSION_CONTROL.test(label))
+			.refine((label) => agentSessionEncoder.encode(label).length <= 64)
+			.transform((label) => label.trim())
+			.pipe(z.string().min(1)),
+	})
+	.strict()
+	.optional()
+	.catch(undefined);
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -471,6 +492,7 @@ export const teamBridgeMessageSchema = z
 				account_id: id,
 				kind: teamBridgeSenderKindSchema,
 				display_label: z.string().min(1).max(64),
+				agent_session: teamBridgeAgentSessionSchema,
 			})
 			.passthrough(),
 		body: z.string().nullable(),
