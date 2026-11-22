@@ -50,6 +50,10 @@ import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
+	incumbentInspectorCapability,
+	incumbentInspectorRefusal,
+} from "./incumbent-fuse-gate.mjs";
+import {
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -565,6 +569,11 @@ try {
 	const app = join(install, "Local Operator.app");
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	await command("/usr/sbin/spctl", ["-a", "-t", "exec", "-vvv", app]);
+	// Classify the publisher-verified incumbent before running any of its code.
+	// This is a limit of the harness's control path, not a candidate failure.
+	const inspectorCapability = incumbentInspectorCapability(app);
+	if (!inspectorCapability.supported)
+		blocked(incumbentInspectorRefusal(tag, inspectorCapability));
 	const executable = join(app, "Contents", "MacOS", "Local Operator");
 	const legacyPython = join(
 		app,
