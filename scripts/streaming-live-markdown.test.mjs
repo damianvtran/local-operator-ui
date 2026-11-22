@@ -182,7 +182,7 @@ test("a settled block renders once; only the open block re-renders while the tai
 					createElement(
 						React.Profiler,
 						{ id: "s", onRender },
-						createElement(StreamingMarkdown, { content }),
+						createElement(StreamingMarkdown, { content, animateInk: true }),
 					),
 				);
 			});
@@ -209,3 +209,93 @@ test("a settled block renders once; only the open block re-renders while the tai
 		dom.restore();
 	}
 });
+
+async function withLiveRenderer(probe) {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const paint = (content, props = {}) =>
+		act(async () =>
+			root.render(
+				createElement(StreamingMarkdown, {
+					content,
+					animateInk: true,
+					...props,
+				}),
+			),
+		);
+	try {
+		await probe({ container, document: dom.window.document, paint });
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+}
+
+test("seed, correction and remount are static; a live suffix keeps earlier selection and markup", () =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		const seed = "Already visible";
+		await paint(seed);
+		const paragraph = container.querySelector("p");
+		const node = paragraph.firstChild;
+		assert.equal(container.querySelector(".lo-stream-ink"), null);
+		const selection = document.getSelection();
+		selection.setBaseAndExtent(node, 0, node, 7);
+		await paint(`${seed} new **bold**`);
+		assert.equal(selection.toString(), "Already");
+		assert.equal(paragraph.firstChild, node);
+		assert.equal(container.querySelector("strong").textContent, "bold");
+		assert.deepEqual(
+			Array.from(
+				container.querySelectorAll(".lo-stream-ink"),
+				(span) => span.textContent,
+			),
+			[" new ", "bold"],
+		);
+		const original = paragraph.querySelector(".lo-stream-ink");
+		await paint(`${seed} new **bold** and \`code\``);
+		assert.equal(original, paragraph.querySelector(".lo-stream-ink"));
+		assert.equal(container.querySelector("code").textContent, "code");
+		assert.equal(container.querySelector("code .lo-stream-ink"), null);
+		assert.equal(selection.toString(), "Already");
+		await paint("Authoritative correction, no fade");
+		assert.equal(container.querySelector(".lo-stream-ink"), null);
+		await paint("Authoritative correction, no fade", { key: "remounted" });
+		assert.equal(container.querySelector(".lo-stream-ink"), null);
+	}));
+
+test("a genuinely new stream fades once; a split Arabic word or emoji stays in one text leaf", () =>
+	withLiveRenderer(async ({ container, paint }) => {
+		const first = "مرح";
+		await paint(first, { revealOnMount: true });
+		const ink = container.querySelector(".lo-stream-ink");
+		assert.ok(ink);
+		await paint("مرحبا 👩", { revealOnMount: true });
+		const emoji = container.querySelectorAll(".lo-stream-ink")[1];
+		assert.equal(container.querySelector(".lo-stream-ink"), ink);
+		assert.equal(ink.textContent, "مرحبا");
+		await paint("مرحبا 👩‍💻", { revealOnMount: true });
+		assert.equal(container.querySelectorAll(".lo-stream-ink")[1], emoji);
+		assert.equal(emoji.textContent, " 👩‍💻");
+		await paint("مرحبا 👩‍💻 plus a new word", { animateInk: false });
+		assert.equal(container.querySelector(".lo-stream-ink"), null);
+	}));
+
+test("growing a direct fence updates its literal, not the Markdown lead", () =>
+	withLiveRenderer(async ({ container, paint }) => {
+		let source = "Stable **lead** before the code.\n```ts\nconst initial = 1;";
+		await paint(source);
+		const before = streamingRenderStats.markdown;
+		const lead = container.querySelector("p");
+		for (let i = 0; i < 30; i++) {
+			source += `\nconst item${i} = ${i};`;
+			await paint(source);
+		}
+		assert.equal(streamingRenderStats.markdown, before);
+		assert.equal(container.querySelector("p"), lead);
+		assert.ok(
+			container
+				.querySelector("pre code")
+				.textContent.includes("const item29 = 29;"),
+		);
+	}));

@@ -1,7 +1,20 @@
 import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { cn } from "@shared/lib/utils";
-import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { Root } from "hast";
+import type {
+	CSSProperties,
+	FC,
+	ReactElement,
+	MouseEvent as ReactMouseEvent,
+} from "react";
+import {
+	memo,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import ReactMarkdown, {
 	type Components,
 	type UrlTransform,
@@ -35,6 +48,14 @@ import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSkillInk } from "../utils/remark-skill-ink";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
 import { remarkTableHtml } from "../utils/remark-table-html";
+import {
+	INK_DURATION_MS,
+	type InkBatch,
+	type InkText,
+	STREAM_INK,
+	markStreamingInk,
+	nextInkStart,
+} from "../utils/streaming-ink";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
 import { MarkdownImage } from "./markdown-image";
@@ -836,7 +857,7 @@ MarkdownRenderer.displayName = "MarkdownRenderer";
  * frame can feel. `settled` counts renders of a CLOSED block, `tail` renders of
  * the block still being written.
  */
-export const streamingRenderStats = { settled: 0, tail: 0 };
+export const streamingRenderStats = { settled: 0, tail: 0, markdown: 0 };
 
 /**
  * The open block's component map: the shipped map with the anchor made inert.
@@ -853,6 +874,129 @@ const OPEN_BLOCK_COMPONENTS: Components = {
 	...MARKDOWN_COMPONENTS,
 	a: ({ children }) => <>{children}</>,
 };
+
+const AnimatedInk = memo(function AnimatedInk({
+	text,
+	batch,
+}: { text: string; batch: InkBatch }) {
+	// When Markdown re-parents an existing leaf, the new DOM node inherits the
+	// original clock. No keyframe can start over just because the parser gained
+	// an emphasis/list marker. A normal append keeps this span and its clock.
+	const [delay] = useState(() =>
+		batch.paintedAt === undefined
+			? undefined
+			: `${batch.paintedAt - performance.now()}ms`,
+	);
+	return (
+		<span
+			className="lo-stream-ink"
+			style={delay === undefined ? undefined : { animationDelay: delay }}
+		>
+			{text}
+		</span>
+	);
+});
+
+const inkLeaf: Components["span"] = ({ node, children, ...props }) => {
+	const pieces = (node as InkText | undefined)?.[STREAM_INK];
+	if (!pieces) return <span {...props}>{children}</span>;
+	return (
+		<>
+			{pieces.map(({ text, batch }) =>
+				batch ? (
+					<AnimatedInk key={batch.start} text={text} batch={batch} />
+				) : (
+					text
+				),
+			)}
+		</>
+	);
+};
+const INK_CLOSED_COMPONENTS: Components = {
+	...MARKDOWN_COMPONENTS,
+	span: inkLeaf,
+};
+const INK_OPEN_COMPONENTS: Components = {
+	...OPEN_BLOCK_COMPONENTS,
+	span: inkLeaf,
+};
+
+type StreamingBlockBodyProps = {
+	source: string;
+	closed: boolean;
+	open?: ReturnType<typeof openFenceOf>;
+	ink?: readonly InkBatch[];
+};
+
+const StreamingBlockBody = memo(
+	function StreamingBlockBody({
+		source,
+		closed,
+		open,
+		ink,
+	}: StreamingBlockBodyProps) {
+		streamingRenderStats.markdown += 1;
+		const display = useMemo(
+			() => (closed ? source : closeOpenMarkdown(source, open)),
+			[closed, source, open],
+		);
+		const { remarkPlugins, rehypePlugins } = useMathPipeline(
+			display,
+			closed,
+			false,
+		);
+		// The evidence callback must rerender this parse, not its memoized parent.
+		useLinkEvidence(source, closed);
+		const plugins = useMemo(
+			() =>
+				ink === undefined
+					? rehypePlugins
+					: [
+							...rehypePlugins,
+							() => (tree: Root) => markStreamingInk(tree, source, ink),
+						],
+			[rehypePlugins, source, ink],
+		);
+		return (
+			<ReactMarkdown
+				remarkPlugins={remarkPlugins}
+				rehypePlugins={plugins}
+				urlTransform={LINK_URL_TRANSFORM}
+				components={
+					ink === undefined
+						? closed
+							? MARKDOWN_COMPONENTS
+							: OPEN_BLOCK_COMPONENTS
+						: closed
+							? INK_CLOSED_COMPONENTS
+							: INK_OPEN_COMPONENTS
+				}
+			>
+				{display}
+			</ReactMarkdown>
+		);
+	},
+	(previous, next) => {
+		if (
+			previous.source !== next.source ||
+			previous.closed !== next.closed ||
+			previous.open !== next.open
+		)
+			return false;
+		if (previous.ink === next.ink) return true;
+		if (!previous.ink || !next.ink) return false;
+		// The fixed lead of an open fence must not reparse merely because bytes
+		// arrived somewhere in its literal body. Compare only batches it can see.
+		for (let i = 0; ; i++) {
+			const a = previous.ink[i];
+			const b = next.ink[i];
+			const aInBody = a !== undefined && a.start < next.source.length;
+			const bInBody = b !== undefined && b.start < next.source.length;
+			if (!aInBody && !bInBody) return true;
+			if (a !== b) return false;
+		}
+	},
+);
 
 /**
  * One block of a streaming message - closed, or still being written.
@@ -895,57 +1039,39 @@ const OPEN_BLOCK_COMPONENTS: Components = {
  * only dress up text the MODEL wrote.
  */
 const ParsedBlock = memo(
-	({ source, closed }: { source: string; closed: boolean }) => {
+	({
+		source,
+		closed,
+		ink,
+	}: { source: string; closed: boolean; ink?: readonly InkBatch[] }) => {
 		if (closed) streamingRenderStats.settled += 1;
 		else streamingRenderStats.tail += 1;
-		const display = useMemo(
-			() => (closed ? source : closeOpenMarkdown(source)),
-			[closed, source],
-		);
 		/*
 		 * A fence nested in a list item or quote is NOT painted directly: its `<pre>`
 		 * belongs inside that item, and a sibling `<pre>` would move into it on close
 		 * (review R1-m1). It takes the parsed path, with only its closer appended.
 		 */
-		const fence = useMemo(() => {
-			if (closed) return null;
-			const open = openFenceOf(source);
-			return open !== null && !open.nested ? open : null;
+		const previousFence = useRef<Parameters<typeof openFenceOf>[1]>(undefined);
+		const open = useMemo(() => {
+			const fence = closed ? null : openFenceOf(source, previousFence.current);
+			// Only a compatible source can use this hint; even an interrupted
+			// render cannot supply a stale opener to a corrected block.
+			previousFence.current = fence ? { source, fence } : undefined;
+			return fence;
 		}, [closed, source]);
-		const { remarkPlugins, rehypePlugins } = useMathPipeline(
-			display,
-			closed,
-			false,
-		);
-		useLinkEvidence(source, closed);
-		if (fence !== null) {
-			// The paragraph in front of the fence is still markdown the parse owns.
-			const before = closeOpenMarkdown(fence.before);
-			return (
-				<>
-					{before.trim() !== "" && (
-						<ReactMarkdown
-							remarkPlugins={remarkPlugins}
-							rehypePlugins={rehypePlugins}
-							urlTransform={LINK_URL_TRANSFORM}
-							components={closed ? MARKDOWN_COMPONENTS : OPEN_BLOCK_COMPONENTS}
-						>
-							{before}
-						</ReactMarkdown>
-					)}
-					<OpenFenceBody info={fence.info} body={fence.body} />
-				</>
-			);
-		}
+		const fence = open !== null && !open.nested ? open : null;
 		return (
-			<ReactMarkdown
-				remarkPlugins={remarkPlugins}
-				rehypePlugins={rehypePlugins}
-				urlTransform={LINK_URL_TRANSFORM}
-				components={closed ? MARKDOWN_COMPONENTS : OPEN_BLOCK_COMPONENTS}
-			>
-				{display}
-			</ReactMarkdown>
+			<>
+				{(fence === null || fence.before.trim() !== "") && (
+					<StreamingBlockBody
+						source={fence?.before ?? source}
+						closed={closed}
+						open={fence ? undefined : open}
+						ink={ink}
+					/>
+				)}
+				{fence && <OpenFenceBody info={fence.info} body={fence.body} />}
+			</>
 		);
 	},
 );
@@ -977,6 +1103,22 @@ type StreamingMarkdownProps = {
 	content: string;
 	styleProps?: MarkdownStyleProps;
 	className?: string;
+	animateInk?: boolean;
+	/** True only for a live model-tail arrival, never because a row mounted. */
+	revealOnMount?: boolean;
+};
+
+const NO_INK: readonly InkBatch[] = [];
+type PaintedStream = {
+	content: string;
+	openStart: number;
+	openEnd: number;
+	openInk: readonly InkBatch[] | undefined;
+	pendingStart: number;
+	pendingInk: readonly InkBatch[] | undefined;
+	closedEnd: number;
+	closedElements: readonly ReactElement[];
+	animateInk: boolean;
 };
 
 /**
@@ -994,18 +1136,19 @@ type StreamingMarkdownProps = {
  * Per-frame work is therefore proportional to ONE block (the open one), never to
  * the message: the property the naive full-document re-parse lacks.
  *
- * WHAT WAS GIVEN UP, and why it is acceptable: the old open block was painted as
- * one `<span>` per arrival so each frame's text could fade in
- * (`lo-stream-chunk`). A parsed block is a React tree whose text nodes update in
- * place; there is no per-arrival element to animate, and wrapping the arrivals
- * would re-introduce a second DOM structure for live text, which is exactly the
- * live-vs-committed divergence this component now removes.
+ * The reveal is an annotation on the same parsed tree, not a second renderer
+ * or a pacing queue. Only source-matched prose can get an inline opacity span;
+ * literal, interactive and ambiguous leaves keep their existing paint path.
  */
 export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	content,
 	styleProps,
 	className,
+	animateInk = false,
+	revealOnMount = false,
 }) => {
+	const painted = useRef<PaintedStream | null>(null);
+	const rootRef = useRef<HTMLDivElement>(null);
 	const scannerRef = useRef<BlockScanner | null>(null);
 	if (scannerRef.current === null) {
 		scannerRef.current = createBlockScanner();
@@ -1047,20 +1190,101 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		openStart = scanner.cursor;
 	}
 	const tail = content.slice(openStart, tailEnd);
-	const blocks: { key: number; source: string; closed: boolean }[] =
-		scanner.blocks.map((source, key) => ({ key, source, closed: true }));
-	if (pendingClosed !== null)
-		blocks.push({
-			key: scanner.blocks.length,
-			source: pendingClosed,
-			closed: true,
-		});
-	if (tail !== "")
-		blocks.push({ key: blocks.length, source: tail, closed: false });
+	const previous = painted.current;
+	const extendsPaint =
+		previous !== null && content.startsWith(previous.content);
+	const canReveal =
+		animateInk &&
+		(previous === null ? revealOnMount : extendsPaint && previous.animateInk);
+	const freshAt = canReveal ? (previous?.content.length ?? 0) : content.length;
+	const newBatches: InkBatch[] = [];
+	const now = performance.now();
+	let preserveSelection: boolean | undefined;
+	const inkFor = (source: string, start: number) => {
+		if (!animateInk) return undefined;
+		let prior =
+			!extendsPaint || !previous.animateInk
+				? NO_INK
+				: ((previous.openStart === start
+						? previous.openInk
+						: previous.pendingStart === start
+							? previous.pendingInk
+							: undefined) ?? NO_INK);
+		// Trailing whitespace was trimmed in the previous open block. Its
+		// first visible appearance belongs to this append, not the old node.
+		const freshSource =
+			canReveal && previous?.openStart === start
+				? Math.min(freshAt, previous.openEnd)
+				: freshAt;
+		const first = Math.max(0, freshSource - start);
+		if (content === previous?.content || first >= source.length) return prior;
+		let expired = 0;
+		while (
+			expired < prior.length &&
+			now - (prior[expired].paintedAt ?? now) >= INK_DURATION_MS
+		)
+			expired++;
+		if (expired > 0) {
+			// Don't unwrap a node that may hold a selection, including the
+			// collapsed anchor where a new pointer drag is beginning. The next
+			// append after selection can compact it; no extra timer or commit.
+			if (preserveSelection === undefined) {
+				const selection = rootRef.current?.ownerDocument.getSelection();
+				preserveSelection =
+					!!selection &&
+					(!selection.isCollapsed ||
+						rootRef.current?.contains(selection.anchorNode) === true);
+			}
+			if (!preserveSelection) prior = prior.slice(expired);
+		}
+		const cut = nextInkStart(source, first);
+		if (cut === null) return prior;
+		const batch: InkBatch = { start: cut };
+		newBatches.push(batch);
+		return [...prior, batch];
+	};
+
+	// Reuse the actual closed elements, not just their memoised parses. On a
+	// tail-only commit React no longer needs a new element for each old block.
+	// A non-append correction invalidates the prefix and all of its provenance.
+	const retained =
+		extendsPaint && previous.animateInk === animateInk ? previous : null;
+	let closedEnd = retained?.closedEnd ?? 0;
+	let closedElements = retained?.closedElements ?? [];
+	if (closedElements.length < scanner.blocks.length) {
+		const next = closedElements.slice();
+		for (let key = next.length; key < scanner.blocks.length; key++) {
+			const source = scanner.blocks[key];
+			const start = content.indexOf(source, closedEnd);
+			const ink = inkFor(source, start);
+			next.push(<ParsedBlock key={key} source={source} closed ink={ink} />);
+			closedEnd = start + source.length;
+		}
+		closedElements = next;
+	}
+	const openInk = inkFor(tail, openStart);
+	const pendingInk =
+		pendingClosed === null ? undefined : inkFor(pendingClosed, blockStart);
+	useLayoutEffect(() => {
+		const now = performance.now();
+		for (const batch of newBatches) batch.paintedAt ??= now;
+		painted.current = {
+			content,
+			openStart,
+			openEnd: tailEnd,
+			openInk,
+			pendingStart: blockStart,
+			pendingInk,
+			closedElements,
+			closedEnd,
+			animateInk,
+		};
+	});
 	const style = useStyleVariables(styleProps);
 
 	return (
 		<div
+			ref={rootRef}
 			className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
 			style={style}
 		>
@@ -1074,13 +1298,29 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 			 * block n is the same block for the life of the message, and the open
 			 * block's key is the index it will hold once closed.
 			 */}
-			{blocks.map((block) => (
-				<ParsedBlock
-					key={block.key}
-					source={block.source}
-					closed={block.closed}
-				/>
-			))}
+			{[
+				...closedElements,
+				...(pendingClosed === null
+					? []
+					: [
+							<ParsedBlock
+								key={closedElements.length}
+								source={pendingClosed}
+								closed
+								ink={pendingInk}
+							/>,
+						]),
+				...(tail === ""
+					? []
+					: [
+							<ParsedBlock
+								key={closedElements.length + Number(pendingClosed !== null)}
+								source={tail}
+								closed={false}
+								ink={openInk}
+							/>,
+						]),
+			]}
 		</div>
 	);
 };

@@ -16,14 +16,20 @@
 		opacity: 1;
 	}
 }
-.lo-transcript-arrival {
-	animation: lo-transcript-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
-}
-@media (prefers-reduced-motion: reduce) {
-	.lo-transcript-arrival {
-		animation: none;
+/* Incoming prose and passive rows are readable on their first frame, even on
+ * a slow client. Their geometry is final immediately. Use the global reduced
+ * motion duration cap rather than cancelling/restarting on preference changes. */
+@keyframes lo-stream-ink {
+	from {
+		opacity: 0.55;
 	}
+	to {
+		opacity: 1;
+	}
+}
+.lo-stream-ink,
+.lo-transcript-arrival {
+	animation: lo-stream-ink var(--duration-fast) var(--ease-out-quart);
 }
 
 /* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the

@@ -298,3 +298,40 @@ test("a genuinely new row after the id is learned still arrives", async (t) => {
 	assert.equal(texts.length, 1);
 	assert.match(texts[0], /A brand new message/);
 });
+
+test("reconnect catch-up does not animate, but a subsequent live append does", async (t) => {
+	const { container, render } = await mount(t);
+	const first = recordsOf([user("Original question")]);
+	const recovered = recordsOf([
+		user("Catch-up question"),
+		answer("Catch-up answer"),
+	]);
+	await render(props(FRONTEND, first));
+	await render({ ...props(FRONTEND, first), status: "reconnecting" });
+	await render(props(FRONTEND, [...first, ...recovered]));
+	assert.ok(container.textContent.includes("Catch-up question"));
+	assert.deepEqual(arrivingTexts(container), []);
+
+	const record = recordsOf([answer("First live text")])[0];
+	const live = { ...record, complete: false, streaming: true };
+	await render(props(FRONTEND, [...first, ...recovered, live]));
+	assert.equal(
+		container.querySelector(".lo-stream-ink")?.textContent,
+		"First live text",
+	);
+	assert.deepEqual(
+		arrivingTexts(container),
+		[],
+		"the answer itself never gets a parent entrance",
+	);
+
+	await render(
+		props(FRONTEND, [
+			...first,
+			...recovered,
+			{ ...record, text: "End uses final text" },
+		]),
+	);
+	assert.ok(container.textContent.includes("End uses final text"));
+	assert.equal(container.querySelector(".lo-stream-ink"), null);
+});
