@@ -245,17 +245,23 @@ export function matchModelPickerOptions(
 		);
 	});
 	if (exact.length > 0) {
-		// Whole names and canonical selectors outrank substring matches. Keep
-		// catalogue priority among everything else (notably direct providers and
-		// aggregators that happen to match the same partial query).
+		// Normalization can make one provider's literal label indistinguishable
+		// from another's canonical selector. Honor what was typed before either
+		// normalized or partial matching gets to break ties by catalogue order.
+		const literalIdentity: PickerOption[] = [];
 		const whole: PickerOption[] = [];
 		const partial: PickerOption[] = [];
 		for (const option of exact) {
-			(indexOf(option).identity.includes(needle) ? whole : partial).push(
-				option,
-			);
+			const tier =
+				option.label.trim().toLowerCase() === literal ||
+				option.value.trim().toLowerCase() === literal
+					? literalIdentity
+					: indexOf(option).identity.includes(needle)
+						? whole
+						: partial;
+			tier.push(option);
 		}
-		return whole.length ? whole.concat(partial) : exact;
+		return literalIdentity.concat(whole, partial);
 	}
 	/*
 	 * Pool 2: everything looser, consulted ONLY when pool 1 is empty — the

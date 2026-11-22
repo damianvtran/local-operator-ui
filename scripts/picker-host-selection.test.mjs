@@ -697,12 +697,14 @@ test("a pass that brings the sentence's row back AND drops the held row still na
 	view.unmount();
 });
 
-test("quick search takes the best surviving match from a steered row", async () => {
-	const rows = [
-		{ value: "low", label: "Low", current: true },
-		{ value: "xhigh", label: "xHigh" },
-		{ value: "high", label: "High" },
-	];
+const effortRows = [
+	{ value: "low", label: "Low" },
+	{ value: "medium", label: "Medium", current: true },
+	{ value: "xhigh", label: "xHigh" },
+	{ value: "high", label: "High" },
+];
+
+test("quick effort is a focused ladder without search, and keys act on its announced row", () => {
 	const calls = [];
 	let closed = false;
 	const view = mount({
@@ -712,40 +714,130 @@ test("quick search takes the best surviving match from a steered row", async () 
 		},
 		title: "Effort",
 		quick: { kind: "effort" },
-		options: rows,
+		options: effortRows,
 		onPick: (value) => calls.push(value),
 	});
 	try {
-		const input = document.querySelector("input");
+		const list = document.querySelector('[role="listbox"]');
+		assert.equal(document.querySelector('input, [role="combobox"]'), null);
 		assert.equal(
 			document.querySelector("[data-quick-picker]").dataset.pickerPlacement,
 			"fallback",
 		);
 		assert.equal(document.querySelector(".bg-scrim"), null);
-		key(input, "ArrowDown");
-		assert.equal(labelOf(announced(input)), "xHigh");
-		await type(input, "high");
+		assert.equal(document.activeElement, list);
+		assert.equal(announced(list), marked());
+		assert.match(labelOf(announced(list)), /^Medium/);
+		key(list, "ArrowDown");
+		assert.equal(labelOf(announced(list)), "xHigh");
+		key(list, "ArrowDown");
+		assert.equal(labelOf(announced(list)), "High");
+		key(list, "Enter", { isComposing: true });
+		key(list, "Escape", { isComposing: true });
+		assert.deepEqual(calls, []);
+		assert.equal(closed, false);
+		key(list, "Enter");
+		assert.deepEqual(calls, ["high"]);
+		key(list, "Escape");
+		assert.equal(closed, true);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("effort parks focus on Close until a ladder exists, without advertising retained rows", () => {
+	const calls = [];
+	const props = {
+		open: true,
+		onClose: () => {},
+		title: "Effort",
+		quick: { kind: "effort" },
+		options: effortRows,
+		onPick: (value) => calls.push(value),
+	};
+	const view = mount({ ...props, loading: true });
+	try {
+		const close = document.querySelector("[data-picker-footer] button");
+		assert.equal(document.activeElement, close);
+		const list = () => document.querySelector('[role="listbox"]');
+		for (const state of [
+			{ loading: true },
+			{ loadError: "Catalogue failed" },
+			{ options: [] },
+		]) {
+			view.render({ ...props, ...state });
+			assert.equal(list(), null);
+			assert.equal(document.querySelector('[role="combobox"]'), null);
+			assert.equal(document.activeElement, close);
+			assert.equal(footerNames(), null);
+			key(close, "Enter");
+			assert.deepEqual(calls, []);
+		}
+		view.render(props);
+		assert.equal(document.activeElement, list());
+		assert.match(labelOf(announced(list())), /^Medium/);
+		view.render({ ...props, loadError: "Catalogue failed after open" });
+		assert.equal(document.activeElement, close);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("model load errors do not advertise Enter despite retained rows", () => {
+	const calls = [];
+	const view = mount({
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		options: interleaved(),
+		loadError: "Catalogue failed",
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const input = document.querySelector('input[role="combobox"]');
 		assert.equal(document.activeElement, input);
-		key(input, "Enter", { isComposing: true });
-		key(input, "Escape", { isComposing: true });
-		assert.deepEqual(calls, [], "IME Enter must not pick a level");
-		assert.equal(
-			closed,
-			false,
-			"IME Escape cancels composition, not the picker",
-		);
+		assert.equal(input.getAttribute("aria-expanded"), "false");
+		assert.equal(document.querySelector('[role="listbox"]'), null);
 		key(input, "Enter");
-		assert.deepEqual(
-			calls,
-			["high"],
-			"Enter sends the ranked row without another arrow",
-		);
-		assert.equal(
-			announced(input).querySelector(".truncate")?.textContent,
-			"High",
-		);
-		await type(input, "");
-		assert.equal(labelOf(announced(input)), "Low");
+		assert.deepEqual(calls, []);
+		assert.equal(footerNames(), null);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("literal exact model labels and selectors cannot redirect Enter to another provider", async () => {
+	const original = {
+		value: "anthropic/claude-haiku-4-5",
+		label: "Claude Haiku 4.5",
+	};
+	const routed = {
+		value: `openrouter/${original.value}`,
+		label: `Anthropic: ${original.label}`,
+	};
+	const calls = [];
+	const view = mount({
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		options: [original, routed],
+		matcher: matchModelPickerOptions,
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const input = document.querySelector('input[role="combobox"]');
+		for (const [query, expected] of [
+			[routed.label.toUpperCase(), routed],
+			[original.value, original],
+		]) {
+			await type(input, query);
+			assert.equal(labelOf(announced(input)), expected.label);
+			assert.equal(document.activeElement, input);
+			key(input, "Enter");
+		}
+		assert.deepEqual(calls, [routed.value, original.value]);
 	} finally {
 		view.unmount();
 	}

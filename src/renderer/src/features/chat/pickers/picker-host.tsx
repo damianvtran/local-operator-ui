@@ -256,6 +256,13 @@ export type PickerHostProps = {
 	bodyScrolls?: boolean;
 };
 
+const RESULT_INK = {
+	success: "text-success",
+	info: "text-ink",
+	warning: "text-warning",
+	error: "text-danger",
+};
+
 const TONE_CLASS: Record<PickerResult["tone"], string> = {
 	info: "border-hairline bg-sunken text-ink-muted",
 	success: "border-success-border bg-success-wash text-ink",
@@ -397,25 +404,6 @@ export function filterPickerOptions(
 			.toLowerCase()
 			.includes(needle),
 	);
-}
-
-/** Compact effort is a small set of named levels: High must beat xHigh. */
-function matchEffortOptions(
-	options: PickerOption[],
-	query: string,
-): PickerOption[] {
-	const needle = query.trim().toLowerCase();
-	if (!needle) return options;
-	const exact: PickerOption[] = [];
-	const prefix: PickerOption[] = [];
-	const other: PickerOption[] = [];
-	for (const option of filterPickerOptions(options, needle)) {
-		const names = [option.value.toLowerCase(), option.label.toLowerCase()];
-		if (names.includes(needle)) exact.push(option);
-		else if (names.some((name) => name.startsWith(needle))) prefix.push(option);
-		else other.push(option);
-	}
-	return exact.concat(prefix, other);
 }
 
 /** Unlike scrollIntoView, this can never move a composer, portal or page ancestor. */
@@ -969,7 +957,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const descriptionId = useId();
 	const isQuick = quick !== undefined;
 	const origin = quick?.anchor;
-	const filter = quick?.kind === "effort" ? matchEffortOptions : matcher;
+	const isEffort = quick?.kind === "effort";
+	const isModel = quick?.kind === "model";
 	// The command can return after the composer has shed or replaced its chip.
 	// Do not pin a popup to the empty rect a detached or hidden chip reports.
 	const anchor =
@@ -991,6 +980,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// Anchored popups instead use PopoverContent's measured overlap policy.
 	useSuppressBrowserView(open && !anchor, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
+	// Reserve only the space the stock model listing actually used. Filtering
+	// changes content inside that scrollport, not the height above the chip.
+	const modelBodyRef = useRef<HTMLDivElement>(null);
+	const modelReceiptRef = useRef<HTMLDivElement>(null);
+	const [modelSearchHeight, setModelSearchHeight] = useState<number>();
+	const parkedEffortFocus = useRef(false);
+	const effortListFocused = useRef(false);
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
 	// `hovered` for why the pointer does not steer it.
@@ -1152,8 +1148,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * default being widened for everyone.
 	 */
 	const filtered = useMemo(
-		() => (options ? filter(options, query) : []),
-		[filter, options, query],
+		() => (options ? (isEffort ? options : matcher(options, query)) : []),
+		[isEffort, matcher, options, query],
 	);
 	// Grouping is for reading; it must not change what Enter picks.
 	const quickTarget = isQuick
@@ -1229,6 +1225,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 		if (!open) return;
 		dismissedOutsideRef.current = false;
 		setQuery("");
+		setModelSearchHeight(undefined);
 		setActive(0);
 		// The placement the fresh open owns, not the user's: the highlight goes back
 		// to the current model and nothing about the last dialog's row is carried.
@@ -1332,7 +1329,14 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: an anchor change can replace the portal and its scrollport without changing the visible rows.
 	useLayoutEffect(() => {
 		const list = listRef.current;
-		if (!isQuick || !hasVisibleRows || !list) return;
+		// The first reveal above also covers DOM hosts without ResizeObserver.
+		if (
+			!isQuick ||
+			!hasVisibleRows ||
+			!list ||
+			typeof ResizeObserver === "undefined"
+		)
+			return;
 		// Popper can shrink the scrollport after its first collision measurement.
 		// Follow the committed target when that happens, not an old row index.
 		const observer = new ResizeObserver(() => {
@@ -1405,7 +1409,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	const clearHovered = useCallback(() => dispatch({ type: "leave" }), []);
 
 	const onKeyDown = useCallback(
-		(event: KeyboardEvent<HTMLInputElement>) => {
+		(event: KeyboardEvent<HTMLElement>) => {
 			if (event.nativeEvent.isComposing || (isQuick && event.keyCode === 229))
 				return;
 			if (isQuick && (loading || loadError)) return;
@@ -1466,6 +1470,28 @@ export const PickerHost: FC<PickerHostProps> = ({
 		loadError,
 		rowCount: filtered.length,
 	});
+	// If the effort ladder is still loading, Close is a real control, not a
+	// fake search field. Transfer focus on arrival only if it is still parked
+	// there; never pull back a user who has tabbed to another action.
+	useLayoutEffect(() => {
+		if (!isEffort || !open) return;
+		if (bodyKind === "list" && parkedEffortFocus.current) {
+			parkedEffortFocus.current = false;
+			if (document.activeElement === closeButtonRef.current)
+				listRef.current?.focus({ preventScroll: true });
+		} else if (bodyKind !== "list" && effortListFocused.current) {
+			// The focused list was removed by a loading/error/empty transition.
+			effortListFocused.current = false;
+			parkedEffortFocus.current = true;
+			closeButtonRef.current?.focus({ preventScroll: true });
+		}
+	}, [isEffort, open, bodyKind]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: receipt text is the reset trigger; the user can scroll the same receipt without it resetting on unrelated renders.
+	useLayoutEffect(() => {
+		if (modelReceiptRef.current) modelReceiptRef.current.scrollTop = 0;
+	}, [result?.text]);
+
 	// Flat index across groups, so arrow keys walk the visible order.
 	let flatIndex = -1;
 
@@ -1476,7 +1502,14 @@ export const PickerHost: FC<PickerHostProps> = ({
 				document.activeElement instanceof HTMLElement
 					? document.activeElement
 					: null;
-			inputRef.current?.focus({ preventScroll: true });
+			if (isEffort) {
+				parkedEffortFocus.current = !listRef.current;
+				(listRef.current ?? closeButtonRef.current)?.focus({
+					preventScroll: true,
+				});
+			} else {
+				inputRef.current?.focus({ preventScroll: true });
+			}
 			return;
 		}
 		// A panel has no search; focus the scrollable body or its close control.
@@ -1495,11 +1528,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 	};
 	const onInteractOutside = (event: CustomEvent<{ originalEvent: Event }>) => {
 		const target = event.detail.originalEvent.target;
+		const sibling =
+			target instanceof Element
+				? target.closest("[data-composer-picker]")
+				: null;
 		if (
 			quick?.ignoreOutside?.() ||
-			(target instanceof Node && anchor?.contains(target))
+			(target instanceof Node && anchor?.contains(target)) ||
+			(sibling &&
+				anchor
+					?.closest(".composer-dock-pickers, [data-lo-session-strip]")
+					?.contains(sibling))
 		) {
-			// A second press goes through the owning chip, not a dismiss/reopen race.
+			// The owning strip handles its own toggle/retarget. Dismissing on the
+			// pointer-down would compete with the adjacent chip's click intent.
 			event.preventDefault();
 			return;
 		}
@@ -1547,6 +1589,24 @@ export const PickerHost: FC<PickerHostProps> = ({
 							"overflow-hidden rounded-lg",
 						),
 			};
+	// Captures read this stable tone marker instead of guessing the outcome
+	// from localized receipt text (also the draft selection readback contract).
+	const resultOutput = result && (
+		<output
+			data-picker-result={result.tone}
+			className={cn(
+				isModel
+					? "block wrap-anywhere"
+					: "block rounded-md border px-3 py-2 text-body-sm",
+				isModel ? RESULT_INK[result.tone] : TONE_CLASS[result.tone],
+			)}
+		>
+			<p className="whitespace-pre-wrap">{result.text}</p>
+			{result.detail && (
+				<div className="mt-2 font-mono text-mono-sm">{result.detail}</div>
+			)}
+		</output>
+	);
 	return (
 		<Root open={open} onOpenChange={onOpenChange} modal={!isQuick}>
 			{anchor && <PopoverAnchor virtualRef={anchorRef} />}
@@ -1614,22 +1674,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
-				{hasList && (
+				{hasList && !isEffort && (
 					<div className={isQuick ? "shrink-0 px-2 pt-2" : "px-5 pt-4"}>
-						{/*
-						 * The search field is rendered for every list, including a four- or
-						 * five-row static ladder where it cannot help (design D9). Kept knowingly,
-						 * for two reasons that are properties of this host rather than of any one
-						 * picker. It is the dialog's FOCUS TARGET and the element that owns
-						 * `aria-activedescendant`: the arrow/Enter contract, the live announcement
-						 * of the active row and the Escape return all hang off this input, so
-						 * hiding it on a short list would fork the keyboard and assistive-tech
-						 * behaviour of one dialog on a property - row count - that changes with
-						 * the DATA rather than with the surface: the effort ladder is the model's
-						 * own list, four rungs on one model and five or more on another, so the
-						 * same dialog would gain and lose its field as the user changes model. A
-						 * threshold here buys nothing and costs a second keyboard path.
-						 */}
 						<div className="relative">
 							<Search
 								className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
@@ -1656,8 +1702,13 @@ export const PickerHost: FC<PickerHostProps> = ({
 								aria-autocomplete="list"
 								value={query}
 								onChange={(event) => {
+									const value = event.target.value;
 									if (isQuick) clearHovered();
-									setQuery(event.target.value);
+									if (isModel && !query && value && modelBodyRef.current)
+										setModelSearchHeight(
+											modelBodyRef.current.getBoundingClientRect().height,
+										);
+									setQuery(value);
 								}}
 								onKeyDown={onKeyDown}
 								placeholder={
@@ -1693,6 +1744,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{hasList && (
 					<div
+						ref={isModel ? modelBodyRef : undefined}
+						style={isModel && query ? { height: modelSearchHeight } : undefined}
 						className={
 							isQuick ? "flex min-h-0 flex-col px-2 pt-2" : "px-3 pt-3"
 						}
@@ -1734,21 +1787,30 @@ export const PickerHost: FC<PickerHostProps> = ({
 							<div
 								ref={listRef}
 								id={listId}
-								/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>. */
+								/* biome-ignore lint/a11y/useSemanticElements: rich command rows need a listbox, not a native select. */
 								role="listbox"
 								aria-label={title}
-								/*
-								 * OUT of the tab order, explicitly (UX U5).
-								 *
-								 * Chrome makes a scrollable region focusable, so this reached by Tab drew
-								 * a focus ring that reads as "this region is now in play" while the arrow
-								 * keys scrolled the list instead of moving the selection and Enter picked
-								 * nothing — the one place in the picker where the arrows stop working.
-								 * `-1` keeps it programmatically focusable (and keeps `listRef` and the
-								 * ref callback working) while removing it from the tab sequence, which is
-								 * what the comment above always claimed.
-								 */
-								tabIndex={-1}
+								// Model is steered by its combobox; the effort list itself
+								// owns keyboard navigation and the current active descendant.
+								tabIndex={isEffort ? 0 : -1}
+								aria-activedescendant={
+									isEffort && activeOption ? `${listId}-${active}` : undefined
+								}
+								onKeyDown={isEffort ? onKeyDown : undefined}
+								onFocus={
+									isEffort
+										? () => {
+												effortListFocused.current = true;
+											}
+										: undefined
+								}
+								onBlur={
+									isEffort
+										? () => {
+												effortListFocused.current = false;
+											}
+										: undefined
+								}
 								// The pointer's highlight is cleared when it leaves the list, so a
 								// hover left over from somewhere else can never read as the
 								// keyboard's selection (design D2).
@@ -1758,7 +1820,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 									isQuick
 										? cn(
 												"min-h-8 overscroll-contain [overflow-anchor:none]",
-												quick.kind === "effort" ? "max-h-48" : "max-h-64",
+												isEffort
+													? "max-h-48 focus-visible:-outline-offset-2!"
+													: "max-h-64",
 											)
 										: "max-h-[min(50vh,420px)]",
 								)}
@@ -1924,32 +1988,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</form>
 				)}
 
-				{result && (
+				{resultOutput && !isModel && (
 					<div className={isQuick ? "shrink-0 px-3 pt-2" : "px-5 pt-3"}>
-						{/*
-						 * `data-picker-result` is the TONE, published for the same reason
-						 * every other scene hook here is a data attribute: a capture can
-						 * read the sentence, and only this attribute says whether the pick
-						 * was applied or refused without a scene matching copy (which the
-						 * i18n catalogues make locale-dependent). The draft scenes read it
-						 * to require that what the dialog CLAIMS and what the pane RECORDED
-						 * agree (issue #1265) - a success sentence over an unrecorded dial
-						 * is exactly the silent drop that route must not ship.
-						 */}
-						<output
-							data-picker-result={result.tone}
-							className={cn(
-								"block rounded-md border px-3 py-2 text-body-sm",
-								TONE_CLASS[result.tone],
-							)}
-						>
-							<p className="whitespace-pre-wrap">{result.text}</p>
-							{result.detail && (
-								<div className="mt-2 font-mono text-mono-sm">
-									{result.detail}
-								</div>
-							)}
-						</output>
+						{resultOutput}
 					</div>
 				)}
 
@@ -1965,12 +2006,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 					 * in legacy dialogs; quick surfaces let it wrap so the shortcut does
 					 * not disappear off the end of the narrow effort footer.
 					 */}
-					<span
+					<div
+						ref={isModel ? modelReceiptRef : undefined}
 						className={cn(
 							"min-w-0 text-ink-dim text-meta",
-							isQuick ? "wrap-anywhere" : "truncate",
+							isModel
+								? "h-[3lh] overflow-y-auto overscroll-contain wrap-anywhere"
+								: isQuick
+									? "text-balance wrap-anywhere"
+									: "truncate",
 						)}
 					>
+						{/* Model receipts share the footer's reading space so a refusal cannot
+						 * move the chip, list or any retry target. Longer/localized receipts
+						 * remain actual scrollable text rather than a clamped announcement. */}
+						{isModel && resultOutput}
 						{blockedHint ? (
 							blockedHint
 						) : busy ? (
@@ -1997,14 +2047,14 @@ export const PickerHost: FC<PickerHostProps> = ({
 							pickerFooterHint({
 								busy,
 								hasList,
-								rowCount: filtered.length,
+								rowCount: footerRowCount,
 								activeLabel,
 								activeConnectProvider,
 								busyText,
 								retargetedLabel: retargeted?.label ?? null,
 							})
 						)}
-					</span>
+					</div>
 					<div className="flex items-center gap-2">
 						{actions}
 						{/*

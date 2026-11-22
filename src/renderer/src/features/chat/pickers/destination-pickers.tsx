@@ -248,7 +248,11 @@ export type PickerContext = {
  */
 export type DraftPickerSession = {
 	target: DraftSelectionTarget;
-	select: (selection: DesktopModelSelection | null) => void;
+	select: (
+		selection: DesktopModelSelection | null,
+		/** A relative effort change may only commit against the selection it read. */
+		condition?: { previous: DesktopModelSelection | null },
+	) => boolean;
 };
 
 type Entities<T = Record<string, unknown>> = {
@@ -495,18 +499,34 @@ const DEFAULT_SAVE_FAILURE = () =>
  */
 const ReservedLabelText: FC<{
 	text: string;
+	/**
+	 * Every wording the label can show. Uncapped, the two not on screen are
+	 * reserved; capped, the first two are, and the third is the one cut.
+	 */
 	wordings: readonly [string, string, string];
-}> = ({ text, wordings }) => {
-	const [reserveA = "", reserveB = ""] = wordings.filter(
-		(wording) => wording !== text,
-	);
+	capped?: boolean;
+}> = ({ text, wordings, capped = false }) => {
+	const [reserveA = "", reserveB = ""] = capped
+		? wordings
+		: wordings.filter((wording) => wording !== text);
+	const cut = capped && text === wordings[2];
 	return (
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
-			className="grid before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)] after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]"
+			className={cn(
+				"grid",
+				capped && "min-h-[3lh]",
+				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
+				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
+			)}
 		>
-			<span className="col-start-1 row-start-1">{text}</span>
+			<span
+				className={cn("col-start-1 row-start-1", cut && "line-clamp-3")}
+				title={cut ? text : undefined}
+			>
+				{text}
+			</span>
 		</span>
 	);
 };
@@ -550,31 +570,16 @@ function useDraftPick(
 	const [busy, setBusy] = useState(false);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
-	 * The selection in force, seeded from the pane and advanced by every pick the
-	 * backend confirmed.
-	 *
-	 * `draft.target` is a snapshot taken when this dialog OPENED — `PickerOutlet`
-	 * is handed the context that spawned it — so it does not move when the pane's
-	 * own value does: the store write a pick performs re-renders the pane and
-	 * leaves this dialog reading the value it was opened on. Without a local
-	 * memory the dialog therefore contradicts itself the instant a pick succeeds,
-	 * the strip and the result strip naming the new model while the header
-	 * sentence and the checkmark still name the old one (review round 1, R2). It
-	 * is the same defect the session's picker fixed for its own lagging owner
-	 * frame in QA Q2, which is why it is a remembered receipt and not a re-read.
-	 *
-	 * It is also what keeps the dialog's other half honest: the ladder an effort
-	 * pick offers is read from THIS selection's `sessions.preview` resolution, so
-	 * an effort dialog opened after a model pick offers the new model's rungs
-	 * rather than the previous model's.
-	 *
-	 * The pane stays the authority for a dialog that has not picked (the seed is
-	 * the prop) and for a re-open (a fresh mount re-seeds from the pane).
+	 * The pane's selection is authoritative when it moves. A local receipt
+	 * bridges the gap before the next pane render (and standalone picker hosts
+	 * that retain the context they mounted); it must not mask a later pane pick.
 	 */
-	const [picked, setPicked] = useState<DesktopModelSelection | null>(
-		draft?.target.model ?? null,
-	);
-	const selection = picked ?? draft?.target.model ?? null;
+	const seed = draft?.target.model ?? null;
+	const [picked, setPicked] = useState<{
+		base: DesktopModelSelection | null;
+		selection: DesktopModelSelection;
+	} | null>(null);
+	const selection = picked && picked.base === seed ? picked.selection : seed;
 	/**
 	 * What this dialog's preview is resolved for: the pane's target with the
 	 * selection in force substituted for the one it opened on. Undefined `model`
@@ -651,6 +656,8 @@ function useDraftPick(
 				 *     is `checked: false` and the pick is refused out loud.
 				 */
 				carry?: string;
+				/** Relative to the model and ladder shown when this effort was chosen. */
+				relativeEffort?: boolean;
 				/**
 				 * A check that the backend's OWN resolution shows the pick applied,
 				 * before it is recorded on the draft.
@@ -786,8 +793,24 @@ function useDraftPick(
 						return;
 					}
 				}
-				draft.select(chosen);
-				setPicked(chosen);
+				// Another popup can settle a model while this preview is in flight.
+				// A relative rung must never write that older whole model back.
+				if (
+					draft.select(
+						chosen,
+						reading.relativeEffort ? { previous: seed } : undefined,
+					) === false
+				) {
+					refuse(
+						reading.refused ??
+							t(
+								"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change",
+								{ refused: "" },
+							).trimStart(),
+					);
+					return;
+				}
+				setPicked({ base: seed, selection: chosen });
 				setResult({
 					tone: "success",
 					/*
@@ -830,7 +853,7 @@ function useDraftPick(
 				setBusy(false);
 			}
 		},
-		[draft, queryClient, refuse, carriesFast],
+		[draft, queryClient, refuse, carriesFast, seed],
 	);
 	return {
 		pick,
@@ -2271,23 +2294,31 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * keeps it, where "this session vs the default" is the actual question.
 				 */
 				<div className="grid gap-1">
-					{/* The list sits before these controls. Reserve no blank lines for
-					 * alternate checkbox wordings: only the visible copy needs room. */}
 					{(!draft || scopeControl) && (
 						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1">
 							{!draft && (
-								<PickerCheck
-									checked={persistDefault}
-									disabled={unconfirmedModel}
-									onCheckedChange={onPersistDefaultChange}
-									tone="muted"
-								>
-									{!persistDefault
-										? persistWordings[0]
-										: savedModel
-											? persistWordings[2]
-											: persistWordings[1]}
-								</PickerCheck>
+								<div className="min-w-0 grow basis-48 [&_label]:min-w-0 [&_label]:flex-1">
+									{/* The control, not the saved model's name, sets the width.
+									 * A long label must not wrap the adjacent scope control. */}
+									<PickerCheck
+										checked={persistDefault}
+										disabled={unconfirmedModel}
+										onCheckedChange={onPersistDefaultChange}
+										tone="muted"
+									>
+										<ReservedLabelText
+											wordings={persistWordings}
+											capped
+											text={
+												!persistDefault
+													? persistWordings[0]
+													: savedModel
+														? persistWordings[2]
+														: persistWordings[1]
+											}
+										/>
+									</PickerCheck>
+								</div>
 							)}
 							{scopeControl}
 						</div>
@@ -2486,9 +2517,12 @@ export const EffortPicker: FC<PickerContext> = ({
 		),
 		enabled: Boolean(draft),
 	});
-	const draftModel = draft
-		? bandReadings(draftPreview.data?.snapshot, null).effort
-		: null;
+	// Retained query data is useful for the composer's readings, not for
+	// offering old model rungs as controls for a newly selected model.
+	const draftModel =
+		draft && !draftPreview.isPlaceholderData
+			? bandReadings(draftPreview.data?.snapshot, null).effort
+			: null;
 	const model = draft
 		? draftModel
 		: (runningFrontend(canonical)?.effective_model ??
@@ -2580,7 +2614,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * because the owner has not resolved it yet.
 	 */
 	const loading = draft
-		? draftPreview.isLoading
+		? draftPreview.isLoading || draftPreview.isPlaceholderData
 		: entities.isLoading && cachedRungs.length === 0;
 	const noOptions = options.length === 0 && !loading;
 	/*
@@ -2780,6 +2814,7 @@ export const EffortPicker: FC<PickerContext> = ({
 				void draftPick.pick(
 					selection ? { ...selection, reasoning_effort: value } : null,
 					{
+						relativeEffort: true,
 						describe: () =>
 							t(
 								"ui.chat.pickers.destination_pickers.effort_for_this_conversation",
