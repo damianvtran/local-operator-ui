@@ -123504,6 +123504,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "270f0573b8e50f2edfaa949f1e0177f802dc6ff8fb202d462a6b0865f9c7dd2c",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean",
+					"instance": "96299b25b375bdcc",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/96299b25b375bdcc.json",
+					"receipt_sha256": "9fd4f2256c840a745cc81337d25c18f98cd74dd160895a14e7f10b3abc8c7cea",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "cc0a8a8fd9cd4d49962bb8cf68b8edaa72c42c456e550ce634f77cb1bf467494",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean",
+					"instance": "14b674ae253c17e0",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/14b674ae253c17e0.json",
+					"receipt_sha256": "166dd5f8d74a873e485c13af4b339473b6a7aa9604581ab891d9e8455c68ef23",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "d60dd425118e766810d5a6af5c324e13314b97643d169e41fd1be10c0aa351ab",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean-with-findings",
+					"instance": "df7c7762c2504c72",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/df7c7762c2504c72.json",
+					"receipt_sha256": "47fd30ec2739ee2e1cc6c0af0be62665d4bbb86735fd7c951ac42e9c096c19e2",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "522b8bcad97e53ba46fa4c2677d36bf6625ad34f1a9f8719809ecf3262f6820e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean",
+					"instance": "614dfdb187f535f4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/614dfdb187f535f4.json",
+					"receipt_sha256": "2e3879d7da353739943128e8558bfd1fb87775a691e20ece4d9c03a2e2f14cdb",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "44349f6ccc7dc7e94dcbd739642088fa1701d15f54620a1ae00b7cd3957e9f1b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean",
+					"instance": "94fcaa55d717d3ee",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/94fcaa55d717d3ee.json",
+					"receipt_sha256": "410a48f0a804512dfedc09f79a4c52899a0103b8cd875dd65e935edba786ad70",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "3aa35ab097d3b7adb0fdb2ee69f7bcfa2849b54eebaf18086db0aa4dec3f035a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean",
+					"instance": "df8c2d16279654f3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/df8c2d16279654f3.json",
+					"receipt_sha256": "a9ee49f053d3a8998aced71649f2fd2afcbe0f397f66b647cd40229a65243a85",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.agents.pending",
+			"source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+			"target_sha256": "f7eb893210fdc2737477bfbbf3970d12e6bdb6e2a9cc935720cece1ce9a44b1b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-22"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "openai/gpt-6.2-sol",
+					"date": "2026-11-22",
+					"result": "clean-with-findings",
+					"instance": "8d77782dbeeb5180",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8d77782dbeeb5180.json",
+					"receipt_sha256": "4e933936cda59733a5d868048cc8412cf4f2dc89b8fcdf94d5d4b809dc29fbea",
+					"scope": "ui.agents.pending",
+					"note": "Mixed translation provenance: original anthropic/claude-opus-5-5; remediation fallback openai/gpt-6.1-sol; per-key attribution unknown."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
