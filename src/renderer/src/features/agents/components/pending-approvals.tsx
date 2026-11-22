@@ -136,9 +136,11 @@ export function PendingApprovalsSummary({
 					{t("ui.agents.pending.count_aria", { count: proposals.length })}
 				</span>
 			</h2>
+			{/* Keep the inset panel sunken, but give its rows the surface that
+			    rowCurrent is derived from, so selection stays distinct. */}
 			<ul
 				data-testid="pending-approvals-list"
-				className="min-h-0 space-y-1 overflow-y-auto"
+				className="min-h-0 space-y-1 overflow-y-auto rounded-sm bg-surface"
 			>
 				{shown.map((proposal) => {
 					const Icon = KIND_ICON[proposal.kind];
