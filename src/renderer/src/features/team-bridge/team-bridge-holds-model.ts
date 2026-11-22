@@ -309,14 +309,19 @@ export function actionableHoldCount(
 // -- refusals -----------------------------------------------------------------
 
 /** The route's closed refusal codes (`desktop_team_bridge._HOLD_REFUSALS`). */
-export function holdRefusalLabel(code: string | null | undefined): string {
+export function holdRefusalLabel(
+	code: string | null | undefined,
+	receipt = false,
+): string {
 	switch (code) {
 		case "hold_release_off":
 			return t("ui.teamBridge.holds.refusal.release_off");
 		case "hold_not_releasable":
 			return t("ui.teamBridge.holds.refusal.not_releasable");
 		case "snapshot_stale":
-			return t("ui.teamBridge.holds.refusal.stale");
+			return receipt
+				? t("ui.teamBridge.holdsBatch.stale_receipt")
+				: t("ui.teamBridge.holds.refusal.stale");
 		case "already_decided":
 			return t("ui.teamBridge.holds.refusal.already_decided");
 		case "deliver_expired":
@@ -607,6 +612,37 @@ export function holdDecideProof(
 	if (!input.armed.discard) return null;
 	if (hash) return { body_sha256: hash };
 	return input.receipt ? { hold_receipt: input.receipt } : null;
+}
+
+/** A human confirms this closed set, never the live list. Copies are essential:
+ * a refresh or a new arrival must not replace the record/proof consent covered.
+ * This deliberately reuses the single-row Discard gates; it cannot arm Deliver.
+ */
+export type DiscardSnapshotEntry = { item: HoldItem; proof: HoldProof };
+
+export function captureDiscardSnapshot(
+	items: readonly HoldItem[],
+	detail: (item: HoldItem) => {
+		state: "loading" | "unavailable" | "ready";
+		binding?: BodyBinding;
+	},
+	now?: number,
+): DiscardSnapshotEntry[] {
+	return sortHolds(items, now).flatMap((item) => {
+		const found = detail(item);
+		const binding = found.state === "ready" ? (found.binding ?? null) : null;
+		const affordance = holdAffordance(item, now);
+		const unread = receiptDiscardArmed(item, affordance, found.state, binding);
+		const discard =
+			unread ||
+			(binding !== null && armedWords(affordance, binding, false).discard);
+		const proof = holdDecideProof("discard", {
+			armed: { deliver: false, discard },
+			binding,
+			receipt: unread ? (item.discard_receipt ?? null) : null,
+		});
+		return proof ? [{ item: { ...item }, proof: { ...proof } }] : [];
+	});
 }
 
 const MESSAGE_ID_PREFIX = /^(?:bcmsg|bmsg)_/;

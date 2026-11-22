@@ -29,6 +29,8 @@ import { useEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
+import type { DiscardBatchResult } from "./team-bridge-discard-batch";
+import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
 import {
 	type HoldItem,
 	type HoldProof,
@@ -44,6 +46,10 @@ import {
 	needsExpand,
 	receiptDiscardArmed,
 	sortHolds,
+} from "./team-bridge-holds-model";
+import {
+	type DiscardSnapshotEntry,
+	captureDiscardSnapshot,
 } from "./team-bridge-holds-model";
 import { memberStoredName } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
@@ -111,6 +117,8 @@ export function HeldMessagesView({
 	now,
 	initialExpanded,
 	initialConfirm,
+	onBatchDecide,
+	initialBatch,
 }: {
 	listState: ListState;
 	items: readonly HoldItem[];
@@ -134,9 +142,25 @@ export function HeldMessagesView({
 	/** Stories: rows opened in full / showing their confirm step. */
 	initialExpanded?: readonly string[];
 	initialConfirm?: Readonly<Record<string, HoldWord>>;
+	onBatchDecide?: (
+		entries: readonly DiscardSnapshotEntry[],
+		onResult: (result: DiscardBatchResult) => void,
+	) => Promise<void>;
+	initialBatch?: BatchPreview;
 }) {
 	useI18nLocale();
-	if (hideWhenEmpty && listState === "ready" && items.length === 0) return null;
+	const [batchBlocking, setBatchBlocking] = useState(Boolean(initialBatch));
+	const [batchStarted, setBatchStarted] = useState(Boolean(initialBatch));
+	// Keep result accounting mounted after the last held row disappears, but
+	// preserve Approvals' single empty state when no batch has been started.
+	if (
+		hideWhenEmpty &&
+		!batchBlocking &&
+		!batchStarted &&
+		listState === "ready" &&
+		items.length === 0
+	)
+		return null;
 	const ordered = sortHolds(items, now);
 	return (
 		<section
@@ -162,6 +186,38 @@ export function HeldMessagesView({
 					{t("ui.teamBridge.holds.release_off")}
 				</p>
 			)}
+			{/* Keep key/policy disclosures before every decision control, including
+			    a long batch confirmation that could push them offscreen. */}
+			{onBatchDecide && (
+				<HeldMessagesBatch
+					candidates={
+						listState === "ready" && enabled
+							? captureDiscardSnapshot(items, detail, now)
+							: []
+					}
+					disabled={busy !== null || !enabled || listState !== "ready"}
+					onDecide={async (entries, onResult) => {
+						setBatchStarted(true);
+						await onBatchDecide(entries, onResult);
+					}}
+					onBlockingChange={setBatchBlocking}
+					initialPreview={initialBatch}
+				/>
+			)}
+			{onBatchDecide && listState === "error" && items.length > 0 && (
+				// A failed refresh must leave a way to recover a disabled batch,
+				// even when cached rows already exist and hide the list error state.
+				<div role="alert" className="flex flex-wrap items-baseline gap-2">
+					<p className="text-sm text-ink-muted">
+						{t("ui.teamBridge.list.error_stale")}
+					</p>
+					{onRetry && (
+						<Button size="sm" variant="link" onClick={onRetry}>
+							{t("ui.teamBridge.list.retry")}
+						</Button>
+					)}
+				</div>
+			)}
 			{listState === "loading" && items.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
 			) : listState === "error" && items.length === 0 ? (
@@ -186,7 +242,10 @@ export function HeldMessagesView({
 							key={item.message_id}
 							item={item}
 							detail={detail(item)}
-							busy={busy}
+							busy={
+								busy ??
+								(batchBlocking ? { id: "batch", word: "discard" } : null)
+							}
 							refusal={refusals[item.message_id] ?? null}
 							onDecide={onDecide}
 							onRetryDetails={onRetryDetails}
@@ -353,7 +412,7 @@ function HeldRow({
 				)}
 			</p>
 			{/* N1: a decided row says what was decided, not why it was held. */}
-			{affordance.state !== "decided" && (
+			{affordance.state !== "decided" && !unread && (
 				<p className="text-sm text-ink">{holdReasonLabel(holdReason(item))}</p>
 			)}
 			{typeof message?.body === "string" && message.body !== "" && (
@@ -415,9 +474,11 @@ function HeldRow({
 							: affordance.word === "discard"
 								? /* Recorded here but not yet applied: say so, never
 									   that the sender was told (#4358 brief). */
-									affordance.outcome === "pending"
-									? t("ui.teamBridge.holds.state.discard_recorded")
-									: t("ui.teamBridge.holds.state.chose_discard")
+									affordance.outcome === "discarded_local_unconfirmed"
+									? t("ui.teamBridge.holdsBatch.local_unconfirmed")
+									: affordance.outcome === "pending"
+										? t("ui.teamBridge.holds.state.discard_recorded")
+										: t("ui.teamBridge.holds.state.chose_discard")
 								: t("ui.teamBridge.holds.state.chose_deliver")}
 					</p>
 				)}
@@ -428,7 +489,7 @@ function HeldRow({
 				)}
 				{/* A receipt row says why below; this line's "the sender sees it"
 				    is not something an unloadable message can promise. */}
-				{affordance.state === "deliver_expired" && !unread && (
+				{affordance.state === "deliver_expired" && !unread && armed.discard && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.state.deliver_expired")}
 					</p>
@@ -618,6 +679,7 @@ export function TeamBridgeHeldMessages({
 			: "ready";
 	return (
 		<HeldMessagesView
+			key={accountId ?? "signed-out"}
 			listState={listState}
 			items={items}
 			enabled={holds.data?.enabled ?? true}
@@ -626,6 +688,7 @@ export function TeamBridgeHeldMessages({
 			busy={decide.busy}
 			refusals={decide.refusals}
 			onDecide={(item, word, proof) => void decide.run(item, word, proof)}
+			onBatchDecide={decide.runBatch}
 			onRetry={() => void holds.refetch()}
 			onRetryDetails={() => void retryDetails()}
 			accountId={accountId ?? null}

@@ -124771,6 +124771,398 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "92961563e068962b24a0c6287397bfb711075404e523ea9f7f9b5ffc3a8ba8b9",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-fr-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-fr-format1.json",
+					"receipt_sha256": "c9b9d9d9f0a3644680586c23594d0004e91b012e3aa23e521b45794ed15bfda3",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "6fef6a40d743f0d748af12ef400861e1615578c8d3aaf1f32acbe852836fd5b1",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-fr.json",
+							"receipt_sha256": "26a2aabe39a1d3fec9a401debaa8d2f8b34a2074b6f4bbcb196f850d9cb75b4a",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "0c1ba4658a3c1d3ce3fce2dafc3e2d0fb5d68678d901615aa7115bd9cd322d58",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-es-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-es-format1.json",
+					"receipt_sha256": "8e8a70c9b203848cd4a811aac8abf20d887ee50a5ea736b64ce58b5f151d4539",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "70dc2d0cda304dcc9580185a34cc0fed1c055ddfc1bdcf80c524926df0aafa5b",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-es.json",
+							"receipt_sha256": "b964784c4a8d0d8783e367acae2e571cdc3e3a9dd93ef981d44495346a74bc0c",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "4d3e8462b39fe198ada81755aba88e8589d0955cae6bb86a9eafe888889747eb",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-zh-CN-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-zh-CN-format1.json",
+					"receipt_sha256": "e50cf181c4971caffae3ab342ce7bfd5fd7a4f48c6ecb285d9023c8a618c4db9",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "f8754e7f75217ccd75736df0484e8f8ddce6de7b361b29898798446e467bd278",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-zh-CN",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-zh-CN.json",
+							"receipt_sha256": "4821b43da80e148e05b0dd4e218d831016be848743b92abfeb4142a0afd31539",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "95d5e1f143080c1ba6d878a26730dabb78c205bf2838abc133b9310deabc8f14",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-ru-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-ru-format1.json",
+					"receipt_sha256": "8cde1364cc45fb656c7993fd27fe7bc37febdf09fddaeeccff4741e12973aa6a",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "363950303c36e8c238e1cae6f33840e9097ea89730539f20d87324cf26b54cf7",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-ru.json",
+							"receipt_sha256": "2d958ffc15e6be75b8a4b65f29434f5a31368abb076cd1abd187cf5221f7fbbf",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "128f1aa697050a7d6ff5074ababa2dfa228293b4c0be95fbf719567766b52f2f",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-vi-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-vi-format1.json",
+					"receipt_sha256": "60ad59125739520217b8526d4e456cdb51641a96992cb5bb7bdf80992a708438",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "ed9a5e8a586375678339f8e90fd36eb8a83c8c040cfaa6f4343dbcfd58b82189",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-vi.json",
+							"receipt_sha256": "07e94425cfc44035c6dc2f4bbba945e618d1f2764fdf77fa4d15e9ca87b42a62",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "2670b8c2c94d9be1093fee962be83a6b682ae586ec125ff408e8cacb3ffdcc7a",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-ur-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-ur-format1.json",
+					"receipt_sha256": "a1968dfbc23aeb990b040be5e071023b682ce8215c021fb18c2f84fba4c0a8d3",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "5dea8a04f9885a0467543d7d861774ef72bb4379f18daa8969df4e2ac2845e52",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-ur.json",
+							"receipt_sha256": "05df487e969ac6a75a13f83c934463fe25e41186aff431f8a1d151d52643e07f",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.holdsBatch",
+			"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+			"target_sha256": "d25111c2aab615c170ad0898924d4ec5ac2eab6c9952a9b9415bc5246f7292bd",
+			"translator": {
+				"agent": "i18n-translator-a1cd2bb201be-ae48c615726e",
+				"model": "openai/gpt-6.1-sol",
+				"date": "2026-11-21"
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-54e42e56d7d0",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "54e42e56d7d0-hi-format1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/54e42e56d7d0-hi-format1.json",
+					"receipt_sha256": "a0c374b6066443a95c41dcd25c205290d7f9905843be00f55b8ac8f6248192b7",
+					"scope": "Mechanical formatting retention: all 63 parsed values identical 178dbe97..1ba852e9; prior semantic audit retained"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+					"target_sha256": "956410504bcfb7e60b5140cb99a83c16a2386b39e4a7deb66da88ec62e5b7eae",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-54e42e56d7d0",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "54e42e56d7d0-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/54e42e56d7d0-hi.json",
+							"receipt_sha256": "1b6ed11681c15c2c1af8fc1d1e86dc541553dc3bd4d86b20ac40bf98a5ddc560",
+							"scope": "All 9 values; frozen-list discard safety, naturalness, terminology, placeholders, NFC and bidi",
+							"note": "Translation sessions a1cd2bb201be/ae48c615726e. Independent all-nine semantic audit 54e42e56d7d0. Source-copy audit only; no rendered-fit or runtime claim."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
