@@ -63,6 +63,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { TeamBridgeEditDraftJournal } from "./src/renderer/src/features/team-bridge/team-bridge-rename-dialog";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { TeamBridgeArchivedChannelsView, TeamBridgeArchivedBanner } from "./src/renderer/src/features/team-bridge/team-bridge-archive";
 			export { conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
@@ -508,6 +509,43 @@ test("delete is NOT optimistic and removes the row only after the server confirm
 });
 
 // ------------------------------------------------------------------ render
+
+test("metadata: SSR reads the existing journal revision without losing retained drafts", () => {
+	const journal = new ui.TeamBridgeEditDraftJournal();
+	const draft = {
+		baselineName: "launch",
+		baselineTopic: "old",
+		name: "launch",
+		topic: "retained",
+		pending: false,
+		error: { kind: "failed" },
+	};
+	journal.set("owner/tenant/conversation", draft);
+	const revision = journal.snapshot();
+	let reads = 0;
+	const snapshot = journal.snapshot;
+	journal.snapshot = () => {
+		reads += 1;
+		return snapshot();
+	};
+	const html = renderToStaticMarkup(
+		createElement(
+			ui.TeamBridgePageView,
+			viewProps({ metadataDrafts: journal }),
+		),
+	);
+	assert.ok(html.length > 0);
+	assert.ok(
+		reads > 0,
+		"SSR must use the journal, not a disconnected empty snapshot",
+	);
+	assert.equal(
+		journal.snapshot(),
+		revision,
+		"render does not publish a mutation",
+	);
+	assert.equal(journal.get("owner/tenant/conversation"), draft);
+});
 
 test("an archived channel opens read-only: banner names who and when, no composer", () => {
 	const row = archivedRow();

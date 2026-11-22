@@ -567,7 +567,7 @@ export const TeamBridgeEditDialog: FC<{
 						<Button type="button" variant="ghost" onClick={onClose}>
 							{t("ui.teamBridge.rename.cancel")}
 						</Button>
-						<Button type="submit" variant="primary" disabled={!canSave}>
+						<Button type="submit" variant="tonal" disabled={!canSave}>
 							{t(
 								draft.pending
 									? "ui.teamBridge.rename.saving"

@@ -1334,7 +1334,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const renameOpen = useRef(0);
 	const localMetadataDrafts = useRef(new TeamBridgeEditDraftJournal());
 	const editDrafts = metadataDrafts ?? localMetadataDrafts.current;
-	useSyncExternalStore(editDrafts.subscribe, editDrafts.snapshot);
+	// The owner-scoped journal is also the authoritative snapshot during SSR.
+	// Reading its stable revision preserves preseeded drafts without creating a
+	// second empty journal or publishing a mutation during render.
+	useSyncExternalStore(
+		editDrafts.subscribe,
+		editDrafts.snapshot,
+		editDrafts.snapshot,
+	);
 	const editKey = (row: TeamBridgeConversation) =>
 		JSON.stringify([row.tenant_id, row.id]);
 	const putEditDraft = (key: string, draft: TeamBridgeEditDraft) => {
