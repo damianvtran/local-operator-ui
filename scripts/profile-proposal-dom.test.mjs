@@ -37,7 +37,7 @@ const { MemoryRouter } = require("react-router-dom");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel";',
+			'export {UnifiedDiff} from "./src/renderer/src/shared/components/common/unified-diff"; export {ProfileProposalPanel} from "./src/renderer/src/features/agents/components/profile-proposal-panel"; export {PendingApprovalsSummary, PendingProposalMark} from "./src/renderer/src/features/agents/components/pending-approvals"; export {ProposedNewPane, useIsProposedNew} from "./src/renderer/src/features/agents/components/proposed-new-profiles"; export {useSkillsLibrary, useSkillDetail} from "./src/renderer/src/features/agents/hooks/use-skills-library";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -61,7 +61,16 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 	module,
 	module.exports,
 );
-const { UnifiedDiff, ProfileProposalPanel } = module.exports;
+const {
+	UnifiedDiff,
+	ProfileProposalPanel,
+	PendingApprovalsSummary,
+	PendingProposalMark,
+	ProposedNewPane,
+	useIsProposedNew,
+	useSkillsLibrary,
+	useSkillDetail,
+} = module.exports;
 const h = React.createElement;
 const { act } = React;
 const root = createRoot(document.getElementById("root"));
@@ -123,11 +132,13 @@ function bridge({
 	error = false,
 	acceptError = false,
 	operation = "update",
+	kind = "team",
+	name = "lopdev",
 } = {}) {
 	let proposal = {
 		id,
-		kind: "team",
-		name: "lopdev",
+		kind,
+		name,
 		operation,
 		fields: ["instructions"],
 		state,
@@ -485,4 +496,468 @@ test("diff: expanded context folds again (D2) and editing keeps folds and positi
 		after: after.join("\n"),
 	});
 	assert.doesNotMatch(document.body.textContent, /Change 1 of 2/);
+});
+
+/*
+ * The Agents page's "Waiting for your approval" summary and row mark (operator
+ * report 2026-11-21: the nav badge said 1 and the page showed nothing to do).
+ */
+const waitingProposal = (over = {}) => ({
+	id: "pp_t1",
+	kind: "team",
+	name: "minervadev",
+	label: null,
+	operation: "update",
+	fields: ["instructions"],
+	state: "pending",
+	stale: false,
+	origin: { trust: "agent" },
+	...over,
+});
+test("summary: hidden with nothing waiting; names kind, record, fields and Review per proposal", async () => {
+	await mount(PendingApprovalsSummary, { proposals: [], onReview: () => {} });
+	assert.equal(
+		document.querySelector('[data-testid="pending-approvals"]'),
+		null,
+	);
+	const reviewed = [];
+	await mount(PendingApprovalsSummary, {
+		proposals: [waitingProposal()],
+		onReview: (p) => reviewed.push(p.id),
+	});
+	const section = document.querySelector('[data-testid="pending-approvals"]');
+	assert.ok(section, "a waiting team proposal is visible");
+	const text = section.textContent;
+	assert.match(text, /Waiting for your approval/);
+	assert.match(text, /1 change waiting for your approval/);
+	assert.match(text, /minervadev/);
+	assert.match(text, /Team\s*·\s*Proposed change/);
+	assert.match(text, /Changes: instructions/);
+	const review = section.querySelector(
+		'[aria-label="Review the proposed change to team minervadev"]',
+	);
+	await click(review);
+	assert.deepEqual(reviewed, ["pp_t1"]);
+});
+test("summary: stale and create rows say so; beyond three rows it collapses behind Show all", async () => {
+	const proposals = [
+		waitingProposal({
+			id: "a",
+			kind: "agent",
+			name: "scout",
+			operation: "create",
+		}),
+		waitingProposal({ id: "b", state: "stale", stale: true }),
+		waitingProposal({
+			id: "c",
+			kind: "skill",
+			name: "research",
+			label: "Research",
+		}),
+		waitingProposal({ id: "d", kind: "agent", name: "writer" }),
+		waitingProposal({ id: "e", kind: "team", name: "content" }),
+	];
+	await mount(PendingApprovalsSummary, { proposals, onReview: () => {} });
+	const rows = () =>
+		[...document.querySelectorAll('[data-testid^="pending-approval-"]')].filter(
+			(n) => n.tagName === "LI",
+		);
+	assert.equal(rows().length, 3, "collapsed to three rows");
+	assert.match(rows()[0].textContent, /Agent\s*·\s*Proposed new/);
+	assert.ok(rows()[1].querySelector('[data-testid="pending-approval-stale"]'));
+	assert.match(rows()[1].textContent, /Out of date/);
+	assert.match(rows()[2].textContent, /Research/, "core's label is printed");
+	assert.match(
+		document.querySelector('[data-testid="pending-approvals"] h2').textContent,
+		/5 changes waiting for your approval/,
+	);
+	const more = button("Show all 5");
+	assert.equal(more.getAttribute("aria-expanded"), "false");
+	await click(more);
+	assert.equal(rows().length, 5);
+	await click(button("Show fewer"));
+	assert.equal(rows().length, 3);
+});
+test("row mark: draws the accent count with words for a screen reader, nothing at zero", async () => {
+	await mount(PendingProposalMark, { count: 0, kind: "team" });
+	assert.equal(
+		document.querySelector('[data-testid="roster-row-pending"]'),
+		null,
+	);
+	await mount(PendingProposalMark, { count: 2, kind: "team" });
+	const mark = document.querySelector('[data-testid="roster-row-pending"]');
+	assert.ok(mark.querySelector("[data-attention-badge]"));
+	assert.equal(
+		mark.querySelector("[data-attention-badge]").getAttribute("aria-hidden"),
+		"true",
+	);
+	assert.match(mark.textContent, /2 changes waiting for your approval/);
+});
+
+/* PR #2026 round 1 remediation. */
+test("summary: Review names kind and operation; the open proposal is current; stale leads the fields line (D4/U4, D6, D3)", async () => {
+	await mount(PendingApprovalsSummary, {
+		proposals: [
+			waitingProposal({
+				id: "a",
+				kind: "agent",
+				name: "press",
+				operation: "create",
+			}),
+			waitingProposal({ id: "b", kind: "team", name: "helpdesk" }),
+			waitingProposal({
+				id: "c",
+				kind: "agent",
+				name: "helpdesk",
+				state: "stale",
+				stale: true,
+			}),
+		],
+		currentProposalId: "b",
+		onReview: () => {},
+	});
+	const labels = [
+		...document.querySelectorAll('[data-testid="pending-approvals"] button'),
+	]
+		.map((n) => n.getAttribute("aria-label"))
+		.filter(Boolean);
+	assert.deepEqual(labels, [
+		"Review the proposed new agent press",
+		"Review the proposed change to team helpdesk",
+		"Review the proposed change to agent helpdesk",
+	]);
+	const row = (rid) =>
+		document.querySelector(`[data-testid="pending-approval-${rid}"]`);
+	assert.equal(row("b").getAttribute("aria-current"), "true");
+	assert.match(row("b").className, /bg-row-selected/);
+	assert.equal(row("a").getAttribute("aria-current"), null);
+	// The badge no longer ends the "Agent · Proposed change" line (it wrapped
+	// there); it leads the fields line, which truncates beside it.
+	const stale = row("c").querySelector(
+		'[data-testid="pending-approval-stale"]',
+	);
+	assert.equal(stale.parentElement.tagName, "DIV");
+	assert.match(
+		stale.parentElement.textContent,
+		/Out of date\s*Changes: instructions/,
+	);
+	assert.doesNotMatch(
+		row("c").querySelector("p.flex-wrap").textContent,
+		/Out of date/,
+	);
+});
+test("summary: bounded, the list scrolls inside it (D1/U3)", async () => {
+	await mount(PendingApprovalsSummary, {
+		proposals: [waitingProposal()],
+		onReview: () => {},
+	});
+	const section = document.querySelector('[data-testid="pending-approvals"]');
+	assert.match(section.className, /max-h-\[30%\]/);
+	assert.match(section.className, /min-h-0/);
+	const list = document.querySelector('[data-testid="pending-approvals-list"]');
+	assert.match(list.className, /overflow-y-auto/);
+	assert.match(list.className, /min-h-0/);
+});
+test("summary: a proposal the page cannot open says so instead of a dead Review (R5/U2/D2)", async () => {
+	const reviewed = [];
+	await mount(PendingApprovalsSummary, {
+		proposals: [
+			waitingProposal({ id: "s", kind: "skill", name: "research-brief" }),
+			waitingProposal({ id: "t" }),
+		],
+		reviewable: (p) => p.kind !== "skill",
+		onReview: (p) => reviewed.push(p.id),
+	});
+	const skillRow = document.querySelector('[data-testid="pending-approval-s"]');
+	assert.equal(
+		skillRow.querySelector("button"),
+		null,
+		"no Review that goes nowhere",
+	);
+	assert.match(
+		skillRow.querySelector('[data-testid="pending-approval-unreviewable"]')
+			.textContent,
+		/Update Local Operator to review skill changes here/,
+	);
+	// Still counted: the total matches the nav badge, which counts every kind.
+	assert.match(
+		document.querySelector('[data-testid="pending-approvals"] h2').textContent,
+		/2 changes waiting for your approval/,
+	);
+	await click(
+		document.querySelector('[data-testid="pending-approval-t"] button'),
+	);
+	assert.deepEqual(reviewed, ["t"]);
+});
+test("panel reveal: a row click scrolls without stealing focus; Review focuses, and again on a repeat (U5, R3)", async () => {
+	const scrolled = [];
+	const proto = dom.window.HTMLElement.prototype;
+	const original = proto.scrollIntoView;
+	proto.scrollIntoView = function () {
+		scrolled.push(this.getAttribute("data-proposal-id"));
+	};
+	try {
+		bridge();
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+		await mount(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 1, focus: false },
+		});
+		assert.deepEqual(scrolled, [id], "the card is brought into view");
+		assert.equal(
+			document.activeElement,
+			outside,
+			"focus stays where the click left it",
+		);
+		await rerender(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 2, focus: true },
+		});
+		const heading = document.querySelector(`[data-proposal-id="${id}"] h3`);
+		assert.equal(
+			document.activeElement,
+			heading,
+			"Review moves focus to the card",
+		);
+		// Same proposal, same URL: only the nonce changes. Before the fix this
+		// re-render changed nothing and the click was a silent no-op.
+		outside.focus();
+		await rerender(ProfileProposalPanel, {
+			...props,
+			proposalId: id,
+			reveal: { id, request: 3, focus: true },
+		});
+		assert.equal(document.activeElement, heading);
+		assert.equal(scrolled.length, 3);
+		outside.remove();
+	} finally {
+		proto.scrollIntoView = original;
+	}
+});
+// Mirror the page's root transition with the real hooks and panel, not a
+// pre-seeded success cache: detail starts refused, mutation changes the store,
+// and only invalidation/refetch can make the created skill visible.
+function SkillCreateLanding({ observed }) {
+	const name = "research-brief";
+	const library = useSkillsLibrary(true);
+	const detail = useSkillDetail(name, true);
+	const names = library.data?.skills.map((row) => row.name);
+	const proposed = useIsProposedNew(
+		"skill",
+		name,
+		names,
+		true,
+		id,
+		Boolean(detail.data?.skill_detail),
+	);
+	const exists = names?.includes(name);
+	const state = proposed
+		? "proposal"
+		: exists && detail.data?.skill_detail
+			? "created"
+			: detail.isError
+				? "missing"
+				: "loading";
+	observed.push(state);
+	return h(
+		"div",
+		{},
+		h("nav", { "data-testid": "skill-roster" }, names?.join(",")),
+		proposed
+			? h(ProposedNewPane, { kind: "skill", name, proposalId: id })
+			: state === "created"
+				? h(
+						"article",
+						{ "data-testid": "created-skill" },
+						detail.data.detail,
+						h(ProfileProposalPanel, {
+							kind: "skill",
+							name,
+							enabled: true,
+							proposalId: id,
+						}),
+					)
+				: h("output", {}, state),
+	);
+}
+
+for (const [action, initialDetailInFlight, finding] of [
+	["Accept", false, "R7"],
+	["Reject", false, "R7"],
+	["Accept", true, "R8"],
+]) {
+	const initialDetail = initialDetailInFlight ? "in flight" : "refused";
+	test(`skill create: ${action} settles with initial detail ${initialDetail} (${finding})`, async () => {
+		const calls = bridge({
+			kind: "skill",
+			name: "research-brief",
+			operation: "create",
+		});
+		const request = window.api.desktop.request;
+		let created = false;
+		let releaseDetail;
+		const detailReady = new Promise((resolve) => {
+			releaseDetail = resolve;
+		});
+		let releaseInitialDetail;
+		const initialDetailReady = new Promise((resolve) => {
+			releaseInitialDetail = resolve;
+		});
+		const skillReads = [];
+		window.api.desktop.request = async (ask) => {
+			if (ask.op !== "skills.list") {
+				const answer = await request(ask);
+				if (ask.op === "profileProposals.accept") created = true;
+				return answer;
+			}
+			skillReads.push({ name: ask.name, created });
+			if (created && ask.name) await detailReady;
+			if (ask.name && !created) {
+				// The server already saw the missing skill; only delivery of its
+				// answer is delayed. Accept must not turn this read into a 200.
+				if (initialDetailInFlight) await initialDetailReady;
+				return {
+					status: 404,
+					body: {
+						detail: { code: "skill_not_found", message: "Missing skill" },
+					},
+				};
+			}
+			const row = { name: "research-brief", source: "local", installed: true };
+			return {
+				status: 200,
+				body: {
+					result: {
+						data: {
+							skills: created ? [row] : [],
+							...(ask.name
+								? { detail: "Created skill body", skill_detail: row }
+								: {}),
+						},
+					},
+				},
+			};
+		};
+		const observed = [];
+		await mount(SkillCreateLanding, { observed });
+		const skillDetailKey = ["desktop", "skills", "library", "research-brief"];
+		const initial = client.getQueryState(skillDetailKey);
+		if (initialDetailInFlight) {
+			assert.equal(initial.status, "pending");
+			assert.equal(initial.fetchStatus, "fetching");
+			assert.equal(initial.data, undefined);
+			assert.ok(skillReads.some((read) => !read.created && read.name));
+		} else {
+			assert.ok(initial.error, "precondition: detail cached a genuine 404");
+		}
+		assert.ok(document.querySelector('[data-testid="proposed-new-pane"]'));
+		observed.length = 0;
+		await click(button(action));
+		for (let i = 0; i < 6; i++) await act(flush);
+		if (action === "Accept") {
+			assert.match(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				/research-brief/,
+			);
+			assert.ok(
+				document.querySelector('[data-testid="proposed-new-pane"]'),
+				"fast roster/slow detail keeps the acknowledgement visible",
+			);
+			assert.match(document.body.textContent, /Applied the proposed change/);
+		}
+		// Deliver the stale pre-Accept 404 only after the roster and decision
+		// have settled; the newly requested detail is still held back.
+		if (initialDetailInFlight) {
+			await act(async () => {
+				releaseInitialDetail();
+				await flush();
+			});
+			assert.equal(
+				client.getQueryState(skillDetailKey).fetchStatus,
+				"fetching",
+				`fresh detail must still be in flight after the old 404: ${JSON.stringify(skillReads)}`,
+			);
+		}
+		await act(async () => {
+			releaseDetail();
+			await flush();
+		});
+		for (let i = 0; i < 6; i++) await act(flush);
+		assert.equal(
+			calls.filter(
+				(ask) => ask.op === `profileProposals.${action.toLowerCase()}`,
+			).length,
+			1,
+		);
+		assert.deepEqual(
+			client.getQueryData(["desktop", "profile-proposals", "list"]).proposals,
+			[],
+		);
+		assert.ok(
+			!observed.includes("missing"),
+			`no missing-skill flash: ${observed}`,
+		);
+		if (action === "Accept") {
+			assert.match(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				/research-brief/,
+			);
+			assert.match(
+				document.querySelector('[data-testid="created-skill"]').textContent,
+				/Created skill body/,
+			);
+			assert.ok(
+				skillReads.some((read) => read.created && !read.name),
+				"roster refetched after creation",
+			);
+			assert.ok(
+				skillReads.some((read) => read.created && read.name),
+				"named detail refetched after creation",
+			);
+			assert.match(document.body.textContent, /Applied the proposed change/);
+			assert.ok(
+				document
+					.querySelector('[data-testid="created-skill"]')
+					.contains(document.activeElement),
+				"focus lands in the created skill's routed decision panel",
+			);
+		} else {
+			assert.ok(
+				document.querySelector('[data-testid="proposed-new-pane"]'),
+				"rejection retains its acknowledgement root",
+			);
+			assert.match(document.body.textContent, /Rejected the proposed change/);
+			assert.equal(document.activeElement.tagName, "OUTPUT");
+			assert.match(
+				document.activeElement.textContent,
+				/Rejected the proposed change/,
+			);
+			assert.equal(
+				document.querySelector('[data-testid="skill-roster"]').textContent,
+				"",
+			);
+		}
+	});
+}
+
+test("skill create: the proposed-new pane offers Accept/Reject for a skill (R2/U1)", async () => {
+	bridge({ kind: "skill", name: "research-brief", operation: "create" });
+	await mount(ProposedNewPane, {
+		kind: "skill",
+		name: "research-brief",
+		proposalId: id,
+	});
+	const pane = document.querySelector('[data-testid="proposed-new-pane"]');
+	assert.ok(pane, "the review pane renders for a skill");
+	assert.match(pane.querySelector("h2").textContent, /research-brief/);
+	assert.ok(
+		pane.querySelector(`[data-proposal-id="${id}"]`),
+		"the proposal card is shown",
+	);
+	assert.ok(button("Accept"), "Accept is offered");
+	assert.ok(button("Reject"), "Reject is offered");
 });
