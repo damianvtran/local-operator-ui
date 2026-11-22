@@ -421,15 +421,29 @@ test("the family is one shape and one voice", async () => {
 test("both call sites render the shared sentence and keep the raw error", async () => {
 	// Two call sites, one map. A re-inlined literal here is how the next cause
 	// reaches the user as "please try again".
-	for (const file of [
-		"src/renderer/src/shared/components/composer/message-input.tsx",
-		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
-	]) {
+	//
+	// THE COMPOSER ASKS THE POLICY, so its toast is the offer's own sentence: the
+	// row, the toast and the copy come from one return value (`retakeOfferFor`),
+	// which is a stricter form of the same claim this test makes - the sentence is
+	// not re-derived at the call site. The canvas still shows the transient row and
+	// the toast for everything else, so it keeps the direct map call.
+	const TOAST_ROUTE = {
+		"src/renderer/src/shared/components/composer/message-input.tsx": [
+			"retakeOfferFor(error)",
+			"showErrorToast(offer.message)",
+		],
+		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx": [
+			"showErrorToast(transcriptionFailureMessage(error))",
+		],
+	};
+	for (const [file, expected] of Object.entries(TOAST_ROUTE)) {
 		const source = await readFile(file, "utf8");
-		assert.ok(
-			source.includes("showErrorToast(transcriptionFailureMessage(error))"),
-			`${file} does not route its toast through the shared map`,
-		);
+		for (const needle of expected) {
+			assert.ok(
+				source.includes(needle),
+				`${file} does not route its toast through the shared map (missing ${needle})`,
+			);
+		}
 		assert.ok(
 			source.includes('console.error("Error transcribing audio:", error)'),
 			`${file} no longer logs the raw failure, which is the only place the server's own words survive`,
