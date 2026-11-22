@@ -388,10 +388,10 @@ const STRUCTURAL_CALL_SITES = [
 		 * below at the 1.23 ΔE00 the note above names as the floor's own failure case,
 		 * and the mention chip's fill is now measured against `elevated`.
 		 */
-		what: "composer box ground",
+		what: "composer editor ground",
 		file: "src/renderer/src/shared/components/composer/message-input.tsx",
-		must: '"mx-auto flex w-full flex-col bg-elevated"',
-		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
+		must: 'className="composer-dock-editor bg-elevated"',
+		why: "the inset editor, not the outer workspace shelf, is the mention chip's actual ground. Repainting it `canvas` takes the chip's fill step below its floor in obsidian, even if the dock still looks distinct from the transcript",
 	},
 	{
 		what: "chat working surface ground",

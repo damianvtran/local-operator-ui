@@ -91,7 +91,10 @@ const JobRow = ({
 			className={cn("flex items-start gap-2 px-3 py-1.5")}
 		>
 			<div className={cn("flex min-w-0 flex-1 flex-col")}>
-				<SubagentRowBody row={row} kind="job" />
+				{/* Keep the shared roster mark beside its label; only the music detail stacks below. */}
+				<div className="flex min-w-0 items-start gap-2">
+					<SubagentRowBody row={row} kind="job" />
+				</div>
 				{row.jobType === "music" && (
 					<MusicJobMotif
 						active={row.music?.stage === "polling"}
