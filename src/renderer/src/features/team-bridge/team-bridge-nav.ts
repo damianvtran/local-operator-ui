@@ -1,7 +1,7 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
 import { requestsWaitingLabel } from "./team-bridge-approvals-model";
-import { actionableHoldCount } from "./team-bridge-holds-model";
+import { useVisibleHeldCount } from "./team-bridge-held-hide-preference";
 import { TEAM_BRIDGE_ALL_SCOPE } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import { useTeamBridgeUnreadView } from "./team-bridge-unread-sync";
@@ -84,9 +84,10 @@ export function useTeamBridgeNavItem(
 	/* Held messages the owner can act on count toward the same badge: they are
 	   decided on the same Approvals panel the badge opens (B4b). */
 	const holds = useHeldMessages(ready);
+	const visibleHeld = useVisibleHeldCount(holds.data);
 	if (!enabled) return null;
 	const requestCount = ready ? (requests.data?.pending_count ?? 0) : 0;
-	const heldCount = ready ? actionableHoldCount(holds.data) : 0;
+	const heldCount = ready ? visibleHeld : 0;
 	const waiting = requestCount + heldCount;
 	// Disabled observers can still expose cached data: unresolved auth is zero.
 	const unreadTotal = ready && unread.data ? view.total : 0;

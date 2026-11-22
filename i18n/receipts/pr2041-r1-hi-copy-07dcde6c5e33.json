@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 2041,
+  "round": 1,
+  "head": "a5234b713481c79dbdf0e14ef7e4cd021e1733ea",
+  "base": "1e9110a276ebb911d31bfb605bba989b8e3e597e",
+  "date": "2026-11-22",
+  "locale": "hi",
+  "namespace": "ui.teamBridge.holds",
+  "instance": "pr2041-r1-hi-copy-07dcde6c5e33",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "model": "openai/gpt-6.2-sol",
+    "session": "07dcde6c5e33",
+    "independent_of_translator": true,
+    "independence": "Read-only audit of the coder-authored head. This session authored no catalogue, context or translation bytes."
+  },
+  "model_provenance": "Served model openai/gpt-6.2-sol per the harness session state; no fallback observed.",
+  "status": "passed",
+  "sha256": {
+    "en": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+    "hi": "6655af66852ff82e65323a03ded279f4dd5fe4c6eda75d463509ad4e92ca8f3a"
+  },
+  "catalogues": {
+    "en": "src/i18n/catalogues/en/ui.teamBridge.holds.json",
+    "hi": "src/i18n/catalogues/hi/ui.teamBridge.holds.json"
+  },
+  "references": {
+    "source_context": "src/i18n/catalogues/en/ui.teamBridge.holds.context.json",
+    "context_sha256": "8688a6747254647cad5a9799b040bfae68a711e1df5d4c351114b5fcd7160dae",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/hi.md",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+    "core_revision": "b42471d3935cb7e95d64428af27c32626665f4c0"
+  },
+  "scope": "Six new values checked in full against English, context, glossary and native style guide. The other 62 English/locale entries and context blocks were verified byte-identical to the base, whose audited locale receipt and hashes were independently re-derived.",
+  "keys_audited": [
+    "ui.teamBridge.holds.hide_local",
+    "ui.teamBridge.holds.hide_local_label",
+    "ui.teamBridge.holds.hidden_local",
+    "ui.teamBridge.holds.restore_local",
+    "ui.teamBridge.holds.restore_local_label",
+    "ui.teamBridge.holds.hide_failed"
+  ],
+  "retained_audit": {
+    "receipt": "i18n/receipts/pr2017-r2-hi-copy-170e0100.json",
+    "receipt_sha256": "a767f50ac343c6fa57fb657647e4e4765dd08e6280a436dc1e25e28d10fe10db",
+    "english_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+    "locale_sha256": "d61f3a3cdce04e85e17c984cb99c26f1223b8f0ea527195e17884caedb826d19"
+  },
+  "checks": {
+    "copy_scan": "scanned 11 files, 1328 candidate strings; 0 findings",
+    "icu": "6 parses; types/reference names preserved; counts 1, 2, 5, 1234 and references 5ac4b3e8, 00753647 sampled; action prefixes retained; NFC; no manual bidi controls"
+  },
+  "rendering": {
+    "method": "Local Operator desktop harness browser, manager-owned frozen-head Storybook, synthetic message only",
+    "story": "team-bridge-held-messages--hide-and-restore-locally",
+    "locale_arg": "hi",
+    "observations": {
+      "before_accessible_button": "इस डिवाइस पर छिपाएँ: संदेश 5ac4b3e8",
+      "after_heading": "इस डिवाइस पर छिपाए गए संदेश: 1",
+      "after_accessible_button": "फिर दिखाएँ: संदेश 5ac4b3e8",
+      "restore_revealed_same_reference": true,
+      "failure_catalogue_format_only": "इस डिवाइस पर छिपाए गए संदेशों की सूची अपडेट नहीं हो सकी।"
+    },
+    "frames_sha256": {
+      "visible.png": "18f36a9cc55774be23142498a6ebe27e58c90a5222116f25f832d042241e4f31",
+      "hidden.png": "70042326a96d9b8aa1ec0bf56bc976f65aa42b00e3150696dcc21a8a0e2100c8"
+    },
+    "limits": "No native layout, shell badge, persistence or live traffic claim. Error string formatted from catalogue only because this fixture always accepts the local change. Screenshots retained in the reviewer session scratch directory; rendered wording retained in this receipt."
+  },
+  "findings": []
+}

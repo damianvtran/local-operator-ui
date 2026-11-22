@@ -1288,6 +1288,7 @@ export const useMessageInput = ({
 			flushComposerDraftPersist();
 			draftMessageRef.current = "";
 		};
+		let echoPainted = false;
 		try {
 			/*
 			 * The echo trigger RECORDS and the post-await fallback does not, and the
@@ -1298,7 +1299,10 @@ export const useMessageInput = ({
 			 * would leave a durable "unconfirmed" record over a message the owner
 			 * took, which a restart would then hand back to the user as unsent.
 			 */
-			outcome = await onSubmit?.(submitted, () => clearOnce(true));
+			outcome = await onSubmit?.(submitted, () => {
+				echoPainted = true;
+				clearOnce(true);
+			});
 			if (outcome === false) {
 				/*
 				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK, and since
@@ -1373,7 +1377,9 @@ export const useMessageInput = ({
 		// Cleared BEFORE the store write so a synchronous restore inside
 		// `onSubmit` is not immediately overwritten by this submit's own clear.
 		retireDraft();
-		if (scrollToBottom) {
+		// An echoed send already used the transcript's follow/anchor policy. A
+		// second scroll on receipt overrides a reader's position after that paint.
+		if (!echoPainted && scrollToBottom) {
 			// Use requestAnimationFrame to ensure DOM updates before scrolling
 			requestAnimationFrame(() => {
 				scrollToBottom();

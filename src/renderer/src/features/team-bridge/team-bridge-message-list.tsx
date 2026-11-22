@@ -63,6 +63,7 @@ import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
+import { TeamBridgeSenderProvenance } from "./team-bridge-sender-provenance";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { TeamBridgeThreadRow } from "./team-bridge-thread-row";
 import { threadSummary } from "./team-bridge-threads-model";
@@ -512,7 +513,14 @@ export const TeamBridgeMessageList: FC<{
 							 messages" always shows its author, as Slack and Discord do
 						  (agent review round 1, m1). */
 					continuation={item.continuation && item.message.id !== firstUnreadId}
-					label={labelFor(item.message.sender)}
+					/* The owner line must not use the directory's chief-of-staff
+					   alias. Resolve as a human with NO stored alias fallback; the
+					   trusted roster/self account may still name the owner. */
+					label={labelFor(
+						teamBridgeSenderPresentation(item.message) === "agent"
+							? { ...item.message.sender, kind: "human", display_label: "" }
+							: item.message.sender,
+					)}
 					member={profileFor?.(item.message.sender)}
 					profileFor={profileFor}
 					onMessagePerson={onMessagePerson}
@@ -1128,7 +1136,10 @@ const MessageRowView: FC<MessageRowProps> = ({
 	const generic = app || presentation === "unknown";
 	const known = generic
 		? storedLabel(message.sender.display_label)
-		: callerLabel;
+		: agent
+			? (storedLabel(callerMember?.display_label ?? "") ??
+				storedLabel(callerLabel ?? ""))
+			: callerLabel;
 	const member = generic ? undefined : callerMember;
 	const label =
 		known ??
@@ -1136,9 +1147,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 			? t("ui.teamBridge.sender.unknown_app")
 			: presentation === "unknown"
 				? t("ui.teamBridge.sender.unknown_sender")
-				: agent
-					? t("ui.teamBridge.sender.unknown_agent")
-					: t("ui.teamBridge.sender.unknown_person"));
+				: t("ui.teamBridge.sender.unknown_person"));
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
 	const clock = valid
@@ -1428,6 +1437,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						{decoration?.badge}
 					</div>
 				)}
+				{!continuation && <TeamBridgeSenderProvenance message={message} />}
 				{continuation && decoration?.badge && (
 					<div className="flex pb-0.5">{decoration.badge}</div>
 				)}

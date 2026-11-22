@@ -1,0 +1,23 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "13fa79f1eb37-ur-chat",
+	"date": "2026-11-21",
+	"locale": "ur",
+	"namespace": "ui.chat",
+	"status": "passed",
+	"independence": "Independent i18n auditor (lopdev task session); did not translate these strings. Translator model not stated in the brief, so same-family status is not known.",
+	"references": {
+		"glossary": "damianvtran/local-operator origin/main i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator origin/main i18n/style-guides/ur.md"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"worktree": "jump-to-latest (head a6358e47bc + uncommitted/branch i18n diff)",
+	"sha256": {
+		"en": "104fc7d9619d9de02a1cc7e841883aa68dd1a6d4d1502c8f23155cfeec0b1c8c",
+		"ur": "7dc568262b4f7bddc58aa7d5c0455072ce7eeaa535b6a31288369c9a16bc9104"
+	},
+	"findings": [],
+	"scope": "copy change: jump-to-latest labels",
+	"checked": "key ui.chat.scroll_to_bottom.label_new_activity read against en value+context and the whole namespace file; key-set parity with en; no ICU placeholders; NFC; no Cc/Cf (bidi) characters; no trailing period; neighbour terms (jump/go-to, activity, latest) compared within ui.chat*.json"
+}

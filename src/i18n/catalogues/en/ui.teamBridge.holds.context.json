@@ -34,6 +34,54 @@
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. "
 	},
+	"ui.teamBridge.holds.hide_local": {
+		"role": "button",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Secondary action on one unloadable held message; hides its row and badge contribution. No decision is recorded. The device qualifier distinguishes it from Discard."
+	},
+	"ui.teamBridge.holds.hide_local_label": {
+		"role": "accessible button name",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"reference": "short message reference"
+		},
+		"note": "Name the specific Hide button for assistive technology. Start with the exact translated visible Hide action so speech control can match it, and add the message reference."
+	},
+	"ui.teamBridge.holds.hidden_local": {
+		"role": "subsection heading",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"count": "number of hidden messages"
+		},
+		"note": "Heading above the list of locally hidden held messages; the number is a total, not an attention count. The list is visible even when the Approvals badge is zero."
+	},
+	"ui.teamBridge.holds.restore_local": {
+		"role": "button",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Returns this row to the visible Held messages queue. Does not deliver the message or restore a deleted message."
+	},
+	"ui.teamBridge.holds.restore_local_label": {
+		"role": "accessible button name",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"reference": "short message reference"
+		},
+		"note": "Name the specific Restore button for assistive technology. Include the exact translated visible Restore action and the message reference."
+	},
+	"ui.teamBridge.holds.hide_failed": {
+		"role": "storage error",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Local preferences could not be saved; shown after Hide or Restore, with the row left where it was. Do not imply a request to the sender or server failed."
+	},
 	"ui.teamBridge.holds.release_off": {
 		"role": "notice",
 		"tone": "calm",

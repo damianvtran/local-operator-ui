@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { type ComponentProps, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { HeldMessagesView } from "./team-bridge-held-messages";
 import {
@@ -6,6 +7,7 @@ import {
 	type HoldItem,
 	captureDiscardSnapshot,
 	holdRefusalLabel,
+	projectHeldMessages,
 } from "./team-bridge-holds-model";
 import type { HeldMessageDetail } from "./use-team-bridge-holds";
 
@@ -404,6 +406,38 @@ export const UnloadableExpired: Story = {
 	args: { items: [orphan, fresh], detail: orphanDetail },
 };
 
+const localStoryRevision = "d".repeat(64);
+const localStoryItems = [{ ...orphan, localHideRevision: localStoryRevision }];
+
+function LocalHideStory(args: ComponentProps<typeof HeldMessagesView>) {
+	// Presentation fixture only: no app account, desktop transport or real storage.
+	const [hidden, setHidden] = useState(() => new Set<string>());
+	const { visible, hidden: hiddenItems } = projectHeldMessages(
+		localStoryItems,
+		hidden,
+		orphanDetail,
+	);
+	return (
+		<HeldMessagesView
+			{...args}
+			items={visible}
+			detail={orphanDetail}
+			localHide={{
+				hiddenItems,
+				onChange: (_item, hide) => {
+					setHidden(new Set(hide ? [localStoryRevision] : []));
+					return true;
+				},
+			}}
+		/>
+	);
+}
+
+export const HideAndRestoreLocally: Story = {
+	args: { hideWhenEmpty: true, onBatchDecide: undefined },
+	render: (args) => <LocalHideStory {...args} />,
+};
+
 /* PR #2017 r1 (M1/S-1/Q-1): a still-deliverable hold whose details failed to
    load (a 429 or network blip) keeps "Try again" and arms NO receipt Discard,
    even though core serves it a receipt. */
@@ -505,7 +539,7 @@ const batchArgs = {
 		for (const entry of entries)
 			onResult({ entry, recorded: true, error: null });
 	},
-} satisfies Partial<React.ComponentProps<typeof HeldMessagesView>>;
+} satisfies Partial<ComponentProps<typeof HeldMessagesView>>;
 
 export const BatchIdle: Story = { args: batchArgs };
 export const BatchRefreshError: Story = {

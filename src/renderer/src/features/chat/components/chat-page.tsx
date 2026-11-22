@@ -145,6 +145,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { activityFingerprint } from "../canonical/new-activity";
 import { editDraftOf } from "../canonical/skill-row";
 import { useSoundStopGate } from "../canonical/sound-stop-confirmation";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
@@ -894,10 +895,24 @@ function SessionPanel({
 	const interruptAvailable = sessionInterruptEnabled(panelCapabilities.data);
 	const [options, setOptions] = useState(false);
 	const [tab, setTab] = useState<"chat" | "raw">("chat");
-	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
-		50,
+	/*
+	 * The jump-to-latest control reads two facts from the transcript: where the
+	 * reader is (`container`, below) and what the tail is doing (the fingerprint
+	 * here, recomputed only when the records array changes). `streamId` is the
+	 * CONVERSATION's identity, so a conversation switch resets the chip and a
+	 * new record does not - the record count used to be passed here and every
+	 * arriving row blanked the control for a frame.
+	 */
+	const newActivityFingerprint = useMemo(
+		() => activityFingerprint(canonical.transcript.records),
+		[canonical.transcript.records],
+	);
+	const { isFarFromBottom, hasNewActivity, scrollToBottom } = useScrollToBottom(
 		container,
-		canonical.transcript.records.length,
+		{
+			contentKey: streamId,
+			activity: newActivityFingerprint,
+		},
 	);
 	/*
 	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
@@ -2667,6 +2682,9 @@ function SessionPanel({
 			 * claim, the echo, the wait line and the composer's clear together; the
 			 * create and the message POST after the prefix are unaffected.
 			 */
+			// The reversed transcript follows the echo if pinned, or holds the
+			// reading anchor if not. Don't scroll on receipt: it arrives after
+			// the echo and can interrupt someone who scrolled in the meantime.
 			const id = await flushSync(() =>
 				admitChatDraft(
 					key,
@@ -5342,6 +5360,7 @@ function SessionPanel({
 					isLoading={false}
 					isLoadingMessages={false}
 					isFarFromBottom={isFarFromBottom}
+					hasNewActivity={hasNewActivity}
 					messagesContainerRef={container}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}

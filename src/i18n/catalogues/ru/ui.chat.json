@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "Замены",
 	"ui.chat.message_controls.thinking_label": "Думает",
 	"ui.chat.scroll_to_bottom.label": "Прокрутить вниз",
-	"ui.chat.scroll_to_bottom.label_new_activity": "Новая активность, прокрутить вниз",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Новая активность, перейти к последнему",
 	"ui.chat.session_status.last_reading_note": "Последний замер до переподключения.",
 	"ui.chat.session_status.readings_aria_held": "Замеры сессии. {note}",
 	"ui.chat.session_status.commands_off": "Slash-команды отключены на этом сервере, поэтому открыть этот замер отсюда нельзя.",

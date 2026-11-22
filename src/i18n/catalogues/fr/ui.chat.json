@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "Remplacements",
 	"ui.chat.message_controls.thinking_label": "Réflexion",
 	"ui.chat.scroll_to_bottom.label": "Défiler vers le bas",
-	"ui.chat.scroll_to_bottom.label_new_activity": "Nouvelle activité, défiler vers le bas",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Nouvelle activité, aller au plus récent",
 	"ui.chat.session_status.last_reading_note": "Dernier relevé avant la reconnexion.",
 	"ui.chat.session_status.readings_aria_held": "Relevés de la session. {note}",
 	"ui.chat.session_status.commands_off": "Les commandes slash sont désactivées sur ce serveur ; ce relevé ne peut donc pas être ouvert d’ici.",

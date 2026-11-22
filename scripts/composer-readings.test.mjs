@@ -5,8 +5,8 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The composer's readings row: what a DRAFT renders, and the layout contract
- * that keeps the four readings in one row without clipping any of them.
+ * Composer readings: what a DRAFT renders, the inline strip's width ladder,
+ * and how the dock mounts the strip separately from the editor controls.
  *
  * `session-status.test.mjs` owns the strip's ARITHMETIC (three ports and the
  * payloads a real backend sent); nothing pinned what the strip renders when
@@ -776,218 +776,27 @@ test("below 750px the value readings neither truncate nor collapse, and only the
 
 /* ---- 4. the composer row ------------------------------------------------- */
 
-/**
- * The row's three children, in DOM order, as `{ name, classes }`.
- *
- * Parsed out of the JSX rather than matched as literal strings because the
- * properties that matter are structural: WHO carries the auto margin, WHICH
- * slot the cluster occupies, and whether either depends on a sibling that can
- * return `null`. The previous version of this test asserted two class strings
- * and passed in exactly the broken state it was written to prevent - zero live
- * margins once the cluster is absent (code review round 1, MINOR 5).
- */
-function rowChildren(composer) {
-	const rowAt = composer.indexOf(
-		'className="flex min-w-0 flex-nowrap items-center gap-x-2"',
-	);
-	assert.ok(rowAt > 0, "the row container is not where this test expects it");
-	const row = composer.slice(rowAt);
-
-	const clusterAt = row.indexOf("<SessionStatusStrip");
-	const leftAt = row.indexOf("<DirectoryIndicator");
-	const controlsAt = row.indexOf("Right side: microphone, send or stop");
-	assert.ok(clusterAt > 0 && leftAt > 0 && controlsAt > 0);
-	assert.ok(
-		clusterAt < leftAt && leftAt < controlsAt,
-		"the cluster's DOM slot must be first; `order-2`/`order-3` then set the painted order, and the single tab stop that leaves is UX round 2's U8 residual",
-	);
-
-	// The error boundary wraps the strip (a crash must not take the composer
-	// down), which is what makes the cluster the nullable child.
-	assert.match(
-		composer,
-		/<ErrorBoundary fallback=\{null\}>\s*<SessionStatusStrip/,
-	);
-
-	return {
-		rowClasses: composer
-			.slice(rowAt, composer.indexOf(">", rowAt))
-			.match(/className="([^"]*)"/)[1]
-			.split(/\s+/),
-		controlsClasses: row
-			.slice(row.indexOf("<div", controlsAt))
-			.match(/className="([^"]*)"/)[1]
-			.split(/\s+/),
-	};
-}
-
-test("the row right-justifies its controls whether or not the readings render", () => {
+test("the workspace precedes the editor and the rail stays end-aligned without pickers", () => {
 	const composer = readFileSync(
 		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
-	const { rowClasses, controlsClasses } = rowChildren(composer);
-	const strip = readFileSync(
-		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
-		"utf8",
-	);
-
-	// ONE node, ONE place, for every state.
-	assert.equal(
-		composer.match(/<SessionStatusStrip/g)?.length,
-		1,
-		"the strip must render once; a second render is a second layout to keep in step",
-	);
-
-	// THE BLOCKER: the auto margin is on the group that always renders. `ms-auto`
-	// alone - not an auto margin plus a threshold override that hands it to a
-	// child which can return `null`. Three ordinary states null the cluster (no
-	// `frontend` yet, nothing known, the error boundary's empty fallback), and in
-	// those states a margin owned by the cluster leaves the row with NONE: the
-	// controls sat flush against the directory chip (round 1, BLOCKER 1).
-	//
-	// AND IT IS LOGICAL (`ms-`, not `ml-`): in an RTL row a physical left margin
-	// puts the row's free space on the far side of this group, where the readings
-	// sit flush against it - measured in the RTL evidence cell as G 2.0 and a
-	// hidden duration before this was fixed.
-	assert.ok(
-		controlsClasses.includes("ms-auto"),
-		"the controls group must carry the row's auto margin",
-	);
-	assert.ok(
-		!controlsClasses.some((c) => c === "ml-auto"),
-		"the margin must be logical; a physical left margin breaks the RTL row's justification",
-	);
-	assert.ok(
-		!controlsClasses.some(
-			(c) => c.includes("chatcol:ml-") || c.includes("chatcol:ms-"),
-		),
-		"the controls' margin must not be conditional on the cluster's presence",
-	);
-	assert.ok(
-		!stripHasAutoMargin(strip),
-		"the cluster must carry NO auto margin: two live margins share the free space and float it mid-row",
-	);
-
-	// THE ROW ITSELF, AND THIS IS D21's PIN (design round 2): no `flex-wrap`, and no
-	// container breakpoint anywhere in its class list. The row wrapped below 750px of
-	// column, which put the readings on a line of their own and made the composer 142px
-	// tall at 800x600 against 109 at 1380 - and §G1 requires one 32px control row "at
-	// every width". `flex-nowrap` is what holds that: the row's items yield
-	// (chip truncates, model name truncates) rather than a control dropping to a second
-	// line, which is the inversion D9's measurement already rejected at one width.
-	assert.ok(rowClasses.includes("flex-nowrap"));
-	assert.ok(
-		!rowClasses.includes("flex-wrap"),
-		"the control row must never wrap: §G1's one row, at every width",
-	);
-	assert.ok(
-		!rowClasses.some((c) => c.includes("chatcol:")),
-		"the row's shape must not depend on the column's width (§G1); the composer's own 640px measure is what decides its contents",
-	);
-
-	// The painted order comes from the two `order-*` values and nothing else, at
-	// every width: cluster second (`order-2`), controls last (`order-3`), with the
-	// attach/chip group at their left. Both are unconditional now - the same
-	// breakpoint that decided the row's wrap used to decide these too.
+	const shelf = composer.indexOf('data-lo-composer-shelf=""');
+	const editor = composer.indexOf('data-lo-composer-editor=""');
+	const rail = composer.indexOf('data-lo-composer-rail=""');
+	const pickers = composer.indexOf("ref={setComposerPickerHost}");
+	const controls = composer.indexOf("data-lo-composer-controls={true}");
+	assert.ok(shelf > 0 && shelf < editor && editor < rail);
+	const shelfSource = composer.slice(shelf, editor);
 	assert.match(
-		strip,
-		/"order-2 flex-nowrap"/,
-		"the cluster must be `order-2`/`flex-nowrap` and NOT `basis-full` at any width",
+		shelfSource,
+		/<DirectoryIndicator[\s\S]*<ErrorBoundary fallback=\{null\}>\s*<SessionStatusStrip/,
 	);
-	assert.ok(controlsClasses.includes("order-3"));
-	assert.ok(
-		!controlsClasses.some((c) => c.includes("chatcol:")),
-		"the controls' order must not be conditional on the column's width",
-	);
-});
-
-/**
- * Whether the strip's root carries an auto margin, at any width.
- *
- * The cluster's classes are one long string two thirds of the way down the
- * file; the property is "no `ml-auto` and no `chatcol:ml-auto` anywhere in it",
- * which is what this reads.
- */
-/**
- * Whether the cluster claims the row's free space at ANY width.
- *
- * The property, not one literal: `ml-auto`, `ms-auto`, `mx-auto` and a
- * container-scoped `@min-[750px]/chatcol:ml-auto` all do the same thing to the
- * row, and round 1's blocker shipped precisely because the test named one
- * string. Anything that resolves to an automatic inline-start margin counts,
- * whatever variant carries it.
- */
-function stripHasAutoMargin(strip) {
-	const root = strip.match(/"order-2 flex-nowrap"/);
-	assert.ok(
-		root,
-		"the strip's root class list is not where this test expects it",
-	);
-	return /(^|\s|:)(ml|ms|mx)-auto/.test(root[0]);
-}
-
-test("the inline layout is a PAIRING, and neither half works alone", () => {
-	// `display: contents` on the button line and `order-2`/`order-3` on the
-	// cluster and controls are one mechanism with two halves: the wrapper exists
-	// so the narrow row keeps its button line on ONE line, and it must dissolve
-	// above the threshold or the cluster would sit inside it instead of between
-	// the chip and the controls. Deleting either half inverts the inline layout
-	// while every rendering test stays green, because the strip's own markup is
-	// unchanged - so the pairing is asserted where it lives.
-	const composer = readFileSync(
-		"src/renderer/src/shared/components/composer/message-input.tsx",
-		"utf8",
-	);
-	const strip = readFileSync(
-		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
-		"utf8",
-	);
-
-	/*
-	 * THE PAIRING IS STILL A PAIRING, and it is the same two halves with the
-	 * condition taken off them (design round 2, D21). It used to be conditional:
-	 * `display: contents` above 750px of column and a real flex item below it, with
-	 * `order-2`/`order-3` restoring the painted sequence in the dissolved case. The
-	 * row never wraps now, so the wrapper only ever dissolves - and deleting either
-	 * half still inverts the painted order while every rendering test stays green,
-	 * because the strip's own markup is unchanged. So the pairing is asserted where
-	 * it lives, and the conditionals are asserted ABSENT, which is the half that
-	 * regressed twice.
-	 */
-	const wrapper = composer.match(/<div className="([^"]*contents[^"]*)">/);
-	assert.ok(wrapper, "the button line's wrapper must exist");
-	assert.equal(
-		wrapper[1].trim(),
-		"contents",
-		"the wrapper must be `display: contents` at every width: a real flex item here is the two-line row coming back",
-	);
-
-	// The other half: with the wrapper dissolved, order is what restores the
-	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
-	// first child is the cluster.
-	assert.match(strip, /"order-2 flex-nowrap"/);
-	// The group's one live auto margin is LOGICAL (`ms-auto`, not `ml-auto`): a
-	// physical left margin puts the free space on the far side of the group in an
-	// RTL row, which the RTL evidence cell measures as a 2px gap and a hidden
-	// duration. `margin-inline-start` is the same margin in LTR and the mirrored
-	// one in RTL.
-	// `shrink-0` was added by the slot change: the 68px cluster never yields width
-	// to the readings (they yield to it), so slots A and B cannot move.
+	assert.equal(composer.match(/<SessionStatusStrip/g)?.length, 1);
+	assert.ok(rail < pickers && pickers < controls);
 	assert.match(
-		composer,
-		/className="ms-auto flex order-3 shrink-0 items-center gap-1"/,
-	);
-	assert.doesNotMatch(composer, /className="ml-auto flex order-3/);
-
-	// And the left group holds its width. Without this the chip's own `shrink-0`
-	// (which makes the NAME truncate first) let the group close around it, and the
-	// path painted across the readings - visible only in a frame, because
-	// `row.overflowX` reads 0 when the group fits and its child does not (code
-	// review round 2).
-	assert.match(
-		composer,
-		/className="flex min-w-0 items-center gap-1 shrink-0"/,
+		composer.slice(controls, controls + 600),
+		/className="ms-auto flex shrink-0 items-center gap-1"/,
 	);
 });
 
@@ -1258,7 +1067,7 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 		assert.match(
 			strip,
 			new RegExp(
-				`SHED_RUNGS\\.${name}\\[rungState\\(controlsThirdBox, accessNote !== null\\)\\]`,
+				`SHED_RUNGS\\.${name}\\[\\s*rungState\\(controlsThirdBox, accessNote !== null\\)\\s*\\]`,
 			),
 			`${name} sheds on both the third box and the access note`,
 		);
@@ -1288,15 +1097,15 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 	 * And the three rungs are the ONLY range-hidden readings: this is the
 	 * complete set of `chatcol:hidden` strings in the file, so a `hidden`
 	 * appearing on another reading - or a fourth rung smuggled in - fails here.
-	 * The held cluster's mark is the one non-reading in the set: it is hidden
-	 * below the wrap threshold because it is a word, not a value, and the narrow
-	 * row has width only for the readings themselves; the statement survives on
-	 * the group name and the tooltips.
+	 * The held mark and the pickers' leading decoration can also hide. The
+	 * accessible held statement survives on the group and tooltips; the picker
+	 * label and chevron remain when the leading icon gives up its width.
 	 */
 	assert.doesNotMatch(strip, /chatcol:sr-only/);
 	assert.deepEqual(
 		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
 		[
+			"@max-[620px]/chatcol:hidden",
 			"@max-[640px]/chatcol:hidden",
 			"@max-[660px]/chatcol:hidden",
 			"@max-[675px]/chatcol:hidden",
@@ -1311,7 +1120,7 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 			"@max-[780px]/chatcol:hidden",
 			"@max-[810px]/chatcol:hidden",
 		].sort(),
-		"only the three rungs and the held mark may be range-hidden; the duration's visibility is measured",
+		"only the three rungs, held mark and decorative picker icon may be range-hidden; duration visibility is measured",
 	);
 
 	/*
@@ -1339,68 +1148,23 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 	}
 });
 
-test("the shed's state comes from the row's own third-box predicate, computed once", () => {
-	const row = readFileSync(
-		"src/renderer/src/shared/components/composer/message-input.tsx",
-		"utf8",
-	);
-
-	/*
-	 * ONE PREDICATE, MANY READERS (issues #788 and #918). Effort, cost and context
-	 * shed on whether a third control box is drawn, and that is the same question
-	 * the slot's own JSX asks - so it is computed once, from the row's own terms,
-	 * and every reader takes it. A fix that restated the condition at the strip's
-	 * mount would drift the moment the slot's gate changed, which is what these
-	 * four terms and the two joins pin; the strip's three rungs are the second
-	 * family of readers.
-	 *
-	 * THE DURATION IS NOT ONE OF THEM ANY MORE. Its visibility is measured against
-	 * the controls group's actual left edge, so the group carries a stable marker
-	 * and the strip finds it by that, not by this predicate or by a button's
-	 * translated label.
-	 */
-	/*
-	 * THE THIRD BOX IS A LIVE RECORDING AND NOTHING ELSE. The cluster is two
-	 * fixed slots (`[A mic][B Send | Stop]`, 68px) in every state, because Stop
-	 * stands in Send's own slot; only `[Insert][Cancel][Send recording]` (104px)
-	 * is wider. The held-box reservation this used to read (`interruptSlotDrawn`,
-	 * `useInterruptSlotHold`) is gone, so a regression that put a running turn
-	 * back on the 780/740/675 arms - or the reservation back in the tree - fails
-	 * here by name.
-	 */
-	assert.match(
-		row,
-		/const controlsThirdBox = isRecording;/,
-		"the third box is the recording trio and only that",
-	);
-	assert.doesNotMatch(
-		row,
-		/interruptSlotDrawn|useInterruptSlotHold|data-interrupt-slot/,
-		"the held box is deleted: Send and Stop share one slot, so nothing is reserved",
-	);
-	assert.match(
-		row,
-		/controlsThirdBox=\{controlsThirdBox\}/,
-		"the strip must be handed the predicate rather than re-deriving it",
-	);
-	// The strip's own marker for the measured-fit reading: the group is the row's
-	// right anchor, and the duration measures against its real left edge.
-	assert.match(row, /data-lo-composer-controls=\{true\}/);
-	/*
-	 * AND THE STRIP MUST ACCEPT IT. A prop the composer passes and the strip ignores
-	 * is the whole shed silently switched off, so the receiving half is pinned too.
-	 */
+test("the dock does not shed workspace readings when recording adds an editor control", () => {
 	const strip = readFileSync(
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
 		"utf8",
 	);
-	assert.match(strip, /controlsThirdBox\?: boolean;/);
-	assert.match(strip, /controlsThirdBox = false,/);
-	assert.equal(
-		(strip.match(/rungState\(controlsThirdBox, accessNote !== null\)/g) ?? [])
-			.length,
-		3,
-		"exactly the three value rungs switch on the row's predicate",
+	for (const reading of ["effort", "cost", "context"]) {
+		assert.match(
+			strip,
+			new RegExp(
+				`isComposerDock\\s*\\? "composer-dock-${reading}"\\s*: SHED_RUNGS\\.${reading}`,
+			),
+		);
+	}
+	assert.match(strip, /if \(!hasDuration \|\| isComposerDock\) return/);
+	assert.match(
+		strip,
+		/isComposerDock \? "composer-dock-duration" : "absolute top-0"/,
 	);
 });
 

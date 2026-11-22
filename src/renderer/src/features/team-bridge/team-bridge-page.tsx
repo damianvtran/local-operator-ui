@@ -156,7 +156,7 @@ import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import type { TeamBridgeDraft } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
-import { actionableHoldCount } from "./team-bridge-holds-model";
+import { useVisibleHeldCount } from "./team-bridge-held-hide-preference";
 import { TeamBridgeInvitations } from "./team-bridge-invitations";
 import {
 	pendingAgentInvitations,
@@ -6204,6 +6204,7 @@ const TeamBridgeOwnedPage: FC<{
 	const approvalRequests = useApprovalRequests(readsEnabled);
 	// Releasable held messages share the Approvals slot's count (B4b).
 	const heldMessages = useHeldMessages(readsEnabled);
+	const visibleHeld = useVisibleHeldCount(heldMessages.data);
 	/*
 	 * A failed read that is NOT a 404 still draws the entry (QA Q2): requests
 	 * may exist that could not be read, and the panel says so with Retry. Only
@@ -6227,10 +6228,8 @@ const TeamBridgeOwnedPage: FC<{
 			(lastRequestsError.current !== null &&
 				!approvalsUnsupported(lastRequestsError.current)))
 			? {
-					waiting:
-						(approvalRequests.data?.pending_count ?? 0) +
-						actionableHoldCount(heldMessages.data),
-					held: actionableHoldCount(heldMessages.data),
+					waiting: (approvalRequests.data?.pending_count ?? 0) + visibleHeld,
+					held: visibleHeld,
 					panel: <TeamBridgeRequests />,
 				}
 			: undefined;

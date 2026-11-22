@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "Reemplazos",
 	"ui.chat.message_controls.thinking_label": "Pensamiento",
 	"ui.chat.scroll_to_bottom.label": "Ir al final",
-	"ui.chat.scroll_to_bottom.label_new_activity": "Actividad nueva, ir al final",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Actividad nueva, ir a lo más reciente",
 	"ui.chat.session_status.last_reading_note": "Última lectura antes de la reconexión.",
 	"ui.chat.session_status.readings_aria_held": "Lecturas de la sesión. {note}",
 	"ui.chat.session_status.commands_off": "Los comandos slash están desactivados en este servidor, así que esta lectura no se puede abrir desde aquí.",

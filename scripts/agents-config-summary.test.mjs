@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -20,7 +20,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/agents/config-run/summary";',
+			'export * from "./src/renderer/src/features/agents/config-run/summary";\nexport * as i18n from "./src/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -30,10 +30,16 @@ const bundle = await build({
 	write: false,
 	tsconfig: "tsconfig.web.json",
 });
-const { diffCatalogue, projectRunToolRow, RUN_TOOL_NAMES, snapshotCatalogue } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	diffCatalogue,
+	projectRunToolRow,
+	RUN_TOOL_NAMES,
+	snapshotCatalogue,
+	summaryText,
+	i18n,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const agent = (over = {}) => ({
 	name: "reviewer",
@@ -74,7 +80,7 @@ test("a name that appeared is a create, and a name that moved is an update", () 
 	assert.deepEqual(names(results), ["agent:reviewer", "agent:frame-probe"]);
 	assert.equal(results[0].created, false);
 	assert.deepEqual(
-		results[0].changes.map((change) => change.label),
+		results[0].changes.map((change) => summaryText(change.label)),
 		["description changed"],
 	);
 	assert.equal(results[1].created, true);
@@ -109,7 +115,7 @@ test("a definition the run only read never reaches the summary", () => {
 		ts: 1,
 	});
 	assert.equal(read.writes, false);
-	assert.equal(read.verb, "Reading reviewer");
+	assert.equal(summaryText(read.verb), "Reading reviewer");
 	for (const op of ["list", "search", "show"]) {
 		assert.equal(
 			projectRunToolRow({
@@ -166,7 +172,7 @@ test("a definition the run only read never reaches the summary", () => {
 		ts: 6,
 	});
 	assert.equal(edited.writes, true);
-	assert.equal(edited.verb, "Editing skill demo");
+	assert.equal(summaryText(edited.verb), "Editing skill demo");
 });
 
 test("a write that failed, was skipped, or never ran is not a change", () => {
@@ -210,7 +216,10 @@ test("a write that failed, was skipped, or never ran is not a change", () => {
 	}
 	// The step line is still painted for a failed call: the Watch list is where
 	// "it tried and was refused" belongs, and it is not the summary's business.
-	assert.equal(write({ isError: true }).verb, "Creating agent reviewer");
+	assert.equal(
+		summaryText(write({ isError: true }).verb),
+		"Creating agent reviewer",
+	);
 });
 
 test("a touched definition whose list fields did not move is an update with nothing visible", () => {
@@ -245,13 +254,17 @@ test("tools, delegation, effort and a team's manager and members are said in wor
 		{ kind: "agent", name: "reviewer" },
 		{ kind: "team", name: "release-crew" },
 	]);
-	const agentLabels = results[0].changes.map((change) => change.label);
+	const agentLabels = results[0].changes.map((change) =>
+		summaryText(change.label),
+	);
 	assert.deepEqual(agentLabels, [
 		"tools widened to every tool",
 		"effort tier changed",
 		"delegation turned on",
 	]);
-	const teamLabels = results[1].changes.map((change) => change.label);
+	const teamLabels = results[1].changes.map((change) =>
+		summaryText(change.label),
+	);
 	assert.deepEqual(teamLabels, ["manager changed", "members changed (1 to 1)"]);
 });
 
@@ -283,7 +296,7 @@ test("a class change is reported, and its direction is said out loud", () => {
 		{ kind: "agent", name: "reviewer" },
 	]);
 	assert.deepEqual(
-		result.changes.map((change) => change.label),
+		result.changes.map((change) => summaryText(change.label)),
 		["class changed to proactive"],
 	);
 	/*
@@ -309,7 +322,115 @@ test("a class change is reported, and its direction is said out loud", () => {
 		[{ kind: "agent", name: "reviewer" }],
 	);
 	assert.deepEqual(
-		back.changes.map((change) => change.label),
+		back.changes.map((change) => summaryText(change.label)),
 		["class changed to reactive — proactive messaging stopped"],
 	);
+});
+
+/*
+ * Every step arm and change sentence is catalogue copy painted at render
+ * (`summaryText`), so these pin the English of each arm, the ICU plural and
+ * select arms, and that a result computed in one locale paints in the locale
+ * active when it is READ — the reason the projection returns keys, not strings.
+ */
+const step = (toolName, args, phase = "done") =>
+	summaryText(projectRunToolRow({ toolName, args, phase, ts: 1 }).verb);
+
+test("every step arm reads as a whole English sentence per kind", () => {
+	assert.equal(step("agent", { op: "create", name: "x" }), "Creating agent x");
+	assert.equal(step("team", { op: "create" }), "Creating a team");
+	assert.equal(step("agent", { op: "create" }), "Creating an agent");
+	assert.equal(step("team", { op: "update", name: "t" }), "Updating team t");
+	assert.equal(step("skill", { op: "update" }), "Updating a skill");
+	assert.equal(step("skill", { op: "edit", name: "s" }), "Editing skill s");
+	assert.equal(step("skill", { op: "edit" }), "Editing a skill");
+	assert.equal(step("agent", { op: "install", name: "qa" }), "Installing qa");
+	assert.equal(step("agent", { op: "install" }), "Installing an agent");
+	assert.equal(step("team", { op: "show", name: "t" }), "Reading t");
+	assert.equal(step("team", { op: "list" }), "Reading teams");
+	assert.equal(step("skill", { op: "search" }), "Reading skills");
+	assert.equal(step("agent", { op: "nope" }, "running"), "Working on agents");
+	assert.equal(step("team", { op: "nope" }), "Checked teams");
+});
+
+test("tool counts use the plural arm and single tools are named", () => {
+	const tools = (before, after) => {
+		const [result] = diffCatalogue(
+			snapshotCatalogue([agent({ tools: before })], []),
+			snapshotCatalogue([agent({ tools: after })], []),
+			[{ kind: "agent", name: "reviewer" }],
+		);
+		return result.changes.map((change) => summaryText(change.label));
+	};
+	assert.deepEqual(tools(["read"], ["read", "bash", "grep"]), [
+		"2 tools added",
+	]);
+	assert.deepEqual(tools(["read", "bash", "grep"], ["read"]), [
+		"2 tools removed",
+	]);
+	assert.deepEqual(tools(["read"], ["read", "bash"]), ["tool added: bash"]);
+	assert.deepEqual(tools(["read", "bash"], ["bash"]), ["tool removed: read"]);
+	assert.deepEqual(tools(["read"], null), ["tools widened to every tool"]);
+	assert.deepEqual(tools(null, ["read"]), ["tools narrowed to a list"]);
+	assert.deepEqual(tools(["read"], ["bash"]), ["tools changed"]);
+	assert.deepEqual(
+		summaryText({
+			key: "ui.agents.config.summary.change.tools_added",
+			params: { count: 1 },
+		}),
+		"1 tool added",
+		"the one arm exists for languages whose one category covers more",
+	);
+});
+
+test("a field without its own sentence keeps its wire name in the frame", () => {
+	assert.equal(
+		summaryText({
+			key: "ui.agents.config.summary.change.field",
+			params: { field: "colour" },
+		}),
+		"colour changed",
+	);
+});
+
+test("a settled summary paints in the locale active when it is read", () => {
+	const [result] = diffCatalogue(
+		snapshotCatalogue([agent({ tools: ["read"], delegate: false })], []),
+		snapshotCatalogue(
+			[agent({ tools: ["read", "a", "b"], delegate: true })],
+			[],
+		),
+		[{ kind: "agent", name: "reviewer" }],
+	);
+	const row = projectRunToolRow({
+		toolName: "skill",
+		args: { op: "create" },
+		phase: "done",
+		ts: 1,
+	});
+	const paint = () => [
+		...result.changes.map((change) => summaryText(change.label)),
+		summaryText(row.verb),
+	];
+	assert.deepEqual(paint(), [
+		"2 tools added",
+		"delegation turned on",
+		"Creating a skill",
+	]);
+	i18n.registerCatalogue("fr", {
+		"ui.agents.config.summary.change.tools_added":
+			"{count, plural, one {# outil ajouté} other {# outils ajoutés}}",
+		"ui.agents.config.summary.change.delegation_on": "délégation activée",
+		"ui.agents.config.summary.step.creating":
+			"Création {kind, select, agent {d’un agent} team {d’une équipe} skill {d’une compétence} other {d’une définition}}",
+	});
+	i18n.setLocale("fr");
+	after(() => i18n.setLocale("en"));
+	assert.deepEqual(
+		paint(),
+		["2 outils ajoutés", "délégation activée", "Création d’une compétence"],
+		"the same stored result, read after the switch, follows the locale",
+	);
+	i18n.setLocale("en");
+	assert.equal(paint()[0], "2 tools added");
 });

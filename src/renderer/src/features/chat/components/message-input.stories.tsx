@@ -2769,6 +2769,117 @@ const SESSION_READINGS = {
 	} as CanonicalFrontendState,
 };
 
+const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
+	const conversation = `story-populated-composer-rail-${width}`;
+	return (
+		<div className="bg-canvas p-6" dir={dir}>
+			<div className="@container/chatcol" style={{ width, maxWidth: "100%" }}>
+				<WithDraft
+					conversation={conversation}
+					text="Review the parser tests and flag any missing edge cases."
+				>
+					<MessageInput
+						isLoading={false}
+						isSmallView={width < 550}
+						messages={NONEMPTY}
+						conversationId={conversation}
+						cwd="/Users/you"
+						cwdWritePath={MOVING_CWD}
+						sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+						recordingProbe={{
+							canUseRadientSpeech: true,
+							speechBlock: "checking",
+						}}
+						onSendMessage={async () => true}
+					/>
+				</WithDraft>
+			</div>
+		</div>
+	);
+};
+
+const assertDock: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+	await waitFor(async () => {
+		const shelf = canvasElement.querySelector("[data-lo-composer-shelf]");
+		const editor = canvasElement.querySelector("[data-lo-composer-editor]");
+		const rail = canvasElement.querySelector("[data-lo-composer-rail]");
+		if (!shelf || !editor || !rail) throw new Error("The dock did not render");
+		const cwd = shelf.querySelector("[data-lo-cwd-chip] > button");
+		const status = shelf.querySelector("[data-lo-session-strip]");
+		const draft = editor.querySelector("textarea");
+		if (!cwd || !status || !draft)
+			throw new Error("Missing shelf or draft content");
+		const rtl = getComputedStyle(rail).direction === "rtl";
+		const start = (box: DOMRect) => (rtl ? -box.right : box.left);
+		const end = (box: DOMRect) => (rtl ? -box.left : box.right);
+		const shelfBounds = shelf.getBoundingClientRect();
+		const cwdBounds = cwd.getBoundingClientRect();
+		const statusBounds = status.getBoundingClientRect();
+		// The workspace has its own row now; validate the actual separation,
+		// rather than which flex or order utility produced it.
+		await expect(start(cwdBounds)).toBeGreaterThanOrEqual(start(shelfBounds));
+		await expect(start(statusBounds)).toBeGreaterThanOrEqual(end(cwdBounds));
+		await expect(end(statusBounds)).toBeLessThanOrEqual(end(shelfBounds) + 0.5);
+		await expect(shelfBounds.bottom).toBeLessThanOrEqual(
+			editor.getBoundingClientRect().top,
+		);
+		await expect(editor.getBoundingClientRect().width).toBeLessThan(
+			editor.parentElement?.getBoundingClientRect().width ?? 0,
+		);
+		await expect(getComputedStyle(rail).backgroundColor).toBe(
+			"rgba(0, 0, 0, 0)",
+		);
+		const selectors = [
+			'[data-tour-tag="chat-input-attach-file-button"]',
+			'[data-composer-picker="model"]',
+			'[data-composer-picker="effort"]',
+			'[data-composer-slot="a"]',
+			'[data-composer-slot="b"]',
+		];
+		const bounds = rail.getBoundingClientRect();
+		let previous: Element = draft;
+		let lastEnd = start(bounds);
+		for (const selector of selectors) {
+			const button = rail.querySelector(selector);
+			if (!button) throw new Error(`Missing editor control: ${selector}`);
+			const box = button.getBoundingClientRect();
+			await expect(button).toBeEnabled();
+			await expect(
+				previous.compareDocumentPosition(button) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			await expect(box.top + box.height / 2).toBeCloseTo(
+				bounds.top + bounds.height / 2,
+				0,
+			);
+			await expect(start(box)).toBeGreaterThanOrEqual(lastEnd);
+			await expect(end(box)).toBeLessThanOrEqual(end(bounds) + 0.5);
+			previous = button;
+			lastEnd = end(box);
+		}
+		await expect(lastEnd).toBeCloseTo(end(bounds), 0);
+	});
+};
+
+/** The real pickers stay reachable in the inset editor at every width. */
+export const PopulatedRail: Story = {
+	render: () => populatedRail(1024),
+	play: assertDock,
+};
+export const PopulatedRailNarrow: Story = {
+	render: () => populatedRail(320),
+	play: assertDock,
+};
+
+export const PopulatedRailRtl: Story = {
+	render: () => populatedRail(320, "rtl"),
+	play: assertDock,
+};
+export const PopulatedRailFloor: Story = {
+	render: () => populatedRail(240),
+	play: assertDock,
+};
+
 /**
  * The masked sentence WITH the working-directory chip and the readings on the
  * row beside it, at the composer's own 1024px measure (design round 3, D4).
@@ -3394,7 +3505,7 @@ export const PendingSendPdfRemoveFocus: Story = {
 export const PendingSendMixed: Story = {
 	render: () => (
 		<PendingSendHarness
-			label="mixed row: an image keeps its 100px thumbnail tile, a PDF takes the wider file card"
+			label="mixed row: the thumbnail and wider PDF card share the same height"
 			chips={PENDING_MIXED_CHIPS}
 			byteSizes={PENDING_PDF_BYTES}
 		/>
@@ -3499,8 +3610,8 @@ export const PendingSendEightFiles: Story = {
 
 /**
  * The narrow rung with an image and two files: the wrapping case at the width
- * where the file card and the 100px tile can no longer share one line. The long
- * filename is the card's own truncation test, not a row-overflow test.
+ * where all three attachments no longer share one line. The long filename
+ * is the card's own truncation test, not a row-overflow test.
  */
 const PENDING_NARROW_CHIPS = [
 	{ id: "narrow-image", path: STAGED_IMAGE_DATA_URL },
@@ -3555,7 +3666,9 @@ export const PendingSendImageRemoveFocus: Story = {
 			'[data-attachment-id="focus-image"]',
 		);
 		if (!card) throw new Error("the image tile is not in this story");
-		const button = card.querySelector("button");
+		const button = card.querySelector<HTMLButtonElement>(
+			'button[aria-label="Remove attachment"]',
+		);
 		if (!button) throw new Error("the image tile has no remove control");
 		const before = card.getBoundingClientRect();
 		button.focus();

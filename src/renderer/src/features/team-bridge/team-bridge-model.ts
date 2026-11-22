@@ -1,4 +1,5 @@
 import type { AgentMessagesStatus } from "../../../../shared/agent-messages-contract";
+import { teamBridgeAgentSessionSchema } from "../../../../shared/team-bridge-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeConversationList,
@@ -1864,6 +1865,20 @@ export function teamBridgeSenderPresentation(message: {
 	return message.sender.kind;
 }
 
+/* Only the human-history sender leaf names the sending session. Endpoint
+ * names, body text and top-level exact-body metadata cannot establish it.
+ * Validate here too: local/synthetic typed rows need the same fallback as wire
+ * rows, and grouping must use exactly the display the header will paint. */
+export function teamBridgeAgentSessionLabel(
+	message: TeamBridgeMessage,
+): string | null {
+	if (teamBridgeSenderPresentation(message) !== "agent") return null;
+	return (
+		teamBridgeAgentSessionSchema.parse(message.sender.agent_session)
+			?.display_label ?? null
+	);
+}
+
 /**
  * Whether a sender can own a profile at all - a photo, a profile card, a DM.
  * Only a person or an agent is a directory member; an integration app or a
@@ -2282,6 +2297,9 @@ export function threadItems(
 			day === previousDay &&
 			previous.sender.account_id === message.sender.account_id &&
 			previous.sender.kind === message.sender.kind &&
+			// A different session under one owner must not lose its own header.
+			teamBridgeAgentSessionLabel(previous) ===
+				teamBridgeAgentSessionLabel(message) &&
 			at.getTime() - Date.parse(previous.created_at) < RUN_WINDOW_MS;
 		items.push({ type: "message", message, continuation });
 		previous = message;

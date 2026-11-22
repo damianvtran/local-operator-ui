@@ -1578,6 +1578,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.agents.teams.section.description",
 		"French noun « description » has the same spelling; section heading",
 	],
+	[
+		"fr:ui.agents.teams.group.agents",
+		"French plural of « agent » is « agents »; picker group heading paired with « Équipes », matching the shipped fr ui.agents.pages.tab.agents and ui.agents.navigation.sidebar.title",
+	],
 	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
 	// locale and cites the shipped, audited value it matches, so none of them
 	// silences a stub in another language.

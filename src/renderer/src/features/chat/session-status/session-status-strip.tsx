@@ -3,7 +3,14 @@ import { Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Clock, Info, Zap } from "lucide-react";
+import {
+	ChevronDown,
+	Clock,
+	Cpu,
+	Info,
+	SlidersHorizontal,
+	Zap,
+} from "lucide-react";
 import {
 	type FC,
 	type ReactNode,
@@ -13,6 +20,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type {
 	CanonicalFrontendState,
 	CanonicalModel,
@@ -130,6 +138,8 @@ import {
  */
 
 export type SessionStatusStripProps = {
+	/** The dock keeps pickers in the editor and measurements on the shelf. */
+	composerPickerHost?: HTMLDivElement | null;
 	/**
 	 * The canonical snapshot. `null` while the stream is connecting, which
 	 * renders nothing — an empty strip is honest about a session that has not
@@ -757,6 +767,7 @@ const Reading: FC<{
 	tooltip: ReactNode;
 	label: string;
 	onOpen?: () => void;
+	picker?: "model" | "effort";
 	/**
 	 * A reading that has no action in ANY state, on any backend, in any session.
 	 *
@@ -797,6 +808,7 @@ const Reading: FC<{
 	tooltip,
 	label,
 	onOpen,
+	picker,
 	readout = false,
 	held = false,
 	children,
@@ -832,15 +844,29 @@ const Reading: FC<{
 	) : (
 		tooltip
 	);
+	const PickerIcon = picker === "model" ? Cpu : SlidersHorizontal;
 	return onOpen ? (
 		<Tooltip content={body} className={tooltipClassName}>
 			<button
 				type="button"
 				onClick={onOpen}
 				aria-label={spoken}
+				data-composer-picker={picker}
 				className={cn(READING_BUTTON, className)}
 			>
+				{picker && (
+					<PickerIcon
+						aria-hidden="true"
+						className="size-3.5 shrink-0 text-ink-dim @max-[620px]/chatcol:hidden"
+					/>
+				)}
 				{children}
+				{picker && (
+					<ChevronDown
+						aria-hidden="true"
+						className="size-3 shrink-0 text-ink-dim"
+					/>
+				)}
 			</button>
 		</Tooltip>
 	) : readout ? (
@@ -1112,6 +1138,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
 		draft = false,
 		draftResolution,
 		readingsDropped = false,
+		composerPickerHost,
 		className,
 	} = props;
 	useI18nLocale();
@@ -1139,7 +1166,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
 					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is neither a form result nor a control. The file's group role carries the same suppression for the same reason. */
 					role="status"
 					className={cn(
-						"order-2 -mx-1.5 min-w-0 text-meta text-ink-dim",
+						"min-w-0 text-meta text-ink-dim",
+						composerPickerHost === undefined ? "order-2 -mx-1.5" : "ms-auto",
 						className,
 					)}
 				>
@@ -1154,6 +1182,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = (props) => {
 };
 
 const SessionStatusReadings: FC<SessionStatusStripProps> = ({
+	composerPickerHost,
 	frontend,
 	onCommand,
 	effortEntities,
@@ -1331,6 +1360,14 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	 */
 	const stripRef = useRef<HTMLDivElement>(null);
 	const [durationFits, setDurationFits] = useState(false);
+	// One status instance owns both placements and the running clock. Only the
+	// selection controls go through the local portal; DOM Tab order follows
+	// the dock (shelf, draft, attach, pickers, mic/Send), not React ancestry.
+	const isComposerDock = composerPickerHost !== undefined;
+	const placePicker = (key: string, reading: ReactNode) =>
+		isComposerDock
+			? composerPickerHost && createPortal(reading, composerPickerHost, key)
+			: reading;
 	const measureDurationFit = useCallback(() => {
 		const strip = stripRef.current;
 		if (!strip) return;
@@ -1432,7 +1469,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	 */
 	const hasDuration = duration !== null;
 	useEffect(() => {
-		if (!hasDuration) return;
+		if (!hasDuration || isComposerDock) return;
 		const strip = stripRef.current;
 		if (!strip) return;
 		const element = strip.querySelector<HTMLElement>("[data-lo-duration]");
@@ -1447,7 +1484,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 		   in a way this reading needs to answer. */
 		document.fonts?.ready.then(measureDurationFit).catch(() => {});
 		return () => observer.disconnect();
-	}, [hasDuration, measureDurationFit]);
+	}, [hasDuration, isComposerDock, measureDurationFit]);
 	/*
 	 * Which readings can open, and through which opener.
 	 *
@@ -1494,7 +1531,8 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 		reading.status === "no-reading" &&
 		!cost.text &&
 		!chooseModel &&
-		!draftResolution
+		!draftResolution &&
+		!(isComposerDock && duration)
 	)
 		return null;
 
@@ -1560,7 +1598,8 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				 * still-wrapping cluster would spend the name's slack on a second internal
 				 * line instead of letting the name truncate.
 				 */
-				"order-2 flex-nowrap",
+				"flex-nowrap",
+				isComposerDock ? "composer-dock-readings" : "order-2",
 				className,
 			)}
 			data-lo-session-strip={true}
@@ -1624,117 +1663,121 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					{t("ui.chat.session_status.last_reading")}
 				</span>
 			)}
-			{identity && (
-				<Reading
-					// Pending is a state of a chip that CAN open; `modelReason` answers
-					// whether it can open at all (a draft, or a backend with commands
-					// off). Both sentences are needed and they never apply at once: a
-					// draft has no session to confirm a switch against.
-					label={
-						queued
-							? t("ui.chat.settings_intents.model_queued", {
-									model: queuedName,
-								})
-							: pending
-								? t("ui.chat.session_status.model_aria_pending", {
-										selector: identity.selector,
-										fast: fastOn ? "yes" : "no",
+			{placePicker(
+				"model",
+				identity && (
+					<Reading
+						// Pending is a state of a chip that CAN open; `modelReason` answers
+						// whether it can open at all (a draft, or a backend with commands
+						// off). Both sentences are needed and they never apply at once: a
+						// draft has no session to confirm a switch against.
+						label={
+							queued
+								? t("ui.chat.settings_intents.model_queued", {
+										model: queuedName,
 									})
-								: t("ui.chat.session_status.model_aria", {
-										selector: identity.selector,
-										fast: fastOn ? "yes" : "no",
-										reason: modelReason(draft, Boolean(openModel)),
-									})
-					}
-					tooltip={
-						<TooltipLines
-							lines={
-								queued
-									? [
-											identity.selector,
-											t("ui.chat.settings_intents.model_queued", {
-												model: queuedName,
-											}),
-										]
-									: pending
+								: pending
+									? t("ui.chat.session_status.model_aria_pending", {
+											selector: identity.selector,
+											fast: fastOn ? "yes" : "no",
+										})
+									: t("ui.chat.session_status.model_aria", {
+											selector: identity.selector,
+											fast: fastOn ? "yes" : "no",
+											reason: modelReason(draft, Boolean(openModel)),
+										})
+						}
+						tooltip={
+							<TooltipLines
+								lines={
+									queued
 										? [
 												identity.selector,
-												t("ui.chat.session_readout.strip.model_switching"),
+												t("ui.chat.settings_intents.model_queued", {
+													model: queuedName,
+												}),
 											]
-										: [
-												identity.selector,
-												...(fastOn ? [fastModeOnNote()] : []),
-												modelReason(draft, Boolean(openModel)),
-											]
-							}
-						/>
-					}
-					onOpen={openModel}
-					held={held}
-					// The one item with unbounded length, so it is the one that
-					// truncates. `min-w-0` is what lets the span inside it shrink at
-					// all -- a flex item's automatic floor is its content.
-					//
-					// `min-w-14` (56px) is the floor: about eight monospace glyphs
-					// when the badge is absent, 24px of name (the bolt's 14px and the
-					// 6px gap come off the same floor) when it shows — still a name
-					// rather than an ellipsis with no subject, and
-					// `LongModelName`'s fast-on frame is the picture. It cannot
-					// force a wrap at 750px, where the row's arithmetic leaves 56px
-					// of slack for exactly this item.
-					//
-					// `text-ink-dim` while pending: a colour step, never opacity (the
-					// branding contract's rule for a control that is not yet live), so a
-					// user can see that the value on screen is the one they chose and
-					// not yet the one the session runs.
-					className={cn(
-						// `shrink` overrides READING_BOX's `shrink-0`: the value readings
-						// hold their width (a clipped `≥$2.4` or `66.0%/40` is a false
-						// number, and at 750 with a 139-character id they were shrinking
-						// into each other), and this is the one item allowed to yield.
-						"min-w-14 max-w-full shrink",
-						pending && "text-ink-dim",
-					)}
-				>
-					{/*
-					 * THE FAST BADGE (operator's mock, 2026-09-29): the bolt, immediately
-					 * before the name it qualifies. A MARK, not a second control — the
-					 * chip's tooltip and `aria-label` both state the fact from
-					 * `FAST_MODE_ON_NOTE` above (its note says why the badge carries no
-					 * trigger of its own), and `shrink-0` keeps it whole when the name
-					 * truncates at the narrow end. Hidden when the dial is off OR the
-					 * model reports no fast tier — the one condition `fastOn` reads.
-					 */}
-					{fastOn && (
-						<Zap
-							aria-hidden="true"
-							className="size-3.5 shrink-0"
-							fill="currentColor"
-							stroke="none"
-						/>
-					)}
-					<span className="truncate">{identity.name}</span>
-					{/*
-					 * The pending state's non-hover cue (UX U3).
-					 *
-					 * The colour step alone is seen only by a user who already knows to
-					 * look for it, and the sentence that explains it lived in the tooltip —
-					 * i.e. behind a hover. The dialog says the same thing with the same
-					 * spinner while the same operation is in flight, so the band does too;
-					 * the label is what carries it into the accessibility tree.
-					 */}
-					{queued ? (
-						// Waiting, not working: the chip line's clock, in the same ink.
-						<Clock aria-hidden="true" className="size-3.5 shrink-0" />
-					) : (
-						pending && (
-							<Spinner
-								size="xs"
-								label={t("ui.chat.session_status.switching_model")}
+										: pending
+											? [
+													identity.selector,
+													t("ui.chat.session_readout.strip.model_switching"),
+												]
+											: [
+													identity.selector,
+													...(fastOn ? [fastModeOnNote()] : []),
+													modelReason(draft, Boolean(openModel)),
+												]
+								}
 							/>
-						)
-					)}
-				</Reading>
+						}
+						onOpen={openModel}
+						picker={isComposerDock ? "model" : undefined}
+						held={held}
+						// The one item with unbounded length, so it is the one that
+						// truncates. `min-w-0` is what lets the span inside it shrink at
+						// all -- a flex item's automatic floor is its content.
+						//
+						// `min-w-14` (56px) is the floor: about eight monospace glyphs
+						// when the badge is absent, 24px of name (the bolt's 14px and the
+						// 6px gap come off the same floor) when it shows — still a name
+						// rather than an ellipsis with no subject, and
+						// `LongModelName`'s fast-on frame is the picture. It cannot
+						// force a wrap at 750px, where the row's arithmetic leaves 56px
+						// of slack for exactly this item.
+						//
+						// `text-ink-dim` while pending: a colour step, never opacity (the
+						// branding contract's rule for a control that is not yet live), so a
+						// user can see that the value on screen is the one they chose and
+						// not yet the one the session runs.
+						className={cn(
+							// `shrink` overrides READING_BOX's `shrink-0`: the value readings
+							// hold their width (a clipped `≥$2.4` or `66.0%/40` is a false
+							// number, and at 750 with a 139-character id they were shrinking
+							// into each other), and this is the one item allowed to yield.
+							"min-w-14 max-w-full shrink",
+							pending && "text-ink-dim",
+						)}
+					>
+						{/*
+						 * THE FAST BADGE (operator's mock, 2026-09-29): the bolt, immediately
+						 * before the name it qualifies. A MARK, not a second control — the
+						 * chip's tooltip and `aria-label` both state the fact from
+						 * `FAST_MODE_ON_NOTE` above (its note says why the badge carries no
+						 * trigger of its own), and `shrink-0` keeps it whole when the name
+						 * truncates at the narrow end. Hidden when the dial is off OR the
+						 * model reports no fast tier — the one condition `fastOn` reads.
+						 */}
+						{fastOn && (
+							<Zap
+								aria-hidden="true"
+								className="size-3.5 shrink-0"
+								fill="currentColor"
+								stroke="none"
+							/>
+						)}
+						<span className="truncate">{identity.name}</span>
+						{/*
+						 * The pending state's non-hover cue (UX U3).
+						 *
+						 * The colour step alone is seen only by a user who already knows to
+						 * look for it, and the sentence that explains it lived in the tooltip —
+						 * i.e. behind a hover. The dialog says the same thing with the same
+						 * spinner while the same operation is in flight, so the band does too;
+						 * the label is what carries it into the accessibility tree.
+						 */}
+						{queued ? (
+							// Waiting, not working: the chip line's clock, in the same ink.
+							<Clock aria-hidden="true" className="size-3.5 shrink-0" />
+						) : (
+							pending && (
+								<Spinner
+									size="xs"
+									label={t("ui.chat.session_status.switching_model")}
+								/>
+							)
+						)}
+					</Reading>
+				),
 			)}
 			{/*
 			 * `chooseModel` is the RESOLVED-no-model state, and only that (UX U3).
@@ -1747,24 +1790,28 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			 * that has not happened, and the pane's own spinner is the app's idiom for
 			 * "not yet known".
 			 */}
-			{chooseModel && (
-				<Reading
-					label={t("ui.chat.session_status.model_none_resolved_tooltip")}
-					tooltip={
-						<TooltipLines
-							lines={[
-								t("ui.chat.session_status.no_model_resolved"),
-								t("ui.chat.session_status.choose_model_tooltip"),
-							]}
-						/>
-					}
-					onOpen={openModel}
-					className="shrink-0"
-				>
-					<span className="truncate">
-						{t("ui.chat.session_status.choose_model")}
-					</span>
-				</Reading>
+			{placePicker(
+				"choose-model",
+				chooseModel && (
+					<Reading
+						label={t("ui.chat.session_status.model_none_resolved_tooltip")}
+						tooltip={
+							<TooltipLines
+								lines={[
+									t("ui.chat.session_status.no_model_resolved"),
+									t("ui.chat.session_status.choose_model_tooltip"),
+								]}
+							/>
+						}
+						onOpen={openModel}
+						picker={isComposerDock ? "model" : undefined}
+						className="shrink-0"
+					>
+						<span className="truncate">
+							{t("ui.chat.session_status.choose_model")}
+						</span>
+					</Reading>
+				),
 			)}
 			{/*
 			 * The resolution ITSELF, for the window in which it has no answer (UX U3).
@@ -1778,51 +1825,54 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			 * reading sits, like the empty state above, so a receipt lands in place
 			 * rather than moving the cluster (R23).
 			 */}
-			{draftResolution && !identity && (
-				<Reading
-					label={
-						draftResolution.status === "failed"
-							? t("ui.chat.session_status.model_aria_unresolved")
-							: t("ui.chat.session_status.model_aria_resolving")
-					}
-					tooltip={
-						<TooltipLines
-							lines={
-								draftResolution.status === "failed"
-									? [
-											t("ui.chat.session_readout.strip.draft_failed.title"),
-											t("ui.chat.session_readout.strip.draft_failed.detail"),
-											t("ui.chat.session_readout.strip.draft_failed.retry"),
-										]
-									: [
-											t("ui.chat.session_readout.strip.draft_pending.title"),
-											t("ui.chat.session_readout.strip.draft_pending.detail"),
-										]
-							}
-						/>
-					}
-					onOpen={
-						draftResolution.status === "failed"
-							? draftResolution.retry
-							: undefined
-					}
-					className={cn(
-						"shrink-0",
-						draftResolution.status === "pending" && "text-ink-dim",
-					)}
-				>
-					<span className="truncate">
-						{draftResolution.status === "failed"
-							? t("ui.chat.session_readout.strip.draft_failed.retry")
-							: t("ui.chat.session_readout.strip.draft_pending.label")}
-					</span>
-					{draftResolution.status === "pending" && (
-						<Spinner
-							size="xs"
-							label={t("ui.chat.session_status.resolving_model_spinner")}
-						/>
-					)}
-				</Reading>
+			{placePicker(
+				"model-resolution",
+				draftResolution && !identity && (
+					<Reading
+						label={
+							draftResolution.status === "failed"
+								? t("ui.chat.session_status.model_aria_unresolved")
+								: t("ui.chat.session_status.model_aria_resolving")
+						}
+						tooltip={
+							<TooltipLines
+								lines={
+									draftResolution.status === "failed"
+										? [
+												t("ui.chat.session_readout.strip.draft_failed.title"),
+												t("ui.chat.session_readout.strip.draft_failed.detail"),
+												t("ui.chat.session_readout.strip.draft_failed.retry"),
+											]
+										: [
+												t("ui.chat.session_readout.strip.draft_pending.title"),
+												t("ui.chat.session_readout.strip.draft_pending.detail"),
+											]
+								}
+							/>
+						}
+						onOpen={
+							draftResolution.status === "failed"
+								? draftResolution.retry
+								: undefined
+						}
+						className={cn(
+							"shrink-0",
+							draftResolution.status === "pending" && "text-ink-dim",
+						)}
+					>
+						<span className="truncate">
+							{draftResolution.status === "failed"
+								? t("ui.chat.session_readout.strip.draft_failed.retry")
+								: t("ui.chat.session_readout.strip.draft_pending.label")}
+						</span>
+						{draftResolution.status === "pending" && (
+							<Spinner
+								size="xs"
+								label={t("ui.chat.session_status.resolving_model_spinner")}
+							/>
+						)}
+					</Reading>
+				),
 			)}
 			{/*
 			 * R19: a draft shows the effort reading only where the spec carries a
@@ -1858,75 +1908,85 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			 * wearing a different hat. What a draft must not print is a level-shaped
 			 * word for a level nobody has: that is exactly `unknown`.
 			 */}
-			{effort && (!draft || effort.levelKnown) && (
-				<Reading
-					label={[
-						t("ui.chat.session_readout.strip.effort_aria", {
-							level: effortDisplay(effort.label),
-						}),
-						// The action BEFORE the reason (design review): "… resumes on
-						// X. Change it." read as though the instruction applied to
-						// the fallback sentence rather than to the effort level.
-						effortReason(draft, effort.adjustable, Boolean(openEffort)),
-						effortNote,
-					]
-						.filter(Boolean)
-						.join(" ")}
-					tooltip={
-						<TooltipLines
-							lines={[
-								effortDisplay(effort.label),
-								// The reason comes FIRST after the value: it answers the
-								// question the mark raised, before the ladder detail.
-								...(effortNote ? [effortNote] : []),
-								...(draft && effort.adjustable && !openEffort
-									? [draftEffortLine()]
-									: [effort.detail]),
-							]}
-						/>
-					}
-					// A model with no ladder gets the label form, not a dead button.
-					// Opening `/effort` there reaches a picker whose own empty text is
-					// "Effort is not adjustable on this model" -- true, but a worse way
-					// to learn it than never offering the control.
-					onOpen={openEffort}
-					held={held}
-					/*
-					 * The ladder's FIRST rung (issue #918; the order and the fit points
-					 * are in `docs/evidence/composer-readings-shed/README.md`). A static
-					 * setting the user chose goes before the live numbers, so effort is
-					 * the first reading given up.
-					 */
-					className={
-						SHED_RUNGS.effort[rungState(controlsThirdBox, accessNote !== null)]
-					}
-				>
-					{/*
-					 * The level is a machine-reported value, not prose, so it is
-					 * monospace like every other value in this row.
-					 */}
-					<span
-						className={cn(
-							"font-mono text-mono-sm",
-							/*
-							 * `warning` is the role for "read this, nothing has broken"
-							 * (docs/branding.md § 3; the same reading `wedged` takes in
-							 * `chat-session-status.tsx`). Colour is never the only
-							 * channel: the `Info` glyph beside it is the shape, so the mark
-							 * survives a colour-blind reading. Both are `aria-hidden`
-							 * because the sentence already rides the accessible name.
-							 */
-							effortNote && "inline-flex items-center gap-1 text-warning",
-							// The same pending register the model reading takes.
-							pendingEffort !== null && "text-ink-dim",
-						)}
+			{placePicker(
+				"effort",
+				effort && (!draft || effort.levelKnown) && (
+					<Reading
+						label={[
+							t("ui.chat.session_readout.strip.effort_aria", {
+								level: effortDisplay(effort.label),
+							}),
+							// The action BEFORE the reason (design review): "… resumes on
+							// X. Change it." read as though the instruction applied to
+							// the fallback sentence rather than to the effort level.
+							effortReason(draft, effort.adjustable, Boolean(openEffort)),
+							effortNote,
+						]
+							.filter(Boolean)
+							.join(" ")}
+						tooltip={
+							<TooltipLines
+								lines={[
+									effortDisplay(effort.label),
+									// The reason comes FIRST after the value: it answers the
+									// question the mark raised, before the ladder detail.
+									...(effortNote ? [effortNote] : []),
+									...(draft && effort.adjustable && !openEffort
+										? [draftEffortLine()]
+										: [effort.detail]),
+								]}
+							/>
+						}
+						// A model with no ladder gets the label form, not a dead button.
+						// Opening `/effort` there reaches a picker whose own empty text is
+						// "Effort is not adjustable on this model" -- true, but a worse way
+						// to learn it than never offering the control.
+						onOpen={openEffort}
+						picker={isComposerDock ? "effort" : undefined}
+						held={held}
+						/*
+						 * The ladder's FIRST rung (issue #918; the order and the fit points
+						 * are in `docs/evidence/composer-readings-shed/README.md`). A static
+						 * setting the user chose goes before the live numbers, so effort is
+						 * the first reading given up.
+						 */
+						className={
+							isComposerDock
+								? "composer-dock-effort"
+								: SHED_RUNGS.effort[
+										rungState(controlsThirdBox, accessNote !== null)
+									]
+						}
 					>
-						{effortDisplay(effort.label)}
-						{effortNote && (
-							<Info aria-hidden="true" className="size-3 shrink-0" />
-						)}
-					</span>
-				</Reading>
+						{/*
+						 * The level is a machine-reported value, not prose, so it is
+						 * monospace like every other value in this row.
+						 */}
+						<span
+							className={cn(
+								// A live picker shows its selected option in UI type; a non-
+								// adjustable level still reads as metadata with the other values.
+								(!isComposerDock || !openEffort) && "font-mono text-mono-sm",
+								/*
+								 * `warning` is the role for "read this, nothing has broken"
+								 * (docs/branding.md § 3; the same reading `wedged` takes in
+								 * `chat-session-status.tsx`). Colour is never the only
+								 * channel: the `Info` glyph beside it is the shape, so the mark
+								 * survives a colour-blind reading. Both are `aria-hidden`
+								 * because the sentence already rides the accessible name.
+								 */
+								effortNote && "inline-flex items-center gap-1 text-warning",
+								// The same pending register the model reading takes.
+								pendingEffort !== null && "text-ink-dim",
+							)}
+						>
+							{effortDisplay(effort.label)}
+							{effortNote && (
+								<Info aria-hidden="true" className="size-3 shrink-0" />
+							)}
+						</span>
+					</Reading>
+				),
 			)}
 			{accessNote && (
 				/*
@@ -2033,7 +2093,11 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				 * goes, the row is down to the model alone.
 				 */
 				className={
-					SHED_RUNGS.context[rungState(controlsThirdBox, accessNote !== null)]
+					isComposerDock
+						? "composer-dock-context"
+						: SHED_RUNGS.context[
+								rungState(controlsThirdBox, accessNote !== null)
+							]
 				}
 			>
 				<ContextWheel reading={reading} />
@@ -2087,7 +2151,11 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * the terminal band keeps longest.
 					 */
 					className={
-						SHED_RUNGS.cost[rungState(controlsThirdBox, accessNote !== null)]
+						isComposerDock
+							? "composer-dock-cost"
+							: SHED_RUNGS.cost[
+									rungState(controlsThirdBox, accessNote !== null)
+								]
 					}
 				>
 					{/* A cost has no picker of its own: `/usage` is a different
@@ -2174,7 +2242,10 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 			{duration && (
 				<span
 					data-lo-duration={true}
-					className={cn("absolute top-0", !durationFits && "invisible")}
+					className={cn(
+						isComposerDock ? "composer-dock-duration" : "absolute top-0",
+						!isComposerDock && !durationFits && "invisible",
+					)}
 					/*
 					 * THE ANCHOR IS LOGICAL, because the row is. `insetInlineStart` is
 					 * `left` in LTR and `right` in RTL, so the reading always hangs one
@@ -2184,9 +2255,13 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * the same edge by construction; `after/numbers.json` records
 					 * `anchorDelta` per cell (zero in every captured one).
 					 */
-					style={{
-						insetInlineStart: `calc(100% + ${READING_GAP}px)`,
-					}}
+					style={
+						isComposerDock
+							? undefined
+							: {
+									insetInlineStart: `calc(100% + ${READING_GAP}px)`,
+								}
+					}
 				>
 					<Reading
 						label={t("ui.chat.session_status.active_time_aria", {
