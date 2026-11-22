@@ -250,7 +250,7 @@ const api = {
 			},
 			watchState: (
 				onState: (state: DesktopFeedState) => void,
-				includeSessionStatus?: boolean,
+				includeWorkspaceEpoch?: boolean,
 			) => {
 				const handler = (_event: unknown, state: DesktopFeedState) =>
 					onState(state);
@@ -258,7 +258,7 @@ const api = {
 				// Ask for the CURRENT state as well as every transition: a subscriber
 				// that mounts after a reconnect would otherwise render "disconnected"
 				// until the next transition, which may never come on a healthy feed.
-				ipcRenderer.send("desktop-feed-watch", includeSessionStatus === true);
+				ipcRenderer.send("desktop-feed-watch", includeWorkspaceEpoch === true);
 				return () => {
 					ipcRenderer.removeListener("desktop-feed-state", handler);
 				};

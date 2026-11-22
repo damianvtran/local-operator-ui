@@ -214,7 +214,7 @@ function attentionFrame(sessionId, overrides = {}) {
 	};
 }
 
-test("the live relay can seed a watcher that missed open, but clears proof on gap and disconnect", async (t) => {
+test("the live relay exposes an epoch only after open and clears it on gap and disconnect", async (t) => {
 	let source;
 	t.mock.method(globalThis, "fetch", async (_url, options) => {
 		source = sseSource(options.signal);
@@ -236,7 +236,7 @@ test("the live relay can seed a watcher that missed open, but clears proof on ga
 	await relay.start();
 	await connected;
 	assert.equal(
-		relay.sessionStatusSnapshot,
+		relay.workspaceEpoch,
 		undefined,
 		"a socket is not proof before open",
 	);
@@ -252,17 +252,8 @@ test("the live relay can seed a watcher that missed open, but clears proof on ga
 			},
 		}),
 	);
-	assert.deepEqual(relay.sessionStatusSnapshot.statuses, {
-		[SESSION]: { revision: 7, code: "idle" },
-	});
-	await push({
-		type: "session_status",
-		epoch: "old",
-		seq: 2,
-		session_id: SESSION,
-		payload: { revision: 9, code: "working" },
-	});
-	assert.equal(relay.sessionStatusSnapshot.statuses[SESSION].code, "idle");
+	assert.equal(relay.workspaceEpoch, "feed");
+
 	await push({
 		type: "session_status",
 		epoch: "feed",
@@ -270,16 +261,24 @@ test("the live relay can seed a watcher that missed open, but clears proof on ga
 		session_id: SESSION,
 		payload: { revision: 8, code: "working" },
 	});
-	assert.equal(relay.sessionStatusSnapshot.statuses[SESSION].code, "working");
+	assert.equal(
+		relay.workspaceEpoch,
+		"feed",
+		"headlines do not change the epoch",
+	);
 	await push({
 		type: "gap",
 		epoch: "feed",
 		seq: 3,
 		payload: { reason: "fixture", subscription_id: "abcd1234" },
 	});
-	assert.deepEqual(relay.sessionStatusSnapshot.statuses, {});
+	assert.equal(relay.workspaceEpoch, undefined);
+	await push({ type: "heartbeat", epoch: "feed", seq: 4, payload: {} });
+	assert.equal(relay.workspaceEpoch, undefined);
+	await push(openFrame());
+	assert.equal(relay.workspaceEpoch, "feed");
 	relay.stop();
-	assert.equal(relay.sessionStatusSnapshot, undefined);
+	assert.equal(relay.workspaceEpoch, undefined);
 });
 
 // ------------------------------------------------------- the capability gate

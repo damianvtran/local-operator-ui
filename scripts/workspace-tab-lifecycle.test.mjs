@@ -31,7 +31,7 @@ const bundle = await build({
 			export {useConversationInputStore} from './src/renderer/src/shared/store/conversation-input-store';
 			export {useUiPreferencesStore} from './src/renderer/src/shared/store/ui-preferences-store';
 			export {WORKSPACE_INACTIVE_MS} from './src/renderer/src/features/chat/workspace-tab-cleanup';
-			export {DesktopFeedStatusProjection} from './src/shared/desktop-feed-status';
+			export {desktopEndpoint, desktopRequestSchema} from './src/shared/desktop-contract';
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -58,7 +58,8 @@ const {
 	useConversationInputStore: composer,
 	useUiPreferencesStore: preferences,
 	WORKSPACE_INACTIVE_MS,
-	DesktopFeedStatusProjection,
+	desktopEndpoint,
+	desktopRequestSchema,
 } = module.exports;
 const A = "000000aaaaaa";
 const B = "000000bbbbbb";
@@ -88,6 +89,7 @@ async function mount(
 		rows = [],
 		drafts = {},
 		input = {},
+		pins = [],
 	} = {},
 ) {
 	canonical.setState({
@@ -99,7 +101,7 @@ async function mount(
 	canonical.getState().setActiveSession(A);
 	composer.setState({ inputByConversation: input });
 	preferences.setState({
-		workspaceTabs: open.map((id) => ({ id, pinned: false })),
+		workspaceTabs: open.map((id) => ({ id, pinned: pins.includes(id) })),
 		workspaceAutoClose: false,
 	});
 	navigate(`/chat/${A}`);
@@ -155,18 +157,33 @@ test("late confirmation after a replacement switch, a route departure, or a 404 
 	assert.ok(find(A));
 });
 
-const resting = {
+// Match the cold HTTP evidence at Core 9ab8d79dae: complete at baseline
+// revision zero, no catalogue status stamps, and a null live jobs count.
+const cold = {
 	locality: "local",
-	status_epoch: "live",
-	status_revision: 7,
-	status: { code: "idle" },
+	status: { code: "complete" },
 	active: false,
 	background_work: false,
 	waiting_on: 0,
-	jobs_running: 0,
+	jobs_running: null,
 	pending: null,
-	asks_open: 0,
 };
+const epoch = "42d4fbfe827e788f";
+const armRevision =
+	"218cad26a12c3cb947823b0c2f0708687c61485e9de20cad94a2935167b5b066";
+const leaseRevision =
+	"5f701f84bb191f7883a26fc5714fad2abd25172c08f7af668d5d9217871757ff";
+const receipt = (revision = armRevision) => ({ version: 1, epoch, revision });
+const wireRow = (id, workspace_rest = receipt()) => ({
+	...cold,
+	id,
+	name: "fixture",
+	mtime: 100,
+	workspace_rest,
+});
+const result = (sessions) => ({ status: 200, body: { result: { sessions } } });
+const rowsFor = (sessionIds) =>
+	sessionIds.map((session_id) => ({ ...cold, session_id }));
 const D = "000000dddddd";
 const E = "000000eeeeee";
 const F = "000000ffffff";
@@ -178,34 +195,57 @@ const pending = {
 	replies: [],
 };
 
-function installFeed(t, ids) {
-	const live = new DesktopFeedStatusProjection();
-	live.observe({
-		type: "open",
-		epoch: "live",
-		seq: 1,
-		payload: {
-			attention_status: Object.fromEntries(
-				ids.map((id) => [`session/${id}`, { revision: 7, code: "idle" }]),
-			),
-		},
-	});
+function installTransport(
+	t,
+	{
+		answer = (requested) => result(requested.map((id) => wireRow(id))),
+		startEpoch = epoch,
+	} = {},
+) {
 	const listeners = new Set();
 	const states = new Set();
+	const calls = [];
+	const errors = [];
 	let initialWatch = 0;
 	dom.window.api = {
 		desktop: {
+			request: (request) => {
+				// The native bridge validates this schema and uses this endpoint
+				// mapper. Exercise both, then substitute only the HTTP reply.
+				try {
+					const { path, method, body } = desktopEndpoint(
+						desktopRequestSchema.parse(request),
+					);
+					const url = new URL(path, "http://127.0.0.1:9");
+					assert.equal(method, "GET");
+					assert.equal(body, undefined);
+					assert.equal(url.pathname, "/v1/desktop/sessions");
+					const requested = url.searchParams.getAll("workspace_rest_id");
+					assert.deepEqual(
+						[...url.searchParams],
+						[
+							["limit", "500"],
+							...requested.map((id) => ["workspace_rest_id", id]),
+						],
+					);
+					calls.push(requested);
+					return answer(requested, calls.length);
+				} catch (error) {
+					errors.push(error);
+					throw error;
+				}
+			},
 			feed: {
 				subscribe: (listener) => {
 					listeners.add(listener);
 					return () => listeners.delete(listener);
 				},
-				watchState: (listener, includeSessionStatus) => {
+				watchState: (listener, includeWorkspaceEpoch) => {
 					states.add(listener);
 					initialWatch++;
 					listener({
 						connected: true,
-						sessionStatus: includeSessionStatus ? live.snapshot() : undefined,
+						workspaceEpoch: includeWorkspaceEpoch ? startEpoch : undefined,
 					});
 					return () => states.delete(listener);
 				},
@@ -214,16 +254,38 @@ function installFeed(t, ids) {
 	};
 	t.after(() => {
 		dom.window.api = undefined;
+		assert.deepEqual(errors, []);
 	});
+	const frame = (value) => {
+		for (const f of listeners) f({ epoch, ...value });
+	};
 	return {
+		calls,
 		watches: () => initialWatch,
 		disconnect: () => {
-			live.clear();
 			for (const f of states) f({ connected: false });
 		},
-		reconnectWithoutOpen: () => {
-			for (const f of states) f({ connected: true });
+		connect: (workspaceEpoch) => {
+			for (const f of states) f({ connected: true, workspaceEpoch });
 		},
+		open: () =>
+			frame({
+				type: "open",
+				seq: 1,
+				payload: {
+					attention_status: {
+						[`session/${B}`]: { revision: 0, code: "complete" },
+					},
+				},
+			}),
+		gap: () => frame({ type: "gap", seq: 2 }),
+		status: (code) =>
+			frame({
+				type: "session_status",
+				seq: 2,
+				session_id: B,
+				payload: { code, revision: 1 },
+			}),
 	};
 }
 function withClock(t) {
@@ -237,13 +299,48 @@ function withClock(t) {
 		});
 }
 
-test("opt-in measures a healthy feed baseline with no new frames; queued and key-owned rows stay", async (t) => {
-	const open = [A, B, C, D, E, F, G];
-	const feed = installFeed(t, open);
+const enable = () =>
+	act(() => preferences.getState().setWorkspaceAutoClose(true));
+
+test("workspace IDs use the existing page limit without changing ordinary catalogue bytes", () => {
+	const request = { op: "sessions.list", limit: 500 };
+	assert.equal(
+		desktopEndpoint(desktopRequestSchema.parse(request)).path,
+		"/v1/desktop/sessions?limit=500",
+	);
+	const valid = Array.from({ length: 500 }, (_, index) =>
+		index.toString(16).padStart(12, "0"),
+	);
+	const safe = (workspace_rest_id) =>
+		desktopRequestSchema.safeParse({ ...request, workspace_rest_id }).success;
+	assert.equal(safe(valid), true);
+	assert.equal(safe([...valid, B]), false);
+	assert.equal(safe(["not-a-session"]), false);
+});
+
+test("cold proof arms without new frames; one fresh batch drops only untouched local tabs at 30 min", async (t) => {
+	const H = "000000222222";
+	const I = "000000333333";
+	const J = "000000444444";
+	const K = "000000555555";
+	const L = "000000666666";
+	const M = "000000777777";
+	const open = [A, B, C, D, E, F, G, H, I, J, K, L, M];
+	const rows = rowsFor(open).filter((row) => row.session_id !== I);
+	Object.assign(
+		rows.find((row) => row.session_id === H),
+		{ background_work: true },
+	);
+	Object.assign(
+		rows.find((row) => row.session_id === J),
+		{ locality: "remote" },
+	);
+	const feed = installTransport(t);
 	await mount(t, {
 		feedAvailable: true,
 		ids: open,
-		rows: open.map((session_id) => ({ ...resting, session_id })),
+		rows,
+		pins: [K],
 		input: { [C]: pending, [`send:${D}`]: pending },
 		drafts: {
 			[E]: { key: E },
@@ -252,30 +349,197 @@ test("opt-in measures a healthy feed baseline with no new frames; queued and key
 		},
 	});
 	const tick = withClock(t);
-	assert.equal(feed.watches(), 0);
 	await tick(WORKSPACE_INACTIVE_MS);
+	assert.equal(feed.watches(), 0);
+	assert.deepEqual(feed.calls, []);
 	assert.deepEqual(ids(), open);
-	await act(() => preferences.getState().setWorkspaceAutoClose(true));
+	await enable();
 	assert.equal(feed.watches(), 1);
+	assert.deepEqual(feed.calls, [[L, M, B]]);
+	await act(() => current.move(find(G).key, find(C).key));
+	const reordered = ids();
+	assert.notDeepEqual(reordered, open);
 	await tick(WORKSPACE_INACTIVE_MS - 1);
-	assert.deepEqual(ids(), open);
+	assert.deepEqual(feed.calls, [[L, M, B]]);
+	assert.deepEqual(ids(), reordered);
 	await tick(1);
-	assert.deepEqual(ids(), [A, C, D, E, F, G]);
+	assert.deepEqual(feed.calls, [
+		[L, M, B],
+		[L, M, B],
+	]);
+	assert.deepEqual(
+		ids(),
+		reordered.filter((id) => ![B, L, M].includes(id)),
+	);
+	assert.ok(find(K).pinned);
+	assert.equal(
+		canonical.getState().sessions,
+		rows,
+		"probe and drop do not edit catalogue rows",
+	);
+	assert.equal(canonical.getState().activeSessionId, A);
 });
 
-test("disconnect erases baseline evidence; a bare reconnect never arms from catalogue alone", async (t) => {
-	const feed = installFeed(t, [A, B]);
-	await mount(t, {
-		feedAvailable: true,
-		rows: [A, B].map((session_id) => ({ ...resting, session_id })),
+test("old Core stays inert even with a ready-looking headline and an unstamped cold row", async (t) => {
+	const feed = installTransport(t, {
+		answer: () =>
+			result([
+				{
+					...cold,
+					id: B,
+					status_revision: 0,
+					status_epoch: epoch,
+					jobs_running: 0,
+					asks_open: 0,
+				},
+			]),
 	});
+	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
 	const tick = withClock(t);
-	await act(() => preferences.getState().setWorkspaceAutoClose(true));
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS * 2);
+	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(feed.calls, [[B]], "omission is not an automatic retry");
+});
+
+test("a changed cold revision at expiry starts a new full interval before repeated proof can drop", async (t) => {
+	const feed = installTransport(t, {
+		answer: (_requested, count) =>
+			result([wireRow(B, receipt(count === 1 ? armRevision : leaseRevision))]),
+	});
+	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	await tick(1);
+	assert.deepEqual(ids(), [A]);
+	assert.deepEqual(feed.calls, [[B], [B], [B]]);
+});
+
+for (const [kind, latest] of Object.entries({
+	"old/unknown receipt": () => result([{ ...cold, id: B }]),
+	"wire failure": () => ({ status: 422, body: { detail: "unknown field" } }),
+	"IPC failure": () => Promise.reject(new Error("fixture transport failed")),
+	"wrong epoch": () => result([wireRow(B, { ...receipt(), epoch: "old" })]),
+	"new version": () => result([wireRow(B, { ...receipt(), version: 2 })]),
+	"malformed receipt": () =>
+		result([wireRow(B, { ...receipt(), revision: 0 })]),
+	"off-page candidate": () => ({
+		status: 200,
+		body: { result: { next_cursor: "more", sessions: [wireRow(A)] } },
+	}),
+})) {
+	test(`fresh ${kind} keeps the tab and does not poll`, async (t) => {
+		const feed = installTransport(t, {
+			answer: (_requested, count) =>
+				count === 1 ? result([wireRow(B)]) : latest(),
+		});
+		await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+		const tick = withClock(t);
+		await enable();
+		await tick(WORKSPACE_INACTIVE_MS);
+		await act(() => canonical.setState({ sessions: rowsFor([A, B]) }));
+		await tick(WORKSPACE_INACTIVE_MS * 2);
+		assert.deepEqual(ids(), [A, B]);
+		assert.deepEqual(feed.calls, [[B], [B]]);
+	});
+}
+
+for (const [kind, interrupt] of Object.entries({
+	"same-epoch new open": (feed) => act(() => feed.open()),
+	"gap and same-process reattach": (feed) =>
+		act(() => {
+			feed.gap();
+			feed.disconnect();
+			feed.connect(epoch);
+			feed.open();
+		}),
+	"session activity": (feed) => act(() => feed.status("working")),
+	"pin then unpin": async () => {
+		await act(() => current.pin(find(B).key));
+		await act(() => current.pin(find(B).key));
+	},
+	"transient queued input": () =>
+		act(() => {
+			composer.setState({ inputByConversation: { [`send:${B}`]: pending } });
+			composer.setState({ inputByConversation: {} });
+		}),
+	"local validation": () =>
+		act(() => {
+			canonical.setState({ validatingSessionId: B });
+			canonical.setState({ validatingSessionId: null });
+		}),
+})) {
+	test(`${kind} discards an in-flight expiry even if the safe-looking set comes back`, async (t) => {
+		const delayed = Promise.withResolvers();
+		const feed = installTransport(t, {
+			answer: (_requested, count) =>
+				count === 2 ? delayed.promise : result([wireRow(B)]),
+		});
+		await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+		const tick = withClock(t);
+		await enable();
+		await tick(WORKSPACE_INACTIVE_MS);
+		assert.deepEqual(feed.calls, [[B], [B]]);
+		await interrupt(feed);
+		assert.deepEqual(feed.calls, [[B], [B]], "only one batch may be pending");
+		await act(() => delayed.resolve(result([wireRow(B)])));
+		assert.deepEqual(ids(), [A, B]);
+		assert.deepEqual(feed.calls, [[B], [B], [B]]);
+		await tick(WORKSPACE_INACTIVE_MS);
+		assert.deepEqual(ids(), [A]);
+		assert.deepEqual(feed.calls, [[B], [B], [B], [B]]);
+	});
+}
+
+test("only open can establish an epoch after a gap or disconnect, not an old watch snapshot", async (t) => {
+	const feed = installTransport(t, { startEpoch: null });
+	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	assert.deepEqual(feed.calls, [], "a connected socket alone is not an epoch");
+	await act(() => feed.open());
+	await tick(WORKSPACE_INACTIVE_MS - 1);
+	await act(() => {
+		feed.gap();
+		feed.connect(epoch);
+	});
+	await tick(1);
+	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(feed.calls, [[B]], "gap alone invalidates the open");
+	await act(() => feed.open());
 	await tick(WORKSPACE_INACTIVE_MS - 1);
 	await act(() => {
 		feed.disconnect();
-		feed.reconnectWithoutOpen();
+		feed.connect();
 	});
-	await tick(WORKSPACE_INACTIVE_MS);
+	await tick(1);
 	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(
+		feed.calls,
+		[[B], [B]],
+		"disconnect alone invalidates the open",
+	);
+});
+
+test("turning off the opt-in discards a pending close", async (t) => {
+	const delayed = Promise.withResolvers();
+	const feed = installTransport(t, {
+		answer: (_requested, count) =>
+			count === 2 ? delayed.promise : result([wireRow(B)]),
+	});
+	await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	await act(() => preferences.getState().setWorkspaceAutoClose(false));
+	await act(() => delayed.resolve(result([wireRow(B)])));
+	assert.deepEqual(ids(), [A, B]);
+	assert.deepEqual(feed.calls, [[B], [B]]);
 });

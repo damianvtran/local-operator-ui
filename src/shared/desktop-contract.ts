@@ -25,7 +25,6 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
-import type { DesktopFeedStatusSnapshot } from "./desktop-feed-status";
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import {
@@ -192,6 +191,7 @@ export const sessionIdPattern = /^[a-f0-9]{12}$/;
 // The catalogue also discovers persisted full-hex directory names. Match core's
 // bulk receipt contract without widening the ID grammar of unrelated operations.
 export const bulkReceiptSessionIdPattern = /^(?:[a-f0-9]{12}|[a-f0-9]{32})$/;
+export const DESKTOP_SESSION_PAGE_LIMIT = 500;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
  * THE SESSION IDS THE NOTIFICATIONS INBOX FILES ROWS UNDER.
@@ -2081,7 +2081,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.list"),
-			limit: z.number().int().min(1).max(500).optional(),
+			limit: z.number().int().min(1).max(DESKTOP_SESSION_PAGE_LIMIT).optional(),
+			// Workspace cleanup alone opts in, with the Core page's existing bound.
+			// These IDs request evidence on page rows; they do not select membership.
+			workspace_rest_id: z
+				.array(z.string().regex(bulkReceiptSessionIdPattern))
+				.max(DESKTOP_SESSION_PAGE_LIMIT)
+				.optional(),
 			/*
 			 * Whether ARCHIVED conversations belong in the answer.
 			 *
@@ -9150,8 +9156,8 @@ export type DesktopStreamEvent = {
  */
 export type DesktopFeedState = {
 	connected: boolean;
-	/** Sent only on an explicit watch request; ordinary transitions are small. */
-	sessionStatus?: DesktopFeedStatusSnapshot;
+	/** Set on an explicit watch request, only after this connection's open frame. */
+	workspaceEpoch?: string;
 };
 
 export type DesktopStreamSubscription = {
@@ -9836,7 +9842,7 @@ export type DesktopAPI = {
 		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
 		watchState: (
 			onState: (state: DesktopFeedState) => void,
-			includeSessionStatus?: boolean,
+			includeWorkspaceEpoch?: boolean,
 		) => () => void;
 	};
 	/**
@@ -11247,10 +11253,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// newest member of the query string, and nothing that never asks for it
 			// may move.
 			if (request.sort) params.set("sort", request.sort);
-			// LAST, and omitted when false, for the same byte-order promise: it is the
-			// newest parameter, and an older core's closed query model must never see
-			// it (the caller sends it only under `features.temporary_chats`).
+			// Omitted when false: the caller sends it only under `features.temporary_chats`.
 			if (request.include_temporary) params.set("include_temporary", "true");
+			// Keep ordinary catalogue requests byte-identical, including on old Core.
+			for (const id of request.workspace_rest_id ?? [])
+				params.append("workspace_rest_id", id);
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",

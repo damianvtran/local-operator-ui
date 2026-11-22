@@ -3789,7 +3789,7 @@ app
 		// stop saying "not connected".
 		ipcMain.on(
 			"desktop-feed-watch",
-			(event, includeSessionStatus?: boolean) => {
+			(event, includeWorkspaceEpoch?: boolean) => {
 				const window = mainWindow;
 				if (
 					!window ||
@@ -3798,14 +3798,13 @@ app
 				)
 					return;
 				const relay = backendService.getDesktopFeedRelay();
-				// Cleanup can opt in after the open frame or after a route remount;
-				// unchanged statuses need not be published again by the server.
+				// An opt-in after open or a route remount needs the current epoch,
+				// not a second SSE connection or another set of session headlines.
 				window.webContents.send("desktop-feed-state", {
 					connected: relay.isConnected,
-					sessionStatus:
-						includeSessionStatus === true
-							? relay.sessionStatusSnapshot
-							: undefined,
+					...(includeWorkspaceEpoch === true
+						? { workspaceEpoch: relay.workspaceEpoch }
+						: {}),
 				} satisfies DesktopFeedState);
 			},
 		);

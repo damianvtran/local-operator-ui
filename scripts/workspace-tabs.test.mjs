@@ -20,9 +20,8 @@ const { outputFiles } = await build({
 });
 const {
 	WORKSPACE_INACTIVE_MINUTES,
-	WORKSPACE_INACTIVE_MS,
-	advanceWorkspaceCleanup,
-	confirmedWorkspaceRest,
+	workspaceRestRevisions,
+	workspaceRowCanRest,
 	displayedWorkspaceTabs,
 	makeWorkspaceTab,
 	moveWorkspaceTab,
@@ -153,99 +152,57 @@ test("saved preferences consist of known session identities, order and boolean p
 	);
 });
 
-const receipt = { epoch: "fixture", revision: 3, code: "idle" };
-const resting = {
-	locality: "local",
-	status_epoch: receipt.epoch,
-	status_revision: receipt.revision,
-	status: { code: receipt.code },
-	active: false,
-	background_work: false,
-	waiting_on: 0,
-	jobs_running: 0,
-	pending: null,
-	asks_open: 0,
-};
-
-test("only a positively confirmed resting local session can age out", () => {
-	assert.equal(
-		confirmedWorkspaceRest(resting, receipt, undefined, false),
-		true,
-	);
+test("catalogue facts can veto but never certify workspace rest", () => {
+	const resting = { id: targetA.id, locality: "local", jobs_running: null };
+	assert.equal(workspaceRowCanRest(resting), true);
 	for (const patch of [
 		{ locality: undefined },
 		{ locality: "remote" },
 		{ link_down: true },
+		{ archived: true },
+		{ pinned: true },
 		{ active: true },
-		{ active: undefined },
 		{ background_work: true },
-		{ background_work: undefined },
+		{ attention: { unseen: true } },
 		{ waiting_on: 1 },
 		{ jobs_running: 1 },
 		{ pending: "approve" },
 		{ asks_open: 1 },
-		{ asks_open: undefined },
-		{ status_revision: 2 },
-		{ status_epoch: "prior" },
 		{ status: { code: "answer" } },
 	])
 		assert.equal(
-			confirmedWorkspaceRest(
-				{ ...resting, ...patch },
-				receipt,
-				undefined,
-				false,
-			),
+			workspaceRowCanRest({ ...resting, ...patch }),
 			false,
 			JSON.stringify(patch),
 		);
-	assert.equal(
-		confirmedWorkspaceRest(resting, undefined, undefined, false),
-		false,
-	);
-	assert.equal(
-		confirmedWorkspaceRest(resting, receipt, undefined, true),
-		false,
-	);
-	for (const draftInput of [
-		{ currentInput: "unsent" },
-		{ pendingText: "not yet adopted" },
-		{ attachments: ["file"] },
-		{ replies: ["quote"] },
-		{ inFlight: {} },
-		{ returned: {} },
-	]) {
-		assert.equal(
-			confirmedWorkspaceRest(
-				resting,
-				receipt,
-				{ attachments: [], replies: [], ...draftInput },
-				false,
-			),
-			false,
-		);
-	}
-});
 
-test("the fake clock confirms expiry at exactly the configured interval and resets on lost proof", () => {
-	const tabs = [sessionA, { ...sessionB, pinned: true }, sessionC, draftTab];
-	const now = 125;
-	const check = (at, prior, evidence = () => "fixture:3") =>
-		advanceWorkspaceCleanup(tabs, targetC, at, prior, evidence);
-	const start = check(now, new Map());
-	assert.deepEqual([...start.next.keys()], [sessionA.key]);
-	assert.equal(start.wakeAt, now + WORKSPACE_INACTIVE_MS);
-	assert.equal(check(start.wakeAt - 1, start.next).expired.size, 0);
-	assert.deepEqual(
-		[...check(start.wakeAt, start.next).expired],
-		[sessionA.key],
+	const epoch = "known feed";
+	const revision = "opaque-String:+-123";
+	const workspace_rest = { version: 1, epoch, revision };
+	const local = { ...resting, workspace_rest };
+	const read = (...sessions) =>
+		workspaceRestRevisions(
+			{ status: 200, body: { result: { sessions } } },
+			new Set([targetA.id]),
+			epoch,
+		);
+	assert.equal(read(resting).get(targetA.id), undefined);
+	assert.equal(
+		read(local, { ...local, id: targetB.id }).get(targetA.id),
+		revision,
+	);
+	assert.equal(read(local, local).get(targetA.id), undefined);
+	assert.equal(
+		read({ ...local, locality: "remote" }).get(targetA.id),
+		undefined,
 	);
 	assert.equal(
-		check(start.wakeAt, start.next, () => "fixture:4").expired.size,
-		0,
+		read({
+			...local,
+			workspace_rest: { ...workspace_rest, revision: "  " },
+		}).get(targetA.id),
+		undefined,
 	);
-	const interrupted = check(start.wakeAt - 1, start.next, () => undefined);
-	assert.equal(check(start.wakeAt, interrupted.next).expired.size, 0);
 });
 
 // This label sits next to manual Close tab in a narrow menu. Keep the tab

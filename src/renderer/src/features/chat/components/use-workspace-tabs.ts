@@ -78,17 +78,26 @@ export function useWorkspaceTabs(
 	const setAutoClose = useUiPreferencesStore(
 		(state) => state.setWorkspaceAutoClose,
 	);
-	const removeInactive = useCallback((keys: ReadonlySet<string>) => {
-		setTabs((items) => {
-			const active = targetOf(useCanonicalSessionsStore.getState());
-			return items.filter(
-				(tab) =>
-					!keys.has(tab.key) ||
-					tab.pinned ||
-					sameWorkspaceTarget(tab.target, active),
-			);
-		});
-	}, []);
+	const removeInactive = useCallback(
+		(keys: ReadonlySet<string>, stillCurrent: () => boolean) => {
+			setTabs((items) => {
+				// React may apply this after another eligibility change or feed event.
+				if (
+					!stillCurrent() ||
+					!useUiPreferencesStore.getState().workspaceAutoClose
+				)
+					return items;
+				const active = targetOf(useCanonicalSessionsStore.getState());
+				return items.filter(
+					(tab) =>
+						!keys.has(tab.key) ||
+						tab.pinned ||
+						sameWorkspaceTarget(tab.target, active),
+				);
+			});
+		},
+		[],
+	);
 	useWorkspaceTabCleanup(feedAvailable && autoClose, tabs, removeInactive);
 
 	useLayoutEffect(() => {

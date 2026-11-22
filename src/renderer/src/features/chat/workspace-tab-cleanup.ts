@@ -1,81 +1,67 @@
-import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
-import {
-	type ConversationInputState,
-	composerHasUnsentPayload,
-} from "../../shared/store/conversation-input-store";
-import type { WorkspaceTab, WorkspaceTarget } from "./workspace-tabs-model";
-import { sameWorkspaceTarget } from "./workspace-tabs-model";
+import type { DesktopResponse } from "../../../../shared/desktop-contract";
 
 /** Match the app's existing 30-minute inactivity convention for temporary chats.
  * Unlike temporary chat expiry, this removes only the workspace tab. */
 export const WORKSPACE_INACTIVE_MINUTES = 30;
 export const WORKSPACE_INACTIVE_MS = WORKSPACE_INACTIVE_MINUTES * 60_000;
-export type WorkspaceStatusReceipt = {
-	epoch: string;
-	revision: number;
-	code: string;
-};
 
-export function confirmedWorkspaceRest(
-	row: CanonicalSessionRow | undefined,
-	receipt: WorkspaceStatusReceipt | undefined,
-	input: ConversationInputState | undefined,
-	hasDraft: boolean,
-	queuedInput?: ConversationInputState,
-): boolean {
+function fields(value: unknown): Record<string, unknown> | undefined {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: undefined;
+}
+
+/** Catalogue facts can veto a probe, not certify rest: cold rows legitimately
+ * lack live job/ask counts and status stamps. Core's opted-in proof replaces
+ * that inference, but never overrides an explicitly blocked row. */
+export function workspaceRowCanRest(value: unknown): boolean {
+	const row = fields(value);
+	if (!row || row.locality !== "local") return false;
+	const code = fields(row.status)?.code;
 	return (
-		!!row &&
-		!!receipt &&
-		!hasDraft &&
-		// We can prove freshness for the local owner using THIS feed. A peer's
-		// last-known idle or an unplaced legacy row cannot vouch for a close.
-		row.locality === "local" &&
 		!row.link_down &&
-		row.status_epoch === receipt.epoch &&
-		row.status_revision === receipt.revision &&
-		row.status?.code === receipt.code &&
-		(receipt.code === "idle" || receipt.code === "complete") &&
-		row.active === false &&
-		row.background_work === false &&
-		row.waiting_on === 0 &&
-		row.jobs_running === 0 &&
-		row.pending === null &&
-		row.asks_open === 0 &&
-		!composerHasUnsentPayload(input) &&
-		!composerHasUnsentPayload(queuedInput)
+		!row.pinned &&
+		!row.archived &&
+		!row.active &&
+		!row.background_work &&
+		fields(row.attention)?.unseen !== true &&
+		row.pending == null &&
+		["waiting_on", "jobs_running", "asks_open"].every(
+			(key) => row[key] == null || row[key] === 0,
+		) &&
+		(code === undefined || code === "idle" || code === "complete")
 	);
 }
 
-/** The clock runs only across an uninterrupted run of the same positive evidence. */
-export function advanceWorkspaceCleanup(
-	tabs: readonly WorkspaceTab[],
-	active: WorkspaceTarget | undefined,
-	now: number,
-	prior: ReadonlyMap<string, { since: number; evidence: string }>,
-	settledEvidence: (id: string) => string | undefined,
-) {
-	const next = new Map<string, { since: number; evidence: string }>();
-	const expired = new Set<string>();
-	let wakeAt = Number.POSITIVE_INFINITY;
-	for (const tab of tabs) {
-		if (
-			tab.target.kind !== "session" ||
-			tab.pinned ||
-			sameWorkspaceTarget(active, tab.target)
-		)
-			continue;
-		const evidence = settledEvidence(tab.target.id);
-		if (!evidence) continue;
-		const previous = prior.get(tab.key);
-		const since =
-			previous?.evidence === evidence && previous.since <= now
-				? previous.since
-				: now;
-		if (now - since >= WORKSPACE_INACTIVE_MS) expired.add(tab.key);
-		else {
-			next.set(tab.key, { since, evidence });
-			wakeAt = Math.min(wakeAt, since + WORKSPACE_INACTIVE_MS);
-		}
+/** Positive evidence lives only in this response, never in the sidebar's
+ * merged rows. A page miss, duplicate row, incompatible Core or bad receipt
+ * supplies no evidence; the revision's contents have no client-side meaning. */
+export function workspaceRestRevisions(
+	response: DesktopResponse | null,
+	requested: ReadonlySet<string>,
+	epoch: string,
+): ReadonlyMap<string, string | undefined> {
+	const revisions = new Map<string, string | undefined>();
+	if (!response || response.status < 200 || response.status >= 300)
+		return revisions;
+	const rows = fields(fields(response.body)?.result)?.sessions;
+	if (!Array.isArray(rows)) return revisions;
+	for (const value of rows) {
+		const row = fields(value);
+		if (!row || typeof row.id !== "string" || !requested.has(row.id)) continue;
+		const proof = fields(row.workspace_rest);
+		const revision = proof?.revision;
+		revisions.set(
+			row.id,
+			!revisions.has(row.id) &&
+				workspaceRowCanRest(row) &&
+				proof?.version === 1 &&
+				proof.epoch === epoch &&
+				typeof revision === "string" &&
+				revision.trim().length > 0
+				? revision
+				: undefined,
+		);
 	}
-	return { next, expired, wakeAt };
+	return revisions;
 }
