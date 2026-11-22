@@ -4051,8 +4051,14 @@ input[data-colour-hue]::-moz-range-thumb {
 	z-index: 31;
 	margin-block-start: calc(-1 * var(--panel-top-pad, 0px));
 	min-height: max(32px, var(--panel-top-pad, 0px), var(--chrome-inset-end-h));
-	padding-left: max(8px, calc(var(--chrome-inset-start) - var(--workspace-left-column)));
-	padding-right: max(8px, calc(var(--chrome-inset-end) - var(--workspace-right-column)));
+	padding-left: max(
+		8px,
+		calc(var(--chrome-inset-start) - var(--workspace-left-column))
+	);
+	padding-right: max(
+		8px,
+		calc(var(--chrome-inset-end) - var(--workspace-right-column))
+	);
 }
 [data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
 	[data-workspace-tabs]:dir(rtl) {
@@ -4065,7 +4071,8 @@ input[data-colour-hue]::-moz-range-thumb {
 }
 /* Separate scrollports keep the regular lane from carrying pins away. Only
  * interactive lanes opt out of native dragging; the remainder is the handle. */
-[data-workspace-pinned], [data-workspace-regular] {
+[data-workspace-pinned],
+[data-workspace-regular] {
 	display: flex;
 	align-items: center;
 	gap: 4px;
