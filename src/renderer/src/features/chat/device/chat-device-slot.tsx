@@ -24,12 +24,15 @@
  * explicit re-read. That is the whole cost of having a device control on every
  * conversation.
  *
- * GATING FOLLOWS THE APP'S OWN RULE. `features.peers` is what makes the control
- * exist at all: a control rendered for a capability the backend cannot serve
+ * GATING FOLLOWS THE APP'S OWN RULE. `features.peers` is what makes the mesh half of
+ * the control exist: a control rendered for a capability the backend cannot serve
  * advertises something that cannot work, which is how `app.tsx` gates `session_pins`
  * and `projects`. `features.session_transfer` gates the MOVE and only it, so a
  * daemon that can host a network but cannot move a conversation keeps the placement
- * fact and loses the offer.
+ * fact and loses the offer. The rented-capacity group has NO key of its own in
+ * `capabilities` - its read is the gate - so the control itself survives on a
+ * peers-off deployment that serves it, and disappears on one that does not (agent
+ * review round 1, M3).
  */
 
 import {
@@ -38,8 +41,12 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
-import { type FC, useCallback, useMemo } from "react";
+import {
+	panelIdentityFor,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
+import { useQueryClient } from "@tanstack/react-query";
+import { type FC, useCallback, useMemo, useState } from "react";
 import {
 	type WorkingSetConsent,
 	workingSetConsent,
@@ -50,6 +57,18 @@ import {
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
+import { remoteSheetDirectory } from "../../remote-compute/remote-compute-model";
+import { RemoteComputePicker } from "../../remote-compute/remote-compute-picker";
+import {
+	remoteComputeKeys,
+	useRemoteComputeRead,
+} from "../../remote-compute/remote-compute-store";
+import {
+	type RemoteComputeSurface,
+	RemoteComputeSurfaces,
+} from "../../remote-compute/remote-compute-surfaces";
+import type { RemoteComputeRead } from "../../remote-compute/remote-compute-types";
+import { useRemoteRunPins } from "../../remote-compute/remote-run-pins";
 import {
 	type DevicePickerModel,
 	type DeviceRow,
@@ -110,15 +129,60 @@ function deviceNameFor(input: {
 	return deviceName("", deviceId);
 }
 
-export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
-	sessionId,
-	draftKey,
-}) => {
+export const ChatDeviceSlot: FC<{
+	sessionId?: string;
+	draftKey?: string;
+	/**
+	 * The directory this pane's cwd chip paints, handed in by the page that owns the
+	 * pane. It is the same value the header's chip renders, so the Radient sheet cannot
+	 * name a different directory than the control beside it (`remoteSheetDirectory`).
+	 * Absent in stories, where the canonical row is the only source there is; `null` is
+	 * the staged-cwd store's own way of saying the same thing.
+	 */
+	paneCwd?: string | null;
+}> = ({ sessionId, draftKey, paneCwd }) => {
 	const capabilities = useDesktopCapabilities();
 	const peersEnabled =
 		desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const canTransfer =
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
+	/*
+	 * THE CHIP EXISTS FOR EITHER FAMILY, NOT ONLY THE MESH (agent review round 1, M3 /
+	 * QA Q-002). Gating the whole control on `features.peers` returned `null` before
+	 * the Radient group was composed, so a deployment that serves remote compute but
+	 * not peers had NO entry point for it - and this contract has no feature key of
+	 * its own: the family's own read is the gate (`desktop-contract.ts`). So when the
+	 * mesh is off the control asks that read instead, once per pane through the shared
+	 * query key the picker uses, and shows itself only if the deployment offers the
+	 * family. When the mesh is on, this hook stays disabled and costs nothing: the
+	 * picker's own read decides.
+	 *
+	 * `{enabled: false}` therefore removes the control on a peers-off deployment rather
+	 * than leaving a chip whose only row is this device - a control rendered for a
+	 * capability the backend cannot serve is exactly what the gating above refuses.
+	 *
+	 * AND THE ANSWER STOPS THE ASK (agent review round 2, MINOR-1). The gate used to be
+	 * `!peersEnabled` alone, so a deployment that answered `{enabled: false}` kept a
+	 * thirty-second poll running for every open conversation, forever, for a family it
+	 * had already said it does not serve - the defect the picker's own `m2` fix closed
+	 * one level down at a call site that was added later. Reading the shared entry here
+	 * is that same one-line rule: the picker and this control share one query key, and
+	 * `getQueryData` is not reactive, but a write to the entry re-renders both.
+	 *
+	 * THE CHIP APPEARS WHEN THE ANSWER DOES, and that is the decision QA's Q-004 asked
+	 * for rather than an oversight: the control exists only for a family this deployment
+	 * serves, so while the read is outstanding there is nothing it can honestly say. A
+	 * `checking…` label on the chip would state a remote-compute fact on a control that
+	 * names where the conversation lives, and showing it first is what Q-002 forbids.
+	 */
+	const queryClient = useQueryClient();
+	const cachedOffer = queryClient.getQueryData<RemoteComputeRead>(
+		remoteComputeKeys.read,
+	);
+	const remoteOffer = useRemoteComputeRead(
+		!peersEnabled && cachedOffer?.enabled !== false,
+	);
+	const remoteEnabled = remoteOffer.data?.enabled === true;
 	/*
 	 * ONE READ PER WINDOW. The keys are the mesh store's own, so an open Mesh tab
 	 * shares these entries instead of doubling them; `poll: false` is what keeps a
@@ -174,6 +238,23 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
 	const setDraftPeer = useCanonicalSessionsStore((state) => state.setDraftPeer);
+	/*
+	 * A DRAFT'S STAGED DIRECTORY, which is where its first send will run and therefore
+	 * where a remote run started from this pane starts. One value for every draft row
+	 * (`setCwd`'s own note says why), so a live conversation reads its own row's `cwd`
+	 * beside it.
+	 */
+	const draftCwd = useCanonicalSessionsStore((state) => state.cwd);
+	/* The pane's identity, from the same helper the composer keys its text by. */
+	const identity = panelIdentityFor(draftKey ?? null, sessionId);
+	const pinRun = useRemoteRunPins((state) => state.pin);
+	/*
+	 * WHICH SECOND LEVEL IS OPEN, AND IT LIVES HERE because the press that asks for it
+	 * happens inside the menu Radix unmounts (UX U1 / QA Q-001). One value, so the
+	 * sheet and the runs list can never both be on screen.
+	 */
+	const [remoteSurface, setRemoteSurface] =
+		useState<RemoteComputeSurface>("none");
 	const settlePlacement = useCanonicalSessionsStore(
 		(state) => state.settlePlacement,
 	);
@@ -423,18 +504,57 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 		],
 	);
 
-	if (!peersEnabled) return null;
-	return (
-		<ChatHeaderDevice
-			placement={placement}
-			model={model}
-			sessionId={sessionId}
-			busy={move?.kind === "moving"}
-			onPick={onPick}
-			onCheckAgain={() => {
-				void peers.refetch();
-				void networks.refetch();
-			}}
+	if (!peersEnabled && !remoteEnabled) return null;
+	/*
+	 * THE OTHER GROUP IN THIS PICKER, composed here for the same reason the mesh's
+	 * rows are: the node reads its own facts, and the header stays chrome. Its directory
+	 * is this pane's own (`paneCwd`, the value the cwd chip paints, with the live row's
+	 * `cwd` behind it as the fallback), and a conversation whose row is REMOTE has no
+	 * such directory here - the path on that row is where the session runs on the peer
+	 * - so the group is absent for that pane (agent review m4).
+	 */
+	const remoteGroup = identity ? (
+		<RemoteComputePicker
+			onOpenSheet={() => setRemoteSurface("sheet")}
+			hostedElsewhere={host !== null}
 		/>
+	) : undefined;
+	return (
+		<>
+			<ChatHeaderDevice
+				placement={placement}
+				model={model}
+				sessionId={sessionId}
+				busy={move?.kind === "moving"}
+				onPick={onPick}
+				remoteGroup={remoteGroup}
+				onCheckAgain={() => {
+					void peers.refetch();
+					void networks.refetch();
+				}}
+			/>
+			{/*
+			 * THE SECOND LEVEL, BESIDE THE HEADER RATHER THAN INSIDE THE MENU (UX U1 /
+			 * QA Q-001). A surface mounted inside `DropdownMenuContent` unmounts on the select
+			 * that opens it. THIS is the mount point - one level above `ChatHeaderDevice`, a
+			 * sibling of the control that opens it - and `MoveConfirmDialog`, the peer flow's
+			 * analogue, is that header's OWN child, so the two mounts are not the same place
+			 * (agent review round 2, NIT-2). No pane identity means no composer text to
+			 * summarise, so there is nothing a surface could be opened for.
+			 */}
+			{identity ? (
+				<RemoteComputeSurfaces
+					surface={remoteSurface}
+					onSurfaceChange={setRemoteSurface}
+					identity={identity}
+					directory={
+						sessionId
+							? remoteSheetDirectory({ paneCwd, rowCwd: row?.cwd })
+							: draftCwd
+					}
+					onSubmitted={(run) => pinRun(identity, run.id)}
+				/>
+			) : null}
+		</>
 	);
 };

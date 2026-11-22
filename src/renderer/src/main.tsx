@@ -13,6 +13,7 @@ import { HashRouter } from "react-router-dom";
 import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
+import { scrubCaptureResult } from "@shared/analytics/autocapture-privacy";
 import { registerProductEventClient } from "@shared/analytics/product-events";
 import { config, telemetryEnabled } from "@shared/config";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
@@ -26,6 +27,7 @@ import { RegistrationToasts } from "./mini-view/registration-toasts";
 import { queryClient } from "./shared/api/query-client";
 import { ErrorBoundary } from "./shared/components/common/error-boundary";
 import { GlobalScrollbarStyles } from "./shared/components/common/global-scrollbar-styles";
+import { restoreLastBackendLanguage } from "./shared/i18n/last-language";
 import { AuthProviders } from "./shared/providers/auth";
 import { FeatureFlagProvider } from "./shared/providers/feature-flags";
 import { installConversationInputSync } from "./shared/store/conversation-input-sync";
@@ -38,6 +40,22 @@ import { isDevelopmentMode } from "./shared/utils/env-utils";
 const posthogOptions: Partial<PostHogConfig> = {
 	api_host: config.VITE_PUBLIC_POSTHOG_HOST,
 	capture_exceptions: true,
+	/*
+	 * NO USER CONTENT IN AUTOCAPTURE OR EXCEPTIONS (2026-11-21). Every event
+	 * passes through this before it is queued: clicked-element text and
+	 * attributes (`$el_text`, `$elements_chain`, `$elements`, external URLs) keep
+	 * short control labels and lose paths, file names, emails, URLs and long
+	 * text; `$exception` messages and frames lose the same inline. The rule, its
+	 * measurement and how to extend it live in `autocapture-privacy.ts`; the
+	 * other half is `USER_CONTENT_CLASS` on user-content regions.
+	 */
+	before_send: scrubCaptureResult,
+	/*
+	 * Replay already masks every input by default; restated so a posthog-js
+	 * default change cannot unmask the composer. Text in user-content regions is
+	 * masked through their `ph-mask` class (posthog's default `maskTextClass`).
+	 */
+	session_recording: { maskAllInputs: true },
 };
 
 /*
@@ -65,6 +83,15 @@ installDevDriver();
  * no-op write) and owns every later change.
  */
 applyAppearance(appearanceOf(useUiPreferencesStore.getState()));
+
+/*
+ * THE CHOSEN LANGUAGE BEFORE THE SERVER ANSWERS (fr census, row 2). Until
+ * capabilities answer, the locale store holds the device language, so a French
+ * reader on an English OS met the offline/booting screens in English. The tag
+ * the backend last confirmed is read back here, synchronously, before the first
+ * render; the first capabilities answer replaces it (`./shared/i18n/last-language`).
+ */
+restoreLastBackendLanguage();
 
 /*
  * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half

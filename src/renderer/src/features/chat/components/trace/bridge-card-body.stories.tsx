@@ -9,10 +9,11 @@
 
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import {
 	BridgeCardBodySection,
 	type BridgeCardBodyTransport,
+	type BridgeCardRereadClock,
 } from "./bridge-card-body";
 import { BridgeDetail } from "./tool-detail";
 import "../../../../styles/index.css";
@@ -135,6 +136,39 @@ const TRANSPORTS: Record<string, BridgeCardBodyTransport | null> = {
 	}),
 };
 
+/**
+ * States whose transport is made per mount, because the answer CHANGES while the
+ * pane is open: the first read says `pending`, every later one carries the body.
+ * Built per mount so each view (and each AllStates row) shows the transition
+ * from the start rather than sharing one counter.
+ */
+const LIVE: Record<string, () => BridgeCardBodyTransport> = {
+	pendingThenAdmitted: () => {
+		let reads = 0;
+		return async () => {
+			reads += 1;
+			return reads === 1
+				? { v: 1, items: [item({ state: "pending" })], more: 0 }
+				: {
+						v: 1,
+						items: [item({ state: "admitted", body: SHORT, source: "local" })],
+						more: 0,
+					};
+		};
+	},
+};
+
+/**
+ * The story clock runs each re-read after 1.5 s instead of the production 5 s
+ * first step, so a reviewer watching the PendingThenAdmitted story sees the
+ * body arrive without waiting; the schedule itself is unit-tested.
+ */
+const storyClock: BridgeCardRereadClock = {
+	setTimeout: (run) => globalThis.setTimeout(run, 1_500),
+	clearTimeout: (handle) =>
+		globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
+
 /** Press the first toggle matching `selector` once the read has landed. */
 const press =
 	(selector: string) =>
@@ -150,14 +184,18 @@ const press =
 	};
 
 /** The pane exactly as `BridgeIncomingRow` composes it, open. */
-const Pane: FC<{ state: string }> = ({ state }) => {
-	const transport = TRANSPORTS[state] ?? undefined;
-	const offered = TRANSPORTS[state] !== null;
+const Pane: FC<{ state: string; headline?: string }> = ({
+	state,
+	headline = `${t("ui.chat.bridgeReceipt.received", { sender: "Ola Fagbemi" })} · ${t("ui.teamBridge.kind.dm")}`,
+}) => {
+	const [live] = useState(() => LIVE[state]?.());
+	const transport = live ?? TRANSPORTS[state] ?? undefined;
+	const offered = live !== undefined || TRANSPORTS[state] !== null;
 	return (
 		<BridgeDetail
 			isError={false}
 			view={{
-				headline: "Received from Ola Fagbemi · Direct message",
+				headline,
 				body: null,
 				// As the row does (review R3): without the read, today's sentence
 				// stays in the outcome slot above the provenance line.
@@ -177,6 +215,7 @@ const Pane: FC<{ state: string }> = ({ state }) => {
 					entryId={`story${state}`}
 					enabled
 					transport={transport}
+					clock={live !== undefined ? storyClock : undefined}
 				/>
 			) : null}
 		</BridgeDetail>
@@ -210,6 +249,26 @@ export const Held: Story = { args: { state: "held" } };
 export const HeldTransient: Story = { args: { state: "heldTransient" } };
 export const Refused: Story = { args: { state: "refused" } };
 export const Pending: Story = { args: { state: "pending" } };
+/**
+ * The operator's report, fixed: opened while pending, the open pane re-reads
+ * and the body replaces "Waiting to be delivered…" without reopening.
+ */
+export const PendingThenAdmitted: Story = {
+	args: { state: "pendingThenAdmitted" },
+};
+/** An admitted direct message: sender, "Direct message", time, then the body. */
+export const AdmittedDm: Story = { args: { state: "admitted" } };
+/** An admitted reply in a channel thread: the headline names the thread. */
+export const AdmittedChannelThreadReply: Story = {
+	args: {
+		state: "admitted",
+		headline: [
+			t("ui.chat.bridgeReceipt.received", { sender: "Aida (Ola Fagbemi)" }),
+			"#ops",
+			t("ui.chat.bridgeReceipt.thread_reply"),
+		].join(" · "),
+	},
+};
 export const NotAdmitted: Story = { args: { state: "notAdmitted" } };
 export const Unavailable: Story = { args: { state: "unavailable" } };
 export const UnavailableOffline: Story = {
@@ -229,7 +288,7 @@ export const CoalescedManyExpanded: Story = {
 export const AllStates: Story = {
 	render: () => (
 		<div className="flex w-[640px] flex-col gap-4 bg-surface p-4">
-			{Object.keys(TRANSPORTS).map((state) => (
+			{[...Object.keys(TRANSPORTS), ...Object.keys(LIVE)].map((state) => (
 				<div key={state} className="flex flex-col gap-1">
 					{/* i18n: ignore - story section label */}
 					<div className="font-mono text-ink-dim text-mono-sm">{state}</div>

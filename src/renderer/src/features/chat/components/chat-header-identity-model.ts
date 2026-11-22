@@ -15,6 +15,10 @@ import { t } from "@shared/i18n";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import {
+	agentDescriptionText,
+	agentKindText,
+} from "../../agents/utils/agent-description";
+import {
 	identityAgentClosedCaption,
 	identityAgentClosedTitle,
 	identityAgentSettable,
@@ -507,4 +511,46 @@ export function headerIdentityAgentFlagged(input: {
 		manager: input.manager,
 		delegate: input.delegate,
 	});
+}
+
+/**
+ * A roster row's DESCRIPTION and META (kind) copy for the header's pickers, in
+ * the active language.
+ *
+ * WHY. The header printed `row.description` and `row.kind` exactly as the
+ * entities route served them. A built-in agent's description is the seed's
+ * English sentence there, and `kind` is the wire token (`role`), so a French
+ * reader saw English prose and an English tag beside a French menu (fr census,
+ * row 3), while the composer's `/agent` rows and the modal picker - which read
+ * the same roster - were already French. This routes the header through the
+ * SAME resolvers they use: `agentDescriptionText` (the catalogue sentence for a
+ * pristine shipped seed, the operator's own words for anything edited or
+ * uploaded) and `agentKindText` (the keyed kind tag).
+ *
+ * A TEAM'S description is always the operator's own text, so it passes through
+ * untouched (the modal picker's `withLocalizedAgentDescription` rule). Reads
+ * `t()` at call time: the caller's memo must depend on the locale.
+ */
+export function headerRosterRowText(
+	row: {
+		value: string;
+		name?: string;
+		source?: string | null;
+		description?: string | null;
+		kind?: string | null;
+	},
+	which: "team" | "agent",
+): { description: string | undefined; meta: string | undefined } {
+	const description =
+		which === "agent"
+			? agentDescriptionText({
+					name: row.name ?? row.value,
+					source: row.source,
+					description: row.description,
+				})
+			: (row.description ?? "");
+	return {
+		description: description === "" ? undefined : description,
+		meta: row.kind ? agentKindText(row.kind) : undefined,
+	};
 }

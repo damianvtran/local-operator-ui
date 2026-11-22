@@ -4,6 +4,7 @@ import { HeldMessagesView } from "./team-bridge-held-messages";
 import {
 	type BodyBinding,
 	type HoldItem,
+	captureDiscardSnapshot,
 	holdRefusalLabel,
 } from "./team-bridge-holds-model";
 import type { HeldMessageDetail } from "./use-team-bridge-holds";
@@ -16,7 +17,10 @@ import type { HeldMessageDetail } from "./use-team-bridge-holds";
  * hold, a decided one and one whose details could not load; empty; error;
  * loading; release turned off. Presentational only: reasons, buttons and
  * refusals come from the same model the container uses, and the body shown is
- * the owner-audit body, never anything the hold list carries.
+ * the owner-audit body, never anything the hold list carries. The
+ * `Unloadable*` stories at the end cover local-operator #4358's receipt
+ * Discard. The Batch* states exercise the same frozen-proof client operation
+ * as production; no new server or delivery contract is required.
  */
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
@@ -193,6 +197,11 @@ const meta = {
 		now: NOW,
 		onDecide: () => {},
 		onRetry: () => {},
+		onRetryDetails: () => {},
+		onBatchDecide: async (entries, onResult) => {
+			for (const entry of entries)
+				onResult({ entry, recorded: true, error: null });
+		},
 	},
 	decorators: [
 		(Story) => (
@@ -347,5 +356,216 @@ export const HiddenCharacters: Story = {
 			tenantId: "tnt_story",
 			binding: { state: "shown", hash: SHA },
 		}),
+	},
+};
+
+/*
+ * local-operator #4358: THE OPERATOR'S STUCK ROW, rebuilt synthetically. A
+ * model_hold held 2026-11-10 09:23 whose 7-day Deliver window passed and whose
+ * sender and text the owner-audit read can no longer serve: before this change
+ * it read "Unknown sender ... can't be delivered or discarded yet" and still
+ * held the badge. Core now serves a `discard_receipt`, so the row offers ONE
+ * Discard (never Deliver) and names itself by reference. Beside it: a valid
+ * new hold (the operator's #647), a long one that must be opened before
+ * Deliver, and the orphan's own settled state after a Discard is recorded.
+ */
+const RECEIPT = "c".repeat(64);
+const orphan = hold("bcmsg_5ac4b3e8deadbeef", {
+	held_at: "2026-11-10T14:23:00Z",
+	can_deliver: false,
+	deliver_until: "2026-11-17T14:23:00Z",
+	actionable: true,
+	discard_receipt: RECEIPT,
+});
+const fresh = hold("bcmsg_647", {
+	held_at: "2026-11-18T09:00:00Z",
+	deliver_until: "2026-11-25T09:00:00Z",
+	actionable: true,
+});
+const orphanDetail = (item: HoldItem): HeldMessageDetail =>
+	item.message_id === "bcmsg_5ac4b3e8deadbeef" ||
+	item.message_id === "bcmsg_orphan_settled" ||
+	item.message_id === "bcmsg_orphan_legacy"
+		? { state: "unavailable" }
+		: item.message_id === "bcmsg_647"
+			? {
+					state: "ready",
+					message: audit(
+						"bcmsg_647",
+						"Renee Park",
+						"Can you check whether the Q4 vendor list is final before Friday?",
+					),
+					tenantId: "tnt_story",
+					binding: { state: "shown", hash: SHA },
+				}
+			: detail(item);
+
+export const UnloadableExpired: Story = {
+	args: { items: [orphan, fresh], detail: orphanDetail },
+};
+
+/* PR #2017 r1 (M1/S-1/Q-1): a still-deliverable hold whose details failed to
+   load (a 429 or network blip) keeps "Try again" and arms NO receipt Discard,
+   even though core serves it a receipt. */
+export const UnloadableFresh: Story = {
+	args: {
+		items: [{ ...fresh, discard_receipt: RECEIPT }],
+		detail: () => ({ state: "unavailable" }),
+		onRetryDetails: () => {},
+	},
+};
+
+/* Mixed: the unloadable expired row, a valid one, a long one awaiting
+   expansion, and a settled (recorded, not yet applied) Discard. */
+export const UnloadableMixed: Story = {
+	args: {
+		items: [
+			orphan,
+			fresh,
+			{ ...extra[0], actionable: true },
+			hold("bcmsg_orphan_settled", {
+				held_at: "2026-11-09T08:00:00Z",
+				can_deliver: false,
+				deliver_until: "2026-11-16T08:00:00Z",
+				actionable: false,
+				discard_receipt: null,
+				decision: {
+					word: "discard",
+					decided_at: "2026-11-20T12:00:00Z",
+					outcome: "pending",
+					key_id: "k1",
+				},
+			}),
+		],
+		detail: orphanDetail,
+	},
+};
+
+/* The confirm step names the ONE message by reference and promises nothing
+   about the sender. */
+export const UnloadableConfirm: Story = {
+	args: {
+		items: [orphan],
+		detail: orphanDetail,
+		initialConfirm: { bcmsg_5ac4b3e8deadbeef: "discard" },
+	},
+};
+
+export const UnloadableBusy: Story = {
+	args: {
+		items: [orphan, fresh],
+		detail: orphanDetail,
+		initialConfirm: { bcmsg_5ac4b3e8deadbeef: "discard" },
+		busy: { id: "bcmsg_5ac4b3e8deadbeef", word: "discard" },
+	},
+};
+
+/* A stale receipt (re-screened or re-enrolled since the list was read): the
+   daemon answers `snapshot_stale` and writes nothing; the row keeps its
+   Discard for a fresh confirm on the refreshed record. */
+export const UnloadableStaleReceipt: Story = {
+	args: {
+		items: [orphan],
+		detail: orphanDetail,
+		refusals: {
+			bcmsg_5ac4b3e8deadbeef: holdRefusalLabel("snapshot_stale", true),
+		},
+	},
+};
+
+/* An older core serves no receipt: the row stays as it was (nothing armed,
+   "can't be delivered or discarded yet"); this side cannot settle it. */
+export const UnloadableOlderCore: Story = {
+	args: {
+		items: [
+			hold("bcmsg_orphan_legacy", {
+				held_at: "2026-11-10T14:23:00Z",
+				can_deliver: false,
+				deliver_until: "2026-11-17T14:23:00Z",
+			}),
+		],
+		detail: orphanDetail,
+	},
+};
+
+const batchItems = [orphan, fresh];
+const batchEntries = captureDiscardSnapshot(batchItems, orphanDetail, NOW);
+const batchResults = batchEntries.map((entry, index) => ({
+	entry,
+	recorded: index === 0,
+	error: index === 0 ? null : holdRefusalLabel("snapshot_stale"),
+}));
+const batchArgs = {
+	items: batchItems,
+	detail: orphanDetail,
+	// Story simulation only; production invokes the real core HTTP route and
+	// reports each row separately. Keeping the callback shape identical makes
+	// retry/confirmation states honest without claiming server execution.
+	onBatchDecide: async (entries, onResult) => {
+		for (const entry of entries)
+			onResult({ entry, recorded: true, error: null });
+	},
+} satisfies Partial<React.ComponentProps<typeof HeldMessagesView>>;
+
+export const BatchIdle: Story = { args: batchArgs };
+export const BatchRefreshError: Story = {
+	args: { ...batchArgs, listState: "error" },
+};
+export const BatchConfirm: Story = {
+	args: {
+		...batchArgs,
+		initialBatch: { phase: "confirm", entries: batchEntries },
+	},
+};
+export const BatchBusy: Story = {
+	args: {
+		...batchArgs,
+		initialBatch: {
+			phase: "busy",
+			entries: batchEntries,
+			results: batchResults.slice(0, 1),
+		},
+	},
+};
+export const BatchPartialFailure: Story = {
+	args: {
+		...batchArgs,
+		initialBatch: {
+			phase: "result",
+			entries: batchEntries,
+			results: batchResults,
+		},
+	},
+};
+export const BatchComplete: Story = {
+	args: {
+		...batchArgs,
+		items: [],
+		initialBatch: {
+			phase: "result",
+			entries: batchEntries,
+			results: batchEntries.map((entry) => ({
+				entry,
+				recorded: true,
+				error: null,
+			})),
+		},
+	},
+};
+export const DiscardedLocalUnconfirmed: Story = {
+	args: {
+		items: [
+			{
+				...orphan,
+				actionable: false,
+				decision: {
+					word: "discard",
+					decided_at: "2026-11-21T12:00:00Z",
+					outcome: "discarded_local_unconfirmed",
+					key_id: "k1",
+				},
+			},
+		],
+		detail: orphanDetail,
 	},
 };

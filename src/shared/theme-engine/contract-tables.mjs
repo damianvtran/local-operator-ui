@@ -430,6 +430,29 @@ export const CONTROLS = [
 		ink: "ink",
 		edge: false,
 	},
+	/*
+	 * THE REMOTE RUN CARD is a borderless sunken well in the transcript column: its
+	 * title is `ink`, its facts are `ink-muted`, and it has no edge of its own. The
+	 * INKS loop measures ink on every ground, but not ink on a fill that is itself
+	 * painted on the conversation's ground - which is the pairing this row pins.
+	 * `edge: false` because a fill-only card's boundary IS its fill.
+	 */
+	{
+		name: "remote run card",
+		on: ["canvas", "surface"],
+		fill: "sunken",
+		border: null,
+		ink: "ink",
+		edge: false,
+	},
+	{
+		name: "remote run card fact",
+		on: ["canvas", "surface"],
+		fill: "sunken",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
 	{
 		name: "tonal button (hover)",
 		on: ["elevated"],

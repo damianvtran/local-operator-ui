@@ -1,0 +1,123 @@
+{
+	"schema": 1,
+	"scope": "PR #1971 round 2 (bec0906c52): the round-1 remote-compute copy delta in all seven locales - 10 ui.chat.remote_compute keys and ui.chat.device.footer.move_deletes_copy.",
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"auditor": {
+		"instance_suffix": "3b3df24653ea",
+		"model": "deepseek/deepseek-flash"
+	},
+	"records": [
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r2-fr-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-fr-remotecompute-3b3df24653ea.json",
+			"sha256": "ba16d4dbbb404f6cba6e6a5f5ae519e0e7bd54a15effc71c89a6cfb850764694",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/fr/ui.chat.device/pr1971-r2-fr-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-fr-device-3b3df24653ea.json",
+			"sha256": "895686b3013f49b3059799452d416157c809dd107432d847205b86fbf13543d2",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r2-es-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-es-remotecompute-3b3df24653ea.json",
+			"sha256": "68f53f2bb82870c2c1363fcd747c6ca42c2d9748ada649083486e8c8e7b33490",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/es/ui.chat.device/pr1971-r2-es-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-es-device-3b3df24653ea.json",
+			"sha256": "c7750f58280bce16d9399a64d71e685814a17db9f1262232c898de63041700fe",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r2-zh-CN-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-zh-CN-remotecompute-3b3df24653ea.json",
+			"sha256": "c9fec41a8c9a613f566be2af4a4c06f9dc6e40fb1b88e04694b1a5377936132f",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/zh-CN/ui.chat.device/pr1971-r2-zh-CN-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-zh-CN-device-3b3df24653ea.json",
+			"sha256": "f58f90968d929e17c2cffc9c7ab4ddf545e1d3434acae989d38d0af171f1d4c0",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r2-ru-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-ru-remotecompute-3b3df24653ea.json",
+			"sha256": "bd42575eaf6c2a23911123143cfa6234fcbd2a993c05bbdab32c29600fee97f4",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/ru/ui.chat.device/pr1971-r2-ru-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-ru-device-3b3df24653ea.json",
+			"sha256": "deb2e8c6020aa5894b5d8647d690d992a2021a29e1aed1943612e78d50c177b6",
+			"result": "clean"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r2-vi-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-vi-remotecompute-3b3df24653ea.json",
+			"sha256": "f3b7a1bb303a5c7e3f9e7c04045f906997f60d6768ba0ce6bc9e9b2dac59e11a",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/vi/ui.chat.device/pr1971-r2-vi-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-vi-device-3b3df24653ea.json",
+			"sha256": "2fc5f39c050dce1b4b27a1bde3f61633cd18e6f1b70213fff346238986ba02f0",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r2-ur-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-ur-remotecompute-3b3df24653ea.json",
+			"sha256": "01d4d264ed9d1e42fca36fb48765fe334b80c9e23d2861f7459710d948018cb1",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/ur/ui.chat.device/pr1971-r2-ur-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-ur-device-3b3df24653ea.json",
+			"sha256": "cbdb541681884e1a7e8883ef857a5fa0d3e38b6b887a7ffa14f4a28696e38bb2",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r2-hi-remotecompute-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-hi-remotecompute-3b3df24653ea.json",
+			"sha256": "8ff8308d8a10c3d57c2e44ec37250d44dbd43540d54e18fbe70946520f40e3f5",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.device",
+			"canonical_record": "i18n/audits/evidence/hi/ui.chat.device/pr1971-r2-hi-device-3b3df24653ea/record.json",
+			"receipt": "i18n/receipts/pr1971-r2-hi-device-3b3df24653ea.json",
+			"sha256": "7513e64fc5bbe7649749d79b32b507f5ad0901788c3795127cecb4a162e6e402",
+			"result": "clean"
+		}
+	]
+}

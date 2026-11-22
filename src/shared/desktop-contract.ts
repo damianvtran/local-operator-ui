@@ -314,6 +314,26 @@ const definitionRevision = z.string().min(1).max(512).nullish();
  */
 const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 /**
+ * A remote run's id (`remote_compute.*`), on its way into a URL path.
+ *
+ * The same PATH-SAFETY property `meshId` above is built for, and the same reason:
+ * the id reaches `/v1/desktop/remote-compute/runs/{id}`, so what must be
+ * impossible is `/`, `.` and `%` — which is also why the endpoint builder still
+ * `encodeURIComponent`s it. Deliberately wider than today's lowercase-hex mint so
+ * the server may lengthen its ids without a renderer release, and narrow enough
+ * that a client bug is refused HERE by name rather than by the daemon's generic
+ * 422.
+ */
+const remoteRunId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+/**
+ * The directory a remote run starts in.
+ *
+ * BOUNDED, NOT PATTERN-CHECKED: the value is expanded and resolved on the machine
+ * that runs it, and this app's drafts stage the literal `~`. See the family's own
+ * comment on the request schemas below.
+ */
+const remoteRunDirectory = z.string().min(1).max(4096);
+/**
  * An onboarding approval's id (`ap_` + Crockford base32), on its way into a URL path.
  *
  * MIRRORS the mint in `local_operator/network/approvals.py` (`new_approval_id`:
@@ -4961,11 +4981,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
-			op: z.enum(["team_bridge.holds.deliver", "team_bridge.holds.discard"]),
+			op: z.literal("team_bridge.holds.deliver"),
 			expected_account_id: id,
 			message_id: id,
 			conversation_id: id,
 			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
+	 * Discard binds EXACTLY ONE of `body_sha256` (the body on screen) or
+	 * `hold_receipt` (local-operator #4358): the list's `discard_receipt` for a
+	 * hold whose body can no longer be loaded (expired at the hub, owner-audit
+	 * unavailable). The receipt names the local hold RECORD, not bytes anyone
+	 * read, so Deliver has no receipt field at all (S-11): a Deliver always
+	 * proves the shown body. "Exactly one" is enforced in the union's
+	 * `superRefine` below, mirroring the route's own 422.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.discard"),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+			hold_receipt: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
 		})
 		.strict(),
 	/*
@@ -5269,6 +5314,103 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("sessions.transfer.preflight"),
 			sessionId,
 			to: z.union([z.literal("local"), meshId]),
+		})
+		.strict(),
+	/*
+	 * REMOTE COMPUTE (Radient), the family behind the chat's device picker group.
+	 *
+	 * WHY IT IS NOT A MESH OP. A mesh peer is a DEVICE this app reaches through its
+	 * own relay: it has a device id, a membership, a presence probe and sessions.
+	 * Remote compute is capacity that is RENTED: it has no device id, no membership
+	 * and no sessions, and its runs are records on the provider's side. The two
+	 * therefore travel different routes and are read by different surfaces - the
+	 * picker draws them as two groups for exactly this reason.
+	 *
+	 * THE SWITCH IS THE SERVER'S. `GET /v1/desktop/remote-compute` answers
+	 * `{enabled: false}` when this daemon does not carry the feature at all, and the
+	 * group does not exist for that answer. Everything below is only reachable once
+	 * that read has said the family is on, which is why these ops have no feature
+	 * key of their own in `capabilities`: the read IS the gate, and a capability
+	 * the backend answers per request cannot go stale between a capabilities poll
+	 * and a press.
+	 *
+	 * `directory` IS THE CALLER'S STRING, NOT A PATH THIS LAYER VALIDATES. A remote
+	 * run starts in a directory on the machine that runs it, and this app's draft
+	 * panes stage the literal `"~"` (the daemon expands it) - so the transport
+	 * bounds the string and the route decides whether the directory exists, which is
+	 * the same split `skillCwd` records above. Refusing `"~"` here would refuse the
+	 * one value every new conversation starts from.
+	 */
+	z
+		.object({ op: z.literal("remote_compute.read") })
+		.strict(),
+	z.object({ op: z.literal("remote_compute.runs") }).strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.run"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	/*
+	 * `tier` is a CLOSED set and `cloud_run` is the only one v1 offers. The second
+	 * choice the picker draws ("Dedicated") is refused by this schema ON PURPOSE:
+	 * the surface renders it disabled, so a request naming it is a client bug rather
+	 * than a wire the server has to absorb - and the day v1.1 offers it, one literal
+	 * joins this enum beside the surface that enables the row.
+	 */
+	z
+		.object({
+			op: z.literal("remote_compute.start"),
+			directory: remoteRunDirectory,
+			prompt: z.string().min(1).max(32000),
+			tier: z.literal("cloud_run"),
+			/* A resource class the server maps to its own sizes; opaque here. */
+			size: z.string().min(1).max(64).optional(),
+			maxHours: z.number().min(0).max(8).optional(),
+			networkId: meshId.optional(),
+			/*
+			 * Minted by the CALLER so a retry replays the recorded outcome instead of
+			 * starting a second run, which is the same rule `sessions.transfer` carries
+			 * above - a run spends money, so a duplicate is worse there than a move.
+			 *
+			 * A LOST RESPONSE IS THE CASE THIS EXISTS FOR: a start that timed out may
+			 * have created a run, so the retry must carry the SAME key rather than a
+			 * fresh one. The sheet mints once and resends it; see
+			 * `remote-compute-sheet.tsx`.
+			 */
+			idempotencyKey: requestId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.cancel"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.delete"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	/*
+	 * THE TWO ARTIFACT READS LAND IN A FOLLOW-UP RELEASE. They are declared here
+	 * because the run card asks each of them ONCE to decide whether the answering
+	 * server has the routes at all (`remote-compute-artifacts.ts`): a UI that drew
+	 * `Logs` on a server without the route would offer a press that 404s. Nothing in
+	 * v1 renders their payload - the affordance is the whole of their use - so the
+	 * request is a probe and its answer is a boolean.
+	 */
+	z
+		.object({
+			op: z.literal("remote_compute.logs"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.results"),
+			runId: remoteRunId,
 		})
 		.strict(),
 	/*
@@ -6099,6 +6241,21 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * body-shaped mistake, and the view would paint that as a failure of a spend
 		 * that was never attempted. Refusing here means it is never sent.
 		 */
+		/* A held-message Discard binds exactly one proof (#4358 route grammar):
+		   both or neither is a body-shaped mistake the daemon answers 422, so it
+		   is refused before IPC rather than painted as a failed decision. */
+		if (
+			request.op === "team_bridge.holds.discard" &&
+			(request.body_sha256 === undefined) ===
+				(request.hold_receipt === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A held-message discard binds exactly one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
+				path: ["body_sha256"],
+			});
+		}
 		if (
 			request.op === "usage.reset" &&
 			!request.credentialRef &&
@@ -8640,6 +8797,16 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"models.catalogue",
 	"networks.list",
 	"peers.list",
+	/*
+	 * The remote-compute reads. `read` and `runs` answer from the provider's own
+	 * records (a cache or a live read, never a write), and the two artifact probes
+	 * are reads by construction: they are asked for a boolean.
+	 */
+	"remote_compute.read",
+	"remote_compute.run",
+	"remote_compute.logs",
+	"remote_compute.results",
+	"remote_compute.runs",
 	"profiles.get",
 	"profiles.list",
 	// A ranked read over the same store the listing reads: it changes nothing, so
@@ -10469,6 +10636,65 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return { path: "/v1/desktop/peers", method: "GET" };
 		case "networks.list":
 			return { path: "/v1/desktop/networks", method: "GET" };
+		/*
+		 * THE REMOTE-COMPUTE FAMILY, all off one prefix. Every id segment is
+		 * `encodeURIComponent`ed although `remoteRunId` already refuses `/`, `.` and
+		 * `%`: the schema is this client's check, and a redirect or a hand-built
+		 * request must not be able to turn a run id into a path fragment.
+		 *
+		 * THE START OMITS ABSENT FIELDS rather than sending nulls: the route's own
+		 * defaults (its cap and deadline, no size, no binding) are the answer for a
+		 * caller that named none, and `network_id` in particular must be absent when
+		 * the picker could not name one - a null there would say "bound to nothing"
+		 * where the truth is "nobody chose".
+		 */
+		case "remote_compute.read":
+			return { path: "/v1/desktop/remote-compute", method: "GET" };
+		case "remote_compute.runs":
+			return { path: "/v1/desktop/remote-compute/runs", method: "GET" };
+		case "remote_compute.run":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}`,
+				method: "GET",
+			};
+		case "remote_compute.start":
+			return {
+				path: "/v1/desktop/remote-compute/runs",
+				method: "POST",
+				body: {
+					directory: request.directory,
+					prompt: request.prompt,
+					tier: request.tier,
+					...(request.size ? { size: request.size } : {}),
+					...(request.maxHours !== undefined
+						? { max_hours: request.maxHours }
+						: {}),
+					...(request.networkId ? { network_id: request.networkId } : {}),
+					...(request.idempotencyKey
+						? { idempotency_key: request.idempotencyKey }
+						: {}),
+				},
+			};
+		case "remote_compute.cancel":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/cancel`,
+				method: "POST",
+			};
+		case "remote_compute.delete":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}`,
+				method: "DELETE",
+			};
+		case "remote_compute.logs":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/logs`,
+				method: "GET",
+			};
+		case "remote_compute.results":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/results`,
+				method: "GET",
+			};
 		/*
 		 * The fleet read, and the path is the DESKTOP plane's rather than the relay's
 		 * (`/api/asks`): the two answer the same rows today, but this client reaches
@@ -12791,10 +13017,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
 				method: "POST",
+				/* Only the proof the request carries: the route's strict body
+				   refuses both, and a `null` key would read as "present". */
 				body: {
 					expected_account_id: request.expected_account_id,
 					conversation_id: request.conversation_id,
-					body_sha256: request.body_sha256,
+					...(request.op === "team_bridge.holds.discard" &&
+					request.hold_receipt !== undefined
+						? { hold_receipt: request.hold_receipt }
+						: { body_sha256: request.body_sha256 }),
 				},
 			};
 		case "team_bridge.requests.authorize":

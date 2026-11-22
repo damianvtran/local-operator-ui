@@ -66,6 +66,7 @@
  * already carries as an outcome.
  */
 
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -184,7 +185,8 @@ export type ToolDetailProps = {
  */
 const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => (
 	<div
-		className={cn("whitespace-pre-wrap break-words")}
+		// Tool arguments and output are user content: no text in analytics or replay.
+		className={cn("whitespace-pre-wrap break-words", USER_CONTENT_CLASS)}
 		style={{ paddingInlineStart: (line.depth - 1) * NEST_STEP_PX }}
 	>
 		{/* The LABEL is the identity and the value is the detail, which is the slot
@@ -436,7 +438,12 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 								? t("ui.chat.canonical.tool_row.detail_section.error")
 								: t("ui.chat.canonical.tool_row.detail_section.output")}
 					</span>
-					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
+					{/* The result body is user content: shell output, file text
+					    (review round 1, Q2). The section label above stays countable. */}
+					<div
+						ref={outputRef}
+						className={cn(SECTION_MAX, "overflow-auto", USER_CONTENT_CLASS)}
+					>
 						{structured ? (
 							<DetailLines lines={structured} section="result-json" />
 						) : (
@@ -569,6 +576,7 @@ export const BridgeDetail: FC<{
 							<pre
 								className={cn(
 									"mt-2 whitespace-pre-wrap break-words font-mono text-ink-dim",
+									USER_CONTENT_CLASS,
 								)}
 							>
 								{view.raw}
