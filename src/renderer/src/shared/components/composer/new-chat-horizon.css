@@ -1,0 +1,60 @@
+.new-chat-horizon {
+	position: relative;
+	/* Keep the existing 32px mark slot: the extra ink borrows from the blank
+	   space around it, not from the measured greeting/suggestion budget. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 100%;
+	block-size: 2rem;
+}
+
+.new-chat-horizon__scene {
+	position: absolute;
+	inset-block-start: 50%;
+	left: 50%;
+	translate: -50% -50%;
+	inline-size: min(88%, 40rem);
+	pointer-events: none;
+	/* Identity has its own role; keep the primary accent for composer actions.
+	   Palette color-scheme (not system appearance) sets the light level. */
+	color: light-dark(
+		color-mix(in oklab, var(--lo-accent-alt) 78%, transparent),
+		var(--lo-accent-alt)
+	);
+}
+
+.new-chat-horizon__paint {
+	display: block;
+	inline-size: 100%;
+	height: auto;
+	/* A long, diffuse belt supports the points without a spotlight behind the
+	   mark. Only this bounded paint layer moves; the mark and text stay put. */
+	background: radial-gradient(
+		ellipse 49% 17% at 50% 56%,
+		light-dark(
+			color-mix(in oklab, var(--lo-accent-alt) 11%, transparent),
+			color-mix(in oklab, var(--lo-accent-alt) 19%, transparent)
+		),
+		transparent 100%
+	);
+	transform: translate3d(0, 0, 0);
+	transition: transform 200ms ease-out;
+}
+
+.new-chat-horizon__scene[data-quiet] {
+	opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.new-chat-horizon__paint {
+		transform: none !important;
+		transition: none;
+	}
+}
+
+@media (forced-colors: active) {
+	.new-chat-horizon__scene {
+		display: none;
+	}
+}
