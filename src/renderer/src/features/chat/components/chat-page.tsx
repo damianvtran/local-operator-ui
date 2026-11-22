@@ -4,7 +4,7 @@ import {
 } from "@features/aida/use-aida-target";
 import { sessionPictureEditable } from "@shared/agent-avatar/agent-avatar-meta";
 import { useAgentSlotMark } from "@shared/agent-avatar/agent-avatar-slot";
-import { categorizeSendFailure } from "@shared/analytics/first-run-reasons";
+import { diagnoseSendFailure } from "@shared/analytics/first-run-reasons";
 import {
 	trackFirstMessageSent,
 	trackProductEvent,
@@ -111,6 +111,7 @@ import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { RemoteRunCards } from "../../remote-compute/remote-run-card";
 import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
@@ -1348,6 +1349,16 @@ function SessionPanel({
 		canonical,
 		capabilities: capabilities.data,
 	});
+	/*
+	 * THE PANE'S DIRECTORY, ONCE, for every surface that names it: this is what the
+	 * header's cwd chip paints, and the device slot's Radient sheet is handed the same
+	 * value rather than re-deriving it from the canonical row. The row's `cwd` is
+	 * written by this app's `createSession` alone, so a conversation another client of
+	 * the daemon created had the chip printing its path while the sheet said "no
+	 * directory yet" and refused to start a run (QA round 2, Q-2). One expression, so
+	 * the two cannot disagree.
+	 */
+	const chipCwd = draftKey ? cwd : live.cwd;
 	/*
 	 * The chip's write path, which is one value because the two kinds answer
 	 * differently: a draft STAGES the directory `sessions.create` will use, and a
@@ -2718,10 +2729,9 @@ function SessionPanel({
 			trackFirstMessageSent();
 			return true;
 		} catch (error) {
-			// The category only - status class or transport - never the text.
-			trackProductEvent("message_send_failed", {
-				reason_category: categorizeSendFailure(error),
-			});
+			// Closed categories only - status, structured code, transport - never
+			// the text (`diagnoseSendFailure` says why the status alone misled).
+			trackProductEvent("message_send_failed", diagnoseSendFailure(error));
 			/*
 			 * THE BOUNDARY RULE, ON THE SURFACE THAT HAS TO OBEY IT: "a failure raised
 			 * after the optimistic row was painted belongs to the row; before it, the
@@ -5087,6 +5097,8 @@ function SessionPanel({
 						<ChatDeviceSlot
 							sessionId={sessionId ?? undefined}
 							draftKey={draftKey ?? undefined}
+							/* The value the header's chip below paints; see `chipCwd`. */
+							paneCwd={chipCwd}
 						/>
 					}
 					/*
@@ -5110,6 +5122,17 @@ function SessionPanel({
 						) : null
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
+					/*
+					 * THE RUNS THIS PANE BOUGHT, keyed by the same pane identity the device
+					 * control pins them under (`panelIdentityFor`), so the card appears in the
+					 * conversation that asked for the run rather than in whichever chat happens
+					 * to be open.
+					 */
+					remoteRuns={
+						(sessionId ?? draftKey) ? (
+							<RemoteRunCards paneKey={sessionId ?? (draftKey as string)} />
+						) : null
+					}
 					deviceHold={deviceHold}
 					agentName={title}
 					description={
@@ -5294,9 +5317,10 @@ function SessionPanel({
 					 * point of the chip - a value the backend has not confirmed yet has to
 					 * be paintable, or the user watches a move they made not happen. The
 					 * rebase onto `main` kept main's `sessionId` prop beside it; both are
-					 * wanted and neither subsumes the other.
+					 * wanted and neither subsumes the other. It is read through `chipCwd` so
+					 * the device slot's Radient sheet names the same directory (QA Q-2).
 					 */
-					cwd={draftKey ? cwd : live.cwd}
+					cwd={chipCwd}
 					cwdWritePath={cwdWritePath}
 					cwdReadOnlyReason={cwdReadOnlyReason}
 					/*

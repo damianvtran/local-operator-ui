@@ -593,6 +593,43 @@ export function canArchiveConversation(
 	);
 }
 
+/**
+ * Rename: the same authority as archive (the hub's rename handler applies the
+ * archive rule: conversation owner, or an org owner/admin on a channel; served
+ * as `can_administer`), widened to GROUPS because a group has a name too and
+ * the hub accepts its rename. Still never a DM (the hub refuses, `rule=dm`,
+ * and a DM's title is the other person), never a built-in (`rule=builtin`),
+ * never an archived conversation (409 `conversation_archived`).
+ */
+export function canRenameConversation(
+	conversation: Pick<
+		TeamBridgeConversation,
+		"kind" | "status" | "builtin" | "can_administer"
+	>,
+): boolean {
+	return (
+		(conversation.kind === "channel" || conversation.kind === "group") &&
+		conversation.status === "open" &&
+		!conversation.builtin &&
+		conversation.can_administer === true
+	);
+}
+
+/** One row renamed in place on a cached page (the optimistic rename). */
+export function withConversationName(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	name: string,
+	tenantId?: string,
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			sameRow(row, conversationId, tenantId) ? { ...row, name } : row,
+		),
+	};
+}
+
 /** Unarchive and permanent delete: the archived-side counterpart of the above. */
 export function canManageArchivedConversation(
 	conversation: Pick<

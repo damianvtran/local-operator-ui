@@ -1635,8 +1635,16 @@ export function AgentsPage() {
 					 * the first of three nested frames). The status row sits in flow above
 					 * the box at a fixed 28 px, so there is no overlay to reserve room for -
 					 * which is what the old `stripHeight` padding on the scroller did.
+					 *
+					 * NOR A GROUND: it inherits `<main data-glass-region="canvas-content">`'s,
+					 * like the band inside `MessageInput`. Under Full app glass that region is
+					 * translucent canvas (`index.css`), and an own `bg-canvas` here painted an
+					 * opaque block over it - the composer stood out as a flat, darker band
+					 * beneath the glass detail column (operator report, 2026-11-20). Without
+					 * glass both are `canvas`, which is why it only showed under glass. The
+					 * dock sits outside the scroller, so nothing scrolls beneath it to hide.
 					 */
-					<div className="shrink-0 bg-canvas">
+					<div className="shrink-0">
 						<ConfigComposer
 							run={run}
 							/*

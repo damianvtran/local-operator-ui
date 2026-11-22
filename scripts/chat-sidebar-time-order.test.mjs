@@ -419,15 +419,32 @@ function audit(lists, orderBy, basis) {
 				found.zeroLabels += 1;
 			if (list.section !== null && list.section !== "running") {
 				const at = clockOf(row, basis);
-				const today = new Date(NOW).setHours(0, 0, 0, 0);
+				/*
+				 * The bins restated INDEPENDENTLY of `sectionOf`: the cut is built from the
+				 * calendar FIELDS, not by zeroing a clock and moving its date (round 1, M3
+				 * - the old `setHours` + `setDate` body was the implementation's own, so it
+				 * could not disagree with it). It is the first instant of the day, and a
+				 * midnight-gap day resolves forward exactly as any component-built date
+				 * does: 01:00, because that day has no 00:00.
+				 */
+				const midnight = (days) => {
+					const d = new Date(NOW);
+					return new Date(
+						d.getFullYear(),
+						d.getMonth(),
+						d.getDate() - days,
+					).getTime();
+				};
 				const bin =
 					at === null
 						? "older"
-						: at >= today
+						: at >= midnight(0)
 							? "today"
-							: at >= today - 6 * DAY
-								? "week"
-								: "older";
+							: at >= midnight(1)
+								? "yesterday"
+								: at >= midnight(6)
+									? "week"
+									: "older";
 				if (bin !== list.section || sectionOf(row, NOW, basis) !== bin)
 					found.misfiled += 1;
 			}

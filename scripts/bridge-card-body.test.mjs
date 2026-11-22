@@ -50,6 +50,7 @@ const bundled = await build({
 		contents: `
 export * from './src/renderer/src/features/chat/components/trace/bridge-receipt-model';
 export {BridgeCardBodySection, readBridgeCardBody} from './src/renderer/src/features/chat/components/trace/bridge-card-body';
+export * from './src/renderer/src/features/chat/components/trace/bridge-card-reread';
 export {desktopEndpoint, desktopRequestSchema} from './src/shared/desktop-contract';
 `,
 		resolveDir: process.cwd(),
@@ -232,14 +233,61 @@ test("the collapse cut prefers a reader's boundary and never splits a surrogate 
 	const words = `${"word ".repeat(200)}`;
 	const cut = api.bridgeBodyPreview(words);
 	assert.equal(cut.truncated, true);
-	assert.ok(cut.text.length <= 600 && cut.text.endsWith("word"));
+	// A cut inside a line ends in "…" so it reads as a cut (#1977 D3).
+	assert.ok(cut.text.length <= 601 && cut.text.endsWith("word…"));
 	// One unbroken token: hard cut, and an emoji straddling the limit is not split.
 	const emoji = `${"x".repeat(599)}😀${"y".repeat(50)}`;
 	const hard = api.bridgeBodyPreview(emoji);
-	assert.equal(hard.text, "x".repeat(599));
+	assert.equal(hard.text, `${"x".repeat(599)}…`);
 	// A boundary in the first half is ignored (it would hide most of the message).
 	const early = `ab ${"z".repeat(700)}`;
-	assert.equal(api.bridgeBodyPreview(early).text.length, 600);
+	assert.equal(api.bridgeBodyPreview(early).text, `ab ${"z".repeat(597)}…`);
+	// A cut at a line break needs no ellipsis: the author ended the line there.
+	const lineBreak = `${"c".repeat(400)}\n${"d".repeat(400)}`;
+	assert.equal(api.bridgeBodyPreview(lineBreak).text, "c".repeat(400));
+});
+
+test("short lines fold by line count even under the character limit (#1977 D3)", () => {
+	assert.equal(api.BRIDGE_CARD_BODY_COLLAPSE_LINES, 7);
+	const lines = (n) =>
+		Array.from({ length: n }, (_, index) => `- step ${index + 1}`).join("\n");
+	// 20 short lines, ~200 characters: folded to the first 7, no ellipsis.
+	const list = lines(20);
+	assert.ok(list.length < 600);
+	assert.deepEqual(api.bridgeBodyPreview(list), {
+		text: lines(7),
+		truncated: true,
+	});
+	// Exactly 7 lines, or 7 plus trailing blank lines, is whole.
+	assert.equal(api.bridgeBodyPreview(lines(7)).truncated, false);
+	assert.equal(api.bridgeBodyPreview(`${lines(7)}\n\n  \n`).truncated, false);
+	assert.equal(api.bridgeBodyPreview(lines(8)).text, lines(7));
+	// Long lines past the character limit before line 7: the character cut wins.
+	const wide = Array.from({ length: 10 }, () => "w ".repeat(60).trim()).join(
+		"\n",
+	);
+	const cut = api.bridgeBodyPreview(wide);
+	assert.equal(cut.truncated, true);
+	assert.ok(cut.text.length <= 600);
+	assert.ok(!cut.text.endsWith("…"), "cut at a line break, not mid-line");
+});
+
+test("a coalesced card folds past three items only when it hides two or more (#1977 D2)", () => {
+	const items = (n) => Array.from({ length: n }, (_, index) => index);
+	assert.deepEqual(api.bridgeCardFold(items(3)), {
+		shown: items(3),
+		hidden: 0,
+	});
+	// Hiding one row behind a toggle row of the same height saves nothing.
+	assert.deepEqual(api.bridgeCardFold(items(4)), {
+		shown: items(4),
+		hidden: 0,
+	});
+	assert.deepEqual(api.bridgeCardFold(items(5)), {
+		shown: items(3),
+		hidden: 2,
+	});
+	assert.deepEqual(api.bridgeCardFold(items(20)).hidden, 17);
 });
 
 // --------------------------------------------------------------- component
@@ -378,7 +426,7 @@ for (const [state, extra, sentence] of [
 	[
 		"held",
 		{ hold: { class: "awaiting_review", held_for_s: 12 } },
-		"Held by moderation.",
+		"Held for review.",
 	],
 	// A transient hold is screening not yet run / delivery unfinished: nobody
 	// decided anything, so it must not read as moderation (core #4238 D3/R4).
@@ -388,10 +436,10 @@ for (const [state, extra, sentence] of [
 		"Waiting for screening — not shown to your agent yet.",
 	],
 	// No class, or one this client does not know, keeps the firm sentence.
-	["held", {}, "Held by moderation."],
-	["held", { hold: { class: "later_kind" } }, "Held by moderation."],
+	["held", {}, "Held for review."],
+	["held", { hold: { class: "later_kind" } }, "Held for review."],
 	["refused", {}, "Refused by moderation."],
-	["pending", {}, "Still being delivered."],
+	["pending", {}, "Waiting to be delivered to your agent."],
 	["not_admitted", {}, "Not delivered to this agent."],
 	["unavailable", {}, "Message body unavailable."],
 	[
@@ -405,11 +453,7 @@ for (const [state, extra, sentence] of [
 		"Message body unavailable. Sign in to Team Bridge to load it.",
 	],
 	["unavailable", { reason: "deleted" }, "This message was deleted."],
-	[
-		"unavailable",
-		{ reason: "offline" },
-		"Couldn't reach Radient — close and reopen to retry.",
-	],
+	["unavailable", { reason: "offline" }, "Couldn't reach Radient — retrying."],
 ]) {
 	const variant = extra.reason ?? extra.hold?.class ?? "";
 	test(`${state}${variant ? `/${variant}` : ""} says so, never 'unavailable' for a moderation outcome`, async () => {
@@ -474,11 +518,70 @@ test("a coalesced card lists each message and counts the overflow", async () => 
 		rows.map((row) => row.getAttribute("data-bridge-message-id")),
 		["bcmsg_a", "bcmsg_b", "bcmsg_c"],
 	);
-	assert.equal(rows[1].textContent, "Held by moderation.");
+	assert.equal(rows[1].textContent, "Held for review.");
 	assert.equal(
 		view.host.querySelector("[data-bridge-body-more]").textContent,
 		"And 7 more messages",
 	);
+	await view.unmount();
+});
+
+test("a many-message card folds behind one Show more and keeps the overflow count for the full list (#1977 D2)", async () => {
+	const items = Array.from({ length: 20 }, (_, index) =>
+		item({
+			message_id: `bcmsg_${index}`,
+			state: "admitted",
+			body: `body ${index}`,
+		}),
+	);
+	const view = await mount(
+		{ sessionId: SESSION, entryId: "coalescedmany", enabled: true },
+		ok({ v: 1, items, more: 3 }),
+	);
+	const ids = () =>
+		[...view.host.querySelectorAll("[data-bridge-message-id]")].map((row) =>
+			row.getAttribute("data-bridge-message-id"),
+		);
+	assert.deepEqual(ids(), ["bcmsg_0", "bcmsg_1", "bcmsg_2"]);
+	const toggle = view.host.querySelector("[data-bridge-card-toggle]");
+	assert.equal(toggle.textContent, "Show more");
+	assert.equal(toggle.getAttribute("aria-expanded"), "false");
+	// Folded, "And 3 more" would undercount what is hidden, so it waits.
+	assert.equal(view.host.querySelector("[data-bridge-body-more]"), null);
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(ids().length, 20);
+	assert.equal(toggle.textContent, "Show less");
+	assert.equal(toggle.getAttribute("aria-expanded"), "true");
+	assert.equal(
+		view.host.querySelector("[data-bridge-body-more]").textContent,
+		"And 3 more messages",
+	);
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(ids().length, 3);
+	await view.unmount();
+});
+
+test("a short-line body folds by lines in the rendered card (#1977 D3)", async () => {
+	const body = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join(
+		"\n\n",
+	);
+	const view = await mount(
+		{ sessionId: SESSION, entryId: "shortlines", enabled: true },
+		ok({ v: 1, items: [item({ state: "admitted", body })], more: 0 }),
+	);
+	const text = () =>
+		view.host.querySelector('[data-detail-section="bridge-body"]').textContent;
+	assert.ok(text().includes("line 4") && !text().includes("line 5"));
+	const toggle = view.host.querySelector("[data-bridge-body-toggle]");
+	assert.ok(toggle, "a short-line body under 600 characters still folds");
+	await act(async () => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	});
+	assert.ok(text().includes("line 20"));
 	await view.unmount();
 });
 
@@ -497,4 +600,288 @@ test("two mounts of one card share one in-flight read; a later open reads again"
 	// Revocation is live: nothing is cached once the read settles.
 	await api.readBridgeCardBody(SESSION, "shared", transport);
 	assert.equal(count, 2);
+});
+
+// ------------------------------------------------- re-reading an open card
+
+/*
+ * The operator's report: a card opened while its message was still `pending`
+ * said "Still being delivered." forever, because the pane read once per open.
+ * These drive the re-read schedule with a fake clock (the `clock` seam) and a
+ * scripted transport (the `transport` seam), so every step is deterministic.
+ */
+
+function fakeClock() {
+	let next = 1;
+	const timers = new Map();
+	return {
+		delays: [],
+		setTimeout(run, ms) {
+			const id = next++;
+			timers.set(id, run);
+			this.delays.push(ms);
+			return id;
+		},
+		clearTimeout(id) {
+			timers.delete(id);
+		},
+		get pending() {
+			return timers.size;
+		},
+		/** Fire the one scheduled re-read and let its answer land. */
+		async fire() {
+			assert.equal(timers.size, 1, "exactly one re-read is scheduled");
+			const [[id, run]] = timers;
+			timers.delete(id);
+			await act(async () => {
+				run();
+				await new Promise((resolve) => setTimeout(resolve, 0));
+			});
+		},
+	};
+}
+
+/** A transport answering from a script; the last answer repeats. */
+function scripted(...answers) {
+	const calls = [];
+	return {
+		calls,
+		transport: async (input) => {
+			calls.push(input);
+			const answer = answers[Math.min(calls.length - 1, answers.length - 1)];
+			return typeof answer === "function" ? answer() : answer;
+		},
+	};
+}
+
+const frame = (...items) => ({ v: 1, items, more: 0 });
+
+async function mountOpen(entryId, transport, clock) {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	await act(async () => {
+		root.render(
+			h(api.BridgeCardBodySection, {
+				sessionId: SESSION,
+				entryId,
+				enabled: true,
+				transport,
+				clock,
+			}),
+		);
+	});
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	return {
+		host,
+		state: () =>
+			[...host.querySelectorAll("[data-bridge-body-state]")].map((node) =>
+				node.getAttribute("data-bridge-body-state"),
+			),
+		unmount: () => act(() => root.unmount()).then(() => host.remove()),
+	};
+}
+
+test("final vs non-final: only answers that can still change keep the pane reading", () => {
+	const of = (...items) => api.bridgeCardBodyOf(frame(...items));
+	assert.equal(api.bridgeCardBodyIsFinal(null), false, "a failed read retries");
+	for (const [label, read, final] of [
+		["pending", of(item({ state: "pending" })), false],
+		[
+			"held for review",
+			of(item({ state: "held", hold: { class: "awaiting_review" } })),
+			false,
+		],
+		[
+			"held transient",
+			of(item({ state: "held", hold: { class: "transient" } })),
+			false,
+		],
+		["offline", of(item({ state: "unavailable", reason: "offline" })), false],
+		[
+			"not loaded",
+			of(item({ state: "unavailable", reason: "not_loaded" })),
+			false,
+		],
+		["admitted", of(item({ state: "admitted", body: "hi" })), true],
+		["refused", of(item({ state: "refused" })), true],
+		["not admitted", of(item({ state: "not_admitted" })), true],
+		["deleted", of(item({ state: "unavailable", reason: "deleted" })), true],
+		[
+			"signed out",
+			of(item({ state: "unavailable", reason: "signed_out" })),
+			true,
+		],
+		[
+			"hub unsupported",
+			of(item({ state: "unavailable", reason: "hub_unsupported" })),
+			true,
+		],
+		["unknown future state", of(item({ state: "quarantined" })), true],
+		[
+			"coalesced, one still pending",
+			of(
+				item({ state: "admitted", body: "old" }),
+				item({ message_id: "bcmsg_new", state: "pending" }),
+			),
+			false,
+		],
+	])
+		assert.equal(api.bridgeCardBodyIsFinal(read), final, label);
+});
+
+test("the backoff is 5 s, 10 s, 20 s, 30 s, then 60 s with no give-up", () => {
+	assert.deepEqual(
+		Array.from({ length: 8 }, (_, attempt) =>
+			api.bridgeCardRereadDelay(attempt),
+		),
+		[5000, 10000, 20000, 30000, 60000, 60000, 60000, 60000],
+	);
+	assert.equal(api.bridgeCardRereadDelay(10_000), 60000);
+});
+
+test("pending -> admitted while open: the body appears without reopening, then reading stops", async () => {
+	const clock = fakeClock();
+	const script = scripted(
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		frame(item({ state: "admitted", body: "**finally here**" })),
+	);
+	const view = await mountOpen("rereadadmit", script.transport, clock);
+	assert.equal(view.host.textContent, "Waiting to be delivered to your agent.");
+	for (let step = 0; step < 6; step += 1) await clock.fire();
+	assert.equal(script.calls.length, 7, "one fresh request per re-read");
+	assert.deepEqual(clock.delays, [5000, 10000, 20000, 30000, 60000, 60000]);
+	assert.deepEqual(view.state(), ["admitted"]);
+	assert.equal(view.host.querySelector("strong")?.textContent, "finally here");
+	assert.equal(clock.pending, 0, "a final answer schedules nothing");
+	await view.unmount();
+});
+
+test("a re-read keeps the last answer on screen: no flash back to Loading", async () => {
+	const clock = fakeClock();
+	let release;
+	const slow = new Promise((resolve) => {
+		release = resolve;
+	});
+	const script = scripted(frame(item({ state: "pending" })), () => slow);
+	const view = await mountOpen("rereadnoflash", script.transport, clock);
+	await clock.fire();
+	assert.equal(script.calls.length, 2, "the re-read is in flight");
+	assert.deepEqual(view.state(), ["pending"]);
+	assert.equal(view.host.querySelector('[aria-busy="true"]'), null);
+	await act(async () => {
+		release(frame(item({ state: "admitted", body: "landed" })));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	assert.deepEqual(view.state(), ["admitted"]);
+	await view.unmount();
+});
+
+test("held for review keeps reading until moderation decides; refused is final", async () => {
+	const clock = fakeClock();
+	const script = scripted(
+		frame(item({ state: "held", hold: { class: "awaiting_review" } })),
+		frame(item({ state: "refused" })),
+	);
+	const view = await mountOpen("rereadrefused", script.transport, clock);
+	assert.equal(view.host.textContent, "Held for review.");
+	assert.equal(clock.pending, 1);
+	await clock.fire();
+	assert.equal(view.host.textContent, "Refused by moderation.");
+	assert.equal(clock.pending, 0);
+	await view.unmount();
+});
+
+test("offline says it is retrying, and does: a later read shows the body", async () => {
+	const clock = fakeClock();
+	const script = scripted(
+		frame(item({ state: "unavailable", reason: "offline" })),
+		frame(item({ state: "admitted", body: "back online" })),
+	);
+	const view = await mountOpen("rereadoffline", script.transport, clock);
+	assert.equal(view.host.textContent, "Couldn't reach Radient — retrying.");
+	await clock.fire();
+	assert.ok(view.host.textContent.includes("back online"));
+	assert.equal(clock.pending, 0);
+	await view.unmount();
+});
+
+test("closing the pane stops the schedule and drops a read still in flight", async () => {
+	const clock = fakeClock();
+	let release;
+	const slow = new Promise((resolve) => {
+		release = resolve;
+	});
+	const script = scripted(
+		frame(item({ state: "pending" })),
+		frame(item({ state: "pending" })),
+		() => slow,
+	);
+	const view = await mountOpen("rereadunmount", script.transport, clock);
+	assert.equal(clock.pending, 1);
+	await view.unmount();
+	assert.equal(clock.pending, 0, "unmount clears the scheduled re-read");
+
+	// Same again with a read in flight at close: its answer lands nowhere.
+	const second = await mountOpen("rereadunmount2", script.transport, clock);
+	await clock.fire();
+	await second.unmount();
+	await act(async () => {
+		release(frame(item({ state: "pending" })));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	assert.equal(clock.pending, 0, "a late answer schedules nothing");
+});
+
+test("regaining window focus re-reads a waiting pane at once", async () => {
+	const clock = fakeClock();
+	const script = scripted(
+		frame(item({ state: "pending" })),
+		frame(item({ state: "admitted", body: "seen on focus" })),
+	);
+	const view = await mountOpen("rereadfocus", script.transport, clock);
+	assert.equal(clock.pending, 1);
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	assert.equal(script.calls.length, 2);
+	assert.ok(view.host.textContent.includes("seen on focus"));
+	assert.equal(clock.pending, 0, "the cleared tick is not left behind");
+	// Settled: focus again asks nothing.
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	assert.equal(script.calls.length, 2);
+	await view.unmount();
+});
+
+test("the open headline's thread-reply marker comes only from the card's anchored thread line", () => {
+	const card = (lines) =>
+		[
+			"Thread reply · #ops · from Aida (agent, same tenant)",
+			"mention: no",
+			...lines,
+		].join("\n");
+	assert.equal(
+		api.bridgeReceiptOf({}, card(["thread_root_id: bcmsg_0d6a21b5 (reply to)"]))
+			.thread,
+		true,
+	);
+	for (const text of [
+		"",
+		card([]),
+		card(["thread_root_id: bcmsg_0d6a21b5"]),
+		card(["  thread_root_id: bcmsg_0d6a21b5 (reply to)"]),
+		card(["thread_root_id: not-an-id (reply to)"]),
+	])
+		assert.equal(api.bridgeReceiptOf({}, text).thread, undefined, text);
 });

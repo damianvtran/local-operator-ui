@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, copy-review round 2 (final bytes), PR #2017 (Team Bridge unloadable held message discard)",
+  "locale": "hi",
+  "pr": 2017,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "fix/tb-held-orphan-dismiss-ui",
+  "date": "2026-11-20",
+  "head": "2ee1470f026ff81fd8d15700912b4acc358d10f5",
+  "instance": "pr2017-r2-hi-copy-170e0100",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent copy reviewer and translation auditor (radientdev team); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "170e01005c8b",
+    "instance": "pr2017-r2-hi-copy-170e0100",
+    "independent_of_translator": true,
+    "independence": "Copy-reviewer lop session 170e01005c8b, a fresh task that authored no catalogue, translation, context or proposed bytes for PR #2017. Translators: coder at 482ddf03 (reference, discard_unread_label, confirm.discard_unread), coder remediation at 2ee1470f (receipt_only), and the round-1 copy-reviewer (state.discard_recorded; the ur device term in confirm.discard_unread), all different sessions. No MT or translation API used."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Served model anthropic/claude-opus-5-5 per this session's harness system prompt; no fallback observed during the audit.",
+  "status": "passed",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 99d6ba9c585e (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/hi.md @ origin/main 99d6ba9c585e (sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5)",
+    "context": {
+      "ui.teamBridge.holds": "06b8cd6f72e4a0be30e199de93393862e3ecca4662dab2fa80d48c2b07c7faa5"
+    }
+  },
+  "checks": "key set == en (62); placeholders identical to en in the 5 new keys ({reference} in reference, confirm.discard_unread, discard_unread_label; none elsewhere); no Unicode Cf/bidi controls; no em/en dashes; Discard/Deliver verbs match this locale's existing button labels; meaning read against en and the context notes: receipt_only says the load failed (not permanent, no sender claim) and that Deliver is closed, which the !affordance.deliver gate in receiptDiscardArmed guarantees; state.discard_recorded states only the local record and the missing server confirmation, with no promise that it will apply and no sender notification; confirm.discard_unread names one message, unread, recorded locally, irreversible. The other 57 keys are byte-identical to 373c82426889 (mechanically verified), whose bytes match the ledger's current audited target hash.",
+  "namespaces": {
+    "ui.teamBridge.holds": {
+      "status": "passed",
+      "sha256": {
+        "en": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+        "hi": "d61f3a3cdce04e85e17c984cb99c26f1223b8f0ea527195e17884caedb826d19"
+      },
+      "keys_audited": 5,
+      "keys": [
+        "ui.teamBridge.holds.receipt_only",
+        "ui.teamBridge.holds.reference",
+        "ui.teamBridge.holds.confirm.discard_unread",
+        "ui.teamBridge.holds.discard_unread_label",
+        "ui.teamBridge.holds.state.discard_recorded"
+      ],
+      "scope": "Delta 373c82426889..2ee1470f026f: the 5 new keys read in full against en and context; the other 57 keys byte-identical in en and hi to the bytes audited by receipt pr1981-r3-hi-copy-c80a86dd.",
+      "findings": []
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1978 (move dialog working set)",
+  "locale": "vi",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc",
+  "instance": "b973c86b28e4-pr1978-r1-vi",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session b973c86b28e4 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translator was a different session: agent coder, job eacba7a3806e, session 76c99189cb1d. Same served model family as the translator (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "b973c86b28e4-pr1978-r1-vi"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main d0484be33486 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/vi.md @ origin/main d0484be33486 (sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc"
+  },
+  "findings": [
+    {
+      "id": "VI-1",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer",
+      "problem": "'Thiết bị kia chưa nhận được worktree' reads 'has not received worktrees yet', not 'can't receive worktrees yet'.",
+      "fix": "'Thiết bị kia chưa thể nhận worktree. Hãy cập nhật Local Operator trên đó rồi chuyển lại.'"
+    },
+    {
+      "id": "VI-2",
+      "severity": "NIT",
+      "key": "ui.mesh.mesh_actions.working_set_reason_unmerged",
+      "problem": "'xung đột hợp nhất' while the adjacent reason line says 'thao tác merge'; both forms exist in the corpus, but one dialog should name merge one way.",
+      "fix": "'xung đột merge chưa giải quyết' (matching reason_in_progress_operation)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at dd014c1e9d (scratch script run with the repo's @formatjs/icu-messageformat-parser): key set equals English; the base..head diff of this file is exactly the 42 added working_set_* lines (0 changed, 0 removed values, so every other value is the bytes audited by the superseded row); every audited value parses and carries the same arguments, types and ::group-off skeletons as English; plural arms present for every CLDR category of the locale and no foreign arm; NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no leading/trailing/double spaces; no <Trans> tags in this namespace. Rendered fit NOT verified in this lane (no rendered frames)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.mesh.mesh_actions.working_set_warning",
+      "note": "push → 'đẩy' / 'chưa đẩy' departs from vi.md's kept-English list but matches the audited vi corpus ('đã đẩy', 'Tự động đẩy'), and does not collide with 'gửi' (send); not counted."
+    }
+  ],
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "Đang kiểm tra những tệp làm việc mà lần chuyển này sẽ gửi…",
+    "ui.mesh.mesh_actions.working_set_error": "Không thể kiểm tra những tệp làm việc mà lần chuyển này sẽ gửi. Nếu cuộc trò chuyện này có tệp làm việc, thao tác chuyển sẽ yêu cầu bạn xem lại trước khi gửi bất cứ thứ gì.",
+    "ui.mesh.mesh_actions.working_set_warning": "Chuyển giữa chừng cuộc trò chuyện sẽ gửi toàn bộ tệp làm việc của cuộc trò chuyện này đến {device}: các worktree bên dưới cùng các commit chưa đẩy và thay đổi chưa commit, cùng tệp nháp và bộ nhớ phiên. Chỉ tiếp tục nếu {device} nên giữ công việc này.",
+    "ui.mesh.mesh_actions.working_set_changed": "Các tệp làm việc đã thay đổi kể từ khi bạn xem lại. Hãy xem danh sách đã cập nhật và xác nhận lại.",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, other {Sẽ gửi {count, number, ::group-off} worktree}} · tổng cộng {size}",
+    "ui.mesh.mesh_actions.working_set_detached": "HEAD tách rời",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, other {{unpushed, number, ::group-off} commit chưa đẩy}} · đã stage: {staged, number, ::group-off} · chưa stage: {unstaged, number, ::group-off} · chưa theo dõi: {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "Sẽ đến {path}",
+    "ui.mesh.mesh_actions.working_set_clone": "{device} chưa có kho mã này, nên kho sẽ được nhân bản từ {url}.",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "{device} chưa có kho mã này, nên kho sẽ được nhân bản từ {url} (khoảng {size}).",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "Bị giữ lại — không gửi",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "Trông giống tệp bí mật, nên sẽ không được gửi.",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "Chứa giá trị trông giống bí mật, nên sẽ không được gửi.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "Một commit chưa đẩy thêm tệp trông giống bí mật, nên sẽ không được gửi.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "Một commit chưa đẩy chứa giá trị trông giống bí mật, nên sẽ không được gửi.",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "Giữ nguyên tại chỗ",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "Phần phụ thuộc",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "Kết quả build",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "Bị Git bỏ qua",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "Tệp nằm ngoài worktree",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "tạo lại bằng {command}",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "Một cuộc trò chuyện đang hoạt động khác đang làm việc trong worktree này, nên nó được giữ nguyên tại chỗ.",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "Worktree này nằm ngoài thư mục chính, nên không thể đặt lên thiết bị kia.",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "Worktree này có xung đột hợp nhất chưa giải quyết. Hãy giải quyết rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "Đang có thao tác merge, rebase hoặc cherry-pick dở dang ở đây. Hãy hoàn tất hoặc hủy rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "Chưa hỗ trợ chuyển worktree có submodule.",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "Chưa hỗ trợ chuyển worktree dùng Git LFS.",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "Lịch sử chưa đẩy chứa nội dung trông giống bí mật. Hãy đẩy hoặc viết lại commit, hoặc chuyển nó khỏi nhánh này, rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "Quá lớn để gửi trong lần chuyển này. Hãy đẩy lên, hoặc nhân bản trên thiết bị kia, rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "Thiết bị kia đã có một bản checkout khác ở đường dẫn này.",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "Thiết bị kia chưa nhận được worktree. Hãy cập nhật Local Operator trên đó rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "Không gửi ({code}).",
+    "ui.mesh.mesh_actions.working_set_checkbox": "Tôi chắc chắn {device} nên nhận các tệp này",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "Phiên bản này chưa chuyển tệp làm việc. Các worktree bên dưới vẫn ở nguyên chỗ, nên cuộc trò chuyện trên {device} sẽ không có các commit chưa đẩy hay thay đổi chưa commit của chúng. Hãy đẩy hoặc commit những gì bạn cần trước khi chuyển.",
+    "ui.mesh.mesh_actions.working_set_warning_without": "Không thể gửi các tệp làm việc này cùng lần chuyển, nên cuộc trò chuyện trên {device} sẽ không có chúng. Bạn có thể chuyển mà không kèm chúng, hoặc hủy và đẩy hay commit công việc trước.",
+    "ui.mesh.mesh_actions.working_set_unknown": "Không thể kiểm tra các tệp làm việc, nên chúng không thể được gửi cùng lần chuyển này và cuộc trò chuyện trên {device} sẽ không có chúng. Bạn có thể chuyển mà không kèm chúng, hoặc hủy rồi thử lại.",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, other {{count, number, ::group-off} worktree vẫn ở nguyên chỗ}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "Tôi hiểu cuộc trò chuyện trên {device} sẽ không có các tệp này",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "Nếu thiết bị kia chưa có kho mã này, nó sẽ được nhân bản từ {url} sau khi kiểm tra dung lượng trống.",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "Lịch sử chưa đẩy quá lớn để kiểm tra bí mật, nên sẽ không được gửi. Hãy đẩy các commit, hoặc chuyển chúng khỏi nhánh này, rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "Thiết bị kia không thể nhân bản kho mã này. Hãy nhân bản trên đó trước, rồi chuyển lại.",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "Chưa chuyển: phiên bản này chưa chuyển worktree."
+  },
+  "prior_audits": [
+    {
+      "instance": "i18n-audit-uimesh-vi-59a1adac0231",
+      "covers": "every ui.mesh value other than the 42 working_set_* keys (byte-identical at this head); moved to superseded by this row"
+    }
+  ],
+  "scope": "PR #1978 round 1 (1fb3d656c3..dd014c1e9d): the 42 added ui.mesh.mesh_actions.working_set_* keys; the remaining values are unchanged bytes covered by the prior audit",
+  "binding": "Verified on the committed tree at dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/vi/ui.mesh.json sha256 7857d8a333ca718e1910bf2e688db0bc89a4665c37063c13a6bb8839bc45b8e1; English sha256 6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1; context sha256 bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21.",
+  "en_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+  "context_sha256": "bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21",
+  "target_sha256": "7857d8a333ca718e1910bf2e688db0bc89a4665c37063c13a6bb8839bc45b8e1",
+  "sha256": {
+    "vi": "7857d8a333ca718e1910bf2e688db0bc89a4665c37063c13a6bb8839bc45b8e1",
+    "en": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1"
+  }
+}

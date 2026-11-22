@@ -20,7 +20,7 @@
  */
 
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -1055,12 +1055,48 @@ test("blocksSpawn names the configured address, not the record root", async () =
 	rmSync(file, { force: true });
 });
 
-test("a pid read off the listening socket names a holder /health could not", async () => {
+test("a pid read off the listening socket names a holder /health could not", async (t) => {
 	const listener = createServer(() => {});
+	// Register before any await/assert: a failed PID check must not leave this
+	// listener alive and turn an assertion failure into a hung CI shard.
+	t.after(async () => {
+		if (listener.listening) {
+			await new Promise((resolve) => listener.close(resolve));
+		}
+	});
 	await new Promise((resolve) => listener.listen(0, "127.0.0.1", resolve));
 	const port = listener.address().port;
+	const lookupStarted = performance.now();
+	const pids = listenerPidsOn(port);
+	const lookupElapsedMs = performance.now() - lookupStarted;
+	if (pids.length !== 1 || pids[0] !== process.pid) {
+		// Duration alone cannot establish a timeout. This independent query records
+		// command evidence only; it never replaces/retries the original assertion.
+		const args = ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"];
+		const diagnosticStarted = performance.now();
+		const commandResult = spawnSync("lsof", args, {
+			encoding: "utf8",
+			timeout: 2_000,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		t.diagnostic(
+			JSON.stringify({
+				command: ["lsof", ...args],
+				expectedPid: process.pid,
+				pids,
+				lookupElapsedMs,
+				diagnosticElapsedMs: performance.now() - diagnosticStarted,
+				status: commandResult.status,
+				signal: commandResult.signal,
+				code: commandResult.error?.code ?? null,
+				error: commandResult.error?.message ?? null,
+				stdout: commandResult.stdout,
+				stderr: commandResult.stderr,
+			}),
+		);
+	}
 	assert.deepEqual(
-		listenerPidsOn(port),
+		pids,
 		[process.pid],
 		"the kernel's own table is the source when nothing answered",
 	);

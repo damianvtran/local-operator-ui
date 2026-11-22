@@ -8,6 +8,7 @@ import {
 	type BrowserWindowConstructorOptions,
 	Menu,
 	type NativeImage,
+	WebContentsView,
 	app,
 	clipboard,
 	dialog,
@@ -17,6 +18,8 @@ import {
 	nativeTheme,
 	session,
 	shell,
+	systemPreferences,
+	utilityProcess,
 	webContents,
 } from "electron";
 import { PostHog } from "posthog-node";
@@ -65,6 +68,7 @@ import {
 	groundWithGlass,
 	windowGlassArgument,
 } from "../shared/window-glass";
+import { VOICE_PAGE_CHANNELS } from "../voice-page/channels";
 import { AppAttentionService } from "./app-attention-service";
 import { createAppIconBadge } from "./app-icon-badge";
 import { appIconBadgeBitmap } from "./app-icon-badge-bitmap";
@@ -109,6 +113,7 @@ import {
 	guardForegroundReceipts,
 	isAdmittedSender,
 	registerDesktopIPC,
+	registerQwenVoiceIPC,
 } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
@@ -147,11 +152,22 @@ import { LinkPreviewArtifactCache } from "./link-preview/artifact-cache";
 import { createLinkPreviewService } from "./link-preview/service";
 import {
 	type QuickSendWatcher,
+	quickSendConfigDir,
 	readQuickSendValue,
 	watchLocalConfig,
 	watchQuickSend,
 } from "./local-config";
 import { createMainLocale } from "./main-locale";
+import {
+	MESH_PAIRING_DEBUG_SWITCHES,
+	MESH_PAIRING_PROBE_WORLD_ID,
+	MeshPairingConfirmations,
+	type PairingAnswerHost,
+	answerMeshPairing,
+	confirmMeshPairing,
+	meshPairingEligibility,
+	refusalEnv,
+} from "./mesh-pairing-attest";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
 import { installTypeOfServiceGuard } from "./net-tos-guard";
 import {
@@ -194,6 +210,33 @@ import { titlebarOptions } from "./titlebar-options";
 import { UpdateService, holdLaunchForLiveInstall } from "./update-service";
 import { ViewerEndpoint } from "./viewer-endpoint";
 import { ViewerRecordPublisher } from "./viewer-record";
+import { type ByokPagePort, ByokVoice } from "./voice/byok-voice";
+import {
+	BYOK_VOICE_PARTITION,
+	type ByokPageView,
+	ByokVoicePage,
+} from "./voice/byok-voice-page";
+import { QwenGatewayHost, launcherPathFor } from "./voice/qwen-gateway";
+import {
+	DEFAULT_QWEN_RIG_DIR,
+	QwenSpeechProcess,
+	qwenMemoryBudget,
+	resolveQwenPorts,
+	s2sLauncherPathFor,
+} from "./voice/qwen-rig";
+import { QwenVoice } from "./voice/qwen-voice";
+import {
+	QWEN_VOICE_PARTITION,
+	QwenVoicePage,
+	type VoicePageSession,
+	type VoicePageView,
+	noQwenVoicePage,
+	voicePageAllowed,
+} from "./voice/qwen-voice-page";
+import {
+	readQwenVoiceEnabled,
+	writeQwenVoiceEnabled,
+} from "./voice/qwen-voice-setting";
 import { resolveLaunchWindowChrome } from "./window-chrome";
 import {
 	type ResolvedLaunchGlass,
@@ -950,6 +993,19 @@ const openExternalVetted = (raw: unknown): Promise<ExternalOpenOutcome> =>
 		(url) => shell.openExternal(url),
 		(message) => logger.warn(message, LogFileType.BACKEND),
 	);
+
+/**
+ * The macOS microphone pane. A MAIN-ONLY path (plan §4): the URL is a fixed
+ * constant with no input, so it is not the renderer's vetted door, whose
+ * `x-apple.systempreferences:` scheme is refused on purpose.
+ */
+const MICROPHONE_SETTINGS_URL =
+	"x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+
+const openMicrophoneSettings = (): void => {
+	if (process.platform !== "darwin") return;
+	void shell.openExternal(MICROPHONE_SETTINGS_URL);
+};
 
 /**
  * The sign-in popup's window options, supplied to `guardWindowOpen` at every
@@ -1904,6 +1960,251 @@ const recordingShortcut = new RecordingShortcutCoordinator(
 	(message) =>
 		logger.warn(`recording-shortcut: ${message}`, LogFileType.BACKEND),
 );
+
+/*
+ * THE QWEN VOICE RIG (`./voice/qwen-voice.ts`): main owns both processes and
+ * the speak guard. Module scope so `will-quit` can stop it by its recorded PIDs.
+ * Built lazily from `app` paths, which exist from module load.
+ */
+const qwenPorts = resolveQwenPorts(process.env.LOP_QWEN_PORTS, app.isPackaged);
+const qwenRigDir = process.env.LOP_QWEN_RIG_DIR || DEFAULT_QWEN_RIG_DIR;
+const qwenStateDir = join(app.getPath("userData"), "qwen-voice");
+/** Layers 1 and 3 share this one number (§9). */
+const qwenMemBudgetBytes = qwenMemoryBudget(process.env);
+/*
+ * THE BRING-YOUR-OWN-KEY HALF (`./voice/byok-voice.ts`): the app's own voice
+ * page hears, the daemon's ElevenLabs path transcribes and speaks. Built on
+ * first use like the Gateway's page (`session.fromPartition` needs `app` ready),
+ * and created only in a normal window, for the same reason: nobody is at a
+ * headless run's screen, and the microphone prompt would land on the wrong
+ * process.
+ */
+let byokPageInstance: ByokVoicePage | null = null;
+const byokPage = (): ByokVoicePage => {
+	byokPageInstance ??= new ByokVoicePage({
+		session: session.fromPartition(
+			BYOK_VOICE_PARTITION,
+		) as unknown as VoicePageSession,
+		createView: (options) =>
+			new WebContentsView(
+				options as unknown as ConstructorParameters<typeof WebContentsView>[0],
+			) as unknown as ByokPageView,
+		rendererUrl: rendererDocumentUrl(),
+		preloadPath: join(__dirname, "../preload/voice-page.js"),
+		mediaAccess: {
+			status: () => systemPreferences.getMediaAccessStatus("microphone"),
+			ask: async () => systemPreferences.askForMediaAccess("microphone"),
+		},
+		log: (message) => logger.info(message, LogFileType.BACKEND),
+		onStopped: (reason) => byokVoice.pageStopped(reason),
+		onRestarted: () => byokVoice.pageRestarted(),
+	});
+	return byokPageInstance;
+};
+const byokPagePort: ByokPagePort = voicePageAllowed(
+	windowLaunch.mode,
+	process.env,
+)
+	? {
+			allowed: true,
+			open: () => byokPage().open(),
+			close: () => byokPageInstance?.close(),
+			play: (message) => byokPageInstance?.play(message),
+			stop: () => byokPageInstance?.stop(),
+			setMuted: (muted) => byokPage().setMuted(muted),
+			prepareMicrophone: (options) => byokPage().prepareMicrophone(options),
+		}
+	: {
+			allowed: false,
+			open: () => {},
+			close: () => {},
+			play: () => {},
+			stop: () => {},
+			setMuted: () => {},
+			prepareMicrophone: async (_options) => "unknown",
+		};
+const byokVoice: ByokVoice = new ByokVoice({
+	page: byokPagePort,
+	media: (input, bytes) => backendService.requestDesktopMedia(input, bytes),
+	toRenderer: (channel, payload) => {
+		const window = mainWindow;
+		if (!window || window.isDestroyed()) return false;
+		window.webContents.send(channel, payload);
+		return true;
+	},
+	report: (state) => qwenVoice.byokReport(state),
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+/*
+ * THE PAGE'S THREE VOICES UP, each admitted from the page's own contents only:
+ * the main window's renderer (or anything else) cannot inject a take or a
+ * progress report. `ByokVoice` validates each payload again.
+ */
+for (const [channel, handle] of [
+	[VOICE_PAGE_CHANNELS.take, (p: unknown) => byokVoice.onTake(p)],
+	[VOICE_PAGE_CHANNELS.vad, (p: unknown) => byokVoice.onVad(p)],
+	[VOICE_PAGE_CHANNELS.progress, (p: unknown) => byokVoice.onProgress(p)],
+] as const) {
+	ipcMain.on(channel, (event, payload: unknown) => {
+		if (byokPageInstance?.owns(event.sender)) handle(payload);
+	});
+}
+
+const qwenVoice: QwenVoice = new QwenVoice({
+	byok: byokVoice,
+	gateway: new QwenGatewayHost(
+		launcherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
+		qwenRigDir,
+		qwenPorts,
+		join(qwenStateDir, "gateway"),
+		(message) => qwenVoice.onGatewayMessage(message),
+		(modulePath, args, options) => {
+			const child = utilityProcess.fork(modulePath, args, {
+				...options,
+				serviceName: "Local Operator voice",
+			});
+			return {
+				get pid() {
+					return child.pid;
+				},
+				postMessage: (message) => child.postMessage(message),
+				onMessage: (listener) => {
+					child.on("message", listener);
+				},
+				onExit: (listener) => {
+					child.on("exit", listener);
+				},
+				kill: () => child.kill(),
+			};
+		},
+		(message) => logger.info(message, LogFileType.BACKEND),
+		(detail) => qwenVoice.processExited("gateway", detail),
+	),
+	speech: new QwenSpeechProcess(
+		s2sLauncherPathFor(app.getAppPath(), process.resourcesPath, app.isPackaged),
+		qwenRigDir,
+		qwenPorts,
+		qwenStateDir,
+		{
+			log: (message) => logger.info(message, LogFileType.BACKEND),
+			onUnexpectedExit: (detail) => qwenVoice.processExited("speech", detail),
+			budgetBytes: qwenMemBudgetBytes,
+			onBudgetExceeded: (limit) => qwenVoice.budgetExceeded(limit),
+		},
+	),
+	toRenderer: (channel, payload) => {
+		const window = mainWindow;
+		if (!window || window.isDestroyed()) return false;
+		window.webContents.send(channel, payload);
+		return true;
+	},
+	/*
+	 * THE HIDDEN VOICE PAGE (plan §1): Qwen's own WebUI in an unattached view,
+	 * so no browser tab, no "Enable microphone" click and no permission prompt
+	 * in someone else's browser. Agent-driven runs create no page - they must
+	 * never cost a renderer for voice nobody is listening to.
+	 *
+	 * BUILT ON FIRST USE, not here: `session.fromPartition` is only valid after
+	 * `app.whenReady()`, and this coordinator is constructed at module load. The
+	 * first use is a start, which cannot happen before there is a window.
+	 */
+	page: (() => {
+		/*
+		 * NO PAGE OUTSIDE A NORMAL WINDOW (review R2): a headless or inactive run
+		 * has nobody at the screen, and the OS microphone prompt would land on
+		 * whatever process this launch belongs to - QA watched it sit unanswered
+		 * for four minutes against the session host.
+		 */
+		if (!voicePageAllowed(windowLaunch.mode, process.env))
+			return noQwenVoicePage();
+		let page: QwenVoicePage | null = null;
+		const instance = (): QwenVoicePage => {
+			page ??= new QwenVoicePage({
+				// The seams are structural subsets of Electron's Session and
+				// WebContentsView; Electron's overloaded `on` is not assignable to
+				// one signature, so the adapter casts once, here.
+				session: session.fromPartition(
+					QWEN_VOICE_PARTITION,
+				) as unknown as VoicePageSession,
+				createView: (options) =>
+					new WebContentsView(
+						options as unknown as ConstructorParameters<
+							typeof WebContentsView
+						>[0],
+					) as unknown as VoicePageView,
+				mediaAccess: {
+					status: () => systemPreferences.getMediaAccessStatus("microphone"),
+					ask: async () => systemPreferences.askForMediaAccess("microphone"),
+				},
+				gatewayOrigin: `http://127.0.0.1:${qwenPorts.gateway}`,
+				devTools: process.env.LOP_QWEN_VOICE_DEBUG === "1",
+				log: (message) => logger.info(message, LogFileType.BACKEND),
+				onStopped: (reason) => qwenVoice.pageFailed(reason),
+			});
+			return page;
+		};
+		return {
+			allowed: true,
+			open: (url: string) => instance().open(url),
+			close: () => page?.close(),
+			/*
+			 * NO PAGE IS CREATED FOR A MUTE: with none, the coordinator's own copy is
+			 * re-applied when the page is first opened (`QwenVoice.openPage`).
+			 */
+			setMuted: (muted: boolean) => page?.setMuted(muted),
+			// The options MUST cross: they carry the 5 s bound and `onSettled`. A
+			// zero-argument lambda here dropped both, and the page fell back to
+			// `timeoutMs ?? 0` - wait forever (QA round 2: 2m12s on "Starting
+			// voice", no `mic` field ever reported).
+			prepareMicrophone: async (options) =>
+				instance().prepareMicrophone(options),
+		};
+	})(),
+	log: (message) => logger.info(message, LogFileType.BACKEND),
+});
+
+/*
+ * THE VOICE SWITCH, read synchronously before anything voice runs. Default OFF:
+ * a fresh profile has no file, so nothing below is ever started for it.
+ */
+void qwenVoice.setEnabled(readQwenVoiceEnabled(app.getPath("userData")));
+
+/**
+ * A TERMINATING SIGNAL STOPS THE RIG FIRST (QA round 1, Q-3). Measured: `kill
+ * -TERM` took the whole Electron group down in under 2 s, but the s2s group
+ * (5.69 GB) survived with `s2s.json` still naming it - `before-quit`,
+ * `will-quit` and `process.on("exit")` never ran, because the SIGTERM handler
+ * below hands a signal with no quit under way back to Chromium.
+ *
+ * So the signal paths stop the rig themselves, synchronously, and clear the
+ * record: nothing runs behind them to reap it. Idempotent (a second signal does
+ * nothing).
+ *
+ * NOTHING HERE NEEDS A BOUND (review round 2, minor 2): `stopNow`/
+ * `killNow` only issue signals, check group liveness and unlink the record -
+ * all synchronous, no await and no child to wait on. The old 3 s `app.exit(1)`
+ * timer was unreachable anyway (an unconditional `clearTimeout` ran before the
+ * event loop could fire it), so it bounded nothing and made
+ * `SIGNAL_STOP_BOUND_MS` look like a live guard; both are gone rather than
+ * left as decoration.
+ */
+let signalStoppedVoice = false;
+const stopVoiceOnTerminatingSignal = (signal: NodeJS.Signals): void => {
+	if (signalStoppedVoice) return;
+	signalStoppedVoice = true;
+	logger.info(
+		`Received ${signal}; stopping the voice rig before exit.`,
+		LogFileType.BACKEND,
+	);
+	try {
+		qwenVoice.stopNow(true);
+	} catch (error) {
+		logger.warn(
+			`voice stop on ${signal} failed: ${error instanceof Error ? error.message : String(error)}`,
+			LogFileType.BACKEND,
+		);
+	}
+};
 
 /**
  * The one-shot mount permits for supplement frames (turn-supplements memo §4.1,
@@ -2876,7 +3177,12 @@ app
 					 * listener and re-raising. libuv restores the saved sigaction
 					 * when the last listener for a signal goes, so the re-raise
 					 * reaches whatever handled TERM before this block did.
+					 *
+					 * THE RIG IS STOPPED HERE, BEFORE THE HAND-OFF (QA round 1,
+					 * Q-3): Chromium's shutdown runs no quit path, so this is the
+					 * only chance to take the 5.7 GB s2s group with us.
 					 */
+					stopVoiceOnTerminatingSignal("SIGTERM");
 					process.removeListener("SIGTERM", onSigtermDuringQuit);
 					process.kill(process.pid, "SIGTERM");
 					return;
@@ -2889,6 +3195,17 @@ app
 				app.exit(0);
 			};
 			process.on("SIGTERM", onSigtermDuringQuit);
+			/*
+			 * Ctrl-C in the dev terminal is the same class of exit: Chromium runs
+			 * no quit path for SIGINT either, so the rig is stopped here and the
+			 * signal then re-raised to its previous disposition.
+			 */
+			const onSigint = () => {
+				stopVoiceOnTerminatingSignal("SIGINT");
+				process.removeListener("SIGINT", onSigint);
+				process.kill(process.pid, "SIGINT");
+			};
+			process.on("SIGINT", onSigint);
 		}
 
 		// F12 toggles DevTools in development only. Not the toolkit's
@@ -3145,6 +3462,12 @@ app
 			() => mainWindow,
 			async (input) => {
 				const response = await backendService.requestDesktop(input);
+				/*
+				 * The voice slot's reads and the `/voice/text` answers, seen by MAIN:
+				 * the only way a reply or gate text becomes speakable is that it came
+				 * back from the daemon through here (the speak guard).
+				 */
+				qwenVoice.noteDesktopAnswer(input, response);
 				appAttention.observeResponse(input, response);
 				return response;
 			},
@@ -3408,6 +3731,11 @@ app
 		 */
 		backendService.observeDesktopFeed(
 			(frame: DesktopFeedFrame) => {
+				/*
+				 * Main's OWN read of the voice slot, before the window's: the rig
+				 * starts on an enable even with no window open to see the frame.
+				 */
+				qwenVoice.observeFrame(frame);
 				appAttention.observe(frame);
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
@@ -3793,6 +4121,38 @@ app
 			cache: linkPreviewArtifacts,
 		});
 
+		/*
+		 * Mesh pairing confirmations (security review round 1, US-R1-1): one
+		 * outstanding token per window, bound to the sending document. The document
+		 * GENERATION is main's count of cross-document commits and renderer losses on
+		 * that webContents, so a token minted for one loaded page cannot be spent by
+		 * the next even where Chromium reuses the frame host (same frame token).
+		 * Listeners attach on the first read - generation 0 is "the page that asked
+		 * first" - and every bump also burns that window's token outright.
+		 */
+		const meshPairingConfirmations = new MeshPairingConfirmations();
+		const pairingDocumentGenerations = new WeakMap<
+			Electron.WebContents,
+			number
+		>();
+		const pairingDocumentGeneration = (contents: Electron.WebContents) => {
+			const known = pairingDocumentGenerations.get(contents);
+			if (known !== undefined) return known;
+			pairingDocumentGenerations.set(contents, 0);
+			const id = contents.id;
+			const bump = () => {
+				pairingDocumentGenerations.set(
+					contents,
+					(pairingDocumentGenerations.get(contents) ?? 0) + 1,
+				);
+				meshPairingConfirmations.forget(id);
+			};
+			contents.on("did-navigate", bump);
+			contents.on("render-process-gone", bump);
+			contents.once("destroyed", () => meshPairingConfirmations.forget(id));
+			return 0;
+		};
+
 		registerDesktopIPC(
 			() => mainWindow,
 			rendererUrl,
@@ -3856,7 +4216,152 @@ app
 			 * gate as every other channel above it.
 			 */
 			linkPreview,
+			/*
+			 * Main's own mesh pairing ops (`mesh-pairing-attest.ts`): the launch's
+			 * static eligibility, the one-shot confirmation (click-provenance gate,
+			 * isolated-world activation pre-filter, then the person's approval of
+			 * the exact answer on a native sheet built from main's own read), and
+			 * the answer (consume for the identical answer, re-check, attest over
+			 * `mesh-pairing.sock`, then this same forwarder). ONLY the
+			 * main window may confirm or answer (the tray lives there; the mini view
+			 * has no pairing card), so the sender is re-checked against it alone.
+			 */
+			async (event, pairingRequest) => {
+				const launchFacts = () => ({
+					platform: process.platform,
+					packaged: app.isPackaged,
+					/*
+					 * argv PLUS any debug switch main appended to Chromium's own
+					 * command line at runtime (`app.commandLine.appendSwitch`), which
+					 * `process.argv` never shows.
+					 */
+					argv: [
+						...process.argv,
+						...MESH_PAIRING_DEBUG_SWITCHES.filter((name) =>
+							app.commandLine.hasSwitch(name.slice(2)),
+						),
+					],
+					/*
+					 * Refusal-only: this env feeds nothing but the `dev_flag` check in
+					 * `pairingStaticRefusal`, which REFUSES when a driver variable is
+					 * set. So unlike the launch facts above (window mode, driver
+					 * arming), where a cwd `.env` must not be able to ADD anything and
+					 * `launchEnv` alone is the safe read, here the safe read is the
+					 * superset of the launch snapshot and the folded env: the snapshot
+					 * alone would miss a driver variable a `.env` added and so weaken
+					 * the refusal. `refusalEnv` keeps any non-empty value per key, so
+					 * a `.env` line blanking a launch-time driver variable cannot mask
+					 * it either: a driver variable set in EITHER env refuses.
+					 */
+					env: refusalEnv(launchEnv, process.env),
+					windowMode: windowLaunch.mode,
+				});
+				if (pairingRequest.op === "pairings.eligibility")
+					return meshPairingEligibility(launchFacts());
+				const owner = mainWindow;
+				// Re-read on every call: the window may close, or the sender's
+				// document change, between the confirmation and the answer.
+				const admitted = () =>
+					owner !== null &&
+					!owner.isDestroyed() &&
+					isAdmittedSender(event, [{ window: owner, url: rendererUrl }]);
+				const host: PairingAnswerHost = {
+					facts: () => ({
+						...launchFacts(),
+						window:
+							admitted() && owner
+								? {
+										visible: owner.isVisible(),
+										minimized: owner.isMinimized(),
+										focused: owner.isFocused(),
+										devToolsOpened: owner.webContents.isDevToolsOpened(),
+										debuggerAttached: owner.webContents.debugger.isAttached(),
+									}
+								: null,
+					}),
+					document: () => {
+						const frame = event.senderFrame;
+						if (!admitted() || !owner || !frame || frame.isDestroyed())
+							return null;
+						return {
+							webContentsId: event.sender.id,
+							processId: frame.processId,
+							frameToken: frame.frameToken,
+							generation: pairingDocumentGeneration(owner.webContents),
+						};
+					},
+					/*
+					 * In an ISOLATED world (code review F2): a page script can redefine
+					 * `navigator.userActivation` in its own world, not in this one.
+					 * `userGesture` is FALSE on purpose: `true` would GRANT the page an
+					 * activation, which is exactly the fact being asked about.
+					 */
+					userActivation: async () =>
+						owner !== null && !owner.isDestroyed()
+							? (await owner.webContents.executeJavaScriptInIsolatedWorld(
+									MESH_PAIRING_PROBE_WORLD_ID,
+									[{ code: "navigator.userActivation.isActive === true" }],
+									false,
+								)) === true
+							: false,
+					/*
+					 * Main's OWN read of the cards (security review round 2, US-R2-1):
+					 * the sheet's labels and the answerability check never come from
+					 * the renderer's request.
+					 */
+					readPairings: () => sendDesktop({ op: "pairings.list" }),
+					/*
+					 * The TRUSTED CONTROL: a native message box attached to the main
+					 * window (window-modal - a sheet on macOS), which no page script,
+					 * CDP session or dev driver can click. Button 0 is the action and
+					 * the ONLY answer that approves. Cancel is the default AND the
+					 * cancel button, so a held or repeated Return from the code field
+					 * and Escape both dismiss rather than approve. `signal` closes it
+					 * at the card's expiry (Electron resolves that as the cancel id).
+					 */
+					showSheet: async (sheet, signal) => {
+						if (owner === null || owner.isDestroyed()) return false;
+						const { response } = await dialog.showMessageBox(owner, {
+							type: "question",
+							buttons: [sheet.actionLabel, sheet.cancelLabel],
+							defaultId: 1,
+							cancelId: 1,
+							noLink: true,
+							message: sheet.message,
+							detail: sheet.detail,
+							signal,
+						});
+						return response === 0 && !signal.aborted;
+					},
+					confirmations: meshPairingConfirmations,
+					configDir: () => quickSendConfigDir(),
+					forward: sendDesktop,
+				};
+				return pairingRequest.op === "pairings.confirm"
+					? confirmMeshPairing(pairingRequest, host)
+					: answerMeshPairing(pairingRequest, host);
+			},
 		);
+		registerQwenVoiceIPC(() => mainWindow, rendererUrl, {
+			getEnabled: () => qwenVoice.isEnabled(),
+			setEnabled: async (on) => {
+				if (!writeQwenVoiceEnabled(app.getPath("userData"), on))
+					throw new Error("Could not save the voice setting.");
+				await qwenVoice.setEnabled(on);
+				for (const window of BrowserWindow.getAllWindows())
+					if (!window.isDestroyed())
+						window.webContents.send("voice.qwen.enabled", on);
+				return on;
+			},
+			result: (input) => qwenVoice.result(input),
+			speak: (input) => qwenVoice.speak(input),
+			start: (reason) => qwenVoice.start(reason),
+			getStatus: () => qwenVoice.getStatus(),
+			openMicSettings: openMicrophoneSettings,
+			pause: () => qwenVoice.pause(),
+			resume: () => qwenVoice.resume(),
+			setMuted: (muted) => qwenVoice.setMuted(muted),
+		});
 
 		// Both app documents may read recording state; only the main window's
 		// main frame may publish panel/fixed claims.
@@ -5789,6 +6294,13 @@ app.on("will-quit", (event) => {
 	viewerEndpoint?.close();
 	viewerRecord?.stop();
 	/*
+	 * The voice rig goes with the app: its Gateway and the s2s process group,
+	 * by the PIDs recorded at start, synchronously - `will-quit` cannot await,
+	 * and a model process left behind holds gigabytes. Idempotent, like the two
+	 * lines above, because this handler is re-entered.
+	 */
+	qwenVoice.stopNow();
+	/*
 	 * #755: a refusal recorded BEFORE this pass — during the session-cookie hold
 	 * or the window close — is completed here; the three sites below catch the
 	 * refusal that lands after it, mid-teardown, which is the common case (the
@@ -6078,6 +6590,16 @@ app.on("before-quit", async (event) => {
 
 // The exit event is synchronous: only the current captured handle is eligible.
 process.on("exit", () => {
+	/*
+	 * The voice rig too: an exit that never reached `will-quit` (app.exit, a
+	 * fatal path) must not leave the ~5 GB s2s group behind. `stopNow` is
+	 * synchronous and idempotent, so a quit that already ran it is unaffected.
+	 */
+	try {
+		qwenVoice.stopNow();
+	} catch (error) {
+		logger.error("Voice rig emergency stop failed", LogFileType.BACKEND, error);
+	}
 	try {
 		backendService.emergencyStopOwned();
 	} catch (error) {

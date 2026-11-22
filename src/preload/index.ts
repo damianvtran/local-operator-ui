@@ -44,6 +44,11 @@ import {
 	type ExternalOpenOutcome,
 	type ExternalOpenRefusedPayload,
 	type FileActionOutcome,
+	type QwenByokMessage,
+	type QwenVoiceEvent,
+	type QwenVoiceResult,
+	type QwenVoiceStatus,
+	type QwenVoiceTake,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -252,6 +257,81 @@ const api = {
 				ipcRenderer.send("desktop-feed-watch");
 				return () => {
 					ipcRenderer.removeListener("desktop-feed-state", handler);
+				};
+			},
+		},
+		/*
+		 * THE QWEN VOICE RIG (`src/main/voice/qwen-voice.ts`). Every value crosses as
+		 * data; main validates it, and `speak` is honoured only for a text main
+		 * relayed itself (`QwenVoiceBridge` in the contract).
+		 */
+		qwenVoice: {
+			getEnabled: (): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.get"),
+			setEnabled: (on: boolean): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.set", on === true),
+			onEnabled: (listener: (enabled: boolean) => void) => {
+				const handler = (_event: unknown, enabled: boolean) =>
+					listener(enabled === true);
+				ipcRenderer.on("voice.qwen.enabled", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.enabled", handler);
+				};
+			},
+			onTake: (listener: (take: QwenVoiceTake) => void) => {
+				const handler = (_event: unknown, take: QwenVoiceTake) =>
+					listener(take);
+				ipcRenderer.on("voice.qwen.take", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.take", handler);
+				};
+			},
+			result: (result: QwenVoiceResult): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.result", result),
+			speak: (input: {
+				text: string;
+				kind: "reply" | "gate";
+			}): Promise<{ spoken: boolean; reason?: string }> =>
+				ipcRenderer.invoke("voice.qwen.speak", input),
+			start: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.start"),
+			getStatus: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.status.get"),
+			openMicrophoneSettings: (): Promise<void> =>
+				ipcRenderer.invoke("voice.qwen.open-mic-settings"),
+			/*
+			 * THE STRIP'S TWO CONTROLS. Both answer the new status, which is what
+			 * the strip paints; mute is coerced here as well as in main because this
+			 * object is the boundary a renderer value crosses.
+			 */
+			pause: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.pause"),
+			resume: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.resume"),
+			setMuted: (muted: boolean): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.mute", muted === true),
+			onStatus: (listener: (status: QwenVoiceStatus) => void) => {
+				const handler = (_event: unknown, status: QwenVoiceStatus) =>
+					listener(status);
+				ipcRenderer.on("voice.qwen.status", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.status", handler);
+				};
+			},
+			onEvent: (listener: (event: QwenVoiceEvent) => void) => {
+				const handler = (_event: unknown, event: QwenVoiceEvent) =>
+					listener(event);
+				ipcRenderer.on("voice.qwen.event", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.event", handler);
+				};
+			},
+			onByok: (listener: (message: QwenByokMessage) => void) => {
+				const handler = (_event: unknown, message: QwenByokMessage) =>
+					listener(message);
+				ipcRenderer.on("voice.qwen.byok", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.byok", handler);
 				};
 			},
 		},

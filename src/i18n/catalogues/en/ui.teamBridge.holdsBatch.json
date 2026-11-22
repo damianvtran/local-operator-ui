@@ -1,0 +1,11 @@
+{
+	"ui.teamBridge.holdsBatch.action": "Dismiss all…",
+	"ui.teamBridge.holdsBatch.confirm": "Dismiss the listed messages (count: {count})? Only the messages listed below are included, not new arrivals. Each discard is recorded on this device and cannot be undone. Some message text may be unavailable. This does not confirm that the server or sender was notified.",
+	"ui.teamBridge.holdsBatch.submit": "Dismiss listed messages ({count})",
+	"ui.teamBridge.holdsBatch.progress": "Messages processed: {done} of {total}.",
+	"ui.teamBridge.holdsBatch.result": "Recorded on this device: {succeeded}. Not confirmed: {failed}. Records without confirmation remain in this list. New arrivals are not included.",
+	"ui.teamBridge.holdsBatch.retry": "Retry failed messages…",
+	"ui.teamBridge.holdsBatch.recorded": "Discard recorded on this device.",
+	"ui.teamBridge.holdsBatch.stale_receipt": "This held-message record changed. Refresh the list and confirm the discard again.",
+	"ui.teamBridge.holdsBatch.local_unconfirmed": "Discarded on this device without server confirmation. The sender may not have been notified. No further action is needed here."
+}

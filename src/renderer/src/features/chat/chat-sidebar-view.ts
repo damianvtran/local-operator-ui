@@ -78,6 +78,7 @@ export type SidebarSectionKey =
 	| "pinned"
 	| "running"
 	| "today"
+	| "yesterday"
 	| "week"
 	| "older"
 	| "agents"
@@ -97,6 +98,7 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionKey[] = [
 	"pinned",
 	"running",
 	"today",
+	"yesterday",
 	"week",
 	"older",
 	"agents",
@@ -115,6 +117,7 @@ export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, WithoutParams> = {
 	pinned: "ui.chat.sidebar_view.section.pinned",
 	running: "ui.chat.sidebar_view.section.running",
 	today: "ui.chat.sidebar_view.section.today",
+	yesterday: "ui.chat.sidebar_view.section.yesterday",
 	week: "ui.chat.sidebar_view.section.week",
 	older: "ui.chat.sidebar_view.section.older",
 	agents: "ui.chat.sidebar_view.section.agents",
@@ -1384,7 +1387,7 @@ export function moveSection(
 }
 
 /**
- * The four sections the CHATS region draws, in the order a fresh column draws
+ * The five sections the CHATS region draws, in the order a fresh column draws
  * them.
  *
  * Pinned is not one of them, and neither are the two entity sections: Pinned
@@ -1395,6 +1398,7 @@ export function moveSection(
 export const CHAT_SECTION_KEYS: readonly SidebarSectionKey[] = [
 	"running",
 	"today",
+	"yesterday",
 	"week",
 	"older",
 ];
@@ -1466,6 +1470,15 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * the blob, is a column that draws six of seven sections and has no control
  * that could name the missing one.
  *
+ * `yesterday` IS THE ONE EXCEPTION TO THE APPEND, and it is the reader's order
+ * that cannot be obeyed by appending: the section was added BETWEEN `today` and
+ * `week` (2026-11-19), so every stored order predates it and the canonical
+ * append would draw it under `older` - the last place a reader looks for
+ * yesterday's conversations. It is inserted after `today` (after `running` if
+ * the stored order lost `today` too), and a stored `hidden` list is left alone,
+ * because a section that did not exist when `today` was hidden was not hidden
+ * with it.
+ *
  * `loads` is clamped rather than rejected: it is a click counter, and a
  * tampered `1e9` would ask the list for a page larger than the catalogue it is
  * paging (the store already caps a list read at 500 rows, which is the honest
@@ -1503,6 +1516,18 @@ export function parseSidebarView(value: unknown): SidebarView {
 			if (order.includes(entry as SidebarSectionKey)) continue;
 			order.push(entry as SidebarSectionKey);
 		}
+	}
+	/*
+	 * See this function's doc: `yesterday` is inserted beside its neighbour
+	 * rather than appended, because a stored order predates the section by
+	 * definition. Done before the append so a stored order that lost `today`
+	 * still gets `yesterday` next to `running` rather than at the end.
+	 */
+	if (order.length > 0 && !order.includes("yesterday")) {
+		const anchor = order.includes("today")
+			? order.indexOf("today")
+			: order.indexOf("running");
+		if (anchor >= 0) order.splice(anchor + 1, 0, "yesterday");
 	}
 	for (const key of SIDEBAR_SECTIONS) if (!order.includes(key)) order.push(key);
 	const hidden: SidebarSectionKey[] = [];

@@ -129,6 +129,8 @@
 	"ui.chat.checkpoint.jump_user": "{clock}، {total, number} میں سے باری {turn, number} میں آپ کے پیغام پر جائیں",
 	"ui.chat.checkpoint.jump_user_no_clock": "{total, number} میں سے باری {turn, number} میں آپ کے پیغام پر جائیں",
 	"ui.chat.checkpoint.turn": "{total, number} میں سے باری {turn, number}",
+	"ui.chat.header_identity.agent_seat_closed_caption_known_speaker": "ٹیم {team} اس سیشن کی مالک ہے: ترجمان {speaker} ہے، اس لیے {agentCommand} بند ہے۔ پہلے ٹیم کو الگ کرنے کے لیے {detachCommand} چلائیں۔",
+	"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker": "ٹیم {team} اس سیشن کی مالک ہے: ترجمان ٹیم کا منتظم ہے، اس لیے {agentCommand} بند ہے۔ پہلے ٹیم کو الگ کرنے کے لیے {detachCommand} چلائیں۔",
 	"ui.chat.header_identity.agent_seat_closed_title": "{team} نے ایجنٹ کی جگہ بند کر دی",
 	"ui.chat.header_identity.aria_agent_assign": "ایجنٹ: {label}۔ ایجنٹ مقرر کریں",
 	"ui.chat.header_identity.aria_agent_closed": "ایجنٹ: {label}۔ {reason}",

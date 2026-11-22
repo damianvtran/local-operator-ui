@@ -247,9 +247,12 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 				count: actionCount,
 			})
 		: t("ui.chat.canonical.fold.count.actions", { count: actionCount });
-	const actionClauseTitle = `At least ${
-		actionCount === 1 ? "1 action" : `${actionCount} actions`
-	} — earlier rows of this turn are not loaded`;
+	const actionClauseTitle = t(
+		"ui.chat.canonical.turn_summary.actions_at_least",
+		{
+			count: actionCount,
+		},
+	);
 	/*
 	 * The group count's own words for hover and AT: the visible line carries a
 	 * bare number (the copy is `Peer messages · 12 · 2h 14m`), so the "at least"
@@ -260,7 +263,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	const groupClauseTitle =
 		receiptCount === undefined
 			? null
-			: `At least ${receiptCount} messages — earlier rows are not loaded`;
+			: t("ui.chat.canonical.turn_summary.messages_at_least", {
+					count: receiptCount,
+				});
 
 	/*
 	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's

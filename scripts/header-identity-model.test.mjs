@@ -1104,17 +1104,7 @@ test("the closure sentence is the runtime's refusal, pinned byte for byte", () =
 	);
 });
 
-/*
- * THE CHIP'S WORDS ARE KEYED; THE CONTRACT SENTENCE IS NOT. `its manager` as the
- * chip label follows the language (`ui.chat.header_identity.its_manager_label`),
- * while `identityAgentClosedCaption` mirrors core's
- * `team_owns_the_agent_slot_message` byte for byte and must stay English whatever
- * the interface language is: core's docstring names this UI as keying on the
- * exact words. One bundle, one locale switch, both halves asserted - so a future
- * edit that routes the sentence through `t()` (or hard-codes the chip again)
- * fails here.
- */
-test("the chip label follows the language; the core-mirroring sentence never does", () => {
+test("the chip follows the language and a missing caption falls back to English", () => {
 	const CORE_SENTENCE =
 		"team lopdev owns this session: its manager is the speaker, so /agent is closed. Run /team clear to detach the team first.";
 	const coldSeat = () =>
@@ -1131,21 +1121,64 @@ test("the chip label follows the language; the core-mirroring sentence never doe
 	// `its manager` and the sentence carries core's words.
 	assert.equal(itsManagerLabel(), "its manager");
 	assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
-	registerCatalogue("fr", {
-		"ui.chat.header_identity.its_manager_label": "FR son responsable",
+	// The fallback needs a locale with NO bundled caption: every shipped locale
+	// (fr included) now carries an audited one, so a synthetic catalogue under
+	// an unshipped tag (de) is the only way to reach the English fallback.
+	registerCatalogue("de", {
+		"ui.chat.header_identity.its_manager_label": "DE sein Leiter",
 	});
 	try {
-		setLocale("fr");
-		assert.equal(itsManagerLabel(), "FR son responsable");
+		setLocale("de");
+		assert.equal(itsManagerLabel(), "DE sein Leiter");
 		assert.equal(identityAgentClosedCaption("lopdev", null), CORE_SENTENCE);
 		const seat = coldSeat().seat;
 		assert.notEqual(seat, null, "the cold strict frame closes the seat");
 		assert.equal(seat.speakerKnown, false);
-		assert.equal(seat.speaker, "FR son responsable");
-		assert.equal(coldSeat().agentValue, "FR son responsable");
+		assert.equal(seat.speaker, "DE sein Leiter");
+		assert.equal(coldSeat().agentValue, "DE sein Leiter");
 		assert.equal(seat.sentence, CORE_SENTENCE);
 	} finally {
 		setLocale("en");
 	}
 	assert.equal(itsManagerLabel(), "its manager");
+});
+
+test("the seat caption switches locale for the same known and unknown speakers", () => {
+	const resolve = (speaker) =>
+		resolveHeaderIdentity({
+			activeTeam: "lopdev",
+			teams: [],
+			effectiveIdentity: {
+				speaker,
+				team: "lopdev",
+				role_of_speaker: "manager",
+			},
+		}).seat;
+	const englishKnown = resolve("ops-lead").sentence;
+	const englishUnknown = resolve("").sentence;
+	// Synthetic catalogue, not shipped copy: reorder the tokens to check that
+	// the locale owns the whole message, and exercise the RTL interpolation.
+	registerCatalogue("ur", {
+		"ui.chat.header_identity.agent_seat_closed_caption_known_speaker":
+			"KNOWN {detachCommand} {speaker} {agentCommand} {team}",
+		"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker":
+			"UNKNOWN {team} {detachCommand} {agentCommand}",
+	});
+	try {
+		setLocale("ur");
+		assert.equal(resolve("ops-lead").speakerKnown, true);
+		assert.equal(
+			resolve("ops-lead").sentence,
+			"KNOWN \u2066/team clear\u2069 \u2066ops-lead\u2069 \u2066/agent\u2069 \u2066lopdev\u2069",
+		);
+		assert.equal(resolve("").speakerKnown, false);
+		assert.equal(
+			resolve("").sentence,
+			"UNKNOWN \u2066lopdev\u2069 \u2066/team clear\u2069 \u2066/agent\u2069",
+		);
+	} finally {
+		setLocale("en");
+	}
+	assert.equal(resolve("ops-lead").sentence, englishKnown);
+	assert.equal(resolve("").sentence, englishUnknown);
 });

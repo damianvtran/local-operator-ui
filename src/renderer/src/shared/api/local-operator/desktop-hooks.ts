@@ -405,6 +405,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_leave_withdraws_agent"
 	/**
+	 * RENAME a channel or group: core's `POST .../conversations/{id}/rename`
+	 * desktop route over the hub's rename. Absent: the conversation menu draws
+	 * no Rename item, because every save would be refused by a runtime that has
+	 * no route for it.
+	 */
+	| "team_bridge_conversation_rename"
+	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
 	 * `team_bridge.endpoint_avatar` read. Main gates the banner composite on the
@@ -1032,6 +1039,30 @@ export type DesktopFeature =
 	 */
 	| "session_transfer"
 	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
+	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
 	 *
@@ -1084,6 +1115,17 @@ export type DesktopFeature =
 	 */
 	| "phone_pairing"
 	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
+	/**
 	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
 	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
 	 * → Phone access; the pairing popup still renders, it just cannot offer the
@@ -1116,6 +1158,14 @@ export type DesktopFeature =
 	 * exactly as it did before.
 	 */
 	| "aida"
+	/*
+	 * PER-SESSION VOICE (`features.voice`; `docs/design/session-voice.md`): the slot
+	 * read/control, the utterance upload, the speech download and the feed's
+	 * `voice` frame. ITS OWN KEY: absent means no toggle, no sidebar marker, no
+	 * voice push-to-talk handler and no call to any `/v1/desktop/voice` route -
+	 * the app is exactly the pre-voice one.
+	 */
+	| "voice"
 	/**
 	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
 	 * availability report a speak control asks before it offers itself.
@@ -1202,7 +1252,13 @@ export type DesktopFeature =
 	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
 	 * rendered and the route (404 on an older backend) is never called.
 	 */
-	| "mobile_doctor";
+	| "mobile_doctor"
+	/**
+	 * Amazon Bedrock's AWS panel (`bedrock_auth`, bedrock design §7): the four
+	 * `auth.bedrock.*` ops. Absent ⇒ the provider panel offers only the generic
+	 * API-key path (`auth.key`), which every backend with a `bedrock` row serves.
+	 */
+	| "bedrock_auth";
 
 /**
  * WHY a negotiated feature surface may not be offered.

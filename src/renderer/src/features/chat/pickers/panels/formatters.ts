@@ -22,10 +22,12 @@
  * DOCUMENTED EXCEPTIONS — these unit SYMBOLS stay ASCII English in every
  * language, because they are technical symbols rather than prose, are the same
  * letters the terminal (`info/model.py`, `analytics_panel.py`) and the core's
- * `format_duration` print, and the style guide's kept-English list covers them
- * (`src/i18n/format.ts` documents the same rule for its own `s/m/h/d`): `ms`,
- * `s`/`m`/`h`/`d`, `tok/s`, and the magnitude letters `k`/`M`/`B` (and
- * context's `m`). They are not catalogue keys on purpose: a translator cannot
+ * `format_duration` print, and the style guide's kept-English list covers them:
+ * `ms` and `s` in the latency readings, `tok/s`, and the magnitude letters
+ * `k`/`M`/`B` (and context's `m`). The DURATION letters (`s`/`m`/`h`/`d` in
+ * {@link formatDuration}) are no longer on this list: they now come from
+ * `src/i18n/format.ts`'s CLDR-narrow duration helper, which is ASCII in
+ * English and localized elsewhere (i18n slice C3). They are not catalogue keys on purpose: a translator cannot
  * improve on them and a key would invite drift from the terminal. File sizes
  * are NOT an exception: {@link formatBytes} delegates to `formatByteQuantity`
  * (#1861), whose unit labels ARE localised (`Mo`, `GB` per locale) and whose
@@ -57,6 +59,8 @@ import {
 	currentLocale,
 	formatByteQuantity,
 	formatDate,
+	formatDurationParts,
+	formatDurationUnit,
 	formatNumber,
 	t,
 } from "@shared/i18n";
@@ -501,10 +505,20 @@ export function formatTokensPerSecond(
 export function formatDuration(seconds: number | null | undefined): string {
 	if (seconds === null || seconds === undefined) return UNKNOWN_WORD();
 	const total = Math.trunc(Math.max(0, seconds));
-	if (total < 60) return `${plainInt(total)}s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
-	if (total < 3600) return `${plainInt(Math.floor(total / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	// The shared localized duration helper retires this function's former
+	// kept-English unit letters: English narrow CLDR units are the same ASCII
+	// `42s` / `3h 12m`, other locales get their own. Both terms are passed even
+	// when the second is zero (`3h 0m`), as `info/model.py` prints it.
+	if (total < 60) return formatDurationUnit(total, "second");
+	if (total < 3600) return formatDurationUnit(Math.floor(total / 60), "minute");
 	if (total < 86400) {
-		return `${plainInt(Math.floor(total / 3600))}h ${plainInt(Math.floor((total % 3600) / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+		return formatDurationParts([
+			[Math.floor(total / 3600), "hour"],
+			[Math.floor((total % 3600) / 60), "minute"],
+		]);
 	}
-	return `${plainInt(Math.floor(total / 86400))}d ${plainInt(Math.floor((total % 86400) / 3600))}h`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	return formatDurationParts([
+		[Math.floor(total / 86400), "day"],
+		[Math.floor((total % 86400) / 3600), "hour"],
+	]);
 }

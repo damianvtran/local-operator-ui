@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "second independent translation audit, round 2 (high-visibility/safety copy: move confirmation working set) - re-check after the second-audit remediation",
+ "locale": "zh-CN",
+ "namespace": "ui.mesh",
+ "pr": 1978,
+ "date": "2026-11-18",
+ "head": "54a3bad3c4673885a7e7937dc864b838c02330a4",
+ "instance": "f4f5a50c8316-pr1978-second-r2-zh-CN",
+ "auditor": {
+  "agent": "task",
+  "role": "SECOND independent i18n auditor (lopdev task subagent); did not translate, remediate, or perform the first audit",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Auditor session f4f5a50c8316 (task role, lopdev lane move-working-set, manager 35c4f00e8d73), the round-1 second auditor. Remediation translator: coder e9c7087804bf (commit e61aba9d89); earlier translators coder 76c99189cb1d/eacba7a3806e, beaadf6c08ec, 9d716ec66066. First auditor: task session d11d211390f8 (r4 receipts). Same served model family (anthropic/claude-opus-5-5), different agent/run; no fallback. No MT or translation API used.",
+  "instance": "f4f5a50c8316-pr1978-second-r2-zh-CN"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "references": {
+  "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 28173772c (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+  "style_guide": "damianvtran/local-operator i18n/style-guides/zh-CN.md @ origin/main 28173772c (sha256 615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6)",
+  "context": "src/i18n/catalogues/en/ui.mesh.context.json @ 54a3bad3c4673885a7e7937dc864b838c02330a4",
+  "prior_second_audit": "i18n/receipts/f4f5a50c8316-pr1978-second-zh-CN.json",
+  "first_audit": "i18n/receipts/d11d211390f8-pr1978-r4-zh-CN.json"
+ },
+ "scope": "Round 2 of the second audit on ca07811e9f..54a3bad3c4: 3 changed value(s) re-audited semantically (with the move_receipt_resumed retirement clause substituted where relevant) plus every prior finding's disposition; the other 81 values are byte-identical to the round-1 audited bytes (compared key by key against ca07811e9f) and retained from f4f5a50c8316-pr1978-second-zh-CN; English and context bytes unchanged; mechanical checks re-run on all 84 keys.",
+ "changed_keys": [
+  "ui.mesh.mesh_page.move_receipt_resumed",
+  "ui.mesh.mesh_actions.working_set_reason_outside_home",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret_stay"
+ ],
+ "prior_findings_disposition": [
+  {
+   "id": "ZH-S2-1",
+   "key": "ui.mesh.mesh_page.move_receipt_resumed",
+   "status": "fixed",
+   "now": "对话现已存储在{destination}{retirement}；对话已在那里继续运行。",
+   "was_severity": "MINOR"
+  },
+  {
+   "id": "ZH-S2-2",
+   "key": "ui.mesh.mesh_actions.working_set_reason_history_secret_stay",
+   "status": "fixed",
+   "now": "未推送的历史中包含类似机密的内容。",
+   "was_severity": "NIT"
+  },
+  {
+   "id": "ZH-S2-3",
+   "key": "ui.mesh.mesh_actions.working_set_reason_outside_home",
+   "status": "fixed",
+   "now": "此工作树位于主目录之外，因此无法放到另一台设备上。",
+   "was_severity": "NIT"
+  }
+ ],
+ "safety_checks": "Receiving device ({device} in warning/checkbox), keeping device (warning_leave/without/unknown, checkbox_leave, kept_heading_on {source}), withheld-secret lines, refusal remedies and probe lender lines re-confirmed on the current bytes: PASS.",
+ "findings": [
+  {
+   "severity": "INFO",
+   "key": "*",
+   "note": "Mechanical checks re-run by this auditor on the committed bytes (repo @formatjs/icu-messageformat-parser, 84 keys x 7 locales, 0 issues): ICU parses; argument names/types match English; plural selectors are locale CLDR categories with 'other'; no bidi controls; no ASCII '...'; trailing ':' kept; fr U+202F/U+2019; zh-CN '……', no Han/Latin spaces."
+  },
+  {
+   "severity": "INFO",
+   "key": "*",
+   "note": "No new findings in the changed values. Residual scans: fr 0 'cet appareil', hi 0 'अनपुश्ड', vi 0 'máy chủ', ru 0 'слияни'/'перебазир' in the 84 keys."
+  }
+ ],
+ "binding": "Verified on the committed tree at 54a3bad3c4673885a7e7937dc864b838c02330a4 (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/zh-CN/ui.mesh.json sha256 4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f; English sha256 235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c; context sha256 c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b.",
+ "audited_values": {
+  "ui.mesh.mesh_page.move_receipt_resumed": "对话现已存储在{destination}{retirement}；对话已在那里继续运行。",
+  "ui.mesh.mesh_actions.working_set_reason_outside_home": "此工作树位于主目录之外，因此无法放到另一台设备上。",
+  "ui.mesh.mesh_actions.working_set_reason_history_secret_stay": "未推送的历史中包含类似机密的内容。"
+ },
+ "en_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+ "context_sha256": "c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b",
+ "target_sha256": "4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f",
+ "sha256": {
+  "zh-CN": "4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f",
+  "en": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c"
+ }
+}

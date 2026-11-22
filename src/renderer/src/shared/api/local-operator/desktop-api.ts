@@ -21,6 +21,7 @@ import {
 	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
 	isServeReloadFence,
+	isVoiceRefusalCode,
 } from "../../../../../shared/desktop-contract";
 import {
 	SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND,
@@ -1477,6 +1478,10 @@ export async function desktopMedia(
 					: detail === DESKTOP_MACHINE_DETAIL.noCredential
 						? DESKTOP_REFUSAL_CODE.noCredential
 						: undefined,
+			// The same op-scoped pass-through main's relay applies (`VOICE_REFUSAL_CODES`).
+			...(request.op.startsWith("voice.") && isVoiceRefusalCode(declaredCode)
+				? { voiceCode: declaredCode }
+				: {}),
 			// The upload's own refusal, as main's relay forwards it (dev-proxy twin).
 			...(request.op === "notification_sounds.upload" &&
 			declaredCode !== undefined

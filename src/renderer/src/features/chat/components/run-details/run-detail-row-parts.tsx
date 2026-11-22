@@ -28,6 +28,7 @@ import {
 import type { ReactNode } from "react";
 import {
 	type ChildStatus,
+	type RunRowKind,
 	type SubagentRow,
 	childStateLabel,
 } from "./run-detail-model";
@@ -176,10 +177,18 @@ export const DetailLine = ({ row }: { row: SubagentRow }) => {
  */
 export const SubagentRowBody = ({
 	row,
+	kind,
 	detail = null,
 	trailing = null,
 }: {
 	row: SubagentRow;
+	/**
+	 * Which list the row is drawn in. Required rather than defaulted: the row
+	 * cannot tell, and its spoken state word agrees with the list's noun in
+	 * gendered locales (`RunRowKind`), so a caller that forgot would be wrong
+	 * only in French.
+	 */
+	kind: RunRowKind;
 	/** The row's second line, or nothing (see above). */
 	detail?: ReactNode;
 	/**
@@ -208,7 +217,7 @@ export const SubagentRowBody = ({
 				>
 					{row.label}
 				</span>
-				<span className={cn("sr-only")}>{childStateLabel(row)}</span>
+				<span className={cn("sr-only")}>{childStateLabel(row, kind)}</span>
 				<NumberRun row={row} />
 				{trailing}
 			</div>

@@ -42,6 +42,7 @@
  * Scroll paging inherits that rule rather than restating it — a reader
  * following the tail neither loads a page nor has their offset corrected.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import {
 	FlagLine,
@@ -66,7 +67,7 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { useServerOffline } from "@shared/hooks/use-connectivity-status";
-import { formatDateTime, t } from "@shared/i18n";
+import { formatDateTime, formatList, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
@@ -516,7 +517,9 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * ("At least N actions - earlier rows of this turn are not loaded").
 	 */
 	const minimum = (stated: string) =>
-		segment.facts.partial ? `at least ${stated}` : stated;
+		segment.facts.partial
+			? t("ui.chat.canonical.condense.at_least", { stated })
+			: stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -565,8 +568,18 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
-	const lead = segment.label ?? "Turn condensed";
-	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
+	const lead = segment.label ?? t("ui.chat.canonical.condense.turn_condensed");
+	// The frame is keyed too: where the colon sits (French spaces it) and the
+	// closing stop are the language's, not this file's. So is the separator
+	// between the clauses (code review R2): `formatList` is CLDR's narrow list,
+	// `"a, b"` in English exactly as the hard-coded ", " was, `、` in zh-CN and
+	// `، ` in Urdu - no catalogue key, so no translation round.
+	return parts.length === 0
+		? t("ui.chat.canonical.condense.sentence_bare", { lead })
+		: t("ui.chat.canonical.condense.sentence", {
+				lead,
+				parts: formatList(parts),
+			});
 }
 
 /**
@@ -2841,6 +2854,8 @@ const ToolRow = memo(function ToolRow({
 					className={cn(
 						"whitespace-pre font-mono",
 						interruptedNotRun ? "text-ink" : "text-danger",
+						// The reason a call did not run quotes the call (review round 1, Q2).
+						USER_CONTENT_CLASS,
 					)}
 				>
 					{record.notRunReason}
@@ -3307,6 +3322,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 			})
 		: "";
 	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	/*
+	 * The open pane's headline says WHERE the message sits as well as who sent
+	 * it: a reply inside a thread reads differently from a top-level post, and the
+	 * body below it is otherwise context-free. The collapsed row keeps its
+	 * shorter summary.
+	 */
+	const thread = receipt.thread ? t("ui.chat.bridgeReceipt.thread_reply") : "";
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3319,7 +3341,7 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 					<BridgeDetailPane
 						isError={false}
 						view={{
-							headline: [received, target].filter(Boolean).join(" · "),
+							headline: [received, target, thread].filter(Boolean).join(" · "),
 							body: null,
 							/*
 							 * When the read is offered, the body section below owns the
@@ -4255,8 +4277,11 @@ const OPEN_TRACE_MS = 60_000;
  * changes the answer, and a refusal without it is a dead end. The search
  * jump's copy carries the same tail.
  */
-const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+function checkpointJumpMissCopy(): string {
+	// A function, not a constant: read per refusal so it speaks the locale
+	// active now, not the one active when this module loaded.
+	return t("ui.chat.canonical.checkpoint_jump.miss");
+}
 
 /**
  * The reader's place in a reversed scroller, as the paint cache stores it.
@@ -5941,7 +5966,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * refusal speaks, so that is the argument rather than a second loop.
 	 */
 	const jumpToCheckpoint = useCallback(
-		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		(id: string) => void jumpTo(id, checkpointJumpMissCopy()),
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(

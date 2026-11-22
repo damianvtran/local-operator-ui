@@ -38,7 +38,11 @@ import type {
 	DesktopProvider,
 	ProviderMethod,
 } from "@shared/api/local-operator/desktop-api";
-import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import {
+	desktopFeatureEnabled,
+	desktopKeys,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { getModelsForHostingProvider } from "@shared/components/hosting/hosting-model-manifest";
@@ -47,7 +51,6 @@ import {
 	AlertDescription,
 	AlertTitle,
 	Button,
-	Input,
 	Label,
 	Tabs,
 	TabsList,
@@ -84,17 +87,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
 	CircleCheck,
 	ExternalLink,
-	Eye,
-	EyeOff,
 	RotateCcw,
 	TriangleAlert,
 } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+	BedrockConnectResult,
 	DefaultsApplied,
 	SaveKeyResult,
 } from "../../../../shared/desktop-contract";
+import { voiceKeys } from "../voice/use-voice-status";
+import { awsPanelAvailable } from "./bedrock-connect-model";
+import { BedrockConnectPanel } from "./bedrock-connect-panel";
 import { useMakeLocalDefault } from "./local-default";
 import { checkLocalProvider } from "./local-provider-check";
 import type { LocalDiagnosis } from "./local-provider-diagnosis";
@@ -115,6 +120,7 @@ import {
 	primaryMethod,
 	providerReadiness,
 } from "./provider-labels";
+import { SecretInput } from "./secret-input";
 import {
 	clearKeyOutcome,
 	peekKeyOutcome,
@@ -268,47 +274,13 @@ type ProviderDetailProps = {
 	onUseHosted?: () => void;
 };
 
-const SecretInput: FC<{
-	id: string;
-	value: string;
-	onChange: (value: string) => void;
-	label: string;
-	invalid?: boolean;
-	describedBy?: string;
-}> = ({ id, value, onChange, label, invalid, describedBy }) => {
-	useI18nLocale();
-	const [visible, setVisible] = useState(false);
-	return (
-		<div className="relative">
-			<Input
-				id={id}
-				type={visible ? "text" : "password"}
-				value={value}
-				onChange={(event) => onChange(event.target.value)}
-				autoComplete="off"
-				spellCheck={false}
-				aria-label={label}
-				aria-invalid={invalid || undefined}
-				aria-describedby={describedBy}
-				className="pr-10 font-mono"
-			/>
-			<Button
-				type="button"
-				variant="ghost"
-				size="icon-sm"
-				className="absolute top-1/2 right-1 -translate-y-1/2"
-				onClick={() => setVisible((current) => !current)}
-				aria-label={
-					visible
-						? t("ui.providers.provider_detail.hide_key")
-						: t("ui.providers.provider_detail.show_key")
-				}
-			>
-				{visible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-			</Button>
-		</div>
-	);
-};
+/**
+ * What a STORED key looks like in the field: dots in the placeholder, nothing
+ * else. The daemon never returns a key, so there is nothing to show - this only
+ * says "one is saved", and it is not the field's value, so it can be neither
+ * edited nor submitted.
+ */
+const STORED_KEY_MASK = "\u2022".repeat(16);
 
 /**
  * The success receipt: the backend's own sentence, never re-derived here,
@@ -651,6 +623,9 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [methodId, setMethodId] = useState<string | null>(null);
 	const [keyValue, setKeyValue] = useState("");
 	const [keySaving, setKeySaving] = useState(false);
+	// Removing a stored key asks first: "ask" is the confirm, "busy" the request.
+	const [removeStep, setRemoveStep] = useState<"idle" | "ask" | "busy">("idle");
+	const [removeError, setRemoveError] = useState<string | null>(null);
 	const [keyError, setKeyError] = useState<string | null>(
 		() => peekKeyOutcome(provider.id).error,
 	);
@@ -674,13 +649,28 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	const [promptValue, setPromptValue] = useState("");
 	const [promptError, setPromptError] = useState<string | null>(null);
 	const brand = brandOf(provider);
+	/*
+	 * Amazon Bedrock's AWS panel is licensed by the backend, not by the census
+	 * row: a backend can list an `aws` method (bedrock design §7) and this app
+	 * may only render the panel when the four `auth.bedrock.*` routes behind it
+	 * exist. Without `features.bedrock_auth` the `aws` method is dropped and the
+	 * provider is the plain API-key panel every backend serves. Called before
+	 * the early returns so the hook order is the same for every provider.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const awsPanel = awsPanelAvailable(
+		provider,
+		desktopFeatureEnabled(capabilities.data, "bedrock_auth"),
+	);
+	const methods = provider.auth_methods.filter(
+		(candidate) => candidate.kind !== "aws",
+	);
 
 	// Resolved by METHOD identity, not provider id: a provider can offer several
 	// methods that all act on the same provider (D2 of the earlier round).
 	const method: ProviderMethod | null =
-		provider.auth_methods.find(
-			(candidate) => candidate.method_id === methodId,
-		) ?? primaryMethod(provider.auth_methods);
+		methods.find((candidate) => candidate.method_id === methodId) ??
+		primaryMethod(methods);
 
 	const refreshProviders = useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.providers });
@@ -704,6 +694,13 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		 * same event as far as the catalogue is concerned.
 		 */
 		void queryClient.invalidateQueries({ queryKey: desktopKeys.catalogue });
+		/*
+		 * AND THE VOICE STATUS: whether a speech provider is ready is a function of
+		 * its credential, and Settings (and main, which decides whether voice may
+		 * listen) read that readiness from it. A key saved or removed here would
+		 * otherwise leave "No ElevenLabs API key is stored." on screen until the poll.
+		 */
+		void queryClient.invalidateQueries({ queryKey: voiceKeys.status });
 		/*
 		 * THE ACCOUNT READ, when the credential that just landed is Radient's own.
 		 *
@@ -1017,6 +1014,23 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		provider.suggested_model?.id,
 	]);
 
+	const removeKey = useCallback(async () => {
+		setRemoveStep("busy");
+		setRemoveError(null);
+		try {
+			await desktopResult({ op: "auth.logout", provider: provider.id });
+			refreshProviders();
+			setRemoveStep("idle");
+		} catch (error) {
+			setRemoveError(
+				error instanceof Error && error.message
+					? error.message
+					: t("ui.providers.stored_key.remove_failed"),
+			);
+			setRemoveStep("idle");
+		}
+	}, [provider.id, refreshProviders]);
+
 	const doneLabel =
 		context === "dialog"
 			? t("ui.providers.provider_detail.continue")
@@ -1054,6 +1068,91 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 		);
 	}
 
+	/*
+	 * Bedrock's connect result carries what the generic key save does not: the
+	 * connection's label and how many models it can reach. A verified connect
+	 * says so in the headline; an unverified one keeps the shared "saved, not
+	 * checked" wording and the backend's reason (credentials that work but
+	 * cannot list models land here, valid: null).
+	 */
+	const bedrockSaved =
+		keySaved && "credential_id" in keySaved
+			? (keySaved as BedrockConnectResult)
+			: null;
+	const bedrockHeadline =
+		bedrockSaved === null
+			? undefined
+			: bedrockSaved.valid === true
+				? typeof bedrockSaved.models_available === "number"
+					? t("ui.providers.bedrock.connected_models", {
+							label: bedrockSaved.label,
+							count: bedrockSaved.models_available,
+						})
+					: undefined
+				: // An AWS connection is not a "key": say what was stored, by its label.
+					t("ui.providers.bedrock.connection_saved", {
+						label: bedrockSaved.label,
+					});
+	const savedReceipt = keySaved ? (
+		<SignedIn
+			brand={brand}
+			kind="connected"
+			defaults={keySaved.defaults_applied}
+			/*
+			 * `valid: true` is the only verified answer. `null` is the backend
+			 * saying it could not check, and ABSENT is a released backend that
+			 * checks nothing at all and answers `{}` -- treating that as success
+			 * printed "Radient connected" for a fabricated key (code round 1
+			 * Q6, UX U1).
+			 */
+			unverified={
+				keySaved.valid === true
+					? null
+					: (keySaved.reason ??
+						t(
+							"ui.providers.provider_detail.this_local_operator_does_not_check_keys",
+						))
+			}
+			tone={keySaved.valid === true ? "success" : "unchecked"}
+			headline={
+				bedrockHeadline ??
+				(keySaved.valid === true
+					? undefined
+					: t("ui.providers.provider_detail.key_saved", { brand }))
+			}
+			onChangeModel={onChangeModel}
+			actionLabel={doneLabel}
+			onAction={finish}
+			primaryAction={context === "dialog"}
+			/*
+			 * THE SAME VERDICT AS THE FLOW'S SUCCESS VIEW (review round 6, minor).
+			 * Radient offers an API key as well as a browser sign-in, so this
+			 * branch can render under a credential the provider has stopped
+			 * accepting -- and with no verdict it printed "Radient connected" over a
+			 * row saying otherwise: U19's contradiction, one route over.
+			 */
+			verdict={readiness}
+		/>
+	) : null;
+
+	/* ------------------------------------------------------ Amazon Bedrock */
+	if (awsPanel) {
+		if (savedReceipt) return savedReceipt;
+		return (
+			<BedrockConnectPanel
+				onConnected={(result) => {
+					rememberKey({ saved: result });
+					refreshProviders();
+					void adoptDefaultRef.current(
+						provider.id,
+						result.defaults_applied,
+						provider.suggested_model?.id,
+					);
+				}}
+			/>
+		);
+	}
+
 	if (!method) {
 		return (
 			<Alert variant="warning">
@@ -1077,10 +1176,10 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	 * "Use an API key instead" action right below them (design round 1, D4).
 	 */
 	const methodTabs =
-		provider.auth_methods.length > 1 && flow.phase !== "settled" ? (
+		methods.length > 1 && flow.phase !== "settled" ? (
 			<Tabs value={method.method_id} onValueChange={chooseMethod}>
 				<TabsList aria-label={t("ui.providers.provider_detail.how_to_connect")}>
-					{provider.auth_methods.map((candidate) => (
+					{methods.map((candidate) => (
 						<TabsTrigger key={candidate.method_id} value={candidate.method_id}>
 							{methodName(candidate)}
 						</TabsTrigger>
@@ -1095,44 +1194,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			return (
 				<div className="flex flex-col gap-4">
 					{methodTabs}
-					<SignedIn
-						brand={brand}
-						kind="connected"
-						defaults={keySaved.defaults_applied}
-						/*
-						 * `valid: true` is the only verified answer. `null` is the backend
-						 * saying it could not check, and ABSENT is a released backend that
-						 * checks nothing at all and answers `{}` -- treating that as success
-						 * printed "Radient connected" for a fabricated key (code round 1
-						 * Q6, UX U1).
-						 */
-						unverified={
-							keySaved.valid === true
-								? null
-								: (keySaved.reason ??
-									t(
-										"ui.providers.provider_detail.this_local_operator_does_not_check_keys",
-									))
-						}
-						tone={keySaved.valid === true ? "success" : "unchecked"}
-						headline={
-							keySaved.valid === true
-								? undefined
-								: t("ui.providers.provider_detail.key_saved", { brand })
-						}
-						onChangeModel={onChangeModel}
-						actionLabel={doneLabel}
-						onAction={finish}
-						primaryAction={context === "dialog"}
-						/*
-						 * THE SAME VERDICT AS THE FLOW'S SUCCESS VIEW (review round 6, minor).
-						 * Radient offers an API key as well as a browser sign-in, so this
-						 * branch can render under a credential the provider has stopped
-						 * accepting -- and with no verdict it printed "Radient connected" over a
-						 * row saying otherwise: U19's contradiction, one route over.
-						 */
-						verdict={readiness}
-					/>
+					{savedReceipt}
 				</div>
 			);
 		}
@@ -1155,6 +1217,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 						})}
 						invalid={keyError !== null}
 						describedBy={keyHelpId}
+						placeholder={provider.has_credential ? STORED_KEY_MASK : undefined}
 					/>
 					<p
 						id={keyHelpId}
@@ -1183,9 +1246,48 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 							{keySaving ? <Spinner size="sm" /> : null}
 							{keySaving
 								? t("ui.providers.provider_detail.checking_key")
-								: t("ui.providers.provider_detail.save_key")}
+								: provider.has_credential
+									? t("ui.providers.stored_key.replace")
+									: t("ui.providers.provider_detail.save_key")}
 						</Button>
+						{provider.has_credential && removeStep === "idle" ? (
+							<Button
+								variant="ghost"
+								size="sm"
+								className="ml-2"
+								onClick={() => setRemoveStep("ask")}
+							>
+								{t("ui.providers.stored_key.remove")}
+							</Button>
+						) : null}
 					</div>
+					{provider.has_credential && removeStep !== "idle" ? (
+						<div className="flex flex-wrap items-center gap-2 text-body-sm">
+							<span>{t("ui.providers.stored_key.remove_confirm")}</span>
+							<Button
+								variant="danger"
+								size="sm"
+								disabled={removeStep === "busy"}
+								onClick={() => void removeKey()}
+							>
+								{removeStep === "busy" ? <Spinner size="sm" /> : null}
+								{t("ui.providers.stored_key.remove_yes")}
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={removeStep === "busy"}
+								onClick={() => setRemoveStep("idle")}
+							>
+								{t("ui.providers.provider_detail.cancel")}
+							</Button>
+						</div>
+					) : null}
+					{removeError ? (
+						<p role="alert" className="text-danger text-meta">
+							{removeError}
+						</p>
+					) : null}
 				</div>
 			</div>
 		);

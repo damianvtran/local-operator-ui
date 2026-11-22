@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "语音提供商",
+	"ui.settings.speech.provider.description": "谁来听、谁来说，用于免提语音和消息上的朗读按钮。只会使用你选择的那一个，不会自动改用另一个。",
+	"ui.settings.speech.provider.radient.label": "Radient云端",
+	"ui.settings.speech.provider.radient.description": "按你的Radient额度计费。",
+	"ui.settings.speech.provider.elevenlabs.label": "我的ElevenLabs密钥",
+	"ui.settings.speech.provider.elevenlabs.description": "使用你自己的ElevenLabs账户，由ElevenLabs向你计费。",
+	"ui.settings.speech.provider.ready": "已就绪",
+	"ui.settings.speech.provider.not_ready": "尚未就绪。",
+	"ui.settings.speech.provider.setup": "在“提供商”中设置",
+	"ui.settings.speech.provider.none_chosen": "尚未选择提供商。选择之前，免提语音保持关闭。",
+	"ui.settings.speech.provider.none_ready": "两个提供商都还没有就绪。请先在“提供商”中设置一个，再回到这里选择。",
+	"ui.settings.speech.provider.save_failed": "无法保存所选项。"
+}

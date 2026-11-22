@@ -939,10 +939,10 @@ export const planChipLabel = (
  * neither can state a state the glyph denies (design round 1, D1).
  */
 export const subagentChipLabel = (tally: ActivityTally): string =>
-	`${t("ui.chat.composer.status.subagents_action")}${LABEL_SEAM}${childClause(tally)}${busiestClause(tally)}`;
+	`${t("ui.chat.composer.status.subagents_action")}${LABEL_SEAM}${childClause(tally)}${busiestClause(tally, "subagent")}`;
 
 export const jobChipLabel = (tally: ActivityTally): string =>
-	`${t("ui.chat.composer.status.jobs_action")}${LABEL_SEAM}${jobClause(tally)}${busiestClause(tally)}`;
+	`${t("ui.chat.composer.status.jobs_action")}${LABEL_SEAM}${jobClause(tally)}${busiestClause(tally, "job")}`;
 
 /**
  * Whether the row owes the composer its focus back.

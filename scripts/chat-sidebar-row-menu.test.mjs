@@ -643,7 +643,11 @@ test("the withdrawn panel carries no trigger, and the menu exists only where a c
 		"the withdrawn panel carries the keyboard opener",
 	);
 	assert.ok(
-		withdrawn.includes("className={cn(rowBoxStyle, current && rowCurrent)}"),
+		// `USER_CONTENT_CLASS` is the analytics region mark both row boxes carry
+		// (autocapture-privacy, review round 1 M1): no menu, no layout.
+		withdrawn.includes(
+			"className={cn(rowBoxStyle, current && rowCurrent, USER_CONTENT_CLASS)}",
+		),
 		"the withdrawn panel's box is no longer the pre-feature box",
 	);
 	/*

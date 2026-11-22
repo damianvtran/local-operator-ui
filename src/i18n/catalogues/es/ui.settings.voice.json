@@ -1,0 +1,4 @@
+{
+	"ui.settings.voice.label": "Voz de sesión",
+	"ui.settings.voice.description": "Te permite hablar con una conversación sin usar las manos. Viene desactivada. Mientras está desactivada, no se ejecuta nada de voz: ni micrófono, ni modelos de voz, ni comprobaciones en segundo plano. Al activarla se añade un botón de voz al cuadro de mensaje; al desactivarla, la voz se detiene al instante y se libera el micrófono."
+}

@@ -1,0 +1,59 @@
+{
+  "auditor": {
+    "agent": "reviewer",
+    "session": "a538d5e2e21c",
+    "instance": "a538d5e2e21c-tbrename-r1-es",
+    "model": "anthropic/claude-opus-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Auditor model anthropic/claude-opus-5-5 (lop team lopdev, reviewer role, session a538d5e2e21c). Translator is the PR coder agent in a different session; its served model is recorded on the ledger row, not inferred here."
+  },
+  "locale": "es",
+  "audit_date": "2026-11-20",
+  "scope": "Full new-namespace audit of ui.teamBridge.rename (15 keys) for PR damianvtran/local-operator-ui#2019 at HEAD 5f5c7d343423 (scope f2d6d52602..5f5c7d343423); every key read side-by-side with English and its context note.",
+  "translator": {
+    "agent": "coder"
+  },
+  "namespaces": {
+    "ui.teamBridge.rename": {
+      "status": "passed",
+      "sha256": {
+        "es": "c28b5ff8b35f912006a30570d7f10ecd8472129252f9f260429dc0ca8b7b68ad",
+        "en": "0893eab4b6eef29f3a4fa34cf0c3201a411e3e2765e067784160996af6e8cecd"
+      },
+      "context_sha256": "47929ccdd1c0e137c29c8594f4865f303365ea2a2bc6f4b67a765ba6d6081911",
+      "key_count": 15,
+      "findings": []
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.teamBridge.rename.menu",
+      "target": "Cambiar nombre del canal…",
+      "back": "Change the channel’s name…"
+    },
+    {
+      "key": "ui.teamBridge.rename.description",
+      "target": "Todos los miembros del canal verán el nuevo nombre. Los nombres de canal van en minúsculas y con guiones en lugar de espacios.",
+      "back": "All channel members will see the new name. Channel names go in lowercase, with hyphens instead of spaces."
+    },
+    {
+      "key": "ui.teamBridge.rename.error.archived",
+      "target": "Este canal se archivó, así que ya no se le puede cambiar el nombre.",
+      "back": "This channel was archived, so its name can no longer be changed."
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes named here.",
+    "ICU parity: all 15 messages parsed with the project's @formatjs/icu-messageformat-parser; argument names/types (kind select [group,other], name, max number) equal English's in every key; key set and order equal English; NFC; no stray or doubled whitespace; no bidi control characters, NBSP or thin spaces other than T1's.",
+    "The literal # before {name} sits in a select (not plural) arm, so it renders as #, matching English and the existing ui.teamBridge.archive.confirm.title pattern.",
+    "Terminology checked against existing shipped copy in this locale: canal/grupo (conversation_menu.leave_*), Cambiar nombre (ui.settings.notifications.custom.rename precedent; Renombrar also attested), Guardar/Guardando…, Cancelar; tú register.",
+    "Context notes honoured: menu keeps the locale ellipsis; title drops it; channel description states lowercase + hyphens; too_long counts characters; taken names the conversation; failed says nothing was saved.",
+    "Core glossary and the locale style guide (origin/main 1a8dae591691) read as binding; hashes under references.",
+    "No rendered frame, pseudo-localization or fit measurement was produced in this audit; no rendered-fit claim."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+    "core_origin_main": "1a8dae591691"
+  }
+}

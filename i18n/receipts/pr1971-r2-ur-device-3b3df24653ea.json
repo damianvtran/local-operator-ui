@@ -1,0 +1,65 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "3b3df24653ea",
+		"instance": "pr1971-r2-ur-device-3b3df24653ea",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session did not write the translations. The translator was the PR's remediation coder (deepseek/deepseek-flash) in a different session; this round read the bytes at bec0906c52 and corrected only strings it rejected, listed under `corrections`.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r2-ur-device-3b3df24653ea",
+	"locale": "ur",
+	"namespace": "ui.chat.device",
+	"date": "2026-11-18",
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"scope": "Round-2 delta audit of ui.chat.device.footer.move_deletes_copy, the one key the round-1 remediation changed in this namespace, against the English source, its context sidecar, the glossary and the locale guide at damianvtran/local-operator 066f8e58. The other 25 keys are unchanged bytes.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.device.json",
+		"english_sha256": "1701342d4ece5b5c0574fad743cc93f1209d037589178339cd597cd2df8a2171",
+		"context": "src/i18n/catalogues/en/ui.chat.device.context.json",
+		"context_sha256": "ee98ab59d0e6804b248e96ce32d3a278fa0e85ce87921e7b7dc3e1f466379649",
+		"target": "src/i18n/catalogues/ur/ui.chat.device.json",
+		"target_sha256": "eb2bd1330d7677ad90b1c37242b2fb2729dee12969428fad89cef73956fd981a",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/ur.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0"
+	},
+	"sha256": {
+		"en": "1701342d4ece5b5c0574fad743cc93f1209d037589178339cd597cd2df8a2171",
+		"ur": "eb2bd1330d7677ad90b1c37242b2fb2729dee12969428fad89cef73956fd981a"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "every value of ui.chat.remote_compute in the locale was scanned for isolé/sécurisé/privé/segment, aislad/segur/privat/segment, 隔离/安全/私有/分段, изолир/защищ/приватн/сегмент/огранич, cô lập/an toàn/riêng tư/phân đoạn/bảo mật, الگ تھلگ/محفوظ/نجی/منقسم/پابند, अलग/सुरक्षित/निजी/खंडित/प्रतिबंधित — zero matches",
+		"store_transport": "no locale claims the run failed or that nothing was charged; all say only that the request did not reach the server, then ask for a retry",
+		"store_accepted_without_run": "no locale claims nothing was started; all say the server accepted the run and did not return it",
+		"result": "passes in all seven locales"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.device.footer.move_deletes_copy"
+		],
+		"english_bytes": {
+			"ui.chat.device.footer.move_deletes_copy": "A move deletes this device's copy when it commits."
+		},
+		"record": "i18n/audits/evidence/ur/ui.chat.device/pr1971-r2-ur-device-3b3df24653ea/delta-keys.json"
+	},
+	"corrections": [],
+	"findings": {
+		"minor": [],
+		"nit": [
+			{
+				"key": "ui.chat.device.footer.move_deletes_copy",
+				"issue": "the remediation moved the sentence to the transitive 'حذف کر دیتی ہے', whose subject (منتقلی) sits in the oblique 'منتقلی مکمل ہونے پر' clause. That is the D1 named actor, and Urdu permits the ellipsis, but it is looser than the intransitive 'حذف ہو جاتی ہے' it replaced."
+			}
+		]
+	},
+	"notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same round and are listed under corrections; they are not counted as unresolved. Translator metadata is the round-1 remediation coder (coder, deepseek/deepseek-flash), recorded on the ledger row by ledger-assemble."
+}

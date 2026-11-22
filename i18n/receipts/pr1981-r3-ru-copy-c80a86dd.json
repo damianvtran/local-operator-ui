@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, copy-review round 3, PR #1981 (Team Bridge held messages)",
+  "locale": "ru",
+  "pr": 1981,
+  "repo": "damianvtran/local-operator-ui",
+  "branch": "feat/team-bridge-held-messages",
+  "date": "2026-11-18",
+  "head": "7fd051b62fb2306bfe87e5de4b0350d574424ada",
+  "instance": "pr1981-r3-ru-copy-c80a86dd",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent copy reviewer and translation auditor (radientdev team); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "c80a86dde70e",
+    "instance": "pr1981-r3-ru-copy-c80a86dd",
+    "independent_of_translator": true,
+    "independence": "Copy-reviewer lop session c80a86dde70e, a fresh round-3 task. Translator: coder (L4 lane, anthropic/claude-opus-5-5), which authored 7fd051b62f; this session wrote no product code or catalogue bytes. Prior copy auditors: 59b8a8b87a55 (r1), 448ec44e4dca (r2). No MT or translation API used."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Served model anthropic/claude-opus-5-5 per this session's harness system prompt; no fallback observed during the audit.",
+  "status": "passed",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 493959c415a0 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/ru.md @ origin/main 493959c415a0 (sha256 f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5)",
+    "context": {
+      "ui.teamBridge.holds": "36a901a16c4cdd09dae4eaa635be89976e83da10b382775c54ff886da7c9f40b"
+    }
+  },
+  "checks": "key set == en (57); no placeholders in the changed keys (en has none); no manual bidi or other Cf controls in the changed values; no em/en dashes; Deliver/Discard verbs match this locale's button labels and the sibling body_withheld line; meaning read against en + the hidden_characters context note (calm, does not imply the sender is malicious); every other key byte-identical to fc873f42a2 (mechanically verified), where round 2 audited it.",
+  "namespaces": {
+    "ui.teamBridge.holds": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff146bfb60a124206d458b8f0a22ff66d58ae50a5454572d8a3c1cf8ef60ad31",
+        "ru": "88f17fcec78da4e367b2a82d11dc953d4b0f77d4406445c31137d738659e87ca"
+      },
+      "keys_audited": 1,
+      "keys": [
+        "ui.teamBridge.holds.hidden_characters"
+      ],
+      "scope": "Delta fc873f42a2..7fd051b62f: hidden_characters read in full; the other 56 keys byte-identical in en and ru to the bytes round 2 audited (receipt pr1981-r2-ru-copy-448ec44e).",
+      "findings": [
+        {
+          "severity": "NIT",
+          "id": "C17",
+          "key": "ui.teamBridge.holds.hidden_characters",
+          "current": "Его по-прежнему можно отклонить.",
+          "suggested": "Вы всё ещё можете его отклонить.",
+          "note": "The sibling line body_withheld ends 'Вы всё ещё можете его отклонить.'; the same offer reads better in one wording. Both are correct; not gating."
+        }
+      ]
+    }
+  }
+}

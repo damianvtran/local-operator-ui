@@ -850,15 +850,13 @@ export async function startModelBackend({ output }) {
 		throw error;
 	}
 	const state = () => control("state");
-	const waitCapture = async (predicate) => {
+	const waitCapture = async (predicate, barrier = { sessionId }) => {
 		const end = Date.now() + 20_000;
 		for (;;) {
 			const x = await state();
 			const found = x.captures.find(predicate);
 			if (found) return found;
-			const opens = x.captures.filter(
-				(c) => c.path.endsWith("/events") && c.before_b_request && !selected(c),
-			);
+			const opens = x.captures.filter((c) => drainModelBarrier(c, barrier));
 			if (opens.length)
 				await control("release", { indices: opens.map((c) => c.id) });
 			assert(
@@ -902,6 +900,145 @@ export async function startModelBackend({ output }) {
 		},
 		close: closeOwnedCore,
 	};
+}
+
+/**
+ * Release transport barriers, never authority: the gateway awaits EACH raw
+ * chunk before capturing the next. Inspect every complete event; unknown,
+ * partial or mixed bytes remain held. OPEN has a transport epoch, not the
+ * canonical model generation: validate its closed metadata shape separately.
+ * Baseline A and optional pre-B progress (preBProgress) are drainable only
+ * while seeking B after its commit, never during initial-A acceptance.
+ */
+export function drainModelBarrier(
+	c,
+	{ sessionId, baseline, baselineBody, commit } = {},
+) {
+	if (c.path !== `/v1/desktop/sessions/${sessionId}/events`) return false;
+	const body = c.body.replaceAll("\r\n", "\n");
+	if (!body.endsWith("\n\n")) return false;
+	const events = body.slice(0, -2).split("\n\n");
+	return events.every((event) => {
+		const lines = event.split("\n");
+		if (!lines.length || lines.some((line) => !line.startsWith("data: ")))
+			return false;
+		let frame;
+		try {
+			frame = JSON.parse(lines.map((line) => line.slice(6)).join("\n"));
+		} catch {
+			return false;
+		}
+		if (
+			!frame ||
+			frame.session_id !== sessionId ||
+			typeof frame.epoch !== "string" ||
+			!frame.epoch ||
+			!Number.isSafeInteger(frame.seq) ||
+			frame.seq < 0
+		)
+			return false;
+		if (frame.type === "open") {
+			// Only the protocol's closed metadata shape, not arbitrary non-model JSON.
+			const p = frame.payload;
+			return (
+				Object.keys(frame).every((key) =>
+					["type", "session_id", "epoch", "seq", "payload"].includes(key),
+				) &&
+				p &&
+				Object.keys(p).every((key) =>
+					["subscription_id", "gap", "watch_ttl_seconds", "attaching"].includes(
+						key,
+					),
+				) &&
+				typeof p.subscription_id === "string" &&
+				p.subscription_id.length > 0 &&
+				typeof p.gap === "boolean" &&
+				Number.isFinite(p.watch_ttl_seconds) &&
+				p.watch_ttl_seconds > 0 &&
+				(p.attaching === undefined || typeof p.attaching === "boolean")
+			);
+		}
+		if (
+			commit &&
+			(frame.epoch !== commit.epoch || baseline?.epoch !== commit.epoch)
+		)
+			return false;
+		if (frame.type === "frontend.update")
+			return preBProgress(frame, c, { sessionId, baseline, commit });
+		return Boolean(
+			baseline &&
+				commit &&
+				baselineBody?.replaceAll("\r\n", "\n").split("\n\n").includes(event) &&
+				c.before_b_request &&
+				frame.type === "snapshot" &&
+				baseline.sessionId === sessionId &&
+				frame.epoch === baseline.epoch &&
+				frame.seq === baseline.seq &&
+				selected({ body: JSON.stringify(frame) })?.model === baseline.model &&
+				baseline.model === "mock-model-a",
+		);
+	});
+}
+
+/**
+ * PRE-B CANONICAL PROGRESS IS OPTIONAL AND NEVER AUTHORITY. Recorded producer
+ * shapes (owned core 0.94.15, runs 44622062970 and 44659974593) differ: a cold
+ * attach sends snapshot A seq0 then frontend.update seq1 whose `changes`
+ * repeat selected_model A; an already-live attach sends snapshot A seq1 then
+ * frontend.update seq2 with `changes: {}`. Neither later update is guaranteed,
+ * so the driver must not wait for one (R2 did, and stalled before /model).
+ * Both are captured before B and sit ahead of B on the serial stream, so they
+ * are released only while seeking B after its commit, as transport progress:
+ * same session, outer canonical epoch == baseline/commit epoch, outer seq past
+ * the accepted baseline, live, and carrying no model other than A. The inner
+ * payload epoch/sequence is the frontend plane and is not compared. Post-B
+ * captures never match, so this can never stand in for the B carrier.
+ */
+function preBProgress(frame, c, { sessionId, baseline, commit }) {
+	const p = frame.payload;
+	const changes = p?.changes;
+	return Boolean(
+		baseline &&
+			commit &&
+			c.before_b_request === true &&
+			Object.keys(frame).every((key) =>
+				["type", "session_id", "epoch", "seq", "payload"].includes(key),
+			) &&
+			baseline.sessionId === sessionId &&
+			baseline.model === "mock-model-a" &&
+			frame.epoch === baseline.epoch &&
+			frame.seq > baseline.seq &&
+			p?.cold === false &&
+			p.attaching === false &&
+			onlyModelA(frame, baseline.model) &&
+			changes &&
+			typeof changes === "object" &&
+			!Array.isArray(changes) &&
+			(changes.session_id === undefined || changes.session_id === sessionId),
+	);
+}
+
+/**
+ * Progress-only predicate: EVERY `selected_model` key anywhere in the frame
+ * must be an object whose model_id is A. First-match `selected()` let a direct
+ * A shadow a nested B (R3-01/Q2), and a present-but-null/empty/scalar value
+ * must not fall back to A. Absence is fine (already-live `changes: {}`).
+ * Frames are parsed JSON, so the walk is acyclic; it never stops early.
+ */
+function onlyModelA(value, model) {
+	if (!value || typeof value !== "object") return true;
+	for (const [key, child] of Object.entries(value)) {
+		if (
+			key === "selected_model" &&
+			(!child ||
+				typeof child !== "object" ||
+				Array.isArray(child) ||
+				child.model_id !== model)
+		)
+			return false;
+		if (!onlyModelA(child, model)) return false;
+	}
+	return true;
 }
 
 function selected(capture) {
@@ -1208,15 +1345,21 @@ export const modelUncertaintyCase = {
 		await wait("/could not be confirmed/i.test(document.body.innerText)");
 		await fence("model-unknown-1");
 		await fence("model-unknown-2");
+		const commit = (await backend.state()).commit;
 		const bSse = await backend.waitCapture(
 			(c) =>
 				c.path === `/v1/desktop/sessions/${backend.sessionId}/events` &&
 				!c.before_b_request &&
 				selected(c)?.model === "mock-model-b",
+			{
+				sessionId: backend.sessionId,
+				baseline: selected(initialA),
+				baselineBody: initialA.body,
+				commit,
+			},
 		);
 		const bAuthority = selected(bSse);
 		assert.equal(bAuthority.sessionId, backend.sessionId);
-		const commit = (await backend.state()).commit;
 		assert.equal(
 			bAuthority.epoch,
 			commit.epoch,

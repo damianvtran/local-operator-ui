@@ -95,6 +95,7 @@
  * No second stream subscription exists anywhere in here: the child's page is a
  * file behind a GET.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import { Button } from "@shared/components/ui";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
@@ -117,6 +118,7 @@ import { ChildSubagents } from "./run-child-subagents";
 import type { SubagentRow } from "./run-detail-model";
 import {
 	briefIsInTranscript,
+	childStateLabel,
 	deriveChildWorkingLine,
 	foldBrief,
 	reconcileLaunchTurns,
@@ -306,6 +308,8 @@ const FailureText = ({ text }: { text: string }) => (
 		<pre
 			className={cn(
 				"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+				// A child run's failure text (review round 1, Q2).
+				USER_CONTENT_CLASS,
 			)}
 		>
 			{text}
@@ -431,6 +435,8 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 			<pre
 				className={cn(
 					"max-h-48 overflow-auto font-sans text-body-sm leading-5 whitespace-pre-wrap break-words text-ink-muted",
+					// A child run's own lines (review round 1, Q2).
+					USER_CONTENT_CLASS,
 				)}
 			>
 				{lines.join("\n")}
@@ -810,7 +816,11 @@ export const RunChildReader = ({
 		onUnopenable();
 	}, [onUnopenable, state]);
 
-	const stateWord = row.stateWord;
+	/*
+	 * `"subagent"`: the reader opens a CHILD session over `subagents.transcript`,
+	 * so its state word agrees with the sub-agent noun (`RunRowKind`).
+	 */
+	const stateWord = childStateLabel(row, "subagent");
 	/*
 	 * Whether the brief block has anything left to say: `BriefBlock` renders only
 	 * when the row carries a brief AND the transcript is not already showing it.

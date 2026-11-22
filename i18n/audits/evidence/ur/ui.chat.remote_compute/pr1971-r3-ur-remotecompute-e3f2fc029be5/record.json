@@ -1,0 +1,149 @@
+{
+	"locale": "ur",
+	"namespace": "ui.chat.remote_compute",
+	"audit_date": "2026-11-18",
+	"audit_id": "pr1971-r3-ur-remotecompute-e3f2fc029be5",
+	"audit_kind": "delta",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"round": 3,
+	"key_count": 83,
+	"delta_key_count": 3,
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent translation auditor (round-3 delta)",
+		"team": "lopdev",
+		"harness": "Local Operator",
+		"session": "e3f2fc029be5",
+		"instance": "pr1971-r3-ur-remotecompute-e3f2fc029be5",
+		"model": "deepseek/deepseek-flash",
+		"actual_model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session header, 'Model: deepseek/deepseek-flash' — the model serving this audit session",
+		"fallback": null,
+		"independent_from_translator": true,
+		"independent_from_translator_session": true,
+		"translator": {
+			"agent": "coder",
+			"model": "deepseek/deepseek-flash",
+			"commit": "45d350292e",
+			"session": "9309752576ba"
+		},
+		"independence_basis": "This session wrote none of the strings it audited: the PR's remediation coder produced them at 45d350292e in session 9309752576ba. This round corrected one byte-local typography deviation in this namespace (fr, listed under corrections) and wrote its own evidence; it retranslated nothing."
+	},
+	"independence": {
+		"independent_from_translator": true,
+		"basis": "Different agent session from the translator (coder, deepseek/deepseek-flash at 45d350292e); this audit only corrected a punctuation deviation it rejected and never re-authored the namespace."
+	},
+	"head": "5a9e3fbe38cfd5ed497ffc2f0855f6bf20838e69",
+	"audited_bytes": "The hashes in this record name the catalogue files in the commit this audit writes: the bytes at 5a9e3fbe38, plus this round's one correction where it applies. The English source is unchanged from 5a9e3fbe38 in every locale; the fr target hash is post-correction (the U+202F typography fix listed under corrections), so it differs from the fr file at that commit.",
+	"prior_audit": {
+		"receipt": "i18n/receipts/pr1971-r2-ur-remotecompute-3b3df24653ea.json",
+		"audit_id": "pr1971-r2-ur-remotecompute-3b3df24653ea",
+		"verdict": "passed",
+		"note": "round 2 audited the round-1 remediation bytes (bec0906c52); this round audits the three keys that delta's English changes re-staled"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+			"sha256": "d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237"
+		},
+		"ur": {
+			"path": "src/i18n/catalogues/ur/ui.chat.remote_compute.json",
+			"sha256": "53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+			"sha256": "7111555c46586f33d402ab763b55e580586ddd4b70eee8f7bac555a88dea7fa2"
+		},
+		"glossary": {
+			"path": "i18n/glossary.md @ damianvtran/local-operator 066f8e58",
+			"sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7"
+		},
+		"style_guide": {
+			"path": "i18n/style-guides/ur.md @ damianvtran/local-operator 066f8e58",
+			"sha256": "7276e96210fe"
+		}
+	},
+	"scope": "Round-3 delta audit of the three ui.chat.remote_compute keys this delta re-staled (row.network_remedy, row.sentence.network, sheet.network.not_enforced), against the English source, its context sidecars, the core glossary and this locale's style guide at damianvtran/local-operator 066f8e58, plus the shipped corpus in this locale for reused terms. The other 80 keys are unchanged bytes and were not re-read; regressions inside the delta were looked for directly.",
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.row.network_remedy",
+			"ui.chat.remote_compute.row.sentence.network",
+			"ui.chat.remote_compute.sheet.network.not_enforced"
+		],
+		"bytes_record": "i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/delta-keys.json"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private, and none may say access is restricted by the network",
+		"sweep": "83 values scanned for الگ تھلگ, محفوظ, نجی, منقسم, پابند, محدود — 0 matches",
+		"result": "0 matches in all 83 values of the namespace"
+	},
+	"quoting_check": {
+		"rule": "the token's quoting must render as ONE pair of single quotes in every locale (UX round 2, U7)",
+		"engine": "intl-messageformat 12.1.3, `new IntlMessageFormat(source, locale)` with no options — the constructor src/i18n/messages.ts `formatterFor` uses",
+		"rendered": "both keys render `lop network join '<token>'` — one pair, no triple apostrophe, no ICU tag error",
+		"spans": "the two backticked runs render as [`lop network init`, `lop network join '<token>'`], byte-identical to English in every locale",
+		"evidence": "i18n/audits/evidence/pr1971-r3-icu-render.txt"
+	},
+	"subject_check": {
+		"rule": "sheet.network.not_enforced must name what is recorded (design round 2, D2), because it stands alone when no network is chosen (remote-compute-model.ts: note = chosen ? recorded : not_enforced)",
+		"result": "names its own subject — رن کا نیٹ ورک — so it reads as a claim about the binding, not about the user's pick"
+	},
+	"corrections": [],
+	"findings": [
+		{
+			"severity": "INFO",
+			"key": "ui.chat.remote_compute.sheet.network.not_enforced",
+			"issue": "Habitual verb in the first clause (درج ہوتا ہے) and a copula-less predicate in the second (نافذ نہیں) — the same shape the namespace's three siblings use, so the delta matches the file rather than importing a new one."
+		}
+	],
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		}
+	},
+	"out_of_scope": {
+		"what": "ui.chat.device.sentence.pairing_guidance still carries the pre-U7 quoting: `lop network join '<token>'` in all eight catalogues",
+		"evidence": "the pairing sentence renders `lop network join <token>` with no quotes, while the Radient row now renders `lop network join '<token>'` — the same defect U7 fixed, in a sentence that paints through the same `messageRuns`",
+		"counted": false,
+		"why_not_fixed": "repairing it changes the English source and seven targets, so it re-stales the ui.chat.device ledger row for every locale and needs its own translation and audit round; an auditor that edited those strings could not then audit them",
+		"route": "deferred — one edit per catalogue ('' -> '''') plus a ui.chat.device audit round; not in this delta's key set"
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/pr1971-r3-ur-remotecompute-e3f2fc029be5.json",
+			"sha256": "05c72e2449f06264bbaebc20bac56edb390758bb1267bb16312beb510fcbfc04",
+			"what": "the audit receipt this record's ledger row points at"
+		},
+		{
+			"path": "i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/delta-keys.json",
+			"sha256": "34268563ef7e008cd6376c6a4a804d5f41548273d079c0fbdfd57dee126a5f29",
+			"what": "the 3 audited key pair(s) in English and the target locale, parsed from the bytes on disk"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r3-icu-render.txt",
+			"sha256": "86c4886ba95ac29448261992d622c2327770234eb8f87104bbee59d9b46e5c62",
+			"what": "the 24 delta values rendered through intl-messageformat (the engine t() uses) and split by messageRuns — the U7 proof"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r3-gates.txt",
+			"sha256": "7c19adc82ba0174eed98334402d427523bfee235d4143124d627e5f39469a7c6",
+			"what": "actual gate output for this round (execution log, not notes)"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r3-clean-view.txt",
+			"sha256": "d7bf1315663bb4e666490900bcb5075ae5da389289d1daffe5cfdade3acb242c",
+			"what": "the clean-view gate on the committed HEAD export (git archive HEAD, not the working tree)"
+		}
+	],
+	"audit_notes_not_execution_log": "Prose in this record (scope, corrections, findings) is the auditor's judgement. Command output lives in pr1971-r3-gates.txt and pr1971-r3-icu-render.txt; nothing here claims a run those logs do not show.",
+	"known_limits": [
+		"Catalogue-level audit: no rendered frame, no browser run, no native-speaker sign-off. Design and QA own the rendered frames for this delta.",
+		"Widths are counted with this audit's own cell counter (East-Asian wide = 2), not measured in a frame.",
+		"The other 80 keys of the namespace are unchanged bytes: this round re-read the delta, not the whole file."
+	]
+}

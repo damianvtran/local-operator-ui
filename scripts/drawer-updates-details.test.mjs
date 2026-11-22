@@ -673,9 +673,42 @@ test(
 				),
 				"the page's detail is open on the item",
 			);
-			/* Every detail read named the raw id: nothing was read with the
-			   encoded form, which would be the router handing back `%3A`. */
-			assert.deepEqual([...new Set(page.detailReads)], [COLON_ID]);
+			/*
+			 * WAIT FOR THE PAGE'S END STATE BEFORE READING THE RECORD (flaky in CI:
+			 * runs 44819563750 and 44748413720 read `[COLON_ID, 'n_row3']`).
+			 *
+			 * The detail above is already cached from the drawer, so the predicate
+			 * passes on the page's first render - before its Unread list lands. When
+			 * the list lands, two shipped rules fire: the deep-linked read item is
+			 * kept on the Unread filter, after the unread rows (U3, `keptLink` in
+			 * notifications-page.tsx), and once the open detail has landed the rows
+			 * either side of it are warmed (NEIGHBOUR PREFETCH, same file). n_row3,
+			 * the oldest unread row, is the row just above the kept item, so the page
+			 * issues a `notifications.get` for it. Whether that landed before the
+			 * assertion depended on which tick the list resolved in, so the test
+			 * waited on the wrong thing. It now waits for that neighbour read (the
+			 * observable end of the page's settling: this file's `matchMedia` stub
+			 * matches nothing, so the page is in its narrow layout, where an open
+			 * detail hides the list and no row is drawn to wait on) and asserts it
+			 * explicitly.
+			 */
+			assert.ok(
+				await page.settle(() => page.detailReads.includes("n_row3")),
+				"the page keeps the linked read row on Unread and warms its neighbour, n_row3",
+			);
+			/* Every detail read named a raw id: nothing was read with the encoded
+			   form, which would be the router handing back `%3A`. The only other
+			   read is the neighbour prefetch, never a second read of the item. */
+			assert.deepEqual([...new Set(page.detailReads)], [COLON_ID, "n_row3"]);
+			/* A prefetch is a GET: warming n_row3 did not mark it read. */
+			assert.ok(
+				!page.writes.some(
+					(write) =>
+						write.op === "notifications.read" &&
+						write.target?.items?.some((token) => token.id === "n_row3"),
+				),
+				"warming the neighbour did not mark it read",
+			);
 		} finally {
 			await page.unmount();
 		}

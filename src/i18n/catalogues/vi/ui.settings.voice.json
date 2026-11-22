@@ -1,0 +1,4 @@
+{
+	"ui.settings.voice.label": "Giọng nói theo phiên",
+	"ui.settings.voice.description": "Cho phép bạn trò chuyện rảnh tay với một cuộc trò chuyện. Mặc định tắt. Khi tắt, không có thành phần nào của giọng nói chạy: không micro, không mô hình giọng nói và không kiểm tra nền. Bật lên sẽ thêm nút giọng nói vào ô soạn tin; tắt đi sẽ dừng giọng nói ngay và giải phóng micro."
+}

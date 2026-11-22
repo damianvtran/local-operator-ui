@@ -114,7 +114,86 @@ export type MovePlan = {
 	 * confirmation names as lost. See {@link planConfirm}.
 	 */
 	lost: string | null;
+	/**
+	 * The working-set `scope_digest` the user ticked for in the move dialog, sent
+	 * as the transfer's `confirm_working_set`. Absent on every plan the dialog has
+	 * not confirmed (and always absent against a backend without
+	 * `session_transfer_working_set`), so an unconfirmed plan stays exactly the
+	 * request it was before the feature. Kept ON THE PLAN so a refusal's remedy
+	 * that re-issues the plan (`Wait for the turn to finish`) re-sends the same
+	 * consent rather than a consent-less move the route would refuse.
+	 */
+	confirmWorkingSet?: string;
+	/**
+	 * The explicit "move WITHOUT the working files" consent (`without_working_set`),
+	 * for a working set that cannot be sent (`unsupported`, or a manifest the owner
+	 * could not compute). Same rules as `confirmWorkingSet`: set only by the
+	 * dialog, carried on the plan for re-issues.
+	 */
+	withoutWorkingSet?: boolean;
 };
+
+/** The working-set consent a plan carries, and nothing else. */
+export type WorkingSetConsent = Pick<
+	MovePlan,
+	"confirmWorkingSet" | "withoutWorkingSet"
+>;
+
+/**
+ * The consent fields a plan actually SET, for spreading onto a transfer ask.
+ *
+ * Only set fields, because the core's transfer model is closed: a backend
+ * without `session_transfer_working_set` 422s on either key, and a plan the
+ * dialog never confirmed has neither.
+ */
+export function workingSetConsent(
+	plan: WorkingSetConsent | null | undefined,
+): WorkingSetConsent {
+	if (plan?.confirmWorkingSet)
+		return { confirmWorkingSet: plan.confirmWorkingSet };
+	if (plan?.withoutWorkingSet) return { withoutWorkingSet: true };
+	return {};
+}
+
+/** The question a move dialog asked: the drop's plan, its alternative(s), the risk. */
+export type MoveQuestion = {
+	plan: MovePlan;
+	alternatives: MovePlan[];
+	risky: boolean;
+};
+
+/**
+ * The dialog to REOPEN for a consent refusal, from the question that was asked.
+ *
+ * WHY THE ORIGINAL QUESTION (UX round 1, U4 / agent review N2). A consent
+ * refusal re-asks the SAME move with a fresh list, so it must keep what the first
+ * dialog offered: the Move/Copy choice (the reversible alternative is the point
+ * of that pair) and the "open elsewhere" warning. Both surfaces used to reopen
+ * with no alternatives, and the Mesh tab also dropped the risk, so one refusal
+ * rendered two ways. `initialKeep` restores the option the user had picked.
+ *
+ * Only an ask for the same session and destination is reused: anything else (a
+ * remedy's re-issue after the dialog's state is gone) falls back to the refused
+ * plan alone with the caller's own reading of the risk.
+ */
+export function reopenAsk(
+	asked: MoveQuestion | null | undefined,
+	refused: MovePlan,
+	fallbackRisky: boolean,
+): MoveQuestion & { initialKeep?: boolean } {
+	if (
+		asked &&
+		asked.plan.sessionId === refused.sessionId &&
+		asked.plan.to === refused.to
+	)
+		return {
+			plan: asked.plan,
+			alternatives: asked.alternatives,
+			risky: asked.risky,
+			initialKeep: refused.keep,
+		};
+	return { plan: refused, alternatives: [], risky: fallbackRisky };
+}
 
 /** The action that fixes a refusal, when there is one. */
 export type Remedy =

@@ -14,6 +14,10 @@ import { z } from "zod";
 import type { WithoutParams } from "../i18n";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
 import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
+import type {
+	SpeechProvider,
+	SpeechProviderReadiness,
+} from "./desktop-control-contract";
 // The sidebar's destination vocabulary is the same list the route validates
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
@@ -64,6 +68,11 @@ const TEAM_BRIDGE_APPROVAL_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.requests.authorize",
 	"team_bridge.requests.decide",
 	"team_bridge.decisions.list",
+	/* Held messages (local-operator B4b, `/v1/desktop/team-bridge/holds`): the
+	   same committed-owner resolution as approvals, no tenant on the wire. */
+	"team_bridge.holds.list",
+	"team_bridge.holds.deliver",
+	"team_bridge.holds.discard",
 ]);
 const teamBridgeApprovalSelection = z
 	.array(
@@ -111,6 +120,65 @@ const settingKey = z
 	.max(256)
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
+
+/*
+ * Amazon Bedrock connection inputs (bedrock design §7 route 4). Bounded here so
+ * a compromised render path cannot hand the backend an arbitrary string where
+ * a Region or profile name belongs: the Region becomes part of an AWS hostname
+ * and the profile name a `[profile …]` lookup, so both are held to the shapes
+ * AWS itself uses. The backend validates again (`extra="forbid"`, SecretStr);
+ * this is the renderer half of the same fence, not the only one.
+ */
+const awsRegion = z
+	.string()
+	.min(1)
+	.max(32)
+	.regex(/^[a-z]{2}(-[a-z]+)+-\d{1,2}$/);
+/*
+ * AWS CLI profile names are free-form section names in practice (`dev`,
+ * `acme.prod`, `team/admin`, `me@acme`); control characters and the section
+ * brackets are what would let a value escape its `[profile …]` line, so those
+ * are excluded and everything AWS users actually type is allowed.
+ */
+const awsProfileName = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[\w .@+/:=,-]+$/);
+const bedrockConnectionSchema = z.discriminatedUnion("method", [
+	z
+		.object({
+			method: z.literal("api_key"),
+			region: awsRegion,
+			api_key: secret,
+		})
+		.strict(),
+	z
+		.object({
+			method: z.literal("profile"),
+			profile: awsProfileName,
+			region: awsRegion,
+		})
+		.strict(),
+	z
+		.object({
+			method: z.literal("access_key"),
+			region: awsRegion,
+			access_key_id: z
+				.string()
+				.min(16)
+				.max(128)
+				.regex(/^[A-Z0-9]+$/),
+			secret_access_key: secret,
+			session_token: secret.nullable(),
+		})
+		.strict(),
+	z
+		.object({ method: z.literal("ambient"), region: awsRegion.nullable() })
+		.strict(),
+]);
+/** One Bedrock connection as `PUT /v1/auth/providers/bedrock/connection` takes it. */
+export type BedrockConnectionInput = z.infer<typeof bedrockConnectionSchema>;
 /**
  * The canonical stream session id, as the wire spells it.
  *
@@ -212,9 +280,15 @@ const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
  * at every hop instead of being assumed from the id's presence.
  */
 export const SUBSCRIPTION_ID_PATTERN = /^[a-f0-9]{32}$/;
-const requestId = z
-	.string()
-	.regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/);
+/**
+ * The backend's `RequestID` (`desktop_sessions.py`): a dashed lowercase UUID, the
+ * shape `crypto.randomUUID()` returns. Exported so the media relay validates the
+ * voice utterance's id against the SAME pattern rather than a second spelling of
+ * it - a dashless id passes a looser local check and is refused 422 by the route.
+ */
+export const REQUEST_ID_PATTERN =
+	/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const requestId = z.string().regex(REQUEST_ID_PATTERN);
 /**
  * An OPAQUE definition-revision token, echoed verbatim on a definition write.
  *
@@ -240,6 +314,26 @@ const definitionRevision = z.string().min(1).max(512).nullish();
  */
 const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 /**
+ * A remote run's id (`remote_compute.*`), on its way into a URL path.
+ *
+ * The same PATH-SAFETY property `meshId` above is built for, and the same reason:
+ * the id reaches `/v1/desktop/remote-compute/runs/{id}`, so what must be
+ * impossible is `/`, `.` and `%` — which is also why the endpoint builder still
+ * `encodeURIComponent`s it. Deliberately wider than today's lowercase-hex mint so
+ * the server may lengthen its ids without a renderer release, and narrow enough
+ * that a client bug is refused HERE by name rather than by the daemon's generic
+ * 422.
+ */
+const remoteRunId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+/**
+ * The directory a remote run starts in.
+ *
+ * BOUNDED, NOT PATTERN-CHECKED: the value is expanded and resolved on the machine
+ * that runs it, and this app's drafts stage the literal `~`. See the family's own
+ * comment on the request schemas below.
+ */
+const remoteRunDirectory = z.string().min(1).max(4096);
+/**
  * An onboarding approval's id (`ap_` + Crockford base32), on its way into a URL path.
  *
  * MIRRORS the mint in `local_operator/network/approvals.py` (`new_approval_id`:
@@ -252,6 +346,8 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/** Core's pairing id/nonce grammar (`network/pairing_attest.py` `_ID`). */
+export const MESH_PAIRING_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 /**
  * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
  * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
@@ -4204,6 +4300,40 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("auth.key"), provider: id, value: secret }).strict(),
 	z.object({ op: z.literal("auth.logout"), provider: id }).strict(),
 	/*
+	 * AMAZON BEDROCK (`features.bedrock_auth`, local-operator
+	 * `server/routes/auth.py`, bedrock design §7). Bedrock is the one provider
+	 * whose connection is a STRUCTURED choice - a method, a Region, a profile
+	 * name, sometimes two secrets - which the single-prompt `auth.start`/
+	 * `auth.key` pair cannot carry (the backend answers `auth.start` for
+	 * `bedrock` with 422 `bedrock_use_aws_panel`). These four ops are the AWS
+	 * panel's whole vocabulary; the renderer sends none of them unless the
+	 * capability is advertised, so an older backend never sees an unknown route.
+	 *
+	 * `context` never returns a credential value (profiles, Regions, session
+	 * state only). `connect` validates BEFORE storing and is the only op that
+	 * carries secrets, each through the shared `secret` bound. `ssoLogin`
+	 * returns an ordinary `AuthOperation`, polled with `auth.status` and
+	 * cancelled with `auth.cancel` exactly like a browser sign-in.
+	 */
+	z
+		.object({ op: z.literal("auth.bedrock.context") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("auth.bedrock.connect"),
+			connection: bedrockConnectionSchema,
+		})
+		.strict(),
+	z
+		.object({ op: z.literal("auth.bedrock.ssoLogin"), profile: awsProfileName })
+		.strict(),
+	z
+		.object({
+			op: z.literal("auth.bedrock.check"),
+			credentialId: z.number().int().positive(),
+		})
+		.strict(),
+	/*
 	 * Local bearer only: the harness owns Radient OAuth and organization policy.
 	 * The account guard is local-only and is stripped before the hub write.
 	 */
@@ -4370,6 +4500,43 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id.optional(),
 			conversation_id: id,
 			action: z.enum(["archive", "unarchive", "join", "leave"]),
+		})
+		.strict(),
+	/*
+	 * RENAME a channel or group (agent-server POST
+	 * /messaging/conversations/{id}/rename; operator 2026-11-20: "There doesn't
+	 * seem to be a way to rename a channel in team bridge"). Its own op, not a
+	 * `lifecycle` action, because it carries a VALUE (the new name) where every
+	 * lifecycle action is a bare verb. Because it carries a body, the owner
+	 * receipt (`tenant_id`, `expected_account_id`) rides IN THE BODY beside
+	 * `name`, as create and send do — not the query string the bodyless
+	 * `lifecycle`/`delete` use. The daemon's `ConversationRenameIn`
+	 * (local-operator #4368) reads it only from the body and refuses a query
+	 * copy with 422, so a receipt in the wrong place can never be silently
+	 * dropped and rename without the owner guard. The hub sanitises the name and answers the
+	 * canonical one; it refuses with 400 `invalid_request` + `details.rule`, which
+	 * core passes through unchanged. The server alone decides
+	 * who may rename (owner, or an org owner/admin on a channel); the UI offers it
+	 * only where it offers archive (`can_administer`), and only when the daemon
+	 * advertises `team_bridge_conversation_rename`.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.rename"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
+			conversation_id: id,
+			// The hub's bound is 64 CODE POINTS (its rename sanitiser); `max` counts
+			// UTF-16 units, so the check here is by code point too. Everything else
+			// (control, invisible, unusual spaces) is the hub's to refuse, with a
+			// `details.rule` the dialog words.
+			name: z
+				.string()
+				.trim()
+				.min(1)
+				.refine((value) => [...value].length <= 64, {
+					message: "name is longer than 64 characters", // i18n: ignore wire validation diagnostic
+				}),
 		})
 		.strict(),
 	/*
@@ -4695,6 +4862,51 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * SESSION VOICE'S SLOT AND TEXT (the frozen contract in the backend's
+	 * `desktop_voice.py`): one read and one control on `/v1/desktop/voice`,
+	 * mirroring Aida's pair above and gated the same way, on its OWN key
+	 * (`features.voice`), plus `/voice/text`.
+	 *
+	 * The control names its session even for `disable`: a disable from a session
+	 * that does not hold the slot is a no-op that answers the current slot
+	 * unchanged, so a stale window cannot turn off a slot another window moved.
+	 *
+	 * `voice.text` names a SOURCE REFERENCE and never text: the server resolves the
+	 * words from its own journal or pending card, so no renderer bug can make the
+	 * rig say words the agent never wrote. The utterance is NOT here: the route
+	 * takes a form, so it rides `desktop-media.ts`'s relay.
+	 */
+	z
+		.object({ op: z.literal("voice.status") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.control"),
+			action: z.enum(["enable", "disable"]),
+			sessionId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("voice.text"),
+			sessionId,
+			source: z.discriminatedUnion("kind", [
+				z
+					.object({
+						kind: z.literal("message"),
+						messageId: z.string().min(1).max(128),
+					})
+					.strict(),
+				z
+					.object({
+						kind: z.literal("gate"),
+						requestId: z.string().min(1).max(128),
+					})
+					.strict(),
+			]),
+		})
+		.strict(),
+	/*
 	 * Discard one STAGED upload (a chip the author removed before sending). JSON,
 	 * not the media relay: there are no bytes either way. Idempotent 204 on the
 	 * hub, so a retry after a lost answer is harmless.
@@ -4751,6 +4963,54 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* The account aggregate: one read across every active membership. */
 			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * TEAM BRIDGE HELD MESSAGES (local-operator B4b, operator decision a-3f46):
+	 * the conversation messages this machine's screener is holding, and the
+	 * owner's Deliver / Discard of a releasable one. The writes carry the
+	 * route's own strict body: `conversation_id` and the lowercase sha256 of the
+	 * body the person was shown (`body_sha256`), which the daemon compares with
+	 * the screened bytes and refuses `snapshot_stale` on any difference.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.list"),
+			expected_account_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.holds.deliver"),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+		})
+		.strict(),
+	/*
+	 * Discard binds EXACTLY ONE of `body_sha256` (the body on screen) or
+	 * `hold_receipt` (local-operator #4358): the list's `discard_receipt` for a
+	 * hold whose body can no longer be loaded (expired at the hub, owner-audit
+	 * unavailable). The receipt names the local hold RECORD, not bytes anyone
+	 * read, so Deliver has no receipt field at all (S-11): a Deliver always
+	 * proves the shown body. "Exactly one" is enforced in the union's
+	 * `superRefine` below, mirroring the route's own 422.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.discard"),
+			expected_account_id: id,
+			message_id: id,
+			conversation_id: id,
+			body_sha256: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+			hold_receipt: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
 		})
 		.strict(),
 	/*
@@ -5022,6 +5282,135 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			keep: z.boolean().optional(),
 			waitS: z.number().min(0).max(300).optional(),
 			requestId: requestId.optional(),
+			/*
+			 * THE WORKING-SET CONSENT (`features.session_transfer_working_set`, design
+			 * move-working-set §11.1). `confirmWorkingSet` is the preflight's
+			 * `scope_digest` the user was SHOWN and ticked for: the route compares it and
+			 * refuses `working_set_changed` (with the fresh manifest) when the scope moved,
+			 * so consent is to a specific list, never a bool a stray retry could also
+			 * send. `withoutWorkingSet` is the explicit "leave the files behind" consent.
+			 * There is deliberately NO opt-in for a worktree withheld because its
+			 * unpushed history carries secret-shaped material: v1 leaves it behind with a
+			 * reason and a remedy, and no flag can override that. Both fields are
+			 * omitted while absent: the core's model is closed, so a backend without the
+			 * key would 422 on either.
+			 */
+			confirmWorkingSet: z
+				.string()
+				.regex(/^sha256:[0-9a-f]{64}$/)
+				.optional(),
+			withoutWorkingSet: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * What a move WOULD carry, without moving anything: the manifest the move
+	 * dialog shows and the digest its consent echoes back. A read (nothing is
+	 * written on either device), posted because the route takes the destination in
+	 * a body like the transfer it previews. Behind
+	 * `features.session_transfer_working_set` only.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.transfer.preflight"),
+			sessionId,
+			to: z.union([z.literal("local"), meshId]),
+		})
+		.strict(),
+	/*
+	 * REMOTE COMPUTE (Radient), the family behind the chat's device picker group.
+	 *
+	 * WHY IT IS NOT A MESH OP. A mesh peer is a DEVICE this app reaches through its
+	 * own relay: it has a device id, a membership, a presence probe and sessions.
+	 * Remote compute is capacity that is RENTED: it has no device id, no membership
+	 * and no sessions, and its runs are records on the provider's side. The two
+	 * therefore travel different routes and are read by different surfaces - the
+	 * picker draws them as two groups for exactly this reason.
+	 *
+	 * THE SWITCH IS THE SERVER'S. `GET /v1/desktop/remote-compute` answers
+	 * `{enabled: false}` when this daemon does not carry the feature at all, and the
+	 * group does not exist for that answer. Everything below is only reachable once
+	 * that read has said the family is on, which is why these ops have no feature
+	 * key of their own in `capabilities`: the read IS the gate, and a capability
+	 * the backend answers per request cannot go stale between a capabilities poll
+	 * and a press.
+	 *
+	 * `directory` IS THE CALLER'S STRING, NOT A PATH THIS LAYER VALIDATES. A remote
+	 * run starts in a directory on the machine that runs it, and this app's draft
+	 * panes stage the literal `"~"` (the daemon expands it) - so the transport
+	 * bounds the string and the route decides whether the directory exists, which is
+	 * the same split `skillCwd` records above. Refusing `"~"` here would refuse the
+	 * one value every new conversation starts from.
+	 */
+	z
+		.object({ op: z.literal("remote_compute.read") })
+		.strict(),
+	z.object({ op: z.literal("remote_compute.runs") }).strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.run"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	/*
+	 * `tier` is a CLOSED set and `cloud_run` is the only one v1 offers. The second
+	 * choice the picker draws ("Dedicated") is refused by this schema ON PURPOSE:
+	 * the surface renders it disabled, so a request naming it is a client bug rather
+	 * than a wire the server has to absorb - and the day v1.1 offers it, one literal
+	 * joins this enum beside the surface that enables the row.
+	 */
+	z
+		.object({
+			op: z.literal("remote_compute.start"),
+			directory: remoteRunDirectory,
+			prompt: z.string().min(1).max(32000),
+			tier: z.literal("cloud_run"),
+			/* A resource class the server maps to its own sizes; opaque here. */
+			size: z.string().min(1).max(64).optional(),
+			maxHours: z.number().min(0).max(8).optional(),
+			networkId: meshId.optional(),
+			/*
+			 * Minted by the CALLER so a retry replays the recorded outcome instead of
+			 * starting a second run, which is the same rule `sessions.transfer` carries
+			 * above - a run spends money, so a duplicate is worse there than a move.
+			 *
+			 * A LOST RESPONSE IS THE CASE THIS EXISTS FOR: a start that timed out may
+			 * have created a run, so the retry must carry the SAME key rather than a
+			 * fresh one. The sheet mints once and resends it; see
+			 * `remote-compute-sheet.tsx`.
+			 */
+			idempotencyKey: requestId.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.cancel"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.delete"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	/*
+	 * THE TWO ARTIFACT READS LAND IN A FOLLOW-UP RELEASE. They are declared here
+	 * because the run card asks each of them ONCE to decide whether the answering
+	 * server has the routes at all (`remote-compute-artifacts.ts`): a UI that drew
+	 * `Logs` on a server without the route would offer a press that 404s. Nothing in
+	 * v1 renders their payload - the affordance is the whole of their use - so the
+	 * request is a probe and its answer is a boolean.
+	 */
+	z
+		.object({
+			op: z.literal("remote_compute.logs"),
+			runId: remoteRunId,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("remote_compute.results"),
+			runId: remoteRunId,
 		})
 		.strict(),
 	/*
@@ -5147,6 +5536,87 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 			code: z.string().min(1).max(32).optional(),
 		})
+		.strict(),
+	/*
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259,
+	 * `routes/desktop_mesh_pairings.py`): two devices pairing from the Mesh
+	 * approvals tray instead of a terminal (operator ask: "pairing does NOT require
+	 * running terminal commands").
+	 *
+	 * `pairings.list` is a plain read. `pairings.answer` is the ONE desktop op main
+	 * does not simply forward: core consumes a matching APP ATTESTATION before it
+	 * acts, and only main can make one (`src/main/mesh-pairing-attest.ts` - the
+	 * click-provenance gate, then the `mesh-pairing.sock` frame, then this POST).
+	 * A renderer cannot attest, so a renderer that sent this op straight to the
+	 * backend would only collect `403 pairing_needs_app`.
+	 *
+	 * `deadline` is NOT the renderer's to choose: main overwrites it with the value
+	 * it attested (now + a few seconds, never past the card's expiry). The renderer
+	 * passes the card's `expires_at` there as an upper bound only, which is why the
+	 * field is optional here. `shares` is the inviter's reduce-only keep list; main
+	 * always sends it explicitly (sorted) so the attested content and the POST can
+	 * never disagree about "omitted" vs "empty".
+	 *
+	 * The ids are core's own grammar (`pairing_attest._ID`: `[A-Za-z0-9_.:-]{1,128}`),
+	 * repeated here so a hand-built id cannot become a path fragment.
+	 *
+	 * TWO MORE OPS NEVER LEAVE THE APP (security review round 1, US-R1-1, and UX/
+	 * design round 1, U1/D1). `pairings.eligibility` is main's STATIC reading of
+	 * whether this launch could ever attest (platform, packaged, debug/driver
+	 * switches, window mode), so a card disables its input up front instead of
+	 * taking six digits and refusing them. `pairings.confirm` carries the EXACT
+	 * answer (act, code, shares) and asks main for a ONE-SHOT confirmation of it:
+	 * main freezes that answer, shows it on a native window-modal sheet worded
+	 * from main's own read of the cards, and mints a token bound to the answer
+	 * and the sending document only when the person presses the sheet's action
+	 * button (security review round 2, US-R2-1). `pairings.answer` must carry the
+	 * identical answer and the token (`confirmation`) or main refuses before
+	 * dialling. Both are answered by main (`desktop-ipc.ts`) and have
+	 * no core route - see their `desktopEndpoint` cases.
+	 */
+	z
+		.object({ op: z.literal("pairings.list") })
+		.strict(),
+	z.object({ op: z.literal("pairings.eligibility") }).strict(),
+	z
+		.object({
+			op: z.literal("pairings.confirm"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+			/*
+			 * THE EXACT ANSWER the person is about to give (security review round 2,
+			 * US-R2-1): main freezes it, shows it on a native sheet, and binds the
+			 * token to it, so `pairings.answer` must carry these same values or it is
+			 * refused. Same grammar as the answer's own fields. No labels travel here:
+			 * every word the sheet shows is main's own read of the pairing.
+			 */
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("pairings.answer"),
+			side: z.enum(["inviter", "joiner"]),
+			inviteId: z.string().regex(MESH_PAIRING_ID),
+			nonce: z.string().regex(MESH_PAIRING_ID),
+			decision: z.enum(["admit", "decline"]),
+			// Exactly six digits to admit; nothing ("") to decline - core's frame rule.
+			code: z.string().regex(/^([0-9]{6})?$/),
+			shares: z.array(z.string().min(1).max(256)).max(256).optional(),
+			deadline: z.number().int().positive().optional(),
+			// Main's one-shot token from `pairings.confirm` (32 random bytes, hex).
+			// Optional in the SCHEMA only because main's forwarded body drops it;
+			// main refuses an answer from a renderer without one.
+			confirmation: z
+				.string()
+				.regex(/^[0-9a-f]{64}$/)
+				.optional(),
+		})
+		// `admit` carries six digits, `decline` none: the cross-field rule lives in
+		// `desktopRequestSchema`'s superRefine (the union is discriminated).
 		.strict(),
 	/*
 	 * Settings → Phone access → Paired phones. A device id is what core derives
@@ -5771,6 +6241,21 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * body-shaped mistake, and the view would paint that as a failure of a spend
 		 * that was never attempted. Refusing here means it is never sent.
 		 */
+		/* A held-message Discard binds exactly one proof (#4358 route grammar):
+		   both or neither is a body-shaped mistake the daemon answers 422, so it
+		   is refused before IPC rather than painted as a failed decision. */
+		if (
+			request.op === "team_bridge.holds.discard" &&
+			(request.body_sha256 === undefined) ===
+				(request.hold_receipt === undefined)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					"A held-message discard binds exactly one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
+				path: ["body_sha256"],
+			});
+		}
 		if (
 			request.op === "usage.reset" &&
 			!request.credentialRef &&
@@ -5781,6 +6266,19 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				message:
 					"A usage reset must name an account: send `credentialRef` or `identity`.", // i18n: ignore wire validation diagnostic
 				path: ["credentialRef"],
+			});
+		}
+		/* A pairing admit carries the six typed digits and a decline none: core's
+		   attest frame refuses any other pairing (`pairing_attest.validate_frame`),
+		   so a request shaped otherwise could never be answered. */
+		if (
+			(request.op === "pairings.answer" || request.op === "pairings.confirm") &&
+			(request.decision === "admit") !== (request.code !== "")
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "admit carries six digits; decline carries none", // i18n: ignore wire validation diagnostic
+				path: ["code"],
 			});
 		}
 		/* Consent: accept/decline carry the participation version, withdraw
@@ -7833,6 +8331,13 @@ const PROVIDER_READ_OPS: ReadonlySet<string> = new Set(["usage.get"]);
 const MESH_READ_OPS: ReadonlySet<string> = new Set([
 	"networks.list",
 	"peers.list",
+	/*
+	 * The working-set preflight asks the DESTINATION too (free space, whether it
+	 * can clone a missing primary from origin - design move-working-set §4/§17 Q1)
+	 * over the same mesh link the listings dial, so it waits on the same
+	 * backend-published probe budgets rather than the 20 s control budget.
+	 */
+	"sessions.transfer.preflight",
 ]);
 
 /**
@@ -7889,7 +8394,29 @@ const COMMUNITY_LONG_OPS: ReadonlySet<string> = new Set([
 	"community.events",
 ]);
 
+/*
+ * AMAZON BEDROCK'S CONNECT AND CHECK WAIT ON AWS, TWICE (review round 1, R4).
+ * The daemon's bounds (local-operator `local_operator/providers/bedrock/`):
+ * resolving a profile's credentials is capped at `CREDENTIAL_TIMEOUT_S = 15.0`
+ * (`auth.py`, an `asyncio.wait_for` around botocore, which gives
+ * `credential_process`, SSO token refresh and IMDS no bound of their own);
+ * the signed probe then runs under `CHECK_TIMEOUT_S = 15.0` (`login.py`;
+ * `check.py` passes it to httpx, where it bounds EACH phase - connect, write,
+ * read, pool - not the request). The route `auth.bedrock.check` calls
+ * `check_connection(key, 15.0)` the same way. So the bounded worst case is
+ * 15 + 4 x 15 = 75 s before a connect stores its row, defaults and re-homes
+ * sessions. On the 20 s control budget the app reported a deadline - and
+ * cleared the typed secrets - for a connect the backend went on to store.
+ * The long budget (90 s) sits above that bound. Not in `READ_ONLY_OPS`:
+ * connect writes a credential, so its timeout keeps the write sentence.
+ */
+const BEDROCK_AWS_OPS: ReadonlySet<string> = new Set([
+	"auth.bedrock.connect",
+	"auth.bedrock.check",
+]);
+
 const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
+	...BEDROCK_AWS_OPS,
 	...COMMUNITY_LONG_OPS,
 	...LEDGER_READ_OPS,
 	...PROVIDER_READ_OPS,
@@ -8089,6 +8616,12 @@ export function desktopRequestDeadlineMs(
 	// until the person answers it, exactly like the typed approve above.
 	if (op === "team_bridge.requests.authorize")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	// A held message's Deliver/Discard is signed by the operator key off the
+	// daemon's loop, and that signer may wait on the key's own presence policy
+	// (desktop_team_bridge.py `_decide_hold`). The UI raises no prompt of its
+	// own (decision a-856f); it only must not time out before the signer does.
+	if (op === "team_bridge.holds.deliver" || op === "team_bridge.holds.discard")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	/*
 	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
 	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
@@ -8224,6 +8757,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.unread",
 	"team_bridge.requests.list",
 	"team_bridge.decisions.list",
+	"team_bridge.holds.list",
 	"team_bridge.directory",
 	"team_bridge.status",
 	"community.communities.list",
@@ -8263,6 +8797,16 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"models.catalogue",
 	"networks.list",
 	"peers.list",
+	/*
+	 * The remote-compute reads. `read` and `runs` answer from the provider's own
+	 * records (a cache or a live read, never a write), and the two artifact probes
+	 * are reads by construction: they are asked for a boolean.
+	 */
+	"remote_compute.read",
+	"remote_compute.run",
+	"remote_compute.logs",
+	"remote_compute.results",
+	"remote_compute.runs",
 	"profiles.get",
 	"profiles.list",
 	// A ranked read over the same store the listing reads: it changes nothing, so
@@ -8290,6 +8834,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.list",
 	"sessions.preview",
 	"sessions.report",
+	// The move's preflight computes a manifest and moves nothing.
+	"sessions.transfer.preflight",
 	"sessions.search",
 	"sessions.variables.list",
 	"skills.list",
@@ -8305,10 +8851,14 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
 	"devices.list",
+	// The open pairing cards: a folded read that never clears or creates anything.
+	"pairings.list",
 	"operator.setup.read",
 	// Reads the phone password and changes nothing; a timeout gets the read sentence.
 	"mobile.password",
 	"usage.get",
+	// The voice slot's read: which session holds it.
+	"voice.status",
 ]);
 
 /**
@@ -8838,7 +9388,133 @@ export type DesktopMediaRequest =
 			op: "sessions.supplementDocument";
 			sessionId: string;
 			digest: string;
+	  }
+	/*
+	 * SESSION VOICE'S UTTERANCE DOOR (the frozen contract): the person's words as
+	 * TEXT (the Qwen rig's transcript, form-encoded) or as a RECORDING's bytes
+	 * (bring-your-own-key voice; the server transcribes, multipart). Exactly one of
+	 * `text` | the bytes argument; the bytes are never a field of the request.
+	 */
+	| {
+			op: "voice.utterance";
+			sessionId: string;
+			requestId: string;
+			text?: string;
+			textOrigin?: "qwen_s2s";
+			/** Pins the transcription to one provider; a recording only. */
+			provider?: "elevenlabs";
+	  }
+	/*
+	 * ONE SEGMENT of a spoken reply, by source reference and index (V8: never
+	 * text). Answers `kind: "bytes"` whose `mimeType` is the audio's real format.
+	 */
+	| {
+			op: "voice.speech";
+			sessionId: string;
+			source:
+				| { kind: "message"; messageId: string }
+				| { kind: "gate"; requestId: string }
+				| { kind: "phrase"; key: string };
+			segment: number;
+			provider?: "elevenlabs";
 	  };
+
+/**
+ * The refusal codes the voice routes declare (the frozen contract). Carried to
+ * the renderer as `voiceCode` - only for `voice.*` ops, and only these words -
+ * because the controller ACTS on them: `voice_not_enabled` means the slot moved
+ * away under this window and the exchange must stop, which a sentence cannot
+ * tell it. Every other declared code is still dropped, as before.
+ */
+export const VOICE_REFUSAL_CODES = [
+	"voice_not_enabled",
+	"voice_store_busy",
+	"unknown_session",
+	"unknown_source",
+	"invalid_voice_request",
+	// The take held no words: nothing was admitted.
+	"empty_transcript",
+	// A card is pending on the session (backend V13): words are refused, not
+	// admitted as a steer, so they cannot cancel the card. Answered on screen.
+	"approval_pending",
+	// Bring-your-own-key voice: the provider's own limits and failures, which the
+	// strip names rather than showing as "failed".
+	"voice_rate_limited",
+	"stt_unavailable",
+	"voice_unavailable",
+	"voice_upload_too_large",
+	"unknown_segment",
+	// No speech provider is chosen (backend `speech.provider`): the recording and
+	// the reply are refused before anything is sent anywhere. Its sentence names
+	// both choices, so it travels as the refusal's own text.
+	"voice_provider_unset",
+] as const;
+export type VoiceRefusalCode = (typeof VOICE_REFUSAL_CODES)[number];
+
+export function isVoiceRefusalCode(
+	code: string | undefined,
+): code is VoiceRefusalCode {
+	return (
+		code !== undefined &&
+		(VOICE_REFUSAL_CODES as readonly string[]).includes(code)
+	);
+}
+
+/** The speech providers, in the order Settings lists them. */
+export const SPEECH_PROVIDERS = ["radient", "elevenlabs"] as const;
+
+export function isSpeechProvider(value: unknown): value is SpeechProvider {
+	return (
+		typeof value === "string" &&
+		(SPEECH_PROVIDERS as readonly string[]).includes(value)
+	);
+}
+
+/** What a `voice.status` answer says about the one speech provider. */
+export type VoiceProviderStatus = {
+	/** The chosen provider; null when none is chosen OR the value is not one of ours. */
+	provider: SpeechProvider | null;
+	/** Each provider's readiness; null when the backend sent none (an older one). */
+	providers: Record<SpeechProvider, SpeechProviderReadiness> | null;
+};
+
+function readReadiness(value: unknown): SpeechProviderReadiness {
+	const entry = value as { ready?: unknown; reason?: unknown } | null;
+	return {
+		ready: entry?.ready === true,
+		reason:
+			typeof entry?.reason === "string" && entry.reason.trim()
+				? entry.reason
+				: null,
+	};
+}
+
+/**
+ * The provider half of a `voice.status` result, tolerant of every shape it has
+ * had. An older backend sends neither field; a value left behind by an earlier
+ * build of this app (an engine word) or by a hand edit is not one of the two
+ * providers. All of those read as "none chosen", which is the one reading that
+ * starts nothing: hands-free voice only ever starts for a provider this function
+ * names.
+ */
+export function readVoiceProviderStatus(result: unknown): VoiceProviderStatus {
+	const value = result as {
+		provider?: unknown;
+		providers?: unknown;
+	} | null;
+	const provider = isSpeechProvider(value?.provider) ? value.provider : null;
+	const raw = value?.providers;
+	const providers =
+		typeof raw === "object" && raw !== null
+			? {
+					radient: readReadiness((raw as Record<string, unknown>).radient),
+					elevenlabs: readReadiness(
+						(raw as Record<string, unknown>).elevenlabs,
+					),
+				}
+			: null;
+	return { provider, providers };
+}
 
 export type DesktopMediaResponse =
 	| { status: number; kind: "bytes"; mimeType: string; data: Uint8Array }
@@ -8857,6 +9533,8 @@ export type DesktopMediaResponse =
 			 * exactly as the JSON transport's refusals are (design § 3.5, § 5.1).
 			 */
 			code?: DesktopRefusalCode;
+			/** A voice route's declared refusal (see `VOICE_REFUSAL_CODES`). */
+			voiceCode?: VoiceRefusalCode;
 			/**
 			 * The daemon's own refusal code and params, forwarded only for
 			 * `notification_sounds.upload` and `sessions.files.content` (main
@@ -8866,6 +9544,150 @@ export type DesktopMediaResponse =
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
+
+/**
+ * THE MAIN <-> RENDERER VOICE CONTRACT (the backend's docs/design/qwen-voice.md,
+ * "Frozen contract delta"), plus `start`, which the manager approved for the
+ * relaunch case: an app restarted while the slot is still held does NOT start
+ * the rig by itself (it loads gigabytes of models), and the indicator offers
+ * "Start voice", which calls this.
+ *
+ * - event `voice.qwen.take {taskId, text}`: the rig heard a take (`onTake`).
+ * - invoke `voice.qwen.result {taskId, ok | code}`: the take's admission.
+ * - invoke `voice.qwen.speak {text, kind}`: speak a reply or gate text. Main
+ *   honours it ONLY for a text it relayed itself as a 200 `/voice/text` answer in
+ *   the last 10 minutes; anything else answers `{spoken: false}`.
+ * - status `voice.qwen.status {rig, webui_url, reason?, clients?, cause?, mic?, paused?, muted?}`
+ *   (`onStatus`, `getStatus`). `mic` is additive: the macOS microphone verdict,
+ *   which is what turns "unheard" into "Microphone blocked" (plan §2/§4).
+ *   `paused` and `muted` are additive too, and they are MAIN's: the hidden page
+ *   is main's, so a renderer that reloaded cannot paint a stale answer over it.
+ * - invoke `voice.qwen.pause` / `voice.qwen.resume`: close the hidden page (the
+ *   microphone is released; the models stay loaded) and recreate it. Both answer
+ *   the new status.
+ * - invoke `voice.qwen.mute {muted}`: `webContents.setAudioMuted` on the page,
+ *   which silences Qwen's own speech and nothing else. Remembered across a
+ *   recreate and answered with the new status.
+ * - invoke `voice.qwen.start`: start the rig for the slot already held; on a
+ *   rig that is already ready, recreate the hidden voice page instead.
+ * - invoke `voice.qwen.open-mic-settings`: open the OS microphone pane. Main's
+ *   own fixed URL, never a renderer-supplied one.
+ * - event `voice.qwen.event {type, at, reason?}` (plan §10): one allowlisted
+ *   thing the voice did - the rig hearing, the rig speaking, a response
+ *   finishing, a task moving. A type, a Gateway time and at most a one-word
+ *   reason; no message text crosses.
+ */
+export type QwenRigState = "stopped" | "starting" | "ready" | "error";
+export type QwenVoiceStatus = {
+	rig: QwenRigState;
+	webui_url: string | null;
+	reason?: string | null;
+	/**
+	 * The provider a `provider_not_ready` error is about, so the strip can send the
+	 * person to that provider's own page. Null/absent for every other state.
+	 */
+	provider?: SpeechProvider | null;
+	/**
+	 * Voice pages connected to the Gateway (the launcher's `client_attached` /
+	 * `client_detached`). "Listening" is true only with one or more: a ready rig
+	 * with no page open hears nothing.
+	 */
+	clients?: number;
+	/**
+	 * Why the rig is in `error` when it was not a start failure.
+	 * `provider_unset`: no speech provider is chosen, so nothing listens.
+	 * `provider_not_ready`: the chosen provider cannot hear and speak yet; `reason`
+	 * is the backend's own sentence (absent when it sent none) and `provider`
+	 * names it.
+	 * `page_failed` / `no_window`: the app's own voice page stopped, or this run
+	 * has no window to hear with. Main's `reason` for these is a log line in
+	 * English; the strip shows its own translated words for the cause.
+	 */
+	cause?:
+		| "unexpected_exit"
+		| "provider_unset"
+		| "provider_not_ready"
+		| "page_failed"
+		| "no_window"
+		| null;
+	/**
+	 * The macOS microphone verdict for this app's identity. `prompting` is the
+	 * bounded wait: the OS dialog is up and unanswered.
+	 */
+	mic?: "granted" | "denied" | "prompting" | "unknown";
+	/**
+	 * PAUSED: the hidden page is closed, so the microphone is released and
+	 * dictation may use it, while the Gateway and the speech models stay warm.
+	 * Main owns it because the page is main's.
+	 */
+	paused?: boolean;
+	/** The page's own playback silenced (`webContents.setAudioMuted`). */
+	muted?: boolean;
+};
+export type QwenVoiceTake = { taskId: string; text: string };
+export type QwenVoiceEvent = {
+	type: string;
+	/** ISO-8601, the Gateway's own clock. */
+	at: string;
+	reason?: string;
+	/** The Gateway's playback receipt: `false` means it was not this page's. */
+	accepted?: boolean;
+};
+export type QwenVoiceResult =
+	| { taskId: string; ok: true }
+	| { taskId: string; ok: false; code: string };
+/**
+ * What main pushes about a take or a reply on the app-owned voice page
+ * (`voice.qwen.byok`). Main hears and uploads the recording itself, so the
+ * renderer is TOLD about a take rather than sending it: `take_start` BEFORE the
+ * upload (so the V14 binding is armed first), then `take_done` with the words the
+ * server heard or `take_failed` with the route's declared word.
+ */
+export type QwenByokMessage =
+	| { kind: "take_start"; sessionId: string; requestId: string }
+	| { kind: "take_done"; sessionId: string; requestId: string; text: string }
+	| {
+			kind: "take_failed";
+			sessionId: string;
+			requestId: string;
+			status: number;
+			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
+	  }
+	| {
+			kind: "speech_failed";
+			sessionId: string;
+			code: string;
+			/** The provider's own sentence, when the refusal carried one. */
+			detail?: string;
+	  };
+
+export type QwenVoiceBridge = {
+	/** The person's voice switch (default OFF), owned by main. */
+	getEnabled: () => Promise<boolean>;
+	setEnabled: (on: boolean) => Promise<boolean>;
+	onEnabled: (listener: (enabled: boolean) => void) => () => void;
+	onTake: (listener: (take: QwenVoiceTake) => void) => () => void;
+	result: (result: QwenVoiceResult) => Promise<boolean>;
+	speak: (input: {
+		text: string;
+		kind: "reply" | "gate";
+	}) => Promise<{ spoken: boolean; reason?: string }>;
+	start: () => Promise<QwenVoiceStatus>;
+	getStatus: () => Promise<QwenVoiceStatus>;
+	onStatus: (listener: (status: QwenVoiceStatus) => void) => () => void;
+	openMicrophoneSettings: () => Promise<void>;
+	/** Close the hidden page (releasing the microphone), keeping the rig warm. */
+	pause: () => Promise<QwenVoiceStatus>;
+	/** Recreate the hidden page, re-applying the remembered mute. */
+	resume: () => Promise<QwenVoiceStatus>;
+	/** Silence the page's own speech; remembered across a recreate. */
+	setMuted: (muted: boolean) => Promise<QwenVoiceStatus>;
+	onEvent: (listener: (event: QwenVoiceEvent) => void) => () => void;
+	/** The app-owned page's takes and reply failures, pushed by main. */
+	onByok: (listener: (message: QwenByokMessage) => void) => () => void;
+};
 
 export type DesktopAPI = {
 	request: (request: DesktopRequest) => Promise<DesktopResponse>;
@@ -9005,6 +9827,12 @@ export type DesktopAPI = {
 		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
 	};
 	/**
+	 * THE QWEN VOICE RIG, owned by main (`src/main/voice/qwen-voice.ts`). Absent in
+	 * browser development, where there is no rig: the toggle still drives the slot
+	 * and nothing is heard. See `QwenVoiceBridge` for the verbs.
+	 */
+	qwenVoice?: QwenVoiceBridge;
+	/**
 	 * The conversation main was launched to display, or null.
 	 *
 	 * A VALUE rather than an event, and that is the point (B3): the initial
@@ -9101,7 +9929,12 @@ export type ProviderMethod = {
 	 */
 	method_id: string;
 	label: string;
-	kind: "api_key" | "browser" | "device";
+	/**
+	 * `aws` is Amazon Bedrock's structured AWS-account method (bedrock design
+	 * §7): it is never started through `auth.start` and renders the AWS panel
+	 * instead, and only when the backend advertises `features.bedrock_auth`.
+	 */
+	kind: "api_key" | "browser" | "device" | "aws";
 	requires_secret_input: boolean;
 	paste_fallback: boolean;
 	/**
@@ -9150,6 +9983,75 @@ export type SaveKeyResult = {
 	valid?: boolean | null;
 	reason?: string | null;
 	defaults_applied?: DefaultsApplied | null;
+};
+/*
+ * Amazon Bedrock's AWS context and results (bedrock design §7, routes 3-6).
+ * Shapes are the backend's JSON verbatim; nothing here is a credential value.
+ */
+export type BedrockSessionState =
+	| "valid"
+	| "expired_refreshable"
+	| "expired"
+	| "missing"
+	| "not_applicable";
+export type BedrockProfileKind =
+	| "static"
+	| "sso"
+	| "login"
+	| "assume_role"
+	| "process"
+	| "web_identity"
+	| "other";
+export type BedrockRegion = { id: string; label: string; geo_prefix: string };
+export type BedrockProfile = {
+	name: string;
+	kind: BedrockProfileKind;
+	region: string | null;
+	session: {
+		state: BedrockSessionState;
+		expires_at: string | null;
+		login_command: string | null;
+	};
+};
+export type BedrockConnection = {
+	credential_id: number;
+	method: "api_key" | "profile" | "access_key" | "ambient" | "env-bearer";
+	profile?: string | null;
+	region: string | null;
+	label: string;
+};
+export type BedrockAwsContext = {
+	regions: BedrockRegion[];
+	default_region: string;
+	default_region_source:
+		| "config"
+		| "AWS_REGION"
+		| "AWS_DEFAULT_REGION"
+		| "profile"
+		| "fallback";
+	profiles: BedrockProfile[];
+	aws_cli_available: boolean;
+	ambient: { enabled: boolean; sources: string[] };
+	connections: BedrockConnection[];
+};
+/**
+ * `auth.bedrock.connect` success. `valid: null` is "stored, not verified"
+ * (credentials work but cannot list models, or the probe timed out) with
+ * `reason` saying which. A REJECTED connection is a 422 carrying one of the
+ * `bedrock_*` codes, never this shape.
+ */
+export type BedrockConnectResult = {
+	valid: boolean | null;
+	reason: string | null;
+	credential_id: number;
+	label: string;
+	models_available: number | null;
+	defaults_applied?: DefaultsApplied | null;
+};
+export type BedrockCheckResult = {
+	valid: boolean | null;
+	reason: string | null;
+	code: string | null;
 };
 export type DesktopProvider = {
 	id: string;
@@ -9735,6 +10637,65 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "networks.list":
 			return { path: "/v1/desktop/networks", method: "GET" };
 		/*
+		 * THE REMOTE-COMPUTE FAMILY, all off one prefix. Every id segment is
+		 * `encodeURIComponent`ed although `remoteRunId` already refuses `/`, `.` and
+		 * `%`: the schema is this client's check, and a redirect or a hand-built
+		 * request must not be able to turn a run id into a path fragment.
+		 *
+		 * THE START OMITS ABSENT FIELDS rather than sending nulls: the route's own
+		 * defaults (its cap and deadline, no size, no binding) are the answer for a
+		 * caller that named none, and `network_id` in particular must be absent when
+		 * the picker could not name one - a null there would say "bound to nothing"
+		 * where the truth is "nobody chose".
+		 */
+		case "remote_compute.read":
+			return { path: "/v1/desktop/remote-compute", method: "GET" };
+		case "remote_compute.runs":
+			return { path: "/v1/desktop/remote-compute/runs", method: "GET" };
+		case "remote_compute.run":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}`,
+				method: "GET",
+			};
+		case "remote_compute.start":
+			return {
+				path: "/v1/desktop/remote-compute/runs",
+				method: "POST",
+				body: {
+					directory: request.directory,
+					prompt: request.prompt,
+					tier: request.tier,
+					...(request.size ? { size: request.size } : {}),
+					...(request.maxHours !== undefined
+						? { max_hours: request.maxHours }
+						: {}),
+					...(request.networkId ? { network_id: request.networkId } : {}),
+					...(request.idempotencyKey
+						? { idempotency_key: request.idempotencyKey }
+						: {}),
+				},
+			};
+		case "remote_compute.cancel":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/cancel`,
+				method: "POST",
+			};
+		case "remote_compute.delete":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}`,
+				method: "DELETE",
+			};
+		case "remote_compute.logs":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/logs`,
+				method: "GET",
+			};
+		case "remote_compute.results":
+			return {
+				path: `/v1/desktop/remote-compute/runs/${encodeURIComponent(request.runId)}/results`,
+				method: "GET",
+			};
+		/*
 		 * The fleet read, and the path is the DESKTOP plane's rather than the relay's
 		 * (`/api/asks`): the two answer the same rows today, but this client reaches
 		 * the daemon it is paired with, not the phone relay, and the desktop route is
@@ -9780,7 +10741,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// recorded outcome instead of moving twice, and a request with no key
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
+					// Each consent field only when the caller set it: see the op's own
+					// comment (closed core model, gated key).
+					...(request.confirmWorkingSet
+						? { confirm_working_set: request.confirmWorkingSet }
+						: {}),
+					...(request.withoutWorkingSet ? { without_working_set: true } : {}),
 				},
+			};
+		case "sessions.transfer.preflight":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/transfer/preflight`,
+				method: "POST",
+				body: { to: request.to },
 			};
 		/*
 		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the
@@ -9858,6 +10831,36 @@ export function desktopEndpoint(request: DesktopRequest): {
 					disclosure_digest: request.disclosureDigest,
 					// Omitted, never null: the confirm-mode press is the ABSENCE of a code.
 					...(request.code !== undefined ? { code: request.code } : {}),
+				},
+			};
+		case "pairings.list":
+			return { path: "/v1/desktop/mesh/pairings", method: "GET" };
+		/*
+		 * MAIN-ONLY ops: `desktop-ipc.ts` answers them before any forwarding and core
+		 * has no such route. The path is deliberately OUTSIDE `/v1/desktop/`, so the
+		 * transport's admitted-prefix checks treat any answer as not-the-daemon's
+		 * (`desktopAnswerProvesPairing`, `desktopRefusalCodeForStatus`) and a request
+		 * that somehow reached the transport could not land on a real route.
+		 */
+		case "pairings.eligibility":
+			return { path: "app:mesh-pairing/eligibility", method: "GET" };
+		case "pairings.confirm":
+			return { path: "app:mesh-pairing/confirm", method: "POST" };
+		/*
+		 * The body is core's strict `PairingAnswer` and nothing else. `shares` is
+		 * omitted rather than sent as null when absent (the joiner has no list);
+		 * `deadline` is whatever main attested - see the schema's note.
+		 */
+		case "pairings.answer":
+			return {
+				path: `/v1/desktop/mesh/pairings/${request.side}/${encodeURIComponent(request.inviteId)}/answer`,
+				method: "POST",
+				body: {
+					decision: request.decision,
+					code: request.code,
+					nonce: request.nonce,
+					deadline: request.deadline ?? 0,
+					...(request.shares !== undefined ? { shares: request.shares } : {}),
 				},
 			};
 		case "devices.list":
@@ -11511,6 +12514,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/auth/providers/${request.provider}/credentials`,
 				method: "DELETE",
 			};
+		case "auth.bedrock.context":
+			return { path: "/v1/auth/providers/bedrock/aws", method: "GET" };
+		case "auth.bedrock.connect":
+			return {
+				path: "/v1/auth/providers/bedrock/connection",
+				method: "PUT",
+				body: request.connection,
+			};
+		case "auth.bedrock.ssoLogin":
+			return {
+				path: "/v1/auth/providers/bedrock/sso-login",
+				method: "POST",
+				body: { profile: request.profile },
+			};
+		case "auth.bedrock.check":
+			return {
+				path: "/v1/auth/providers/bedrock/check",
+				method: "POST",
+				body: { credential_id: request.credentialId },
+			};
 		case "agent_messages.status":
 			return {
 				path: `/v1/desktop/team-bridge/status?boundary=${request.boundary}`,
@@ -11628,6 +12651,20 @@ export function desktopEndpoint(request: DesktopRequest): {
 							},
 						}
 					: {}),
+			};
+		case "team_bridge.conversations.rename":
+			return {
+				// No `conversationOwnerQuery` here: the daemon refuses a query receipt
+				// on this route (see the op's schema comment); the body carries it.
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/rename`,
+				method: "POST",
+				body: {
+					name: request.name,
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
+				},
 			};
 		case "team_bridge.conversations.join":
 			return {
@@ -11965,6 +13002,32 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		/*
+		 * Held messages (local-operator B4b). The list takes ONLY
+		 * `expected_account_id` (the route refuses any other query parameter);
+		 * the message id is path-encoded so it can never add a segment.
+		 */
+		case "team_bridge.holds.list":
+			return {
+				path: `/v1/desktop/team-bridge/holds?${new URLSearchParams({ expected_account_id: request.expected_account_id })}`,
+				method: "GET",
+			};
+		case "team_bridge.holds.deliver":
+		case "team_bridge.holds.discard":
+			return {
+				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
+				method: "POST",
+				/* Only the proof the request carries: the route's strict body
+				   refuses both, and a `null` key would read as "present". */
+				body: {
+					expected_account_id: request.expected_account_id,
+					conversation_id: request.conversation_id,
+					...(request.op === "team_bridge.holds.discard" &&
+					request.hold_receipt !== undefined
+						? { hold_receipt: request.hold_receipt }
+						: { body_sha256: request.body_sha256 }),
+				},
+			};
 		case "team_bridge.requests.authorize":
 			return {
 				path: "/v1/desktop/team-bridge/requests/decide/authorize",
@@ -12350,6 +13413,27 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "voice.status":
+			return { path: "/v1/desktop/voice", method: "GET" };
+		case "voice.control":
+			return {
+				path: "/v1/desktop/voice",
+				method: "POST",
+				// The route's own field names (`op`, `session_id`), as `aida.control` does.
+				body: { op: request.action, session_id: request.sessionId },
+			};
+		case "voice.text":
+			return {
+				path: "/v1/desktop/voice/text",
+				method: "POST",
+				body: {
+					session_id: request.sessionId,
+					source:
+						request.source.kind === "message"
+							? { kind: "message", message_id: request.source.messageId }
+							: { kind: "gate", request_id: request.source.requestId },
+				},
+			};
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
 		case "aida.control":

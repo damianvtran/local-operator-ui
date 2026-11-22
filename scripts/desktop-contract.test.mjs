@@ -3990,6 +3990,81 @@ test("team_bridge archive: the list takes a closed status and delete is a DELETE
 	);
 });
 
+test("team_bridge rename: POST .../rename with the owner receipt in the body beside the name and an empty query", () => {
+	/*
+	 * Unlike the bodyless lifecycle/delete ops (receipt in the query via
+	 * conversationOwnerQuery), rename carries a body, so the daemon's
+	 * ConversationRenameIn (local-operator #4368) reads tenant_id and
+	 * expected_account_id from the BODY and refuses 422 if either appears in the
+	 * query. A query receipt would therefore fail every guarded rename; this pins
+	 * the placement so a later "make it match archive" edit cannot regress it.
+	 */
+	const route = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "  launch-crew ",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(route.method, "POST");
+	assert.equal(
+		route.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+		"no query string: the daemon refuses a query receipt on rename",
+	);
+	assert.equal(route.path.includes("?"), false);
+	assert.deepEqual(
+		route.body,
+		{
+			name: "launch-crew",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		},
+		"name trimmed at the boundary; receipt in the body",
+	);
+	const bare = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+		}),
+	);
+	assert.equal(
+		bare.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+	);
+	assert.deepEqual(
+		bare.body,
+		{ name: "x" },
+		"no receipt keys when none was captured",
+	);
+	const parse = (name) =>
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name,
+		}).success;
+	assert.equal(parse("   "), false, "blank after trim is refused");
+	assert.equal(
+		parse("🚀".repeat(64)),
+		true,
+		"64 code points (128 UTF-16 units)",
+	);
+	assert.equal(parse("🚀".repeat(65)), false, "65 code points");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+			topic: "y",
+		}).success,
+		false,
+		"strict: no other field rides along",
+	);
+});
+
 test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
 	/*
 	 * Threads (agent-server #164, local-operator #2757). The replies op reads
@@ -4387,4 +4462,146 @@ test("a usage reset names an account and carries a client-minted UUID", () => {
 		}).success,
 		false,
 	);
+});
+
+/*
+ * Amazon Bedrock's AWS panel ops (bedrock design §7 routes 3-6): each reaches
+ * exactly its route with the backend's snake_case body, and the bounds that
+ * keep a Region out of a hostname and a profile name inside its `[profile …]`
+ * line refuse before any HTTP happens.
+ */
+test("bedrock AWS panel ops reach their routes and refuse malformed connections", async () => {
+	const accessKeyId = ["AKIA", "SYNTHETIC", "0000000"].join("");
+	for (const [request, path, method, body] of [
+		[{ op: "auth.bedrock.context" }, "/v1/auth/providers/bedrock/aws", "GET"],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "profile",
+					profile: "acme.dev",
+					region: "us-west-2",
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "profile", profile: "acme.dev", region: "us-west-2" },
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "access_key",
+					region: "eu-central-1",
+					access_key_id: accessKeyId,
+					secret_access_key: "synthetic-secret",
+					session_token: null,
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{
+				method: "access_key",
+				region: "eu-central-1",
+				access_key_id: accessKeyId,
+				secret_access_key: "synthetic-secret",
+				session_token: null,
+			},
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: { method: "ambient", region: null },
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "ambient", region: null },
+		],
+		[
+			{ op: "auth.bedrock.ssoLogin", profile: "acme-dev-sso" },
+			"/v1/auth/providers/bedrock/sso-login",
+			"POST",
+			{ profile: "acme-dev-sso" },
+		],
+		[
+			{ op: "auth.bedrock.check", credentialId: 12 },
+			"/v1/auth/providers/bedrock/check",
+			"POST",
+			{ credential_id: 12 },
+		],
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 200, request.op);
+		const last = seen.at(-1);
+		assert.equal(last.path, path);
+		assert.equal(last.method, method);
+		if (body) assert.deepEqual(JSON.parse(last.body), body);
+	}
+
+	const count = seen.length;
+	for (const request of [
+		// A Region that would rewrite the hostname.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "api_key",
+				region: "evil.example/",
+				api_key: "secret",
+			},
+		},
+		// A profile name escaping its config section.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "profile",
+				profile: "dev]\n[x",
+				region: "us-east-1",
+			},
+		},
+		// Unknown method, and an extra key on a strict arm.
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "imds", region: "us-east-1" },
+		},
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "ambient", region: null, api_key: "secret" },
+		},
+		// Access key pair missing its secret.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "access_key",
+				region: "us-east-1",
+				access_key_id: accessKeyId,
+				session_token: null,
+			},
+		},
+		{ op: "auth.bedrock.ssoLogin", profile: "" },
+		{ op: "auth.bedrock.check", credentialId: 0 },
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.ok(!JSON.stringify(response).includes("secret"));
+	}
+	assert.equal(seen.length, count);
+});
+
+/*
+ * Review round 1, R4: Bedrock's connect and check wait on AWS twice - a
+ * credential resolve capped at 15 s (`CREDENTIAL_TIMEOUT_S`) and a probe whose
+ * 15 s httpx timeout bounds each of its four phases - so the daemon's bounded
+ * worst case is 75 s before it stores the row. The transport must wait longer
+ * than that, or it reports a deadline for a connect the backend then saves.
+ */
+test("bedrock connect and check wait longer than the daemon's bounded worst case", () => {
+	const daemonWorstCaseMs = (15 + 4 * 15) * 1000;
+	for (const op of ["auth.bedrock.connect", "auth.bedrock.check"]) {
+		assert.ok(
+			desktopRequestDeadlineMs(op) > daemonWorstCaseMs,
+			`${op}: ${desktopRequestDeadlineMs(op)} ms`,
+		);
+	}
+	// The context read and the SSO start answer without waiting on AWS.
+	assert.equal(desktopRequestDeadlineMs("auth.bedrock.context"), 20000);
 });
