@@ -18,6 +18,8 @@ const row = (surface, verdict, actual = "fixture diagnosis") => ({
 	actual,
 });
 const pass = row("Incumbent identity", "PASS");
+const assembly = row("Delivered candidate ZIP/DMG", "PASS");
+const completion = row("Candidate first and second launch", "PASS");
 
 function fixture(t, matrix) {
 	const dir = mkdtempSync(
@@ -36,9 +38,13 @@ function fixture(t, matrix) {
 }
 
 // Use the same CLI and summary channel as Actions, not just the library return.
-function verify(t, matrix, { verdict, codes, reasonCodes = [], detail }) {
+function verify(
+	t,
+	matrix,
+	{ verdict, codes, reasonCodes = [], detail, exactUpdateResult = "success" },
+) {
 	const dir = fixture(t, matrix);
-	const expected = signedUpdateVerdict(dir, context);
+	const expected = signedUpdateVerdict(dir, { ...context, exactUpdateResult });
 	assert.deepEqual(expected, {
 		verdict,
 		codes,
@@ -53,6 +59,7 @@ function verify(t, matrix, { verdict, codes, reasonCodes = [], detail }) {
 			GITHUB_EVENT_NAME: context.trigger,
 			GITHUB_RUN_ID: context.runId,
 			GITHUB_STEP_SUMMARY: summary,
+			EXACT_UPDATE_RESULT: exactUpdateResult,
 		},
 	});
 	assert.ifError(run.error);
@@ -63,19 +70,47 @@ function verify(t, matrix, { verdict, codes, reasonCodes = [], detail }) {
 	assert.doesNotMatch(run.stdout, unsanitized);
 }
 
-test("all rows PASS produces a green proof", (t) => {
-	verify(t, [pass, row("Swap before candidate launch", "PASS")], {
+test("a pre-exercise assembly row alone is incomplete even if the job succeeded", (t) => {
+	verify(t, [assembly], {
+		verdict: "INCOMPLETE",
+		codes: ["PASS"],
+		reasonCodes: ["NATIVE_COMPLETION_MISSING"],
+		detail:
+			"NATIVE_COMPLETION_MISSING: matrix lacks the completed native launch checks",
+	});
+});
+
+test("all rows PASS with native completion and job success produces a green proof", (t) => {
+	verify(t, [pass, completion], {
 		verdict: "PASS",
 		codes: ["PASS"],
 		detail: "all 2 matrix rows passed",
 	});
 });
 
-test("INCUP_UPDATE_CONTROL remains blocked even with passing rows", (t) => {
+for (const exactUpdateResult of [
+	"failure",
+	"cancelled",
+	"skipped",
+	"",
+	"https://example.test/private",
+]) {
+	test(`native completion cannot pass without job success (${exactUpdateResult || "unset"})`, (t) => {
+		verify(t, [pass, completion], {
+			verdict: "INCOMPLETE",
+			codes: ["PASS"],
+			reasonCodes: ["EXACT_UPDATE_NOT_SUCCESSFUL"],
+			detail: "EXACT_UPDATE_NOT_SUCCESSFUL: exact-update job did not succeed",
+			exactUpdateResult,
+		});
+	});
+}
+
+test("INCUP_UPDATE_CONTROL remains blocked even with native completion", (t) => {
 	verify(
 		t,
 		[
-			pass,
+			completion,
 			row(
 				"Exact signed update",
 				"BLOCKED",
@@ -84,6 +119,7 @@ test("INCUP_UPDATE_CONTROL remains blocked even with passing rows", (t) => {
 		],
 		{
 			verdict: "BLOCKED",
+			exactUpdateResult: "failure",
 			codes: ["PASS", "BLOCKED"],
 			reasonCodes: ["INCUP_UPDATE_CONTROL"],
 			detail: "INCUP_UPDATE_CONTROL: Exact signed update",

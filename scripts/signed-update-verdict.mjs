@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { isEntryPoint } from "./entry-point.mjs";
 
 const verdictCodes = new Set(["PASS", "FAIL", "BLOCKED"]);
+// verify-signed-update.mjs records this final positive row only after both
+// native launches pass. Earlier rows are written incrementally and can survive
+// an interrupted run; the job result also covers errors after this last check.
+const NATIVE_COMPLETION_SURFACE = "Candidate first and second launch";
 const lineBreak = /[\r\n\u2028\u2029]/;
 const spaces = /\s+/;
 const labelWord = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -37,7 +41,10 @@ function safeSurface(surface) {
 }
 
 /** Judge the downloaded matrix without creating logs or changing process state. */
-export function signedUpdateVerdict(proofDir, { trigger, runId } = {}) {
+export function signedUpdateVerdict(
+	proofDir,
+	{ trigger, runId, exactUpdateResult } = {},
+) {
 	const context = `${
 		trigger === "repository_dispatch" || trigger === "workflow_dispatch"
 			? trigger
@@ -100,6 +107,20 @@ export function signedUpdateVerdict(proofDir, { trigger, runId } = {}) {
 		}
 		return result("BLOCKED", codes, [...reasonCodes], [...details].join("; "));
 	}
+	if (!rows.some((row) => row.surface === NATIVE_COMPLETION_SURFACE))
+		return result(
+			"INCOMPLETE",
+			codes,
+			["NATIVE_COMPLETION_MISSING"],
+			"NATIVE_COMPLETION_MISSING: matrix lacks the completed native launch checks",
+		);
+	if (exactUpdateResult !== "success")
+		return result(
+			"INCOMPLETE",
+			codes,
+			["EXACT_UPDATE_NOT_SUCCESSFUL"],
+			"EXACT_UPDATE_NOT_SUCCESSFUL: exact-update job did not succeed",
+		);
 	return result("PASS", codes, [], `all ${rows.length} matrix rows passed`);
 }
 
@@ -108,6 +129,7 @@ if (isEntryPoint(import.meta.url)) {
 	const { exitCode, message } = signedUpdateVerdict(proofDir, {
 		trigger: process.env.GITHUB_EVENT_NAME,
 		runId: process.env.GITHUB_RUN_ID,
+		exactUpdateResult: process.env.EXACT_UPDATE_RESULT,
 	});
 	console.log(message);
 	if (process.env.GITHUB_STEP_SUMMARY)

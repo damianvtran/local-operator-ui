@@ -809,6 +809,7 @@ jobs:
           path: ${{ runner.temp }}/signed-update-proof
       - name: Require a PASS proof
         env:
+          EXACT_UPDATE_RESULT: ${{ needs.exact-update.result }}
           PROOF_DOWNLOAD: ${{ steps.proof.outcome }}
           PROOF_DIR: ${{ runner.temp }}/signed-update-proof
         run: |
