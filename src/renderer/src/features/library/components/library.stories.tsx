@@ -14,6 +14,7 @@
  */
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
+import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -1027,16 +1028,17 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 	<div className="relative flex h-screen flex-col overflow-hidden">
 		<ChatLayout
 			sidebar={<SidebarNavigation />}
+			insetRouteBody
 			content={
 				<main
-					data-glass-region="canvas-backing"
-					/* The app's own `<main>` carries this; a story that draws the shell
-					   must carry it too, or `panel-flush` cancels a pad that is absent. */
+					data-workspace-outlet=""
 					className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden"
 				>
-					<RouteTo path={route}>
-						<LibraryPage nowMs={nowMs} />
-					</RouteTo>
+					<WorkspaceFrame>
+						<RouteTo path={route}>
+							<LibraryPage nowMs={nowMs} />
+						</RouteTo>
+					</WorkspaceFrame>
 				</main>
 			}
 		/>

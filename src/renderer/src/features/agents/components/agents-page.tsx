@@ -875,8 +875,8 @@ export function AgentsPage() {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			/* A full-height panel: `canvas` from y0, the two columns pad themselves. */
-			className="panel-flush flex min-h-0 flex-1 bg-canvas text-ink"
+			/* Keep roster and detail glass separate inside the shared route frame. */
+			className="flex min-h-0 flex-1 bg-canvas text-ink"
 		>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
@@ -895,12 +895,7 @@ export function AgentsPage() {
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
 				data-glass-region="page-sidebar"
-				/*
-				 * `panel-top-pad` + the lateral/bottom 16px the old `p-4` supplied;
-				 * the heading's own `pt-4` restores the 16px step the `p-4` gave it
-				 * above the strip, so the roster's first row keeps its measured y.
-				 */
-				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
+				className="flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
 				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
@@ -1150,7 +1145,7 @@ export function AgentsPage() {
 			 */}
 			<main
 				data-glass-region="canvas-content"
-				className="panel-top-pad flex min-w-0 flex-1 flex-col"
+				className="flex min-w-0 flex-1 flex-col"
 			>
 				{/*
 				 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM

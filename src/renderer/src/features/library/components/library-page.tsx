@@ -789,13 +789,8 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			data-library-page=""
 			data-glass-region="canvas"
 			data-glass-split=""
-			/*
-			 * A FULL-HEIGHT PANEL: the page owns `canvas` from y0 and its columns
-			 * each pad their own content (`panel-top-pad`). `panel-flush` cancels
-			 * the shell's ordinary-content pad; `flex-1` is what gives the box the
-			 * 32px back at the bottom, which is the pair the utility's note states.
-			 */
-			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
+			/* The shell owns clearance; rail, results and preview own their grounds. */
+			className="flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * THE RAIL RUNS THE FULL PAGE HEIGHT, as the first column of a
@@ -810,7 +805,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					data-library-rail=""
 					data-glass-region="page-sidebar"
 					aria-label={t("ui.library.page.filters")}
-					className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
+					className="flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
 				>
 					{rail}
 				</aside>
@@ -818,7 +813,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			{!standalone && (
 				<div
 					data-glass-region="canvas-content"
-					className="panel-top-pad flex min-w-0 flex-1 flex-col"
+					className="flex min-w-0 flex-1 flex-col"
 				>
 					{/*
 					 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
@@ -1142,17 +1137,11 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						label={t("ui.library.page.resize_preview")}
 					/>
 					<aside
-						/*
-						 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
-						 * scroller begin below the strip. This is the aside the operator's
-						 * screenshot caught beginning 32px down. The OUTER padded box must
-						 * own the pane alpha too: marking only the inner preview made the
-						 * 32px lane opaque while the content below it was translucent.
-						 */
+						/* The dock owns the pane alpha; the inner preview only scrolls. */
 						data-library-dock=""
 						data-glass-region="pane"
 						style={{ width: dockWidth }}
-						className="panel-top-pad flex h-full shrink-0 bg-surface"
+						className="flex h-full shrink-0 bg-surface"
 						aria-label={t("ui.library.page.preview")}
 					>
 						<LibraryPreview
@@ -1173,17 +1162,10 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 			{standalone && (
 				<div
-					/*
-					 * `bg-surface` HERE, on the padded box, and not only on
-					 * `LibraryPreview`'s root: the pad is inside this wrapper, so the
-					 * preview's own ground begins at y32 and a groundless wrapper let the
-					 * page root's `canvas` show through the strip as a band (design round
-					 * 1, D2). The panel that owns the pad owns the ground, which also
-					 * grounds the spinner and `UnavailableAsset` arms.
-					 */
-					/* Standalone has the same outer alpha owner as the docked panel. */
+					/* The standalone body supplies the same pane ground for LibraryPreview,
+					 * its spinner and UnavailableAsset. */
 					data-glass-region="pane"
-					className="panel-top-pad min-w-0 flex-1 bg-surface"
+					className="min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					{selectedMissing ? (
@@ -1226,7 +1208,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						/* No inner preview exists here, so this root owns the whole pane. */
 						data-glass-region="pane"
 						style={{ width: dockWidth }}
-						className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
+						className="hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
 					>
 						<p className="max-w-60 text-center text-body-sm text-ink-dim">
 							{t("ui.library.page.select_asset")}

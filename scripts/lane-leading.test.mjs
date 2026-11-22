@@ -15,12 +15,12 @@
  *   1. The lane is ONE absolute, transparent overlay for every route. It
  *      reserves no height and paints no ground. The drag surface and the
  *      `data-slot-edge` geometry handle are all that remain on it.
- *   2. A full-height panel reaches y0 and paints its own ground through the
+ *   2. A true edge-to-edge panel reaches y0 and paints its ground through the
  *      strip. Two utilities in `styles/index.css` state it once: `panel-flush`
  *      (a route root that cancels the shell's ordinary-content pad) and
  *      `panel-top-pad` (a panel column whose first row starts below the strip).
- *   3. A route's first content row is never under y32 on macOS: ordinary pages
- *      get the shell's single pad on `<main>`; panels pad their own columns.
+ *   3. Adopted routes get one clearance on `<main>`; their split panes keep
+ *      the same local grounds/scroll and no longer pad their own first rows.
  *   4. A scroll region clips at the panel's content edge, so its pad must sit
  *      OUTSIDE the scroller, never on it.
  *
@@ -62,10 +62,8 @@ const SHELL_STORIES =
  * Every full-height panel that has to paint through the strip, the file it is
  * defined in, and the class list that proves it. The list is the migration the
  * operator asked for, not only the screenshot: the app sidebar, the shell's
- * pane rail, every right-slot occupant, the Library rail/header/dock, the
- * settings rail, both agents rosters, Team Bridge's two columns and the browser
- * route. A panel added later without the utility fails here rather than in a
- * screenshot review.
+ * pane rail, every legacy right-slot occupant, the still-flush Team Bridge and
+ * Browser routes. The adopted inset columns are pinned separately below.
  */
 const PANEL_COLUMNS = [
 	{
@@ -135,41 +133,6 @@ const PANEL_COLUMNS = [
 		],
 	},
 	{
-		path: LIBRARY_PAGE,
-		classes: [
-			'className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
-			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
-			'className="panel-top-pad flex h-full shrink-0 bg-surface"',
-			/*
-			 * The standalone preview's wrapper owns the `surface` ground, not only the
-			 * pad: `LibraryPreview` paints `bg-surface` on its own root, which sits
-			 * BELOW this pad, so a groundless wrapper left the root's `canvas` showing
-			 * through the strip as a band (design round 1, D2).
-			 */
-			'className="panel-top-pad min-w-0 flex-1 bg-surface"',
-			'className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
-		],
-	},
-	{
-		path: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		classes: [
-			'className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"',
-		],
-	},
-	{
-		path: "src/renderer/src/features/agents/components/agents-page.tsx",
-		classes: [
-			'className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"',
-			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
-		],
-	},
-	{
-		path: AGENTS_SIDEBAR,
-		classes: [
-			'className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"',
-		],
-	},
-	{
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		classes: [
 			'className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"',
@@ -208,6 +171,67 @@ test("every full-height panel owns the strip and pads its own first row", () => 
 	}
 });
 
+// The same pane grounds and local overflow contracts survive the move. Pin them
+// separately from the edge-to-edge panels; neither set may borrow the other's pad.
+const INSET_COLUMNS = [
+	[
+		LIBRARY_PAGE,
+		[
+			'"flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+			'"flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
+			'"flex min-w-0 flex-1 flex-col"',
+			'"flex h-full shrink-0 bg-surface"',
+			'"min-w-0 flex-1 bg-surface"',
+			'"hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
+		],
+	],
+	[
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		[
+			'"flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+			'"flex min-h-0 min-w-0 flex-1 flex-col"',
+			'"min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"',
+		],
+	],
+	[
+		"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		['"flex h-full w-full flex-col overflow-hidden bg-surface"'],
+	],
+	[
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+		[
+			'"flex min-h-0 flex-1 bg-canvas text-ink"',
+			'"flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"',
+			'"flex min-w-0 flex-1 flex-col"',
+		],
+	],
+	[
+		"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
+		[
+			'"flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+			'"h-full grow overflow-hidden"',
+		],
+	],
+	[
+		AGENTS_SIDEBAR,
+		['"flex h-full w-full flex-col overflow-hidden bg-surface"'],
+	],
+];
+
+test("adopted split routes keep their grounds and local scroll without a second clearance", () => {
+	for (const [path, classes] of INSET_COLUMNS) {
+		const source = readSource(path);
+		for (const literal of classes) {
+			assert.ok(source.includes(literal), `${path} lost ${literal}`);
+		}
+		assert.doesNotMatch(
+			source,
+			/["' ]panel-(?:top-pad|flush|scroll) /,
+			`${path} duplicates shell clearance`,
+		);
+	}
+});
+
 test("the panel root utility is the only way a route reaches y0", () => {
 	/*
 	 * The roots are asserted separately from the columns because they do a
@@ -218,24 +242,6 @@ test("the panel root utility is the only way a route reaches y0", () => {
 	 * photographed yet.
 	 */
 	const roots = [
-		{
-			path: LIBRARY_PAGE,
-			literal:
-				'className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"',
-		},
-		{
-			path: "src/renderer/src/features/settings/components/settings-page.tsx",
-			literal:
-				'className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"',
-		},
-		{
-			path: "src/renderer/src/features/agents/components/agents-page.tsx",
-			literal: 'className="panel-flush flex min-h-0 flex-1 bg-canvas text-ink"',
-		},
-		{
-			path: "src/renderer/src/features/agents/components/legacy-agents-page.tsx",
-			literal: 'className="panel-flush flex min-h-0 flex-1 overflow-hidden"',
-		},
 		{
 			path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 			// `@container/bridge relative` is main's: the container query is what the
@@ -300,10 +306,6 @@ test("no flush root leaves its content under the lane", () => {
 	 * lists above say WHICH box pads.
 	 */
 	const flushFiles = [
-		LIBRARY_PAGE,
-		"src/renderer/src/features/settings/components/settings-page.tsx",
-		"src/renderer/src/features/agents/components/agents-page.tsx",
-		"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		BROWSER_SURFACE,
 		CHAT_PAGE,
@@ -374,7 +376,7 @@ test("the chat dock pads once: the route is flush, so each column's own pad is t
 	);
 });
 
-test("the Library dock and rail are the measured panels, and the dock scrolls inside its pad", () => {
+test("Library rail and dock keep their own ground and the viewer keeps its own scroll", () => {
 	const page = readSource(LIBRARY_PAGE);
 	/*
 	 * THE ONE SCROLLER THAT COULD REINTRODUCE THE SEAM: the dock is a fixed
@@ -385,8 +387,8 @@ test("the Library dock and rail are the measured panels, and the dock scrolls in
 	 */
 	assert.match(
 		page,
-		/data-library-rail=""[\s\S]{0,400}?className="panel-top-pad[^"]*bg-surface"/,
-		"the Library rail must be a panel: `surface` from y0, rows below the strip",
+		/data-library-rail=""[\s\S]{0,400}?className="flex h-full[^"]*overflow-hidden bg-surface"/,
+		"the Library rail still owns `surface` and clips its own scroller inside the frame",
 	);
 	assert.match(
 		page,
@@ -399,10 +401,11 @@ test("the Library dock and rail are the measured panels, and the dock scrolls in
 		page.lastIndexOf("<aside", asideStart),
 		page.indexOf(">", asideStart),
 	);
-	assert.match(
+	assert.match(aside, /data-glass-region="pane"[\s\S]*bg-surface/);
+	assert.doesNotMatch(
 		aside,
 		/panel-top-pad/,
-		"the dock aside must carry the pad itself, so its scroller begins at the panel's content edge",
+		"the frame already cleared chrome",
 	);
 	assert.doesNotMatch(
 		page.slice(
@@ -410,7 +413,7 @@ test("the Library dock and rail are the measured panels, and the dock scrolls in
 			page.indexOf("/>", page.indexOf("<LibraryPreview")),
 		),
 		/panel-top-pad/,
-		"the pad must not move into the preview: the panel owns the strip, the viewer owns only its scroll",
+		"the pad must not move into the preview: the shell owns clearance, the viewer owns only its scroll",
 	);
 });
 

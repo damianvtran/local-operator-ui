@@ -598,6 +598,24 @@
 	height: var(--chrome-strip-h);
 }
 
+/* A route body starts AFTER platform clearance. Logical margins give the same
+ * gutter beside either rail in RTL without touching any OS hit exclusions.
+ * Clip only this frame's corners, not its descendant scroll model: unlike
+ * overflow:hidden, clip cannot become a sticky band's scroll container. */
+main[data-workspace-outlet] {
+	background-color: var(--lo-surface);
+}
+html[data-glass] main[data-workspace-outlet] {
+	background-color: transparent;
+}
+.workspace-frame {
+	margin-inline: 8px;
+	margin-block-end: 8px;
+	border-radius: 10px;
+	overflow: clip;
+	background-color: var(--lo-canvas);
+}
+
 /*
  * THE PANEL TOP CONTRACT, AS TWO UTILITIES AND ONE VARIABLE.
  *
@@ -609,6 +627,10 @@
  * gradient band - a reserved row that could only paint a MIRROR of the
  * columns' grounds and was wrong the moment a panel started inside the route
  * (the Library dock, the right slot, the canvas tabs).
+ *
+ * That edge-to-edge rule still applies to genuine chrome and legacy routes.
+ * An inset workspace instead starts under the lane, so `main` takes this
+ * same pad once and nested route columns never cancel or reapply it.
  *
  * `--panel-top-pad` is the shell's statement of how far the OS's controls
  * reach into the window. It is set on the content column for EVERY route
@@ -2284,10 +2306,10 @@ html [data-lo-ask-list]:focus-visible {
  *
  * THE BACKING. With any glass on, `body`, `#app` and the `<main>` ground cannot
  * stay the opaque `canvas`: it would sit between the material and everything
- * translucent. `<main>` therefore paints the content column's ground itself -
- * opaque `canvas` when the canvas is not covered, `canvas` at its alpha when it
- * is - and the page grounds inside it (`data-glass-region="canvas"`) go clear so
- * ONE alpha applies. Surfaces and panes inside `<main>` use the NET alpha
+ * translucent. The route frame (legacy routes: `<main>`) paints the body ground
+ * once: opaque `canvas` when not covered, its alpha otherwise. Ordinary page
+ * grounds inside it (`data-glass-region="canvas"`) go clear under Full app.
+ * Surfaces and panes inside the backing use the existing NET alpha
  * (`--lo-glass-in-*`) so the stack lands on the target, and clamp at 0 rather than
  * ever going more see-through than the floor.
  */
@@ -2296,10 +2318,10 @@ html[data-glass] body,
 html[data-glass] #app {
 	background-color: transparent;
 }
-html[data-glass] main[data-glass-region="canvas-backing"] {
+html[data-glass] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"] {
 	background-color: var(--lo-canvas);
 }
-html[data-glass~="canvas"] main[data-glass-region="canvas-backing"] {
+html[data-glass~="canvas"] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
@@ -2357,8 +2379,11 @@ html[data-glass~="sidebar"] [data-glass-region="page-sidebar"] {
 		transparent
 	);
 }
-html[data-glass]
-	main[data-glass-region="canvas-backing"]:has([data-glass-split]),
+/* Only a direct split route replaces the inset's wash. A nested tool/pane
+ * must not clear it, nor may a split React has hidden behind its Suspense
+ * fallback. The legacy main selector still serves the flush routes. */
+html[data-glass] main[data-glass-region="canvas-backing"]:has([data-glass-split]),
+html [data-workspace-frame][data-glass-region="canvas-backing"]:has(> [data-glass-split]):not(:has(> [data-workspace-route-pending])),
 html[data-glass] [data-glass-split] {
 	background-color: transparent;
 }
@@ -2381,7 +2406,7 @@ html[data-glass~="pane"] [data-glass-region="pane"] {
 	);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]:not([data-glass-split]) {
 	background-color: color-mix(
 		in srgb,
@@ -2396,7 +2421,7 @@ html[data-glass]:not([data-glass~="pane"])
 	background-color: var(--lo-elevated);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"][data-glass-split] {
 	background-color: color-mix(
 		in srgb,
@@ -2409,7 +2434,7 @@ html[data-glass~="pane"]
  * by order, so no descendant can compound a second alpha over its outer pane. */
 html[data-glass~="pane"] [data-glass-region="pane"] [data-glass-region="pane"],
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-region="pane"] {
 	background-color: transparent;
@@ -2472,7 +2497,7 @@ html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
 html[data-glass~="sidebar"] [data-glass-region="sidebar"],
 html[data-glass~="sidebar"] [data-glass-region="page-sidebar"],
 html[data-glass~="canvas"] [data-glass-region="canvas"],
-html[data-glass~="canvas"] main[data-glass-region="canvas-backing"],
+html[data-glass~="canvas"] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
 html[data-glass~="canvas"] [data-glass-region="panel"],
 html[data-glass~="pane"] [data-glass-region="pane"] {
 	--color-row-hover: color-mix(
@@ -2521,7 +2546,7 @@ html[data-glass~="sidebar"]
 html[data-glass~="canvas"]
 	:is(
 		[data-glass-region="canvas"],
-		main[data-glass-region="canvas-backing"],
+		:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
 		[data-glass-region="panel"]
 	)
 	[data-glass-placeholder],
@@ -2537,7 +2562,7 @@ html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
 	[data-glass-region="panel"]
@@ -2559,7 +2584,7 @@ html[data-glass~="pane"]
 		:where([data-glass-region="chrome"])
 	),
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
 		:where([data-glass-region="chrome"])
 	),
@@ -2590,7 +2615,7 @@ html[data-glass~="sidebar"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
@@ -2751,7 +2776,7 @@ html[data-glass~="canvas"] [data-glass-state="running"] {
  * distinguished by the attribute's value so a call site says which it is.
  */
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[class~="bg-sunken"][data-glass-well="clear"],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -2769,7 +2794,7 @@ html[data-glass~="pane"]
  * that selector to every `bg-surface` div.
  */
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[class~="bg-surface"][data-glass-well],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -3109,7 +3134,7 @@ html[data-glass~="pane"]
 	background-color: transparent;
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"][data-glass-split][data-glass-chrome-live] {
 	background-color: transparent;
 }
@@ -3185,13 +3210,13 @@ html[data-glass]
  * there, which is what the state model says a hover is. Off glass nothing changes.
  */
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="clear"] {
 	background-color: transparent;
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="band"] {
 	background-color: color-mix(
@@ -3335,7 +3360,7 @@ html[data-glass~="pane"]
  * model understated the very property the note exists to describe. Quote the frame.
  */
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-plane="band-backdrop"],
 html[data-glass~="canvas"]
@@ -3411,7 +3436,7 @@ html[data-glass~="canvas"]
 	backdrop-filter: blur(12px);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[role="tablist"]
 	:is([class~="bg-surface"], [class~="bg-sunken"], [class~="bg-elevated"]) {
@@ -3453,7 +3478,7 @@ html[data-glass~="pane"]
 	);
 }
 html[data-glass~="pane"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	:is(
 		[class~="hover:bg-surface"],
@@ -3472,7 +3497,7 @@ html[data-glass~="pane"]
  * pane rule translates needs the same answer.
  *
  * GATED ON THE VEIL, NOT ON THE PANE. Round 1 repeated the pane rule's structural
- * keys (`main[data-glass-region="canvas-backing"]`), and that scope was wrong: the
+ * keys (`:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]`), and that scope was wrong: the
  * veil is canvas-gated and NOT main-scoped, while the FLEET asks drawer's pane is a
  * SIBLING of `<main>` (the raw-alpha pane rule above names it). In that mount the
  * card was veiled - `hover:bg-sunken` painted an opaque slab over it - and this
@@ -3503,7 +3528,7 @@ html[data-glass~="canvas"]
 		[class~="hover:bg-elevated"]
 	):hover,
 html[data-glass~="canvas"]
-	main[data-glass-region="canvas-backing"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
 	[data-glass-region="pane"]
 	[data-glass-block]
 	:is(

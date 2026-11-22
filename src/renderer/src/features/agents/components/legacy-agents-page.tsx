@@ -124,19 +124,12 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 	return (
 		<div
 			data-glass-split=""
-			className="panel-flush flex min-h-0 flex-1 overflow-hidden"
+			className="flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/* The sidebar itself is width:100% — the 280px lives here, and the
 			    pane must not shrink when the agent list has a long name in it. */}
-			{/*
-			 * THE ROSTER IS A PANEL: `AgentsSidebar`'s own root paints `surface` from
-			 * y0 and wears `panel-top-pad`, so neither this wrapper nor the shell has
-			 * to reserve a row above it. The page root's `panel-flush` is what lets
-			 * both columns start at y0; the content column pads itself below.
-			 *
-			 * The roster's `border-r` stays gone: the boundary beside the content is
-			 * the `surface`-over-`canvas` tone step (see `agents-sidebar.tsx`).
-			 */}
+			{/* The direct-detail route shares the inset; the roster keeps its own
+			    surface and scroller, not a second titlebar pad. */}
 			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
@@ -149,7 +142,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 			    keeps its scrolling inside the pane instead of the window. */}
 			<div
 				data-glass-region="canvas-content"
-				className="panel-top-pad h-full grow overflow-hidden"
+				className="h-full grow overflow-hidden"
 			>
 				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
 				    header sits in the same measured column as the settings below it,

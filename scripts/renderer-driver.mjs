@@ -43565,14 +43565,9 @@ async function sceneRouteTops(cdp) {
 				probe.remove();
 				return ground;
 			};
-			let ownRoot = null;
-			if (main) {
-				for (const child of main.children) {
-					if (child.hasAttribute("data-chrome-route-band")) continue;
-					ownRoot = child;
-					break;
-				}
-			}
+			const frame = main?.querySelector(":scope > [data-workspace-frame]") ?? null;
+			const outlet = frame ?? Array.from(main?.children ?? []).find((el) => getComputedStyle(el).display === "contents") ?? main;
+			const ownRoot = Array.from(outlet?.children ?? []).find((el) => !el.hasAttribute("data-chrome-route-band")) ?? null;
 			const lane = document.querySelector("[data-titlebar-lane]");
 			const band = document.querySelector("[data-chrome-route-band]");
 			/*
@@ -43728,6 +43723,13 @@ async function sceneRouteTops(cdp) {
 				band: box(band),
 				bandDisplay: band ? getComputedStyle(band).display : null,
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
+				main: box(main),
+				mainPad: main ? Number.parseFloat(getComputedStyle(main).paddingTop) : null,
+				frame: box(frame),
+				frames: document.querySelectorAll("[data-workspace-frame]").length,
+				frameRadius: frame ? getComputedStyle(frame).borderStartStartRadius : null,
+				frameShadow: frame ? getComputedStyle(frame).boxShadow : null,
+				frameBorder: frame ? getComputedStyle(frame).borderInlineStartWidth : null,
 				route: box(ownRoot),
 				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
 				leadingColumn: box(leading),
@@ -43771,6 +43773,37 @@ async function sceneRouteTops(cdp) {
 		const reading = await readTops();
 		readings.push([slug, path, reading]);
 		note(`the top of ${path}`, JSON.stringify(reading));
+	}
+
+	for (const [slug, path, reading] of readings) {
+		const legacy = slug === "chat" || slug === "browser";
+		check(
+			`${path}: one outlet frame, except for the explicit legacy body placements`,
+			reading.frames === (legacy ? 0 : 1),
+			`found ${reading.frames}`,
+		);
+		if (!legacy) {
+			const { frame, main, band, bandDisplay } = reading;
+			const near = (a, b) => Math.abs(a - b) < 0.5; // CDP box measurements are rounded to 0.01px.
+			const visibleBand = band && bandDisplay !== "none" ? band.height : 0;
+			check(
+				`${path}: frame starts below one clearance and keeps 8px side and bottom gutters`,
+				frame !== null &&
+					main !== null &&
+					near(frame.top, main.top + reading.mainPad + visibleBand) &&
+					near(frame.left - main.left, 8) &&
+					near(main.left + main.width - frame.left - frame.width, 8) &&
+					near(main.top + main.height - frame.top - frame.height, 8),
+				JSON.stringify({ frame, main, pad: reading.mainPad, visibleBand }),
+			);
+			check(
+				`${path}: 10px corners without an edge or shadow`,
+				reading.frameRadius === "10px" &&
+					reading.frameBorder === "0px" &&
+					reading.frameShadow === "none",
+				`radius ${reading.frameRadius}, border ${reading.frameBorder}, shadow ${reading.frameShadow}`,
+			);
+		}
 	}
 
 	/*
@@ -43837,15 +43870,18 @@ async function sceneRouteTops(cdp) {
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
 				const mid = column.left + column.width / 2;
+				const expectedStripGround = reading.frame
+					? reading.surfaceGround
+					: reading.leadingColumnGround;
 				check(
-					`${path}: the route's leading column paints its own ground through the strip`,
-					reading.leadingColumnGround !== null &&
+					`${path}: strip ground over the leading column belongs to the ${reading.frame ? "outlet chrome" : "flush panel"}`,
+					expectedStripGround !== null &&
 						reading.stripGrounds.some(
 							(probe) =>
 								Math.abs(probe.x - mid) <= 1 &&
-								probe.bg === reading.leadingColumnGround,
+								probe.bg === expectedStripGround,
 						),
-					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against the column's ${reading.leadingColumnGround} - a leading column that stops at y32 is the operator's original report`,
+					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against expected ${expectedStripGround}`,
 				);
 				check(
 					`${path}: the column draws no right rule`,

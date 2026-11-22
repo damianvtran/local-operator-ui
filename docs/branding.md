@@ -594,11 +594,53 @@ an empty box, while the transcript sat at `canvas` with nothing pointing at it.
 The accent is spent on what the user acts on (the send control's fill) and on
 focus, not on the frame of an empty field.
 
+### Shared inset for primary pages
+
+**One inner frame, not an inset window.** Use `WorkspaceFrame` below the route's
+chrome. It gives the body 8px logical inline and bottom gutters and 10px corners,
+without a border, `PanelEdge`, shadow or second backing. App navigation, native
+controls and drag surfaces, the real panel rail and shell-level Fleet Asks stay
+outside it. The visible gutter replaces the shell seams where it separates the
+page from those rails, not on legacy flush joins. The rails must read on their
+own grounds, even with no inspector open.
+
+**Share the boundary, not the layout.** The outlet consumes the platform's
+clearance once and holds the same frame through loading, empty, error and content.
+Route-local actions, independent list/detail scrolling, sticky bands, narrow
+layout replacements and focus return stay with the page. Keep content cards,
+semantic boundaries and visible focus; don't wrap each column in a card.
+
+**Share geometry, not an alpha layer.** Off stays solid. Sidebars only keeps
+its sidebar coverage and solid page/pane grounds. Full app keeps the existing
+page/pane coverage. Ordinary pages use the frame's canvas backing; a direct
+split route keeps the existing separate navigation, canvas and pane grounds
+instead. No new paint behind those regions and no opaque sticky band as a fix
+for double alpha.
+
+**Migration status.** This branch adopts the outlet for Settings, Agents
+(including direct detail), Agent Hub, Schedules, Projects, Library, Notifications
+and enabled Mesh. Chat still needs to use the primitive at its own body boundary,
+including loading and error; don't wrap the separate Chat work or carry its
+workspace tabs or composer styling to other pages. Browser needs its own placement
+beneath the tab/address bars, with native paint and pointer verification before
+any claim that its `WebContentsView` respects the gutters or corner clip. Team
+Bridge retains the flush body until its portal, early Back and narrow thread
+layout can be exercised; its shell-mounted navigation stays outside the frame.
+This is a local rollout, not approval to ship a mix of framed and unframed pages.
+
+**Evidence.** Switch routes in one window at standard and narrow sizes, including
+direct details, Back, enabled/disabled destinations and first versus settled
+frames. Read the frame and chrome rects, gutters, radius, scroll extents, sticky
+band paint and focus. Exercise light/dark, RTL, fullscreen, and Off / Sidebars
+only / Full app. Renderer geometry and screenshots are not native hit testing:
+measure Browser resize, clicks, overlays, and route-exit hide (and Console's grid
+and crop after its Chat host moves) in the actual app.
+
 ### Panels: one seam, edge-to-edge, fading at the top
 
-A full-height panel is a region that owns a ground at the window's edge — the app
-sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
-popover.
+These rules apply to genuine edge-to-edge chrome and legacy flush surfaces. A
+route-local column inside the [Shared inset](#shared-inset-for-primary-pages)
+does not take its own OS clearance or draw `PanelEdge`.
 
 - **A full-height panel draws one seam, and still no border.** The tone step is
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
@@ -621,27 +663,19 @@ popover.
   That assertion is an opaque-theme guarantee: under window glass the ground is
   a translucent `surface` composited over the desktop, which the opaque-hex
   contract does not measure.
-  - **Where it is drawn:** the shell's sidebar column along its inner edge, the
-    shell's rail host along the rail's inner edge, and each right-slot pane
-    along the edge it shares with the conversation. A panel that sits inside a
-    route rather than against the window edge (a card, an inspector inside a
-    page) has no seam: the tone step is the whole boundary there, because it is
-    one object on a page, not a column of the window.
-  - **The sidebar's seam is the shell column's edge, on every route.** It marks
-    where the app sidebar ends, so on a route whose own leading column is also
-    `surface` — the Settings nav, the Agents roster — it is the only boundary
-    between the two chrome planes, and those two keep the flat join *under* the
-    seam. The route column's own edge to its content keeps the tone step alone;
-    a seam inside a route's own layout is out of this change's scope.
+  - **Where it is drawn:** at flush joins, the shell's sidebar column and rail
+    host use their inner edge, and legacy right-slot panes use the edge they
+    share with the conversation. Where the Shared inset separates the route
+    from a shell rail, the gutter replaces that shell seam. Route-local panels
+    keep alignment and the tone step rather than drawing a decorative line.
   - **The seam is placed logically.** `start-0`/`end-0` keep it on the side
     facing the content in RTL; the class is pinned in
     `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
     this change.
 - **Full-height panels extend through the titlebar strip; no top inset on the
   panel; the scroll region clips and fades under it.** A panel that owns its
-  ground (the app sidebar, a route's leading rail, the Library filter rail, the
-  asset-details dock, the right-slot panes and canvas tabs, the panel rail,
-  Team Bridge's columns) starts at y0 and paints its own ground through the
+  ground at the window edge (the app sidebar, the shell panel rail, or a
+  legacy flush route) starts at y0 and paints its own ground through the
   traffic lights' band. Its first content row is padded by
   `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
   content column for every route, so no route needs its own inset and none may
@@ -650,8 +684,8 @@ popover.
     `panel-flush` on a route root that owns the whole window height (it cancels
     the shell's ordinary-content pad) and `panel-top-pad` on a full-height
     panel column (it pushes the column's first row below the strip while the
-    panel's ground keeps y0). A simple page that is not a panel needs neither:
-    the shell pads it once on `<main>`.
+    panel's ground keeps y0). The shell pads primary page bodies once on
+    `<main>`; their nested columns use neither utility.
   - The titlebar lane is a single transparent overlay for every route. It
     reserves no height and paints no ground; there is no route opt-in, and
     no gradient mirror of the columns. Only the drag surface and
@@ -660,9 +694,8 @@ popover.
     outside the scroller.** A scroll container's own `padding-top` clips at
     its padding box, which lets scrolled text paint through the strip; the
     panel pads, the scroller begins at y32, and the existing top fade
-    (`data-lo-sidebar-edge-cues`) stays on the scroller. A file name scrolling
-    in the Library dock disappears at the dock's content edge, not at y0. When
-    the panel's ROOT is the scroller, `panel-scroll` states the same contract
+    (`data-lo-sidebar-edge-cues`) stays on the scroller. When the panel's
+    ROOT is the scroller, `panel-scroll` states the same contract
     as a margin plus the matching height.
   - The element that wears `panel-top-pad` is the element that paints the
     panel's ground. A padded wrapper that owns no ground is the inset band this
@@ -688,13 +721,12 @@ popover.
   sidebar and panel rail still reachable - and it is the case the one drawer
   shadow is for.
 
-The Library route is the reference: a flush `bg-canvas` page root, a
-full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
-padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
-and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
-and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
-enforces that no route computes its own titlebar inset; agent-facing detail is
-in `docs/AGENTS.md`.
+Library's filter rail and asset dock are inside one Shared inset, with local
+scroll and narrow detail replacement, not at the window edge.
+`scripts/lane-leading.test.mjs` keeps the edge-to-edge clearance and the inset
+split rules distinct; `scripts/panel-top-inset.test.mjs` forbids private
+clearance calculations, and `scripts/workspace-frame.test.mjs` checks the
+route inventory and body boundary.
 
 ### Accent
 
@@ -1163,10 +1195,10 @@ region nested inside one of the same kind is cleared, so the alpha is painted on
 Grounds of the same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is
 0.97), which is the seam between a sidebar's nav block and its list pane.
 
-**Pages that are a column plus content** (Settings, Agents, and the Browser route) sit
-inside `<main>`, whose backing would otherwise be a second layer under the column
+**Pages that own separate regional grounds** (Settings, Agents, Library and the
+legacy Browser route) must not paint the route backing under those regions
 (measured in review: a 0.67 column over a 0.59 backing read 0.86). Such a page marks
-its root `data-glass-split`; the backing and the root then paint nothing, the column
+its root `data-glass-split`; under glass, the backing and root paint nothing, and the column
 paints the RAW alpha over the desktop (so it equals the app sidebar beside it), and only
 the content column (`canvas-content`) paints the canvas: opaque under *Sidebars only*,
 at its alpha under *Full app*.
@@ -1304,7 +1336,7 @@ be on glass:
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
-**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
+**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the route's `canvas` ground, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
 
 **The isolating band is not see-through, and that is a decision, not an unfinished
 job.** At the shipped 80 % the desktop's share through the Notifications band is

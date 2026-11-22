@@ -94,10 +94,24 @@ about a component nobody listed is not evidence about that component.
 presets (`scripts/check-contrast-presets.mjs`), so a new row must hold on every
 palette at Soft, Gentle, Strong and High too.
 
+### Shared inset for primary pages
+
+Use one [Shared inset](docs/branding.md#shared-inset-for-primary-pages) at the route
+body boundary. The outlet owns platform clearance and keeps the frame through
+route loading, error and content. Do not cancel its pad or repeat it in nested
+columns. True shell rails and the titlebar stay outside; the gutter replaces
+seams only where it actually separates the page from those rails.
+
+Share the frame, not the page layout: keep pane grounds, sticky bands, focus
+and local scroll ownership. Chat's titlebar tabs and composer are Chat-only.
+Chat, native Browser and Team Bridge remain legacy placements in this local
+rollout until their own boundaries and interactions are verified. Never wrap
+an existing Chat frame or assume CSS clips Browser's native `WebContentsView`.
+
 ### Panels run to the window edge
 
-These are rules with their reason, not a checklist. A surface that understands
-why will get the next case right where a checklist would not name it.
+These rules cover genuine edge-to-edge chrome, shell rails and documented
+legacy routes, not columns inside a Shared inset.
 
 - **A panel is full-height and starts at y0, including under the invisible
   titlebar.** The mechanism is two utilities in `styles/index.css`:
@@ -111,6 +125,8 @@ why will get the next case right where a checklist would not name it.
   offset panel is a band. This was reported three times (the Library sidebar,
   the canvas right bar, and Team Bridge) and each time the bug was the same
   relocation — the space existed, but outside the surface that should own it.
+  A Shared inset route instead has an intentional, shell-owned boundary below
+  the lane, and its columns do not take separate clearance.
   **The element that wears `panel-top-pad` must be the same box that paints the
   panel's ground.** A padded wrapper with no ground of its own is exactly the
   band this rule forbids; a content column inside a grounded, `panel-flush`
@@ -120,9 +136,10 @@ why will get the next case right where a checklist would not name it.
   controls over the window, every OS and chrome mode resolves the top inset to
   `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
   first rows do not sit hard against the screen edge. It is still **padding
-  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
-  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
-  every panel's ground still reaches y0, and the lane and route band are hidden
+  inside each edge-to-edge panel or above the workspace frame** — it rides
+  `--chrome-strip-h`, which `panel-top-pad`, `panel-scroll` and the shell's
+  `<main>` already read. Legacy panel grounds still reach y0, and the lane and
+  route band are hidden
   so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
   insets, native frames) do not change. No transition on the padding; it flips
   in the frame the `data-chrome-fullscreen` attribute does.

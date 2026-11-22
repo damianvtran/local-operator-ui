@@ -495,7 +495,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	return (
 		<div
 			data-glass-region="page-sidebar"
-			className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			<SidebarHeader
 				title={t("ui.agents.navigation.sidebar.title")}

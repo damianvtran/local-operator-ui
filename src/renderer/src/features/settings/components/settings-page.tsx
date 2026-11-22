@@ -1222,8 +1222,8 @@ export const SettingsPage: FC = () => {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			/* A full-height panel: `canvas` from y0, columns pad themselves. */
-			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
+			/* The shell owns clearance; the two columns keep separate glass grounds. */
+			className="flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * No edge on this wrapper any more. The rail is `surface` (see
@@ -1234,12 +1234,8 @@ export const SettingsPage: FC = () => {
 			 * or remove the right border". It is removed rather than extended,
 			 * because extending would have the shell's lane paint a fence for a
 			 * boundary that already reads (the pass that took the dock's own
-			 * leading rule, #564, removed exactly this kind of mark). The lateral
-			 * boundary on the rail's other side has no tone step — the rail and the
-			 * app sidebar are both `surface` — so the shell's 1px `PanelEdge` seam is
-			 * the only mark there (2026-10-30; it draws the app sidebar's edge on
-			 * every route, not a rule this page owns), and the agents roster makes the
-			 * same flat join beside the same seam.
+			 * leading rule, #564, removed exactly this kind of mark). The shared gutter separates this rail from app
+			 * navigation, which is also `surface`. The route needs no second seam.
 			 *
 			 * Two widths, and the `min-[1040px]:` step is paired with the
 			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
@@ -1253,15 +1249,7 @@ export const SettingsPage: FC = () => {
 			 * to render whole, so anything between 48 and 220 buys a few pixels of
 			 * content in exchange for an ellipsis on a destination's name.
 			 */}
-			<div
-				/*
-				 * The rail's own `surface` reaches y0 now: `SettingsSidebar` pads its
-				 * first row below the strip instead of the shell reserving a row above
-				 * it. The width stays the single two-width decision below (48px under
-				 * 1040, 220 at and above it).
-				 */
-				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
-			>
+			<div className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55">
 				<SettingsSidebar
 					activeSection={activeSection}
 					onSelectSection={handleSelectSection}
@@ -1271,21 +1259,9 @@ export const SettingsPage: FC = () => {
 
 			<div
 				data-glass-region="canvas-content"
-				/*
-				 * THE CONTENT COLUMN OWNS ITS GROUND FROM y0 (operator, 2026-11-04:
-				 * "a section above the settings in the titlebar area that isn't
-				 * properly filled"). The root is `data-glass-split`, so under window
-				 * glass the root and `<main>` paint nothing and `canvas-content` alone
-				 * paints the canvas. That marker used to sit on the `panel-scroll`
-				 * scroller, whose pad is a MARGIN - so the painted box began below
-				 * the strip and the desktop showed through above it. The ground now
-				 * lives on this full-height column, which pads with `panel-top-pad`
-				 * (the box that wears the pad is the box that paints, AGENTS.md
-				 * "Panels run to the window edge"), the same shape as Library and
-				 * Agents. The scroller inside starts below the padding, so its clip is
-				 * still the content edge and scrolled text never paints into the strip.
-				 */
-				className="panel-top-pad flex min-h-0 min-w-0 flex-1 flex-col"
+				/* Under glass the route is split: this full-height column, not the
+				 * frame or the nested scroller, owns the canvas ground. */
+				className="flex min-h-0 min-w-0 flex-1 flex-col"
 			>
 				<div
 					ref={contentContainerRef}

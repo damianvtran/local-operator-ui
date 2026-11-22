@@ -1887,7 +1887,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		/*
 		 * THE PAGE OWNS ITS GROUND (`data-glass-region="canvas"`), the marker the
 		 * rules for surfaces inside it hang on. It paints nothing itself - the
-		 * `main` canvas backing is the wash - so the marker's own rule (which
+		 * the shared route frame is the wash - so the marker's own rule (which
 		 * clears a page role on glass) changes nothing here; what it does is let
 		 * this page's band and segmented track be styled by their own rules
 		 * whether they render in the shell or in a harness that mounts the page

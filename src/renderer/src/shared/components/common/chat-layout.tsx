@@ -132,6 +132,8 @@ type ChatLayoutProps = {
 	 * than nothing. The route supplies its own title, already translated.
 	 */
 	routeSidebar?: { keeper?: ReactNode; label?: string } | false;
+	/** Its gutter already separates the route from the two true shell rails. */
+	insetRouteBody?: boolean;
 };
 
 /**
@@ -171,6 +173,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	sidebar,
 	content,
 	routeSidebar = false,
+	insetRouteBody = false,
 }) => {
 	/*
 	 * The measured boxes and pane stop are physical coordinates, while the
@@ -684,7 +687,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					 * box, so an absolute child resolves to the same pixels it did against the
 					 * shell.
 					 */}
-					<PanelEdge side="end" />
+					{!insetRouteBody && <PanelEdge side="end" />}
 				</div>
 				{layout.resizable && (
 					<ResizableDivider
@@ -900,7 +903,8 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					className="panel-top-pad relative h-full shrink-0 bg-surface"
 					style={{ width: railWidth }}
 				>
-					<PanelEdge side="start" />
+					{/* Fleet Asks can still abut the rail with no gutter between them. */}
+					{(!insetRouteBody || fleetAsksOpen) && <PanelEdge side="start" />}
 				</div>
 			</div>
 			{/*

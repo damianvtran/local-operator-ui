@@ -2768,7 +2768,7 @@ test("the /mesh route is mounted only when the tri-state says enabled", () => {
 	);
 	assert.match(
 		app,
-		/\{meshState === "enabled" && \(\s*<Route path="\/mesh" element=\{<MeshPage \/>\} \/>\s*\)\}/,
+		/\{meshState === "enabled" &&\s*\(?\s*<Route path="\/mesh" element=\{<MeshPage \/>\} \/>\s*\)?\}/,
 		"without `features.peers` /mesh falls through to the catch-all like any unknown path - there is no reserved destination",
 	);
 	assert.match(

@@ -111,7 +111,7 @@ const AUDIT = `(() => {
     card: 'main [data-glass-block]',
     boardWell: 'main [data-glass-well="clear"]',
     panel: 'main [data-glass-region="panel"]',
-    canvas: 'main[data-glass-region="canvas-backing"]',
+    canvas: 'main[data-glass-region="canvas-backing"], main > [data-workspace-frame][data-glass-region="canvas-backing"]',
   };
   const out = {};
   for (const [name, sel] of Object.entries(regions)) {
@@ -164,6 +164,14 @@ const AUDIT = `(() => {
     const bg = getComputedStyle(el).backgroundColor;
     out[name] = { pts, slabs, own, bg, borderTop: getComputedStyle(el).borderTopWidth, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
+  const frames = document.querySelectorAll('main > [data-workspace-frame]');
+  const frame = frames[0];
+  out.frameCount = frames.length;
+  out.frame = !frame ? null : {
+    own: alphaOf(getComputedStyle(frame).backgroundColor),
+    outletOwn: alphaOf(getComputedStyle(frame.parentElement).backgroundColor),
+    split: !!frame.querySelector(':scope > [data-glass-split]'),
+  };
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
   out.glass = document.documentElement.dataset.glass ?? null;
@@ -484,16 +492,28 @@ const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
 const ROUTES = [
 	/* The composer must be on the chat route: a guard that reads the transcript
 	 * and skips the app's primary input would call a total audit without it. */
-	{ hash: "#/chat", must: ["sidebar", "rail", "canvas", "composer"] },
-	{ hash: "#/settings", must: ["sidebar", "pageSidebar", "content"] },
-	{ hash: "#/agents", must: ["sidebar", "pageSidebar", "content"] },
+	{
+		hash: "#/chat",
+		legacy: true,
+		must: ["sidebar", "rail", "canvas", "composer"],
+	},
+	{
+		hash: "#/settings",
+		split: true,
+		must: ["sidebar", "pageSidebar", "content"],
+	},
+	{
+		hash: "#/agents",
+		split: true,
+		must: ["sidebar", "pageSidebar", "content"],
+	},
 	/* Projects: the page column and backing. Cards need real project data, so
 	 * they are asserted by the targeted test below (a profile with an empty
 	 * board cannot measure a card, and the test says which it measured). */
 	{ hash: "#/projects", must: ["sidebar", "canvas"] },
 	/* The Browser route: the chrome band is its large ground now; the host is
 	 * clear while a live page renders, so it is not read as the ground. */
-	{ hash: "#/browser", must: ["sidebar", "chrome"] },
+	{ hash: "#/browser", legacy: true, must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
 	/* Notifications: the page's own canvas region (it has no page-sidebar), whose
@@ -501,6 +521,40 @@ const ROUTES = [
 	 * It was absent from this list while the whole surface was opaque. */
 	{ hash: "#/notifications", must: ["sidebar", "canvas"] },
 ];
+
+/**
+ * These checks add to, rather than replace, the legacy effective-alpha grid.
+ * A perfectly translucent pane still fails if the outlet itself paints under
+ * it, or if an inset split keeps a second canvas behind its regional grounds.
+ */
+function assertFrameGround(route, audit, coverage, tag) {
+	assert.equal(
+		audit.frameCount,
+		route.legacy ? 0 : 1,
+		`${tag}: outlet frame count`,
+	);
+	if (route.legacy) return;
+	assert.ok(audit.frame, `${tag}: frame missing`);
+	assert.equal(
+		audit.frame.split,
+		route.split === true,
+		`${tag}: split at route root`,
+	);
+	const alpha = route.split
+		? 0
+		: coverage === "full"
+			? Number(audit.vars["--lo-glass-a-canvas"])
+			: 1;
+	assert.ok(
+		Math.abs(audit.frame.own - alpha) <= TOLERANCE,
+		`${tag}: frame's own alpha ${audit.frame.own}, expected ${alpha}`,
+	);
+	assert.equal(
+		audit.frame.outletOwn,
+		coverage === "off" ? 1 : 0,
+		`${tag}: no second outlet background beneath glass`,
+	);
+}
 
 /**
  * The overlay regions: name -> the published variable whose alpha its OWN
@@ -641,6 +695,7 @@ for (const [themeName, label] of [
 				await go(route);
 				const off = await cdp.ev(AUDIT);
 				assert.equal(off.glass, null, "no data-glass attribute while off");
+				assertFrameGround(route, off, "off", `${label}/off/${route.hash}`);
 				for (const name of route.must) {
 					assert.ok(
 						off[name],
@@ -668,6 +723,7 @@ for (const [themeName, label] of [
 						const a = await cdp.ev(AUDIT);
 						const tag = `${label}/${coverage}/${intensity}${route.hash}`;
 						assert.ok(a.glass, `${tag}: data-glass is set`);
+						assertFrameGround(route, a, coverage, tag);
 						const roleAlpha = {
 							surface: Number(a.vars["--lo-glass-a-surface"]),
 							canvas: Number(a.vars["--lo-glass-a-canvas"]),
