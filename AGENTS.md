@@ -74,6 +74,12 @@ got wrong:
 - **Agent output has a hierarchy** (§ 7): a question for the user is the most
   prominent thing on screen; internal reasoning is hidden by default. A
   completed action is one quiet line, not a card.
+- **Keep the [Nested dock](docs/branding.md#composer-the-nested-dock) out of
+  the transcript scroller.** Keep activity above it, the shelf separate from
+  the editor, and staged files inside the editor (full previews are dialogs).
+  Preserve compact access, local focus indicators and the transcript anchor.
+  Do not give the dock floating elevation or a resting/focus frame; matte
+  changes must not alter Window glass coverage.
 - Write copy in sentence case. The Shared inset's sidebar group labels use
   uppercase presentation only. Monospace is machine voice only.
 

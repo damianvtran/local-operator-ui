@@ -578,22 +578,46 @@ survives a theme whose `rowSelected` sits close to `surface`. No new role:
 `check-themes` carries the pairs as the `panel rail ...` rows of
 `scripts/contrast-contract.mjs`.
 
-**The composer is an object that leaves the flow.** Its ground is `elevated` on
-`canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
-draws **no border at rest**: the step is what separates it, and the accent ring
-is reserved for `:focus-visible`. Where it sits over scrolled content, the
-transcript uses edge fades rather than the shared shadow, which this section
-reserves for objects that float (menus, popovers, dialogs). In the [Shared inset
-chat workspace](#shared-inset-chat-workspace), the fades belong to the transcript
-scroller, not the composer.
+### Composer: the Nested dock
 
-Why the step rather than an edge, recorded because the two look interchangeable:
-the five reference composers at this size get their separation from a lightness
-step, and this app's own `border-control` is the accent on the brand palette, so
-a bordered composer was the loudest thing on the screen at rest — a ring around
-an empty box, while the transcript sat at `canvas` with nothing pointing at it.
-The accent is spent on what the user acts on (the send control's fill) and on
-focus, not on the frame of an empty field.
+The composer is a dock at the foot of the chat, outside the transcript scroller,
+not a floating surface. Its context shelf and inset writing field are parts of
+one dock, not stacked cards. Menus, dropdowns and preview dialogs opened from
+it are separate surfaces and follow the floating-surface rules.
+
+- **Status above, writing below.** Keep the goal, loop and activity above the
+  dock, in that order when present. Make waiting questions and run progress
+  easy to scan without turning status into cards. The shelf shows the workspace
+  or working directory and relevant session readings; the multiline editor is
+  the main surface. Keep draft actions (including attach), selection controls
+  and Send in the editor. In tight layouts, abbreviate optional readings first;
+  keep the writing area and essential actions usable, and the full directory
+  available from its control.
+- **Keep staged files with the draft.** Show staged attachments inside the
+  editor, in a bounded list. Open full media previews in a dialog outside that
+  scroll region so they are not clipped; allow keyboard dismissal and return
+  focus to the preview trigger.
+- **Separate by tone, not a perimeter.** Use the theme's neutral or warm
+  surface roles for the shelf and writing well; preserve the nested spacing
+  and radii in [Space, radii, motion](#5-space-radii-motion). Do not draw a
+  resting border or add a frame stroke or fill on typing focus. Use the visible
+  caret in ordinary themes, focus-visible outlines on controls and a local
+  field outline in forced colours. In the [Shared inset](#shared-inset-chat-workspace),
+  keep the same geometry with less frost and specular highlight. That matte finish is
+  not a change to [Window glass](#window-glass-translucency-on-by-default-where-supported)
+  coverage or permission to add opaque backing over glass.
+- **Keep the reader's place.** Anchor the dock through drafting and sending.
+  Follow the transcript's existing scroll policy: an optimistic echo may
+  follow the latest turn if the reader was already following; its receipt must
+  not snap a reader back a second time. Keep the no-echo fallback and the
+  explicit Jump to latest action. Conditional transcript fades belong to the
+  scroller and never cover the dock, its controls or focus.
+
+Reference: [Desktop #2040](https://github.com/damianvtran/local-operator-ui/pull/2040),
+[Composer placement](../src/renderer/src/features/chat/components/composer-placement.stories.tsx)
+for status, compact layout and glass, and
+[Attachments preview](../src/renderer/src/features/chat/components/attachments-preview.stories.tsx)
+for staging, dismissal and focus return.
 
 ### Panels: one seam, edge-to-edge, fading at the top
 
@@ -730,11 +754,9 @@ enforces shared titlebar clearance; see the
 - **Keep the transcript edges honest and the dock matte.** Fade each transcript
   edge only while more content can scroll past that edge. Empty or short
   transcripts have no fade, the adjacent edge clears at its endpoint, and
-  composer, focused content and controls stay clear of the mask. Preserve the
-  Nested dock's directory shelf, editor, controls and activity geometry; reduce
-  frost and gloss instead of adding an edge. Keep the actual coverage of
-  **Off**, **Sidebars only** and **Full app**; no opaque backing over glass
-  (see [Window glass](#window-glass-translucency-on-by-default-where-supported)).
+  composer, focused content and controls stay clear of the mask. Apply the
+  [Nested dock's matte treatment](#composer-the-nested-dock) without changing
+  dock geometry or the coverage of **Off**, **Sidebars only** or **Full app**.
 - **Teams and Agents are quiet launchers.** Make the avatar/name a clearly
   actionable but unobtrusive way to launch a targeted draft. Keep history,
   edit/manage and Hub subscription (where available) distinct. No resting row
@@ -1027,7 +1049,8 @@ Margins between a component's own internals are fine; it is the **root element**
 that must be free. If every caller genuinely wants the same spacing, that is
 still a container concern, not a reason to keep it.
 
-**Radii**: 2 / 6 / 10 / 14 / 16, and nothing else.
+**Base radii**: 2 / 6 / 10 / 14 / 16. Derive a shared outer radius from an
+inset and its inner radius when the two curves must stay concentric.
 
 **Radius is assigned by what the object is, not by what looks good on it in
 isolation.**
@@ -1041,16 +1064,15 @@ isolation.**
   and are read as one block — menu, popover, select panel, alert — and, at the
   same tier, the app's in-flow surfaces: a view's own frame (board, list,
   timeline, schedules) and a panel-scale card (the agent-hub card).
-- **14px, dialogs.** The one frame that leaves the flow and carries the
-  system's shadow; the radius stays with it.
+- **14px, dialogs.** A dialog uses the shared floating-surface shadow at
+  this radius.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
-- **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
-  spans its whole column and is the one object the user acts on.
-- **10px (`panel`)** is the user's message block. A bubble at the composer's
-  radius makes the user's turn read as consumer messaging, and it is the
-  composer's whole column-width shape that the 16 is for. (Cursor 3 ≈ 6, VS
-  Code/Raycast ≈ 8–12 behind their bubbles.)
+- **The [Nested dock](#composer-the-nested-dock)** uses the 14px radius on
+  the editor and derives the dock radius from it plus the inset. The dock does
+  not reuse the `frame` token or give the shelf its own corner treatment.
+- **10px (`panel`)** is the user's message block. Keep the transcript's message
+  shape quieter than the column-wide editor, the surface the user acts on.
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
@@ -1237,13 +1259,12 @@ a region it cannot find (a guard that skips what it cannot find measures nothing
 spread within a region, on an effective alpha that differs from the role variable, on
 the page column differing from the app sidebar beside it, on an opaque slab inside a
 glass region, and on anything not fully opaque outside the chosen coverage, and on a
-composer shell that draws any border at rest (asserted by WIDTH, because this audit
-then reads grounds and alphas only - which is how v0.34.55's glass-only edge shipped;
-operator report, 2026-10-17; a stylesheet scan holds every
-`[data-glass-region="composer"]` rule edge-free, the popup's included, though this
-rig drives no popup window). Round 2
-adds the composer (its own alpha must be the field overlay), the block veil (a project
-card's own alpha), the board's clear well, and the Browser chrome band (which must
+composer region that draws a border at rest (asserted by width: inspecting only
+alpha missed v0.34.55's glass-only edge; operator report, 2026-10-17). A stylesheet
+scan also checks the `data-glass-region="composer"` rules for border declarations;
+it does not drive the separate popup window. Round 2 adds the composer field
+alpha, the block veil (a project card's own alpha), the board's clear well, and
+the Browser chrome band (which must
 measure equal to the app sidebar). Projects cards are data-dependent: on a profile with
 no projects the test REPORTS that it could not measure them rather than passing over
 them. It does NOT cover every route (Mesh, Console and others are not audited) or any
@@ -1280,11 +1301,11 @@ seam the operator photographed; a translucent one is a field step whose text
 contrast the contract asserts (ink and inkMuted AA, inkDim 3.5 on the band). The
 chips, badges and avatars inside a block stay solid, as before.
 
-The **composer is a field**, not a pane: ink 5% over the canvas glass - and **no
-edge at rest**, the same no-edge geometry the flat build has. v0.34.55 briefly drew
-a glass-only `border-control` mix as its resting edge; reverted the same evening
-(operator report, 2026-10-17). The `:focus-visible` accent ring is its only
-boundary. A **running tool row** is the selected step's ink
+The [Nested dock's editor](#composer-the-nested-dock) is a **field**, not a
+pane. On canvas glass the writing well uses the field tint, and the shelf is
+lighter still; neither adds an opaque backing or a resting edge. The inset
+finish changes highlights, not which surfaces the selected mode covers.
+A **running tool row** is the selected step's ink
 overlay (`--lo-glass-a-row-work`, the same alpha as a selected row: both mean "this
 row is the subject"), never the `elevated` slab it wears flat; a failed row keeps
 its `danger-wash` until a danger overlay is derived (V2).
@@ -1332,7 +1353,7 @@ opaque root behind opaque descendants.
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
 | Text-bearing panes (canvas, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor; its visible planes are clear or bands (round 3) | text must stay legible over any desktop, and one opaque plane behind the root is glass in the one place nobody looks |
 | Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
-| Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
+| Composer editor | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the [Nested dock](#composer-the-nested-dock) keeps its local focus indicators on or off glass, not a frame around the dock |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
 | Chosen row inside a veiled block (ask options, `Other`) | stays `bg-sunken` (one role fill) | a chosen row is a selected SURFACE: the selected ink (0.08) over a veil (0.09-0.12) is the forbidden stack, so the fill is the only layer and the mark is the selection channel |
