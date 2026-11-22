@@ -1,13 +1,19 @@
 import "../components/story-electron-shim";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
+import { defaultQueryOptions } from "@shared/api/query-client";
 import { MessageInput } from "@shared/components/composer/message-input";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
-import { useIsFetching, useQueryClient } from "@tanstack/react-query";
-import { type FC, useEffect, useRef, useState } from "react";
+import {
+	QueryClient,
+	QueryClientProvider,
+	useIsFetching,
+	useQueryClient,
+} from "@tanstack/react-query";
+import { type FC, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import { useSlashDispatch } from "../components/slash-dispatch";
 import { pickerStoryFixture } from "./model-picker.stories";
@@ -91,12 +97,6 @@ const AnchoredFrame: FC<{
 	const commandsKey = desktopKeys.commandsFor(useI18nLocale());
 	const fetchingCommands = useIsFetching({ queryKey: commandsKey });
 	const queryClient = useQueryClient();
-	useEffect(() => {
-		// This story's isolated client must expose the failed read before the
-		// manual refresh, not let a transport retry consume its next reply.
-		if (recoverCatalogue)
-			queryClient.setQueryDefaults(desktopKeys.catalogue, { retry: false });
-	}, [queryClient, recoverCatalogue]);
 	const commandsReady =
 		!fetchingCommands &&
 		queryClient.getQueryState(commandsKey)?.status === "success";
@@ -472,9 +472,24 @@ export const AnchoredModelDefaultLongLabelNarrow: Story = {
 	play: () => defaultGeometry(true),
 };
 
+const CatalogueRecoveryFrame = () => {
+	const [client] = useState(() => {
+		// Rerun remounts the frame but retains the preview's cache. Give each
+		// play a fresh catalogue and let only the manual refresh advance it.
+		const fresh = new QueryClient({ defaultOptions: defaultQueryOptions });
+		fresh.setQueryDefaults(desktopKeys.catalogue, { retry: false });
+		return fresh;
+	});
+	return (
+		<QueryClientProvider client={client}>
+			<AnchoredFrame recoverCatalogue />
+		</QueryClientProvider>
+	);
+};
+
 export const AnchoredModelCatalogueRecovery: Story = {
 	parameters: { viewport: narrowViewport },
-	render: () => <AnchoredFrame recoverCatalogue />,
+	render: () => <CatalogueRecoveryFrame />,
 	play: async () => {
 		const { dialog, input } = await openFromChip("model");
 		const picker = within(dialog);
