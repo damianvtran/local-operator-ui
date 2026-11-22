@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.teamBridge.edit.topic",
+		"French cognate « Description », the native label, not an English stub; independently audited in i18n/receipts/d76a8497b66e-tb-edit-fr.json (all 70 target values read across seven locales). Scoped to this locale/key only.",
+	],
+	[
 		"ui.phone_pairing.platform.ios",
 		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
 	],
@@ -2338,6 +2342,21 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
  * hole this form was added to close — so the property is asserted rather than
  * assumed from the production table.
  */
+test("the audited French metadata label exemption stays locale- and key-scoped", () => {
+	assert.equal(allowsIdenticalValue("fr", "ui.teamBridge.edit.topic"), true);
+	for (const locale of localeDirs().filter((locale) => locale !== "fr")) {
+		assert.equal(
+			allowsIdenticalValue(locale, "ui.teamBridge.edit.topic"),
+			false,
+			`${locale} must not inherit the French cognate exemption`,
+		);
+	}
+	assert.equal(
+		allowsIdenticalValue("fr", "ui.teamBridge.edit.description"),
+		false,
+	);
+});
+
 test("a locale-scoped identical-value exemption does not exempt another locale", () => {
 	const table = new Map([
 		["fr:ui.example.cognate", "French cognate: same spelling"],
