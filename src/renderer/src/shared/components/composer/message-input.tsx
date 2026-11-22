@@ -9891,6 +9891,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									ref={cwdChipRef}
 									currentWorkingDirectory={cwdToShow}
 									writePath={cwdWritePath}
+									tooltipClassName="composer-dock-tooltip"
 									pending={cwdPending}
 									pendingAccepted={cwdPendingAccepted}
 									readOnlyReason={

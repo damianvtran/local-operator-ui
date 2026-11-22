@@ -17,7 +17,14 @@ import {
 	useConversationInputStore,
 } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
+import {
+	expect,
+	fn,
+	screen,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 import { type ReactNode, useEffect, useState } from "react";
 import { useArgs } from "storybook/internal/preview-api";
 import {
@@ -2769,7 +2776,11 @@ const SESSION_READINGS = {
 	} as CanonicalFrontendState,
 };
 
-const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
+const populatedRail = (
+	width: number,
+	dir: "ltr" | "rtl" = "ltr",
+	onCommand: (invocation: SlashCommandInvocation) => void = () => undefined,
+) => {
 	const conversation = `story-populated-composer-rail-${width}`;
 	return (
 		<div className="bg-canvas p-6" dir={dir}>
@@ -2785,7 +2796,7 @@ const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
 						conversationId={conversation}
 						cwd="/Users/you"
 						cwdWritePath={MOVING_CWD}
-						sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+						sessionStatus={{ ...SESSION_READINGS, onCommand }}
 						recordingProbe={{
 							canUseRadientSpeech: true,
 							speechBlock: "checking",
@@ -2878,6 +2889,68 @@ export const PopulatedRailRtl: Story = {
 export const PopulatedRailFloor: Story = {
 	render: () => populatedRail(240),
 	play: assertDock,
+};
+
+const dispatchDockCommand = fn();
+const CWD_TRIGGER_NAME = /^Working directory:/;
+const MODEL_TRIGGER_NAME = /^Model:/;
+const EFFORT_TRIGGER_NAME = /^Reasoning effort:/;
+
+/** The tooltip is portaled out of the dock, but must keep the dock's paint policy. */
+export const PopulatedRailGlassKeyboard: Story = {
+	args: { glass: "on", glassCoverage: "full" },
+	render: () => populatedRail(1024, "ltr", dispatchDockCommand),
+	play: async (context) => {
+		await assertDock(context);
+		dispatchDockCommand.mockClear();
+		const { canvasElement } = context;
+		await expect(canvasElement.ownerDocument.documentElement).toHaveAttribute(
+			"data-glass",
+		);
+		const canvas = within(canvasElement);
+		const portals = within(canvasElement.ownerDocument.body);
+		const cwd = canvas.getByRole("button", { name: CWD_TRIGGER_NAME });
+		const model = canvas.getByRole("button", { name: MODEL_TRIGGER_NAME });
+		const effort = canvas.getByRole("button", { name: EFFORT_TRIGGER_NAME });
+		await userEvent.tab(); // Establish keyboard modality before moving focus.
+		for (const trigger of [cwd, model, effort]) {
+			trigger.focus();
+			await expect(trigger).toHaveFocus();
+			await expect(getComputedStyle(trigger).outlineStyle).toBe("solid");
+			const description = await portals.findByRole("tooltip");
+			const panel = description.closest("[data-lo-tooltip-panel]");
+			if (!panel) throw new Error("Missing tooltip panel");
+			const style = getComputedStyle(panel);
+			await expect(style.backdropFilter).toBe("none");
+			await expect(style.pointerEvents).toBe("none");
+			await userEvent.keyboard("{Escape}");
+			await waitFor(() => expect(portals.queryByRole("tooltip")).toBeNull());
+		}
+
+		cwd.focus();
+		const closedFill = getComputedStyle(cwd).backgroundColor;
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() => expect(portals.getByRole("menu")).toBeVisible());
+		await expect(cwd).toHaveAttribute("aria-expanded", "true");
+		await waitFor(() =>
+			expect(getComputedStyle(cwd).backgroundColor).not.toBe(closedFill),
+		);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() => expect(portals.queryByRole("menu")).toBeNull());
+		await expect(cwd).toHaveFocus();
+
+		for (const trigger of [model, effort]) {
+			trigger.focus();
+			await userEvent.keyboard("{Enter}");
+			await userEvent.click(trigger);
+		}
+		await expect(dispatchDockCommand.mock.calls).toEqual([
+			[{ name: "model", args: "" }],
+			[{ name: "model", args: "" }],
+			[{ name: "effort", args: "" }],
+			[{ name: "effort", args: "" }],
+		]);
+	},
 };
 
 /**

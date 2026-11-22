@@ -2930,6 +2930,46 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	min-inline-size: 0;
 }
 
+/* These are quiet controls on two different grounds, not selected rows.
+ * An ink veil follows the shelf, well, or glass beneath it without borrowing
+ * the accent wash from ghost buttons. Keep focus, sizing, Send, and inert
+ * readouts on their existing contracts. aria-expanded belongs to the cwd
+ * menu; the tooltip's data-state also opens on hover and is not a press. */
+.composer-dock
+	button:is([data-composer-picker], [data-lo-cwd-chip] > button):not(
+		:disabled,
+		[aria-disabled="true"]
+	) {
+	@media (hover: hover) {
+		&:hover {
+			background-color: color-mix(in srgb, var(--lo-ink) 5%, transparent);
+		}
+	}
+
+	&:is(:active, [aria-expanded="true"]) {
+		background-color: color-mix(in srgb, var(--lo-ink) 8%, transparent);
+	}
+
+	/* The ghost button's accent ink is for its own pressed treatment. A bad
+	 * directory still speaks in danger ink, including while it is pressed. */
+	&[aria-invalid="true"]:active {
+		color: var(--lo-danger);
+	}
+
+	&:not([aria-invalid="true"]):active {
+		color: var(--lo-ink);
+	}
+}
+
+/* These portaled tooltips can cross live readings or the draft. Blur alone
+ * leaves their letterforms visible behind the tooltip's copy on glass. Keep
+ * the normal elevated plate (and the tooltip's shadow and hit-through) here;
+ * all other floating surfaces retain the shared glass treatment. */
+html[data-glass] [data-lo-tooltip-panel].composer-dock-tooltip {
+	background-color: var(--lo-elevated);
+	backdrop-filter: none;
+}
+
 .composer-dock .composer-dock-readings {
 	margin-inline: auto 0;
 	justify-content: flex-end;

@@ -108,6 +108,8 @@ type DirectoryIndicatorProps = {
 	 * here rather than offering a control that would silently fail.
 	 */
 	writePath?: DirectoryWritePath;
+	/** Panel styling for the interactive trigger, including when no path is set. */
+	tooltipClassName?: string;
 	/** Tooltip shown when `writePath` is absent. */
 	readOnlyReason?: string;
 	/**
@@ -494,6 +496,7 @@ export const DirectoryIndicator = forwardRef<
 	{
 		currentWorkingDirectory,
 		writePath,
+		tooltipClassName,
 		readOnlyReason,
 		pending = false,
 		pendingAccepted = false,
@@ -1005,7 +1008,11 @@ export const DirectoryIndicator = forwardRef<
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<div className={cn(CHIP_WRAPPER)} data-lo-cwd-chip="unset">
-				<Tooltip content={t("ui.chat.directory.tooltip.set")} side="top">
+				<Tooltip
+					content={t("ui.chat.directory.tooltip.set")}
+					side="top"
+					className={tooltipClassName}
+				>
 					<Button
 						ref={triggerRef}
 						variant="ghost"
@@ -1100,6 +1107,7 @@ export const DirectoryIndicator = forwardRef<
 										: t("ui.chat.directory.tooltip.change"))
 						}
 						side="top"
+						className={tooltipClassName}
 					>
 						<DropdownMenuTrigger asChild>
 							<Button
