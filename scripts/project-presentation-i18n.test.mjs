@@ -89,6 +89,7 @@ const manifest = JSON.parse(
 const locales = manifest.languages
 	.filter((entry) => ["source", "supported"].includes(entry.status))
 	.map((entry) => entry.code);
+const statusSpan = /<span class="text-ink-dim text-meta">(.*?)<\/span>/;
 for (const locale of [...locales, "fr"]) {
 	test(`${locale}: every action uses the localized noun, not identity or user text`, () => {
 		setLocale(locale);
@@ -143,10 +144,18 @@ for (const locale of [...locales, "fr"]) {
 		const markup = card(project);
 		assert.ok(markup.includes(project.name));
 		assert.ok(markup.includes(`>${projectStatusMeta("active").label}</span>`));
-		assert.ok(
-			card({ ...project, status: "future_status_v2" }).includes(
-				">future_status_v2</span>",
-			),
+		const unknownStatuses = [
+			"future_status_v2",
+			"constructor",
+			"toString",
+			"__proto__",
+		];
+		assert.deepEqual(
+			unknownStatuses.map((status) => {
+				const markup = card({ ...project, status });
+				return markup.match(statusSpan)?.[1];
+			}),
+			unknownStatuses,
 		);
 		assert.ok(
 			!card({ ...project, status: "" }).includes(
