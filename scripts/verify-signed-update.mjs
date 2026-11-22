@@ -51,8 +51,8 @@ import { promisify } from "node:util";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	incumbentReleaseRefusalMessage,
+	resolveIncumbentMetadata,
 	resolveIncumbentRelease,
-	resolveIncumbentZip,
 } from "./incumbent-release.mjs";
 import {
 	finalContainerChecks,
@@ -544,13 +544,12 @@ try {
 	if (!incumbentRelease.ok)
 		blocked(incumbentReleaseRefusalMessage(incumbentRelease));
 	const { release, metadataAsset } = incumbentRelease;
-	const metadataPath = join(scratch, "incumbent.yml");
-	await download(metadataAsset.browser_download_url, metadataPath);
-	const incumbentZip = resolveIncumbentZip({
+	const incumbentZip = await resolveIncumbentMetadata({
 		tag,
 		arch: process.arch,
 		release,
-		metadata: load(readFileSync(metadataPath, "utf8")),
+		metadataAsset,
+		parseMetadata: load,
 	});
 	if (!incumbentZip.ok) blocked(incumbentReleaseRefusalMessage(incumbentZip));
 	const { entry: oldEntry, zipAsset: oldAsset } = incumbentZip;
