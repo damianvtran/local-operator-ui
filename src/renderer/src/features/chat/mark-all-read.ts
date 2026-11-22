@@ -1,5 +1,6 @@
 import {
 	type CanonicalSessionRow,
+	classifyUnreadAckableRows,
 	unreadAckableCount,
 	unreadAckableRows,
 	unreadMarkKind,
@@ -56,10 +57,8 @@ export type MarkAllReadCopy = {
 	/** The visible label: the number IS the set the request will send. */
 	label: string;
 	/**
-	 * The tooltip. States the full scope, and the one limit a reader cannot
-	 * otherwise see: marks with no completion token name no completion and are not
-	 * sent, so they would keep their check with nothing on screen explaining it
-	 * (design N5).
+	 * The tooltip. States the full scope and explains the drawn marks that the
+	 * request cannot name, whether tokenless or carrying an unsupported session ID.
 	 */
 	scope: string;
 	/**
@@ -72,7 +71,7 @@ export type MarkAllReadCopy = {
 export const markAllReadCopy = (
 	rows: CanonicalSessionRow[],
 ): MarkAllReadCopy => {
-	const ackable = unreadAckableRows(rows);
+	const { ackable, unsupported } = classifyUnreadAckableRows(rows);
 	const count = ackable.length;
 	const elsewhere = ackable.filter((row) => !row.active).length;
 	/*
@@ -122,20 +121,29 @@ export const markAllReadCopy = (
 					elsewhere,
 				})
 			: t("ui.chat.sidebar.mark_all_read.scope_chats", { count });
+	const scope =
+		tokenless > 0
+			? t("ui.chat.sidebar.mark_all_read.scope_joined", {
+					chats,
+					tokenless: t("ui.chat.sidebar.mark_all_read.scope_tokenless", {
+						count: tokenless,
+					}),
+				})
+			: chats;
 	return {
 		count,
 		// Read at call time: the sidebar calls `markAllReadCopy` in its render and
 		// subscribes to the locale, so the label follows the language picker.
 		label: t("ui.chat.sidebar.mark_all_read.label", { count }),
+		// The existing joiner supplies the locale's sentence spacing. Don't call
+		// unsupported IDs tokenless: they do carry a completion token.
 		scope:
-			tokenless > 0
+			unsupported > 0
 				? t("ui.chat.sidebar.mark_all_read.scope_joined", {
-						chats,
-						tokenless: t("ui.chat.sidebar.mark_all_read.scope_tokenless", {
-							count: tokenless,
-						}),
+						chats: scope,
+						tokenless: staysUnread(unsupported),
 					})
-				: chats,
+				: scope,
 		nameSuffix:
 			elsewhere > 0
 				? t("ui.chat.sidebar.mark_all_read.name_suffix_elsewhere", {
@@ -213,7 +221,12 @@ export type MarkAllReadReceipt = {
 	 * than reporting a failure (operator report, 2026-10-05).
 	 */
 	deferred: number;
+	/** Token-bearing marks omitted before sending; not part of `unknown`. */
+	unsupported: number;
 };
+
+const staysUnread = (count: number): string =>
+	t("ui.notices.chat.mark_all_read_unknown", { count });
 
 /**
  * The deferral sentence: marks that live on another device.
@@ -250,12 +263,11 @@ export const markAllReadReceipt = (
 	receipt: MarkAllReadReceipt,
 ): { tone: "success" | "warning"; message: string } => {
 	/*
-	 * A claim about the REQUEST, not about the store: the shipped gate hides the
-	 * control at zero, so this is the unreachable arm — and "Nothing unread."
-	 * would be the one sentence in this contract able to contradict a screen
-	 * still showing marks (design N3).
+	 * The sidebar hides the action at zero eligible rows. If a caller still
+	 * invokes it, don't say there was nothing to clear when unsupported marks
+	 * were found; report the skipped marks without claiming a write.
 	 */
-	if (receipt.attempted === 0)
+	if (receipt.attempted === 0 && receipt.unsupported === 0)
 		return {
 			tone: "success",
 			message: t("ui.notices.chat.mark_all_read_nothing"),
@@ -265,16 +277,16 @@ export const markAllReadReceipt = (
 	 * one item twice and, worse, report a deferral as a failure (see the type's
 	 * and the sentence's own notes above).
 	 */
-	const unknown = receipt.unknown - receipt.deferred;
+	// The sentence describes the shared outcome, not a backend bucket: both
+	// refused and unsupported marks stay unread, but only one was sent.
+	const notCleared = receipt.unknown - receipt.deferred + receipt.unsupported;
 	const remainder = [
 		receipt.superseded > 0
 			? t("ui.notices.chat.mark_all_read_superseded", {
 					count: receipt.superseded,
 				})
 			: null,
-		unknown > 0
-			? t("ui.notices.chat.mark_all_read_unknown", { count: unknown })
-			: null,
+		notCleared > 0 ? staysUnread(notCleared) : null,
 		receipt.deferred > 0 ? markAllReadDeferredSentence(receipt.deferred) : null,
 	].filter((sentence): sentence is string => sentence !== null);
 	if (receipt.cleared === 0)

@@ -266,6 +266,7 @@ const {
 	unreadAckableRows,
 	unreadMarkKind,
 	markAllReadCopy,
+	markAllReadReceipt,
 } = storeModule;
 
 /** One unread completion, as a catalogue row carries it. */
@@ -358,22 +359,52 @@ test("the batch is exactly the rows carrying an unseen completion with a token",
 	});
 });
 
-test("an unsupported catalogue name stays unread without poisoning the eligible batch", async () => {
+test("a token-bearing unsupported mark is disclosed without counting or sending it", async () => {
 	const unsupported = "not-hex";
+	const ask = completeRow("outstanding-ask", { status: ANSWER });
 	const rows = [
 		completeRow(SESSION),
 		completeRow(FULL_HEX),
 		completeRow(unsupported),
+		ask,
 	];
 	seed(rows);
-	serve({ read: [], superseded: [], unknown: [] });
-	assert.equal(unreadMarkKind(rowFor(unsupported)), "complete");
-	assert.equal(unreadAckableCount(rows), 2);
-	await store.getState().markAllRead();
+	serve({
+		read: [unread(SESSION, { unseen: false, revision: [4, 4] })],
+		superseded: [],
+		unknown: [FULL_HEX],
+	});
+	const copy = markAllReadCopy(rows);
+	assert.equal(copy.count, 2);
+	assert.equal(copy.label, "Mark all 2 read");
+	const receipt = await store.getState().markAllRead();
 	assert.deepEqual(requests, [
 		{ op: "attention.seen", items: [item(), item(FULL_HEX)] },
 	]);
+	assert.equal(rowFor(SESSION).attention.unseen, false);
 	assert.equal(rowFor(unsupported).attention.unseen, true);
+	assert.equal(unreadMarkKind(rowFor(unsupported)), "complete");
+	assert.deepEqual(rowFor(ask.session_id), ask);
+	assert.deepEqual(
+		{ scope: copy.scope, result: markAllReadReceipt(receipt) },
+		{
+			scope:
+				"Mark 2 unread chats as read, including 2 that are not active. 1 could not be cleared and stays unread.",
+			result: {
+				tone: "success",
+				message:
+					"Marked 1 chat as read. 2 could not be cleared and stay unread.",
+			},
+		},
+	);
+	assert.deepEqual(receipt, {
+		attempted: 2,
+		cleared: 1,
+		superseded: 0,
+		unknown: 1,
+		deferred: 0,
+		unsupported: 1,
+	});
 });
 
 test("the label's number is the set the request sends, from one predicate", async () => {
@@ -635,6 +666,7 @@ test("nothing unread sends no request and writes nothing", async () => {
 		superseded: 0,
 		unknown: 0,
 		deferred: 0,
+		unsupported: 0,
 	});
 	// No request, not an empty one: the wire has a 1-item floor, and a batch of
 	// zero would cost a round trip to clear nothing.
@@ -671,6 +703,7 @@ test("only the answer's `read` bucket clears a mark", async () => {
 		superseded: 1,
 		unknown: 1,
 		deferred: 0,
+		unsupported: 0,
 	});
 	// The acknowledged row rests; the two the backend refused keep their marks,
 	// because a refusal is not a clear and the user's screen must not say

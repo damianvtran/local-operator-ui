@@ -61,6 +61,7 @@ const RECEIPTS: Record<string, MarkAllReadReceipt> = {
 		superseded: 0,
 		unknown: 0,
 		deferred: 0,
+		unsupported: 0,
 	},
 	"multi-line": {
 		attempted: 10,
@@ -68,6 +69,7 @@ const RECEIPTS: Record<string, MarkAllReadReceipt> = {
 		superseded: 2,
 		unknown: 1,
 		deferred: 0,
+		unsupported: 0,
 	},
 };
 
