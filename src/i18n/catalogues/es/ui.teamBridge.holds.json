@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "Referencia {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "¿Descartar solo este mensaje ({reference}) sin leerlo? No llegará a tu agente. El descarte queda registrado en este dispositivo y no se puede deshacer.",
 	"ui.teamBridge.holds.discard_unread_label": "Descartar el mensaje {reference} sin leerlo",
-	"ui.teamBridge.holds.state.discard_recorded": "Descarte registrado en este dispositivo. No se ha recibido confirmación del servidor."
+	"ui.teamBridge.holds.state.discard_recorded": "Descarte registrado en este dispositivo. No se ha recibido confirmación del servidor.",
+	"ui.teamBridge.holds.terminal_only": "Este mensaje nunca se podrá entregar. Puedes descartarlo sin leerlo.",
+	"ui.teamBridge.holds.confirm.discard_terminal": "¿Descartar este mensaje ({reference})? Nunca llegará a tu agente y no se puede deshacer.",
+	"ui.teamBridge.holds.terminal_bulk.action": "Descartar los mensajes no entregables…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "¿Descartar los mensajes no entregables (cantidad: {count})? Solo se incluyen los mensajes que nunca se podrán entregar, no los que lleguen después. No se puede deshacer.",
+	"ui.teamBridge.holds.terminal_bulk.result": "Descartados: {discarded}. Ya descartados: {already}. Sin cambios: {skipped}.",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "No se pudieron descartar los mensajes no entregables. Inténtalo de nuevo."
 }

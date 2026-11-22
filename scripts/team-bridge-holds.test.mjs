@@ -71,6 +71,23 @@ const RE_LOCAL_ONLY_STATUS =
 	/Discarded on this device without server confirmation/;
 const RE_NOTIFICATION_CLAIM = /sender (?:was|has been) notified/;
 const RE_UNARMED_INSTRUCTION = /Discard it so the sender/;
+// #4662: the terminal disposition's row, bulk action and result states.
+const RE_TERMINAL_HOLD_ERROR = /terminal hold/;
+const RE_UNKNOWN_SENDER = /Unknown sender/;
+const RE_TERMINAL_ONLY = /This message can never be delivered/;
+const RE_TERMINAL_REFERENCE = /Reference 5ac4b3e8/;
+const RE_TERMINAL_BULK_ACTION = /Discard all undeliverable/;
+const RE_DISCARD_BUTTON = />Discard</;
+const RE_NO_DEAD_END = /can’t be delivered or discarded yet/;
+const RE_TERMINAL_CONFIRM_TWO =
+	/Discard the undeliverable messages \(count: 2\)\?/;
+const RE_TERMINAL_REF_A = /aaaa1111/;
+const RE_TERMINAL_REF_B = /bbbb2222/;
+const RE_TERMINAL_RESULT_THREE =
+	/Discarded: 2\. Already discarded: 0\. Left alone: 1\./;
+const RE_TERMINAL_RESULT_LABEL = /Discarded: /;
+const RE_SENDER_TOLD = /notified|told/i;
+const RE_FAILED_REFUSAL = /couldn’t/i;
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
 const hold = (over = {}) => ({
@@ -762,7 +779,7 @@ test("Deliver never carries a receipt; Discard prefers the shown hash (S-11)", (
 	);
 });
 
-test("the receipt Discard reaches its route with exactly one proof", () => {
+test("a discard binds at most one proof, and a terminal row binds none (#4662)", () => {
 	const base = {
 		op: "team_bridge.holds.discard",
 		expected_account_id: "acct_1",
@@ -777,9 +794,15 @@ test("the receipt Discard reaches its route with exactly one proof", () => {
 		hold_receipt: RECEIPT,
 	});
 	const parse = (request) => c.desktopRequestSchema.safeParse(request).success;
-	// Both or neither: refused before IPC (the route answers 422).
+	// Both: refused before IPC (the route answers 422).
 	assert.equal(parse({ ...ok, body_sha256: "a".repeat(64) }), false);
-	assert.equal(parse(base), false);
+	// NEITHER is the terminal-discard body (#4662): no proof reaches the wire, and
+	// none is invented for it.
+	assert.equal(parse(base), true);
+	assert.deepEqual(c.desktopEndpoint(base).body, {
+		expected_account_id: "acct_1",
+		conversation_id: "bcv_abcdefgh",
+	});
 	assert.equal(parse({ ...base, hold_receipt: "C".repeat(64) }), false);
 	assert.equal(parse({ ...base, hold_receipt: null }), false);
 	// Deliver has no receipt field at all.
@@ -1520,4 +1543,403 @@ test("parent retains the confirmed batch across approval arrival and last-held-c
 			else Reflect.deleteProperty(globalThis, key);
 		}
 	}
+});
+// -- #4662: the terminal disposition -----------------------------------------
+//
+// A hold whose body and receipt both fail to load used to be immortal: listed,
+// counted in the badge, and impossible to discard. Core now serves
+// `terminal_discard` and a route that accepts an EMPTY body for exactly those
+// rows; these assert that this side arms only what the server marked, never
+// invents a proof, and never turns the terminal flag into a Deliver.
+
+const terminalRow = (over = {}) =>
+	orphan({
+		terminal_discard: true,
+		discard_receipt: null,
+		undeliverable_reason: "no_decision_record",
+		...over,
+	});
+
+test("a terminal hold arms Discard with no proof and never Deliver (#4662)", () => {
+	const item = terminalRow();
+	const affordance = m.holdAffordance(item, NOW);
+	// The operator's stuck row: past the Deliver window, nothing left to bind.
+	assert.equal(affordance.state, "deliver_expired");
+	assert.equal(affordance.discard, true);
+	assert.equal(m.terminalDiscardArmed(item, affordance), true);
+	assert.deepEqual(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: true },
+			binding: null,
+			receipt: null,
+			terminal: true,
+		}),
+		{ terminal_discard: true },
+	);
+	// Unarmed: no proof is invented for a press that was not offered.
+	assert.equal(
+		m.holdDecideProof("discard", {
+			armed: { deliver: false, discard: false },
+			binding: null,
+			receipt: null,
+			terminal: true,
+		}),
+		null,
+	);
+	// A decided row is never re-decided, whatever core says.
+	assert.equal(
+		m.terminalDiscardArmed(
+			terminalRow({
+				decision: {
+					word: "discard",
+					outcome: "pending",
+					decided_at: null,
+					key_id: null,
+				},
+			}),
+			affordance,
+		),
+		false,
+	);
+	// Deliver never arms on a terminal row: not through the body, and not
+	// through the proof.
+	const shown = { state: "shown", hash: "a".repeat(64) };
+	const deliverable = m.holdAffordance(hold(), NOW);
+	assert.equal(
+		m.armedWords(deliverable, shown, true, false, false).deliver,
+		true,
+	);
+	assert.equal(
+		m.armedWords(deliverable, shown, true, false, true).deliver,
+		false,
+	);
+	assert.equal(
+		m.holdDecideProof("deliver", {
+			armed: { deliver: true, discard: true },
+			binding: shown,
+			receipt: null,
+			terminal: true,
+		}),
+		null,
+	);
+});
+
+test("a terminal row never takes the receipt path, and an older core is unchanged (#4662)", () => {
+	// A terminal row that also carries a receipt: the terminal arm owns it, so the
+	// row shows one explanation, not two.
+	const both = terminalRow({ discard_receipt: RECEIPT });
+	assert.equal(
+		m.receiptDiscardArmed(
+			both,
+			m.holdAffordance(both, NOW),
+			"unavailable",
+			null,
+		),
+		false,
+	);
+	// Absence of the new fields IS the old behaviour: no terminal arm, the #4358
+	// receipt still arms Discard, and no row joins the new bulk list.
+	const receiptOnly = orphan();
+	assert.equal(
+		m.terminalDiscardArmed(receiptOnly, m.holdAffordance(receiptOnly, NOW)),
+		false,
+	);
+	assert.equal(
+		m.receiptDiscardArmed(
+			receiptOnly,
+			m.holdAffordance(receiptOnly, NOW),
+			"unavailable",
+			null,
+		),
+		true,
+	);
+	assert.deepEqual(m.terminalDiscardCandidates([receiptOnly, hold()], NOW), []);
+	// The wire keeps that true: an older core's row parses with neither field and
+	// behaves exactly as it did before this change.
+	const page = api.parseHoldsPage({ enabled: true, items: [receiptOnly] });
+	assert.equal(page.items[0].terminal_discard, undefined);
+	const row = page.items[0];
+	assert.equal(m.terminalDiscardArmed(row, m.holdAffordance(row, NOW)), false);
+	assert.equal(
+		m.receiptDiscardArmed(row, m.holdAffordance(row, NOW), "unavailable", null),
+		true,
+	);
+});
+
+test("the bulk candidates are terminal rows only, deliverable rows never (#4662)", () => {
+	const list = m.terminalDiscardCandidates(
+		[
+			hold({ message_id: "bcmsg_live", actionable: true }),
+			terminalRow({ message_id: "bcmsg_stuck" }),
+			// Core closed the ordinary paths and left only the terminal exit: still
+			// the operator's row, so still in the sweep.
+			terminalRow({
+				message_id: "bcmsg_closed",
+				can_deliver: false,
+				can_discard: false,
+			}),
+			// A terminal flag beside a live Deliver is never swept: the shared
+			// decision wins.
+			terminalRow({
+				message_id: "bcmsg_mixed",
+				can_deliver: true,
+				deliver_until: "2026-11-25T10:00:00Z",
+			}),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		list.map((item) => item.message_id),
+		["bcmsg_stuck", "bcmsg_closed"],
+	);
+	// The proof-bound snapshot never lists a terminal row: one bulk owner per row.
+	assert.deepEqual(
+		m.captureDiscardSnapshot(
+			[terminalRow()],
+			() => ({ state: "unavailable" }),
+			NOW,
+		),
+		[],
+	);
+});
+
+test("the terminal discard and discard-all reach their routes with the contracted bodies (#4662)", () => {
+	const discard = {
+		op: "team_bridge.holds.discard",
+		expected_account_id: "acct_1",
+		message_id: "bcmsg_stuck",
+		conversation_id: "bcv_abcdefgh",
+	};
+	assert.equal(c.desktopRequestSchema.safeParse(discard).success, true);
+	const endpoint = c.desktopEndpoint(discard);
+	assert.equal(endpoint.method, "POST");
+	assert.equal(
+		endpoint.path,
+		"/v1/desktop/team-bridge/holds/bcmsg_stuck/discard",
+	);
+	assert.deepEqual(endpoint.body, {
+		expected_account_id: "acct_1",
+		conversation_id: "bcv_abcdefgh",
+	});
+	const all = {
+		op: "team_bridge.holds.discard_all",
+		expected_account_id: "acct_1",
+		scope: "undeliverable",
+	};
+	assert.equal(c.desktopRequestSchema.safeParse(all).success, true);
+	const sweep = c.desktopEndpoint(all);
+	assert.equal(sweep.method, "POST");
+	assert.equal(sweep.path, "/v1/desktop/team-bridge/holds/discard-all");
+	assert.deepEqual(sweep.body, { scope: "undeliverable" });
+	// A broader sweep is not a body this app can compose, and the op is
+	// account-scoped like the rest of the hold routes.
+	assert.equal(
+		c.desktopRequestSchema.safeParse({ ...all, scope: "all" }).success,
+		false,
+	);
+	assert.equal(
+		c.desktopRequestSchema.safeParse({ ...all, scope: "everything" }).success,
+		false,
+	);
+	assert.equal(
+		c.desktopRequestSchema.safeParse({ ...all, tenant_id: "tnt_1" }).success,
+		false,
+	);
+	assert.equal(
+		c.desktopRequestSchema.safeParse({ ...all, message_id: "bcmsg_1" }).success,
+		false,
+	);
+	// Both wait on the daemon's operator-key signer, not a control deadline.
+	assert.equal(
+		c.desktopRequestDeadlineMs("team_bridge.holds.discard_all"),
+		c.desktopRequestDeadlineMs("team_bridge.holds.discard"),
+	);
+});
+
+test("the API refuses a proof-less discard for a row core did not mark (#4662)", async () => {
+	await assert.rejects(
+		api.TeamBridgeHoldsApi.decide(
+			"acct_1",
+			"discard",
+			{ message_id: "bcmsg_1", conversation_id: "bcv_abcdefgh" },
+			{ terminal_discard: true },
+		),
+		RE_TERMINAL_HOLD_ERROR,
+	);
+});
+
+test("a terminal discard drops the row, the section count and the badge at once (#4662)", async () => {
+	const client = new k.QueryClient({
+		defaultOptions: { queries: { retry: false, staleTime: 30_000 } },
+	});
+	const stuck = terminalRow({ message_id: "bcmsg_stuck", actionable: true });
+	const live = hold({ message_id: "bcmsg_live", actionable: true });
+	let reads = 0;
+	const observer = new k.QueryObserver(client, {
+		queryKey: k.holdsKey("acct_1"),
+		queryFn: async () => {
+			reads += 1;
+			return {
+				enabled: true,
+				key_protection: null,
+				items: reads === 1 ? [stuck, live] : [live],
+			};
+		},
+	});
+	const counts = [];
+	const stop = observer.subscribe((result) => {
+		if (result.data) counts.push(m.actionableHoldCount(result.data, NOW));
+	});
+	const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+	await settle();
+	assert.deepEqual(counts, [2]);
+	// The one invalidation the bulk call makes: the list, exactly. The daemon stops
+	// listing the cleared row, so the badge and the section count both fall.
+	await k.invalidateAfterDiscardAll(client, "acct_1");
+	await settle();
+	assert.equal(reads, 2);
+	/* The observer also sees the refetch's own intermediate states, so assert the
+	   edges: it was 2 with the stuck row listed, and the settled read is 1. */
+	assert.equal(counts[0], 2);
+	assert.equal(counts.at(-1), 1);
+	assert.ok(
+		counts.every((count) => count === 1 || count === 2),
+		"never invents a count between the two reads",
+	);
+	stop();
+	client.clear();
+});
+
+test("the shipped view renders a terminal row as Unknown sender with a working Discard (#4662)", () => {
+	let sends = 0;
+	const html = renderToStaticMarkup(
+		createElement(HeldMessagesView, {
+			listState: "ready",
+			items: [terminalRow()],
+			detail: () => ({ state: "unavailable" }),
+			onDecide: () => {
+				sends++;
+			},
+			onDiscardAll: async () => {
+				sends++;
+			},
+			onRetryDetails: () => {},
+			now: NOW,
+		}),
+	);
+	assert.match(html, RE_UNKNOWN_SENDER);
+	assert.match(html, RE_TERMINAL_ONLY);
+	assert.match(html, RE_TERMINAL_REFERENCE);
+	assert.match(html, RE_TERMINAL_BULK_ACTION);
+	assert.match(html, RE_DISCARD_BUTTON);
+	assert.doesNotMatch(html, RE_DELIVER_BUTTON);
+	// The old dead-end sentence must not stand beside a working Discard.
+	assert.doesNotMatch(html, RE_NO_DEAD_END);
+	assert.doesNotMatch(html, RE_UNREAD_BUTTON);
+	assert.equal(sends, 0);
+});
+
+test("the terminal bulk action shows its count first and reports the server's counts after (#4662)", () => {
+	const items = [
+		terminalRow({ message_id: "bcmsg_aaaa1111" }),
+		terminalRow({ message_id: "bcmsg_bbbb2222" }),
+	];
+	const render = (initialTerminalDiscard) =>
+		renderToStaticMarkup(
+			createElement(HeldMessagesView, {
+				listState: "ready",
+				items,
+				detail: () => ({ state: "unavailable" }),
+				onDecide: () => {},
+				onDiscardAll: async () => {
+					throw new Error("nothing is sent on render");
+				},
+				now: NOW,
+				initialTerminalDiscard,
+			}),
+		);
+	const confirm = render({ phase: "confirm", count: 2 });
+	assert.match(confirm, RE_TERMINAL_CONFIRM_TWO);
+	assert.match(confirm, RE_TERMINAL_REF_A);
+	assert.match(confirm, RE_TERMINAL_REF_B);
+	const done = render({
+		phase: "result",
+		count: 2,
+		outcome: {
+			state: "done",
+			result: { discarded: 2, already: 0, skipped: 1 },
+		},
+	});
+	assert.match(done, RE_TERMINAL_RESULT_THREE);
+	const refused = render({
+		phase: "result",
+		count: 2,
+		outcome: { state: "refused", message: "Fixed refusal" },
+	});
+	assert.match(refused, RE_FIXED_REFUSAL);
+	assert.doesNotMatch(refused, RE_TERMINAL_RESULT_LABEL);
+});
+
+test("the terminal copy is keyed, translated everywhere and promises only what the daemon does (#4662)", () => {
+	const keys = [
+		"ui.teamBridge.holds.terminal_only",
+		"ui.teamBridge.holds.confirm.discard_terminal",
+		"ui.teamBridge.holds.terminal_bulk.action",
+		"ui.teamBridge.holds.terminal_bulk.confirm",
+		"ui.teamBridge.holds.terminal_bulk.result",
+		"ui.teamBridge.holds.terminal_bulk.refusal",
+	];
+	const read = (l) =>
+		JSON.parse(
+			readFileSync(`src/i18n/catalogues/${l}/ui.teamBridge.holds.json`, "utf8"),
+		);
+	const en = read("en");
+	const context = JSON.parse(
+		readFileSync(
+			"src/i18n/catalogues/en/ui.teamBridge.holds.context.json",
+			"utf8",
+		),
+	);
+	const holders = (value) =>
+		[...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
+	for (const l of ["fr", "es", "zh-CN", "ru", "vi", "hi", "ur"]) {
+		const messages = read(l);
+		for (const key of keys) {
+			assert.ok(messages[key], `${l} carries ${key}`);
+			assert.notEqual(messages[key], en[key], `${l} translates ${key}`);
+		}
+		assert.deepEqual(
+			holders(messages["ui.teamBridge.holds.terminal_bulk.result"]),
+			["already", "discarded", "skipped"],
+			`${l} keeps the result placeholders`,
+		);
+		assert.deepEqual(
+			holders(messages["ui.teamBridge.holds.terminal_bulk.confirm"]),
+			["count"],
+			`${l} keeps the confirm placeholder`,
+		);
+	}
+	for (const key of keys) {
+		assert.ok(context[key], `${key} has translator context`);
+	}
+	// The row's line never claims the sender was told; the refusal reports a
+	// failure, not a count of work it cannot have done.
+	assert.doesNotMatch(en["ui.teamBridge.holds.terminal_only"], RE_SENDER_TOLD);
+	assert.match(
+		en["ui.teamBridge.holds.terminal_bulk.refusal"],
+		RE_FAILED_REFUSAL,
+	);
+	assert.deepEqual(
+		holders(en["ui.teamBridge.holds.terminal_bulk.refusal"]),
+		[],
+	);
+	assert.deepEqual(holders(en["ui.teamBridge.holds.terminal_bulk.result"]), [
+		"already",
+		"discarded",
+		"skipped",
+	]);
+	assert.deepEqual(
+		holders(en["ui.teamBridge.holds.confirm.discard_terminal"]),
+		["reference"],
+	);
 });

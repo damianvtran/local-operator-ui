@@ -7,7 +7,10 @@ import {
 	captureDiscardSnapshot,
 	holdRefusalLabel,
 } from "./team-bridge-holds-model";
-import type { HeldMessageDetail } from "./use-team-bridge-holds";
+import type {
+	DiscardAllOutcome,
+	HeldMessageDetail,
+} from "./use-team-bridge-holds";
 
 /*
  * The Held messages section of Approvals in each state a design and UX
@@ -21,6 +24,13 @@ import type { HeldMessageDetail } from "./use-team-bridge-holds";
  * `Unloadable*` stories at the end cover local-operator #4358's receipt
  * Discard. The Batch* states exercise the same frozen-proof client operation
  * as production; no new server or delivery contract is required.
+ *
+ * The `Terminal*` stories at the end cover local-operator #4662: core's
+ * `terminal_discard` disposition (a row that can never be delivered and whose
+ * Discard needs no proof at all) and the bulk "discard all undeliverable"
+ * action beside the proof-bound batch. Their client callback is a simulation —
+ * production calls the daemon's `holds/discard-all` route and reports ITS
+ * counts, which is exactly what the result states render.
  */
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
@@ -201,6 +211,15 @@ const meta = {
 		onBatchDecide: async (entries, onResult) => {
 			for (const entry of entries)
 				onResult({ entry, recorded: true, error: null });
+		},
+		/* #4662: the bulk terminal sweep, visible (disabled without terminal
+		   rows) in every story so the affordance is reviewed with the section, not
+		   only in its own states. */
+		onDiscardAll: async (onSettled) => {
+			onSettled({
+				state: "done",
+				result: { discarded: 0, already: 0, skipped: 0 },
+			});
 		},
 	},
 	decorators: [
@@ -567,5 +586,116 @@ export const DiscardedLocalUnconfirmed: Story = {
 			},
 		],
 		detail: orphanDetail,
+	},
+};
+
+/*
+ * local-operator #4662: core's terminal disposition. These rows read "Unknown
+ * sender" because the owner-audit read can no longer serve them, and they are
+ * the ones that used to be immortal: listed, counted, undiscardable. Core now
+ * marks them `terminal_discard`, which arms ONE Discard with no proof at all,
+ * and serves the bulk route beside it. `terminalDetail` answers "unavailable"
+ * for every row, which is the state this disposition exists for.
+ */
+const terminalRow = (id: string, over: Partial<HoldItem> = {}): HoldItem =>
+	hold(id, {
+		held_at: "2026-11-10T14:23:00Z",
+		can_deliver: false,
+		deliver_until: "2026-11-17T14:23:00Z",
+		actionable: true,
+		discard_receipt: null,
+		terminal_discard: true,
+		undeliverable_reason: "no_decision_record",
+		...over,
+	});
+const terminalItems = [
+	terminalRow("bcmsg_5ac4b3e8deadbeef"),
+	terminalRow("bcmsg_terminal_expired", {
+		held_at: "2026-11-09T08:05:00Z",
+		undeliverable_reason: "payload_expired",
+	}),
+	terminalRow("bcmsg_terminal_cleared", {
+		held_at: "2026-11-12T16:40:00Z",
+		undeliverable_reason: "decision_cleared",
+	}),
+];
+const terminalDetail = (): HeldMessageDetail => ({ state: "unavailable" });
+const terminalBulkApps = async (
+	onSettled: (outcome: DiscardAllOutcome) => void,
+) => {
+	// Story simulation only; production calls the daemon's discard-all route.
+	onSettled({
+		state: "done",
+		result: { discarded: 3, already: 0, skipped: 0 },
+	});
+};
+
+/* The row a designer must see: no sender, no text, no receipt — and a working
+   Discard, with the bulk action beside the proof-bound one. */
+export const TerminalDiscardable: Story = {
+	args: { items: terminalItems, detail: terminalDetail },
+};
+
+/* The per-row second step: it says the message can never be delivered and
+   nothing about a device-only record (this one is recorded by the server). */
+export const TerminalConfirm: Story = {
+	args: {
+		items: terminalItems.slice(0, 1),
+		detail: terminalDetail,
+		initialConfirm: { bcmsg_5ac4b3e8deadbeef: "discard" },
+	},
+};
+
+/* A mixed list: the count in the bulk confirm must be 3 — the deliverable row
+   is never in it — while both bulk buttons show their own counts. */
+export const TerminalMixed: Story = {
+	args: {
+		items: [...terminalItems, fresh, orphan],
+		detail: (item) =>
+			item.message_id === "bcmsg_647" ? orphanDetail(item) : terminalDetail(),
+	},
+};
+
+const terminalBulkArgs = {
+	items: terminalItems,
+	detail: terminalDetail,
+	onDiscardAll: terminalBulkApps,
+};
+
+export const TerminalBulkIdle: Story = { args: terminalBulkArgs };
+export const TerminalBulkConfirm: Story = {
+	args: {
+		...terminalBulkArgs,
+		initialTerminalDiscard: { phase: "confirm", count: 3 },
+	},
+};
+export const TerminalBulkBusy: Story = {
+	args: {
+		...terminalBulkArgs,
+		initialTerminalDiscard: { phase: "busy", count: 3 },
+	},
+};
+export const TerminalBulkResult: Story = {
+	args: {
+		...terminalBulkArgs,
+		items: [],
+		initialTerminalDiscard: {
+			phase: "result",
+			count: 3,
+			outcome: {
+				state: "done",
+				result: { discarded: 3, already: 1, skipped: 0 },
+			},
+		},
+	},
+};
+export const TerminalBulkRefused: Story = {
+	args: {
+		...terminalBulkArgs,
+		initialTerminalDiscard: {
+			phase: "result",
+			count: 3,
+			outcome: { state: "refused", message: holdRefusalLabel(null) },
+		},
 	},
 };

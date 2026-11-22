@@ -73,6 +73,7 @@ const TEAM_BRIDGE_APPROVAL_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.holds.list",
 	"team_bridge.holds.deliver",
 	"team_bridge.holds.discard",
+	"team_bridge.holds.discard_all",
 ]);
 const teamBridgeApprovalSelection = z
 	.array(
@@ -4989,13 +4990,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
-	 * Discard binds EXACTLY ONE of `body_sha256` (the body on screen) or
+	 * Discard binds AT MOST ONE of `body_sha256` (the body on screen) or
 	 * `hold_receipt` (local-operator #4358): the list's `discard_receipt` for a
 	 * hold whose body can no longer be loaded (expired at the hub, owner-audit
 	 * unavailable). The receipt names the local hold RECORD, not bytes anyone
 	 * read, so Deliver has no receipt field at all (S-11): a Deliver always
-	 * proves the shown body. "Exactly one" is enforced in the union's
-	 * `superRefine` below, mirroring the route's own 422.
+	 * proves the shown body.
+	 *
+	 * NEITHER is also legal (local-operator #4662): core serves `terminal_discard`
+	 * for a hold that can never be delivered, and its discard route accepts an
+	 * EMPTY body for exactly those rows — no hash, no receipt. The renderer only
+	 * sends that shape for a row the server marked (`terminalDiscardArmed`);
+	 * "at most one" is enforced in the union's `superRefine` below, mirroring the
+	 * route's own 422 for two proofs.
 	 */
 	z
 		.object({
@@ -5011,6 +5018,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.string()
 				.regex(/^[0-9a-f]{64}$/)
 				.optional(),
+		})
+		.strict(),
+	/*
+	 * The bulk terminal discard (local-operator #4662): every hold core already
+	 * knows can never be delivered, in ONE request, with no per-row proof. The
+	 * scope is a closed literal rather than a free string so this app can never
+	 * ask for a broader sweep than "the undeliverable rows" — a deliverable row
+	 * is not in that set on either side of the wire, and the daemon's own scope
+	 * never touches one. It carries no `tenant_id` (an account-scoped hold op, as
+	 * `TEAM_BRIDGE_APPROVAL_OPS` states) and, per the route's body contract, no
+	 * proof field at all.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.holds.discard_all"),
+			expected_account_id: id,
+			scope: z.literal("undeliverable"),
 		})
 		.strict(),
 	/*
@@ -6241,18 +6265,22 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 		 * body-shaped mistake, and the view would paint that as a failure of a spend
 		 * that was never attempted. Refusing here means it is never sent.
 		 */
-		/* A held-message Discard binds exactly one proof (#4358 route grammar):
-		   both or neither is a body-shaped mistake the daemon answers 422, so it
-		   is refused before IPC rather than painted as a failed decision. */
+		/* A held-message Discard binds AT MOST one proof (#4358 route grammar):
+		   both is a body-shaped mistake the daemon answers 422, so it is refused
+		   before IPC rather than painted as a failed decision. NEITHER is how a
+		   `terminal_discard` row is discarded (#4662) — the route accepts an empty
+		   body for exactly those, and the caller only sends that shape after
+		   `terminalDiscardArmed` read the server's flag, so the narrowing lives
+		   there rather than in a schema that cannot see the row. */
 		if (
 			request.op === "team_bridge.holds.discard" &&
-			(request.body_sha256 === undefined) ===
-				(request.hold_receipt === undefined)
+			request.body_sha256 !== undefined &&
+			request.hold_receipt !== undefined
 		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					"A held-message discard binds exactly one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
+					"A held-message discard binds at most one of `body_sha256` or `hold_receipt`.", // i18n: ignore wire validation diagnostic
 				path: ["body_sha256"],
 			});
 		}
@@ -8620,7 +8648,11 @@ export function desktopRequestDeadlineMs(
 	// daemon's loop, and that signer may wait on the key's own presence policy
 	// (desktop_team_bridge.py `_decide_hold`). The UI raises no prompt of its
 	// own (decision a-856f); it only must not time out before the signer does.
-	if (op === "team_bridge.holds.deliver" || op === "team_bridge.holds.discard")
+	if (
+		op === "team_bridge.holds.deliver" ||
+		op === "team_bridge.holds.discard" ||
+		op === "team_bridge.holds.discard_all"
+	)
 		return APPROVAL_APPROVE_DEADLINE_MS;
 	/*
 	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
@@ -13018,15 +13050,30 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/holds/${encodeURIComponent(request.message_id)}/${request.op === "team_bridge.holds.deliver" ? "deliver" : "discard"}`,
 				method: "POST",
 				/* Only the proof the request carries: the route's strict body
-				   refuses both, and a `null` key would read as "present". */
+				   refuses both, and a `null` key would read as "present". A
+				   `terminal_discard` row (#4662) carries NEITHER and its route
+				   accepts an empty body, so nothing proof-shaped is sent. */
 				body: {
 					expected_account_id: request.expected_account_id,
 					conversation_id: request.conversation_id,
 					...(request.op === "team_bridge.holds.discard" &&
 					request.hold_receipt !== undefined
 						? { hold_receipt: request.hold_receipt }
-						: { body_sha256: request.body_sha256 }),
+						: request.body_sha256 !== undefined
+							? { body_sha256: request.body_sha256 }
+							: {}),
 				},
+			};
+		case "team_bridge.holds.discard_all":
+			/* #4662: the bulk terminal sweep. The body is the route's own
+			   `{"scope":"undeliverable"}` and nothing else — no account id,
+			   no per-row proof: the daemon resolves the owner for the op the
+			   same way it does for the list, and decides from its own record
+			   which rows are undeliverable. */
+			return {
+				path: "/v1/desktop/team-bridge/holds/discard-all",
+				method: "POST",
+				body: { scope: request.scope },
 			};
 		case "team_bridge.requests.authorize":
 			return {

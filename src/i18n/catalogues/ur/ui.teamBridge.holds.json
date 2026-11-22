@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "حوالہ {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "صرف یہ پیغام ({reference}) پڑھے بغیر مسترد کریں؟ یہ آپ کے ایجنٹ تک نہیں پہنچے گا۔ مسترد کرنا اس ڈیوائس پر درج ہوتا ہے اور واپس نہیں ہو سکتا۔",
 	"ui.teamBridge.holds.discard_unread_label": "پیغام {reference} پڑھے بغیر مسترد کریں",
-	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس ڈیوائس پر درج ہو گیا ہے۔ سرور سے کوئی تصدیق موصول نہیں ہوئی۔"
+	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس ڈیوائس پر درج ہو گیا ہے۔ سرور سے کوئی تصدیق موصول نہیں ہوئی۔",
+	"ui.teamBridge.holds.terminal_only": "یہ پیغام کبھی نہیں پہنچایا جا سکے گا۔ آپ اسے پڑھے بغیر مسترد کر سکتے ہیں۔",
+	"ui.teamBridge.holds.confirm.discard_terminal": "یہ پیغام ({reference}) مسترد کریں؟ یہ کبھی آپ کے ایجنٹ تک نہیں پہنچے گا اور اسے واپس نہیں لیا جا سکتا۔",
+	"ui.teamBridge.holds.terminal_bulk.action": "تمام ناقابلِ ترسیل پیغامات مسترد کریں…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "ناقابلِ ترسیل پیغامات مسترد کریں (تعداد: {count})؟ صرف وہ پیغامات شامل ہیں جو کبھی نہیں پہنچائے جا سکیں گے، نئے آنے والے پیغامات نہیں۔ اسے واپس نہیں لیا جا سکتا۔",
+	"ui.teamBridge.holds.terminal_bulk.result": "مسترد شدہ: {discarded}۔ پہلے سے مسترد شدہ: {already}۔ بغیر تبدیلی: {skipped}۔",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "ناقابلِ ترسیل پیغامات مسترد نہیں کیے جا سکے۔ دوبارہ کوشش کریں۔"
 }

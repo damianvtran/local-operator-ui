@@ -45,6 +45,26 @@ export const holdBindingKey = (
 ) => [...holdsKey(accountId), "binding", messageId, bodyHash, body] as const;
 
 /**
+ * After a bulk terminal discard (#4662): the hold list and nothing else.
+ *
+ * The daemon stops listing the rows it cleared, so the list re-read is what
+ * removes them from the section AND what lowers the badge — both read this one
+ * query. There is no single message id to refresh (the sweep may have cleared
+ * rows this renderer never joined, and the ones it did are gone), so the
+ * per-message detail/binding keys are deliberately not touched: they were
+ * `gcTime: 0` lookups for rows that are no longer offered.
+ */
+export function invalidateAfterDiscardAll(
+	client: Pick<QueryClient, "invalidateQueries">,
+	accountId: string | undefined,
+) {
+	return client.invalidateQueries({
+		queryKey: holdsKey(accountId),
+		exact: true,
+	});
+}
+
+/**
  * After one decision: the hold list, plus that message's own lookup and
  * binding. Nothing else under the prefix is touched.
  */

@@ -30,7 +30,12 @@ import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-aud
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
 import type { DiscardBatchResult } from "./team-bridge-discard-batch";
-import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
+import {
+	type BatchPreview,
+	HeldMessagesBatch,
+	HeldTerminalDiscardBatch,
+	type TerminalDiscardPreview,
+} from "./team-bridge-held-batch";
 import {
 	type HoldItem,
 	type HoldProof,
@@ -46,6 +51,8 @@ import {
 	needsExpand,
 	receiptDiscardArmed,
 	sortHolds,
+	terminalDiscardArmed,
+	terminalDiscardCandidates,
 } from "./team-bridge-holds-model";
 import {
 	type DiscardSnapshotEntry,
@@ -54,6 +61,7 @@ import {
 import { memberStoredName } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import {
+	type DiscardAllOutcome,
 	type HeldMessageDetail,
 	useHeldMessageDetails,
 	useHeldMessages,
@@ -119,6 +127,8 @@ export function HeldMessagesView({
 	initialConfirm,
 	onBatchDecide,
 	initialBatch,
+	onDiscardAll,
+	initialTerminalDiscard,
 }: {
 	listState: ListState;
 	items: readonly HoldItem[];
@@ -147,16 +157,33 @@ export function HeldMessagesView({
 		onResult: (result: DiscardBatchResult) => void,
 	) => Promise<void>;
 	initialBatch?: BatchPreview;
+	/** #4662: the bulk terminal discard, wired only by the section. */
+	onDiscardAll?: (
+		onSettled: (outcome: DiscardAllOutcome) => void,
+	) => Promise<void>;
+	initialTerminalDiscard?: TerminalDiscardPreview;
 }) {
 	useI18nLocale();
 	const [batchBlocking, setBatchBlocking] = useState(Boolean(initialBatch));
 	const [batchStarted, setBatchStarted] = useState(Boolean(initialBatch));
+	/* The two bulk actions block independently: a confirm step in one must not
+	   pretend the other is running, and either one locks the rows while it runs. */
+	const [terminalBlocking, setTerminalBlocking] = useState(
+		Boolean(
+			initialTerminalDiscard && initialTerminalDiscard.phase !== "result",
+		),
+	);
+	const [terminalStarted, setTerminalStarted] = useState(
+		Boolean(initialTerminalDiscard),
+	);
 	// Keep result accounting mounted after the last held row disappears, but
 	// preserve Approvals' single empty state when no batch has been started.
 	if (
 		hideWhenEmpty &&
 		!batchBlocking &&
 		!batchStarted &&
+		!terminalBlocking &&
+		!terminalStarted &&
 		listState === "ready" &&
 		items.length === 0
 	)
@@ -204,20 +231,41 @@ export function HeldMessagesView({
 					initialPreview={initialBatch}
 				/>
 			)}
-			{onBatchDecide && listState === "error" && items.length > 0 && (
-				// A failed refresh must leave a way to recover a disabled batch,
-				// even when cached rows already exist and hide the list error state.
-				<div role="alert" className="flex flex-wrap items-baseline gap-2">
-					<p className="text-sm text-ink-muted">
-						{t("ui.teamBridge.list.error_stale")}
-					</p>
-					{onRetry && (
-						<Button size="sm" variant="link" onClick={onRetry}>
-							{t("ui.teamBridge.list.retry")}
-						</Button>
-					)}
-				</div>
+			{onDiscardAll && (
+				/* #4662: the terminal sweep sits beside the proof-bound one, from the
+				   same list read, so the person sees both counts before pressing either.
+				   Its candidates are pure list metadata — these are the rows whose body
+				   and receipt cannot load. */
+				<HeldTerminalDiscardBatch
+					candidates={
+						listState === "ready" && enabled
+							? terminalDiscardCandidates(items, now)
+							: []
+					}
+					disabled={busy !== null || !enabled || listState !== "ready"}
+					onDiscard={async (onSettled) => {
+						setTerminalStarted(true);
+						await onDiscardAll(onSettled);
+					}}
+					onBlockingChange={setTerminalBlocking}
+					initialPreview={initialTerminalDiscard}
+				/>
 			)}
+			{onBatchDecide &&
+				listState === "error" &&
+				items.length > 0 && ( // A failed refresh must leave a way to recover a disabled batch,
+					// even when cached rows already exist and hide the list error state.
+					<div role="alert" className="flex flex-wrap items-baseline gap-2">
+						<p className="text-sm text-ink-muted">
+							{t("ui.teamBridge.list.error_stale")}
+						</p>
+						{onRetry && (
+							<Button size="sm" variant="link" onClick={onRetry}>
+								{t("ui.teamBridge.list.retry")}
+							</Button>
+						)}
+					</div>
+				)}
 			{listState === "loading" && items.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
 			) : listState === "error" && items.length === 0 ? (
@@ -244,7 +292,9 @@ export function HeldMessagesView({
 							detail={detail(item)}
 							busy={
 								busy ??
-								(batchBlocking ? { id: "batch", word: "discard" } : null)
+								(batchBlocking || terminalBlocking
+									? { id: "batch", word: "discard" }
+									: null)
 							}
 							refusal={refusals[item.message_id] ?? null}
 							onDecide={onDecide}
@@ -304,18 +354,23 @@ function HeldRow({
 	/* `unread` implies no hash is on hand (nothing shown, or no usable hash),
 	   so the Discard it arms binds the receipt and nothing else. */
 	const unread = receiptDiscardArmed(item, affordance, detail.state, binding);
+	/* #4662: core says this row can never be delivered and may be discarded with
+	   no proof. It is the ONLY arm that works when neither a body nor a receipt
+	   can be loaded — the case that made a row immortal. */
+	const terminal = terminalDiscardArmed(item, affordance);
 	const bodyArmed = binding
-		? armedWords(affordance, binding, seenInFull, hidden)
+		? armedWords(affordance, binding, seenInFull, hidden, terminal)
 		: { deliver: false, discard: false };
 	const armed = {
 		deliver: bodyArmed.deliver,
-		discard: bodyArmed.discard || unread,
+		discard: bodyArmed.discard || unread || terminal,
 	};
 	const proofFor = (word: HoldWord) =>
 		holdDecideProof(word, {
 			armed,
 			binding,
 			receipt: unread ? (item.discard_receipt ?? null) : null,
+			terminal,
 		});
 	const proofKey = (proof: HoldProof | null) =>
 		proof ? JSON.stringify(proof) : null;
@@ -411,8 +466,10 @@ function HeldRow({
 					</span>
 				)}
 			</p>
-			{/* N1: a decided row says what was decided, not why it was held. */}
-			{affordance.state !== "decided" && !unread && (
+			{/* N1: a decided row says what was decided, not why it was held. A
+			    terminal row (#4662) says why it can never be delivered instead of
+			    the generic reason, which would promise an outcome it has none of. */}
+			{affordance.state !== "decided" && !unread && !terminal && (
 				<p className="text-sm text-ink">{holdReasonLabel(holdReason(item))}</p>
 			)}
 			{typeof message?.body === "string" && message.body !== "" && (
@@ -506,6 +563,19 @@ function HeldRow({
 						</p>
 					</>
 				)}
+				{terminal && (
+					/* #4662: why this row will never be delivered, and the reference
+					   its confirm step names. The sender line above still reads
+					   “Unknown sender”: the action works, the identity does not. */
+					<>
+						<p className="text-meta text-ink-dim">
+							{t("ui.teamBridge.holds.terminal_only")}
+						</p>
+						<p className="text-meta text-ink-dim">
+							{t("ui.teamBridge.holds.reference", { reference })}
+						</p>
+					</>
+				)}
 				{/* Try again on EVERY row whose details failed to load, receipt rows
 				    included (PR #2017 r1 M1/S-1/Q-1): a failure can be transient,
 				    and an unread Discard must never be the only way forward. A
@@ -513,7 +583,7 @@ function HeldRow({
 				    which its own line above contradicts. */}
 				{offers && detail.state === "unavailable" && (
 					<div className="flex flex-wrap items-baseline gap-x-2">
-						{!unread && (
+						{!unread && !terminal && (
 							<p className="text-meta text-ink-dim">
 								{t("ui.teamBridge.holds.details_unavailable")}
 							</p>
@@ -540,7 +610,7 @@ function HeldRow({
 							{t("ui.teamBridge.holds.body_withheld")}
 						</p>
 					)}
-				{offers && binding?.state === "none" && !unread && (
+				{offers && binding?.state === "none" && !unread && !terminal && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.details_unavailable")}
 					</p>
@@ -587,12 +657,18 @@ function HeldRow({
 							: /* #4358: a receipt Discard names the ONE message by its
 								   reference and says the text was never shown; it
 								   promises nothing about the sender, whom an expired
-								   hub copy may never reach. */
+								   hub copy may never reach. #4662: a terminal Discard says
+								   the message can never be delivered and nothing else —
+								   it is recorded by the server, not only on this device. */
 								unread
 								? t("ui.teamBridge.holds.confirm.discard_unread", {
 										reference,
 									})
-								: t("ui.teamBridge.holds.confirm.discard")}
+								: terminal
+									? t("ui.teamBridge.holds.confirm.discard_terminal", {
+											reference,
+										})
+									: t("ui.teamBridge.holds.confirm.discard")}
 					</p>
 					<div className="flex gap-2">
 						<Button
@@ -689,6 +765,9 @@ export function TeamBridgeHeldMessages({
 			refusals={decide.refusals}
 			onDecide={(item, word, proof) => void decide.run(item, word, proof)}
 			onBatchDecide={decide.runBatch}
+			/* #4662: the bulk terminal sweep. Same lock as every other decide, so a
+			   Deliver cannot be signed while it runs. */
+			onDiscardAll={decide.runDiscardAll}
 			onRetry={() => void holds.refetch()}
 			onRetryDetails={() => void retryDetails()}
 			accountId={accountId ?? null}

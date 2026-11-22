@@ -1,7 +1,8 @@
 /**
  * The Team Bridge held-messages wire (local-operator B4b, operator decision
- * a-3f46): `GET /v1/desktop/team-bridge/holds` and the owner's signed
- * `POST …/holds/{id}/deliver|discard`.
+ * a-3f46): `GET /v1/desktop/team-bridge/holds`, the owner's signed
+ * `POST …/holds/{id}/deliver|discard`, and (#4662) the bulk
+ * `POST …/holds/discard-all` for rows core calls `terminal_discard`.
  *
  * Every answer is PARSED, not cast, and the schemas are deliberately narrow:
  * the list is metadata only by contract, and stripping unknown keys means a
@@ -12,6 +13,7 @@
  */
 import { z } from "zod";
 import type {
+	HoldDiscardAllResult,
 	HoldItem,
 	HoldProof,
 	HoldReceipt,
@@ -60,6 +62,20 @@ const holdItem = z.object({
 		.transform((value) =>
 			typeof value === "string" && SHA256_HEX.test(value) ? value : null,
 		),
+	/*
+	 * local-operator #4662, both optional so an older core still parses and a row
+	 * without them behaves exactly as it did before: `terminal_discard` is core's
+	 * own "this can be discarded with no proof", and `undeliverable_reason` says
+	 * why. An unrecognised reason reads as null rather than failing the WHOLE
+	 * list — the same open-set rule `hold_code` follows, because a new reason must
+	 * degrade one row's sentence, never empty the section.
+	 */
+	terminal_discard: z.boolean().optional(),
+	undeliverable_reason: z
+		.enum(["no_decision_record", "decision_cleared", "payload_expired"])
+		.nullable()
+		.optional()
+		.catch(null),
 });
 
 const holdsPage = z.object({
@@ -72,6 +88,14 @@ const receipt = z.object({
 	message_id: str,
 	state: z.string(),
 	decided_at: str,
+});
+
+/* #4662: the bulk terminal sweep's own accounting. Counts only, non-negative
+   integers: a malformed answer is a failed call rather than an invented report. */
+const discardAllResult = z.object({
+	discarded: z.number().int().nonnegative(),
+	already: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
 });
 
 /** The list parse, exported so the wire test runs the shipped schema. */
@@ -91,7 +115,12 @@ export const TeamBridgeHoldsApi = {
 	async decide(
 		accountId: string,
 		word: HoldWord,
-		item: { message_id: string; conversation_id: string },
+		item: {
+			message_id: string;
+			conversation_id: string;
+			/** #4662: core's terminal flag, so a bare discard cannot be invented. */
+			terminal_discard?: boolean;
+		},
 		proof: HoldProof,
 	): Promise<HoldReceipt> {
 		const target = {
@@ -113,13 +142,38 @@ export const TeamBridgeHoldsApi = {
 				}),
 			);
 		}
+		/* #4662: a terminal row is discarded with NO proof — the route's empty body.
+		   Refused here, before IPC, for any row core did not mark, so a bug upstream
+		   can never spend a proof-less irreversible discard on a deliverable row. */
+		const proofFields =
+			"hold_receipt" in proof
+				? { hold_receipt: proof.hold_receipt }
+				: "body_sha256" in proof
+					? { body_sha256: proof.body_sha256 }
+					: null;
+		if (proofFields === null && item.terminal_discard !== true)
+			throw new Error("Only a terminal hold may be discarded without a proof."); // i18n: ignore programming-error diagnostic, never shown
 		return receipt.parse(
 			await desktopResult<unknown>({
 				op: "team_bridge.holds.discard",
 				...target,
-				...("hold_receipt" in proof
-					? { hold_receipt: proof.hold_receipt }
-					: { body_sha256: proof.body_sha256 }),
+				...(proofFields ?? {}),
+			}),
+		);
+	},
+	/*
+	 * #4662: discard EVERY hold core already knows can never be delivered, in one
+	 * request, with no per-row proof. Idempotent on the daemon side, so a second
+	 * press reports `already` rather than failing. It cannot touch a deliverable
+	 * row: the scope is the closed literal `undeliverable`, and the daemon decides
+	 * from its own record which rows are in it.
+	 */
+	async discardAll(accountId: string): Promise<HoldDiscardAllResult> {
+		return discardAllResult.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.holds.discard_all",
+				expected_account_id: accountId,
+				scope: "undeliverable",
 			}),
 		);
 	},

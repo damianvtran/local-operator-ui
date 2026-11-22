@@ -14344,6 +14344,7 @@ export type MessageParams = {
 	"ui.teamBridge.holds.confirm.deliver_action": undefined;
 	"ui.teamBridge.holds.confirm.discard": undefined;
 	"ui.teamBridge.holds.confirm.discard_action": undefined;
+	"ui.teamBridge.holds.confirm.discard_terminal": { reference: string };
 	"ui.teamBridge.holds.confirm.discard_unread": { reference: string };
 	"ui.teamBridge.holds.deliver": undefined;
 	"ui.teamBridge.holds.deliver_label": { sender: string };
@@ -14395,6 +14396,15 @@ export type MessageParams = {
 	"ui.teamBridge.holds.state.discard_recorded": undefined;
 	"ui.teamBridge.holds.state.not_applied": undefined;
 	"ui.teamBridge.holds.state.not_releasable": undefined;
+	"ui.teamBridge.holds.terminal_bulk.action": undefined;
+	"ui.teamBridge.holds.terminal_bulk.confirm": { count: string };
+	"ui.teamBridge.holds.terminal_bulk.refusal": undefined;
+	"ui.teamBridge.holds.terminal_bulk.result": {
+		discarded: string;
+		already: string;
+		skipped: string;
+	};
+	"ui.teamBridge.holds.terminal_only": undefined;
 	"ui.teamBridge.holds.title": undefined;
 	"ui.teamBridge.holds.unknown_sender": undefined;
 	"ui.teamBridge.holds.unscreened": undefined;
