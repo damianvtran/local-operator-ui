@@ -568,7 +568,7 @@ export interface WebauthnRequestSource {
 
 export interface WebauthnChooserOptions {
 	/** Sends the request to the app's renderer. */
-	notify: (request: WebauthnChooserRequest) => void;
+	notify: (request: WebauthnChooserRequest, frame: unknown) => void;
 	log: (message: string) => void;
 	timeoutMs?: number;
 	/** Injectable so a test can name requests deterministically. */
@@ -724,7 +724,7 @@ export class WebauthnChooser {
 		 * in between: the renderer's answer arrives over IPC, which cannot preempt this
 		 * synchronous block.
 		 */
-		this.options.notify(request);
+		this.options.notify(request, details.frame);
 		this.pending.set(requestId, {
 			requestId,
 			relyingPartyId,
@@ -792,6 +792,16 @@ export class WebauthnChooser {
 	 */
 	pendingRequests(): WebauthnChooserRequest[] {
 		return [...this.pending.keys()].map((requestId) => this.view(requestId));
+	}
+
+	/** The originating document went away. Reuse settlement rather than dropping
+	 * map entries: Electron still owns a callback, and a late renderer response
+	 * must not answer it again or cancel another tab's authentication. */
+	cancelForTab(tabId: number): void {
+		for (const entry of [...this.pending.values()]) {
+			if (entry.tabId === tabId && this.pending.get(entry.requestId) === entry)
+				this.settle(entry, null, "dismissed");
+		}
 	}
 
 	/** Cancel everything still pending. Called when the host stops, because a

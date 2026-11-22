@@ -27,6 +27,11 @@ const {
 );
 const agent = { tabId: 7, owner: "agent", presented: true };
 const request = { requestId: "native-1", tabId: agent.tabId };
+const source = {
+	owner: "agent",
+	documentEpoch: 1,
+	origin: "https://rp.example",
+};
 
 test("passive provider frame is denied both before and after trusted selection", () => {
 	const engagement = new TabEngagement();
@@ -52,8 +57,93 @@ test("passive provider frame is denied both before and after trusted selection",
 	assert.equal(wiring.match(/nativePasskeyNotice\.started\(/g)?.length, 1);
 	assert.match(
 		wiring,
-		/send\("browser-webauthn-request", request\);\s*if \(\s*nativePasskeyNotice\.started\(/,
+		/send\("browser-webauthn-request", request\);[\s\S]*?if \(\s*nativePasskeyNotice\.started\(/,
 	);
+});
+
+test("unattended native auth is request-specific and never takes tab custody", () => {
+	const notices = new NativePasskeyNotice();
+	const engagement = new TabEngagement();
+	const hiddenAgent = { ...agent, presented: false };
+	assert.equal(
+		notices.started(request, hiddenAgent, engagement, source),
+		false,
+	);
+	assert.equal(notices.viewFor(agent), null);
+	assert.deepEqual(notices.pendingFor(7), [
+		{
+			status: "pending-auth",
+			blocking: false,
+			requestId: request.requestId,
+			tabId: 7,
+		},
+	]);
+	assert.deepEqual(notices.pendingFor(8), []);
+	assert.deepEqual(notices.pendingFor(7, 2), []);
+	// A conflicting request can report pending immediately, but neither reading
+	// that outcome nor dismissing chrome settles a provider callback.
+	assert.equal(notices.dismiss(7, 1), false);
+	assert.equal(notices.pendingFor(7).length, 1);
+	const copy = notices.pendingFor(7);
+	copy[0].tabId = 99;
+	assert.equal(notices.pendingFor(7)[0].tabId, 7);
+	assert.equal(notices.settled(request.requestId), false);
+	assert.deepEqual(notices.pendingFor(7), []);
+});
+
+test("two agent tabs and overlapping requests clean up only their own auth state", () => {
+	const notices = new NativePasskeyNotice();
+	const engagement = new TabEngagement();
+	for (const [requestId, tabId] of [
+		["a-1", 7],
+		["a-2", 7],
+		["b-1", 8],
+	])
+		notices.started({ requestId, tabId }, null, engagement, source);
+	assert.deepEqual(
+		notices.pendingFor(7).map((r) => r.requestId),
+		["a-1", "a-2"],
+	);
+	assert.deepEqual(
+		notices.pendingFor(8).map((r) => r.requestId),
+		["b-1"],
+	);
+	// Cancellation/expiry settles one request, never its sibling or another tab.
+	notices.settled("a-1");
+	notices.settled("a-1"); // Late settlement is harmless.
+	assert.deepEqual(
+		notices.pendingFor(7).map((r) => r.requestId),
+		["a-2"],
+	);
+	assert.deepEqual(
+		notices.pendingFor(8).map((r) => r.requestId),
+		["b-1"],
+	);
+	// Navigation/close invalidates only the originating tab's projection.
+	notices.clearTab(7);
+	assert.deepEqual(notices.pendingFor(7), []);
+	assert.deepEqual(
+		notices.pendingFor(8).map((r) => r.requestId),
+		["b-1"],
+	);
+	notices.settled("a-2");
+	assert.equal(notices.pendingFor(8).length, 1);
+	notices.clearTab(8);
+	assert.deepEqual(notices.pendingFor(8), []);
+});
+
+test("unattributed and human-owned native requests cannot create agent auth state", () => {
+	const notices = new NativePasskeyNotice();
+	const engagement = new TabEngagement();
+	for (const unowned of [undefined, { ...source, owner: "user" }])
+		notices.started(request, null, engagement, unowned);
+	notices.started(
+		{ requestId: "unknown", tabId: null },
+		null,
+		engagement,
+		source,
+	);
+	assert.deepEqual(notices.pendingFor(7), []);
 });
 
 test("untrusted selection and background focus never arm the native request", () => {

@@ -480,6 +480,19 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
 	 * means none: the projection then carries null. */
 	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
+	/** Informational host-auth state only, never an ownership or CDP gate. An
+	 * overlapping human request cannot be attributed to an agent's input. */
+	nativeAuth?: {
+		pendingFor(
+			tabId: number,
+			documentEpoch: number,
+		): {
+			status: "pending-auth";
+			blocking: false;
+			requestId: string;
+			tabId: number;
+		}[];
+	};
 	/** Every wait an agent tab has on a person, across ALL tabs
 	 * (`user-attention.ts`). Absent means none: the projection carries `[]`. */
 	waitingOnUser?: () => UserAttentionEntry[];
@@ -565,6 +578,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
 	private readonly waitingOnUser: BrowserHostOptions["waitingOnUser"];
 	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
+	private readonly nativeAuth: BrowserHostOptions["nativeAuth"];
 	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
 	/** S4b's popout health, read from the controller (or the launch's platform
@@ -617,6 +631,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.passkeyNotice = options.passkeyNotice;
 		this.waitingOnUser = options.waitingOnUser;
 		this.passkeyCustody = options.passkeyCustody;
+		this.nativeAuth = options.nativeAuth;
 		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
 		this.addressOverlayMode =
@@ -651,6 +666,30 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	private async authorizedPerform(
+		method: string,
+		params: Record<string, unknown>,
+		requestId: string,
+	): Promise<Record<string, unknown>> {
+		if (!this.nativeAuth || !["click", "press", "type"].includes(method))
+			return this.performOnAuthorizedDocument(method, params, requestId);
+		const record = this.registry.requireSurface(params.tab);
+		const epoch = record.documentEpoch;
+		// Await the original operation under its original tab lane. Racing a
+		// pending-auth notification would release the lane while input still ran.
+		const result = await this.performOnAuthorizedDocument(
+			method,
+			params,
+			requestId,
+		);
+		if (record.documentEpoch !== epoch) return result;
+		const pending = this.nativeAuth.pendingFor(record.tabId, epoch);
+		// This is concurrent state, not proof this action caused a ceremony. Keep
+		// the real success/error, and never turn an unrelated human click into a
+		// refusal of otherwise permitted agent work.
+		return pending.length ? { ...result, auth_pending: pending } : result;
+	}
+
+	private async performOnAuthorizedDocument(
 		method: string,
 		params: Record<string, unknown>,
 		requestId: string,

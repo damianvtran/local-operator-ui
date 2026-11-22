@@ -112,6 +112,7 @@ import {
 	type SystemMediaAccess,
 } from "./media-permissions";
 import {
+	type NativeAuthSource,
 	NativePasskeyNotice,
 	dismissNativePasskeyNoticeOnEscape,
 } from "./native-passkey-notice";
@@ -930,17 +931,41 @@ async function initializeBrowserHost(
 		const engagement = new TabEngagement();
 		const nativePasskeyNotice = new NativePasskeyNotice();
 		const webauthn = new WebauthnChooser({
-			notify: (request) => {
+			notify: (request, frame) => {
 				// A window torn down while a chooser was open is the ordinary race: the
 				// request has nowhere to go, and the chooser's own timeout settles the
 				// page rather than leaving it hanging.
 				if (options.window.isDestroyed()) return;
 				options.window.webContents.send("browser-webauthn-request", request);
+				const source =
+					request.tabId === null ? undefined : registry.get(request.tabId);
+				let authSource: NativeAuthSource | undefined;
+				if (source && !source.view.webContents.isDestroyed()) {
+					try {
+						const contents = source.view
+							.webContents as unknown as Electron.WebContents;
+						// A top-document action must not project a cross-origin child
+						// frame's authentication. The existing human chooser is unchanged.
+						const url =
+							frame === contents.mainFrame
+								? new URL(contents.mainFrame.url)
+								: null;
+						if (url?.protocol === "https:" || url?.protocol === "http:")
+							authSource = {
+								owner: source.owner,
+								documentEpoch: source.documentEpoch,
+								origin: url.origin,
+							};
+					} catch {
+						// An unresolvable source must not become an attributed auth request.
+					}
+				}
 				if (
 					nativePasskeyNotice.started(
 						request,
 						registry.activeTab ?? null,
 						engagement,
+						authSource,
 					)
 				)
 					syncPasskeyNotice();
@@ -1553,6 +1578,7 @@ async function initializeBrowserHost(
 		registry.ownerChanged = (record) => {
 			// A hand-over is not the person who engaged the tab still being in it.
 			engagement.clear(record.tabId);
+			webauthn.cancelForTab(record.tabId);
 			nativePasskeyNotice.clearTab(record.tabId);
 			const contents = record.view
 				.webContents as unknown as Electron.WebContents;
@@ -1602,6 +1628,7 @@ async function initializeBrowserHost(
 		 * three (R5).
 		 */
 		function releaseTab(tabId: number, webContentsId: number): void {
+			webauthn.cancelForTab(tabId);
 			if (nativePasskeyNotice.clearTab(tabId)) syncPasskeyNotice();
 			engagement.clear(tabId);
 			// Link tabs this tab's page opened die with it unless a session adopted
@@ -1770,6 +1797,7 @@ async function initializeBrowserHost(
 									: "platform",
 						},
 			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
+			nativeAuth: nativePasskeyNotice,
 			waitingOnUser: () => heldPopups.entries(),
 			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),
 			approvalsCard: approvalsOverlay
@@ -2872,6 +2900,7 @@ async function initializeBrowserHost(
 				// The tab is on a document now, so whatever the last navigation was refused
 				// for no longer describes what is on screen.
 				host.clearLoadFailure(tabId);
+				webauthn.cancelForTab(tabId);
 				nativePasskeyNotice.clearTab(tabId);
 				// Returning to an approved site must not expose logs buffered while
 				// an autonomous unapproved document occupied this same WebContents.

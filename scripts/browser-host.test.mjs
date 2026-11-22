@@ -73,6 +73,8 @@ const bundle = await build({
 			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
 			'export * from "./src/main/browser/host";',
+			'export * from "./src/main/browser/native-passkey-notice";',
+			'export { WebauthnChooser } from "./src/main/webauthn";',
 			// The download capture and the file-transfer policy pair. Bundled so the
 			// arm-gated save path, the name refusal and the caps can be driven against a
 			// real temp directory and a fake `DownloadItem` — the rules worth testing —
@@ -180,6 +182,8 @@ const {
 	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
 	BrowserHost,
+	NativePasskeyNotice,
+	WebauthnChooser,
 	CdpPool,
 	isReportableLoadFailure,
 	configurePslRules,
@@ -12202,6 +12206,122 @@ async function openPressTab(host, owner = {}) {
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	return host.dispatch("open", params, "open");
 }
+
+test("pending native auth is additive during real press dispatch and leaves both agent tabs usable", async () => {
+	const notices = new NativePasskeyNotice();
+	const { host, registry, cdp } = makeHost({ nativeAuth: notices });
+	const opened = await openPressTab(host);
+	const other = await host.dispatch(
+		"open",
+		{
+			url: "https://press.example/other",
+			requester: "session:press",
+		},
+		"open-b",
+	);
+	const record = registry.requireSurface(opened.tab);
+	const otherRecord = registry.requireSurface(other.tab);
+	const before = [record.owner, otherRecord.owner, registry.activeTab?.tabId];
+	const answers = [];
+	const chooser = new WebauthnChooser({
+		notify: (request) =>
+			notices.started(
+				request,
+				null,
+				{ has: () => false },
+				{
+					owner: record.owner,
+					documentEpoch: record.documentEpoch,
+					origin: "https://press.example",
+				},
+			),
+		onSettled: (requestId) => notices.settled(requestId),
+		describeSource: () => ({ tabId: record.tabId, pageTitle: "Fixture" }),
+		log: () => {},
+		nextRequestId: () => "fixture-auth",
+	});
+	let inputReached;
+	const reached = new Promise((resolve) => {
+		inputReached = resolve;
+	});
+	let releaseInput;
+	const inputGate = new Promise((resolve) => {
+		releaseInput = resolve;
+	});
+	const send = cdp.send;
+	cdp.send = async (contents, method, params) => {
+		if (
+			contents === record.view.webContents &&
+			method === "Input.dispatchKeyEvent" &&
+			params.type === "keyDown"
+		) {
+			inputReached();
+			await inputGate;
+		}
+		return send(contents, method, params);
+	};
+	const start = performance.now();
+	const action = host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press-auth",
+	);
+	await reached;
+	// Deliberately external to agent dispatch: a concurrent HUMAN request must
+	// not turn successful agent input into a falsely attributed auth refusal.
+	chooser.handle(
+		{
+			relyingPartyId: "press.example",
+			accounts: [{ credentialId: "fixture-public-id" }],
+		},
+		(value) => answers.push(value),
+	);
+	releaseInput();
+	try {
+		const result = await action;
+		const elapsed = performance.now() - start;
+		assert.equal(result.key, "Enter");
+		assert.equal(result.navigated, false);
+		assert.deepEqual(result.auth_pending, [
+			{
+				status: "pending-auth",
+				blocking: false,
+				requestId: "fixture-auth",
+				tabId: record.tabId,
+			},
+		]);
+		assert.deepEqual(
+			answers,
+			[],
+			"press did not wait for or answer the chooser",
+		);
+		assert.deepEqual(
+			[record.owner, otherRecord.owner, registry.activeTab?.tabId],
+			before,
+		);
+		for (const tab of [opened.tab, other.tab])
+			await host.dispatch("snapshot", { tab }, `snapshot-${tab}`);
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key: "INVALID" }, "bad-key"),
+			(error) => error.code === "unsupported_key",
+		);
+		console.log(
+			JSON.stringify({
+				fixture: "native-auth-press",
+				elapsed_ms: Math.round(elapsed),
+				callback_pending_at_completion: answers.length === 0,
+				safe_snapshots: 2,
+				ownership_and_active_tab_unchanged: true,
+			}),
+		);
+		chooser.cancelForTab(record.tabId);
+		assert.deepEqual(answers, [undefined]);
+		assert.deepEqual(notices.pendingFor(record.tabId), []);
+		assert.equal(chooser.respond("fixture-auth", "fixture-public-id"), false);
+	} finally {
+		chooser.dispose();
+	}
+});
 
 test("press closed wire admits the method and preserves unsupported_key", async () => {
 	assert.ok(METHODS.includes("press"));

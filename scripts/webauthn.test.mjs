@@ -748,6 +748,41 @@ test("a surface that mounts late reads the pending queue oldest-first, with the 
 	);
 });
 
+test("tab teardown settles only its callbacks once, including reentrant late answers", () => {
+	const answered = [];
+	const settled = [];
+	const { chooser } = makeChooser({
+		describeSource: (frame) => ({ tabId: frame.tabId, pageTitle: "Fixture" }),
+		onSettled: (requestId, outcome) => {
+			settled.push([requestId, outcome]);
+			chooser.cancelForTab(7); // The entry was removed before callbacks.
+		},
+	});
+	for (const tabId of [7, 7, 8]) {
+		chooser.handle(
+			{ relyingPartyId: "example.test", accounts: ACCOUNTS, frame: { tabId } },
+			(value) => answered.push([tabId, value]),
+		);
+	}
+	chooser.cancelForTab(7);
+	assert.deepEqual(answered, [
+		[7, undefined],
+		[7, undefined],
+	]);
+	assert.deepEqual(settled, [
+		["req-1", "dismissed"],
+		["req-2", "dismissed"],
+	]);
+	assert.deepEqual(chooser.pendingRequestIds(), ["req-3"]);
+	assert.equal(chooser.respond("req-1", "Y3JlZC0x"), false);
+	chooser.cancelForTab(7);
+	assert.equal(answered.length, 2);
+	assert.equal(chooser.respond("req-3", "Y3JlZC0x"), true);
+	assert.deepEqual(answered.at(-1), [8, "Y3JlZC0x"]);
+	assert.equal(answered.length, 3);
+	chooser.dispose();
+});
+
 test("every settle path reports its outcome, which is what the surface explains", () => {
 	// Design round 1, D2: the dialog stayed up after main had cancelled the
 	// request, and a later click was discarded in silence. The push is what closes
