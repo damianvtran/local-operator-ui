@@ -100,6 +100,7 @@ import { formatDirectory } from "@shared/utils/path-utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -224,6 +225,7 @@ import {
 	budgetCheckedSeam,
 	messageBudgetRefusal,
 } from "../utils/message-budget";
+import { sameWorkspaceTarget } from "../workspace-tabs-model";
 import { ChatContent } from "./chat-content";
 import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
 import { draftTargetChipShown } from "./chat-header-draft-target-model";
@@ -245,6 +247,8 @@ import {
 } from "./run-details";
 import { useSlashDispatch } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { useWorkspaceTabs } from "./use-workspace-tabs";
+import { WorkspaceTabs } from "./workspace-tabs";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 
@@ -323,7 +327,9 @@ function SessionPanel({
 	draftKey,
 	sessionId,
 	onStartNewChat,
+	workspaceTabs,
 }: {
+	workspaceTabs: (activeTitle: string) => ReactNode;
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
@@ -5101,6 +5107,7 @@ function SessionPanel({
 			)}
 			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
+					workspaceTabs={workspaceTabs(title)}
 					activeTab={tab}
 					onTabChange={setTab}
 					onStartNewChat={onStartNewChat}
@@ -5818,6 +5825,20 @@ export function ChatPage() {
 	// yields when a pick moved the view - can ask for the same key without keeping
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
+	const workspace = useWorkspaceTabs(
+		navigate,
+		() => stage(undefined, true),
+		desktopFeatureEnabled(capabilities.data, "desktop_feed"),
+	);
+	const workspaceActive = id
+		? ({ kind: "session", id } as const)
+		: draftKey
+			? ({ kind: "draft", id: draftKey } as const)
+			: undefined;
+	const workspaceActiveKey = workspace.tabs.find((tab) =>
+		sameWorkspaceTarget(tab.target, workspaceActive),
+	)?.key;
+	const workspaceTitles = useRef<Record<string, string>>({});
 	const identity = panelIdentityFor(draftKey, id);
 	// The panel's MOUNT key, which unlike `identity` survives the draft's own
 	// admission: remounting there repainted the echo the press had just painted
@@ -5960,6 +5981,22 @@ export function ChatPage() {
 						draftKey={draftKey}
 						sessionId={id}
 						onStartNewChat={startNewChatRoute}
+						workspaceTabs={(activeTitle) => (
+							<WorkspaceTabs
+								activeKey={workspaceActiveKey}
+								activeTitle={activeTitle}
+								tabs={workspace.tabs}
+								autoClose={workspace.autoClose}
+								onAutoCloseChange={workspace.setAutoClose}
+								titles={workspaceTitles.current}
+								focusRequested={workspace.focusRequested}
+								onFocusHandled={workspace.focusHandled}
+								onOpen={(tab) => void workspace.select(tab)}
+								onClose={(tab) => void workspace.close(tab)}
+								onPin={workspace.pin}
+								onMove={workspace.move}
+							/>
+						)}
 					/>
 				</div>
 			) : (

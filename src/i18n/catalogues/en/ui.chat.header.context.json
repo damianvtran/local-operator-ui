@@ -1,4 +1,11 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": {
+		"role": "opt-in checkbox in the conversation tab menu",
+		"tone": "short actionable setting, sentence case",
+		"length": "One short line where space permits.",
+		"note": "Closes only the tab (not its conversation, runtime, draft, or history). The minutes value is a fixed inactivity interval. The setting is off by default. A pinned or unconfirmed tab stays open.",
+		"placeholders": { "minutes": "the number of minutes of inactivity" }
+	},
 	"ui.chat.header.conversation_name": {
 		"role": "inline rename input accessible name",
 		"tone": "short noun phrase",

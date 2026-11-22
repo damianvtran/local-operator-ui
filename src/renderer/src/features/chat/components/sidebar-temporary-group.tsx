@@ -19,6 +19,7 @@ import { useAskClock } from "../use-ask-clock";
 // A cycle (chat-sidebar renders this group), but `rowCurrent` is read only at
 // render time, after both modules have evaluated, so the live binding is set.
 import { rowCurrent } from "./chat-sidebar";
+import { SidebarSectionHeading } from "./sidebar-section-heading";
 
 /**
  * The sidebar's `Temporary · N` group: the one place a temporary chat is listed.
@@ -48,7 +49,8 @@ export const SidebarTemporaryGroup: FC<{
 	onSelect: (sessionId: string) => void;
 	/** A fixed clock (epoch ms) for stories and frames; the live group ticks. */
 	nowMs?: number;
-}> = ({ rows, currentId, onSelect, nowMs }) => {
+	workspaceHeading?: boolean;
+}> = ({ rows, currentId, onSelect, nowMs, workspaceHeading }) => {
 	useI18nLocale();
 	const [pressed, setPressed] = useState<boolean | null>(null);
 	const now = useAskClock(rows.length > 0, nowMs) / 1000;
@@ -56,27 +58,53 @@ export const SidebarTemporaryGroup: FC<{
 	const open = pressed ?? groupOpenByDefault(currentId, rows);
 	return (
 		<div data-sidebar-temporary-group="" className="flex flex-col">
-			<button
-				type="button"
-				data-chat-row
-				data-chat-section="temporary"
-				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 font-medium text-body-sm text-ink-muted hover:bg-row-hover"
-				aria-expanded={open}
-				onClick={() => setPressed(!open)}
-			>
-				{open ? (
-					<ChevronDown className="size-3.5" />
-				) : (
-					<ChevronRight className="size-3.5" />
-				)}
-				<MessageSquareDashed
-					aria-hidden="true"
-					className="size-3.5 shrink-0 text-ink-dim"
+			{workspaceHeading ? (
+				<SidebarSectionHeading
+					label={t("ui.chat.sidebar_view.section.temporary", {
+						count: rows.length,
+					})}
+					disclosure={{
+						key: "temporary",
+						open,
+						toggle: () => setPressed(!open),
+						glyph: open ? (
+							<ChevronDown
+								aria-hidden="true"
+								className="size-3.5 shrink-0 text-ink-dim"
+							/>
+						) : (
+							<ChevronRight
+								aria-hidden="true"
+								className="size-3.5 shrink-0 text-ink-dim"
+							/>
+						),
+					}}
 				/>
-				<span className="min-w-0 flex-1 truncate text-start">
-					{t("ui.chat.sidebar_view.section.temporary", { count: rows.length })}
-				</span>
-			</button>
+			) : (
+				<button
+					type="button"
+					data-chat-row
+					data-chat-section="temporary"
+					className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 font-medium text-body-sm text-ink-muted hover:bg-row-hover"
+					aria-expanded={open}
+					onClick={() => setPressed(!open)}
+				>
+					{open ? (
+						<ChevronDown className="size-3.5" />
+					) : (
+						<ChevronRight className="size-3.5" />
+					)}
+					<MessageSquareDashed
+						aria-hidden="true"
+						className="size-3.5 shrink-0 text-ink-dim"
+					/>
+					<span className="min-w-0 flex-1 truncate text-start">
+						{t("ui.chat.sidebar_view.section.temporary", {
+							count: rows.length,
+						})}
+					</span>
+				</button>
+			)}
 			{open && (
 				<ul className="flex flex-col">
 					{rows.map((row) => {

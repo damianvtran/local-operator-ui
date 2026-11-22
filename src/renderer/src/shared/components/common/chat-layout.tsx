@@ -580,6 +580,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			: 0;
 	return (
 		<div
+			data-workspace-shell=""
 			className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
 			/*
 			 * THE RAIL'S WIDTH, PUBLISHED FOR THE CSS THAT HAS TO SUBTRACT IT (#872).
@@ -596,6 +597,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			style={
 				{
 					"--panel-rail-w": `${railWidth}px`,
+					"--workspace-sidebar-w": `${columnWidth}px`,
 					"--chrome-inset-end-pane": `max(0px, calc(var(--chrome-inset-end) - ${railWidth}px))`,
 				} as CSSProperties
 			}
@@ -636,6 +638,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div
 					ref={leftColumnRef}
+					data-workspace-sidebar-column=""
 					className={cn("relative h-full shrink-0")}
 					style={{ width: columnWidth }}
 				>

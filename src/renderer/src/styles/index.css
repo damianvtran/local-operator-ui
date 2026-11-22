@@ -2820,7 +2820,7 @@ html[data-glass~="sidebar"]
 	background: linear-gradient(
 			90deg,
 			transparent,
-			rgb(255 255 255 / 26%) 34% 61%,
+			rgb(255 255 255 / var(--composer-dock-shelf-gloss, 26%)) 34% 61%,
 			transparent
 		)
 		14% top / 55% 1px no-repeat,
@@ -2864,12 +2864,15 @@ html[data-glass~="sidebar"]
 	background-image: linear-gradient(
 			90deg,
 			transparent,
-			rgb(255 255 255 / 60%) 36% 60%,
+			rgb(255 255 255 / var(--composer-dock-editor-gloss, 60%)) 36% 60%,
 			transparent
 		),
 		linear-gradient(
 			180deg,
-			light-dark(rgb(60 71 99 / 6%), rgb(255 255 255 / 4%)),
+			light-dark(
+				rgb(60 71 99 / var(--composer-dock-light-wash, 6%)),
+				rgb(255 255 255 / var(--composer-dock-dark-wash, 4%))
+			),
 			transparent 38px
 		);
 	background-position: 9% top, center top;
@@ -3927,4 +3930,216 @@ input[data-colour-hue]::-moz-range-thumb {
 	border: 2px solid var(--lo-ink);
 	border-radius: 50%;
 	background: var(--lo-elevated);
+}
+
+/* Shared inset. One plane per job, without new seams.
+ * The composer keeps its existing ground and role tokens; only its containing
+ * working plane moves. The native drag lane stays a sibling on the shell. */
+[data-workspace-shell]:has([data-chat-workspace]) {
+	background: var(--color-surface);
+}
+[data-workspace-shell]:has([data-chat-workspace])
+	:is(
+		[data-glass-region="sidebar"],
+		[data-panel-rail-host],
+		main[data-glass-region="canvas-backing"]
+	) {
+	background: transparent;
+}
+/* The left edge is mounted on the shell column, not on its glass child. */
+[data-workspace-shell]:has([data-chat-workspace])
+	:is(
+		[data-workspace-sidebar-column],
+		[data-panel-rail-host],
+		[data-workspace-inset]
+	)
+	[data-panel-edge] {
+	display: none;
+}
+[data-chat-workspace] {
+	padding-block-start: var(--panel-top-pad, 0px);
+}
+[data-workspace-inset] > [data-chat-region="header"] {
+	padding-inline: 12px;
+}
+[data-workspace-inset] {
+	--panel-top-pad: 0px;
+	flex: 1 1 0;
+	min-height: 0;
+	width: auto;
+	margin: 0 8px 8px;
+	border-radius: 10px;
+	background: var(--color-canvas);
+}
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-workspace-inset]
+	[data-glass-region="canvas"],
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-workspace-inset]
+	:not([data-lo-floating])
+	> [data-glass-region="pane"] {
+	background: transparent;
+}
+[data-workspace-inset] .chrome-reserve-trailing {
+	display: none;
+}
+/* Keep the nested dock's geometry; soften the two specular ridges and the
+ * wide frosted wash rather than adding a perimeter to separate its layers. */
+[data-workspace-inset] .composer-dock {
+	--composer-dock-shelf-gloss: 12%;
+	--composer-dock-editor-gloss: 25%;
+	--composer-dock-light-wash: 3%;
+	--composer-dock-dark-wash: 2%;
+}
+[data-workspace-inset] .composer-dock::before {
+	opacity: 0.65;
+}
+
+/* Leave the actual buttons, menus, titles and focus targets where React owns
+ * them; the inset takes away their paint, never their hit areas. */
+[data-workspace-inset]
+	> [data-chat-region="header"]
+	button:not([data-lo-floating] *),
+[data-workspace-shell]:has([data-chat-workspace]) [data-panel-rail-item],
+[data-workspace-shell]:has([data-chat-workspace])
+	:is(
+		[data-sidebar-band],
+		[data-entity],
+		[data-workspace-launcher],
+		[data-session-row]
+	)
+	button:not([data-lo-floating] *) {
+	background: transparent;
+	border-width: 0;
+	box-shadow: none;
+}
+[data-workspace-shell]:has([data-chat-workspace])
+	:is(
+		[data-session-row]:not([data-dragging]),
+		[data-workspace-current]:not([data-dragging]),
+		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
+		[data-workspace-launcher] [data-entity] > div:first-child
+	) {
+	background: transparent;
+}
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-panel-rail-item][aria-pressed="true"]::before {
+	content: none;
+}
+[data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
+[data-workspace-launcher] button:focus-visible,
+[data-workspace-shell]:has([data-chat-workspace])
+	[data-panel-rail-item]:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -2px;
+}
+
+[data-workspace-tabs] {
+	display: flex;
+	align-items: center;
+	min-height: 32px;
+	gap: 4px;
+	padding-inline: 8px;
+}
+/* Reuse the shell's existing top strip rather than paying for a second row.
+ * The OS buttons are physical, so keep their clearances physical in RTL too. */
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-workspace-tabs] {
+	--workspace-left-column: var(--workspace-sidebar-w, 0px);
+	--workspace-right-column: var(--panel-rail-w, 0px);
+	position: relative;
+	z-index: 31;
+	margin-block-start: calc(-1 * var(--panel-top-pad, 0px));
+	min-height: max(32px, var(--panel-top-pad, 0px), var(--chrome-inset-end-h));
+	padding-left: max(8px, calc(var(--chrome-inset-start) - var(--workspace-left-column)));
+	padding-right: max(8px, calc(var(--chrome-inset-end) - var(--workspace-right-column)));
+}
+[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])
+	[data-workspace-tabs]:dir(rtl) {
+	--workspace-left-column: var(--panel-rail-w, 0px);
+	--workspace-right-column: var(--workspace-sidebar-w, 0px);
+}
+[data-workspace-tab-spacer] {
+	align-self: stretch;
+	flex: 1 0 32px;
+}
+/* Separate scrollports keep the regular lane from carrying pins away. Only
+ * interactive lanes opt out of native dragging; the remainder is the handle. */
+[data-workspace-pinned], [data-workspace-regular] {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-width: 0;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+[data-workspace-pinned]:has(+ [data-workspace-regular]) {
+	max-width: 50%;
+}
+[data-workspace-tab] {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+	max-width: min(218px, 100%);
+	flex: 0 0 auto;
+	border-radius: 5px;
+	background: color-mix(in oklab, var(--color-canvas) 48%, var(--color-surface));
+	color: var(--color-ink-muted);
+}
+[data-workspace-tab][data-active] {
+	background: color-mix(
+		in oklab,
+		var(--color-row-selected) 44%,
+		var(--color-surface)
+	);
+	color: var(--color-ink);
+}
+[data-workspace-tabs] button:focus-visible {
+	outline: 2px solid var(--color-accent);
+	outline-offset: -2px;
+}
+[data-workspace-tabs] button:not(:disabled):hover {
+	color: var(--color-ink);
+}
+
+/* The canonical scroller runs flex-column-reverse. On its existing timeline
+ * the bottom edge is the start (latest), the top edge is the end (oldest). A
+ * non-overflowing timeline has no sample, so both registered lengths stay 0. */
+@property --lo-workspace-bottom-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+[data-workspace-inset] [data-lo-canonical-transcript] {
+	mask-image: linear-gradient(
+		to bottom,
+		transparent,
+		black var(--lo-transcript-top-fade),
+		black calc(100% - var(--lo-workspace-bottom-fade)),
+		transparent
+	);
+}
+@supports (animation-timeline: scroll(self)) {
+	[data-workspace-inset] [data-lo-canonical-transcript] {
+		animation-name: transcript-top-fade, workspace-transcript-bottom-fade;
+		animation-timeline: scroll(self), scroll(self);
+		animation-range: calc(100% - 24px) 100%, 0px 24px;
+	}
+	@keyframes workspace-transcript-bottom-fade {
+		from {
+			--lo-workspace-bottom-fade: 0px;
+		}
+		to {
+			--lo-workspace-bottom-fade: 24px;
+		}
+	}
+}
+[data-workspace-inset] [data-lo-canonical-transcript]:has(:focus-visible) {
+	mask-image: none;
+}
+
+/* Groups share the sidebar's existing 16px step, whether nested in the roster
+ * or next to whole regions. Hidden groups do not leave their own margin. */
+.sidebar-section-stack > :not(:last-child) {
+	margin-block-end: calc(var(--spacing) * 4);
 }
