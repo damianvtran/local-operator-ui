@@ -284,6 +284,24 @@
 			"reason": "Already localized hub refusal sentence."
 		}
 	},
+	"ui.common.errors.dictation_refused_take_kept": {
+		"role": "Error row beside a Discard control, no Retry",
+		"tone": "Factual quote of the server's reason, then the two actions left; no blame.",
+		"length": "One row sentence; keep compact.",
+		"note": "The server rejected the request itself (HTTP 422), so re-sending the same recording cannot work and there is no Retry beside this row. The reason is the server's own words and travels verbatim; the sentence after it names discarding the recording and the app's log. Never add a retry instruction to this sentence - the row has no control for one.",
+		"placeholders": {
+			"reason": "The server's own refusal sentence, already clipped; insert verbatim without translating or re-punctuating."
+		}
+	},
+	"ui.common.errors.dictation_refused_take_kept_clipped": {
+		"role": "Error row beside a Discard control, no Retry, clipped reason",
+		"tone": "Factual quote of the server's reason, then the two actions left; no blame.",
+		"length": "One row sentence; keep compact.",
+		"note": "Same row as dictation_refused_take_kept for a reason the app had to clip: the placeholder ends in an ellipsis, so this arm joins the two halves with a space and no full stop after the placeholder.",
+		"placeholders": {
+			"reason": "The server's own refusal sentence, clipped by the app and ending in an ellipsis; insert verbatim without translating or re-punctuating."
+		}
+	},
 	"ui.common.errors.dictation_empty": {
 		"role": "Error message",
 		"tone": "Factual and actionable without blame.",

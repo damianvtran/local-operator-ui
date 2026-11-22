@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "Dictation failed: the {provider} account behind dictation is out of credits. If it's yours, top it up at {destination}.",
 	"ui.common.errors.dictation_unknown": "Dictation failed: {reason}. Try again, or report it with the app's log.",
 	"ui.common.errors.dictation_unknown_clipped": "Dictation failed: {reason} Try again, or report it with the app's log.",
+	"ui.common.errors.dictation_refused_take_kept": "Dictation failed: {reason}. Discard the recording, or report it with the app's log.",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "Dictation failed: {reason} Discard the recording, or report it with the app's log.",
 	"ui.common.errors.dictation_empty": "No words were picked up. Try again a little closer to the microphone.",
 	"ui.common.errors.speech_failure": "Couldn't speak this aloud. Try again.",
 	"ui.common.errors.speech_radient_sign_in": "Your Radient sign-in has stopped working. Sign in again in Settings.",

@@ -5858,6 +5858,7 @@ export type MessageParams = {
 	"ui.chat.composer.dictated_away.transcription_failed": { title: string };
 	"ui.chat.composer.dictated_away.transcription_failed_body": undefined;
 	"ui.chat.composer.dictated_away.untitled_chat": undefined;
+	"ui.chat.composer.dictation_failed_too_long_take_kept": undefined;
 	"ui.chat.composer.dictation_failed_transient": undefined;
 	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
 	"ui.chat.composer.insert_transcript": undefined;
@@ -8773,6 +8774,7 @@ export type MessageParams = {
 	"ui.common.actions.date_time_picker.set_to_current_time369877": {
 		label: string;
 	};
+	"ui.common.actions.discard": undefined;
 	"ui.common.actions.dismiss": undefined;
 	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": undefined;
 	"ui.common.actions.file_actions_menu.file_actions": undefined;
@@ -8964,6 +8966,8 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.common.errors.dictation_radient_credits": undefined;
+	"ui.common.errors.dictation_refused_take_kept": { reason: string };
+	"ui.common.errors.dictation_refused_take_kept_clipped": { reason: string };
 	"ui.common.errors.dictation_sign_in_refused": undefined;
 	"ui.common.errors.dictation_unknown": { reason: string };
 	"ui.common.errors.dictation_unknown_clipped": { reason: string };

@@ -1,0 +1,113 @@
+{
+	"schema": 1,
+	"auditor": "translation-auditor (lopdev task session 593a9ea1c6d8, i18n-audit-zh-CN; not the translator and not the PR coder)",
+	"agent": "translation-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"model_provenance": "Every catalogue read and verdict in this receipt ran on the session's served model anthropic/claude-sonnet-5-5; no provider fallback occurred.",
+	"fallback": "none",
+	"independence": "Separate delegated session from the coder agent that translated these keys. The verdict was rebuilt from the English source, the en context sidecars, the sibling keys, the glossary and the zh-CN style guide; the translator's commit message was not used as evidence.",
+	"instance": "ff20f86abb96-dictation-retake-zh-cn",
+	"locale": "zh-CN",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/dictation-retake-discard",
+	"head": "8ed6c2f23b884f27c0bc517c8d68335b4e5c0f99",
+	"date": "2026-11-22",
+	"audit_kind": "first audit of four newly translated keys across three namespaces (delta audit; the rest of each namespace is carried, not re-audited)",
+	"scope": "ui.common.actions.discard; ui.chat.composer.dictation_failed_too_long_take_kept; ui.common.errors.dictation_refused_take_kept; ui.common.errors.dictation_refused_take_kept_clipped",
+	"references": {
+		"glossary": "origin/main:i18n/glossary.md of damianvtran/local-operator (the ~/local-operator path named in docs/I18N.md; read at fetch time 2026-11-22)",
+		"style_guide": "origin/main:i18n/style-guides/zh-CN.md of damianvtran/local-operator (same fetch)"
+	},
+	"reference_sha256": {
+		"glossary": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6"
+	},
+	"method": "Read en and zh-CN values and the en context notes for each key; compared with siblings ui.chat.composer.dictation_failed_transient{,_take_kept}, ui.common.errors.dictation_unknown{,_clipped} and dictation_no_reason; grepped zh-CN catalogues for how discard/delete-recording is worded; checked {reason} placeholder sets by script; scanned en and zh-CN values of the three namespaces for bidi/zero-width/BOM characters (zero found; zh-CN is LTR, so no isolation marks are expected); hashed the files on disk with sha256sum.",
+	"checks": {
+		"placeholders": "{reason} appears exactly once, byte-identical, in both refused_take_kept values; the other two keys are placeholder-free in en and zh-CN.",
+		"bidi_and_invisible": "none in any value of the three namespaces, en or zh-CN",
+		"retry_wording": "None of the four zh-CN values says 重试/再试, as the en context notes require (no Retry control beside the row).",
+		"discard_term": "丢弃 is the locale's word for throwing a thing away: ui.notices.chat.drafts_offered_verb 已丢弃, ui.teamBridge.holds Discard 丢弃 (deletes the message). 放弃 is used where the object is unsaved edits or a draft label (ui.settings.*.discard*, ui.chat.sidebar.drafts.discard_label). A kept recording being thrown away matches the 丢弃 family; button, 请丢弃它 and 丢弃录音 all use the same verb.",
+		"clipped_join": "dictation_refused_take_kept_clipped joins {reason} and the next sentence with a half-width space and no full stop, exactly like en and like sibling dictation_unknown_clipped, as the en context note requires.",
+		"width": "Button is two characters, next to 重试 (also two)."
+	},
+	"keys_read": 4,
+	"namespaces": {
+		"ui.common.actions": {
+			"status": "passed",
+			"locale": "zh-CN",
+			"en_sha256": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+			"zh-CN_sha256": "04ff679df45eb4d497fb6061cf33e65ef92f2b2ac3051e56a309da6f4e6f6740",
+			"context_sha256": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e",
+			"result": "clean",
+			"keys_audited": [
+				{
+					"key": "ui.common.actions.discard",
+					"en": "Discard",
+					"target": "丢弃"
+				}
+			],
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"locale": "zh-CN",
+			"en_sha256": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+			"zh-CN_sha256": "4e36c3f0be0d8ab83949f7cfd4ec9567932b40b448b4385cd1a0151379e380d0",
+			"context_sha256": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1",
+			"result": "clean",
+			"keys_audited": [
+				{
+					"key": "ui.chat.composer.dictation_failed_too_long_take_kept",
+					"en": "Dictation failed: the recording is too long to send. Discard it and record a shorter one.",
+					"target": "听写失败：录音太长，无法发送。请丢弃它并重新录制一段更短的录音。"
+				}
+			],
+			"findings": []
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"locale": "zh-CN",
+			"en_sha256": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+			"zh-CN_sha256": "26f571da396ec5ecc55b186ebb7af415f70d9723bd45ebc6fcddc67ddf337beb",
+			"context_sha256": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2",
+			"result": "clean-with-findings",
+			"keys_audited": [
+				{
+					"key": "ui.common.errors.dictation_refused_take_kept",
+					"en": "Dictation failed: {reason}. Discard the recording, or report it with the app's log.",
+					"target": "听写失败：{reason}。丢弃录音，或连同应用日志一起报告此问题。"
+				},
+				{
+					"key": "ui.common.errors.dictation_refused_take_kept_clipped",
+					"en": "Dictation failed: {reason} Discard the recording, or report it with the app's log.",
+					"target": "听写失败：{reason} 丢弃录音，或连同应用日志一起报告此问题。"
+				}
+			],
+			"findings": [
+				{
+					"id": "ZH-1",
+					"severity": "minor",
+					"key": "ui.common.errors.dictation_refused_take_kept",
+					"current": "听写失败：{reason}。丢弃录音，或连同应用日志一起报告此问题。",
+					"proposed": "听写失败：{reason}。请丢弃录音，或连同应用日志一起报告此问题。",
+					"reason": "The zh-CN style guide binds 请 on the first next-step clause of an error body (a refusal body that tells the reader what to do), not a bare imperative. The sibling too_long key in ui.chat.composer already carries it (请丢弃它并……) for the same Discard action, so the same instruction reads curt here. Minor, not major: the style guide says existing values predate the rule and neighbours dictation_unknown / dictation_no_reason are also bare (重试，或……), so the namespace's established house voice is bare; the fix is optional for the row and mandatory only if the sibling values are swept."
+				},
+				{
+					"id": "ZH-2",
+					"severity": "minor",
+					"key": "ui.common.errors.dictation_refused_take_kept_clipped",
+					"current": "听写失败：{reason} 丢弃录音，或连同应用日志一起报告此问题。",
+					"proposed": "听写失败：{reason} 请丢弃录音，或连同应用日志一起报告此问题。",
+					"reason": "Same as ZH-1 for the clipped arm; keep the single half-width space after {reason} (no full stop), which matches en and dictation_unknown_clipped."
+				}
+			]
+		}
+	},
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	}
+}

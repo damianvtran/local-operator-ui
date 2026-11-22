@@ -35,6 +35,7 @@
 	"ui.chat.composer.processing_audio": "Processing audio",
 	"ui.chat.composer.dictation_failed_transient": "Dictation failed: the transcription service had a temporary fault. Try again.",
 	"ui.chat.composer.dictation_failed_transient_take_kept": "Dictation failed: the transcription service had a temporary fault. Your recording is kept — Retry sends it again.",
+	"ui.chat.composer.dictation_failed_too_long_take_kept": "Dictation failed: the recording is too long to send. Discard it and record a shorter one.",
 	"ui.chat.composer.suggestion.code_review_agent": "Build a code-review agent",
 	"ui.chat.composer.suggestion.create_team": "Create a team of agents",
 	"ui.chat.composer.suggestion.last_turn": "Show me what the agent did last turn",

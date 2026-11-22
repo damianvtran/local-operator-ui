@@ -134,13 +134,12 @@ import {
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
 	emptyTranscriptionMessage,
-	isTransientTranscriptionFailure,
-	transcriptionFailureMessage,
-	transcriptionFailureRowMessage,
+	retakeOfferFor,
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Spinner } from "@shared/components/common/spinner";
+import { DictationTakeRow } from "@shared/components/composer/dictation-take-row";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import {
@@ -2164,23 +2163,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const transcribeTakeRef = useRef<(take: Blob) => void>(() => {});
 		/*
-		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087).
+		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087), AND THE ROW THAT SPEAKS FOR IT.
 		 *
 		 * A take lands in `audioBlob` and is sent once; the effect below sends a take
 		 * once per (blob, nudge) pair, so a failed attempt used to leave the recording
 		 * sitting in state with nothing able to reach it - the user's speech, kept but
 		 * unreachable, and the only way back was to record again. `dictationFailure`
-		 * holds the sentence that offers the SAME bytes back when the failure is one
-		 * time can fix, and `dictationRetry` is the nudge that re-arms that one
-		 * effect: a retry is the first attempt's own path, never a second send path
-		 * beside it.
+		 * holds what the row under the box shows: the sentence, and whether that
+		 * sentence's Retry may exist. Both come from ONE decision (`retakeOfferFor`),
+		 * so a state that offers nothing and a sentence that offers a Retry can no
+		 * longer be different failures. `dictationRetry` is the nudge that re-arms the
+		 * one send effect: a retry is the first attempt's own path, never a second send
+		 * path beside it.
 		 *
-		 * Both are cleared when the take is retired - a new recording, a success - so
-		 * the offer cannot outlive the recording it describes.
+		 * Everything is cleared when the take is retired - a new recording, a success,
+		 * a discard - so the offer cannot outlive the recording it describes.
 		 */
-		const [dictationFailure, setDictationFailure] = useState<string | null>(
-			null,
-		);
+		const [dictationFailure, setDictationFailure] = useState<{
+			message: string;
+			retry: boolean;
+		} | null>(null);
 		const [dictationRetry, setDictationRetry] = useState(0);
 		/*
 		 * WHAT HAS ALREADY BEEN SENT, and why it is a ref rather than a dependency.
@@ -7679,26 +7681,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						endDictatedSend();
 						return;
 					}
-					// The raw server message stays on the console; the toast names the
-					// cause in a sentence a person can act on (see
-					// `transcriptionFailureMessage`), because "please try again" cannot
+					// The raw server message stays on the console; the reader gets the
+					// sentence `retakeOfferFor` chose, because "please try again" cannot
 					// fix an account with no credits or a refused sign-in.
 					console.error("Error transcribing audio:", error);
 					/*
-					 * THE TAKE STAYS WHEN TIME COULD FIX IT (#1087). A transient upstream
-					 * fault - the one class `isTransientTranscriptionFailure` names, and the
-					 * one the client has just retried - is the failure where sending the same
-					 * bytes again is an action a person can take, so the recording is offered
-					 * back rather than left in a state nothing can reach. A refusal keeps the
-					 * old behaviour: re-sending a decision cannot change it, and offering to
-					 * would be the "try again" lie this copy exists to delete.
+					 * WHAT THE FAILURE LEAVES BEHIND IS ONE DECISION (`retakeOfferFor`).
 					 *
-					 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). It carries the
-					 * retained-take sentence (`transcriptionFailureRowMessage`), not the
-					 * toast's, and the toast is withheld for this class: the row is the one
-					 * surface with the control, and two copies of the same sentence eleven
-					 * pixels apart - the louder one without the control, over the composer's
-					 * own mic and send - was the duplication this deletes.
+					 * The row exists where an action on the kept bytes exists: the transient
+					 * class where sending them again can help (#1087), an over-sized take the
+					 * app's own plane refused before sending (HTTP 413), and a request the
+					 * server rejected outright (HTTP 422). Only the first of those carries
+					 * Retry; all three carry Discard, because a recording a person can neither
+					 * send nor throw away is state they cannot leave.
+					 *
+					 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). Where it exists it also
+					 * carries the sentence, and the toast is withheld: the row is the one
+					 * surface with the controls, and two copies of the same sentence eleven
+					 * pixels apart - the louder one without them, over the composer's own mic
+					 * and send - was the duplication that round deleted. Everything else is a
+					 * refusal (402/401/403, the credit families, the desktop plane's pairing
+					 * codes), which keeps the toast and gets no row: a control beside a decision
+					 * that reproduces it is the "try again" lie this copy exists to delete.
 					 */
 					// A failed transcription sends NOTHING: the press ends here, the typed
 					// draft is untouched, and the kept take (if any) is offered back by the
@@ -7721,11 +7725,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						return;
 					}
 					endDictatedSend();
-					const transient = isTransientTranscriptionFailure(error);
+					const offer = retakeOfferFor(error);
 					setDictationFailure(
-						transient ? transcriptionFailureRowMessage(error) : null,
+						offer.keepRow
+							? { message: offer.message, retry: offer.retry }
+							: null,
 					);
-					if (!transient) showErrorToast(transcriptionFailureMessage(error));
+					if (!offer.keepRow) {
+						showErrorToast(offer.message);
+						/*
+						 * THE BYTES GO WITH THE ROW. With no row there is no control that can
+						 * reach this recording - the send effect fires on a (blob, nudge) pair,
+						 * and the nudge only exists behind the row's Retry - so holding it would
+						 * pin several megabytes of a take nobody can send until the composer
+						 * remounts. Dropping it changes nothing a person can do and gives the
+						 * memory back; the refusal's sentence still reaches them through the
+						 * toast.
+						 */
+						setAudioBlob(null);
+					}
 				} finally {
 					if (transcriptionAbortRef.current === controller) {
 						setIsTranscribingOwn(false);
@@ -7760,6 +7778,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			setDictationFailure(null);
 			setDictationRetry((attempt) => attempt + 1);
 		}, []);
+
+		/**
+		 * Throw the kept take away.
+		 *
+		 * The other half of the offer: a recording the user has decided not to send
+		 * should not sit in state until the composer remounts. Both writes land in one
+		 * commit, so the row and the bytes it describes leave together - and a retry
+		 * in flight cannot resurrect the take, because `dictationRetry` is untouched and
+		 * the send effect keys on the blob that is now gone.
+		 *
+		 * FOCUS GOES BACK TO THE BOX, synchronously and before the row unmounts: the
+		 * Discard control is the focused element and it is about to disappear, which
+		 * would otherwise drop focus to the document body - a keyboard user's next Tab
+		 * would start from the top of the page instead of the composer they were in.
+		 */
+		const discardDictation = useCallback(() => {
+			setDictationFailure(null);
+			setAudioBlob(null);
+			textareaRef.current?.focus();
+		}, [textareaRef]);
 
 		/*
 		 * One effect owns every attempt. `dictationRetry` is a TRIGGER rather than an
@@ -10611,45 +10649,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							{dictationFailure !== null &&
 								!isTranscribing &&
 								audioBlob !== null && (
-									<div
-										data-dictation-retry=""
-										className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-									>
-										{/*
-										 * AN ERROR REGISTER, not the metadata one (design round 1,
-										 * D6). The row sat in `ink-muted` with no mark at all, so it
-										 * read as the same quiet status as "Processing audio" - and
-										 * the toast it replaces carried the danger icon. The take is
-										 * still here, but the attempt failed: the icon says which,
-										 * and the sentence stays at reading ink.
-										 */}
-										<CircleAlert
-											aria-hidden="true"
-											className="size-3.5 shrink-0 text-danger"
-										/>
-										<span className="font-medium text-body-sm text-ink-muted">
-											{dictationFailure}
-										</span>
-										<Button
-											type="button"
-											variant="link"
-											size="sm"
-											/*
-											 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
-											 * D3). The `link` variant's `h-auto p-0` left this
-											 * control 29x12px - the text's own line box - and the
-											 * underline appeared only on hover, so the one recovery
-											 * control in the state was a colour-only word. `h-7 px-2`
-											 * restores a 28px target (the size every other `sm`
-											 * control in the row takes) and `underline` makes it
-											 * look pressable at rest.
-											 */
-											className="h-7 shrink-0 px-2 underline"
-											onClick={retryDictation}
-										>
-											{t("ui.common.actions.retry")}
-										</Button>
-									</div>
+									<DictationTakeRow
+										message={dictationFailure.message}
+										retry={dictationFailure.retry}
+										onRetry={retryDictation}
+										onDiscard={discardDictation}
+									/>
 								)}
 							<div data-lo-composer-rail="" className="composer-dock-rail">
 								<Tooltip content={t("ui.chat.composer.attach_file")}>
