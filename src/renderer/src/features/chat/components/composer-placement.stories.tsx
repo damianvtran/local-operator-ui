@@ -8,6 +8,7 @@ import type {
 	CanonicalFrontendState,
 	PendingAsk,
 } from "../../../../../../src/shared/desktop-session-contract";
+import type { GlassCoverage } from "../../../../../../src/shared/window-glass";
 import { EMPTY_DRAFTS } from "../ask-queue";
 import type { Message } from "../types/message";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -21,7 +22,11 @@ const meta = {
 } satisfies Meta;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<{
+	theme?: string;
+	glass?: "off" | "on";
+	glassCoverage?: GlassCoverage;
+}>;
 
 const messages: Message[] = [
 	{ id: "story-placement-message", role: "system", timestamp: new Date(0) },
@@ -214,11 +219,13 @@ function Placement({
 	goalAndLoop = false,
 	activity = "running",
 	initialPane,
+	miniGround = false,
 }: {
 	width?: number;
 	goalAndLoop?: boolean;
 	activity?: "running" | "pending" | "empty";
 	initialPane?: "asks" | "run";
+	miniGround?: boolean;
 }) {
 	const [now] = useState(Date.now);
 	const askOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
@@ -242,7 +249,10 @@ function Placement({
 	}, [conversation, initialPane]);
 
 	return (
-		<div className="flex items-start bg-canvas p-6">
+		<div
+			className="flex items-start bg-canvas p-6"
+			data-glass-region={miniGround ? "mini-ground" : undefined}
+		>
 			<div className="@container/chatcol min-w-0" style={{ width }}>
 				<MessageInput
 					isLoading={false}
@@ -324,6 +334,39 @@ export const Compact: Story = {
 			await expect(target.right).toBeLessThanOrEqual(bounds.right);
 		}
 	},
+};
+
+async function expectExteriorUnderprint(
+	canvasElement: HTMLElement,
+	pane: boolean,
+) {
+	const dock = canvasElement.querySelector(".composer-dock");
+	if (!dock) throw new Error("Missing composer dock");
+	const html = dock.ownerDocument.documentElement;
+	await expect(html).toHaveAttribute("data-glass");
+	await expect(html.matches('[data-glass~="pane"]')).toBe(pane);
+	const underprint = getComputedStyle(dock, "::before");
+	// An outer shadow cannot tint the rail through the translucent editor.
+	await expect(underprint.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+	await expect(underprint.filter).toBe("none");
+	await expect(underprint.boxShadow).not.toBe("none");
+	await expect(underprint.boxShadow).not.toContain("inset");
+}
+
+export const CompactGlass: Story = {
+	...Compact,
+	args: { theme: "localOperatorLight", glass: "on", glassCoverage: "full" },
+	play: async (context) => {
+		await Compact.play?.(context);
+		await expectExteriorUnderprint(context.canvasElement, true);
+	},
+};
+
+export const CompactMiniGlass: Story = {
+	args: { theme: "localOperatorLight", glass: "on", glassCoverage: "sidebars" },
+	render: () => <Placement width={393} goalAndLoop miniGround />,
+	play: async ({ canvasElement }) =>
+		expectExteriorUnderprint(canvasElement, false),
 };
 
 export const QuestionOpen: Story = {

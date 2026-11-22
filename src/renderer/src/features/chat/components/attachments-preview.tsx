@@ -18,7 +18,15 @@ import { cn } from "@shared/lib/utils";
 import type { Attachment } from "@shared/store/conversation-input-store";
 import { LoaderCircle, Maximize2, X } from "lucide-react";
 import type { FC } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { AttachmentKindIcon, attachmentMetaLine } from "./attachment-file-card";
 
 /**
@@ -261,8 +269,8 @@ function useAttachmentSize(attachment: string): number | null {
  * A read that cannot land — over the 64 MiB preview cap, a file that moved —
  * or lands and cannot be DECODED (a truncated image, a codec Chromium lacks)
  * falls back to the same name-and-icon body a non-media file gets, and the
- * hover preview is not rendered at all. The tile says WHY in its `title`
- * rather than looking the same for every cause. Both degrades are stated
+ * expanded preview is not rendered at all. If available, the failure reason
+ * is exposed separately from the filename. Both degrades are stated
  * rather than dressed as a picture that is still coming.
  *
  * MEMOISED, AND IT TAKES ITS ID RATHER THAN A CLOSURE (perf, QA round 1 on PR
@@ -311,6 +319,7 @@ const AttachmentTile = memo(function AttachmentTile({
 				: null;
 
 	const name = fileName || t("ui.chat.composer_media.pasted_image");
+	const triggerLabelId = useId();
 	const mediaError = () => setUndecodableUrl(readyUrl);
 
 	return (
@@ -324,9 +333,15 @@ const AttachmentTile = memo(function AttachmentTile({
 							type="button"
 							variant="ghost"
 							className="relative size-full overflow-hidden rounded-md p-0 focus-visible:-outline-offset-2"
-							aria-label={t("ui.chat.attachments.expand_aria", { name })}
-							title={name}
+							aria-labelledby={triggerLabelId}
 						>
+							{/* Replay masks text, not attributes (including names and tooltips). */}
+							<span
+								id={triggerLabelId}
+								className={cn("sr-only", USER_CONTENT_CLASS)}
+							>
+								{t("ui.chat.attachments.expand_aria", { name })}
+							</span>
 							{image ? (
 								<img
 									src={url}
@@ -361,14 +376,12 @@ const AttachmentTile = memo(function AttachmentTile({
 							USER_CONTENT_CLASS,
 						)}
 					>
-						<DialogTitle className="truncate pe-10" title={name}>
-							{name}
-						</DialogTitle>
+						<DialogTitle className="truncate pe-10">{name}</DialogTitle>
 						<div className="grid min-h-0 place-items-center overflow-hidden rounded-md bg-media-surface">
 							{image ? (
 								<img
 									src={url}
-									alt={name}
+									alt=""
 									className="max-h-[min(70dvh,36rem)] w-full object-contain"
 								/>
 							) : video ? (
@@ -386,9 +399,9 @@ const AttachmentTile = memo(function AttachmentTile({
 			) : (
 				<div
 					className="flex size-full flex-col items-center justify-center gap-1 px-1 text-center text-ink-muted"
-					title={reason ? `${name} — ${reason}` : name}
+					title={reason ?? undefined}
 				>
-					{reason ? (
+					{degraded ? (
 						<>
 							<span className="max-w-full truncate font-medium text-meta">
 								{name}
@@ -396,9 +409,10 @@ const AttachmentTile = memo(function AttachmentTile({
 							<span className="line-clamp-3 text-meta leading-tight">
 								{t("ui.chat.composer_media.preview_failed")}
 							</span>
-							{reason !== t("ui.chat.composer_media.preview_failed") && (
-								<span className="sr-only">{reason}</span>
-							)}
+							{reason &&
+								reason !== t("ui.chat.composer_media.preview_failed") && (
+									<span className="sr-only">{reason}</span>
+								)}
 						</>
 					) : (
 						<output className="flex flex-col items-center gap-1">

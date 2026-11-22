@@ -2877,6 +2877,16 @@ html[data-glass~="sidebar"]
 	background-repeat: no-repeat;
 }
 
+/* The filled blur would show through the translucent writing well. Use only
+ * an exterior shadow on glass so the field tint still meets its contrast floor. */
+html[data-glass~="pane"] .composer-dock::before,
+html[data-glass] [data-glass-region="mini-ground"] .composer-dock::before {
+	inset: 0;
+	background: none;
+	filter: none;
+	box-shadow: 0 5px 12px -6px var(--composer-dock-underprint);
+}
+
 /* No second raw ground over window glass. The well uses the normal field
  * coverage below, while the shelf takes only a lighter tint of the same ink. */
 html[data-glass~="pane"] .composer-dock::after,
