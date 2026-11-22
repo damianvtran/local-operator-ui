@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "receipt_kind": "translation-only; independent audit pending",
+  "instance": "e896d2db9139",
+  "date": "2026-11-21",
+  "translator": {
+    "agent": "i18n-translator (lopdev translation pass)",
+    "session": "e896d2db9139",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+  },
+  "status": "translated-awaiting-independent-audit",
+  "scope_note": "Only listed bridge-card keys semantically reviewed; unchanged keys are not re-certified. No auditor result, native speaker claim, rendered fit or activation approval.",
+  "style_inputs": {
+    "repository": "local-operator",
+    "revision": "ebe4a4103ae2bee8cfc369450a72c79778721e5a",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+  },
+  "namespaces": {
+    "ui.chat.bridgeReceipt": {
+      "keys_translated_reviewed": [
+        "ui.chat.bridgeReceipt.held",
+        "ui.chat.bridgeReceipt.pending",
+        "ui.chat.bridgeReceipt.thread_reply",
+        "ui.chat.bridgeReceipt.unavailable_reason.offline"
+      ],
+      "source_path": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.json",
+      "target_path": "src/i18n/catalogues/ur/ui.chat.bridgeReceipt.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.context.json",
+      "sha256": {
+        "en": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+        "ur": "00ba12d813af11fe4ddcc3e5783fa3a021e0bb748cc13b4635ec4d18cac5fb70",
+        "context": "802e3a8c48bb87069d2b7833b4dbc217847f86543d3884a8658c4b3f8cf32ab6"
+      },
+      "mechanical_checks": {
+        "namespace_key_parity": true,
+        "scoped_placeholder_parity": true,
+        "scoped_nfc": true,
+        "scoped_no_bidi_controls": true
+      }
+    }
+  }
+}

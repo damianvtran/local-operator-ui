@@ -1,0 +1,89 @@
+{
+  "auditor": "copy-reviewer-54e42e56d7d0",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "54e42e56d7d0-ru",
+  "date": "2026-11-21",
+  "status": "passed",
+  "namespace": "ui.teamBridge.holdsBatch",
+  "locale": "ru",
+  "provenance": {
+    "actual_served_model": "anthropic/claude-opus-5-5",
+    "note": "This resumed semantic audit inspected all target values. Earlier blocked attempt reported openai/gpt-6.1-sol fallback and inspected no targets; that attempt is not approval evidence.",
+    "translator_sessions": [
+      "a1cd2bb201be",
+      "ae48c615726e"
+    ],
+    "translator_model": "openai/gpt-6.1-sol",
+    "independent": true
+  },
+  "source_commit": "a03a1f019cb3f2e73ad04e7d6910f9d23fb224d9",
+  "target_commit": "178dbe97fc7dada7fddb38765a250909078b71eb",
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.json",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.context.json",
+    "ru": "src/i18n/catalogues/ru/ui.teamBridge.holdsBatch.json"
+  },
+  "sha256": {
+    "en": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+    "ru": "363950303c36e8c238e1cae6f33840e9097ea89730539f20d87324cf26b54cf7",
+    "context": "5df115fd88f555e96ebf66026b4e009491cb72a7f2831cc4f6a682e0cce6ad9e"
+  },
+  "guidance": {
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "~/local-operator/i18n/style-guides/ru.md",
+    "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "coverage": {
+    "values_inspected": 9,
+    "keys": [
+      "ui.teamBridge.holdsBatch.action",
+      "ui.teamBridge.holdsBatch.confirm",
+      "ui.teamBridge.holdsBatch.submit",
+      "ui.teamBridge.holdsBatch.progress",
+      "ui.teamBridge.holdsBatch.result",
+      "ui.teamBridge.holdsBatch.retry",
+      "ui.teamBridge.holdsBatch.recorded",
+      "ui.teamBridge.holdsBatch.stale_receipt",
+      "ui.teamBridge.holdsBatch.local_unconfirmed"
+    ],
+    "semantic_checks": {
+      "action": "Non-delivery discard verb agrees with existing localized single-message action; ellipsis retains confirmation step.",
+      "confirm": "Restricts operation to listed snapshot, excludes new arrivals, retains irreversible device-local recording, unavailable text and no notification guarantee.",
+      "submit": "Executes listed messages with count label, not an unbounded future set; grammatical with count 1.",
+      "progress": "Counts processed attempts without promising successful recording, delivery or notification; numeric label avoids agreement errors.",
+      "result": "Distinguishes locally recorded decisions from unconfirmed attempts; records remain in displayed list, without asserting no write or remote held state.",
+      "retry": "Retries failed messages, retains confirmation ellipsis and does not invite new arrivals.",
+      "recorded": "States device-local discard record only, not delivery or server confirmation.",
+      "stale_receipt": "Record changed, not necessarily message text; refresh and re-confirm, without asking to reread unseen text.",
+      "local_unconfirmed": "Terminal local discard; no server confirmation, sender notification uncertain, no further local action."
+    },
+    "locale_notes": "Отклонить / отклонение and задержанное сообщение match existing terminology. Infinitive actions and impersonal count labels avoid Russian number agreement defects.",
+    "terminology_reference": "src/i18n/catalogues/ru/ui.teamBridge.holds.json"
+  },
+  "execution": {
+    "copy_scan": {
+      "implementation": "skill://design-qa/scripts/copy_scan.py",
+      "method": "Loaded approved script through skill read; invoked scan() in persistent Python kernel on English plus seven target files.",
+      "result": {
+        "summary": {
+          "filesScanned": 8,
+          "stringsSeen": 114,
+          "findings": 0
+        },
+        "findings": []
+      }
+    },
+    "structural_check": {
+      "method": "Exact keyset; regex placeholder multiset equality per key; unicodedata NFC equality; no ALM/LRM/RLM/embedding/override/isolate bidi controls.",
+      "checked_target_values": 63,
+      "failures": []
+    }
+  },
+  "limitations": [
+    "Source-copy/semantic audit only; no rendered fit, font, clipping, pseudo-localization or runtime RTL claim.",
+    "One independent audit instance per locale; does not substitute for any required additional high-visibility audit."
+  ],
+  "findings": [],
+  "verdict": "APPROVED — TERMINAL (no blocker/major findings)"
+}

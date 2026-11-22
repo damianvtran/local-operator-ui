@@ -23,23 +23,45 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
+import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
+import type { DiscardBatchResult } from "./team-bridge-discard-batch";
+import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
+import {
+	heldHidePreference,
+	useHeldHideRecoveryPending,
+	useHeldHideRevisions,
+} from "./team-bridge-held-hide-preference";
+import { holdsKey } from "./team-bridge-holds-keys";
 import {
 	type HoldItem,
+	type HoldProof,
 	type HoldWord,
+	type HoldsPage,
 	armedWords,
+	canHideHoldLocally,
 	decisionNotApplied,
 	hasHiddenCharacters,
 	holdAffordance,
+	holdAttachmentCounts,
+	holdDecideProof,
 	holdReason,
 	holdReasonLabel,
+	holdReference,
 	needsExpand,
+	projectHeldMessages,
+	receiptDiscardArmed,
 	sortHolds,
+} from "./team-bridge-holds-model";
+import {
+	type DiscardSnapshotEntry,
+	captureDiscardSnapshot,
 } from "./team-bridge-holds-model";
 import { memberStoredName } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
@@ -53,6 +75,11 @@ import {
 
 type ListState = "loading" | "error" | "ready";
 type Busy = { id: string; word: HoldWord } | null;
+type LocalHideControls = {
+	hiddenItems: readonly HoldItem[];
+	recoveryPending?: boolean;
+	onChange: (item: HoldItem, hide: boolean) => boolean;
+};
 
 function stamp(value: string | null): string | null {
 	if (!value) return null;
@@ -84,13 +111,6 @@ export function heldSenderLine(message: OwnerAuditMessage | null): string {
 	return t("ui.teamBridge.holds.from_person", { person });
 }
 
-function attachmentCount(message: OwnerAuditMessage | null): number {
-	if (!message) return 0;
-	const images = message.attachments?.length || message.attachment_count || 0;
-	const files = Math.max(message.files?.length ?? 0, message.file_count ?? 0);
-	return images + files;
-}
-
 export function HeldMessagesView({
 	listState,
 	items,
@@ -107,6 +127,9 @@ export function HeldMessagesView({
 	now,
 	initialExpanded,
 	initialConfirm,
+	onBatchDecide,
+	initialBatch,
+	localHide,
 }: {
 	listState: ListState;
 	items: readonly HoldItem[];
@@ -118,7 +141,7 @@ export function HeldMessagesView({
 	/** The hold whose Deliver/Discard is in flight, and which word. */
 	busy?: Busy;
 	refusals?: Readonly<Record<string, string>>;
-	onDecide: (item: HoldItem, word: HoldWord, bodySha256: string) => void;
+	onDecide: (item: HoldItem, word: HoldWord, proof: HoldProof) => void;
 	onRetry?: () => void;
 	onRetryDetails?: () => void;
 	/** For the attachment group's owner-audit scope. */
@@ -130,16 +153,57 @@ export function HeldMessagesView({
 	/** Stories: rows opened in full / showing their confirm step. */
 	initialExpanded?: readonly string[];
 	initialConfirm?: Readonly<Record<string, HoldWord>>;
+	onBatchDecide?: (
+		entries: readonly DiscardSnapshotEntry[],
+		onResult: (result: DiscardBatchResult) => void,
+	) => Promise<void>;
+	initialBatch?: BatchPreview;
+	localHide?: LocalHideControls;
 }) {
 	useI18nLocale();
-	if (hideWhenEmpty && listState === "ready" && items.length === 0) return null;
+	const [batchBlocking, setBatchBlocking] = useState(Boolean(initialBatch));
+	const [batchStarted, setBatchStarted] = useState(Boolean(initialBatch));
+	const hiddenItems = localHide?.hiddenItems ?? [];
+	const [hideFailed, setHideFailed] = useState(false);
+	const titleRef = useRef<HTMLHeadingElement>(null);
+	const hiddenTitleRef = useRef<HTMLHeadingElement>(null);
+	const moveFocus = useRef<"hidden" | "queue" | null>(null);
+	useEffect(() => {
+		if (moveFocus.current === "hidden") hiddenTitleRef.current?.focus();
+		if (moveFocus.current === "queue") titleRef.current?.focus();
+		moveFocus.current = null;
+	});
+	const changeVisibility = (item: HoldItem, hide: boolean) => {
+		// Both actions remove their own button. Move focus only for a user-initiated
+		// change, not when a background read recovers the details.
+		moveFocus.current = hide ? "hidden" : "queue";
+		const changed = localHide?.onChange(item, hide) ?? false;
+		if (!changed) moveFocus.current = null;
+		setHideFailed(!changed);
+	};
+	// Keep result accounting mounted after the last held row disappears, but
+	// preserve Approvals' single empty state when no batch has been started.
+	if (
+		hideWhenEmpty &&
+		!batchBlocking &&
+		!batchStarted &&
+		!localHide?.recoveryPending &&
+		listState === "ready" &&
+		items.length === 0 &&
+		hiddenItems.length === 0
+	)
+		return null;
 	const ordered = sortHolds(items, now);
 	return (
 		<section
 			className="flex flex-col gap-3"
 			aria-label={t("ui.teamBridge.holds.title")}
 		>
-			<h3 className="text-base font-medium text-ink">
+			<h3
+				ref={titleRef}
+				tabIndex={-1}
+				className="text-base font-medium text-ink"
+			>
 				{t("ui.teamBridge.holds.title")}
 			</h3>
 			<p className="max-w-prose text-sm text-ink-muted">
@@ -158,6 +222,43 @@ export function HeldMessagesView({
 					{t("ui.teamBridge.holds.release_off")}
 				</p>
 			)}
+			{/* Keep key/policy disclosures before every decision control, including
+			    a long batch confirmation that could push them offscreen. */}
+			{onBatchDecide && (
+				<HeldMessagesBatch
+					candidates={
+						listState === "ready" && enabled
+							? captureDiscardSnapshot(items, detail, now)
+							: []
+					}
+					disabled={busy !== null || !enabled || listState !== "ready"}
+					onDecide={async (entries, onResult) => {
+						setBatchStarted(true);
+						await onBatchDecide(entries, onResult);
+					}}
+					onBlockingChange={setBatchBlocking}
+					initialPreview={initialBatch}
+				/>
+			)}
+			{onBatchDecide && listState === "error" && items.length > 0 && (
+				// A failed refresh must leave a way to recover a disabled batch,
+				// even when cached rows already exist and hide the list error state.
+				<div role="alert" className="flex flex-wrap items-baseline gap-2">
+					<p className="text-sm text-ink-muted">
+						{t("ui.teamBridge.list.error_stale")}
+					</p>
+					{onRetry && (
+						<Button size="sm" variant="link" onClick={onRetry}>
+							{t("ui.teamBridge.list.retry")}
+						</Button>
+					)}
+				</div>
+			)}
+			{(hideFailed || localHide?.recoveryPending) && (
+				<p role="alert" className="text-sm text-ink-muted">
+					{t("ui.teamBridge.holds.hide_failed")}
+				</p>
+			)}
 			{listState === "loading" && items.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
 			) : listState === "error" && items.length === 0 ? (
@@ -172,9 +273,11 @@ export function HeldMessagesView({
 					)}
 				</div>
 			) : items.length === 0 ? (
-				<p className="text-sm text-ink-muted">
-					{t("ui.teamBridge.holds.empty")}
-				</p>
+				hiddenItems.length === 0 && (
+					<p className="text-sm text-ink-muted">
+						{t("ui.teamBridge.holds.empty")}
+					</p>
+				)
 			) : (
 				<ul className="flex flex-col gap-2">
 					{ordered.map((item) => (
@@ -182,10 +285,18 @@ export function HeldMessagesView({
 							key={item.message_id}
 							item={item}
 							detail={detail(item)}
-							busy={busy}
+							busy={
+								busy ??
+								(batchBlocking ? { id: "batch", word: "discard" } : null)
+							}
 							refusal={refusals[item.message_id] ?? null}
 							onDecide={onDecide}
 							onRetryDetails={onRetryDetails}
+							onHideLocal={
+								localHide && listState === "ready" && item.localHideRevision
+									? () => changeVisibility(item, true)
+									: undefined
+							}
 							accountId={accountId}
 							now={now}
 							initialExpanded={initialExpanded?.includes(item.message_id)}
@@ -193,6 +304,44 @@ export function HeldMessagesView({
 						/>
 					))}
 				</ul>
+			)}
+			{hiddenItems.length > 0 && (
+				<div className="flex flex-col gap-2 border-t border-hairline pt-3">
+					<h4
+						ref={hiddenTitleRef}
+						tabIndex={-1}
+						className="text-sm font-medium text-ink"
+					>
+						{t("ui.teamBridge.holds.hidden_local", {
+							count: hiddenItems.length,
+						})}
+					</h4>
+					<ul className="flex flex-col gap-1">
+						{sortHolds(hiddenItems, now).map((item) => {
+							const reference = holdReference(item.message_id);
+							return (
+								<li
+									key={item.localHideRevision}
+									className="flex flex-wrap items-center justify-between gap-x-2"
+								>
+									<span className="text-meta text-ink-muted">
+										{t("ui.teamBridge.holds.reference", { reference })}
+									</span>
+									<Button
+										size="sm"
+										variant="ghost"
+										aria-label={t("ui.teamBridge.holds.restore_local_label", {
+											reference,
+										})}
+										onClick={() => changeVisibility(item, false)}
+									>
+										{t("ui.teamBridge.holds.restore_local")}
+									</Button>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
 			)}
 		</section>
 	);
@@ -205,6 +354,7 @@ function HeldRow({
 	refusal,
 	onDecide,
 	onRetryDetails,
+	onHideLocal,
 	accountId,
 	now,
 	initialExpanded = false,
@@ -214,8 +364,9 @@ function HeldRow({
 	detail: HeldMessageDetail;
 	busy: Busy;
 	refusal: string | null;
-	onDecide: (item: HoldItem, word: HoldWord, bodySha256: string) => void;
+	onDecide: (item: HoldItem, word: HoldWord, proof: HoldProof) => void;
 	onRetryDetails?: () => void;
+	onHideLocal?: () => void;
 	accountId: string | null;
 	now?: number;
 	initialExpanded?: boolean;
@@ -225,7 +376,6 @@ function HeldRow({
 	/* Latched: once the whole message was on screen it counts as seen, so
 	   collapsing it again does not take the Deliver away. */
 	const [seen, setSeen] = useState(initialExpanded);
-	const [confirm, setConfirm] = useState<HoldWord | null>(initialConfirm);
 	const statusRef = useRef<HTMLDivElement>(null);
 	const message = detail.state === "ready" ? detail.message : null;
 	const binding = detail.state === "ready" ? detail.binding : null;
@@ -233,26 +383,59 @@ function HeldRow({
 	const affordance = holdAffordance(item, now);
 	const held = stamp(item.held_at);
 	const until = stamp(item.deliver_until);
-	const attachments = attachmentCount(message);
+	const { images, files } = holdAttachmentCounts(message);
+	const attachments = images + files;
 	const clampable = needsExpand(message?.body, attachments);
 	const seenInFull = !clampable || seen;
 	const hidden = hasHiddenCharacters(message?.body);
-	const armed = binding
+	/* #4358: a hold whose body cannot be shown may still be discarded by its
+	   receipt (Discard only; see `receiptDiscardArmed`). */
+	/* `unread` implies no hash is on hand (nothing shown, or no usable hash),
+	   so the Discard it arms binds the receipt and nothing else. */
+	const unread = receiptDiscardArmed(item, affordance, detail.state, binding);
+	const bodyArmed = binding
 		? armedWords(affordance, binding, seenInFull, hidden)
 		: { deliver: false, discard: false };
-	/* S-7: the confirm step is for ONE word and stays only while that word is
-	   still armed. A background refresh that disarms it (body now withheld,
-	   affordance changed) closes the step, so the stale word cannot be sent. */
-	const confirming = confirm !== null && armed[confirm] ? confirm : null;
+	const armed = {
+		deliver: bodyArmed.deliver,
+		discard: bodyArmed.discard || unread,
+	};
+	const proofFor = (word: HoldWord) =>
+		holdDecideProof(word, {
+			armed,
+			binding,
+			receipt: unread ? (item.discard_receipt ?? null) : null,
+		});
+	const proofKey = (proof: HoldProof | null) =>
+		proof ? JSON.stringify(proof) : null;
+	/* The confirm step is for ONE word AND the proof it would send, latched
+	   when it opened. S-7: a background refresh that disarms the word (body now
+	   withheld, affordance changed) closes it. #4358: so does one that changes
+	   the proof (a new receipt after a re-screen, a body that now loads), so a
+	   confirmation can never be spent on a different record than the one the
+	   person confirmed. */
+	const [confirm, setConfirm] = useState<{
+		word: HoldWord;
+		key: string | null;
+	} | null>(() =>
+		initialConfirm
+			? { word: initialConfirm, key: proofKey(proofFor(initialConfirm)) }
+			: null,
+	);
+	const confirming =
+		confirm !== null &&
+		armed[confirm.word] &&
+		confirm.key !== null &&
+		proofKey(proofFor(confirm.word)) === confirm.key
+			? confirm.word
+			: null;
+	const reference = holdReference(item.message_id);
 	const confirmRef = useRef<HTMLButtonElement>(null);
 	const offers =
 		affordance.state === "open" || affordance.state === "deliver_expired";
 	const mine = busy?.id === item.message_id;
 	const disabled = busy !== null;
-	const hash =
-		binding && (binding.state === "shown" || binding.state === "withheld")
-			? binding.hash
-			: null;
+	const canHide = onHideLocal && canHideHoldLocally(item, detail, now);
 
 	/* UX U4: when this row's decision settles, the buttons unmount; move focus
 	   to the row's status line rather than dropping it to <body>. */
@@ -273,8 +456,12 @@ function HeldRow({
 		if (confirming) confirmRef.current?.focus({ preventScroll: true });
 	}, [confirming]);
 
+	const open = (word: HoldWord) =>
+		setConfirm({ word, key: proofKey(proofFor(word)) });
 	const press = (word: HoldWord) => {
-		if (hash && armed[word]) onDecide(item, word, hash);
+		const proof = proofFor(word);
+		// Only the proof that was confirmed; anything else re-asks.
+		if (proof && confirm?.key === proofKey(proof)) onDecide(item, word, proof);
 	};
 	const attachmentScope =
 		message && detail.state === "ready" && accountId
@@ -315,7 +502,7 @@ function HeldRow({
 				)}
 			</p>
 			{/* N1: a decided row says what was decided, not why it was held. */}
-			{affordance.state !== "decided" && (
+			{affordance.state !== "decided" && !unread && (
 				<p className="text-sm text-ink">{holdReasonLabel(holdReason(item))}</p>
 			)}
 			{typeof message?.body === "string" && message.body !== "" && (
@@ -335,12 +522,9 @@ function HeldRow({
 				<AuditAttachmentGroup
 					scope={attachmentScope}
 					attachments={message.attachments ?? []}
-					count={message.attachments?.length || message.attachment_count || 0}
+					count={images}
 					files={(message.files ?? []).map(toBridgeFileDescriptor)}
-					fileCount={Math.max(
-						message.files?.length ?? 0,
-						message.file_count ?? 0,
-					)}
+					fileCount={files}
 				/>
 			)}
 			{message && clampable && (
@@ -375,7 +559,13 @@ function HeldRow({
 						{decisionNotApplied(affordance.outcome)
 							? t("ui.teamBridge.holds.state.not_applied")
 							: affordance.word === "discard"
-								? t("ui.teamBridge.holds.state.chose_discard")
+								? /* Recorded here but not yet applied: say so, never
+									   that the sender was told (#4358 brief). */
+									affordance.outcome === "discarded_local_unconfirmed"
+									? t("ui.teamBridge.holdsBatch.local_unconfirmed")
+									: affordance.outcome === "pending"
+										? t("ui.teamBridge.holds.state.discard_recorded")
+										: t("ui.teamBridge.holds.state.chose_discard")
 								: t("ui.teamBridge.holds.state.chose_deliver")}
 					</p>
 				)}
@@ -384,16 +574,37 @@ function HeldRow({
 						{t("ui.teamBridge.holds.state.not_releasable")}
 					</p>
 				)}
-				{affordance.state === "deliver_expired" && (
+				{/* A receipt row says why below; this line's "the sender sees it"
+				    is not something an unloadable message can promise. */}
+				{affordance.state === "deliver_expired" && !unread && armed.discard && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.state.deliver_expired")}
 					</p>
 				)}
+				{unread && (
+					/* #4358: what the person can still do, and the reference that
+					   names this row in the confirm step. */
+					<>
+						<p className="text-meta text-ink-dim">
+							{t("ui.teamBridge.holds.receipt_only")}
+						</p>
+						<p className="text-meta text-ink-dim">
+							{t("ui.teamBridge.holds.reference", { reference })}
+						</p>
+					</>
+				)}
+				{/* Try again on EVERY row whose details failed to load, receipt rows
+				    included (PR #2017 r1 M1/S-1/Q-1): a failure can be transient,
+				    and an unread Discard must never be the only way forward. A
+				    receipt row drops only the "can't be discarded yet" sentence,
+				    which its own line above contradicts. */}
 				{offers && detail.state === "unavailable" && (
 					<div className="flex flex-wrap items-baseline gap-x-2">
-						<p className="text-meta text-ink-dim">
-							{t("ui.teamBridge.holds.details_unavailable")}
-						</p>
+						{!unread && (
+							<p className="text-meta text-ink-dim">
+								{t("ui.teamBridge.holds.details_unavailable")}
+							</p>
+						)}
 						{onRetryDetails && item.conversation_id && (
 							<Button size="sm" variant="link" onClick={onRetryDetails}>
 								{t("ui.teamBridge.list.retry")}
@@ -416,7 +627,7 @@ function HeldRow({
 							{t("ui.teamBridge.holds.body_withheld")}
 						</p>
 					)}
-				{offers && binding?.state === "none" && (
+				{offers && binding?.state === "none" && !unread && (
 					<p className="text-meta text-ink-dim">
 						{t("ui.teamBridge.holds.details_unavailable")}
 					</p>
@@ -460,7 +671,15 @@ function HeldRow({
 					<p className="text-sm text-ink">
 						{confirming === "deliver"
 							? t("ui.teamBridge.holds.confirm.deliver")
-							: t("ui.teamBridge.holds.confirm.discard")}
+							: /* #4358: a receipt Discard names the ONE message by its
+								   reference and says the text was never shown; it
+								   promises nothing about the sender, whom an expired
+								   hub copy may never reach. */
+								unread
+								? t("ui.teamBridge.holds.confirm.discard_unread", {
+										reference,
+									})
+								: t("ui.teamBridge.holds.confirm.discard")}
 					</p>
 					<div className="flex gap-2">
 						<Button
@@ -489,8 +708,8 @@ function HeldRow({
 					</div>
 				</div>
 			) : (
-				(armed.deliver || armed.discard) && (
-					<div className="flex gap-2 pt-1">
+				(armed.deliver || armed.discard || canHide) && (
+					<div className="flex flex-wrap gap-2 pt-1">
 						{armed.deliver && (
 							/* D2: Deliver mirrors Approve (primary); Discard mirrors Deny
 							   (secondary), so both always read as buttons. */
@@ -499,7 +718,7 @@ function HeldRow({
 								variant="primary"
 								disabled={disabled}
 								aria-label={t("ui.teamBridge.holds.deliver_label", { sender })}
-								onClick={() => setConfirm("deliver")}
+								onClick={() => open("deliver")}
 							>
 								{t("ui.teamBridge.holds.deliver")}
 							</Button>
@@ -509,10 +728,29 @@ function HeldRow({
 								size="sm"
 								variant="secondary"
 								disabled={disabled}
-								aria-label={t("ui.teamBridge.holds.discard_label", { sender })}
-								onClick={() => setConfirm("discard")}
+								aria-label={
+									unread
+										? t("ui.teamBridge.holds.discard_unread_label", {
+												reference,
+											})
+										: t("ui.teamBridge.holds.discard_label", { sender })
+								}
+								onClick={() => open("discard")}
 							>
 								{t("ui.teamBridge.holds.discard")}
+							</Button>
+						)}
+						{canHide && (
+							<Button
+								size="sm"
+								variant="ghost"
+								disabled={disabled}
+								onClick={onHideLocal}
+								aria-label={t("ui.teamBridge.holds.hide_local_label", {
+									reference,
+								})}
+							>
+								{t("ui.teamBridge.holds.hide_local")}
 							</Button>
 						)}
 					</div>
@@ -533,7 +771,29 @@ export function TeamBridgeHeldMessages({
 	const detail = useHeldMessageDetails(items);
 	const decide = useHoldDecide();
 	const retryDetails = useRetryHeldDetails();
-	const { accountId } = useTeamBridgeAccount();
+	const { accountId, epoch } = useTeamBridgeAccount();
+	const client = useQueryClient();
+	const hiddenRevisions = useHeldHideRevisions();
+	const recoveryPending = useHeldHideRecoveryPending();
+	const { visible, hidden, recovered } = projectHeldMessages(
+		items,
+		hiddenRevisions,
+		detail,
+	);
+	const isCurrentAccount = () => {
+		const current = observedRadientAuthority(client);
+		return (
+			Boolean(accountId) &&
+			current.accountId === accountId &&
+			current.epoch === epoch
+		);
+	};
+	useLayoutEffect(() => {
+		// The original join sees every row, including hidden rows. Leave a row
+		// restored once a normal detail read actually shows content again.
+		if (recovered.length > 0 && isCurrentAccount())
+			heldHidePreference.revealRecovered(recovered);
+	});
 	const listState: ListState = holds.isError
 		? "error"
 		: holds.isPending
@@ -541,14 +801,35 @@ export function TeamBridgeHeldMessages({
 			: "ready";
 	return (
 		<HeldMessagesView
+			key={accountId ?? "signed-out"}
 			listState={listState}
-			items={items}
+			items={visible}
+			localHide={{
+				hiddenItems: hidden,
+				recoveryPending,
+				onChange: (item, hide) => {
+					const revision = item.localHideRevision;
+					if (!revision || !isCurrentAccount()) return false;
+					const current = client
+						.getQueryData<HoldsPage>(holdsKey(accountId))
+						?.items.find((row) => row.localHideRevision === revision);
+					if (
+						!current ||
+						(hide && !canHideHoldLocally(current, detail(current)))
+					)
+						return false;
+					return hide
+						? heldHidePreference.hide(revision)
+						: heldHidePreference.restore(revision);
+				},
+			}}
 			enabled={holds.data?.enabled ?? true}
 			keyProtection={holds.data?.key_protection ?? null}
 			detail={detail}
 			busy={decide.busy}
 			refusals={decide.refusals}
-			onDecide={(item, word, hash) => void decide.run(item, word, hash)}
+			onDecide={(item, word, proof) => void decide.run(item, word, proof)}
+			onBatchDecide={decide.runBatch}
 			onRetry={() => void holds.refetch()}
 			onRetryDetails={() => void retryDetails()}
 			accountId={accountId ?? null}

@@ -195,11 +195,11 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import {
+	ArrowUp,
 	Check,
 	CircleAlert,
 	Mic,
-	Paperclip,
-	Send,
+	Plus,
 	Square,
 	X,
 } from "lucide-react";
@@ -976,9 +976,8 @@ export type MessageInputProps = {
 	 *
 	 * A node from the host that owns the admission gate (`useSoundStopGate`),
 	 * not a boolean: this composer has no business knowing what a sound call is.
-	 * Kept off the box itself because the box is one control with one focus
-	 * ring (`COMPOSER_BOX`), and a fieldset of two buttons inside that ring
-	 * would be two more controls inside the thing it frames.
+	 * Kept outside the dock because confirmation belongs to the host gate,
+	 * not to the draft or its editor controls.
 	 */
 	stopConfirmation?: React.ReactNode;
 	/**
@@ -1852,62 +1851,14 @@ export type MessageInputHandle = {
 	consumeApprovalAnswerDraft: () => void;
 };
 
-/*
- * The composer box, defined once: an `elevated` panel, radius 16, and NO edge at
- * rest (chat redesign §G1; design round 1's D12).
- *
- * It wore `border-control` on `bg-surface`, and on the dark brand palette that
- * edge is the accent's green: the composer was the loudest thing on the screen at
- * rest, a ring around an empty box, while the transcript - the surface the reader
- * came for - sat at `canvas` with nothing pointing at it. §G1 spends the accent
- * on READY (the send control's fill) and on FOCUS (the ring below), and separates
- * the panel from its column with the lightness step the system already has:
- * `elevated` over `canvas` is the same pair every menu, popover and dialog in the
- * app uses.
- *
- * THE FOCUS RING IS UNCHANGED and is now the only boundary: the base-layer
- * `:focus-visible` outline, promoted from the textarea to this box via `:has` so
- * the whole composer - previews and toolbar included - reads as one control; the
- * textarea suppresses its own outline, so there is never a second ring inside the
- * box. No decorative shadow.
- */
-const COMPOSER_BOX = cn(
-	"mx-auto flex w-full flex-col bg-elevated",
-	"box-border transition-colors duration-fast ease-out-quart",
-);
+/* The directory and readings belong to the workspace, not to the draft.
+ * Keep their shelf outside the inset editor, on the same conversation measure. */
+const COMPOSER_BOX = "composer-dock mx-auto flex w-full flex-col";
 
-/*
- * THE BOX'S FOCUS RING, kept apart from the box because the DROP state REPLACES it
- * (design round 1, D1; UX round 1, U3).
- *
- * Scoped to `textarea`, not a bare `has-[:focus-visible]`.
- *
- * This box also contains the attach, model and send controls. Unscoped, it
- * ringed itself whenever any of those took focus, while the button drew its
- * own ring at the same time - a ring inside a ring, pointing at the box
- * when the user is on a button. The wrapper draws the ring for the FIELD it
- * frames; every other control in here is responsible for its own.
- *
- * `outline-solid` is required, not decorative: the textarea carries
- * `outline-none`, which pins `--tw-outline-style: none`, and that token
- * survives into this state - so the width from `outline-2` applied and no
- * outline ever painted, leaving the app's primary input with no keyboard
- * focus indicator.
- *
- * `outline-offset-2` matches the other three field wrappers; this one sat
- * at 0 and was the odd one out.
- *
- * WHY IT IS A SEPARATE CONST rather than a line inside `COMPOSER_BOX`: these are
- * `has-[…]` utilities, and Tailwind emits variant utilities AFTER plain ones, so a
- * plain `outline-dashed` added beside them never wins - measured on the built app
- * (2026-10-04), the box still read `outline-style: solid` with a file over it. The
- * armed state therefore applies INSTEAD of this rule, and the shape says which
- * state the box is in: solid while focused, dashed while a file is over it.
- */
-const COMPOSER_FOCUS_RING = cn(
-	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
-	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
-);
+// Neutral controls stay on the shell at rest; interaction spends only ink so
+// the ready Send key remains the rail's one accent fill.
+const COMPOSER_UTILITY_BUTTON =
+	"text-ink-dim hover:bg-ink/8 hover:text-ink active:bg-ink/12 active:text-ink";
 
 /*
  * Development render counter — the same instrument `canonical-transcript.tsx`
@@ -6401,6 +6352,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * construction.
 		 */
 		const cwdChipRef = useRef<DirectoryIndicatorHandle>(null);
+		const [composerPickerHost, setComposerPickerHost] =
+			useState<HTMLDivElement | null>(null);
 
 		/*
 		 * The one place focus is given to this box, and the reason it is one place:
@@ -6855,24 +6808,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				undoClear,
 			],
 		);
-
-		/*
-		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because the strip's width
-		 * ladders ask about it and a second copy of the condition is how they drift.
-		 *
-		 * The group is two fixed slots, `[A][B]` = 68px (60px small view), in every
-		 * state except a live recording, where `[C Insert][A Cancel][B Send
-		 * recording]` draws a third box to the LEFT of the other two = 104px (92px).
-		 * A running turn is NOT a third box any more: Stop stands in Send's own slot.
-		 *
-		 * WHY THE STRIP IS TOLD (issue #788). Effort, cost and context are shed by
-		 * container-range queries, and a container query can see a width but not a
-		 * SIBLING growing, so those three ladders carry a state pair; the 780/740/675
-		 * arms now apply only while recording. The duration reading measures the
-		 * group's real left edge (`data-lo-composer-controls`) instead and needs no
-		 * flag.
-		 */
-		const controlsThirdBox = isRecording;
 
 		/*
 		 * Whether the suggestion chips are inert.
@@ -9272,7 +9207,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * by hand, which is what the old copy asked for.
 					 *
 					 * ABOVE THE BOX, not inside it: the composer box is one control with
-					 * one focus ring (`COMPOSER_BOX`), and folding non-interactive prose
+					 * the same dock (`COMPOSER_BOX`), and folding non-interactive prose
 					 * and two extra controls into it would put them inside the thing that
 					 * ring frames. Sharing `CHAT_MEASURE` - the same container-keyed track
 					 * `COMPOSER_BOX` resolves - keeps the two edge-aligned at every width;
@@ -9906,54 +9841,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						</span>
 					)}
 					<div
-						/*
-						 * GLASS: THE COMPOSER IS A FIELD, NOT A PANE. Round 1 marked it `pane`
-						 * (the `elevated` role at its floor), which is a near-opaque slab by
-						 * construction on dark palettes - exactly the operator's island. It
-						 * is a field: ink 5% over the canvas glass (`styles/index.css`), NO
-						 * edge at rest - the borderless-shell contract holds on glass too, so
-						 * the shipped no-edge geometry (D12) is the geometry in every mode
-						 * (v0.34.55 briefly drew a glass-only edge here; reverted, operator
-						 * report 2026-10-17). The `pane` COVERAGE gate is kept: Sidebars only
-						 * leaves the composer flat.
-						 */
-						data-glass-region="composer"
 						className={cn(
 							COMPOSER_BOX,
-							/*
-							 * The focus ring yields to the drop state rather than sitting beside it -
-							 * see `COMPOSER_FOCUS_RING` for the ordering reason, which is measured.
-							 */
-							fileDragActive ? undefined : COMPOSER_FOCUS_RING,
-							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 							CHAT_MEASURE,
-							/*
-							 * THE ARMED STATE IS THE DROP IDIOM, AND IT IS DISTINGUISHED BY SHAPE
-							 * (design round 1, D1/D2; UX round 1, U3).
-							 *
-							 * DASHED, because that is how this codebase already says "a drop lands
-							 * here": `import-agent-dialog` targets with `border-2 border-dashed`,
-							 * `insert-image-dialog` with `border border-dashed` and a label, and
-							 * `credential-chip` already draws `outline-dashed`. It also makes armed
-							 * separable from FOCUSED, which is the same accent ring in the same place:
-							 * the box's focus ring is solid, so a user holding a file sees a dashed
-							 * boundary and a keyboard user sees a solid one. The first cut relied on a
-							 * ground wash to carry that difference and the wash measures 1.01-1.17:1
-							 * against the band in every palette - it carried nothing.
-							 *
-							 * THE BAND'S GROUND IS LEFT ALONE, and that is the other half of D2 rather
-							 * than a taste call: `accent-wash` is the fill `AttachmentsPreview` gives a
-							 * NON-MEDIA attachment (`bg-accent-wash text-accent`), measured as the same
-							 * rendered value #1b281f. A wash on the band would put an attached `.txt`'s
-							 * 99px tile on a ground of exactly its own colour - the tile's ground step
-							 * IS its boundary - so the attachment would read as having vanished for the
-							 * whole time a drag was over the composer.
-							 *
-							 * Ring only: no shadow, no lift, no scale - the band must not move under a
-							 * drag, and the frames measure its height identical in both states.
-							 */
+							isSmallView && "composer-dock-compact",
+							// Reserve a perimeter treatment for an actual file drop, never typing focus.
 							fileDragActive &&
-								"outline-dashed outline-2 outline-accent outline-offset-2",
+								"outline-dashed outline-2 outline-ink-dim -outline-offset-2",
 						)}
 						/*
 						 * The geometry rigs' handle on the composer's own MEASURE, on the
@@ -9967,804 +9861,49 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						data-lo-composer-measure=""
 						data-tour-tag="chat-input-textarea"
 					>
-						{/*
-						 * SESSION VOICE'S OWN BAND (design spec `voice-composer/SPEC.md` §1):
-						 * the history panel, the strip and the "on in another session" notice
-						 * all live INSIDE this box, above the field, because all three describe
-						 * the input mode of the box below them. Nothing is added under the
-						 * header any more.
-						 */}
-						<VoiceComposerStrip
-							sessionId={voiceSessionId}
-							onScrollToNewest={scrollToBottom}
-							isSmallView={isSmallView}
-						/>
-						{(replies.length > 0 || attachments.length > 0) && (
-							/*
-							 * The previews carry their own bound, on a SIBLING of the popup
-							 * rather than on an ancestor of it.
-							 *
-							 * These two are the composer's only unbounded content: attachment
-							 * tiles are 100px each and wrap, and replies stack, so a dozen
-							 * attachments grew the band past the window and took the send
-							 * controls off the bottom with nothing left to scroll them back
-							 * (measured: 40 tiles + 10 replies made the band 1126px in an
-							 * 872px viewport, send button off screen). Bounding them HERE
-							 * bounds the band as a consequence -- 377px at every load -- so
-							 * the band needs no max-height of its own and therefore no
-							 * scroller, which is what keeps the slash popup above it
-							 * reachable.
-							 *
-							 * This is the pattern the textarea below already uses
-							 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
-							 * of the composer caps itself and scrolls internally, so no
-							 * wrapper has to clip on behalf of its children. ~240px shows two
-							 * full rows of tiles before scrolling.
-							 */
-							<div className="max-h-[240px] shrink-0 overflow-y-auto">
-								{replies.length > 0 && (
-									<ReplyPreview
-										replies={replies}
-										onRemoveReply={handleRemoveReply}
-									/>
-								)}
-								{attachments.length > 0 && (
-									<AttachmentsPreview
-										attachments={attachments}
-										onRemoveAttachment={handleRemoveAttachment}
-										disabled={isInputDisabled || isRecording || isTranscribing}
-										byteSizes={attachmentByteSizes}
-									/>
-								)}
-							</div>
-						)}
-						{/*
-						 * THE FIELD STAYS MOUNTED WHILE RECORDING AND WHILE TRANSCRIBING (the
-						 * operator's report; research §2's "recording is a state of the composer,
-						 * not a screen").
-						 *
-						 * The arms that used to live here swapped the whole field for the
-						 * indicator or the `Processing audio` panel - a full-width, washed,
-						 * bordered block at the exact moment their author was mid-thought - and
-						 * the draft VANISHED at the press. That is the defect this change is:
-						 * the words stay where they are, and the recording state is the small
-						 * strip below them.
-						 */}
-						{/*
-						 * The textarea and its MIRROR, in one isolated wrapper.
-						 *
-						 * `isolate` is load-bearing rather than tidy: the overlay paints at
-						 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
-						 * without a stacking context here a negative index paints behind the
-						 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
-						 * on screen to say why (CSS 2.1 appendix E: negative-z children come
-						 * before in-flow block backgrounds).
-						 */}
-						<div className="relative isolate w-full">
-							<CredentialOverlay
-								text={newMessage}
-								payloads={payloadsRef.current}
-								capture={capture}
-								held={escapeIsHeld(newMessage, capture)}
-								fieldRef={textareaRef}
-								mirrorRef={mirrorRef}
-								isSmallView={isSmallView}
-							/>
+						<div className="composer-dock-shelf" data-lo-composer-shelf="">
 							{/*
-							 * The mention chips, in the same `isolate` wrapper and at the same depth as
-							 * the credential pill: both draw behind the glyphs the textarea paints, and
-							 * neither takes the pointer. The two never overlap in practice — a chip is a
-							 * path token and a pill is a credential marker — but if they ever did, the
-							 * chip's fill would sit under the pill's, which is the right way round: the
-							 * pill marks a value the app holds and the chip marks a file the text names.
+							 * Gated on whether a directory is KNOWN, not on whether it is
+							 * truthy, and not on the session being idle.
+							 *
+							 * Two unsatisfiable-condition bugs in the same three lines,
+							 * one after the other. The original `!canonicalStop` gate
+							 * could never be true in the canonical chat - the stop
+							 * control is passed unconditionally - so the chip was
+							 * unreachable from v0.16.0 even though it was still mounted
+							 * here. Replacing it with `{cwdToShow && ...}` then made the
+							 * chip able to DELETE ITSELF: `""` is a legal value of the
+							 * staged cwd, it is falsy, and this chip is the only writer
+							 * of `state.cwd` now the full-width bar is gone. So clearing
+							 * the field unmounted the one control that could set it
+							 * again, and `cwd` is persisted, so the app came back from a
+							 * restart still with no chip - unrecoverable without
+							 * devtools.
+							 *
+							 * `!== undefined` is the honest question: undefined means "no
+							 * directory is known for this conversation", which is the one
+							 * case with nothing to render. An empty string means "known,
+							 * and empty" - a state the chip has an affordance for, and
+							 * the reason its `unset` branch is reachable again.
 							 */}
-							<AtMentionOverlay
-								text={newMessage}
-								spans={atMentions.spans}
-								resolved={atMentions.resolved}
-								fieldRef={textareaRef}
-								isSmallView={isSmallView}
-							/>
-							{/*
-							 * The highlight's two layers. `ComposerHighlight` owns the mirror, the
-							 * scroll write and the geometry correction; this JSX owns the input, so
-							 * the composer's key handling, its autosize and its refs are untouched by
-							 * the paint. The wrapper adds no size of its own — the mirror is
-							 * `absolute` — so the band's layout is exactly what the bare textarea
-							 * produced, and the credential overlay above stays a SIBLING of it
-							 * rather than an ancestor.
-							 */}
-							<ComposerHighlight
-								draft={newMessage}
-								runs={composerRuns}
-								textareaRef={textareaRef}
-								fieldClassName={composerTextBox(isSmallView)}
-								refused={isInputDisabled}
-							>
-								<textarea
-									ref={textareaRef}
-									data-region-entry
-									className={cn(
-										// The box model comes from ONE place, shared with the mirror:
-										// any drift between these two moves the pill off the characters
-										// it sits under.
-										composerTextBox(isSmallView),
-										// `block`, and it is a fix rather than a style choice (design round 3,
-										// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
-										// wrapper above is a block container, and a textarea left at its
-										// default `inline-block` sits in a LINE BOX there — so the wrapper
-										// measured 39.7px around a 34px field (the strut's descender space)
-										// and the composer box came out 5.7px taller than `origin/main`'
-										// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
-										// moving the control row, the ring and the box's bottom edge.
-										// On main the field is a direct child of the box's flex column and
-										// is blockified by it, which is why there was nothing to see there;
-										// the overlay's wrapper is what introduced the line box, so the
-										// field states its own display rather than depending on a parent's
-										// formatting context to do it.
-										"block",
-										isSmallView ? "max-h-24" : "max-h-28",
-										"resize-none overflow-y-auto bg-transparent",
-										/*
-										 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because `caret-color: auto`
-										 * follows `color`, which is transparent here - an invisible caret in the app's primary input.
-										 * The ink comes back the moment no run is painted, so an ordinary draft keeps its native
-										 * rendering (and its spellcheck squiggle).
-										 */
-										highlighting ? "text-transparent caret-ink" : "text-ink",
-										"outline-none placeholder:text-ink-dim",
-										// A composer that REFUSES input STEPS COLOUR rather than fading
-										// (branding: disabled changes colour, never opacity), and without
-										// this the only signal was `cursor: not-allowed` after the user
-										// had already typed into a field that will not accept anything.
-										//
-										// `read-only:` is the pair that fires now, because the refusal
-										// is expressed as `readOnly` on the element below. The
-										// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
-										// this element any more, and deleting the pair would let a
-										// future `disabled` state ship with no ink step at all - the
-										// exact defect the pair was added for.
-										//
-										// A HOST THAT REFUSES DOES NOT WEAR THAT INK (design review
-										// round 2, D6). `ink-disabled` measures 1.99:1 on the box's
-										// `elevated` fill in the dark brand and 2.96:1 in the
-										// light one, and the exemption it carries assumes the
-										// state's MEANING is carried somewhere else that meets the
-										// floor - the transcript, in chat. On a host page the box's
-										// own words can be the only carrier of the reason (the
-										// Agents page's "Finish or cancel your edit first."), so
-										// with `blocksInput` the box steps to `ink-muted` the way
-										// the host's band sentence does. The refusal still reads
-										// as one: dimmer than a draft's `ink`, `cursor:
-										// not-allowed`, `aria-disabled`, plus the band and the
-										// strip.
-										hostNotice?.blocksInput
-											? "read-only:text-ink-muted read-only:placeholder:text-ink-muted disabled:text-ink-disabled disabled:placeholder:text-ink-disabled"
-											: "read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
-									)}
-									placeholder={
-										/*
-										 * THE ONE SENTENCE THE BOX CARRIES, and the ORDER is the rule rather than
-										 * the strings: `composerPlaceholder` holds it (with the reason each term
-										 * sits where it does), so the chain cannot be reordered into a state the
-										 * app cannot be in and then photographed as one.
-										 *
-										 * The two facts this call is built from: `sendInFlight` is this composer's own
-										 * unsettled press, and `sendingUnsettled` is the STORE's row for this
-										 * conversation (`sendUnsettledForSession` -> `draftRowForSession`, over the
-										 * row's own `pending`), which is what
-										 * survives the New-chat identity flip - a flag held by the panel being replaced
-										 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
-										 * are OR'd because they are the two halves of one fact at two scopes, and the
-										 * sentence is earned by the SCENARIO rather than by the box: while a send from
-										 * this conversation is going out, the empty box says so, and `Waiting for the
-										 * agent` takes over once it has settled. See `composerPlaceholder` for why that
-										 * outranks `awaitingReply` and what it must never claim.
-										 *
-										 * `asideAttached` is the attached `/btw` panel, which re-routes this box's
-										 * Enter off the record. Where its term sits in the order - after the two
-										 * refusals and the gate, ahead of both send-state sentences - and why each
-										 * side of that position is load-bearing is stated on `composerPlaceholder`.
-										 *
-										 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
-										 * composer's existing idiom - every state this box has ever had is one
-										 * of these strings and nothing else (design rounds 2 and 3). The
-										 * transcript already carries the turn's single liveness element while
-										 * this is true (branding section 7's working line, fed by the page's
-										 * `admitting`), so a second visible indicator here would be a second
-										 * liveness statement about one turn - and the new state ADDS no
-										 * layout: `pending-send` is geometrically `idle` with one word
-										 * changed, measured in the committed pair. What does move, in a send
-										 * carrying an attachment, is the band losing the chip row when the
-										 * echo paints (253px -> 125px at 1024 in the same pair): that is the
-										 * payload leaving, not an indicator arriving, and the field and the
-										 * control row hold their position through it (design round 1, D4).
-										 */
-										isRecording
-											? t(COMPOSER_PLACEHOLDER.recording)
-											: composerPlaceholder({
-													unavailable,
-													secretAnswer: secretAnswerPending,
-													inputDisabled: isInputDisabled,
-													awaitingAnswer,
-													asideAttached: aside !== null,
-													sendingUnsettled: sendUnsettled || sendInFlight,
-													awaitingReply,
-													/*
-													 * The press's own window (round 1, D6): the box says the
-													 * press landed instead of re-teaching `Esc stops` under a
-													 * finger that already pressed. Read from the same object
-													 * the control is drawn from, so the two cannot disagree
-													 * about a press.
-													 */
-													stopping: canonicalStop?.stopping === true,
-													// The last reading before the invitation: nothing is in
-													// flight and the box is not refused, but no model
-													// provider is connected, so the invitation is a lie
-													// (design audit section 6).
-													noProvider,
-													/*
-													 * The host's own sentence for the invitation slot, when
-													 * it has one (the mini view's copy); every sentence
-													 * above still outranks it, and absent means the app's
-													 * own idle line.
-													 */
-													idle: placeholderOverride,
-													// The host's own words for its own states (D1/D5); absent on
-													// every chat mount, which is what keeps chat unchanged.
-													hostLine: hostNotice?.placeholder ?? null,
-												})
-									}
-									value={newMessage}
-									/*
-									 * The IME half of the paint: the composition string is drawn by the BROWSER, is not
-									 * in the mirror, and would be invisible under `text-transparent`, so zero runs turn
-									 * both the runs and the transparency off while it is being typed.
-									 */
-									onCompositionStart={() => setComposing(true)}
-									onCompositionEnd={() => setComposing(false)}
-									onChange={(e) => {
-										/*
-										 * THE KEYBOARD TOUCHED THIS BOX (arch §4.2): the input-mode
-										 * flag behind `mixed`/`typed`. Set HERE because this
-										 * handler is the one door every human edit arrives
-										 * through, and it does not fire for the transcript's own
-										 * programmatic write (a controlled value change is not an
-										 * `input` event) - which is exactly the distinction.
-										 */
-										sawTypingRef.current = true;
-										/*
-										 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
-										 * intercepted keystroke arrives here — Backspace, Delete, a
-										 * selection, a drop, an IME commit, and any paste that fell through
-										 * — and `applyDomEdit` maps the edit onto the held value at the
-										 * index the operator sees. The first door is the printable-key
-										 * branch of `handleCredentialKeyDown`, which never lets the
-										 * character reach the DOM at all; this one is the belt for the
-										 * routes a keyboard gate cannot see.
-										 *
-										 * `origin` is "typing" because a change IS a keystroke-shaped
-										 * event on this control — an arrival (a restored draft, a seed) is
-										 * written through `setNewMessage` by its own caller, never through
-										 * the DOM's change event for a textarea the user is in.
-										 */
-										const next = e.target.value;
-										const at = e.target.selectionStart ?? next.length;
-										/*
-										 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
-										 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
-										 * first keystroke, backspace, paste or drop that changes the draft. Content
-										 * equality could not say that — an edit that returned the box to the same
-										 * text left the record armed, and a `⌘Z` hours later put the consumed line
-										 * back. The programmatic writes the composer makes (a splice, a stage, the
-										 * undo itself) do not pass through here, so they do not clear it.
-										 */
-										lockedRun.current = null;
-										const applied = applyDomEdit(
-											captureRef.current,
-											newMessage,
-											next,
-											at,
-											"typing",
-										);
-										if (applied.buffer !== next) {
-											// A real character reached the span through a route the
-											// keyboard gate could not see, and it is already replaced by
-											// its mask cell here.
-											pendingCaret.current = applied.caret;
-											setCaret(applied.caret);
-										} else {
-											setCaret(at);
-										}
-										if (applied.capture !== captureRef.current)
-											setCapture(applied.capture);
-										// Only the empty -> non-empty edge: the whole point is one
-										// statement of intent per composed message, and the
-										// consumer's latch should not be asked to absorb a
-										// per-character call it can only discard.
-										if (!newMessage && applied.buffer) onComposerInput?.();
-										/*
-										 * The capture's own write, stamped so the whole-buffer teardown can
-										 * tell it from a replacement some other writer made. A DOM change
-										 * reaches here without passing `applyCapture`, which is exactly why
-										 * the stamp is not optional: without it, the operator's own
-										 * keystroke would read as an external write and end the gesture it
-										 * is in the middle of.
-										 */
-										captureOwnedBuffer.current = applied.buffer;
-										// An abandoned capture (the drop and IME routes) settles the box
-										// here rather than through `applyCapture`, so the §6 write has to
-										// be asked for here too.
-										persistDraft(applied.capture, applied.buffer);
-										setNewMessage(applied.buffer);
-										// Editing the text answers the alert. Leaving it up over a
-										// draft the user has since changed is the defect this whole
-										// change replaces, and moving the banner to the composer
-										// would only have moved that defect closer to the eye.
-										//
-										// After a dwell, though: the message is two sentences plus up
-										// to three controls, and a user who reaches straight for the
-										// keyboard lost all of it before finishing the first word -
-										// including the remedy buttons. The alert still goes on the
-										// edit, just not before it can be read.
-										if (
-											Date.now() - alertShownAt.current >=
-											ALERT_READ_DWELL_MS
-										)
-											sendError?.onDismiss?.();
-									}}
-									onSelect={(e) => {
-										const field = e.target as HTMLTextAreaElement;
-										/*
-										 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
-										 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
-										 *
-										 * `applyCapture` parks the caret it is about to set in
-										 * `pendingCaret` and the layout effect applies it with the
-										 * buffer. A `select`/`selectionchange` still in flight from the
-										 * PREVIOUS edit therefore reaches this handler between the state
-										 * write and its commit, carrying the older buffer (the render
-										 * closure has not moved yet) and the older offset — a pair that
-										 * is internally consistent and describes a state the composer
-										 * has already left. Re-syncing on it is how accepting the
-										 * `/credential` row closed the span that completion had just
-										 * opened: the report said "the caret is at 5, inside the token"
-										 * while the capture was already open at 6, so `syncCapture` read
-										 * a caret move out of the span.
-										 *
-										 * Skipping it is not a caret move being ignored: the offset that
-										 * arrives is the one this write is replacing, and the pending
-										 * value is applied by the layout effect either way. If the DOM
-										 * already agrees — a report about the caret we just set — the
-										 * marker is retired here so the guard cannot outlive its write.
-										 */
-										const pending = pendingCaret.current;
-										if (pending !== null) {
-											if (field.selectionStart === pending)
-												pendingCaret.current = null;
-											return;
-										}
-										setCaret(field.selectionStart);
-										/*
-										 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
-										 * caret move may do: it may keep a latched arm, re-anchor it, and
-										 * RE-OPEN a span the caret has returned to — but it may never ARM
-										 * by itself. The TUI asks both questions at the same reactive
-										 * (`watch_selection`), because a mouse click, an app-set
-										 * selection and a completion's caret all move the caret with no
-										 * caret key pressed: without the re-open, leaving and coming back
-										 * left an armed token whose next typed character landed in
-										 * PLAINTEXT; without the "may not arm" half, a click at the end of
-										 * a restored draft would swallow the next paste.
-										 */
-										setCapture(
-											syncCapture(
-												captureRef.current,
-												newMessage,
-												field.selectionStart,
-												"caret",
-											),
-										);
-									}}
-									onKeyDown={handleComposerKeyDown}
-									onPointerDown={() => {
-										/*
-										 * A CLICK INTO A BOX THAT CANNOT SEND lands on the reason (D4):
-										 * ~32 users rage-clicked this field with nothing connected, and
-										 * the field answered with a caret and nothing else. Typing stays
-										 * allowed; the line under the box steps up to full ink so the
-										 * click visibly reaches the explanation and its one-click fix.
-										 */
-										if (sendBlock) explainRefusedSend();
-										/*
-										 * "I am about to type here." An ask gate can advance while the
-										 * user is on their way into this box, and the restore must not
-										 * move them off it: the characters they type would reach
-										 * nothing and the next `Space` would answer the next question
-										 * (UX round 4, U13).
-										 */
-										composerPointerTouched = true;
-									}}
-									onPaste={handlePaste}
-									rows={1}
-									/*
-									 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
-									 * `isInputDisabled` declaration above. `disabled` blurs the field when
-									 * it lands, which parks the caret on `document.body` and, on the
-									 * `unavailable` arm, never gives it back on that panel; and a
-									 * disabled textarea cannot be focused, selected or copied, so the
-									 * reader cannot even retrieve the sentence they were writing from
-									 * the state that just told them the conversation is gone.
-									 *
-									 * `aria-disabled` is what says the same thing to a screen reader now
-									 * that the native attribute is gone: the field is still focusable
-									 * and still readable, so the accessible name has to carry the
-									 * refusal the ink step carries visually. It is undefined (absent)
-									 * while the composer works, because `aria-disabled="false"` on a
-									 * textarea that takes input is a statement about a state the user
-									 * is not in.
-									 *
-									 * The refusal itself is enforced by the guard at the top of
-									 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
-									 * event fires, so `onChange` never runs), but the keydown still
-									 * arrives — so Enter would submit without that guard. Every other
-									 * path that writes into this box or submits it carries the same
-									 * predicate, and `aria-describedby` ties the pane's own sentence
-									 * for the state to the control for as long as it refuses.
-									 */
-									readOnly={isInputDisabled}
-									/*
-									 * The TEXTAREA's own attribute: it reports the refusal that keeps the
-									 * box read-only, and nothing else. Round 5's U21 refusal is about
-									 * SENDING, not typing ("typing stays allowed; the send is not"), so
-									 * `noModel` must not appear here -- telling a screen reader the box
-									 * is disabled while it accepts every keystroke is the same class of
-									 * falsehood as a claim its surface cannot support, and
-									 * `composer-refusal` pins exactly that.
-									 */
-									aria-disabled={isInputDisabled || undefined}
-									aria-label={t("ui.chat.composer.message")}
-									role="combobox"
-									/*
-									 * All THREE descriptions, space-separated as the attribute demands: the
-									 * credential capture's notice while one is owed, the mention sentence while
-									 * a reference points outside the workspace, and the pane's own sentence
-									 * while the conversation this machine would answer is gone. `undefined`
-									 * rather than an empty string when none applies, because an empty
-									 * `aria-describedby` is a reference to nothing. The three are independent
-									 * reasons to describe this box and any two of them can coincide, which is
-									 * why they are JOINED rather than chosen between.
-									 */
-									aria-describedby={
-										/*
-										 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
-										 * A screen reader in a refused box heard the value and "read-only,
-										 * disabled" and never WHY: the pane's statement of the state is a `<p>`
-										 * in the transcript with no programmatic tie to the control, and the
-										 * placeholder that carries the short form is painted and announced
-										 * only while the box is EMPTY - which is not the state this PR exists
-										 * for. Joining the other notices' ids rather than choosing between
-										 * them keeps each true at once; any two of the three can coincide.
-										 *
-										 * Named only for the `unavailable` arm, which is the one with a sentence
-										 * in the pane to point at. The busy arm's band carries the state's own
-										 * action (Stop agent) and has no pane sentence; it is also unreachable
-										 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
-										 * gets no invented one. An id that resolves to nothing is ignored by
-										 * assistive tech, which is what a composer mounted without a transcript
-										 * (a story, a rig) gets.
-										 *
-										 * AND SO DOES THE SECRET CLOSURE'S SENTENCE: the box is paused
-										 * with a draft in it — the one state the placeholder cannot reach
-										 * (UX round 1, U2) — so its own element joins while it renders.
-										 *
-										 * NOT A LIVE REGION. An announcement was the alternative, and it was
-										 * rejected: the state is already spoken by the transcript the reader is
-										 * in, this box is focusable precisely so the reader can go there, and a
-										 * polite region on every refusal is a second voice for one fact that
-										 * cannot be verified without an AT in this environment.
-										 */
-										[
-											hostNotice ? hostNotice.id : null,
-											/*
-											 * The host's blocked reason, while its band node is the
-											 * only place it can be read (the box holds text, so the
-											 * placeholder is not painted). Same condition as the node
-											 * itself, so the reference cannot outlive its target.
-											 */
-											hostNotice?.blocksInput &&
-											hostNotice.placeholder &&
-											!hostNotice.statedByNode &&
-											newMessage.trim().length > 0
-												? HOST_BLOCKED_REASON_ID
-												: null,
-											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
-											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
-											/*
-											 * The queued ask's sentence, while it renders: the box stays
-											 * usable in that state, so this is the one place a reader
-											 * learns the secret has its own field before they type it.
-											 */
-											secretAsk && secretConfirm === null
-												? SECRET_ASK_NOTICE_ID
-												: null,
-											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
-											unavailable ? MISSING_SESSION_NOTICE_ID : null,
-											deliveryRemediesReachable
-												? DELIVERY_REMEDIES_HINT_ID
-												: null,
-										]
-											.filter(Boolean)
-											.join(" ") || undefined
-									}
-									aria-expanded={slash.open || at.open}
-									aria-controls={
-										slash.open ? slash.listId : at.open ? at.listId : undefined
-									}
-									/*
-									 * The active option comes from whichever list is OPEN, and the popups rule
-									 * above guarantees only one is on top: handing both ids to one
-									 * `aria-activedescendant` would name an element in a list the user is not
-									 * looking at, which a screen reader announces as a row that does not exist.
-									 */
-									aria-activedescendant={
-										(slash.open
-											? slash.activeDescendantId
-											: at.activeDescendantId) ?? undefined
+							{cwdToShow !== undefined && (
+								<DirectoryIndicator
+									ref={cwdChipRef}
+									currentWorkingDirectory={cwdToShow}
+									writePath={cwdWritePath}
+									pending={cwdPending}
+									pendingAccepted={cwdPendingAccepted}
+									readOnlyReason={
+										cwdWritePath
+											? undefined
+											: (cwdReadOnlyReason ?? moveUnavailableReason())
 									}
 								/>
-							</ComposerHighlight>
-							{/*
-							 * THE CHIPS, painted OVER the field's own glyphs.
-							 *
-							 * A sibling of `ComposerHighlight` inside the `relative isolate` wrapper, and
-							 * therefore AFTER the textarea in the DOM once `#303` moved the field behind
-							 * that wrapper's two layers. The order matters for two reasons and neither is
-							 * cosmetic: a positioned element paints above an in-flow one whatever the tree
-							 * order is (CSS 2.1 appendix E), so the chip is above the text either way -
-							 * but the DOM order is what decides where a keyboard user meets its `x`, and a
-							 * control that clears the reference the field holds belongs AFTER the field
-							 * rather than as a stop on the way in. It also keeps the chip above the
-							 * textarea's glyphs and below the popups that follow in this wrapper.
-							 *
-							 * It is a sibling rather than a child of `CredentialOverlay` so that the wash
-							 * (which must stay UNDER the glyphs) and the chip (which must sit OVER them)
-							 * can each take their own layer while measuring ONE mirror - this branch's
-							 * own, which is what the run's rects come from; `#303`'s `ComposerHighlight`
-							 * mirror carries the slash painting and is a different element.
-							 *
-							 * `onClear` is NULLED while the composer refuses input: the refusal on this
-							 * base is `readOnly` rather than `disabled`, so a control painted over the box
-							 * IS pressable in a state where every writer is refused, and the chip must not
-							 * offer a verb the composer will not run. The gate is passed in from the same
-							 * `isInputDisabled` the textarea and the other writers read, so there is one
-							 * predicate rather than two.
-							 */}
-							<CredentialChipLayer
-								small={isSmallView}
-								text={newMessage}
-								payloads={payloadsRef.current}
-								capture={capture}
-								mirrorRef={mirrorRef}
-								fieldRef={textareaRef}
-								onClear={isInputDisabled ? null : clearCredential}
-								/*
-								 * R4-5: when the clip rule drops the chip whose control held
-								 * focus, the keyboard needs a home - and this composer has
-								 * exactly one place that gives it back (`focusInput`, the
-								 * pointer gate's reset included).
-								 */
-								onControlUnmounted={focusInput}
-							/>
-						</div>
-						{/*
-						 * THE LANE, from the PRESS (design round 1 D2, round 3 D14; QA round 3
-						 * Q-1). The press is answered before the recorder exists - the
-						 * microphone acquisition is the one genuinely slow part of the click
-						 * path (830 ms cold on this fleet, past two minutes under swap
-						 * exhaustion) - and the answer used to be a separate one-line row
-						 * that grew the card, after which the lane grew it AGAIN at handover:
-						 * the field jumped twice per press. Here the SAME block that the take
-						 * will occupy opens at once, at its final height, with "Starting
-						 * recording" in its label row, and the handover to recording swaps
-						 * the words and starts the waveform without moving anything. So a
-						 * press costs ONE height change, the lane's own (84px, `composer-
-						 * slots-proof.mjs` asserts the preparing and recording heights are
-						 * equal), and in the bottom-anchored chat band the controls row does
-						 * not move at all. It is not 0px: a press that adds a lane to the
-						 * card cannot be free, and the claim that it was is retired.
-						 *
-						 * NOT IN THE CONTROLS ROW and not an overlay (design round 2, D9):
-						 * as a flex item it grew the 68px cluster and pushed Send past the
-						 * card's edge, and as an overlay it painted over the readings.
-						 *
-						 * The block carries a status and no control, so the pointer map does
-						 * not move. Its words are a live region (`<output>`), and the ring on
-						 * the mic's busy face is the surface's one indeterminate element.
-						 */}
-						{(isRecording || (isPreparing && micControlShown)) && (
-							<AudioRecordingIndicator
-								isRecording={isRecording}
-								preparingLabel={
-									!isRecording && isPreparing
-										? isSmallView
-											? t("ui.chat.composer.starting")
-											: t("ui.chat.composer.starting_recording")
-										: null
-								}
-								sendsNow={slotB.role === "send-recording" && slotB.enabled}
-							/>
-						)}
-						{isTranscribing && (
-							<div
-								data-transcribing-indicator=""
-								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-							>
-								<span className="font-medium text-body-sm text-ink-muted">
-									{t("ui.chat.composer.processing_audio")}
-								</span>
-								{/*
-								 * ONE LIVE ELEMENT FOR A SEND-RECORDING WAIT (design D13): slot A
-								 * already spins for it, so the caption is words only there. A plain
-								 * dictation has no spinner in the row and keeps its waveform.
-								 */}
-								{sendRecordingPhase === "idle" && <WaveformAnimation />}
-							</div>
-						)}
-						{/*
-						 * THE OFFER, in the slot the transcribing row vacates (#1087).
-						 *
-						 * The toast names the fault and the action; this row exists because a
-						 * toast cannot carry the control those words point at, and the take it
-						 * would spend is already in hand - one press, no re-recording. It is a
-						 * row rather than a toast action because a toast dismisses and the
-						 * take does not: the offer has to last as long as the recording does.
-						 *
-						 * It renders only once the attempts are spent (`!isTranscribing`), so
-						 * the row never appears while a send is still in flight.
-						 */}
-						{/*
-						 * The durable settings changes still applying (or failed) for this
-						 * session: their own line, in the dictation row's slot and register,
-						 * because the control row below is one line that cannot hold a
-						 * sentence with buttons (see `settings-intent-chips.tsx`).
-						 */}
-						{sessionStatus?.settingsIntents && (
-							<SettingsIntentChips
-								{...sessionStatus.settingsIntents}
-								restoreFocus={() => textareaRef.current?.focus()}
-							/>
-						)}
-						{dictationFailure !== null &&
-							!isTranscribing &&
-							audioBlob !== null && (
-								<div
-									data-dictation-retry=""
-									className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-								>
-									{/*
-									 * AN ERROR REGISTER, not the metadata one (design round 1,
-									 * D6). The row sat in `ink-muted` with no mark at all, so it
-									 * read as the same quiet status as "Processing audio" - and
-									 * the toast it replaces carried the danger icon. The take is
-									 * still here, but the attempt failed: the icon says which,
-									 * and the sentence stays at reading ink.
-									 */}
-									<CircleAlert
-										aria-hidden="true"
-										className="size-3.5 shrink-0 text-danger"
-									/>
-									<span className="font-medium text-body-sm text-ink-muted">
-										{dictationFailure}
-									</span>
-									<Button
-										type="button"
-										variant="link"
-										size="sm"
-										/*
-										 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
-										 * D3). The `link` variant's `h-auto p-0` left this
-										 * control 29x12px - the text's own line box - and the
-										 * underline appeared only on hover, so the one recovery
-										 * control in the state was a colour-only word. `h-7 px-2`
-										 * restores a 28px target (the size every other `sm`
-										 * control in the row takes) and `underline` makes it
-										 * look pressable at rest.
-										 */
-										className="h-7 shrink-0 px-2 underline"
-										onClick={retryDictation}
-									>
-										{t("ui.common.actions.retry")}
-									</Button>
-								</div>
 							)}
-						{/*
-						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
-						 *
-						 * The readings used to have a row of their own above this one, and when they moved
-						 * inside it the row kept a wrap keyed on the COLUMN's width: above 750px of column
-						 * the cluster sat inline, below it the cluster took the first line in full
-						 * (`basis-full`) and the controls kept the second. Design round 2's D21 is that
-						 * branch: §G1 requires "one control row, 32px, always one line, at every width",
-						 * and at 800x600 - one of §H's own blueprint widths - the composer measured 640x142
-						 * where it measures 640x109 at 1380, a permanent second row. (Both numbers were
-						 * taken under the redesign's 640 measure, which the operator restored to 900 on
-						 * 2026-09-26; the defect and the fix are about the ROW, and the row's rule below is
-						 * width-agnostic.)
-						 *
-						 * THE THRESHOLD WAS KEYED ON THE WRONG THING. What reaches this row is the
-						 * composer's own box, not the window's width, and a breakpoint on the COLUMN
-						 * could only ever be about the column: a wrap that fired there moved the
-						 * controls while the composer's own box had not changed. (The numbers this
-						 * paragraph once leaned on - the same `640x109` content box at 1380 and at
-						 * 800x600 - were measured under the redesign's 640 measure, so they no longer
-						 * describe the restored 900 one; the ROW is what the rule below is about.)
-						 * So the row is `flex-nowrap` at every width and the yield §G1 names is what
-						 * makes room: the cwd chip
-						 * truncates, the usage reading drops below a 480px composer, the model selector
-						 * shortens to its glyph.
-						 *
-						 * `justify-between` cannot express this — with three children it
-						 * centres the middle one, which is the opposite of what the row needs — so
-						 * the row uses `ms-auto` instead, on the controls group, which is the one
-						 * child that always renders.
-						 *
-						 * That "always renders" is not a nicety, it is the round-1 blocker. The
-						 * readings cluster returns `null` in three ordinary states (no `frontend`
-						 * yet, nothing known at all, the error boundary's empty fallback), and
-						 * while the margin lived on the cluster those states had NO live auto
-						 * margin at all — the controls sat flush against the chip, mid-row, in
-						 * this PR's own draft frame (design round 1.5, D7).
-						 *
-						 * `gap-y-2` is GONE with the wrapped line it existed for: with one row there is
-						 * no second line to keep 8px from the first.
-						 *
-						 * `flex-nowrap` is NOT decoration either, and it is what holds the single row at
-						 * the narrow end. Wrapping happens on the items' CONTENT sizes, before any
-						 * shrinking: a long model name (an aggregator slug is ~48 characters) makes the
-						 * cluster wider than its share, so a still-wrapping row moves the microphone and
-						 * send to a second line instead of truncating the name — the exact inversion of
-						 * the yield order, where the name truncates first and the controls never move.
-						 * Measured on the live composer at a 750px box: with the row free to wrap, the
-						 * controls sat 24px below the readings; with `flex-nowrap` they stay on one line
-						 * and the name gives up the width. The same rule is what keeps D21's second row
-						 * from coming back: at the composer's own measure box, and at every box below
-						 * it, the row has no width to give and yields instead.
-						 */}
-						<div className="flex min-w-0 flex-nowrap items-center gap-x-2">
-							{/*
-							 * The session's readings, inside the row rather than on a row of their
-							 * own above it (R1).
-							 *
-							 * The DOM slot is FIRST, before the left group. `order-first` only
-							 * ever reordered the paint, leaving a keyboard user to walk down to
-							 * attach and the chip and back UP to the readings (UX round 1, U4),
-							 * so the cluster is first in the DOM and the strip's own `order-2`
-							 * puts it between the chip and the controls, with the controls'
-							 * `order-3` keeping mic and send last.
-							 *
-							 * THE RESIDUAL THIS LEAVES IS UNCHANGED AND STILL RECORDED (UX round 2,
-							 * U8). `order-2` moves the PAINT, not the tab order, so the keyboard
-							 * still meets the readings one stop before the attach/chip group drawn
-							 * to their left. What the never-wrapping row (design round 2, D21)
-							 * removes is the OTHER half of that trade: there is no longer a width
-							 * at which the same node has to be first for one layout and third for
-							 * the other, so the mismatch is now a single stop on one screen rather
-							 * than two layouts disagreeing. Putting the DOM in paint order would
-							 * close it and is deliberately NOT done here: it is a change to the
-							 * composer's tab sequence (its own finding, U8's, not D21's) and the
-							 * composer suite pins the slot this comment explains.
-							 *
-							 * A crash in the strip must not take the composer down with it — the
-							 * readings are metadata and the ability to type is not — so it renders
-							 * inside an error boundary with an empty fallback: a missing strip is a
-							 * degradation a user can work through, and a fallback panel here would
-							 * be a bigger interruption than the thing it reports. The row's other
-							 * groups survive the same fallback untouched.
-							 */}
 							{sessionStatus && (
 								<ErrorBoundary fallback={null}>
 									<SessionStatusStrip
+										composerPickerHost={composerPickerHost}
 										frontend={sessionStatus.frontend}
 										onCommand={sessionStatus.onCommand}
 										effortEntities={sessionStatus.effortEntities}
@@ -10786,168 +9925,756 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											"queued_next_step"
 										}
 										costChannels={sessionStatus.costChannels}
-										/*
-										 * The row's own third-box predicate, handed down rather than
-										 * re-derived: the strip's shed is the one thing on this row that a
-										 * container query cannot decide, because the box it has to clear
-										 * is a SIBLING appearing rather than the column narrowing
-										 * (issue #788). See the constant's own comment for the
-										 * measurement behind it.
-										 */
-										controlsThirdBox={controlsThirdBox}
 									/>
 								</ErrorBoundary>
 							)}
-
+						</div>
+						<div
+							className="composer-dock-editor bg-elevated"
+							data-lo-composer-editor=""
+							data-glass-region="composer"
+						>
 							{/*
-							 * The BUTTON LINE: attach and the working-directory chip, as one item.
-							 *
-							 * IT IS `display: contents` AT EVERY WIDTH NOW, so it is a DOM slot rather
-							 * than a box, and saying so is cheaper than leaving the paragraph that used
-							 * to explain the two-line layout here. While the row still wrapped (below
-							 * 750px of column) this was the row's SECOND flex item and `contents` was
-							 * how it dissolved above the threshold; the two-line layout is gone with
-							 * design round 2's D21 (§G1: one 32px row at every width), so the wrapper
-							 * only ever dissolves and the group below is a direct child of the row in
-							 * every rendering. It is kept because the composer suite reads this slot
-							 * and because removing a wrapper is a change to the composer's DOM, which
-							 * belongs to the pass that next touches that tree rather than to a
-							 * geometry fix.
-							 *
-							 * `min-w-0` on the group is still load-bearing: a flex item's automatic
-							 * floor is its content, so without it the chip cannot shrink and the row
-							 * overflows instead (design round 1, D1 and code review round 1, MAJOR 2
-							 * measured that overflow at 240-336px columns).
+							 * SESSION VOICE'S OWN BAND (design spec `voice-composer/SPEC.md` §1):
+							 * the history panel, the strip and the "on in another session" notice
+							 * all live INSIDE this box, above the field, because all three describe
+							 * the input mode of the box below them. Nothing is added under the
+							 * header any more.
 							 */}
-							<div className="contents">
-								{/*
-								 * Left side: attachment button and the working-directory chip.
+							<VoiceComposerStrip
+								sessionId={voiceSessionId}
+								onScrollToNewest={scrollToBottom}
+								isSmallView={isSmallView}
+							/>
+							{(replies.length > 0 || attachments.length > 0) && (
+								/*
+								 * The previews carry their own bound, on a SIBLING of the popup
+								 * rather than on an ancestor of it.
 								 *
-								 * `min-w-0` on this group AND on the row above it: a flex item's
-								 * automatic minimum size is its CONTENT, so an intermediate
-								 * wrapper that does not opt out of it refuses to shrink and the
-								 * `min-w-0` further down never gets the chance to apply. With the
-								 * canvas panel open the chat column falls to its floor - 480px since
-								 * §I, 220 when the 97px below was measured - and the chip's 260px
-								 * cap alone drove the row 97px past the column's right edge
-								 * (design round 2, D11); the chip carries the
-								 * shrink, but only these two ancestors can let it happen.
+								 * These two are the composer's only unbounded content: attachment
+								 * tiles are 100px each and wrap, and replies stack, so a dozen
+								 * attachments grew the band past the window and took the send
+								 * controls off the bottom with nothing left to scroll them back
+								 * (measured: 40 tiles + 10 replies made the band 1126px in an
+								 * 872px viewport, send button off screen). Bounding them HERE
+								 * bounds the band as a consequence -- 377px at every load -- so
+								 * the band needs no max-height of its own and therefore no
+								 * scroller, which is what keeps the slash popup above it
+								 * reachable.
 								 *
-								 * ABOVE the threshold this group does not shrink at all, and that is
-								 * not a preference: the chip's own root is `shrink-0` there so a long
-								 * model name truncates before the path yields (D9). With the chip
-								 * refusing to shrink while its parent still could, the group shrank to
-								 * 145.6px around a 260px chip and the path painted straight over the
-								 * readings - visible in the 750px long-name frame, and invisible to
-								 * `row.overflowX`, which reads 0 because the GROUP fits. The yield
-								 * order needs both halves stated.
-								 */}
-								<div className="flex min-w-0 items-center gap-1 shrink-0">
-									<Tooltip content={t("ui.chat.composer.attach_file")}>
-										<span>
-											<Button
-												variant="ghost"
-												size={isSmallView ? "icon-sm" : "icon"}
-												className="text-ink-dim hover:bg-elevated hover:text-ink"
-												onPointerDown={holdCaretOnRefusedPress}
-												onClick={handleAttachFile}
-												aria-label={t("ui.chat.composer.attach_file")}
-												data-tour-tag="chat-input-attach-file-button"
-												disabled={
-													isInputDisabled || isRecording || isTranscribing
-												}
-											>
-												<Paperclip aria-hidden="true" />
-											</Button>
-										</span>
-									</Tooltip>
-									{/*
-									 * Gated on whether a directory is KNOWN, not on whether it is
-									 * truthy, and not on the session being idle.
-									 *
-									 * Two unsatisfiable-condition bugs in the same three lines,
-									 * one after the other. The original `!canonicalStop` gate
-									 * could never be true in the canonical chat - the stop
-									 * control is passed unconditionally - so the chip was
-									 * unreachable from v0.16.0 even though it was still mounted
-									 * here. Replacing it with `{cwdToShow && ...}` then made the
-									 * chip able to DELETE ITSELF: `""` is a legal value of the
-									 * staged cwd, it is falsy, and this chip is the only writer
-									 * of `state.cwd` now the full-width bar is gone. So clearing
-									 * the field unmounted the one control that could set it
-									 * again, and `cwd` is persisted, so the app came back from a
-									 * restart still with no chip - unrecoverable without
-									 * devtools.
-									 *
-									 * `!== undefined` is the honest question: undefined means "no
-									 * directory is known for this conversation", which is the one
-									 * case with nothing to render. An empty string means "known,
-									 * and empty" - a state the chip has an affordance for, and
-									 * the reason its `unset` branch is reachable again.
-									 */}
-									{cwdToShow !== undefined && (
-										<DirectoryIndicator
-											ref={cwdChipRef}
-											currentWorkingDirectory={cwdToShow}
-											writePath={cwdWritePath}
-											pending={cwdPending}
-											pendingAccepted={cwdPendingAccepted}
-											readOnlyReason={
-												cwdWritePath
-													? undefined
-													: (cwdReadOnlyReason ?? moveUnavailableReason())
+								 * This is the pattern the textarea below already uses
+								 * (`max-h-28` plus its own `overflow-y-auto`): each growable part
+								 * of the composer caps itself and scrolls internally, so no
+								 * wrapper has to clip on behalf of its children. ~240px shows two
+								 * full rows of tiles before scrolling.
+								 */
+								<div className="max-h-[240px] shrink-0 overflow-y-auto">
+									{replies.length > 0 && (
+										<ReplyPreview
+											replies={replies}
+											onRemoveReply={handleRemoveReply}
+										/>
+									)}
+									{attachments.length > 0 && (
+										<AttachmentsPreview
+											attachments={attachments}
+											onRemoveAttachment={handleRemoveAttachment}
+											disabled={
+												isInputDisabled || isRecording || isTranscribing
 											}
+											byteSizes={attachmentByteSizes}
 										/>
 									)}
 								</div>
-
+							)}
+							{/*
+							 * THE FIELD STAYS MOUNTED WHILE RECORDING AND WHILE TRANSCRIBING (the
+							 * operator's report; research §2's "recording is a state of the composer,
+							 * not a screen").
+							 *
+							 * The arms that used to live here swapped the whole field for the
+							 * indicator or the `Processing audio` panel - a full-width, washed,
+							 * bordered block at the exact moment their author was mid-thought - and
+							 * the draft VANISHED at the press. That is the defect this change is:
+							 * the words stay where they are, and the recording state is the small
+							 * strip below them.
+							 */}
+							{/*
+							 * The textarea and its MIRROR, in one isolated wrapper.
+							 *
+							 * `isolate` is load-bearing rather than tidy: the overlay paints at
+							 * `-z-10` so the pill sits UNDER the glyphs the textarea paints, and
+							 * without a stacking context here a negative index paints behind the
+							 * composer box's own `bg-surface` — i.e. no pill at all, with nothing
+							 * on screen to say why (CSS 2.1 appendix E: negative-z children come
+							 * before in-flow block backgrounds).
+							 */}
+							<div className="composer-dock-field relative isolate w-full">
+								<CredentialOverlay
+									text={newMessage}
+									payloads={payloadsRef.current}
+									capture={capture}
+									held={escapeIsHeld(newMessage, capture)}
+									fieldRef={textareaRef}
+									mirrorRef={mirrorRef}
+									isSmallView={isSmallView}
+								/>
 								{/*
-								 * THE CAPTURE'S SENTENCE IS NOT IN THIS ROW ANY MORE (design round 3,
-								 * D1; UX round 3, U14; code review round 3, MAJOR 1; QA round 3,
-								 * Q1/Q2).
-								 *
-								 * Both earlier rounds kept it inside the composer, and both paid the
-								 * same price: the composer's own height changed when the sentence
-								 * arrived, so the line the operator was typing moved under their caret.
-								 * Round 3 measured where that ends - 296.55px of free row against a
-								 * ~353.86px sentence at 1380 (two lines, the row 32 -> 39px), a 168x78
-								 * block and a 236 -> 96px cwd chip at 950, and at 800 a 76.7px ribbon
-								 * 175.5px tall with the row tripled - and those are the numbers that say
-								 * the row cannot hold a sentence of this length beside a chip, a
-								 * readings strip and three controls.
-								 *
-								 * It now lives ABOVE the box, in the form's own flow, where the
-								 * composer's pinned bottom edge cannot be pushed by it: the notice's own
-								 * comment above the box carries the measurement that decides the
-								 * placement. This slot stays as the pointer, because the obvious repair
-								 * for a crowded row is to put the sentence back into it, and that repair
-								 * has now been tried twice.
+								 * The mention chips, in the same `isolate` wrapper and at the same depth as
+								 * the credential pill: both draw behind the glyphs the textarea paints, and
+								 * neither takes the pointer. The two never overlap in practice — a chip is a
+								 * path token and a pill is a credential marker — but if they ever did, the
+								 * chip's fill would sit under the pill's, which is the right way round: the
+								 * pill marks a value the app holds and the chip marks a file the text names.
 								 */}
+								<AtMentionOverlay
+									text={newMessage}
+									spans={atMentions.spans}
+									resolved={atMentions.resolved}
+									fieldRef={textareaRef}
+									isSmallView={isSmallView}
+								/>
+								{/*
+								 * The highlight's two layers. `ComposerHighlight` owns the mirror, the
+								 * scroll write and the geometry correction; this JSX owns the input, so
+								 * the composer's key handling, its autosize and its refs are untouched by
+								 * the paint. The wrapper adds no size of its own — the mirror is
+								 * `absolute` — so the band's layout is exactly what the bare textarea
+								 * produced, and the credential overlay above stays a SIBLING of it
+								 * rather than an ancestor.
+								 */}
+								<ComposerHighlight
+									draft={newMessage}
+									runs={composerRuns}
+									textareaRef={textareaRef}
+									fieldClassName={composerTextBox(isSmallView)}
+									refused={isInputDisabled}
+								>
+									<textarea
+										ref={textareaRef}
+										data-region-entry
+										className={cn(
+											// The box model comes from ONE place, shared with the mirror:
+											// any drift between these two moves the pill off the characters
+											// it sits under.
+											composerTextBox(isSmallView),
+											// `block`, and it is a fix rather than a style choice (design round 3,
+											// D1; code review round 3, MAJOR 1's sibling; QA round 3, Q2). The
+											// wrapper above is a block container, and a textarea left at its
+											// default `inline-block` sits in a LINE BOX there — so the wrapper
+											// measured 39.7px around a 34px field (the strut's descender space)
+											// and the composer box came out 5.7px taller than `origin/main`'
+											// in EVERY state, idle included (61.4..179.1 against 61.4..173.4),
+											// moving the control row, the ring and the box's bottom edge.
+											// On main the field is a direct child of the box's flex column and
+											// is blockified by it, which is why there was nothing to see there;
+											// the overlay's wrapper is what introduced the line box, so the
+											// field states its own display rather than depending on a parent's
+											// formatting context to do it.
+											"block",
+											isSmallView ? "max-h-24" : "max-h-28",
+											"resize-none overflow-y-auto bg-transparent",
+											/*
+											 * THE HIGHLIGHT'S OWN SWITCH. `caret-ink` is explicit because `caret-color: auto`
+											 * follows `color`, which is transparent here - an invisible caret in the app's primary input.
+											 * The ink comes back the moment no run is painted, so an ordinary draft keeps its native
+											 * rendering (and its spellcheck squiggle).
+											 */
+											highlighting ? "text-transparent caret-ink" : "text-ink",
+											"composer-dock-textarea outline-none placeholder:text-ink-dim",
+											// A composer that REFUSES input STEPS COLOUR rather than fading
+											// (branding: disabled changes colour, never opacity), and without
+											// this the only signal was `cursor: not-allowed` after the user
+											// had already typed into a field that will not accept anything.
+											//
+											// `read-only:` is the pair that fires now, because the refusal
+											// is expressed as `readOnly` on the element below. The
+											// `disabled:` pair stays BESIDE it: nothing sets `disabled` on
+											// this element any more, and deleting the pair would let a
+											// future `disabled` state ship with no ink step at all - the
+											// exact defect the pair was added for.
+											//
+											// A HOST THAT REFUSES DOES NOT WEAR THAT INK (design review
+											// round 2, D6). `ink-disabled` measures 1.99:1 on the box's
+											// `elevated` fill in the dark brand and 2.96:1 in the
+											// light one, and the exemption it carries assumes the
+											// state's MEANING is carried somewhere else that meets the
+											// floor - the transcript, in chat. On a host page the box's
+											// own words can be the only carrier of the reason (the
+											// Agents page's "Finish or cancel your edit first."), so
+											// with `blocksInput` the box steps to `ink-muted` the way
+											// the host's band sentence does. The refusal still reads
+											// as one: dimmer than a draft's `ink`, `cursor:
+											// not-allowed`, `aria-disabled`, plus the band and the
+											// strip.
+											hostNotice?.blocksInput
+												? "read-only:text-ink-muted read-only:placeholder:text-ink-muted disabled:text-ink-disabled disabled:placeholder:text-ink-disabled"
+												: "read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										)}
+										placeholder={
+											/*
+											 * THE ONE SENTENCE THE BOX CARRIES, and the ORDER is the rule rather than
+											 * the strings: `composerPlaceholder` holds it (with the reason each term
+											 * sits where it does), so the chain cannot be reordered into a state the
+											 * app cannot be in and then photographed as one.
+											 *
+											 * The two facts this call is built from: `sendInFlight` is this composer's own
+											 * unsettled press, and `sendingUnsettled` is the STORE's row for this
+											 * conversation (`sendUnsettledForSession` -> `draftRowForSession`, over the
+											 * row's own `pending`), which is what
+											 * survives the New-chat identity flip - a flag held by the panel being replaced
+											 * cannot, which is what review round 2's R2-1 found in the round-1 wiring. They
+											 * are OR'd because they are the two halves of one fact at two scopes, and the
+											 * sentence is earned by the SCENARIO rather than by the box: while a send from
+											 * this conversation is going out, the empty box says so, and `Waiting for the
+											 * agent` takes over once it has settled. See `composerPlaceholder` for why that
+											 * outranks `awaitingReply` and what it must never claim.
+											 *
+											 * `asideAttached` is the attached `/btw` panel, which re-routes this box's
+											 * Enter off the record. Where its term sits in the order - after the two
+											 * refusals and the gate, ahead of both send-state sentences - and why each
+											 * side of that position is load-bearing is stated on `composerPlaceholder`.
+											 *
+											 * WORDING AND INDICATOR. Sentence case, no ellipsis, no spinner, in the
+											 * composer's existing idiom - every state this box has ever had is one
+											 * of these strings and nothing else (design rounds 2 and 3). The
+											 * transcript already carries the turn's single liveness element while
+											 * this is true (branding section 7's working line, fed by the page's
+											 * `admitting`), so a second visible indicator here would be a second
+											 * liveness statement about one turn - and the new state ADDS no
+											 * layout: `pending-send` is geometrically `idle` with one word
+											 * changed, measured in the committed pair. What does move, in a send
+											 * carrying an attachment, is the band losing the chip row when the
+											 * echo paints (253px -> 125px at 1024 in the same pair): that is the
+											 * payload leaving, not an indicator arriving, and the field and the
+											 * control row hold their position through it (design round 1, D4).
+											 */
+											isRecording
+												? t(COMPOSER_PLACEHOLDER.recording)
+												: composerPlaceholder({
+														unavailable,
+														secretAnswer: secretAnswerPending,
+														inputDisabled: isInputDisabled,
+														awaitingAnswer,
+														asideAttached: aside !== null,
+														sendingUnsettled: sendUnsettled || sendInFlight,
+														awaitingReply,
+														/*
+														 * The press's own window (round 1, D6): the box says the
+														 * press landed instead of re-teaching `Esc stops` under a
+														 * finger that already pressed. Read from the same object
+														 * the control is drawn from, so the two cannot disagree
+														 * about a press.
+														 */
+														stopping: canonicalStop?.stopping === true,
+														// The last reading before the invitation: nothing is in
+														// flight and the box is not refused, but no model
+														// provider is connected, so the invitation is a lie
+														// (design audit section 6).
+														noProvider,
+														/*
+														 * The host's own sentence for the invitation slot, when
+														 * it has one (the mini view's copy); every sentence
+														 * above still outranks it, and absent means the app's
+														 * own idle line.
+														 */
+														idle: placeholderOverride,
+														// The host's own words for its own states (D1/D5); absent on
+														// every chat mount, which is what keeps chat unchanged.
+														hostLine: hostNotice?.placeholder ?? null,
+													})
+										}
+										value={newMessage}
+										/*
+										 * The IME half of the paint: the composition string is drawn by the BROWSER, is not
+										 * in the mirror, and would be invisible under `text-transparent`, so zero runs turn
+										 * both the runs and the transparency off while it is being typed.
+										 */
+										onCompositionStart={() => setComposing(true)}
+										onCompositionEnd={() => setComposing(false)}
+										onChange={(e) => {
+											/*
+											 * THE KEYBOARD TOUCHED THIS BOX (arch §4.2): the input-mode
+											 * flag behind `mixed`/`typed`. Set HERE because this
+											 * handler is the one door every human edit arrives
+											 * through, and it does not fire for the transcript's own
+											 * programmatic write (a controlled value change is not an
+											 * `input` event) - which is exactly the distinction.
+											 */
+											sawTypingRef.current = true;
+											/*
+											 * THE MIRROR'S SECOND DOOR. Every buffer mutation that is NOT an
+											 * intercepted keystroke arrives here — Backspace, Delete, a
+											 * selection, a drop, an IME commit, and any paste that fell through
+											 * — and `applyDomEdit` maps the edit onto the held value at the
+											 * index the operator sees. The first door is the printable-key
+											 * branch of `handleCredentialKeyDown`, which never lets the
+											 * character reach the DOM at all; this one is the belt for the
+											 * routes a keyboard gate cannot see.
+											 *
+											 * `origin` is "typing" because a change IS a keystroke-shaped
+											 * event on this control — an arrival (a restored draft, a seed) is
+											 * written through `setNewMessage` by its own caller, never through
+											 * the DOM's change event for a textarea the user is in.
+											 */
+											const next = e.target.value;
+											const at = e.target.selectionStart ?? next.length;
+											/*
+											 * ANY EDIT OF THE BOX RETIRES THE LOCKED RUN'S RECORD (code review round 2,
+											 * MINOR 1). The rule is "one edit ends it", and this is the edit: the
+											 * first keystroke, backspace, paste or drop that changes the draft. Content
+											 * equality could not say that — an edit that returned the box to the same
+											 * text left the record armed, and a `⌘Z` hours later put the consumed line
+											 * back. The programmatic writes the composer makes (a splice, a stage, the
+											 * undo itself) do not pass through here, so they do not clear it.
+											 */
+											lockedRun.current = null;
+											const applied = applyDomEdit(
+												captureRef.current,
+												newMessage,
+												next,
+												at,
+												"typing",
+											);
+											if (applied.buffer !== next) {
+												// A real character reached the span through a route the
+												// keyboard gate could not see, and it is already replaced by
+												// its mask cell here.
+												pendingCaret.current = applied.caret;
+												setCaret(applied.caret);
+											} else {
+												setCaret(at);
+											}
+											if (applied.capture !== captureRef.current)
+												setCapture(applied.capture);
+											// Only the empty -> non-empty edge: the whole point is one
+											// statement of intent per composed message, and the
+											// consumer's latch should not be asked to absorb a
+											// per-character call it can only discard.
+											if (!newMessage && applied.buffer) onComposerInput?.();
+											/*
+											 * The capture's own write, stamped so the whole-buffer teardown can
+											 * tell it from a replacement some other writer made. A DOM change
+											 * reaches here without passing `applyCapture`, which is exactly why
+											 * the stamp is not optional: without it, the operator's own
+											 * keystroke would read as an external write and end the gesture it
+											 * is in the middle of.
+											 */
+											captureOwnedBuffer.current = applied.buffer;
+											// An abandoned capture (the drop and IME routes) settles the box
+											// here rather than through `applyCapture`, so the §6 write has to
+											// be asked for here too.
+											persistDraft(applied.capture, applied.buffer);
+											setNewMessage(applied.buffer);
+											// Editing the text answers the alert. Leaving it up over a
+											// draft the user has since changed is the defect this whole
+											// change replaces, and moving the banner to the composer
+											// would only have moved that defect closer to the eye.
+											//
+											// After a dwell, though: the message is two sentences plus up
+											// to three controls, and a user who reaches straight for the
+											// keyboard lost all of it before finishing the first word -
+											// including the remedy buttons. The alert still goes on the
+											// edit, just not before it can be read.
+											if (
+												Date.now() - alertShownAt.current >=
+												ALERT_READ_DWELL_MS
+											)
+												sendError?.onDismiss?.();
+										}}
+										onSelect={(e) => {
+											const field = e.target as HTMLTextAreaElement;
+											/*
+											 * A CARET REPORT THAT ARRIVES BEFORE THE COMPOSER'S OWN
+											 * CARET WRITE LANDS IS A REPORT ABOUT THE CARET IT REPLACED.
+											 *
+											 * `applyCapture` parks the caret it is about to set in
+											 * `pendingCaret` and the layout effect applies it with the
+											 * buffer. A `select`/`selectionchange` still in flight from the
+											 * PREVIOUS edit therefore reaches this handler between the state
+											 * write and its commit, carrying the older buffer (the render
+											 * closure has not moved yet) and the older offset — a pair that
+											 * is internally consistent and describes a state the composer
+											 * has already left. Re-syncing on it is how accepting the
+											 * `/credential` row closed the span that completion had just
+											 * opened: the report said "the caret is at 5, inside the token"
+											 * while the capture was already open at 6, so `syncCapture` read
+											 * a caret move out of the span.
+											 *
+											 * Skipping it is not a caret move being ignored: the offset that
+											 * arrives is the one this write is replacing, and the pending
+											 * value is applied by the layout effect either way. If the DOM
+											 * already agrees — a report about the caret we just set — the
+											 * marker is retired here so the guard cannot outlive its write.
+											 */
+											const pending = pendingCaret.current;
+											if (pending !== null) {
+												if (field.selectionStart === pending)
+													pendingCaret.current = null;
+												return;
+											}
+											setCaret(field.selectionStart);
+											/*
+											 * A CARET MOVE RE-SYNCS THE CAPTURE, and the origin says what a
+											 * caret move may do: it may keep a latched arm, re-anchor it, and
+											 * RE-OPEN a span the caret has returned to — but it may never ARM
+											 * by itself. The TUI asks both questions at the same reactive
+											 * (`watch_selection`), because a mouse click, an app-set
+											 * selection and a completion's caret all move the caret with no
+											 * caret key pressed: without the re-open, leaving and coming back
+											 * left an armed token whose next typed character landed in
+											 * PLAINTEXT; without the "may not arm" half, a click at the end of
+											 * a restored draft would swallow the next paste.
+											 */
+											setCapture(
+												syncCapture(
+													captureRef.current,
+													newMessage,
+													field.selectionStart,
+													"caret",
+												),
+											);
+										}}
+										onKeyDown={handleComposerKeyDown}
+										onPointerDown={() => {
+											/*
+											 * A CLICK INTO A BOX THAT CANNOT SEND lands on the reason (D4):
+											 * ~32 users rage-clicked this field with nothing connected, and
+											 * the field answered with a caret and nothing else. Typing stays
+											 * allowed; the line under the box steps up to full ink so the
+											 * click visibly reaches the explanation and its one-click fix.
+											 */
+											if (sendBlock) explainRefusedSend();
+											/*
+											 * "I am about to type here." An ask gate can advance while the
+											 * user is on their way into this box, and the restore must not
+											 * move them off it: the characters they type would reach
+											 * nothing and the next `Space` would answer the next question
+											 * (UX round 4, U13).
+											 */
+											composerPointerTouched = true;
+										}}
+										onPaste={handlePaste}
+										rows={1}
+										/*
+										 * READ-ONLY, NOT DISABLED, and the difference is the caret — see the
+										 * `isInputDisabled` declaration above. `disabled` blurs the field when
+										 * it lands, which parks the caret on `document.body` and, on the
+										 * `unavailable` arm, never gives it back on that panel; and a
+										 * disabled textarea cannot be focused, selected or copied, so the
+										 * reader cannot even retrieve the sentence they were writing from
+										 * the state that just told them the conversation is gone.
+										 *
+										 * `aria-disabled` is what says the same thing to a screen reader now
+										 * that the native attribute is gone: the field is still focusable
+										 * and still readable, so the accessible name has to carry the
+										 * refusal the ink step carries visually. It is undefined (absent)
+										 * while the composer works, because `aria-disabled="false"` on a
+										 * textarea that takes input is a statement about a state the user
+										 * is not in.
+										 *
+										 * The refusal itself is enforced by the guard at the top of
+										 * `handleComposerKeyDown`: `readOnly` suppresses the EDIT (no `input`
+										 * event fires, so `onChange` never runs), but the keydown still
+										 * arrives — so Enter would submit without that guard. Every other
+										 * path that writes into this box or submits it carries the same
+										 * predicate, and `aria-describedby` ties the pane's own sentence
+										 * for the state to the control for as long as it refuses.
+										 */
+										readOnly={isInputDisabled}
+										/*
+										 * The TEXTAREA's own attribute: it reports the refusal that keeps the
+										 * box read-only, and nothing else. Round 5's U21 refusal is about
+										 * SENDING, not typing ("typing stays allowed; the send is not"), so
+										 * `noModel` must not appear here -- telling a screen reader the box
+										 * is disabled while it accepts every keystroke is the same class of
+										 * falsehood as a claim its surface cannot support, and
+										 * `composer-refusal` pins exactly that.
+										 */
+										aria-disabled={isInputDisabled || undefined}
+										aria-label={t("ui.chat.composer.message")}
+										role="combobox"
+										/*
+										 * All THREE descriptions, space-separated as the attribute demands: the
+										 * credential capture's notice while one is owed, the mention sentence while
+										 * a reference points outside the workspace, and the pane's own sentence
+										 * while the conversation this machine would answer is gone. `undefined`
+										 * rather than an empty string when none applies, because an empty
+										 * `aria-describedby` is a reference to nothing. The three are independent
+										 * reasons to describe this box and any two of them can coincide, which is
+										 * why they are JOINED rather than chosen between.
+										 */
+										aria-describedby={
+											/*
+											 * THE REFUSAL IS DESCRIBED RATHER THAN ANNOUNCED (UX round 1, U3).
+											 * A screen reader in a refused box heard the value and "read-only,
+											 * disabled" and never WHY: the pane's statement of the state is a `<p>`
+											 * in the transcript with no programmatic tie to the control, and the
+											 * placeholder that carries the short form is painted and announced
+											 * only while the box is EMPTY - which is not the state this PR exists
+											 * for. Joining the other notices' ids rather than choosing between
+											 * them keeps each true at once; any two of the three can coincide.
+											 *
+											 * Named only for the `unavailable` arm, which is the one with a sentence
+											 * in the pane to point at. The busy arm's band carries the state's own
+											 * action (Stop agent) and has no pane sentence; it is also unreachable
+											 * on a canonical pane (`currentJobId` is pinned to `null` there), so it
+											 * gets no invented one. An id that resolves to nothing is ignored by
+											 * assistive tech, which is what a composer mounted without a transcript
+											 * (a story, a rig) gets.
+											 *
+											 * AND SO DOES THE SECRET CLOSURE'S SENTENCE: the box is paused
+											 * with a draft in it — the one state the placeholder cannot reach
+											 * (UX round 1, U2) — so its own element joins while it renders.
+											 *
+											 * NOT A LIVE REGION. An announcement was the alternative, and it was
+											 * rejected: the state is already spoken by the transcript the reader is
+											 * in, this box is focusable precisely so the reader can go there, and a
+											 * polite region on every refusal is a second voice for one fact that
+											 * cannot be verified without an AT in this environment.
+											 */
+											[
+												hostNotice ? hostNotice.id : null,
+												/*
+												 * The host's blocked reason, while its band node is the
+												 * only place it can be read (the box holds text, so the
+												 * placeholder is not painted). Same condition as the node
+												 * itself, so the reference cannot outlive its target.
+												 */
+												hostNotice?.blocksInput &&
+												hostNotice.placeholder &&
+												!hostNotice.statedByNode &&
+												newMessage.trim().length > 0
+													? HOST_BLOCKED_REASON_ID
+													: null,
+												credentialNotice ? CREDENTIAL_NOTICE_ID : null,
+												secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
+												/*
+												 * The queued ask's sentence, while it renders: the box stays
+												 * usable in that state, so this is the one place a reader
+												 * learns the secret has its own field before they type it.
+												 */
+												secretAsk && secretConfirm === null
+													? SECRET_ASK_NOTICE_ID
+													: null,
+												outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
+												unavailable ? MISSING_SESSION_NOTICE_ID : null,
+												deliveryRemediesReachable
+													? DELIVERY_REMEDIES_HINT_ID
+													: null,
+											]
+												.filter(Boolean)
+												.join(" ") || undefined
+										}
+										aria-expanded={slash.open || at.open}
+										aria-controls={
+											slash.open
+												? slash.listId
+												: at.open
+													? at.listId
+													: undefined
+										}
+										/*
+										 * The active option comes from whichever list is OPEN, and the popups rule
+										 * above guarantees only one is on top: handing both ids to one
+										 * `aria-activedescendant` would name an element in a list the user is not
+										 * looking at, which a screen reader announces as a row that does not exist.
+										 */
+										aria-activedescendant={
+											(slash.open
+												? slash.activeDescendantId
+												: at.activeDescendantId) ?? undefined
+										}
+									/>
+								</ComposerHighlight>
+								{/*
+								 * THE CHIPS, painted OVER the field's own glyphs.
+								 *
+								 * A sibling of `ComposerHighlight` inside the `relative isolate` wrapper, and
+								 * therefore AFTER the textarea in the DOM once `#303` moved the field behind
+								 * that wrapper's two layers. The order matters for two reasons and neither is
+								 * cosmetic: a positioned element paints above an in-flow one whatever the tree
+								 * order is (CSS 2.1 appendix E), so the chip is above the text either way -
+								 * but the DOM order is what decides where a keyboard user meets its `x`, and a
+								 * control that clears the reference the field holds belongs AFTER the field
+								 * rather than as a stop on the way in. It also keeps the chip above the
+								 * textarea's glyphs and below the popups that follow in this wrapper.
+								 *
+								 * It is a sibling rather than a child of `CredentialOverlay` so that the wash
+								 * (which must stay UNDER the glyphs) and the chip (which must sit OVER them)
+								 * can each take their own layer while measuring ONE mirror - this branch's
+								 * own, which is what the run's rects come from; `#303`'s `ComposerHighlight`
+								 * mirror carries the slash painting and is a different element.
+								 *
+								 * `onClear` is NULLED while the composer refuses input: the refusal on this
+								 * base is `readOnly` rather than `disabled`, so a control painted over the box
+								 * IS pressable in a state where every writer is refused, and the chip must not
+								 * offer a verb the composer will not run. The gate is passed in from the same
+								 * `isInputDisabled` the textarea and the other writers read, so there is one
+								 * predicate rather than two.
+								 */}
+								<CredentialChipLayer
+									small={isSmallView}
+									text={newMessage}
+									payloads={payloadsRef.current}
+									capture={capture}
+									mirrorRef={mirrorRef}
+									fieldRef={textareaRef}
+									onClear={isInputDisabled ? null : clearCredential}
+									/*
+									 * R4-5: when the clip rule drops the chip whose control held
+									 * focus, the keyboard needs a home - and this composer has
+									 * exactly one place that gives it back (`focusInput`, the
+									 * pointer gate's reset included).
+									 */
+									onControlUnmounted={focusInput}
+								/>
+							</div>
+							{/*
+							 * THE LANE, from the PRESS (design round 1 D2, round 3 D14; QA round 3
+							 * Q-1). The press is answered before the recorder exists - the
+							 * microphone acquisition is the one genuinely slow part of the click
+							 * path (830 ms cold on this fleet, past two minutes under swap
+							 * exhaustion) - and the answer used to be a separate one-line row
+							 * that grew the card, after which the lane grew it AGAIN at handover:
+							 * the field jumped twice per press. Here the SAME block that the take
+							 * will occupy opens at once, at its final height, with "Starting
+							 * recording" in its label row, and the handover to recording swaps
+							 * the words and starts the waveform without moving anything. So a
+							 * press costs ONE height change, the lane's own (84px, `composer-
+							 * slots-proof.mjs` asserts the preparing and recording heights are
+							 * equal), and in the bottom-anchored chat band the controls row does
+							 * not move at all. It is not 0px: a press that adds a lane to the
+							 * card cannot be free, and the claim that it was is retired.
+							 *
+							 * NOT IN THE CONTROLS ROW and not an overlay (design round 2, D9):
+							 * as a flex item it grew the 68px cluster and pushed Send past the
+							 * card's edge, and as an overlay it painted over the readings.
+							 *
+							 * The block carries a status and no control, so the pointer map does
+							 * not move. Its words are a live region (`<output>`), and the ring on
+							 * the mic's busy face is the surface's one indeterminate element.
+							 */}
+							{(isRecording || (isPreparing && micControlShown)) && (
+								<AudioRecordingIndicator
+									isRecording={isRecording}
+									preparingLabel={
+										!isRecording && isPreparing
+											? isSmallView
+												? t("ui.chat.composer.starting")
+												: t("ui.chat.composer.starting_recording")
+											: null
+									}
+									sendsNow={slotB.role === "send-recording" && slotB.enabled}
+								/>
+							)}
+							{isTranscribing && (
+								<div
+									data-transcribing-indicator=""
+									className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+								>
+									<span className="font-medium text-body-sm text-ink-muted">
+										{t("ui.chat.composer.processing_audio")}
+									</span>
+									{/*
+									 * ONE LIVE ELEMENT FOR A SEND-RECORDING WAIT (design D13): slot A
+									 * already spins for it, so the caption is words only there. A plain
+									 * dictation has no spinner in the row and keeps its waveform.
+									 */}
+									{sendRecordingPhase === "idle" && <WaveformAnimation />}
+								</div>
+							)}
+							{/*
+							 * THE OFFER, in the slot the transcribing row vacates (#1087).
+							 *
+							 * The toast names the fault and the action; this row exists because a
+							 * toast cannot carry the control those words point at, and the take it
+							 * would spend is already in hand - one press, no re-recording. It is a
+							 * row rather than a toast action because a toast dismisses and the
+							 * take does not: the offer has to last as long as the recording does.
+							 *
+							 * It renders only once the attempts are spent (`!isTranscribing`), so
+							 * the row never appears while a send is still in flight.
+							 */}
+							{/*
+							 * The durable settings changes still applying (or failed) for this
+							 * session: their own line, in the dictation row's slot and register,
+							 * because the control row below is one line that cannot hold a
+							 * sentence with buttons (see `settings-intent-chips.tsx`).
+							 */}
+							{sessionStatus?.settingsIntents && (
+								<SettingsIntentChips
+									{...sessionStatus.settingsIntents}
+									restoreFocus={() => textareaRef.current?.focus()}
+								/>
+							)}
+							{dictationFailure !== null &&
+								!isTranscribing &&
+								audioBlob !== null && (
+									<div
+										data-dictation-retry=""
+										className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+									>
+										{/*
+										 * AN ERROR REGISTER, not the metadata one (design round 1,
+										 * D6). The row sat in `ink-muted` with no mark at all, so it
+										 * read as the same quiet status as "Processing audio" - and
+										 * the toast it replaces carried the danger icon. The take is
+										 * still here, but the attempt failed: the icon says which,
+										 * and the sentence stays at reading ink.
+										 */}
+										<CircleAlert
+											aria-hidden="true"
+											className="size-3.5 shrink-0 text-danger"
+										/>
+										<span className="font-medium text-body-sm text-ink-muted">
+											{dictationFailure}
+										</span>
+										<Button
+											type="button"
+											variant="link"
+											size="sm"
+											/*
+											 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
+											 * D3). The `link` variant's `h-auto p-0` left this
+											 * control 29x12px - the text's own line box - and the
+											 * underline appeared only on hover, so the one recovery
+											 * control in the state was a colour-only word. `h-7 px-2`
+											 * restores a 28px target (the size every other `sm`
+											 * control in the row takes) and `underline` makes it
+											 * look pressable at rest.
+											 */
+											className="h-7 shrink-0 px-2 underline"
+											onClick={retryDictation}
+										>
+											{t("ui.common.actions.retry")}
+										</Button>
+									</div>
+								)}
+							<div data-lo-composer-rail="" className="composer-dock-rail">
+								<Tooltip content={t("ui.chat.composer.attach_file")}>
+									<span>
+										<Button
+											variant="ghost"
+											size={isSmallView ? "icon-sm" : "icon"}
+											className={COMPOSER_UTILITY_BUTTON}
+											onPointerDown={holdCaretOnRefusedPress}
+											onClick={handleAttachFile}
+											aria-label={t("ui.chat.composer.attach_file")}
+											data-tour-tag="chat-input-attach-file-button"
+											disabled={
+												isInputDisabled || isRecording || isTranscribing
+											}
+										>
+											<Plus aria-hidden="true" />
+										</Button>
+									</span>
+								</Tooltip>
 
-								{/* Right side: microphone, send or stop button.
-								 *
-								 * `ms-auto` is the row's ONE live auto margin, at EVERY width, and it
-								 * is here rather than on the readings on purpose (design round 1.5,
-								 * D7): this group cannot return `null`, so the row's justification
-								 * does not depend on whether a cluster that can vanish happens to be
-								 * rendering. Below 750px of column it separates this group from the
-								 * attached line above it; above, it holds the free space between the
-								 * cluster and these controls, which is what leaves the readings
-								 * immediately after the working-directory chip. A second live auto
-								 * margin would share that space evenly and float the controls mid-row.
-								 *
-								 * LOGICAL, not physical (`ms-auto`, not `ml-auto`): in an RTL row
-								 * (`ur` is a shipped locale) a physical left margin puts the free
-								 * space on the far side of this group, so the readings sit flush
-								 * against the controls and the duration measurement correctly finds
-								 * no gap. `margin-inline-start` is the same margin in LTR and the
-								 * mirrored one in RTL, which keeps this row's one live auto margin
-								 * doing its job in both directions.
-								 *
-								 * `order-3` above the threshold is only needed because the strip's DOM
-								 * slot is first (see above); it makes the paint [attach][chip]
-								 * [readings][mic][send] out of a DOM whose first child is the cluster.
-								 */}
+								<div
+									className="composer-dock-pickers"
+									ref={setComposerPickerHost}
+								/>
 								<div
 									data-lo-composer-controls={true}
 									onFocus={() => {
@@ -10960,7 +10687,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											clusterHadFocusRef.current = false;
 										}
 									}}
-									className="ms-auto flex order-3 shrink-0 items-center gap-1"
+									className="ms-auto flex shrink-0 items-center gap-1"
 								>
 									{slotC === "confirm" && (
 										<Tooltip
@@ -10970,11 +10697,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											<span>
 												<Button
 													data-composer-slot="c"
-													variant="outline"
+													variant="ghost"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													className={cn(
-														"border-success-border bg-success-wash text-success hover:bg-success-wash",
+														"text-success hover:bg-success-wash hover:text-success active:bg-success-wash active:text-success",
 														confirmArming && "opacity-72",
 													)}
 													onClick={(event) => {
@@ -11040,7 +10767,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														variant="ghost"
 														size={isSmallView ? "icon-sm" : "icon"}
 														className={cn(
-															"text-ink-dim hover:bg-elevated hover:text-ink",
+															COMPOSER_UTILITY_BUTTON,
 															/*
 															 * THE DIMMED FACE OF A REFUSAL THAT KEEPS ITS TOOLTIP (spec §3):
 															 * `aria-disabled` carries the state and the ink step matches the
@@ -11048,7 +10775,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 															 * feature-unavailable one read the same - the reason in the tooltip
 															 * is what differs, and it is the one that says what to do.
 															 */
-															"aria-disabled:text-ink-disabled aria-disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled",
+															"aria-disabled:text-ink-disabled aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent aria-disabled:hover:text-ink-disabled aria-disabled:active:bg-transparent aria-disabled:active:text-ink-disabled",
 														)}
 														onPointerDown={holdCaretOnRefusedPress}
 														onClick={handleStartRecording}
@@ -11141,15 +10868,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											<span>
 												<Button
 													data-composer-slot="a"
-													variant="outline"
+													variant="ghost"
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													className={cn(
-														// A neutral outline body with the glyph in danger red: the
-														// one colour cue that says "this throws the take away", and
-														// not a loud third fill beside the green disc. The red fill
-														// is for hover and focus only.
-														"text-danger hover:bg-danger-wash hover:text-danger focus-visible:bg-danger-wash",
+														// Keep the destructive cue on the glyph until interaction.
+														"text-danger hover:bg-danger-wash hover:text-danger active:bg-danger-wash active:text-danger",
 														cancelArming && "opacity-72",
 													)}
 													onClick={(event) => {
@@ -11190,8 +10914,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													size={isSmallView ? "icon-sm" : "icon"}
 													type="button"
 													className={cn(
-														"rounded-full disabled:bg-surface",
-														// The held face after the press: the same disc, quieter, and
+														"rounded-full disabled:bg-ink/8",
+														// The held face after the press keeps the same footprint, and
 														// STATIC - slot A carries this wait's one spinner (design
 														// round 1, D1).
 														(slotB.role === "send-recording-busy" ||
@@ -11231,7 +10955,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													}
 												>
 													{/* The idle Send's own glyph: one icon for one press point. */}
-													<Send aria-hidden="true" />
+													<ArrowUp aria-hidden="true" strokeWidth={2.25} />
 												</Button>
 											</span>
 										</Tooltip>
@@ -11250,7 +10974,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											variant="secondary"
 											size={isSmallView ? "icon-sm" : "icon"}
 											type="button"
-											className="rounded-full"
 											aria-busy={true}
 											aria-disabled={true}
 											aria-label={t("ui.chat.composer.placeholder.sending")}
@@ -11420,14 +11143,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														type="submit"
 														onPointerDown={holdCaretOnSendPress}
 														disabled={!slotB.enabled}
-														className="rounded-full disabled:bg-surface"
+														className="rounded-full disabled:bg-ink/8"
 														aria-label={
 															aside !== null && !awaitingAnswer
 																? t("ui.chat.composer.ask_aside")
 																: t("ui.chat.composer.send_message")
 														}
 													>
-														<Send aria-hidden="true" />
+														<ArrowUp aria-hidden="true" strokeWidth={2.25} />
 													</Button>
 												</span>
 											</Tooltip>

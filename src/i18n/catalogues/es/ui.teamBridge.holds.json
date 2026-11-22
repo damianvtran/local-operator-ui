@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "Cargando mensajes retenidos",
 	"ui.teamBridge.holds.load_failed": "No se pudieron cargar los mensajes retenidos.",
 	"ui.teamBridge.holds.empty": "No hay mensajes retenidos.",
+	"ui.teamBridge.holds.hide_local": "Ocultar en este dispositivo",
+	"ui.teamBridge.holds.hide_local_label": "Ocultar en este dispositivo: mensaje {reference}",
+	"ui.teamBridge.holds.hidden_local": "Ocultos en este dispositivo: {count, number}",
+	"ui.teamBridge.holds.restore_local": "Restaurar",
+	"ui.teamBridge.holds.restore_local_label": "Restaurar el mensaje {reference}",
+	"ui.teamBridge.holds.hide_failed": "No se pudieron actualizar los mensajes ocultos en este dispositivo.",
 	"ui.teamBridge.holds.release_off": "Entregar y descartar mensajes retenidos está desactivado en este dispositivo.",
 	"ui.teamBridge.holds.from_person": "De {person}",
 	"ui.teamBridge.holds.from_agent": "De {agent}, el agente de {person}",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Descartar mensaje",
 	"ui.teamBridge.holds.confirm.cancel": "Cancelar",
 	"ui.teamBridge.holds.delivering": "Entregando…",
-	"ui.teamBridge.holds.discarding": "Descartando…"
+	"ui.teamBridge.holds.discarding": "Descartando…",
+	"ui.teamBridge.holds.receipt_only": "No se pudo cargar este mensaje. Ya no se puede entregar. Aún puedes descartarlo sin leerlo.",
+	"ui.teamBridge.holds.reference": "Referencia {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "¿Descartar solo este mensaje ({reference}) sin leerlo? No llegará a tu agente. El descarte queda registrado en este dispositivo y no se puede deshacer.",
+	"ui.teamBridge.holds.discard_unread_label": "Descartar el mensaje {reference} sin leerlo",
+	"ui.teamBridge.holds.state.discard_recorded": "Descarte registrado en este dispositivo. No se ha recibido confirmación del servidor."
 }

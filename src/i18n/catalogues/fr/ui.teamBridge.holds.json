@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "Chargement des messages retenus",
 	"ui.teamBridge.holds.load_failed": "Impossible de charger les messages retenus.",
 	"ui.teamBridge.holds.empty": "Aucun message n’est retenu.",
+	"ui.teamBridge.holds.hide_local": "Masquer sur cet appareil",
+	"ui.teamBridge.holds.hide_local_label": "Masquer sur cet appareil : message {reference}",
+	"ui.teamBridge.holds.hidden_local": "Masqués sur cet appareil : {count, number}",
+	"ui.teamBridge.holds.restore_local": "Rétablir",
+	"ui.teamBridge.holds.restore_local_label": "Rétablir le message {reference}",
+	"ui.teamBridge.holds.hide_failed": "Impossible de mettre à jour les messages masqués sur cet appareil.",
 	"ui.teamBridge.holds.release_off": "Transmettre ou écarter des messages retenus est désactivé sur cet appareil.",
 	"ui.teamBridge.holds.from_person": "De {person}",
 	"ui.teamBridge.holds.from_agent": "De {agent}, l’agent de {person}",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Écarter le message",
 	"ui.teamBridge.holds.confirm.cancel": "Annuler",
 	"ui.teamBridge.holds.delivering": "Transmission…",
-	"ui.teamBridge.holds.discarding": "Mise à l’écart…"
+	"ui.teamBridge.holds.discarding": "Mise à l’écart…",
+	"ui.teamBridge.holds.receipt_only": "Ce message n’a pas pu être chargé. Il ne peut plus être transmis. Vous pouvez toujours l’écarter sans le lire.",
+	"ui.teamBridge.holds.reference": "Référence {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "Écarter uniquement ce message ({reference}) sans le lire ? Il n’atteindra pas votre agent. Ce choix est enregistré sur cet appareil et est irréversible.",
+	"ui.teamBridge.holds.discard_unread_label": "Écarter le message {reference} sans le lire",
+	"ui.teamBridge.holds.state.discard_recorded": "Votre choix Écarter est enregistré sur cet appareil. Aucune confirmation du serveur n’a été reçue."
 }

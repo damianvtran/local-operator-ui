@@ -111,6 +111,7 @@ import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
+import { RemoteRunCards } from "../../remote-compute/remote-run-card";
 import { TURN_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import {
 	asideAskBlockedReason,
@@ -144,6 +145,7 @@ import {
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
+import { activityFingerprint } from "../canonical/new-activity";
 import { editDraftOf } from "../canonical/skill-row";
 import { useSoundStopGate } from "../canonical/sound-stop-confirmation";
 import { canonicalTranscriptTerminal } from "../canonical/transcript-pane";
@@ -893,10 +895,24 @@ function SessionPanel({
 	const interruptAvailable = sessionInterruptEnabled(panelCapabilities.data);
 	const [options, setOptions] = useState(false);
 	const [tab, setTab] = useState<"chat" | "raw">("chat");
-	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
-		50,
+	/*
+	 * The jump-to-latest control reads two facts from the transcript: where the
+	 * reader is (`container`, below) and what the tail is doing (the fingerprint
+	 * here, recomputed only when the records array changes). `streamId` is the
+	 * CONVERSATION's identity, so a conversation switch resets the chip and a
+	 * new record does not - the record count used to be passed here and every
+	 * arriving row blanked the control for a frame.
+	 */
+	const newActivityFingerprint = useMemo(
+		() => activityFingerprint(canonical.transcript.records),
+		[canonical.transcript.records],
+	);
+	const { isFarFromBottom, hasNewActivity, scrollToBottom } = useScrollToBottom(
 		container,
-		canonical.transcript.records.length,
+		{
+			contentKey: streamId,
+			activity: newActivityFingerprint,
+		},
 	);
 	/*
 	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
@@ -1348,6 +1364,16 @@ function SessionPanel({
 		canonical,
 		capabilities: capabilities.data,
 	});
+	/*
+	 * THE PANE'S DIRECTORY, ONCE, for every surface that names it: this is what the
+	 * header's cwd chip paints, and the device slot's Radient sheet is handed the same
+	 * value rather than re-deriving it from the canonical row. The row's `cwd` is
+	 * written by this app's `createSession` alone, so a conversation another client of
+	 * the daemon created had the chip printing its path while the sheet said "no
+	 * directory yet" and refused to start a run (QA round 2, Q-2). One expression, so
+	 * the two cannot disagree.
+	 */
+	const chipCwd = draftKey ? cwd : live.cwd;
 	/*
 	 * The chip's write path, which is one value because the two kinds answer
 	 * differently: a draft STAGES the directory `sessions.create` will use, and a
@@ -2656,6 +2682,9 @@ function SessionPanel({
 			 * claim, the echo, the wait line and the composer's clear together; the
 			 * create and the message POST after the prefix are unaffected.
 			 */
+			// The reversed transcript follows the echo if pinned, or holds the
+			// reading anchor if not. Don't scroll on receipt: it arrives after
+			// the echo and can interrupt someone who scrolled in the meantime.
 			const id = await flushSync(() =>
 				admitChatDraft(
 					key,
@@ -5086,6 +5115,8 @@ function SessionPanel({
 						<ChatDeviceSlot
 							sessionId={sessionId ?? undefined}
 							draftKey={draftKey ?? undefined}
+							/* The value the header's chip below paints; see `chipCwd`. */
+							paneCwd={chipCwd}
 						/>
 					}
 					/*
@@ -5109,6 +5140,17 @@ function SessionPanel({
 						) : null
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
+					/*
+					 * THE RUNS THIS PANE BOUGHT, keyed by the same pane identity the device
+					 * control pins them under (`panelIdentityFor`), so the card appears in the
+					 * conversation that asked for the run rather than in whichever chat happens
+					 * to be open.
+					 */
+					remoteRuns={
+						(sessionId ?? draftKey) ? (
+							<RemoteRunCards paneKey={sessionId ?? (draftKey as string)} />
+						) : null
+					}
 					deviceHold={deviceHold}
 					agentName={title}
 					description={
@@ -5293,9 +5335,10 @@ function SessionPanel({
 					 * point of the chip - a value the backend has not confirmed yet has to
 					 * be paintable, or the user watches a move they made not happen. The
 					 * rebase onto `main` kept main's `sessionId` prop beside it; both are
-					 * wanted and neither subsumes the other.
+					 * wanted and neither subsumes the other. It is read through `chipCwd` so
+					 * the device slot's Radient sheet names the same directory (QA Q-2).
 					 */
-					cwd={draftKey ? cwd : live.cwd}
+					cwd={chipCwd}
 					cwdWritePath={cwdWritePath}
 					cwdReadOnlyReason={cwdReadOnlyReason}
 					/*
@@ -5317,6 +5360,7 @@ function SessionPanel({
 					isLoading={false}
 					isLoadingMessages={false}
 					isFarFromBottom={isFarFromBottom}
+					hasNewActivity={hasNewActivity}
 					messagesContainerRef={container}
 					scrollToBottom={scrollToBottom}
 					rawInfoContent={JSON.stringify(canonical.frontend, null, 2)}

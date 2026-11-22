@@ -3659,7 +3659,7 @@ function durableRecord(
 				: {}),
 			...(customType === "team_bridge_message"
 				? {
-						bridgeReceipt: bridgeReceiptOf(details),
+						bridgeReceipt: bridgeReceiptOf(details, text),
 					}
 				: {}),
 			attribution:

@@ -1,0 +1,129 @@
+=== en  sha256=d07c9ca6078b985d978b7c9cc0c04525b623439ebe4ade526de5c5f6bc76e237  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`."
+    rendered : "Create a network with `lop network init`, or join one with `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`."
+    rendered : "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "A run's network is recorded, not enforced in this version."
+    rendered : "A run's network is recorded, not enforced in this version."
+    spans    : []
+=== fr  sha256=9b39f1a5176b47d607128c9c8239b01a7394f9824c157b342d21de907aa633a2  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '''<token>'''`."
+    rendered : "Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient : aucun réseau auquel rattacher une exécution. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '''<token>'''`."
+    rendered : "Radient : aucun réseau auquel rattacher une exécution. Créez-en un avec `lop network init`, ou rejoignez-en un avec `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "Le réseau d’une exécution est enregistré, mais non appliqué dans cette version."
+    rendered : "Le réseau d’une exécution est enregistré, mais non appliqué dans cette version."
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== es  sha256=056ecee6e6a242c30c6a009255a9f488c0c6db9db3065446a0ed0aa1d7072bc9  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "Crea una red con `lop network init` o únete a una con `lop network join '''<token>'''`."
+    rendered : "Crea una red con `lop network init` o únete a una con `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: no hay ninguna red a la que vincular una ejecución. Crea una con `lop network init` o únete a una con `lop network join '''<token>'''`."
+    rendered : "Radient: no hay ninguna red a la que vincular una ejecución. Crea una con `lop network init` o únete a una con `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "La red de una ejecución se registra, pero no se aplica en esta versión."
+    rendered : "La red de una ejecución se registra, pero no se aplica en esta versión."
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== zh-CN  sha256=378874c5fb417fa258dcbd6e4ba985ee9aea71121b55d3c747ada5ff092f7bb8  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "用 `lop network init` 创建一个，或用 `lop network join '''<token>'''` 加入一个。"
+    rendered : "用 `lop network init` 创建一个，或用 `lop network join '<token>'` 加入一个。"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient：没有可绑定运行的网络。用 `lop network init` 创建一个，或用 `lop network join '''<token>'''` 加入一个。"
+    rendered : "Radient：没有可绑定运行的网络。用 `lop network init` 创建一个，或用 `lop network join '<token>'` 加入一个。"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "运行所用的网络会被记录，但在此版本中未强制执行。"
+    rendered : "运行所用的网络会被记录，但在此版本中未强制执行。"
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== ru  sha256=a4d86a0cc1bce4cf90f15895c1b28917efbac7c47432d9b7fb40b40144f19dc6  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "Создайте её командой `lop network init` или присоединитесь к существующей командой `lop network join '''<token>'''`."
+    rendered : "Создайте её командой `lop network init` или присоединитесь к существующей командой `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: нет сети, к которой можно привязать запуск. Создайте её командой `lop network init` или присоединитесь к существующей командой `lop network join '''<token>'''`."
+    rendered : "Radient: нет сети, к которой можно привязать запуск. Создайте её командой `lop network init` или присоединитесь к существующей командой `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "Сеть запуска записывается, но в этой версии не применяется."
+    rendered : "Сеть запуска записывается, но в этой версии не применяется."
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== vi  sha256=380e37d0b8e4219e03631b5c15737ecb10c8e27b537ea90fca06cd21c75f180d  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '''<token>'''`."
+    rendered : "Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: không có mạng nào để gắn một lần chạy. Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '''<token>'''`."
+    rendered : "Radient: không có mạng nào để gắn một lần chạy. Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '<token>'`."
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "Mạng của lần chạy được ghi lại, nhưng không được áp dụng trong phiên bản này."
+    rendered : "Mạng của lần chạy được ghi lại, nhưng không được áp dụng trong phiên bản này."
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== ur  sha256=53931fdee241831da43a959fb1d8d1bdfe9944936ffead56bf10dfd3dd240027  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "`lop network init` سے ایک بنائیں، یا `lop network join '''<token>'''` سے شامل ہوں۔"
+    rendered : "`lop network init` سے ایک بنائیں، یا `lop network join '<token>'` سے شامل ہوں۔"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: کوئی نیٹ ورک نہیں جس سے رن منسلک ہو۔ `lop network init` سے ایک بنائیں، یا `lop network join '''<token>'''` سے شامل ہوں۔"
+    rendered : "Radient: کوئی نیٹ ورک نہیں جس سے رن منسلک ہو۔ `lop network init` سے ایک بنائیں، یا `lop network join '<token>'` سے شامل ہوں۔"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "رن کا نیٹ ورک درج ہوتا ہے، اس ورژن میں نافذ نہیں۔"
+    rendered : "رن کا نیٹ ورک درج ہوتا ہے، اس ورژن میں نافذ نہیں۔"
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+=== hi  sha256=66ac8a0ba3e92b9e14268c60c2b7af60640665b3b81b1e03a01e56d5623039c6  keys=83
+  ui.chat.remote_compute.row.network_remedy
+    catalogue: "`lop network init` से एक बनाएँ, या `lop network join '''<token>'''` से जुड़ें।"
+    rendered : "`lop network init` से एक बनाएँ, या `lop network join '<token>'` से जुड़ें।"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.row.sentence.network
+    catalogue: "Radient: ऐसा कोई नेटवर्क नहीं जिससे रन जोड़ा जाए। `lop network init` से एक बनाएँ, या `lop network join '''<token>'''` से जुड़ें।"
+    rendered : "Radient: ऐसा कोई नेटवर्क नहीं जिससे रन जोड़ा जाए। `lop network init` से एक बनाएँ, या `lop network join '<token>'` से जुड़ें।"
+    spans    : ["lop network init","lop network join '<token>'"]
+    token span quoting: ONE PAIR (')
+  ui.chat.remote_compute.sheet.network.not_enforced
+    catalogue: "रन का नेटवर्क दर्ज होता है, इस संस्करण में लागू नहीं होता।"
+    rendered : "रन का नेटवर्क दर्ज होता है, इस संस्करण में लागू नहीं होता।"
+    spans    : []
+  claim sweep (all 83 values): 0 match(es)
+
+ICU errors: 0   quoting problems: 0   claim-rule matches: 0

@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { cn } from "@shared/lib/utils";
 import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
@@ -800,7 +801,10 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		useLinkEvidence(trimmed, linkify, documentId);
 
 		return (
-			<div className={cn("lo-markdown", className)} style={style}>
+			<div
+				className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
+				style={style}
+			>
 				<ReactMarkdown
 					remarkPlugins={remarkPlugins}
 					rehypePlugins={rehypePlugins}
@@ -1056,7 +1060,10 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	const style = useStyleVariables(styleProps);
 
 	return (
-		<div className={cn("lo-markdown", className)} style={style}>
+		<div
+			className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
+			style={style}
+		>
 			{/*
 			 * ONE keyed list, closed blocks then the pending paragraph then the open
 			 * block. They used to be three sibling slots, and React identifies a child

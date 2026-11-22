@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "Đang tải tin nhắn bị giữ",
 	"ui.teamBridge.holds.load_failed": "Không thể tải tin nhắn bị giữ.",
 	"ui.teamBridge.holds.empty": "Không có tin nhắn nào bị giữ.",
+	"ui.teamBridge.holds.hide_local": "Ẩn trên thiết bị này",
+	"ui.teamBridge.holds.hide_local_label": "Ẩn trên thiết bị này: tin nhắn {reference}",
+	"ui.teamBridge.holds.hidden_local": "Đã ẩn trên thiết bị này: {count, number}",
+	"ui.teamBridge.holds.restore_local": "Hiện lại",
+	"ui.teamBridge.holds.restore_local_label": "Hiện lại tin nhắn {reference}",
+	"ui.teamBridge.holds.hide_failed": "Không thể cập nhật danh sách tin nhắn đã ẩn trên thiết bị này.",
 	"ui.teamBridge.holds.release_off": "Việc chuyển và loại bỏ tin nhắn bị giữ đang tắt trên thiết bị này.",
 	"ui.teamBridge.holds.from_person": "Từ {person}",
 	"ui.teamBridge.holds.from_agent": "Từ {agent}, tác nhân của {person}",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Loại bỏ tin nhắn",
 	"ui.teamBridge.holds.confirm.cancel": "Hủy",
 	"ui.teamBridge.holds.delivering": "Đang chuyển…",
-	"ui.teamBridge.holds.discarding": "Đang loại bỏ…"
+	"ui.teamBridge.holds.discarding": "Đang loại bỏ…",
+	"ui.teamBridge.holds.receipt_only": "Không tải được tin nhắn này. Tin nhắn không còn chuyển được nữa. Bạn vẫn có thể loại bỏ tin nhắn mà không cần đọc.",
+	"ui.teamBridge.holds.reference": "Mã tham chiếu {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "Chỉ loại bỏ tin nhắn này ({reference}) mà không đọc? Tin nhắn sẽ không đến được tác nhân của bạn. Việc loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác.",
+	"ui.teamBridge.holds.discard_unread_label": "Loại bỏ tin nhắn {reference} mà không đọc",
+	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ."
 }

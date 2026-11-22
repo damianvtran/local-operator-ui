@@ -42,6 +42,7 @@
  * Scroll paging inherits that rule rather than restating it — a reader
  * following the tail neither loads a page nor has their offset corrected.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import {
 	FlagLine,
@@ -2853,6 +2854,8 @@ const ToolRow = memo(function ToolRow({
 					className={cn(
 						"whitespace-pre font-mono",
 						interruptedNotRun ? "text-ink" : "text-danger",
+						// The reason a call did not run quotes the call (review round 1, Q2).
+						USER_CONTENT_CLASS,
 					)}
 				>
 					{record.notRunReason}
@@ -3319,6 +3322,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 			})
 		: "";
 	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	/*
+	 * The open pane's headline says WHERE the message sits as well as who sent
+	 * it: a reply inside a thread reads differently from a top-level post, and the
+	 * body below it is otherwise context-free. The collapsed row keeps its
+	 * shorter summary.
+	 */
+	const thread = receipt.thread ? t("ui.chat.bridgeReceipt.thread_reply") : "";
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3331,7 +3341,7 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 					<BridgeDetailPane
 						isError={false}
 						view={{
-							headline: [received, target].filter(Boolean).join(" · "),
+							headline: [received, target, thread].filter(Boolean).join(" · "),
 							body: null,
 							/*
 							 * When the read is offered, the body section below owns the

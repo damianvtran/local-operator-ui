@@ -1,0 +1,67 @@
+{
+	"schema": 1,
+	"scope": "PR #1971 round 3 (5a9e3fbe38): the three ui.chat.remote_compute keys the round-2 remediation re-staled in all seven locales — row.network_remedy and row.sentence.network (UX round 2 U7: the token's ICU quoting) and sheet.network.not_enforced (design round 2 D2: the restored subject).",
+	"head": "5a9e3fbe38cfd5ed497ffc2f0855f6bf20838e69",
+	"auditor": {
+		"instance_suffix": "e3f2fc029be5",
+		"model": "deepseek/deepseek-flash"
+	},
+	"records": [
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r3-fr-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-fr-remotecompute-e3f2fc029be5.json",
+			"sha256": "896cfa965778937635157b14c11a288936ee1103a3e4e2136448db5522897651",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/es/ui.chat.remote_compute/pr1971-r3-es-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-es-remotecompute-e3f2fc029be5.json",
+			"sha256": "ec42920b95d839237837679149a49fb1a2e82795dbde9f7809071ed0d4700145",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/zh-CN/ui.chat.remote_compute/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-zh-CN-remotecompute-e3f2fc029be5.json",
+			"sha256": "d512b6128779ecdd8128c0611c4799ae779d47d98bb0027908316c6e400a0573",
+			"result": "clean"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/ru/ui.chat.remote_compute/pr1971-r3-ru-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-ru-remotecompute-e3f2fc029be5.json",
+			"sha256": "090de5e49a4550a700929a4e174993d31aa336f12596a250c3d83a2e2037f1cb",
+			"result": "clean-with-findings"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/vi/ui.chat.remote_compute/pr1971-r3-vi-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-vi-remotecompute-e3f2fc029be5.json",
+			"sha256": "34aa42110ddc1c0615cc3bbe7e2cc4fb9039412b6b0f1bd139bc4026c419b6a0",
+			"result": "clean"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/ur/ui.chat.remote_compute/pr1971-r3-ur-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-ur-remotecompute-e3f2fc029be5.json",
+			"sha256": "05c72e2449f06264bbaebc20bac56edb390758bb1267bb16312beb510fcbfc04",
+			"result": "clean"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.remote_compute",
+			"canonical_record": "i18n/audits/evidence/hi/ui.chat.remote_compute/pr1971-r3-hi-remotecompute-e3f2fc029be5/record.json",
+			"receipt": "i18n/receipts/pr1971-r3-hi-remotecompute-e3f2fc029be5.json",
+			"sha256": "15630997c4eb137000f43fed425bc22940eb5ee965bf3a3999e665ba05be6301",
+			"result": "clean"
+		}
+	]
+}

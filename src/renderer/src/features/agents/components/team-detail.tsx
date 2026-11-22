@@ -35,7 +35,10 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { Input } from "@shared/components/ui/input";
-import { SearchableSelect } from "@shared/components/ui/searchable-select";
+import {
+	type SearchableOption,
+	SearchableSelect,
+} from "@shared/components/ui/searchable-select";
 import {
 	Select,
 	SelectContent,
@@ -68,6 +71,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { configSeedPrompt } from "../config-run/seed-prompt";
 import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
 	INHERIT,
@@ -586,27 +590,27 @@ export function TeamDetail({
 		 * likely first failure here.
 		 */
 		if (creating && !name.trim()) {
-			setError("Give the team a name.");
+			setError(t("ui.agents.teams.create.error_name_required"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && /[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && (teams ?? []).some((row) => row.name === name.trim())) {
 			setError(
-				`A team called “${name.trim()}” already exists. Open it to change it, or choose another name.`,
+				t("ui.agents.teams.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && !draft.instructions.trim()) {
-			setError("Give the team instructions.");
+			setError(t("ui.agents.teams.create.error_instructions_required"));
 			setErrorField("instructions");
 			teamInstructionsRef.current?.focus();
 			return;
@@ -688,7 +692,7 @@ export function TeamDetail({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The team could not be saved.",
+					: t("ui.agents.teams.edit.error_generic"),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -731,7 +735,9 @@ export function TeamDetail({
 	// the count follows it; otherwise it is the saved team's.
 	const shownMembers = draft.members.length ? draft.members : team?.members;
 
-	const displayName = team ? teamDisplayName(team) : "New team";
+	const displayName = team
+		? teamDisplayName(team)
+		: t("ui.agents.teams.create.title_new");
 	const includesTeam = draft.members.some((member) => member.kind === "team");
 
 	return (
@@ -772,7 +778,9 @@ export function TeamDetail({
 						{team ? (
 							<p className="text-body-sm text-ink-muted">
 								{memberCountLabel(shownMembers)}
-								{includesTeam ? " · Includes a team" : ""}
+								{includesTeam ? (
+									<> {t("ui.agents.teams.includes_team")}</>
+								) : null}
 							</p>
 						) : null}
 					</div>
@@ -826,7 +834,11 @@ export function TeamDetail({
 							{askEnabled ? (
 								<Button
 									variant="ghost"
-									onClick={() => onAskAgent(`Change the team ${team.name}: `)}
+									onClick={() =>
+										onAskAgent(
+											configSeedPrompt({ kind: "team", name: team.name }),
+										)
+									}
 								>
 									{t("ui.agents.detail.action.ask_change")}
 								</Button>
@@ -1062,10 +1074,10 @@ export function TeamDetail({
 													)}
 													busyLabel={t("ui.agents.teams.field.loading_agents")}
 													options={[
-														...managerOptions(agents, teams).filter((option) =>
-															member.kind === "team"
-																? option.group === "Teams"
-																: option.group === "Agents",
+														...memberOptions(
+															agents,
+															teams,
+															member.kind === "team" ? "team" : "agent",
 														),
 													]}
 													selected={
@@ -1076,7 +1088,10 @@ export function TeamDetail({
 													onSelect={(option) =>
 														updateMember(index, {
 															role: option.id,
-															kind: option.group === "Teams" ? "team" : "agent",
+															// The list was already narrowed to this member's kind
+															// (`memberOptions`), so the pick is of that kind; the
+															// translated group label is never read back.
+															kind: member.kind === "team" ? "team" : "agent",
 														})
 													}
 													onCustomSubmit={(text) =>
@@ -1797,23 +1812,41 @@ export function TeamDetail({
 	);
 }
 
-/** Agents and teams on this machine, grouped, as `SearchableOption`s. */
-function managerOptions(
+/**
+ * Agents and teams on this machine, grouped, as `SearchableOption`s.
+ *
+ * `group` is DISPLAY copy (the list's section heading) and is translated, so
+ * nothing may branch on it: a member row used to filter on `group === "Teams"`,
+ * which would have emptied every member picker the moment the heading was
+ * localized. `kind` is the machine fact; `memberOptions` filters on it.
+ */
+export function managerOptions(
 	agents: readonly ReusableProfile[] | undefined,
 	teams: readonly ReusableTeam[] | undefined,
-) {
+): (SearchableOption & { kind: "agent" | "team" })[] {
 	return [
 		...(agents ?? []).map((agent) => ({
 			id: agent.name,
 			name: agent.name,
 			description: agent.description,
-			group: "Agents",
+			group: t("ui.agents.teams.group.agents"),
+			kind: "agent" as const,
 		})),
 		...(teams ?? []).map((row) => ({
 			id: row.name,
 			name: row.name,
 			description: row.description,
-			group: "Teams",
+			group: t("ui.agents.teams.group.teams"),
+			kind: "team" as const,
 		})),
 	];
+}
+
+/** The options a member row of `kind` may pick from (see `managerOptions`). */
+export function memberOptions(
+	agents: readonly ReusableProfile[] | undefined,
+	teams: readonly ReusableTeam[] | undefined,
+	kind: "agent" | "team",
+) {
+	return managerOptions(agents, teams).filter((option) => option.kind === kind);
 }

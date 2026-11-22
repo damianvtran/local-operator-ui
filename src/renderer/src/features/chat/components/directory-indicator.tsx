@@ -1015,7 +1015,9 @@ export const DirectoryIndicator = forwardRef<
 						aria-label={t("ui.chat.directory.tooltip.set")}
 					>
 						<Folder aria-hidden="true" />
-						{t("ui.chat.directory.not_set")}
+						<span className={cn("min-w-0 truncate", CHIP_TEXT_AT_FLOOR)}>
+							{t("ui.chat.directory.not_set")}
+						</span>
 						{/*
 						 * The same at-rest affordance the editable chip carries (design review
 						 * D8, second half). This state is the WEAKEST of the three: no path means

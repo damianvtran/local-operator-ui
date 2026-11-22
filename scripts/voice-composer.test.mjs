@@ -1401,9 +1401,31 @@ test("voice on here dims the microphone, keeps it focusable, and starts no recor
 		false,
 		"aria-disabled, not the attribute: the control keeps focus and its tooltip",
 	);
-	assert.match(mic().className, /aria-disabled:text-ink-disabled/);
-	/* D3: the ink step alone measured pixel-identical in the trial. */
-	assert.match(mic().className, /aria-disabled:opacity-50/);
+	mic().focus();
+	assert.equal(
+		window.document.activeElement,
+		mic(),
+		"the locked mic takes focus",
+	);
+	// The flat dock dims by ink, not opacity, and a locked mic never highlights.
+	for (const state of ["", "hover:", "active:"]) {
+		assert.ok(
+			mic().classList.contains(`aria-disabled:${state}text-ink-disabled`),
+			`the locked mic uses disabled ink in ${state || "rest"} state`,
+		);
+		if (state)
+			assert.ok(
+				mic().classList.contains(`aria-disabled:${state}bg-transparent`),
+				`the locked mic keeps a transparent background in ${state} state`,
+			);
+	}
+	assert.ok(
+		!Array.from(mic().classList).some(
+			(token) =>
+				token.startsWith("aria-disabled:") && token.includes("opacity-"),
+		),
+		"the locked mic does not fade the whole control",
+	);
 
 	await act(async () => {
 		mic().dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -1416,10 +1438,8 @@ test("voice on here dims the microphone, keeps it focusable, and starts no recor
 	});
 	await flush();
 	assert.equal(mic().getAttribute("aria-disabled"), null);
-	assert.ok(
-		!mic().className.includes("aria-disabled:text-ink-disabled") ||
-			mic().getAttribute("aria-disabled") === null,
-	);
+	assert.ok(mic().classList.contains("text-ink-dim"));
+	assert.ok(mic().classList.contains("hover:text-ink"));
 });
 
 test("paused releases the microphone, so dictation comes back", async () => {

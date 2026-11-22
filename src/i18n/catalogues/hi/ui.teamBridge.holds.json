@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "रोके गए संदेश लोड हो रहे हैं",
 	"ui.teamBridge.holds.load_failed": "रोके गए संदेश लोड नहीं हो सके।",
 	"ui.teamBridge.holds.empty": "कोई संदेश रोका नहीं गया है।",
+	"ui.teamBridge.holds.hide_local": "इस डिवाइस पर छिपाएँ",
+	"ui.teamBridge.holds.hide_local_label": "इस डिवाइस पर छिपाएँ: संदेश {reference}",
+	"ui.teamBridge.holds.hidden_local": "इस डिवाइस पर छिपाए गए संदेश: {count, number}",
+	"ui.teamBridge.holds.restore_local": "फिर दिखाएँ",
+	"ui.teamBridge.holds.restore_local_label": "फिर दिखाएँ: संदेश {reference}",
+	"ui.teamBridge.holds.hide_failed": "इस डिवाइस पर छिपाए गए संदेशों की सूची अपडेट नहीं हो सकी।",
 	"ui.teamBridge.holds.release_off": "इस डिवाइस पर रोके गए संदेश पहुँचाना और खारिज करना बंद है।",
 	"ui.teamBridge.holds.from_person": "{person} की ओर से",
 	"ui.teamBridge.holds.from_agent": "{agent} की ओर से, {person} का एजेंट",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "संदेश खारिज करें",
 	"ui.teamBridge.holds.confirm.cancel": "रद्द करें",
 	"ui.teamBridge.holds.delivering": "पहुँचाया जा रहा है…",
-	"ui.teamBridge.holds.discarding": "खारिज किया जा रहा है…"
+	"ui.teamBridge.holds.discarding": "खारिज किया जा रहा है…",
+	"ui.teamBridge.holds.receipt_only": "यह संदेश लोड नहीं हो सका। अब इसे पहुँचाया नहीं जा सकता। आप अब भी इसे बिना पढ़े खारिज कर सकते हैं।",
+	"ui.teamBridge.holds.reference": "संदर्भ {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "सिर्फ़ यह संदेश ({reference}) बिना पढ़े खारिज करें? यह आपके एजेंट तक नहीं पहुँचेगा। खारिज करना इस डिवाइस पर दर्ज होता है और इसे वापस नहीं लिया जा सकता।",
+	"ui.teamBridge.holds.discard_unread_label": "संदेश {reference} बिना पढ़े खारिज करें",
+	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है। सर्वर से कोई पुष्टि नहीं मिली है।"
 }

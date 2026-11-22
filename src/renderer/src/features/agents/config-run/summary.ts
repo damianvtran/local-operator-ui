@@ -25,13 +25,30 @@ import type {
 	ReusableProfile,
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
+import type { MessageKey } from "@shared/i18n";
+import { translate } from "@shared/i18n";
 import { classOf } from "../utils/agent-class";
 import type {
 	RunChange,
 	RunResult,
 	RunTarget,
 	RunTargetKind,
+	SummaryText,
 } from "./config-run-store";
+
+/**
+ * Paint one summary sentence in the CURRENT locale.
+ *
+ * WHY THE PROJECTION RETURNS A KEY AND NOT A STRING. The step lines are
+ * memoised over the transcript and the change list is computed once at settle
+ * and kept in the run store, so a string built there would freeze in whatever
+ * language was active when the run happened: switching language afterwards
+ * would leave an English (or French) summary under a German page. Carrying the
+ * key and its parameters lets every reader (`RunActivity`, `RunSummary`, the
+ * hook's live `step`) translate at render, where `useI18nLocale` re-renders it.
+ */
+export const summaryText = (text: SummaryText): string =>
+	translate(text.key, text.params);
 
 /**
  * The tool rows this feature reads, and nothing else on the wire is consulted.
@@ -96,7 +113,8 @@ export type RunToolRow = {
  * still paints its step line in the Watch list.
  */
 export function projectRunToolRow(row: RunToolRow): {
-	verb: string;
+	/** The step line, as catalogue copy rendered by `summaryText` at paint time. */
+	verb: SummaryText;
 	target: RunTarget | null;
 	/** Whether this call WRITES the registry rather than reading it. */
 	writes: boolean;
@@ -123,16 +141,30 @@ export function projectRunToolRow(row: RunToolRow): {
 	const landed =
 		row.phase === "done" && !row.isError && !row.notRunReason && !row.neverSent;
 	const write = (writes: boolean) => ({ writes: writes && landed });
+	/*
+	 * Each arm is a WHOLE catalogue sentence with the kind as an ICU select, never
+	 * an English noun interpolated into a translated verb: "Creating {kind}" would
+	 * read "Erstelle agent" in German. A named and an unnamed arm are separate
+	 * keys because the article (and in many languages the case) differs.
+	 */
+	const named = (key: MessageKey): SummaryText => ({
+		key,
+		params: { kind, name: name ?? "" },
+	});
 	switch (op) {
 		case "create":
 			return {
-				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
+				verb: name
+					? named("ui.agents.config.summary.step.creating_named")
+					: named("ui.agents.config.summary.step.creating"),
 				target,
 				...write(true),
 			};
 		case "update":
 			return {
-				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
+				verb: name
+					? named("ui.agents.config.summary.step.updating_named")
+					: named("ui.agents.config.summary.step.updating"),
 				target,
 				...write(true),
 			};
@@ -143,13 +175,17 @@ export function projectRunToolRow(row: RunToolRow): {
 		 */
 		case "edit":
 			return {
-				verb: name ? `Editing ${kind} ${name}` : `Editing a ${kind}`,
+				verb: name
+					? named("ui.agents.config.summary.step.editing_named")
+					: named("ui.agents.config.summary.step.editing"),
 				target,
 				...write(true),
 			};
 		case "install":
 			return {
-				verb: name ? `Installing ${name}` : "Installing an agent",
+				verb: name
+					? named("ui.agents.config.summary.step.installing_named")
+					: named("ui.agents.config.summary.step.installing"),
 				target,
 				...write(true),
 			};
@@ -157,7 +193,9 @@ export function projectRunToolRow(row: RunToolRow): {
 		case "search":
 		case "show":
 			return {
-				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
+				verb: name
+					? named("ui.agents.config.summary.step.reading_named")
+					: named("ui.agents.config.summary.step.reading"),
 				target,
 				...write(false),
 			};
@@ -169,7 +207,9 @@ export function projectRunToolRow(row: RunToolRow): {
 			 */
 			return {
 				verb:
-					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
+					row.phase === "running"
+						? named("ui.agents.config.summary.step.working")
+						: named("ui.agents.config.summary.step.checked"),
 				target,
 				...write(true),
 			};
@@ -220,17 +260,18 @@ export function snapshotSkills(
 	);
 }
 
-/** The operator's words for a field, so the summary never says `tools`. */
-const FIELD_LABEL: Record<string, string> = {
-	description: "description",
-	kind: "kind",
-	tools: "tools",
-	effort: "effort tier",
-	delegate: "delegation",
-	action_class: "class",
-	manager: "manager",
-	members: "members",
-	instructions: "instructions",
+/**
+ * The sentence for a field whose change has no shape of its own, so the summary
+ * never says `effort`. One whole sentence per field (not "{label} changed"),
+ * because a translated field noun dropped into a fixed frame cannot agree in
+ * gender or case with the participle.
+ */
+const FIELD_CHANGED: Record<string, MessageKey> = {
+	description: "ui.agents.config.summary.change.description",
+	kind: "ui.agents.config.summary.change.kind",
+	effort: "ui.agents.config.summary.change.effort",
+	manager: "ui.agents.config.summary.change.manager",
+	instructions: "ui.agents.config.summary.change.instructions",
 };
 
 function agentSignature(profile: ReusableProfile): Signature {
@@ -288,34 +329,58 @@ export function snapshotCatalogue(
 }
 
 /** The tool names/verbs whose edits are worth saying out loud, widened or narrowed. */
-function describeTools(before: string, after: string): string {
-	if (before === after) return "tools";
+function describeTools(before: string, after: string): SummaryText {
+	if (before === after) return { key: "ui.agents.config.summary.change.tools" };
 	const set = (value: string) =>
 		value === "*" ? null : new Set(value.split(","));
 	const first = set(before);
 	const second = set(after);
-	if (second === null) return "tools widened to every tool";
-	if (first === null) return "tools narrowed to a list";
+	if (second === null)
+		return { key: "ui.agents.config.summary.change.tools_widened" };
+	if (first === null)
+		return { key: "ui.agents.config.summary.change.tools_narrowed" };
 	const added = [...second].filter((tool) => !first.has(tool));
 	const removed = [...first].filter((tool) => !second.has(tool));
 	if (added.length && !removed.length)
 		return added.length === 1
-			? `tool added: ${added[0]}`
-			: `${added.length} tools added`;
+			? {
+					key: "ui.agents.config.summary.change.tool_added",
+					params: { tool: added[0] },
+				}
+			: {
+					key: "ui.agents.config.summary.change.tools_added",
+					params: { count: added.length },
+				};
 	if (removed.length && !added.length)
 		return removed.length === 1
-			? `tool removed: ${removed[0]}`
-			: `${removed.length} tools removed`;
-	return "tools changed";
+			? {
+					key: "ui.agents.config.summary.change.tool_removed",
+					params: { tool: removed[0] },
+				}
+			: {
+					key: "ui.agents.config.summary.change.tools_removed",
+					params: { count: removed.length },
+				};
+	return { key: "ui.agents.config.summary.change.tools_changed" };
 }
 
-function describeField(field: string, before: string, after: string): string {
+function describeField(
+	field: string,
+	before: string,
+	after: string,
+): SummaryText {
 	if (field === "tools") return describeTools(before, after);
 	// A skill's fingerprint is its file set; the operator's word for a change to
 	// it is the instructions (the description has its own field, diffed apart).
-	if (field === "fingerprint") return "instructions changed";
+	if (field === "fingerprint")
+		return { key: "ui.agents.config.summary.change.instructions" };
 	if (field === "delegate")
-		return after === "true" ? "delegation turned on" : "delegation turned off";
+		return {
+			key:
+				after === "true"
+					? "ui.agents.config.summary.change.delegation_on"
+					: "ui.agents.config.summary.change.delegation_off",
+		};
 	/*
 	 * The class page follows `delegate`'s shape on purpose: the two are the
 	 * definition's BEHAVIOUR switches, and "class changed" would leave the reader
@@ -323,14 +388,27 @@ function describeField(field: string, before: string, after: string): string {
 	 * the new value means the agent may message them unprompted.
 	 */
 	if (field === "action_class")
-		return after === "proactive"
-			? "class changed to proactive"
-			: "class changed to reactive — proactive messaging stopped";
+		return {
+			key:
+				after === "proactive"
+					? "ui.agents.config.summary.change.class_proactive"
+					: "ui.agents.config.summary.change.class_reactive",
+		};
 	if (field === "members") {
 		const count = (value: string) => (value ? value.split(",").length : 0);
-		return `members changed (${count(before)} to ${count(after)})`;
+		return {
+			key: "ui.agents.config.summary.change.members",
+			params: { before: count(before), after: count(after) },
+		};
 	}
-	return `${FIELD_LABEL[field] ?? field} changed`;
+	const known = FIELD_CHANGED[field];
+	if (known) return { key: known };
+	// A field this client has no word for is named by its wire identifier — a
+	// code, not prose — inside a translated frame, rather than dropped.
+	return {
+		key: "ui.agents.config.summary.change.field",
+		params: { field },
+	};
 }
 
 /** One kind's rows in a snapshot; null when that dimension was not read. */

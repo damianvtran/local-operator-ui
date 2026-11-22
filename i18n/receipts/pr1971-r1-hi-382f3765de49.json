@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "382f3765de49",
+    "instance": "pr1971-r1-hi-382f3765de49",
+    "model": "deepseek/deepseek-flash",
+    "independence": "Independent auditor: did not author the translations. The translator was the PR's coder session (commit 44f676535, session 306dec1075ff); this audit was a separate agent run and only corrected strings it rejected.",
+    "independent_from_translator_session": true
+  },
+  "model": "deepseek/deepseek-flash",
+  "instance": "pr1971-r1-hi-382f3765de49",
+  "locale": "hi",
+  "namespace": "ui.chat.remote_compute",
+  "date": "2026-11-18",
+  "head": "44f676535c3e5b14ad6fca963c28c266df2bfb3b",
+  "base": "846b247a8d05cb45e74672bcde2e5c11867d34d6",
+  "branch": "feat/remote-compute-device-row",
+  "pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+  "scope": "Independent audit of all 77 ui.chat.remote_compute keys in hi: glossary, the hi style guide, claim-sensitive binding/tier copy, placeholders, CLDR plural categories, RTL/bidi and cell budgets. Rejected strings corrected in-place; residual findings counted below.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "inputs": {
+    "english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+    "english_sha256": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+    "context_sha256": "c358a82a1da24a9b2eff74768c99eee1df98b846379ccb1afdc2d615dd95ee73",
+    "target": "src/i18n/catalogues/hi/ui.chat.remote_compute.json",
+    "target_sha256": "3c6a2aa88002301769884f3dd62dfae0322062ef70cba23c81db18878735c7e5",
+    "glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide": "i18n/style-guides/hi.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+    "style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "sha256": {
+    "en": "0065bb8674728eddff9ada57ba42f378cce4b5fd2e49cbd5a392ec15ad14097a",
+    "hi": "3c6a2aa88002301769884f3dd62dfae0322062ef70cba23c81db18878735c7e5"
+  },
+  "claim_check": {
+    "binding": "recorded + not enforced, and no isolated/secured/segmented/private claim, in every locale",
+    "recorded_sentence": "the sheet sentence states the run is recorded against the network and that access is not restricted by it in this version",
+    "result": "passes in all seven locales"
+  },
+  "corrections": [
+    {
+      "key": "ui.chat.remote_compute.row.not_offered",
+      "from": "यह परिनियोजन इसे प्रदान नहीं करता",
+      "to": "यह डिप्लॉयमेंट यह सुविधा प्रदान नहीं करता",
+      "reason": "one 'deployment' had two renderings inside the namespace (परिनियोजन here, डिप्लॉयमेंट in runs.disabled); the chip also needed its object"
+    },
+    {
+      "key": "ui.chat.remote_compute.row.sentence.not_offered",
+      "from": "Radient: यह परिनियोजन रिमोट कंप्यूट प्रदान नहीं करता।",
+      "to": "Radient: यह डिप्लॉयमेंट रिमोट कंप्यूट प्रदान नहीं करता।",
+      "reason": "same single-term call"
+    }
+  ],
+  "findings": {
+    "minor": [],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.held",
+        "issue": "'{amount} होल्ड' transliterates 'hold' where 'रोका गया' is the natural money-state phrase; the loanword is widely read in Indian fintech copy and the chip has a cell budget."
+      },
+      {
+        "severity": "nit",
+        "key": "ui.chat.remote_compute.card.charged",
+        "issue": "'{amount} शुल्क' names the fee rather than the act; '{amount} शुल्क लिया' would parallel the held chip."
+      }
+    ]
+  },
+  "notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same commit and are listed under corrections; they are not counted as unresolved."
+}

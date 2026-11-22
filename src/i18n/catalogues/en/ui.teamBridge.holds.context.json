@@ -34,6 +34,54 @@
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. "
 	},
+	"ui.teamBridge.holds.hide_local": {
+		"role": "button",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Secondary action on one unloadable held message; hides its row and badge contribution. No decision is recorded. The device qualifier distinguishes it from Discard."
+	},
+	"ui.teamBridge.holds.hide_local_label": {
+		"role": "accessible button name",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"reference": "short message reference"
+		},
+		"note": "Name the specific Hide button for assistive technology. Start with the exact translated visible Hide action so speech control can match it, and add the message reference."
+	},
+	"ui.teamBridge.holds.hidden_local": {
+		"role": "subsection heading",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"count": "number of hidden messages"
+		},
+		"note": "Heading above the list of locally hidden held messages; the number is a total, not an attention count. The list is visible even when the Approvals badge is zero."
+	},
+	"ui.teamBridge.holds.restore_local": {
+		"role": "button",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Returns this row to the visible Held messages queue. Does not deliver the message or restore a deleted message."
+	},
+	"ui.teamBridge.holds.restore_local_label": {
+		"role": "accessible button name",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {
+			"reference": "short message reference"
+		},
+		"note": "Name the specific Restore button for assistive technology. Include the exact translated visible Restore action and the message reference."
+	},
+	"ui.teamBridge.holds.hide_failed": {
+		"role": "storage error",
+		"tone": "plain",
+		"length": "short",
+		"placeholders": {},
+		"note": "Local preferences could not be saved; shown after Hide or Restore, with the row left where it was. Do not imply a request to the sender or server failed."
+	},
 	"ui.teamBridge.holds.release_off": {
 		"role": "notice",
 		"tone": "calm",
@@ -416,5 +464,46 @@
 		"length": "1 word",
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. Shown on the pressed button while Discard is recorded."
+	},
+	"ui.teamBridge.holds.receipt_only": {
+		"role": "status line",
+		"tone": "calm",
+		"length": "three short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. Shown only on a held message whose Deliver window has closed (it expired, or it was never deliverable) and whose text could not be loaded. The sender's name may still show on the row above, so do not say the sender failed to load. Say the load failed, not that it can never load (a Try again button sits beside it). Only Discard is possible, and the person discards it without having read it. Deliver and Discard match the button names. Never say the sender will be told."
+	},
+	"ui.teamBridge.holds.reference": {
+		"role": "meta line",
+		"tone": "neutral",
+		"length": "2 words",
+		"placeholders": {
+			"reference": "a short code of letters and digits that identifies the message, e.g. '9a1f3c2e'; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. The only way to tell this message apart when its sender and text cannot load. Same code appears in the confirm question."
+	},
+	"ui.teamBridge.holds.confirm.discard_unread": {
+		"role": "confirmation question before an irreversible action",
+		"tone": "calm, precise",
+		"length": "three short sentences",
+		"placeholders": {
+			"reference": "the message's short code, same as in the Reference line; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Confirms discarding exactly ONE message whose text was never shown. 'Discard' matches the button name. The discard is recorded on the user's own device. Do not promise that the sender is notified."
+	},
+	"ui.teamBridge.holds.discard_unread_label": {
+		"role": "accessible button name",
+		"tone": "neutral",
+		"length": "short",
+		"placeholders": {
+			"reference": "the message's short code; never translate it"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Screen-reader name of the Discard button on a message whose text cannot be loaded."
+	},
+	"ui.teamBridge.holds.state.discard_recorded": {
+		"role": "status line",
+		"tone": "calm, factual",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: the choice is saved on this device and no confirmation has come back from the server. State only those two facts. Do not say it was or was not applied, do not promise it will happen later, and do not say the sender was told."
 	}
 }

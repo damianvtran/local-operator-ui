@@ -11,8 +11,13 @@ import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks
 import { TeamBridgeHoldsApi } from "@shared/api/local-operator/team-bridge-holds-api";
 import { TeamBridgeOwnerAuditApi } from "@shared/api/local-operator/team-bridge-owner-audit-api";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
+import {
+	type DiscardBatchResult,
+	discardSnapshot,
+} from "./team-bridge-discard-batch";
+import { heldHidePreference } from "./team-bridge-held-hide-preference";
 import {
 	holdBindingKey,
 	holdDetailKey,
@@ -21,12 +26,15 @@ import {
 } from "./team-bridge-holds-keys";
 import {
 	type HoldItem,
+	type HoldProof,
 	type HoldWord,
 	type JoinedDetail,
+	addLocalHoldRevisions,
 	bindShownBody,
 	holdRefusalLabel,
 	resolveHoldDetail,
 } from "./team-bridge-holds-model";
+import type { DiscardSnapshotEntry } from "./team-bridge-holds-model";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { readForBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
@@ -67,10 +75,18 @@ export function useHeldMessages(
 	const { accountId } = useTeamBridgeAccount();
 	return useQuery({
 		queryKey: holdsKey(accountId),
-		queryFn: () =>
-			readForBridgeOwner(client, accountId, () =>
-				TeamBridgeHoldsApi.list(accountId as string),
-			),
+		queryFn: async () => {
+			const page = await readForBridgeOwner(client, accountId, async () =>
+				addLocalHoldRevisions(
+					accountId as string,
+					await TeamBridgeHoldsApi.list(accountId as string),
+				),
+			);
+			// Reuse the ordinary list poll even when Approvals is closed; a render
+			// or a refused read must not spin on an unavailable preference store.
+			heldHidePreference.flushRecovery();
+			return page;
+		},
 		enabled: enabled && supported && Boolean(accountId),
 		staleTime: 30_000,
 		refetchInterval: pollInterval,
@@ -199,6 +215,8 @@ export function useHeldMessageDetails(
 	return (item) => {
 		const lookup = lookupById.get(item.message_id);
 		const binding = bindingById.get(item.message_id);
+		if (item.conversation_id && capabilities.isPending)
+			return { state: "loading" };
 		return resolveHoldDetail(item, {
 			auditSupported,
 			lookup: lookup && {
@@ -238,26 +256,100 @@ export function useHoldDecide() {
 	/* The word too, so the pressed button can say "Delivering..." (UX U4). */
 	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
 	const [refusals, setRefusals] = useState<Record<string, string>>({});
+	// State paints the lock; the ref takes it synchronously, before React can
+	// commit another frame (two clicks in one turn must not sign twice).
+	const locked = useRef(false);
+	const owner = useRef({ accountId, epoch: 0, mounted: true });
+	if (owner.current.accountId !== accountId) {
+		owner.current = {
+			accountId,
+			epoch: owner.current.epoch + 1,
+			mounted: true,
+		};
+	}
+	useEffect(() => {
+		owner.current.mounted = true;
+		return () => {
+			owner.current.mounted = false;
+		};
+	}, []);
 	const run = useCallback(
-		async (item: HoldItem, word: HoldWord, bodySha256: string) => {
-			if (!accountId || busy) return;
+		async (item: HoldItem, word: HoldWord, proof: HoldProof) => {
+			if (!accountId || locked.current) return;
+			locked.current = true;
 			setBusy({ id: item.message_id, word });
 			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
 			try {
-				await TeamBridgeHoldsApi.decide(accountId, word, item, bodySha256);
+				await TeamBridgeHoldsApi.decide(accountId, word, item, proof);
 			} catch (error) {
 				const code =
 					error instanceof DesktopControlError ? (error.code ?? null) : null;
 				setRefusals((current) => ({
 					...current,
-					[item.message_id]: holdRefusalLabel(code),
+					[item.message_id]: holdRefusalLabel(code, "hold_receipt" in proof),
 				}));
 			} finally {
+				locked.current = false;
 				setBusy(null);
 				void invalidateAfterDecision(client, accountId, item.message_id);
 			}
 		},
-		[accountId, busy, client],
+		[accountId, client],
 	);
-	return { busy, refusals, run };
+	const runBatch = useCallback(
+		async (
+			entries: readonly DiscardSnapshotEntry[],
+			onResult: (result: DiscardBatchResult) => void,
+		) => {
+			if (!accountId || locked.current) {
+				for (const entry of entries)
+					onResult({ entry, recorded: false, error: holdRefusalLabel(null) });
+				return;
+			}
+			if (entries.length === 0) return;
+			locked.current = true;
+			const epoch = owner.current.epoch;
+			const isCurrentOwner = () =>
+				owner.current.mounted &&
+				owner.current.accountId === accountId &&
+				owner.current.epoch === epoch;
+			setBusy({ id: "__batch_discard__", word: "discard" });
+			try {
+				await discardSnapshot(
+					entries,
+					(entry) =>
+						TeamBridgeHoldsApi.decide(
+							accountId,
+							"discard",
+							entry.item,
+							entry.proof,
+						),
+					isCurrentOwner,
+					(error, entry) =>
+						holdRefusalLabel(
+							error instanceof DesktopControlError ? error.code : null,
+							"hold_receipt" in entry.proof,
+						),
+					(result) => {
+						if (!isCurrentOwner()) return;
+						onResult(result);
+						setRefusals((current) => ({
+							...current,
+							[result.entry.item.message_id]: result.error ?? "",
+						}));
+						void invalidateAfterDecision(
+							client,
+							accountId,
+							result.entry.item.message_id,
+						);
+					},
+				);
+			} finally {
+				locked.current = false;
+				setBusy(null);
+			}
+		},
+		[accountId, client],
+	);
+	return { busy, refusals, run, runBatch };
 }

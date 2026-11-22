@@ -43,6 +43,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { ImportSettingsSection } from "./src/renderer/src/features/settings/components/import-settings-section";
+			export { setLocale } from "./src/i18n/locale";
 		`,
 		loader: "tsx",
 		resolveDir: ROOT,
@@ -80,7 +81,9 @@ const bundle = await build({
 	write: false,
 });
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { ImportSettingsSection } = await import(`file://${bundlePath}`);
+const { ImportSettingsSection, setLocale } = await import(
+	`file://${bundlePath}`
+);
 const React = await import("react");
 const { act } = React;
 const { createRoot } = await import("react-dom/client");
@@ -407,6 +410,28 @@ test("Refresh reloads source cards and the active session list", async () => {
 		calls.sessions.filter((source) => source === "omp").length >= 2,
 		true,
 	);
+});
+
+/*
+ * A LANGUAGE CHANGE RELOADS THE SOURCE CARDS. Their detail and availability
+ * copy is rendered by the backend in its resolved language, and this section
+ * holds them in component state rather than a react-query cache, so the
+ * language-change query refresh cannot reach them: the section reloads on its
+ * own when the locale store moves (fr census, row 1).
+ */
+test("a language change reloads the source cards", async () => {
+	const { mock, calls } = makeMock();
+	await mount(mock);
+	await waitFor(() => text(host).includes("First conversation"), "sessions");
+	assert.equal(calls.sources, 1, "the first mount reads the sources once");
+	try {
+		await act(async () => setLocale("fr"));
+		await waitFor(() => calls.sources >= 2, "the language-change reload");
+		await act(async () => sleep(120));
+		assert.equal(calls.sources, 2, "one reload per language change");
+	} finally {
+		await act(async () => setLocale("en"));
+	}
 });
 
 /*

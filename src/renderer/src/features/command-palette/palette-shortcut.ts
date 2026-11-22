@@ -320,3 +320,28 @@ export function paletteStepCaps(): [string, string] {
 export function paletteReachableStepCaps(isMac: boolean): string[] {
 	return isMac ? ["Ctrl+N", "Ctrl+P"] : ["Ctrl+N"];
 }
+
+/**
+ * Whether this press asks for the other sort order — the palette's `ctrl s`.
+ *
+ * CONTROL, NOT COMMAND, on every platform, for the same reason the walk's
+ * Ctrl+N/P pair is: `Cmd+S` belongs to the app (save), and a palette that took
+ * it while the field had focus would swallow a save the reader meant. Ctrl+S
+ * reaches the renderer here because the field owns the press and main does not
+ * intercept this pair; the handler preventDefaults so no browser-level save
+ * dialog appears.
+ *
+ * Shift, Alt and Meta are refused rather than folded: a chord this app does not
+ * implement stays available instead of firing the neighbouring one — the same
+ * rule the pair's own guard states, so a user who rebinds something onto
+ * Ctrl+Shift+S does not get the palette's sort as a side effect.
+ */
+export function paletteSortIntent(event: PaletteStepEvent): boolean {
+	return (
+		event.key.toLowerCase() === "s" &&
+		event.ctrlKey &&
+		!event.metaKey &&
+		!event.shiftKey &&
+		!event.altKey
+	);
+}

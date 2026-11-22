@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "روکے گئے پیغامات لوڈ ہو رہے ہیں",
 	"ui.teamBridge.holds.load_failed": "روکے گئے پیغامات لوڈ نہیں ہو سکے۔",
 	"ui.teamBridge.holds.empty": "کوئی پیغام روکا نہیں گیا۔",
+	"ui.teamBridge.holds.hide_local": "اس ڈیوائس پر چھپائیں",
+	"ui.teamBridge.holds.hide_local_label": "اس ڈیوائس پر چھپائیں: پیغام {reference}",
+	"ui.teamBridge.holds.hidden_local": "اس ڈیوائس پر چھپائے گئے پیغامات: {count, number}",
+	"ui.teamBridge.holds.restore_local": "دوبارہ دکھائیں",
+	"ui.teamBridge.holds.restore_local_label": "دوبارہ دکھائیں: پیغام {reference}",
+	"ui.teamBridge.holds.hide_failed": "اس ڈیوائس پر چھپائے گئے پیغامات کی فہرست اپ ڈیٹ نہیں ہو سکی۔",
 	"ui.teamBridge.holds.release_off": "اس ڈیوائس پر روکے گئے پیغامات پہنچانا اور مسترد کرنا بند ہے۔",
 	"ui.teamBridge.holds.from_person": "{person} کی طرف سے",
 	"ui.teamBridge.holds.from_agent": "{agent} کی طرف سے، {person} کا ایجنٹ",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "پیغام مسترد کریں",
 	"ui.teamBridge.holds.confirm.cancel": "منسوخ کریں",
 	"ui.teamBridge.holds.delivering": "پہنچایا جا رہا ہے…",
-	"ui.teamBridge.holds.discarding": "مسترد کیا جا رہا ہے…"
+	"ui.teamBridge.holds.discarding": "مسترد کیا جا رہا ہے…",
+	"ui.teamBridge.holds.receipt_only": "یہ پیغام لوڈ نہیں ہو سکا۔ اب اسے پہنچایا نہیں جا سکتا۔ آپ اب بھی اسے پڑھے بغیر مسترد کر سکتے ہیں۔",
+	"ui.teamBridge.holds.reference": "حوالہ {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "صرف یہ پیغام ({reference}) پڑھے بغیر مسترد کریں؟ یہ آپ کے ایجنٹ تک نہیں پہنچے گا۔ مسترد کرنا اس ڈیوائس پر درج ہوتا ہے اور واپس نہیں ہو سکتا۔",
+	"ui.teamBridge.holds.discard_unread_label": "پیغام {reference} پڑھے بغیر مسترد کریں",
+	"ui.teamBridge.holds.state.discard_recorded": "مسترد کرنا اس ڈیوائس پر درج ہو گیا ہے۔ سرور سے کوئی تصدیق موصول نہیں ہوئی۔"
 }

@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -28,6 +29,8 @@ export const RawInfoView: FC<RawInfoViewProps> = ({ content }) => {
 			<pre
 				className={cn(
 					"overflow-auto whitespace-pre-wrap font-mono text-ink-muted text-mono-sm",
+					// The raw conversation record (review round 1, Q2).
+					USER_CONTENT_CLASS,
 				)}
 			>
 				{content}

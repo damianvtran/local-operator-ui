@@ -65,6 +65,7 @@
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import Module from "node:module";
 import { test } from "node:test";
@@ -2092,22 +2093,36 @@ test("two chiefs of staff named Aida are told apart by their people", async () =
 	);
 	const label = (id) =>
 		rowOf(view.host, id).querySelector("[data-sender]")?.textContent.trim();
-	assert.equal(
-		label("msg_aida_d"),
-		m.t("ui.teamBridge.chief.label", { agent: "Aida", person: "Damian Tran" }),
-	);
-	assert.equal(
-		label("msg_aida_b"),
-		m.t("ui.teamBridge.chief.label", { agent: "Aida", person: "Ben Tran" }),
-	);
+	assert.equal(label("msg_aida_d"), "Damian Tran");
+	assert.equal(label("msg_aida_b"), "Ben Tran");
+	// A stored endpoint alias is neither the human owner nor an actual session.
+	// Legacy rows keep their independently resolved owner and a neutral subline.
+	for (const id of ["msg_aida_d", "msg_aida_b"]) {
+		const row = rowOf(view.host, id);
+		assert.equal(
+			row.querySelector('[data-sender-provenance="session"]').textContent,
+			m.t("ui.teamBridge.sender.unknown_agent"),
+		);
+		assert.equal(row.textContent.includes("Aida"), false);
+	}
 	await view.close();
 
-	/* No directory (loading, or the read failed): the stored label still names
-	 * the sender rather than leaving a blank. */
+	/* No directory (loading, or the read failed): neither identity can be
+	 * recovered from the endpoint alias. Fail neutrally on BOTH lines. */
 	const cold = await renderView(panel({ messages: [fromBen] }));
 	assert.equal(
 		rowOf(cold.host, "msg_aida_b").querySelector("[data-sender]").textContent,
-		"Aida",
+		m.t("ui.teamBridge.sender.unknown_person"),
+	);
+	assert.equal(
+		rowOf(cold.host, "msg_aida_b").querySelector(
+			'[data-sender-provenance="session"]',
+		).textContent,
+		m.t("ui.teamBridge.sender.unknown_agent"),
+	);
+	assert.equal(
+		rowOf(cold.host, "msg_aida_b").textContent.includes("Aida"),
+		false,
 	);
 	await cold.close();
 });
@@ -3116,12 +3131,46 @@ test("attachments are named, never fetched, through the shared list", async () =
  * The PR also classifies floating toolbar planes, but this fixture has none:
  * its golden diff is exactly four row-class substitutions, not audit-prop
  * differences. Keep comparing every other byte, including content and structure.
+ * Updated for PR #2035: ONLY the agent's two profile aria-labels and primary
+ * name now name its human owner; one neutral Unknown agent subline is added.
+ * The inverse-delta test below pins every other byte to the pre-B3 baseline,
+ * including all human markup. Do not regenerate unrelated changes into it.
  * Clock text and the `title` date depend on the machine's time zone, so both are
  * normalised; the structure, classes, names and bodies are compared verbatim.
+ * Privacy markers added to shared markdown are asserted independently, then only
+ * that exact class pair is removed for comparison with the immutable baseline.
+ * This keeps privacy mandatory without hiding any unrelated channel/audit drift.
  */
 const PARITY_GOLDEN = `${process.cwd()}/scripts/fixtures/team-bridge-message-list-parity.golden.html`;
 const TIME_TEXT = /(<time[^>]*>)[^<]*(<\/time>)/g;
 const TIME_TITLE = /(<time[^>]*title=")[^"]*(")/g;
+test("channel parity golden changes only the intended agent owner/session bytes", () => {
+	let baseline = readFileSync(PARITY_GOLDEN, "utf8");
+	// Reverse the explicitly reviewed B3 delta, NOT a broad name/class scrub.
+	// The resulting digest is the original fixture at 5e986ce: human rows,
+	// privacy normalization, dates, body and all unrelated surfaces stay frozen.
+	for (const [current, previous, count] of [
+		[
+			'aria-label="Open profile for Damian Tran"',
+			'aria-label="Open profile for Aida"',
+			2,
+		],
+		[">Damian Tran</button>", ">Aida</button>", 1],
+		[
+			'<div class="min-w-0 text-meta text-ink-muted" data-sender-provenance="session"><span class="block truncate" title="Unknown agent" dir="auto">Unknown agent</span></div>',
+			"",
+			1,
+		],
+	]) {
+		assert.equal(baseline.split(current).length - 1, count, current);
+		baseline = baseline.replaceAll(current, previous);
+	}
+	assert.equal(
+		createHash("sha256").update(baseline).digest("hex"),
+		"1c61434ab673a5d84dc1d8515253eca8e1d7a126682583e2210045acd1e676e7",
+		"every byte outside the intentional agent attribution delta is unchanged",
+	);
+});
 test("a channel renders byte-identically with the audit props omitted", async () => {
 	const { renderToStaticMarkup } = await import("react-dom/server");
 	const channelMessage = (id, seq, account_id, kind, body, created_at) => ({
@@ -3179,11 +3228,32 @@ test("a channel renders byte-identically with the audit props omitted", async ()
 	)
 		.replace(TIME_TEXT, "$1$2")
 		.replace(TIME_TITLE, "$1$2");
+	const rendered = document.createElement("div");
+	rendered.innerHTML = markup;
+	const markdownRoots = rendered.querySelectorAll(".lo-markdown");
+	assert.equal(
+		markdownRoots.length,
+		3,
+		"all three non-null channel bodies render",
+	);
+	for (const root of markdownRoots) {
+		assert.ok(
+			root.classList.contains("ph-sensitive"),
+			"channel body is sensitive",
+		);
+		assert.ok(root.classList.contains("ph-mask"), "channel body is masked");
+	}
+	// Normalize the exact independently checked marker pair on markdown roots,
+	// not arbitrary classes or DOM serialization: every other byte stays gated.
+	const parityMarkup = markup.replaceAll(
+		'class="lo-markdown ph-sensitive ph-mask ',
+		'class="lo-markdown ',
+	);
 	if (process.env.UPDATE_PARITY_GOLDEN === "1") {
 		const { writeFileSync } = await import("node:fs");
-		writeFileSync(PARITY_GOLDEN, `${markup}\n`);
+		writeFileSync(PARITY_GOLDEN, `${parityMarkup}\n`);
 	}
-	assert.equal(`${markup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
+	assert.equal(`${parityMarkup}\n`, readFileSync(PARITY_GOLDEN, "utf8"));
 });
 
 /* The actual private-read hook must emit only operation/status class while never

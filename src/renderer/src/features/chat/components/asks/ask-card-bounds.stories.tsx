@@ -133,7 +133,7 @@ const frontend = (
 	asks_open: asks.length,
 });
 
-const drawer = (asks: PendingAsk[]) => (
+const drawer = (asks: PendingAsk[], { dismiss = false } = {}) => (
 	<div className="flex h-screen justify-end bg-canvas">
 		<div className="flex h-full w-[420px] flex-col">
 			<AskDrawer
@@ -143,6 +143,7 @@ const drawer = (asks: PendingAsk[]) => (
 				nowMs={NOW}
 				onAnswer={noop}
 				onDecline={noop}
+				onDismiss={dismiss ? noop : undefined}
 			/>
 		</div>
 	</div>
@@ -190,6 +191,20 @@ export const PanelLongQuestionLight: Story = {
 export const PanelLongQuestionDark: Story = {
 	args: DARK,
 	render: () => drawer([LONG_ASK]),
+};
+/*
+ * The pinned band WITH `Dismiss…` (backend advertises `features.ask_dismiss`).
+ * Before the fix the trigger rendered below the band and lost its top 4 px under
+ * it; now it is the band's trailing quiet action, so this is the frame that shows
+ * the footer reads as one row with nothing beneath it.
+ */
+export const PanelLongQuestionWithDismissLight: Story = {
+	args: LIGHT,
+	render: () => drawer([LONG_ASK], { dismiss: true }),
+};
+export const PanelLongQuestionWithDismissDark: Story = {
+	args: DARK,
+	render: () => drawer([LONG_ASK], { dismiss: true }),
 };
 export const PanelProposalLight: Story = {
 	args: LIGHT,

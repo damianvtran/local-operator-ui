@@ -4,6 +4,12 @@
 	"ui.teamBridge.holds.loading": "Загрузка задержанных сообщений",
 	"ui.teamBridge.holds.load_failed": "Не удалось загрузить задержанные сообщения.",
 	"ui.teamBridge.holds.empty": "Задержанных сообщений нет.",
+	"ui.teamBridge.holds.hide_local": "Скрыть на этом устройстве",
+	"ui.teamBridge.holds.hide_local_label": "Скрыть на этом устройстве: сообщение {reference}",
+	"ui.teamBridge.holds.hidden_local": "Скрыто на этом устройстве: {count, number}",
+	"ui.teamBridge.holds.restore_local": "Показать снова",
+	"ui.teamBridge.holds.restore_local_label": "Показать снова: сообщение {reference}",
+	"ui.teamBridge.holds.hide_failed": "Не удалось обновить список скрытых сообщений на этом устройстве.",
 	"ui.teamBridge.holds.release_off": "Доставка и отклонение задержанных сообщений выключены на этом устройстве.",
 	"ui.teamBridge.holds.from_person": "От: {person}",
 	"ui.teamBridge.holds.from_agent": "От: {agent}, агент пользователя {person}",
@@ -55,5 +61,10 @@
 	"ui.teamBridge.holds.confirm.discard_action": "Отклонить сообщение",
 	"ui.teamBridge.holds.confirm.cancel": "Отмена",
 	"ui.teamBridge.holds.delivering": "Доставка…",
-	"ui.teamBridge.holds.discarding": "Отклонение…"
+	"ui.teamBridge.holds.discarding": "Отклонение…",
+	"ui.teamBridge.holds.receipt_only": "Не удалось загрузить это сообщение. Его больше нельзя доставить. Вы всё ещё можете отклонить его, не читая.",
+	"ui.teamBridge.holds.reference": "Номер {reference}",
+	"ui.teamBridge.holds.confirm.discard_unread": "Отклонить только это сообщение ({reference}), не читая его? Оно не дойдёт до вашего агента. Отклонение записывается на этом устройстве, и его нельзя отменить.",
+	"ui.teamBridge.holds.discard_unread_label": "Отклонить сообщение {reference}, не читая его",
+	"ui.teamBridge.holds.state.discard_recorded": "Отклонение записано на этом устройстве. Подтверждение от сервера не получено."
 }

@@ -10,7 +10,22 @@ export type BridgeReceipt = {
 	sender: { name: string; kind?: "human" | "agent"; organization?: string };
 	conversation: { kind?: "dm" | "group" | "channel"; label?: string };
 	attachmentCount?: number;
+	/** The message is a reply inside a thread, not a top-level post. */
+	thread?: true;
 };
+
+/*
+ * WHERE "THREAD REPLY" COMES FROM. The typed `bridge_receipt` carriage has no
+ * thread field (core `display_receipt.py` pins its keys), but the card text is
+ * host-authored by core's `build_conversation_card` from typed metadata, and it
+ * carries `thread_root_id: <id> (reply to)` exactly when the message is a
+ * thread reply. Core's own model projection keys on the same anchored line
+ * (`card_projection.py` `_THREAD_ROOT_LINE`), so this reads the identical fact
+ * with the identical grammar. It is a position marker only: it never supplies
+ * identity, and the card text has no body to spoof it from (the card is
+ * metadata-only and every label on it is folded to one line).
+ */
+const THREAD_ROOT_LINE = /^thread_root_id: bcmsg_[0-9a-z]{1,64} \(reply to\)$/m;
 
 const object = (value: unknown): Record<string, unknown> =>
 	value !== null && typeof value === "object" && !Array.isArray(value)
@@ -22,6 +37,8 @@ const label = (value: unknown): string =>
 /** No body parsing, @mention inference, or account-id-as-sender fallback. */
 export function bridgeReceiptOf(
 	details: Record<string, unknown>,
+	/** The card's host-authored text; only its thread-root line is read. */
+	cardText = "",
 ): BridgeReceipt {
 	const wire = object(details.bridge_receipt);
 	const current = wire.v === 1;
@@ -51,6 +68,7 @@ export function bridgeReceiptOf(
 		...(typeof count === "number" && Number.isSafeInteger(count) && count >= 0
 			? { attachmentCount: count }
 			: {}),
+		...(THREAD_ROOT_LINE.test(cardText) ? { thread: true as const } : {}),
 	};
 }
 
@@ -97,6 +115,10 @@ export const BRIDGE_CARD_BODY_REASONS = [
 	"deleted",
 	"hub_unsupported",
 	"offline",
+	// Core has not loaded this message yet (`card_body.py`); it reads as plain
+	// "unavailable" but is kept so the open pane knows a later read may answer
+	// (`bridge-card-reread.ts`).
+	"not_loaded",
 ] as const;
 export type BridgeCardBodyReason = (typeof BRIDGE_CARD_BODY_REASONS)[number];
 

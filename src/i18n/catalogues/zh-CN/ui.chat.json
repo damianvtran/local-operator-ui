@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "替换内容",
 	"ui.chat.message_controls.thinking_label": "思考",
 	"ui.chat.scroll_to_bottom.label": "滚动到底部",
-	"ui.chat.scroll_to_bottom.label_new_activity": "有新活动，滚动到底部",
+	"ui.chat.scroll_to_bottom.label_new_activity": "有新活动，跳到最新",
 	"ui.chat.session_status.last_reading_note": "这是重新连接之前的最后一次读数。",
 	"ui.chat.session_status.readings_aria_held": "会话读数。{note}",
 	"ui.chat.session_status.commands_off": "此服务器已关闭斜杠命令，因此无法从这里打开此读数。",
