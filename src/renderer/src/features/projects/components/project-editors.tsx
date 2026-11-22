@@ -127,26 +127,28 @@ export type CommitProjectFields = (
 ) => Promise<unknown>;
 
 /** The per-field chrome words; `display` reads inside the acknowledgement. */
-function editLabels(field: string, display: string): InlineEditLabels {
+// Machine field identity stays with the editor and its write payload; action
+// names must use the already-localized noun, never that wire token or user text.
+function editLabels(_field: string, display: string): InlineEditLabels {
 	return {
 		name: display,
 		begin: t("ui.projects.project_editors.edit_field", {
-			field: String(field),
+			field: display,
 		}),
 		accept: t("ui.projects.project_editors.save_field", {
-			field: String(field),
+			field: display,
 		}),
 		cancel: t("ui.projects.project_editors.discard_the_field_edit", {
-			field: String(field),
+			field: display,
 		}),
 		busy: t("ui.projects.project_editors.saving_the_field", {
-			field: String(field),
+			field: display,
 		}),
 		saved: t("ui.projects.project_editors.display_saved", {
 			display: String(display),
 		}),
 		retry: t("ui.projects.project_editors.retry_saving_the_field", {
-			field: String(field),
+			field: display,
 		}),
 	};
 }

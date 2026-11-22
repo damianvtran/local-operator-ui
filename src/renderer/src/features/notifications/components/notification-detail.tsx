@@ -34,6 +34,7 @@ import { AskPanel } from "@features/chat/components/asks/ask-panel";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
 import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
 import { ProjectMarkdown } from "@features/projects/project-markdown";
+import { projectStatusMeta } from "@features/projects/project-model";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
 import {
@@ -588,7 +589,9 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 									<span className="min-w-0 truncate">{project.name}</span>
 									{project.status && (
 										<span className="text-ink-dim text-meta">
-											{project.status}
+											{/* Match project chips without changing the wire enum;
+											 * newer unknown statuses retain their literal fallback. */}
+											{projectStatusMeta(project.status).label}
 										</span>
 									)}
 								</button>
