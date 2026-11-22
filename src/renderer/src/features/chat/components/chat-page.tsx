@@ -907,11 +907,13 @@ function SessionPanel({
 		() => activityFingerprint(canonical.transcript.records),
 		[canonical.transcript.records],
 	);
-	const { isFarFromBottom, hasNewActivity, scrollToBottom, snapToBottom } =
-		useScrollToBottom(container, {
+	const { isFarFromBottom, hasNewActivity, scrollToBottom } = useScrollToBottom(
+		container,
+		{
 			contentKey: streamId,
 			activity: newActivityFingerprint,
-		});
+		},
+	);
 	/*
 	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
 	 * for the CLAIM surfaces AND, since round 1's D2, for every consumer that
@@ -2680,6 +2682,9 @@ function SessionPanel({
 			 * claim, the echo, the wait line and the composer's clear together; the
 			 * create and the message POST after the prefix are unaffected.
 			 */
+			// The reversed transcript follows the echo if pinned, or holds the
+			// reading anchor if not. Don't scroll on receipt: it arrives after
+			// the echo and can interrupt someone who scrolled in the meantime.
 			const id = await flushSync(() =>
 				admitChatDraft(
 					key,
@@ -2705,19 +2710,6 @@ function SessionPanel({
 				),
 			);
 			if (!id) return false;
-			/*
-			 * SENDING PUTS THE NEWEST ROW UNDER THE READER, immediately: the echo was
-			 * just painted in this commit, and a smooth scroll would spend the first
-			 * frames of the reader's own message travelling down through the turn
-			 * above it. This is the ONE place every send door passes (the composer's
-			 * own submit only covers its own), so the suggestion grid and the
-			 * dictated deliverer snap by the same rule.
-			 *
-			 * NOT for an origin-bound send: that door finishes a dictated press in a
-			 * conversation this pane is NOT showing, and snapping the visible pane
-			 * would move a reader who never sent anything.
-			 */
-			if (!originBound) snapToBottom();
 			/*
 			 * The composer's own attachments, written to the Files panel here because
 			 * this is the only place they exist. They are NOT on the wire: a canonical
