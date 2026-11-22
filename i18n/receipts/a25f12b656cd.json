@@ -1,0 +1,180 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "a25f12b656cd",
+    "instance": "a25f12b656cd",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "fallback_reason": "No fallback: the served model is the one this session was started on (system prompt \"Model: anthropic/claude-opus-5-5\"); no provider switch notice occurred. Disclosure: the translator (job c550da43cefc) ran on the same model; independence rests on a separate session that did not author or edit any string.",
+    "independence": "Independent auditor (session a25f12b656cd); did not author, edit or commit any translation; read-only on the worktree except this receipt.",
+    "independent_from_translator_session": true,
+    "translator": {
+      "job": "c550da43cefc",
+      "model": "anthropic/claude-opus-5-5"
+    }
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "No fallback: the served model is the one this session was started on (system prompt \"Model: anthropic/claude-opus-5-5\"); no provider switch notice occurred. Disclosure: the translator (job c550da43cefc) ran on the same model; independence rests on a separate session that did not author or edit any string.",
+  "independence": "Independent auditor (session a25f12b656cd); did not author, edit or commit any translation; read-only on the worktree except this receipt.",
+  "instance": "a25f12b656cd",
+  "session": "a25f12b656cd",
+  "result": "clean-with-findings",
+  "status": "passed",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "UR-1",
+        "severity": "nit",
+        "key": "ui.agents.config.title.finished_error",
+        "description": "Text: خرابی کے ساتھ مکمل ہوا. Aspect differs from its siblings: title.finished = 'مکمل ہو گیا' and title.stopped_error = 'خرابی کے ساتھ رک گیا' use the completive compound; this one uses simple past 'ہوا'. Grammatical and correct meaning; parallel form would be 'خرابی کے ساتھ مکمل ہو گیا'. Gating: false."
+      },
+      {
+        "id": "UR-2",
+        "severity": "nit",
+        "key": "ui.agents.config.summary.change.kind",
+        "description": "Keys: ui.agents.config.summary.change.kind / class_proactive / class_reactive. Text: قسم بدل گئی / قسم بدل کر پیش قدم ہو گئی / قسم بدل کر جوابی ہو گئی. Both 'kind' and 'class' render as قسم, so a summary line could read two قسم phrases with different referents. This follows the existing glossary (class → قسم in ui.agents.refusals.class.install_disclosure 'پھر اس کی قسم مقرر ہوتی ہے'; kind → قسم in ui.agents.teams.field.member_kind_aria), and the class phrases are disambiguated by پیش قدم/جوابی, so not a defect; optional only if the glossary is ever split. Gating: false."
+      }
+    ]
+  },
+  "scope": "The 55 keys this branch adds to en ui.agents.config (47) and ui.agents.teams (8) (git diff origin/main...HEAD), audited in the uncommitted ur working-tree files at the hashes below. Existing ur keys used as glossary context only; verified unchanged vs origin/main (0 changed, 0 removed, 0 extra, 0 missing).",
+  "locale": "ur",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-agents-team-config-english",
+  "base": "1eec0703e662114f37e61e3b2c92cb2c04fb64d7",
+  "head": "f6e6260da1",
+  "head_full": "f6e6260da1c10b887fba3dfa59de725cf21a77ba",
+  "round": 1,
+  "checks": {
+    "hash_precheck": "both ur hashes recomputed with shasum -a 256 and matched the brief before auditing",
+    "icu": "python brace/select/plural parser: placeholder names and select arms (agent/team/skill/other) identical for all 55; plurals tools_added/tools_removed use one/other with # in both arms (ur CLDR one/other). In *_named step keys {name} moved inside every select arm; still isolated because plainArgumentNames walks select options (src/i18n/bidi.ts:76-113).",
+    "agreement": "select arms agree: ایجنٹ masc (بنایا/کیا جا رہا ہے), ٹیم/مہارت/تعریف fem (بنائی/کی جا رہی ہے); plurals ایجنٹس پڑھے/جانچے گئے vs ٹیمیں/مہارتیں/تعریفیں پڑھی/جانچی گئیں; oblique ٹیموں/مہارتوں/تعریفوں before پر.",
+    "english_left": "Only 'Local Operator' (product name, never translated per context; existing ur copy writes it in Latin, e.g. ui.agents.skills.alert.builtin_body). Loanwords match existing Urdu-script usage: بیک اینڈ, اپ ڈیٹ, انسٹال, ٹولز, کنفیگریشن رن, آن/آف.",
+    "glossary": "ایجنٹ/ایجنٹس, ٹیم/ٹیمیں, مہارت, تعریف, منتظم, ارکان, ہدایات, تفصیل, کوشش کا درجہ (ui.agents.models.override.tier_field), تفویض, پیش قدم/جوابی (ui.agents.refusals.class.label.*), “تبدیلی طلب کریں” (ui.agents.detail.action.ask_change), team errors parallel ui.agents.detail.create/edit.* agent siblings.",
+    "punctuation": "Sentences end ۔, lists use ، ; status headings and step lines carry no trailing punctuation as context requires; ellipsis … kept on placeholder.working and disabled.connecting; seed_prompt keeps trailing ': ' (same ASCII colon as existing ui.agents.detail.ask_change_prefill).",
+    "bidi_controls": "0 bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) in either ur file.",
+    "bidi_isolation": "t() wraps Latin-led string arguments in FSI…PDI only for RTL catalogues: src/i18n/messages.ts:242-244 calls isolateArguments (src/i18n/bidi.ts:131-145; needsIsolation bidi.ts:117-124). FSI is the dir=auto isolate; UBA P2 skips isolate content, so a dir=auto container whose string starts with {name} (installing_named, reading_named, error_name_taken) still resolves RTL from the following Urdu. No string has an LTR placeholder directly before a trailing ۔ or :, except seed_prompt, which is rendered with translateRaw (no isolates, by design: src/renderer/src/features/agents/config-run/seed-prompt.ts:19-29) and has Urdu between {name} and the colon, so the colon stays at the logical end. members '({before} سے {after})' takes numbers, not strings; parentheses mirror and digit runs keep order. Verdict: no reordering defect.",
+    "fit": "Status headings and group headings stay a few words; step-line ICU sources grew because the verb moved into each arm, but each rendered arm is 3-6 words.",
+    "existing_keys_unchanged": true
+  },
+  "observations_not_findings": [
+    "Code, pre-existing, out of translation scope: config-composer.tsx:910-916 joins change phrases with a hard-coded ASCII ', ' and prefixes ': ', so an Urdu summary shows a Latin comma between phrases where ur copy uses '،' (cf. ui.agents.starters.summary.separator = '، '). Not introduced by this branch's ur strings; recorded for the owner, does not gate."
+  ],
+  "namespaces": {
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201",
+        "ur": "3134147b57373623aff50ff2d65f7ba70acdb79f9159a50194f87909ca10bf35"
+      },
+      "context_sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3",
+      "keys_read": 47,
+      "reviewed_keys": [
+        "ui.agents.config.title.working",
+        "ui.agents.config.title.stopping",
+        "ui.agents.config.title.finished",
+        "ui.agents.config.title.finished_no_changes",
+        "ui.agents.config.title.stopped",
+        "ui.agents.config.title.stopped_error",
+        "ui.agents.config.title.finished_error",
+        "ui.agents.config.placeholder.working",
+        "ui.agents.config.seed_prompt",
+        "ui.agents.config.error.lists_unreadable",
+        "ui.agents.config.error.send_after_setup",
+        "ui.agents.config.error.start_failed",
+        "ui.agents.config.error.send_failed",
+        "ui.agents.config.error.stop_unacknowledged",
+        "ui.agents.config.disabled.connecting",
+        "ui.agents.config.disabled.needs_newer_backend",
+        "ui.agents.config.summary.step.creating_named",
+        "ui.agents.config.summary.step.creating",
+        "ui.agents.config.summary.step.updating_named",
+        "ui.agents.config.summary.step.updating",
+        "ui.agents.config.summary.step.editing_named",
+        "ui.agents.config.summary.step.editing",
+        "ui.agents.config.summary.step.installing_named",
+        "ui.agents.config.summary.step.installing",
+        "ui.agents.config.summary.step.reading_named",
+        "ui.agents.config.summary.step.reading",
+        "ui.agents.config.summary.step.working",
+        "ui.agents.config.summary.step.checked",
+        "ui.agents.config.summary.change.description",
+        "ui.agents.config.summary.change.kind",
+        "ui.agents.config.summary.change.effort",
+        "ui.agents.config.summary.change.manager",
+        "ui.agents.config.summary.change.instructions",
+        "ui.agents.config.summary.change.field",
+        "ui.agents.config.summary.change.tools",
+        "ui.agents.config.summary.change.tools_widened",
+        "ui.agents.config.summary.change.tools_narrowed",
+        "ui.agents.config.summary.change.tool_added",
+        "ui.agents.config.summary.change.tool_removed",
+        "ui.agents.config.summary.change.tools_added",
+        "ui.agents.config.summary.change.tools_removed",
+        "ui.agents.config.summary.change.tools_changed",
+        "ui.agents.config.summary.change.delegation_on",
+        "ui.agents.config.summary.change.delegation_off",
+        "ui.agents.config.summary.change.class_proactive",
+        "ui.agents.config.summary.change.class_reactive",
+        "ui.agents.config.summary.change.members"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "UR-1",
+            "severity": "nit",
+            "key": "ui.agents.config.title.finished_error",
+            "description": "Text: خرابی کے ساتھ مکمل ہوا. Aspect differs from its siblings: title.finished = 'مکمل ہو گیا' and title.stopped_error = 'خرابی کے ساتھ رک گیا' use the completive compound; this one uses simple past 'ہوا'. Grammatical and correct meaning; parallel form would be 'خرابی کے ساتھ مکمل ہو گیا'. Gating: false."
+          },
+          {
+            "id": "UR-2",
+            "severity": "nit",
+            "key": "ui.agents.config.summary.change.kind",
+            "description": "Keys: ui.agents.config.summary.change.kind / class_proactive / class_reactive. Text: قسم بدل گئی / قسم بدل کر پیش قدم ہو گئی / قسم بدل کر جوابی ہو گئی. Both 'kind' and 'class' render as قسم, so a summary line could read two قسم phrases with different referents. This follows the existing glossary (class → قسم in ui.agents.refusals.class.install_disclosure 'پھر اس کی قسم مقرر ہوتی ہے'; kind → قسم in ui.agents.teams.field.member_kind_aria), and the class phrases are disambiguated by پیش قدم/جوابی, so not a defect; optional only if the glossary is ever split. Gating: false."
+          }
+        ]
+      }
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c",
+        "ur": "56b0708d4bc5acb79558e342df5ded88c06a12e7c4564b0f56ffeeb10575d063"
+      },
+      "context_sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.agents.teams.create.error_name_required",
+        "ui.agents.teams.create.error_name_taken",
+        "ui.agents.teams.create.error_instructions_required",
+        "ui.agents.teams.edit.error_generic",
+        "ui.agents.teams.create.title_new",
+        "ui.agents.teams.includes_team",
+        "ui.agents.teams.group.agents",
+        "ui.agents.teams.group.teams"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    }
+  },
+  "context_source": "src/i18n/catalogues/en/ui.agents.config.context.json and ui.agents.teams.context.json read as JSON in the worktree (hashes above)."
+}

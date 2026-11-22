@@ -38,5 +38,13 @@
 	"ui.agents.teams.action.create": "टीम बनाएँ",
 	"ui.agents.teams.action.creating": "बनाई जा रही है…",
 	"ui.agents.teams.action.discard_question": "इस टीम के बदलाव छोड़ दें?",
-	"ui.agents.teams.empty.description": "अभी कोई विवरण नहीं।"
+	"ui.agents.teams.empty.description": "अभी कोई विवरण नहीं।",
+	"ui.agents.teams.create.error_name_required": "टीम का नाम लिखें।",
+	"ui.agents.teams.create.error_name_taken": "“{name}” नाम की टीम पहले से मौजूद है। इसे बदलने के लिए उसे खोलें, या दूसरा नाम चुनें।",
+	"ui.agents.teams.create.error_instructions_required": "टीम के लिए निर्देश लिखें।",
+	"ui.agents.teams.edit.error_generic": "टीम सहेजी नहीं जा सकी।",
+	"ui.agents.teams.create.title_new": "नई टीम",
+	"ui.agents.teams.includes_team": "· इसमें एक टीम शामिल है",
+	"ui.agents.teams.group.agents": "एजेंट",
+	"ui.agents.teams.group.teams": "टीमें"
 }
