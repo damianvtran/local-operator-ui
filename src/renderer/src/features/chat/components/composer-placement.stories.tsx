@@ -363,13 +363,27 @@ export const Empty: Story = {
 		const draft = canvas.getByRole("combobox", { name: "Message" });
 		const field = draft.closest(".composer-dock-field");
 		if (!field) throw new Error("Missing draft focus wrapper");
+		const expectUnboxedDraft = async () => {
+			await expect(draft).toHaveFocus();
+			await expect(getComputedStyle(field).outlineStyle).toBe("none");
+			await expect(getComputedStyle(field).borderInlineStartWidth).toBe("0px");
+			await expect(getComputedStyle(field).backgroundColor).toBe(
+				"rgba(0, 0, 0, 0)",
+			);
+			const draftStyle = getComputedStyle(draft);
+			await expect(draftStyle.outlineStyle).toBe("none");
+			await expect(draftStyle.caretColor).toBe(draftStyle.color);
+		};
+		draft.focus();
+		await expectUnboxedDraft();
+		draft.blur();
 		await userEvent.click(draft);
-		await expect(draft).toHaveFocus();
-		await expect(getComputedStyle(field).outlineStyle).toBe("solid");
+		await expectUnboxedDraft();
 		await userEvent.tab();
 		await expect(
 			canvas.getByRole("button", { name: "Attach file" }),
 		).toHaveFocus();
-		await expect(getComputedStyle(field).outlineStyle).toBe("none");
+		await userEvent.tab({ shift: true });
+		await expectUnboxedDraft();
 	},
 };

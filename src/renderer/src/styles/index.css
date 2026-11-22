@@ -2888,15 +2888,10 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 	);
 }
 
-/* Keep the dock edge-free at rest. The draft suppresses its own outline so
- * the wrapper can mark focus without drawing through syntax highlights. */
+/* Textareas can match :focus-visible on click or autofocus. Use the ink
+ * caret in ordinary themes so getting ready to type never boxes the draft. */
 .composer-dock-textarea {
 	caret-color: var(--lo-ink);
-}
-
-.composer-dock-field:has(.composer-dock-textarea:focus-visible) {
-	outline: 1px solid var(--color-accent);
-	outline-offset: -1px;
 }
 
 .composer-dock-rail {
@@ -3005,8 +3000,10 @@ html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
 		background: none;
 	}
 
+	/* Keep a local focus outline when the system replaces theme colours. */
 	.composer-dock-field:has(.composer-dock-textarea:focus-visible) {
-		outline-color: Highlight;
+		outline: 1px solid Highlight;
+		outline-offset: -1px;
 	}
 }
 
