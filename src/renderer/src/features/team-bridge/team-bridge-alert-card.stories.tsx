@@ -157,7 +157,9 @@ export const Escalated: Story = {
 	render: () => {
 		const message = alert({ claim_summary: claimed });
 		const card = teamBridgeAlertCard(message);
-		if (!card || card.claim.kind !== "claimed") return null;
+		if (!card || card.claim.kind !== "claimed") {
+			throw new Error("Escalated preview requires a held alert fixture");
+		}
 		return (
 			<div className="w-[760px] bg-canvas p-3">
 				<TeamBridgeAlertCard
