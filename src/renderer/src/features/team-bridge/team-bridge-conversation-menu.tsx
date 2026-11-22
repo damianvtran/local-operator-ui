@@ -193,7 +193,12 @@ export const TeamBridgeConversationMenuItems: FC<{
 					<ActionRow
 						testId={item.id}
 						icon={<Pencil size={16} aria-hidden="true" />}
-						label={t("ui.teamBridge.rename.menu", { kind: item.kind })}
+						label={t(
+							item.edit
+								? "ui.teamBridge.edit.menu"
+								: "ui.teamBridge.rename.menu",
+							{ kind: item.kind },
+						)}
 						onSelect={handlers.onRename}
 					/>
 				);

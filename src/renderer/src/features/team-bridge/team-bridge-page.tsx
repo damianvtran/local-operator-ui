@@ -66,6 +66,7 @@ import {
 	useReducer,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
@@ -267,8 +268,12 @@ import {
 import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
+	TeamBridgeEditDialog,
+	type TeamBridgeEditDraft,
+	TeamBridgeEditDraftJournal,
 	TeamBridgeRenameDialog,
 	type TeamBridgeRenameFailure,
+	editFailure,
 	renameFailure,
 } from "./team-bridge-rename-dialog";
 import {
@@ -356,6 +361,7 @@ import {
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 	useUnarchiveTeamBridgeConversation,
+	useUpdateTeamBridgeConversation,
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
 import {
@@ -968,6 +974,13 @@ export type TeamBridgePageViewProps = {
 	 * every save. Defaults to `unknown` (fail closed) like its siblings.
 	 */
 	renameCapabilityState?: DesktopFeatureState;
+	updateCapabilityState?: DesktopFeatureState;
+	onUpdate?: (
+		conversation: TeamBridgeConversation,
+		patch: { name?: string; topic?: string },
+	) => Promise<unknown>;
+	/** In-memory only, owned by the account/authority-token keyed page. */
+	metadataDrafts?: TeamBridgeEditDraftJournal;
 	unarchiveFailed?: boolean;
 	/** The Archived channels view's read (loaded the first time it is opened). */
 	archivedState?: "loading" | "error" | "ready";
@@ -999,8 +1012,9 @@ export type TeamBridgePageViewProps = {
 		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => void;
 	initialDialog?: {
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "edit";
 		conversationId: string;
+		tenantId?: string;
 	};
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
@@ -1210,6 +1224,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onDelete,
 	onRename,
 	renameCapabilityState = "unknown",
+	updateCapabilityState = "unknown",
+	onUpdate,
+	metadataDrafts,
 	unarchiveFailed = false,
 	archivedState = "ready",
 	archivedConversations = [],
@@ -1276,8 +1293,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "edit";
 		conversationId: string;
+		tenantId?: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
 	/* The members panel shares the thread pane's slot; one closes the other. */
@@ -1314,6 +1332,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * because the rail has just silently flipped back.
 	 */
 	const renameOpen = useRef(0);
+	const localMetadataDrafts = useRef(new TeamBridgeEditDraftJournal());
+	const editDrafts = metadataDrafts ?? localMetadataDrafts.current;
+	useSyncExternalStore(editDrafts.subscribe, editDrafts.snapshot);
+	const editKey = (row: TeamBridgeConversation) =>
+		JSON.stringify([row.tenant_id, row.id]);
+	const putEditDraft = (key: string, draft: TeamBridgeEditDraft) => {
+		editDrafts.set(key, draft);
+	};
 	const [renameFailed, setRenameFailed] =
 		useState<TeamBridgeRenameFailure | null>(null);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
@@ -2974,12 +3000,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					agentNotifyEnabled: agentNotify !== undefined,
 					archivable: canArchiveConversation(conversation),
 					renamable:
-						renameCapabilityState === "enabled" &&
+						((updateCapabilityState === "enabled" && Boolean(onUpdate)) ||
+							(renameCapabilityState === "enabled" && Boolean(onRename))) &&
 						canRenameConversation(conversation),
+					editable: updateCapabilityState === "enabled" && Boolean(onUpdate),
 					wiring: {
 						viewMembers: true,
 						addMembers: Boolean(onAddMembers),
-						rename: Boolean(onRename),
+						rename: Boolean(onRename || onUpdate),
 						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
 						notify: Boolean(notifyWrite),
 						agentNotify: Boolean(onAgentNotifyChange) && selectedRow,
@@ -3015,7 +3043,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			onRename: () => {
 				renameOpen.current += 1;
 				setRenameFailed(null);
-				setDialog({ kind: "rename", conversationId: conversation.id });
+				if (updateCapabilityState === "enabled" && onUpdate) {
+					const key = editKey(conversation);
+					const retained = editDrafts.get(key);
+					if (!retained || (!retained.pending && !retained.error)) {
+						const name = conversation.name ?? "";
+						const topic = conversation.topic ?? "";
+						editDrafts.set(key, {
+							baselineName: name,
+							baselineTopic: topic,
+							name,
+							topic,
+							pending: false,
+							error: null,
+						});
+					}
+					setDialog({
+						kind: "edit",
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+					});
+				} else {
+					setDialog({ kind: "rename", conversationId: conversation.id });
+				}
 			},
 			onJoin: () => {
 				if (onMenuJoin) onMenuJoin(conversation);
@@ -5057,9 +5107,55 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				/* The dialogs name the conversation they were opened for. A row that left
 				   the cache (archived, or deleted by someone else) closes its own dialog. */
 				const subject = dialog
-					? selectable.find((row) => row.id === dialog.conversationId)
+					? selectable.find(
+							(row) =>
+								row.id === dialog.conversationId &&
+								(dialog.kind !== "edit" || row.tenant_id === dialog.tenantId),
+						)
 					: undefined;
 				if (!dialog || !subject) return null;
+				if (dialog.kind === "edit") {
+					const key = editKey(subject);
+					const draft = editDrafts.get(key);
+					if (!draft) return null;
+					return (
+						<TeamBridgeEditDialog
+							kind={subject.kind === "group" ? "group" : "channel"}
+							draft={draft}
+							onChange={(next) => putEditDraft(key, next)}
+							onClose={() => {
+								renameOpen.current += 1;
+								if (!draft.pending && !draft.error) editDrafts.delete(key);
+								setDialog(null);
+							}}
+							onSave={(patch) => {
+								if (
+									!onUpdate ||
+									draft.pending ||
+									updateCapabilityState !== "enabled"
+								)
+									return;
+								const sentFrom = renameOpen.current;
+								putEditDraft(key, { ...draft, pending: true, error: null });
+								// subject and patch are this open's captured data, never the
+								// current picker or a refetched row. Completion is open-fenced.
+								onUpdate(subject, patch).then(
+									() => {
+										editDrafts.delete(key);
+										if (renameOpen.current === sentFrom) setDialog(null);
+									},
+									(failure: unknown) => {
+										putEditDraft(key, {
+											...draft,
+											pending: false,
+											error: editFailure(failure, patch.name ?? draft.name),
+										});
+									},
+								);
+							}}
+						/>
+					);
+				}
 				if (dialog.kind === "rename") {
 					const kind = subject.kind === "group" ? "group" : "channel";
 					return (
@@ -6781,6 +6877,10 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const archive = useArchiveTeamBridgeConversation();
 	const rename = useRenameTeamBridgeConversation();
+	const update = useUpdateTeamBridgeConversation();
+	// TeamBridgeOwnedPage is keyed by account.token (account + authority epoch).
+	// Never persist metadata drafts to storage or carry them into another owner.
+	const metadataDrafts = useRef(new TeamBridgeEditDraftJournal());
 	const unarchive = useUnarchiveTeamBridgeConversation();
 	const deleteConversation = useDeleteTeamBridgeConversation();
 
@@ -7491,6 +7591,11 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_agent_notify",
 				)}
+				metadataDrafts={metadataDrafts.current}
+				updateCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_conversation_update",
+				)}
 				renameCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_conversation_rename",
@@ -7563,6 +7668,17 @@ const TeamBridgeOwnedPage: FC<{
 				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate(undefined);
+				}}
+				onUpdate={(conversation, patch) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return update.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						patch,
+					});
 				}}
 				onRename={(conversation, name) => {
 					if (!isCurrentOwner())

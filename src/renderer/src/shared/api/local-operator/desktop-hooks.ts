@@ -411,6 +411,8 @@ export type DesktopFeature =
 	 * no route for it.
 	 */
 	| "team_bridge_conversation_rename"
+	/** Atomic name/topic PATCH; deploy the upstream route before this capability. */
+	| "team_bridge_conversation_update"
 	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
