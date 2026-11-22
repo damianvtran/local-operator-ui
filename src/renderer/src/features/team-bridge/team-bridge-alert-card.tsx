@@ -34,7 +34,7 @@ export const TeamBridgeAlertActionsContext =
  * container MUST NOT guess from the presence of an unrelated fleet ask or
  * trust a speculative server ask id. The presentational card keeps its `ask`
  * seam for a future locally verified correlation; until then no review CTA
- * appears on the live path. The synthetic owner story is not a served contract.
+ * appears on the live path.
  */
 export const TeamBridgeAlertCardContainer: FC<{
 	card: TeamBridgeAlertCardView;
@@ -112,7 +112,7 @@ export type TeamBridgeAlertCardProps = {
 	/** The message body, already rendered by the row's prose renderer. */
 	body: ReactNode;
 	locale?: string;
-	/** The owner's pending ask on THIS device (`alertAskOnThisDevice`), or null. */
+	/** A locally correlated ask only; never derived from claim metadata. */
 	ask?: { askId: string; sessionId: string } | null;
 	onReviewAsk?: (ask: { askId: string; sessionId: string }) => void;
 	/** Opens the Responder dialog for this channel; absent draws no button. */
@@ -338,12 +338,6 @@ export const TeamBridgeAlertCard: FC<TeamBridgeAlertCardProps> = ({
 	);
 };
 
-const WIRE_TIER = {
-	"T0-passive": "watch",
-	T0: "triage",
-	T1: "prepare",
-} as const;
-
 const CLAIM_GROUND = {
 	unreported: "bg-sunken",
 	unclaimed: "bg-sunken",
@@ -385,18 +379,10 @@ const ClaimStrip: FC<{
 					})
 				: claim.holder
 			: t("ui.teamBridge.alerts.claim.holder_unknown");
-		const headline = t("ui.teamBridge.alerts.claim.taken_by", {
+		text = t("ui.teamBridge.alerts.claim.taken_by", {
 			state: claim.kind,
 			who,
 		});
-		/* ICU select keys cannot carry `-`, so the wire tier maps to the
-		   dialog's own option names; one label per tier in both places. */
-		const tier = claim.tier
-			? t("ui.teamBridge.alerts.responder.tier_name", {
-					tier: WIRE_TIER[claim.tier],
-				})
-			: null;
-		text = [headline, tier, claim.statusLine].filter(Boolean).join(" · ");
 	}
 	return (
 		<div

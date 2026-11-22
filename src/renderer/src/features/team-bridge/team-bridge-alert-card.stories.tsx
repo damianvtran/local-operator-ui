@@ -1,4 +1,3 @@
-import { FLEET_ASKS_QUERY_KEY } from "@features/chat/fleet-asks";
 import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,7 +6,11 @@ import type {
 	TeamBridgeAlertMeta,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
-import { TeamBridgeAlertActionsContext } from "./team-bridge-alert-card";
+import {
+	TeamBridgeAlertActionsContext,
+	TeamBridgeAlertCard,
+} from "./team-bridge-alert-card";
+import { teamBridgeAlertCard } from "./team-bridge-alert-model";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import {
 	menuConversation,
@@ -24,12 +27,8 @@ import { TeamBridgeResponderDialog } from "./team-bridge-responder-dialog";
  * deferred from agent-server #463). An app (Datadog, Grafana) posts an alert
  * root into #alerts-prod; the card reads the server-owned `alert_meta`.
  *
- * WHAT IS MOCKED: the hub's message page and this device's fleet-ask index.
- * `alert_meta` is transcribed from agent-server `models.BridgeAlertMeta`
- * (origin/main 2026-11-21). `claim_summary` follows the RFC §6.1 shape: the
- * hub does NOT serve it yet, which is exactly the `SingleFiring` state (no
- * claim block -> "Responder not known yet"). Switch the toolbar theme for
- * light/dark.
+ * The mock page uses the #465 display-only claim summary. `SingleFiring`
+ * covers older hubs that omit it; `Escalated` is a presentation-only preview.
  */
 
 const at = (minute: number) =>
@@ -88,41 +87,26 @@ const alert = (
 	...extra,
 });
 const claimed = {
-	state: "claimed",
+	state: "held",
 	holder_kind: "agent",
 	holder_name: "Aida",
 	owner_name: "Ada Okafor",
-	autonomy_tier: "T0",
-	latest_status_line: "Likely cause: connection pool exhaustion",
 	updated_at: at(11),
-};
-
-/* This device's fleet index holds the responder's pending ask: the owner's
-   view, so the "Review in Local Operator" CTA draws. */
-const ownerClient = () => {
-	const client = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
-	});
-	client.setQueryData(FLEET_ASKS_QUERY_KEY, [
-		{ ask_id: "ask_aida_1", session_id: "sess_alert_1", status: "open" },
-	]);
-	return client;
+	lease_expires_at: at(21),
 };
 
 const ListFrame: FC<{
 	messages: TeamBridgeMessage[];
-	owner?: boolean;
 	width?: number;
 	/** False: a reader whose own agent is not in the channel (no entry). */
 	responders?: boolean;
-}> = ({ messages, owner = false, width = 760, responders = true }) => {
-	const [client] = useState(() => (owner ? ownerClient() : new QueryClient()));
+}> = ({ messages, width = 760, responders = true }) => {
+	const [client] = useState(() => new QueryClient());
 	return (
 		<QueryClientProvider client={client}>
 			<TeamBridgeAlertActionsContext.Provider
 				value={{
 					onResponders: responders ? () => {} : undefined,
-					onReviewAsk: () => {},
 				}}
 			>
 				{/* `bg-canvas`: the channel timeline's real ground. */}
@@ -158,31 +142,31 @@ export const Claimed: Story = {
 	args: { messages: [alert({ claim_summary: claimed })] },
 };
 
-/* Synthetic future claim metadata, NOT proof of a live alert-to-ask
-   correlation. The production container deliberately draws no Review CTA until
-   a supported local correlation exists; an unrelated fleet ask is not one. */
+/* This is status only: the hub's waiting flag cannot supply a local ask. */
 export const WaitingForOwnerApproval: Story = {
 	args: {
-		owner: true,
 		messages: [
-			alert({
-				claim_summary: {
-					...claimed,
-					autonomy_tier: "T1",
-					latest_status_line: "Revert PR opened, waiting for approval",
-					waiting_approval_for: {
-						ask_id: "ask_aida_1",
-						session_id: "sess_alert_1",
-					},
-				},
-			}),
+			alert({ claim_summary: { ...claimed, waiting_approval: true } }),
 		],
 	},
 };
 
+/* Design-only preview: #465 has no wire state for escalation. */
 export const Escalated: Story = {
-	args: {
-		messages: [alert({ claim_summary: { ...claimed, escalated: true } })],
+	args: { messages: [] },
+	render: () => {
+		const message = alert({ claim_summary: claimed });
+		const card = teamBridgeAlertCard(message);
+		if (!card || card.claim.kind !== "claimed") return null;
+		return (
+			<div className="w-[760px] bg-canvas p-3">
+				<TeamBridgeAlertCard
+					card={{ ...card, claim: { ...card.claim, kind: "escalated" } }}
+					body={message.body}
+					onResponders={() => {}}
+				/>
+			</div>
+		);
 	},
 };
 
@@ -192,10 +176,7 @@ export const Resolved: Story = {
 			alert({
 				status: "resolved",
 				resolved_at: at(24),
-				claim_summary: {
-					...claimed,
-					latest_status_line: "Pool size raised; error rate back to 0.2%",
-				},
+				claim_summary: claimed,
 			}),
 		],
 	},
@@ -216,7 +197,7 @@ export const GroupCardEscalated: Story = {
 					labels: [],
 					links: [],
 					incident_key: "",
-					claim_summary: { ...claimed, latest_status_line: undefined },
+					claim_summary: claimed,
 				},
 				{
 					body: "[STORM] Alert burst in this channel. New alerts from Datadog are grouped in this thread until none arrive for 5 minutes, all of them resolve, or 1 hour passes.",
@@ -293,16 +274,9 @@ export const NoActions: Story = {
  */
 const claimStates: [string, TeamBridgeAlertMeta["claim_summary"]][] = [
 	["unreported", undefined],
-	["unclaimed", { state: "unclaimed" }],
+	["unclaimed", { state: "released" }],
 	["claimed", claimed],
-	[
-		"waiting",
-		{
-			...claimed,
-			waiting_approval_for: { ask_id: "ask_aida_1", session_id: "s" },
-		},
-	],
-	["escalated", { ...claimed, escalated: true }],
+	["waiting", { ...claimed, waiting_approval: true }],
 ];
 const ReflowFrame: FC = () => {
 	const ref = useRef<HTMLDivElement>(null);
@@ -318,7 +292,6 @@ const ReflowFrame: FC = () => {
 	return (
 		<div ref={ref} className="flex flex-col gap-1">
 			<ListFrame
-				owner
 				width={620}
 				messages={claimStates.map(([name, summary], index) =>
 					alert(

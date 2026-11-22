@@ -484,35 +484,25 @@ export type TeamBridgeSenderKind = z.infer<typeof teamBridgeSenderKindSchema>;
  * catches to `unknown`: a newer vocabulary renders as "unknown", not as a parse
  * failure. Normalisation lives in `team-bridge-alert-model.ts`.
  *
- * `claim_summary` IS FORWARD-COMPATIBLE, NOT YET SERVED. The RFC's AlertMeta
- * carries it; agent-server `internal/models/integration.go` says the responder
- * slice "adds it as another omitempty field without changing any existing one"
- * and `origin/main` (2026-11-21) does not emit it yet. Parsed here so the card
- * renders a claim the day the hub sends one; until then the card says no claim
- * has been reported rather than claiming the alert is unclaimed.
+ * Agent-server #465 projects a display-only `claim_summary`. Older hubs omit
+ * it; the card says no claim was reported rather than assuming it is unclaimed.
+ * A remote waiting flag conveys status, never authority to open a local ask.
  */
 const alertString = z.string().max(512).optional().catch(undefined);
 const alertCount = z.number().int().nonnegative().optional().catch(undefined);
-export const teamBridgeAlertClaimSummarySchema = z
-	.object({
-		state: z.string().max(32).optional().catch(undefined),
-		holder_kind: z.string().max(32).optional().catch(undefined),
-		holder_name: z.string().max(64).optional().catch(undefined),
-		owner_name: z.string().max(64).optional().catch(undefined),
-		autonomy_tier: z.string().max(16).optional().catch(undefined),
-		latest_status_line: z.string().max(280).optional().catch(undefined),
-		updated_at: alertString,
-		waiting_approval_for: z
-			.object({
-				ask_id: z.string().min(1).max(128),
-				session_id: z.string().min(1).max(128),
-			})
-			.passthrough()
-			.optional()
-			.catch(undefined),
-		escalated: z.boolean().optional().catch(undefined),
-	})
-	.passthrough();
+export const teamBridgeAlertClaimSummarySchema = z.object({
+	state: z.string().max(32).optional().catch(undefined),
+	holder_kind: z.string().max(32).optional().catch(undefined),
+	holder_name: z.string().max(64).optional().catch(undefined),
+	owner_name: z.string().max(64).optional().catch(undefined),
+	updated_at: alertString,
+	lease_expires_at: z
+		.string()
+		.datetime({ offset: true })
+		.optional()
+		.catch(undefined),
+	waiting_approval: z.boolean().optional().catch(undefined),
+});
 export type TeamBridgeAlertClaimSummary = z.infer<
 	typeof teamBridgeAlertClaimSummarySchema
 >;

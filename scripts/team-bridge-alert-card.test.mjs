@@ -9,8 +9,7 @@ import { build } from "esbuild";
  *  - the wire: `alert_meta` parses field-by-field and a malformed block costs
  *    the card, never the message;
  *  - the model: which rows are cards, severity/status/tone, group counts,
- *    claim states (including "unreported" on today's hub), link verification,
- *    and the owner-only ask CTA;
+ *    claim states (including "unreported" on older hubs) and link verification;
  *  - the render: a card replaces the bare body, an app row draws no link
  *    preview, and every claim state renders line E, while line F exists only for actions;
  *  - the menu: "Manage apps" only with `can_manage_integrations`, "Alert
@@ -221,120 +220,96 @@ test("links render only for https with a matching verified host", () => {
 test("no claim block reads as unreported, never as unclaimed", () => {
 	assert.equal(card(alertRow()).claim.kind, "unreported");
 	assert.equal(
-		card(alertRow({}, { claim_summary: { state: "unclaimed" } })).claim.kind,
+		card(alertRow({}, { claim_summary: { state: "released" } })).claim.kind,
 		"unclaimed",
 	);
 });
 
-test("claim states: claimed, waiting (with ask), escalated", () => {
-	const claimed = card(
-		alertRow(
-			{},
-			{
-				claim_summary: {
-					state: "claimed",
-					holder_name: "Aida",
-					owner_name: "Ada",
-					autonomy_tier: "T0",
-					latest_status_line: "likely cause: deploy 4f1",
-				},
-			},
-		),
-	).claim;
-	assert.equal(claimed.kind, "claimed");
-	assert.equal(claimed.tier, "T0");
-	const waiting = card(
-		alertRow(
-			{},
-			{
-				claim_summary: {
-					state: "claimed",
-					holder_name: "Aida",
-					waiting_approval_for: { ask_id: "ask_1", session_id: "s_1" },
-				},
-			},
-		),
-	).claim;
-	assert.equal(waiting.kind, "waiting");
-	assert.deepEqual(waiting.ask, { askId: "ask_1", sessionId: "s_1" });
-	const escalated = card(
-		alertRow({}, { claim_summary: { state: "claimed", escalated: true } }),
-	).claim;
-	assert.equal(escalated.kind, "escalated");
-});
+const leaseExpiry = "2026-11-21T14:22:00.123456789Z";
+const heldClaim = {
+	state: "held",
+	holder_kind: "agent",
+	holder_name: "Aida",
+	owner_name: "Ada",
+	updated_at: "2026-11-21T14:12:00Z",
+	lease_expires_at: leaseExpiry,
+};
 
-test("the ask CTA is the owner's: only an ask pending on THIS device", () => {
-	const claim = card(
-		alertRow(
-			{},
-			{
-				claim_summary: {
-					state: "claimed",
-					waiting_approval_for: { ask_id: "ask_1", session_id: "s_1" },
-				},
-			},
-		),
-	).claim;
-	const fleet = (rows) => m.pendingFleetAskSessions(rows);
-	assert.deepEqual(
-		m.alertAskOnThisDevice(
-			claim,
-			fleet([{ ask_id: "ask_1", session_id: "s_1", status: "open" }]),
-		),
-		{ askId: "ask_1", sessionId: "s_1" },
-	);
-	assert.equal(
-		m.alertAskOnThisDevice(
-			claim,
-			fleet([{ ask_id: "ask_2", session_id: "s_1", status: "open" }]),
-		),
-		null,
-	);
-	assert.equal(m.alertAskOnThisDevice(claim, fleet([])), null);
-	assert.equal(m.alertAskOnThisDevice(claim, fleet(null)), null);
-	/* An answered ask is no longer pending, and a row with no session has
-	   nowhere to open. */
-	assert.equal(
-		m.alertAskOnThisDevice(
-			claim,
-			fleet([{ ask_id: "ask_1", session_id: "s_1", status: "answered" }]),
-		),
-		null,
-	);
-	assert.equal(
-		m.alertAskOnThisDevice(
-			claim,
-			fleet([{ ask_id: "ask_1", session_id: null, status: "open" }]),
-		),
-		null,
-	);
-});
-
-test("the ask CTA opens THIS device's session for the ask, not the hub's (R3)", () => {
-	/* The hub relays the holder's heartbeat; its session_id is another
-	   endpoint's word. Only ask_id matches; the session is the fleet row's. */
-	const claim = card(
-		alertRow(
-			{},
-			{
-				claim_summary: {
-					state: "claimed",
-					waiting_approval_for: {
-						ask_id: "ask_1",
-						session_id: "s_from_hub_stale",
-					},
-				},
-			},
-		),
-	).claim;
-	const pending = m.pendingFleetAskSessions([
-		{ ask_id: "ask_0", session_id: "s_other", status: "open" },
-		{ ask_id: "ask_1", session_id: "s_local", status: "open" },
-	]);
-	assert.deepEqual(m.alertAskOnThisDevice(claim, pending), {
-		askId: "ask_1",
-		sessionId: "s_local",
+test("#465 held claim preserves the lease and reports waiting only for boolean true", () => {
+	const waiting = { ...heldClaim, waiting_approval: true };
+	const row = alertRow({}, { claim_summary: waiting });
+	assert.deepEqual(parse(row).alert_meta.claim_summary, waiting);
+	assert.deepEqual(card(row).claim, {
+		kind: "waiting",
+		holder: "Aida",
+		owner: "Ada",
+		updatedAt: heldClaim.updated_at,
+		leaseExpiresAt: leaseExpiry,
 	});
+	for (const waiting_approval of [undefined, false]) {
+		assert.equal(
+			card(alertRow({}, { claim_summary: { ...heldClaim, waiting_approval } }))
+				.claim.kind,
+			"claimed",
+		);
+	}
+});
+
+test("malformed claim fields degrade in place; remote details are stripped", () => {
+	const row = alertRow(
+		{},
+		{
+			claim_summary: {
+				...heldClaim,
+				waiting_approval: "true",
+				lease_expires_at: "not-a-timestamp",
+				waiting_approval_for: {
+					ask_id: "remote_ask",
+					session_id: "remote_session",
+				},
+				latest_status_line: "not projected",
+				escalated: true,
+			},
+		},
+	);
+	const parsed = parse(row);
+	assert.equal(parsed.body, row.body);
+	assert.equal(parsed.alert_meta.claim_summary.waiting_approval, undefined);
+	assert.equal(parsed.alert_meta.claim_summary.lease_expires_at, undefined);
+	for (const key of [
+		"waiting_approval_for",
+		"latest_status_line",
+		"escalated",
+	]) {
+		assert.equal(Object.hasOwn(parsed.alert_meta.claim_summary, key), false);
+	}
+	assert.equal(card(row).claim.kind, "claimed");
+	assert.equal(card(row).claim.leaseExpiresAt, null);
+	for (const state of [undefined, 42, "waiting_approval", "future_state"]) {
+		assert.deepEqual(
+			card(
+				alertRow(
+					{},
+					{ claim_summary: { ...heldClaim, state, waiting_approval: true } },
+				),
+			).claim,
+			{ kind: "unreported" },
+		);
+	}
+});
+
+test("released and expired claims never enter the held or waiting view", () => {
+	for (const state of ["released", "expired"]) {
+		for (const fields of [
+			{},
+			{ waiting_approval: true, lease_expires_at: leaseExpiry },
+		]) {
+			assert.deepEqual(
+				card(alertRow({}, { claim_summary: { state, ...fields } })).claim,
+				{ kind: "unclaimed" },
+			);
+		}
+	}
 });
 
 /* -------------------------------------------------------------- RENDER */
@@ -402,12 +377,11 @@ test("a group card names its worst severity and N alerts, M resolved", () => {
 test("every claim state renders line E and line F (fixed boxes, D1)", () => {
 	for (const summary of [
 		undefined,
-		{ state: "unclaimed" },
-		{ state: "claimed", holder_name: "Aida", owner_name: "Ada" },
-		{ state: "claimed", escalated: true },
+		{ state: "released" },
+		{ state: "held", holder_name: "Aida", owner_name: "Ada" },
 		{
-			state: "claimed",
-			waiting_approval_for: { ask_id: "a", session_id: "s" },
+			state: "held",
+			waiting_approval: true,
 		},
 	]) {
 		const html = renderCard(alertRow({}, { claim_summary: summary }));
@@ -422,7 +396,7 @@ test("every claim state renders line E and line F (fixed boxes, D1)", () => {
 				{},
 				{
 					claim_summary: {
-						state: "claimed",
+						state: "held",
 						holder_name: "Aida",
 						owner_name: "Ada",
 					},
@@ -438,9 +412,9 @@ test("the Review ask button renders only with an ask and a handler", () => {
 		{},
 		{
 			claim_summary: {
-				state: "claimed",
+				state: "held",
 				holder_name: "Aida",
-				waiting_approval_for: { ask_id: "a", session_id: "s" },
+				waiting_approval: true,
 			},
 		},
 	);
@@ -615,7 +589,8 @@ test("the live container never invents an alert-to-local-ask correlation", () =>
 		{},
 		{
 			claim_summary: {
-				state: "claimed",
+				...heldClaim,
+				waiting_approval: true,
 				waiting_approval_for: {
 					ask_id: "remote_ask",
 					session_id: "remote_session",
@@ -634,5 +609,6 @@ test("the live container never invents an alert-to-local-ask correlation", () =>
 			}),
 		),
 	);
+	assert.match(html, /data-alert-claim-strip="waiting"/);
 	assert.equal(html.includes("Review in Local Operator"), false);
 });
