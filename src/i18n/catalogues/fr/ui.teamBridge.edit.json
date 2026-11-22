@@ -8,5 +8,5 @@
 	"ui.teamBridge.edit.error.invalid": "Ces informations ne peuvent pas être utilisées. Vérifiez le nom et la description.",
 	"ui.teamBridge.edit.error.forbidden": "Vous n’avez pas l’autorisation de modifier cette conversation.",
 	"ui.teamBridge.edit.error.archived": "Cette conversation a été archivée et ne peut plus être modifiée.",
-	"ui.teamBridge.edit.error.failed": "Les modifications n’ont pas été enregistrées. Votre brouillon est toujours là. Réessayez."
+	"ui.teamBridge.edit.error.failed": "Impossible de confirmer si les modifications ont été enregistrées. Votre brouillon est toujours là. Réessayez."
 }

@@ -8,5 +8,5 @@
 	"ui.teamBridge.edit.error.invalid": "这些信息无法使用。请检查名称和描述。",
 	"ui.teamBridge.edit.error.forbidden": "你没有权限编辑此对话。",
 	"ui.teamBridge.edit.error.archived": "此对话已归档，无法编辑。",
-	"ui.teamBridge.edit.error.failed": "更改未保存。你填写的内容仍在，可以重试。"
+	"ui.teamBridge.edit.error.failed": "无法确认更改是否已保存。你填写的内容仍在，可以重试。"
 }

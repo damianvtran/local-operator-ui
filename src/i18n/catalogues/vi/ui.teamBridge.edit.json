@@ -8,5 +8,5 @@
 	"ui.teamBridge.edit.error.invalid": "Không thể dùng những thông tin này. Kiểm tra lại tên và mô tả.",
 	"ui.teamBridge.edit.error.forbidden": "Bạn không có quyền chỉnh sửa cuộc trò chuyện này.",
 	"ui.teamBridge.edit.error.archived": "Cuộc trò chuyện này đã được lưu trữ nên không thể chỉnh sửa.",
-	"ui.teamBridge.edit.error.failed": "Chưa lưu được thay đổi. Bản nháp vẫn còn ở đây. Thử lại."
+	"ui.teamBridge.edit.error.failed": "Không thể xác nhận thay đổi đã được lưu hay chưa. Bản nháp vẫn còn ở đây. Thử lại."
 }

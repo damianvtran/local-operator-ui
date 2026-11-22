@@ -8,5 +8,5 @@
 	"ui.teamBridge.edit.error.invalid": "Estos datos no se pueden usar. Revisa el nombre y la descripción.",
 	"ui.teamBridge.edit.error.forbidden": "No tienes permiso para editar esta conversación.",
 	"ui.teamBridge.edit.error.archived": "Esta conversación se ha archivado y no se puede editar.",
-	"ui.teamBridge.edit.error.failed": "No se han guardado los cambios. Tu borrador sigue aquí. Vuelve a intentarlo."
+	"ui.teamBridge.edit.error.failed": "No se ha podido confirmar si se han guardado los cambios. Tu borrador sigue aquí. Vuelve a intentarlo."
 }
