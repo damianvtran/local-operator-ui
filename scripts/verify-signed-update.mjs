@@ -54,6 +54,11 @@ import {
 	incumbentInspectorRefusal,
 } from "./incumbent-fuse-gate.mjs";
 import {
+	incumbentReleaseRefusalMessage,
+	resolveIncumbentMetadata,
+	resolveIncumbentRelease,
+} from "./incumbent-release.mjs";
+import {
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -536,25 +541,22 @@ try {
 	const dataHash = createHash("sha256")
 		.update(readFileSync(sentinel))
 		.digest("hex");
-	const release = await (
-		await fetch(
-			`https://api.github.com/repos/damianvtran/local-operator-ui/releases/tags/${tag}`,
-		)
-	).json();
-	const releaseMetadata = release.assets?.find(
-		(asset) => asset.name === "latest-mac.yml",
-	);
-	if (!releaseMetadata)
-		blocked("The exact incumbent release has no published macOS metadata");
-	const metadataPath = join(scratch, "incumbent.yml");
-	await download(releaseMetadata.browser_download_url, metadataPath);
-	const oldMetadata = load(readFileSync(metadataPath, "utf8"));
-	const oldEntry = oldMetadata.files.find((file) =>
-		file.url.endsWith(`-${process.arch}.zip`),
-	);
-	const oldAsset = release.assets.find((asset) => asset.name === oldEntry?.url);
-	if (!oldAsset)
-		blocked("The exact incumbent release has no native-architecture ZIP");
+	const incumbentRelease = await resolveIncumbentRelease({
+		repo: "damianvtran/local-operator-ui",
+		tag,
+	});
+	if (!incumbentRelease.ok)
+		blocked(incumbentReleaseRefusalMessage(incumbentRelease));
+	const { release, metadataAsset } = incumbentRelease;
+	const incumbentZip = await resolveIncumbentMetadata({
+		tag,
+		arch: process.arch,
+		release,
+		metadataAsset,
+		parseMetadata: load,
+	});
+	if (!incumbentZip.ok) blocked(incumbentReleaseRefusalMessage(incumbentZip));
+	const { entry: oldEntry, zipAsset: oldAsset } = incumbentZip;
 	const oldZip = join(scratch, "incumbent.zip");
 	await download(oldAsset.browser_download_url, oldZip);
 	const oldBytes = readFileSync(oldZip);
