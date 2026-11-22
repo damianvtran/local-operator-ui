@@ -23,27 +23,39 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
+import { observedRadientAuthority } from "@shared/hooks/radient-account-authority";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
 import { toBridgeFileDescriptor } from "./attachments/attachment-model";
 import { AuditAttachmentGroup } from "./attachments/audit-attachment-group";
 import type { DiscardBatchResult } from "./team-bridge-discard-batch";
 import { type BatchPreview, HeldMessagesBatch } from "./team-bridge-held-batch";
 import {
+	heldHidePreference,
+	useHeldHideRecoveryPending,
+	useHeldHideRevisions,
+} from "./team-bridge-held-hide-preference";
+import { holdsKey } from "./team-bridge-holds-keys";
+import {
 	type HoldItem,
 	type HoldProof,
 	type HoldWord,
+	type HoldsPage,
 	armedWords,
+	canHideHoldLocally,
 	decisionNotApplied,
 	hasHiddenCharacters,
 	holdAffordance,
+	holdAttachmentCounts,
 	holdDecideProof,
 	holdReason,
 	holdReasonLabel,
 	holdReference,
 	needsExpand,
+	projectHeldMessages,
 	receiptDiscardArmed,
 	sortHolds,
 } from "./team-bridge-holds-model";
@@ -63,6 +75,11 @@ import {
 
 type ListState = "loading" | "error" | "ready";
 type Busy = { id: string; word: HoldWord } | null;
+type LocalHideControls = {
+	hiddenItems: readonly HoldItem[];
+	recoveryPending?: boolean;
+	onChange: (item: HoldItem, hide: boolean) => boolean;
+};
 
 function stamp(value: string | null): string | null {
 	if (!value) return null;
@@ -94,13 +111,6 @@ export function heldSenderLine(message: OwnerAuditMessage | null): string {
 	return t("ui.teamBridge.holds.from_person", { person });
 }
 
-function attachmentCount(message: OwnerAuditMessage | null): number {
-	if (!message) return 0;
-	const images = message.attachments?.length || message.attachment_count || 0;
-	const files = Math.max(message.files?.length ?? 0, message.file_count ?? 0);
-	return images + files;
-}
-
 export function HeldMessagesView({
 	listState,
 	items,
@@ -119,6 +129,7 @@ export function HeldMessagesView({
 	initialConfirm,
 	onBatchDecide,
 	initialBatch,
+	localHide,
 }: {
 	listState: ListState;
 	items: readonly HoldItem[];
@@ -147,18 +158,39 @@ export function HeldMessagesView({
 		onResult: (result: DiscardBatchResult) => void,
 	) => Promise<void>;
 	initialBatch?: BatchPreview;
+	localHide?: LocalHideControls;
 }) {
 	useI18nLocale();
 	const [batchBlocking, setBatchBlocking] = useState(Boolean(initialBatch));
 	const [batchStarted, setBatchStarted] = useState(Boolean(initialBatch));
+	const hiddenItems = localHide?.hiddenItems ?? [];
+	const [hideFailed, setHideFailed] = useState(false);
+	const titleRef = useRef<HTMLHeadingElement>(null);
+	const hiddenTitleRef = useRef<HTMLHeadingElement>(null);
+	const moveFocus = useRef<"hidden" | "queue" | null>(null);
+	useEffect(() => {
+		if (moveFocus.current === "hidden") hiddenTitleRef.current?.focus();
+		if (moveFocus.current === "queue") titleRef.current?.focus();
+		moveFocus.current = null;
+	});
+	const changeVisibility = (item: HoldItem, hide: boolean) => {
+		// Both actions remove their own button. Move focus only for a user-initiated
+		// change, not when a background read recovers the details.
+		moveFocus.current = hide ? "hidden" : "queue";
+		const changed = localHide?.onChange(item, hide) ?? false;
+		if (!changed) moveFocus.current = null;
+		setHideFailed(!changed);
+	};
 	// Keep result accounting mounted after the last held row disappears, but
 	// preserve Approvals' single empty state when no batch has been started.
 	if (
 		hideWhenEmpty &&
 		!batchBlocking &&
 		!batchStarted &&
+		!localHide?.recoveryPending &&
 		listState === "ready" &&
-		items.length === 0
+		items.length === 0 &&
+		hiddenItems.length === 0
 	)
 		return null;
 	const ordered = sortHolds(items, now);
@@ -167,7 +199,11 @@ export function HeldMessagesView({
 			className="flex flex-col gap-3"
 			aria-label={t("ui.teamBridge.holds.title")}
 		>
-			<h3 className="text-base font-medium text-ink">
+			<h3
+				ref={titleRef}
+				tabIndex={-1}
+				className="text-base font-medium text-ink"
+			>
 				{t("ui.teamBridge.holds.title")}
 			</h3>
 			<p className="max-w-prose text-sm text-ink-muted">
@@ -218,6 +254,11 @@ export function HeldMessagesView({
 					)}
 				</div>
 			)}
+			{(hideFailed || localHide?.recoveryPending) && (
+				<p role="alert" className="text-sm text-ink-muted">
+					{t("ui.teamBridge.holds.hide_failed")}
+				</p>
+			)}
 			{listState === "loading" && items.length === 0 ? (
 				<Spinner size="sm" label={t("ui.teamBridge.holds.loading")} />
 			) : listState === "error" && items.length === 0 ? (
@@ -232,9 +273,11 @@ export function HeldMessagesView({
 					)}
 				</div>
 			) : items.length === 0 ? (
-				<p className="text-sm text-ink-muted">
-					{t("ui.teamBridge.holds.empty")}
-				</p>
+				hiddenItems.length === 0 && (
+					<p className="text-sm text-ink-muted">
+						{t("ui.teamBridge.holds.empty")}
+					</p>
+				)
 			) : (
 				<ul className="flex flex-col gap-2">
 					{ordered.map((item) => (
@@ -249,6 +292,11 @@ export function HeldMessagesView({
 							refusal={refusals[item.message_id] ?? null}
 							onDecide={onDecide}
 							onRetryDetails={onRetryDetails}
+							onHideLocal={
+								localHide && listState === "ready" && item.localHideRevision
+									? () => changeVisibility(item, true)
+									: undefined
+							}
 							accountId={accountId}
 							now={now}
 							initialExpanded={initialExpanded?.includes(item.message_id)}
@@ -256,6 +304,44 @@ export function HeldMessagesView({
 						/>
 					))}
 				</ul>
+			)}
+			{hiddenItems.length > 0 && (
+				<div className="flex flex-col gap-2 border-t border-hairline pt-3">
+					<h4
+						ref={hiddenTitleRef}
+						tabIndex={-1}
+						className="text-sm font-medium text-ink"
+					>
+						{t("ui.teamBridge.holds.hidden_local", {
+							count: hiddenItems.length,
+						})}
+					</h4>
+					<ul className="flex flex-col gap-1">
+						{sortHolds(hiddenItems, now).map((item) => {
+							const reference = holdReference(item.message_id);
+							return (
+								<li
+									key={item.localHideRevision}
+									className="flex flex-wrap items-center justify-between gap-x-2"
+								>
+									<span className="text-meta text-ink-muted">
+										{t("ui.teamBridge.holds.reference", { reference })}
+									</span>
+									<Button
+										size="sm"
+										variant="ghost"
+										aria-label={t("ui.teamBridge.holds.restore_local_label", {
+											reference,
+										})}
+										onClick={() => changeVisibility(item, false)}
+									>
+										{t("ui.teamBridge.holds.restore_local")}
+									</Button>
+								</li>
+							);
+						})}
+					</ul>
+				</div>
 			)}
 		</section>
 	);
@@ -268,6 +354,7 @@ function HeldRow({
 	refusal,
 	onDecide,
 	onRetryDetails,
+	onHideLocal,
 	accountId,
 	now,
 	initialExpanded = false,
@@ -279,6 +366,7 @@ function HeldRow({
 	refusal: string | null;
 	onDecide: (item: HoldItem, word: HoldWord, proof: HoldProof) => void;
 	onRetryDetails?: () => void;
+	onHideLocal?: () => void;
 	accountId: string | null;
 	now?: number;
 	initialExpanded?: boolean;
@@ -295,7 +383,8 @@ function HeldRow({
 	const affordance = holdAffordance(item, now);
 	const held = stamp(item.held_at);
 	const until = stamp(item.deliver_until);
-	const attachments = attachmentCount(message);
+	const { images, files } = holdAttachmentCounts(message);
+	const attachments = images + files;
 	const clampable = needsExpand(message?.body, attachments);
 	const seenInFull = !clampable || seen;
 	const hidden = hasHiddenCharacters(message?.body);
@@ -346,6 +435,7 @@ function HeldRow({
 		affordance.state === "open" || affordance.state === "deliver_expired";
 	const mine = busy?.id === item.message_id;
 	const disabled = busy !== null;
+	const canHide = onHideLocal && canHideHoldLocally(item, detail, now);
 
 	/* UX U4: when this row's decision settles, the buttons unmount; move focus
 	   to the row's status line rather than dropping it to <body>. */
@@ -432,12 +522,9 @@ function HeldRow({
 				<AuditAttachmentGroup
 					scope={attachmentScope}
 					attachments={message.attachments ?? []}
-					count={message.attachments?.length || message.attachment_count || 0}
+					count={images}
 					files={(message.files ?? []).map(toBridgeFileDescriptor)}
-					fileCount={Math.max(
-						message.files?.length ?? 0,
-						message.file_count ?? 0,
-					)}
+					fileCount={files}
 				/>
 			)}
 			{message && clampable && (
@@ -621,8 +708,8 @@ function HeldRow({
 					</div>
 				</div>
 			) : (
-				(armed.deliver || armed.discard) && (
-					<div className="flex gap-2 pt-1">
+				(armed.deliver || armed.discard || canHide) && (
+					<div className="flex flex-wrap gap-2 pt-1">
 						{armed.deliver && (
 							/* D2: Deliver mirrors Approve (primary); Discard mirrors Deny
 							   (secondary), so both always read as buttons. */
@@ -653,6 +740,19 @@ function HeldRow({
 								{t("ui.teamBridge.holds.discard")}
 							</Button>
 						)}
+						{canHide && (
+							<Button
+								size="sm"
+								variant="ghost"
+								disabled={disabled}
+								onClick={onHideLocal}
+								aria-label={t("ui.teamBridge.holds.hide_local_label", {
+									reference,
+								})}
+							>
+								{t("ui.teamBridge.holds.hide_local")}
+							</Button>
+						)}
 					</div>
 				)
 			)}
@@ -671,7 +771,29 @@ export function TeamBridgeHeldMessages({
 	const detail = useHeldMessageDetails(items);
 	const decide = useHoldDecide();
 	const retryDetails = useRetryHeldDetails();
-	const { accountId } = useTeamBridgeAccount();
+	const { accountId, epoch } = useTeamBridgeAccount();
+	const client = useQueryClient();
+	const hiddenRevisions = useHeldHideRevisions();
+	const recoveryPending = useHeldHideRecoveryPending();
+	const { visible, hidden, recovered } = projectHeldMessages(
+		items,
+		hiddenRevisions,
+		detail,
+	);
+	const isCurrentAccount = () => {
+		const current = observedRadientAuthority(client);
+		return (
+			Boolean(accountId) &&
+			current.accountId === accountId &&
+			current.epoch === epoch
+		);
+	};
+	useLayoutEffect(() => {
+		// The original join sees every row, including hidden rows. Leave a row
+		// restored once a normal detail read actually shows content again.
+		if (recovered.length > 0 && isCurrentAccount())
+			heldHidePreference.revealRecovered(recovered);
+	});
 	const listState: ListState = holds.isError
 		? "error"
 		: holds.isPending
@@ -681,7 +803,26 @@ export function TeamBridgeHeldMessages({
 		<HeldMessagesView
 			key={accountId ?? "signed-out"}
 			listState={listState}
-			items={items}
+			items={visible}
+			localHide={{
+				hiddenItems: hidden,
+				recoveryPending,
+				onChange: (item, hide) => {
+					const revision = item.localHideRevision;
+					if (!revision || !isCurrentAccount()) return false;
+					const current = client
+						.getQueryData<HoldsPage>(holdsKey(accountId))
+						?.items.find((row) => row.localHideRevision === revision);
+					if (
+						!current ||
+						(hide && !canHideHoldLocally(current, detail(current)))
+					)
+						return false;
+					return hide
+						? heldHidePreference.hide(revision)
+						: heldHidePreference.restore(revision);
+				},
+			}}
 			enabled={holds.data?.enabled ?? true}
 			keyProtection={holds.data?.key_protection ?? null}
 			detail={detail}
