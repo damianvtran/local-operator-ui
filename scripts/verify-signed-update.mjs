@@ -586,13 +586,11 @@ try {
 			timeout: 60_000,
 		},
 	);
-	let preSplitHash;
 	if (runtime.kind === "seed") {
 		// Only the harness uses the signed seed to construct the fixture. The
 		// field venv did not point at the seed, so don't let it survive the swap
 		// through a path that the candidate itself is supposed to ship again.
 		makePreSplitVenvInert(legacy, runtime.legacyInterpreter);
-		preSplitHash = hashPreSplitVenv(legacy);
 	}
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	record(
@@ -799,13 +797,16 @@ try {
 			);
 		}
 	};
+	// Start after the swap so an incumbent write cannot be attributed to the candidate.
+	const preSplitHash =
+		runtime.kind === "seed" ? hashPreSplitVenv(legacy) : undefined;
 	await launchAndCheck("candidate");
 	await launchAndCheck("second-launch");
 	if (runtime.kind === "seed") {
 		record(
 			"Pre-split environment",
 			"PASS",
-			`Incumbent ${tag} resolved the seed interpreter (${runtime.interpreter}); pre-split venv reconstructed inert (legacy home dangling); candidate ships no legacy namespaces and remains signed; env byte-identical across both launches`,
+			`Incumbent ${tag} resolved the seed interpreter (${runtime.interpreter}); pre-split venv reconstructed inert (legacy home dangling); candidate ships no legacy namespaces and remains signed; venv hash matched the post-swap baseline after each candidate launch`,
 		);
 	}
 	record(
