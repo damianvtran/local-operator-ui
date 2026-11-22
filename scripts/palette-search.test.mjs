@@ -36,14 +36,18 @@ const {
 	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
+	paletteAgeLabel,
 	paletteEmptyStateCopy,
 	PALETTE_GROUP_ORDER,
+	PALETTE_RANK,
 	PALETTE_SECTION_TITLES,
 	parsePaletteQuery,
 	RECENTS_PIN_CAP,
 	SCOPE_LEGEND,
 	searchPalette,
+	selectionIndexOf,
 	SOFT_TIER,
+	sortAppliesTo,
 	TOTAL_CAP,
 } = module;
 
@@ -1603,4 +1607,519 @@ test("the panel renders the copy table, not a second set of sentences", () => {
 	assert.match(source, /paletteEmptyStateCopy\(\{/);
 	assert.match(source, /\{emptyCopy\.line\}/);
 	assert.match(source, /\{emptyCopy\.hint !== null &&/);
+});
+
+/* ------------------------------------------------------------------ *
+ * Ranking: the tiers, the clock, and the order a reader can see
+ * ------------------------------------------------------------------ */
+
+const HOUR_MS = 3_600_000;
+const NOW = Date.parse("2026-11-20T12:00:00Z");
+/** A conversation row as the source builds one, with the two ranking facts set. */
+const datedChat = (id, title, hoursAgo, order) => ({
+	...chat(id, title),
+	updatedAt: NOW - hoursAgo * HOUR_MS,
+	order,
+});
+
+test("an old title that BEGINS with the query no longer outranks a recent one that only contains the word (operator report, 2026-11-20)", () => {
+	/*
+	 * The report, verbatim in shape: `#robot` put a 500-hour-old
+	 * `Robotnik: force the approval latch fix` above a 1-hour-old `Dr. Robotnik`,
+	 * because the old score added +0.15 to any name the query PREFIXED and recency
+	 * was only the last tie-break. Both rows are word-start matches now, so the
+	 * clock decides - and the fixture is given in the OLD order, so a regression
+	 * that reinstated the bonus would keep it first and fail here.
+	 */
+	const outcome = searchPalette({
+		items: [
+			datedChat("old", "Robotnik: force the approval latch fix", 500, 0),
+			datedChat("new", "Dr. Robotnik", 1, 1),
+		],
+		raw: "#robot",
+	});
+	assert.deepEqual(names(outcome), [
+		"Dr. Robotnik",
+		"Robotnik: force the approval latch fix",
+	]);
+	// Both are the same tier: which WORD of the title the query starts is not a
+	// fact about the answer, so it must not separate them.
+	assert.equal(find(outcome, "Dr. Robotnik").rank, PALETTE_RANK.nameWordStart);
+	assert.equal(
+		find(outcome, "Robotnik: force the approval latch fix").rank,
+		PALETTE_RANK.nameWordStart,
+	);
+});
+
+test("the row whose name IS the query outranks a longer name that starts with it, however old it is", () => {
+	const outcome = searchPalette({
+		items: [
+			datedChat("exact", "Robot", 500, 0),
+			datedChat("long", "Robot settings", 1, 1),
+		],
+		raw: "#robot",
+	});
+	assert.deepEqual(names(outcome), ["Robot", "Robot settings"]);
+	assert.equal(find(outcome, "Robot").rank, PALETTE_RANK.exactName);
+	assert.equal(
+		find(outcome, "Robot settings").rank,
+		PALETTE_RANK.nameWordStart,
+	);
+});
+
+test("the five tiers are the order: exact name, word-start, substring, keyword, body", () => {
+	const outcome = searchPalette({
+		items: [
+			{ ...chat("k", "Session notes"), keywords: ["robot"], order: 3 },
+			{ ...chat("s", "Microbot assembly"), order: 2 },
+			{ ...chat("w", "Dr. Robotnik"), order: 1 },
+			{ ...chat("e", "Robot"), order: 4 },
+			{ ...chat("b", "Untitled"), soft: "the robot arm", order: 5 },
+		],
+		raw: "#robot",
+	});
+	assert.deepEqual(names(outcome), [
+		"Robot",
+		"Dr. Robotnik",
+		"Microbot assembly",
+		"Session notes",
+		"Untitled",
+	]);
+	assert.deepEqual(
+		names(outcome).map((name) => find(outcome, name).rank),
+		[
+			PALETTE_RANK.exactName,
+			PALETTE_RANK.nameWordStart,
+			PALETTE_RANK.nameSubstring,
+			PALETTE_RANK.keywordOrHint,
+			PALETTE_RANK.bodyOrSoft,
+		],
+	);
+});
+
+test("an honourific and a longer name do not move a row: same tier and same age, so the group's own order decides", () => {
+	const outcome = searchPalette({
+		items: [
+			datedChat("a", "Dr. Robotnik", 2, 0),
+			datedChat("b", "Robotnik fix", 2, 1),
+		],
+		raw: "#robot",
+	});
+	assert.deepEqual(names(outcome), ["Dr. Robotnik", "Robotnik fix"]);
+	assert.equal(
+		find(outcome, "Dr. Robotnik").rank,
+		find(outcome, "Robotnik fix").rank,
+	);
+});
+
+test("the Recent order is recency first among the same matches, and the query still filters", () => {
+	const rows = [
+		datedChat("exact", "Robot", 100, 0),
+		{
+			...chat("k", "Session notes"),
+			keywords: ["robot"],
+			updatedAt: NOW - HOUR_MS,
+			order: 1,
+		},
+	];
+	// Relevance: the exact name leads.
+	assert.deepEqual(names(searchPalette({ items: rows, raw: "#robot" })), [
+		"Robot",
+		"Session notes",
+	]);
+	// Recency: the newer row leads, whatever tier it is in.
+	assert.deepEqual(
+		names(searchPalette({ items: rows, raw: "#robot", sort: "recent" })),
+		["Session notes", "Robot"],
+	);
+	// The query is still the filter in both orders: an unmatched term admits
+	// nothing, and a row it does not name is not "recent" enough to appear.
+	assert.deepEqual(
+		names(searchPalette({ items: rows, raw: "#zzz", sort: "recent" })),
+		[],
+	);
+});
+
+test("a tie neither the tier nor the clock can settle is stable, whatever order the rows arrive in", () => {
+	const a = datedChat("a", "Robot one", 3, 0);
+	const b = datedChat("b", "Robot two", 3, 0);
+	const forward = searchPalette({ items: [a, b], raw: "#robot" });
+	const backward = searchPalette({ items: [b, a], raw: "#robot" });
+	assert.deepEqual(names(forward), ["Robot one", "Robot two"]);
+	assert.deepEqual(names(backward), names(forward));
+	// ...and the two orders agree with each other as well, not only with themselves.
+	assert.deepEqual(
+		names(searchPalette({ items: [a, b], raw: "#robot", sort: "recent" })),
+		names(forward),
+	);
+});
+
+test("a scoped list pages 24 at a time, and says whether another page exists", () => {
+	const rows = Array.from({ length: 30 }, (_, index) =>
+		datedChat(
+			`c${String(index).padStart(2, "0")}`,
+			`Robot ${String(index).padStart(2, "0")}`,
+			index,
+			index,
+		),
+	);
+	const first = searchPalette({ items: rows, raw: "#robot" });
+	assert.equal(first.total, 30);
+	assert.equal(first.sections[0].items.length, 24);
+	assert.equal(first.page, 0);
+	assert.equal(first.pages, 2);
+	assert.equal(first.more, true);
+	const second = searchPalette({ items: rows, raw: "#robot", page: 1 });
+	assert.equal(second.page, 1);
+	assert.equal(second.sections[0].items.length, 6);
+	assert.equal(second.more, false);
+	// A page whose window holds nothing falls back to the first rather than
+	// drawing an empty list under a "no matches" sentence that would be false.
+	const past = searchPalette({ items: rows, raw: "#robot", page: 7 });
+	assert.equal(past.page, 0);
+	assert.equal(past.sections[0].items.length, 24);
+	// An unscoped list has no pages at all: its caps are per-group budgets.
+	const unscoped = searchPalette({ items: rows, raw: "robot", page: 3 });
+	assert.equal(unscoped.page, 0);
+	assert.equal(unscoped.more, false);
+});
+
+test("a row's age reads now, minutes, hours, days, then the date it happened", () => {
+	assert.equal(paletteAgeLabel(NOW, NOW), "now");
+	assert.equal(paletteAgeLabel(NOW - 5 * 60_000, NOW), "5m");
+	assert.equal(paletteAgeLabel(NOW - 2 * HOUR_MS, NOW), "2h");
+	assert.equal(paletteAgeLabel(NOW - 3 * 24 * HOUR_MS, NOW), "3d");
+	/*
+	 * Past a week it is a DATE, formatted by the locale rather than counted in
+	 * weeks: the expected string is derived from the same runtime's own month/day
+	 * formatting, so this pins "it is the date" without pinning the machine's
+	 * timezone into the fixture.
+	 */
+	assert.equal(
+		paletteAgeLabel(NOW - 20 * 24 * HOUR_MS, NOW),
+		new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(
+			NOW - 20 * 24 * HOUR_MS,
+		),
+	);
+	// No clock, no label: the wire's 0.0 is "no claim", never 1970.
+	assert.equal(paletteAgeLabel(undefined, NOW), "");
+});
+
+/* ------------------------------------------------------------------ *
+ * Paging a scope that spans more than one group (agent review round 1, R1)
+ * ------------------------------------------------------------------ */
+
+/** An agent row as the source builds one, for the multi-group scope's fixture. */
+const alphaAgent = (index) => ({
+	id: `agent-alpha-${String(index).padStart(2, "0")}`,
+	kind: "agent",
+	group: "agents",
+	name: `Alpha agent ${String(index).padStart(2, "0")}`,
+	icon: "agents",
+	target: { type: "draft", kind: "agent", name: `alpha-${index}` },
+	order: index,
+	featured: true,
+});
+
+/** A team row, the same scope's second group. */
+const alphaTeam = (index) => ({
+	id: `team-alpha-${String(index).padStart(2, "0")}`,
+	kind: "team",
+	group: "teams",
+	name: `Alpha team ${String(index).padStart(2, "0")}`,
+	icon: "team",
+	target: { type: "draft", kind: "team", name: `alpha-${index}` },
+	order: index,
+	featured: true,
+});
+
+const ALPHA_SCOPE = [
+	...Array.from({ length: 30 }, (_, index) => alphaAgent(index)),
+	...Array.from({ length: 5 }, (_, index) => alphaTeam(index)),
+];
+
+test("a scope that spans two groups pages ONE offset across both, without repeating a short group", () => {
+	const first = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha" });
+	const firstIds = first.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	// Page 0 is the layout the palette always had: 24 agents, then all 5 teams.
+	assert.deepEqual(
+		first.sections.map((section) => section.group),
+		["agents", "teams"],
+	);
+	assert.equal(first.sections[0].items.length, 24);
+	assert.equal(first.sections[1].items.length, 5);
+	assert.equal(first.total, 35);
+	assert.equal(first.page, 0);
+	assert.equal(first.pages, 2);
+	assert.equal(first.more, true);
+	assert.equal(new Set(firstIds).size, firstIds.length, "no duplicate ids");
+
+	const second = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha", page: 1 });
+	const secondIds = second.sections.flatMap((section) =>
+		section.items.map((match) => match.item.id),
+	);
+	/*
+	 * THE DEFECT THIS PINS: `page` applied per group drew the five teams AGAIN
+	 * under page 2's heading (duplicate ids, which also breaks selection by id),
+	 * and reported page 0. A group with nothing at this offset now contributes
+	 * nothing, and the page is the one asked for.
+	 */
+	assert.deepEqual(
+		second.sections.map((section) => section.group),
+		["agents"],
+	);
+	assert.equal(second.sections[0].items.length, 6);
+	assert.equal(second.sections[0].items[0].item.id, "agent-alpha-24");
+	assert.equal(second.page, 1);
+	assert.equal(second.more, false);
+	assert.equal(new Set(secondIds).size, secondIds.length, "no duplicate ids");
+	// The two pages together are the whole answer, each row once.
+	assert.deepEqual(
+		[...firstIds, ...secondIds].sort(),
+		ALPHA_SCOPE.map((row) => row.id).sort(),
+	);
+
+	/*
+	 * BOTH GROUPS LONGER THAN THE STRIDE (agent review round 2, R2-1): the page
+	 * count is the longest group's, not `ceil(total / 24)`. 30 agents + 24 teams
+	 * is 54 rows and TWO pages (24 then 6), not three — the old formula promised
+	 * a page 3 that `more` never offered and that `page` fell back from.
+	 */
+	const wide = [
+		...ALPHA_SCOPE.filter((row) => row.group !== "teams"),
+		...Array.from({ length: 24 }, (_, index) => alphaTeam(index)),
+	];
+	const wideFirst = searchPalette({ items: wide, raw: "@alpha" });
+	assert.deepEqual(
+		wideFirst.sections.map((section) => section.items.length),
+		[24, 24],
+	);
+	assert.equal(wideFirst.pages, 2, "two pages, not ceil(54/24) = 3");
+	assert.equal(wideFirst.more, true);
+	const wideSecond = searchPalette({ items: wide, raw: "@alpha", page: 1 });
+	assert.equal(wideSecond.page, 1);
+	assert.equal(wideSecond.pages, 2);
+	assert.equal(wideSecond.more, false, "page 1 is the last page");
+	assert.deepEqual(
+		wideSecond.sections.map((section) => section.items.length),
+		[6],
+	);
+
+	// A page past the end falls back to the first, rather than drawing nothing.
+	const past = searchPalette({ items: ALPHA_SCOPE, raw: "@alpha", page: 9 });
+	assert.equal(past.page, 0);
+	assert.equal(past.sections[0].items.length, 24);
+});
+
+test("a re-sort moves a row past the drawn page's edge, and that row's page still holds it", () => {
+	/*
+	 * U4, agent review round 1. The selection is a row ID, and `ctrl s` re-sorts
+	 * under the same query. Under `best` the exact-name row leads page 0; the
+	 * clock puts the same row last, past the page's edge, so the component's index
+	 * falls back to the head of the drawn page rather than running a row the
+	 * reader cannot see — and the row is still reachable, on page 1 of the other
+	 * order. That pair of facts is what "selection follows the id" can mean once
+	 * the row leaves the page.
+	 */
+	const rows = [
+		datedChat("exact", "Robot", 500, 0),
+		...Array.from({ length: 29 }, (_, index) =>
+			datedChat(
+				`c${String(index).padStart(2, "0")}`,
+				`Robot ${String(index).padStart(2, "0")}`,
+				index,
+				index + 1,
+			),
+		),
+	];
+	const best = searchPalette({ items: rows, raw: "#robot" });
+	assert.equal(best.sections[0].items[0].item.id, "chat-exact");
+	const recent = searchPalette({ items: rows, raw: "#robot", sort: "recent" });
+	assert.equal(
+		recent.sections[0].items.some((match) => match.item.id === "chat-exact"),
+		false,
+		"the exact-name row is not on page 0 of the recency order",
+	);
+	const tail = searchPalette({
+		items: rows,
+		raw: "#robot",
+		sort: "recent",
+		page: 1,
+	});
+	const tailIds = tail.sections[0].items.map((match) => match.item.id);
+	assert.equal(tailIds.includes("chat-exact"), true, "it is on the next page");
+	assert.equal(
+		tailIds.at(-1),
+		"chat-exact",
+		"and it is the oldest, so it is last there",
+	);
+});
+
+test("the order is offered only where a conversation is actually on screen", () => {
+	/*
+	 * Agent review round 2 R2-2, design D11, QA Q-5: the flag was "typed, in the
+	 * chat scope", so `settings` (commands and pages, no conversation anywhere)
+	 * still read `Chats · Most recent` and taught `Ctrl S`, and `#zzzz` consumed
+	 * the key with nothing to move. The predicate now asks the ANSWER.
+	 */
+	const chats = Array.from({ length: 3 }, (_, index) =>
+		datedChat(`c${index}`, `Robot ${index}`, index, index),
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#robot" })),
+		true,
+		"a scoped chat search",
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "robot" })),
+		true,
+		"an unscoped search that found conversations",
+	);
+	const settings = searchPalette({
+		items: buildSettingKeyItems([
+			{
+				key: "general.theme",
+				label: "Settings theme",
+				section: "General",
+				help: "",
+			},
+			{
+				key: "general.language",
+				label: "Settings language",
+				section: "General",
+				help: "",
+			},
+		]),
+		raw: "settings",
+	});
+	assert.equal(
+		settings.sections.some((section) => section.group === "chats"),
+		false,
+		"no conversation in that answer",
+	);
+	assert.equal(sortAppliesTo(settings), false, "so no order is offered");
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#zzzz" })),
+		false,
+		"a query that found nothing offers no order",
+	);
+	assert.equal(
+		sortAppliesTo(searchPalette({ items: chats, raw: "#" })),
+		false,
+		"a bare scope browses: the store's own order, no clock",
+	);
+});
+
+test("reopening the palette drops the page it was on, and only a reopen does", () => {
+	/*
+	 * The palette stays mounted, so a close/reopen on the SAME persisted query
+	 * leaves the question unchanged and the page record rode along: `#robot`,
+	 * Down past row 24, Esc, reopen, and page 2 was back (review round 3, M2).
+	 *
+	 * The reset must fire on the open TRANSITION only. Keyed on the query too, it
+	 * also fired on the 200 ms write-back that follows every keystroke, and a
+	 * page reached inside that window snapped back to page 1 (review round 4 /
+	 * QA round 4, R4-1/Q-6). The dependency list is the contract, so it is what
+	 * this test reads: a reset effect whose deps include the query is the bug.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+		"utf8",
+	);
+	const at = source.lastIndexOf(
+		'setPaged({ query: "", sort: DEFAULT_PALETTE_SORT, page: 0 });',
+	);
+	assert.ok(at > 0, "the open transition resets the page record");
+	const effect = source.slice(source.lastIndexOf("useEffect(", at), at + 400);
+	assert.match(
+		effect,
+		/if \(!isCommandPaletteOpen\) return;/,
+		"it resets on open, not on close",
+	);
+	const deps = effect.match(/\}, \[([^\]]*)\]\);/);
+	assert.ok(deps, "the effect declares its dependencies");
+	assert.equal(
+		deps[1].trim(),
+		"isCommandPaletteOpen",
+		"the dependency list is the open flag ALONE — a query in it re-fires on the write-back",
+	);
+});
+
+test("the selection falls back to the head when its row leaves the answer", () => {
+	/*
+	 * Agent review round 2 R2-4: the fall-back lived inline in the component and
+	 * no test reached it. It is the promise Enter makes after a re-sort or a
+	 * refetch takes the selected row off the drawn page.
+	 */
+	const rows = [
+		datedChat("a", "Robot a", 1, 0),
+		datedChat("b", "Robot b", 2, 1),
+		datedChat("c", "Robot c", 3, 2),
+	];
+	const outcome = searchPalette({ items: rows, raw: "#robot" });
+	const matches = outcome.sections[0].items;
+	assert.equal(selectionIndexOf(matches, null), 0, "nothing chosen yet");
+	assert.equal(
+		selectionIndexOf(matches, "chat-b"),
+		1,
+		"the row keeps its place",
+	);
+	assert.equal(
+		selectionIndexOf(matches, "chat-gone"),
+		0,
+		"a row the answer no longer holds selects the head",
+	);
+});
+
+test("the final tie-break is code-unit order on the id, not the host's collation", () => {
+	/* Same tier, same clock, same ring, same group order: only the id can decide,
+	 * and it must decide the same way on every machine. `localeCompare` would put
+	 * these in a different order under a different locale's collation. */
+	const tie = (id) => ({
+		...datedChat(id, `Robot ${id}`, 4, 0),
+		id,
+	});
+	const uppercase = tie("B");
+	const lowercase = tie("a");
+	const forward = searchPalette({
+		items: [uppercase, lowercase],
+		raw: "#robot",
+	});
+	const backward = searchPalette({
+		items: [lowercase, uppercase],
+		raw: "#robot",
+	});
+	assert.deepEqual(
+		names(forward),
+		["Robot B", "Robot a"],
+		"code units put uppercase B before lowercase a",
+	);
+	assert.deepEqual(names(backward), names(forward));
+});
+
+test("an age from a previous year carries its year, and this year's does not", () => {
+	const label = (ms) =>
+		new Intl.DateTimeFormat("en", {
+			month: "short",
+			day: "numeric",
+			year:
+				new Date(ms).getFullYear() === new Date(NOW).getFullYear()
+					? undefined
+					: "numeric",
+		}).format(ms);
+	const lastYear = NOW - 400 * 24 * HOUR_MS;
+	assert.equal(paletteAgeLabel(lastYear, NOW), label(lastYear));
+	assert.match(
+		paletteAgeLabel(lastYear, NOW),
+		new RegExp(String(new Date(lastYear).getFullYear())),
+		"a date from another year names the year",
+	);
+	assert.equal(
+		paletteAgeLabel(NOW - 20 * 24 * HOUR_MS, NOW),
+		new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(
+			NOW - 20 * 24 * HOUR_MS,
+		),
+	);
 });

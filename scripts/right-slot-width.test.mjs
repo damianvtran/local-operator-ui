@@ -595,8 +595,9 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 6, retiring showAgentReasoning after the v5 appearance layers", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 6);
+test("the persist version is 7, the palette's row order after the v6 retirement", () => {
+	/* Each step moves this number; the cells below pin what each one does. */
+	assert.equal(UI_PREFERENCES_VERSION, 7);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -621,6 +622,8 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
 		customAccents: [],
 		customThemeId: null,
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 });
 
@@ -640,6 +643,8 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
 		customAccents: [],
 		customThemeId: null,
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 	/*
 	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
@@ -731,6 +736,8 @@ test("a v5 blob loses only the retired showAgentReasoning (v6)", () => {
 	assert.deepEqual(migrated, {
 		themeName: "dracula",
 		contrast: { dark: 0, light: 0 },
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 });
 
