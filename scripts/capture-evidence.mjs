@@ -915,6 +915,14 @@ export const STORIES = [
 	["chat-message-input--secret-ask-refused", 1280, 620],
 	["chat-message-input--secret-ask-multi", 1280, 620],
 	["chat-message-input--blocking-secret-gate", 1280, 620],
+	/*
+	 * The jump-to-latest control's two label states. Registered so the sweep
+	 * photographs them at the shipped window's chat width: the control is one
+	 * disc above the composer, and its claim is which words it carries when
+	 * output arrived under a scrolled-up reader.
+	 */
+	["chat-scroll-to-bottom--idle", 900, 620],
+	["chat-scroll-to-bottom--new-activity", 900, 620],
 	["chat-trace--conversation", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
 	["chat-trace--question-callout", 1280, 900],

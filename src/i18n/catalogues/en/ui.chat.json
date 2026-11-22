@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "Replacements",
 	"ui.chat.message_controls.thinking_label": "Thinking",
 	"ui.chat.scroll_to_bottom.label": "Scroll to bottom",
-	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, scroll to bottom",
+	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, jump to latest",
 	"ui.chat.session_status.last_reading_note": "Last reading from before the reconnect.",
 	"ui.chat.session_status.readings_aria_held": "Session readings. {note}",
 	"ui.chat.session_status.commands_off": "Slash commands are off on this server, so this reading cannot be opened from here.",

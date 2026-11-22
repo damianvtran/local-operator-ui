@@ -1,33 +1,80 @@
+import {
+	type ActivityFingerprint,
+	advanceNewActivity,
+	chipVisibleAt,
+	followsTail,
+	initialActivityState,
+} from "@features/chat/canonical/new-activity";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/**
+ * The jump-to-latest control's inputs.
+ *
+ * `contentKey` identifies the CONVERSATION, not its length. It used to be the
+ * record count, which meant every arriving record re-ran the reset branch and
+ * blanked the chip for a frame before the position was re-derived - a reader
+ * who was scrolled up saw the control flash out under them each time an answer
+ * grew. A conversation switch is the only thing that should reset it.
+ *
+ * `activity` is the transcript's tail fingerprint (`new-activity.ts`). A host
+ * that does not pass one keeps today's behaviour: the chip shows on position
+ * alone and never grows the new-activity label.
+ */
+export type ScrollToBottomOptions = {
+	contentKey?: unknown;
+	activity?: ActivityFingerprint;
+};
+
 export const useScrollToBottom = (
-	buttonThreshold = 50,
 	externalContainerRef?: React.RefObject<HTMLDivElement>,
-	contentKey?: unknown,
+	options: ScrollToBottomOptions = {},
 ) => {
+	const { contentKey, activity } = options;
 	const internalContainerRef = useRef<HTMLDivElement | null>(null);
 	const containerRef = externalContainerRef || internalContainerRef;
 
 	const [isFarFromBottom, setIsFarFromBottom] = useState(false);
+	const [hasNewActivity, setHasNewActivity] = useState(false);
 	const isHandlingScrollRef = useRef(false);
-	const lastUpdateTimeRef = useRef(0);
 	const prevContentKeyRef = useRef<unknown>(contentKey);
+	const registerRef = useRef(initialActivityState(activity));
+	/*
+	 * Read through a ref rather than closing over the value, because the same
+	 * `updateScrollPosition` is called from the scroll listener, the resize
+	 * observer and the timers - all installed once per conversation - and a
+	 * closure would freeze the fingerprint at install time.
+	 */
+	const activityRef = useRef(activity);
+	activityRef.current = activity;
 
 	/**
-	 * Recalculate whether we're far from bottom and update visibility.
-	 * Throttles updates to at most once per 100ms.
+	 * Recalculate whether we're far from bottom, and fold the transcript's
+	 * latest tail into the new-activity register.
+	 *
+	 * Both readings come from ONE geometry sample and ONE following predicate:
+	 * |scrollTop| <= `TAIL_EPS_PX`, the same epsilon `use-scroll-paging.ts`
+	 * follows the tail by. The previous 50px threshold left a band where paging
+	 * refused to follow the tail while the chip stayed hidden.
 	 */
 	const updateScrollPosition = useCallback(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
 		const { scrollTop, scrollHeight, clientHeight } = container;
-		const distanceFromBottom = Math.abs(scrollTop);
-		const canScroll = scrollHeight > clientHeight;
-		const shouldShow = canScroll && distanceFromBottom > buttonThreshold;
-		// Update visibility immediately based on scroll position
-		setIsFarFromBottom(shouldShow);
-	}, [buttonThreshold, containerRef]);
+		const following = followsTail(scrollTop);
+		setIsFarFromBottom(chipVisibleAt(scrollTop, scrollHeight, clientHeight));
+
+		const next = activityRef.current;
+		if (next) {
+			registerRef.current = advanceNewActivity(
+				registerRef.current,
+				next,
+				following,
+			);
+			const pending = registerRef.current.pending;
+			setHasNewActivity((prev) => (prev === pending ? prev : pending));
+		}
+	}, [containerRef]);
 
 	/**
 	 * Smoothly scroll to bottom (scrollTop = 0 in column-reverse layouts).
@@ -45,6 +92,22 @@ export const useScrollToBottom = (
 	}, [containerRef, updateScrollPosition]);
 
 	/**
+	 * Put the newest row under the reader NOW, without an animation.
+	 *
+	 * Sending is the reader asking for the newest row, and a send has to land
+	 * with the echo visible in the same commit that clears the box - a smooth
+	 * scroll would spend the first frames of the reader's own message still
+	 * travelling down through the turn above it. The chip also retires in this
+	 * same tick rather than chasing the animation.
+	 */
+	const snapToBottom = useCallback(() => {
+		const container = containerRef.current;
+		if (!container) return;
+		container.scrollTop = 0;
+		updateScrollPosition();
+	}, [containerRef, updateScrollPosition]);
+
+	/**
 	 * Handle user-initiated scroll events.
 	 * Uses requestAnimationFrame to batch updates and avoid recursion.
 	 */
@@ -58,23 +121,31 @@ export const useScrollToBottom = (
 	}, [containerRef, updateScrollPosition]);
 
 	/**
-	 * Set up scroll listener, reset on conversation switch,
-	 * and perform initial checks for new content.
+	 * Set up the scroll listener and reset on conversation switch.
+	 *
+	 * The reset no longer blanks the chip: it seeds the register from the
+	 * fingerprint the pane is showing and lets the synchronous position read
+	 * decide. Blanking first and re-deriving on the next animation frame is what
+	 * made the control flicker for a scrolled-up reader whenever the transcript
+	 * changed.
 	 */
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 
-		// Reset button state when switching conversations
 		if (prevContentKeyRef.current !== contentKey) {
-			setIsFarFromBottom(false);
-			lastUpdateTimeRef.current = 0;
 			prevContentKeyRef.current = contentKey;
+			registerRef.current = initialActivityState(activityRef.current);
+			setHasNewActivity(false);
 		}
 
 		container.addEventListener("scroll", handleScroll, { passive: true });
 
-		// Initial checks to account for layout/render timing
+		// Re-derive from the CURRENT geometry rather than assuming "at bottom":
+		// a restored deep-jump position or an already-scrolled pane is the truth.
+		updateScrollPosition();
+
+		// Re-check while layout settles around a conversation open or a restore.
 		const rafId = requestAnimationFrame(updateScrollPosition);
 		const timeoutId = window.setTimeout(updateScrollPosition, 100);
 		const longTimeoutId = window.setTimeout(updateScrollPosition, 500);
@@ -86,6 +157,18 @@ export const useScrollToBottom = (
 			clearTimeout(longTimeoutId);
 		};
 	}, [containerRef, contentKey, handleScroll, updateScrollPosition]);
+
+	/**
+	 * Fold in new tail content.
+	 *
+	 * Every record append and every streaming token reaches this effect through
+	 * the fingerprint, which is O(1) on the last row (`activityFingerprint`).
+	 * A reader who is away from the tail keeps the chip; a reader who is on it
+	 * clears the register - no scroll event is required for either.
+	 */
+	useEffect(() => {
+		if (activity) updateScrollPosition();
+	}, [activity, updateScrollPosition]);
 
 	/**
 	 * Recalculate on window resize.
@@ -120,6 +203,8 @@ export const useScrollToBottom = (
 	return {
 		containerRef,
 		isFarFromBottom,
+		hasNewActivity,
 		scrollToBottom,
+		snapToBottom,
 	};
 };

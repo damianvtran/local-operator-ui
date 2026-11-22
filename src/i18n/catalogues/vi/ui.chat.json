@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "Chỗ đã thay thế",
 	"ui.chat.message_controls.thinking_label": "Đang suy nghĩ",
 	"ui.chat.scroll_to_bottom.label": "Cuộn xuống cuối",
-	"ui.chat.scroll_to_bottom.label_new_activity": "Có hoạt động mới, cuộn xuống cuối",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Có hoạt động mới, đến mới nhất",
 	"ui.chat.session_status.last_reading_note": "Lần đọc gần nhất trước khi kết nối lại.",
 	"ui.chat.session_status.readings_aria_held": "Số liệu phiên. {note}",
 	"ui.chat.session_status.commands_off": "Lệnh gạch chéo đang tắt trên máy chủ này nên không mở được số liệu này từ đây.",

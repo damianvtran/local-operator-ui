@@ -17,7 +17,7 @@
 	"ui.chat.page_chrome.options.rename": "Переименовать",
 	"ui.chat.page_chrome.options.resume": "Возобновить",
 	"ui.chat.page_chrome.options.settings": "Настройки",
-	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "Новая активность",
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "К последнему",
 	"ui.chat.page_chrome.status_strip.connection": "Подключение",
 	"ui.chat.page_chrome.status_strip.offline": "Не в сети",
 	"ui.chat.page_chrome.status_strip.outcome_refused": "Сервер работает, но учётные данные этого приложения по-прежнему отклоняются.",
