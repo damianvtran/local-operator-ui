@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "संदर्भ {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "सिर्फ़ यह संदेश ({reference}) बिना पढ़े खारिज करें? यह आपके एजेंट तक नहीं पहुँचेगा। खारिज करना इस डिवाइस पर दर्ज होता है और इसे वापस नहीं लिया जा सकता।",
 	"ui.teamBridge.holds.discard_unread_label": "संदेश {reference} बिना पढ़े खारिज करें",
-	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है। सर्वर से कोई पुष्टि नहीं मिली है।"
+	"ui.teamBridge.holds.state.discard_recorded": "खारिज करना इस डिवाइस पर दर्ज हो गया है। सर्वर से कोई पुष्टि नहीं मिली है।",
+	"ui.teamBridge.holds.terminal_only": "यह संदेश कभी नहीं पहुँचाया जा सकेगा। आप इसे बिना पढ़े खारिज कर सकते हैं।",
+	"ui.teamBridge.holds.confirm.discard_terminal": "यह संदेश ({reference}) खारिज करें? यह कभी आपके एजेंट तक नहीं पहुँचेगा और इसे वापस नहीं लिया जा सकता।",
+	"ui.teamBridge.holds.terminal_bulk.action": "सभी न पहुँचाए जा सकने वाले संदेश खारिज करें…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "न पहुँचाए जा सकने वाले संदेश खारिज करें (संख्या: {count})? सिर्फ़ वे संदेश शामिल हैं जो कभी नहीं पहुँचाए जा सकेंगे, बाद में आने वाले संदेश नहीं। इसे वापस नहीं लिया जा सकता।",
+	"ui.teamBridge.holds.terminal_bulk.result": "खारिज किए गए: {discarded}। पहले ही खारिज: {already}। बिना बदलाव: {skipped}।",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "न पहुँचाए जा सकने वाले संदेश खारिज नहीं किए जा सके। फिर से कोशिश करें।"
 }

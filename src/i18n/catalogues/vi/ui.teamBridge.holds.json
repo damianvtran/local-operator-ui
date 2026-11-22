@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "Mã tham chiếu {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Chỉ loại bỏ tin nhắn này ({reference}) mà không đọc? Tin nhắn sẽ không đến được tác nhân của bạn. Việc loại bỏ được ghi lại trên thiết bị này và không thể hoàn tác.",
 	"ui.teamBridge.holds.discard_unread_label": "Loại bỏ tin nhắn {reference} mà không đọc",
-	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ."
+	"ui.teamBridge.holds.state.discard_recorded": "Đã ghi lại việc loại bỏ trên thiết bị này. Chưa nhận được xác nhận từ máy chủ.",
+	"ui.teamBridge.holds.terminal_only": "Tin nhắn này sẽ không bao giờ chuyển được nữa. Bạn vẫn có thể loại bỏ mà không cần đọc.",
+	"ui.teamBridge.holds.confirm.discard_terminal": "Loại bỏ tin nhắn này ({reference})? Tin nhắn sẽ không bao giờ đến được tác nhân của bạn và không thể hoàn tác.",
+	"ui.teamBridge.holds.terminal_bulk.action": "Loại bỏ mọi tin nhắn không chuyển được…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "Loại bỏ các tin nhắn không chuyển được (số lượng: {count})? Chỉ áp dụng cho các tin nhắn sẽ không bao giờ chuyển được, không bao gồm tin nhắn mới đến. Không thể hoàn tác.",
+	"ui.teamBridge.holds.terminal_bulk.result": "Đã loại bỏ: {discarded}. Đã loại bỏ trước đó: {already}. Không thay đổi: {skipped}.",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "Không thể loại bỏ các tin nhắn không chuyển được. Hãy thử lại."
 }

@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "Référence {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Écarter uniquement ce message ({reference}) sans le lire ? Il n’atteindra pas votre agent. Ce choix est enregistré sur cet appareil et est irréversible.",
 	"ui.teamBridge.holds.discard_unread_label": "Écarter le message {reference} sans le lire",
-	"ui.teamBridge.holds.state.discard_recorded": "Votre choix Écarter est enregistré sur cet appareil. Aucune confirmation du serveur n’a été reçue."
+	"ui.teamBridge.holds.state.discard_recorded": "Votre choix Écarter est enregistré sur cet appareil. Aucune confirmation du serveur n’a été reçue.",
+	"ui.teamBridge.holds.terminal_only": "Ce message ne pourra jamais être transmis. Vous pouvez l’écarter sans le lire.",
+	"ui.teamBridge.holds.confirm.discard_terminal": "Écarter ce message ({reference}) ? Il ne pourra jamais atteindre votre agent et ce choix est irréversible.",
+	"ui.teamBridge.holds.terminal_bulk.action": "Écarter tous les messages non transmissibles…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "Écarter les messages non transmissibles (nombre : {count}) ? Seuls les messages qui ne pourront jamais être transmis sont inclus, pas les nouveaux messages reçus. Ce choix ne peut pas être annulé.",
+	"ui.teamBridge.holds.terminal_bulk.result": "Écartés : {discarded}. Déjà écartés : {already}. Laissés de côté : {skipped}.",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "Les messages non transmissibles n’ont pas pu être écartés. Réessayez."
 }

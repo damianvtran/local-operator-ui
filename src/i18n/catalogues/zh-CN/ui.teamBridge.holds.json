@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "编号 {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "要在不阅读的情况下仅丢弃这条消息（{reference}）吗？它不会到达你的智能体。丢弃操作会记录在此设备上，且无法撤销。",
 	"ui.teamBridge.holds.discard_unread_label": "不阅读，直接丢弃消息 {reference}",
-	"ui.teamBridge.holds.state.discard_recorded": "已在此设备上记录丢弃。未收到服务器的确认。"
+	"ui.teamBridge.holds.state.discard_recorded": "已在此设备上记录丢弃。未收到服务器的确认。",
+	"ui.teamBridge.holds.terminal_only": "这条消息永远无法送达。你可以不阅读就丢弃它。",
+	"ui.teamBridge.holds.confirm.discard_terminal": "要丢弃这条消息（{reference}）吗？它永远不会到达你的智能体，且无法撤销。",
+	"ui.teamBridge.holds.terminal_bulk.action": "丢弃所有无法送达的消息……",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "要丢弃无法送达的消息（数量：{count}）吗？仅包含永远无法送达的消息，不包含新收到的消息。此操作无法撤销。",
+	"ui.teamBridge.holds.terminal_bulk.result": "已丢弃：{discarded}。此前已丢弃：{already}。未处理：{skipped}。",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "无法丢弃这些无法送达的消息。请重试。"
 }

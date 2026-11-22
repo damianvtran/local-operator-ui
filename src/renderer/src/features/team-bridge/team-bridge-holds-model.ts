@@ -64,7 +64,30 @@ export type HoldItem = {
 	 * means no receipt Discard is offered.
 	 */
 	discard_receipt?: string | null;
+	/**
+	 * local-operator #4662: core's own terminal disposition for a hold that can
+	 * never be delivered — no decision record, a cleared decision, an expired
+	 * payload. TRUE means a Discard is accepted with NO proof at all (no body
+	 * hash, no receipt), so a row whose body and receipt both fail to load is
+	 * still clearable and the badge can reach zero. It is SERVER-AUTHORITATIVE
+	 * and never inferred here; it is optional so an older core (which cannot
+	 * send it) keeps exactly the behaviour it had.
+	 */
+	terminal_discard?: boolean;
+	/**
+	 * local-operator #4662: why this row can never be delivered, a closed set.
+	 * Optional and read permissively for the same reason `hold_code` is an open
+	 * string: an unknown value must read as "undeliverable, reason not shown"
+	 * rather than failing the whole list. Display only — nothing arms on it.
+	 */
+	undeliverable_reason?: HoldUndeliverableReason | null;
 };
+
+/** The reasons core gives for a hold that can never be delivered (#4662). */
+export type HoldUndeliverableReason =
+	| "no_decision_record"
+	| "decision_cleared"
+	| "payload_expired";
 
 export type HoldsPage = {
 	enabled: boolean;
@@ -76,14 +99,33 @@ export type HoldWord = "deliver" | "discard";
 
 /**
  * What a decide binds: the hash of the body on screen, or (Discard only) the
- * list's `discard_receipt`. Exactly one, as the route requires.
+ * list's `discard_receipt`, or (Discard only, #4662) nothing at all for a row
+ * core marked `terminal_discard`. Exactly one, as the route requires — and the
+ * third variant is the route's own empty body, not a proof invented here.
  */
-export type HoldProof = { body_sha256: string } | { hold_receipt: string };
+export type HoldProof =
+	| { body_sha256: string }
+	| { hold_receipt: string }
+	| { terminal_discard: true };
 
 export type HoldReceipt = {
 	message_id: string | null;
 	state: string;
 	decided_at: string | null;
+};
+
+/**
+ * What `POST /v1/desktop/team-bridge/holds/discard-all` reports (#4662): how
+ * many rows this call cleared, how many were already cleared (the route is
+ * idempotent, so a second press is `already`, not an error), and how many it
+ * left alone. `skipped` is never a deliverable row — the scope cannot reach one
+ * — so a non-zero value means a row that was not undeliverable by the time the
+ * sweep ran.
+ */
+export type HoldDiscardAllResult = {
+	discarded: number;
+	already: number;
+	skipped: number;
 };
 
 // -- why it was held ----------------------------------------------------------
@@ -470,12 +512,21 @@ export function armedWords(
 	binding: BodyBinding,
 	seenInFull: boolean,
 	hidden = false,
+	terminal = false,
 ): { deliver: boolean; discard: boolean } {
 	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
 		return { deliver: false, discard: false };
 	return {
+		/* #4662: a `terminal_discard` row is one core has already decided can
+		   never be delivered. A body that happens to load does not reopen that:
+		   Deliver is a one-way hand-off to the agent, and offering one the daemon
+		   will refuse turns an irreversible action into a dead end. */
 		deliver:
-			affordance.deliver && binding.state === "shown" && seenInFull && !hidden,
+			!terminal &&
+			affordance.deliver &&
+			binding.state === "shown" &&
+			seenInFull &&
+			!hidden,
 		discard:
 			affordance.discard &&
 			(binding.state === "shown" || binding.state === "withheld"),
@@ -567,11 +618,17 @@ export function receiptDiscardArmed(
 		| "conversation_id"
 		| "actionable"
 		| "decision"
+		| "terminal_discard"
 	>,
 	affordance: HoldAffordance,
 	detail: "loading" | "unavailable" | "ready",
 	binding: BodyBinding | null,
 ): boolean {
+	/* #4662: a terminal row has a simpler exit (`terminalDiscardArmed`), and one
+	   affordance per row is what keeps the copy honest: offering both would
+	   print "you can still discard it without reading it" beside a discard that
+	   needs no receipt at all. */
+	if (item.terminal_discard === true) return false;
 	if (affordance.state !== "open" && affordance.state !== "deliver_expired")
 		return false;
 	if (affordance.deliver || !affordance.discard) return false;
@@ -586,11 +643,64 @@ export function receiptDiscardArmed(
 }
 
 /**
+ * Whether this hold's Discard may be sent with NO proof at all (#4662).
+ *
+ * WHY A SECOND ARMING PREDICATE. The receipt Discard above still needs
+ * something the daemon can check (a hash, or a receipt minted for this record).
+ * A hold that has NEITHER — no decision record was ever written, the decision
+ * was cleared, or the payload expired at the hub — was immortal: listed, counted
+ * in the badge, and impossible to dismiss, so the badge could never be cleared.
+ * Core now answers that with `terminal_discard` and a route that accepts an
+ * empty body for exactly those rows; this is the renderer agreeing to send it.
+ *
+ * WHAT IT DOES NOT DO. It never arms Deliver, and it is not a licence to guess:
+ * every clause below narrows the SERVER's flag or reads a field the server sent.
+ *  - no recorded decision: a decided row is not re-decided, whatever core says;
+ *  - not while Deliver is on offer, so an irreversible unread discard can never
+ *    displace a live shared decision the owner still has;
+ *  - `actionable === false` does NOT block it: that flag means "the owner owes
+ *    this an answer", which a terminal row does not, and blocking on it would
+ *    rebuild the dead end this predicate exists to remove.
+ */
+export function terminalDiscardArmed(
+	item: Pick<HoldItem, "terminal_discard" | "decision">,
+	affordance: HoldAffordance,
+): boolean {
+	if (item.terminal_discard !== true) return false;
+	if (item.decision) return false;
+	if (affordance.state === "decided") return false;
+	if (affordance.state === "open" && affordance.deliver) return false;
+	return true;
+}
+
+/**
+ * The rows a bulk "discard all undeliverable" may name: list METADATA only, so
+ * nothing here depends on a body having loaded (the whole point — these are the
+ * rows that cannot). Deliberately includes a row whose ordinary affordance is
+ * `not_releasable`: core closed the normal paths and left `terminal_discard` as
+ * the only exit, which is the operator's stuck row.
+ *
+ * It never includes a deliverable row: `terminalDiscardArmed` refuses one while
+ * Deliver is on offer, and the server's own scope never touches a deliverable
+ * row either, so a count shown here is a count the endpoint can clear.
+ */
+export function terminalDiscardCandidates(
+	items: readonly HoldItem[],
+	now?: number,
+): HoldItem[] {
+	return items.filter((item) =>
+		terminalDiscardArmed(item, holdAffordance(item, now)),
+	);
+}
+
+/**
  * The proof a press may send, or null when that word is not armed. Deliver
  * binds only a shown body (`armed.deliver` already requires it seen in full,
  * nothing hidden); Discard binds the body's hash when there is one, else the
- * receipt when `receiptDiscardArmed`. Pure so the "Deliver never carries a
- * receipt" rule is tested from the shipped source.
+ * receipt when `receiptDiscardArmed`, else (#4662) nothing at all when
+ * `terminalDiscardArmed` armed a `terminal_discard` row. Pure so the "Deliver
+ * never carries a receipt or a bare record" rule is tested from the shipped
+ * source.
  */
 export function holdDecideProof(
 	word: HoldWord,
@@ -598,6 +708,8 @@ export function holdDecideProof(
 		armed: { deliver: boolean; discard: boolean };
 		binding: BodyBinding | null;
 		receipt: string | null;
+		/** #4662: this row is `terminal_discard`, so a Discard may bind nothing. */
+		terminal?: boolean;
 	},
 ): HoldProof | null {
 	const hash =
@@ -606,12 +718,19 @@ export function holdDecideProof(
 			? input.binding.hash
 			: null;
 	if (word === "deliver")
-		return input.armed.deliver && input.binding?.state === "shown" && hash
+		return input.armed.deliver &&
+			!input.terminal &&
+			input.binding?.state === "shown" &&
+			hash
 			? { body_sha256: hash }
 			: null;
 	if (!input.armed.discard) return null;
+	/* The strongest proof available wins, so the daemon sees what was actually
+		   verified whenever anything could be: a shown/withheld hash first, then the
+		   receipt, and only a terminal row that has neither sends the empty body. */
 	if (hash) return { body_sha256: hash };
-	return input.receipt ? { hold_receipt: input.receipt } : null;
+	if (input.receipt) return { hold_receipt: input.receipt };
+	return input.terminal ? { terminal_discard: true } : null;
 }
 
 /** A human confirms this closed set, never the live list. Copies are essential:
@@ -629,6 +748,11 @@ export function captureDiscardSnapshot(
 	now?: number,
 ): DiscardSnapshotEntry[] {
 	return sortHolds(items, now).flatMap((item) => {
+		/* #4662: a terminal row belongs to the bulk "discard all undeliverable"
+		   action, which needs no proof from it. Capturing it here too would list
+		   the same row under two bulk buttons whose copy promises different
+		   things. */
+		if (item.terminal_discard === true) return [];
 		const found = detail(item);
 		const binding = found.state === "ready" ? (found.binding ?? null) : null;
 		const affordance = holdAffordance(item, now);

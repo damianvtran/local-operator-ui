@@ -22,8 +22,10 @@ import {
 	holdDetailKey,
 	holdsKey,
 	invalidateAfterDecision,
+	invalidateAfterDiscardAll,
 } from "./team-bridge-holds-keys";
 import {
+	type HoldDiscardAllResult,
 	type HoldItem,
 	type HoldProof,
 	type HoldWord,
@@ -237,6 +239,14 @@ export function useRetryHeldDetails() {
 	);
 }
 
+/** The id `busy` carries while the bulk terminal discard runs (no row owns it). */
+export const DISCARD_ALL_BUSY_ID = "__discard_all__";
+
+/** What a bulk terminal discard resolved to, for the section's result line. */
+export type DiscardAllOutcome =
+	| { state: "done"; result: HoldDiscardAllResult }
+	| { state: "refused"; message: string };
+
 /** One Deliver / Discard at a time; the refusal is fixed copy by code. */
 export function useHoldDecide() {
 	const client = useQueryClient();
@@ -339,5 +349,40 @@ export function useHoldDecide() {
 		},
 		[accountId, client],
 	);
-	return { busy, refusals, run, runBatch };
+	/*
+	 * #4662: the bulk terminal sweep. One request, no per-row proof, idempotent on
+	 * the daemon side. It shares the decide lock with the per-row paths, so a
+	 * Deliver cannot be signed while a sweep is in flight and the sweep cannot
+	 * start under a confirm step that is already open.
+	 *
+	 * The refusal is the same fixed-copy mapping every other decide uses: an
+	 * unknown code reads generically, never as the daemon's own sentence.
+	 */
+	const runDiscardAll = useCallback(
+		async (onSettled: (outcome: DiscardAllOutcome) => void) => {
+			if (!accountId || locked.current) {
+				onSettled({ state: "refused", message: holdRefusalLabel(null) });
+				return;
+			}
+			locked.current = true;
+			setBusy({ id: DISCARD_ALL_BUSY_ID, word: "discard" });
+			try {
+				const result = await TeamBridgeHoldsApi.discardAll(accountId);
+				onSettled({ state: "done", result });
+			} catch (error) {
+				const code =
+					error instanceof DesktopControlError ? (error.code ?? null) : null;
+				onSettled({ state: "refused", message: holdRefusalLabel(code) });
+			} finally {
+				locked.current = false;
+				setBusy(null);
+				/* The daemon stops listing what it cleared, so the list re-read is
+				   what removes the rows AND lowers the badge; the per-message joins
+				   of cleared rows are never offered again. */
+				void invalidateAfterDiscardAll(client, accountId);
+			}
+		},
+		[accountId, client],
+	);
+	return { busy, refusals, run, runBatch, runDiscardAll };
 }

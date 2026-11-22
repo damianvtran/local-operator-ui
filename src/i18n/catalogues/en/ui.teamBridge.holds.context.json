@@ -457,5 +457,55 @@
 		"length": "two short sentences",
 		"placeholders": {},
 		"note": "Team Bridge Approvals, Held messages section. After the person chose Discard: the choice is saved on this device and no confirmation has come back from the server. State only those two facts. Do not say it was or was not applied, do not promise it will happen later, and do not say the sender was told."
+	},
+	"ui.teamBridge.holds.terminal_only": {
+		"role": "row explanation line",
+		"tone": "calm, factual",
+		"length": "two short sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. A held message that can never be delivered (no decision record was ever written, the decision was cleared, or the payload expired). Discard is the button name and must match it. The same row still says “Unknown sender” where every other row names its sender; that is deliberate, so the row stays identifiable while its action works. Do not promise a reason beyond “can never be delivered”."
+	},
+	"ui.teamBridge.holds.confirm.discard_terminal": {
+		"role": "confirmation step (second step before an irreversible discard)",
+		"tone": "plain, consequence first",
+		"length": "two sentences",
+		"placeholders": {
+			"reference": "short reference for this message, e.g. 5ac4b3e8"
+		},
+		"note": "Team Bridge Approvals, Held messages section. The in-app second step for a message that can never be delivered. It must say the message never reaches the agent and that the choice cannot be undone. It must NOT say the discard is recorded on this device only: unlike a receipt discard, this one is recorded by the server, which is why no proof is needed. Device-neutral: never name Mac or Touch ID."
+	},
+	"ui.teamBridge.holds.terminal_bulk.action": {
+		"role": "button label (opens a confirmation step)",
+		"tone": "neutral",
+		"length": "3 to 5 words, ends with an ellipsis",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. The bulk action that discards every held message that can never be delivered. Discard is the button name and must match it. “Undeliverable” means messages that can never reach the reader's agent. The trailing ellipsis marks that a confirmation step follows."
+	},
+	"ui.teamBridge.holds.terminal_bulk.confirm": {
+		"role": "bulk confirmation sentence",
+		"tone": "calm, precise",
+		"length": "two or three short sentences",
+		"placeholders": {
+			"count": "formatted number of messages the action will discard"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Confirms the bulk discard of messages that can never be delivered, naming how many. It must say only those messages are included, new arrivals are not, and the action cannot be undone. Keep the count in parentheses as the other bulk confirmation in this section does."
+	},
+	"ui.teamBridge.holds.terminal_bulk.result": {
+		"role": "result line after the bulk discard",
+		"tone": "neutral, factual",
+		"length": "three short clauses",
+		"placeholders": {
+			"discarded": "formatted number discarded by this action",
+			"already": "formatted number already discarded earlier",
+			"skipped": "formatted number left alone"
+		},
+		"note": "Team Bridge Approvals, Held messages section. Reports the server's own counts after the bulk discard, so the numbers are the server's, never a local estimate. “Already discarded” is not an error: the action can be pressed again safely. “Left alone” means those messages were not undeliverable at the time and were not touched."
+	},
+	"ui.teamBridge.holds.terminal_bulk.refusal": {
+		"role": "refusal message",
+		"tone": "calm",
+		"length": "one or two sentences",
+		"placeholders": {},
+		"note": "Team Bridge Approvals, Held messages section. The bulk discard did not go through. Say what did not happen and that trying again is the next step. Never print a server sentence or a raw error code here."
 	}
 }

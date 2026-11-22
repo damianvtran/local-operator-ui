@@ -60,5 +60,11 @@
 	"ui.teamBridge.holds.reference": "Reference {reference}",
 	"ui.teamBridge.holds.confirm.discard_unread": "Discard only this message ({reference}) without reading it? It won’t reach your agent. The discard is recorded on this device and can’t be undone.",
 	"ui.teamBridge.holds.discard_unread_label": "Discard message {reference} without reading it",
-	"ui.teamBridge.holds.state.discard_recorded": "Discard recorded on this device. No server confirmation has been received."
+	"ui.teamBridge.holds.state.discard_recorded": "Discard recorded on this device. No server confirmation has been received.",
+	"ui.teamBridge.holds.terminal_only": "This message can never be delivered. You can discard it without reading it.",
+	"ui.teamBridge.holds.confirm.discard_terminal": "Discard this message ({reference})? It can never reach your agent, and this can’t be undone.",
+	"ui.teamBridge.holds.terminal_bulk.action": "Discard all undeliverable…",
+	"ui.teamBridge.holds.terminal_bulk.confirm": "Discard the undeliverable messages (count: {count})? Only messages that can never be delivered are included, and new arrivals are not. This can’t be undone.",
+	"ui.teamBridge.holds.terminal_bulk.result": "Discarded: {discarded}. Already discarded: {already}. Left alone: {skipped}.",
+	"ui.teamBridge.holds.terminal_bulk.refusal": "The undeliverable messages couldn’t be discarded. Try again."
 }
