@@ -21,6 +21,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { CircleAlert } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import "../../../styles/index.css";
@@ -30,6 +31,8 @@ import {
 	transcriptionFailureMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import { DictationTakeRow } from "@shared/components/composer/dictation-take-row";
+import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { resetToastDedup, showErrorToast } from "@shared/utils/toast-manager";
 
 /** The copy the app shipped before this change, in both call sites' words. */
@@ -222,21 +225,20 @@ const PolicyRow = ({ status, detail }: { status: number; detail: string }) => {
  */
 const BeforeRow = ({ message }: { message: string }) => (
 	<div className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]">
-		<svg
-			aria-hidden="true"
-			className="size-3.5 shrink-0 text-danger"
-			viewBox="0 0 24 24"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-		>
-			<circle cx="12" cy="12" r="10" />
-			<path d="M12 8v4M12 16h.01" />
-		</svg>
+		<CircleAlert aria-hidden="true" className="size-3.5 shrink-0 text-danger" />
 		<span className="font-medium text-body-sm text-ink-muted">{message}</span>
-		<button type="button" className="h-7 shrink-0 px-2 text-body-sm underline">
-			Retry
-		</button>
+		{/*
+		 * The control as `origin/main` rendered it: the shared `Button` in the `link`
+		 * variant, so the before frame carries the same green, underlined word.
+		 */}
+		<Button
+			type="button"
+			variant="link"
+			size="sm"
+			className="h-7 shrink-0 px-2 underline"
+		>
+			{t("ui.common.actions.retry")}
+		</Button>
 	</div>
 );
 
