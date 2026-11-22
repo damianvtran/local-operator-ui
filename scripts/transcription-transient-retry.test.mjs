@@ -665,10 +665,27 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 		composer.includes("TranscriptionApi.createTranscriptionWithRetry("),
 		"the composer sends through the retrying client",
 	);
+	/*
+	 * THE SAME CLAIM, ONE DECISION LATER. The composer used to ask the classifier
+	 * itself and gate the row on the answer; it now asks `retakeOfferFor`, whose
+	 * `retry` is true for the transient class alone and whose `keepRow` decides
+	 * whether a row exists. The assertion follows the wiring: the offer is what
+	 * sets the row, and the row only exists when the policy kept it.
+	 */
 	assert.ok(
 		composer.includes("setDictationFailure(") &&
-			composer.includes("isTransientTranscriptionFailure(error)"),
-		"a transient failure offers the take back; a refusal does not",
+			composer.includes("retakeOfferFor(error)"),
+		"the policy decides the row, and only the transient arm offers a Retry",
+	);
+	assert.match(
+		composer,
+		/offer\.keepRow\s*\?\s*\{ message: offer\.message, retry: offer\.retry \}\s*:\s*null/,
+		"the row stores the offer's own sentence and its Retry flag, not a re-derived class",
+	);
+	assert.match(
+		composer,
+		/if \(!offer\.keepRow\) \{[\s\S]{0,200}showErrorToast\(offer\.message\)/,
+		"a failure with no row gets the same sentence the row would have shown",
 	);
 	assert.ok(
 		composer.includes("[audioBlob, dictationRetry, handleSendAudio]"),
@@ -680,9 +697,24 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 		),
 		"the take is sent once per (blob, nudge) pair, so callback identity churn cannot resend it",
 	);
+	/*
+	 * THE CONTROL MOVED, THE CLAIM DID NOT. Retry and Discard now live in
+	 * `DictationTakeRow`, the component the composer renders in that slot - one
+	 * component for both controls, so the row cannot grow a second way of drawing
+	 * them - and both still use audited catalogue keys rather than inline labels.
+	 */
+	const takeRow = await readFile(
+		"src/renderer/src/shared/components/composer/dictation-take-row.tsx",
+		"utf8",
+	);
 	assert.ok(
-		composer.includes('t("ui.common.actions.retry")'),
-		"the retry control reuses an audited catalogue key, not an inline label",
+		composer.includes("<DictationTakeRow"),
+		"the composer renders the shared row component",
+	);
+	assert.ok(
+		takeRow.includes('t("ui.common.actions.retry")') &&
+			takeRow.includes('t("ui.common.actions.discard")'),
+		"both controls reuse audited catalogue keys, not inline labels",
 	);
 	/*
 	 * F5: the offer is withdrawn when there is nothing left to spend. Starting a
