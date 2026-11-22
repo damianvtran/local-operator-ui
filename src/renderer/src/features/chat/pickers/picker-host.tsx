@@ -17,8 +17,8 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * through `aria-activedescendant`, the same shape the composer's slash popup
  * uses so the two feel like one mechanism.
  *
- * Visually it is a dialog on `elevated` with the single system shadow (it
- * has left the flow), radius 14 for a frame, controls at 6. Rows are colour
+ * Visually it floats on `elevated` with the single system shadow (it has left
+ * the flow), radius 14 for a frame, controls at 6. Rows are colour
  * steps on hover/active, never motion. Sentence case throughout.
  */
 
@@ -34,9 +34,14 @@ import {
 } from "@shared/components/ui/dialog";
 import { Input } from "@shared/components/ui/input";
 import { Label } from "@shared/components/ui/label";
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@shared/components/ui/popover";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
-import { Check, Search } from "lucide-react";
+import { Check, Search, X } from "lucide-react";
 import {
 	type FC,
 	type FormEvent,
@@ -46,6 +51,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useMemo,
 	useReducer,
 	useRef,
@@ -103,6 +109,15 @@ export type PickerHostProps = {
 	title: string;
 	/** One sentence on what choosing does, and its scope. */
 	description?: string;
+	/** Only model and effort are quick choices; other destinations keep their existing shell. */
+	quick?: {
+		kind: "model" | "effort";
+		anchor?: HTMLElement;
+		context?: string;
+		onCloseOutside?: () => void;
+		/** A child dialog such as Connect provider may temporarily own focus. */
+		ignoreOutside?: () => boolean;
+	};
 	options?: PickerOption[];
 	/**
 	 * This picker's own search rule, when the default one is wrong for it.
@@ -289,6 +304,7 @@ type PickerRowProps = {
 	onPick: (option: PickerOption, index: number) => void;
 	/** See `PickerHostProps.busyLabel`: the picked row's spinner name. */
 	busyLabel?: string;
+	quick?: boolean;
 };
 
 /*
@@ -383,6 +399,43 @@ export function filterPickerOptions(
 	);
 }
 
+/** Compact effort is a small set of named levels: High must beat xHigh. */
+function matchEffortOptions(
+	options: PickerOption[],
+	query: string,
+): PickerOption[] {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return options;
+	const exact: PickerOption[] = [];
+	const prefix: PickerOption[] = [];
+	const other: PickerOption[] = [];
+	for (const option of filterPickerOptions(options, needle)) {
+		const names = [option.value.toLowerCase(), option.label.toLowerCase()];
+		if (names.includes(needle)) exact.push(option);
+		else if (names.some((name) => name.startsWith(needle))) prefix.push(option);
+		else other.push(option);
+	}
+	return exact.concat(prefix, other);
+}
+
+/** Unlike scrollIntoView, this can never move a composer, portal or page ancestor. */
+function revealQuickRow(
+	list: HTMLDivElement | null,
+	id: string,
+	reset: boolean,
+) {
+	if (!list) return;
+	if (reset) list.scrollTop = 0;
+	const row = list.querySelector<HTMLElement>(`[id="${id}"]`);
+	if (!row) return;
+	const listTop = list.getBoundingClientRect().top + list.clientTop;
+	const rowRect = row.getBoundingClientRect();
+	if (rowRect.top < listTop) list.scrollTop += rowRect.top - listTop;
+	else if (rowRect.bottom > listTop + list.clientHeight) {
+		list.scrollTop += rowRect.bottom - (listTop + list.clientHeight);
+	}
+}
+
 /**
  * What the body shows, given the load state and how many rows survived it.
  *
@@ -462,6 +515,8 @@ export function pickerPlacement(state: {
 	queryChanged: boolean;
 	/** The highlight is the user's (they moved it, or clicked a row). */
 	steered: boolean;
+	/** Ranked actionable value for a quick picker; null when none can be chosen. */
+	quickTarget?: string | null;
 	/** The sentence on screen and the row it is about; `null` when there is none. */
 	retarget?: { lost: string; label: string } | null;
 }): {
@@ -471,7 +526,8 @@ export function pickerPlacement(state: {
 	retargeted: { lost: string; label: string } | null | undefined;
 	steered: boolean;
 } {
-	const { options, held, active, query, queryChanged, steered } = state;
+	const { options, held, active, query, queryChanged, steered, quickTarget } =
+		state;
 	const retarget = state.retarget ?? null;
 	if (options.length === 0) {
 		return { index: 0, held: null, retargeted: null, steered: false };
@@ -482,7 +538,17 @@ export function pickerPlacement(state: {
 	const currentIndex = query
 		? -1
 		: options.findIndex((option) => option.current);
-	const index = currentIndex >= 0 ? currentIndex : clamped;
+	const index =
+		quickTarget !== undefined
+			? options.findIndex((option) => option.value === quickTarget)
+			: currentIndex >= 0
+				? currentIndex
+				: clamped;
+	// A fresh search supersedes steering even if the old row still matches.
+	// Until the user steers again, a late catalogue response can improve the match.
+	if (quickTarget !== undefined && (queryChanged || !steered)) {
+		return { index, held: quickTarget, retargeted: null, steered: false };
+	}
 	if (
 		retarget !== null &&
 		options.some((option) => option.value === retarget.lost) &&
@@ -711,6 +777,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 		isActive,
 		isHovered,
 		isPicked,
+		quick,
 		onHover,
 		onPick,
 		busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
@@ -754,7 +821,12 @@ export const PickerRow: FC<PickerRowProps> = memo(
 				 */
 				className={cn(
 					"flex items-start gap-3 rounded-sm px-2 py-1.5",
+					quick && "min-h-8 items-center",
 					isActive && "bg-sunken",
+					// Keep the keyboard target legible even if the selected theme's tint is subtle.
+					quick &&
+						isActive &&
+						"outline-solid outline-1 -outline-offset-1 outline-control",
 					/*
 					 * A REFUSED ROW IS NOT INVITED (review round 1, U2): the hover wash is
 					 * this picker's "you may click this" signal everywhere else, and a row
@@ -793,7 +865,11 @@ export const PickerRow: FC<PickerRowProps> = memo(
 							<Check
 								className={cn(
 									"size-3.5 shrink-0",
-									option.disabled ? "text-warning" : "text-accent",
+									quick
+										? "text-ink-dim"
+										: option.disabled
+											? "text-warning"
+											: "text-accent",
 								)}
 								aria-label={t("ui.chat.pickers.picker_host.current")}
 							/>
@@ -858,6 +934,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	onClose,
 	title,
 	description,
+	quick,
 	options,
 	matcher = filterPickerOptions,
 	loading = false,
@@ -888,8 +965,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 }) => {
 	useI18nLocale();
 	const listId = useId();
+	const titleId = useId();
+	const descriptionId = useId();
+	const isQuick = quick !== undefined;
+	const origin = quick?.anchor;
+	const filter = quick?.kind === "effort" ? matchEffortOptions : matcher;
+	// The command can return after the composer has shed or replaced its chip.
+	// Do not pin a popup to the empty rect a detached or hidden chip reports.
+	const anchor =
+		origin?.isConnected && origin.getClientRects().length ? origin : null;
+	const anchorRef = useMemo(() => ({ current: anchor }), [anchor]);
+	const dismissedOutsideRef = useRef(false);
+	const previousFocusRef = useRef<HTMLElement | null>(null);
 	/*
-	 * Hide the native browser view while this modal is up.
+	 * Hide the native browser view for a dialog or the unanchored fallback.
 	 *
 	 * `WebContentsView` paints ABOVE all DOM (`browser-view-policy.ts`), so a
 	 * picker opened over `/browser` would be a dialog the user cannot see. That was
@@ -899,9 +988,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * way. Registered here, in the one funnel BOTH hosts render through, rather
 	 * than in each panel, so a picker added tomorrow inherits it.
 	 */
-	// A modal presentation (the shell below), not a popover: it covers the content
-	// area with a scrim, so the dialog rule — always pause while open — is right.
-	useSuppressBrowserView(open, "dialog", "panel-picker");
+	// Anchored popups instead use PopoverContent's measured overlap policy.
+	useSuppressBrowserView(open && !anchor, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see
@@ -1064,9 +1152,17 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * default being widened for everyone.
 	 */
 	const filtered = useMemo(
-		() => (options ? matcher(options, query) : []),
-		[options, query, matcher],
+		() => (options ? filter(options, query) : []),
+		[filter, options, query],
 	);
+	// Grouping is for reading; it must not change what Enter picks.
+	const quickTarget = isQuick
+		? ((
+				(!query.trim() &&
+					filtered.find((option) => option.current && !option.disabled)) ||
+				filtered.find((option) => !option.disabled)
+			)?.value ?? null)
+		: undefined;
 
 	/*
 	 * THE ONE INDEX SPACE the mark, the footer, `aria-activedescendant`, the
@@ -1118,14 +1214,20 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * connects zai" — instead of promising a switch the pick will not make.
 	 */
 	const activeOption = ordered[active];
+	const hasVisibleRows = !loading && !loadError && ordered.length > 0;
+	const footerRowCount =
+		isQuick && (!hasVisibleRows || !activeOption || activeOption.disabled)
+			? 0
+			: filtered.length;
 	const activeConnectProvider =
 		activeOption?.action?.kind === "connect"
 			? activeOption.action.provider
 			: null;
 
 	// Reset per open so a re-opened picker never carries a stale filter.
-	useEffect(() => {
+	const resetOpen = useCallback(() => {
 		if (!open) return;
+		dismissedOutsideRef.current = false;
 		setQuery("");
 		setActive(0);
 		// The placement the fresh open owns, not the user's: the highlight goes back
@@ -1136,6 +1238,12 @@ export const PickerHost: FC<PickerHostProps> = ({
 		setRetargeted(null);
 		dispatch({ type: "reset" });
 	}, [open]);
+	useLayoutEffect(() => {
+		if (isQuick) resetOpen();
+	}, [isQuick, resetOpen]);
+	useEffect(() => {
+		if (!isQuick) resetOpen();
+	}, [isQuick, resetOpen]);
 	// The picked row's mark is held until the operation SETTLES, not until the
 	// next render: the point of it is to say which row the backend is answering
 	// about, so it must survive every frame the answer is pending.
@@ -1155,7 +1263,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * idempotent when it re-runs (a held row resolves to the index already in
 	 * `active`), so an arrow keypress cannot be undone by the effect it triggers.
 	 */
-	useEffect(() => {
+	const placeActive = useCallback(() => {
+		if (!open) return;
 		const queryChanged = placedQueryRef.current !== query;
 		placedQueryRef.current = query;
 		const placed = pickerPlacement({
@@ -1165,6 +1274,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 			query,
 			queryChanged,
 			steered: steeredRef.current,
+			quickTarget,
 			// The sentence already on screen, so the rule can retire it the moment
 			// the row it is about is listed again (UX U7).
 			retarget: retargeted,
@@ -1179,7 +1289,21 @@ export const PickerHost: FC<PickerHostProps> = ({
 		// that DOES have something to say returns the sentence, or `null` to retire
 		// it (the lost row listed again, or the user's own typing).
 		if (placed.retargeted !== undefined) setRetargeted(placed.retargeted);
-	}, [ordered, query, active, retargeted]);
+		if (isQuick)
+			revealQuickRow(
+				listRef.current,
+				`${listId}-${placed.index}`,
+				queryChanged,
+			);
+	}, [ordered, active, query, retargeted, quickTarget, isQuick, listId, open]);
+	// Placement and reveal share the same index and commit before paint. A second
+	// effect using the previous index could scroll straight back to the stale row.
+	useLayoutEffect(() => {
+		if (isQuick) placeActive();
+	}, [isQuick, placeActive]);
+	useEffect(() => {
+		if (!isQuick) placeActive();
+	}, [isQuick, placeActive]);
 	/*
 	 * A query change scrolls the list back to its top (UX U6).
 	 *
@@ -1196,14 +1320,28 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: a query change is the trigger; the effect deliberately reads nothing.
 	useEffect(() => {
-		listRef.current?.scrollTo({ top: 0 });
-	}, [query]);
+		if (!isQuick) listRef.current?.scrollTo({ top: 0 });
+	}, [query, isQuick]);
 	useEffect(() => {
+		if (isQuick) return;
 		const row = listRef.current?.querySelector<HTMLElement>(
 			`[id="${listId}-${active}"]`,
 		);
 		row?.scrollIntoView?.({ block: "nearest" });
-	}, [active, listId]);
+	}, [active, listId, isQuick]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: an anchor change can replace the portal and its scrollport without changing the visible rows.
+	useLayoutEffect(() => {
+		const list = listRef.current;
+		if (!isQuick || !hasVisibleRows || !list) return;
+		// Popper can shrink the scrollport after its first collision measurement.
+		// Follow the committed target when that happens, not an old row index.
+		const observer = new ResizeObserver(() => {
+			const row = list.querySelector<HTMLElement>('[aria-selected="true"]');
+			if (row) revealQuickRow(list, row.id, false);
+		});
+		observer.observe(list);
+		return () => observer.disconnect();
+	}, [anchor, hasVisibleRows, isQuick]);
 
 	const pick = useCallback(
 		async (option: PickerOption | undefined) => {
@@ -1268,7 +1406,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 	const onKeyDown = useCallback(
 		(event: KeyboardEvent<HTMLInputElement>) => {
-			if (event.nativeEvent.isComposing) return;
+			if (event.nativeEvent.isComposing || (isQuick && event.keyCode === 229))
+				return;
+			if (isQuick && (loading || loadError)) return;
 			if (event.key === "ArrowDown" && ordered.length > 0) {
 				event.preventDefault();
 				// The highlight is the user's from here on (UX U1): a listing that
@@ -1280,7 +1420,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 				setActive(next);
 			} else if (event.key === "ArrowUp" && ordered.length > 0) {
 				event.preventDefault();
-				const next = (active - 1 + ordered.length) % ordered.length;
+				const next =
+					(Math.max(0, active) - 1 + ordered.length) % ordered.length;
 				activeValueRef.current = ordered[next]?.value ?? null;
 				steeredRef.current = true;
 				setRetargeted(null);
@@ -1294,7 +1435,19 @@ export const PickerHost: FC<PickerHostProps> = ({
 				}
 			}
 		},
-		[ordered, active, hasList, onPick, onSubmit, submitDisabled, busy, pick],
+		[
+			ordered,
+			active,
+			hasList,
+			onPick,
+			onSubmit,
+			submitDisabled,
+			busy,
+			pick,
+			isQuick,
+			loading,
+			loadError,
+		],
 	);
 
 	const handleFormSubmit = useCallback(
@@ -1316,46 +1469,153 @@ export const PickerHost: FC<PickerHostProps> = ({
 	// Flat index across groups, so arrow keys walk the visible order.
 	let flatIndex = -1;
 
+	const openFocus = (event: Event) => {
+		event.preventDefault();
+		if (isQuick) {
+			previousFocusRef.current =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+			inputRef.current?.focus({ preventScroll: true });
+			return;
+		}
+		// A panel has no search; focus the scrollable body or its close control.
+		if (shell === "panel") {
+			bodyRegionRef.current?.focus();
+			if (!bodyRegionRef.current) closeButtonRef.current?.focus();
+			return;
+		}
+		inputRef.current?.focus();
+	};
+	const onOpenChange = (next: boolean) => {
+		if (!next)
+			(dismissedOutsideRef.current
+				? (quick?.onCloseOutside ?? onClose)
+				: onClose)();
+	};
+	const onInteractOutside = (event: CustomEvent<{ originalEvent: Event }>) => {
+		const target = event.detail.originalEvent.target;
+		if (
+			quick?.ignoreOutside?.() ||
+			(target instanceof Node && anchor?.contains(target))
+		) {
+			// A second press goes through the owning chip, not a dismiss/reopen race.
+			event.preventDefault();
+			return;
+		}
+		dismissedOutsideRef.current = true;
+	};
+	const onCloseAutoFocus = (event: Event) => {
+		event.preventDefault();
+		// A genuine outside interaction already chose its target. Only keyboard
+		// or in-picker dismissal should return to the invocation instead.
+		if (dismissedOutsideRef.current || quick?.onCloseOutside) return;
+		const target = origin?.isConnected ? origin : previousFocusRef.current;
+		if (target?.isConnected) target.focus({ preventScroll: true });
+	};
+
+	const compactFrame = cn(
+		"flex flex-col gap-0 overflow-y-auto overscroll-contain rounded-lg p-0",
+		quick?.kind === "effort" ? "max-w-72" : "max-w-[28rem]",
+	);
+	// A supplied empty context suppresses the line; effort still needs its
+	// actionable description when there is no ladder to offer.
+	const headerText = quick?.context ?? description;
+	// No honest chip anchor for a typed command. Radix's nonmodal Dialog
+	// fallback retains viewport centering without adding a scrim or focus trap.
+	const Root = anchor ? Popover : Dialog;
+	const Content = anchor ? PopoverContent : DialogContent;
+	const placement = anchor
+		? {
+				side: "top" as const,
+				align: "start" as const,
+				collisionPadding: 8,
+				"aria-labelledby": titleId,
+				"aria-describedby": descriptionId,
+				className: cn(
+					compactFrame,
+					"max-h-[var(--radix-popover-content-available-height)] w-[calc(100vw-1rem)]",
+				),
+			}
+		: {
+				showClose: !isQuick,
+				className: isQuick
+					? cn(compactFrame, "max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)]")
+					: cn(
+							"gap-0 p-0",
+							shell === "panel" ? "max-w-5xl" : wide ? "max-w-3xl" : "max-w-xl",
+							"overflow-hidden rounded-lg",
+						),
+			};
 	return (
-		<Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-			<DialogContent
-				className={cn(
-					"gap-0 p-0",
-					shell === "panel" ? "max-w-5xl" : wide ? "max-w-3xl" : "max-w-xl",
-					// The dialog is a frame: 14px radius, content clipped to it.
-					"overflow-hidden rounded-lg",
-				)}
-				onOpenAutoFocus={(event) => {
-					event.preventDefault();
-					/*
-					 * A panel has no list to focus, and the search input is not rendered at
-					 * all, so Radix's prevented default would leave focus on the trigger
-					 * behind the dialog. The body scroll region is the panel's own tab stop
-					 * (it is `tabIndex={0}` below), so focus lands where a keyboard user can
-					 * immediately PageDown through the content; with no body mounted, the
-					 * footer's Close button is the only control there is.
-					 */
-					if (shell === "panel") {
-						bodyRegionRef.current?.focus();
-						if (!bodyRegionRef.current) closeButtonRef.current?.focus();
-						return;
-					}
-					inputRef.current?.focus();
-				}}
+		<Root open={open} onOpenChange={onOpenChange} modal={!isQuick}>
+			{anchor && <PopoverAnchor virtualRef={anchorRef} />}
+			<Content
+				{...placement}
+				data-quick-picker={quick?.kind}
+				data-picker-placement={
+					isQuick ? (anchor ? "anchored" : "fallback") : undefined
+				}
+				onOpenAutoFocus={openFocus}
+				onCloseAutoFocus={isQuick ? onCloseAutoFocus : undefined}
+				onInteractOutside={isQuick ? onInteractOutside : undefined}
+				onEscapeKeyDown={
+					isQuick
+						? (event) => {
+								// The IME owns Escape during composition, even outside React's input handler.
+								if (event.isComposing || event.keyCode === 229)
+									event.preventDefault();
+							}
+						: undefined
+				}
 			>
-				<div className="flex flex-col gap-1 px-5 pt-5 pe-12">
-					<DialogTitle className="text-heading text-ink">{title}</DialogTitle>
-					{description ? (
-						<DialogDescription className="text-body-sm text-ink-muted">
-							{description}
-						</DialogDescription>
-					) : (
-						<DialogDescription className="sr-only">{title}</DialogDescription>
-					)}
-				</div>
+				{isQuick ? (
+					<div className="flex shrink-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1 px-3 pt-3">
+						{anchor ? (
+							<h2 id={titleId} className="font-medium text-body-sm text-ink">
+								{title}
+							</h2>
+						) : (
+							<DialogTitle className="font-medium text-body-sm">
+								{title}
+							</DialogTitle>
+						)}
+						{headerText && (
+							<p
+								className={cn(
+									"min-w-0 text-ink-dim text-meta",
+									quick.context && "truncate",
+								)}
+								title={quick.context || undefined}
+							>
+								{headerText}
+							</p>
+						)}
+						{anchor ? (
+							<p id={descriptionId} className="sr-only">
+								{description ?? title}
+							</p>
+						) : (
+							<DialogDescription className="sr-only">
+								{description ?? title}
+							</DialogDescription>
+						)}
+					</div>
+				) : (
+					<div className="flex flex-col gap-1 px-5 pt-5 pe-12">
+						<DialogTitle className="text-heading text-ink">{title}</DialogTitle>
+						{description ? (
+							<DialogDescription className="text-body-sm text-ink-muted">
+								{description}
+							</DialogDescription>
+						) : (
+							<DialogDescription className="sr-only">{title}</DialogDescription>
+						)}
+					</div>
+				)}
 
 				{hasList && (
-					<div className="px-5 pt-4">
+					<div className={isQuick ? "shrink-0 px-2 pt-2" : "px-5 pt-4"}>
 						{/*
 						 * The search field is rendered for every list, including a four- or
 						 * five-row static ladder where it cannot help (design D9). Kept knowingly,
@@ -1378,17 +1638,39 @@ export const PickerHost: FC<PickerHostProps> = ({
 							<Input
 								ref={inputRef}
 								role="combobox"
-								aria-expanded={true}
-								aria-controls={listId}
+								aria-label={
+									isQuick
+										? (searchPlaceholder ??
+											t("ui.chat.pickers.picker_host.search"))
+										: undefined
+								}
+								aria-expanded={isQuick ? bodyKind === "list" : true}
+								aria-controls={
+									!isQuick || bodyKind === "list" ? listId : undefined
+								}
 								aria-activedescendant={
-									ordered[active] ? `${listId}-${active}` : undefined
+									(!isQuick || bodyKind === "list") && ordered[active]
+										? `${listId}-${active}`
+										: undefined
 								}
 								aria-autocomplete="list"
 								value={query}
-								onChange={(event) => setQuery(event.target.value)}
+								onChange={(event) => {
+									if (isQuick) clearHovered();
+									setQuery(event.target.value);
+								}}
 								onKeyDown={onKeyDown}
-								placeholder={searchPlaceholder}
-								className="ps-8"
+								placeholder={
+									searchPlaceholder ??
+									(isQuick
+										? t("ui.chat.pickers.picker_host.search")
+										: undefined)
+								}
+								className={cn(
+									"ps-8",
+									isQuick &&
+										"border-0 bg-sunken focus-visible:-outline-offset-1!",
+								)}
 								autoComplete="off"
 								spellCheck={false}
 							/>
@@ -1407,13 +1689,17 @@ export const PickerHost: FC<PickerHostProps> = ({
 					/>
 				)}
 
-				{toolbar && <div className="px-5 pt-3">{toolbar}</div>}
+				{toolbar && !isQuick && <div className="px-5 pt-3">{toolbar}</div>}
 
 				{hasList && (
-					<div className="px-3 pt-3">
+					<div
+						className={
+							isQuick ? "flex min-h-0 flex-col px-2 pt-2" : "px-3 pt-3"
+						}
+					>
 						{/* The partial-listing note, ABOVE the body rather than instead of
-						    it: `catalogue.data` still holds the rows the other providers
-						    answered with (design D4). */}
+							    it: `catalogue.data` still holds the rows the other providers
+							    answered with (design D4). */}
 						{notice && (
 							<Tooltip content={noticeDetail}>
 								<p className="px-2 pb-2 text-body-sm text-warning">{notice}</p>
@@ -1467,7 +1753,15 @@ export const PickerHost: FC<PickerHostProps> = ({
 								// hover left over from somewhere else can never read as the
 								// keyboard's selection (design D2).
 								onMouseLeave={clearHovered}
-								className="max-h-[min(50vh,420px)] overflow-y-auto"
+								className={cn(
+									"overflow-y-auto",
+									isQuick
+										? cn(
+												"min-h-8 overscroll-contain [overflow-anchor:none]",
+												quick.kind === "effort" ? "max-h-48" : "max-h-64",
+											)
+										: "max-h-[min(50vh,420px)]",
+								)}
 							>
 								{grouped.map(([group, rows]) => (
 									<div key={group || "ungrouped"}>
@@ -1488,6 +1782,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 													isActive={index === active}
 													isHovered={index === list.hovered}
 													isPicked={list.picked === option.value}
+													quick={isQuick}
 													onHover={setHoveredIndex}
 													onPick={pickRow}
 													busyLabel={busyLabel}
@@ -1603,12 +1898,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 					</div>
 				)}
 
+				{toolbar && isQuick && (
+					<div className="divider-inset relative mx-2 mt-2 shrink-0 px-1 pt-2">
+						{toolbar}
+					</div>
+				)}
+
 				{form && (
 					<form
 						onSubmit={handleFormSubmit}
 						className={cn(
 							"flex flex-col gap-3 px-5",
-							hasList ? "pt-3" : "pt-4",
+							isQuick ? "shrink-0 px-3 pt-2" : hasList ? "pt-3" : "pt-4",
 						)}
 					>
 						{form}
@@ -1624,7 +1925,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				{result && (
-					<div className="px-5 pt-3">
+					<div className={isQuick ? "shrink-0 px-3 pt-2" : "px-5 pt-3"}>
 						{/*
 						 * `data-picker-result` is the TONE, published for the same reason
 						 * every other scene hook here is a data attribute: a capture can
@@ -1653,15 +1954,23 @@ export const PickerHost: FC<PickerHostProps> = ({
 				)}
 
 				<div
-					className="flex items-center justify-between gap-3 px-5 py-4"
+					className={cn(
+						"flex items-center justify-between gap-3",
+						isQuick ? "shrink-0 px-3 py-1" : "px-5 py-4",
+					)}
 					data-picker-footer
 				>
 					{/*
 					 * The hint names the row Enter would pick (UX U1) and truncates rather
-					 * than wrapping, because a long model name here is the only text in the
-					 * dialog that is not already bounded by a column.
+					 * in legacy dialogs; quick surfaces let it wrap so the shortcut does
+					 * not disappear off the end of the narrow effort footer.
 					 */}
-					<span className="min-w-0 truncate text-ink-dim text-meta">
+					<span
+						className={cn(
+							"min-w-0 text-ink-dim text-meta",
+							isQuick ? "wrap-anywhere" : "truncate",
+						)}
+					>
 						{blockedHint ? (
 							blockedHint
 						) : busy ? (
@@ -1677,7 +1986,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								{pickerFooterHint({
 									busy,
 									hasList,
-									rowCount: filtered.length,
+									rowCount: footerRowCount,
 									activeLabel,
 									activeConnectProvider,
 									busyText,
@@ -1708,11 +2017,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 						<Button
 							ref={closeButtonRef}
 							variant="ghost"
-							size="sm"
+							size={isQuick ? "icon-sm" : "sm"}
 							type="button"
+							aria-label={
+								isQuick ? pickerPrimaryLabel({ busy, result }) : undefined
+							}
 							onClick={onClose}
 						>
-							{pickerPrimaryLabel({ busy, result })}
+							{isQuick ? (
+								<X aria-hidden="true" />
+							) : (
+								pickerPrimaryLabel({ busy, result })
+							)}
 						</Button>
 						{onSubmit && (
 							<Button
@@ -1727,8 +2043,8 @@ export const PickerHost: FC<PickerHostProps> = ({
 						)}
 					</div>
 				</div>
-			</DialogContent>
-		</Dialog>
+			</Content>
+		</Root>
 	);
 };
 

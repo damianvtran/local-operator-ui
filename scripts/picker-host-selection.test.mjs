@@ -122,6 +122,7 @@ const bundled = await build({
 	stdin: {
 		contents: `
 			export { PickerHost } from "./src/renderer/src/features/chat/pickers/picker-host";
+			export { matchModelPickerOptions } from "./src/renderer/src/features/chat/pickers/model-picker-match";
 		`,
 		resolveDir: ROOT,
 		loader: "tsx",
@@ -141,7 +142,9 @@ const bundled = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, `picker-host-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundled.outputFiles[0].text);
-const { PickerHost } = await import(pathToFileURL(bundlePath).href);
+const { PickerHost, matchModelPickerOptions } = await import(
+	pathToFileURL(bundlePath).href
+);
 
 /*
  * `git blame`-free guard on the fixture below: the option shape this file builds
@@ -185,10 +188,15 @@ const type = async (input, text) => {
 	});
 };
 
-const key = (element, name) =>
+const key = (element, name, options) =>
 	act(() => {
 		element.dispatchEvent(
-			new dom.window.KeyboardEvent("keydown", { key: name, bubbles: true }),
+			new dom.window.KeyboardEvent("keydown", {
+				key: name,
+				bubbles: true,
+				cancelable: true,
+				...options,
+			}),
 		);
 	});
 
@@ -687,6 +695,124 @@ test("a pass that brings the sentence's row back AND drops the held row still na
 		"and Enter sends the row the footer now names",
 	);
 	view.unmount();
+});
+
+test("quick search takes the best surviving match from a steered row", async () => {
+	const rows = [
+		{ value: "low", label: "Low", current: true },
+		{ value: "xhigh", label: "xHigh" },
+		{ value: "high", label: "High" },
+	];
+	const calls = [];
+	let closed = false;
+	const view = mount({
+		open: true,
+		onClose: () => {
+			closed = true;
+		},
+		title: "Effort",
+		quick: { kind: "effort" },
+		options: rows,
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const input = document.querySelector("input");
+		assert.equal(
+			document.querySelector("[data-quick-picker]").dataset.pickerPlacement,
+			"fallback",
+		);
+		assert.equal(document.querySelector(".bg-scrim"), null);
+		key(input, "ArrowDown");
+		assert.equal(labelOf(announced(input)), "xHigh");
+		await type(input, "high");
+		assert.equal(document.activeElement, input);
+		key(input, "Enter", { isComposing: true });
+		key(input, "Escape", { isComposing: true });
+		assert.deepEqual(calls, [], "IME Enter must not pick a level");
+		assert.equal(
+			closed,
+			false,
+			"IME Escape cancels composition, not the picker",
+		);
+		key(input, "Enter");
+		assert.deepEqual(
+			calls,
+			["high"],
+			"Enter sends the ranked row without another arrow",
+		);
+		assert.equal(
+			announced(input).querySelector(".truncate")?.textContent,
+			"High",
+		);
+		await type(input, "");
+		assert.equal(labelOf(announced(input)), "Low");
+	} finally {
+		view.unmount();
+	}
+});
+
+test("model quick search ranks exact names and selectors, but a refresh preserves steering", async () => {
+	const partial = {
+		value: "anthropic/claude-opus-5-extended",
+		label: "Claude Opus 5 Extended",
+		current: true,
+	};
+	const whole = { value: "anthropic/claude-opus-5", label: "Claude Opus 5" };
+	const disabled = {
+		...whole,
+		value: "disabled/claude-opus-5",
+		disabled: true,
+	};
+	const calls = [];
+	const props = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		matcher: matchModelPickerOptions,
+		options: [partial, disabled, whole],
+		onPick: (value) => calls.push(value),
+	};
+	const view = mount(props);
+	try {
+		const input = document.querySelector("input");
+		assert.equal(labelOf(announced(input)), partial.label);
+		await type(input, whole.label);
+		assert.equal(announced(input).getAttribute("aria-disabled"), null);
+		assert.equal(labelOf(announced(input)), whole.label);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value]);
+
+		// A real async reorder keeps the extended row we steered to, not its slot.
+		key(input, "ArrowDown");
+		assert.equal(labelOf(announced(input)), partial.label);
+		view.render({ ...props, options: [whole, partial, disabled] });
+		assert.equal(labelOf(announced(input)), partial.label);
+
+		await type(input, whole.value);
+		assert.equal(
+			announced(input).querySelector(".truncate")?.textContent,
+			whole.label,
+		);
+		assert.equal(document.activeElement, input);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+		await type(input, disabled.value);
+		assert.equal(
+			announced(input),
+			null,
+			"a disabled exact match is not automatically selected",
+		);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+		await type(input, "no matching model");
+		assert.equal(announced(input), null);
+		assert.equal(input.hasAttribute("aria-controls"), false);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+	} finally {
+		view.unmount();
+	}
 });
 
 test("typing retires the sentence even when the row it names survives", async () => {

@@ -558,6 +558,7 @@ type FrameProps = {
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
 	onClose?: () => void;
+	renderPicker?: (context: PickerContext) => ReactNode;
 	note?: PickerContext["note"];
 	/** The session the picker addresses (the intent stories use several). */
 	sessionId?: string;
@@ -577,6 +578,7 @@ const Frame: FC<FrameProps> = ({
 	picker = "model",
 	frontend,
 	onClose = noop,
+	renderPicker,
 	note = noop,
 	sessionId = "sess",
 }) => {
@@ -605,6 +607,7 @@ const Frame: FC<FrameProps> = ({
 	};
 	if (picker === "fast")
 		return <FastPicker {...ctx} action={{ ...MODEL_ACTION, data: {} }} />;
+	if (renderPicker) return renderPicker(ctx);
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
@@ -792,7 +795,20 @@ const pickRow = async (name: RegExp) => {
 	await userEvent.click(option);
 };
 
+// The anchored composer stories share these transport fixtures, but are kept in
+// their own module so the existing fast Node story checks need not bundle MessageInput.
+export const pickerStoryFixture = {
+	Frame,
+	CURRENT,
+	CATALOGUE,
+	row,
+	catalogue,
+	catalogueOnly,
+	ok,
+};
+
 const meta: Meta<typeof ModelPicker> = {
+	excludeStories: ["pickerStoryFixture"],
 	title: "chat-model-picker",
 	component: ModelPicker,
 	parameters: { layout: "centered" },

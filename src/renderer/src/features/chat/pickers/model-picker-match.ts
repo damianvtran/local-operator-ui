@@ -135,6 +135,8 @@ function isElision(needle: string, key: string): boolean {
 
 /** One row's searchable strings, in both spellings the passes need. */
 type OptionIndex = {
+	/** Display name and canonical selector outrank aliases or metadata. */
+	identity: string[];
 	/** Every string the pre-PR contiguous test read, lowercased, one per field. */
 	lowered: string[];
 	/**
@@ -170,6 +172,7 @@ function indexOf(option: PickerOption): OptionIndex {
 	const naming = [option.label, option.value].concat(option.keywords ?? []);
 	const data = [option.description ?? "", option.meta ?? ""];
 	const index: OptionIndex = {
+		identity: [option.label, option.value].map(modelPickerMatchKey),
 		lowered: naming
 			.concat(data)
 			.filter(hasText)
@@ -184,7 +187,7 @@ function indexOf(option: PickerOption): OptionIndex {
 }
 
 /**
- * The rows a query matches, in the order they came in.
+ * The rows a query matches, strongest name match first; catalogue order breaks ties.
  *
  * TWO EMPTY-ISH CASES, and they are not the same — the backend draws the same
  * line. A query the user has not typed into at all (blank, or whitespace) lists
@@ -241,7 +244,19 @@ export function matchModelPickerOptions(
 			named.some((key) => key.includes(needle))
 		);
 	});
-	if (exact.length > 0) return exact;
+	if (exact.length > 0) {
+		// Whole names and canonical selectors outrank substring matches. Keep
+		// catalogue priority among everything else (notably direct providers and
+		// aggregators that happen to match the same partial query).
+		const whole: PickerOption[] = [];
+		const partial: PickerOption[] = [];
+		for (const option of exact) {
+			(indexOf(option).identity.includes(needle) ? whole : partial).push(
+				option,
+			);
+		}
+		return whole.length ? whole.concat(partial) : exact;
+	}
 	/*
 	 * Pool 2: everything looser, consulted ONLY when pool 1 is empty — the
 	 * backend's `pool = ranked_strong or ranked_fuzzy`. Keeping the fallback a

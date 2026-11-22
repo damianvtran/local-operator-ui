@@ -596,23 +596,30 @@ export function useSlashDispatch({
 	 * close edges; the strip only knows about the open one.
 	 */
 	const invoker = useRef<HTMLElement | null>(null);
-	const closePicker = useCallback(() => {
-		setPicker(null);
-		const origin = invoker.current;
-		invoker.current = null;
-		if (!origin) return;
-		/*
-		 * After the dialog has unmounted and Radix has done its own restoration,
-		 * so this is the last word rather than a race with it. A node that was
-		 * replaced while the picker was open is no longer in the document, and
-		 * focusing it would be the same silent no-op that produces the defect -
-		 * so the composer, which is always mounted, takes it instead.
-		 */
-		requestAnimationFrame(() => {
-			if (origin.isConnected) origin.focus();
-			else focusComposer?.();
-		});
-	}, [focusComposer]);
+	const closePicker = useCallback(
+		(restoreFocus = true) => {
+			setPicker(null);
+			const origin = invoker.current;
+			invoker.current = null;
+			if (!origin || !restoreFocus) return;
+			/*
+			 * After the dialog has unmounted and Radix has done its own restoration,
+			 * so this is the last word rather than a race with it. A node that was
+			 * replaced while the picker was open is no longer in the document, and
+			 * focusing it would be the same silent no-op that produces the defect -
+			 * so the composer, which is always mounted, takes it instead.
+			 */
+			requestAnimationFrame(() => {
+				if (origin.isConnected) origin.focus();
+				else focusComposer?.();
+			});
+		},
+		[focusComposer],
+	);
+	const closePickerFromOutside = useCallback(
+		() => closePicker(false),
+		[closePicker],
+	);
 
 	// Receipts land in the transcript the user is looking at: the canonical
 	// one when the session is live, the legacy chat store otherwise.
@@ -676,10 +683,18 @@ export function useSlashDispatch({
 	const dispatch = useCallback(
 		async (
 			invocation: SlashCommandInvocation,
+			quickPickerAnchor?: HTMLElement,
 		): Promise<SlashDispatchOutcome> => {
 			const { name: word, args } = invocation;
 			if (!commandsEnabled) return "not-a-command";
 			const commands = commandsQuery.data ?? [];
+			// A bare typed /model or /effort also needs a return target, but it is
+			// not anchored to whichever control happens to be focused on reply.
+			const quickOrigin =
+				quickPickerAnchor ??
+				(document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null);
 			const spec =
 				commands.find((command) => command.name === word) ??
 				commands.find((command) => command.aliases.includes(word));
@@ -1688,12 +1703,18 @@ export function useSlashDispatch({
 						);
 						return "consumed";
 					}
-					invoker.current =
-						document.activeElement instanceof HTMLElement
+					const quick =
+						action.destination === "session.model" ||
+						action.destination === "session.effort";
+					invoker.current = quick
+						? quickOrigin
+						: document.activeElement instanceof HTMLElement
 							? document.activeElement
 							: null;
 					setPicker({
 						action,
+						quickPickerAnchor: quick ? quickPickerAnchor : undefined,
+						onCloseOutside: quick ? closePickerFromOutside : undefined,
 						spec,
 						sessionId,
 						canonical,
@@ -1776,6 +1797,7 @@ export function useSlashDispatch({
 			canonical,
 			rebind,
 			closePicker,
+			closePickerFromOutside,
 			canMove,
 			paneReady,
 			moveSession,
@@ -1838,14 +1860,19 @@ export function useSlashDispatch({
 	const dispatchFromControl = useCallback(
 		async (
 			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
 		): Promise<SlashDispatchOutcome> => {
-			const outcome = await dispatch(invocation);
+			if (anchor && picker?.quickPickerAnchor === anchor) {
+				closePicker();
+				return "consumed";
+			}
+			const outcome = await dispatch(invocation, anchor);
 			if (outcome === "not-a-command") {
 				note(t("ui.chat.slash.dispatch.backend_incomplete"), true);
 			}
 			return outcome;
 		},
-		[dispatch, note],
+		[dispatch, note, picker?.quickPickerAnchor, closePicker],
 	);
 
 	/**
@@ -1863,12 +1890,17 @@ export function useSlashDispatch({
 	 * chip is a control for a keyboard user too.
 	 */
 	const openDraftPicker = useCallback(
-		(destination: DraftPickerDestination) => {
+		(destination: DraftPickerDestination, anchor?: HTMLElement) => {
 			if (!draftPicker) return;
+			if (anchor && picker?.quickPickerAnchor === anchor) {
+				closePicker();
+				return;
+			}
 			invoker.current =
-				document.activeElement instanceof HTMLElement
+				anchor ??
+				(document.activeElement instanceof HTMLElement
 					? document.activeElement
-					: null;
+					: null);
 			setPicker({
 				action: {
 					kind: "native_action",
@@ -1889,11 +1921,15 @@ export function useSlashDispatch({
 				dispatch: (invocation) => void dispatch(invocation),
 				rebind,
 				draft: draftPicker,
+				quickPickerAnchor: anchor,
+				onCloseOutside: closePickerFromOutside,
 			});
 		},
 		[
 			canonical,
 			closePicker,
+			closePickerFromOutside,
+			picker?.quickPickerAnchor,
 			commandsQuery.data,
 			dispatch,
 			draftPicker,

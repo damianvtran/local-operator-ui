@@ -154,7 +154,10 @@ export type SessionStatusStripProps = {
 	 * The argument is a `SlashCommandInvocation`, not a line: the dispatcher no
 	 * longer parses text (see `slash-dispatch.ts`).
 	 */
-	onCommand?: (invocation: SlashCommandInvocation) => void;
+	onCommand?: (
+		invocation: SlashCommandInvocation,
+		anchor?: HTMLElement,
+	) => void;
 	/**
 	 * The effort rungs `/effort` will accept, or `undefined` while unknown.
 	 *
@@ -234,7 +237,10 @@ export type SessionStatusStripProps = {
 	 * the fact-plus-reason copy it has today (R20). Never both this and a
 	 * `frontend` that came off the canonical stream: a draft pane has no session.
 	 */
-	onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+	onOpenDraftPicker?: (
+		destination: DraftPickerDestination,
+		anchor?: HTMLElement,
+	) => void;
 	/**
 	 * These readings are the last ones the session reported, held across a
 	 * transient stream gap; see `CanonicalSessionView["heldFrontend"]`.
@@ -766,7 +772,7 @@ const ChannelTooltipBody: FC<{
 const Reading: FC<{
 	tooltip: ReactNode;
 	label: string;
-	onOpen?: () => void;
+	onOpen?: (origin?: HTMLElement) => void;
 	picker?: "model" | "effort";
 	/**
 	 * A reading that has no action in ANY state, on any backend, in any session.
@@ -849,8 +855,9 @@ const Reading: FC<{
 		<Tooltip content={body} className={tooltipClassName}>
 			<button
 				type="button"
-				onClick={onOpen}
+				onClick={(event) => onOpen(picker ? event.currentTarget : undefined)}
 				aria-label={spoken}
+				aria-haspopup={picker ? "dialog" : undefined}
 				data-composer-picker={picker}
 				className={cn(READING_BUTTON, className)}
 			>
@@ -1498,15 +1505,17 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	 * one thing that makes the draft's offer honest (R5 of the wire contract).
 	 */
 	const openModel = sessionDispatch
-		? () => sessionDispatch({ name: "model", args: "" })
+		? (anchor?: HTMLElement) =>
+				sessionDispatch({ name: "model", args: "" }, anchor)
 		: draftOpen
-			? () => draftOpen("session.model")
+			? (anchor?: HTMLElement) => draftOpen("session.model", anchor)
 			: undefined;
 	const openEffort =
 		effort?.adjustable && sessionDispatch
-			? () => sessionDispatch({ name: "effort", args: "" })
+			? (anchor?: HTMLElement) =>
+					sessionDispatch({ name: "effort", args: "" }, anchor)
 			: effort?.adjustable && effort.knownLadder && draftOpen
-				? () => draftOpen("session.effort")
+				? (anchor?: HTMLElement) => draftOpen("session.effort", anchor)
 				: undefined;
 
 	/*

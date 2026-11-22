@@ -4983,8 +4983,10 @@ function SessionPanel({
 						 * unconsumed outcome has to be surfaced here rather than dropped into a
 						 * `void` (round 1, U2).
 						 */
-						onCommand: (invocation: SlashCommandInvocation) =>
-							void stableDispatchFromControl(invocation),
+						onCommand: (
+							invocation: SlashCommandInvocation,
+							anchor?: HTMLElement,
+						) => void stableDispatchFromControl(invocation, anchor),
 						/*
 						 * The SAME query `EffortPicker` renders from, by the
 						 * same key, so React Query serves both from one cache

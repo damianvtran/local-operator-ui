@@ -415,7 +415,10 @@ type ChatContentProps = {
 		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
-		onCommand?: (invocation: SlashCommandInvocation) => void;
+		onCommand?: (
+			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
+		) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -439,7 +442,10 @@ type ChatContentProps = {
 		 * unless the backend advertises the capability — which is what leaves the two
 		 * readings inert with today's copy on a backend that cannot honour a pick.
 		 */
-		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		onOpenDraftPicker?: (
+			destination: DraftPickerDestination,
+			anchor?: HTMLElement,
+		) => void;
 		/**
 		 * Where a draft's resolution IS, while it has no reading yet; see
 		 * `SessionStatusStripProps["draftResolution"]`.
