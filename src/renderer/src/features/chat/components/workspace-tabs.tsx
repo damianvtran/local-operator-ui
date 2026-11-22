@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -53,10 +54,12 @@ export function WorkspaceTabs({
 	const regularLane = useRef<HTMLDivElement>(null);
 	const buttons = useRef(new Map<string, HTMLButtonElement>());
 	const draggedKey = useRef<string | null>(null);
+	const menuFocusKey = useRef<string>();
 	const ordered = displayedWorkspaceTabs(tabs);
 	const pinned = ordered.filter((tab) => tab.pinned);
 	const regular = ordered.filter((tab) => !tab.pinned);
-	const selected = ordered.find(({ key }) => key === activeKey);
+	const activePosition = ordered.findIndex(({ key }) => key === activeKey);
+	const selected = ordered[activePosition];
 	const [overflow, setOverflow] = useState(false);
 	const title = ({ target, key }: WorkspaceTab) =>
 		(key === activeKey && activeTitle) ||
@@ -88,7 +91,10 @@ export function WorkspaceTabs({
 	}, [tabs]);
 
 	useLayoutEffect(() => {
-		const button = activeKey ? buttons.current.get(activeKey) : undefined;
+		const button =
+			activePosition >= 0 && activeKey
+				? buttons.current.get(activeKey)
+				: undefined;
 		button?.scrollIntoView({
 			block: "nearest",
 			inline: "nearest",
@@ -98,7 +104,7 @@ export function WorkspaceTabs({
 			button.focus({ preventScroll: true });
 			onFocusHandled();
 		}
-	}, [activeKey, focusRequested, onFocusHandled]);
+	}, [activeKey, activePosition, focusRequested, onFocusHandled]);
 
 	const physicalNeighbor = (tab: WorkspaceTab, delta: number, rtl: boolean) => {
 		const lane = tab.pinned ? pinned : regular;
@@ -125,7 +131,7 @@ export function WorkspaceTabs({
 		return (
 			<div
 				key={key}
-				data-workspace-tab={key}
+				data-workspace-tab=""
 				data-active={active ? "" : undefined}
 				data-titlebar-no-drag=""
 				onDragOver={(event) => {
@@ -145,7 +151,6 @@ export function WorkspaceTabs({
 					type="button"
 					className="flex h-7 min-w-0 items-center gap-1.5 rounded-sm px-2 text-body-sm"
 					aria-current={active ? "page" : undefined}
-					title={title(tab)}
 					onClick={() => onOpen(tab)}
 					draggable
 					onDragStart={(event) => {
@@ -179,14 +184,16 @@ export function WorkspaceTabs({
 				</button>
 				<button
 					type="button"
-					data-workspace-close={key}
-					className="me-0.5 grid size-6 shrink-0 place-items-center rounded-sm"
-					aria-label={t("ui.browser.browser_tab_strip.close_named_tab", {
-						title: title(tab),
-					})}
+					data-workspace-close=""
+					className="relative me-0.5 grid size-6 shrink-0 place-items-center rounded-sm"
 					onClick={() => onClose(tab)}
 				>
 					<X aria-hidden="true" className="size-3" />
+					<span className="sr-only">
+						{t("ui.browser.browser_tab_strip.close_named_tab", {
+							title: title(tab),
+						})}
+					</span>
 				</button>
 			</div>
 		);
@@ -194,6 +201,7 @@ export function WorkspaceTabs({
 	return (
 		<nav
 			data-workspace-tabs=""
+			className={USER_CONTENT_CLASS}
 			aria-label={t("ui.command_palette.palette_search.chats")}
 		>
 			{pinned.length > 0 && (
@@ -211,30 +219,53 @@ export function WorkspaceTabs({
 				</div>
 			)}
 			{(overflow || selected) && (
-				<DropdownMenu>
+				<DropdownMenu
+					onOpenChange={(open) => {
+						if (open) menuFocusKey.current = undefined;
+					}}
+				>
 					<DropdownMenuTrigger asChild>
 						<button
 							type="button"
 							data-workspace-more=""
 							data-titlebar-no-drag=""
-							aria-label={
-								overflow
+							className="relative grid size-7 shrink-0 place-items-center rounded-sm text-ink-muted"
+						>
+							<Ellipsis aria-hidden="true" className="size-4" />
+							<span className="sr-only">
+								{overflow
 									? t("ui.browser.browser_surface.show_all_tabs")
 									: t("ui.browser.browser_tab_strip.tab_actions", {
 											title: activeTitle,
-										})
-							}
-							className="grid size-7 shrink-0 place-items-center rounded-sm text-ink-muted"
-						>
-							<Ellipsis aria-hidden="true" className="size-4" />
+										})}
+							</span>
 						</button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent align="start" data-workspace-tab-menu="">
+					<DropdownMenuContent
+						align="start"
+						data-workspace-tab-menu=""
+						// The portal is outside the strip's privacy boundary. Keep names
+						// in text (including sr-only text), since replay masks text, not attributes.
+						// One scrollport keeps Radix's full roving list and tail actions reachable.
+						className={`${USER_CONTENT_CLASS} max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto`}
+						onCloseAutoFocus={(event) => {
+							// Radix's delayed restore otherwise undoes the tab's focus handoff.
+							const key = menuFocusKey.current;
+							const button = key ? buttons.current.get(key) : undefined;
+							if (button?.hasAttribute("aria-current")) {
+								event.preventDefault();
+								button.focus({ preventScroll: true });
+							}
+						}}
+					>
 						{overflow &&
 							ordered.map((tab) => (
 								<DropdownMenuItem
 									key={tab.key}
-									onSelect={() => onOpen(tab)}
+									onSelect={() => {
+										menuFocusKey.current = tab.key;
+										onOpen(tab);
+									}}
 									aria-current={tab === selected ? "page" : undefined}
 								>
 									{tab.pinned && (
@@ -248,7 +279,10 @@ export function WorkspaceTabs({
 							<>
 								<DropdownMenuItem
 									data-workspace-pin=""
-									onSelect={() => onPin(selected.key)}
+									onSelect={() => {
+										menuFocusKey.current = selected.key;
+										onPin(selected.key);
+									}}
 								>
 									{t(
 										selected.pinned

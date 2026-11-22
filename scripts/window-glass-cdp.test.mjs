@@ -478,13 +478,13 @@ const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
  * Q1). Now a route names what it must contain and a missing region FAILS: a guard
  * that silently measures nothing is the defect.
  *
- * `content` is the page's own content column on the split pages (Settings, Agents),
- * which is what stays opaque canvas under "Sidebars only".
+ * `content` is the page's own ground on a split layout (the workspace inset,
+ * Settings, Agents); it stays opaque canvas under "Sidebars only".
  */
 const ROUTES = [
 	/* The composer must be on the chat route: a guard that reads the transcript
 	 * and skips the app's primary input would call a total audit without it. */
-	{ hash: "#/chat", must: ["sidebar", "rail", "canvas", "composer"] },
+	{ hash: "#/chat", must: ["sidebar", "rail", "content", "composer"] },
 	{ hash: "#/settings", must: ["sidebar", "pageSidebar", "content"] },
 	{ hash: "#/agents", must: ["sidebar", "pageSidebar", "content"] },
 	/* Projects: the page column and backing. Cards need real project data, so
@@ -838,20 +838,29 @@ for (const [themeName, label] of [
 			 * a draft shares with the route), and that cleared the <main> backing for the
 			 * WHOLE conversation column: alpha 0.77 became 0.00. The first guard audited the
 			 * chat with no pane open and the Browser as a route, so neither saw it. The
-			 * backing's own computed alpha is what the column's ground is, so it is read
-			 * directly: it must be the same number with the pane open as with it closed.
+			 * inset now owns the ground; its computed alpha must stay the same with
+			 * the pane open. The old <main> backing must remain clear in both cases.
 			 */
-			const BACKING = `(() => {
+			const INSET = `(() => {
         const m = document.querySelector('main[data-glass-region="canvas-backing"]');
-        if (!m) return null;
-        const c = getComputedStyle(m).backgroundColor;
-        const t = c.match(/\\/\\s*([\\d.]+)\\)$/);
-        return c === "rgba(0, 0, 0, 0)" ? 0 : t ? Number(t[1]) : 1;
+        const inset = m?.querySelector('[data-workspace-inset]');
+        if (!inset) return null;
+        const alpha = (e) => {
+          const c = getComputedStyle(e).backgroundColor;
+          const t = c.match(/\\/\\s*([\\d.]+)\\)$/);
+          return c === "rgba(0, 0, 0, 0)" ? 0 : t ? Number(t[1]) : 1;
+        };
+        return { inset: alpha(inset), backing: alpha(m) };
       })()`;
-			const closed = await cdp.ev(BACKING);
+			const closed = await cdp.ev(INSET);
 			assert.ok(
-				closed !== null && closed > 0.3,
-				`${label}: the chat backing paints a ground before any pane opens (saw ${closed})`,
+				closed && closed.inset > 0.3 && closed.inset < 1,
+				`${label}: expected live inset glass (saw ${JSON.stringify(closed)})`,
+			);
+			assert.equal(
+				closed.backing,
+				0,
+				`${label}: main cannot back the inset with another alpha`,
 			);
 			for (const [trigger, paneSel] of [
 				[
@@ -890,10 +899,15 @@ for (const [themeName, label] of [
 					opened,
 					`${label}: ${trigger} opened a pane (so the reading below is taken with it open)`,
 				);
-				const open = await cdp.ev(BACKING);
+				const open = await cdp.ev(INSET);
 				assert.ok(
-					Math.abs(open - closed) <= TOLERANCE,
-					`${label}: opening ${trigger} moved the conversation column's ground from ${closed} to ${open}`,
+					open && Math.abs(open.inset - closed.inset) <= TOLERANCE,
+					`${label}: opening ${trigger} moved the inset's ground from ${closed.inset} to ${open?.inset}`,
+				);
+				assert.equal(
+					open.backing,
+					0,
+					`${label}: main stays clear when ${trigger} opens`,
 				);
 				/*
 				 * The pane ITSELF must own a glass region and paint glass, not an opaque

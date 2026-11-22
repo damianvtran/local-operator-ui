@@ -41,11 +41,38 @@ export function useWorkspaceTabs(
 	const focusHandled = useCallback(() => setFocusRequested(false), []);
 	const closeHandoff = useRef<{
 		from: string;
-		to: WorkspaceTab["target"];
+		to: string;
+		ticket: object;
 	} | null>(null);
+	const tabIntent = useRef<object>();
 	const drop = useCallback((key: string) => {
 		setTabs((items) => items.filter((item) => item.key !== key));
 	}, []);
+
+	const settleClose = useCallback(
+		(state: ReturnType<typeof useCanonicalSessionsStore.getState>) => {
+			const handoff = closeHandoff.current;
+			if (!handoff) return;
+			const receipt = state.sessionValidationReceipt;
+			if (
+				receipt?.ticket !== handoff.ticket ||
+				!sameWorkspaceTarget(targetOf(state), {
+					kind: "session",
+					id: handoff.to,
+				}) ||
+				!workspaceSessionPathMatches(getCurrentPath(), handoff.to) ||
+				state.forgotten[handoff.to] !== undefined
+			) {
+				closeHandoff.current = null;
+				return;
+			}
+			if (receipt.confirmed) {
+				closeHandoff.current = null;
+				drop(handoff.from);
+			}
+		},
+		[drop],
+	);
 
 	const autoClose = useUiPreferencesStore((state) => state.workspaceAutoClose);
 	const setAutoClose = useUiPreferencesStore(
@@ -67,39 +94,37 @@ export function useWorkspaceTabs(
 	useLayoutEffect(() => {
 		// React can batch the create receipt with draft retirement. Observe the
 		// canonical pointer at its write, including sends which land off-screen.
-		return useCanonicalSessionsStore.subscribe((state, previous) => {
-			if (
-				state.drafts !== previous.drafts ||
-				state.activeDraftKey !== previous.activeDraftKey ||
-				state.activeSessionId !== previous.activeSessionId
-			) {
-				setTabs((items) =>
-					syncWorkspaceTabs(
-						items,
-						targetOf(state),
-						state.drafts,
-						previous.drafts,
-					),
-				);
-			}
-			const handoff = closeHandoff.current;
-			if (!handoff || !sameWorkspaceTarget(targetOf(state), handoff.to)) {
-				closeHandoff.current = null;
-				return;
-			}
-			if (
-				handoff.to.kind !== "session" ||
-				state.validatingSessionId === handoff.to.id
-			)
-				return;
+		const unsubscribe = useCanonicalSessionsStore.subscribe(
+			(state, previous) => {
+				if (
+					state.drafts !== previous.drafts ||
+					state.activeDraftKey !== previous.activeDraftKey ||
+					state.activeSessionId !== previous.activeSessionId
+				) {
+					setTabs((items) =>
+						syncWorkspaceTabs(
+							items,
+							targetOf(state),
+							state.drafts,
+							previous.drafts,
+						),
+					);
+				}
+				settleClose(state);
+			},
+		);
+		const observeRoute = () =>
+			settleClose(useCanonicalSessionsStore.getState());
+		window.addEventListener("hashchange", observeRoute);
+		window.addEventListener("popstate", observeRoute);
+		return () => {
+			unsubscribe();
+			window.removeEventListener("hashchange", observeRoute);
+			window.removeEventListener("popstate", observeRoute);
 			closeHandoff.current = null;
-			if (
-				state.forgotten[handoff.to.id] === undefined &&
-				workspaceSessionPathMatches(getCurrentPath(), handoff.to.id)
-			)
-				drop(handoff.from);
-		});
-	}, [drop]);
+			tabIntent.current = undefined;
+		};
+	}, [settleClose]);
 
 	useLayoutEffect(() => {
 		const store = useUiPreferencesStore.getState();
@@ -116,7 +141,7 @@ export function useWorkspaceTabs(
 		}
 	}, [tabs]);
 
-	const open = async ({ target }: WorkspaceTab) => {
+	const open = ({ target }: WorkspaceTab, ticket?: object) => {
 		if (target.kind === "draft") {
 			const store = useCanonicalSessionsStore.getState();
 			if (!store.drafts[target.id]) return false;
@@ -124,11 +149,13 @@ export function useWorkspaceTabs(
 			navigate("/chat");
 			return true;
 		}
-		return openConversation(navigate, target.id);
+		return openConversation(navigate, target.id, "open", ticket);
 	};
 	const select = async (tab: WorkspaceTab) => {
 		closeHandoff.current = null;
-		if (await open(tab)) {
+		const intent = {};
+		tabIntent.current = intent;
+		if ((await open(tab)) && tabIntent.current === intent) {
 			if (
 				sameWorkspaceTarget(
 					targetOf(useCanonicalSessionsStore.getState()),
@@ -138,8 +165,10 @@ export function useWorkspaceTabs(
 				setFocusRequested(true);
 		}
 	};
-	const close = async (tab: WorkspaceTab) => {
+	const close = (tab: WorkspaceTab) => {
 		closeHandoff.current = null;
+		const ticket = {};
+		tabIntent.current = ticket;
 		if (
 			!sameWorkspaceTarget(
 				targetOf(useCanonicalSessionsStore.getState()),
@@ -154,6 +183,7 @@ export function useWorkspaceTabs(
 		if (!next) {
 			startDraft();
 			if (
+				tabIntent.current === ticket &&
 				!sameWorkspaceTarget(
 					targetOf(useCanonicalSessionsStore.getState()),
 					tab.target,
@@ -164,19 +194,24 @@ export function useWorkspaceTabs(
 			}
 			return;
 		}
-		if (!(await open(next))) return;
+		const opened = open(next, ticket);
 		const state = useCanonicalSessionsStore.getState();
-		if (!sameWorkspaceTarget(targetOf(state), next.target)) return;
+		if (
+			opened === false ||
+			tabIntent.current !== ticket ||
+			!sameWorkspaceTarget(targetOf(state), next.target)
+		)
+			return;
 		setFocusRequested(true);
 		if (next.target.kind === "draft") {
 			drop(tab.key);
-		} else if (workspaceSessionPathMatches(getCurrentPath(), next.target.id)) {
-			// The route switch is optimistic: don't remove the outgoing tab on a
-			// 404 or a replacement selection while this candidate is validating.
-			if (state.validatingSessionId === next.target.id)
-				closeHandoff.current = { from: tab.key, to: next.target };
-			else if (state.forgotten[next.target.id] === undefined) drop(tab.key);
+			return;
 		}
+		// openConversation commits the selection and URL in this gesture; its
+		// promise only acknowledges that optimistic write. Arm synchronously so a
+		// replacement cannot be mistaken for this close after an async boundary.
+		closeHandoff.current = { from: tab.key, to: next.target.id, ticket };
+		settleClose(state);
 	};
 	return {
 		autoClose,

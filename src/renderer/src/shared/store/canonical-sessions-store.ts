@@ -1890,7 +1890,10 @@ export function buildSendPayload(
  * stayed held through a live reconnect because the draft the send wrote was keyed
  * `send:<id>` and carried no `sessionId` at all.
  */
-function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
+export function draftBelongsToSession(
+	draft: Pick<ChatDraft, "key" | "sessionId">,
+	sessionId: string,
+): boolean {
 	return (
 		draft.sessionId === sessionId ||
 		draft.key === sessionId ||
@@ -4279,6 +4282,8 @@ type CanonicalSessionsState = {
 	 * field too), so that shape is closed in the same commit.
 	 */
 	validatingSessionId: string | null;
+	/** A close handoff needs positive proof for its own switch, not a cleared gate. */
+	sessionValidationReceipt: { ticket: object; confirmed: boolean } | null;
 	/**
 	 * A pin press that did not survive, held until the user presses again.
 	 *
@@ -5021,7 +5026,10 @@ type CanonicalSessionsState = {
 		 */
 		counts?: SessionStatusFrameCounts,
 	) => void;
-	openSession: (sessionId: string) => Promise<boolean>;
+	openSession: (
+		sessionId: string,
+		validationTicket?: object,
+	) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	/**
 	 * Re-stage the pane's ACTIVE draft under a picked identity, carrying the
@@ -6336,6 +6344,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			activeDraftKey: null,
 			drafts: {},
 			validatingSessionId: null,
+			sessionValidationReceipt: null,
 			pinFailure: null,
 			pinFacts: {},
 			answerSeq: 0,
@@ -7732,6 +7741,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId,
 					activeDraftKey: null,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 				});
 			},
 			/*
@@ -7778,6 +7788,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeDraftKey: key,
 					activeSessionId: null,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					error: null,
 				});
 			},
@@ -7788,13 +7799,19 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * for a window the user is no longer waiting in.
 			 */
 			confirmSessionLive: (sessionId) => {
-				if (sessionId && get().validatingSessionId === sessionId)
-					set({ validatingSessionId: null });
+				const state = get();
+				if (!sessionId || state.validatingSessionId !== sessionId) return;
+				const receipt = state.sessionValidationReceipt;
+				set({
+					validatingSessionId: null,
+					sessionValidationReceipt: receipt && { ...receipt, confirmed: true },
+				});
 			},
 			confirmSessionMissing: (sessionId) => {
 				if (!sessionId || get().validatingSessionId !== sessionId) return;
 				set({
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					...forgetSession(get(), sessionId),
 				});
 				/*
@@ -7988,7 +8005,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					return { ...state, sessions };
 				});
 			},
-			openSession: async (sessionId) => {
+			openSession: async (sessionId, validationTicket) => {
 				/*
 				 * RE-SELECTING THE ROW THE VIEW IS ALREADY ON IS A NO-OP.
 				 *
@@ -8020,6 +8037,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * a log; `useCompletionView` is the only reader.
 				 */
 				if (get().activeSessionId === sessionId && !get().activeDraftKey) {
+					// An explicit repeat selection replaces a close intent even though it
+					// does not reopen the send gate or restart the stream.
+					if (get().sessionValidationReceipt)
+						set({ sessionValidationReceipt: null });
 					get().rearmReadAck(sessionId);
 					return true;
 				}
@@ -8071,6 +8092,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					activeSessionId: sessionId,
 					activeDraftKey: null,
 					validatingSessionId: sessionId,
+					sessionValidationReceipt: validationTicket
+						? { ticket: validationTicket, confirmed: false }
+						: null,
 					error: null,
 				});
 				// The same stamp as the no-op arm above, for the same reason: this press is
@@ -8150,6 +8174,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				set((state) => ({
 					activeDraftKey: key,
 					validatingSessionId: null,
+					sessionValidationReceipt: null,
 					error: null,
 					drafts: {
 						...state.drafts,
@@ -8220,7 +8245,11 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * pair written here is the one `openDraft` leaves: a staged draft and no
 				 * selected conversation.
 				 */
-				set({ activeSessionId: null, validatingSessionId: null });
+				set({
+					activeSessionId: null,
+					validatingSessionId: null,
+					sessionValidationReceipt: null,
+				});
 				if (from) {
 					/*
 					 * THE WORDS THAT HAVE NOT BEEN ADOPTED YET GO FIRST (agent review round 2,

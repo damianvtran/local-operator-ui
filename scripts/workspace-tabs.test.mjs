@@ -97,6 +97,22 @@ test("a background admission preserves the exact draft tab position and either p
 	]);
 });
 
+test("re-launching the same draft target after admission creates a distinct tab", () => {
+	const admitted = syncWorkspaceTabs(
+		[sessionB, { ...draftTab, pinned: true }, sessionC],
+		targetA,
+		{ [draft.id]: { sessionId: targetA.id } },
+	);
+	const relaunched = syncWorkspaceTabs(admitted, draft, { [draft.id]: {} });
+	assert.equal(new Set(relaunched.map(({ key }) => key)).size, 4);
+	assert.deepEqual(
+		relaunched.map(({ target }) => target),
+		[targetB, targetA, targetC, draft],
+	);
+	assert.equal(relaunched[1].pinned, true);
+	assert.equal(relaunched[3].pinned, false);
+});
+
 test("close fallback follows visible order and reordering cannot cross lanes", () => {
 	const tabs = [sessionA, { ...sessionB, pinned: true }, sessionC];
 	assert.deepEqual(
@@ -193,6 +209,7 @@ test("only a positively confirmed resting local session can age out", () => {
 	);
 	for (const draftInput of [
 		{ currentInput: "unsent" },
+		{ pendingText: "not yet adopted" },
 		{ attachments: ["file"] },
 		{ replies: ["quote"] },
 		{ inFlight: {} },
@@ -276,9 +293,13 @@ test("titlebar activation and actions keep one navigation owner and never trust 
 	assert.ok(strip.includes('dataTransfer.setData(WORKSPACE_DRAG, "")'));
 	assert.ok(!strip.includes("dataTransfer.getData"));
 	assert.ok(hook.includes("store.openDraft(target.id)"));
-	assert.ok(hook.includes("return openConversation(navigate, target.id)"));
-	assert.ok(hook.includes("if (!(await open(next))) return;"));
-	assert.ok(hook.includes("state.validatingSessionId === next.target.id"));
-	assert.ok(hook.includes("state.forgotten[handoff.to.id] === undefined"));
+	assert.ok(
+		hook.includes(
+			'return openConversation(navigate, target.id, "open", ticket)',
+		),
+	);
+	assert.ok(hook.includes("receipt?.ticket !== handoff.ticket"));
+	assert.ok(hook.includes("receipt.confirmed"));
+	assert.ok(hook.includes("state.forgotten[handoff.to] !== undefined"));
 	assert.ok(!routePath.test(hook));
 });

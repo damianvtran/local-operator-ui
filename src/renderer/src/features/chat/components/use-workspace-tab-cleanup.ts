@@ -1,8 +1,11 @@
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	draftBelongsToSession,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { DesktopFeedStatusProjection } from "../../../../../shared/desktop-feed-status";
 import {
-	type WorkspaceStatusReceipt,
 	advanceWorkspaceCleanup,
 	confirmedWorkspaceRest,
 } from "../workspace-tab-cleanup";
@@ -26,7 +29,7 @@ export function useWorkspaceTabCleanup(
 		let connected = false;
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		let clock = new Map<string, { since: number; evidence: string }>();
-		let receipts = new Map<string, WorkspaceStatusReceipt>();
+		const receipts = new DesktopFeedStatusProjection();
 		const measure = () => {
 			clearTimeout(timer);
 			const state = useCanonicalSessionsStore.getState();
@@ -52,12 +55,19 @@ export function useWorkspaceTabCleanup(
 						return;
 					const row = state.sessions.find((item) => item.session_id === id);
 					const receipt = receipts.get(id);
-					const draft = Object.values(state.drafts).some(
-						(item) => item.sessionId === id,
+					const draft = Object.values(state.drafts).some((item) =>
+						draftBelongsToSession(item, id),
 					);
+					// Pre-admission or recovered sends can still own their send key.
 					if (
 						receipt &&
-						confirmedWorkspaceRest(row, receipt, input[id], draft)
+						confirmedWorkspaceRest(
+							row,
+							receipt,
+							input[id],
+							draft,
+							input[`send:${id}`],
+						)
 					) {
 						return JSON.stringify([
 							receipt.epoch,
@@ -75,27 +85,15 @@ export function useWorkspaceTabCleanup(
 		recheck.current = measure;
 		// Observe the app's existing main-process feed over IPC, never create a
 		// session stream, post a request, or infer liveness from an old row.
+		const offFrames = native.subscribe((frame) => {
+			if (receipts.observe(frame)) measure();
+		});
 		const offState = native.watchState((status) => {
 			connected = status.connected;
 			if (!connected) receipts.clear();
+			else if (status.sessionStatus) receipts.seed(status.sessionStatus);
 			measure();
-		});
-		const offFrames = native.subscribe((frame) => {
-			if (frame.type === "open") {
-				receipts = new Map(
-					Object.entries(frame.payload.attention_status ?? {}).map(
-						([id, record]) => [
-							id.startsWith("session/") ? id.slice("session/".length) : id,
-							{ ...record, epoch: frame.epoch },
-						],
-					),
-				);
-			} else if (frame.type === "session_status") {
-				const { revision, code } = frame.payload;
-				receipts.set(frame.session_id, { epoch: frame.epoch, revision, code });
-			} else return;
-			measure();
-		});
+		}, true);
 		const offSessions = useCanonicalSessionsStore.subscribe(
 			(next, previous) => {
 				if (

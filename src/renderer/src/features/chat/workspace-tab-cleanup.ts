@@ -1,5 +1,8 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
-import type { ConversationInputState } from "@shared/store/conversation-input-store";
+import {
+	type ConversationInputState,
+	composerHasUnsentPayload,
+} from "../../shared/store/conversation-input-store";
 import type { WorkspaceTab, WorkspaceTarget } from "./workspace-tabs-model";
 import { sameWorkspaceTarget } from "./workspace-tabs-model";
 
@@ -18,6 +21,7 @@ export function confirmedWorkspaceRest(
 	receipt: WorkspaceStatusReceipt | undefined,
 	input: ConversationInputState | undefined,
 	hasDraft: boolean,
+	queuedInput?: ConversationInputState,
 ): boolean {
 	return (
 		!!row &&
@@ -37,13 +41,8 @@ export function confirmedWorkspaceRest(
 		row.jobs_running === 0 &&
 		row.pending === null &&
 		row.asks_open === 0 &&
-		!(
-			input?.currentInput ||
-			input?.attachments.length ||
-			input?.replies.length ||
-			input?.inFlight ||
-			input?.returned
-		)
+		!composerHasUnsentPayload(input) &&
+		!composerHasUnsentPayload(queuedInput)
 	);
 }
 

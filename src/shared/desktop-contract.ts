@@ -25,6 +25,7 @@ import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
+import type { DesktopFeedStatusSnapshot } from "./desktop-feed-status";
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
 import {
@@ -9147,7 +9148,11 @@ export type DesktopStreamEvent = {
  * RENDERER-visible shape: the sidebar renders the disconnected line from it, so
  * it travels over IPC and belongs with the other wire types.
  */
-export type DesktopFeedState = { connected: boolean };
+export type DesktopFeedState = {
+	connected: boolean;
+	/** Sent only on an explicit watch request; ordinary transitions are small. */
+	sessionStatus?: DesktopFeedStatusSnapshot;
+};
 
 export type DesktopStreamSubscription = {
 	streamId: Promise<string>;
@@ -9829,7 +9834,10 @@ export type DesktopAPI = {
 	 */
 	feed?: {
 		subscribe: (onFrame: (frame: DesktopFeedFrame) => void) => () => void;
-		watchState: (onState: (state: DesktopFeedState) => void) => () => void;
+		watchState: (
+			onState: (state: DesktopFeedState) => void,
+			includeSessionStatus?: boolean,
+		) => () => void;
 	};
 	/**
 	 * THE QWEN VOICE RIG, owned by main (`src/main/voice/qwen-voice.ts`). Absent in

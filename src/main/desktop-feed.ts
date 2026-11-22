@@ -39,6 +39,7 @@ import type {
 	DesktopFeedState,
 	DesktopResponse,
 } from "../shared/desktop-contract";
+import { DesktopFeedStatusProjection } from "../shared/desktop-feed-status";
 import {
 	type DesktopFeedFrame,
 	FEED_NOTIFIABLE_KINDS,
@@ -171,6 +172,7 @@ export class DesktopFeedRelay {
 	private running = false;
 	private stopped = false;
 	private connected = false;
+	private readonly sessionStatuses = new DesktopFeedStatusProjection();
 	private subscriptionId: string | null = null;
 	private heartbeatMs = DEFAULT_HEARTBEAT_SECONDS * 1000;
 	private lastFrameAt = 0;
@@ -210,6 +212,10 @@ export class DesktopFeedRelay {
 
 	get isConnected(): boolean {
 		return this.connected;
+	}
+
+	get sessionStatusSnapshot() {
+		return this.connected ? this.sessionStatuses.snapshot() : undefined;
 	}
 
 	/** True when this relay can authenticate at all. */
@@ -428,6 +434,7 @@ export class DesktopFeedRelay {
 			this.startPresence();
 		}
 		try {
+			this.sessionStatuses.observe(frame);
 			this.frameObserver?.(frame);
 		} catch {
 			// A consumer's failure must not stop the feed: the notifier and the
@@ -510,6 +517,7 @@ export class DesktopFeedRelay {
 	private setConnected(connected: boolean): void {
 		if (this.connected === connected) return;
 		this.connected = connected;
+		if (!connected) this.sessionStatuses.clear();
 		try {
 			this.stateObserver?.({ connected });
 		} catch {

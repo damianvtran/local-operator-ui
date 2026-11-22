@@ -166,7 +166,6 @@ const ASK_SHEET_CLASS =
 const ASK_SLOT_WIDTH = /width=\{askPresentation\.width\}/;
 const ASK_SCRIM =
 	/askPresentation\.scrimmed[\s\S]{0,400}?data-ask-scrim=""[\s\S]{0,200}?bg-scrim/;
-const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
 /* #868's publisher and mount-gate reads, at module scope for the same reason.
  * The publisher's shape shrank to `{mounted, session}` with the always-visible
  * rail (D2): every durable pane mounts on any chat route, so the session
@@ -207,8 +206,6 @@ const FLEET_GATE =
 const SIDEBAR_YIELD_ARG = /slotYieldsSidebar,\s*railWidth,\s*\);/;
 const SIDEBAR_YIELD_READ =
 	/useUiPreferencesStore\(\s*resolveRightSlotYieldsSidebar,?\s*\)/;
-const HEADER_OCCUPIED_READ =
-	/useUiPreferencesStore\(\s*resolveRightSlotOccupied,?\s*\)/;
 const SIDEBAR_BARE_FLAGS = /canvasOpen\s*\|\|\s*askDrawerOpen/;
 const SLOT_COMPONENT =
 	"src/renderer/src/shared/components/common/pane-slot.tsx";
@@ -634,23 +631,10 @@ test("nothing in the slot puts a control into the chrome lane", () => {
 	}
 });
 
-test("the drawer's slot is readable, and the header's OS corner is reserved for it too", () => {
+test("both asks drawer mounts preserve their width and floating scrim", () => {
 	const source = withoutComments(read(CHAT_CONTENT));
-	/*
-	 * AGENT REVIEW ROUND 1, N3. Two facts about this call site had no re-reader: the
-	 * drawer's slot wrote `data-ask-mode` and nothing read it (the canvas's own
-	 * `data-canvas-mode` is read by `scripts/renderer-driver.mjs`), and
-	 * `rightSlotOccupied` had gained the drawer's term for the header's OS-control
-	 * corner with no test and no frame. Both are properties of this file rather than
-	 * of a rendered surface, so they are pinned here - and the docked frame the
-	 * evidence set carries (`docs/evidence/ask-drawer/after/dock-asks/`) is the
-	 * visual half of the reservation.
-	 *
-	 * (#868 evolved the second pin: `rightSlotOccupied` now reads the store's own
-	 * derivation rather than restating the five flags, because a bare flag cannot
-	 * tell a CLAIMED pane from one the route can DRAW - the second copy is what
-	 * reserved the corner for a pane that was not on screen.)
-	 */
+	// Moving the title into native chrome changes neither the docked width nor
+	// the separate scrim that lets users dismiss the floating drawer.
 	const mode = source.match(ASK_SLOT_MODE);
 	assert.ok(
 		mode,
@@ -703,21 +687,73 @@ test("the drawer's slot is readable, and the header's OS corner is reserved for 
 			`the ${mount} ask mount pins its slot to \`absolute inset-0\` again: the drawer would cover the whole row with no seam and no press target`,
 		);
 	}
-	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
-	assert.ok(
-		reservation,
-		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one expression. It decides whether the chat header has to reserve the window's OS-control corner (§J4); this file reads that expression's text, so a rewrite has to re-read this pin.`,
+});
+
+test("the moved titlebar reserves both physical native corners, independent of the drawer", () => {
+	const content = withoutComments(read(CHAT_CONTENT));
+	assert.match(
+		content,
+		/data-chat-workspace=""[^>]*>\s*\{workspaceTabs\}\s*<div\s+data-workspace-inset=""/,
 	);
-	/*
-	 * #868: THE DISJUNCTION MOVED INTO THE STORE, where the route facts live. The
-	 * pin is now that the header reads the ONE derivation rather than restating
-	 * the five flags - the second copy is exactly what reserved a corner for a
-	 * pane no route mounts. The store's own route matrix is
-	 * `right-slot-width.test.mjs`'s subject.
-	 */
-	assert.ok(
-		HEADER_OCCUPIED_READ.test(reservation[1]),
-		`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer reads the store's \`resolveRightSlotOccupied\` derivation (#868). The header's reservation has to answer from the same claim and the same route facts as the lane's stop and the column's deficit; a disjunction of bare flags here is the second copy that reserved a corner for a pane that is not on screen.`,
+	assert.ok(!content.includes("rightSlotOccupied"));
+	const layout = read(
+		"src/renderer/src/shared/components/common/chat-layout.tsx",
+	);
+	assert.match(layout, /"--workspace-sidebar-w": `\$\{columnWidth\}px`/);
+	assert.match(layout, /width: railWidth/);
+	const css = withoutComments(read("src/renderer/src/styles/index.css"));
+	const native = css
+		.split(
+			'[data-chrome-mode="integrated"]:not([data-chrome-fullscreen="true"])\n\t[data-workspace-tabs] {',
+		)[1]
+		?.split("}")[0];
+	assert.ok(native, "integrated, non-fullscreen titlebar owns the reservation");
+	assert.match(
+		native,
+		/min-height:\s*max\(32px, var\(--panel-top-pad, 0px\), var\(--chrome-inset-end-h\)\)/,
+	);
+	assert.match(
+		native,
+		/--workspace-left-column:\s*var\(--workspace-sidebar-w, 0px\)/,
+	);
+	assert.match(
+		native,
+		/--workspace-right-column:\s*var\(--panel-rail-w, 0px\)/,
+	);
+	assert.match(
+		native,
+		/padding-left:\s*max\(\s*8px,\s*calc\(var\(--chrome-inset-start\) - var\(--workspace-left-column\)\)\s*\)/,
+	);
+	assert.match(
+		native,
+		/padding-right:\s*max\(\s*8px,\s*calc\(var\(--chrome-inset-end\) - var\(--workspace-right-column\)\)\s*\)/,
+	);
+	assert.match(
+		css,
+		/\[data-workspace-tabs\]:dir\(rtl\)\s*\{\s*--workspace-left-column:\s*var\(--panel-rail-w, 0px\);\s*--workspace-right-column:\s*var\(--workspace-sidebar-w, 0px\);/,
+	);
+});
+
+test("the inset keeps non-fill current cues for a tab, rail item and temporary chat", () => {
+	const css = withoutComments(read("src/renderer/src/styles/index.css"));
+	assert.match(
+		css,
+		/\[data-workspace-tab\]\[data-active\] > button\[aria-current\]\s*\{\s*font-weight: 500/,
+	);
+	assert.doesNotMatch(
+		css,
+		/\[data-workspace-shell\][^{}]*\[data-panel-rail-item\][^{}]*::before\s*\{\s*content: none/,
+	);
+	assert.match(
+		css,
+		/\[data-temporary-row\] > \[data-chat-row\]\[aria-current="page"\][^{}]*\{\s*background: transparent/,
+	);
+	const group = read(
+		"src/renderer/src/features/chat/components/sidebar-temporary-group.tsx",
+	);
+	assert.match(
+		group,
+		/data-temporary-row=[\s\S]*?aria-current=\{current \? "page" : undefined\}[\s\S]*?current && rowCurrent/,
 	);
 });
 

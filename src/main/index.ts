@@ -3787,13 +3787,28 @@ app
 		// A renderer that mounts after a reconnect asks for the CURRENT state, so a
 		// healthy feed does not have to produce a transition before the sidebar can
 		// stop saying "not connected".
-		ipcMain.on("desktop-feed-watch", () => {
-			const window = mainWindow;
-			if (!window || window.isDestroyed()) return;
-			window.webContents.send("desktop-feed-state", {
-				connected: backendService.getDesktopFeedRelay().isConnected,
-			});
-		});
+		ipcMain.on(
+			"desktop-feed-watch",
+			(event, includeSessionStatus?: boolean) => {
+				const window = mainWindow;
+				if (
+					!window ||
+					window.isDestroyed() ||
+					event.sender !== window.webContents
+				)
+					return;
+				const relay = backendService.getDesktopFeedRelay();
+				// Cleanup can opt in after the open frame or after a route remount;
+				// unchanged statuses need not be published again by the server.
+				window.webContents.send("desktop-feed-state", {
+					connected: relay.isConnected,
+					sessionStatus:
+						includeSessionStatus === true
+							? relay.sessionStatusSnapshot
+							: undefined,
+				} satisfies DesktopFeedState);
+			},
+		);
 
 		/*
 		 * The viewer record and the control endpoint that backs it: the artifact

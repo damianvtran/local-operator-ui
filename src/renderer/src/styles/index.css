@@ -3935,16 +3935,15 @@ input[data-colour-hue]::-moz-range-thumb {
 /* Shared inset. One plane per job, without new seams.
  * The composer keeps its existing ground and role tokens; only its containing
  * working plane moves. The native drag lane stays a sibling on the shell. */
-[data-workspace-shell]:has([data-chat-workspace]) {
-	background: var(--color-surface);
+html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
+	background-color: var(--color-surface);
 }
+/* No opaque backing behind the sidebar or rail. Their own region rules paint
+ * over the window material; canvas-content alone owns the inset's solid/glass
+ * ground. The clear gaps are shell space, not another canvas layer. */
 [data-workspace-shell]:has([data-chat-workspace])
-	:is(
-		[data-glass-region="sidebar"],
-		[data-panel-rail-host],
-		main[data-glass-region="canvas-backing"]
-	) {
-	background: transparent;
+	main[data-glass-region="canvas-backing"] {
+	background-color: transparent;
 }
 /* The left edge is mounted on the shell column, not on its glass child. */
 [data-workspace-shell]:has([data-chat-workspace])
@@ -3969,7 +3968,9 @@ input[data-colour-hue]::-moz-range-thumb {
 	width: auto;
 	margin: 0 8px 8px;
 	border-radius: 10px;
-	background: var(--color-canvas);
+}
+html:not([data-glass]) [data-workspace-inset] {
+	background-color: var(--color-canvas);
 }
 [data-workspace-shell]:has([data-chat-workspace])
 	[data-workspace-inset]
@@ -4016,15 +4017,12 @@ input[data-colour-hue]::-moz-range-thumb {
 [data-workspace-shell]:has([data-chat-workspace])
 	:is(
 		[data-session-row]:not([data-dragging]),
+		[data-temporary-row] > [data-chat-row][aria-current="page"],
 		[data-workspace-current]:not([data-dragging]),
 		[data-workspace-current]:not([data-dragging]) > [data-chat-row],
 		[data-workspace-launcher] [data-entity] > div:first-child
 	) {
 	background: transparent;
-}
-[data-workspace-shell]:has([data-chat-workspace])
-	[data-panel-rail-item][aria-pressed="true"]::before {
-	content: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] button:focus-visible,
 [data-workspace-launcher] button:focus-visible,
@@ -4040,6 +4038,15 @@ input[data-colour-hue]::-moz-range-thumb {
 	min-height: 32px;
 	gap: 4px;
 	padding-inline: 8px;
+}
+/* The strip is a sibling of the inset: use the sidebar's raw ground here so
+ * the unfilled ellipsis keeps the same ink contrast over native material. */
+html[data-glass~="sidebar"] [data-workspace-tabs] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
 }
 /* Reuse the shell's existing top strip rather than paying for a second row.
  * The OS buttons are physical, so keep their clearances physical in RTL too. */
@@ -4100,6 +4107,9 @@ input[data-colour-hue]::-moz-range-thumb {
 		var(--color-surface)
 	);
 	color: var(--color-ink);
+}
+[data-workspace-tab][data-active] > button[aria-current] {
+	font-weight: 500;
 }
 [data-workspace-tabs] button:focus-visible {
 	outline: 2px solid var(--color-accent);

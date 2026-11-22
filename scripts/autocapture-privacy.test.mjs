@@ -398,6 +398,57 @@ test("named product events and other properties pass through untouched", () => {
 	assert.equal(mod.scrubCaptureResult(null), null);
 });
 
+// Compile the shipped component and Radix wrapper; the only replaced inputs
+// are catalogue data and the unrelated native BrowserView measurement bridge.
+async function loadWorkspaceTabs(require) {
+	const bundle = await build({
+		entryPoints: [
+			join(
+				repo,
+				"src/renderer/src/features/chat/components/workspace-tabs.tsx",
+			),
+		],
+		bundle: true,
+		format: "cjs",
+		platform: "node",
+		packages: "external",
+		jsx: "automatic",
+		define: { "import.meta.env": "{}" },
+		alias: {
+			"@shared/components/ui":
+				"./src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+		},
+		tsconfig: "tsconfig.app.json",
+		write: false,
+		plugins: [
+			{
+				name: "workspace-fixture-ports",
+				setup(b) {
+					b.onResolve(
+						{
+							filter:
+								/^@shared\/(store\/canonical-sessions-store|browser-view-policy)$/,
+						},
+						({ path }) => ({ path, namespace: "ports" }),
+					);
+					b.onLoad({ filter: /.*/, namespace: "ports" }, ({ path }) => ({
+						contents: path.endsWith("canonical-sessions-store")
+							? "export const useCanonicalSessionsStore = (select) => select({sessions: []});"
+							: "export const useMeasuredBrowserViewPanel = () => () => {};",
+					}));
+				},
+			},
+		],
+	});
+	const module = { exports: {} };
+	new Function("require", "module", "exports", bundle.outputFiles[0].text)(
+		require,
+		module,
+		module.exports,
+	);
+	return module.exports.WorkspaceTabs;
+}
+
 /*
  * THE REAL PATH: posthog-js's own autocapture building `$el_text`,
  * `$elements` and `$elements_chain` from a DOM, then this module's hook.
@@ -427,6 +478,11 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		"ShadowRoot",
 		"DocumentFragment",
 		"getComputedStyle",
+		"CustomEvent",
+		"MutationObserver",
+		"NodeFilter",
+		"ResizeObserver",
+		"IS_REACT_ACT_ENVIRONMENT",
 	];
 	for (const key of globals) {
 		saved[key] = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -454,6 +510,8 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 		started.push(handle);
 		return handle;
 	};
+	let workspaceRoot;
+	let act;
 	try {
 		const posthog = require("posthog-js").default;
 		const queued = [];
@@ -510,10 +568,15 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			body.querySelector(`#${id}`).dispatchEvent(
 				new dom.window.MouseEvent("click", {
 					bubbles: true,
+					cancelable: true,
 					clientX: 1,
 					clientY: 1,
 				}),
 			);
+		// The fixture asks the SDK to observe the link, not jsdom to visit it.
+		body
+			.querySelector("#link")
+			.addEventListener("click", (event) => event.preventDefault());
 		const ids = [
 			"check",
 			"cjk",
@@ -617,7 +680,220 @@ test("real posthog-js autocapture, through the renderer's before_send", async ()
 			link.$external_click_url,
 			"https://acme.sharepoint.com/[redacted:url]",
 		);
+
+		const WorkspaceTabs = await loadWorkspaceTabs(require);
+		const React = require("react");
+		const { createRoot } = require("react-dom/client");
+		act = React.act;
+		globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+		globalThis.ResizeObserver = class {
+			observe() {}
+			disconnect() {}
+		};
+		dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+		Object.defineProperty(dom.window.HTMLElement.prototype, "scrollWidth", {
+			get() {
+				return this.hasAttribute("data-workspace-regular") ? 1200 : 0;
+			},
+		});
+		Object.defineProperty(dom.window.HTMLElement.prototype, "clientWidth", {
+			get() {
+				return this.hasAttribute("data-workspace-regular") ? 400 : 0;
+			},
+		});
+		const host = body.appendChild(dom.window.document.createElement("div"));
+		workspaceRoot = createRoot(host);
+		const privateTitle = "Private merger";
+		const identity = "fixtureSensitiveIdentity";
+		const tabs = Array.from({ length: 32 }, (_, i) => ({
+			key: `${identity}-${i}`,
+			target: { kind: "session", id: `${identity}-${i}` },
+			pinned: false,
+		}));
+		const props = {
+			activeKey: tabs[0].key,
+			activeTitle: privateTitle,
+			tabs,
+			titles: { [tabs.at(-1).key]: `${privateTitle} late` },
+			autoClose: false,
+			onAutoCloseChange() {},
+			focusRequested: false,
+			onFocusHandled() {},
+			onOpen() {},
+			onClose() {},
+			onPin() {},
+			onMove() {},
+		};
+		const render = (next) =>
+			act(() => workspaceRoot.render(React.createElement(WorkspaceTabs, next)));
+		await render(props);
+		const nav = host.querySelector("[data-workspace-tabs]");
+		const first = nav.querySelector(
+			'[data-workspace-tab] button[aria-current="page"]',
+		);
+		const close = nav.querySelector("[data-workspace-close]");
+		const trigger = nav.querySelector("[data-workspace-more]");
+		const keydown = (node, key) =>
+			act(() =>
+				node.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", {
+						key,
+						bubbles: true,
+						cancelable: true,
+					}),
+				),
+			);
+		const clickNode = (node) =>
+			act(() =>
+				node.dispatchEvent(
+					new dom.window.MouseEvent("click", {
+						bubbles: true,
+						clientX: 1,
+						clientY: 1,
+					}),
+				),
+			);
+		const captureFrom = queued.length;
+		await clickNode(first.querySelector(".truncate"));
+		await clickNode(close);
+		await clickNode(trigger);
+		await keydown(trigger, "ArrowDown");
+		const menu = body.querySelector("[data-workspace-tab-menu]");
+		assert.ok(
+			menu && !nav.contains(menu),
+			"this is the real separately portaled menu",
+		);
+		const menuItems = [...menu.querySelectorAll('[role="menuitem"]')];
+		const lastTab = menuItems[tabs.length - 1];
+		const cleanup = menu.querySelector('[role="menuitemcheckbox"]');
+		assert.equal(lastTab.textContent, `${privateTitle} late`);
+		// PostHog counts a non-native control when its cursor is a pointer. Force
+		// that eligible shape even without the renderer's stylesheet in jsdom.
+		lastTab.style.cursor = "pointer";
+		await clickNode(lastTab.querySelector(".truncate"));
+		const workspaceCaptures = queued
+			.slice(captureFrom)
+			.filter((item) => item.event === "$autocapture");
+		assert.equal(workspaceCaptures.length, 4);
+		for (const { properties } of workspaceCaptures) {
+			const wire = JSON.stringify(properties);
+			assert.doesNotMatch(wire, /Private merger|fixtureSensitiveIdentity/);
+			assert.equal(properties.$el_text, undefined);
+		}
+		// Replay's text mask doesn't cover attributes. Independently inspect
+		// the real nodes (while attached or retained from their portal).
+		for (const region of [nav, menu]) {
+			assert.ok(region.classList.contains("ph-mask"));
+			for (const element of [region, ...region.querySelectorAll("*")]) {
+				for (const attr of element.attributes)
+					assert.doesNotMatch(
+						attr.value,
+						/Private merger|fixtureSensitiveIdentity/,
+					);
+			}
+		}
+		assert.equal(first.textContent, privateTitle);
+		assert.equal(close.textContent, `Close ${privateTitle}`);
+		const unmarked = body.appendChild(nav.cloneNode(true));
+		unmarked.classList.remove("ph-sensitive", "ph-mask");
+		await clickNode(
+			unmarked.querySelector("[data-workspace-tab] button .truncate"),
+		);
+		assert.equal(
+			queued.at(-1).properties.$el_text,
+			privateTitle,
+			"the same SDK and click leak the label when the original boundary is absent",
+		);
+		unmarked.remove();
+
+		// Mechanical constraints + the real Radix keyboard and wheel path. jsdom
+		// has no layout, so supply a synthetic scrollbox and check the lock lets
+		// wheel through inside it without letting it scroll the page underneath.
+		await keydown(trigger, "ArrowDown");
+		const reopened = body.querySelector("[data-workspace-tab-menu]");
+		assert.ok(
+			reopened.classList.contains(
+				"max-h-[var(--radix-dropdown-menu-content-available-height)]",
+			),
+		);
+		assert.ok(reopened.classList.contains("overflow-y-auto"));
+		assert.ok(cleanup);
+		reopened.style.overflowY = "auto";
+		Object.defineProperties(reopened, {
+			scrollHeight: { value: 1100 },
+			clientHeight: { value: 550 },
+		});
+		const wheel = (node) => {
+			const e = new dom.window.WheelEvent("wheel", {
+				deltaY: 60,
+				bubbles: true,
+				cancelable: true,
+			});
+			node.dispatchEvent(e);
+			return e.defaultPrevented;
+		};
+		assert.equal(
+			wheel(reopened),
+			false,
+			"the menu's wheel reaches its scrollport",
+		);
+		assert.equal(
+			wheel(trigger),
+			true,
+			"the open menu still prevents wheel on the page",
+		);
+		await keydown(reopened, "End");
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		assert.equal(
+			dom.window.document.activeElement.getAttribute("role"),
+			"menuitemcheckbox",
+		);
+		const trailing =
+			reopened.querySelectorAll(
+				'[role="menuitem"]:not([aria-disabled="true"]), [role="menuitemcheckbox"]',
+			).length - tabs.length;
+		for (let i = 0; i < trailing; i++) {
+			await keydown(dom.window.document.activeElement, "ArrowUp");
+			await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		}
+		assert.equal(
+			dom.window.document.activeElement.textContent,
+			`${privateTitle} late`,
+		);
+		await keydown(dom.window.document.activeElement, "Home");
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		assert.equal(dom.window.document.activeElement.textContent, privateTitle);
+		await keydown(dom.window.document.activeElement, "Escape");
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		assert.equal(dom.window.document.activeElement, trigger);
+
+		let pinned;
+		await render({
+			...props,
+			onPin: (key) => {
+				pinned = key;
+				workspaceRoot.render(
+					React.createElement(WorkspaceTabs, {
+						...props,
+						tabs: tabs.map((tab) =>
+							tab.key === key ? { ...tab, pinned: true } : tab,
+						),
+					}),
+				);
+			},
+		});
+		await keydown(trigger, "ArrowDown");
+		const pinAction = body.querySelector("[data-workspace-pin]");
+		await act(() => pinAction.focus());
+		await keydown(pinAction, "Enter");
+		await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+		assert.equal(pinned, tabs[0].key);
+		assert.equal(
+			dom.window.document.activeElement,
+			nav.querySelector("[data-workspace-pinned] button[aria-current]"),
+		);
 	} finally {
+		if (workspaceRoot) await act(() => workspaceRoot.unmount());
 		for (const key of globals) {
 			if (saved[key]) Object.defineProperty(globalThis, key, saved[key]);
 			else delete globalThis[key];

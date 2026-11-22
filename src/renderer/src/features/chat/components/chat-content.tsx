@@ -4276,7 +4276,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		return (
 			<div data-chat-workspace="" className="flex h-full min-h-0 flex-col">
 				{workspaceTabs}
-				<div data-workspace-inset="" className="flex min-w-0 flex-col">
+				<div
+					data-workspace-inset=""
+					data-glass-region="canvas-content"
+					className="flex min-w-0 flex-col"
+				>
 					{workspaceHeader}
 					{paneRow}
 				</div>

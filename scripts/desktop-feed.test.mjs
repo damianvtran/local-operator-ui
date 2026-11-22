@@ -214,6 +214,74 @@ function attentionFrame(sessionId, overrides = {}) {
 	};
 }
 
+test("the live relay can seed a watcher that missed open, but clears proof on gap and disconnect", async (t) => {
+	let source;
+	t.mock.method(globalThis, "fetch", async (_url, options) => {
+		source = sseSource(options.signal);
+		return source.response;
+	});
+	const relay = new DesktopFeedRelay("http://127.0.0.1:9/", "token", {
+		request: async () => ({
+			status: 200,
+			body: { result: { features: { desktop_feed: true } } },
+		}),
+		beatPresence: async () => ({ status: 200, body: null }),
+	});
+	t.after(() => relay.stop());
+	const connected = new Promise((resolve) =>
+		relay.watchState((state) => {
+			if (state.connected) resolve();
+		}),
+	);
+	await relay.start();
+	await connected;
+	assert.equal(
+		relay.sessionStatusSnapshot,
+		undefined,
+		"a socket is not proof before open",
+	);
+	const push = (frame) =>
+		new Promise((resolve) => {
+			relay.observe(resolve);
+			source.push(frame);
+		});
+	await push(
+		openFrame({
+			attention_status: {
+				[`session/${SESSION}`]: { revision: 7, code: "idle" },
+			},
+		}),
+	);
+	assert.deepEqual(relay.sessionStatusSnapshot.statuses, {
+		[SESSION]: { revision: 7, code: "idle" },
+	});
+	await push({
+		type: "session_status",
+		epoch: "old",
+		seq: 2,
+		session_id: SESSION,
+		payload: { revision: 9, code: "working" },
+	});
+	assert.equal(relay.sessionStatusSnapshot.statuses[SESSION].code, "idle");
+	await push({
+		type: "session_status",
+		epoch: "feed",
+		seq: 2,
+		session_id: SESSION,
+		payload: { revision: 8, code: "working" },
+	});
+	assert.equal(relay.sessionStatusSnapshot.statuses[SESSION].code, "working");
+	await push({
+		type: "gap",
+		epoch: "feed",
+		seq: 3,
+		payload: { reason: "fixture", subscription_id: "abcd1234" },
+	});
+	assert.deepEqual(relay.sessionStatusSnapshot.statuses, {});
+	relay.stop();
+	assert.equal(relay.sessionStatusSnapshot, undefined);
+});
+
 // ------------------------------------------------------- the capability gate
 
 test("with no desktop_feed capability no socket is opened and no presence is beaten", async () => {

@@ -76,10 +76,16 @@ export function syncWorkspaceTabs(
 			result = result.filter((item) => item.key !== tab.key);
 		}
 	}
-	return active &&
-		!result.some((tab) => sameWorkspaceTarget(tab.target, active))
-		? [...result, makeWorkspaceTab(active)]
-		: result;
+	if (!active || result.some((tab) => sameWorkspaceTarget(tab.target, active)))
+		return result;
+	const tab = makeWorkspaceTab(active);
+	// Targeted drafts can reuse a canonical draft id after admission. The old
+	// tab keeps its instance key, lane and focus; only the new tab needs a key.
+	const occupied = new Set(result.map(({ key }) => key));
+	const base = tab.key;
+	for (let ordinal = 2; occupied.has(tab.key); ordinal++)
+		tab.key = `${base}:${ordinal}`;
+	return [...result, tab];
 }
 
 export function moveWorkspaceTab(
