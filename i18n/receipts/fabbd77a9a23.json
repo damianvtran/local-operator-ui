@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "session": "fabbd77a9a23",
+  "instance": "fabbd77a9a23",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "No fallback: the session's served model (system prompt 'Model: anthropic/claude-opus-5-5') is the model that performed every check.",
+  "independence": "Independent auditor in session fabbd77a9a23; did not author or modify any translation. Translator was job e816743998a3 (anthropic/claude-opus-5-5): same model family, separate session and context. Disclosed because model-level independence is not achieved, only session-level.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "fabbd77a9a23",
+    "instance": "fabbd77a9a23",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "model_source": "Session system prompt: 'Model: anthropic/claude-opus-5-5'.",
+    "independent_from_translator_session": true
+  },
+  "locale": "zh-CN",
+  "date": "2026-11-19",
+  "branch": "fix/i18n-agents-team-config-english",
+  "base": "1eec0703e662114f37e61e3b2c92cb2c04fb64d7 (merge-base with origin/main)",
+  "head": "f6e6260da1c10b887fba3dfa59de725cf21a77ba",
+  "round": 1,
+  "translation_state": "zh-CN values are uncommitted working-tree edits on top of head f6e6260da1; audited bytes pinned by the zh-CN sha256 values below.",
+  "scope": "The 55 keys this branch adds to en ui.agents.config (47) and ui.agents.teams (8), audited in zh-CN against English and the translator context files. Existing zh-CN values used only as glossary context.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "ZH-1",
+        "severity": "nit",
+        "key": "ui.agents.config.seed_prompt",
+        "finding": "Seed wraps the identifier in full-width quotes (修改智能体“{name}”： ) while the sibling *_named step keys set it off with a plain space (正在创建智能体 {name}). Both are acceptable; quoting is arguably better in the seed because the text is sent to the model and the quotes delimit the identifier exactly. Style inconsistency only; no change required.",
+        "suggestion": "Optional: leave as is, or align the step keys on quotes in a later style pass."
+      },
+      {
+        "id": "ZH-2",
+        "severity": "nit",
+        "key": "ui.agents.config.disabled.needs_newer_backend",
+        "finding": "“需要更新版本的后端” — 更新 can momentarily read as the verb 'update' (需要更新 + 版本的后端) before resolving to 'newer'; the second sentence then uses 更新 as a verb, compounding the double reading.",
+        "suggestion": "“请求更改”需要较新版本的后端。请更新Local Operator，以通过对话配置智能体。"
+      }
+    ]
+  },
+  "checks": {
+    "hashes": "Recomputed with shasum -a 256 before review; both zh-CN hashes matched the brief.",
+    "no_existing_key_changed": "git diff HEAD on zh-CN files: config +48/-1, teams +9/-1; the single '-' line in each is the previous last entry gaining a trailing comma (value unchanged). Parsed comparison: 0 changed values, 47+8 added keys equal exactly the en-new key sets, 0 missing, 0 extra.",
+    "icu": "Argument names identical to English in all 55 keys ({kind},{name},{field},{tool},{count},{before},{after}); every select carries arms agent/team/skill/other in order; tools_added/tools_removed use only `other` with `#` (zh CLDR has only 'other').",
+    "english_left": "No Latin text outside ICU syntax/placeholders except the product name 'Local Operator' (context: never translated).",
+    "punctuation": "Full-width ：，。（）“”—— throughout; teams.includes_team keeps the leading '·' per context.",
+    "glossary": "智能体/团队/技能 match ui.agents.config.kind.*; 管理者 matches ui.agents.teams.section.manager; 档位 matches ui.agents.detail effort strings; 主动型/响应型 match ui.agents.refusals.class.label.*; 委派 matches ui.agents.detail.delegate.*; 请求更改 matches ui.agents.detail.action.ask_change; 输入框 matches existing 'the box' usage; 你 register throughout; team form errors parallel ui.agents.detail.create/edit siblings (请为…填写名称。/无法保存该…。/新建…).",
+    "seed_prompt_judgement": "ACCEPTED, no finding. '修改{kind…}“{name}”： ' keeps the colon and trailing space the context requires. typedTopic() (use-config-run.ts:242-248) trims both the seed and the box text before startsWith, so the space is functionally neutral for seed recognition; it sits after a full-width colon whose glyph already carries spacing, so the visual cost is a slight extra gap only. {name} is untouched inside the quotes and translateRaw sends it verbatim, so the model's name match is preserved; the quotes delimit the identifier. Style relation to the *_named step keys noted as ZH-1 (nit).",
+    "fit": "All strings are short status/step/change phrases equal to or shorter than English in rendered width; no length concern."
+  },
+  "namespaces": {
+    "ui.agents.config": {
+      "namespace": "ui.agents.config",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "035f6293e67df81cc4cb9c68ece30de322c2a8fbf150c477cd2ac5a9dfe39201",
+        "zh-CN": "da2bbd232641dbbb83e6e1996924c7c74705d7baf49ec341f9d7cd52d6e76710"
+      },
+      "context_sha256": "dff7308a7e793d9f847d98fea3a2fd596b901ef09844a77aa43229b5e9488ca3",
+      "keys_read": 47,
+      "reviewed_keys": [
+        "ui.agents.config.title.working",
+        "ui.agents.config.title.stopping",
+        "ui.agents.config.title.finished",
+        "ui.agents.config.title.finished_no_changes",
+        "ui.agents.config.title.stopped",
+        "ui.agents.config.title.stopped_error",
+        "ui.agents.config.title.finished_error",
+        "ui.agents.config.placeholder.working",
+        "ui.agents.config.seed_prompt",
+        "ui.agents.config.error.lists_unreadable",
+        "ui.agents.config.error.send_after_setup",
+        "ui.agents.config.error.start_failed",
+        "ui.agents.config.error.send_failed",
+        "ui.agents.config.error.stop_unacknowledged",
+        "ui.agents.config.disabled.connecting",
+        "ui.agents.config.disabled.needs_newer_backend",
+        "ui.agents.config.summary.step.creating_named",
+        "ui.agents.config.summary.step.creating",
+        "ui.agents.config.summary.step.updating_named",
+        "ui.agents.config.summary.step.updating",
+        "ui.agents.config.summary.step.editing_named",
+        "ui.agents.config.summary.step.editing",
+        "ui.agents.config.summary.step.installing_named",
+        "ui.agents.config.summary.step.installing",
+        "ui.agents.config.summary.step.reading_named",
+        "ui.agents.config.summary.step.reading",
+        "ui.agents.config.summary.step.working",
+        "ui.agents.config.summary.step.checked",
+        "ui.agents.config.summary.change.description",
+        "ui.agents.config.summary.change.kind",
+        "ui.agents.config.summary.change.effort",
+        "ui.agents.config.summary.change.manager",
+        "ui.agents.config.summary.change.instructions",
+        "ui.agents.config.summary.change.field",
+        "ui.agents.config.summary.change.tools",
+        "ui.agents.config.summary.change.tools_widened",
+        "ui.agents.config.summary.change.tools_narrowed",
+        "ui.agents.config.summary.change.tool_added",
+        "ui.agents.config.summary.change.tool_removed",
+        "ui.agents.config.summary.change.tools_added",
+        "ui.agents.config.summary.change.tools_removed",
+        "ui.agents.config.summary.change.tools_changed",
+        "ui.agents.config.summary.change.delegation_on",
+        "ui.agents.config.summary.change.delegation_off",
+        "ui.agents.config.summary.change.class_proactive",
+        "ui.agents.config.summary.change.class_reactive",
+        "ui.agents.config.summary.change.members"
+      ]
+    },
+    "ui.agents.teams": {
+      "namespace": "ui.agents.teams",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "286085cbd56112a7a337de99e5dc6cac029b9d3c024080264c6ea2eb0cd3605c",
+        "zh-CN": "af2ee3cef4acfecc48596eab95a378aa3c8f6f92809f0d157bb2e87190bee8a1"
+      },
+      "context_sha256": "5bbd0ccbd3bb57c4ebdabcfcb75990be80a5617d267ca334648d70f2045dc206",
+      "keys_read": 8,
+      "reviewed_keys": [
+        "ui.agents.teams.create.error_name_required",
+        "ui.agents.teams.create.error_name_taken",
+        "ui.agents.teams.create.error_instructions_required",
+        "ui.agents.teams.edit.error_generic",
+        "ui.agents.teams.create.title_new",
+        "ui.agents.teams.includes_team",
+        "ui.agents.teams.group.agents",
+        "ui.agents.teams.group.teams"
+      ]
+    }
+  }
+}

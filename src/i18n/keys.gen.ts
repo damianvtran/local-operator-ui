@@ -88,6 +88,7 @@ import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
 import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
 import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
+import enUiChatRemoteCompute from "./catalogues/en/ui.chat.remote_compute.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunControls from "./catalogues/en/ui.chat.run_controls.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
@@ -195,6 +196,7 @@ import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.jso
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridgeEdit from "./catalogues/en/ui.teamBridge.edit.json";
 import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
+import enUiTeamBridgeHoldsBatch from "./catalogues/en/ui.teamBridge.holdsBatch.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import enUiTeamBridgeLeave from "./catalogues/en/ui.teamBridge.leave.json";
 import enUiTeamBridgeRename from "./catalogues/en/ui.teamBridge.rename.json";
@@ -270,6 +272,7 @@ import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
 import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
+import esUiChatRemoteCompute from "./catalogues/es/ui.chat.remote_compute.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatRunControls from "./catalogues/es/ui.chat.run_controls.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
@@ -377,6 +380,7 @@ import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.jso
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridgeEdit from "./catalogues/es/ui.teamBridge.edit.json";
 import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
+import esUiTeamBridgeHoldsBatch from "./catalogues/es/ui.teamBridge.holdsBatch.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import esUiTeamBridgeLeave from "./catalogues/es/ui.teamBridge.leave.json";
 import esUiTeamBridgeRename from "./catalogues/es/ui.teamBridge.rename.json";
@@ -452,6 +456,7 @@ import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
 import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
+import frUiChatRemoteCompute from "./catalogues/fr/ui.chat.remote_compute.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatRunControls from "./catalogues/fr/ui.chat.run_controls.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
@@ -559,6 +564,7 @@ import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.jso
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridgeEdit from "./catalogues/fr/ui.teamBridge.edit.json";
 import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
+import frUiTeamBridgeHoldsBatch from "./catalogues/fr/ui.teamBridge.holdsBatch.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import frUiTeamBridgeLeave from "./catalogues/fr/ui.teamBridge.leave.json";
 import frUiTeamBridgeRename from "./catalogues/fr/ui.teamBridge.rename.json";
@@ -634,6 +640,7 @@ import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
 import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
+import hiUiChatRemoteCompute from "./catalogues/hi/ui.chat.remote_compute.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatRunControls from "./catalogues/hi/ui.chat.run_controls.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
@@ -741,6 +748,7 @@ import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.jso
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridgeEdit from "./catalogues/hi/ui.teamBridge.edit.json";
 import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
+import hiUiTeamBridgeHoldsBatch from "./catalogues/hi/ui.teamBridge.holdsBatch.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import hiUiTeamBridgeLeave from "./catalogues/hi/ui.teamBridge.leave.json";
 import hiUiTeamBridgeRename from "./catalogues/hi/ui.teamBridge.rename.json";
@@ -816,6 +824,7 @@ import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
 import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
+import ruUiChatRemoteCompute from "./catalogues/ru/ui.chat.remote_compute.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatRunControls from "./catalogues/ru/ui.chat.run_controls.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
@@ -923,6 +932,7 @@ import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.jso
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridgeEdit from "./catalogues/ru/ui.teamBridge.edit.json";
 import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
+import ruUiTeamBridgeHoldsBatch from "./catalogues/ru/ui.teamBridge.holdsBatch.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import ruUiTeamBridgeLeave from "./catalogues/ru/ui.teamBridge.leave.json";
 import ruUiTeamBridgeRename from "./catalogues/ru/ui.teamBridge.rename.json";
@@ -998,6 +1008,7 @@ import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
 import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
+import urUiChatRemoteCompute from "./catalogues/ur/ui.chat.remote_compute.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatRunControls from "./catalogues/ur/ui.chat.run_controls.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
@@ -1105,6 +1116,7 @@ import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.jso
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridgeEdit from "./catalogues/ur/ui.teamBridge.edit.json";
 import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
+import urUiTeamBridgeHoldsBatch from "./catalogues/ur/ui.teamBridge.holdsBatch.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import urUiTeamBridgeLeave from "./catalogues/ur/ui.teamBridge.leave.json";
 import urUiTeamBridgeRename from "./catalogues/ur/ui.teamBridge.rename.json";
@@ -1180,6 +1192,7 @@ import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
 import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
+import viUiChatRemoteCompute from "./catalogues/vi/ui.chat.remote_compute.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatRunControls from "./catalogues/vi/ui.chat.run_controls.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
@@ -1287,6 +1300,7 @@ import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.jso
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridgeEdit from "./catalogues/vi/ui.teamBridge.edit.json";
 import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
+import viUiTeamBridgeHoldsBatch from "./catalogues/vi/ui.teamBridge.holdsBatch.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import viUiTeamBridgeLeave from "./catalogues/vi/ui.teamBridge.leave.json";
 import viUiTeamBridgeRename from "./catalogues/vi/ui.teamBridge.rename.json";
@@ -1362,6 +1376,7 @@ import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
 import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json";
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
+import zhCNUiChatRemoteCompute from "./catalogues/zh-CN/ui.chat.remote_compute.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatRunControls from "./catalogues/zh-CN/ui.chat.run_controls.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
@@ -1469,6 +1484,7 @@ import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approval
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridgeEdit from "./catalogues/zh-CN/ui.teamBridge.edit.json";
 import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
+import zhCNUiTeamBridgeHoldsBatch from "./catalogues/zh-CN/ui.teamBridge.holdsBatch.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 import zhCNUiTeamBridgeLeave from "./catalogues/zh-CN/ui.teamBridge.leave.json";
 import zhCNUiTeamBridgeRename from "./catalogues/zh-CN/ui.teamBridge.rename.json";
@@ -1547,6 +1563,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatQuotaResend,
 	...enUiChatRadientSession,
 	...enUiChatReadAck,
+	...enUiChatRemoteCompute,
 	...enUiChatResponseActions,
 	...enUiChatRunControls,
 	...enUiChatRunDetails,
@@ -1654,6 +1671,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridgeEdit,
 	...enUiTeamBridgeHolds,
+	...enUiTeamBridgeHoldsBatch,
 	...enUiTeamBridge,
 	...enUiTeamBridgeLeave,
 	...enUiTeamBridgeRename,
@@ -1737,6 +1755,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatQuotaResend,
 		...esUiChatRadientSession,
 		...esUiChatReadAck,
+		...esUiChatRemoteCompute,
 		...esUiChatResponseActions,
 		...esUiChatRunControls,
 		...esUiChatRunDetails,
@@ -1844,6 +1863,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridgeEdit,
 		...esUiTeamBridgeHolds,
+		...esUiTeamBridgeHoldsBatch,
 		...esUiTeamBridge,
 		...esUiTeamBridgeLeave,
 		...esUiTeamBridgeRename,
@@ -1921,6 +1941,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatQuotaResend,
 		...frUiChatRadientSession,
 		...frUiChatReadAck,
+		...frUiChatRemoteCompute,
 		...frUiChatResponseActions,
 		...frUiChatRunControls,
 		...frUiChatRunDetails,
@@ -2028,6 +2049,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridgeEdit,
 		...frUiTeamBridgeHolds,
+		...frUiTeamBridgeHoldsBatch,
 		...frUiTeamBridge,
 		...frUiTeamBridgeLeave,
 		...frUiTeamBridgeRename,
@@ -2105,6 +2127,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatQuotaResend,
 		...hiUiChatRadientSession,
 		...hiUiChatReadAck,
+		...hiUiChatRemoteCompute,
 		...hiUiChatResponseActions,
 		...hiUiChatRunControls,
 		...hiUiChatRunDetails,
@@ -2212,6 +2235,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridgeEdit,
 		...hiUiTeamBridgeHolds,
+		...hiUiTeamBridgeHoldsBatch,
 		...hiUiTeamBridge,
 		...hiUiTeamBridgeLeave,
 		...hiUiTeamBridgeRename,
@@ -2289,6 +2313,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatQuotaResend,
 		...ruUiChatRadientSession,
 		...ruUiChatReadAck,
+		...ruUiChatRemoteCompute,
 		...ruUiChatResponseActions,
 		...ruUiChatRunControls,
 		...ruUiChatRunDetails,
@@ -2396,6 +2421,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridgeEdit,
 		...ruUiTeamBridgeHolds,
+		...ruUiTeamBridgeHoldsBatch,
 		...ruUiTeamBridge,
 		...ruUiTeamBridgeLeave,
 		...ruUiTeamBridgeRename,
@@ -2473,6 +2499,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatQuotaResend,
 		...urUiChatRadientSession,
 		...urUiChatReadAck,
+		...urUiChatRemoteCompute,
 		...urUiChatResponseActions,
 		...urUiChatRunControls,
 		...urUiChatRunDetails,
@@ -2580,6 +2607,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridgeEdit,
 		...urUiTeamBridgeHolds,
+		...urUiTeamBridgeHoldsBatch,
 		...urUiTeamBridge,
 		...urUiTeamBridgeLeave,
 		...urUiTeamBridgeRename,
@@ -2657,6 +2685,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatQuotaResend,
 		...viUiChatRadientSession,
 		...viUiChatReadAck,
+		...viUiChatRemoteCompute,
 		...viUiChatResponseActions,
 		...viUiChatRunControls,
 		...viUiChatRunDetails,
@@ -2764,6 +2793,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridgeEdit,
 		...viUiTeamBridgeHolds,
+		...viUiTeamBridgeHoldsBatch,
 		...viUiTeamBridge,
 		...viUiTeamBridgeLeave,
 		...viUiTeamBridgeRename,
@@ -2841,6 +2871,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatQuotaResend,
 		...zhCNUiChatRadientSession,
 		...zhCNUiChatReadAck,
+		...zhCNUiChatRemoteCompute,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatRunControls,
 		...zhCNUiChatRunDetails,
@@ -2948,6 +2979,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridgeEdit,
 		...zhCNUiTeamBridgeHolds,
+		...zhCNUiTeamBridgeHoldsBatch,
 		...zhCNUiTeamBridge,
 		...zhCNUiTeamBridgeLeave,
 		...zhCNUiTeamBridgeRename,
@@ -3132,8 +3164,15 @@ export type MessageParams = {
 	"ui.agents.config.banner.unavailable": undefined;
 	"ui.agents.config.composer.label": undefined;
 	"ui.agents.config.definitions": { count: number };
+	"ui.agents.config.disabled.connecting": undefined;
+	"ui.agents.config.disabled.needs_newer_backend": undefined;
 	"ui.agents.config.disabled_gate": undefined;
+	"ui.agents.config.error.lists_unreadable": undefined;
+	"ui.agents.config.error.send_after_setup": undefined;
+	"ui.agents.config.error.send_failed": undefined;
+	"ui.agents.config.error.start_failed": undefined;
 	"ui.agents.config.error.stop_refused": undefined;
+	"ui.agents.config.error.stop_unacknowledged": undefined;
 	"ui.agents.config.error.turn_failed": undefined;
 	"ui.agents.config.examples.add_twice": undefined;
 	"ui.agents.config.examples.reads_code": undefined;
@@ -3143,22 +3182,68 @@ export type MessageParams = {
 	"ui.agents.config.placeholder.about": { name: string };
 	"ui.agents.config.placeholder.docked": undefined;
 	"ui.agents.config.placeholder.hero": undefined;
+	"ui.agents.config.placeholder.working": undefined;
 	"ui.agents.config.result.changed": undefined;
 	"ui.agents.config.result.configured": undefined;
 	"ui.agents.config.result.created": undefined;
 	"ui.agents.config.run_details_region": undefined;
+	"ui.agents.config.seed_prompt": { kind: string; name: string };
 	"ui.agents.config.state.did_not_finish": undefined;
 	"ui.agents.config.state.sending": undefined;
 	"ui.agents.config.state.stopping": undefined;
 	"ui.agents.config.status.attached": undefined;
 	"ui.agents.config.stopped.kept": undefined;
 	"ui.agents.config.stopped.nothing": undefined;
+	"ui.agents.config.summary.change.class_proactive": undefined;
+	"ui.agents.config.summary.change.class_reactive": undefined;
+	"ui.agents.config.summary.change.delegation_off": undefined;
+	"ui.agents.config.summary.change.delegation_on": undefined;
+	"ui.agents.config.summary.change.description": undefined;
+	"ui.agents.config.summary.change.effort": undefined;
+	"ui.agents.config.summary.change.field": { field: string };
+	"ui.agents.config.summary.change.instructions": undefined;
+	"ui.agents.config.summary.change.kind": undefined;
+	"ui.agents.config.summary.change.manager": undefined;
+	"ui.agents.config.summary.change.members": { before: string; after: string };
+	"ui.agents.config.summary.change.tool_added": { tool: string };
+	"ui.agents.config.summary.change.tool_removed": { tool: string };
+	"ui.agents.config.summary.change.tools": undefined;
+	"ui.agents.config.summary.change.tools_added": { count: number };
+	"ui.agents.config.summary.change.tools_changed": undefined;
+	"ui.agents.config.summary.change.tools_narrowed": undefined;
+	"ui.agents.config.summary.change.tools_removed": { count: number };
+	"ui.agents.config.summary.change.tools_widened": undefined;
 	"ui.agents.config.summary.created": { name: string };
 	"ui.agents.config.summary.hidden_changes": undefined;
 	"ui.agents.config.summary.no_changes": undefined;
 	"ui.agents.config.summary.nothing_else": undefined;
+	"ui.agents.config.summary.step.checked": { kind: string };
+	"ui.agents.config.summary.step.creating": { kind: string };
+	"ui.agents.config.summary.step.creating_named": {
+		kind: string;
+		name: string;
+	};
+	"ui.agents.config.summary.step.editing": { kind: string };
+	"ui.agents.config.summary.step.editing_named": { kind: string; name: string };
+	"ui.agents.config.summary.step.installing": undefined;
+	"ui.agents.config.summary.step.installing_named": { name: string };
+	"ui.agents.config.summary.step.reading": { kind: string };
+	"ui.agents.config.summary.step.reading_named": { name: string };
+	"ui.agents.config.summary.step.updating": { kind: string };
+	"ui.agents.config.summary.step.updating_named": {
+		kind: string;
+		name: string;
+	};
+	"ui.agents.config.summary.step.working": { kind: string };
 	"ui.agents.config.summary.updated": { name: string };
 	"ui.agents.config.summary.you_asked": { topic: string };
+	"ui.agents.config.title.finished": undefined;
+	"ui.agents.config.title.finished_error": undefined;
+	"ui.agents.config.title.finished_no_changes": undefined;
+	"ui.agents.config.title.stopped": undefined;
+	"ui.agents.config.title.stopped_error": undefined;
+	"ui.agents.config.title.stopping": undefined;
+	"ui.agents.config.title.working": undefined;
 	"ui.agents.descriptions.aida": undefined;
 	"ui.agents.descriptions.architect": undefined;
 	"ui.agents.descriptions.coder": undefined;
@@ -3811,6 +3896,11 @@ export type MessageParams = {
 	"ui.agents.teams.col.count": undefined;
 	"ui.agents.teams.col.member": undefined;
 	"ui.agents.teams.col.type": undefined;
+	"ui.agents.teams.create.error_instructions_required": undefined;
+	"ui.agents.teams.create.error_name_required": undefined;
+	"ui.agents.teams.create.error_name_taken": { name: string };
+	"ui.agents.teams.create.title_new": undefined;
+	"ui.agents.teams.edit.error_generic": undefined;
 	"ui.agents.teams.empty.description": undefined;
 	"ui.agents.teams.empty.not_found": undefined;
 	"ui.agents.teams.empty.not_found_name": { name: string };
@@ -3826,6 +3916,9 @@ export type MessageParams = {
 	"ui.agents.teams.field.name_hint": undefined;
 	"ui.agents.teams.field.name_label": undefined;
 	"ui.agents.teams.field.what_for_label": undefined;
+	"ui.agents.teams.group.agents": undefined;
+	"ui.agents.teams.group.teams": undefined;
+	"ui.agents.teams.includes_team": undefined;
 	"ui.agents.teams.kind.agent": undefined;
 	"ui.agents.teams.kind.team": undefined;
 	"ui.agents.teams.member_count": { count: number };
@@ -7458,6 +7551,93 @@ export type MessageParams = {
 	"ui.chat.read_ack.retry_remedy": undefined;
 	"ui.chat.read_ack.retry_remedy_sentence": undefined;
 	"ui.chat.read_ack.unreachable_fallback": undefined;
+	"ui.chat.remote_compute.card.artifacts_soon": undefined;
+	"ui.chat.remote_compute.card.binding": { network: string };
+	"ui.chat.remote_compute.card.binding_none": undefined;
+	"ui.chat.remote_compute.card.cancel": undefined;
+	"ui.chat.remote_compute.card.cancel_failed": undefined;
+	"ui.chat.remote_compute.card.charged": { amount: string };
+	"ui.chat.remote_compute.card.forget": undefined;
+	"ui.chat.remote_compute.card.forget_failed": undefined;
+	"ui.chat.remote_compute.card.held": { amount: string };
+	"ui.chat.remote_compute.card.logs": undefined;
+	"ui.chat.remote_compute.card.not_found": undefined;
+	"ui.chat.remote_compute.card.results": undefined;
+	"ui.chat.remote_compute.card.status.cancelled": undefined;
+	"ui.chat.remote_compute.card.status.failed": undefined;
+	"ui.chat.remote_compute.card.status.queued": undefined;
+	"ui.chat.remote_compute.card.status.running": undefined;
+	"ui.chat.remote_compute.card.status.stopping": undefined;
+	"ui.chat.remote_compute.card.status.succeeded": undefined;
+	"ui.chat.remote_compute.card.unavailable": undefined;
+	"ui.chat.remote_compute.card.untitled": undefined;
+	"ui.chat.remote_compute.remedy.add_credits": undefined;
+	"ui.chat.remote_compute.remedy.push_branch": undefined;
+	"ui.chat.remote_compute.remedy.push_branch_help": undefined;
+	"ui.chat.remote_compute.remedy.refresh": undefined;
+	"ui.chat.remote_compute.remedy.retry": undefined;
+	"ui.chat.remote_compute.remedy.retry_in": { seconds: number };
+	"ui.chat.remote_compute.remedy.sign_in": undefined;
+	"ui.chat.remote_compute.row.capacity": undefined;
+	"ui.chat.remote_compute.row.checking": undefined;
+	"ui.chat.remote_compute.row.create_one": undefined;
+	"ui.chat.remote_compute.row.held": { amount: string };
+	"ui.chat.remote_compute.row.name": undefined;
+	"ui.chat.remote_compute.row.needs_network": undefined;
+	"ui.chat.remote_compute.row.network_remedy": undefined;
+	"ui.chat.remote_compute.row.not_offered": undefined;
+	"ui.chat.remote_compute.row.ready": undefined;
+	"ui.chat.remote_compute.row.retry": undefined;
+	"ui.chat.remote_compute.row.runs": { count: number };
+	"ui.chat.remote_compute.row.runs_capped": { count: string };
+	"ui.chat.remote_compute.row.sentence.capacity": undefined;
+	"ui.chat.remote_compute.row.sentence.checking": undefined;
+	"ui.chat.remote_compute.row.sentence.network": undefined;
+	"ui.chat.remote_compute.row.sentence.not_offered": undefined;
+	"ui.chat.remote_compute.row.sentence.ready": undefined;
+	"ui.chat.remote_compute.row.sentence.runs": {
+		count: string;
+		factsSuffix: string;
+	};
+	"ui.chat.remote_compute.row.sentence.sign_in": undefined;
+	"ui.chat.remote_compute.row.sign_in": undefined;
+	"ui.chat.remote_compute.runs.disabled": undefined;
+	"ui.chat.remote_compute.runs.empty": undefined;
+	"ui.chat.remote_compute.runs.loading": undefined;
+	"ui.chat.remote_compute.runs.record_only": undefined;
+	"ui.chat.remote_compute.runs.title": undefined;
+	"ui.chat.remote_compute.runs.unavailable": undefined;
+	"ui.chat.remote_compute.sheet.close": undefined;
+	"ui.chat.remote_compute.sheet.directory.label": undefined;
+	"ui.chat.remote_compute.sheet.heading": undefined;
+	"ui.chat.remote_compute.sheet.network.change": undefined;
+	"ui.chat.remote_compute.sheet.network.choose": undefined;
+	"ui.chat.remote_compute.sheet.network.choose_why": undefined;
+	"ui.chat.remote_compute.sheet.network.label": undefined;
+	"ui.chat.remote_compute.sheet.network.not_enforced": undefined;
+	"ui.chat.remote_compute.sheet.network.recorded": { network: string };
+	"ui.chat.remote_compute.sheet.prompt.empty": undefined;
+	"ui.chat.remote_compute.sheet.prompt.label": undefined;
+	"ui.chat.remote_compute.sheet.submit": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_capacity": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_directory": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_network": undefined;
+	"ui.chat.remote_compute.sheet.submit.why_prompt": undefined;
+	"ui.chat.remote_compute.sheet.submitting": undefined;
+	"ui.chat.remote_compute.sheet.tier.capacity_why": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.selected": undefined;
+	"ui.chat.remote_compute.sheet.tier.cloud_run.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.note": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.spot.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.title": undefined;
+	"ui.chat.remote_compute.sheet.tier.dedicated.why": undefined;
+	"ui.chat.remote_compute.sheet.tier.group_label": undefined;
+	"ui.chat.remote_compute.sheet.view_runs": undefined;
+	"ui.chat.remote_compute.store.accepted_without_run": undefined;
+	"ui.chat.remote_compute.store.refused": undefined;
+	"ui.chat.remote_compute.store.transport": undefined;
 	"ui.chat.response_actions.answer_label": undefined;
 	"ui.chat.response_actions.copied": undefined;
 	"ui.chat.response_actions.copy": undefined;
@@ -14245,6 +14425,15 @@ export type MessageParams = {
 	"ui.teamBridge.holds.unknown_sender": undefined;
 	"ui.teamBridge.holds.unscreened": undefined;
 	"ui.teamBridge.holds.waiting_total": { count: number };
+	"ui.teamBridge.holdsBatch.action": undefined;
+	"ui.teamBridge.holdsBatch.confirm": { count: string };
+	"ui.teamBridge.holdsBatch.local_unconfirmed": undefined;
+	"ui.teamBridge.holdsBatch.progress": { done: string; total: string };
+	"ui.teamBridge.holdsBatch.recorded": undefined;
+	"ui.teamBridge.holdsBatch.result": { succeeded: string; failed: string };
+	"ui.teamBridge.holdsBatch.retry": undefined;
+	"ui.teamBridge.holdsBatch.stale_receipt": undefined;
+	"ui.teamBridge.holdsBatch.submit": { count: string };
 	"ui.teamBridge.actions.label": undefined;
 	"ui.teamBridge.agentNotify.all": undefined;
 	"ui.teamBridge.agentNotify.error": undefined;

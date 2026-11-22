@@ -1,0 +1,30 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-sonnet-5-5",
+	"instance": "13fa79f1eb37-fr-chat",
+	"date": "2026-11-21",
+	"locale": "fr",
+	"namespace": "ui.chat",
+	"status": "passed",
+	"independence": "Independent i18n auditor (lopdev task session); did not translate these strings. Translator model not stated in the brief, so same-family status is not known.",
+	"references": {
+		"glossary": "damianvtran/local-operator origin/main i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator origin/main i18n/style-guides/fr.md"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"worktree": "jump-to-latest (head a6358e47bc + uncommitted/branch i18n diff)",
+	"sha256": {
+		"en": "104fc7d9619d9de02a1cc7e841883aa68dd1a6d4d1502c8f23155cfeec0b1c8c",
+		"fr": "ff049c1c17df7f54a366c471b85aa935be85ae82cec985eea4b68e1c16adc4bd"
+	},
+	"findings": [
+		{
+			"id": "F1",
+			"severity": "NIT",
+			"key": "ui.chat.scroll_to_bottom.label_new_activity",
+			"note": "'aller au plus récent' is elliptical (no noun); understandable, matches 'Aller au tour' neighbours. Optional: 'aller au dernier message'."
+		}
+	],
+	"scope": "copy change: jump-to-latest labels",
+	"checked": "key ui.chat.scroll_to_bottom.label_new_activity read against en value+context and the whole namespace file; key-set parity with en; no ICU placeholders; NFC; no Cc/Cf (bidi) characters; no trailing period; neighbour terms (jump/go-to, activity, latest) compared within ui.chat*.json"
+}

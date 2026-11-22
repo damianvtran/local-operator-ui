@@ -30,6 +30,7 @@
 
 import { useI18nLocale } from "@shared/i18n/use-locale";
 
+import { rowTimeMs } from "@features/chat/chat-list-sections";
 // Copy-bearing projections are intentionally recomputed after the locale hook
 // repaints; caching formatted strings would retain the prior language. Network
 // and structural-data caches remain in place.
@@ -639,6 +640,21 @@ export function usePaletteItems({
 				 */
 				soft: row.preview ?? undefined,
 				order: index,
+				/*
+				 * WHEN THE ROW MOVED, in epoch MILLISECONDS — the ranking's second key and
+				 * the age column's only source. The wire's `updated_at` is epoch SECONDS
+				 * (the backend's Python float), so the scale happens here, once, and a
+				 * non-positive value is refused: `0.0` is the wire's "no claim" (core #2044),
+				 * and reading it as an instant would file an untouched conversation among
+				 * the oldest with a 1970 date on it — the same rule `rowTimeMs` applies for
+				 * the sidebar (`chat-list-sections.ts`).
+				 *
+				 * From the ROW rather than from the array position, for the reason the
+				 * sidebar's own join states: a synthesized search hit has no position to
+				 * inherit, so a position-derived clock would be a lie about exactly the
+				 * rows the search added.
+				 */
+				updatedAt: rowTimeMs(row, "active") ?? undefined,
 				featured: terms.length === 0,
 				/*
 				 * The row's read state, from the store's single predicate — the same

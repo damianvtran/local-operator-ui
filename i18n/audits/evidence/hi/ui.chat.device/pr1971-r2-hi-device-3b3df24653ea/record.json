@@ -1,0 +1,113 @@
+{
+	"locale": "hi",
+	"namespace": "ui.chat.device",
+	"audit_date": "2026-11-18",
+	"audit_id": "pr1971-r2-hi-device-3b3df24653ea",
+	"audit_kind": "delta",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"round": 2,
+	"key_count": 26,
+	"delta_key_count": 1,
+	"auditor": {
+		"agent": "i18n-auditor",
+		"role": "independent translation auditor (round-2 delta)",
+		"team": "lopdev",
+		"harness": "Local Operator",
+		"session": "3b3df24653ea",
+		"instance": "pr1971-r2-hi-device-3b3df24653ea",
+		"model": "deepseek/deepseek-flash",
+		"actual_model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session header, 'Model: deepseek/deepseek-flash' — the model serving this audit session",
+		"fallback": null,
+		"independent_from_translator": true,
+		"independent_from_translator_session": true,
+		"translator": {
+			"agent": "coder",
+			"model": "deepseek/deepseek-flash",
+			"session": "the PR's remediation coder session"
+		},
+		"independence_basis": "This session wrote none of the strings it audited: the remediation coder produced them at e69d3c1a74 in another session and on another run. This round read the bytes at bec0906c52, corrected 1 string(s) in this namespace (listed under corrections) and wrote its own evidence."
+	},
+	"independence": {
+		"independent_from_translator": true,
+		"basis": "Different agent session from the translator (coder, deepseek/deepseek-flash at e69d3c1a74); this audit only corrected strings it rejected and never re-authored the namespace."
+	},
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"prior_audit": {
+		"receipt": "i18n/ledger.json rows for this pair",
+		"note": "last audit before this PR was the 2026-10-29 final renderer copy wave; this round re-binds the pair on the bytes at bec0906c52"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.json",
+			"sha256": "1701342d4ece5b5c0574fad743cc93f1209d037589178339cd597cd2df8a2171"
+		},
+		"hi": {
+			"path": "src/i18n/catalogues/hi/ui.chat.device.json",
+			"sha256": "50bd8b7c10399e7390e83d73851c43c8d072dcdd7d41bf5a1e9740c4a211dcef"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.device.context.json",
+			"sha256": "ee98ab59d0e6804b248e96ce32d3a278fa0e85ce87921e7b7dc3e1f466379649"
+		}
+	},
+	"scope": "Round-2 delta audit of ui.chat.device.footer.move_deletes_copy, the one key the round-1 remediation changed in this namespace, against the English source, its context sidecar, the glossary and the locale guide at damianvtran/local-operator 066f8e58. The other 25 keys are unchanged bytes.",
+	"delta": {
+		"keys": [
+			"ui.chat.device.footer.move_deletes_copy"
+		],
+		"bytes_record": "i18n/audits/evidence/hi/ui.chat.device/pr1971-r2-hi-device-3b3df24653ea/delta-keys.json"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "every value of ui.chat.remote_compute in the locale was scanned for isolé/sécurisé/privé/segment, aislad/segur/privat/segment, 隔离/安全/私有/分段, изолир/защищ/приватн/сегмент/огранич, cô lập/an toàn/riêng tư/phân đoạn/bảo mật, الگ تھلگ/محفوظ/نجی/منقسم/پابند, अलग/सुरक्षित/निजी/खंडित/प्रतिबंधित — zero matches",
+		"store_transport": "no locale claims the run failed or that nothing was charged; all say only that the request did not reach the server, then ask for a retry",
+		"store_accepted_without_run": "no locale claims nothing was started; all say the server accepted the run and did not return it",
+		"result": "passes in all seven locales"
+	},
+	"corrections": [
+		{
+			"key": "ui.chat.device.footer.move_deletes_copy",
+			"from": "ले जाने पर, पूरा होते ही इस डिवाइस की प्रति हट जाती है।",
+			"to": "ले जाना पूरा होते ही इस डिवाइस की प्रति हट जाती है।",
+			"reason": "'ले जाने पर, पूरा होते ही' marked the same event twice ('on being taken, as soon as it completes'). Dropping the first clause leaves ले जाना as the completing subject the English names (A MOVE deletes…), which is the D1 requirement, and keeps the remediation's intransitive हट जाती है."
+		}
+	],
+	"findings": {
+		"minor": [],
+		"nit": []
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"result": "clean",
+		"counts": {
+			"blocker": 0,
+			"major": 0,
+			"minor": 0,
+			"nit": 0
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/receipts/pr1971-r2-hi-device-3b3df24653ea.json",
+			"sha256": "7513e64fc5bbe7649749d79b32b507f5ad0901788c3795127cecb4a162e6e402",
+			"what": "the audit receipt this record's ledger row points at"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.device/pr1971-r2-hi-device-3b3df24653ea/delta-keys.json",
+			"sha256": "8edd16e5c9ec8479c09f0179d7a1f0504ba66b584c9141c85142b7c2b9df00bf",
+			"what": "the 1 audited key pair(s) in English and hi, parsed from the bytes at bec0906c52"
+		},
+		{
+			"path": "i18n/audits/evidence/pr1971-r2-gates.txt",
+			"sha256": "bf8778b9dce7d9f20e14a234e9182c06ab2aed10e3708312835608bf6e0dcb17",
+			"what": "actual gate output for this round (execution log, not notes)"
+		}
+	],
+	"audit_notes_not_execution_log": "Prose in this record (scope, corrections, findings) is the auditor's judgement. Command output lives in pr1971-r2-gates.txt; nothing here claims a run that log does not show.",
+	"known_limits": [
+		"Catalogue-level audit: no rendered frame, no browser run, no native-speaker sign-off.",
+		"Width judgements count cells with this audit's own counter, not a measured frame.",
+		"The other keys of each namespace are unchanged bytes: this round re-read the delta, not the whole file."
+	]
+}

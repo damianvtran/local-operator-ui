@@ -1,0 +1,33 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "ur",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+		"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+		"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+		"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+		"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "`lop network init` سے ایک بنائیں، یا `lop network join '<token>'` سے شامل ہوں۔",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "اس ورژن میں نافذ نہیں۔",
+		"ui.chat.remote_compute.sheet.network.recorded": "{network} پر درج۔ اس ورژن میں نافذ نہیں۔",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "یہ رن کلاؤڈ رن استعمال کرے گا۔",
+		"ui.chat.remote_compute.sheet.tier.group_label": "کیسا رن",
+		"ui.chat.remote_compute.store.accepted_without_run": "سرور نے رن قبول کیا مگر اسے واپس نہیں کیا۔",
+		"ui.chat.remote_compute.store.refused": "سرور نے یہ درخواست مسترد کر دی اور وجہ نہیں بتائی۔",
+		"ui.chat.remote_compute.store.transport": "درخواست سرور تک نہیں پہنچی۔ دوبارہ کوشش کریں۔",
+		"ui.chat.remote_compute.card.binding": "{network} پر درج۔ اس ورژن میں نافذ نہیں۔",
+		"ui.chat.remote_compute.card.binding_none": "کوئی نیٹ ورک درج نہیں۔ اس ورژن میں نافذ نہیں۔"
+	},
+	"counts": {
+		"keys": 10,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

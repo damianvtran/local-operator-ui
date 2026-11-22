@@ -107,7 +107,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../../canonical/canonical-transcript";
 import type { LoadOlderOutcome } from "../../canonical/load-older";
-import { TAIL_EPS_PX } from "../../canonical/scroll-paging";
+import { activityFingerprint } from "../../canonical/new-activity";
 import {
 	EMPTY_TRANSCRIPT,
 	applyHistoryPage,
@@ -636,46 +636,28 @@ export const RunChildReader = ({
 	 * below — the operator's third report on the parent/child difference.
 	 *
 	 * The hook is the SAME one, over the reader's own ref and the reader's own
-	 * row count, so the control's condition (scrollable AND more than a threshold
-	 * from the origin) cannot be answered two ways on two surfaces.
-	 * `hasNewActivity` is deliberately NOT passed: the parent never passes it
-	 * either — no caller of `message-input.tsx` or `chat-content.tsx` does — so the
-	 * reader ports the behaviour the operator actually has rather than reviving a
-	 * label the parent does not show. The design note's `§6.2` asks for that signal
-	 * derived from the reader's own arrivals; the parent's mount is the premise it
-	 * rests on and the parent's mount does not derive it, so the premise is what
-	 * needs amending rather than the port, and the new-content register is recorded
-	 * as deferred on the pull request instead of half-ported here (UX U2; review
-	 * R1-3 and design D5 both landed on the same reduction).
+	 * tail fingerprint, so the control's condition cannot be answered two ways on
+	 * two surfaces. The threshold is `TAIL_EPS_PX` inside the hook itself - the
+	 * same epsilon `use-scroll-paging.ts` follows the tail by, so the chip is
+	 * hidden exactly while the reader is following the tail - and
+	 * `hasNewActivity` now has a producer on both sides: this pane previously
+	 * omitted it because the parent never passed one, and the parent now derives
+	 * the register from its own transcript.
 	 *
-	 * THE THRESHOLD IS `TAIL_EPS_PX`, not the parent's 50, and that is a fix for a
-	 * measured gap rather than a preference (UX U3): between 24px and 50px from the
-	 * tail the paging policy already says this reader is NOT following the tail
-	 * (`followingTail: fromTail <= TAIL_EPS_PX`, `use-scroll-paging.ts`) while the
-	 * control stayed hidden — the STATIONARY window in which "not following the
-	 * tail" and "offered the way back" disagreed, and the window a reader actually
-	 * sits in. Measured on the pre-remediation head: at 24, 25, 49 and 50px the
-	 * control is hidden; at 51px it shows.
-	 *
-	 * QA round 2 (Q3) corrected the first version of this sentence, which claimed
-	 * the arrival itself: at 40px the control is hidden pre-remediation and one
-	 * arrival does leave the tail 263px away with the newest row 221px below the
-	 * fold — but the hook's own recompute has SHOWN the control by then, so the
-	 * reproducible defect is the stationary band, not the arrival. One constant, so
-	 * the two conditions cannot drift apart again; the parent's 50 is left alone,
-	 * because the parent's band is a composer and its divergence is its own
-	 * (recorded as a follow-up on the pull request rather than changed here).
-	 *
-	 * `transcript.records.length` is the `contentKey` for the same reason the chat
-	 * page uses its own record count: a child HOP remounts this reader entirely
-	 * (`run-panel.tsx` keys it by the row), and a page that grows re-checks the
-	 * control's condition, which is what makes it appear while the reader is
-	 * scrolled up and new rows are arriving.
+	 * `row.childSessionId` is the `contentKey` - the child's identity, so a hop
+	 * resets the register and an arriving record does not. The row count used to
+	 * be passed here, which cleared the chip for a frame on every record.
 	 */
-	const { isFarFromBottom, scrollToBottom } = useScrollToBottom(
-		TAIL_EPS_PX,
+	const childActivityFingerprint = useMemo(
+		() => activityFingerprint(transcript.records),
+		[transcript.records],
+	);
+	const { isFarFromBottom, hasNewActivity, scrollToBottom } = useScrollToBottom(
 		containerRef,
-		transcript.records.length,
+		{
+			contentKey: row.childSessionId ?? row.id,
+			activity: childActivityFingerprint,
+		},
 	);
 
 	/*
@@ -974,6 +956,7 @@ export const RunChildReader = ({
 				{bodyPaintsConversation && !row.errorText && (
 					<ScrollToBottomButton
 						visible={isFarFromBottom}
+						hasNewActivity={hasNewActivity}
 						onClick={scrollToBottom}
 						className="bottom-2 left-0 right-0 mb-0 justify-center"
 					/>

@@ -235,6 +235,16 @@ type ChatContentProps = {
 	 */
 	deviceNotice?: React.ReactNode;
 	/**
+	 * Remote runs this conversation started, above the transcript.
+	 *
+	 * A THIRD SLOT BESIDE `deviceNotice` rather than part of it, because they report
+	 * different requests: the notice is the outcome of a move, this is a run that keeps
+	 * spending after the picker that started it closed. Both are composed from their own
+	 * store keyed by this pane, so a surface never has to ask the other one what
+	 * happened.
+	 */
+	remoteRuns?: React.ReactNode;
+	/**
 	 * The composer's hold during a move (§2.4), composed by the page from the same
 	 * store as `deviceNotice`: the notice says what the move is doing under the
 	 * header, the hold says it in the one place a user is about to type.
@@ -949,6 +959,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceSlot,
 		draftTargetSlot,
 		deviceNotice,
+		remoteRuns,
 		deviceHold,
 		renameSessionId,
 		renameSlotReserved,
@@ -2971,6 +2982,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * transcript - not over the window's chrome, which belongs to the app.
 						 */}
 						{deviceNotice}
+						{/* The runs this pane bought: a fact that changes on its own, so it sits
+						 * where the transcript begins rather than inside it. */}
+						{remoteRuns}
 						{/*
 						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
 						 *

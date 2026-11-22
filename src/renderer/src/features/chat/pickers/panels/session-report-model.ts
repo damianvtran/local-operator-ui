@@ -199,6 +199,7 @@ export type BarRow = {
 	fraction: number | null;
 	note?: string;
 	basis?: string;
+	cacheHitRate?: number | null;
 };
 
 const metricOf = (
@@ -221,7 +222,9 @@ const metricText = (
 
 /** Rows over one list of same-denominator aggregates, ranked by the metric. */
 function barRows(
-	entries: { key: string; label: string; aggregate: DesktopUsageAggregate }[],
+	entries: (Pick<BarRow, "key" | "label" | "cacheHitRate"> & {
+		aggregate: DesktopUsageAggregate;
+	})[],
 	metric: SessionMetric,
 ): BarRow[] {
 	const total = entries.reduce(
@@ -229,12 +232,11 @@ function barRows(
 		0,
 	);
 	return entries
-		.map((entry) => ({
-			key: entry.key,
-			label: entry.label,
-			calls: entry.aggregate.calls,
-			value: metricText(entry.aggregate, metric),
-			fraction: total > 0 ? metricOf(entry.aggregate, metric) / total : null,
+		.map(({ aggregate, ...row }) => ({
+			...row,
+			calls: aggregate.calls,
+			value: metricText(aggregate, metric),
+			fraction: total > 0 ? metricOf(aggregate, metric) / total : null,
 		}))
 		.sort(
 			(a, b) =>
@@ -252,6 +254,8 @@ export const modelRows = (
 			key: `${entry.provider}/${entry.model_id}`,
 			label: `${entry.provider}/${entry.model_id}`,
 			aggregate: entry.aggregate,
+			// Use this provider/model's input, not its share of the selected metric.
+			cacheHitRate: cacheHitRate(entry.aggregate),
 		})),
 		metric,
 	);

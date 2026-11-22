@@ -1,0 +1,19 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "zh-CN",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "A run's network is recorded, not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "用 `lop network init` 创建一个，或用 `lop network join '''<token>'''` 加入一个。",
+		"ui.chat.remote_compute.row.sentence.network": "Radient：没有可绑定运行的网络。用 `lop network init` 创建一个，或用 `lop network join '''<token>'''` 加入一个。",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "运行所用的网络会被记录，但在此版本中未强制执行。"
+	},
+	"counts": {
+		"keys": 3,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "es",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: there is no network to bind a run to. Create one with `lop network init`, or join one with `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "A run's network is recorded, not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "Crea una red con `lop network init` o únete a una con `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.row.sentence.network": "Radient: no hay ninguna red a la que vincular una ejecución. Crea una con `lop network init` o únete a una con `lop network join '''<token>'''`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "La red de una ejecución se registra, pero no se aplica en esta versión."
+	},
+	"counts": {
+		"keys": 3,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

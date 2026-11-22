@@ -1,0 +1,15 @@
+{
+	"namespace": "ui.chat.device",
+	"locale": "zh-CN",
+	"english": {
+		"ui.chat.device.footer.move_deletes_copy": "A move deletes this device's copy when it commits."
+	},
+	"target": {
+		"ui.chat.device.footer.move_deletes_copy": "迁移提交后会删除此设备上的副本。"
+	},
+	"counts": {
+		"keys": 1,
+		"target_keys": 26,
+		"english_keys": 26
+	}
+}

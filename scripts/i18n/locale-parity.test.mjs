@@ -1570,6 +1570,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.agents.teams.section.description",
 		"French noun « description » has the same spelling; section heading",
 	],
+	[
+		"fr:ui.agents.teams.group.agents",
+		"French plural of « agent » is « agents »; picker group heading paired with « Équipes », matching the shipped fr ui.agents.pages.tab.agents and ui.agents.navigation.sidebar.title",
+	],
 	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
 	// locale and cites the shipped, audited value it matches, so none of them
 	// silences a stub in another language.
@@ -1951,6 +1955,34 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.chat.code_block.default_header",
 		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
+	],
+	[
+		"ui.chat.remote_compute.row.name",
+		"The provider's own product name, Radient, printed verbatim in every locale: the row says which service the rented capacity comes from, and a translated brand would name a service that does not exist (local-operator-ui #1971).",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.prompt.label",
+		"The es style guide keeps `prompt` in English (its kept-English list, alongside endpoint and script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.prompt.label",
+		"The fr style guide keeps `prompt` in English (its kept-English list, alongside script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.prompt.label",
+		"The vi style guide keeps `prompt` in English (its kept-English list, alongside script and deploy), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Vietnamese only.",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no es guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no fr guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no vi guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Vietnamese only.",
 	],
 	[
 		"es:ui.chat.canonical.condense.sentence",

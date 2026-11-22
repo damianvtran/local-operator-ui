@@ -11,8 +11,12 @@ import { useDesktopCapabilities } from "@shared/api/local-operator/desktop-hooks
 import { TeamBridgeHoldsApi } from "@shared/api/local-operator/team-bridge-holds-api";
 import { TeamBridgeOwnerAuditApi } from "@shared/api/local-operator/team-bridge-owner-audit-api";
 import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { OwnerAuditMessage } from "../../../../shared/team-bridge-owner-audit-contract";
+import {
+	type DiscardBatchResult,
+	discardSnapshot,
+} from "./team-bridge-discard-batch";
 import {
 	holdBindingKey,
 	holdDetailKey,
@@ -28,6 +32,7 @@ import {
 	holdRefusalLabel,
 	resolveHoldDetail,
 } from "./team-bridge-holds-model";
+import type { DiscardSnapshotEntry } from "./team-bridge-holds-model";
 import { teamBridgeKeys } from "./team-bridge-keys";
 import { readForBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
@@ -239,9 +244,27 @@ export function useHoldDecide() {
 	/* The word too, so the pressed button can say "Delivering..." (UX U4). */
 	const [busy, setBusy] = useState<{ id: string; word: HoldWord } | null>(null);
 	const [refusals, setRefusals] = useState<Record<string, string>>({});
+	// State paints the lock; the ref takes it synchronously, before React can
+	// commit another frame (two clicks in one turn must not sign twice).
+	const locked = useRef(false);
+	const owner = useRef({ accountId, epoch: 0, mounted: true });
+	if (owner.current.accountId !== accountId) {
+		owner.current = {
+			accountId,
+			epoch: owner.current.epoch + 1,
+			mounted: true,
+		};
+	}
+	useEffect(() => {
+		owner.current.mounted = true;
+		return () => {
+			owner.current.mounted = false;
+		};
+	}, []);
 	const run = useCallback(
 		async (item: HoldItem, word: HoldWord, proof: HoldProof) => {
-			if (!accountId || busy) return;
+			if (!accountId || locked.current) return;
+			locked.current = true;
 			setBusy({ id: item.message_id, word });
 			setRefusals(({ [item.message_id]: _, ...rest }) => rest);
 			try {
@@ -251,14 +274,70 @@ export function useHoldDecide() {
 					error instanceof DesktopControlError ? (error.code ?? null) : null;
 				setRefusals((current) => ({
 					...current,
-					[item.message_id]: holdRefusalLabel(code),
+					[item.message_id]: holdRefusalLabel(code, "hold_receipt" in proof),
 				}));
 			} finally {
+				locked.current = false;
 				setBusy(null);
 				void invalidateAfterDecision(client, accountId, item.message_id);
 			}
 		},
-		[accountId, busy, client],
+		[accountId, client],
 	);
-	return { busy, refusals, run };
+	const runBatch = useCallback(
+		async (
+			entries: readonly DiscardSnapshotEntry[],
+			onResult: (result: DiscardBatchResult) => void,
+		) => {
+			if (!accountId || locked.current) {
+				for (const entry of entries)
+					onResult({ entry, recorded: false, error: holdRefusalLabel(null) });
+				return;
+			}
+			if (entries.length === 0) return;
+			locked.current = true;
+			const epoch = owner.current.epoch;
+			const isCurrentOwner = () =>
+				owner.current.mounted &&
+				owner.current.accountId === accountId &&
+				owner.current.epoch === epoch;
+			setBusy({ id: "__batch_discard__", word: "discard" });
+			try {
+				await discardSnapshot(
+					entries,
+					(entry) =>
+						TeamBridgeHoldsApi.decide(
+							accountId,
+							"discard",
+							entry.item,
+							entry.proof,
+						),
+					isCurrentOwner,
+					(error, entry) =>
+						holdRefusalLabel(
+							error instanceof DesktopControlError ? error.code : null,
+							"hold_receipt" in entry.proof,
+						),
+					(result) => {
+						if (!isCurrentOwner()) return;
+						onResult(result);
+						setRefusals((current) => ({
+							...current,
+							[result.entry.item.message_id]: result.error ?? "",
+						}));
+						void invalidateAfterDecision(
+							client,
+							accountId,
+							result.entry.item.message_id,
+						);
+					},
+				);
+			} finally {
+				locked.current = false;
+				setBusy(null);
+			}
+		},
+		[accountId, client],
+	);
+	return { busy, refusals, run, runBatch };
 }

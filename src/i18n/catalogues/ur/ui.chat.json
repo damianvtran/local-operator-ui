@@ -199,7 +199,7 @@
 	"ui.chat.message_controls.replacements_header": "متن کی تبدیلیاں",
 	"ui.chat.message_controls.thinking_label": "سوچ رہا ہے",
 	"ui.chat.scroll_to_bottom.label": "نیچے سکرول کریں",
-	"ui.chat.scroll_to_bottom.label_new_activity": "نئی سرگرمی، نیچے سکرول کریں",
+	"ui.chat.scroll_to_bottom.label_new_activity": "نئی سرگرمی، تازہ ترین پر جائیں",
 	"ui.chat.session_status.last_reading_note": "آخری پیمائش دوبارہ منسلک ہونے سے پہلے کی ہے۔",
 	"ui.chat.session_status.readings_aria_held": "سیشن کی پیمائشیں۔ {note}",
 	"ui.chat.session_status.commands_off": "اس سرور پر سلیش کمانڈز بند ہیں، اس لیے یہ پیمائش یہاں سے نہیں کھولی جا سکتی۔",

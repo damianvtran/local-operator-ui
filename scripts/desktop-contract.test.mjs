@@ -182,6 +182,22 @@ before(async () => {
 			authorization: req.headers.authorization,
 			body: Buffer.concat(chunks).toString(),
 		});
+		if (req.url === "/v1/desktop/attention/seen") {
+			// An older backend is still entitled to refuse the newly admitted ID.
+			res.writeHead(422, { "Content-Type": "application/json" });
+			res.end(
+				JSON.stringify({
+					detail: [
+						{
+							loc: ["body", "items", 1, "session_id"],
+							msg: "String should match pattern '^[a-f0-9]{12}$'",
+							input: "abcdef0123456789abcdef0123456789",
+						},
+					],
+				}),
+			);
+			return;
+		}
 		if (req.url === "/v1/settings/redirect") {
 			res.writeHead(302, { Location: `${url}/stolen` });
 			res.end();
@@ -303,6 +319,76 @@ after(async () => {
 	await new Promise((resolve, reject) =>
 		server.close((error) => (error ? reject(error) : resolve())),
 	);
+});
+
+test("bulk receipt validation reports the local or backend field without echoing inputs", async () => {
+	const completionToken = "00000000-0000-4000-8000-000000000001";
+	const sessionId = "abcdef0123456789abcdef0123456789";
+	const request = {
+		op: "attention.seen",
+		items: [
+			{ sessionId: "0123456789ab", completionToken },
+			{ sessionId, completionToken },
+		],
+	};
+	const priorWindow = globalThis.window;
+	globalThis.window = {
+		api: { desktop: { request: (input) => requestDesktop(input, url, token) } },
+	};
+	try {
+		const priorRequests = seen.length;
+		await assert.rejects(
+			() =>
+				desktopResult({
+					...request,
+					items: [
+						request.items[0],
+						{ sessionId: "../private-path", completionToken },
+					],
+				}),
+			{
+				status: 422,
+				message:
+					"body.items[1].sessionId: String should match pattern '^(?:[a-f0-9]{12}|[a-f0-9]{32})$'",
+			},
+		);
+		const foreign = await requestDesktopOutcome(
+			{
+				...request,
+				items: [{ ...request.items[0], privateField: "not-for-IPC" }],
+			},
+			url,
+			token,
+		);
+		assert.deepEqual(foreign, {
+			answered: false,
+			response: {
+				status: 422,
+				body: {
+					detail: [
+						{
+							loc: ["body", "items", 0],
+							msg: "Extra fields are not permitted",
+						},
+					],
+				},
+			},
+		});
+		assert.equal(
+			seen.length,
+			priorRequests,
+			"invalid local bodies must not go out over HTTP",
+		);
+		await assert.rejects(() => desktopResult(request), {
+			status: 422,
+			message:
+				"body.items[1].session_id: String should match pattern '^[a-f0-9]{12}$'",
+		});
+		assert.equal(seen.length, priorRequests + 1);
+		assert.equal(JSON.parse(seen.at(-1).body).items[1].session_id, sessionId);
+	} finally {
+		globalThis.window = priorWindow;
+	}
 });
 
 test("real HTTP receives only allowlisted route and main-owned bearer", async () => {

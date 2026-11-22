@@ -52,6 +52,7 @@ import {
 	type DesktopRequest,
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
+	bulkReceiptSessionIdPattern,
 	isDesktopRefusalCode,
 } from "../../../../shared/desktop-contract";
 import {
@@ -4959,6 +4960,8 @@ type CanonicalSessionsState = {
 		superseded: number;
 		unknown: number;
 		deferred: number;
+		/** Drawn, token-bearing marks the client could not name in the request. */
+		unsupported: number;
 	}>;
 	/**
 	 * Apply one `session_status` frame to its row, and retire a dead epoch's stamps.
@@ -5366,9 +5369,21 @@ export const unreadMarkKind = unreadCompletionKind;
  * it: sending that would only inflate the batch, and counting it would put a
  * number in the label that no click can honour.
  */
-export const unreadAckableRows = (
-	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
+export const classifyUnreadAckableRows = (rows: CanonicalSessionRow[]) => {
+	const ackable: CanonicalSessionRow[] = [];
+	let unsupported = 0;
+	for (const row of rows) {
+		if (!isUnreadAckableCompletion(row)) continue;
+		// Discovery can draw these marks, but naming one would refuse the entire
+		// batch. Report them separately from both eligibility and backend outcomes.
+		if (bulkReceiptSessionIdPattern.test(row.session_id)) ackable.push(row);
+		else unsupported++;
+	}
+	return { ackable, unsupported };
+};
+
+export const unreadAckableRows = (rows: CanonicalSessionRow[]) =>
+	classifyUnreadAckableRows(rows).ackable;
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
@@ -7869,11 +7884,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * Enumerated from the STORE rather than from the rendered list, which is
 				 * what makes the control's own count and this batch the same fact: a
 				 * search filter over the sidebar cannot make a visible count disagree
-				 * with the set that is sent. The predicate itself is `unreadAckableRows`
-				 * — the ONE home of that rule, so the surface's label and this request
-				 * cannot drift apart.
+				 * with the set that is sent. The same classification drives the sidebar
+				 * explanation, so skipped marks cannot drift into the count or batch.
 				 */
-				const items = unreadAckableRows(get().sessions).map((row) => ({
+				const { ackable, unsupported } = classifyUnreadAckableRows(
+					get().sessions,
+				);
+				const items = ackable.map((row) => ({
 					sessionId: row.session_id,
 					completionToken: row.attention?.completion_token as string,
 				}));
@@ -7890,6 +7907,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						superseded: 0,
 						unknown: 0,
 						deferred: 0,
+						unsupported,
 					};
 				const receipt = await desktopResult<CompletionAttentionAckReceipt>({
 					op: "attention.seen",
@@ -7910,6 +7928,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					superseded: receipt.superseded.length,
 					unknown: receipt.unknown.length,
 					deferred,
+					unsupported,
 				};
 			},
 			applySessionStatus: (sessionId, status, revision, epoch, counts) => {

@@ -56,6 +56,35 @@ export async function untilRevisionRendered(cdp, id, wait = until) {
 	return wait(() => cdp.evaluate(probe), "revised revision rendered");
 }
 
+/**
+ * WAIT OUT EVERY UNDO TOAST BEFORE A PRESS IN THE TOAST'S CORNER.
+ *
+ * Each row write answers with a sonner "Marked 1 read · Undo"-style toast for
+ * `UNDO_WINDOW_MS` (6 s, notifications-model.ts), drawn over the bottom-right of the
+ * drawer - over the row ✕ the concurrent-dismiss step presses next. `click()` then
+ * spent ~51 probes (~5.6 s, on passing runs too) reading "another element is on
+ * top" and pressed in the instant the toast left, while the list was still moving
+ * (runs 44570955816, 44603062498). Waiting for the fact the press needs - no toast
+ * element in the DOM - is deterministic, not a sleep: the bound is `until`'s 30 s,
+ * five times the 6 s window. A toast that never leaves is itself the failure, and
+ * the timeout names its text.
+ */
+export const TOASTS_GONE = `!document.querySelector('[data-sonner-toast]')`;
+export async function untilToastsGone(cdp, label, wait = until) {
+	try {
+		return await wait(() => cdp.evaluate(TOASTS_GONE), label);
+	} catch (error) {
+		const left = await cdp
+			.evaluate(
+				`[...document.querySelectorAll('[data-sonner-toast]')].map(e=>e.textContent)`,
+			)
+			.catch(() => null);
+		throw new Error(
+			`${error.message} - toasts still drawn: ${JSON.stringify(left)}`,
+		);
+	}
+}
+
 /** Faults are opt-in and session-scoped; the original scene's negatives stay real. */
 export async function prepareDrawerRemediation({
 	base,
@@ -371,7 +400,49 @@ const hittablePoint = (selector) => `(()=>{
  * is not retried and not softened, because a control that genuinely cannot be hit at
  * this viewport must never be clicked into a pass.
  */
-async function click(cdp, selector) {
+/**
+ * PROVE THE PRESS LANDED: arm a one-shot pointerdown recorder in the SAME evaluate
+ * that takes the fresh point, so nothing but the CDP move separates measuring from
+ * pressing, then read which element the press actually reached.
+ *
+ * Re-measuring (above) narrows the stale-point window but cannot close it: CDP input
+ * is dispatched after the evaluate returns, and the page may relayout in between. On
+ * run 44603062498 the concurrent-dismiss press measured the row's ✕ and then landed
+ * on the empty `data-ask-drawer="session"` surface after the list shifted - no
+ * dismiss PATCH was sent, and the lane died 30 s later as the unrelated-looking
+ * `optimistic dismiss: timed out`. A recorder installed at window CAPTURE phase is
+ * the first listener on every pointer path, so it sees the true target before any
+ * product handler can stop propagation. A miss fails here, naming the selector and
+ * what was hit; it is never retried, because re-pressing could double-fire a
+ * control whose first press did land on a moved neighbour.
+ *
+ * The pressed node may be a re-render of the measured one under the same selector,
+ * so either node owning the target counts as a hit.
+ */
+export const armedPoint = (selector) => `(()=>{
+	const p=${hittablePoint(selector)};
+	if(!p||typeof p.x!=='number') return p;
+	const sel=${JSON.stringify(selector)};
+	const armed=document.querySelector(sel);
+	const prior=window.__lopPress;
+	if(prior&&prior.listener) window.removeEventListener('pointerdown',prior.listener,true);
+	const record={selector:sel,fired:false,hit:false,target:null};
+	record.listener=(ev)=>{
+		const t=ev.target;
+		const now=document.querySelector(sel);
+		record.fired=true;
+		record.hit=Boolean(t&&((armed&&(armed===t||armed.contains(t)))||(now&&(now===t||now.contains(t)))));
+		record.target=t?{tag:t.tagName,cls:String(t.className??'').slice(0,140),data:Object.assign({},t.dataset)}:null;
+		window.removeEventListener('pointerdown',record.listener,true);
+	};
+	window.addEventListener('pointerdown',record.listener,true);
+	window.__lopPress=record;
+	return p;
+})()`;
+const pressRecord = `(()=>{const r=window.__lopPress;if(!r) return null;if(r.listener) window.removeEventListener('pointerdown',r.listener,true);window.__lopPress=null;return {selector:r.selector,fired:r.fired,hit:r.hit,target:r.target}})()`;
+
+/* `hoverMs` is a parameter only so the narrow tests can skip the real hover delay. */
+export async function click(cdp, selector, { hoverMs = 250 } = {}) {
 	let box;
 	try {
 		box = await until(async () => {
@@ -395,11 +466,11 @@ async function click(cdp, selector) {
 		x: box.x,
 		y: box.y,
 	});
-	await pause(250); // The row action is revealed by this real hover, not activated while opacity=0.
+	await pause(hoverMs); // The row action is revealed by this real hover, not activated while opacity=0.
 	/* Fresh geometry, taken now and pressed now. Anything measured before the pause is
 	 * a claim about a layout that may no longer exist. The move to the fresh point is
 	 * safe in between because hover changes these controls' opacity, never their box. */
-	const fresh = await cdp.evaluate(hittablePoint(selector));
+	const fresh = await cdp.evaluate(armedPoint(selector));
 	if (!fresh || typeof fresh.x !== "number") {
 		throw new Error(
 			`click ${selector}: no point of the control is hittable immediately before the press - ${JSON.stringify(fresh)}`,
@@ -418,6 +489,11 @@ async function click(cdp, selector) {
 			clickCount: 1,
 			...press,
 		});
+	const landed = await cdp.evaluate(pressRecord);
+	if (!landed?.fired || !landed.hit)
+		throw new Error(
+			`press missed ${selector}: pressed ${JSON.stringify(press)} measured as ${JSON.stringify(fresh.rect)}, pointerdown ${landed?.fired ? `reached ${JSON.stringify(landed.target)}` : "was never recorded"}`,
+		);
 }
 const stateOf = (cdp) =>
 	cdp.evaluate(`(()=>({
@@ -741,6 +817,7 @@ export async function runDrawerRemediationScene({
 		// Concurrent external read while a UI dismiss is in flight. The producer
 		// uses core's real store; only the failed dismiss is a native user gesture.
 		const concurrent = fixture.seedRows[2];
+		await untilToastsGone(cdp, "undo toast cleared before dismiss");
 		fixture.state.holdPatch = true;
 		await click(
 			cdp,
