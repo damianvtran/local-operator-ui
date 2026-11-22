@@ -119,12 +119,26 @@ export async function requestDesktopOutcome(
 ): Promise<DesktopTransportOutcome> {
 	const parsed = desktopRequestSchema.safeParse(input);
 	if (!parsed.success) {
-		// Zod errors can carry user input. IPC errors must never serialize a key.
+		// Only the receipt arm's fixed-schema paths are safe to expose. In
+		// particular, Zod's unrecognized_keys message includes caller data.
+		const receiptIssues =
+			input !== null &&
+			typeof input === "object" &&
+			"op" in input &&
+			input.op === "attention.seen"
+				? parsed.error.issues.slice(0, 1).map((issue) => ({
+						loc: ["body", ...issue.path],
+						msg:
+							issue.code === "unrecognized_keys"
+								? "Extra fields are not permitted"
+								: issue.message,
+					}))
+				: null;
 		// Never sent: the schema refused it before a socket was opened.
 		return {
 			response: {
 				status: 422,
-				body: { detail: "Invalid desktop operation." },
+				body: { detail: receiptIssues ?? "Invalid desktop operation." },
 			},
 			answered: false,
 		};

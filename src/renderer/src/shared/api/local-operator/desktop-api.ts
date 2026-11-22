@@ -458,12 +458,47 @@ function desktopErrorMessageCode(
 	return desktopRefusalCodeForStatus(desktopEndpoint(request).path, status);
 }
 
+type ReceiptValidationIssue = { loc?: unknown; msg?: unknown };
+
+function receiptValidationMessage(
+	issues: ReceiptValidationIssue[],
+): string | null {
+	for (const issue of issues) {
+		if (typeof issue?.msg !== "string" || !Array.isArray(issue.loc)) continue;
+		// FastAPI can put an unknown field's caller-supplied key in `loc`.
+		// Report the known parent path, never the unknown key or the input value.
+		const path = [];
+		for (const part of issue.loc) {
+			if (
+				typeof part !== "number" &&
+				![
+					"body",
+					"items",
+					"session_id",
+					"sessionId",
+					"completion_token",
+					"completionToken",
+				].includes(part)
+			)
+				break;
+			path.push(
+				typeof part === "number"
+					? `[${part}]`
+					: `${path.length ? "." : ""}${part}`,
+			);
+		}
+		if (path.length > 0) return `${path.join("")}: ${issue.msg}`;
+	}
+	return null;
+}
+
 export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 	const response = await desktopRequest(request);
 	const envelope = response.body as {
 		result?: T;
 		detail?:
 			| string
+			| ReceiptValidationIssue[]
 			| {
 					code?: string;
 					message?: string;
@@ -484,14 +519,25 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 		 * `message`: a body carrying both is the newer contract, and the envelope's
 		 * `code` already reaches the error through `desktopErrorMessageCode`.
 		 */
+		const wireDetail = envelope?.detail;
+		const structured =
+			wireDetail && typeof wireDetail === "object" && !Array.isArray(wireDetail)
+				? wireDetail
+				: undefined;
+		const validation =
+			response.status === 422 &&
+			request.op === "attention.seen" &&
+			Array.isArray(wireDetail)
+				? receiptValidationMessage(wireDetail)
+				: null;
 		const detail =
-			typeof envelope?.detail === "string"
-				? envelope.detail
-				: typeof envelope?.detail?.text === "string"
-					? envelope.detail.text
-					: typeof envelope?.detail?.message === "string"
-						? envelope.detail.message
-						: null;
+			typeof wireDetail === "string"
+				? wireDetail
+				: typeof structured?.text === "string"
+					? structured.text
+					: typeof structured?.message === "string"
+						? structured.message
+						: validation;
 		throw new DesktopControlError(
 			response.status,
 			/*
@@ -507,14 +553,11 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 				request,
 				response.status,
 				detail,
-				typeof envelope?.detail === "object"
-					? envelope.detail?.code
-					: undefined,
+				structured?.code,
 			),
-			typeof envelope?.detail === "object" &&
-				typeof envelope.detail?.retry_after_ms === "number" &&
-				Number.isFinite(envelope.detail.retry_after_ms)
-				? envelope.detail.retry_after_ms
+			typeof structured?.retry_after_ms === "number" &&
+				Number.isFinite(structured.retry_after_ms)
+				? structured.retry_after_ms
 				: undefined,
 			// The body object itself, for the one caller that needs a field beyond the
 			// code and the sentence (see the field's own note).

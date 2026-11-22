@@ -81,22 +81,19 @@ export const markAllReadCopy = (
 	 * the clause is noise in the ordinary case and the invariant it protects is
 	 * that the label's number is the whole set the click sends.
 	 *
-	 * DERIVED from the shared predicates rather than re-spelling their complements
-	 * (review R2-5): `unseen && !completion_token` was that complement, but the two
-	 * would drift the moment `unreadAckableRows` tightens — a `kind ===
-	 * "complete"` filter, say — and the row would then be counted in both buckets,
-	 * which is the same two-literals class round 1 removed from the count above.
+	 * This clause specifically says "no completion token". A drawn mark for a
+	 * directory name outside the bulk receipt contract is also excluded from
+	 * the request, but must not be described as missing a token.
 	 *
 	 * The mark half is `unreadMarkKind` and not bare `unseen`, so this clause names
-	 * exactly the rows a reader can SEE a mark on that no click can clear. Under
+	 * only rows a reader can SEE a mark on and that lack a token. Under
 	 * bare `unseen` it also named rows drawing a spinner or a gate — the same
 	 * over-count the control's own label was fixed for — and a sentence promising
 	 * an uncleared mark on a row with no mark is the opposite of the honesty this
 	 * sentence exists for.
 	 */
 	const tokenless = rows.filter(
-		(row) =>
-			unreadMarkKind(row) !== null && unreadAckableRows([row]).length === 0,
+		(row) => unreadMarkKind(row) !== null && !row.attention?.completion_token,
 	).length;
 	/*
 	 * Each clause is a SENTENCE that carries its own full stop, and the two are joined

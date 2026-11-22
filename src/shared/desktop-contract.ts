@@ -188,6 +188,9 @@ export type BedrockConnectionInput = z.infer<typeof bedrockConnectionSchema>;
  * the two answers would drift (PR #726, QA Q-1).
  */
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
+// The catalogue also discovers persisted full-hex directory names. Match core's
+// bulk receipt contract without widening the ID grammar of unrelated operations.
+export const bulkReceiptSessionIdPattern = /^(?:[a-f0-9]{12}|[a-f0-9]{32})$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
  * THE SESSION IDS THE NOTIFICATIONS INBOX FILES ROWS UNDER.
@@ -2965,7 +2968,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.array(
 					z
 						.object({
-							sessionId,
+							sessionId: z.string().regex(bulkReceiptSessionIdPattern, {
+								message: `String should match pattern '${bulkReceiptSessionIdPattern.source}'`,
+							}),
 							// A REAL uuid, like `sessions.seen`: a token that is not one cannot
 							// name a completion, so it is refused here rather than round-tripped
 							// to answer `unknown` for an item the client should not have sent.

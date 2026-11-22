@@ -52,6 +52,7 @@ import {
 	type DesktopRequest,
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
+	bulkReceiptSessionIdPattern,
 	isDesktopRefusalCode,
 } from "../../../../shared/desktop-contract";
 import {
@@ -5368,7 +5369,14 @@ export const unreadMarkKind = unreadCompletionKind;
  */
 export const unreadAckableRows = (
 	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
+): CanonicalSessionRow[] =>
+	// Discovery can show other directory names; their marks stay visible but
+	// cannot be named in this receipt without refusing the whole batch.
+	rows.filter(
+		(row) =>
+			bulkReceiptSessionIdPattern.test(row.session_id) &&
+			isUnreadAckableCompletion(row),
+	);
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>

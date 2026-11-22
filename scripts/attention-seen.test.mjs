@@ -67,6 +67,7 @@ const {
 
 const SESSION = "2d5ad5da0025";
 const OTHER = "e059761608ae";
+const FULL_HEX = "abcdef0123456789abcdef0123456789";
 const TOKEN = "9f2c4a1e-6b3d-4c8a-9f10-1a2b3c4d5e6f";
 const LATER_TOKEN = "7b1d0f3a-1111-4222-8333-444455556666";
 
@@ -76,14 +77,14 @@ const item = (sessionId = SESSION, completionToken = TOKEN) => ({
 });
 
 test("the batch is one POST, with the items in the order they were sent", () => {
-	const request = { op: "attention.seen", items: [item(), item(OTHER)] };
-	assert.deepEqual(desktopEndpoint(request), {
+	const request = { op: "attention.seen", items: [item(), item(FULL_HEX)] };
+	assert.deepEqual(desktopEndpoint(desktopRequestSchema.parse(request)), {
 		path: "/v1/desktop/attention/seen",
 		method: "POST",
 		body: {
 			items: [
 				{ session_id: SESSION, completion_token: TOKEN },
-				{ session_id: OTHER, completion_token: TOKEN },
+				{ session_id: FULL_HEX, completion_token: TOKEN },
 			],
 		},
 	});
@@ -126,7 +127,7 @@ test("the schema admits one item and 500, and refuses 0, 501 and anything malfor
 		"an empty batch is not a batch",
 	);
 	// A token that is not a uuid cannot name a completion, and a session id that
-	// is not the 12-hex shape is not a session this app can hold; both are refused
+	// is neither supported hex shape is not eligible for a receipt; both are refused
 	// here rather than round-tripped to answer `unknown` for an item the client
 	// should never have sent.
 	assert.equal(
@@ -357,6 +358,24 @@ test("the batch is exactly the rows carrying an unseen completion with a token",
 	});
 });
 
+test("an unsupported catalogue name stays unread without poisoning the eligible batch", async () => {
+	const unsupported = "not-hex";
+	const rows = [
+		completeRow(SESSION),
+		completeRow(FULL_HEX),
+		completeRow(unsupported),
+	];
+	seed(rows);
+	serve({ read: [], superseded: [], unknown: [] });
+	assert.equal(unreadMarkKind(rowFor(unsupported)), "complete");
+	assert.equal(unreadAckableCount(rows), 2);
+	await store.getState().markAllRead();
+	assert.deepEqual(requests, [
+		{ op: "attention.seen", items: [item(), item(FULL_HEX)] },
+	]);
+	assert.equal(rowFor(unsupported).attention.unseen, true);
+});
+
 test("the label's number is the set the request sends, from one predicate", async () => {
 	/*
 	 * Agent review round 1 (R1): DESIGN §3.3 pins that "the count the control shows
@@ -431,18 +450,18 @@ const MARK_ROSTER = [
 ];
 
 const markRoster = () =>
-	MARK_ROSTER.map(([id, status, attention]) =>
-		completeRow(id, {
+	MARK_ROSTER.map(([id, status, attention], index) => {
+		const sessionId = index.toString(16).padStart(12, "0");
+		return completeRow(sessionId, {
 			title: id,
 			...(status ? { status } : { status: undefined }),
-			attention: unread(id, attention),
-		}),
-	);
+			attention: unread(sessionId, attention),
+		});
+	});
 
 test("the count is the rows DRAWING a mark, not the rows carrying `unseen`", async () => {
 	const rows = markRoster();
-	const kind = (id) =>
-		unreadMarkKind(rows.find((row) => row.session_id === id));
+	const kind = (id) => unreadMarkKind(rows.find((row) => row.title === id));
 
 	// The four the runtime outranks, and the two it cannot vouch for: no mark.
 	for (const id of [
@@ -475,7 +494,13 @@ test("the count is the rows DRAWING a mark, not the rows carrying `unseen`", asy
 	await store.getState().markAllRead();
 	assert.deepEqual(
 		requests[0].items.map((entry) => entry.sessionId),
-		["complete-unseen", "error-unseen", "interrupted-unseen"],
+		rows
+			.filter((row) =>
+				["complete-unseen", "error-unseen", "interrupted-unseen"].includes(
+					row.title,
+				),
+			)
+			.map((row) => row.session_id),
 		"the batch carries the three marks and nothing else",
 	);
 });
