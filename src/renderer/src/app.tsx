@@ -460,8 +460,11 @@ const App: FC = () => {
 	// A frame can separate the shell rails even when the route, not the
 	// outlet, mounts it. Team Bridge only takes the shell's left column.
 	const browserOwnsBody = placement === "chrome";
-	const outletWrapsRoute = !routeHasOwnChromeRow;
 	const outletFullHeight = placement === "full-height";
+	// Full-height split routes (Settings, Agents) mount `<WorkspaceFrame
+	// variant="full-height">` around their content column so their secondary
+	// sidebar stays full-height on `surface` beside an evenly inset canvas frame.
+	const outletWrapsRoute = !routeHasOwnChromeRow && !outletFullHeight;
 	const routeContent = useRoutes(routes);
 	/*
 	 * Team Bridge banners, watched in the SHELL because the page is the one place
@@ -917,6 +920,10 @@ const App: FC = () => {
 							<ChatWorkspace>{routePending}</ChatWorkspace>
 						) : browserOwnsBody ? (
 							<BrowserRoutePending>{routePending}</BrowserRoutePending>
+						) : outletFullHeight ? (
+							<WorkspaceFrame variant="full-height">
+								{routePending}
+							</WorkspaceFrame>
 						) : (
 							routePending
 						)}
@@ -924,18 +931,20 @@ const App: FC = () => {
 				}
 			>
 				{outletFullHeight ? (
-					// Keep a failed split route in the same paint boundary as pending
-					// and content. Navigation or the existing Retry can reset it.
+					// Keep a failed split route in the same evenly padded inset frame as
+					// pending and content. Navigation or the existing Retry can reset it.
 					<ErrorBoundary
 						resetKeys={[pathname, search]}
 						fallbackRender={(props) => (
-							<div
-								data-workspace-route-error=""
-								data-workspace-safe-content=""
-								className="min-h-0 flex-1 overflow-hidden"
-							>
-								<ErrorFallback {...props} />
-							</div>
+							<WorkspaceFrame variant="full-height">
+								<div
+									data-workspace-route-error=""
+									data-workspace-safe-content=""
+									className="min-h-0 flex-1 overflow-hidden"
+								>
+									<ErrorFallback {...props} />
+								</div>
+							</WorkspaceFrame>
 						)}
 					>
 						{routeContent}
@@ -1232,10 +1241,7 @@ const App: FC = () => {
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
-								<WorkspaceFrame
-									inset={outletWrapsRoute}
-									variant={outletFullHeight ? "full-height" : undefined}
-								>
+								<WorkspaceFrame inset={outletWrapsRoute}>
 									{routeBody}
 								</WorkspaceFrame>
 							</main>

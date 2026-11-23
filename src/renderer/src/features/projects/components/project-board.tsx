@@ -864,6 +864,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			<div
 				ref={stripRef}
 				data-board-strip=""
+				data-lo-pane-edge-cues="bottom"
 				className="relative min-h-0 flex-1 overflow-auto px-6 pb-9"
 			>
 				{drag && (
@@ -975,6 +976,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 										<div
 											key={column.status}
 											data-board-cell={column.status}
+											data-lo-pane-edge-cues=""
 											className="flex max-h-[calc(100cqh-92px)] w-64 shrink-0 flex-col gap-2 overflow-y-auto px-2"
 										>
 											{cards.length > 0 && (

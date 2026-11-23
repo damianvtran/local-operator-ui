@@ -44,27 +44,70 @@ function fixture(
 		bandHeight = 0,
 		fullscreen = false,
 		fullHeight = false,
+		hideSidebar = false,
 		error = false,
 		native = false,
 	} = {},
 ) {
-	const main = make({ "data-workspace-outlet": "" }, rect(0, 192, 600, 600));
+	const main = make(
+		{
+			"data-workspace-outlet": "",
+			...(fullHeight && { "data-workspace-full-height": "" }),
+		},
+		rect(0, 192, 600, 600),
+	);
 	const mainPad =
 		fullHeight || native ? 0 : fullscreen ? 8 : bandHeight > 0 ? 0 : 32;
 	const safeTop = fullscreen ? 8 : native ? 0 : bandHeight || 32;
+	const fallback = pending
+		? "data-workspace-route-pending"
+		: error
+			? "data-workspace-route-error"
+			: null;
 	const marker =
-		owner === "chat" ? "data-workspace-inset" : "data-workspace-browser";
-	const attrs = owner === "outlet" ? {} : { [marker]: "" };
-	const host =
+		owner === "chat"
+			? "data-workspace-inset"
+			: owner === "browser"
+				? "data-workspace-browser"
+				: owner === "split"
+					? "data-workspace-split-inset"
+					: null;
+	const attrs = {
+		...(marker && { [marker]: "" }),
+		...(owner === "split" && { "data-glass-region": "canvas-content" }),
+	};
+	const band =
+		owner === "outlet" || owner === "split"
+			? append(
+					main,
+					make(
+						{ "data-chrome-route-band": "" },
+						rect(0, 192, 600, bandHeight),
+						{ position: fullHeight ? "absolute" : "static" },
+					),
+				)
+			: null;
+	const contentsSlot =
 		owner === "outlet"
 			? main
 			: append(
-					append(
-						append(main, make({}, null, { display: "contents" })),
-						make({}, null, { display: "contents" }),
-					),
-					make({}, rect(owner === "chat" ? mainPad : 0, 192, 600, 600)),
+					append(main, make({}, null, { display: "contents" })),
+					make({}, null, { display: "contents" }),
 				);
+	const host =
+		owner === "outlet"
+			? main
+			: owner === "split"
+				? fallback
+					? contentsSlot
+					: append(
+							contentsSlot,
+							make({ "data-glass-split": "" }, rect(0, 192, 600, 600)),
+						)
+				: append(
+						contentsSlot,
+						make({}, rect(owner === "chat" ? mainPad : 0, 192, 600, 600)),
+					);
 	const chromeMarker =
 		owner === "chat"
 			? "data-workspace-tabs"
@@ -72,7 +115,7 @@ function fixture(
 				? "data-browser-route-pending-chrome"
 				: "data-browser-route-chrome";
 	const chrome =
-		owner === "outlet"
+		owner === "outlet" || owner === "split"
 			? null
 			: append(
 					host,
@@ -90,22 +133,32 @@ function fixture(
 						},
 					),
 				);
+	const sidebarWidth = owner === "split" && !fallback && !hideSidebar ? 130 : 0;
+	const sidebar =
+		sidebarWidth > 0
+			? append(
+					host,
+					make(
+						{
+							"data-glass-region": "page-sidebar",
+							"data-workspace-safe-content": "",
+						},
+						rect(0, 192, sidebarWidth, 600),
+						{ paddingTop: `${safeTop}px` },
+					),
+				)
+			: null;
+	if (sidebar) {
+		append(sidebar, make({}, rect(0, 192, 1, 1), { position: "absolute" }));
+		append(sidebar, make({}, rect(safeTop, 192, sidebarWidth, 600 - safeTop)));
+	}
 	const top = chrome
 		? chrome.bounds.top + chrome.bounds.height
 		: fullHeight
 			? 0
 			: mainPad + bandHeight;
-	const band =
-		owner === "outlet"
-			? append(
-					main,
-					make(
-						{ "data-chrome-route-band": "" },
-						rect(0, 192, 600, bandHeight),
-						{ position: fullHeight ? "absolute" : "static" },
-					),
-				)
-			: null;
+	const shellLeft = 192 + sidebarWidth;
+	const shellWidth = 600 - sidebarWidth;
 	const shell = append(
 		host,
 		make(
@@ -113,15 +166,16 @@ function fixture(
 				"data-workspace-frame-shell": "",
 				...(fullHeight && { "data-workspace-frame-full-height": "" }),
 			},
-			rect(top, 192, 600, 600 - top),
+			rect(top, shellLeft, shellWidth, 600 - top),
 		),
 	);
-	const frameHeight = (fullHeight ? 600 : 592) - top;
+	const frameTop = top + (fullHeight ? 8 : 0);
+	const frameHeight = 600 - top - (fullHeight ? 16 : 8);
 	const frame = append(
 		shell,
 		make(
 			{ "data-workspace-frame": "", ...attrs },
-			rect(top, 200, 584, frameHeight),
+			rect(frameTop, shellLeft + 8, shellWidth - 16, frameHeight),
 			{
 				borderStartStartRadius: "10px",
 				borderInlineStartWidth: "0px",
@@ -130,41 +184,29 @@ function fixture(
 			},
 		),
 	);
-	const fallback = pending
-		? "data-workspace-route-pending"
-		: error
-			? "data-workspace-route-error"
-			: null;
+	const insetPad = Math.max(0, safeTop - 8);
 	const body = append(
 		frame,
 		make(
-			fullHeight && fallback
-				? { [fallback]: "", "data-workspace-safe-content": "" }
+			fullHeight
+				? fallback
+					? { [fallback]: "", "data-workspace-safe-content": "" }
+					: { "data-workspace-safe-content": "" }
 				: {},
-			rect(top, 200, 584, frameHeight),
-			{ paddingTop: `${fullHeight && fallback ? safeTop : 0}px` },
+			rect(frameTop, shellLeft + 8, shellWidth - 16, frameHeight),
+			{ paddingTop: `${fullHeight ? insetPad : 0}px` },
 		),
 	);
-	const pane = (role, left, width) =>
+	const panes = fullHeight ? [...(sidebar ? [sidebar] : []), body] : [];
+	if (fullHeight) {
+		const { left, width } = body.bounds;
 		append(
 			body,
-			make(
-				{ "data-glass-region": role, "data-workspace-safe-content": "" },
-				rect(top, left, width, frameHeight),
-				{ paddingTop: `${safeTop}px` },
-			),
-		);
-	const panes = fullHeight
-		? fallback
-			? [body]
-			: [pane("page-sidebar", 200, 130), pane("canvas-content", 330, 454)]
-		: [];
-	for (const pane of panes) {
-		const { left, width } = pane.bounds;
-		append(pane, make({}, rect(top, left, 1, 1), { position: "absolute" })); // sr-only heading
+			make({}, rect(frameTop, left, 1, 1), { position: "absolute" }),
+		); // sr-only heading
 		append(
-			pane,
-			make({}, rect(top + safeTop, left, width, frameHeight - safeTop)),
+			body,
+			make({}, rect(frameTop + insetPad, left, width, frameHeight - insetPad)),
 		);
 	}
 	shell.perimeterStyle = supported
@@ -229,6 +271,7 @@ function fixture(
 		main,
 		host,
 		chrome,
+		sidebar,
 		shell,
 		frame,
 		body,
@@ -316,7 +359,7 @@ test("a second clearance, detached chrome, or widened gutter fails geometry", ()
 	const browser = fixture("browser");
 	browser.frame.bounds.left += 1;
 	assert.deepEqual(failures("browser", browser), [
-		"/browser: the frame keeps 8px side gutters, an 8px bottom gutter and no extra top gap",
+		"/browser: the frame keeps 8px side and bottom gutters and no extra top gap",
 	]);
 });
 
@@ -354,17 +397,22 @@ test("computed gutter paint distinguishes correct raw surface, missing clip, and
 	assert.match(failures("outlet", off)[0], /computed gutter paint/);
 });
 
-test("full-height split geometry keeps y0, the window end and one native inset in all shell phases", () => {
+test("full-height split geometry keeps full-height sidebar, even 8px inset gutters and one native clearance in all shell phases", () => {
 	for (const chrome of [
 		{},
 		{ bandHeight: 40 },
 		{ fullscreen: true },
 		{ native: true },
 	]) {
-		for (const phase of [{}, { pending: true }, { error: true }]) {
-			const f = fixture("outlet", { fullHeight: true, ...chrome, ...phase });
+		for (const phase of [
+			{},
+			{ hideSidebar: true },
+			{ pending: true },
+			{ error: true },
+		]) {
+			const f = fixture("split", { fullHeight: true, ...chrome, ...phase });
 			assert.deepEqual(
-				failures("outlet", f),
+				failures("split", f),
 				[],
 				JSON.stringify({ chrome, phase }),
 			);
@@ -372,36 +420,54 @@ test("full-height split geometry keeps y0, the window end and one native inset i
 	}
 });
 
-test("the geometry check rejects offset paint, doubled internal padding, missing pane ownership and flow bands", () => {
-	const y = fixture("outlet", { fullHeight: true });
-	y.frame.bounds.top += 1;
-	assert.match(failures("outlet", y)[0], /split paint starts at y0/);
-	const control = fixture("outlet", { fullHeight: true });
+test("the geometry check rejects offset inset gutters, doubled internal padding, missing pane ownership and flow bands", () => {
+	const y = fixture("split", { fullHeight: true });
+	y.frame.bounds.top = 0;
+	assert.match(
+		failures("split", y).join("\n"),
+		/8px side and bottom gutters and an 8px top gutter/,
+	);
+	const sidebarOffset = fixture("split", { fullHeight: true });
+	sidebarOffset.sidebar.bounds.top = 8;
+	assert.match(
+		failures("split", sidebarOffset)[0],
+		/split route reaches y0 and bottom/,
+	);
+	const control = fixture("split", { fullHeight: true });
 	control.panes[0].fixtureStyle.paddingTop = "64px";
 	assert.match(
-		failures("outlet", control)[0],
-		/each painted column clears native chrome once/,
+		failures("split", control)[0],
+		/each split column clears native chrome once/,
 	);
-	const startsUnderTheLane = fixture("outlet", { fullHeight: true });
-	startsUnderTheLane.panes[0].lastElementChild.bounds.top = 31;
+	const insetDoublePad = fixture("split", { fullHeight: true });
+	insetDoublePad.body.fixtureStyle.paddingTop = "32px";
 	assert.match(
-		failures("outlet", startsUnderTheLane)[0],
-		/each painted column clears native chrome once/,
+		failures("split", insetDoublePad)[0],
+		/each split column clears native chrome once/,
 	);
-	startsUnderTheLane.panes[0].lastElementChild.bounds.top = 64;
+	const startsUnderTheLane = fixture("split", { fullHeight: true });
+	startsUnderTheLane.body.lastElementChild.bounds.top = 31;
 	assert.match(
-		failures("outlet", startsUnderTheLane)[0],
-		/each painted column clears native chrome once/,
+		failures("split", startsUnderTheLane)[0],
+		/each split column clears native chrome once/,
 	);
-	const owner = fixture("outlet", { fullHeight: true });
+	startsUnderTheLane.body.lastElementChild.bounds.top = 64;
+	assert.match(
+		failures("split", startsUnderTheLane)[0],
+		/each split column clears native chrome once/,
+	);
+	const owner = fixture("split", { fullHeight: true });
 	owner.panes[0].removeAttribute("data-workspace-safe-content");
 	assert.match(
-		failures("outlet", owner)[0],
-		/each painted column clears native chrome once/,
+		failures("split", owner)[0],
+		/each split column clears native chrome once/,
 	);
-	const flowBand = fixture("outlet", { fullHeight: true, bandHeight: 40 });
+	const flowBand = fixture("split", { fullHeight: true, bandHeight: 40 });
 	flowBand.band.fixtureStyle.position = "static";
-	assert.match(failures("outlet", flowBand)[0], /split paint starts at y0/);
+	assert.match(
+		failures("split", flowBand)[0],
+		/split route reaches y0 and bottom/,
+	);
 	const normal = fixture("outlet");
 	normal.shell.setAttribute("data-workspace-frame-full-height", "");
 	assert.match(failures("outlet", normal)[0], /only the named split routes/);
@@ -547,6 +613,72 @@ test("the gutter case fails for an ungenerated, hidden, unpainted or mis-roled p
 			false,
 			`${path} must not accept a no-paint strip probe`,
 		);
+});
+
+test("full-height split inset accepts top-gutter and corner-spandrel probes while rejecting interior holes", () => {
+	const splitReading = {
+		...structuredClone(recorded["/settings"]),
+		shell: { left: 412, top: 0, width: 968, height: 900 },
+		frame: { left: 420, top: 8, width: 952, height: 884 },
+	};
+	// Side gutter (left and right of inset frame)
+	assert.equal(
+		accepted(
+			{ x: 416, y: 8, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		true,
+	);
+	assert.equal(
+		accepted(
+			{ x: 1376, y: 8, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		true,
+	);
+	// Top gutter above frame (y=4 < frame.top=8)
+	assert.equal(
+		accepted(
+			{ x: 800, y: 4, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		true,
+	);
+	// Top-left and top-right 10px corner spandrels at y=8
+	assert.equal(
+		accepted(
+			{ x: 421, y: 8, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		true,
+	);
+	assert.equal(
+		accepted(
+			{ x: 1371, y: 8, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		true,
+	);
+	// Interior of rounded frame at y=8 (past corner radius) must still reject bg: null
+	assert.equal(
+		accepted(
+			{ x: 800, y: 8, bg: null, tag: null, inOutlet: true },
+			splitReading,
+			"split",
+			true,
+		),
+		false,
+	);
 });
 
 test("the recorded Chat and Browser strips read exactly as they did before the fix", () => {

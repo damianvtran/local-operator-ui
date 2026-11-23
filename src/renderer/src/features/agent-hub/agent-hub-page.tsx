@@ -1011,7 +1011,10 @@ export const AgentHubPage: React.FC = () => {
 								</div>
 							</>
 						)}
-						<div className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+						<div
+							data-lo-pane-edge-cues=""
+							className="flex min-w-0 flex-1 flex-col overflow-y-auto"
+						>
 							{/*
 							 * The controls row, and its hierarchy.
 							 *

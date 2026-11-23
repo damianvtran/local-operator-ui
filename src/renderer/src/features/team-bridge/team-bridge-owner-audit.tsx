@@ -679,6 +679,7 @@ export function OwnerAuditPanelView({
 			 * other child takes the same `px-5` itself. */}
 			<div
 				ref={viewportRef}
+				data-lo-pane-edge-cues=""
 				className="min-h-0 flex-1 overflow-auto pb-5"
 				style={{ overflowAnchor: "none" }}
 			>

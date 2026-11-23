@@ -173,9 +173,10 @@ const INSET_COLUMNS = [
 	[
 		"src/renderer/src/features/settings/components/settings-page.tsx",
 		[
-			'"flex min-h-0 flex-1 overflow-hidden bg-canvas"',
+			'"flex min-h-0 flex-1 overflow-hidden bg-surface"',
+			'<WorkspaceFrame variant="full-height">',
 			'"flex min-h-0 min-w-0 flex-1 flex-col"',
-			'"min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"',
+			'"min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 md:px-8"',
 		],
 	],
 	[
@@ -185,16 +186,18 @@ const INSET_COLUMNS = [
 	[
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 		[
-			'"flex min-h-0 flex-1 bg-canvas text-ink"',
+			'"flex min-h-0 flex-1 overflow-hidden bg-surface text-ink"',
 			'"flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"',
-			'"flex min-w-0 flex-1 flex-col"',
+			'<WorkspaceFrame variant="full-height">',
+			'"flex min-h-0 min-w-0 flex-1 flex-col"',
 		],
 	],
 	[
 		"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
 		[
-			'"flex min-h-0 flex-1 overflow-hidden bg-canvas"',
-			'"h-full grow overflow-hidden"',
+			'"flex min-h-0 flex-1 overflow-hidden bg-surface"',
+			'<WorkspaceFrame variant="full-height">',
+			'"flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden"',
 		],
 	],
 	[
@@ -209,24 +212,43 @@ test("inset split routes keep their grounds and local scroll without a second cl
 		for (const literal of classes) {
 			assert.ok(source.includes(literal), `${path} lost ${literal}`);
 		}
-		const markedPanes = [
+		// Full-height split sidebars keep page-sidebar + data-workspace-safe-content;
+		// content columns sit inside WorkspaceFrame variant="full-height" (which owns
+		// canvas-content) and must not duplicate data-glass-region="canvas-content".
+		const sidebarPanes = [
 			...source.matchAll(
-				/data-glass-region="(page-sidebar|canvas-content)"\s+data-workspace-safe-content=""/g,
+				/data-glass-region="page-sidebar"\s+data-workspace-safe-content=""/g,
 			),
-		].map((match) => match[1]);
-		const expected =
-			path === LIBRARY_PAGE
-				? []
-				: path.endsWith("/agents-page.tsx")
-					? ["page-sidebar", "canvas-content"]
-					: path.endsWith("sidebar.tsx")
-						? ["page-sidebar"]
-						: ["canvas-content"];
-		assert.deepEqual(
-			markedPanes,
-			expected,
-			`${path}: each full-height ground, not its scroller, owns clearance`,
+		];
+		const safeContentCount = [
+			...source.matchAll(/data-workspace-safe-content=""/g),
+		].length;
+		const duplicateCanvasContent = [
+			...source.matchAll(/data-glass-region="canvas-content"/g),
+		];
+		const expectedSidebars =
+			path.endsWith("/agents-page.tsx") || path.endsWith("sidebar.tsx") ? 1 : 0;
+		// agents-page.tsx has 3: LegacyAgentsPage Suspense fallback, roster aside,
+		// and the detail column inside WorkspaceFrame.
+		const expectedSafe =
+			path === LIBRARY_PAGE ? 0 : path.endsWith("/agents-page.tsx") ? 3 : 1;
+		assert.equal(
+			sidebarPanes.length,
+			expectedSidebars,
+			`${path}: full-height sidebar owns page-sidebar + clearance`,
 		);
+		assert.equal(
+			safeContentCount,
+			expectedSafe,
+			`${path}: each split column, not its scroller, owns clearance`,
+		);
+		if (path !== LIBRARY_PAGE) {
+			assert.equal(
+				duplicateCanvasContent.length,
+				0,
+				`${path}: WorkspaceFrame variant="full-height" owns canvas-content, not an inner wrapper`,
+			);
+		}
 		assert.doesNotMatch(
 			source,
 			/["' ]panel-(?:top-pad|flush|scroll) /,

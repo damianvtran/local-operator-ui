@@ -59,7 +59,10 @@ test("workspace glass leaves the sidebars unbacked and paints the inset only onc
 		"src/renderer/src/shared/components/common/workspace-frame.tsx",
 	);
 	assert.match(adapter, /<WorkspaceFrame variant="chat">/);
-	assert.match(primitive, /variant === "chat"\s*\? "canvas-content"/);
+	assert.match(
+		primitive,
+		/variant === "chat" \|\| variant === "full-height"\s*\? "canvas-content"/,
+	);
 	const rule = (selector) => {
 		const body = CSS_NO_COMMENTS.split(`${selector} {`)[1]?.split("}")[0];
 		assert.ok(body, selector);

@@ -1309,7 +1309,7 @@ export const DockedLongContent: Story = {
 	play: async () => {
 		await waitFor(() => {
 			const scroller = document.querySelector<HTMLElement>(
-				"[data-lo-pane-edge-cues]",
+				"[data-library-dock] [data-lo-pane-edge-cues]",
 			);
 			if (!scroller) throw new Error("the text scroller is not mounted");
 			expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
@@ -1317,7 +1317,7 @@ export const DockedLongContent: Story = {
 		});
 		await waitFor(() => {
 			const scroller = document.querySelector<HTMLElement>(
-				"[data-lo-pane-edge-cues]",
+				"[data-library-dock] [data-lo-pane-edge-cues]",
 			);
 			expect(scroller?.scrollTop).toBeGreaterThan(0);
 			expect(scroller ? scroller.scrollTop + scroller.clientHeight : 0).toBe(

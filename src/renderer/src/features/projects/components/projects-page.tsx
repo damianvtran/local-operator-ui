@@ -783,6 +783,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 */
 			<div
 				ref={detailScrollerRef}
+				data-lo-pane-edge-cues=""
 				className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable_both-edges]"
 			>
 				<ProjectDetailScreen projectKey={projectId} nowMs={nowMs} />

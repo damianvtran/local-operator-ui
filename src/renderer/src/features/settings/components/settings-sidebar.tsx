@@ -308,7 +308,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of
 			    space under the final group. */}
-			<div className="flex flex-1 flex-col gap-6 overflow-y-auto px-2 py-4">
+			<div
+				data-lo-pane-edge-cues=""
+				className="flex flex-1 flex-col gap-6 overflow-y-auto px-2 py-4"
+			>
 				{SECTION_GROUPS.map((group) => {
 					const groupSections = sections.filter((s) =>
 						group.ids.includes(s.id),

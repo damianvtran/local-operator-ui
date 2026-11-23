@@ -422,7 +422,10 @@ export const ProjectList: FC<ProjectListProps> = ({
 					</tr>
 				</thead>
 			</table>
-			<ul className="min-h-0 flex-1 overflow-y-auto px-6">
+			<ul
+				data-lo-pane-edge-cues="bottom"
+				className="min-h-0 flex-1 overflow-y-auto px-6"
+			>
 				{groups.map((group, index) => (
 					<li key={group.team ?? ""}>
 						<TeamSectionHeader

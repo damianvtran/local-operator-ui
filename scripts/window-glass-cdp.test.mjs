@@ -167,12 +167,15 @@ const AUDIT = `(() => {
   const outlet = document.querySelector('main[data-workspace-outlet]');
   const frames = [...(outlet?.querySelectorAll('[data-workspace-frame]') ?? [])].filter((el) => el.getClientRects().length > 0);
   const frame = frames[0];
+  const splitRoot = frame?.closest('[data-glass-split]') ?? null;
   out.frameCount = frames.length;
   out.frame = !frame ? null : {
     own: alphaOf(getComputedStyle(frame).backgroundColor),
     outletOwn: alphaOf(getComputedStyle(outlet).backgroundColor),
     role: frame.dataset.glassRegion,
     split: !!frame.querySelector(':scope > [data-glass-split]'),
+    splitInset: frame.hasAttribute('data-workspace-split-inset') && !!splitRoot,
+    splitRootOwn: splitRoot ? alphaOf(getComputedStyle(splitRoot).backgroundColor) : null,
   };
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
@@ -501,12 +504,14 @@ const ROUTES = [
 	},
 	{
 		hash: "#/settings",
-		split: true,
+		frameRole: "canvas-content",
+		splitInset: true,
 		must: ["sidebar", "pageSidebar", "content"],
 	},
 	{
 		hash: "#/agents",
-		split: true,
+		frameRole: "canvas-content",
+		splitInset: true,
 		must: ["sidebar", "pageSidebar", "content"],
 	},
 	/* Projects: the page column and backing. Cards need real project data, so
@@ -535,7 +540,12 @@ function assertFrameGround(route, audit, coverage, tag) {
 	assert.equal(
 		audit.frame.split,
 		route.split === true,
-		`${tag}: split at route root`,
+		`${tag}: nested split inside ordinary frame`,
+	);
+	assert.equal(
+		audit.frame.splitInset,
+		route.splitInset === true,
+		`${tag}: split-route content inset beside full-height sidebar`,
 	);
 	const role = route.frameRole ?? "canvas-backing";
 	assert.equal(audit.frame.role, role, `${tag}: frame paint role`);
@@ -557,6 +567,13 @@ function assertFrameGround(route, audit, coverage, tag) {
 		coverage === "off" ? 1 : 0,
 		`${tag}: no second outlet background beneath glass`,
 	);
+	if (route.splitInset) {
+		assert.equal(
+			audit.frame.splitRootOwn,
+			coverage === "off" ? 1 : 0,
+			`${tag}: split root stays transparent beneath glass`,
+		);
+	}
 }
 
 /**

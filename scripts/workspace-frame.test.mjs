@@ -23,7 +23,7 @@ const require = createRequire(import.meta.url);
 
 const ROUTE_PARAM = /:\w+/g;
 const OUTLET_PLACEMENT =
-	/<main\s+data-workspace-outlet=""[\s\S]*?className="panel-top-pad flex grow flex-col overflow-hidden"[\s\S]*?data-chrome-route-band=""[\s\S]*?<WorkspaceFrame\s+inset=\{outletWrapsRoute\}\s+variant=\{outletFullHeight \? "full-height" : undefined\}\s*>\s*\{routeBody\}\s*<\/WorkspaceFrame>\s*<\/main>/;
+	/<main\s+data-workspace-outlet=""[\s\S]*?className="panel-top-pad flex grow flex-col overflow-hidden"[\s\S]*?data-chrome-route-band=""[\s\S]*?<WorkspaceFrame\s+inset=\{outletWrapsRoute\}\s*>\s*\{routeBody\}\s*<\/WorkspaceFrame>\s*<\/main>/;
 const INSET_MARKUP =
 	/<div[^>]*data-workspace-frame-shell=""><div[^>]*data-workspace-frame="" data-glass-region="canvas-backing"><div data-fixture-body=""><\/div><\/div><\/div>/;
 const FRAME_RULE = /\.workspace-frame\s*\{([^}]+)\}/;
@@ -38,6 +38,8 @@ const PERIMETER_ARC = /arc to [^,]+\s+of\s+var\(--workspace-frame-radius\)/g;
 const RAW_SHELL_GLASS =
 	/background-color: color-mix\(\s*in srgb,\s*var\(--lo-surface\) calc\(var\(--lo-glass-a-surface\) \* 100%\),\s*transparent\s*\)/;
 const FRAME_GUTTER_INLINE = /margin-inline: var\(--workspace-frame-gutter\);/;
+const FRAME_GUTTER_TOP =
+	/margin-block-start: var\(--workspace-frame-block-start\);/;
 const FRAME_GUTTER_BOTTOM =
 	/margin-block-end: var\(--workspace-frame-block-end\);/;
 const FRAME_RADIUS = /border-radius: var\(--workspace-frame-radius\);/;
@@ -45,13 +47,15 @@ const SPLIT_OUTLET_NO_PAD =
 	/main\[data-workspace-outlet\]\[data-workspace-full-height\]\s*\{[^}]*padding-block-start: 0;/;
 const SPLIT_CAPTION_OVERLAY =
 	/main\[data-workspace-full-height\]\s*>\s*\[data-chrome-route-band\]\s*\{[^}]*position: absolute;[^}]*inset: 0 0 auto;/;
-const SPLIT_INNER_PAD =
-	/\[data-workspace-frame-full-height\]\s+\[data-workspace-safe-content\]\s*\{[^}]*padding-block-start: var\(--workspace-safe-top\);/;
+const SPLIT_SIDEBAR_PAD =
+	/\[data-workspace-full-height\]\s+\[data-workspace-safe-content\]\s*\{[^}]*padding-block-start: var\(--workspace-safe-top\);/;
+const SPLIT_INSET_PAD =
+	/\[data-workspace-frame-full-height\]\s+\[data-workspace-safe-content\]\s*\{[^}]*padding-block-start: max\(\s*0px,\s*calc\(\s*var\(--workspace-safe-top, 0px\) -\s*var\(--workspace-frame-block-start, 0px\)\s*\)\s*\);/;
 const SIDEBAR_PERIMETER_RULE =
 	/html\[data-glass~="sidebar"\] \.workspace-frame-shell::before,\s*html\[data-glass~="sidebar"\] \[data-workspace-tabs\] \{([^}]+)\}/;
 const FRAME_OVERFLOW = /overflow: clip;/;
 const DECORATIVE_FRAME_STYLES =
-	/(?:^|\s)(?:border(?:-color|-width|-style)?|box-shadow|outline|margin-top|margin-block-start|padding[^:]*):/;
+	/(?:^|\s)(?:border(?:-color|-width|-style)?|box-shadow|outline|margin-top|padding[^:]*):/;
 const SPLIT_PAINT_GUARD =
 	/(?:^|,)\s*html\s+\[data-workspace-frame\]\[data-glass-region="canvas-backing"\]:has\(\s*>\s*\[data-glass-split\]\s*\):not\(:has\(\s*>\s*\[data-workspace-route-pending\]\s*\)\),\s*html\[data-glass\]\s+\[data-glass-split\]\s*\{\s*background-color: transparent;/m;
 
@@ -153,7 +157,7 @@ test("every desktop route pattern and redirect declares its actual frame placeme
 			assert.equal(mode.outletFullHeight, handle === "full-height", url);
 			assert.equal(
 				mode.outletWrapsRoute,
-				handle !== "chat" && handle !== "chrome",
+				handle !== "chat" && handle !== "chrome" && handle !== "full-height",
 				url,
 			);
 			assert.equal(mode.routeOwnsSidebar, handle === "bridge", url);
@@ -304,6 +308,20 @@ function settledFixture(mode) {
 				body,
 			),
 		];
+	if (mode.outletFullHeight)
+		return createElement(
+			"div",
+			{ "data-glass-split": "" },
+			createElement("nav", {
+				"data-glass-region": "page-sidebar",
+				"data-workspace-safe-content": "",
+			}),
+			createElement(
+				WorkspaceFrame,
+				{ variant: "full-height" },
+				createElement("div", { "data-workspace-safe-content": "" }, body),
+			),
+		);
 	return body;
 }
 
@@ -333,6 +351,23 @@ test("all 17 live patterns render exactly one effective body frame pending and s
 				fullHeight,
 				url,
 			);
+			assert.equal(
+				markup.includes('data-workspace-split-inset=""'),
+				fullHeight,
+				url,
+			);
+			if (fullHeight) {
+				assert.match(
+					markup,
+					/data-workspace-frame-shell="" data-workspace-frame-full-height=""><div[^>]*data-workspace-frame="" data-workspace-split-inset="" data-glass-region="canvas-content"/,
+				);
+			}
+			if (fullHeight && !pending) {
+				assert.match(
+					markup,
+					/data-glass-region="page-sidebar" data-workspace-safe-content=""><\/nav><div[^>]*data-workspace-frame-shell="" data-workspace-frame-full-height=""/,
+				);
+			}
 			if (fullHeight && pending)
 				assert.match(
 					markup,
@@ -403,16 +438,19 @@ test("a split-frame error keeps Retry focused on rerender and resets on Retry or
 
 		shouldThrow = false;
 		await act(() => retry.click());
-		assert.ok(frame.querySelector("[data-recovered-body]"));
-		assert.equal(frame.querySelector("[data-workspace-route-error]"), null);
+		assert.ok(container.querySelector("[data-recovered-body]"));
+		assert.equal(container.querySelector("[data-workspace-route-error]"), null);
 
 		shouldThrow = true;
 		await renderSameRoute();
-		assert.ok(frame.querySelector("[data-workspace-route-error]"));
+		assert.ok(container.querySelector("[data-workspace-route-error]"));
 		await act(() => root.render(outlet("/settings?section=integrations")));
-		assert.equal(container.querySelector("[data-workspace-frame]"), frame);
-		assert.ok(frame.querySelector("[data-fixture-body]"));
-		assert.equal(frame.querySelector("[data-workspace-route-error]"), null);
+		const settledFrame = container.querySelector(
+			"[data-workspace-frame-full-height] > [data-workspace-frame][data-workspace-split-inset]",
+		);
+		assert.ok(settledFrame);
+		assert.ok(settledFrame.querySelector("[data-fixture-body]"));
+		assert.equal(container.querySelector("[data-workspace-route-error]"), null);
 	} finally {
 		await act(() => root.unmount());
 		globalThis.window = original;
@@ -508,6 +546,7 @@ test("the inset contributes geometry and one ground, not a seam, scroll owner or
 	const rule = styles.match(FRAME_RULE)?.[1];
 	assert.ok(rule);
 	assert.match(rule, FRAME_GUTTER_INLINE);
+	assert.match(rule, FRAME_GUTTER_TOP);
 	assert.match(rule, FRAME_GUTTER_BOTTOM);
 	assert.match(rule, FRAME_RADIUS);
 	assert.match(rule, FRAME_OVERFLOW);
@@ -515,7 +554,8 @@ test("the inset contributes geometry and one ground, not a seam, scroll owner or
 	assert.match(styles, SPLIT_PAINT_GUARD);
 	assert.match(styles, SPLIT_OUTLET_NO_PAD);
 	assert.match(styles, SPLIT_CAPTION_OVERLAY);
-	assert.match(styles, SPLIT_INNER_PAD);
+	assert.match(styles, SPLIT_SIDEBAR_PAD);
+	assert.match(styles, SPLIT_INSET_PAD);
 });
 
 test("only the exposed frame perimeter carries the same raw shell glass as the tabs", () => {
@@ -523,6 +563,7 @@ test("only the exposed frame perimeter carries the same raw shell glass as the t
 	const rim = styles.match(PERIMETER_RULE)?.[1];
 	assert.ok(shell && rim, "the shell needs a distinct, clipped paint layer");
 	assert.ok(shell.includes("--workspace-frame-gutter: 8px;"));
+	assert.ok(shell.includes("--workspace-frame-block-start: 0px;"));
 	assert.ok(
 		shell.includes(
 			"--workspace-frame-block-end: var(--workspace-frame-gutter);",
@@ -530,7 +571,7 @@ test("only the exposed frame perimeter carries the same raw shell glass as the t
 	);
 	assert.match(
 		styles,
-		/\[data-workspace-frame-full-height\]\s*\{\s*--workspace-frame-block-end: 0px;/,
+		/\[data-workspace-frame-full-height\]\s*\{\s*--workspace-frame-block-start: var\(--workspace-frame-gutter\);\s*--workspace-frame-block-end: var\(--workspace-frame-gutter\);/,
 	);
 	assert.ok(shell.includes("--workspace-frame-radius: 10px;"));
 	assert.doesNotMatch(shell, SHELL_BACKING_OR_CONTAINMENT);
@@ -538,6 +579,11 @@ test("only the exposed frame perimeter carries the same raw shell glass as the t
 	assert.ok(rim.includes("pointer-events: none;"));
 	const path = rim.match(PERIMETER_PATH)?.[1];
 	assert.ok(path, "unclipped chrome would paint behind the translucent body");
+	assert.match(path, /evenodd from 0 0,/);
+	assert.match(
+		path,
+		/move to var\(--gutter-and-radius\) var\(--workspace-frame-block-start\),/,
+	);
 	assert.equal([...path.matchAll(PERIMETER_ARC)].length, 4);
 	const glass = styles.match(SIDEBAR_PERIMETER_RULE)?.[1];
 	assert.ok(
@@ -545,4 +591,55 @@ test("only the exposed frame perimeter carries the same raw shell glass as the t
 		"perimeter glass and workspace tabs must share their paint rule",
 	);
 	assert.match(glass, RAW_SHELL_GLASS);
+});
+
+test("scrollable inset inner areas wire scroll-driven edge fades without dimming sticky headers", () => {
+	assert.match(
+		styles,
+		/\[data-lo-pane-edge-cues="bottom"\]\s*\{\s*animation-name: sidebar-bottom-cue;\s*animation-timeline: scroll\(self\);\s*animation-range: calc\(100% - 24px\) 100%;\s*\}/,
+	);
+	assert.match(
+		styles,
+		/\[data-lo-pane-edge-cues\]:has\(\[data-lo-pane-footer\]\)\s*\{\s*mask-image: none;\s*\}/,
+	);
+	const fullFadeFiles = [
+		"features/settings/components/settings-page.tsx",
+		"features/settings/components/settings-sidebar.tsx",
+		"features/agents/components/agents-page.tsx",
+		"features/agents/components/agents-sidebar.tsx",
+		"features/agents/components/agent-settings.tsx",
+		"features/schedules/components/schedules-page.tsx",
+		"features/agent-hub/agent-hub-page.tsx",
+		"features/agent-hub/agent-details-page.tsx",
+		"features/projects/components/projects-page.tsx",
+		"features/library/components/library-page.tsx",
+		"features/mesh/mesh-page.tsx",
+		"features/mesh/mesh-list.tsx",
+		"features/team-bridge/team-bridge-page.tsx",
+	];
+	for (const file of fullFadeFiles) {
+		assert.match(
+			read(file),
+			/data-lo-pane-edge-cues(?:\s*=\s*""|\b)/,
+			`${file} should wire data-lo-pane-edge-cues on its primary inner scroller`,
+		);
+	}
+	const bottomFadeFiles = [
+		"features/projects/components/project-list.tsx",
+		"features/projects/components/project-board.tsx",
+		"features/projects/components/project-timeline.tsx",
+		"features/notifications/components/notifications-page.tsx",
+	];
+	for (const file of bottomFadeFiles) {
+		assert.match(
+			read(file),
+			/data-lo-pane-edge-cues="bottom"/,
+			`${file} has sticky top-0 headers and must use bottom-only fade`,
+		);
+	}
+	assert.match(
+		read("features/notifications/components/notification-detail.tsx"),
+		/data-lo-pane-edge-cues=\{narrow \? "bottom" : ""\}/,
+		"notification-detail must switch to bottom-only fade only when narrow sticky header is active",
+	);
 });

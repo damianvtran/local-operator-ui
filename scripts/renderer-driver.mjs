@@ -43781,7 +43781,12 @@ async function sceneRouteTops(cdp) {
 	}
 
 	for (const [slug, path, reading, fullHeight] of readings) {
-		const owner = slug === "chat" || slug === "browser" ? slug : "outlet";
+		const owner =
+			slug === "chat" || slug === "browser"
+				? slug
+				: fullHeight
+					? "split"
+					: "outlet";
 		checkRouteFrame(path, owner, reading, check, fullHeight);
 	}
 
@@ -43813,16 +43818,20 @@ async function sceneRouteTops(cdp) {
 			const ownsChrome = slug === "chat" || slug === "browser";
 			const { chrome, frame } = reading;
 			check(
-				`${path}: ${ownsChrome ? "route chrome covers the lane from y0" : fullHeight ? "split body starts at y0" : "outlet body starts at the lane's bottom edge"}`,
+				`${path}: ${ownsChrome ? "route chrome covers the lane from y0" : fullHeight ? "split route starts at y0 with an 8px top inset gutter" : "outlet body starts at the lane's bottom edge"}`,
 				ownsChrome
 					? !!chrome &&
 							Math.abs(chrome.top) < 0.5 &&
 							chrome.top + chrome.height >= laneBottom - 0.5
-					: !!frame &&
-							Math.abs(frame.top - (fullHeight ? 0 : laneBottom)) < 0.5,
-				JSON.stringify({ chrome, frame, laneBottom }),
+					: fullHeight
+						? !!reading.route &&
+							Math.abs(reading.route.top) < 0.5 &&
+							!!frame &&
+							Math.abs(frame.top - 8) < 0.5
+						: !!frame && Math.abs(frame.top - laneBottom) < 0.5,
+				JSON.stringify({ chrome, frame, route: reading.route, laneBottom }),
 			);
-			const stripOwner = ownsChrome ? slug : "outlet";
+			const stripOwner = ownsChrome ? slug : fullHeight ? "split" : "outlet";
 			const stripOverBody = stripAboveInset(reading, stripOwner, fullHeight);
 			const panelGrounds = stripPanelGrounds(reading);
 			check(

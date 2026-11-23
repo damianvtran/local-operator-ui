@@ -31,11 +31,13 @@ export function readRouteFrame(document, main, box, roleGround) {
 			? null
 			: outletFrames.includes(frame)
 				? "outlet"
-				: frame.hasAttribute("data-workspace-inset")
-					? "chat"
-					: frame.hasAttribute("data-workspace-browser")
-						? "browser"
-						: null;
+				: frame.hasAttribute("data-workspace-split-inset")
+					? "split"
+					: frame.hasAttribute("data-workspace-inset")
+						? "chat"
+						: frame.hasAttribute("data-workspace-browser")
+							? "browser"
+							: null;
 	const routeChild = (el) =>
 		Array.from(el?.children ?? []).find(
 			(child) =>
@@ -73,18 +75,40 @@ export function readRouteFrame(document, main, box, roleGround) {
 	const band = main?.querySelector(":scope > [data-chrome-route-band]");
 	const fullHeight =
 		shell?.hasAttribute("data-workspace-frame-full-height") ?? false;
+	const routeFallback =
+		(route?.matches(
+			"[data-workspace-route-pending], [data-workspace-route-error]",
+		) ||
+			Boolean(
+				frame?.querySelector(
+					":scope > [data-workspace-route-pending], :scope > [data-workspace-route-error]",
+				),
+			)) ??
+		false;
+	const splitSidebar =
+		fullHeight && !routeFallback
+			? (Array.from(
+					route?.querySelectorAll(
+						":scope > [data-glass-region='page-sidebar'], :scope > * > [data-glass-region='page-sidebar']",
+					) ?? [],
+				).find(visibleBox) ?? null)
+			: null;
 	// Derive the real split grounds separately from the clearance marker; a
 	// missing marker must not make a pane disappear from the expectations.
-	const paneRole =
-		":is([data-glass-region='page-sidebar'], [data-glass-region='canvas-content'])";
-	const splitPanes = Array.from(
-		route?.querySelectorAll(`:scope > ${paneRole}, :scope > * > ${paneRole}`) ??
-			[],
-	).filter(visibleBox);
+	// On a full-height split route, `page-sidebar` sits beside the inset shell
+	// while `canvas-content` is owned by the inset frame itself.
+	const splitPanes = [
+		...(splitSidebar ? [splitSidebar] : []),
+		...(fullHeight &&
+		!routeFallback &&
+		frame?.matches("[data-glass-region='canvas-content']")
+			? [frame]
+			: []),
+	].filter(visibleBox);
 	// Only the first in-flow child of each ground matters: for scrollable
 	// panes this is the scrollport, whose own contents can move independently.
 	const safePanes = Array.from(
-		frame?.querySelectorAll("[data-workspace-safe-content]") ?? [],
+		main?.querySelectorAll("[data-workspace-safe-content]") ?? [],
 	)
 		.filter(visibleBox)
 		.map((pane) => {
@@ -93,11 +117,17 @@ export function readRouteFrame(document, main, box, roleGround) {
 					!["absolute", "fixed"].includes(getComputedStyle(child).position) &&
 					visibleBox(child),
 			);
+			const inFrame = Boolean(frame?.contains(pane));
 			return {
 				bounds: visibleBox(pane),
 				pad: Number.parseFloat(getComputedStyle(pane).paddingTop),
 				first: visibleBox(first),
-				role: pane.getAttribute("data-glass-region"),
+				inFrame,
+				role:
+					pane.getAttribute("data-glass-region") ??
+					(inFrame && !routeFallback
+						? (frame?.getAttribute("data-glass-region") ?? null)
+						: null),
 			};
 		});
 	const perimeterStyle = shell ? getComputedStyle(shell, "::before") : null;
@@ -112,14 +142,12 @@ export function readRouteFrame(document, main, box, roleGround) {
 			effectiveFrames: effectiveFrames.length,
 			frameOwner,
 			fullHeight,
+			splitSidebar: visibleBox(splitSidebar),
 			splitRoles: splitPanes.map((pane) =>
 				pane.getAttribute("data-glass-region"),
 			),
 			safePanes,
-			routeFallback:
-				route?.matches(
-					"[data-workspace-route-pending], [data-workspace-route-error]",
-				) ?? false,
+			routeFallback,
 			bandPosition: band ? getComputedStyle(band).position : null,
 			frame: visibleBox(frame),
 			shell: visibleBox(shell),
@@ -225,11 +253,29 @@ export function stripProbeAccepted(
 		stripPanelGrounds(reading).includes(perimeter.paint);
 	const right = (box) => box.left + box.width;
 	const within = (x, start, end) => x >= start - 0.5 && x <= end + 0.5;
-	// Inside the shell's own box, outside the frame: the ring the pseudo paints.
-	// The scene's gutter check pins that ring to 8px on the same reading.
+	// Inside the shell's own box, outside the rounded frame: the ring the pseudo
+	// paints (8px side/top/bottom gutters and 10px corner spandrels).
+	const y = probe.y ?? 8;
+	const cornerR = 10;
+	const outsideCornerArc = (cx, cy) => {
+		const dx = probe.x - cx;
+		const dy = y - cy;
+		return dx * dx + dy * dy > (cornerR - 0.5) * (cornerR - 0.5);
+	};
+	const inTopLeftSpandrel =
+		probe.x < frame.left + cornerR &&
+		y < frame.top + cornerR &&
+		outsideCornerArc(frame.left + cornerR, frame.top + cornerR);
+	const inTopRightSpandrel =
+		probe.x > right(frame) - cornerR &&
+		y < frame.top + cornerR &&
+		outsideCornerArc(right(frame) - cornerR, frame.top + cornerR);
 	const ring =
 		within(probe.x, shell.left, right(shell)) &&
-		!within(probe.x, frame.left, right(frame));
+		(!within(probe.x, frame.left, right(frame)) ||
+			y < frame.top - 0.5 ||
+			inTopLeftSpandrel ||
+			inTopRightSpandrel);
 	return (
 		probe.bg === null && probe.inOutlet === true && generated && painted && ring
 	);
@@ -264,20 +310,27 @@ export function checkRouteFrame(
 		// The existing fullscreen contract reserves one 8px spacing step even
 		// without drag chrome. Otherwise the actual drag target is the reference.
 		const safeTop = reading.fullscreen ? 8 : Math.max(laneHeight, visibleBand);
+		const viewportHeight = reading.viewport?.height ?? end(main);
+		const sidebar = reading.splitSidebar ?? null;
 		check(
-			`${path}: split paint starts at y0 and ends at the window edge with no outer clearance`,
+			`${path}: split route reaches y0 and bottom with a full-height sidebar and evenly inset content shell`,
 			!!frame &&
+				!!shell &&
 				!!main &&
 				!!reading.route &&
 				near(reading.mainPad, 0) &&
-				near(frame.top, 0) &&
-				near(reading.route.top, frame.top) &&
-				near(end(reading.route), end(frame)) &&
-				near(end(frame), reading.viewport?.height ?? end(main)) &&
+				near(reading.route.top, 0) &&
+				near(end(reading.route), viewportHeight) &&
+				near(shell.top, 0) &&
+				near(end(shell), viewportHeight) &&
+				(!sidebar ||
+					(near(sidebar.top, 0) && near(end(sidebar), viewportHeight))) &&
 				(!visibleBand ||
 					(reading.bandPosition === "absolute" && near(band.top, 0))),
 			JSON.stringify({
 				frame,
+				shell,
+				sidebar,
 				main,
 				route: reading.route,
 				band,
@@ -291,19 +344,24 @@ export function checkRouteFrame(
 				paneRoles.length === reading.splitRoles.length &&
 				paneRoles.every((role, index) => role === reading.splitRoles[index]);
 		check(
-			`${path}: each painted column clears native chrome once inside, before its first in-flow box`,
+			`${path}: each split column clears native chrome once inside, before its first in-flow box`,
 			!!frame &&
 				panesOwned &&
-				reading.safePanes.every(
-					({ bounds, pad, first }) =>
-						near(bounds.top, frame.top) &&
-						near(end(bounds), end(frame)) &&
-						near(pad, safeTop) &&
+				reading.safePanes.every(({ bounds, pad, first, inFrame }) => {
+					const expectedTop = inFrame ? frame.top : 0;
+					const expectedEnd = inFrame ? end(frame) : viewportHeight;
+					const expectedPad = inFrame ? Math.max(0, safeTop - 8) : safeTop;
+					const expectedFirstTop = expectedTop + expectedPad;
+					return (
+						near(bounds.top, expectedTop) &&
+						near(end(bounds), expectedEnd) &&
+						near(pad, expectedPad) &&
 						!!first &&
 						(reading.routeFallback
-							? first.top >= frame.top + safeTop - 0.5
-							: near(first.top, frame.top + safeTop)),
-				),
+							? first.top >= expectedFirstTop - 0.5
+							: near(first.top, expectedFirstTop))
+					);
+				}),
 			JSON.stringify({
 				safeTop,
 				safePanes: reading.safePanes,
@@ -369,19 +427,22 @@ export function checkRouteFrame(
 			}),
 		);
 	}
+	const sidebar = fullHeight ? (reading.splitSidebar ?? null) : null;
+	const expectedShellLeft = sidebar ? sidebar.left + sidebar.width : main?.left;
+	const expectedShellWidth = sidebar ? main.width - sidebar.width : main?.width;
 	check(
-		`${path}: the frame keeps 8px side gutters, ${fullHeight ? "no bottom gap" : "an 8px bottom gutter"} and no extra top gap`,
+		`${path}: the frame keeps 8px side and bottom gutters${fullHeight ? " and an 8px top gutter" : " and no extra top gap"}`,
 		!!frame &&
 			!!shell &&
 			!!main &&
-			near(shell.left, main.left) &&
-			near(shell.width, main.width) &&
+			near(shell.left, expectedShellLeft) &&
+			near(shell.width, expectedShellWidth) &&
 			near(end(shell), end(main)) &&
-			near(frame.top, shell.top) &&
+			near(frame.top - shell.top, fullHeight ? 8 : 0) &&
 			near(frame.left - shell.left, 8) &&
 			near(shell.left + shell.width - frame.left - frame.width, 8) &&
-			near(end(shell) - end(frame), fullHeight ? 0 : 8),
-		JSON.stringify({ frame, shell, main }),
+			near(end(shell) - end(frame), 8),
+		JSON.stringify({ frame, shell, sidebar, main }),
 	);
 	check(
 		`${path}: 10px clipped corners without an edge or shadow`,

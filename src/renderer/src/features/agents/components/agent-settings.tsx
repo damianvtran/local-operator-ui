@@ -67,7 +67,7 @@ export const AgentSettings: FC<AgentSettingsProps> = ({
 			className="h-full overflow-hidden"
 		>
 			{selectedAgent ? (
-				<div className="h-full overflow-y-auto">
+				<div data-lo-pane-edge-cues="" className="h-full overflow-y-auto">
 					<div className="mx-auto flex w-full max-w-4xl flex-col gap-8 pb-8">
 						<GeneralSettings
 							selectedAgent={selectedAgent}

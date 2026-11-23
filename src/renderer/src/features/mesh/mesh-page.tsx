@@ -445,7 +445,10 @@ export const MeshSurface: FC<{
 		 * stays reachable - and `min-h` on the canvas block below keeps it from
 		 * collapsing instead of merely being reachable.
 		 */
-		<div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6">
+		<div
+			data-lo-pane-edge-cues=""
+			className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6"
+		>
 			<PageHeader variant="compact" title={t("ui.mesh.mesh_page.mesh")} />
 			{(checking || state.kind === "ready" || state.kind === "loading") && (
 				<div className="flex items-center gap-4">

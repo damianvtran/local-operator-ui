@@ -434,6 +434,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 			 */}
 			<div
 				data-glass-region="panel"
+				data-lo-pane-edge-cues=""
 				className="min-h-0 flex-1 overflow-y-auto rounded-md bg-surface"
 			>
 				{/* The page keeps its chrome while loading, so nothing jumps when

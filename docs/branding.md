@@ -635,15 +635,21 @@ read on their own grounds, even with no inspector open.
 **Share the boundary, not the layout.** The outlet holds the same frame through
 loading, empty, error and content. Ordinary routes spend the platform's
 clearance before the frame. Settings (including subsection links) and Agents
-(including saved-agent detail) explicitly match a full-height frame variant:
-the frame and pane grounds touch y0 and the bottom, with the same rounded
-lateral inset. They clear the transparent lane or trailing caption band once
-inside each pane, above its scrollport, so neither controls nor scrolled rows
-can sit under the drag target. Fullscreen uses the normal smaller clearance
-inside the same grounds. Route-local actions, independent list/detail scrolling,
-sticky bands, narrow layout replacements and focus return stay with the page.
-Keep content cards, semantic boundaries and visible focus; don't wrap each
-column in a card.
+(including saved-agent detail) explicitly match a full-height split variant:
+the secondary navigation sidebar runs full height from y0 to the bottom on
+`surface`, while the content pane sits beside it inside `<WorkspaceFrame
+variant="full-height">` with even 8px gutters on all four sides (top, bottom,
+left, right) and 10px rounded corners. Both columns clear the transparent lane
+or trailing caption band once inside their painted column, above the scroller
+(the inset content column subtracts the 8px top gutter already paid), so
+neither controls nor scrolled rows can sit under the drag target. Fullscreen
+uses the normal smaller clearance inside the same grounds. Scrollable inset
+inner areas carry `[data-lo-pane-edge-cues]` (24px scroll-driven top and bottom
+fades, zero at rest; `[data-lo-pane-edge-cues="bottom"]` where `sticky top-0`
+section headers sit at the top edge so pinned headers are never dimmed).
+Route-local actions, independent list/detail scrolling, sticky bands, narrow
+layout replacements and focus return stay with the page. Keep content cards,
+semantic boundaries and visible focus; don't wrap each column in a card.
 
 **Show the work, not a second tab label.** A redundant page identity is an
 `sr-only` h1, not an icon, display heading and introduction above the controls.
@@ -653,15 +659,20 @@ leave an empty title row.
 
 **Share geometry, not an alpha layer.** Off stays solid. Sidebars only keeps
 its sidebar coverage and solid page/pane grounds. Full app keeps the existing
-page/pane coverage. Ordinary pages use the frame's canvas backing; a direct
-split route keeps the existing separate navigation, canvas and pane grounds
-instead. No new paint behind those regions and no opaque sticky band as a fix
-for double alpha.
+page/pane coverage. Ordinary pages use the frame's `canvas-backing`; full-height
+split routes (Settings, Agents) paint the full-height sidebar with
+`page-sidebar` and the evenly padded content `WorkspaceFrame` itself with
+`canvas-content` so there is strictly one alpha-owning canvas layer. Library
+keeps its nested split inside the ordinary outlet frame. No new paint behind
+those regions and no opaque sticky band as a fix for double alpha.
 
-**Placement.** Settings, Agents, Agent Hub, Schedules, Projects, Library,
-Notifications, enabled Mesh and Team Bridge use the outlet frame, including
-full-page details. Team Bridge keeps the same left-column portal and early
-Back; the conversation/thread replacement stays inside the right-hand frame.
+**Placement.** Agent Hub, Schedules, Projects, Library, Notifications, enabled
+Mesh and Team Bridge use the outlet frame, including full-page details.
+Settings and Agents mount `<WorkspaceFrame variant="full-height">` around their
+content column beside their full-height secondary sidebar (and wrap their
+pending/error states in the same full-height frame). Team Bridge keeps the same
+left-column portal and early Back; the conversation/thread replacement stays
+inside the right-hand frame.
 Chat mounts its body after workspace tabs and keeps `canvas-content` as the
 only body paint; its loading and route-error arms use the same boundary. The
 native Browser route mounts its body after its tab/address chrome and reports

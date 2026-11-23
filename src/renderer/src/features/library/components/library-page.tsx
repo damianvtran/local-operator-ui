@@ -996,6 +996,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							{!standalone && (
 								<section
 									data-library-results=""
+									data-lo-pane-edge-cues=""
 									aria-label={t("ui.library.page.results")}
 									aria-busy={listing.isLoading || listing.isFetching}
 									className="min-w-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
@@ -1222,6 +1223,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						</div>
 						<div
 							data-library-filter-sheet=""
+							data-lo-pane-edge-cues=""
 							className="min-h-0 flex-1 overflow-y-auto bg-surface"
 						>
 							{rail}

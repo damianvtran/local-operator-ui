@@ -613,6 +613,7 @@ html[data-glass]
 }
 .workspace-frame-shell {
 	--workspace-frame-gutter: 8px;
+	--workspace-frame-block-start: 0px;
 	--workspace-frame-block-end: var(--workspace-frame-gutter);
 	--workspace-frame-radius: 10px;
 	display: grid;
@@ -621,16 +622,18 @@ html[data-glass]
 .workspace-frame {
 	grid-area: 1 / 1;
 	margin-inline: var(--workspace-frame-gutter);
+	margin-block-start: var(--workspace-frame-block-start);
 	margin-block-end: var(--workspace-frame-block-end);
 	border-radius: var(--workspace-frame-radius);
 	overflow: clip;
 	background-color: var(--lo-canvas);
 }
 
-/* The split frame reaches both block edges. The bottom arcs still use the
- * shell ground, not a second backing behind the route. */
+/* Split routes sit beside a full-height secondary sidebar: the content inset
+ * gets even 8px gutters on all four sides instead of touching y0 or bottom. */
 [data-workspace-frame-full-height] {
-	--workspace-frame-block-end: 0px;
+	--workspace-frame-block-start: var(--workspace-frame-gutter);
+	--workspace-frame-block-end: var(--workspace-frame-gutter);
 }
 main[data-workspace-outlet][data-workspace-full-height] {
 	/* Use the same height as the trailing drag lane. The inherited panel pad
@@ -642,10 +645,23 @@ main[data-workspace-outlet][data-workspace-full-height] {
 	position: relative;
 	padding-block-start: 0;
 }
-[data-workspace-frame-full-height] [data-workspace-safe-content] {
+[data-workspace-full-height] [data-workspace-safe-content] {
 	/* Apply this to the painted column, not to its scroller: scrolling and
-	 * focus reveal must not carry controls under native chrome. */
+	 * focus reveal must not carry controls under native chrome. Full-height
+	 * secondary sidebars reach y0 and pay the full safe-top clearance. */
 	padding-block-start: var(--workspace-safe-top);
+}
+[data-workspace-frame-full-height] [data-workspace-safe-content] {
+	/* Inside a full-height inset frame, the top gutter already consumes
+	 * --workspace-frame-block-start; subtract it so the inner scroller starts at
+	 * the same safe-top line without double-stacking gutter and clearance. */
+	padding-block-start: max(
+		0px,
+		calc(
+			var(--workspace-safe-top, 0px) -
+			var(--workspace-frame-block-start, 0px)
+		)
+	);
 }
 main[data-workspace-full-height] > [data-chrome-route-band] {
 	/* Trailing WCO keeps its drag target, but it no longer displaces the paint.
@@ -658,13 +674,20 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 /* Bare window material made the gutter read as a dark border. Carry the
  * shell/tab ground around the opening, not under it: a full backing would
  * double up the canvas, split pages and pane glass. The path follows the
- * same gutter and radius as the frame (equal inline edges in LTR and RTL).
- * The two grid items share a cell without changing the body's containing
- * block, clipping or native Browser bounds. Without shape() leave it clear. */
+ * same gutter, block-start/end and radius as the frame (equal inline edges
+ * in LTR and RTL), using two opposite-wound subpaths with evenodd so both
+ * block-start: 0px (ordinary/chat/browser) and block-start: 8px (split inset)
+ * cut cleanly without a slit. The two grid items share a cell without changing
+ * the body's containing block, clipping or native Browser bounds. Without
+ * shape() leave it clear. */
 @supports (clip-path: shape(from 0 0, line to 100% 100%, close)) {
 	.workspace-frame-shell::before {
 		--gutter-and-radius: calc(
 			var(--workspace-frame-gutter) +
+			var(--workspace-frame-radius)
+		);
+		--block-start-and-radius: calc(
+			var(--workspace-frame-block-start) +
 			var(--workspace-frame-radius)
 		);
 		--block-end-and-radius: calc(
@@ -676,9 +699,13 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 		pointer-events: none;
 		background-color: var(--lo-surface);
 		clip-path: shape(
-			from 0 0,
-			hline to var(--gutter-and-radius),
-			arc to var(--workspace-frame-gutter) var(--workspace-frame-radius) of
+			evenodd from 0 0,
+			hline to 100%,
+			vline to 100%,
+			hline to 0,
+			close,
+			move to var(--gutter-and-radius) var(--workspace-frame-block-start),
+			arc to var(--workspace-frame-gutter) var(--block-start-and-radius) of
 				var(--workspace-frame-radius),
 			vline to calc(100% - var(--block-end-and-radius)),
 			arc to var(--gutter-and-radius)
@@ -688,12 +715,9 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 			arc to calc(100% - var(--workspace-frame-gutter))
 				calc(100% - var(--block-end-and-radius)) of
 				var(--workspace-frame-radius),
-			vline to var(--workspace-frame-radius),
-			arc to calc(100% - var(--gutter-and-radius)) 0 of
-				var(--workspace-frame-radius),
-			hline to 100%,
-			vline to 100%,
-			hline to 0,
+			vline to var(--block-start-and-radius),
+			arc to calc(100% - var(--gutter-and-radius))
+				var(--workspace-frame-block-start) of var(--workspace-frame-radius),
 			close
 		);
 	}
@@ -1209,6 +1233,14 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 		animation-fill-mode: both;
 		animation-timeline: scroll(self), scroll(self);
 		animation-range: 0 24px, calc(100% - 24px) 100%;
+	}
+
+	/* Scrollers carrying `sticky top-0` section headers opt into bottom-only
+	 * fade so pinned headers stay full-contrast while scrolling. */
+	[data-lo-pane-edge-cues="bottom"] {
+		animation-name: sidebar-bottom-cue;
+		animation-timeline: scroll(self);
+		animation-range: calc(100% - 24px) 100%;
 	}
 
 	@keyframes sidebar-top-cue {
@@ -2619,6 +2651,7 @@ html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
 html[data-glass~="sidebar"] [data-glass-region="sidebar"],
 html[data-glass~="sidebar"] [data-glass-region="page-sidebar"],
 html[data-glass~="canvas"] [data-glass-region="canvas"],
+html[data-glass~="canvas"] [data-glass-region="canvas-content"],
 html[data-glass~="canvas"]
 	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
 html[data-glass~="canvas"] [data-glass-region="panel"],
@@ -2669,6 +2702,7 @@ html[data-glass~="sidebar"]
 html[data-glass~="canvas"]
 	:is(
 		[data-glass-region="canvas"],
+		[data-glass-region="canvas-content"],
 		:is(
 				main,
 				:where([data-workspace-frame])
@@ -2688,7 +2722,11 @@ html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	:is(input, textarea, select, button)[class~="bg-surface"],
 html[data-glass~="canvas"]
 	[data-glass-region="panel"]
@@ -2710,7 +2748,11 @@ html[data-glass~="pane"]
 		:where([data-glass-region="chrome"])
 	),
 html[data-glass~="canvas"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well]):not(
 		:where([data-glass-region="chrome"])
 	),
@@ -2741,7 +2783,11 @@ html[data-glass~="sidebar"]
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"]:is([role="tablist"], [data-glass-well])
 	[role="tab"][data-state="active"],
 html[data-glass~="canvas"]
@@ -2902,7 +2948,11 @@ html[data-glass~="canvas"] [data-glass-state="running"] {
  * distinguished by the attribute's value so a call site says which it is.
  */
 html[data-glass~="canvas"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-sunken"][data-glass-well="clear"],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])
@@ -2920,7 +2970,11 @@ html[data-glass~="pane"]
  * that selector to every `bg-surface` div.
  */
 html[data-glass~="canvas"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
+	:is(
+		main[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-backing"],
+		:where([data-workspace-frame])[data-glass-region="canvas-content"]
+	)
 	[class~="bg-surface"][data-glass-well],
 html[data-glass~="sidebar"]
 	:is([data-glass-region="sidebar"], [data-glass-region="page-sidebar"])

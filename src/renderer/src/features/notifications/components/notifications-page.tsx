@@ -2118,6 +2118,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								}}
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [overflow-anchor:none] [scrollbar-gutter:stable]"
 								data-notifications-list=""
+								data-lo-pane-edge-cues="bottom"
 							>
 								{groups.map((group) => (
 									<GroupBlock
