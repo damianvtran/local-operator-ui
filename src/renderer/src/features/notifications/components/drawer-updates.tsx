@@ -75,6 +75,25 @@ export const defaultDrawerTab = (
 	liveAsks: number,
 ): DrawerTab => (scope === "fleet" ? "all" : liveAsks > 0 ? "asks" : "updates");
 
+/**
+ * THE STOP THE KEYBOARD MOVES TO (design § 18; agent review round 2, m-a).
+ *
+ * `tab` can sit outside `stops`: the drawer opens on `all` in fleet scope, and that
+ * door is the bar's, not a stop. A miss therefore enters from the near end - forward
+ * the first stop, backward the last. No stops at all is a sessionless strip, which
+ * draws nothing; indexing the empty list would throw, so the step is `undefined`.
+ */
+export const drawerTabStep = (
+	stops: readonly DrawerTab[],
+	tab: DrawerTab,
+	step: number,
+): DrawerTab | undefined => {
+	if (stops.length === 0) return undefined;
+	const found = stops.indexOf(tab);
+	const index = found === -1 ? (step > 0 ? -1 : 0) : found;
+	return stops[(index + step + stops.length) % stops.length];
+};
+
 export const DrawerTabs: FC<{
 	tab: DrawerTab;
 	onTab: (tab: DrawerTab) => void;
@@ -104,6 +123,8 @@ export const DrawerTabs: FC<{
 	 * second one - the cycle drops it rather than the strip keeping a hidden stop.
 	 */
 	const cycle = shown.filter((entry) => entry.id !== "all");
+	/* The step reads its index from the cycle, not from `shown` (round 2, m-a). */
+	const stops = cycle.map((entry) => entry.id);
 	/* Ctrl+Tab / Ctrl+Shift+Tab and the arrows cycle (design § 18). */
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 		const step =
@@ -115,13 +136,13 @@ export const DrawerTabs: FC<{
 					? -1
 					: 0;
 		if (step === 0) return;
+		const next = drawerTabStep(stops, tab, step);
+		if (!next) return;
 		event.preventDefault();
-		const index = shown.findIndex((entry) => entry.id === tab);
-		const next = cycle[(index + step + cycle.length) % cycle.length];
-		onTab(next.id);
+		onTab(next);
 		(
 			event.currentTarget.querySelector(
-				`[data-drawer-tab="${next.id}"]`,
+				`[data-drawer-tab="${next}"]`,
 			) as HTMLElement | null
 		)?.focus();
 	};

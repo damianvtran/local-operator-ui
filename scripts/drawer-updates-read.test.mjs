@@ -28,7 +28,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { DrawerUpdates, DrawerTabs, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
+			'export { DrawerUpdates, DrawerTabs, drawerTabStep, useSessionUnreadUpdates } from "./src/renderer/src/features/notifications/components/drawer-updates";',
 			'export { NotificationsPage } from "./src/renderer/src/features/notifications/components/notifications-page";',
 			'export { createNotificationFixture } from "./src/renderer/src/features/notifications/notifications-fixture";',
 			'export { beginOptimisticWrite, applyConfirmedWrite, notificationKeys, useNotificationReadState, useNotificationsCount } from "./src/renderer/src/features/notifications/notifications-api";',
@@ -1840,6 +1840,117 @@ test("QA: replay an actual core HTTP partial receipt, preserving the global fact
 		assert.equal(final.unread_count, 2);
 	} finally {
 		client.clear();
+	}
+});
+
+/*
+ * THE STEP ENTERS FROM THE NEAR END WHEN THE DRAWER OPENS ON `all` (agent review
+ * round 2, m-a). `tab` is `all` while the strip is drawn in fleet scope, and that door
+ * belongs to the bar: the position used to be read from the shown tabs, which still
+ * held it, so the step landed one stop past Asks - ArrowRight opened Updates. The strip
+ * is mounted alone here so the test can open on a tab the drawer screen never sets.
+ */
+const mountStrip = async ({ tab, sessionless }) => {
+	const container = window.document.createElement("div");
+	window.document.body.append(container);
+	const root = createRoot(container);
+	const calls = [];
+	await act(async () => {
+		root.render(
+			h(DRAWER.DrawerTabs, {
+				tab,
+				onTab: (next) => calls.push(next),
+				asks: 0,
+				unreadUpdates: 0,
+				sessionless,
+			}),
+		);
+	});
+	return {
+		container,
+		calls,
+		unmount: async () => {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+};
+
+test("ArrowRight from All conversations lands on Asks, the first stop the strip draws", async () => {
+	const rig = await mountStrip({ tab: "all", sessionless: false });
+	try {
+		const strip = rig.container.querySelector('[role="tablist"]');
+		assert.ok(strip, "the strip is drawn");
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			["asks"],
+			"forward from the fleet tab steps onto Asks, not the Updates tab it already passed",
+		);
+		assert.equal(
+			window.document.activeElement?.getAttribute("data-drawer-tab"),
+			"asks",
+			"and focus follows the step",
+		);
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowLeft",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			["asks", "updates"],
+			"backward from the same miss enters at the last stop",
+		);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+/*
+ * A SESSIONLESS STRIP HAS NO STOP TO ENTER, SO A STRAY ARROW IS A NO-OP (agent review
+ * round 2, m-a). The component draws no strip without a conversation, but the handler
+ * must not index an empty cycle if it is ever focused: that is a throw, not a missed
+ * step. `drawerTabStep` is the shape the handler runs.
+ */
+test("a sessionless strip has no stop to enter, so an arrow key is a no-op, not a throw", async () => {
+	const rig = await mountStrip({ tab: "all", sessionless: true });
+	try {
+		assert.equal(
+			rig.container.querySelector('[role="tablist"]'),
+			null,
+			"no strip is drawn without a conversation",
+		);
+		assert.equal(
+			DRAWER.drawerTabStep([], "all", 1),
+			undefined,
+			"the step over no stops is undefined, where indexing the cycle would throw",
+		);
+		await act(async () => {
+			rig.container.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			rig.calls,
+			[],
+			"and nothing asks the drawer to change tab",
+		);
+	} finally {
+		await rig.unmount();
 	}
 });
 

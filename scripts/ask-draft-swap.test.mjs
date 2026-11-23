@@ -2501,10 +2501,15 @@ test("an expanded settled row stays open when a newer ask is inserted above it (
 	 * above it; an unkeyed one is reused for its POSITION, which mounts a fresh,
 	 * collapsed row for `a-old` and leaves the expansion on `a-new`.
 	 */
-	assert.equal(
-		triggerOf("a-old"),
-		opened,
-		"the expanded row is still the same row, not a fresh one in a shifted slot",
+	/*
+	 * IDENTITY, COMPARED AS A BOOLEAN (QA round 2, m1): `assert.equal` on two jsdom nodes
+	 * serialises the DOM into the failure message when it mismatches, and the mutated run
+	 * was killed by the machine's memory guard before it could print. `===` keeps the
+	 * witness - and the message - small.
+	 */
+	assert.ok(
+		triggerOf("a-old") === opened,
+		"the expanded settled row must be the same DOM node after an ask is inserted above it",
 	);
 	assert.equal(
 		triggerOf("a-old")?.getAttribute("aria-expanded"),

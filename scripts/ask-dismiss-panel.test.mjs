@@ -975,6 +975,15 @@ test("the card's foot keeps the id visible while the chooser is open (agent revi
 	);
 	const foot = footOf();
 	assert.ok(foot, "the chooser is a step in the card, not a different card");
+	/*
+	 * AND IT IS THE ONLY FOOT ON SCREEN (agent review round 2, m-b): the live band's own
+	 * copy must be gone while the chooser takes its place, or the card would show two ids.
+	 */
+	assert.equal(
+		rig.container.querySelectorAll("[data-lo-ask-foot]").length,
+		1,
+		"exactly one foot is drawn while the chooser is open",
+	);
 	assert.equal(
 		foot.textContent.includes("a-1"),
 		true,

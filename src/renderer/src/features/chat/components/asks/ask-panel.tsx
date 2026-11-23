@@ -2270,8 +2270,9 @@ const SettledRow = ({
 			 * the chevron on its own edge (x=33 at 400), the pill at x=48 and the card's
 			 * question at x=41 - a 7px jog between a settled row and the card it files
 			 * under. `gap-0` puts the summary's own column on the card's text rail (42 against
-			 * the card's padded 41, one pixel) and leaves the chevron as a hanging mark on
-			 * the card's BORDER rail (28), which is the outline convention this reads like.
+			 * the card's padded 41, one pixel) and leaves the chevron as a hanging mark about
+			 * 4px inside the card's border line (33 against the border at 28 at 400), which is
+			 * the outline convention this reads like.
 			 */
 			rowClassName="min-h-7 gap-0 py-1"
 			triggerLabel={label}
