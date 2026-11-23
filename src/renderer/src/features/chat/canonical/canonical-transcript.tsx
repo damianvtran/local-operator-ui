@@ -2164,10 +2164,9 @@ const AssistantRow = memo(function AssistantRow({
 				 * the same component at the same key - so the settle moves no node;
 				 * what settles is exactly what the full parse makes of the same string.
 				 */}
-				{record.streaming ? (
+				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
 						content={remainingContent}
-						inserts={inserts}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -2176,18 +2175,11 @@ const AssistantRow = memo(function AssistantRow({
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
-						/*
-						 * Linkification is the settled row's, and the streaming half is
-						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
-						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open block is parsed but never linked or
-						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
-						 * link to a path that does not exist. That is the same hazard the
-						 * old `linkify={!record.streaming}` line refused, now enforced per
-						 * block instead of per row.
-						 */
-						linkify
+						// A figure can already own focus and a horizontal scroll position
+						// before completion. Once it exists, the one authoritative parse
+						// owns its slot through end and durable refresh; no DOM handoff.
+						streaming={record.streaming}
+						linkify={!record.streaming}
 						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still

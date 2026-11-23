@@ -47,9 +47,12 @@ function InlineChart({ value }: { value: CategoryChart }) {
 			<figcaption className="mb-3 wrap-anywhere font-semibold text-ink">
 				{value.title}
 				{value.unit && (
-					<span className="ms-2 font-normal text-ink-muted text-meta">
-						{value.unit}
-					</span>
+					<>
+						{" "}
+						<span className="ms-2 font-normal text-ink-muted text-meta">
+							{value.unit}
+						</span>
+					</>
 				)}
 			</figcaption>
 			{value.type === "histogram" && (
@@ -81,7 +84,13 @@ function InlineChart({ value }: { value: CategoryChart }) {
 			)}
 			{value.type === "line" && (
 				<div aria-hidden="true" className="mb-3">
-					<div className="relative">
+					<div className="relative pl-8" dir="ltr">
+						<span
+							className="absolute left-0 -translate-y-1/2 text-ink-muted text-meta tabular-nums"
+							style={{ top: `${92 - zero * 0.84}%` }}
+						>
+							{number.format(0)}
+						</span>
 						<svg
 							aria-hidden="true"
 							className="block h-24 w-full text-accent"
@@ -89,7 +98,7 @@ function InlineChart({ value }: { value: CategoryChart }) {
 							preserveAspectRatio="none"
 						>
 							<line
-								className="stroke-hairline"
+								className="stroke-ink-muted"
 								x1="0"
 								x2="100"
 								y1={92 - zero * 0.84}
@@ -119,18 +128,10 @@ function InlineChart({ value }: { value: CategoryChart }) {
 								/>
 							))}
 						</svg>
-						{low < 0 && high > 0 && (
-							<span
-								className="absolute end-0 -translate-y-1/2 ps-1 text-ink-muted text-meta tabular-nums"
-								style={{ top: `${92 - zero * 0.84}%` }}
-							>
-								{number.format(0)}
-							</span>
-						)}
 					</div>
 					<div
 						dir="ltr"
-						className="grid grid-cols-2 gap-2 text-ink-muted text-meta"
+						className="grid grid-cols-2 gap-2 pl-8 text-ink-muted text-meta"
 					>
 						<bdi className="min-w-0 wrap-anywhere">{value.data[0][0]}</bdi>
 						{value.data.length > 1 && (
@@ -225,9 +226,12 @@ function InlinePie({ value }: { value: CategoryChart }) {
 			<figcaption className="mb-3 wrap-anywhere font-semibold text-ink">
 				{value.title}
 				{value.unit && (
-					<span className="ms-2 font-normal text-ink-muted text-meta">
-						{value.unit}
-					</span>
+					<>
+						{" "}
+						<span className="ms-2 font-normal text-ink-muted text-meta">
+							{value.unit}
+						</span>
+					</>
 				)}
 			</figcaption>
 			<div className="grid min-w-0 items-center gap-4 @min-[24rem]/chatcol:grid-cols-[auto_minmax(0,1fr)]">
@@ -391,11 +395,10 @@ function InlineDataGrid({
 	});
 	const hasRowHeader = rowLabels !== undefined || sheet;
 	return (
-		// Wide data stays in the figure, not the transcript's horizontal scroll.
+		// As with MarkdownTable, Chromium adds a keyboard stop only when
+		// this box actually scrolls. Fitting grids stay out of the tab order.
 		<section
 			aria-labelledby={titleId}
-			// biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need to scroll wide tables.
-			tabIndex={0}
 			className="max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
 		>
 			<table aria-labelledby={titleId} className="w-full text-start text-meta">
@@ -484,9 +487,12 @@ function InlineTable({ value }: { value: Table }) {
 			>
 				{value.title}
 				{value.type === "heatmap" && value.unit && (
-					<span className="ms-2 font-normal text-ink-muted text-meta">
-						{value.unit}
-					</span>
+					<>
+						{" "}
+						<span className="ms-2 font-normal text-ink-muted text-meta">
+							{value.unit}
+						</span>
+					</>
 				)}
 			</figcaption>
 			{heat && heat.min !== heat.max && (

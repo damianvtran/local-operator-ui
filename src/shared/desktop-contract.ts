@@ -2431,6 +2431,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.get"),
 			sessionId,
+			inlineUi: z.boolean().optional(),
 			journalOrder: z.boolean().optional(),
 			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
 			/*
@@ -2512,6 +2513,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.history"),
 			sessionId,
+			inlineUi: z.boolean().optional(),
 			beforeId: id.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
 			/*
@@ -11364,7 +11366,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 				},
 			};
 		case "sessions.get": {
-			const query = new URLSearchParams({ inline_ui: "1" });
+			const query = new URLSearchParams();
+			if (request.inlineUi === true) query.set("inline_ui", "1");
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
 				/*
@@ -11430,11 +11433,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 
 		case "sessions.history": {
-			// This viewer decodes inline-ui-v1. Older servers ignore the query key.
-			const query = new URLSearchParams({
-				inline_ui: "1",
-				limit: String(request.limit ?? 100),
-			});
+			const query = new URLSearchParams();
+			if (request.inlineUi === true) query.set("inline_ui", "1");
+			query.set("limit", String(request.limit ?? 100));
 			if (request.beforeId) query.set("before_id", request.beforeId);
 			/*
 			 * `open_frame=1` only when the caller negotiated it (see the request

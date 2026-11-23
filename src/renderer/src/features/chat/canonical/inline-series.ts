@@ -17,8 +17,12 @@ const isText = (value: unknown): value is string =>
 	typeof value === "string" && value.length <= 256;
 const isLabel = (value: unknown): value is string =>
 	isText(value) && value.trim().length > 0;
-const isNumber = (value: unknown): value is number =>
-	typeof value === "number" && Number.isFinite(value);
+// An integer above this bound may already have rounded in JSON.parse. Core
+// sends exact large grid values as strings; no numeric plot can recover them.
+export const isInlineNumber = (value: unknown): value is number =>
+	typeof value === "number" &&
+	Number.isFinite(value) &&
+	Math.abs(value) <= Number.MAX_SAFE_INTEGER;
 
 export function decodeInlineSeries(
 	value: Record<string, unknown>,
@@ -53,7 +57,7 @@ export function decodeInlineSeries(
 			!isLabel(label) ||
 			!Array.isArray(values) ||
 			values.length !== labels.length ||
-			!Array.from(values).every(isNumber) ||
+			!Array.from(values).every(isInlineNumber) ||
 			(axis !== undefined && axis !== "left" && axis !== "right") ||
 			(mode === "dual" && axis === undefined)
 		) {

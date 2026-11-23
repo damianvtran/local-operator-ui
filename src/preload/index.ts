@@ -369,7 +369,12 @@ const api = {
 		},
 		stream: {
 			subscribe: (
-				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				args: {
+					sessionId: string;
+					epoch?: string;
+					afterSeq?: number;
+					inlineUi?: boolean;
+				},
 				// The contract's own type rather than a fourth transcription of the
 				// frame: a local copy is where a new field (here `status`, which
 				// carries a 404) gets dropped silently between main and the renderer.

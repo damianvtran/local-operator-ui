@@ -602,8 +602,9 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"POST",
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
+		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
 		[
-			{ op: "sessions.get", sessionId },
+			{ op: "sessions.get", sessionId, inlineUi: true },
 			`/${sessionId}?inline_ui=1`,
 			"GET",
 			undefined,
@@ -619,7 +620,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		 */
 		[
 			{ op: "sessions.history", sessionId, limit: 100 },
-			`/${sessionId}/history?inline_ui=1&limit=100`,
+			`/${sessionId}/history?limit=100`,
 			"GET",
 			undefined,
 		],
@@ -630,6 +631,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 100,
 				beforeId: "entry-1",
 				openFrame: true,
+				inlineUi: true,
 			},
 			`/${sessionId}/history?inline_ui=1&limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
@@ -637,7 +639,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		],
 		[
 			{ op: "sessions.history", sessionId, limit: 50, openFrame: false },
-			`/${sessionId}/history?inline_ui=1&limit=50`,
+			`/${sessionId}/history?limit=50`,
 			"GET",
 			undefined,
 		],
@@ -3753,11 +3755,17 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 			journalOrder: true,
 			orderIds: ["a"],
 			peerJournalSource: true,
+			inlineUi: true,
 		}),
 		{ streamId: "stream-1" },
 	);
 	assert.equal(seen[0].peerJournalSource, true);
 	assert.equal(seen[0].journalOrder, true);
+	assert.equal(seen[0].inlineUi, true);
+	assert.throws(
+		() => subscribe(event, { sessionId: "aaaaaaaaaaaa", inlineUi: "1" }),
+		/Invalid stream subscription/,
+	);
 	assert.throws(
 		() =>
 			subscribe(event, { sessionId: "aaaaaaaaaaaa", peerJournalSource: "1" }),

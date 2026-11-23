@@ -224,6 +224,9 @@ export async function requestDesktopOutcome(
 			},
 			body,
 			redirect: "error",
+			// A capabilities read can disambiguate a stale-schema 422; do not let
+			// an intermediary reuse the very advertisement we are rechecking.
+			...(request.op === "capabilities" ? { cache: "no-store" as const } : {}),
 			signal: AbortSignal.timeout(deadlineMs),
 		});
 		answered = true;

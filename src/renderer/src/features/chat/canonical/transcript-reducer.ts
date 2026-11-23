@@ -5829,7 +5829,8 @@ export function applyEvent(
 				 * any producer that sends one.
 				 */
 				const text = body + delta;
-				const inlineUi = readInlineUi(overlay, text);
+				const attested = readInlineUi(overlay, text, undefined, options.seed);
+				const inlineUi = attested?.widgets.length ? attested : undefined;
 				if (!text && !inlineUi) return state;
 				return upsert(state, {
 					kind: "assistant",
@@ -5839,7 +5840,7 @@ export function applyEvent(
 					...(inlineUi ? { inlineUi } : {}),
 					streaming: true,
 					truncated:
-						!body && !(options.seed && inlineUi) ? "prefix" : undefined,
+						!body && !(options.seed && attested) ? "prefix" : undefined,
 					...(incoming ? { frame: incoming } : {}),
 					stopReason: null,
 					error: false,
@@ -5925,13 +5926,17 @@ export function applyEvent(
 				// we already saw with a divergent or shorter snapshot.
 				const seedIsCurrent = !incoming || nextFrame === incoming;
 				const seededInlineUi = seedIsCurrent
-					? readInlineUi(overlay, delta, current.inlineUi)
+					? readInlineUi(overlay, delta, current.inlineUi, true)
 					: undefined;
 				if (seededInlineUi && delta.startsWith(current.text)) {
 					return upsert(state, {
 						...current,
 						text: delta,
-						inlineUi: seededInlineUi,
+						// Empty is wire provenance, not a figure or a way to erase an
+						// already painted valid figure on an overlapping seed.
+						inlineUi: seededInlineUi.widgets.length
+							? seededInlineUi
+							: current.inlineUi && { ...current.inlineUi, text: delta },
 						truncated: undefined,
 						...(nextFrame ? { frame: nextFrame } : {}),
 					});
@@ -6298,6 +6303,9 @@ export function applyEvent(
 				}),
 				has_more: state.hasMore,
 				cursor_missing: false,
+				// Catch-up is another history producer; the same row validator must
+				// see its overlay on both the merge and replacement paths.
+				inline_ui: event.inline_ui,
 				...(acceptedDomain ? { journal_generation: familyGeneration } : {}),
 			};
 			// `reset` is the producer stating that this replay REPLACES the viewport

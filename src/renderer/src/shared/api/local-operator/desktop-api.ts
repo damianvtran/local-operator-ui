@@ -1,5 +1,6 @@
 import { t } from "../../../../../i18n/messages";
 import type {
+	DesktopCapabilities,
 	DesktopMediaRequest,
 	DesktopMediaResponse,
 	DesktopRequest,
@@ -39,7 +40,10 @@ import {
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
 import { desktopRefusalSentence } from "./desktop-refusal-copy";
-import { recordedStreamCapabilityFlags } from "./desktop-stream-capabilities";
+import {
+	recordStreamCapabilityFlags,
+	recordedStreamCapabilityFlags,
+} from "./desktop-stream-capabilities";
 
 export type {
 	AuthOperation,
@@ -87,19 +91,28 @@ const desktopBackendCompatibilityMessage = () =>
 export async function desktopRequest(
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
+	const capabilities = recordedStreamCapabilityFlags();
+	const inlineUi = capabilities?.inlineUi === true;
+	if (request.op === "sessions.get" || request.op === "sessions.history") {
+		// Only transcript consumers opt in. Readings/command audits keep their
+		// exact GET shape even when paired to a capable backend.
+		const { inlineUi: wantsOverlay, ...base } = request;
+		return sendDesktopRequest(
+			inlineUi && wantsOverlay === true ? { ...base, inlineUi } : base,
+		);
+	}
 	if (request.op !== "sessions.message") return sendDesktopRequest(request);
-	// GET advertisement is harmless on legacy runtimes; their strict message
-	// body is not. Negotiate here for every send from the capabilities answer,
-	// never from a previous stream or a user toggle.
+	// Presentation is negotiated against this backend, not part of the logical
+	// prompt intent or its receipt fingerprint. The caller still owns the id.
 	const { inlineUi: _inlineUi, ...base } = request;
-	if (recordedStreamCapabilityFlags()?.inlineUi !== true)
-		return sendDesktopRequest(base);
+	if (!inlineUi) return sendDesktopRequest(base);
 	const response = await sendDesktopRequest({ ...base, inlineUi: true });
 	// A runtime can be downgraded between capability polls. Retry only the
 	// strict-schema refusal that proves admission was never attempted, with the
 	// exact same request id. A timeout or any other 422 stays the caller's error.
 	const detail = (response.body as { detail?: unknown } | null)?.detail;
-	if (response.status === 422 && Array.isArray(detail) && detail.length === 1) {
+	if (response.status !== 422) return response;
+	if (Array.isArray(detail) && detail.length === 1) {
 		const issue = detail[0];
 		if (
 			issue?.type === "extra_forbidden" &&
@@ -110,7 +123,44 @@ export async function desktopRequest(
 		)
 			return sendDesktopRequest(base);
 	}
+	// Released Core redacts its validation issues to precisely this sentence.
+	// A direct capability round trip (not the positive cache) must establish
+	// that the answering desktop schema is legacy before stripping anything.
+	if (
+		detail === "The request has invalid fields." &&
+		(await confirmsLegacyInlineUiSchema())
+	) {
+		if (capabilities && recordedStreamCapabilityFlags() === capabilities) {
+			recordStreamCapabilityFlags({ ...capabilities, inlineUi: false });
+		}
+		return sendDesktopRequest(base);
+	}
 	return response;
+}
+
+async function confirmsLegacyInlineUiSchema(): Promise<boolean> {
+	try {
+		const response = await sendDesktopRequest({ op: "capabilities" });
+		const answer = (response.body as { result?: DesktopCapabilities } | null)
+			?.result;
+		if (
+			response.status !== 200 ||
+			answer?.desktop_contract !== 1 ||
+			answer.desktop_available !== true ||
+			answer.desktop_auth !== "bearer" ||
+			!answer.features ||
+			typeof answer.features !== "object" ||
+			Array.isArray(answer.features)
+		)
+			return false;
+		return (
+			!Object.prototype.hasOwnProperty.call(answer.features, "inline_ui") ||
+			answer.features.inline_ui === 0
+		);
+	} catch {
+		// An unavailable probe says nothing about the schema; preserve the 422.
+		return false;
+	}
 }
 
 async function sendDesktopRequest(
@@ -838,10 +888,20 @@ export async function openAuthorization(
  * lie that the pane's ask corrects.
  */
 export function subscribeDesktopStream(
-	args: DesktopStreamArgs,
+	request: DesktopStreamArgs,
 	onEvent: (event: DesktopStreamEvent) => void,
 	onDecision?: (decision: DesktopStreamDecision) => void,
 ): () => void {
+	// Re-evaluate for every connection, including automatic reconnects after a
+	// downgrade. The pane rebinds when its capabilities answer changes.
+	const { inlineUi: paneInlineUi, ...base } = request;
+	const args: DesktopStreamArgs = {
+		...base,
+		...(paneInlineUi !== false &&
+		recordedStreamCapabilityFlags()?.inlineUi === true
+			? { inlineUi: true }
+			: {}),
+	};
 	const claim = takePrewarmedStream(args);
 	if (claim.record) {
 		onDecision?.("adopted");
@@ -915,6 +975,8 @@ export type DesktopStreamArgs = {
 	 * Absent keeps today's page, byte for byte.
 	 */
 	openFrame?: boolean;
+	/** The transcript pane can withhold a declaration; true still needs the current capability. */
+	inlineUi?: boolean;
 	journalOrder?: boolean;
 	orderIds?: string[];
 	/**
@@ -992,6 +1054,7 @@ const PREWARM_MAX_EVENTS = 512;
  * Inheritance here declared the complete contract for local conversations the
  * module's own rule says must not declare it (agent review round 1, MINOR 1). */
 type StreamNegotiation = {
+	inlineUi: boolean;
 	openFrame: boolean;
 	journalOrder: boolean;
 	peerJournalSource: boolean;
@@ -999,6 +1062,7 @@ type StreamNegotiation = {
 
 function negotiationOf(args: DesktopStreamArgs): StreamNegotiation {
 	return {
+		inlineUi: args.inlineUi === true,
 		openFrame: args.openFrame === true,
 		journalOrder: args.journalOrder === true,
 		peerJournalSource: args.peerJournalSource === true,
@@ -1113,6 +1177,7 @@ export function prewarmSessionStream(
 	 */
 	const capabilities = recordedStreamCapabilityFlags();
 	const negotiation: StreamNegotiation = {
+		inlineUi: capabilities?.inlineUi === true,
 		openFrame: capabilities?.openFrame === true,
 		journalOrder: capabilities?.journalOrder === true,
 		peerJournalSource:
@@ -1137,6 +1202,7 @@ export function prewarmSessionStream(
 	record.disposeTransport = openStreamTransport(
 		{
 			sessionId,
+			...(negotiation.inlineUi ? { inlineUi: true } : {}),
 			...(negotiation.openFrame ? { openFrame: true } : {}),
 			...(negotiation.journalOrder ? { journalOrder: true } : {}),
 			...(negotiation.peerJournalSource ? { peerJournalSource: true } : {}),
@@ -1261,6 +1327,7 @@ function takePrewarmedStream(args: DesktopStreamArgs):
 		return { record: null, refusal: "resuming", held: record.negotiation };
 	}
 	if (
+		wanted.inlineUi !== record.negotiation.inlineUi ||
 		wanted.openFrame !== record.negotiation.openFrame ||
 		wanted.journalOrder !== record.negotiation.journalOrder ||
 		wanted.peerJournalSource !== record.negotiation.peerJournalSource
@@ -1327,8 +1394,13 @@ function logPrewarmDecision(
 	];
 	if (decision === "requested") {
 		parts.push(`why=${refusal}`, `asked=${flags(asked)}`);
-		if (prewarmedNegotiation)
+		if (prewarmedNegotiation) {
 			parts.push(`prewarm=${flags(prewarmedNegotiation)}`);
+			if (asked.inlineUi !== prewarmedNegotiation.inlineUi)
+				parts.push(
+					`inline=${Number(asked.inlineUi)}/${Number(prewarmedNegotiation.inlineUi)}`,
+				);
+		}
 		if (refusal === "negotiation")
 			parts.push(
 				`caps=${recordedStreamCapabilityFlags() ? "recorded" : "absent"}`,
@@ -1417,7 +1489,7 @@ function openStreamTransport(
 	 * The proxy forwards it; an older backend ignores it.
 	 */
 	query.set("frontend_replace", "1");
-	query.set("inline_ui", "1");
+	if (args.inlineUi === true) query.set("inline_ui", "1");
 	/*
 	 * The same forwarded open-frame negotiation main's relay sends, and forwarded
 	 * for the same reason: this proxy must not claim on a renderer's behalf that

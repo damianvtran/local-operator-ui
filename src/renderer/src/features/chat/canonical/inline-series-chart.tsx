@@ -63,7 +63,7 @@ function BarPlot({
 	const { bars, project, width } = barLayout(value);
 	const zero = project(0);
 	return (
-		<div aria-hidden="true" className="relative" dir="ltr">
+		<div aria-hidden="true" className="relative pl-8" dir="ltr">
 			<svg
 				aria-hidden="true"
 				className="block h-32 w-full"
@@ -228,6 +228,25 @@ function DualPlot({ value, format }: { value: InlineSeries; format: Format }) {
 	);
 }
 
+function AxisUnit({
+	axis,
+	value,
+}: { axis: "left" | "right" | undefined; value: InlineSeries }) {
+	return (
+		<span dir="ltr" className="block font-normal">
+			{axis === "right" ? (
+				<>
+					<bdi>{value.rightUnit}</bdi> →
+				</>
+			) : (
+				<>
+					← <bdi>{value.unit}</bdi>
+				</>
+			)}
+		</span>
+	);
+}
+
 export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 	const id = useId();
 	const locale = useI18nLocale();
@@ -268,9 +287,12 @@ export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 			>
 				{value.title}
 				{mode !== "dual" && value.unit && (
-					<span className="ms-2 font-normal text-ink-muted text-meta">
-						<bdi>{value.unit}</bdi>
-					</span>
+					<>
+						{" "}
+						<span className="ms-2 font-normal text-ink-muted text-meta">
+							<bdi>{value.unit}</bdi>
+						</span>
+					</>
 				)}
 			</figcaption>
 			{mode === "dual" ? (
@@ -278,7 +300,11 @@ export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 			) : (
 				<>
 					{mode === "percent" && (
-						<div aria-hidden="true" className="text-ink-muted text-meta">
+						<div
+							aria-hidden="true"
+							className="text-ink-muted text-meta"
+							dir="ltr"
+						>
 							{percent.format(1)}
 						</div>
 					)}
@@ -292,7 +318,7 @@ export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 			<div
 				aria-hidden="true"
 				dir="ltr"
-				className={`mt-1 flex gap-2 text-ink-muted text-meta ${labels.length <= 4 ? "@min-[20rem]/series:hidden" : ""}`}
+				className={`mt-1 flex gap-2 text-ink-muted text-meta ${mode !== "dual" ? "pl-8" : ""} ${labels.length <= 4 ? "@min-[20rem]/series:hidden" : ""}`}
 			>
 				<bdi
 					title={labels[0]}
@@ -313,7 +339,7 @@ export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 				<div
 					aria-hidden="true"
 					dir="ltr"
-					className="mt-1 hidden text-ink-muted text-meta @min-[20rem]/series:flex"
+					className={`mt-1 hidden text-ink-muted text-meta @min-[20rem]/series:flex ${mode !== "dual" ? "pl-8" : ""}`}
 				>
 					{labels.map((label, index) => (
 						<bdi
@@ -326,65 +352,63 @@ export function InlineSeriesChart({ value }: { value: InlineSeries }) {
 					))}
 				</div>
 			)}
+			{/* The key belongs to the plot, not the horizontally scrolling values. */}
+			<div
+				aria-hidden="true"
+				className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-ink-muted text-meta"
+			>
+				{series.map(({ label, axis }, index) => {
+					const { ink, dash, hatch } = SERIES_STYLES[index];
+					return (
+						<div key={ink} className="flex min-w-0 items-start gap-2">
+							<svg
+								aria-hidden="true"
+								width="24"
+								height="10"
+								viewBox="0 0 24 10"
+								className={`mt-1 shrink-0 ${ink}`}
+							>
+								{mode === "dual" ? (
+									<path
+										d="M0 5H24"
+										stroke="currentColor"
+										strokeWidth="2"
+										strokeDasharray={dash}
+									/>
+								) : (
+									<rect
+										width="24"
+										height="10"
+										fill={hatch ? `url(#${id}-${ink})` : "currentColor"}
+									/>
+								)}
+							</svg>
+							<div className="min-w-0 wrap-anywhere">
+								<bdi className="font-medium">{label}</bdi>
+								{mode === "dual" && <AxisUnit axis={axis} value={value} />}
+							</div>
+						</div>
+					);
+				})}
+			</div>
 			<section
 				aria-labelledby={`${id}-title`}
-				// biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users need the table's own horizontal scroll region.
-				tabIndex={0}
 				className="mt-3 max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-2"
 			>
 				<table className="w-full min-w-max text-meta tabular-nums">
 					<thead>
 						<tr className="align-top text-ink-muted">
 							<td />
-							{series.map(({ label, axis }, index) => {
-								const { ink, dash, hatch } = SERIES_STYLES[index];
-								return (
-									<th
-										key={ink}
-										scope="col"
-										className="min-w-20 whitespace-nowrap px-2 pb-1 text-start font-medium"
-									>
-										<svg
-											aria-hidden="true"
-											width="24"
-											height="10"
-											viewBox="0 0 24 10"
-											className={`mb-1 block max-w-full ${ink}`}
-										>
-											{mode === "dual" ? (
-												<path
-													d="M0 5H24"
-													stroke="currentColor"
-													strokeWidth="2"
-													strokeDasharray={dash}
-												/>
-											) : (
-												<rect
-													x="0"
-													y="0"
-													width="24"
-													height="10"
-													fill={hatch ? `url(#${id}-${ink})` : "currentColor"}
-												/>
-											)}
-										</svg>
-										<bdi>{label}</bdi>
-										{mode === "dual" && (
-											<span dir="ltr" className="block font-normal">
-												{axis === "right" ? (
-													<>
-														<bdi>{value.rightUnit}</bdi> →
-													</>
-												) : (
-													<>
-														← <bdi>{value.unit}</bdi>
-													</>
-												)}
-											</span>
-										)}
-									</th>
-								);
-							})}
+							{series.map(({ label, axis }, index) => (
+								<th
+									key={SERIES_STYLES[index].ink}
+									scope="col"
+									className="min-w-20 whitespace-nowrap px-2 pb-1 text-start font-medium"
+								>
+									<bdi>{label}</bdi>
+									{mode === "dual" && <AxisUnit axis={axis} value={value} />}
+								</th>
+							))}
 						</tr>
 					</thead>
 					<tbody>

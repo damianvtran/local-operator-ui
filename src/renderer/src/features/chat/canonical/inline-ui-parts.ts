@@ -1,4 +1,8 @@
-import { type InlineSeries, decodeInlineSeries } from "./inline-series";
+import {
+	type InlineSeries,
+	decodeInlineSeries,
+	isInlineNumber,
+} from "./inline-series";
 
 export type CategoryChart = {
 	type: "bar" | "line" | "pie" | "histogram";
@@ -50,8 +54,7 @@ const isText = (value: unknown): value is string =>
 	typeof value === "string" && value.length <= 256;
 const isLabel = (value: unknown): value is string =>
 	isText(value) && value.trim().length > 0;
-const isNumber = (value: unknown): value is number =>
-	typeof value === "number" && Number.isFinite(value);
+const isNumber = isInlineNumber;
 
 function decode(value: unknown): InlineUi | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -151,6 +154,7 @@ export function readInlineUi(
 	input: unknown,
 	text: string,
 	previous?: InlineUiOverlay,
+	allowEmptySeed = false,
 ): InlineUiOverlay | undefined {
 	if (!input || typeof input !== "object") return;
 	const overlay = input as Record<string, unknown>;
@@ -187,7 +191,10 @@ export function readInlineUi(
 		lastOffset = offset;
 		widgets.push({ offset, value });
 	}
-	if (!widgets.length) return;
+	// Only an explicitly empty v1 row on the snapshot seed path attests
+	// cumulative prose. A non-empty list of invalid widgets is not a seed.
+	if (!widgets.length && !(allowEmptySeed && overlay.widgets.length === 0))
+		return;
 	// A normal appended delta repeats the same widgets against longer prose.
 	// Keep values stable so memoized figures don't repaint on every token; a
 	// reconciled page with the exact same text can keep the entire object.
