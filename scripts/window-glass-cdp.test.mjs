@@ -111,7 +111,7 @@ const AUDIT = `(() => {
     card: 'main [data-glass-block]',
     boardWell: 'main [data-glass-well="clear"]',
     panel: 'main [data-glass-region="panel"]',
-    canvas: 'main[data-glass-region="canvas-backing"], main > [data-workspace-frame][data-glass-region="canvas-backing"]',
+    canvas: 'main[data-glass-region="canvas-backing"], main > [data-workspace-frame-shell] > [data-workspace-frame][data-glass-region="canvas-backing"]',
   };
   const out = {};
   for (const [name, sel] of Object.entries(regions)) {

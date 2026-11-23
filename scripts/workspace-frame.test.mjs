@@ -23,12 +23,24 @@ const ROUTE_PARAM = /:\w+/g;
 const OUTLET_PLACEMENT =
 	/<main\s+data-workspace-outlet=""[\s\S]*?className="panel-top-pad flex grow flex-col overflow-hidden"[\s\S]*?data-chrome-route-band=""[\s\S]*?<WorkspaceFrame inset=\{outletWrapsRoute\}>\s*\{routeBody\}\s*<\/WorkspaceFrame>\s*<\/main>/;
 const INSET_MARKUP =
-	/<div class="workspace-frame flex min-h-0 min-w-0 flex-1 flex-col" data-workspace-frame="" data-glass-region="canvas-backing"><div data-fixture-body=""><\/div><\/div>/;
+	/<div[^>]*data-workspace-frame-shell=""><div[^>]*data-workspace-frame="" data-glass-region="canvas-backing"><div data-fixture-body=""><\/div><\/div><\/div>/;
 const FRAME_RULE = /\.workspace-frame\s*\{([^}]+)\}/;
-const FRAME_GUTTER_INLINE = /margin-inline: 8px;/;
-const FRAME_GUTTER_BOTTOM = /margin-block-end: 8px;/;
-const FRAME_RADIUS =
-	/--workspace-frame-radius: 10px;\s*border-radius: var\(--workspace-frame-radius\);/;
+const SHELL_RULE = /\.workspace-frame-shell\s*\{([^}]+)\}/;
+const PERIMETER_RULE = /\.workspace-frame-shell::before\s*\{([^}]+)\}/;
+const FRAME_SHELL_MARKER = /data-workspace-frame-shell=""/g;
+const FRAME_IN_SHELL =
+	/data-workspace-frame-shell=""><div[^>]*data-workspace-frame=""/;
+const SHELL_BACKING_OR_CONTAINMENT = /(?:background|overflow|position)[^:]*:/;
+const PERIMETER_PATH = /clip-path: shape\(([\s\S]*)\);/;
+const PERIMETER_ARC = /arc to [^,]+\s+of\s+var\(--workspace-frame-radius\)/g;
+const RAW_SHELL_GLASS =
+	/background-color: color-mix\(\s*in srgb,\s*var\(--lo-surface\) calc\(var\(--lo-glass-a-surface\) \* 100%\),\s*transparent\s*\)/;
+const FRAME_GUTTER_INLINE = /margin-inline: var\(--workspace-frame-gutter\);/;
+const FRAME_GUTTER_BOTTOM =
+	/margin-block-end: var\(--workspace-frame-gutter\);/;
+const FRAME_RADIUS = /border-radius: var\(--workspace-frame-radius\);/;
+const SIDEBAR_PERIMETER_RULE =
+	/html\[data-glass~="sidebar"\] \.workspace-frame-shell::before,\s*html\[data-glass~="sidebar"\] \[data-workspace-tabs\] \{([^}]+)\}/;
 const FRAME_OVERFLOW = /overflow: clip;/;
 const DECORATIVE_FRAME_STYLES =
 	/(?:^|\s)(?:border(?:-color|-width|-style)?|box-shadow|outline|margin-top|margin-block-start|padding[^:]*):/;
@@ -278,6 +290,8 @@ test("all 17 live patterns render exactly one effective body frame pending and s
 			const frameCount = [...markup.matchAll(/data-workspace-frame=""/g)]
 				.length;
 			assert.equal(frameCount, 1, `${url} pending=${pending}: ${markup}`);
+			assert.equal([...markup.matchAll(FRAME_SHELL_MARKER)].length, 1, url);
+			assert.match(markup, FRAME_IN_SHELL);
 			assert.equal(
 				markup.includes("data-workspace-route-pending"),
 				pending,
@@ -287,13 +301,13 @@ test("all 17 live patterns render exactly one effective body frame pending and s
 			if (url.startsWith("/chat")) {
 				assert.match(
 					markup,
-					/data-workspace-tabs=""[^>]*><\/div><div[^>]*data-workspace-frame=""[^>]*data-glass-region="canvas-content"/,
+					/data-workspace-tabs=""[^>]*><\/div><div[^>]*data-workspace-frame-shell=""><div[^>]*data-workspace-frame=""[^>]*data-glass-region="canvas-content"/,
 				);
 			}
 			if (url === "/browser") {
 				assert.match(
 					markup,
-					/data-browser-route-(?:pending-)?chrome=""[^>]*><\/div><div[^>]*data-workspace-frame=""[^>]*data-glass-region="pane"/,
+					/data-browser-route-(?:pending-)?chrome=""[^>]*><\/div><div[^>]*data-workspace-frame-shell=""><div[^>]*data-workspace-frame=""[^>]*data-glass-region="pane"/,
 				);
 			}
 			assert.equal(
@@ -360,7 +374,7 @@ test("WorkspaceFrame has an inert slot for routes that own their own body", () =
 	);
 	assert.equal(
 		legacy,
-		'<div class="contents"><div data-fixture-body=""></div></div>',
+		'<div class="contents"><div class="contents"><div data-fixture-body=""></div></div></div>',
 	);
 });
 
@@ -373,4 +387,24 @@ test("the inset contributes geometry and one ground, not a seam, scroll owner or
 	assert.match(rule, FRAME_OVERFLOW);
 	assert.doesNotMatch(rule, DECORATIVE_FRAME_STYLES);
 	assert.match(styles, SPLIT_PAINT_GUARD);
+});
+
+test("only the exposed frame perimeter carries the same raw shell glass as the tabs", () => {
+	const shell = styles.match(SHELL_RULE)?.[1];
+	const rim = styles.match(PERIMETER_RULE)?.[1];
+	assert.ok(shell && rim, "the shell needs a distinct, clipped paint layer");
+	assert.ok(shell.includes("--workspace-frame-gutter: 8px;"));
+	assert.ok(shell.includes("--workspace-frame-radius: 10px;"));
+	assert.doesNotMatch(shell, SHELL_BACKING_OR_CONTAINMENT);
+	assert.ok(rim.includes("background-color: var(--lo-surface);"));
+	assert.ok(rim.includes("pointer-events: none;"));
+	const path = rim.match(PERIMETER_PATH)?.[1];
+	assert.ok(path, "unclipped chrome would paint behind the translucent body");
+	assert.equal([...path.matchAll(PERIMETER_ARC)].length, 4);
+	const glass = styles.match(SIDEBAR_PERIMETER_RULE)?.[1];
+	assert.ok(
+		glass,
+		"perimeter glass and workspace tabs must share their paint rule",
+	);
+	assert.match(glass, RAW_SHELL_GLASS);
 });

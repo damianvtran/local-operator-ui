@@ -27,30 +27,36 @@ export function WorkspaceFrame({
 	variant,
 }: WorkspaceFrameProps) {
 	return (
+		// The shell can paint the gutter without becoming the body's backing or
+		// positioning ancestor. Keep both DOM slots stable so switching between
+		// framed and chrome-owning routes doesn't remount the startup gate.
 		<div
-			// No layout box on routes with legacy chrome. Keeping the same DOM
-			// slot preserves the startup gate through switches to and from them.
 			className={
-				inset
-					? "workspace-frame flex min-h-0 min-w-0 flex-1 flex-col"
-					: "contents"
+				inset ? "workspace-frame-shell min-h-0 min-w-0 flex-1" : "contents"
 			}
-			data-workspace-frame={inset ? "" : undefined}
-			data-workspace-inset={inset && variant === "chat" ? "" : undefined}
-			data-workspace-browser={inset && variant === "browser" ? "" : undefined}
-			data-glass-region={
-				inset
-					? variant === "chat"
-						? "canvas-content"
-						: variant === "browser"
-							? "pane"
-							: "canvas-backing"
-					: undefined
-			}
+			data-workspace-frame-shell={inset ? "" : undefined}
 		>
-			<WorkspaceClearance.Provider value={inset}>
-				{children}
-			</WorkspaceClearance.Provider>
+			<div
+				className={
+					inset ? "workspace-frame flex min-h-0 min-w-0 flex-col" : "contents"
+				}
+				data-workspace-frame={inset ? "" : undefined}
+				data-workspace-inset={inset && variant === "chat" ? "" : undefined}
+				data-workspace-browser={inset && variant === "browser" ? "" : undefined}
+				data-glass-region={
+					inset
+						? variant === "chat"
+							? "canvas-content"
+							: variant === "browser"
+								? "pane"
+								: "canvas-backing"
+						: undefined
+				}
+			>
+				<WorkspaceClearance.Provider value={inset}>
+					{children}
+				</WorkspaceClearance.Provider>
+			</div>
 		</div>
 	);
 }

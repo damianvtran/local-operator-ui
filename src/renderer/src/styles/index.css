@@ -609,13 +609,56 @@ html[data-glass] main[data-workspace-outlet],
 html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"] {
 	background-color: transparent;
 }
-.workspace-frame {
-	margin-inline: 8px;
-	margin-block-end: 8px;
+.workspace-frame-shell {
+	--workspace-frame-gutter: 8px;
 	--workspace-frame-radius: 10px;
+	display: grid;
+	grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+}
+.workspace-frame {
+	grid-area: 1 / 1;
+	margin-inline: var(--workspace-frame-gutter);
+	margin-block-end: var(--workspace-frame-gutter);
 	border-radius: var(--workspace-frame-radius);
 	overflow: clip;
 	background-color: var(--lo-canvas);
+}
+
+/* Bare window material made the gutter read as a dark border. Carry the
+ * shell/tab ground around the opening, not under it: a full backing would
+ * double up the canvas, split pages and pane glass. The path follows the
+ * same gutter and radius as the frame (equal inline edges in LTR and RTL).
+ * The two grid items share a cell without changing the body's containing
+ * block, clipping or native Browser bounds. Without shape() leave it clear. */
+@supports (clip-path: shape(from 0 0, line to 100% 100%, close)) {
+	.workspace-frame-shell::before {
+		--gutter-and-radius: calc(
+			var(--workspace-frame-gutter) + var(--workspace-frame-radius)
+		);
+		content: "";
+		grid-area: 1 / 1;
+		pointer-events: none;
+		background-color: var(--lo-surface);
+		clip-path: shape(
+			from 0 0,
+			hline to var(--gutter-and-radius),
+			arc to var(--workspace-frame-gutter) var(--workspace-frame-radius) of
+				var(--workspace-frame-radius),
+			vline to calc(100% - var(--gutter-and-radius)),
+			arc to var(--gutter-and-radius) calc(100% - var(--workspace-frame-gutter))
+				of var(--workspace-frame-radius),
+			hline to calc(100% - var(--gutter-and-radius)),
+			arc to calc(100% - var(--workspace-frame-gutter))
+				calc(100% - var(--gutter-and-radius)) of var(--workspace-frame-radius),
+			vline to var(--workspace-frame-radius),
+			arc to calc(100% - var(--gutter-and-radius)) 0 of
+				var(--workspace-frame-radius),
+			hline to 100%,
+			vline to 100%,
+			hline to 0,
+			close
+		);
+	}
 }
 
 /* A native WebContentsView is rectangular and intercepts pointer input
@@ -4084,8 +4127,9 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	gap: 4px;
 	padding-inline: 8px;
 }
-/* The strip is a sibling of the inset: use the sidebar's raw ground here so
- * the unfilled ellipsis keeps the same ink contrast over native material. */
+/* The strip and exposed gutter continue the sidebar's raw ground. The strip
+ * also needs that ground for its unfilled ellipsis over native material. */
+html[data-glass~="sidebar"] .workspace-frame-shell::before,
 html[data-glass~="sidebar"] [data-workspace-tabs] {
 	background-color: color-mix(
 		in srgb,

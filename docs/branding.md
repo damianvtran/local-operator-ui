@@ -626,8 +626,11 @@ chrome. It gives the body 8px logical inline and bottom gutters and 10px corners
 without a border, `PanelEdge`, shadow or second backing. App navigation, native
 controls and drag surfaces, the real panel rail and shell-level Fleet Asks stay
 outside it. The visible gutter replaces the shell seams where it separates the
-page from those rails, not on legacy flush joins. The rails must read on their
-own grounds, even with no inspector open.
+page from those rails, not on legacy flush joins. It continues the shell/tab
+`surface` ground (at the sidebar's own glass alpha when covered) in the exposed
+gutters and corners only. Bare native material here reads as a dark outline;
+filling behind the frame instead would double the body glass. The rails must
+read on their own grounds, even with no inspector open.
 
 **Share the boundary, not the layout.** The outlet consumes the platform's
 clearance once and holds the same frame through loading, empty, error and content.

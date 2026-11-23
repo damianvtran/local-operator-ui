@@ -43565,9 +43565,11 @@ async function sceneRouteTops(cdp) {
 				probe.remove();
 				return ground;
 			};
-			const frame = main?.querySelector(":scope > [data-workspace-frame]") ?? null;
-			const outlet = frame ?? Array.from(main?.children ?? []).find((el) => getComputedStyle(el).display === "contents") ?? main;
-			const ownRoot = Array.from(outlet?.children ?? []).find((el) => !el.hasAttribute("data-chrome-route-band")) ?? null;
+			const frame = main?.querySelector(":scope > [data-workspace-frame-shell] > [data-workspace-frame]") ?? null;
+			const routeChild = (el) => Array.from(el?.children ?? []).find((child) => !child.hasAttribute("data-chrome-route-band")) ?? null;
+			// Chat and Browser own their chrome; both outlet slots are then layout-inert.
+			let ownRoot = routeChild(frame ?? main);
+			while (ownRoot && getComputedStyle(ownRoot).display === "contents") ownRoot = routeChild(ownRoot);
 			const lane = document.querySelector("[data-titlebar-lane]");
 			const band = document.querySelector("[data-chrome-route-band]");
 			/*
