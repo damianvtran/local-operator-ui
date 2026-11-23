@@ -2943,15 +2943,16 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 	 */
 	const deadlineAt = code.indexOf("function armHeadlessExitDeadline");
 	assert.ok(deadlineAt > 0, "the headless exit deadline is still there");
-	const deadlineCallAt = code.indexOf(
-		"scheduleReopenAtQuitTerminal();",
+	const deadlineEndAt = code.indexOf(
+		"}, LAUNCHER_EXIT_DEADLINE_MS);",
 		deadlineAt,
 	);
-	const deadlineExitAt = code.indexOf("app.exit(0)", deadlineAt);
+	assert.ok(deadlineEndAt > deadlineAt, "the hard timer body is still there");
+	const deadline = code.slice(deadlineAt, deadlineEndAt);
+	const deadlineCallAt = deadline.indexOf("scheduleReopenAtQuitTerminal();");
+	const deadlineExitAt = deadline.indexOf("app.exit(");
 	assert.ok(
-		deadlineCallAt > deadlineAt &&
-			deadlineExitAt > deadlineAt &&
-			deadlineCallAt < deadlineExitAt,
+		deadlineCallAt > 0 && deadlineExitAt > deadlineCallAt,
 		"the headless exit deadline completes a recorded reopen before its forced exit (review F2)",
 	);
 	const crashAt = code.indexOf('process.on("uncaughtException"');

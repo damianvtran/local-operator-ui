@@ -410,7 +410,7 @@ for (const problem of windowLaunch.problems) {
  * guarantee underneath it.
  *
  * What the deadline does NOT cover, stated because it decides what a harness
- * author may rely on: the escalation is `app.exit(0)`, whose `process.on("exit")`
+ * author may rely on: the escalation is `app.exit`, whose `process.on("exit")`
  * handler runs `backendService.emergencyStopOwned()`, which can only `SIGKILL` a
  * child that was SPAWNED AND REGISTERED as the owned backend. A boot still
  * installing its managed runtime has no such field yet, and a deadline that
@@ -419,10 +419,9 @@ for (const problem of windowLaunch.problems) {
  * the window, which is why 10 s is chosen deliberately over the app's own
  * `QUIT_CLEANUP_FAILSAFE_MS` (115 s, the sum of the bounds above): a launcher-gone run is a run nobody is
  * watching, and the cost of waiting is another instance of exactly the kind this
- * module exists to remove. An escalated exit is still status 0 — it is a run
- * ending because its way of being watched went away, not a failure — so a
- * harness must not read the status as the signal; the `[window-mode]` line is
- * what says which path ended it.
+ * module exists to remove. Ordinary launcher shutdown still exits 0; the
+ * `[window-mode]` line distinguishes forced from graceful shutdown. A recorded
+ * first-run setup failure is different: it exits 1 even if the deadline wins.
  */
 let headlessExitDeadline: NodeJS.Timeout | null = null;
 function armHeadlessExitDeadline(why: string): void {
@@ -439,7 +438,9 @@ function armHeadlessExitDeadline(why: string): void {
 		 * line already said `reopen=deferred` could die on this exit.
 		 */
 		scheduleReopenAtQuitTerminal();
-		app.exit(0);
+		// Read the outcome at exit: another quit path may have armed this timer
+		// before startup failed, and blocked cleanup cannot report it for us.
+		app.exit(headlessFirstRunSetup.failed() ? 1 : 0);
 	}, LAUNCHER_EXIT_DEADLINE_MS);
 	// Never a reason for the process to stay alive by itself.
 	deadline.unref();
@@ -6410,8 +6411,6 @@ app.on("will-quit", (event) => {
 	 */
 	scheduleReopenAtQuitTerminal();
 	if (backendService.isOwnedCleanupComplete()) {
-		// Keep the launcher's hard-deadline status 0 convention untouched. The
-		// first-run failure has its own log verdict even if that deadline wins.
 		if (headlessFirstRunSetup.failed()) {
 			event.preventDefault();
 			app.exit(1);

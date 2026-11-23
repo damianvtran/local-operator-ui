@@ -571,7 +571,7 @@ async function loadMainProcess() {
 			const bundle = await build({
 				stdin: {
 					contents:
-						'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/backend-installer"; export * from "./src/main/update-service"; export { createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt } from "./src/main/window-mode"; export { LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS } from "./src/main/backend/owned-serve-launch"; export { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./src/main/backend/discovery"; export { SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS } from "./src/main/shell-path";',
+						'export * from "./src/main/backend/backend-service"; export * from "./src/main/backend/backend-installer"; export * from "./src/main/update-service"; export { LAUNCHER_EXIT_DEADLINE_MS, createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt } from "./src/main/window-mode"; export { LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS } from "./src/main/backend/owned-serve-launch"; export { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./src/main/backend/discovery"; export { SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS } from "./src/main/shell-path";',
 					resolveDir: process.cwd(),
 				},
 				bundle: true,
@@ -3844,9 +3844,9 @@ function firstRunFragment(start, end) {
 	return source.slice(from, to);
 }
 
-// Keep the real retry loop and the deadline expression under the same clock.
-// The fake start controls only when each service call resolves.
-async function driveFirstRunStart(t, start) {
+// Keep startup and both quit deadlines under one clock. Stub the Electron
+// boundary and backend promises, not the transitions that decide exit status.
+async function driveFirstRunStart(t, start, launcherGone = false) {
 	const fixture = await loadMainProcess();
 	t.mock.timers.enable({ apis: ["setTimeout"] });
 	const deadline = firstRunFragment(
@@ -3858,39 +3858,62 @@ async function driveFirstRunStart(t, start) {
 	const code = transformSync(
 		`
 		const {
-			createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt,
+			LAUNCHER_EXIT_DEADLINE_MS, createHeadlessFirstRunSetup, runHeadlessFirstRunAttempt,
 			LAUNCHER_PROBE_WORST_MS, INTERPRETER_RESOLUTION_WORST_MS, OWNED_STOP_WORST_MS,
 			READINESS_POLL_INTERVAL_MS, READINESS_WALL_WORST_MS,
 			SHELL_PATH_TIMEOUT_MS, SHELL_PATH_ANSWER_GRACE_MS, OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS,
 		} = fixture;
 		${deadline}
 		const windowLaunch = { mode: "headless" };
-		const quitState = { isQuitting: () => events.includes("deadline") };
-		const backendService = { start };
-		const logger = { error() {} };
-		const LogFileType = { INSTALLER: "installer" };
-		const headlessFirstRunSetup = createHeadlessFirstRunSetup({
-			mode: windowLaunch.mode,
-			timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS,
-			onDeferred: () => events.push("deferred"),
-			onFailure: (reason) => events.push(reason),
-		});
-		headlessFirstRunSetup.begin();
-		headlessFirstRunSetup.windowClosed(false, false);
+		const quitEvents = [];
+		const quitState = { isQuitting: () => backendQuitPending };
+		const backendService = {
+			start, isOwnedCleanupComplete: () => false,
+			stop: (restart) => {
+				quitEvents.push(["stop", restart]);
+				return new Promise(() => {});
+			},
+		};
+		const logger = {
+			info: (line) => {
+				if (line.includes("deferring last-window quit")) events.push("deferred");
+			},
+			error() {},
+		};
+		const LogFileType = { BACKEND: "backend", INSTALLER: "installer" };
+		const console = { log: (line) => quitEvents.push(line) };
+		const scheduleReopenAtQuitTerminal = () => {};
+		const app = {
+			quit: () => {
+				const event = { preventDefault: () => quitEvents.push("quit prevented") };
+				${firstRunFragment("if (backendService.isOwnedCleanupComplete()) {", "\n});\n\n// Handle before-quit event")}
+			},
+			exit: (code) => quitEvents.push(["exit", code]),
+		};
+		${firstRunFragment("let headlessExitDeadline:", "/** The launcher watch,")}
+		${firstRunFragment("const headlessFirstRunSetup =", "/*\n * REVIEW F3:")}
 		const done = (async () => {
+			if (launcherGone) {
+				endHeadlessRun("launcher gone");
+				return;
+			}
+			headlessFirstRunSetup.begin();
+			headlessFirstRunSetup.windowClosed(false, false);
 			${retry}
 			if (backendStarted) headlessFirstRunSetup.settle("reachable");
 			return backendStarted;
 		})();
-		return { done, events, attemptMs: HEADLESS_FIRST_RUN_ATTEMPT_MS,
-			backoffMs: FIRST_RUN_START_BACKOFF_MS, timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS };
+		return { done, events, quitEvents, attemptMs: HEADLESS_FIRST_RUN_ATTEMPT_MS,
+			backoffMs: FIRST_RUN_START_BACKOFF_MS, timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS,
+			exitMs: LAUNCHER_EXIT_DEADLINE_MS };
 	`,
 		{ loader: "ts" },
 	).code;
-	return new Function("fixture", "start", "events", code)(
+	return new Function("fixture", "start", "events", "launcherGone", code)(
 		fixture,
 		start,
 		events,
+		launcherGone,
 	);
 }
 
@@ -3957,28 +3980,46 @@ test("all three slots can spend their full startup budget before the watchdog", 
 	assert.deepEqual(events, ["deferred"]);
 });
 
-test("an unresolved backend start terminates once without retrying its pending promise", async (t) => {
-	let attempts = 0;
-	let resolveAttempt;
-	const { done, events, attemptMs, timeoutMs } = await driveFirstRunStart(
-		t,
-		() => {
-			attempts++;
-			return new Promise((resolve) => {
-				resolveAttempt = resolve;
-			});
-		},
-	);
-	t.mock.timers.tick(attemptMs - 1);
-	assert.deepEqual(events, ["deferred"]);
-	t.mock.timers.tick(1);
-	await done;
-	assert.deepEqual(events, ["deferred", "start-failed"]);
-	resolveAttempt(true);
-	t.mock.timers.tick(timeoutMs);
-	assert.deepEqual(events, ["deferred", "start-failed"]);
-	assert.equal(attempts, 1);
-});
+for (const launcherGone of [false, true]) {
+	const reason = launcherGone
+		? "launcher gone"
+		: "headless first-run setup failed (start-failed)";
+	const exitCode = launcherGone ? 0 : 1;
+	test(`${reason}: stuck cleanup hard-exits once with status ${exitCode}`, async (t) => {
+		let attempts = 0;
+		const { done, events, quitEvents, attemptMs, exitMs } =
+			await driveFirstRunStart(
+				t,
+				() => {
+					attempts++;
+					return new Promise(() => {});
+				},
+				launcherGone,
+			);
+		if (!launcherGone) {
+			t.mock.timers.tick(attemptMs - 1);
+			assert.deepEqual(events, ["deferred"]);
+			assert.deepEqual(quitEvents, []);
+			t.mock.timers.tick(1);
+		}
+		await done;
+		assert.equal(attempts, launcherGone ? 0 : 1);
+		const stalled = [
+			`[window-mode] ${reason}; quitting`,
+			"quit prevented",
+			["stop", false],
+		];
+		assert.equal(exitMs, 10_000);
+		t.mock.timers.tick(exitMs - 1);
+		assert.deepEqual(quitEvents, stalled);
+		t.mock.timers.tick(1);
+		assert.deepEqual(quitEvents, [
+			...stalled,
+			`[window-mode] ${reason}; the quit did not finish within ${exitMs} ms, exiting`,
+			["exit", exitCode],
+		]);
+	});
+}
 
 test("a failed hidden installer child settles without a Retry/Quit decision", async () => {
 	const { BackendInstaller } = await loadMainProcess();
