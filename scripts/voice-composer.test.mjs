@@ -433,7 +433,7 @@ test("working: the take that was heard is the caption", async () => {
 	});
 	await flush();
 	assert.equal(chipText(), "Working");
-	assert.match(caption().textContent, /You said/);
+	assert.match(caption().textContent, /You said:/);
 	assert.match(caption().textContent, /run the tests on the login redirect/);
 });
 
@@ -912,7 +912,8 @@ test("D1: a history row prints a clock, and its cell sizes itself", async () => 
 	});
 	await openHistory();
 	const row = window.document.querySelector('[data-voice-story="exchange"]');
-	const cell = row.firstElementChild;
+	// The time rides the end of the first line, as the other rows' does.
+	const cell = row.children[1].lastElementChild;
 	assert.match(cell.textContent, /^\d{1,2}:\d{2}\s?[ap]m$/i);
 	assert.doesNotMatch(cell.textContent, /2026|\//, "no date in the row");
 	// A fixed 42px column is what overflowed; the column takes its own width now.
@@ -925,7 +926,7 @@ test("D4: the strip, its history and the notice share the composer's content col
 	await mountStrip();
 	await voiceReady();
 	const band = window.document.querySelector("[data-voice-strip]");
-	assert.match(band.className, /\bpx-4\b/);
+	assert.match(band.className, /\bpx-3\b/);
 	assert.doesNotMatch(band.className, /px-2\.5/);
 
 	await act(async () => {
@@ -933,7 +934,7 @@ test("D4: the strip, its history and the notice share the composer's content col
 	});
 	await flush();
 	const notice = window.document.querySelector("[data-voice-notice]");
-	assert.match(notice.className, /\bpx-4\b/);
+	assert.match(notice.className, /\bpx-3\b/);
 });
 
 test("D8: the History chevron points down when closed and up when open", async () => {
@@ -955,49 +956,106 @@ test("D8: the History chevron points down when closed and up when open", async (
 	assert.doesNotMatch(toggle().innerHTML, /m6 9 6 6 6-6/);
 });
 
-test("D11: at the narrow width the band pays back the composer's own 8px, so the chip shares the textarea's x", async () => {
+test("D11: the band takes no padding back from the box - it is a panel inside the editor, at both widths", async () => {
 	/*
-	 * jsdom has no layout engine, so an x cannot be read here. What CAN be
-	 * asserted is the arithmetic an x is made of: the band pulls itself left by
-	 * the box's padding and then pads its content by the same amount, so content
-	 * starts at box.x + padding - the textarea's own line. The failure D11
-	 * measured was exactly a mismatch of those two numbers (16px pulled back over
-	 * an 8px-padded box, so the band hung 8px out and the chip started 8px left
-	 * of the textarea). Both come from `isSmallView`, so both are checked at both
-	 * values.
+	 * jsdom has no layout engine, so an x cannot be read here (the Storybook
+	 * `Voice/Composer band` stories measure it). What CAN be asserted is the cause
+	 * of the operator's 2026-11-23 report: the band bled to the box's edges with a
+	 * negative margin sized for a 16px padding, but the editor pads 8px (4px
+	 * compact) under a shelf, so the band hung out of the card and over the shelf.
+	 * No negative margin at all is the property that cannot drift from the box.
 	 */
-	const pxOf = (className, pattern) => {
-		const found = pattern.exec(className);
-		return found ? Number(found[1]) * 4 : null;
-	};
 	for (const narrow of [true, false]) {
 		await mountStrip({ isSmallView: narrow });
 		await voiceReady();
 		const band = window.document.querySelector("[data-voice-band]");
 		const row = window.document.querySelector("[data-voice-strip]");
 		assert.ok(band && row);
-		const pulled = pxOf(band.className, /(?:^|\s)-mx-(\d)(?:\s|$)/);
-		const padded = pxOf(row.className, /(?:^|\s)px-(\d)(?:\s|$)/);
-		assert.equal(
-			pulled,
-			narrow ? 8 : 16,
-			`${narrow ? "narrow" : "wide"}: the band pulls back the box's padding`,
+		const which = narrow ? "narrow" : "wide";
+		assert.doesNotMatch(
+			band.className,
+			/(?:^|\s)-m[xtlr]?-/,
+			`${which}: no negative margin`,
 		);
-		assert.equal(
-			padded,
-			narrow ? 8 : 16,
-			`${narrow ? "narrow" : "wide"}: and puts it back on the content`,
+		assert.match(band.className, /\bborder\b/, `${which}: its own edge`);
+		assert.match(
+			band.className,
+			/\bmin-w-0\b/,
+			`${which}: cannot widen the card`,
 		);
-		assert.equal(
-			pulled,
-			padded,
-			"the two must match, or the content column leaves the textarea's",
-		);
-		assert.ok(
-			band.className.includes(narrow ? "-mx-2" : "-mx-4"),
-			`${narrow ? "narrow" : "wide"}: the responsive pair, not a hardcoded edge`,
+		assert.match(
+			row.className,
+			narrow ? /\bpx-2\b/ : /\bpx-3\b/,
+			`${which}: its own content padding`,
 		);
 	}
+});
+
+test("History shows the whole reply on its own lines, and notes the audio cut only when it was cut", async () => {
+	const full = "Hook · When it runs\nPreToolUse · Before an action\n- a bullet";
+	const exchange = (patch) => ({
+		kind: "exchange",
+		at: Date.parse("2026-10-18T10:02:00Z"),
+		sessionId: AT,
+		heard: "compare the hooks",
+		spoken: "Hook When it runs PreToolUse Before an action",
+		full,
+		truncated: false,
+		...patch,
+	});
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		useVoiceStore.setState({ story: [exchange({})] });
+	});
+	await openHistory();
+	let row = window.document.querySelector('[data-voice-story="exchange"]');
+	// The newlines survive into the DOM and `pre-line` draws them as lines.
+	const reply = row.querySelector(".whitespace-pre-line");
+	assert.equal(
+		reply?.textContent,
+		full,
+		"the row holds full_text verbatim, not the spoken text",
+	);
+	assert.doesNotMatch(row.textContent, /Hook When it runs PreToolUse/);
+	assert.equal(row.querySelector("[data-voice-story-cut]"), null);
+
+	await act(async () => {
+		useVoiceStore.setState({ story: [exchange({ truncated: true })] });
+	});
+	await flush();
+	row = window.document.querySelector('[data-voice-story="exchange"]');
+	const note = row.querySelector("[data-voice-story-cut]");
+	assert.ok(note, "a cut AUDIO is still said, beside the whole reply");
+	assert.match(note.textContent, /Spoken aloud: first part only/);
+	assert.doesNotMatch(
+		note.className,
+		/text-warning/,
+		"not a missing-text warning",
+	);
+	assert.match(row.textContent, /PreToolUse · Before an action/);
+
+	// A reply with nothing yet reads as work in progress, not a blank row.
+	await act(async () => {
+		useVoiceStore.setState({
+			story: [exchange({ spoken: null, full: null })],
+		});
+	});
+	await flush();
+	row = window.document.querySelector('[data-voice-story="exchange"]');
+	assert.match(row.textContent, /Working/);
+});
+
+test("the strip's caption labels end in a colon, so the label is a separator", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.noteTake(AT, "can you check the tests", Date.now());
+		store.setExchange("working", AT);
+	});
+	await flush();
+	assert.match(caption().textContent, /^You said:\s/);
 });
 
 test("D2: the first frame of an enable is Starting voice, never the stale rig status", async () => {
@@ -1267,6 +1325,7 @@ const story = [
 		sessionId: AT,
 		heard: "Run the tests on the login redirect.",
 		spoken: "Three suites ran.",
+		full: "Three suites ran.",
 		truncated: false,
 	},
 	{

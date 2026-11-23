@@ -73,6 +73,13 @@ export type VoiceStoryRow =
 			sessionId: string;
 			heard: string;
 			spoken: string | null;
+			/**
+			 * The reply as DISPLAYED: the server's uncapped `full_text`, or the spoken
+			 * text when the server has none. `spoken` is capped for the voice, so a
+			 * long reply read from it ends mid-thought; History reads this instead.
+			 */
+			full: string | null;
+			/** The AUDIO was cut at the server's cap; `full` is never cut. */
 			truncated: boolean;
 	  }
 	| { kind: "interrupted"; at: number; sessionId: string; seconds: number }
@@ -170,6 +177,8 @@ type VoiceStoreActions = {
 	setLastSpoken: (spoken: {
 		sessionId: string;
 		text: string;
+		/** The uncapped display text; absent from an older server, then `text`. */
+		fullText?: string;
 		truncated: boolean;
 		at: number;
 	}) => void;
@@ -211,7 +220,13 @@ function capStory(story: VoiceStoryRow[]): VoiceStoryRow[] {
 /** Fill the newest unanswered exchange for a session, or add nothing. */
 function completeStoryRow(
 	story: VoiceStoryRow[],
-	spoken: { sessionId: string; text: string; truncated: boolean; at: number },
+	spoken: {
+		sessionId: string;
+		text: string;
+		fullText?: string;
+		truncated: boolean;
+		at: number;
+	},
 ): VoiceStoryRow[] {
 	for (let index = story.length - 1; index >= 0; index--) {
 		const row = story[index];
@@ -222,7 +237,14 @@ function completeStoryRow(
 		)
 			continue;
 		const next = [...story];
-		next[index] = { ...row, spoken: spoken.text, truncated: spoken.truncated };
+		next[index] = {
+			...row,
+			spoken: spoken.text,
+			// An empty `full_text` is no display text either: the spoken words
+			// still say something, a blank row would not.
+			full: spoken.fullText || spoken.text,
+			truncated: spoken.truncated,
+		};
 		return next;
 	}
 	return story;
@@ -333,6 +355,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 						sessionId,
 						heard: text,
 						spoken: null,
+						full: null,
 						truncated: false,
 					},
 				]),

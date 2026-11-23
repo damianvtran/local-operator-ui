@@ -6,6 +6,7 @@
 	"ui.chat.composer.placeholder.aside": "Ask off the record — Esc closes the aside",
 	"ui.chat.composer.placeholder.busy": "Agent is busy",
 	"ui.chat.composer.placeholder.idle": "Ask anything. @ adds files, / runs commands",
+	"ui.chat.composer.placeholder.voice": "Talk, or type here",
 	"ui.chat.composer.placeholder.no_provider": "Connect a provider to start chatting",
 	"ui.chat.composer.placeholder.recording": "Recording",
 	"ui.chat.composer.placeholder.secret_answer": "Answer the secret request in the asks panel",

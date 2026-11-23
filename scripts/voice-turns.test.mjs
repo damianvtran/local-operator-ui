@@ -2909,7 +2909,7 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.match(
 		source,
-		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*truncated: spokenTruncated\(spoken\),\s*at: Date\.now\(\),?\s*\}\)/,
+		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*fullText: spoken\.full_text,\s*truncated: spokenTruncated\(spoken\),\s*at: Date\.now\(\),?\s*\}\)/,
 	);
 	/*
 	 * THE DECISION MOVED INTO `voiceEventEffects` (QA round 4), so the scan names
@@ -3030,6 +3030,46 @@ test("U3/D9/D6: an end with no start says nothing, and a cancel in the first sec
 		before + 1,
 		"one row per interruption",
 	);
+});
+
+test("History keeps the reply the server cleaned for display, and falls back to the spoken text", async () => {
+	const { useVoiceStore } = await controller();
+	const spokenText = "Here is how the hooks compare. That's where I'll stop.";
+	const fullText = "Here is how the hooks compare.\nHook · When\n- a bullet";
+	const answer = (store, sessionId, spoken) => {
+		store.noteTake(sessionId, "compare the hooks", Date.now());
+		store.setLastSpoken({ sessionId, at: Date.now(), ...spoken });
+		return useVoiceStore.getState().story.at(-1);
+	};
+	useVoiceStore.setState({ story: [] });
+	const store = useVoiceStore.getState();
+	// `full_text` wins for the row; `text` stays the spoken half, and the cut
+	// flag still says the AUDIO was cut.
+	const full = answer(store, "s-full", {
+		text: spokenText,
+		fullText,
+		truncated: true,
+	});
+	assert.equal(full.full, fullText);
+	assert.equal(full.spoken, spokenText);
+	assert.equal(full.truncated, true);
+	// An older server sends no `full_text`: today's behaviour, the spoken text.
+	const older = answer(store, "s-older", {
+		text: spokenText,
+		truncated: false,
+	});
+	assert.equal(older.full, spokenText);
+	assert.equal(older.truncated, false);
+	// An empty one is no display text: a blank row would say nothing true.
+	const empty = answer(store, "s-empty", {
+		text: spokenText,
+		fullText: "",
+		truncated: false,
+	});
+	assert.equal(empty.full, spokenText);
+	// The take's own row starts with nothing shown, which renders as "Working".
+	store.noteTake("s-new", "and now", Date.now());
+	assert.equal(useVoiceStore.getState().story.at(-1).full, null);
 });
 
 test("U1: a refused take is recorded for the band, and the next take clears it", async () => {

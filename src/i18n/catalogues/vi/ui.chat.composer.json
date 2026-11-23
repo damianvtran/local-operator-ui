@@ -45,6 +45,7 @@
 	"ui.chat.composer.placeholder.aside": "Hỏi ngoài bản ghi — Esc đóng khung bên lề",
 	"ui.chat.composer.placeholder.busy": "Tác nhân đang bận",
 	"ui.chat.composer.placeholder.idle": "Hỏi bất cứ điều gì. @ thêm tệp, / chạy lệnh",
+	"ui.chat.composer.placeholder.voice": "Hãy nói, hoặc gõ vào đây",
 	"ui.chat.composer.placeholder.no_provider": "Kết nối nhà cung cấp để bắt đầu trò chuyện",
 	"ui.chat.composer.placeholder.recording": "Đang ghi âm",
 	"ui.chat.composer.placeholder.secret_answer": "Trả lời yêu cầu bí mật trong bảng câu hỏi",

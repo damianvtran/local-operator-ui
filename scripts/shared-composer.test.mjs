@@ -2240,6 +2240,24 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 		"and a state sentence still outranks it",
 	);
 	/*
+	 * Session voice on in this conversation: the box is still a text field, so the
+	 * empty row says speaking OR typing works. It is the invitation said for this
+	 * mode, so every refusal and every send-state sentence still outranks it.
+	 */
+	assert.equal(
+		composerPlaceholder({ ...base, voiceOn: true }),
+		t(COMPOSER_PLACEHOLDER.voice),
+	);
+	assert.equal(
+		composerPlaceholder({ ...base, voiceOn: true, awaitingReply: true }),
+		t(COMPOSER_PLACEHOLDER.waiting),
+		"a turn in flight is still said first",
+	);
+	assert.equal(
+		composerPlaceholder({ ...base, voiceOn: true, noProvider: true }),
+		t(COMPOSER_PLACEHOLDER.noProvider),
+	);
+	/*
 	 * The press's own sentence (design round 1, D6): while a Stop is in flight
 	 * the empty box says so - the square it was pressed on is pixel-identical
 	 * and the rung is 420 px above it, so this is the answer where the finger
