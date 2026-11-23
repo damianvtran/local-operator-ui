@@ -218,7 +218,11 @@ export class SessionNotificationAvatars
 				// was in flight: its answer describes a core that may be gone.
 				if (generation !== this.generation) return;
 				if (result.kind === "error") {
-					if (result.code !== "renderer_busy")
+					// Any 503 is "no image NOW", never "no picture": core's renderer
+					// answers `renderer_busy` 503 under a banner burst (2 active / 8
+					// pending), and a negative lease there would strip the agent's face
+					// from the rest of that burst (core review #4506 R1-2).
+					if (result.code !== "renderer_busy" && result.status !== 503)
 						this.lease(key, null, SESSION_NOTIFICATION_AVATAR_NEGATIVE_TTL_MS);
 					return;
 				}

@@ -331,6 +331,48 @@ test("cache: renderer_busy is transient and is NOT leased negative", async () =>
 	assert.equal(requests.length, 2);
 });
 
+test("cache: any 503 (even uncoded) is no image now, not a negative lease", async () => {
+	const { images, requests } = cache({
+		answer: () => ({ ...NOT_FOUND, status: 503 }),
+	});
+	await images.read(SESSION, 250);
+	await images.read(SESSION, 250);
+	assert.equal(requests.length, 2);
+});
+
+test("cache: concurrent banners for one session coalesce into ONE request", async () => {
+	let release;
+	const { images, requests } = cache({
+		answer: () =>
+			new Promise((resolve) => {
+				release = () => resolve(bytes('"one"'));
+			}),
+	});
+	const reads = [1, 2, 3, 4].map(() => images.read(SESSION, 250));
+	release();
+	const icons = await Promise.all(reads);
+	assert.equal(requests.length, 1);
+	assert.ok(icons.every((icon) => icon && icon === icons[0]));
+});
+
+test("cache: a burst never exceeds two requests in flight", async () => {
+	const releases = [];
+	const { images, requests } = cache({
+		answer: () =>
+			new Promise((resolve) => releases.push(() => resolve(NOT_FOUND))),
+	});
+	const ids = ["aaaaaaaaaaa1", "aaaaaaaaaaa2", "aaaaaaaaaaa3", "aaaaaaaaaaa4"];
+	const reads = ids.map((id) => images.read(id, 20));
+	assert.equal(requests.length, m.SESSION_NOTIFICATION_AVATAR_CONCURRENCY);
+	assert.deepEqual(await Promise.all(reads), [
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+	]);
+	for (const release of releases) release();
+});
+
 test("cache: a malformed PNG (wrong size) is no icon", async () => {
 	const { images, decoded } = cache({ answer: () => bytes('"x"', 64) });
 	assert.equal(await images.read(SESSION, 250), undefined);
