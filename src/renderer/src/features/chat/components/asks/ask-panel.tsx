@@ -334,14 +334,18 @@ const AskMark = ({ chosen, multi }: { chosen: boolean; multi: boolean }) => (
 	<span
 		aria-hidden="true"
 		className={cn(
-			"mt-1 h-3 w-3 shrink-0 border",
+			/*
+			 * 14px, on the label's first line (design spec, D8): the 12px box was
+			 * measured as too faint to read as a control beside a 13px label, and
+			 * the mark now shares the row's first-line top with the `Check` that
+			 * confirms a chosen row (`mt-[3px]`, the prototype's own offset).
+			 */
+			"mt-[3px] h-3.5 w-3.5 shrink-0 border",
 			/*
 			 * `rounded-[2px]`, NOT `rounded-sm`: the token is 6px
-			 * (`styles/index.css`), which on a 12px box is a
-			 * perfect circle - so the class the design round
-			 * measured as "identical to the single-select mark"
-			 * really was identical, and the claim that it
-			 * differed was wrong (design round 1, D1).
+			 * (`styles/index.css`), which on a 14px box still rounds the square
+			 * toward a second circle - so the class the design round measured as
+			 * "identical to the single-select mark" keeps the shapes apart.
 			 */
 			multi ? "rounded-[2px]" : "rounded-full",
 			chosen ? "border-accent bg-accent" : "border-control",
@@ -585,7 +589,12 @@ const AskQuestionField = ({
 			 * notifications pane the fit is taken from them and never from the options.
 			 */}
 			<AskScrollBody containOverscroll={false}>
-				<p className="whitespace-pre-wrap text-ink text-sm">
+				{/*
+				 * THE QUESTION IS THE CARD'S HEADING (design spec, D4): one `text-body`
+				 * step above its options, at `font-medium`, so a four-question card
+				 * reads as four questions rather than one wall of text.
+				 */}
+				<p className="whitespace-pre-wrap text-body font-medium text-ink">
 					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
 				{proposal ? (
@@ -637,7 +646,7 @@ const AskQuestionField = ({
 					 * rule is stated, and the browser default measured 2.81:1 on Linen against
 					 * `ink-dim`'s 5.0:1 floor (design round 1, D2).
 					 */
-					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
+					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-body text-ink placeholder:text-ink-dim disabled:placeholder:text-ink-disabled"
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
@@ -713,10 +722,23 @@ const AskQuestionField = ({
 										);
 									}}
 									className={cn(
-										"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
+										/*
+										 * THE START EDGE IS THE ROW'S SHAPE (design spec, D8/D14): a 2px
+										 * hairline at rest, `accent` when chosen, and the rest + hover grounds
+										 * are the app's row roles rather than a card-local tint. Every row wears
+										 * the same padding and edge, so an option's label, its description and
+										 * the `Other` field share ONE left edge per row (the card's 12px plus
+										 * this edge's 2px, the row's 8px, and the label column's mark + gap).
+										 *
+										 * `text-body-sm` belongs to the ROW: the question is the card's only
+										 * `text-body` line (D4), and the recommended label no longer takes a
+										 * weight step of its own (D5) - the pill beside it carries the mark,
+										 * so alternating weights can never read as alternating kinds of row.
+										 */
+										"flex w-full items-start gap-2 rounded-sm border-s-2 px-2 py-1.5 text-start text-body-sm",
 										// Rows, not controls with edges of their own: this list sits
 										// inside the panel's card, so its boundary is its selection
-										// ground and its focus outline (the same idiom as `AskOptions`).
+										// ground, its start edge and its focus outline.
 										/*
 										 * A CHOSEN ROW KEEPS ITS ROLE FILL ON GLASS (review round 2, minor 3).
 										 * It is a selected SURFACE, and the model's answer for a selected
@@ -735,7 +757,9 @@ const AskQuestionField = ({
 										 * fill is suppressed on glass (styles/index.css), so their hover is
 										 * cursor-only.
 										 */
-										chosen ? "bg-sunken" : "hover:bg-sunken",
+										chosen
+											? "border-accent bg-row-selected"
+											: "border-hairline hover:bg-row-hover",
 										disabled ? "text-ink-dim" : "text-ink",
 									)}
 								>
@@ -765,19 +789,16 @@ const AskQuestionField = ({
 										 * can therefore never become a line of its own above the
 										 * description.
 										 *
-										 * The label is BOLDED where it is recommended - the half of
-										 * the signal that survives a reader who skims past the badge.
+										 * The label keeps its own weight and takes the badge from the SHARED
+										 * mark as a pill (design spec, D5): a row whose label was bolded
+										 * just for being recommended alternated weights down the list,
+										 * and the pill is what survives a reader who skims past it.
 										 */}
 										<span className="flex items-baseline gap-x-2">
-											<span
-												className={cn(
-													"min-w-0",
-													recommended && "font-semibold",
-												)}
-											>
-												{option.label}
-											</span>
-											{recommended ? <AskRecommendedBadge /> : null}
+											<span className="min-w-0">{option.label}</span>
+											{recommended ? (
+												<AskRecommendedBadge variant="badge" />
+											) : null}
 										</span>
 										{/*
 										 * `ink-muted` RESTORED (design round 2, D12). Round 1's
@@ -790,11 +811,23 @@ const AskQuestionField = ({
 										 * two-line option row, which is the thing the row reads by.
 										 */}
 										{option.description ? (
-											<span className="block text-ink-muted text-xs">
+											<span className="block text-ink-muted text-meta">
 												{option.description}
 											</span>
 										) : null}
 									</span>
+									{/*
+									 * THE SECOND SELECTION CHANNEL (design spec, D8/S1): the filled mark
+									 * and the ground already say "chosen", and the `Check` says it
+									 * without colour - so selection survives a greyscale frame or a
+									 * palette where `accent` and `row-selected` sit close.
+									 */}
+									{chosen ? (
+										<Check
+											aria-hidden="true"
+											className="mt-[3px] size-3.5 shrink-0 text-accent"
+										/>
+									) : null}
 								</button>
 							);
 						})}
@@ -845,34 +878,49 @@ const AskQuestionField = ({
 							else writeOther({ ...other, open: true });
 						}}
 						className={cn(
-							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
-							// Same selected-surface exemption as `AskOptions` above: one role
-							// fill, no selected ink on top of the veil. The label is at `ink`,
-							// so this row's hover is cursor-only on glass.
-							other.open ? "bg-sunken" : "hover:bg-sunken",
+							/*
+							 * THE SAME SHAPE AS EVERY OPTION ROW (design spec, D7/D14): edge, padding,
+							 * mark and label column are shared, and the hint drops to its own line in
+							 * the label column rather than sitting inline beside the word "Other".
+							 */
+							"flex w-full items-start gap-2 rounded-sm border-s-2 px-2 py-1.5 text-start text-body-sm",
+							// Same selected-surface exemption as the option rows: one role
+							// fill, no selected ink on top of the veil.
+							other.open
+								? "border-accent bg-row-selected"
+								: "border-hairline hover:bg-row-hover",
 							disabled ? "text-ink-dim" : "text-ink",
 						)}
 					>
 						<AskMark chosen={other.open} multi={multi} />
 						<span className="min-w-0 flex-1">
-							<span>{t("ui.chat.asks.other_label")}</span>
+							<span className="block">{t("ui.chat.asks.other_label")}</span>
 							{/*
-							 * A REAL SPACE between the label and the hint, not just the `ms-1.5`
-							 * margin: a margin is invisible to the accessible-name computation,
-							 * which concatenated the two spans into one announced word -
-							 * `OtherType your answer` - as measured in Chrome's own AX tree
-							 * (round 2, design D8 / UX U6). The space is what puts the boundary
-							 * in the name; the margin stays for the visual gap, which the stills
-							 * judge.
-							 */} {other.open ? null : (
-								<span className="ms-1.5 text-ink-muted text-xs">
+							 * THE HINT IS THE ROW'S DESCRIPTION (design spec, D7), on its own line
+							 * like every option's description, so the Other row is not shaped
+							 * differently from its siblings.
+							 *
+							 * A REAL SPACE between the label and the hint, not just a margin: a margin
+							 * is invisible to the accessible-name computation, which concatenated the
+							 * two spans into one announced word - `OtherType your answer` - as measured
+							 * in Chrome's own AX tree (round 2, design D8 / UX U6). The space is what
+							 * puts the boundary in the name; it collapses visually between two blocks.
+							 */}{" "}
+							{other.open ? null : (
+								<span className="block text-ink-muted text-meta">
 									{otherPrompt()}
 								</span>
 							)}
 						</span>
+						{other.open ? (
+							<Check
+								aria-hidden="true"
+								className="mt-[3px] size-3.5 shrink-0 text-accent"
+							/>
+						) : null}
 					</button>
 					{other.open ? (
-						<div className="pt-1 pe-1 pb-1 ps-7">
+						<div className="pt-1 pe-1 pb-1 ps-8">
 							<AskAnswerField
 								questionId={question.id}
 								fieldRef={otherField}
@@ -1574,10 +1622,23 @@ const AskRow = ({
 					})}
 				</div>
 			) : null}
-			{canAnswer || changingNow
-				? ask.questions.map((question) => (
-						<AskQuestionField
+			{canAnswer || changingNow ? (
+				<div className="flex flex-col">
+					{ask.questions.map((question, index) => (
+						/*
+						 * A HAIRLINE BETWEEN QUESTIONS (design spec, D4/D14). Four questions 8px
+						 * apart read as one wall of text; each question after the first starts
+						 * with a rule and 12px of air above it. The rule is decoration
+						 * (`border-hairline`), never a control boundary.
+						 */
+						<div
 							key={question.id}
+							className={
+								index === 0 ? undefined : "border-hairline border-t pt-3"
+							}
+						>
+							<AskQuestionField
+								key={question.id}
 							question={question}
 							selected={draftFor(editDraft, question.id)}
 							secret={secrets[question.id] ?? ""}
@@ -1628,9 +1689,11 @@ const AskRow = ({
 											: () => onRunRequest(ask, question.id, hint.command),
 								};
 							})()}
-						/>
-					))
-				: null}
+							/>
+						</div>
+					))}
+				</div>
+			) : null}
 			{/*
 			 * THE CONTEXT LINE (SA-D7's manager override; harness PR #2833). It sits
 			 * under the question because it is about the conversation's movement since

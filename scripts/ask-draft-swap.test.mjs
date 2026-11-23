@@ -2072,16 +2072,23 @@ test("the recommendation survives the selection moving (operator ask, 2026-10-04
 		stagingText.includes("Recommended"),
 		"the advice is still on the row after the selection moved",
 	);
-	// Not colour alone: the glyph is what survives a colour-blind reader, a
-	// greyscale screenshot and the terminal's own badge.
-	assert.ok(stagingText.includes("▸"), "the mark carries its glyph");
-	// The label is bolded where it is recommended - the half of the signal that
-	// survives a reader who skims past the badge.
+	/*
+	 * THE PILL IS THE MARK, AND THE LABEL KEEPS ITS WEIGHT (design spec, D5).
+	 * The drawer's rows used to bold the recommended label; a list where only some
+	 * labels carry a weight step reads as two kinds of row, so the badge is now an
+	 * object beside the label and no row changes weight.
+	 */
+	const recommendedMark = Array.from(staging?.querySelectorAll("span") ?? []).find(
+		(element) => element.textContent === "Recommended",
+	);
 	assert.ok(
-		(staging?.querySelector(".font-semibold")?.textContent ?? "").includes(
-			"staging",
-		),
-		"the recommended option's label is emphasised",
+		recommendedMark?.className.includes("rounded-full"),
+		"the mark is drawn as a pill",
+	);
+	assert.equal(
+		staging?.querySelector(".font-semibold"),
+		null,
+		"the recommended label is not bolded (D5)",
 	);
 	assert.equal(
 		production?.querySelector(".font-semibold"),
@@ -2164,10 +2171,11 @@ test("the drawer badges nothing for an index that is not a real row", async () =
 	}
 
 	// And a REAL index that is not 0 still marks exactly the row it names - which
-	// is what rules out a "truthiness" read resolving it to index 0.
+	// is what rules out a "truthiness" read resolving it to index 0. No row is
+	// bolded for it: the D5 mark is the pill, applied by the rendering itself.
 	const real = await marked(2);
 	assert.deepEqual(real.badged, ["sandbox"]);
-	assert.deepEqual(real.bolded, ["sandbox"]);
+	assert.deepEqual(real.bolded, []);
 });
 
 /*
@@ -2218,20 +2226,20 @@ test("a multi-select ask marks every recommended row and ticks none", async () =
 		return result;
 	};
 
-	// A set of two: both rows carry the bold label and the badge.
+	// A set of two: both rows carry the badge, and neither is bolded (D5).
 	const two = await probe({
 		multi: true,
 		recommended: 0,
 		recommended_all: [0, 1],
 	});
 	assert.deepEqual(two.badged, ["staging", "production"]);
-	assert.deepEqual(two.bolded, ["staging", "production"]);
+	assert.deepEqual(two.bolded, []);
 	assert.deepEqual(two.checked, [], "the recommendation never pre-ticks a row");
 
 	// An old backend: `recommended` alone still marks exactly one row.
 	const old = await probe({ multi: true, recommended: 0 });
 	assert.deepEqual(old.badged, ["staging"]);
-	assert.deepEqual(old.bolded, ["staging"]);
+	assert.deepEqual(old.bolded, []);
 	assert.deepEqual(old.checked, []);
 
 	// A null set is the same as an absent one.
@@ -2254,7 +2262,7 @@ test("a multi-select ask marks every recommended row and ticks none", async () =
 		recommended_all: [0, 99, -1, 1.5, "1", Number.NaN],
 	});
 	assert.deepEqual(partial.badged, ["staging"]);
-	assert.deepEqual(partial.bolded, ["staging"]);
+	assert.deepEqual(partial.bolded, []);
 
 	// A set with no usable entry falls back to `recommended`, the first member.
 	const unusable = await probe({

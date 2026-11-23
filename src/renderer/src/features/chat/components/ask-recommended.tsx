@@ -1,3 +1,4 @@
+import { Badge } from "@shared/components/ui/badge";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
@@ -131,8 +132,28 @@ export function recommendedIndexes(
  * hears "Recommended" once, from the word beside it, rather than a punctuation
  * name plus the word.
  */
-export function AskRecommendedBadge({ className }: { className?: string }) {
+export function AskRecommendedBadge({
+	className,
+	variant = "mark",
+}: {
+	className?: string;
+	/**
+	 * `mark` is the dock's inline glyph + word. `badge` is the desktop ask panel's
+	 * pill (design spec, D5): the drawer's option rows alternate a weight step no
+	 * more, so the mark has to be an object beside the label rather than a weight.
+	 * Both remain THIS module's rendering - one mark, two registers - because a
+	 * pill copied into the card would be a second place the word can drift.
+	 */
+	variant?: "mark" | "badge";
+}) {
 	useI18nLocale();
+	if (variant === "badge") {
+		return (
+			<Badge variant="neutral" shape="pill" className={className}>
+				{t("ui.chat.asks.recommended")}
+			</Badge>
+		);
+	}
 	return (
 		<span
 			className={cn(
