@@ -40,6 +40,7 @@ import { PanelRail } from "@shared/components/navigation/panel-rail";
 import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
@@ -154,6 +155,7 @@ import {
 	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
 import { temporaryDraftPlaceholderKey, temporaryInfo } from "../chat-temporary";
+import type { DeliveryMode as ComposerDeliveryMode } from "../composer-send-key";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -234,6 +236,16 @@ type ChatContentProps = {
 	 */
 	deviceNotice?: React.ReactNode;
 	/**
+	 * Remote runs this conversation started, above the transcript.
+	 *
+	 * A THIRD SLOT BESIDE `deviceNotice` rather than part of it, because they report
+	 * different requests: the notice is the outcome of a move, this is a run that keeps
+	 * spending after the picker that started it closed. Both are composed from their own
+	 * store keyed by this pane, so a surface never has to ask the other one what
+	 * happened.
+	 */
+	remoteRuns?: React.ReactNode;
+	/**
 	 * The composer's hold during a move (§2.4), composed by the page from the same
 	 * store as `deviceNotice`: the notice says what the move is doing under the
 	 * header, the hold says it in the one place a user is about to type.
@@ -307,7 +319,41 @@ type ChatContentProps = {
 		 * credential handed over in a conversation's first message is stored.
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/**
+		 * See `MessageInputProps.onSendMessage`: how the box produced the message
+		 * (`typed` / `dictated` / `mixed`). Forwarded verbatim to the page's
+		 * `send`, which gates it behind `features.input_mode`.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * See `MessageInputProps.onSendMessage`: the per-call options of a send
+		 * that is not the user's press in this pane (`originBound`). The SEVENTH
+		 * argument, so the delivery mode below must follow it.
+		 */
+		options?: { originBound?: boolean },
+		/**
+		 * See `MessageInputProps.onSendMessage`: which delivery mode the press
+		 * selected (`null` for plain Enter). Forwarded verbatim to the page's
+		 * `send`, which resolves it against the settings default.
+		 */
+		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
+	/**
+	 * Whether the page that owns `onSendMessage` APPLIES the seam it is handed
+	 * (`MessageInputProps.admissionSeamHonoured`). True only for the chat pane,
+	 * whose `send` forwards the seam to `admitChatDraft` and composes an aside's
+	 * text through it; every other `ChatContent` caller leaves it false and keeps
+	 * the composer's pre-seam behaviour.
+	 */
+	admissionSeamHonoured?: boolean;
+	/**
+	 * Whether the page that owns `onSendMessage` honours the SEVENTH argument's
+	 * `originBound` (`MessageInputProps.dictatedAwayDelivery`). True only for the
+	 * chat pane, whose `send` can post to a conversation that is not the one on
+	 * screen; every other caller leaves it false and keeps the composer's
+	 * mount-bound dictation byte for byte.
+	 */
+	dictatedAwayDelivery?: boolean;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
@@ -388,7 +434,10 @@ type ChatContentProps = {
 		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
-		onCommand?: (invocation: SlashCommandInvocation) => void;
+		onCommand?: (
+			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
+		) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -412,7 +461,10 @@ type ChatContentProps = {
 		 * unless the backend advertises the capability — which is what leaves the two
 		 * readings inert with today's copy on a backend that cannot honour a pick.
 		 */
-		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		onOpenDraftPicker?: (
+			destination: DraftPickerDestination,
+			anchor?: HTMLElement,
+		) => void;
 		/**
 		 * Where a draft's resolution IS, while it has no reading yet; see
 		 * `SessionStatusStripProps["draftResolution"]`.
@@ -518,6 +570,13 @@ type ChatContentProps = {
 		 * backend that cannot interrupt.
 		 */
 		turnAlive: boolean;
+		/**
+		 * The resolved default busy-send mode (`delivery.busy_default`), read at
+		 * render from the shared settings query. The composer's busy placeholder
+		 * and send hint name what Enter does, and they must name the mode the page
+		 * will resolve, not a hard-coded steer.
+		 */
+		busyDefaultMode?: ComposerDeliveryMode;
 		/**
 		 * The Stop press's own window: `"pending"` from the press until its
 		 * receipt or its bound; `"awaiting-end"` once a receipt confirmed the
@@ -932,6 +991,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceSlot,
 		draftTargetSlot,
 		deviceNotice,
+		remoteRuns,
 		deviceHold,
 		renameSessionId,
 		renameSlotReserved,
@@ -952,6 +1012,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		scrollToBottom,
 		rawInfoContent,
 		onSendMessage,
+		admissionSeamHonoured = false,
+		dictatedAwayDelivery = false,
 		currentJobId,
 		onCancelJob,
 		onComposerInput,
@@ -1083,6 +1145,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * connected that this app cannot name a model for (UX round 5, U21).
 		 */
 		const { needsProvider, needsModel } = useProviderStatus();
+		/*
+		 * The composer's third "cannot send" fact (D4): the background service is
+		 * not answering. A passive read of the query `ChatStatusStrip` polls; see
+		 * `useServerOffline` for why it is one boolean and not the snapshot.
+		 */
+		const serverOffline = useServerOffline();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -2946,6 +3014,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * transcript - not over the window's chrome, which belongs to the app.
 						 */}
 						{deviceNotice}
+						{/* The runs this pane bought: a fact that changes on its own, so it sits
+						 * where the transcript begins rather than inside it. */}
+						{remoteRuns}
 						{/*
 						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
 						 *
@@ -3168,14 +3239,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												canonical.view.temporaryDeleted === true
 											}
 											/*
-											 * The cached paint's own two facts, beside the rows it seeded: where
-											 * the reader was, and whether a turn was running when this window
-											 * last showed the conversation. Both are claims the snapshot
-											 * corrects; both are one-shot reads of the paint, not live state
-											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 * The cached paint's own THREE facts, beside the rows it seeded: where
+											 * the reader was, whether a turn was running when this window
+											 * last showed the conversation, and whether those rows were all of it.
+											 * All are claims the snapshot corrects; all are one-shot reads of the
+											 * paint, not live state (`use-canonical-session` clears them in the
+											 * snapshot's commit).
 											 */
 											restoredScroll={canonical.view.paintScroll}
 											paintRunning={canonical.view.paintBusy}
+											/*
+											 * And the one the LAYOUT reads: a cached fragment shorter than the pane
+											 * must not top-anchor, or the page that lands moves every row.
+											 */
+											paintComplete={canonical.view.paintComplete}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
@@ -3377,10 +3454,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								admissionSeamHonoured={admissionSeamHonoured}
+								dictatedAwayDelivery={dictatedAwayDelivery}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								serverOffline={serverOffline}
 								deviceHold={deviceHold}
 								/*
 								 * A TEMPORARY DRAFT SAYS SO IN THE BOX (design round 1, D1): the
@@ -3482,6 +3562,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											}),
 										),
 								)}
+								busyDefaultMode={canonical?.busyDefaultMode}
 								conversationId={conversationId}
 								messages={
 									canonical

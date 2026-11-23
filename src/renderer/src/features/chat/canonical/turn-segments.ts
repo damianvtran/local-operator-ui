@@ -59,6 +59,15 @@
  * the foot, the stamp and the caption key on, and nothing here changes that.
  */
 
+/*
+ * The bar words below are read through `t()` per call, never captured in a
+ * module constant: a constant is frozen in whichever locale was active at
+ * import, which is how these labels stayed English under every locale. The
+ * relative specifier (not `@shared/i18n`) keeps the renderer's query-client
+ * stack out of the model bundles that import this file; it is the same
+ * `t()` instance `@shared/i18n` re-exports.
+ */
+import { t } from "../../../../../i18n/messages";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -856,15 +865,15 @@ export type QuietGroupFamily = "peer" | "wake" | "monitor" | "job" | "mixed";
 export function quietGroupLabel(family: QuietGroupFamily): string {
 	switch (family) {
 		case "peer":
-			return "Peer messages";
+			return t("ui.chat.canonical.segment.group.peer");
 		case "wake":
-			return "Wake messages";
+			return t("ui.chat.canonical.segment.group.wake");
 		case "monitor":
-			return "Monitor messages";
+			return t("ui.chat.canonical.segment.group.monitor");
 		case "job":
-			return "Job results";
+			return t("ui.chat.canonical.segment.group.job");
 		default:
-			return "Messages";
+			return t("ui.chat.canonical.segment.group.mixed");
 	}
 }
 
@@ -976,15 +985,17 @@ export function segmentLabelKind(
 export function labelWordOf(kind: SegmentLabelKind | null): string | null {
 	switch (kind?.kind) {
 		case "steered":
-			return "Steered";
+			// The same word, and the same meaning, as the receipt group's
+			// `Steered` flag: the reader redirected the running turn.
+			return t("ui.chat.canonical.fold.receipt.steered");
 		case "wake":
-			return "Wake";
+			return t("ui.chat.canonical.segment.label.wake");
 		case "peer":
-			return "Peer message";
+			return t("ui.chat.canonical.segment.label.peer");
 		case "job":
-			return "Job result";
+			return t("ui.chat.canonical.segment.label.job");
 		case "ask":
-			return "Ask";
+			return t("ui.chat.canonical.segment.label.ask");
 		case "group":
 			return quietGroupLabel(kind.family);
 		default:

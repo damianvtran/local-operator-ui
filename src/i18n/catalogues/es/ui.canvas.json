@@ -381,5 +381,14 @@
 	"ui.canvas.files.remoteReadOnly": "De {device} · solo lectura",
 	"ui.canvas.files.remoteTooLargeToOpen": "Demasiado grande para abrirlo desde {device}. Descárgalo en este dispositivo.",
 	"ui.canvas.files.remotePeerUpdateHow": "Ejecuta lop network update {device} en este dispositivo, o actualiza Local Operator en {device}, y luego reintenta.",
-	"ui.canvas.files.remotePlay": "Reproducir desde {device}"
+	"ui.canvas.files.remotePlay": "Reproducir desde {device}",
+	"ui.canvas.files.remoteUnsupported": "Los archivos remotos no se pueden abrir en este dispositivo.",
+	"ui.canvas.artifact.fallback_name.video": "Vídeo {digest}",
+	"ui.canvas.artifact.fallback_name.image": "Imagen {digest}",
+	"ui.canvas.artifact.fallback_name.audio": "Sonido {digest}",
+	"ui.canvas.artifact.fallback_name.file": "Archivo {digest}",
+	"ui.canvas.artifact.cue.file": "Archivo guardado en esta sesión",
+	"ui.canvas.artifact.cue.image": "Imagen generada, guardada en esta sesión",
+	"ui.canvas.artifact.cue.video": "Vídeo generado, guardado en esta sesión",
+	"ui.canvas.artifact.cue.audio": "Sonido generado, guardado en esta sesión"
 }

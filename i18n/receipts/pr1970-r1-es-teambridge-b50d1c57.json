@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1970",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-17",
+  "head": "2295ee16d36ac7a749e913e576950320c28d3fb1",
+  "instance": "pr1970-r1-es-teambridge-b50d1c57",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session 8c463a3c88c3, delegated by manager session 06c3529d8318; not the translator. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1970-r1-es-teambridge-b50d1c57"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.scope.group.communities_joined",
+      "status": "deferred",
+      "value": "Comunidades · {count, number} unidas",
+      "suggested": "Comunidades · miembro de {count, number}",
+      "note": "'unidas' reads as 'united' (comunidades unidas), not 'that you joined' - unirse a takes the person as subject. The suggestion is neutral Spanish with no tense/region marking (preterite vs perfect)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "'Invitación' (noun) avoids gendering the user; 'Pública' agrees with comunidad; infinitive Buscar/Explorar per es.md action-label rule; tú register not exercised."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on all 8 keys: key set equals English; {count, number} preserved verbatim; separator dot kept; trailing ellipsis kept as U+2026 (no ASCII '...'); no bidi control characters; only these 8 keys differ from origin/main in this file (8 insertions, 0 deletions). Rendered fit/RTL not verified in this lane (no browser tool): design/QA own the frame-D21 width check."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.group.organizations": "Organizaciones",
+    "ui.teamBridge.scope.group.communities": "Comunidades",
+    "ui.teamBridge.scope.group.communities_joined": "Comunidades · {count, number} unidas",
+    "ui.teamBridge.scope.invited": "Invitación",
+    "ui.teamBridge.scope.community.public": "Pública",
+    "ui.teamBridge.scope.community.search": "Buscar comunidades",
+    "ui.teamBridge.scope.community.no_match": "Ninguna comunidad coincide.",
+    "ui.teamBridge.scope.community.browse": "Explorar comunidades…"
+  },
+  "scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16); rest of the file byte-identical to the audited base",
+  "binding": "Verified on the committed tree at 2295ee16d36ac7a749e913e576950320c28d3fb1 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/es/ui.teamBridge.json sha256 84ba8b0ba30ff1fea575631f1cfe0399161ca6d68de9a2a7507e0e2131eb98a0; English sha256 62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b; context sha256 d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8.",
+  "en_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+  "context_sha256": "d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8",
+  "target_sha256": "84ba8b0ba30ff1fea575631f1cfe0399161ca6d68de9a2a7507e0e2131eb98a0",
+  "sha256": {
+    "es": "84ba8b0ba30ff1fea575631f1cfe0399161ca6d68de9a2a7507e0e2131eb98a0",
+    "en": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b"
+  }
+}

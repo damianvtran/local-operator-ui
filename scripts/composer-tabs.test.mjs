@@ -2437,9 +2437,15 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 * raises, and the form's own submit -- because removing them wholesale left every
 	 * neighbouring suite green (review round 3 R3-m2).
 	 */
+	/*
+	 * `sendKey` is `sendKeyOf(...)`'s answer, the one predicate for "this press
+	 * sends" (plain Enter, or a bound send chord): the refusal gates the same key
+	 * the send does, so a bound chord is refused too. The inline Enter test this
+	 * pin used to read is the one that predicate replaced.
+	 */
 	assert.match(
 		source,
-		/sendRefused &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		/sendRefused && sendKey\) \{\s*event\.preventDefault\(\);/,
 		"Enter is not refused when nothing can answer",
 	);
 	assert.match(
@@ -2480,11 +2486,32 @@ test("with nothing connected neither the button nor Enter sends", () => {
 		/refused: isInputDisabled \|\| sendRefused,/,
 		"the Send control must report the same state the key does",
 	);
+	/*
+	 * THE STATE-NAMING REFUSAL MOVED, it was not dropped: the composer no longer
+	 * picks a hint sentence inline; it hands `noModel` (with `noProvider`) to
+	 * `sendBlockFor`, renders the resulting block in `SendBlockedLine`, and
+	 * `blockSentence` names each state with its own key. All three links are
+	 * pinned so the refusal still says which state it is refusing in.
+	 */
 	assert.match(
 		source,
-		/noModel\s*\?\s*t\("ui\.chat\.composer_notes\.hint\.choose_model"\)/,
+		/sendBlockFor\(\{\s*noProvider,\s*noModel,/,
 		"and the refusal must say which state it is refusing in",
 	);
+	assert.match(
+		source,
+		/<SendBlockedLine\s+block=\{sendBlock\}/,
+		"the block the state produced is the one the line renders",
+	);
+	const recoveryLine = code(
+		"src/renderer/src/features/chat/components/send-recovery-action.tsx",
+	);
+	for (const key of ["no_provider", "no_model"])
+		assert.match(
+			recoveryLine,
+			new RegExp(`t\\("ui\\.recovery\\.composer\\.${key}"\\)`),
+			`the ${key} block has its own sentence`,
+		);
 });
 
 test("the disabled Send press answers the way Enter does, and keeps the caret (U27)", () => {
@@ -3577,7 +3604,8 @@ test("the Jobs section draws the partition's rows, and its only pressable is the
 	 * it" stays one rule rather than a second local condition.
 	 */
 	assert.match(jobs, /<li[\s\S]*?data-run-panel-row=\{row\.id\}/);
-	assert.match(jobs, /<SubagentRowBody row=\{row\} \/>/);
+	// `kind="job"` so its state words agree with the job noun (FR-W2-1).
+	assert.match(jobs, /<SubagentRowBody row=\{row\} kind="job" \/>/);
 	assert.doesNotMatch(jobs, /<button/);
 	assert.equal(
 		(jobs.match(/onClick/g) ?? []).length,

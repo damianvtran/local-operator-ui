@@ -238,9 +238,7 @@
 	},
 	"ui.chat.session_spend.tooltip.spend_so_far": {
 		"length": "",
-		"note": {
-			"amount": "a formatted currency amount"
-		},
+		"note": "amount: a formatted currency amount",
 		"placeholders": {},
 		"role": "tooltip on the session cost readout with an exact amount",
 		"tone": "short label, colon, amount"

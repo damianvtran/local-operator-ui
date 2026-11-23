@@ -75,7 +75,6 @@
 		"role": "Electron application-menu item, top-level menu or one entry inside it",
 		"tone": "Native menu voice: Title Case stand-alone item, no trailing full stop, the wording the platform's own menus use.",
 		"length": "One to four words. The macOS menu column is narrow, so a longer phrase pushes the shortcut column out.",
-		"note": "English source: About {name}. The name is the app's own bundle name and is never translated.",
-		"placeholder": "{name} is app.name, the product name, and stays verbatim in every locale."
+		"note": "English source: About {name}. The name is the app's own bundle name and is never translated. Placeholder: {name} is app.name, the product name, and stays verbatim in every locale."
 	}
 }

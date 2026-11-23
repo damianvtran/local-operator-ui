@@ -1,0 +1,15 @@
+{
+	"namespace": "ui.chat.device",
+	"locale": "ru",
+	"english": {
+		"ui.chat.device.footer.move_deletes_copy": "A move deletes this device's copy when it commits."
+	},
+	"target": {
+		"ui.chat.device.footer.move_deletes_copy": "Как только перемещение зафиксировано, копия на этом устройстве удаляется."
+	},
+	"counts": {
+		"keys": 1,
+		"target_keys": 26,
+		"english_keys": 26
+	}
+}

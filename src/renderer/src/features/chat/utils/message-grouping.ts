@@ -118,10 +118,7 @@ export const formatDividerLabel = (date: Date, now = new Date()): string => {
  * agree with it exactly: a row that renders nothing must not take the avatar,
  * open a turn, or leave its gap behind. `message-item` imports it back.
  */
-export const isMessageHidden = (
-	message: Message,
-	showAgentReasoning: boolean,
-): boolean => {
+export const isMessageHidden = (message: Message): boolean => {
 	const executionType = message.execution_type;
 	const isTrace = executionType === "action";
 	const isReasoning =
@@ -150,7 +147,16 @@ export const isMessageHidden = (
 		return true;
 	}
 
-	return isReasoning && !showAgentReasoning;
+	/*
+	 * Reasoning turns (`plan` / `reflection`) are never hidden here. They used to
+	 * be, behind a `showAgentReasoning` preference whose Settings switch was
+	 * removed: the canonical transcript has no reasoning record kind, so the
+	 * switch changed nothing in the shipped app. The legacy components that still
+	 * read this predicate are reachable only from Storybook, where SHOWING the
+	 * turns (each behind `AgentReasoning`'s closed disclosure) keeps the reasoning
+	 * stories a picture of something rather than of an empty gap.
+	 */
+	return false;
 };
 
 export const getMessageKind = (message: Message): MessageKind => {
@@ -171,19 +177,16 @@ const speakerOf = (kind: MessageKind): "user" | "agent" | "none" =>
  * and any due time divider.
  *
  * @param messages - The rows in display order, oldest first.
- * @param showAgentReasoning - The user preference; hidden reasoning rows are
- *   dropped before grouping so they leave no gap.
+ * Rows `isMessageHidden` suppresses are dropped before grouping so they leave
+ * no gap.
  * @param now - Injectable clock, so divider labels are testable and stories
  *   are deterministic.
  */
 export const groupMessages = (
 	messages: Message[],
-	showAgentReasoning: boolean,
 	now?: Date,
 ): GroupedMessage[] => {
-	const visible = messages.filter(
-		(message) => !isMessageHidden(message, showAgentReasoning),
-	);
+	const visible = messages.filter((message) => !isMessageHidden(message));
 
 	let previousKind: MessageKind | null = null;
 	let previousTime: Date | null = null;

@@ -133,8 +133,8 @@
 	"ui.chat.device.footer.move_deletes_copy": {
 		"role": "picker footer stating what a move deletes, for the default deleting move",
 		"tone": "consequence sentence, sentence case, trailing period",
-		"length": "Eleven words.",
-		"note": "The exact consequence of the default (deleting) move, printed under the picker's rows. Says the copy on THIS device is what goes: the picker runs on the machine whose copy is deleted.",
+		"length": "Ten words.",
+		"note": "The exact consequence of the default (deleting) move, printed in the band pinned below the picker's rows. It names its own subject - A MOVE - so it cannot be read onto a row in the list above it that does not move anything (design round 1, D1): the rented-capacity row opens a second level, and the pinned sentence once sat directly under it with no subject.",
 		"placeholders": {}
 	},
 	"ui.chat.device.label.this_device": {

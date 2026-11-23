@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "Remplacer la clé",
+	"ui.providers.stored_key.remove": "Supprimer la clé",
+	"ui.providers.stored_key.remove_confirm": "Supprimer cette clé ?",
+	"ui.providers.stored_key.remove_yes": "Supprimer",
+	"ui.providers.stored_key.remove_failed": "La clé n’a pas pu être supprimée."
+}

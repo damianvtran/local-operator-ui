@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1970",
+  "locale": "ru",
+  "namespace": "ui.teamBridge",
+  "pr": 1970,
+  "date": "2026-11-17",
+  "head": "2295ee16d36ac7a749e913e576950320c28d3fb1",
+  "instance": "pr1970-r1-ru-teambridge-7797f081",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Reviewer session 8c463a3c88c3, delegated by manager session 06c3529d8318; not the translator. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1970-r1-ru-teambridge-7797f081"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.teamBridge.scope.community.browse",
+      "status": "deferred",
+      "value": "Обзор сообществ…",
+      "suggested": "Просмотреть сообщества…",
+      "note": "ru.md: action labels are infinitives. Only a nit: 'Обзор…' is also the Windows Browse-button convention."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "'Публичное' agrees with сообщество (neuter); 'вы участник: {count, number}' avoids plural agreement and uses lowercase вы per ru.md; 'Приглашение' (noun) avoids gendering the user; 'Поиск сообществ' is a standard search placeholder."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on all 8 keys: key set equals English; {count, number} preserved verbatim; separator dot kept; trailing ellipsis kept as U+2026 (no ASCII '...'); no bidi control characters; only these 8 keys differ from origin/main in this file (8 insertions, 0 deletions). Rendered fit/RTL not verified in this lane (no browser tool): design/QA own the frame-D21 width check."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.scope.group.organizations": "Организации",
+    "ui.teamBridge.scope.group.communities": "Сообщества",
+    "ui.teamBridge.scope.group.communities_joined": "Сообщества · вы участник: {count, number}",
+    "ui.teamBridge.scope.invited": "Приглашение",
+    "ui.teamBridge.scope.community.public": "Публичное",
+    "ui.teamBridge.scope.community.search": "Поиск сообществ",
+    "ui.teamBridge.scope.community.no_match": "Нет подходящих сообществ.",
+    "ui.teamBridge.scope.community.browse": "Обзор сообществ…"
+  },
+  "scope": "PR #1970 round 1: 8 new ui.teamBridge.scope.* keys (origin/main..2295ee16); rest of the file byte-identical to the audited base",
+  "binding": "Verified on the committed tree at 2295ee16d36ac7a749e913e576950320c28d3fb1 (worktree .worktrees/tb-org-defaults): target src/i18n/catalogues/ru/ui.teamBridge.json sha256 43daed63948e21daeffb5adf20cbb5208f6a525695023d440813bbef4b958645; English sha256 62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b; context sha256 d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8.",
+  "en_sha256": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b",
+  "context_sha256": "d05e61b2d60a8e855ec9d843e52a93df7cd86ba67c39bb85a7d5fd3b7b873cc8",
+  "target_sha256": "43daed63948e21daeffb5adf20cbb5208f6a525695023d440813bbef4b958645",
+  "sha256": {
+    "ru": "43daed63948e21daeffb5adf20cbb5208f6a525695023d440813bbef4b958645",
+    "en": "62061d93d29475e80276f991aa47137abadbd367b7fa5e939f0fa1d3d5dc5c5b"
+  }
+}

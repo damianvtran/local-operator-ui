@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -55,7 +56,7 @@ const bundle = await build({
  export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
  export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";
  export { MemoryRouter } from "react-router-dom";
- export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";`,
+ export { setLocale, registerCatalogue, clearRegisteredCatalogues, t } from "./src/i18n";`,
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -133,6 +134,15 @@ const STATE_KEYS = [
 	"failed_batch",
 ].map((k) => `ui.chat.canonical.image_gen.state.${k}`);
 
+/**
+ * The per-item media label (accessible name, alt, broken-media subject). Its own
+ * key, NOT `state.done`: that is the card's STATUS line and is a clause in some
+ * languages, which is ungrammatical once spliced into `{name} could not be
+ * played`. Kept out of `STATE_KEYS` for the same reason as `S16E_KEYS` below:
+ * it does not render inside `StateLine`.
+ */
+const RESULT_LABEL_KEY = "ui.chat.canonical.image_gen.result_label";
+
 /*
  * S16e'S CARD COPY, TRANSLATED IN ALL SEVEN LOCALES.
  *
@@ -200,9 +210,9 @@ const toolRecord = (phase, argumentBytes) => ({
 });
 
 /**
- * The running tool's summary as the transcript prints it: the trace fold's live
- * clause (`summaryOf` -> `toolRecordSummary`), the row's own words. A lone
- * unsettled call renders collapsed, so this is the surface a reader sees.
+ * The unsettled tool row's own status (`toolRecordSummary`) as the transcript
+ * prints it. A lone composing/queued call renders its own ledger row, not an
+ * aggregate fold, so read that row's summary cell.
  */
 function summaryOf(phase, argumentBytes, { keepIsolates = false } = {}) {
 	const html = renderToStaticMarkup(
@@ -231,18 +241,48 @@ function summaryOf(phase, argumentBytes, { keepIsolates = false } = {}) {
 			),
 		),
 	);
-	const texts = decode(html)
-		.replace(/<[^>]*>/g, "|")
-		.split("|")
-		.map((s) => (keepIsolates ? s : plain(s)).trim())
-		.filter(Boolean);
-	// The fold's label is itself localized (`Running` is `Exécution de` in fr), so
-	// the summary is found by position: the last text that is not the trailing
-	// age chip (`100d+`).
-	const summary = texts.filter((t) => !/^\d+[a-z]+\+?$/.test(t)).at(-1);
-	assert.ok(summary, `summary found in ${JSON.stringify(texts)}`);
-	return summary;
+	return summaryFromHtml(html, { keepIsolates });
 }
+
+function summaryFromHtml(html, { keepIsolates = false } = {}) {
+	// The summary and age are separate facts, not distinguishable by alphabet or
+	// text position once durations are localized. Read the renderer's structural
+	// summary cell's bidi run, retaining all its text (including the Urdu size isolate)
+	// so a wrong status still fails the exact catalogue assertions below.
+	const summaries = JSDOM.fragment(html).querySelectorAll(
+		"span.flex-1.font-mono > bdi",
+	);
+	assert.equal(
+		summaries.length,
+		1,
+		"one row summary in the single-tool fixture",
+	);
+	const text = summaries[0].textContent;
+	return (keepIsolates ? text : plain(text)).trim();
+}
+
+test("summary extraction ignores localized trailing ages without masking a wrong status", () => {
+	for (const age of ["100 д.+", "100 دن سے زیادہ", "100 ngày+", "100天+"]) {
+		const render = (status) =>
+			`<button><span class="min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm"><bdi dir="auto">${status}</bdi></span><span>${age}</span></button>`;
+		const expected = "قطار میں · \u206812 kB\u2069";
+		assert.equal(summaryFromHtml(render(expected)), plain(expected), age);
+		assert.equal(
+			summaryFromHtml(render(expected), { keepIsolates: true }),
+			expected,
+			age,
+		);
+		// Negative control: a legitimate-looking age must not hide or replace the
+		// actual incorrect status. The normal exact-status assertion must reject it.
+		const wrong = summaryFromHtml(render("WRONG STATUS"));
+		assert.equal(wrong, "WRONG STATUS", age);
+		assert.throws(() => assert.equal(wrong, plain(expected)), age);
+	}
+	assert.throws(
+		() => summaryFromHtml("<span>100天+</span>"),
+		/one row summary/,
+	);
+});
 
 /** `{ text, datum }` of the card's one state line (`datum` is null when absent). */
 function stateLineOf(view) {
@@ -595,6 +635,13 @@ function stubFor(loc) {
 		),
 		[k("done")]: selectOf("material", (m) => `${loc}:done:${m}`),
 		[k("done_batch")]: selectOf("material", (m) => `${loc}:donebatch:${m}`),
+		[RESULT_LABEL_KEY]: selectOf("material", (m) =>
+			pluralOf(
+				"count",
+				cats,
+				(c) => `${loc}:label:${m}:${c}:{position, number, ::group-off}`,
+			),
+		),
 		[k("already_finished")]: `${loc}:AF`,
 		[k("failed")]: selectOf("material", (m) => `${loc}:fail:${m}`),
 		[k("failed_batch")]: selectOf("material", (m) => `${loc}:failbatch:${m}`),
@@ -781,7 +828,7 @@ test("fr: result labels come from the catalogue", () => {
 				material: "image",
 				images: [IMAGE("a", "image"), IMAGE("b", "image")],
 			}),
-			["fr:done:other 1", "fr:done:other 2"],
+			["fr:label:other:other:1", "fr:label:other:other:2"],
 		);
 	});
 });
@@ -880,15 +927,140 @@ test("source guard: the card's state line holds none of the old copy", () => {
 	assert.ok(OLD_COPY.some((re) => re.test('? "Already finished."')));
 });
 
-test("source guard: the result players' label reuses the done message, no `Generated` template", () => {
+test("source guard: the result players' label is its own key, never the status line", () => {
 	assert.ok(
 		!/`Generated \$\{/.test(cardSource),
 		"no Generated template literal",
 	);
+	// The label block is the `view.images.map` that mounts the three players.
+	const from = cardSource.indexOf("{view.images.map((image, index) => {");
+	assert.ok(from >= 0, "the players' map is located");
+	const block = cardSource
+		.slice(from, cardSource.indexOf("</div>", from))
+		.replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.ok(
+		block.includes(`t("${RESULT_LABEL_KEY}", {`),
+		"the label resolves through result_label",
+	);
+	assert.ok(
+		!block.includes("image_gen.state.done"),
+		"the label no longer reuses the finished-state status message",
+	);
+	assert.ok(
+		!/\$\{\w+\} \$\{/.test(block),
+		"no `${noun} ${n}` concatenation: the locale places the numeral",
+	);
+	assert.equal(
+		block.match(/label=\{label\}/g)?.length,
+		3,
+		"all three players take it",
+	);
+	// The STATUS line keeps `state.done` (it IS a status).
 	assert.ok(
 		cardSource.includes('t("ui.chat.canonical.image_gen.state.done", {'),
-		"the label resolves through the done message",
+		"the status line still resolves through state.done",
 	);
+});
+
+test("English: result_label is byte-identical to the old `state.done` + index expression for every material and position", () => {
+	mod.clearRegisteredCatalogues();
+	mod.setLocale("en");
+	const materials = [
+		"image",
+		"video",
+		"voiceover",
+		"sound_effect",
+		"future-kind",
+	];
+	let checked = 0;
+	for (const material of materials) {
+		// The token the card passes: `sound-effect` -> `sound_effect`, anything the
+		// message does not name falls to `other` (the image wording).
+		const token = tokenOf(material);
+		for (const [count, position] of [
+			[1, 1],
+			[3, 1],
+			[3, 2],
+			[3, 3],
+			[12, 10],
+		]) {
+			const noun = mod.t("ui.chat.canonical.image_gen.state.done", {
+				material: token,
+			});
+			const old = count === 1 ? noun : `${noun} ${position}`;
+			const next = mod.t(RESULT_LABEL_KEY, {
+				material: token,
+				position,
+				count,
+			});
+			assert.equal(next, old, `${material} ${position}/${count}`);
+			checked += 1;
+		}
+	}
+	assert.equal(checked, 25);
+	// Spot-check the literal English so a shared drift of both keys cannot pass.
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "video", position: 1, count: 1 }),
+		"Generated video",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, {
+			material: "sound_effect",
+			position: 2,
+			count: 3,
+		}),
+		"Generated sound effect 2",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "voiceover", position: 1, count: 2 }),
+		"Generated voiceover 1",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "image", position: 2, count: 3 }),
+		"Generated image 2",
+	);
+});
+
+test("a locale whose finished-state message is a CLAUSE never leaks it into the item label", () => {
+	// Synthetic locale: `state.done` is a verb clause (as ru/vi/hi spell it);
+	// `result_label` is the bare noun phrase the context sidecar demands.
+	const CLAUSE = "CLAUSE-VERB-DONE";
+	mod.clearRegisteredCatalogues();
+	mod.registerCatalogue("fr", {
+		...stubFor("fr"),
+		"ui.chat.canonical.image_gen.state.done": selectOf(
+			"material",
+			(m) => `${CLAUSE}:${m}`,
+		),
+		[RESULT_LABEL_KEY]: selectOf("material", (m) =>
+			pluralOf(
+				"count",
+				CATEGORIES.fr,
+				(c) => `NOUN-${m}-${c}-{position, number, ::group-off}`,
+			),
+		),
+	});
+	mod.setLocale("fr");
+	try {
+		const base = { state: "done", durationS: null, receipt: "generated" };
+		const view = {
+			...base,
+			material: "image",
+			images: [IMAGE("a", "image"), IMAGE("b", "image")],
+		};
+		const labels = labelsOf(view);
+		assert.deepEqual(labels, ["NOUN-other-other-1", "NOUN-other-other-2"]);
+		for (const label of labels)
+			assert.ok(
+				!label.includes(CLAUSE),
+				`alt ${label} carries no status clause`,
+			);
+		// The status line is still the clause: both keys are live, only the label changed.
+		assert.ok(stateLineOf(view).text.includes(CLAUSE));
+	} finally {
+		mod.clearRegisteredCatalogues();
+		mod.setLocale("en");
+	}
 });
 
 test("source guard: no model-layer English constant survives on the card", () => {
@@ -1371,6 +1543,89 @@ for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
 			assert.equal(typeof real[key], "string", `${loc} has ${key}`);
 			assert.notEqual(real[key], enCatalogue[key], `${loc} ${key} is English`);
 		}
+	});
+}
+
+/*
+ * THE DEFECT THIS PINS, ON THE SHIPPED BYTES. The per-item media label (the
+ * `<img alt>` and the broken-media subject spliced into
+ * `{name} could not be played`) once reused `image_gen.state.done`, the card's
+ * STATUS message. In ru/vi/hi that message is a finished CLAUSE (`Видео создано`,
+ * `Đã tạo video`, `वीडियो बन गया`), so the broken-media sentence read as a clause
+ * inside a clause. `result_label` is now a bare noun phrase. The synthetic-locale
+ * test above proves the wiring; this one reads the REAL catalogues, because only
+ * they can regress by someone re-translating the label as a status again.
+ *
+ * Forbidden finite-clause forms are per locale, matched on whole words only: ru
+ * `Созданное видео` (an attributive participle, a legitimate noun phrase) must
+ * pass while the predicate `создано`/`создан`/`создана` must not.
+ */
+const CLAUSE_FORMS = {
+	hi: /गया|गई/u,
+	ru: /(?<!\p{L})создан[оа]?(?!\p{L})/iu,
+	vi: /Đã tạo/iu,
+};
+
+for (const loc of Object.keys(CLAUSE_FORMS)) {
+	test(`${loc}: the real item label is a noun phrase, never the finished-state clause`, () => {
+		withReal(loc, () => {
+			const clause = CLAUSE_FORMS[loc];
+			let checked = 0;
+			for (const material of ["image", "video", "voiceover", "sound-effect"]) {
+				const status = mod.t("ui.chat.canonical.image_gen.state.done", {
+					material: tokenOf(material),
+				});
+				// Guard the guard: the status message really is the clause this
+				// locale's label must not be.
+				assert.match(status, clause, `${loc} ${material} status is a clause`);
+				// One item: the bare-noun branch; two: the numbered branch.
+				for (const count of [1, 2]) {
+					// The card resolves the label with exactly these arguments (see the
+					// source guard above); only the picture path paints an `<img alt>` in
+					// static markup, so video/audio are read from the same message.
+					const labels = Array.from({ length: count }, (_, i) =>
+						plain(
+							mod.t(RESULT_LABEL_KEY, {
+								material: tokenOf(material),
+								position: i + 1,
+								count,
+							}),
+						),
+					);
+					if (material === "image") {
+						// The rendered path must agree with the message it is derived from.
+						const painted = labelsOf({
+							state: "done",
+							durationS: null,
+							receipt: "generated",
+							material,
+							images: Array.from({ length: count }, (_, i) =>
+								IMAGE(`i${i}`, "image"),
+							),
+						});
+						assert.deepEqual(painted, labels, `${loc} rendered image alt`);
+					}
+					for (const label of labels) {
+						assert.ok(
+							label.trim().length > 0,
+							`${loc} ${material} label empty`,
+						);
+						assert.ok(
+							!label.includes(status),
+							`${loc} ${material}: label ${JSON.stringify(label)} contains the status message ${JSON.stringify(status)}`,
+						);
+						assert.doesNotMatch(
+							label,
+							clause,
+							`${loc} ${material}: label ${JSON.stringify(label)} is a finite clause`,
+						);
+						checked += 1;
+					}
+				}
+			}
+			// 4 materials x (1 + 2) labels: a vacuous loop cannot pass.
+			assert.equal(checked, 12);
+		});
 	});
 }
 

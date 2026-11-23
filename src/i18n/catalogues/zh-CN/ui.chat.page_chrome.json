@@ -17,7 +17,7 @@
 	"ui.chat.page_chrome.options.rename": "重命名",
 	"ui.chat.page_chrome.options.resume": "恢复",
 	"ui.chat.page_chrome.options.settings": "设置",
-	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "新活动",
+	"ui.chat.page_chrome.scroll_to_bottom.new_activity": "跳到最新",
 	"ui.chat.page_chrome.status_strip.connection": "连接",
 	"ui.chat.page_chrome.status_strip.offline": "离线",
 	"ui.chat.page_chrome.status_strip.outcome_refused": "服务器正在运行，但此应用的凭据仍被拒绝。",

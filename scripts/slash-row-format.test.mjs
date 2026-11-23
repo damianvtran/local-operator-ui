@@ -22,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings"; export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
+			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings"; export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank"; export { registerCatalogue, setLocale } from "./src/renderer/src/shared/i18n";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -45,6 +45,8 @@ const {
 	effectiveInlineArgument,
 	matchChoices,
 	providerQualifier,
+	registerCatalogue,
+	setLocale,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1009,4 +1011,38 @@ test("the /rename flag list is the one row the backend honours, aliased", () => 
 	// A copy, not the module constant: a caller that mutated a returned row must
 	// not corrupt the next caller's list.
 	assert.notEqual(argumentRows("title-refresh", [], null), rows);
+});
+
+test("the /agent row's kind detail follows the language; an unknown kind stays as stored", () => {
+	const rows = () =>
+		argumentRows(
+			"agent",
+			[
+				{ name: "a", value: "a", kind: "role" },
+				{ name: "b", value: "b", kind: "specialist" },
+				{ name: "c", value: "c", kind: "mystery" },
+				{ name: "d", value: "d" },
+			],
+			"",
+		).map((row) => row.detail);
+	// English is byte-identical to the raw wire token the column always printed.
+	assert.deepEqual(rows(), ["role", "specialist", "mystery", undefined]);
+	/* SENTINEL CATALOGUE, NOT A TRANSLATION; `en` is not registered, so the closing
+	 * assertion proves the store returns to the shipped English. */
+	registerCatalogue("fr", {
+		"ui.chat.slash.arg.kind_role": "FR role",
+		"ui.chat.slash.arg.kind_specialist": "FR specialist",
+	});
+	try {
+		setLocale("fr");
+		assert.deepEqual(rows(), [
+			"FR role",
+			"FR specialist",
+			"mystery",
+			undefined,
+		]);
+	} finally {
+		setLocale("en");
+	}
+	assert.deepEqual(rows(), ["role", "specialist", "mystery", undefined]);
 });

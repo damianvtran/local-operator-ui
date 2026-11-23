@@ -500,6 +500,19 @@ export type CanonicalSessionView = {
 	 */
 	paintBusy: boolean;
 	/**
+	 * Whether the paint this pane seeded from is the WHOLE conversation, or null
+	 * when no cached paint seeded it.
+	 *
+	 * The layout's own fact (`paint-top-anchor.ts`): a cached fragment that is
+	 * shorter than the pane must be bottom-aligned, because the taller page that
+	 * replaces it would move every row by the pane's leftover height. It rides
+	 * beside `stale` rather than replacing it - a fresh mount is not stale and a
+	 * complete paint is stale without being a fragment - and the snapshot clears
+	 * it in the same commit that withdraws `stale`, because from then on the rows
+	 * are the owner's and completeness is not a claim the cache can make.
+	 */
+	paintComplete: boolean | null;
+	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
 	 * A terminal state, not a failure: it does not enter the retry budget and it
@@ -2380,6 +2393,12 @@ function paintSeed(sessionId: string): {
 	markLabels: ReadonlySet<string>;
 	scroll: PaintedScroll | null;
 	busy: boolean;
+	/**
+	 * The paint's `complete`; null when this window has no entry (the view seeds
+	 * the same null, so `hasEntry` is false and the anchor rule has no fragment
+	 * to place).
+	 */
+	complete: boolean | null;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -2390,6 +2409,7 @@ function paintSeed(sessionId: string): {
 			markLabels: NO_LABELS_MARKED,
 			scroll: null,
 			busy: false,
+			complete: null,
 		};
 	}
 	return {
@@ -2410,6 +2430,10 @@ function paintSeed(sessionId: string): {
 		// A turn was running when this window last showed the conversation. A
 		// claim, corrected by the snapshot in the commit that replaces the rows.
 		busy: cached.busy,
+		// And whether those rows are all of it: the column bottom-aligns a
+		// fragment for as long as this pane is stale, so the return does not jump
+		// when the page lands.
+		complete: cached.complete,
 	};
 }
 
@@ -2599,6 +2623,7 @@ export function useCanonicalSessionStream(
 		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
 		 */
 		openFrame?: boolean;
+		inlineUi?: boolean;
 		journalOrder?: boolean;
 		/**
 		 * THE COMPLETE PEER-SOURCE CAPABILITY (`features.peer_journal_source`),
@@ -2618,6 +2643,7 @@ export function useCanonicalSessionStream(
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
+	const inlineUi = options.inlineUi === true;
 	const journalOrder = options.journalOrder === true;
 	const journalOrderRef = useRef(journalOrder);
 	journalOrderRef.current = journalOrder;
@@ -2793,6 +2819,7 @@ export function useCanonicalSessionStream(
 			// consumed once and both are corrected by the snapshot.
 			paintScroll: seed?.scroll ?? null,
 			paintBusy: seed?.busy ?? false,
+			paintComplete: seed ? seed.complete : null,
 			missing: false,
 			loadingOlder: false,
 			olderFailed: false,
@@ -3826,6 +3853,7 @@ export function useCanonicalSessionStream(
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						inlineUi: true,
 						sessionId,
 						...(beforeId ? { beforeId } : {}),
 						// Never past the walk's own bound: the route clamps at 500 anyway,
@@ -5151,6 +5179,9 @@ export function useCanonicalSessionStream(
 								// outlive the answer.
 								paintBusy: false,
 								paintScroll: null,
+								// The snapshot is the authority for coverage too: the page defined the
+								// cursor and `hasMore`, so the cache's own guess stops here.
+								paintComplete: null,
 								frontend: {
 									...snapshot.frontend.snapshot,
 									/*
@@ -5905,6 +5936,7 @@ export function useCanonicalSessionStream(
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
 					openFrame: openFrameRef.current,
+					inlineUi,
 					...(journalOrderRef.current
 						? {
 								journalOrder,
@@ -6481,6 +6513,9 @@ export function useCanonicalSessionStream(
 		 * change already performs, never a second one.
 		 */
 		isSession,
+		// An initial legacy-shaped subscription cannot acquire overlays simply
+		// because the capability poll finished; reopen with the fresh declaration.
+		inlineUi,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
@@ -6634,6 +6669,9 @@ export function useCanonicalSessionStream(
 			// and a genuine change takes the new paint's.
 			paintScroll: sameSession ? null : (seed?.scroll ?? null),
 			paintBusy: sameSession ? current.paintBusy : seed?.busy === true,
+			paintComplete: sameSession
+				? current.paintComplete
+				: (seed?.complete ?? null),
 			missing: sameSession ? current.missing : false,
 			// WHY it is missing travels with `missing` (review R1-3): the hook stays
 			// mounted across a switch, so a kept flag would paint the temporary
@@ -6783,6 +6821,23 @@ export function useCanonicalSessionStream(
 						viewRef.current,
 						pendingSendForView(identityRef.current) !== null,
 					),
+					/*
+					 * AND THE PAINT'S COVERAGE WHEN ITS SNAPSHOT NEVER LANDED (agent review
+					 * round 1, F1 / QA Q1). A pane still `stale` here is painting the rows
+					 * this cache seeded, and their transcript carries no paging cursor - so
+					 * re-deriving `complete` from it demotes a short conversation the last
+					 * visit had proved whole. The next return then bottom-aligns it and the
+					 * page that lands moves every row UP (measured 253.1 px on a one-turn
+					 * session, 4/4). `writePaint` takes the seed's answer instead; once the
+					 * snapshot lands it withdraws the field (`paintComplete: null`) and the
+					 * derivation is the authority again, exactly as for a live pane.
+					 *
+					 * Read from the same ref as the rows, so it is the claim the last
+					 * committed frame was painting.
+					 */
+					complete: viewRef.current.stale
+						? (viewRef.current.paintComplete ?? undefined)
+						: undefined,
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
@@ -7320,6 +7375,7 @@ export function useCanonicalSessionStream(
 					const generation = viewRef.current.transcript.journalGeneration;
 					const page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						...(kind === "payload" ? { inlineUi: true } : {}),
 						sessionId: requested,
 						limit: 100,
 						journalOrder: true,
@@ -7338,6 +7394,7 @@ export function useCanonicalSessionStream(
 					Extract<DesktopSessionFrame, { type: "snapshot" }>
 				>({
 					op: "sessions.get",
+					inlineUi: true,
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
@@ -7475,6 +7532,7 @@ export function useCanonicalSessionStream(
 				const projected = openFrameRef.current;
 				return desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					beforeId,
 					limit: 100,
@@ -7568,6 +7626,7 @@ export function useCanonicalSessionStream(
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					limit: 100,
 					openFrame: openFrameRef.current,

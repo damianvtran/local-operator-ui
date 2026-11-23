@@ -1,0 +1,116 @@
+{
+ "schema": 1,
+ "auditor": "codex",
+ "agent": "codex",
+ "model": "gpt-5.6-sol",
+ "model_provenance": "Codex MCP, requested gpt-5.6-sol; the served model is not independently verifiable (no session header returned). Read-only; strings, English source, context notes, style-guide excerpt and glossary lines pasted into the prompt; it edited nothing.",
+ "instance": "8cca634d2d29-fold3-es",
+ "locale": "es",
+ "branch": "feat/busy-delivery-desktop",
+ "head": "merge of origin/main d8ff920195 into 0526fd6c2b (lane session 8cca634d2d29), on the bytes on disk at assembly time",
+ "date": "2026-11-23",
+ "status": "passed",
+ "verdict": "PASS - 0 blocker/major, 6 minor/nit",
+ "audit_kind": "DELTA audit of the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two audited parents (catalogue-union-parity: no value differences), so their audits stand in the superseded rows.",
+ "independence": "A different agent and model family from the translators (anthropic/claude-sonnet-5-5, self-reported). The coder that assembled this receipt neither translated nor audited. Same-lane corrections before this audit: es and fr keycap names made consistent with origin/main (es Enter->Intro in 13 strings; fr (Enter) -> (Entrée) and Esc -> Échap in the two steer hints), after a first pass found them MAJOR against the established vocabulary; round 1 for es/fr had been run with a prompt that wrongly demanded English keycaps and its findings on that point were discarded.",
+ "keys_audited": [
+  "ui.settings.shortcuts.action.send_both",
+  "ui.settings.shortcuts.action.send_queue",
+  "ui.settings.shortcuts.action.send_steer",
+  "ui.settings.shortcuts.category.sending",
+  "ui.settings.shortcuts.category.sending_description",
+  "ui.settings.shortcuts.reserved.enter",
+  "ui.settings.shortcuts.capture.send_newline",
+  "ui.settings.shortcuts.capture.send_needs_modifier",
+  "ui.settings.shortcuts.capture.panel_enter",
+  "ui.settings.shortcuts.capture.send_prompt",
+  "ui.settings.shortcuts.row_help.send_steer",
+  "ui.settings.shortcuts.row_help.send_queue",
+  "ui.settings.shortcuts.row_help.send_both",
+  "ui.chat.composer.placeholder.waiting_steer",
+  "ui.chat.composer.placeholder.waiting_queue",
+  "ui.chat.composer.placeholder.waiting_both",
+  "ui.chat.composer.steer_hint_steer",
+  "ui.chat.composer.steer_hint_queue",
+  "ui.chat.composer.steer_hint_both",
+  "ui.chat.composer.placeholder.waiting",
+  "ui.chat.composer.steer_hint",
+  "ui.chat.canonical.send_failure.delivery_unsupported",
+  "ui.chat.canonical.transcript.busy_wait.steer",
+  "ui.chat.canonical.transcript.busy_wait.queue",
+  "ui.chat.canonical.transcript.busy_wait.both",
+  "ui.chat.canonical.transcript.busy_wait.joined",
+  "ui.chat.canonical.transcript.busy_wait.deferred"
+ ],
+ "namespaces": {
+  "ui.settings.shortcuts": {
+   "status": "passed",
+   "en_sha256": "2a79b49cdfb97ac2d5628b9012e7fca6b2d646f802da0a8b3c07e8a03abe0821",
+   "es_sha256": "81cb32b7c33ea4ac77376f5872a8f55f97af6502c0e407aeb6b1cf1cbceed84e",
+   "findings": [
+    {
+     "id": "SHO1",
+     "severity": "minor",
+     "key": "ui.settings.shortcuts.reserved.enter",
+     "message": "“Shift” is inconsistent with the Spanish keycap convention “Mayús” stated in the style guidance.",
+     "suggested": "Reservado: envía el mensaje desde el compositor. Intro por sí solo siempre envía, y Mayús+Intro añade una línea nueva.",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    },
+    {
+     "id": "SHO2",
+     "severity": "minor",
+     "key": "ui.settings.shortcuts.capture.send_newline",
+     "message": "“Shift” is inconsistent with the Spanish keycap convention “Mayús” stated in the style guidance.",
+     "suggested": "Usa Ctrl/⌘ o Alt con Intro. Mayús+Intro añade una línea nueva.",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    }
+   ]
+  },
+  "ui.chat.composer": {
+   "status": "passed",
+   "en_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
+   "es_sha256": "4b179a418ce36f34b1433e5e9ca633365fb72763823e436a35a86d0767194524",
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "en_sha256": "81c4d322e7be2af66bd872a750887e810e00d3221070dfd60f0b4c89fffbd52c",
+   "es_sha256": "d748569cd17f348f4f9a06641fdb622619ef1209d1504069c46b1e07192d2bd6",
+   "findings": [
+    {
+     "id": "CAN1",
+     "severity": "minor",
+     "key": "ui.chat.canonical.send_failure.delivery_unsupported",
+     "message": "“Envíalo guiando” is unnatural and can mean sending while guiding rather than sending in the steer delivery mode.",
+     "suggested": "No se puede cambiar la entrega mientras el agente está ocupado, así que no se envió. Envíalo en modo Guiar o actualiza el backend.",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    },
+    {
+     "id": "CAN2",
+     "severity": "minor",
+     "key": "ui.chat.canonical.transcript.busy_wait.steer",
+     "message": "The translation omits that the tool which may be stopped is currently running.",
+     "suggested": "Guiando — puede detener una herramienta en ejecución",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    },
+    {
+     "id": "CAN3",
+     "severity": "minor",
+     "key": "ui.chat.canonical.transcript.busy_wait.queue",
+     "message": "“herramientas siguen” is grammatically incomplete and does not clearly say that the tools keep running.",
+     "suggested": "En cola — espera, las herramientas siguen ejecutándose",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    },
+    {
+     "id": "CAN4",
+     "severity": "minor",
+     "key": "ui.chat.canonical.transcript.busy_wait.joined",
+     "message": "“el mensaje que guía” awkwardly describes a message as performing the guiding action and weakens the reference to the user's steer message.",
+     "suggested": "Guiando — se envía junto con tu mensaje de guía",
+     "disposition": "recorded, not churned: minor/nit only; no blocker or major"
+    }
+   ]
+  }
+ },
+ "notes": "Meaning is otherwise faithful and consistent; there are no placeholder, ICU, product-name, or bidi issues."
+}

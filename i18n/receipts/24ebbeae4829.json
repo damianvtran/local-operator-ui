@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit of merged bytes (PR #1957 result_label + PR #1959 took_duration), ui.chat.canonical, es",
+  "locale": "es",
+  "date": "2026-11-17",
+  "head": "412fcf2cd4484cb3d6806eb711a13e097d4e0056 (.worktrees/i18n-identity-footer, clean)",
+  "instance": "24ebbeae4829",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor (team lopdev, task can-au-es); did not translate or previously audit these bytes",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "24ebbeae4829",
+    "independence": "Session ec492009f648, fresh i18n-auditor instance; instance id = first 12 hex of sha256('ec492009f648'+'es'). Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. LLM audit, not a native-speaker review; no MT used.",
+    "actual_model_source": "harness system prompt of session ec492009f648"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "en_sha256": "c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9",
+      "es_sha256": "5dacb462b9df2bea816ae6bc2b08371b3d9672cc7920fa7958548fbe2a887522",
+      "context_sha256": "e0c89c912238de89a22ebdbdc28c2462201c6b2bbd28fc3c52a1f0ad8787a04a",
+      "findings": [
+        {
+          "id": "LOC-CAN-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.result_label",
+          "note": "Noun phrase is correct (gender agreement, numeral after noun, group-off). Spliced mid-sentence by es ui.chat.attachments.broken_media_unavailable/broken_* it renders 'No se pudo reproducir Vídeo generado 2.' — capital V mid-sentence, no article; readable. Keep result_label capitalised (it is also alt/aria name); fix at the host: 'No se pudo reproducir “{name}”.' (and the two broken_* display siblings)."
+        },
+        {
+          "id": "LOC-CAN-O1",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "note": "Value 'tardó {duration}' correct. Out of catalogue scope: canonical-transcript.tsx:552 hard-codes the lead 'Turn condensed', so es reads/copies 'Turn condensed: tardó 2m4s, 5 acciones.' — English in an es announcement; needs a key."
+        }
+      ]
+    }
+  },
+  "audited_values": {
+    "ui.chat.canonical.image_gen.result_label": "{material, select, video {{count, plural, =1 {Vídeo generado} other {Vídeo generado {position, number, ::group-off}}}} voiceover {{count, plural, =1 {Locución generada} other {Locución generada {position, number, ::group-off}}}} sound_effect {{count, plural, =1 {Efecto de sonido generado} other {Efecto de sonido generado {position, number, ::group-off}}}} other {{count, plural, =1 {Imagen generada} other {Imagen generada {position, number, ::group-off}}}}}",
+    "ui.chat.canonical.transcript.took_duration": "tardó {duration}"
+  },
+  "binding": "sha256sum at HEAD 412fcf2cd4: en src/i18n/catalogues/en/ui.chat.canonical.json c86dd0552dad4fd582ef9f663cd4fff803ffa2b8b72ac27096d768c222d38cb9; es src/i18n/catalogues/es/ui.chat.canonical.json 5dacb462b9df2bea816ae6bc2b08371b3d9672cc7920fa7958548fbe2a887522; context e0c89c91...; style guide ~/local-operator/i18n/style-guides/es.md 77b92272...; glossary 0eb34437...",
+  "scope": "Merged ui.chat.canonical (532 keys): in depth result_label (#1957) and transcript.took_duration (#1959); whole-namespace key parity, ICU/argument parity, English-left scan, 32-value sample.",
+  "checks": {
+    "key_parity": "532/532, 0 missing, 0 extra",
+    "icu_arg_parity": "0 issues over 532 keys (@formatjs/icu-messageformat-parser)",
+    "english_left": "0 true hits; identical-to-en values are punctuation/placeholder-only plus 'Error' (Spanish word)",
+    "duplicates": "check-duplicates ok"
+  }
+}

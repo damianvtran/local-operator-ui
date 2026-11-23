@@ -27,6 +27,7 @@ import { AgentMark } from "@shared/agent-avatar/agent-mark";
 import {
 	DesktopControlError,
 	desktopResult,
+	isServerUpdatingError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import type {
@@ -59,7 +60,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t, translateRaw } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, translateRaw, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -133,7 +134,7 @@ const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
  * copy), and handing that string on put English on the save alert, the install
  * alert and the install toast in EVERY language (QA round 1, Q1).
  *
- * TWO ARMS, in this order:
+ * THREE ARMS, in this order (0 being the server-updating sentence, below):
  *  1. The transport failure itself is worded by
  *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
  *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
@@ -147,7 +148,18 @@ const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
  *     so `refusalCopy` still recognises and routes it, and a value that is not an
  *     authored message becomes `fallback` instead of a stack-trace fragment.
  */
-function writeFailureSentence(caught: unknown, fallback: string): string {
+export function writeFailureSentence(
+	caught: unknown,
+	fallback: string,
+): string {
+	/*
+	 * SERVER UPDATING FIRST (UI #1952 review, R2-m1). Inside main's update window
+	 * a transport failure carries the `detail.updating` hint, and the transport
+	 * arm below matched it first, so an update read as "the server did not
+	 * answer". `userFacingMessage` already orders updating before everything else;
+	 * this keeps the pane's own arm from overtaking it.
+	 */
+	if (isServerUpdatingError(caught)) return userFacingMessage(caught, fallback);
 	if (
 		caught instanceof DesktopControlError &&
 		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||
@@ -567,14 +579,21 @@ function ToolsEditor({
 						</p>
 					)}
 					<div className="flex items-end gap-2">
-						<div className="min-w-0 flex-1">
+						{/* `space-y-1`, the create form's field rhythm: flush against the
+						 * input, Urdu's descenders in the label and error ran under the
+						 * input's border and focus ring (ur frames, this fix's round). */}
+						<div className="min-w-0 flex-1 space-y-1">
 							<FieldLabel
 								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
+							{/* A tool name is typed Latin text whatever the interface
+							 * language: `userTextDir` keeps "bad name!" from rendering as
+							 * "!bad name" under an RTL locale (see `EditSection`). */}
 							<Input
 								id={inputId}
+								dir={userTextDir(entry)}
 								value={entry}
 								inputSize="md"
 								placeholder={t("ui.agents.detail.tools.placeholder")}
@@ -1009,8 +1028,14 @@ export function AgentDetail({
 								ref={headingRef}
 								tabIndex={-1}
 								// A long name truncates instead of wrapping under the actions.
+								// `dir="auto"`: the name is the operator's text, so an English
+								// one keeps its first letters under ur instead of losing them
+								// to the ellipsis; the alignment is keyed to the DOCUMENT's direction,
+								// not the name's (see `agents-sidebar.tsx`), so a short name keeps
+								// the locale's start edge in both directions.
+								dir="auto"
 								title={displayedName}
-								className="truncate text-title focus:outline-none"
+								className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
 							>
 								{displayedName}
 							</h2>
@@ -1035,7 +1060,7 @@ export function AgentDetail({
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
-					 * around a 16 px glyph, so `-mr-2` (the 8 px of box on each side of the
+					 * around a 16 px glyph, so `-me-2` (the 8 px of box on each side of the
 					 * glyph) moves the glyph's edge onto the column edge into the 24 px
 					 * gutter, where only its hover ground reaches.
 					 */}
@@ -1115,7 +1140,7 @@ export function AgentDetail({
 										variant="ghost"
 										size="icon"
 										aria-label={t("ui.agents.detail.action.more_actions")}
-										className="-mr-2"
+										className="-me-2"
 									>
 										<MoreHorizontal aria-hidden="true" />
 									</Button>
@@ -1413,6 +1438,8 @@ export function AgentDetail({
 												// back so the list's pitch stays the one it had.
 												className={cn("-my-0.5", LINK_HIT_AREA)}
 												onClick={() => onOpenTeam(team.name)}
+												// The operator's team name: its own direction (round 1, D1).
+												dir="auto"
 											>
 												{team.name}
 											</Button>
@@ -1513,12 +1540,22 @@ export function EditSection({
 	fieldRef?: Ref<HTMLTextAreaElement>;
 }) {
 	const id = useId();
+	/*
+	 * `userTextDir` (`dir="auto"` once non-empty) ON EVERY FIELD HERE: the value
+	 * is the operator's own text
+	 * (instructions, a description), and its script is independent of the
+	 * interface language. Inheriting an RTL locale's direction moved an English
+	 * prompt's sentence punctuation to the wrong end (".You implement..." in ur,
+	 * design review on UI #1952); the first strong character decides instead,
+	 * and an Urdu value still reads right-to-left in an English interface.
+	 */
 	return (
 		<Section title={title} description={description}>
 			<FieldLabel label={label} htmlFor={id} error={error} />
 			{rows ? (
 				<Textarea
 					id={id}
+					dir={userTextDir(value)}
 					ref={fieldRef}
 					value={value}
 					rows={rows}
@@ -1530,6 +1567,7 @@ export function EditSection({
 			) : (
 				<Input
 					id={id}
+					dir={userTextDir(value)}
 					value={value}
 					aria-invalid={Boolean(error)}
 					onChange={(event) => onChange(event.target.value)}
@@ -1760,6 +1798,7 @@ export function AgentCreate({
 							/>
 							<Input
 								id="agent-create-name"
+								dir={userTextDir(name)}
 								ref={nameRef}
 								value={name}
 								required

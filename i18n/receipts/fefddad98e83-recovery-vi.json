@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1962",
+  "locale": "vi",
+  "namespace": "ui.recovery",
+  "pr": 1962,
+  "date": "2026-11-17",
+  "head": "af3ea4461495ccd3de4e6c99df70c95d4f6eb0ff",
+  "instance": "fefddad98e83-recovery-vi",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team lopdev, task child 'UI-1 i18n audit r1'); not the translator (coder, anthropic/claude-opus-5-5, per PR #1962 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session fefddad98e83, a task instance distinct from the translating coder. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and locale style guide at local-operator origin/main, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "fefddad98e83-recovery-vi"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "glossary": {
+    "path": "local-operator:i18n/glossary.md",
+    "blob": "e3cdd40c909fb4bf515fc88abf57d7a85735a8e2"
+  },
+  "style_guide": {
+    "path": "local-operator:i18n/style-guides/vi.md",
+    "blob": "f4b642d7a6d30ad396df9c434a781ce83d3f0d33"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (30); ICU parse OK in intl-messageformat; argument names/types equal English per key; plural arms equal the locale's CLDR cardinal categories (Intl.PluralRules); formats with sample args for counts 0,1,2,5,21,1000000; NFC; no bidi control characters; no em/en dashes."
+    },
+    {
+      "severity": "MINOR",
+      "id": "T13",
+      "key": "ui.recovery.local.alternative_body",
+      "status": "fixed",
+      "note": "vi guide wave-2 call: setup -> 'thiết lập'; 'cài đặt' is reserved for settings.",
+      "before": {
+        "ui.recovery.local.alternative_body": "Không muốn chạy mô hình trên máy tính này? Tài khoản Radient không cần cài đặt."
+      },
+      "after": {
+        "ui.recovery.local.alternative_body": "Không muốn chạy mô hình trên máy tính này? Tài khoản Radient không cần thiết lập."
+      }
+    },
+    {
+      "severity": "NIT",
+      "id": "T14",
+      "key": "ui.recovery.local.use_radient",
+      "status": "fixed",
+      "note": "'thay thế' as a trailing 'instead' reads as 'replacement'; 'thay vào đó' is the adverbial.",
+      "before": {
+        "ui.recovery.local.use_radient": "Dùng tài khoản Radient thay thế"
+      },
+      "after": {
+        "ui.recovery.local.use_radient": "Dùng tài khoản Radient thay vào đó"
+      }
+    }
+  ],
+  "scope": "PR #1962 round 1: all 30 ui.recovery keys, ccc99372ac..af3ea44614 plus auditor fixes",
+  "binding": "Verified on af3ea44614 plus this audit's locale-only fixes: target src/i18n/catalogues/vi/ui.recovery.json sha256 47f99df1f7352d77cb64ac54954eaae496cf3330a8f6bbd79755458790b17833; English sha256 938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9; context sha256 dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa.",
+  "en_sha256": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9",
+  "context_sha256": "dea999b123328675580560158f3642f2d34a6ab42528af2bfbad98c313a60caa",
+  "target_sha256": "47f99df1f7352d77cb64ac54954eaae496cf3330a8f6bbd79755458790b17833",
+  "sha256": {
+    "vi": "47f99df1f7352d77cb64ac54954eaae496cf3330a8f6bbd79755458790b17833",
+    "en": "938a20256a4464a1eb65dbaac7d56c74f2b4dce670936032062f3af9ea2389d9"
+  }
+}

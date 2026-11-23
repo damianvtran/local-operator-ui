@@ -1,0 +1,78 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-fold2-fr",
+	"locale": "fr",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "7a1ab39aa9 + the manager's uncommitted convergence edits in the tree (fr ui.chat.composer steer_hint/steer_hint_steer, fr ui.settings.shortcuts action.send_queue/action.send_steer, ur ui.chat.composer placeholder.waiting_both)",
+	"date": "2026-11-13",
+	"status": "passed",
+	"verdict": "FAIL - 0 blocker/major, 1 minor",
+	"verdict_note": "Round 4's own verdict word was FAIL because one minor was left; `passed` in this file is the ledger's token for an audit with no open blocker or major, so the row is recorded clean-with-findings, not clean. The minor is listed under ui.settings.shortcuts and nothing was suppressed.",
+	"audit_kind": "DELTA audit of exactly the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8: 6 added, 2 changed) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two independently audited parents (catalogue-union-parity reports no value differences), so their audits stand in the superseded rows.",
+	"independence": "A different agent and model family from the translators. The 27 keys were translated this wave by i18n-translator anthropic/claude-sonnet-5-5 (self-reported); this audit ran read-only through the codex MCP with the strings, the English source, the context sidecar, a style-guide excerpt and the shipped vocabulary pasted into the prompt. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.action.send_queue",
+		"ui.settings.shortcuts.action.send_steer",
+		"ui.settings.shortcuts.category.sending",
+		"ui.settings.shortcuts.category.sending_description",
+		"ui.settings.shortcuts.reserved.enter",
+		"ui.settings.shortcuts.capture.send_newline",
+		"ui.settings.shortcuts.capture.send_needs_modifier",
+		"ui.settings.shortcuts.capture.panel_enter",
+		"ui.settings.shortcuts.capture.send_prompt",
+		"ui.settings.shortcuts.row_help.send_steer",
+		"ui.settings.shortcuts.row_help.send_queue",
+		"ui.settings.shortcuts.row_help.send_both",
+		"ui.chat.composer.placeholder.waiting_steer",
+		"ui.chat.composer.placeholder.waiting_queue",
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_steer",
+		"ui.chat.composer.steer_hint_queue",
+		"ui.chat.composer.steer_hint_both",
+		"ui.chat.composer.placeholder.waiting",
+		"ui.chat.composer.steer_hint",
+		"ui.chat.canonical.send_failure.delivery_unsupported",
+		"ui.chat.canonical.transcript.busy_wait.steer",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.deferred"
+	],
+	"rounds": "Round 4 is the verdict recorded here: FAIL with 0 blocker/major and 1 minor. Rounds 1-3 each failed on at least one major.\n\nRound 1: 1 major on ui.chat.composer.placeholder.waiting_both, where « file » read as the verb filer and broke the shipped « file d’attente »; minors on ui.settings.shortcuts.action.send_both and ui.chat.composer.steer_hint_both, plus a minor on ui.chat.canonical.send_failure.delivery_unsupported for writing « mode “orientation” » where the actionable mode label is « orienter ».\n\nRound 2: 1 major on ui.chat.composer.placeholder.waiting_both, whose « Échap » omitted the action - the reader was not told the key stops the turn; a minor on ui.settings.shortcuts.action.send_both and a nit on send_failure.delivery_unsupported.\n\nRound 3: 2 majors on ui.chat.composer.steer_hint and steer_hint_steer, which translated the key names Enter and Esc to Entrée and Échap where the context sidecar says “Keep the key names Enter and Esc exactly as written”; a minor on ui.settings.shortcuts.action.send_both and nits on the adjacent action.send_queue and action.send_steer labels (nonbreaking space before the colon, now applied in the convergence edits).\n\nRound 4 kept only the action.send_both minor: « file » alone instead of the shipped mode label « file d’attente ».\n\nTHE ENTER/ESC INCONSISTENCY IS DELIBERATE AND IS RECORDED, NOT HIDDEN. steer_hint and steer_hint_steer now keep the English key names Enter and Esc because en/ui.chat.composer.context.json requires them verbatim, while other fr composer strings in the same file still say Entrée and Échap (placeholder.waiting_steer/waiting_queue/waiting_both, steer_hint_queue, steer_hint_both, insert_transcript_hint, stop_work_hint). The sidecar note is authoritative for these two keys, so fr now carries both spellings by design.\n\nui.chat.canonical was cleared in its own pass first: that pass's round 1 failed on send_failure.delivery_unsupported and its round 2 passed (manager session 2405ebc40b47 scratchpad/audit-fold-canonical.json). The fold2 rounds that followed reported at most a minor and a nit on that key, and round 4 did not reopen it.",
+	"source": "Verdict and finding text transcribed from the manager's retained audit records: session 2405ebc40b47 scratchpad/audit-fold2.json (round 1), audit-fold2-r2.json (round 2), audit-fold2-r3.json (round 3), audit-fold2-r4.json (round 4) and audit-fold-canonical.json (the canonical pass). Catalogue hashes are of the bytes on disk at assembly time; the audit prompt was built from these same files, and no audited file has been edited since round 4's read.",
+	"namespaces": {
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"en_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+			"fr_sha256": "776766c05959c7f882c0cb474002fb9d59d887349d91c6c770f15402cb9b6ba8",
+			"findings": [
+				{
+					"id": "F1",
+					"severity": "minor",
+					"key": "ui.settings.shortcuts.action.send_both",
+					"message": "« file » does not match the shipped mode label « file d’attente » required by the note",
+					"shipped": "Envoyer\u202F: file, puis orienter",
+					"suggested": "Envoyer\u202F: file d\u2019attente, puis orienter",
+					"disposition": "kept, not churned: the suggested label is 39 characters against the shipped 29, and this key's context asks for a compact one-row label (length: \"One shortcut row label; keep compact.\"). It stays an open minor on this row."
+				}
+			]
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"en_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+			"fr_sha256": "7fc2fb036e35196e26596a1551e234e36304c3aa41ce2dc5d154b09cf6b38388",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
+			"fr_sha256": "ae85569b3cd2ecccde549db76c4fc575e6f10da86a44deeae61035e809774274",
+			"findings": []
+		}
+	}
+}

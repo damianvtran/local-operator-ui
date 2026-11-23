@@ -37,7 +37,7 @@ import { readJson, writeJsonAtomic } from "./browser/atomic-json";
  * Settings row talks to, and the live application of a change.
  *
  * WHY MAIN OWNS THE SETTING AND NOT THE RENDERER'S `localStorage` (where
- * `showAgentReasoning` lives). The window's construction options (a transparent
+ * the `ui-preferences-storage` blob lives). The window's construction options (a transparent
  * first-paint ground, a vibrancy material) are decided BEFORE a renderer exists,
  * so a setting kept in the renderer's storage could only ever apply to the SECOND
  * launch's second frame: a window that opens opaque and then turns see-through.

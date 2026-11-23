@@ -99,8 +99,56 @@ export type OpenFence = {
 	held: number;
 };
 
-export function openFenceOf(source: string): OpenFence | null {
-	let fence: { char: string; length: number } | null = null;
+type FenceLead = Pick<
+	OpenFence,
+	"before" | "marker" | "info" | "indent" | "nested"
+>;
+
+type OpenFenceHint = { source: string; fence: OpenFence };
+
+function isFenceClose(line: string, marker: string): boolean {
+	let index = 0;
+	while (index < 3 && line.charCodeAt(index) === 32) index += 1;
+	let run = 0;
+	while (line[index + run] === marker[0]) run += 1;
+	return run >= marker.length && line.slice(index + run).trim() === "";
+}
+
+/** The complete opener cannot change on append. Only a closer in the new
+ * lines (including the previous partial line) invalidates this open fence. */
+function staysInsideFence(
+	source: string,
+	{ source: previous, fence }: OpenFenceHint,
+): boolean {
+	if (
+		fence.nested ||
+		!source.startsWith(previous) ||
+		previous.indexOf("\n", fence.before.length) < 0
+	)
+		return false;
+	let offset = previous.lastIndexOf("\n") + 1;
+	while (offset < source.length) {
+		const next = source.indexOf("\n", offset);
+		if (
+			isFenceClose(
+				source.slice(offset, next < 0 ? source.length : next),
+				fence.marker,
+			)
+		)
+			return false;
+		if (next < 0) break;
+		offset = next + 1;
+	}
+	return true;
+}
+
+export function openFenceOf(
+	source: string,
+	hint?: OpenFenceHint,
+): OpenFence | null {
+	if (hint && staysInsideFence(source, hint))
+		return fenceWithBody(source, hint.fence);
+	let fenced = false;
 	let offset = 0;
 	let start = -1;
 	let marker = "";
@@ -110,32 +158,40 @@ export function openFenceOf(source: string): OpenFence | null {
 		const next = source.indexOf("\n", offset);
 		const end = next === -1 ? source.length : next;
 		const line = source.slice(offset, end).replace(CARRIAGE_RETURN_END, "");
-		if (fence === null) {
+		if (!fenced) {
 			const open = FENCE_OPEN.exec(line);
 			// A backtick fence's info string may not contain a backtick: that is an
 			// inline code span that happens to start the line.
 			if (open && !(open[1][0] === "`" && open[2].includes("`"))) {
-				fence = { char: open[1][0], length: open[1].length };
+				fenced = true;
 				start = offset;
 				marker = open[1];
 				info = open[2].trim();
 				indent = line.slice(0, line.indexOf(open[1]));
 			}
-		} else {
-			let index = 0;
-			while (index < 3 && line.charCodeAt(index) === 32) index += 1;
-			let run = 0;
-			while (line[index + run] === fence.char) run += 1;
-			if (run >= fence.length && line.slice(index + run).trim() === "") {
-				fence = null;
-				start = -1;
-			}
+		} else if (isFenceClose(line, marker)) {
+			fenced = false;
+			start = -1;
 		}
 		if (next === -1) break;
 		offset = next + 1;
 	}
-	if (fence === null || start < 0) return null;
-	const bodyStart = source.indexOf("\n", start);
+	if (!fenced || start < 0) return null;
+	const before = source.slice(0, start);
+	return fenceWithBody(source, {
+		before,
+		marker,
+		info,
+		indent,
+		nested: indent !== "" && inListOrQuote(before),
+	});
+}
+
+function fenceWithBody(
+	source: string,
+	{ before, marker, info, indent, nested }: FenceLead,
+): OpenFence {
+	const bodyStart = source.indexOf("\n", before.length);
 	let body = bodyStart === -1 ? "" : source.slice(bodyStart + 1);
 	/*
 	 * A HALF-TYPED CLOSER IS NOT CODE (design review D2). The last line, when it
@@ -157,16 +213,7 @@ export function openFenceOf(source: string): OpenFence | null {
 		held = body.length - (lastBreak + 1);
 		body = body.slice(0, lastBreak + 1);
 	}
-	const before = source.slice(0, start);
-	return {
-		before,
-		marker,
-		info,
-		body,
-		indent,
-		nested: indent !== "" && inListOrQuote(before),
-		held,
-	};
+	return { before, marker, info, body, indent, nested, held };
 }
 
 /**
@@ -195,8 +242,10 @@ function inListOrQuote(before: string): boolean {
  * opened at the very end with no content yet, in which case it is dropped, so
  * `foo **` paints `foo` rather than `foo ` + a literal `**`.
  */
-export function closeOpenMarkdown(source: string): string {
-	const fence = openFenceOf(source);
+export function closeOpenMarkdown(
+	source: string,
+	fence = openFenceOf(source),
+): string {
 	if (fence !== null) {
 		// The paragraph before a fence is the unit that closes; the blank line
 		// between them is layout and stays between the closers and the fence.

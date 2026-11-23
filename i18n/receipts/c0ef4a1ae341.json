@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "fallback": "none",
+  "instance": "c0ef4a1ae341",
+  "session": "880c28e40675",
+  "independence": "Fresh i18n-auditor instance (lopdev team, session 880c28e40675); not the translator of these strings; no catalogue/repo edits. LLM audit, not a native-speaker review.",
+  "locale": "ru",
+  "branch": "feat/i18n-identity-footer",
+  "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+  "worktree_state": "HEAD plus uncommitted ru catalogue delta: 18 added lines (ui.chat 15, ui.chat.canonical 1, ui.chat.slash 2), 0 removed",
+  "date": "2026-11-17",
+  "status": "passed",
+  "scope": "Delta audit of the 18 keys added by the English commit: ui.chat.header_identity.{footer_all_agents, footer_all_teams, footer_match_agents, footer_match_teams, footer_partial_agents, footer_partial_teams, no_settable_typed, no_settable, cannot_take_seat, needs_delegating_profile, team_led_by_manager, agent_seat_closed_title, its_manager_label, switch_team_failed, switch_agent_failed}, ui.chat.canonical.transcript.took_duration, ui.chat.slash.arg.kind_role, ui.chat.slash.arg.kind_specialist",
+  "inputs_sha256": {
+    "en_context ui.chat.context.json": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33",
+    "en_context ui.chat.canonical.context.json": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec",
+    "en_context ui.chat.slash.context.json": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7",
+    "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style guide (local-operator/i18n/style-guides/ru.md)": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "verified": [
+    "All 18 parse with @formatjs/icu-messageformat-parser; argument names/types identical to en (count; matches+total; label; team; duration; none).",
+    "Intl.PluralRules('ru') categories one/few/many/other; all 6 plural messages carry all four; footer_partial_* plural selects on total as en does.",
+    "Rendered counts 0..1000000 and 14 (matches,total) pairs: nominative after Всего/Найден(о/а) and genitive after из correct in every arm (из 21 агента/команды; из 2-4,22,1234 агентов/команд; из 5,11,25,1000 агентов/команд); Latin digits ungrouped.",
+    "«ёлочки» around {label}/{team}; spaced em dash; trailing punctuation matches en per key; вы-register imperatives; no English left (Latin only in user data/{duration}).",
+    "Key sets equal en in all three files; JSON valid; diff is 18 added lines, 0 removed.",
+    "kind_role роль / kind_specialist специалист = lowercase of ui.hub.teams.kind.role Роль / .specialist Специалист.",
+    "Widths: its_manager_label 11 chars (<=14); needs_delegating_profile 31 (<=43); footer_all_* 45-53 chars rendered (en 42-50), may wrap at ~300px which the sidecar allows."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "delta_keys_audited": 15,
+      "sha256": {
+        "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+        "ru": "4ea6f8eea1fcd3247470435ca956f725f849f99b7b99d338efa484bb58e3a06d"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.json",
+        "target": "src/i18n/catalogues/ru/ui.chat.json",
+        "context": "src/i18n/catalogues/en/ui.chat.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU-ID-1",
+          "severity": "minor",
+          "key": "ui.chat.header_identity.footer_partial_agents",
+          "summary": "Neuter verb with matches 1/21: 'Найдено 1 из 5 агентов', 'Найдено 21 из 25 команд'. Common UI usage, but strict agreement is 'Найден 1 из 5 агентов'/'Найдена 1 из 5 команд'. Fix: nest {matches, plural, one {Найден|Найдена} other {Найдено}} or use the label form 'Найдено: 1 из 5 агентов'. Applies to footer_partial_teams too."
+        },
+        {
+          "id": "RU-ID-2",
+          "severity": "minor",
+          "key": "ui.chat.header_identity.needs_delegating_profile",
+          "summary": "'Нужен профиль с делегированием.' is calque-ish and diverges from sibling team_led_by_manager 'профили с правом делегирования'. Suggest 'Нужен профиль с правом делегирования.' (37 chars, <=43)."
+        },
+        {
+          "id": "RU-ID-3",
+          "severity": "nit",
+          "key": "ui.chat.header_identity.no_settable",
+          "summary": "Bare 'место' ('Ни один профиль не может занять место — смените команду.') is correct but vague out of context; 'место агента' (as in agent_seat_closed_title) is clearer. Optional; same for no_settable_typed."
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "delta_keys_audited": 1,
+      "sha256": {
+        "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+        "ru": "51812d8a3ab6bf052e1373f4fcd348dcabf48ac37838bcb2e59531b45a539b65"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU-ID-4",
+          "severity": "nit",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "summary": "'потребовалось 2m 4s' is grammatical as a list clause; 'заняло {duration}' is the more usual idiom for elapsed time. Optional."
+        }
+      ]
+    },
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "result": "clean",
+      "delta_keys_audited": 2,
+      "sha256": {
+        "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+        "ru": "38b63a706c2243085506c2aad5d27b1766b4b45c9449c90df8dd68ebdb625cf7"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+        "target": "src/i18n/catalogues/ru/ui.chat.slash.json",
+        "context": "src/i18n/catalogues/en/ui.chat.slash.context.json"
+      },
+      "findings": []
+    }
+  },
+  "out_of_scope_observations": [
+    "Not among the 18 keys, non-gating: canonical-transcript.tsx:546 hard-codes the lead 'Turn condensed', and formatDuration (tool-row-model) emits English unit letters ('2m4s'), so the ru spoken/copied summary reads 'Turn condensed: потребовалось 2m4s, …'. Relevant to the no-English acceptance; for the manager to route."
+  ]
+}

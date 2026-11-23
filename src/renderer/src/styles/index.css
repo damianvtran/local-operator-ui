@@ -16,14 +16,23 @@
 		opacity: 1;
 	}
 }
-.lo-transcript-arrival {
-	animation: lo-transcript-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
-}
-@media (prefers-reduced-motion: reduce) {
-	.lo-transcript-arrival {
-		animation: none;
+/* Inline prose starts higher than a passive row: 0.8 clears 4.5:1 for the
+ * 59 generated theme ink/surface pairs on their solid-surface model. Both
+ * keep final geometry and use the global Reduce Motion cap. */
+@keyframes lo-stream-ink {
+	from {
+		opacity: var(--lo-stream-ink-from, 0.55);
 	}
+	to {
+		opacity: 1;
+	}
+}
+.lo-stream-ink {
+	--lo-stream-ink-from: 0.8;
+}
+.lo-stream-ink,
+.lo-transcript-arrival {
+	animation: lo-stream-ink var(--duration-fast) var(--ease-out-quart);
 }
 
 /* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
@@ -78,6 +87,31 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-intent-pulse {
+		animation: none;
+	}
+}
+
+/* The composer's refused-send cue (design round 1, D5, onboarding friction
+ * 2026-11). A refused Send re-keys the block line's fix control
+ * (`send-recovery-action.tsx`, `cue`), which replays this ONE-SHOT accent ring:
+ * every refused press gives a new signal, not only the first. A ring (box
+ * shadow), so nothing moves or reflows; 2 x 300 ms, then the control is exactly
+ * as it was. Reduced motion drops the ring and keeps the line's ink step. */
+@keyframes lo-refused-cue {
+	0%,
+	100% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+	50% {
+		box-shadow: 0 0 0 3px
+			color-mix(in oklab, var(--color-accent) 45%, transparent);
+	}
+}
+.lo-refused-cue {
+	animation: lo-refused-cue 300ms var(--ease-out-quart) 2;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-refused-cue {
 		animation: none;
 	}
 }
@@ -2031,6 +2065,14 @@ html .Mui-focusVisible {
 	outline-color: var(--color-accent);
 	outline-offset: 2px;
 }
+/* Single-line fields keep the shared keyboard ring, but use neutral text ink
+ * rather than an action accent. The effort ladder takes the place of its
+ * search field as the picker's keyboard target. Native inputs, MUI and other
+ * controls keep their existing focus treatment; forced colors can remap it. */
+html [data-lo-input]:focus-visible,
+html [data-quick-picker="effort"] [role="listbox"]:focus-visible {
+	outline-color: var(--color-ink-muted);
+}
 html :focus-visible:not([data-lo-floating]),
 html .Mui-focusVisible:not([data-lo-floating]) {
 	box-shadow: none !important;
@@ -2754,6 +2796,242 @@ html[data-glass~="sidebar"]
 		var(--lo-ink) calc(var(--lo-glass-a-field) * 100%),
 		transparent
 	);
+}
+
+/* The shelf is a workspace surface; the offset writing well is its own ground.
+ * A blurred material underprint is ink overflow, not a layout box or another
+ * floating-surface shadow. Keep it inside the dock's footprint before blur. */
+.composer-dock {
+	--composer-dock-inset: calc(var(--spacing) * 1.25);
+	--composer-dock-radius: calc(var(--radius-lg) + var(--composer-dock-inset));
+	--composer-dock-underprint: light-dark(
+		rgb(53 65 92 / 34%),
+		color-mix(in srgb, var(--lo-scrim), black 46%)
+	);
+	position: relative;
+	isolation: isolate;
+	container: composer-dock / inline-size;
+	min-width: 0;
+	border-radius: var(--composer-dock-radius);
+	padding: 0 var(--composer-dock-inset) var(--composer-dock-inset);
+}
+
+.composer-dock::before,
+.composer-dock::after {
+	content: "";
+	position: absolute;
+	pointer-events: none;
+	border-radius: inherit;
+}
+
+.composer-dock::before {
+	z-index: -2;
+	inset: 40% 2% 0;
+	background: var(--composer-dock-underprint);
+	filter: blur(8px);
+}
+
+.composer-dock::after {
+	z-index: -1;
+	inset: 0;
+	background: linear-gradient(
+			90deg,
+			transparent,
+			rgb(255 255 255 / 26%) 34% 61%,
+			transparent
+		)
+		14% top / 55% 1px no-repeat,
+		linear-gradient(
+			0deg,
+			color-mix(in srgb, var(--lo-scrim) 42%, transparent),
+			transparent 7px
+		), var(--lo-surface);
+}
+
+.composer-dock-shelf,
+.composer-dock-rail,
+.composer-dock-pickers {
+	display: flex;
+	align-items: center;
+	min-inline-size: 0;
+}
+
+.composer-dock-shelf {
+	min-block-size: calc(var(--spacing) * 8);
+	padding-inline: var(--spacing);
+	gap: var(--spacing);
+}
+
+.composer-dock-shelf:empty {
+	display: none;
+}
+
+.composer-dock:not(:has(.composer-dock-shelf > *)) {
+	padding-block-start: var(--composer-dock-inset);
+}
+
+.composer-dock-editor {
+	display: flex;
+	flex-direction: column;
+	min-inline-size: 0;
+	gap: var(--spacing);
+	padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2) var(--spacing);
+	border-radius: var(--radius-lg);
+	/* Far from the shoulders so the gloss never reads as a perimeter. */
+	background-image: linear-gradient(
+			90deg,
+			transparent,
+			rgb(255 255 255 / 60%) 36% 60%,
+			transparent
+		),
+		linear-gradient(
+			180deg,
+			light-dark(rgb(60 71 99 / 6%), rgb(255 255 255 / 4%)),
+			transparent 38px
+		);
+	background-position: 9% top, center top;
+	background-size: 61% 1px, 100% 100%;
+	background-repeat: no-repeat;
+}
+
+/* The filled blur would show through the translucent writing well. Use only
+ * an exterior shadow on glass so the field tint still meets its contrast floor. */
+html[data-glass~="pane"] .composer-dock::before,
+html[data-glass] [data-glass-region="mini-ground"] .composer-dock::before {
+	inset: 0;
+	background: none;
+	filter: none;
+	box-shadow: 0 5px 12px -6px var(--composer-dock-underprint);
+}
+
+/* No second raw ground over window glass. The well uses the normal field
+ * coverage below, while the shelf takes only a lighter tint of the same ink. */
+html[data-glass~="pane"] .composer-dock::after,
+html[data-glass] [data-glass-region="mini-ground"] .composer-dock::after {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-ink) calc(var(--lo-glass-a-field) * 50%),
+		transparent
+	);
+}
+
+/* Textareas can match :focus-visible on click or autofocus. Use the ink
+ * caret in ordinary themes so getting ready to type never boxes the draft. */
+.composer-dock-textarea {
+	caret-color: var(--lo-ink);
+}
+
+.composer-dock-rail {
+	gap: var(--spacing);
+}
+
+.composer-dock-pickers {
+	gap: var(--spacing);
+}
+
+.composer-dock-pickers:empty {
+	display: none;
+}
+
+.composer-dock :is([data-composer-picker], [data-lo-cwd-chip] > button) {
+	height: calc(var(--spacing) * 8);
+	padding-inline: calc(var(--spacing) * 1.5);
+}
+
+.composer-dock [data-lo-cwd-chip] {
+	margin-inline-start: 0;
+	flex-shrink: 1;
+}
+
+.composer-dock [data-lo-cwd-chip] > button {
+	min-inline-size: 0;
+}
+
+.composer-dock .composer-dock-readings {
+	margin-inline: auto 0;
+	justify-content: flex-end;
+}
+
+.composer-dock-compact
+	:is([data-composer-picker], [data-lo-cwd-chip] > button) {
+	height: calc(var(--spacing) * 7);
+}
+
+.composer-dock-compact .composer-dock-editor {
+	padding-inline: var(--spacing);
+}
+
+/* Spend optional metadata first; model, attach and Send stay in the editor.
+ * The directory's full path stays available in the trigger and its menu. */
+@container composer-dock (width <= 360px) {
+	.composer-dock-cost {
+		display: none;
+	}
+
+	.composer-dock [data-lo-cwd-chip] > button {
+		max-inline-size: calc(var(--spacing) * 24);
+	}
+}
+
+@container composer-dock (width <= 240px) {
+	.composer-dock-duration,
+	.composer-dock [data-lo-cwd-chip] > button > svg.lucide-chevron-down,
+	.composer-dock [data-composer-picker] > svg.lucide-chevron-down {
+		display: none;
+	}
+
+	.composer-dock-pickers {
+		column-gap: 0;
+	}
+
+	.composer-dock-pickers > :is([data-composer-picker], .composer-dock-effort) {
+		min-inline-size: 0;
+		flex-shrink: 1;
+	}
+
+	.composer-dock-pickers
+		> :is([data-composer-picker], .composer-dock-effort)
+		> span {
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+/* At the pane floor the model can still be identified by its accessible
+ * name and tooltip. Keep distinct buttons alongside the recording trio. */
+@container composer-dock (width <= 180px) {
+	.composer-dock-pickers > [data-composer-picker] {
+		flex: 0 1 auto;
+		padding-inline: var(--spacing);
+	}
+
+	.composer-dock-pickers > [data-composer-picker] > svg:first-child {
+		display: block;
+	}
+
+	.composer-dock-pickers > [data-composer-picker] > :not(svg:first-child) {
+		display: none;
+	}
+
+	.composer-dock-pickers > :not(button) {
+		overflow: hidden;
+		white-space: nowrap;
+	}
+}
+
+@media (forced-colors: active) {
+	.composer-dock::before,
+	.composer-dock::after {
+		background: none;
+	}
+
+	/* Keep a local focus outline when the system replaces theme colours. */
+	.composer-dock-field:has(.composer-dock-textarea:focus-visible) {
+		outline: 1px solid Highlight;
+		outline-offset: -1px;
+	}
 }
 
 /*

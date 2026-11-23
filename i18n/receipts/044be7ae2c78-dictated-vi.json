@@ -1,0 +1,122 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "agent": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, finding and in-place fix in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (044be7ae2c78) from the PR coder, who wrote and translated 7040c2b761 (its commit message says the 16 keys were translated by that session). The translator's work was audited as claims to check, rebuilt from the English source, the en context, the render sites in the PR diff, sibling shipped keys, the core glossary and the locale style guide.",
+ "instance": "044be7ae2c78-dictated-vi",
+ "session": "044be7ae2c78",
+ "locale": "vi",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (+ uncommitted catalogue edits by this audit)",
+ "pr": "damianvtran/local-operator-ui (send-instant-dictated worktree; PR number not assigned at audit time)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "scope": "ui.chat.composer: delta audit of the 16 new ui.chat.composer.dictated_away.* keys for vi (7040c2b761). The 73 carried keys are unchanged: the en and vi blobs at HEAD~1 hash to the ledger row's last audited source_sha256 (a90cc99706b0…) and target_sha256, and a key-by-key comparison of parsed values shows 0 changed, 0 removed, 16 added (en also gains a trailing comma after secret_closure_notice).",
+ "inputs_sha256": {
+  "en_context (ui.chat.composer.context.json)": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6",
+  "glossary (local-operator/i18n/glossary.md @ origin/main b2312e9f97)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/vi.md @ origin/main b2312e9f97)": "99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51"
+ },
+ "verified": [
+  "key set equals en (89 keys); every ICU argument identical to en: {title}/{reason} appear exactly where en has them, no plural/select arms exist in these keys; no bidi/zero-width/BOM characters; no edge or double spaces; NFC",
+  "the toast/notice wording never claims a send happened: not_sent/not_sent_body say the dictation was NOT sent ('नहीं भेजा गया' / 'Не отправлено' / 'نہیں بھیجا گیا' / 'Chưa gửi'), and say the text sits in that chat's draft; origin_gone(+_body) and transcription_failed(+_body) never promise a draft, only that the text/recording is gone, as the render-site comment in the PR requires",
+  "reason clauses are lower-case clauses that follow a colon and complete the sentence; reason_unavailable names no cause",
+  "terms: glossary credentials/model/session rendering kept; chat/open chat/new chat/untitled chat match shipped strings (ui.library.composer.open_chat, ui.shell.sidebar_navigation.new_chat, ui.chat.canonical.untitled)",
+  "carried ui.chat.composer keys unchanged; en differs from the audited blob only by the 16 added keys (+ the trailing comma after secret_closure_notice)",
+  "fit: open_chat (18), draft_label (19) and untitled_chat (28) exceed their maxCells (14/18/18) but are byte-identical to the shipped vi strings for the same concepts (ui.library.composer.open_chat, ui.shell.sidebar_navigation.new_chat, ui.chat.canonical.untitled); the vi guide keeps 'cuộc trò chuyện' and records no short form, so this is an accepted, recorded width exception, not a finding. All other keys fit. maxCells is not gated in this UI repo."
+ ],
+ "namespaces": {
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 89,
+   "delta_keys_audited": [
+    "ui.chat.composer.dictated_away.not_sent",
+    "ui.chat.composer.dictated_away.not_sent_body",
+    "ui.chat.composer.dictated_away.transcription_failed",
+    "ui.chat.composer.dictated_away.transcription_failed_body",
+    "ui.chat.composer.dictated_away.reason_edited",
+    "ui.chat.composer.dictated_away.reason_command",
+    "ui.chat.composer.dictated_away.reason_gate",
+    "ui.chat.composer.dictated_away.reason_secret",
+    "ui.chat.composer.dictated_away.reason_no_model",
+    "ui.chat.composer.dictated_away.reason_unavailable",
+    "ui.chat.composer.dictated_away.reason_not_ready",
+    "ui.chat.composer.dictated_away.open_chat",
+    "ui.chat.composer.dictated_away.draft_label",
+    "ui.chat.composer.dictated_away.untitled_chat",
+    "ui.chat.composer.dictated_away.origin_gone",
+    "ui.chat.composer.dictated_away.origin_gone_body"
+   ],
+   "sha256": {
+    "vi": "b1ed8e44e5ee303d1221909b6b2bb7557afa81938198f2d2c3d87957694c6851",
+    "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": [
+    {
+     "id": "VI-1",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.not_sent",
+     "summary": "'Nội dung bạn đọc' / 'lời bạn đọc' / 'nội dung đã đọc' = 'what you read', which names no dictation: đọc alone is 'read (aloud)'. Shipped vi calls the feature 'Đọc chính tả' (ui.canvas.inline_edit.dictation_is_not_available_on_this_device) and transcription 'chuyển giọng nói thành văn bản'. Now 'đọc chính tả' in not_sent, not_sent_body, transcription_failed(+_body), origin_gone(+_body).",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "Chưa gửi tới “{title}”: {reason}. Nội dung bạn đọc đã nằm trong bản nháp của cuộc trò chuyện đó.",
+     "after": "Chưa gửi tới “{title}”: {reason}. Nội dung bạn đọc chính tả đã nằm trong bản nháp của cuộc trò chuyện đó."
+    },
+    {
+     "id": "VI-2",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_not_ready",
+     "summary": "'đang mở' = 'is open' (a state), not 'is still opening' (in progress): the clause 'cuộc trò chuyện đó vẫn đang mở' reads as the chat being open, which is no reason for a refusal. Now 'chưa mở xong' ('has not finished opening'). Rare edge case, so minor.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "cuộc trò chuyện đó vẫn đang mở",
+     "after": "cuộc trò chuyện đó chưa mở xong"
+    },
+    {
+     "id": "VI-3",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.transcription_failed",
+     "summary": "'hãy ghi lại' = 'please note it down / record it again' without saying audio; the English asks to record again. Now 'hãy ghi âm lại' (ghi âm is the shipped recording verb: 'Bắt đầu ghi âm'). Same edit in _body.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "Không thể chuyển lời bạn đọc cho “{title}” thành văn bản. Bản ghi âm không được giữ lại — hãy ghi lại.",
+     "after": "Không thể chuyển phần đọc chính tả của bạn cho “{title}” thành văn bản. Bản ghi âm không được giữ lại — hãy ghi âm lại."
+    },
+    {
+     "id": "VI-4",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_command",
+     "summary": "'một câu lệnh' vs shipped 'lệnh' / 'lệnh gạch chéo' for commands; aligned to 'một lệnh'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "những từ đó sẽ được chạy như một câu lệnh",
+     "after": "những từ đó sẽ được chạy như một lệnh"
+    },
+    {
+     "id": "VI-5",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_secret",
+     "summary": "44 cells against maxCells 40; dropping 'một' ('trông như thông tin xác thực') brings it to 40. Glossary term kept.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "những từ đó trông như một thông tin xác thực",
+     "after": "những từ đó trông như thông tin xác thực"
+    },
+    {
+     "id": "VI-6",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.untitled_chat",
+     "summary": "'chưa có tên' was a third spelling beside the shipped ui.chat.canonical.untitled 'Cuộc trò chuyện chưa đặt tên' (same concept); aligned.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "Cuộc trò chuyện chưa có tên",
+     "after": "Cuộc trò chuyện chưa đặt tên"
+    }
+   ]
+  }
+ }
+}

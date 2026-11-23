@@ -1023,10 +1023,12 @@ longer than 240ms, and only something entering the screen earns that.
   the shared scroll-layout owner preserves the reader's anchor during genuine
   downstream reflow. No outgoing tree, duplicated media, sibling transforms or
   height-from-zero entrance. Media, offscreen updates and reduced motion swap
-  atomically. Newly appended non-answer row ink may enter over 240ms; streamed
-  answers appear in place with no per-arrival fade (live and committed text are
-  ONE parsed DOM, and a per-arrival wrapper would be a second one), and never get
-  a parent fade either.
+  atomically. Newly appended passive row ink and new prose in a live answer
+  fade from readable opacity over 120ms, in place. The live Markdown parse adds
+  inline spans only for new source-matched prose; it never fades the previous
+  text, an answer's parent, history, or a reconnected prefix. Literal code and
+  links keep their normal rendering, and the final answer uses the canonical
+  whole-message parse immediately.
 - **Indeterminate liveness is exempt from the 240ms ceiling** — a shimmer or a
   spinner that must run until the machine stops cannot be capped at 240ms. One
   such element per surface, `opacity` or `background-position` only, never a

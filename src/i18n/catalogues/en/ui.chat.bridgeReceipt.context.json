@@ -13,5 +13,72 @@
 	"ui.chat.bridgeReceipt.provenance": {
 		"role": "Incoming Bridge receipt provenance",
 		"note": "One subtle provenance label; never replaces model-context untrusted guidance."
+	},
+	"ui.chat.bridgeReceipt.loading": {
+		"role": "Incoming Bridge body loading",
+		"note": "Shown while the card asks the local backend for the admitted body. Ellipsis is one character."
+	},
+	"ui.chat.bridgeReceipt.pending": {
+		"role": "Incoming Bridge body pending",
+		"note": "The message reached this computer but has not been handed to the agent yet (that happens at its next turn, often minutes or hours later); the open card updates by itself when it is. Neutral, not an error. Same words as core tui.bridge_card.body.pending and relay.transcript.bridge.pending."
+	},
+	"ui.chat.bridgeReceipt.held": {
+		"role": "Incoming Bridge body held",
+		"note": "Moderation is holding the message for a person to review; it may still be released or refused, and the open card updates by itself. Never name a reason or category."
+	},
+	"ui.chat.bridgeReceipt.held_transient": {
+		"role": "Incoming Bridge body held, transient",
+		"note": "Screening has not run yet or the message is still being delivered; nothing was decided. Never imply moderation acted. Same words as core tui.bridge_card.body.held_transient."
+	},
+	"ui.chat.bridgeReceipt.refused": {
+		"role": "Incoming Bridge body refused",
+		"note": "Moderation refused the message for this agent. Terminal; never name a reason."
+	},
+	"ui.chat.bridgeReceipt.not_admitted": {
+		"role": "Incoming Bridge body not admitted",
+		"note": "The message was never handed to this agent's turn, so no body was kept."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": {
+		"role": "Incoming Bridge body unavailable: signed out",
+		"note": "Reader must sign in to Team Bridge so an older body can be loaded from the hub. 'Team Bridge' is a product name; do not translate."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": {
+		"role": "Incoming Bridge body unavailable: other account",
+		"note": "The card belongs to a different Team Bridge account than the one signed in now."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": {
+		"role": "Incoming Bridge body unavailable: not a member",
+		"note": "The reader left or was removed from the conversation."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": {
+		"role": "Incoming Bridge body deleted",
+		"note": "The sender or an admin deleted the message."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": {
+		"role": "Incoming Bridge body unavailable: hub cannot backfill",
+		"note": "The hub cannot return this older message's body."
+	},
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": {
+		"role": "Incoming Bridge body unavailable: offline",
+		"note": "Radient (the hub) could not be reached to load this message's body. The open card keeps trying by itself, so do not tell the reader to close or reopen anything. 'Radient' is a product name; do not translate."
+	},
+	"ui.chat.bridgeReceipt.show_more": {
+		"role": "Expand long Bridge body",
+		"note": "Button under a collapsed long message body."
+	},
+	"ui.chat.bridgeReceipt.show_less": {
+		"role": "Collapse long Bridge body",
+		"note": "Button under an expanded long message body."
+	},
+	"ui.chat.bridgeReceipt.more": {
+		"role": "Coalesced Bridge card overflow count",
+		"note": "One card can stand for many messages; only the first 20 are listed and this counts the rest. Use the locale's plural categories.",
+		"placeholders": {
+			"count": "Number of further messages in this card that are not listed."
+		}
+	},
+	"ui.chat.bridgeReceipt.thread_reply": {
+		"role": "Incoming Bridge receipt thread-reply marker",
+		"note": "Shown in the open card's headline after the sender and conversation, joined by ' · ', when the message is a reply inside a thread rather than a top-level post. Short noun phrase, no final punctuation."
 	}
 }

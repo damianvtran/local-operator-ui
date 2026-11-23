@@ -223,6 +223,20 @@ function cases(root) {
 		{ ...desktopInventoryRefusal, cwd: plain, env: {} },
 		{ ...musicEvidenceRefusal, cwd: plain, env: {} },
 		{
+			// `full-suite.yml`'s native-scope step. The refusal path is what this table
+			// can pin without a checkout: an unknown argument must stop the step rather
+			// than exit 0 with no output file, which the workflow would read as unset
+			// scope - and unset scope runs the lane, so a silent pass here would be a
+			// gate that cannot be narrowed AND cannot be trusted.
+			script: "native-scope.mjs",
+			args: ["--nope"],
+			cwd: plain,
+			env: {},
+			status: 2,
+			stdout: /^$/,
+			stderr: /^native-scope: unknown argument: --nope\n$/,
+		},
+		{
 			// Technical help exercises the real shared entry door without sealing
 			// outputs or loading Python/core/native/network/keychain prerequisites.
 			script: "model-uncertainty-native.mjs",
@@ -399,6 +413,18 @@ function cases(root) {
 			status: 1,
 			stdout: /^$/,
 			stderr: /GH_TOKEN is required to resolve the tag/,
+		},
+		{
+			// The workflow passes an empty directory argument after a failed download.
+			// Pin the typed refusal so skipping the guarded CLI cannot look green.
+			script: "signed-update-verdict.mjs",
+			args: [""],
+			cwd: plain,
+			env: { GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_RUN_ID: "12345" },
+			status: 1,
+			stdout:
+				/^Signed update proof: BLOCKED \(workflow_dispatch, run 12345\) — NO_PROOF_ARTIFACT:/,
+			stderr: /^$/,
 		},
 		{
 			script: "release-state.mjs",
@@ -1089,8 +1115,6 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
-	"browser-focus-stability-proof.mjs":
-		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",

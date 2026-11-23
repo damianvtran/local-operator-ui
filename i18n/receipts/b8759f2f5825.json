@@ -1,0 +1,189 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev task-role session d626727c6191, independent i18n audit; not the translator)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Served model as reported by this session's runtime header (anthropic/claude-sonnet-5-5); every catalogue read and verdict below ran on it.",
+ "fallback": "none",
+ "independence": "Separate session from the coder-role translator of these keys; I translated and edited nothing. Read-only on the worktree except this one receipt file.",
+ "instance": "b8759f2f5825",
+ "session": "d626727c6191",
+ "locale": "es",
+ "repo": "damianvtran/local-operator-ui",
+ "branch": "fix/dictation-retake-discard",
+ "head": "8ed6c2f23b884f27c0bc517c8d68335b4e5c0f99",
+ "date": "2026-11-22",
+ "audit_kind": "first audit of four newly added keys (dictation retake/discard copy); keys not re-binds",
+ "result": "clean-with-findings",
+ "status": "passed",
+ "keys_read": 4,
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "reference_sha256": {
+  "glossary": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style_guide": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+ },
+ "reference_source": "git show origin/main:i18n/glossary.md and i18n/style-guides/es.md from ~/workspace/repos/local-operator (root checkout has no i18n/ dir in its working tree; fetched origin/main just before the audit). Hashes are of those git blobs' bytes.",
+ "scope_note": "Only the four named keys were audited; hashes bind the whole namespace files at the head, as the ledger requires. Sibling keys were read for consistency, not audited.",
+ "namespaces": {
+  "ui.common.actions": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "sha256": {
+    "en": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+    "es": "1d4750e417e1faa28a0f67b8c593e4e2888a2ed307d567be9cb101fd80149b3d",
+    "context": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e"
+   },
+   "inputs": {
+    "source": "src/i18n/catalogues/en/ui.common.actions.json",
+    "context": "src/i18n/catalogues/en/ui.common.actions.context.json",
+    "target": "src/i18n/catalogues/es/ui.common.actions.json"
+   },
+   "keys_audited": [
+    "ui.common.actions.discard"
+   ],
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "findings": [
+    {
+     "id": "ES-1",
+     "severity": "nit",
+     "key": "ui.common.actions.discard",
+     "current": "es/ui.common.actions.json lists the key after ui.common.actions.retry (position 8)",
+     "proposed": "move it to position 6, before ui.common.actions.more_info, to mirror en order",
+     "reason": "Wording is unaffected and key order has no runtime or checker effect; purely a catalogue-hygiene mismatch (the other 54 keys keep en order). Recorded, not a blocker."
+    }
+   ],
+   "summary": "es \"Descartar\" is the infinitive action label the style guide requires, matches the locale's 19 other standalone \"Descartar\" labels and its \"Descartar todo/cambios\" family, and pairs with the existing ui.common.actions.retry = \"Reintentar\" as one-word buttons. Not \"Eliminar\"/\"Borrar\": the recording is abandoned, not deleted from anywhere, and the locale reserves Borrar for clear. No wording finding.",
+   "checks": [
+    {
+     "check": "key-set parity both directions",
+     "result": "PASS",
+     "detail": "Key sets of en and es equal in all three namespaces (actions 55/55, composer 90/90, errors 143/143), no missing, no extra. Computed with a Python set diff over the json files at the head."
+    },
+    {
+     "check": "placeholder byte survival",
+     "result": "PASS",
+     "detail": "re.findall of {...} tokens in en vs es is identical for all four audited keys; {reason} appears exactly once, unchanged, in both errors keys; the other two keys carry no placeholder."
+    },
+    {
+     "check": "no bidi / control / odd-space characters",
+     "result": "PASS",
+     "detail": "Scanned all four es values for Unicode categories Cf, Cc and Zs other than U+0020: none. No leading/trailing space, no double space. es is LTR, no manual bidi needed."
+    },
+    {
+     "check": "context sidecar agreement",
+     "result": "PASS",
+     "detail": "Read the en .context.json entries for each key: discard = one-word button beside Reintentar; too_long = states limit then names discard + shorter take, no 'try again'; refused = never a retry instruction, reason verbatim. es satisfies each note."
+    }
+   ]
+  },
+  "ui.chat.composer": {
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "en": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+    "es": "72edaad253bb34f98616b26762fe476c618f0f4e5503e58bfc6938ae4cc71bf6",
+    "context": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1"
+   },
+   "inputs": {
+    "source": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+    "target": "src/i18n/catalogues/es/ui.chat.composer.json"
+   },
+   "keys_audited": [
+    "ui.chat.composer.dictation_failed_too_long_take_kept"
+   ],
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": [],
+   "summary": "\"Error de dictado: la grabación es demasiado larga para enviarla. Descártala y graba una más corta.\" Idiomatic (not a calque of \"too long to send\"), tú imperatives with correct accent (Descártala), same \"Error de dictado:\" lead as siblings dictation_failed_transient{,_take_kept}, \"grabación\" matches the composer's start/send/cancel_recording terms, no \"try again\", does not promise the take can be sent, and \"Descártala\" matches the Descartar button.",
+   "checks": [
+    {
+     "check": "key-set parity both directions",
+     "result": "PASS",
+     "detail": "Key sets of en and es equal in all three namespaces (actions 55/55, composer 90/90, errors 143/143), no missing, no extra. Computed with a Python set diff over the json files at the head."
+    },
+    {
+     "check": "placeholder byte survival",
+     "result": "PASS",
+     "detail": "re.findall of {...} tokens in en vs es is identical for all four audited keys; {reason} appears exactly once, unchanged, in both errors keys; the other two keys carry no placeholder."
+    },
+    {
+     "check": "no bidi / control / odd-space characters",
+     "result": "PASS",
+     "detail": "Scanned all four es values for Unicode categories Cf, Cc and Zs other than U+0020: none. No leading/trailing space, no double space. es is LTR, no manual bidi needed."
+    },
+    {
+     "check": "context sidecar agreement",
+     "result": "PASS",
+     "detail": "Read the en .context.json entries for each key: discard = one-word button beside Reintentar; too_long = states limit then names discard + shorter take, no 'try again'; refused = never a retry instruction, reason verbatim. es satisfies each note."
+    }
+   ]
+  },
+  "ui.common.errors": {
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "en": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+    "es": "71d6e34e4b12a40bef133416b3b949986623c980dd8eb2db7bb04abf25423cea",
+    "context": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2"
+   },
+   "inputs": {
+    "source": "src/i18n/catalogues/en/ui.common.errors.json",
+    "context": "src/i18n/catalogues/en/ui.common.errors.context.json",
+    "target": "src/i18n/catalogues/es/ui.common.errors.json"
+   },
+   "keys_audited": [
+    "ui.common.errors.dictation_refused_take_kept",
+    "ui.common.errors.dictation_refused_take_kept_clipped"
+   ],
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": [],
+   "summary": "\"Error de dictado: {reason}. Descarta la grabación o informa del problema con el registro de la app.\" and the _clipped arm (\"{reason} Descarta…\", no full stop after the placeholder). Both reuse the sibling dictation_unknown{,_clipped} frame verbatim (\"Error de dictado:\" lead, \"informa del problema con el registro de la app\"), swapping only the retry clause for the discard clause, exactly as en does. {reason} preserved byte-for-byte; clipped arm correctly omits the period; no retry instruction added.",
+   "checks": [
+    {
+     "check": "key-set parity both directions",
+     "result": "PASS",
+     "detail": "Key sets of en and es equal in all three namespaces (actions 55/55, composer 90/90, errors 143/143), no missing, no extra. Computed with a Python set diff over the json files at the head."
+    },
+    {
+     "check": "placeholder byte survival",
+     "result": "PASS",
+     "detail": "re.findall of {...} tokens in en vs es is identical for all four audited keys; {reason} appears exactly once, unchanged, in both errors keys; the other two keys carry no placeholder."
+    },
+    {
+     "check": "no bidi / control / odd-space characters",
+     "result": "PASS",
+     "detail": "Scanned all four es values for Unicode categories Cf, Cc and Zs other than U+0020: none. No leading/trailing space, no double space. es is LTR, no manual bidi needed."
+    },
+    {
+     "check": "context sidecar agreement",
+     "result": "PASS",
+     "detail": "Read the en .context.json entries for each key: discard = one-word button beside Reintentar; too_long = states limit then names discard + shorter take, no 'try again'; refused = never a retry instruction, reason verbatim. es satisfies each note."
+    }
+   ]
+  }
+ },
+ "notes": [
+  "No catalogue, ledger, generated file or code was edited. This receipt is the only file written.",
+  "Spanish style-guide points applied: tú register, infinitive action label, sentence case, no '!', no 'few' plural (no plurals here), em dash n/a.",
+  "ES-1 is the only finding; it is a nit about JSON key order, not wording."
+ ]
+}

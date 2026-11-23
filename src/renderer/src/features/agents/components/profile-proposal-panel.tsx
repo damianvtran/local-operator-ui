@@ -25,6 +25,7 @@ import {
 } from "@shared/api/local-operator/profile-proposals";
 import { UnifiedDiff } from "@shared/components/common/unified-diff";
 import { Button } from "@shared/components/ui/button";
+import { userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -41,17 +42,39 @@ function LoadError({ error, retry }: { error: unknown; retry: () => void }) {
 	);
 }
 
+/**
+ * How the page asked to bring a proposal into view (PR #2026 round 1, R3/U5).
+ *
+ * - `request` is a nonce the page bumps on EVERY navigation that names a
+ *   proposal. Without it, Review for the proposal already in `?proposal=`
+ *   produced identical params, so `highlighted`/`detail.data` did not change,
+ *   the effect below did not re-run, and the click did nothing visible (R3).
+ * - `focus` is false for a roster ROW click: the row is a list item, and a
+ *   keyboard user stepping through the roster must not be thrown into the
+ *   detail pane only on rows that happen to carry a mark (U5). The card still
+ *   scrolls into view. The explicit Review button, and a deep link with no
+ *   reveal (a notification, a reload), keep the focus move.
+ */
+export type ProposalReveal = {
+	id: string;
+	request: number;
+	focus: boolean;
+};
+
 function ProposalCard({
 	id,
 	kind,
 	name,
 	highlighted,
+	reveal,
 	onDecided,
 }: {
 	id: string;
 	kind: ProfileProposalKind;
 	name: string;
 	highlighted: boolean;
+	/** The page's reveal request when it is about THIS card, else null. */
+	reveal?: ProposalReveal | null;
 	onDecided: (proposal: ProfileProposalDetail) => void;
 }) {
 	const detail = useProfileProposal(id);
@@ -76,12 +99,15 @@ function ProposalCard({
 		setError(null);
 		editToggle.current?.focus({ preventScroll: true });
 	};
+	const revealRequest = reveal?.request ?? 0;
+	const revealFocus = reveal?.focus ?? true;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `revealRequest` is the TRIGGER (a nonce), not a value the body reads - a repeat Review on the same proposal must re-run the scroll/focus (R3).
 	useEffect(() => {
 		if (highlighted && detail.data) {
 			section.current?.scrollIntoView?.({ block: "nearest" });
-			heading.current?.focus({ preventScroll: true });
+			if (revealFocus) heading.current?.focus({ preventScroll: true });
 		}
-	}, [highlighted, detail.data]);
+	}, [highlighted, detail.data, revealRequest, revealFocus]);
 	if (detail.isPending)
 		return <output>{t("ui.agents.proposals.loading")}</output>;
 	if (detail.isError)
@@ -196,6 +222,8 @@ function ProposalCard({
 							{editing && (
 								<textarea
 									id={`${id}-${change.field}`}
+									// Proposed profile text is the operator's, in any script.
+									dir={userTextDir(drafts[change.field] ?? change.after_text)}
 									value={drafts[change.field] ?? change.after_text ?? ""}
 									onChange={(event) =>
 										setDrafts((current) => ({
@@ -342,11 +370,14 @@ export function ProfileProposalPanel({
 	name,
 	enabled,
 	proposalId,
+	reveal,
 }: {
 	kind: ProfileProposalKind;
 	name: string;
 	enabled: boolean;
 	proposalId?: string | null;
+	/** See `ProposalReveal`; absent = a deep link (scroll and focus). */
+	reveal?: ProposalReveal | null;
 }) {
 	useI18nLocale();
 	const list = useProfileProposals(enabled);
@@ -388,6 +419,7 @@ export function ProfileProposalPanel({
 					kind={kind}
 					name={name}
 					highlighted={proposalId === id}
+					reveal={reveal?.id === id ? reveal : null}
 					onDecided={(proposal) =>
 						setDecisions((current) => ({ ...current, [id]: proposal }))
 					}

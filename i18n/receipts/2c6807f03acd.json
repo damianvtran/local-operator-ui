@@ -1,0 +1,331 @@
+{
+  "schema": 1,
+  "kind": "independent_i18n_audit",
+  "agent": "i18n-auditor",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "2c6807f03acd",
+    "instance": "2c6807f03acd",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "fallback_reason": "none - served model equals requested model",
+  "independence": "Independent auditor (lopdev task child, session 2c6807f03acd); did not author or modify any translation. Translator was a separate LLM translator task agent (job b74c566beb3f).",
+  "instance": "2c6807f03acd",
+  "session": "2c6807f03acd",
+  "locale": "ru",
+  "date": "2026-11-19",
+  "round": 1,
+  "branches": {
+    "c3": {
+      "branch": "fix/i18n-duration-units-state-words",
+      "head": "40831919ca959cf23c9b08e777cee2e7c4d70055",
+      "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+      "base_note": "merge-base with origin/main; origin/main advanced to 32c2b19f84 (mesh-pairing PR #1984) during the audit, which touches no audited namespace",
+      "head_note": "translations audited as uncommitted working-tree bytes at this head; sha256 values below are of those bytes"
+    },
+    "b3": {
+      "branch": "fix/i18n-canonical-transcript-b3a",
+      "head": "9510c61b5ebcbaade7243a27ee572df29252785e",
+      "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+      "base_note": "merge-base with origin/main; origin/main advanced to 32c2b19f84 (mesh-pairing PR #1984) during the audit, which touches no audited namespace",
+      "head_note": "translations audited as uncommitted working-tree bytes at this head; sha256 values below are of those bytes"
+    },
+    "a10": {
+      "branch": "fix/i18n-a10-caption",
+      "head": "486c434e590090ea91f992e80a3b78bfb17ae4b7",
+      "base": "c092a74b45cdc847bc65434f6bede5ea20b0e750",
+      "base_note": "merge-base with origin/main; origin/main advanced to 32c2b19f84 (mesh-pairing PR #1984) during the audit, which touches no audited namespace",
+      "head_note": "translations audited as uncommitted working-tree bytes at this head; sha256 values below are of those bytes"
+    }
+  },
+  "scope": "Independent ru audit of the new keys on C3 (i18n-c3-durations), B3 (i18n-b3a) and A10 (i18n-a10-caption), combined from the per-branch receipts; verdicts unchanged.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [],
+    "nit": [
+      {
+        "id": "RU-W2-1",
+        "severity": "nit",
+        "key": "ui.chat.trace.send.mode.wake",
+        "finding": "«пробуждение» is a noun while its siblings send.mode.now «сразу» and send.mode.quiet «тихо» are adverbs, so the three delivery-mode words read as mixed parts of speech in the tool-row summary. Meaning is correct and matches the ru glossary (wake = пробуждение). Suggestion: «с пробуждением». Disposition: deferred, non-gating NIT."
+      },
+      {
+        "id": "RU-W2-2",
+        "severity": "nit",
+        "key": "ui.chat.canonical.supplement.graphics.show",
+        "finding": "The graphics toggles (graphics.show, graphics.show_all, graphics.show_head, graphics.hide) call a highlights graphic «иллюстрация», while the existing supplement keys of the same namespace use «графика» (supplement.adjust_placeholder «Изменить графику…», supplement.frame.loading «Загрузка графики…», supplement.frame.failed). Justified: «графика» is an uncountable mass noun and cannot take plural counts (*«3 графики» for '3 graphics'), so a countable noun was required; plural/case agreement of «иллюстрация» is correct at every rendered count. Disposition: accepted as is, non-gating NIT; optional later alignment would be «диаграмма»/«график» if the glossary is revisited."
+      }
+    ]
+  },
+  "namespaces": {
+    "ui.chat.run_details": {
+      "namespace": "ui.chat.run_details",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "94df786b4138564c4a8d0d9fc904a541ffbf702288d5dc4e928c20fb3fd2bf0e",
+        "ru": "8371135ded58ca5b970bb4ca393758b4db2c18974ecd8458bf8749ab34b74b2d"
+      },
+      "context_sha256": "bae1bf611940a5f677fad29ce2ddbead8d9df7305195781058c2cb5048e1f96a",
+      "keys_read": 31,
+      "reviewed_keys": [
+        "ui.chat.run_details.state.running",
+        "ui.chat.run_details.tally.running",
+        "ui.chat.run_details.state.queued",
+        "ui.chat.run_details.tally.queued",
+        "ui.chat.run_details.state.paused",
+        "ui.chat.run_details.tally.paused",
+        "ui.chat.run_details.state.interrupted",
+        "ui.chat.run_details.tally.interrupted",
+        "ui.chat.run_details.state.done",
+        "ui.chat.run_details.tally.done",
+        "ui.chat.run_details.state.cancelled",
+        "ui.chat.run_details.tally.cancelled",
+        "ui.chat.run_details.state.gone",
+        "ui.chat.run_details.tally.gone",
+        "ui.chat.run_details.state.failed",
+        "ui.chat.run_details.tally.failed",
+        "ui.chat.run_details.state.cancelled_before_start",
+        "ui.chat.run_details.tally.cancelled_before_start",
+        "ui.chat.run_details.tally.unrecognised",
+        "ui.chat.run_details.todos.tally_closed",
+        "ui.chat.run_details.todos.tally_dropped",
+        "ui.chat.run_details.chip.subagents_running",
+        "ui.chat.run_details.chip.subagents_queued",
+        "ui.chat.run_details.chip.subagents_paused",
+        "ui.chat.run_details.chip.subagents_open",
+        "ui.chat.run_details.chip.jobs_running",
+        "ui.chat.run_details.chip.jobs_queued",
+        "ui.chat.run_details.chip.jobs_paused",
+        "ui.chat.run_details.chip.jobs_open",
+        "ui.chat.run_details.chip.busiest",
+        "ui.chat.run_details.children.count"
+      ]
+    },
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "RU-W2-1",
+            "severity": "nit",
+            "key": "ui.chat.trace.send.mode.wake",
+            "finding": "«пробуждение» is a noun while its siblings send.mode.now «сразу» and send.mode.quiet «тихо» are adverbs, so the three delivery-mode words read as mixed parts of speech in the tool-row summary. Meaning is correct and matches the ru glossary (wake = пробуждение). Suggestion: «с пробуждением». Disposition: deferred, non-gating NIT."
+          }
+        ]
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "ac2ac11314335ce13e6d82d57cedbefd29728ae7a875a4fe160c70808b0d0501",
+        "ru": "200d4ce33774774710e23e548c90535eab9d0e4add8cdfcf6cb1c2032d7dc764"
+      },
+      "context_sha256": "8b6ec8d879078befa314d1d57fc6987e67b4033c3b179dbca044ae6ef9711603",
+      "keys_read": 12,
+      "reviewed_keys": [
+        "ui.chat.trace.send.mode.now",
+        "ui.chat.trace.send.mode.quiet",
+        "ui.chat.trace.send.mode.wake",
+        "ui.chat.trace.address.pid",
+        "ui.chat.trace.address.session",
+        "ui.chat.trace.sessions.peek.search",
+        "ui.chat.trace.sessions.peek.search_around",
+        "ui.chat.trace.sessions.peek.last",
+        "ui.chat.trace.sessions.peek.first",
+        "ui.chat.trace.sessions.peek.digest",
+        "ui.chat.trace.sessions.peek.before",
+        "ui.chat.trace.sessions.peek.around"
+      ]
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "953888ccca37b9962f231cbf49e0aa6d82309d10b7301f18b8f115f2c99bf409",
+        "ru": "d934e300bedf847e802ce742a282b8f6ed4db48408aed67b7baef7b3f2e3fb7f"
+      },
+      "context_sha256": "4e727be0dffc231800579e971ddaf8577fddd0d3e37ab582c1f42ea062b7cb9f",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.common.time.duration.under_minimum",
+        "ui.common.time.duration.over_cap"
+      ]
+    },
+    "ui.canvas": {
+      "namespace": "ui.canvas",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "65ed2c90ec6bc7823f0faaa3e2170b2fab807b5b5966c12378cc9c3adcafe117",
+        "ru": "ace5ff95b84748229f5fec6a757f96bfbaedd044f130cc37ed1fe73e3a40f7e2"
+      },
+      "context_sha256": "cde28dfe54c497d2cf853efa13c4c83c56bb22deaf79bd60af7a84bd8c410773",
+      "keys_read": 9,
+      "reviewed_keys": [
+        "ui.canvas.files.remoteUnsupported",
+        "ui.canvas.artifact.fallback_name.video",
+        "ui.canvas.artifact.fallback_name.image",
+        "ui.canvas.artifact.fallback_name.audio",
+        "ui.canvas.artifact.fallback_name.file",
+        "ui.canvas.artifact.cue.file",
+        "ui.canvas.artifact.cue.image",
+        "ui.canvas.artifact.cue.video",
+        "ui.canvas.artifact.cue.audio"
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "id": "RU-W2-2",
+            "severity": "nit",
+            "key": "ui.chat.canonical.supplement.graphics.show",
+            "finding": "The graphics toggles (graphics.show, graphics.show_all, graphics.show_head, graphics.hide) call a highlights graphic «иллюстрация», while the existing supplement keys of the same namespace use «графика» (supplement.adjust_placeholder «Изменить графику…», supplement.frame.loading «Загрузка графики…», supplement.frame.failed). Justified: «графика» is an uncountable mass noun and cannot take plural counts (*«3 графики» for '3 graphics'), so a countable noun was required; plural/case agreement of «иллюстрация» is correct at every rendered count. Disposition: accepted as is, non-gating NIT; optional later alignment would be «диаграмма»/«график» if the glossary is revisited."
+          }
+        ]
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "sha256": {
+        "en": "473048573913f94d49b553d1dae56317bd14f33d4fe752d15496df9330ac7ceb",
+        "ru": "6492149b4b9520c417c30c171023209072593dbe5081535bd7ef8716a42ebc94"
+      },
+      "context_sha256": "e6a7b43020909c3d02a839b449bb04259a7efa6e65c46a48e4320bf32175b4de",
+      "keys_read": 42,
+      "reviewed_keys": [
+        "ui.chat.canonical.supplement.status.preparing",
+        "ui.chat.canonical.supplement.status.cancelled",
+        "ui.chat.canonical.supplement.status.failed",
+        "ui.chat.canonical.supplement.actions.adjust",
+        "ui.chat.canonical.supplement.cause.provider_quota",
+        "ui.chat.canonical.supplement.cause.provider_auth",
+        "ui.chat.canonical.supplement.cause.provider_transient",
+        "ui.chat.canonical.supplement.cause.provider_timeout",
+        "ui.chat.canonical.supplement.cause.provider_request",
+        "ui.chat.canonical.supplement.cause.provider_content",
+        "ui.chat.canonical.supplement.cause.provider_context",
+        "ui.chat.canonical.supplement.explanation.model_unavailable",
+        "ui.chat.canonical.supplement.explanation.service_unresponsive",
+        "ui.chat.canonical.supplement.explanation.cost_limit",
+        "ui.chat.canonical.supplement.explanation.time_limit",
+        "ui.chat.canonical.supplement.explanation.retryable",
+        "ui.chat.canonical.supplement.details.attempt",
+        "ui.chat.canonical.supplement.details.attempt_http",
+        "ui.chat.canonical.supplement.more_files",
+        "ui.chat.canonical.supplement.graphics.show_all",
+        "ui.chat.canonical.supplement.graphics.show",
+        "ui.chat.canonical.supplement.graphics.show_head",
+        "ui.chat.canonical.supplement.graphics.hide",
+        "ui.chat.canonical.tool_row.detail.deeper_values",
+        "ui.chat.canonical.tool_row.detail.more_lines",
+        "ui.chat.canonical.segment.label.wake",
+        "ui.chat.canonical.segment.label.peer",
+        "ui.chat.canonical.segment.label.job",
+        "ui.chat.canonical.segment.label.ask",
+        "ui.chat.canonical.segment.group.peer",
+        "ui.chat.canonical.segment.group.wake",
+        "ui.chat.canonical.segment.group.monitor",
+        "ui.chat.canonical.segment.group.job",
+        "ui.chat.canonical.segment.group.mixed",
+        "ui.chat.canonical.turn_summary.actions_at_least",
+        "ui.chat.canonical.turn_summary.messages_at_least",
+        "ui.chat.canonical.condense.turn_condensed",
+        "ui.chat.canonical.condense.at_least",
+        "ui.chat.canonical.condense.sentence",
+        "ui.chat.canonical.condense.sentence_bare",
+        "ui.chat.canonical.checkpoint_jump.miss",
+        "ui.chat.canonical.tool_row.detail.empty"
+      ]
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      },
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "87ad5d18f5fec8f5f4e41f9e338c3d83c315162181a16d44f9b414276050b068",
+        "ru": "1e8e5cffdafbc6a459ccd12977e4cf5931369400f29ec5a082f0a400dfb6ecb9"
+      },
+      "context_sha256": "3e075661829d1e9bcac2db476c6b762e9aa6ebaf220fe462b184adc5f6981c49",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.header_identity.agent_seat_closed_caption_known_speaker",
+        "ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker"
+      ]
+    }
+  }
+}

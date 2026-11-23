@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "auditor": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "agent": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, fix and verdict in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no provider fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (f2e66f37f9c0) from the PR coder and from whoever translated the 16 keys. The verdict was rebuilt from the English source, the en context sidecar, the render sites in dictated-send.ts, sibling keys in the shipped catalogue, origin/main i18n/glossary.md and the locale style guide; the commit message was not used as evidence of translation quality.",
+ "instance": "f2e66f37f9c0-composer-dictated-zh-cn",
+ "session": "f2e66f37f9c0",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.composer",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (catalogue edits by this audit are uncommitted on top)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "audit_kind": "delta audit of 16 added keys; the other 73 keys are byte-identical to the previously audited row",
+ "scope": "ui.chat.composer: the 16 ui.chat.composer.dictated_away.* keys",
+ "delta_keys_audited": [
+  "ui.chat.composer.dictated_away.not_sent",
+  "ui.chat.composer.dictated_away.not_sent_body",
+  "ui.chat.composer.dictated_away.transcription_failed",
+  "ui.chat.composer.dictated_away.transcription_failed_body",
+  "ui.chat.composer.dictated_away.reason_edited",
+  "ui.chat.composer.dictated_away.reason_command",
+  "ui.chat.composer.dictated_away.reason_gate",
+  "ui.chat.composer.dictated_away.reason_secret",
+  "ui.chat.composer.dictated_away.reason_no_model",
+  "ui.chat.composer.dictated_away.reason_unavailable",
+  "ui.chat.composer.dictated_away.reason_not_ready",
+  "ui.chat.composer.dictated_away.open_chat",
+  "ui.chat.composer.dictated_away.draft_label",
+  "ui.chat.composer.dictated_away.untitled_chat",
+  "ui.chat.composer.dictated_away.origin_gone",
+  "ui.chat.composer.dictated_away.origin_gone_body"
+ ],
+ "sha256": {
+  "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+  "zh-CN": "d165dc4ec66f7824bd39259997a38b5bf2ef087c06e0e772bac49547217a8ccb",
+  "context": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6"
+ },
+ "reference_sha256": {
+  "glossary (origin/main:i18n/glossary.md)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (origin/main:i18n/style-guides/zh-CN.md)": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6"
+ },
+ "findings": [
+  {
+   "id": "ZH-DA-1",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.* (open_chat, draft_label, untitled_chat, not_sent, not_sent_body, origin_gone, origin_gone_body, reason_edited, reason_gate, reason_no_model, reason_unavailable, reason_not_ready)",
+   "summary": "Wrong noun for 'chat'. The glossary renders chat as 对话 (temporary chat → 临时对话) and shipped zh-CN says 对话 646 times against 聊天 15 (mostly 聊天机器人, a header preview). The identical en strings ship as 打开对话 (ui.library.composer.open_chat), 新对话 (ui.chat.header.new_chat) and 未命名对话 (ui.chat.canonical.untitled). The translator used 聊天 throughout (打开聊天, 新聊天, 无标题聊天, 该聊天…), which would put two words for one thing in the same toast/composer (e.g. 'Open chat' next to the sidebar's 新对话). All twelve affected values changed 聊天/无标题聊天 → 对话/未命名对话; wording otherwise untouched.",
+   "before": "打开聊天 / 新聊天 / 无标题聊天 / 该聊天 …",
+   "after": "打开对话 / 新对话 / 未命名对话 / 该对话 …",
+   "resolution": "fixed by auditor in this change"
+  }
+ ],
+ "verified": [
+  "key set equal en (89 = 73 carried + 16 added; zh-CN key ORDER already differed from en at HEAD~1, parity is by set); placeholders {title}/{reason} exact; no plural arms in the delta; no bidi/zero-width characters, no spaces at all around CJK/Latin runs; NFC",
+  "NEVER claims a send: '未发送到“{title}”：…' / '未发送：…' + '听写内容已保存在该对话的草稿中' (the text is in the draft); origin_gone says '听写内容也随之丢失' (lost); transcription_failed says '录音未保留——请重新录制'. No string says 已发送",
+  "style guide: 你-free verb-forward phrasing (no pronoun), 请 on the next-step clause of the error body (请重新录制) and not on labels, full-width ： 。 and “ ” quotes, —— dash, no 请不要 / ！; reason_* clauses carry no final 。 and read after '：'",
+  "terms: 听写 (dictation) and 转写 (transcribe) as shipped (ui.common.errors.dictation_*, ui.chat.composer.insert_transcript); 凭据 for credential as shipped (63 uses; reason_secret 这些文字看起来像凭据); 对话 for chat after the fix; 草稿 as shipped",
+  "carried 73 keys byte-identical to the last audited row (68a3f14dde44-tc-zh-cn): ledger target_sha256 equals HEAD~1's blob; delta is the 16 added keys only; en changes none",
+  "render sites read: dictated-send.ts (same as fr receipt)"
+ ]
+}

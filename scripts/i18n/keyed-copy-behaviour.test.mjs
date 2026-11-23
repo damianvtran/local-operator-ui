@@ -157,7 +157,7 @@ const english = {
 };
 
 test("the English baseline is what the shipped copy says, not a marker", () => {
-	assert.equal(english.sections.length, 4);
+	assert.equal(english.sections.length, 5);
 	for (const key of english.sections) {
 		assert.match(key, /^ui\.chat\.sidebar_view\.section\./);
 	}

@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "auditor": "codex",
+ "agent": "codex",
+ "model": "gpt-5.6-sol",
+ "model_provenance": "Codex MCP, requested gpt-5.6-sol; the served model is not independently verifiable (no session header returned). Read-only; strings, English source, context notes, style-guide excerpt and glossary lines pasted into the prompt; it edited nothing.",
+ "instance": "8cca634d2d29-fold3-vi",
+ "locale": "vi",
+ "branch": "feat/busy-delivery-desktop",
+ "head": "merge of origin/main d8ff920195 into 0526fd6c2b (lane session 8cca634d2d29), on the bytes on disk at assembly time",
+ "date": "2026-11-23",
+ "status": "passed",
+ "verdict": "PASS - 0 blocker/major, 0 minor/nit",
+ "audit_kind": "DELTA audit of the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two audited parents (catalogue-union-parity: no value differences), so their audits stand in the superseded rows.",
+ "independence": "A different agent and model family from the translators (anthropic/claude-sonnet-5-5, self-reported). The coder that assembled this receipt neither translated nor audited. Same-lane corrections before this audit: es and fr keycap names made consistent with origin/main (es Enter->Intro in 13 strings; fr (Enter) -> (Entrée) and Esc -> Échap in the two steer hints), after a first pass found them MAJOR against the established vocabulary; round 1 for es/fr had been run with a prompt that wrongly demanded English keycaps and its findings on that point were discarded.",
+ "keys_audited": [
+  "ui.settings.shortcuts.action.send_both",
+  "ui.settings.shortcuts.action.send_queue",
+  "ui.settings.shortcuts.action.send_steer",
+  "ui.settings.shortcuts.category.sending",
+  "ui.settings.shortcuts.category.sending_description",
+  "ui.settings.shortcuts.reserved.enter",
+  "ui.settings.shortcuts.capture.send_newline",
+  "ui.settings.shortcuts.capture.send_needs_modifier",
+  "ui.settings.shortcuts.capture.panel_enter",
+  "ui.settings.shortcuts.capture.send_prompt",
+  "ui.settings.shortcuts.row_help.send_steer",
+  "ui.settings.shortcuts.row_help.send_queue",
+  "ui.settings.shortcuts.row_help.send_both",
+  "ui.chat.composer.placeholder.waiting_steer",
+  "ui.chat.composer.placeholder.waiting_queue",
+  "ui.chat.composer.placeholder.waiting_both",
+  "ui.chat.composer.steer_hint_steer",
+  "ui.chat.composer.steer_hint_queue",
+  "ui.chat.composer.steer_hint_both",
+  "ui.chat.composer.placeholder.waiting",
+  "ui.chat.composer.steer_hint",
+  "ui.chat.canonical.send_failure.delivery_unsupported",
+  "ui.chat.canonical.transcript.busy_wait.steer",
+  "ui.chat.canonical.transcript.busy_wait.queue",
+  "ui.chat.canonical.transcript.busy_wait.both",
+  "ui.chat.canonical.transcript.busy_wait.joined",
+  "ui.chat.canonical.transcript.busy_wait.deferred"
+ ],
+ "namespaces": {
+  "ui.settings.shortcuts": {
+   "status": "passed",
+   "en_sha256": "2a79b49cdfb97ac2d5628b9012e7fca6b2d646f802da0a8b3c07e8a03abe0821",
+   "vi_sha256": "559bd058780892e0f362b59c3da63d612815e2078038a6ef62793e96fd4b4bb8",
+   "findings": []
+  },
+  "ui.chat.composer": {
+   "status": "passed",
+   "en_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
+   "vi_sha256": "edc2b72531510157b775c3e331b995e1dfcf60e2ada2df2e97e6c659c3ba4c5b",
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "status": "passed",
+   "en_sha256": "81c4d322e7be2af66bd872a750887e810e00d3221070dfd60f0b4c89fffbd52c",
+   "vi_sha256": "0f706d77403463710b903d0fbc1deda827807e65e61fe38e9808a0feff113f33",
+   "findings": []
+  }
+ },
+ "notes": "All translations preserve the delivery-mode distinctions, key names, punctuation, register, and placeholder requirements; no BLOCKER or MAJOR issues found."
+}

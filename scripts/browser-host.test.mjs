@@ -73,6 +73,7 @@ const bundle = await build({
 			// main process applies are importable here rather than re-spelled.
 			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
+			'export * from "./src/main/browser/extensions/passkey-custody";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/native-passkey-notice";',
 			'export { WebauthnChooser } from "./src/main/webauthn";',
@@ -182,6 +183,9 @@ const {
 	TAB_ACTIONS_MENU_ACTION_IDS,
 	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
+	PasskeyCustody,
+	PASSKEY_PROMPT_DOCUMENTS,
+	CUSTODY_REFUSAL_REASON,
 	BrowserHost,
 	NativePasskeyNotice,
 	WebauthnChooser,
@@ -3179,10 +3183,8 @@ function makeHost(overrides = {}) {
 		dir: join(root, `approvals-host-${Math.random()}`),
 	});
 	const ownership = new OwnershipLedger({
-		closeTab: async (token) => {
-			registry.destroy(registry.requireSurface(token).tabId);
-			return true;
-		},
+		closeTab: async (token) =>
+			registry.closeOwnedSurface(token, () => approvals.forgetDocument(token)),
 		isLive: (token) => {
 			try {
 				registry.requireSurface(token);
@@ -3482,6 +3484,137 @@ test("real dispatcher records allocation, fences peers, recovers and finishes ex
 		(await host.dispatch("owner_finish", owner, "finish-retry")).state,
 		"closed",
 	);
+});
+
+test("owner_finish stays pending during a passkey prompt and retries the exact allocation", async () => {
+	const { host, registry, removed } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "held-allocation",
+	};
+	const url = "https://approved.example/";
+	await host.dispatch("request_access", { ...owner, url }, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
+	const record = registry.requireSurface(tab);
+	const human = registry.create({ owner: "user", sessionId: null });
+	const custody = new PasskeyCustody();
+	registry.setCustodyGate(custody);
+	const [provider, [document]] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	const { tabId } = record;
+	const { id: webContentsId } = record.view.webContents;
+	let frameGone = false;
+	assert.equal(
+		custody.admit({
+			tabId,
+			webContentsId,
+			url: `chrome-extension://${provider}${document}`,
+			isInstalled: (id) => id === provider,
+			frame: { isDestroyed: () => frameGone },
+		}),
+		true,
+	);
+	assert.deepEqual(await host.dispatch("owner_finish", owner, "finish"), {
+		state: "pending",
+	});
+	assert.equal(registry.byWebContents(webContentsId), record);
+	assert.deepEqual(removed, []);
+	assert.equal(custody.isHeld(webContentsId), true);
+
+	const resumed = { ...owner, owner_generation: "g2" };
+	const recovered = await host.dispatch(
+		"owner_recover",
+		{ ...resumed, previous_generation: owner.owner_generation },
+		"resume",
+	);
+	assert.equal(
+		recovered.tab,
+		"",
+		"custody must not disclose a reusable handle",
+	);
+	await assert.rejects(() => host.dispatch("owner_finish", owner, "stale"), {
+		code: "owner_refused",
+	});
+	await assert.rejects(
+		() => host.dispatch("read", { ...resumed, tab }, "held-read"),
+		(error) => error.data?.reason === CUSTODY_REFUSAL_REASON,
+	);
+	frameGone = true;
+	assert.deepEqual(
+		custody.release({
+			tabId,
+			at: custody.viewForTab(tabId).at,
+			hasProviderFrame: () => false,
+			reload: () => assert.fail("no live prompt remains to reload"),
+		}),
+		{ ok: true, reloaded: false },
+	);
+	const wrongNonce = `${tab.slice(0, -1)}${tab.endsWith("a") ? "b" : "a"}`;
+	await assert.rejects(
+		() => host.dispatch("close", { ...resumed, tab: wrongNonce }, "nonce"),
+		{ code: "tab_closed", data: { reason: "unknown_handle" } },
+	);
+	assert.equal(
+		registry.closeOwnedSurface(wrongNonce, () => assert.fail("wrong nonce")),
+		true,
+		"a nonce mismatch is indistinguishable from an absent surface",
+	);
+	await host.dispatch(
+		"owner_finish",
+		{ ...resumed, owner_proof: "b".repeat(40) },
+		"wrong-proof",
+	);
+	assert.deepEqual(removed, [], "another proof must not close this allocation");
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "retry"), {
+		state: "closed",
+	});
+	assert.deepEqual(removed, [{ tabId, webContentsId }]);
+	assert.deepEqual(registry.list(), [human]);
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "again"), {
+		state: "closed",
+	});
+	assert.equal(removed.length, 1);
+});
+
+test("owner_finish keeps protected documents and retained scopes distinct from closed", async () => {
+	const { host, registry, removed } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "protected-allocation",
+	};
+	const url = "https://approved.example/";
+	await host.dispatch("request_access", { ...owner, url }, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
+	const record = registry.requireSurface(tab);
+	for (const protectedUrl of [
+		"about:blank#lop-extensions",
+		"chrome-extension://test/page.html",
+	]) {
+		record.view.webContents.url = protectedUrl;
+		assert.deepEqual(await host.dispatch("owner_finish", owner, "finish"), {
+			state: "pending",
+		});
+		assert.deepEqual(removed, []);
+	}
+	record.view.webContents.url = url;
+	await host.dispatch(
+		"owner_retain",
+		{ ...owner, reason: "keep for review" },
+		"retain",
+	);
+	assert.deepEqual(
+		await host.dispatch("owner_finish", owner, "finish-retained"),
+		{
+			state: "retained",
+		},
+	);
+	assert.deepEqual(registry.list(), [record]);
+	assert.deepEqual(removed, []);
 });
 
 test("current unapproved document refuses every driven read and input after autonomous navigation", async () => {
@@ -4198,11 +4331,18 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 	// experiment that measures "the debugger attachment" against the Cloudflare
 	// stall. Enabled by this call, disabled by this call.
 	const { host, cdp } = makeHost();
+	// `open_on_approval: false`: this test is about the navigation's frame-tree gate, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	const params = {
 		url: "https://approved.example/",
 		requester: "session:alice",
 	};
-	await host.dispatch("request_access", params, "request");
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	await host.dispatch("open", params, "open");
 	const count = (method) =>
@@ -4224,7 +4364,11 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 		if (method === "Page.enable") throw new Error("no document");
 		return send(contents, method, callParams);
 	};
-	await failing.host.dispatch("request_access", params, "request");
+	await failing.host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	failing.host.respondToConsent(
 		failing.host.chromeState().pendingConsent[0].entryId,
 		"site",
@@ -4248,7 +4392,11 @@ test("the gate disables the Page domain it enabled, and nothing else", async () 
 		if (method === "Page.getFrameTree") throw new Error("no frame tree");
 		return sendRead(contents, method, callParams);
 	};
-	await readFails.host.dispatch("request_access", params, "request");
+	await readFails.host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	readFails.host.respondToConsent(
 		readFails.host.chromeState().pendingConsent[0].entryId,
 		"site",
@@ -4297,11 +4445,18 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 		return send(contents, method, params);
 	};
 	installHeldValue(cdp);
+	// `open_on_approval: false`: this test is about which actions arm the per-hop gate, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	const params = {
 		url: "https://approved.example/",
 		requester: "session:alice",
 	};
-	await host.dispatch("request_access", params, "request");
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"request",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "open");
 	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
@@ -4373,9 +4528,12 @@ test("native handover grants only its requester a fenced owner allocation", asyn
 	await assert.rejects(() => host.dispatch("open", owner, "unapproved"), {
 		code: "origin_not_allowed",
 	});
+	// `open_on_approval: false`: this test is about adopting a natively handed-over tab, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	await host.dispatch(
 		"request_access",
-		{ ...owner, url: "https://approved.example/" },
+		{ ...owner, url: "https://approved.example/", open_on_approval: false },
 		"request",
 	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
@@ -5340,7 +5498,14 @@ test("screenshot keeps the {data, url, title} shape Python validates", async () 
 test("a background tab captures without a route, without activation, through the product's own path", async () => {
 	const { host, registry, cdp } = makeHost();
 	const params = { url: "https://approved.example/", requester: "session:a" };
-	await host.dispatch("request_access", params, "r1");
+	// `open_on_approval: false`: this test is about capturing a BACKGROUND agent tab, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
+	await host.dispatch(
+		"request_access",
+		{ ...params, open_on_approval: false },
+		"r1",
+	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "r2");
 	const record = registry.requireSurface(opened.tab);
@@ -12070,9 +12235,16 @@ test("zoom reset precedes handover capability and agent screenshot/read keep 100
 		allocation_id: "a2-geometry",
 		tab: token,
 	};
+	// `open_on_approval: false`: this test is about the handed-over tab's zoom and geometry, not about the Allow
+	// opening the approved page (covered by the approval-pickup tests), so it keeps
+	// the pre-pickup flow where `open` navigates a fresh agent tab.
 	await host.dispatch(
 		"request_access",
-		{ requester: owner.requester, url: "https://approved.example/" },
+		{
+			requester: owner.requester,
+			url: "https://approved.example/",
+			open_on_approval: false,
+		},
 		"req",
 	);
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
@@ -13596,5 +13768,555 @@ test("the continue-in-user-tab IPC channel admits only the app renderer and pass
 		assert.deepEqual(calls, [[3, 1]]);
 	} finally {
 		unregisterBrowserIpc();
+	}
+});
+
+// ---- approving a site opens it for the operator (the approval pickup) -------
+//
+// The operator's report: an agent asked them to "approve and sign in", they
+// approved, and there was no page to sign in on, because Allow only wrote a
+// grant. Allow now opens the URL the agent asked for in a NEW USER tab, marked
+// for the requester, and that session's next plain `open` continues in it.
+
+const PICKUP_URL = "https://approved.example/login?next=%2Fhome";
+
+/** An approvals store on a clock the test moves, for the TTL cases. */
+function clockedApprovals() {
+	const clock = { now: Date.now() };
+	const approvals = new ApprovalStore({
+		dir: join(root, `approvals-pickup-${Math.random()}`),
+		now: () => clock.now,
+	});
+	return { approvals, clock };
+}
+
+/** Raise `requester`'s request and return its pending entry id. */
+async function raisePickup(
+	host,
+	requester = "session:alice",
+	url = PICKUP_URL,
+) {
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester, url },
+		`req-${Math.random()}`,
+	);
+	assert.equal(pending.state, "pending");
+	return pending.entry_id;
+}
+
+test("approval pickup: Allow opens the full requested URL in one active user tab marked for the requester", async () => {
+	const { host, registry } = makeHost();
+	const entryId = await raisePickup(host);
+	const answer = host.respondToConsent(entryId, "once");
+	assert.equal(answer.state, "allowed");
+	assert.equal(registry.count(), 1, "exactly one tab was opened");
+	const [tab] = registry.list();
+	assert.equal(tab.owner, "user", "the operator's tab, not an agent's");
+	assert.equal(tab.nonce, null, "no capability exists before pickup");
+	assert.equal(
+		tab.sessionId,
+		"alice",
+		"it lives in the requester's conversation",
+	);
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"the opened tab is the presented one",
+	);
+	assert.equal(
+		answer.activeTabId,
+		tab.tabId,
+		"the card's answer already shows it",
+	);
+	assert.deepEqual(
+		tab.view.webContents.loaded,
+		[PICKUP_URL],
+		"path and query kept",
+	);
+	assert.equal(tab.approvalPickup.requester, "session:alice");
+	assert.equal(tab.approvalPickup.origin, "https://approved.example");
+	const awaited = await host.dispatch(
+		"await_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"await",
+	);
+	assert.equal(awaited.state, "allowed");
+	assert.equal(awaited.opened_tab, true);
+	const again = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"again",
+	);
+	assert.equal(again.state, "allowed");
+	assert.equal(again.opened_tab, true);
+	// Another session's answer for the same origin does not claim a tab it cannot pick up.
+	const other = await host.dispatch(
+		"await_access",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"await-bob",
+	);
+	assert.equal(other.opened_tab, undefined);
+});
+
+test("approval pickup: Deny, an expired request and a cancelled one open nothing", async () => {
+	{
+		const { host, registry } = makeHost();
+		host.respondToConsent(await raisePickup(host), "deny");
+		assert.equal(registry.count(), 0, "deny");
+	}
+	{
+		const { approvals, clock } = clockedApprovals();
+		const { host, registry } = makeHost({ approvals });
+		const entryId = await raisePickup(host);
+		clock.now += ACCESS_REQUEST_TTL_MS + 1;
+		assert.throws(() => host.respondToConsent(entryId, "once"), /expired/);
+		assert.equal(registry.count(), 0, "expired");
+	}
+	{
+		const { host, registry } = makeHost();
+		const entryId = await raisePickup(host);
+		await host.dispatch(
+			"cancel_access",
+			{ requester: "session:alice", url: PICKUP_URL },
+			"cancel",
+		);
+		assert.throws(
+			() => host.respondToConsent(entryId, "once"),
+			/no longer pending/,
+		);
+		assert.equal(registry.count(), 0, "cancelled");
+	}
+});
+
+test("approval pickup: a once grant is adopted in place, spent exactly once, with no navigation", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	// The operator signed in; the IdP sent them back to a different same-origin page.
+	tab.view.webContents.url = "https://approved.example/home";
+	const owner = { requester: "session:alice" };
+	const opened = await host.dispatch(
+		"open",
+		{ ...owner, url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(registry.count(), 1, "no second tab");
+	assert.equal(
+		opened.tab,
+		surfaceToken(tab),
+		"the same tab, with a full handle",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(opened.via, "once_grant");
+	assert.equal(
+		opened.url,
+		"https://approved.example/home",
+		"where the operator left it",
+	);
+	assert.equal(opened.requested_url, PICKUP_URL);
+	assert.deepEqual(tab.view.webContents.loaded, [PICKUP_URL], "no new loadURL");
+	assert.equal(tab.owner, "agent");
+	assert.equal(tab.handedTo, "alice");
+	assert.equal(tab.handedFrom, "user", "the hand-over chip and revoke apply");
+	assert.equal(tab.approvalPickup, null, "the marker is spent");
+	assert.equal(
+		(await host.dispatch("read", { ...owner, tab: opened.tab }, "read")).url,
+		"https://approved.example/home",
+	);
+	// The grant was spent by that pickup: a second plain `open` is refused.
+	await assert.rejects(
+		() => host.dispatch("open", { ...owner, url: PICKUP_URL }, "second"),
+		{ code: "origin_not_allowed" },
+	);
+	assert.equal(registry.count(), 1);
+});
+
+test("approval pickup: another session does not adopt, and sees no handle for the waiting tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	const listing = await host.dispatch(
+		"tabs",
+		{ requester: "session:bob" },
+		"tabs",
+	);
+	assert.equal(listing.tabs.length, 1);
+	assert.equal(
+		listing.tabs[0].tab,
+		"",
+		"no handle, redacted or full, before pickup",
+	);
+	const bobs = await host.dispatch(
+		"open",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"bob",
+	);
+	assert.notEqual(bobs.tab, surfaceToken(tab));
+	assert.equal(bobs.adopted, undefined);
+	assert.equal(registry.count(), 2, "bob got his own agent tab");
+	assert.equal(tab.owner, "user");
+	assert.ok(tab.approvalPickup, "alice's pickup is still waiting");
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"bob's open did not switch tabs",
+	);
+});
+
+test("approval pickup: an operator still off-origin keeps their tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	tab.view.webContents.url = "https://login.idp.example/authorize";
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"open",
+	);
+	assert.equal(opened.adopted, undefined);
+	assert.notEqual(opened.tab, surfaceToken(tab));
+	assert.equal(registry.count(), 2);
+	assert.equal(tab.owner, "user", "the operator's tab is untouched");
+	assert.equal(tab.view.webContents.url, "https://login.idp.example/authorize");
+	assert.deepEqual(
+		tab.view.webContents.loaded,
+		[PICKUP_URL],
+		"never navigated away",
+	);
+});
+
+test("approval pickup: a durable grant adopts once, and a later open makes a new tab", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "site");
+	const [tab] = registry.list();
+	const first = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"first",
+	);
+	assert.equal(first.adopted, "approval");
+	assert.equal(first.via, "stored_grant");
+	assert.equal(first.tab, surfaceToken(tab));
+	const second = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"second",
+	);
+	assert.equal(second.adopted, undefined);
+	assert.notEqual(second.tab, first.tab);
+	assert.equal(registry.count(), 2);
+});
+
+test("approval pickup: a failed page load or a refused tab never turns Allow into an error", async () => {
+	{
+		const logs = [];
+		const { host, registry, approvals } = makeHost({
+			log: (m) => logs.push(m),
+		});
+		const create = registry.create.bind(registry);
+		registry.create = (options) => {
+			const record = create(options);
+			record.view.webContents.loadURL = async (url) => {
+				throw Object.assign(
+					new Error(`ERR_NAME_NOT_RESOLVED (-105) loading '${url}'`),
+					{
+						code: "ERR_NAME_NOT_RESOLVED",
+					},
+				);
+			};
+			return record;
+		};
+		const answer = host.respondToConsent(await raisePickup(host), "once");
+		assert.equal(answer.state, "allowed");
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(
+			approvals.accessStateFor(PICKUP_URL, "session:alice").state,
+			"allowed",
+			"the once grant stands, unspent by the failed open",
+		);
+		const line = logs.find((m) =>
+			m.includes("could not open the approved page"),
+		);
+		assert.ok(line, "the failure is logged");
+		assert.match(line, /\[URL omitted\]: ERR_NAME_NOT_RESOLVED/);
+		assert.ok(!line.includes("/login"), "the path and query are not logged");
+	}
+	{
+		const { host, registry } = makeHost({ log: () => {} });
+		registry.create = () => {
+			throw Object.assign(new Error("full"), { code: "tab_limit" });
+		};
+		const answer = host.respondToConsent(await raisePickup(host), "site");
+		assert.equal(answer.state, "allowed");
+	}
+});
+
+test("approval pickup: a re-approval brings back the waiting tab instead of opening another", async () => {
+	const { approvals, clock } = clockedApprovals();
+	const { host, registry } = makeHost({ approvals });
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	// The operator wandered to another tab, and the once grant lapsed (sign-in took
+	// longer than its 10 minutes) while the pickup marker (15 minutes) is live.
+	await host.newTab(null);
+	assert.notEqual(registry.activeTabId, tab.tabId);
+	clock.now += 11 * 60_000;
+	// The operator finished on a post-login callback whose query carries a code.
+	tab.view.webContents.url =
+		"https://approved.example/callback?code=OPERATOR-SECRET";
+	// R1: the pickup's own refusal falls through, so the agent is refused with the
+	// URL it asked for (never the operator's callback URL) and is told the page is
+	// still waiting (U1).
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"late",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opened_tab === true &&
+			!JSON.stringify(error.data).includes("OPERATOR-SECRET"),
+	);
+	assert.equal(tab.owner, "user", "the refused pickup left the tab alone");
+	assert.ok(tab.approvalPickup, "and its marker live");
+	// U1: the re-request's pending answer says the page is already open.
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"re-request",
+	);
+	assert.equal(pending.state, "pending");
+	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, true);
+	// Another session's pending request for the same origin has no tab waiting.
+	const bobs = await host.dispatch(
+		"request_access",
+		{ requester: "session:bob", url: PICKUP_URL },
+		"bob-request",
+	);
+	assert.equal(bobs.state, "pending");
+	assert.equal(bobs.opened_tab, undefined);
+	host.respondToConsent(pending.entry_id, "once");
+	assert.equal(registry.count(), 2, "no second sign-in tab");
+	assert.equal(
+		registry.activeTabId,
+		tab.tabId,
+		"the waiting tab is shown again",
+	);
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.tab, surfaceToken(tab));
+	assert.equal(opened.adopted, "approval");
+});
+
+test("approval pickup: an opted-out re-request is not told a page will come back", async () => {
+	const { approvals, clock } = clockedApprovals();
+	const { host } = makeHost({ approvals });
+	host.respondToConsent(await raisePickup(host), "once");
+	clock.now += 11 * 60_000;
+	// The waiting tab is live, but this request's Allow opens (and brings back)
+	// nothing, so the pending answer must not promise it.
+	const optedOut = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL, open_on_approval: false },
+		"opt-out",
+	);
+	assert.equal(optedOut.state, "pending");
+	assert.equal(optedOut.opens_on_approval, undefined);
+	assert.equal(optedOut.opened_tab, undefined);
+});
+
+test("approval pickup: the operator's find bar and zoom are reset before the tab passes to the agent", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const [tab] = registry.list();
+	const calls = [];
+	const prepare = host.pageControls.prepareAgent.bind(host.pageControls);
+	host.pageControls.prepareAgent = (record) => {
+		// Recorded with the owner AT THE CALL: the app's own hand-over prepares
+		// while the tab is still the operator's, before `registry.handOver`.
+		calls.push([record.tabId, record.owner, record.nonce]);
+		prepare(record);
+	};
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.deepEqual(calls, [[tab.tabId, "user", null]]);
+});
+
+test("approval pickup: a redirect that aborts the first load is not logged as a failed open", async () => {
+	const logs = [];
+	const { host, registry } = makeHost({ log: (m) => logs.push(m) });
+	const create = registry.create.bind(registry);
+	registry.create = (options) => {
+		const record = create(options);
+		record.view.webContents.loadURL = async (url) => {
+			// The page replaced its own navigation before load (an IdP redirect).
+			record.view.webContents.url = "https://approved.example/sso";
+			throw Object.assign(new Error(`ERR_ABORTED (-3) loading '${url}'`), {
+				code: "ERR_ABORTED",
+				errno: -3,
+			});
+		};
+		return record;
+	};
+	const answer = host.respondToConsent(await raisePickup(host), "once");
+	assert.equal(answer.state, "allowed");
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(
+		logs.filter((m) => m.includes("could not open the approved page")).length,
+		0,
+		"the page did open",
+	);
+	const [tab] = registry.list();
+	assert.ok(tab.approvalPickup, "still waiting for the requester");
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"pickup",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(opened.tab, surfaceToken(tab));
+});
+
+test("approval pickup: the cap is checked before admission, so a full host does not spend a once grant", async () => {
+	const { host, registry } = makeHost();
+	host.respondToConsent(await raisePickup(host), "once");
+	const fillers = [];
+	for (let index = 0; index < MAX_AGENT_TABS; index += 1)
+		fillers.push(registry.create({ owner: "agent", sessionId: "carol" }));
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"full",
+			),
+		{ code: "tab_limit" },
+	);
+	registry.destroy(fillers[0].tabId);
+	const opened = await host.dispatch(
+		"open",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"room",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(
+		opened.via,
+		"once_grant",
+		"the grant survived the refused attempt",
+	);
+});
+
+test("approval pickup: with an ownership proof, owner_recover returns the adopted tab", async () => {
+	const { host, registry } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "allocation-pickup",
+	};
+	await host.dispatch("request_access", { ...owner, url: PICKUP_URL }, "req");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
+	const opened = await host.dispatch(
+		"open",
+		{ ...owner, url: PICKUP_URL },
+		"open",
+	);
+	assert.equal(opened.adopted, "approval");
+	assert.equal(
+		(await host.dispatch("owner_recover", owner, "recover")).tab,
+		opened.tab,
+	);
+	assert.equal(registry.list()[0].allocationId, "allocation-pickup");
+	assert.equal(
+		(await host.dispatch("owner_finish", owner, "finish")).state,
+		"closed",
+	);
+	assert.equal(registry.count(), 0);
+});
+
+test("approval pickup: the refusal and the pending answer advertise it, only for sessions", async () => {
+	const { host, registry } = makeHost();
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"open",
+				{ requester: "session:alice", url: PICKUP_URL },
+				"o",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opens_on_approval === true &&
+			error.data.opened_tab === undefined,
+	);
+	const pending = await host.dispatch(
+		"request_access",
+		{ requester: "session:alice", url: PICKUP_URL },
+		"r",
+	);
+	assert.equal(pending.opens_on_approval, true);
+	assert.equal(pending.opened_tab, undefined, "no tab is waiting yet");
+	// A `call:*` requester (no session) can never pick a tab up: it is not told one
+	// opens, and its Allow opens nothing.
+	await assert.rejects(
+		() => host.dispatch("open", { url: PICKUP_URL }, "call-o"),
+		(error) =>
+			error.code === "origin_not_allowed" &&
+			error.data.url === PICKUP_URL &&
+			error.data.opens_on_approval === undefined,
+	);
+	const call = await host.dispatch(
+		"request_access",
+		{ url: "https://other.example/x" },
+		"call-r",
+	);
+	assert.equal(call.opens_on_approval, undefined);
+	host.respondToConsent(call.entry_id, "once");
+	// The opt-out: the grant without the page.
+	const optedOut = await host.dispatch(
+		"request_access",
+		{
+			requester: "session:alice",
+			url: "https://third.example/",
+			open_on_approval: false,
+		},
+		"opt",
+	);
+	assert.equal(optedOut.opens_on_approval, undefined);
+	host.respondToConsent(optedOut.entry_id, "once");
+	assert.equal(registry.count(), 0);
+});
+
+test("approval pickup: neither the auto-open nor the pickup raises or focuses a window", () => {
+	const host = readFileSync("src/main/browser/host.ts", "utf8");
+	const tabs = readFileSync("src/main/browser/actions/tabs.ts", "utf8");
+	for (const [body, name] of [
+		[
+			functionBody(host, "private openApprovedRequest(", "host.ts"),
+			"openApprovedRequest",
+		],
+		[functionBody(host, "\trespondToConsent(", "host.ts"), "respondToConsent"],
+		[
+			functionBody(tabs, "async function adoptApprovalPickup(", "tabs.ts"),
+			"adoptApprovalPickup",
+		],
+	]) {
+		assert.doesNotMatch(
+			body,
+			/\.(show|showInactive|focus|moveTop|restore)\(|app\.focus|\.dock\./,
+			`${name} must not take the operator's window focus`,
+		);
 	}
 });

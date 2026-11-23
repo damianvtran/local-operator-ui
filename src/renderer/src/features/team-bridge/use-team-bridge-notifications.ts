@@ -422,12 +422,18 @@ async function deliverTeamBridgeBanner(
 			const joined =
 				client.getQueryState(options.queryKey)?.fetchStatus === "fetching";
 			const read = () => client.fetchQuery(options);
+			/* An `exactSeq` candidate announces a message that is NOT the newest
+			   (an own send or unfollowed reply sits above it): pick exactly that
+			   seq, or nothing, so the newer message's sender can neither suppress
+			   nor relabel the banner. Absent, the newest message answers as before. */
 			const newestOf = (page: Awaited<ReturnType<typeof read>>) =>
-				page.messages.reduce<TeamBridgeMessage | undefined>(
-					(max, message) =>
-						max === undefined || message.seq > max.seq ? message : max,
-					undefined,
-				);
+				candidate.exactSeq
+					? page.messages.find((message) => message.seq === candidate.seq)
+					: page.messages.reduce<TeamBridgeMessage | undefined>(
+							(max, message) =>
+								max === undefined || message.seq > max.seq ? message : max,
+							undefined,
+						);
 			const page = await read().catch((error: unknown) => {
 				// Cancelled from outside: ask again, once (see the helper).
 				if (!isCancelledError(error)) throw error;
@@ -1224,6 +1230,12 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					unread_count: row.unread_count,
 					last_read_seq: row.last_read_seq,
 					latest_seq: row.latest_seq,
+					// Notification identity only (agent-server #455). Copied only when
+					// present: an absent field is how the planner recognises a legacy
+					// server and keeps its old rule for that row.
+					...(row.latest_unread_seq === undefined
+						? {}
+						: { latest_unread_seq: row.latest_unread_seq }),
 				}),
 			);
 			if (selfAccountId)

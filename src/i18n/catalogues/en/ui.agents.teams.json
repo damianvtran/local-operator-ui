@@ -38,5 +38,13 @@
 	"ui.agents.teams.action.create": "Create team",
 	"ui.agents.teams.action.creating": "Creating…",
 	"ui.agents.teams.action.discard_question": "Discard this team?",
-	"ui.agents.teams.empty.description": "No description yet."
+	"ui.agents.teams.empty.description": "No description yet.",
+	"ui.agents.teams.create.error_name_required": "Give the team a name.",
+	"ui.agents.teams.create.error_name_taken": "A team called “{name}” already exists. Open it to change it, or choose another name.",
+	"ui.agents.teams.create.error_instructions_required": "Give the team instructions.",
+	"ui.agents.teams.edit.error_generic": "The team could not be saved.",
+	"ui.agents.teams.create.title_new": "New team",
+	"ui.agents.teams.includes_team": "· Includes a team",
+	"ui.agents.teams.group.agents": "Agents",
+	"ui.agents.teams.group.teams": "Teams"
 }

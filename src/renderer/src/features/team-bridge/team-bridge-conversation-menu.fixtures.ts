@@ -7,6 +7,7 @@ import {
 	type TeamBridgeConversationMenuInput,
 	conversationMenuSections,
 } from "./team-bridge-conversation-menu-model";
+import { canRenameConversation } from "./team-bridge-model";
 
 /*
  * Story fixtures for the conversation menu. Every story draws its items from
@@ -110,13 +111,28 @@ export const menuFullWiring: TeamBridgeConversationMenuInput["wiring"] = {
 	archive: true,
 };
 
-/** The model's sections for `conversation` as the reader with full wiring. */
-export const menuSectionsFor = (conversation: TeamBridgeConversation) =>
+/**
+ * The model's sections for `conversation` as the reader with full wiring.
+ * `rename` adds the daemon's `team_bridge_conversation_rename` capability (off
+ * by default so the existing stories keep drawing what they always drew).
+ */
+export const menuSectionsFor = (
+	conversation: TeamBridgeConversation,
+	/* `integrations` adds the Team Integrations entries' wiring (Manage apps,
+	   Alert responder); off by default so existing menu stories are unchanged. */
+	options: { rename?: boolean; integrations?: boolean } = {},
+) =>
 	conversationMenuSections({
 		conversation,
 		selfAccountId: SELF,
 		selfPerson: menuSelfPerson,
 		agentNotifyEnabled: true,
 		archivable: conversation.can_administer === true && !conversation.builtin,
-		wiring: menuFullWiring,
+		renamable: options.rename === true && canRenameConversation(conversation),
+		wiring: {
+			...menuFullWiring,
+			rename: options.rename === true,
+			manageApps: options.integrations === true,
+			responder: options.integrations === true,
+		},
 	});

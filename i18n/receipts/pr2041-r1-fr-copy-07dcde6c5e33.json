@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 2041,
+  "round": 1,
+  "head": "a5234b713481c79dbdf0e14ef7e4cd021e1733ea",
+  "base": "1e9110a276ebb911d31bfb605bba989b8e3e597e",
+  "date": "2026-11-22",
+  "locale": "fr",
+  "namespace": "ui.teamBridge.holds",
+  "instance": "pr2041-r1-fr-copy-07dcde6c5e33",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "model": "openai/gpt-6.2-sol",
+    "session": "07dcde6c5e33",
+    "independent_of_translator": true,
+    "independence": "Read-only audit of the coder-authored head. This session authored no catalogue, context or translation bytes."
+  },
+  "model_provenance": "Served model openai/gpt-6.2-sol per the harness session state; no fallback observed.",
+  "status": "passed",
+  "sha256": {
+    "en": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7",
+    "fr": "89156255a4bd3bc2e5e7f1dd35762e991731fbbe863b9b747ee2305a7e93da91"
+  },
+  "catalogues": {
+    "en": "src/i18n/catalogues/en/ui.teamBridge.holds.json",
+    "fr": "src/i18n/catalogues/fr/ui.teamBridge.holds.json"
+  },
+  "references": {
+    "source_context": "src/i18n/catalogues/en/ui.teamBridge.holds.context.json",
+    "context_sha256": "8688a6747254647cad5a9799b040bfae68a711e1df5d4c351114b5fcd7160dae",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/fr.md",
+    "style_guide_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "core_revision": "b42471d3935cb7e95d64428af27c32626665f4c0"
+  },
+  "scope": "Six new values checked in full against English, context, glossary and native style guide. The other 62 English/locale entries and context blocks were verified byte-identical to the base, whose audited locale receipt and hashes were independently re-derived.",
+  "keys_audited": [
+    "ui.teamBridge.holds.hide_local",
+    "ui.teamBridge.holds.hide_local_label",
+    "ui.teamBridge.holds.hidden_local",
+    "ui.teamBridge.holds.restore_local",
+    "ui.teamBridge.holds.restore_local_label",
+    "ui.teamBridge.holds.hide_failed"
+  ],
+  "retained_audit": {
+    "receipt": "i18n/receipts/pr2017-r2-fr-copy-170e0100.json",
+    "receipt_sha256": "8b1c789af5336cd541c5a3ba78ade90e4dd6d22a7b608ccbd0483f74cc4efff8",
+    "english_sha256": "4c8bb80fc1a1ef66aa8e3be71cf83d42396f5ff5d57b42327370c1474c6c68a1",
+    "locale_sha256": "d8980dab82efee07b9982bdddc3f26d7946a9a474dc9e7977dbf7092e69bf59e"
+  },
+  "checks": {
+    "copy_scan": "scanned 11 files, 1328 candidate strings; 0 findings",
+    "icu": "6 parses; types/reference names preserved; counts 1, 2, 5, 1234 and references 5ac4b3e8, 00753647 sampled; action prefixes retained; NFC; no manual bidi controls"
+  },
+  "rendering": {
+    "method": "Local Operator desktop harness browser, manager-owned frozen-head Storybook, synthetic message only",
+    "story": "team-bridge-held-messages--hide-and-restore-locally",
+    "locale_arg": "fr",
+    "observations": {
+      "before_accessible_button": "Masquer sur cet appareil : message 5ac4b3e8",
+      "after_heading": "Masqués sur cet appareil : 1",
+      "after_accessible_button": "Rétablir le message 5ac4b3e8",
+      "restore_revealed_same_reference": true,
+      "failure_catalogue_format_only": "Impossible de mettre à jour les messages masqués sur cet appareil."
+    },
+    "frames_sha256": {
+      "visible.png": "5c933fefe136bf6b2870cad590c2fa5d5dacbc439330bcad9fba6fabd02d51bf",
+      "hidden.png": "2306ec4966fccd7b5a407a90b553f7f715928dca3b4095c358da4f27a3c73014"
+    },
+    "limits": "No native layout, shell badge, persistence or live traffic claim. Error string formatted from catalogue only because this fixture always accepts the local change. Screenshots retained in the reviewer session scratch directory; rendered wording retained in this receipt."
+  },
+  "findings": [
+    {
+      "id": "C1",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.holds.hide_failed",
+      "current": "Impossible de mettre à jour les messages masqués sur cet appareil.",
+      "replacement": "Impossible d’enregistrer la modification sur cet appareil. Si le message figure toujours dans la liste, réessayez.",
+      "why": "Names the local preference change, not an update to the messages themselves, and gives a conditional retry after stale-state or preference-write failure.",
+      "disposition": "follow-up; no blocker or major"
+    },
+    {
+      "id": "C2",
+      "severity": "NIT",
+      "key": "ui.teamBridge.holds.hide_local_label",
+      "current": "Masquer sur cet appareil : message {reference}",
+      "replacement": "Masquer sur cet appareil : message {reference}",
+      "why": "The French guide requires a U+202F nonbreaking space before the colon; the current character is U+0020.",
+      "disposition": "follow-up; no blocker or major",
+      "related": [
+        {
+          "key": "ui.teamBridge.holds.hidden_local",
+          "current": "Masqués sur cet appareil : {count, number}",
+          "replacement": "Masqués sur cet appareil : {count, number}"
+        }
+      ]
+    }
+  ]
+}

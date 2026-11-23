@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {Переименовать группу…} other {Переименовать канал…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {Переименовать группу} other {Переименовать канал}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {Новое название увидят все участники группы.} other {Новое название увидят все участники канала. Названия каналов пишутся строчными буквами, с дефисами вместо пробелов.}}",
+	"ui.teamBridge.rename.name": "Название",
+	"ui.teamBridge.rename.cancel": "Отмена",
+	"ui.teamBridge.rename.save": "Сохранить",
+	"ui.teamBridge.rename.saving": "Сохранение…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {Группа с названием {name} уже существует. Выберите другое название.} other {Канал с названием #{name} уже существует. Выберите другое название.}}",
+	"ui.teamBridge.rename.error.empty": "Введите название.",
+	"ui.teamBridge.rename.error.too_long": "Название может содержать не более {max, number} символов.",
+	"ui.teamBridge.rename.error.characters": "Название содержит недопустимый символ, например табуляцию, перевод строки или невидимый символ.",
+	"ui.teamBridge.rename.error.invalid": "Это название нельзя использовать. Попробуйте другое.",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {У вас нет прав на переименование этой группы.} other {У вас нет прав на переименование этого канала.}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {Эта группа в архиве, поэтому её нельзя переименовать.} other {Этот канал в архиве, поэтому его нельзя переименовать.}}",
+	"ui.teamBridge.rename.error.failed": "Новое название не сохранено. Попробуйте ещё раз."
+}

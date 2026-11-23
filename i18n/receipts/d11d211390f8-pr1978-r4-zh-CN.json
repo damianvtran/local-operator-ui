@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit (i18n round 4, after second-audit remediation), PR #1978 move dialog working set",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "e61aba9d891d565f0e88a2f869efd555689c9572",
+  "instance": "d11d211390f8-pr1978-r4-zh-CN",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate, remediate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session d11d211390f8 (task role, lopdev lane move-working-set, manager 35c4f00e8d73), the round 2-3 auditor. Translators were different runs: agent coder session 76c99189cb1d (job eacba7a3806e), jobs beaadf6c08ec, 9d716ec66066 and this round's e9c7087804bf. Second auditor f4f5a50c8316 is a different run. Same served model family (anthropic/claude-opus-5-5); no fallback; no MT or translation API.",
+    "instance": "d11d211390f8-pr1978-r4-zh-CN"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main 9cb0702b1 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7; unchanged since b941eb9dc)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/zh-CN.md @ origin/main 9cb0702b1 (sha256 615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6; unchanged since b941eb9dc)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ e61aba9d891d565f0e88a2f869efd555689c9572"
+  },
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at e61aba9d89 (same scratch @formatjs/icu-messageformat-parser script as rounds 2-3, negative control recorded there): key set equals English and unchanged; 741b25f568..e61aba9d89 changes exactly 25 values in 7 locale files (src/ untouched by ca07811e9f) — fr 2, es 2, zh-CN 3, ru 5, vi 2, ur 1, hi 10 — every one traced to a second-audit (f4f5a50c8316-pr1978-second-*) or round-3 (d11d211390f8-pr1978-r3-*) finding; all 84 working_set_*/move_receipt_resumed values parse with the same arguments, ::group-off skeletons and plural arguments as English, plural arms = CLDR categories; no bidi controls, no ASCII '...'. Unchanged values are the bytes audited in round 3 and by the second auditor at 741b25f568. Rendered fit NOT verified (no frames; Electron launch forbidden on this host)."
+    }
+  ],
+  "prior_findings_disposition": "ZH-S2-1/ZH-R3-1 fixed: '…{retirement}；对话已在那里继续运行。' — explicit subject, no 'restore' sense; read with and without the retirement clause. ZH-S2-2/ZH-R3-2 fixed '类似机密' (matches parent). ZH-S2-3 fixed '主目录' (corpus term).",
+  "audited_values": {
+    "ui.mesh.mesh_page.move_receipt_resumed": {
+      "before": "对话现已存储在{destination}{retirement}，并已在那里恢复。",
+      "after": "对话现已存储在{destination}{retirement}；对话已在那里继续运行。"
+    },
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": {
+      "before": "此工作树位于主文件夹之外，因此无法放到另一台设备上。",
+      "after": "此工作树位于主目录之外，因此无法放到另一台设备上。"
+    },
+    "ui.mesh.mesh_actions.working_set_reason_history_secret_stay": {
+      "before": "未推送的历史包含疑似机密的内容。",
+      "after": "未推送的历史中包含类似机密的内容。"
+    }
+  },
+  "prior_audits": [
+    {
+      "instance": "d11d211390f8-pr1978-r3-zh-CN",
+      "covers": "round 3 at 741b25f568"
+    },
+    {
+      "instance": "f4f5a50c8316-pr1978-second-zh-CN",
+      "covers": "second independent audit at 741b25f568"
+    }
+  ],
+  "scope": "PR #1978 i18n round 4 (741b25f568..e61aba9d89): the 3 changed value(s) in this locale, each read against English, context and the finding it answers; the rest of ui.mesh is byte-identical to the bytes audited at 741b25f568",
+  "binding": "Verified on the committed tree at e61aba9d891d565f0e88a2f869efd555689c9572: target src/i18n/catalogues/zh-CN/ui.mesh.json sha256 4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f; English sha256 235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c; context sha256 c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b.",
+  "en_sha256": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c",
+  "context_sha256": "c7d07b902dfbdaa8082344ab9417ecb122726d097cb0eda189af17d3a9fca46b",
+  "target_sha256": "4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f",
+  "sha256": {
+    "zh-CN": "4e0996c951155780b0c87a5ea64dd463b67f86681594f106778d6544561d823f",
+    "en": "235eff7b869fb3040f8d7a8a12b50ff6421b0a2636fca96f8a858dcadfb40b0c"
+  }
+}

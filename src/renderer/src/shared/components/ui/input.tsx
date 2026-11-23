@@ -59,6 +59,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 			type={type}
 			className={cn(inputVariants({ inputSize }), className)}
 			{...props}
+			data-lo-input=""
 		/>
 	),
 );

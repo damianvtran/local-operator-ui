@@ -381,5 +381,14 @@
 	"ui.canvas.files.remoteReadOnly": "来自{device} · 只读",
 	"ui.canvas.files.remoteTooLargeToOpen": "文件过大，无法从{device}打开。请改为下载到此设备。",
 	"ui.canvas.files.remotePeerUpdateHow": "请在此设备上运行lop network update {device}，或在{device}上更新Local Operator，然后重试。",
-	"ui.canvas.files.remotePlay": "从{device}播放"
+	"ui.canvas.files.remotePlay": "从{device}播放",
+	"ui.canvas.files.remoteUnsupported": "无法在此设备上打开远程文件。",
+	"ui.canvas.artifact.fallback_name.video": "视频{digest}",
+	"ui.canvas.artifact.fallback_name.image": "图片{digest}",
+	"ui.canvas.artifact.fallback_name.audio": "音频{digest}",
+	"ui.canvas.artifact.fallback_name.file": "文件{digest}",
+	"ui.canvas.artifact.cue.file": "文件保存在此会话中",
+	"ui.canvas.artifact.cue.image": "生成的图片，保存在此会话中",
+	"ui.canvas.artifact.cue.video": "生成的视频，保存在此会话中",
+	"ui.canvas.artifact.cue.audio": "生成的音频，保存在此会话中"
 }

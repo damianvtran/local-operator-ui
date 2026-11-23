@@ -50,6 +50,15 @@ import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
+	incumbentInspectorCapability,
+	incumbentInspectorRefusal,
+} from "./incumbent-fuse-gate.mjs";
+import {
+	incumbentReleaseRefusalMessage,
+	resolveIncumbentMetadata,
+	resolveIncumbentRelease,
+} from "./incumbent-release.mjs";
+import {
 	finalContainerChecks,
 	finalMetadataChecks,
 	privatePythonSeedCheck,
@@ -532,25 +541,22 @@ try {
 	const dataHash = createHash("sha256")
 		.update(readFileSync(sentinel))
 		.digest("hex");
-	const release = await (
-		await fetch(
-			`https://api.github.com/repos/damianvtran/local-operator-ui/releases/tags/${tag}`,
-		)
-	).json();
-	const releaseMetadata = release.assets?.find(
-		(asset) => asset.name === "latest-mac.yml",
-	);
-	if (!releaseMetadata)
-		blocked("The exact incumbent release has no published macOS metadata");
-	const metadataPath = join(scratch, "incumbent.yml");
-	await download(releaseMetadata.browser_download_url, metadataPath);
-	const oldMetadata = load(readFileSync(metadataPath, "utf8"));
-	const oldEntry = oldMetadata.files.find((file) =>
-		file.url.endsWith(`-${process.arch}.zip`),
-	);
-	const oldAsset = release.assets.find((asset) => asset.name === oldEntry?.url);
-	if (!oldAsset)
-		blocked("The exact incumbent release has no native-architecture ZIP");
+	const incumbentRelease = await resolveIncumbentRelease({
+		repo: "damianvtran/local-operator-ui",
+		tag,
+	});
+	if (!incumbentRelease.ok)
+		blocked(incumbentReleaseRefusalMessage(incumbentRelease));
+	const { release, metadataAsset } = incumbentRelease;
+	const incumbentZip = await resolveIncumbentMetadata({
+		tag,
+		arch: process.arch,
+		release,
+		metadataAsset,
+		parseMetadata: load,
+	});
+	if (!incumbentZip.ok) blocked(incumbentReleaseRefusalMessage(incumbentZip));
+	const { entry: oldEntry, zipAsset: oldAsset } = incumbentZip;
 	const oldZip = join(scratch, "incumbent.zip");
 	await download(oldAsset.browser_download_url, oldZip);
 	const oldBytes = readFileSync(oldZip);
@@ -565,6 +571,12 @@ try {
 	const app = join(install, "Local Operator.app");
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	await command("/usr/sbin/spctl", ["-a", "-t", "exec", "-vvv", app]);
+	// Classify the publisher-verified incumbent before running any of its code.
+	// Even a framework read failure means the harness cannot establish control,
+	// not that the candidate failed. The probe returns a path-free state.
+	const inspectorCapability = incumbentInspectorCapability(app);
+	if (!inspectorCapability.supported)
+		blocked(incumbentInspectorRefusal(tag, inspectorCapability));
 	const executable = join(app, "Contents", "MacOS", "Local Operator");
 	const legacyPython = join(
 		app,

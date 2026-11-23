@@ -63,9 +63,11 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgePageView } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { TeamBridgeEditDraftJournal } from "./src/renderer/src/features/team-bridge/team-bridge-rename-dialog";
+			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export { TeamBridgeArchivedChannelsView, TeamBridgeArchivedBanner } from "./src/renderer/src/features/team-bridge/team-bridge-archive";
 			export { conversationMenuItemIds } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
-			export { archiveMutationOptions, unarchiveMutationOptions, deleteMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { archiveMutationOptions, unarchiveMutationOptions, deleteMutationOptions, renameMutationOptions, updateMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { canArchiveConversation, canManageArchivedConversation, withoutConversation, withConversationStatus, selectableConversations, landingAfterRemoval, withAppendedPage, archivedChannelRows, isNotAMemberRefusal } from "./src/renderer/src/features/team-bridge/team-bridge-model";
 		`,
 		resolveDir: ROOT,
@@ -354,6 +356,132 @@ test("unarchive flips the row to open in place and a refusal restores it", async
 	client.clear();
 });
 
+// ------------------------------------------------------- optimistic rename
+
+test("rename writes the new name into every owned page at once, and a refusal restores them exactly", async () => {
+	const row = conversation({ id: "bcv_2", name: "launch" });
+	const sibling = conversation({ id: "bcv_3", name: "keeps" });
+	const page = { conversations: [row, sibling], has_more: true };
+	const { client, keys } = seededClient(page);
+	const foreign = ui.teamBridgeKeys.conversations("tnt_1", "acct_other");
+	client.setQueryData(foreign, structuredClone(page));
+	const options = ui.renameMutationOptions(client);
+	const variables = {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+		name: "launch-crew",
+	};
+
+	const context = await options.onMutate(variables);
+	for (const key of [keys.org, keys.all])
+		assert.deepEqual(
+			client.getQueryData(key).conversations.map((r) => r.name),
+			["launch-crew", "keeps"],
+			"rail and header read the new name before the server answers",
+		);
+	assert.equal(client.getQueryData(keys.org).has_more, true);
+	assert.equal(
+		client.getQueryData(foreign).conversations[0].name,
+		"launch",
+		"another account's cache is never touched",
+	);
+
+	options.onError(new Error("taken"), variables, context);
+	assert.deepEqual(client.getQueryData(keys.org), page);
+	assert.deepEqual(client.getQueryData(keys.all), page);
+	await options.onSettled();
+	client.clear();
+});
+
+test("rename settles to the server's CANONICAL name, not the typed one", async () => {
+	const page = { conversations: [conversation({ id: "bcv_2", name: "Old" })] };
+	const { client, keys } = seededClient(page);
+	const options = ui.renameMutationOptions(client);
+	const variables = {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+		name: "Launch  crew ",
+	};
+	await options.onMutate(variables);
+	options.onSuccess(
+		conversation({ id: "bcv_2", name: "Launch crew" }),
+		variables,
+	);
+	assert.equal(
+		client.getQueryData(keys.org).conversations[0].name,
+		"Launch crew",
+	);
+	// An answer without a name (an older core) keeps the optimistic name.
+	options.onSuccess({}, variables);
+	assert.equal(
+		client.getQueryData(keys.all).conversations[0].name,
+		"Launch crew",
+	);
+	client.clear();
+});
+
+test("rename sends the owner receipt and refuses once authority changed", async () => {
+	const { client } = seededClient({ conversations: [] });
+	/*
+	 * The receipt, end to end (review round 1, N1): the mutation goes through
+	 * `TeamBridgeApi.rename` and `teamBridgeWriteOwner` to the desktop transport,
+	 * and the request it hands over must carry the captured owner beside the
+	 * name. A stub transport stands in for main's IPC bridge; the capability
+	 * read the owner guard makes first answers that the guard is available.
+	 */
+	const sent = [];
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					sent.push(request);
+					return request.op === "capabilities"
+						? {
+								status: 200,
+								body: {
+									result: {
+										features: { team_bridge_conversation_owner_guard: 1 },
+									},
+								},
+							}
+						: { status: 200, body: { result: { id: "bcv_2", name: "x" } } };
+				},
+			},
+		},
+	};
+	try {
+		await ui
+			.renameMutationOptions(client, () => true)
+			.mutationFn({ conversationId: "bcv_2", tenantId: "tnt_1", name: "x" });
+	} finally {
+		globalThis.window = previousWindow;
+	}
+	const rename = sent.find(
+		(request) => request.op === "team_bridge.conversations.rename",
+	);
+	assert.ok(rename, "the rename request reached the transport");
+	assert.equal(rename.conversation_id, "bcv_2");
+	assert.equal(rename.name, "x");
+	assert.equal(rename.expected_account_id, "acct_self");
+	assert.equal(rename.tenant_id, "tnt_1");
+	const options = ui.renameMutationOptions(client, () => false);
+	assert.throws(
+		() =>
+			options.mutationFn({
+				conversationId: "bcv_2",
+				tenantId: "tnt_1",
+				name: "x",
+			}),
+		/write authority changed/,
+	);
+	await assert.rejects(
+		options.onMutate({ conversationId: "bcv_2", tenantId: "tnt_1", name: "x" }),
+		/write authority changed/,
+	);
+	client.clear();
+});
+
 // ------------------------------------------------------------------ delete
 
 test("delete is NOT optimistic and removes the row only after the server confirms", async () => {
@@ -381,6 +509,43 @@ test("delete is NOT optimistic and removes the row only after the server confirm
 });
 
 // ------------------------------------------------------------------ render
+
+test("metadata: SSR reads the existing journal revision without losing retained drafts", () => {
+	const journal = new ui.TeamBridgeEditDraftJournal();
+	const draft = {
+		baselineName: "launch",
+		baselineTopic: "old",
+		name: "launch",
+		topic: "retained",
+		pending: false,
+		error: { kind: "failed" },
+	};
+	journal.set("owner/tenant/conversation", draft);
+	const revision = journal.snapshot();
+	let reads = 0;
+	const snapshot = journal.snapshot;
+	journal.snapshot = () => {
+		reads += 1;
+		return snapshot();
+	};
+	const html = renderToStaticMarkup(
+		createElement(
+			ui.TeamBridgePageView,
+			viewProps({ metadataDrafts: journal }),
+		),
+	);
+	assert.ok(html.length > 0);
+	assert.ok(
+		reads > 0,
+		"SSR must use the journal, not a disconnected empty snapshot",
+	);
+	assert.equal(
+		journal.snapshot(),
+		revision,
+		"render does not publish a mutation",
+	);
+	assert.equal(journal.get("owner/tenant/conversation"), draft);
+});
 
 test("an archived channel opens read-only: banner names who and when, no composer", () => {
 	const row = archivedRow();
@@ -628,4 +793,168 @@ test("landingAfterRemoval falls back to #general before #humans", () => {
 		type: "conversation",
 		id: "general",
 	});
+});
+
+// Metadata update is server-confirmed: no optimistic full-page snapshot/rollback.
+test("metadata: strict desktop PATCH preserves omission/clear and pins body owner", () => {
+	const base = {
+		op: "team_bridge.conversations.update",
+		conversation_id: "bcv_2",
+		tenant_id: "tnt_1",
+		expected_account_id: "acct_self",
+	};
+	for (const patch of [
+		{ name: "Legacy Channel" },
+		{ topic: "" },
+		{ name: "new", topic: "line1\nline2" },
+	]) {
+		const parsed = ui.desktopRequestSchema.parse({ ...base, ...patch });
+		const endpoint = ui.desktopEndpoint(parsed);
+		assert.equal(endpoint.method, "PATCH");
+		assert.equal(endpoint.path, "/v1/desktop/team-bridge/conversations/bcv_2");
+		assert.deepEqual(endpoint.body, {
+			tenant_id: "tnt_1",
+			expected_account_id: "acct_self",
+			...patch,
+		});
+	}
+	for (const patch of [
+		{},
+		{ topic: null },
+		{ name: null },
+		{ topic: "", description: "no" },
+		{ topic: "", members: [] },
+		{ topic: "", actor_endpoint_id: "ep_other" },
+	])
+		assert.equal(
+			ui.desktopRequestSchema.safeParse({ ...base, ...patch }).success,
+			false,
+		);
+	for (const field of ["tenant_id", "expected_account_id"]) {
+		const malformed = { ...base, topic: "" };
+		delete malformed[field];
+		assert.equal(ui.desktopRequestSchema.safeParse(malformed).success, false);
+	}
+});
+
+test("metadata: canonical name and omitted-topic clear reconcile owned tenant pages only", async () => {
+	const row = conversation({
+		id: "bcv_2",
+		name: "Old",
+		topic: "stale",
+		latest_seq: 19,
+		last_read_seq: 8,
+	});
+	const wrongTenant = {
+		...row,
+		tenant_id: "other",
+		name: "other tenant",
+		topic: "keep",
+	};
+	const { client, keys } = seededClient({
+		conversations: [row, wrongTenant],
+		has_more: true,
+	});
+	const foreign = ui.teamBridgeKeys.conversations("tnt_1", "acct_other");
+	client.setQueryData(foreign, { conversations: [row] });
+	const options = ui.updateMutationOptions(client);
+	assert.equal(options.onMutate, undefined);
+	assert.equal(
+		options.onError,
+		undefined,
+		"no snapshot rollback overwrites concurrent results",
+	);
+	const vars = {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+		patch: { topic: "" },
+	};
+	await options.onSuccess(
+		{ ...row, name: "Canonical", topic: undefined },
+		vars,
+	);
+	for (const key of [keys.org, keys.all]) {
+		const page = client.getQueryData(key);
+		assert.equal(page.conversations[0].name, "Canonical");
+		assert.equal(page.conversations[0].topic, "");
+		assert.equal(page.conversations[0].latest_seq, 19);
+		assert.equal(page.conversations[0].last_read_seq, 8);
+		assert.deepEqual(page.conversations[1], wrongTenant);
+		assert.equal(page.has_more, true);
+	}
+	assert.equal(client.getQueryData(foreign).conversations[0].topic, "stale");
+	client.clear();
+});
+
+test("metadata: stale owner blocks dispatch, reconciliation and invalidation", async () => {
+	const { client, keys } = seededClient({
+		conversations: [conversation({ id: "bcv_2", name: "Old", topic: "keep" })],
+	});
+	const options = ui.updateMutationOptions(client, () => false);
+	const vars = {
+		conversationId: "bcv_2",
+		tenantId: "tnt_1",
+		patch: { topic: "" },
+	};
+	assert.throws(() => options.mutationFn(vars), /authority changed/);
+	let invalidated = 0;
+	client.invalidateQueries = async () => {
+		invalidated++;
+	};
+	await options.onSuccess({ name: "Wrong" }, vars);
+	await options.onSettled();
+	assert.equal(client.getQueryData(keys.org).conversations[0].name, "Old");
+	assert.equal(client.getQueryData(keys.org).conversations[0].topic, "keep");
+	assert.equal(invalidated, 0);
+	client.clear();
+});
+
+test("metadata: new operation carries captured owner+tenant through actual API transport", async () => {
+	const { client } = seededClient({ conversations: [] });
+	const sent = [];
+	const previous = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async (request) => {
+					sent.push(request);
+					return request.op === "capabilities"
+						? {
+								status: 200,
+								body: {
+									result: {
+										features: { team_bridge_conversation_owner_guard: 1 },
+									},
+								},
+							}
+						: {
+								status: 200,
+								body: {
+									result: conversation({ id: "bcv_2", name: "Legacy Channel" }),
+								},
+							};
+				},
+			},
+		},
+	};
+	try {
+		await ui.updateMutationOptions(client).mutationFn({
+			conversationId: "bcv_2",
+			tenantId: "tnt_1",
+			patch: { topic: "" },
+		});
+	} finally {
+		globalThis.window = previous;
+		client.clear();
+	}
+	assert.deepEqual(
+		sent.find((request) => request.op === "team_bridge.conversations.update"),
+		{
+			op: "team_bridge.conversations.update",
+			conversation_id: "bcv_2",
+			topic: "",
+			tenant_id: "tnt_1",
+			expected_account_id: "acct_self",
+		},
+	);
 });

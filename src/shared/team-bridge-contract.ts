@@ -113,6 +113,15 @@ export const teamBridgeConversationSchema = z
 		 * `archived_by_label` is best effort and the banner degrades without it.
 		 */
 		can_administer: z.boolean().optional(),
+		/*
+		 * TEAM INTEGRATIONS (RFC §10 item 2, U3): true for an org owner/admin, so
+		 * the client never guesses who may manage apps from a role. Today the hub
+		 * publishes it on `GET /v1/tenants/:id/integrations/channels`
+		 * (`IntegrationChannelsResponse`), not yet on the conversation view; absent
+		 * reads as false, so the "Manage apps" entry stays hidden (fail closed)
+		 * until a hub or daemon carries it here.
+		 */
+		can_manage_integrations: z.boolean().optional().catch(undefined),
 		archived_at: z.string().optional(),
 		archived_by: id.optional(),
 		archived_by_label: z.string().min(1).max(64).optional(),
@@ -423,6 +432,152 @@ export type TeamBridgeDeliverySummary = z.infer<
 	typeof teamBridgeDeliverySummarySchema
 >;
 
+/**
+ * WHO WROTE A MESSAGE, AS THE HUB SAYS IT (agent-server #408, Team
+ * Integrations RFC). `integration` is an admin-installed app (Datadog, Grafana,
+ * Alertmanager, incident.io...) posting with an app token: its sender is
+ * `{kind: "integration", account_id: <app id>, display_label: <app name>}` and
+ * its origin is `integration`. An app is never a conversation participant and
+ * never a directory member, so nothing may resolve it to a person or an agent.
+ *
+ * FAIL SOFT, NOT CLOSED-BY-THROWING. Both vocabularies are additive on the hub:
+ * before this change one `integration` row failed the whole message schema, and
+ * with it the whole conversation page that carried it. A value this build does
+ * not know now parses as `unknown`, which the renderer draws as a generic sender
+ * (stored label, neutral glyph, no profile card, no DM) - claiming no identity
+ * is the safe reading of an identity we cannot name. The hub never sends the
+ * literal `unknown`, so the sentinel cannot collide with a real value.
+ */
+export const TEAM_BRIDGE_MESSAGE_ORIGINS = [
+	"human",
+	"agent",
+	"system",
+	"integration",
+] as const;
+export const TEAM_BRIDGE_SENDER_KINDS = [
+	"human",
+	"agent",
+	"integration",
+] as const;
+export const teamBridgeMessageOriginSchema = z
+	.enum([...TEAM_BRIDGE_MESSAGE_ORIGINS, "unknown"])
+	.catch("unknown");
+export const teamBridgeSenderKindSchema = z
+	.enum([...TEAM_BRIDGE_SENDER_KINDS, "unknown"])
+	.catch("unknown");
+export type TeamBridgeMessageOrigin = z.infer<
+	typeof teamBridgeMessageOriginSchema
+>;
+export type TeamBridgeSenderKind = z.infer<typeof teamBridgeSenderKindSchema>;
+
+/*
+ * THE ALERT CARD'S DATA (Team Integrations RFC §6.1 item 2, agent-server
+ * #413/#451/#463 `models.BridgeAlertMeta`). The hub writes `alert_meta` on an
+ * integration alert ROOT only; the root's `body` is immutable and deterministic
+ * (it cannot track a severity raised later), so everything that changes over an
+ * incident's life - status, severity, fire and group counts - is read from here.
+ *
+ * FAIL SOFT, FIELD BY FIELD. The block is additive and server-owned: a hub
+ * before #413 sends none of it, and one malformed field must cost that field
+ * (the card degrades to what it can still say), never the message or the page.
+ * `severity` and `status` stay OPEN strings for the same reason the origin enum
+ * catches to `unknown`: a newer vocabulary renders as "unknown", not as a parse
+ * failure. Normalisation lives in `team-bridge-alert-model.ts`.
+ *
+ * Agent-server #465 projects a display-only `claim_summary`. Older hubs omit
+ * it; the card says no claim was reported rather than assuming it is unclaimed.
+ * A remote waiting flag conveys status, never authority to open a local ask.
+ */
+const alertString = z.string().max(512).optional().catch(undefined);
+const alertCount = z.number().int().nonnegative().optional().catch(undefined);
+export const teamBridgeAlertClaimSummarySchema = z.object({
+	state: z.string().max(32).optional().catch(undefined),
+	holder_kind: z.string().max(32).optional().catch(undefined),
+	holder_name: z.string().max(64).optional().catch(undefined),
+	owner_name: z.string().max(64).optional().catch(undefined),
+	updated_at: alertString,
+	lease_expires_at: z
+		.string()
+		.datetime({ offset: true })
+		.optional()
+		.catch(undefined),
+	waiting_approval: z.boolean().optional().catch(undefined),
+});
+export type TeamBridgeAlertClaimSummary = z.infer<
+	typeof teamBridgeAlertClaimSummarySchema
+>;
+export const teamBridgeAlertMetaSchema = z
+	.object({
+		incident_key: alertString,
+		app_id: alertString,
+		app_name: alertString,
+		source: alertString,
+		severity: alertString,
+		vendor_priority: alertString,
+		status: alertString,
+		fire_count: alertCount,
+		first_fired_at: alertString,
+		last_fired_at: alertString,
+		resolved_at: alertString,
+		grouped_count: alertCount,
+		group_resolved_count: alertCount,
+		storm: z.boolean().optional().catch(undefined),
+		is_test: z.boolean().optional().catch(undefined),
+		/* Per entry: one malformed label or link costs that chip, not the card. */
+		labels: z
+			.array(
+				z
+					.object({ key: z.string().max(128), value: z.string().max(256) })
+					.passthrough()
+					.nullable()
+					.catch(null),
+			)
+			.max(64)
+			.optional()
+			.catch(undefined),
+		links: z
+			.array(
+				z
+					.object({
+						label: z.string().max(128).optional(),
+						host: z.string().max(253),
+						url: z.string().max(2048),
+					})
+					.passthrough()
+					.nullable()
+					.catch(null),
+			)
+			.max(16)
+			.optional()
+			.catch(undefined),
+		claim_summary: teamBridgeAlertClaimSummarySchema
+			.optional()
+			.catch(undefined),
+	})
+	.passthrough();
+export type TeamBridgeAlertMeta = z.infer<typeof teamBridgeAlertMetaSchema>;
+
+/* Host-captured, owner-attested DISPLAY ONLY: never a principal, grant or
+ * endpoint alias. A future/invalid leaf must not discard the history message.
+ * Keep this object closed so unsupported wire shapes fall back neutrally. */
+const AGENT_SESSION_CONTROL = /[\p{Cc}\p{Cf}]/u;
+const agentSessionEncoder = new TextEncoder();
+export const teamBridgeAgentSessionSchema = z
+	.object({
+		display_label: z
+			.string()
+			// Match the host's bridgeConversationLabelMax: 64 UTF-8 bytes,
+			// not UTF-16 code units. Check raw controls BEFORE trimming so an
+			// edge newline cannot be laundered into an acceptable name.
+			.refine((label) => !AGENT_SESSION_CONTROL.test(label))
+			.refine((label) => agentSessionEncoder.encode(label).length <= 64)
+			.transform((label) => label.trim())
+			.pipe(z.string().min(1)),
+	})
+	.strict()
+	.optional()
+	.catch(undefined);
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -431,13 +586,14 @@ export const teamBridgeMessageSchema = z
 		sender: z
 			.object({
 				account_id: id,
-				kind: z.enum(["human", "agent"]),
+				kind: teamBridgeSenderKindSchema,
 				display_label: z.string().min(1).max(64),
+				agent_session: teamBridgeAgentSessionSchema,
 			})
 			.passthrough(),
 		body: z.string().nullable(),
 		body_hash: z.string().optional(),
-		origin: z.enum(["human", "agent", "system"]),
+		origin: teamBridgeMessageOriginSchema,
 		agent_label: z.string().optional(),
 		created_at: z.string(),
 		reactions: historyReactionsSchema.optional(),
@@ -481,9 +637,14 @@ export const teamBridgeMessageSchema = z
 			.array(
 				/* Caught PER ENTRY: one replier of a kind this build does not know,
 				   or one malformed id, costs that plate its avatar (it falls back to
-				   the label's initial), never the other two plates. */
+				   the label's initial), never the other two plates. `integration`
+				   is an app replying in its own thread (agent-server #408): kept, so
+				   the plate can draw the app glyph instead of a person's initial. */
 				z
-					.object({ account_id: id, kind: z.enum(["human", "agent"]) })
+					.object({
+						account_id: id,
+						kind: z.enum(["human", "agent", "integration"]),
+					})
 					.passthrough()
 					.nullable()
 					.catch(null),
@@ -512,6 +673,10 @@ export const teamBridgeMessageSchema = z
 		delivery_summary: teamBridgeDeliverySummarySchema
 			.optional()
 			.catch(undefined),
+		/* Integration alert roots only (see `teamBridgeAlertMetaSchema`). A
+		 * malformed block costs the card, never the message: the row then
+		 * renders the app's deterministic body as an ordinary app post. */
+		alert_meta: teamBridgeAlertMetaSchema.optional().catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;
@@ -682,6 +847,24 @@ export type TeamBridgeUnreadOrganization = z.infer<
  * make every account read fail to parse, which is the opposite of the additive
  * rule this contract follows. `total` stays required in both scopes and is the
  * badge's number; the UI never derives the account badge from the per-org rows.
+ *
+ * `latest_unread_seq` (tenant rows, additive; agent-server PR #455) is the
+ * newest seq among the messages that are actually unread FOR THIS READER and
+ * eligible to count as such - own sends and replies in threads the reader does
+ * not follow never move it, while they do move `latest_seq`. `0` means "no such
+ * message" (nothing unread, or the server could not name one). Three server
+ * facts the client must respect, all stated by that PR:
+ *   - it is read against the thread cursors too, so it can be LOWER than the
+ *     row's timeline `last_read_seq` and still be genuinely unread (a reply at
+ *     seq 7 in a followed thread after the timeline was read to 9);
+ *   - `unread_count` and this field come from separate queries, so one answer
+ *     can carry `unread_count > 0` with `latest_unread_seq: 0`;
+ *   - an older (or not yet deployed) server omits it entirely.
+ * Optional and caught for that last reason: a missing or malformed value parses
+ * as `undefined`, which the notification planner reads as "legacy server" and
+ * keeps its pre-#455 behaviour for, rather than failing the whole unread read.
+ * The field is the notification EVENT identity only; `latest_seq` stays the
+ * activity signal that drives list patching and cache refresh.
  */
 export const teamBridgeUnreadSchema = z
 	.object({
@@ -694,6 +877,12 @@ export const teamBridgeUnreadSchema = z
 						unread_count: z.number().int().nonnegative(),
 						last_read_seq: z.number().int().nonnegative(),
 						latest_seq: z.number().int().nonnegative(),
+						latest_unread_seq: z
+							.number()
+							.int()
+							.nonnegative()
+							.optional()
+							.catch(undefined),
 						muted: z.boolean(),
 					})
 					.passthrough(),

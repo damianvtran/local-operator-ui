@@ -316,13 +316,14 @@ export function remoteUnsupportedSentence(page: {
 			? `${what}\n${t("ui.canvas.files.remotePeerUpdateHow", { device })}`
 			: what;
 	}
-	return REMOTE_FILES_UNSUPPORTED_SENTENCE;
+	return remoteFilesUnsupportedSentence();
 }
 
 /**
  * Today's sentence for a remote session on a viewer without
- * `features.remote_files`. Kept byte-for-byte: an older daemon must read
- * exactly as it did (design §6 "Older VIEWER daemon").
+ * `features.remote_files`. English is kept byte-for-byte: an older daemon must
+ * read exactly as it did (design §6 "Older VIEWER daemon"). A function rather
+ * than a constant so the sentence follows the reader's locale at call time.
  */
-export const REMOTE_FILES_UNSUPPORTED_SENTENCE =
-	"Remote files cannot be opened on this device.";
+export const remoteFilesUnsupportedSentence = (): string =>
+	t("ui.canvas.files.remoteUnsupported");

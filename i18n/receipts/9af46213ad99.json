@@ -1,0 +1,375 @@
+{
+  "schema": 1,
+  "auditor": "independent-translation-auditor (lopdev reviewer)",
+  "role": "Independent semantic delta audit; no implementation or translation edits",
+  "instance": "9af46213ad99",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": "anthropic/claude-opus-5-5 -> openai/gpt-6.1-sol due provider quota, before semantic audit began",
+  "date": "2026-11-21",
+  "repository": "local-operator-ui",
+  "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/2028",
+  "head": "a271f49711904f8e3df39c60097c323298c9748e",
+  "base": "0e0f8cfeb7",
+  "independence": "Auditor session 9af46213ad99 is different from translator e896d2db9139 and all product implementers; authored no repository file. Receipt authored by auditor in scratch for fresh coder byte-for-byte retention.",
+  "status": "passed",
+  "scope": "Only listed changed bridge-card keys, against current English and context. All target value changes versus base are covered. Untouched namespace keys are byte-compatible by parsed-value comparison and retain historical audits; this is not a new full-namespace audit or resolution of historical deferred findings.",
+  "semantic_values_reviewed": 28,
+  "checks": {
+    "key_and_placeholder_parity": "passed",
+    "translator_hash_bindings": "passed for all seven translator receipts and all namespaces",
+    "target_delta_coverage": "passed: no changed target value outside reviewed keys",
+    "NFC": "passed",
+    "bidi_controls": "none in reviewed values",
+    "semantics": "Each listed value read against English/context: held remains reviewable, not refused; pending remains agent delivery; offline says automatic retry; DM/channel/group/thread labels retain context."
+  },
+  "limitations": [
+    "No native-speaker certification claimed.",
+    "No rendered fit, bidi shaping, mirroring or pixel validation: browser tool absent in reviewer role; independent visual lanes remain required.",
+    "No code review round, ledger assembly, generation writes, commit or push performed by auditor."
+  ],
+  "namespaces": {
+    "ui.chat.bridgeReceipt": {
+      "status": "passed",
+      "sha256": {
+        "en": "ea1c08c4b5482f77e0a8b85fe09c8599294c730d9ce8a55e99b1939abb3a9ec8",
+        "es": "6e75e0a7a2f3924fb5e0dd1d9593b23de6ac7a7674af4d85181d832a34915d0b",
+        "fr": "3d0bbbc9c4be12a740cfe52ccbc29b00779db51451c680ceba0b175b2cf53224",
+        "hi": "31b3fca0fa6b83f9a51a0dec8dc41c3aacc3336ba0feb2d2a61d1b0436e32d11",
+        "ru": "64efc51facdec555df2e05e9cd8126c39bd0f303772b711d2a6edde29c51d926",
+        "ur": "00ba12d813af11fe4ddcc3e5783fa3a021e0bb748cc13b4635ec4d18cac5fb70",
+        "vi": "0e33a8f0ff949b869db97ccd329e4d396615b81fd2ecfc412b758ab9249afa2b",
+        "zh-CN": "38b49f168f40e529680ec208fb7d59392597d33ace2dea7eee6e0e034f761545"
+      },
+      "source_path": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.bridgeReceipt.context.json",
+      "context_sha256": "802e3a8c48bb87069d2b7833b4dbc217847f86543d3884a8658c4b3f8cf32ab6",
+      "locales": {
+        "es": {
+          "target_path": "src/i18n/catalogues/es/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "Retenido para revisión.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "Pendiente de entregar a tu agente.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "Respuesta en un hilo",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "No se pudo conectar con Radient — reintentando.",
+              "result": "passed"
+            }
+          }
+        },
+        "fr": {
+          "target_path": "src/i18n/catalogues/fr/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "Retenu pour examen.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "En attente de transmission à votre agent.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "Réponse dans un fil",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "Impossible de joindre Radient — nouvelle tentative en cours.",
+              "result": "passed"
+            }
+          }
+        },
+        "hi": {
+          "target_path": "src/i18n/catalogues/hi/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "समीक्षा के लिए रोका गया है।",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "आपके एजेंट तक पहुँचाए जाने का इंतज़ार है।",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "थ्रेड में जवाब",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "Radient से संपर्क नहीं हुआ — दोबारा कोशिश जारी है।",
+              "result": "passed"
+            }
+          }
+        },
+        "ru": {
+          "target_path": "src/i18n/catalogues/ru/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "Задержано для проверки.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "Ожидает доставки вашему агенту.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "Ответ в ветке",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "Нет связи с Radient — повторяем попытку.",
+              "result": "passed"
+            }
+          }
+        },
+        "ur": {
+          "target_path": "src/i18n/catalogues/ur/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "جائزے کے لیے روکا گیا ہے۔",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "آپ کے ایجنٹ تک پہنچائے جانے کا منتظر۔",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "تھریڈ میں جواب",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "Radient سے رابطہ نہیں ہوا — دوبارہ کوشش جاری ہے۔",
+              "result": "passed"
+            }
+          }
+        },
+        "vi": {
+          "target_path": "src/i18n/catalogues/vi/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "Đang được giữ lại để xem xét.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "Đang chờ chuyển đến tác nhân của bạn.",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "Trả lời trong luồng",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "Không thể kết nối Radient — đang thử lại.",
+              "result": "passed"
+            }
+          }
+        },
+        "zh-CN": {
+          "target_path": "src/i18n/catalogues/zh-CN/ui.chat.bridgeReceipt.json",
+          "keys_reviewed": [
+            "ui.chat.bridgeReceipt.held",
+            "ui.chat.bridgeReceipt.pending",
+            "ui.chat.bridgeReceipt.thread_reply",
+            "ui.chat.bridgeReceipt.unavailable_reason.offline"
+          ],
+          "reviewed_values": {
+            "ui.chat.bridgeReceipt.held": {
+              "english": "Held for review.",
+              "target": "已暂扣，等待审核。",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.pending": {
+              "english": "Waiting to be delivered to your agent.",
+              "target": "等待送达智能体。",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.thread_reply": {
+              "english": "Thread reply",
+              "target": "讨论串回复",
+              "result": "passed"
+            },
+            "ui.chat.bridgeReceipt.unavailable_reason.offline": {
+              "english": "Couldn't reach Radient — retrying.",
+              "target": "无法连接Radient——正在重试。",
+              "result": "passed"
+            }
+          }
+        }
+      },
+      "findings": []
+    }
+  },
+  "translator_receipts": [
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-es-e896d2db9139.json",
+      "sha256": "d9cfad5b059a7f4e962b2799735e0ff4129d1a1de1b3a014e007bb0f4cfffb82",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-fr-e896d2db9139.json",
+      "sha256": "3545d5de564478fefa9b16962d6bec643802e3c60523894aaa037ff6b71a161d",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-hi-e896d2db9139.json",
+      "sha256": "defe9d57a3701f22ac73b0a7bac98d5bdc50512cb13dfeb1b7137f62724781da",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-ru-e896d2db9139.json",
+      "sha256": "7f045267d032f7d831dedb9e60fdf2c77ec4ac82eadf8a2783572fec70ad3706",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-ur-e896d2db9139.json",
+      "sha256": "0525de75f0a4ecade43f1d57280193ca2265a1c2e985ec88e66c416c8c11bf80",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-vi-e896d2db9139.json",
+      "sha256": "5473555143fa8664844aef674a11b60d39899a515ef2123be4969ee8fc894dac",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    },
+    {
+      "path": "i18n/receipts/bridge-card-reread-translator-zh-CN-e896d2db9139.json",
+      "sha256": "203f743311767eb4b3da2c81a85dec8549d0c41eb7f4bb5dd3da2a2ab926c3e4",
+      "identity": {
+        "agent": "i18n-translator (lopdev translation pass)",
+        "session": "e896d2db9139",
+        "model": "openai/gpt-6.1-sol",
+        "fallback": "anthropic/claude-opus-5-5 → openai/gpt-6.1-sol; provider quota failure"
+      }
+    }
+  ],
+  "style_inputs": {
+    "repository": "local-operator",
+    "glossary_path": "i18n/glossary.md",
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guides": {
+      "fr": {
+        "path": "i18n/style-guides/fr.md",
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+      },
+      "es": {
+        "path": "i18n/style-guides/es.md",
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+      },
+      "zh-CN": {
+        "path": "i18n/style-guides/zh-CN.md",
+        "sha256": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6"
+      },
+      "ru": {
+        "path": "i18n/style-guides/ru.md",
+        "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+      },
+      "vi": {
+        "path": "i18n/style-guides/vi.md",
+        "sha256": "99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51"
+      },
+      "ur": {
+        "path": "i18n/style-guides/ur.md",
+        "sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+      },
+      "hi": {
+        "path": "i18n/style-guides/hi.md",
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+      }
+    }
+  }
+}

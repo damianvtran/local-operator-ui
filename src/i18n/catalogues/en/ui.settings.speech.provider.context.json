@@ -1,0 +1,74 @@
+{
+	"ui.settings.speech.provider.label": {
+		"role": "Legend of a group of two radio options",
+		"tone": "Neutral noun phrase in sentence case.",
+		"length": "One short line; English is 15 characters.",
+		"note": "The choice of which service listens and speaks."
+	},
+	"ui.settings.speech.provider.description": {
+		"role": "Help line under the group legend",
+		"tone": "Plain, neutral second person.",
+		"length": "Wrapping line; keep both facts.",
+		"note": "Says the choice covers hands-free voice and the Speak button on messages, that only the chosen provider is ever used, and that nothing falls back to the other."
+	},
+	"ui.settings.speech.provider.radient.label": {
+		"role": "Radio option label",
+		"tone": "Product name plus a noun, sentence case.",
+		"length": "Two short words; English is 13 characters.",
+		"note": "Radient is a product name and stays as written; 'cloud' means Radient's hosted service."
+	},
+	"ui.settings.speech.provider.radient.description": {
+		"role": "Hint under a radio option",
+		"tone": "Plain, neutral.",
+		"length": "One short line.",
+		"note": "Speech from this provider is paid for with the person's Radient credit balance. Radient is a product name."
+	},
+	"ui.settings.speech.provider.elevenlabs.label": {
+		"role": "Radio option label",
+		"tone": "First person possessive, sentence case.",
+		"length": "Short; English is 17 characters.",
+		"note": "The person's own ElevenLabs account key. ElevenLabs is a product name and stays as written."
+	},
+	"ui.settings.speech.provider.elevenlabs.description": {
+		"role": "Hint under a radio option",
+		"tone": "Plain, neutral.",
+		"length": "One short line.",
+		"note": "The person uses their own ElevenLabs account and ElevenLabs charges that account. ElevenLabs is a product name."
+	},
+	"ui.settings.speech.provider.ready": {
+		"role": "Status line under a radio option",
+		"tone": "One word, neutral.",
+		"length": "One word; English is 5 characters.",
+		"note": "This provider can both listen and speak right now."
+	},
+	"ui.settings.speech.provider.not_ready": {
+		"role": "Status line under a radio option",
+		"tone": "Plain, neutral.",
+		"length": "One short sentence.",
+		"note": "Shown only when the backend sent no sentence of its own for why this provider cannot listen and speak yet."
+	},
+	"ui.settings.speech.provider.setup": {
+		"role": "Text button beside a status line",
+		"tone": "Imperative, sentence case.",
+		"length": "Three words; English is 18 characters.",
+		"note": "Opens the Providers section of Settings, where the key or sign-in for that provider is set up. 'Providers' is that section's name."
+	},
+	"ui.settings.speech.provider.none_chosen": {
+		"role": "Notice above two radio options",
+		"tone": "Plain, neutral.",
+		"length": "One or two short sentences.",
+		"note": "Neither provider is chosen yet, and hands-free voice cannot start until one is."
+	},
+	"ui.settings.speech.provider.none_ready": {
+		"role": "Notice above two radio options",
+		"tone": "Plain, neutral.",
+		"length": "One or two short sentences.",
+		"note": "Shown instead of the 'none chosen' notice when neither provider can listen and speak yet, so both options are disabled. 'Providers' is the name of the Settings section where the key or sign-in is set up."
+	},
+	"ui.settings.speech.provider.save_failed": {
+		"role": "Inline error under the radio options",
+		"tone": "Plain, neutral.",
+		"length": "One short sentence.",
+		"note": "Fallback when the daemon refused to store the provider choice and sent no sentence of its own."
+	}
+}

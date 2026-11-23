@@ -277,6 +277,19 @@ const STATES: Record<
 		},
 	},
 	/*
+	 * THE BUSY-SEND REFUSAL (S2, architect D11): a busy send whose resolved mode
+	 * the backend cannot honour is refused before admission — the draft is kept
+	 * and nothing is sent as steer. A failure, so `danger`; Retry would meet
+	 * the same refusal, so only Clear stands beside it.
+	 */
+	"delivery-unsupported": {
+		sendError: {
+			message: SEND_FAILURE_COPY.deliveryUnsupported,
+			retry: false,
+			onClear: () => {},
+		},
+	},
+	/*
 	 * THE ANSWER PRESS'S TWO CODED REFUSALS, in the band that carries a press whose
 	 * card is gone. `busy` is the RETRYABLE one: the owner is alive and did not
 	 * confirm inside the route's own budget, which the merged route answers `503`

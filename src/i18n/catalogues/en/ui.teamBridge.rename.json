@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {Rename group…} other {Rename channel…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {Rename group} other {Rename channel}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {Everyone in the group sees the new name.} other {Everyone in the channel sees the new name. Channel names are lowercase, with hyphens instead of spaces.}}",
+	"ui.teamBridge.rename.name": "Name",
+	"ui.teamBridge.rename.cancel": "Cancel",
+	"ui.teamBridge.rename.save": "Save",
+	"ui.teamBridge.rename.saving": "Saving…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {A group named {name} already exists. Choose another name.} other {A channel named #{name} already exists. Choose another name.}}",
+	"ui.teamBridge.rename.error.empty": "Enter a name.",
+	"ui.teamBridge.rename.error.too_long": "Names can be up to {max, number} characters.",
+	"ui.teamBridge.rename.error.characters": "The name contains a character that can't be used, such as a tab, a line break or an invisible character.",
+	"ui.teamBridge.rename.error.invalid": "That name can't be used. Try a different one.",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {You don't have permission to rename this group.} other {You don't have permission to rename this channel.}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {This group was archived, so it can't be renamed.} other {This channel was archived, so it can't be renamed.}}",
+	"ui.teamBridge.rename.error.failed": "The new name wasn't saved. Try again."
+}

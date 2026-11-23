@@ -40,6 +40,8 @@
  * identity scalars in argument order").
  */
 
+import { t } from "@shared/i18n";
+
 /** One printed line of the pane. */
 export type DetailLine = {
 	/**
@@ -69,9 +71,6 @@ export type DetailLine = {
  */
 const MAX_DEPTH = 8;
 
-/** What a cut-off subtree prints instead of its leaves. */
-const DEEPER_VALUES = "… deeper values not shown";
-
 /**
  * The app's own spelling for a section that exists and holds nothing.
  *
@@ -82,7 +81,14 @@ const DEEPER_VALUES = "… deeper values not shown";
  * container" means a reader meets ONE spelling of nothing in this app instead of
  * a second dialect invented here.
  */
-const EMPTY_CONTAINER = "(empty)";
+/*
+ * Keyed and read per call: this marker is the UI's own (the producer's
+ * `(empty)` bodies pass through verbatim and never reach this function), so it
+ * must follow the reader's locale like every other line the pane writes.
+ */
+function emptyContainerLine(): string {
+	return t("ui.chat.canonical.tool_row.detail.empty");
+}
 
 /** One indent step in the TEXT projection (`detailText`), as the TUI counts it. */
 const INDENT = "  ";
@@ -101,7 +107,9 @@ const INDENT = "  ";
  * than as the one argument it came from.
  */
 export function detailOverflowLabel(hidden: number): string {
-	return `… ${hidden} more line${hidden === 1 ? "" : "s"}`;
+	/* ICU plural arms carry the singular rule per locale; English keeps the
+	 * terminal's exact bytes, `… 0 more lines` included. */
+	return t("ui.chat.canonical.tool_row.detail.more_lines", { count: hidden });
 }
 
 /**
@@ -258,7 +266,13 @@ function walk(
 	out: DetailLine[],
 ): void {
 	if (depth > MAX_DEPTH) {
-		out.push({ key, value: DEEPER_VALUES, depth });
+		/* Read per call, not hoisted to a module constant: a constant would freeze
+		 * the locale active at import time. */
+		out.push({
+			key,
+			value: t("ui.chat.canonical.tool_row.detail.deeper_values"),
+			depth,
+		});
 		return;
 	}
 	if (isContainer(value)) {
@@ -386,5 +400,5 @@ export function resultLines(
 	const lines = argumentLines(parsed as Record<string, unknown>);
 	return lines.length > 0
 		? lines
-		: [{ key: "", value: EMPTY_CONTAINER, depth: 1 }];
+		: [{ key: "", value: emptyContainerLine(), depth: 1 }];
 }

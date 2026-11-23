@@ -78,7 +78,13 @@ import {
 	showSuccessToast,
 } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
@@ -131,6 +137,8 @@ import type { SlashCommandInvocation } from "./slash-submit";
 import { SEPARATOR_RUN } from "./slash-token";
 
 type SlashDispatchOptions = {
+	/** Also identifies draft-to-draft moves without a live session id. */
+	paneIdentity?: string | null;
 	/** Canonical session the commands address. */
 	sessionId: string | undefined;
 	addMessage: (message: Message) => void;
@@ -473,6 +481,7 @@ function returnAidaText(key: string, target: string, text: string): boolean {
 }
 
 export function useSlashDispatch({
+	paneIdentity,
 	sessionId,
 	addMessage,
 	canonical,
@@ -596,23 +605,44 @@ export function useSlashDispatch({
 	 * close edges; the strip only knows about the open one.
 	 */
 	const invoker = useRef<HTMLElement | null>(null);
-	const closePicker = useCallback(() => {
+	// Owner requests still finish; only the latest intent owns the pane's one
+	// presentation slot and any queued return focus. An old ACK may not undo
+	// a newer open/dismiss or cross a pane identity transition.
+	const presentationGeneration = useRef(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: identity changes are the invalidation, not inputs to the effect.
+	useLayoutEffect(() => {
 		setPicker(null);
-		const origin = invoker.current;
 		invoker.current = null;
-		if (!origin) return;
-		/*
-		 * After the dialog has unmounted and Radix has done its own restoration,
-		 * so this is the last word rather than a race with it. A node that was
-		 * replaced while the picker was open is no longer in the document, and
-		 * focusing it would be the same silent no-op that produces the defect -
-		 * so the composer, which is always mounted, takes it instead.
-		 */
-		requestAnimationFrame(() => {
-			if (origin.isConnected) origin.focus();
-			else focusComposer?.();
-		});
-	}, [focusComposer]);
+		return () => {
+			presentationGeneration.current += 1;
+		};
+	}, [sessionId, paneIdentity]);
+	const closePicker = useCallback(
+		(restoreFocus = true) => {
+			const dismissedAt = ++presentationGeneration.current;
+			setPicker(null);
+			const origin = invoker.current;
+			invoker.current = null;
+			if (!origin || !restoreFocus) return;
+			/*
+			 * After the dialog has unmounted and Radix has done its own restoration,
+			 * so this is the last word rather than a race with it. A node that was
+			 * replaced while the picker was open is no longer in the document, and
+			 * focusing it would be the same silent no-op that produces the defect -
+			 * so the composer, which is always mounted, takes it instead.
+			 */
+			requestAnimationFrame(() => {
+				if (dismissedAt !== presentationGeneration.current) return;
+				if (origin.isConnected) origin.focus();
+				else focusComposer?.();
+			});
+		},
+		[focusComposer],
+	);
+	const closePickerFromOutside = useCallback(
+		() => closePicker(false),
+		[closePicker],
+	);
 
 	// Receipts land in the transcript the user is looking at: the canonical
 	// one when the session is live, the legacy chat store otherwise.
@@ -676,10 +706,19 @@ export function useSlashDispatch({
 	const dispatch = useCallback(
 		async (
 			invocation: SlashCommandInvocation,
+			quickPickerAnchor?: HTMLElement,
 		): Promise<SlashDispatchOutcome> => {
 			const { name: word, args } = invocation;
 			if (!commandsEnabled) return "not-a-command";
+			const presentation = ++presentationGeneration.current;
 			const commands = commandsQuery.data ?? [];
+			// A bare typed /model or /effort also needs a return target, but it is
+			// not anchored to whichever control happens to be focused on reply.
+			const quickOrigin =
+				quickPickerAnchor ??
+				(document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null);
 			const spec =
 				commands.find((command) => command.name === word) ??
 				commands.find((command) => command.aliases.includes(word));
@@ -1672,7 +1711,8 @@ export function useSlashDispatch({
 						// what a destination MEANS, so both entry points reach one control. A
 						// `picker` entry would be mounted here instead, which is why this is a
 						// branch and not a name check in the table.
-						presentCwdChip(spec.name);
+						if (presentation === presentationGeneration.current)
+							presentCwdChip(spec.name);
 						return "consumed";
 					}
 					if (!target) {
@@ -1688,12 +1728,20 @@ export function useSlashDispatch({
 						);
 						return "consumed";
 					}
-					invoker.current =
-						document.activeElement instanceof HTMLElement
+					if (presentation !== presentationGeneration.current)
+						return "consumed";
+					const quick =
+						action.destination === "session.model" ||
+						action.destination === "session.effort";
+					invoker.current = quick
+						? quickOrigin
+						: document.activeElement instanceof HTMLElement
 							? document.activeElement
 							: null;
 					setPicker({
 						action,
+						quickPickerAnchor: quick ? quickPickerAnchor : undefined,
+						onCloseOutside: quick ? closePickerFromOutside : undefined,
 						spec,
 						sessionId,
 						canonical,
@@ -1776,6 +1824,7 @@ export function useSlashDispatch({
 			canonical,
 			rebind,
 			closePicker,
+			closePickerFromOutside,
 			canMove,
 			paneReady,
 			moveSession,
@@ -1838,14 +1887,19 @@ export function useSlashDispatch({
 	const dispatchFromControl = useCallback(
 		async (
 			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
 		): Promise<SlashDispatchOutcome> => {
-			const outcome = await dispatch(invocation);
+			if (anchor && picker?.quickPickerAnchor === anchor) {
+				closePicker();
+				return "consumed";
+			}
+			const outcome = await dispatch(invocation, anchor);
 			if (outcome === "not-a-command") {
 				note(t("ui.chat.slash.dispatch.backend_incomplete"), true);
 			}
 			return outcome;
 		},
-		[dispatch, note],
+		[dispatch, note, picker?.quickPickerAnchor, closePicker],
 	);
 
 	/**
@@ -1863,12 +1917,18 @@ export function useSlashDispatch({
 	 * chip is a control for a keyboard user too.
 	 */
 	const openDraftPicker = useCallback(
-		(destination: DraftPickerDestination) => {
+		(destination: DraftPickerDestination, anchor?: HTMLElement) => {
 			if (!draftPicker) return;
+			if (anchor && picker?.quickPickerAnchor === anchor) {
+				closePicker();
+				return;
+			}
+			presentationGeneration.current += 1;
 			invoker.current =
-				document.activeElement instanceof HTMLElement
+				anchor ??
+				(document.activeElement instanceof HTMLElement
 					? document.activeElement
-					: null;
+					: null);
 			setPicker({
 				action: {
 					kind: "native_action",
@@ -1889,11 +1949,15 @@ export function useSlashDispatch({
 				dispatch: (invocation) => void dispatch(invocation),
 				rebind,
 				draft: draftPicker,
+				quickPickerAnchor: anchor,
+				onCloseOutside: closePickerFromOutside,
 			});
 		},
 		[
 			canonical,
 			closePicker,
+			closePickerFromOutside,
+			picker?.quickPickerAnchor,
 			commandsQuery.data,
 			dispatch,
 			draftPicker,
@@ -1958,6 +2022,7 @@ export function useSlashDispatch({
 		 * when the node has gone. Without it, closing the picker would leave the
 		 * caret wherever the menu's own close put it, with nothing deciding.
 		 */
+		presentationGeneration.current += 1;
 		invoker.current = panelRequest.sessionId ? panelRequest.invoker : null;
 		/*
 		 * WHICH CONVERSATION THE PANEL ADDRESSES: the request's own, then the pane's.
@@ -2050,7 +2115,10 @@ export function useSlashDispatch({
 	return {
 		dispatch,
 		dispatchFromControl,
-		picker,
+		// A still-open draft adapter reads the current pane model/ladder, not the
+		// one captured at presentation. In-flight writes still compare at commit.
+		picker:
+			picker?.draft && draftPicker ? { ...picker, draft: draftPicker } : picker,
 		closePicker,
 		openDraftPicker,
 		note,

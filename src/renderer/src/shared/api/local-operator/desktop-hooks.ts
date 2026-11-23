@@ -241,6 +241,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "inline_ui"
 	| "session_tags"
 	/**
 	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
@@ -378,6 +379,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_thread_reads"
 	/**
+	 * The admitted body behind an inbound Team Bridge transcript card:
+	 * `sessions.bridgeCardBody`, core's entry-keyed display-store read (bridge-body
+	 * design §4). Absent (an older backend): the card keeps "Message body
+	 * unavailable." and makes no request at all.
+	 */
+	| "team_bridge_card_body"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
@@ -397,6 +405,15 @@ export type DesktopFeature =
 	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
 	 */
 	| "team_bridge_leave_withdraws_agent"
+	/**
+	 * RENAME a channel or group: core's `POST .../conversations/{id}/rename`
+	 * desktop route over the hub's rename. Absent: the conversation menu draws
+	 * no Rename item, because every save would be refused by a runtime that has
+	 * no route for it.
+	 */
+	| "team_bridge_conversation_rename"
+	/** Atomic name/topic PATCH; deploy the upstream route before this capability. */
+	| "team_bridge_conversation_update"
 	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
@@ -725,6 +742,17 @@ export type DesktopFeature =
 	 */
 	| "input_mode"
 	/**
+	 * `delivery` on `sessions.message`: how a message sent while the session is
+	 * busy reaches the running turn (`steer` / `queue` / `both`).
+	 *
+	 * ITS OWN KEY for the same reason `input_mode` has one: the field rides a
+	 * body an older harness validates with `extra="forbid"`, so a renderer
+	 * must ASK before sending it. Absent means the legacy body (field absent,
+	 * which the wire reads as steer), and a resolved queue/both without the key
+	 * is refused rather than sent as steer (see `composer-send-key.ts`).
+	 */
+	| "busy_delivery"
+	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
 	 *
@@ -1025,6 +1053,30 @@ export type DesktopFeature =
 	 */
 	| "session_transfer"
 	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
+	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
 	 *
@@ -1077,6 +1129,17 @@ export type DesktopFeature =
 	 */
 	| "phone_pairing"
 	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
+	/**
 	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
 	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
 	 * → Phone access; the pairing popup still renders, it just cannot offer the
@@ -1109,6 +1172,14 @@ export type DesktopFeature =
 	 * exactly as it did before.
 	 */
 	| "aida"
+	/*
+	 * PER-SESSION VOICE (`features.voice`; `docs/design/session-voice.md`): the slot
+	 * read/control, the utterance upload, the speech download and the feed's
+	 * `voice` frame. ITS OWN KEY: absent means no toggle, no sidebar marker, no
+	 * voice push-to-talk handler and no call to any `/v1/desktop/voice` route -
+	 * the app is exactly the pre-voice one.
+	 */
+	| "voice"
 	/**
 	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
 	 * availability report a speak control asks before it offers itself.
@@ -1195,7 +1266,13 @@ export type DesktopFeature =
 	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
 	 * rendered and the route (404 on an older backend) is never called.
 	 */
-	| "mobile_doctor";
+	| "mobile_doctor"
+	/**
+	 * Amazon Bedrock's AWS panel (`bedrock_auth`, bedrock design §7): the four
+	 * `auth.bedrock.*` ops. Absent ⇒ the provider panel offers only the generic
+	 * API-key path (`auth.key`), which every backend with a `bedrock` row serves.
+	 */
+	| "bedrock_auth";
 
 /**
  * WHY a negotiated feature surface may not be offered.
@@ -1286,6 +1363,7 @@ function streamCapabilityFlags(
 ): StreamCapabilityFlags {
 	return {
 		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		inlineUi: desktopFeatureEnabled(capabilities, "inline_ui"),
 		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
 		peerJournalSource: desktopFeatureEnabled(
 			capabilities,
@@ -1296,19 +1374,31 @@ function streamCapabilityFlags(
 
 /** Canonical provider registry rows, including aliases folded into methods. */
 export function useDesktopProviders(enabled: boolean) {
-	return useQuery({
-		queryKey: desktopKeys.providers,
-		queryFn: () =>
-			desktopResult<{ providers: DesktopProvider[] }>({
-				op: "providers.list",
-			}).then((result) => result.providers),
-		enabled,
-		staleTime: 30_000,
-		// Same reasoning as `useConfig`: a `status: null` failure already spent
-		// the transport's whole deadline learning nothing, so retrying it doubles
-		// the wait to ~60s without a chance of a different answer. A failure that
-		// carries a status came from a backend that answered and is still worth
-		// one retry.
-		retry: retryDesktopQuery,
-	});
+	/*
+	 * THE PROVIDER GATE, as in `useDesktopCapabilities`: the shared composer now
+	 * reads this census (`useLocalSelection`, the send block's "use local" fix)
+	 * and mounts in documents with no `QueryClientProvider` (the mini view), where
+	 * a bare `useQuery` throws "No QueryClient set". With no provider there is no
+	 * census; every caller already reads `data: undefined` as "not read yet". In
+	 * the app `provided` is always true, so this is a no-op there.
+	 */
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers),
+			enabled: provided && enabled,
+			staleTime: 30_000,
+			// Same reasoning as `useConfig`: a `status: null` failure already spent
+			// the transport's whole deadline learning nothing, so retrying it doubles
+			// the wait to ~60s without a chance of a different answer. A failure that
+			// carries a status came from a backend that answered and is still worth
+			// one retry.
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
 }

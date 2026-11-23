@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "آواز سے لکھائی ناکام: اس سے جڑے {provider} اکاؤنٹ کے کریڈٹس ختم ہیں۔ اگر یہ آپ کا اکاؤنٹ ہے تو {destination} پر کریڈٹس شامل کریں۔",
 	"ui.common.errors.dictation_unknown": "آواز سے لکھائی ناکام: {reason}۔ دوبارہ کوشش کریں، یا ایپ کے لاگ کے ساتھ مسئلہ رپورٹ کریں۔",
 	"ui.common.errors.dictation_unknown_clipped": "آواز سے لکھائی ناکام: {reason} دوبارہ کوشش کریں، یا ایپ کے لاگ کے ساتھ مسئلہ رپورٹ کریں۔",
+	"ui.common.errors.dictation_refused_take_kept": "آواز سے لکھائی ناکام: {reason}۔ ریکارڈنگ مسترد کریں، یا ایپ کے لاگ کے ساتھ مسئلہ رپورٹ کریں۔",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "آواز سے لکھائی ناکام: {reason} ریکارڈنگ مسترد کریں، یا ایپ کے لاگ کے ساتھ مسئلہ رپورٹ کریں۔",
 	"ui.common.errors.dictation_empty": "کوئی الفاظ نہیں سنے جا سکے۔ مائیکروفون کے تھوڑا قریب جا کر دوبارہ کوشش کریں۔",
 	"ui.common.errors.speech_failure": "یہ آواز میں نہیں سنایا جا سکا۔ دوبارہ کوشش کریں۔",
 	"ui.common.errors.speech_radient_sign_in": "آپ کا Radient سائن ان کام نہیں کر رہا۔ ترتیبات میں دوبارہ سائن ان کریں۔",

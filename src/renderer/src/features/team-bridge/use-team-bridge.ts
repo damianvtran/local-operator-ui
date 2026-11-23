@@ -89,6 +89,8 @@ import {
 	teamBridgeRateLimit,
 	teamBridgeStatusRefetchInterval,
 	withAppendedPage,
+	withConversationMetadata,
+	withConversationName,
 	withConversationStatus,
 	withNotificationPreference,
 	withOwnAgentNotify,
@@ -2008,6 +2010,150 @@ export function useArchiveTeamBridgeConversation(): UseMutationResult<
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	return useMutation(archiveMutationOptions(client, owner.isCurrent));
+}
+
+export type TeamBridgeUpdatePatch = { name?: string; topic?: string };
+export type TeamBridgeUpdateMutationVariables = {
+	conversationId: string;
+	tenantId: string;
+	patch: TeamBridgeUpdatePatch;
+};
+
+/** Server-confirmed only: no whole-page snapshot rollback can erase a concurrent
+ * metadata result. The owner/epoch closure fences dispatch AND reconciliation.
+ */
+export function updateMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<unknown, Error, TeamBridgeUpdateMutationVariables> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		observedRadientAuthority(client).epoch === epoch &&
+		bridgeOwnerCurrent(client, accountId) &&
+		(isCurrent?.() ?? true);
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "update", accountId, epoch],
+		mutationFn: ({ conversationId, tenantId, patch }) => {
+			if (!current() || !accountId)
+				throw new Error("Team Bridge write authority changed");
+			return TeamBridgeApi.update(conversationId, patch, tenantId, accountId);
+		},
+		onSuccess: async (data, { conversationId, tenantId }) => {
+			if (!current()) return;
+			// Cancel any list response started before PATCH so it cannot resurrect
+			// an old description between canonical reconciliation and invalidation.
+			await client.cancelQueries(owned);
+			if (!current()) return;
+			const served = data as { name?: string; topic?: string };
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationMetadata(page, conversationId, tenantId, served),
+			);
+		},
+		onSettled: async () => {
+			if (current()) await client.invalidateQueries(owned);
+		},
+	};
+}
+
+export function useUpdateTeamBridgeConversation() {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(updateMutationOptions(client, owner.isCurrent));
+}
+
+/** What one rename names: the row (as the lifecycle writes do) and the name. */
+export type TeamBridgeRenameMutationVariables =
+	TeamBridgeLifecycleMutationVariables & { name: string };
+
+/**
+ * Rename a channel or group, optimistically.
+ *
+ * WHY OPTIMISTIC. The rail row and the header both read the name from the
+ * cached conversation pages (there is no separate single-conversation query),
+ * so writing the new name into every page this account owns updates both at
+ * once, the way archive removes a row at once. A refusal restores the exact
+ * snapshots taken first. The server answers with the CANONICAL name (its
+ * sanitiser trims and collapses spaces), so `onSuccess` settles every page to
+ * that name rather than the typed one, and `onSettled` re-reads the truth.
+ *
+ * The dialog stays open on the promise (`mutateAsync`) so a refusal such as
+ * `conversation_name_taken` can be explained where the name was typed; the
+ * rollback is what keeps the rail from showing a name the server refused.
+ *
+ * OTHER MEMBERS pick the new name up from their own next conversation-list
+ * read (stale after 15 s, refetched on focus and by the unread sync); the
+ * name is a field of the served conversation, so nothing here broadcasts it.
+ */
+export function renameMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	unknown,
+	Error,
+	TeamBridgeRenameMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "rename", accountId, epoch],
+		mutationFn: ({ conversationId, tenantId, name }) => {
+			check();
+			return TeamBridgeApi.rename(conversationId, name, tenantId, accountId);
+		},
+		onMutate: async ({ conversationId, tenantId, name }) => {
+			check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationName(page, conversationId, name, tenantId),
+			);
+			return { snapshots };
+		},
+		onSuccess: (data, { conversationId, tenantId }) => {
+			if (!current()) return;
+			const served = (data as { name?: unknown } | null)?.name;
+			if (typeof served !== "string" || served === "") return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationName(page, conversationId, served, tenantId),
+			);
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+		},
+	};
+}
+
+export function useRenameTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeRenameMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(renameMutationOptions(client, owner.isCurrent));
 }
 
 /**

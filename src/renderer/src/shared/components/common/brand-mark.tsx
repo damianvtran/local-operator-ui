@@ -35,10 +35,9 @@ import type { CSSProperties, FC } from "react";
  * icon rather than a new drawing of it.
  *
  * ONE COMPONENT for every place the mark leads a surface (the sidebar's brand row,
- * its collapsed 56px strip, and the empty chat's greeting), so the three cannot
- * drift into three treatments - which is what they were before this file: a mask
- * over `bg-ink` in the sidebar and a copy of the same inline style over
- * `bg-ink-muted` in the composer.
+ * its collapsed 56px strip, and the empty chat's greeting). In an engraving the
+ * surrounding stipple supplies the bubble as negative space rather than solid
+ * fill. That uses the same figure artwork, printed with ink instead of knocked out.
  */
 type BrandMarkProps = {
 	/** Tailwind size class for the disc, e.g. `size-6`. */
@@ -49,6 +48,8 @@ type BrandMarkProps = {
 	 * that carries the screen's loudest ink (§H).
 	 */
 	tone?: "ink" | "ink-muted";
+	/** The surrounding engraving supplies the bubble; all other surfaces use the disc. */
+	treatment?: "badge" | "engraved";
 	/**
 	 * The accessible name, or none. Unnamed marks are `aria-hidden`: every current
 	 * site has visible text beside it that already says "Local Operator" or means it.
@@ -62,8 +63,7 @@ const TONE_CLASS: Record<NonNullable<BrandMarkProps["tone"]>, string> = {
 };
 
 /*
- * Static, so every render hands React the same object: the mask never changes
- * with props, only the disc's size and fill do.
+ * Static, so changes to size/ink don't rebuild either mask.
  */
 const DISC_MINUS_FIGURE: CSSProperties = {
 	maskImage: `linear-gradient(#000, #000), url(${brandMark})`,
@@ -78,9 +78,14 @@ const DISC_MINUS_FIGURE: CSSProperties = {
 	WebkitMaskComposite: "xor",
 };
 
+const PRINTED_FIGURE: CSSProperties = {
+	mask: `url(${brandMark}) center / contain no-repeat`,
+};
+
 export const BrandMark: FC<BrandMarkProps> = ({
 	className,
 	tone = "ink",
+	treatment = "badge",
 	label,
 }) => (
 	<span
@@ -89,10 +94,11 @@ export const BrandMark: FC<BrandMarkProps> = ({
 		aria-hidden={label ? undefined : true}
 		data-brand-mark=""
 		className={cn(
-			"inline-block shrink-0 rounded-full",
+			"inline-block shrink-0",
+			treatment === "badge" && "rounded-full",
 			TONE_CLASS[tone],
 			className,
 		)}
-		style={DISC_MINUS_FIGURE}
+		style={treatment === "engraved" ? PRINTED_FIGURE : DISC_MINUS_FIGURE}
 	/>
 );

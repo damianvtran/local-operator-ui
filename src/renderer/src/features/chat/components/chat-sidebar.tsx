@@ -25,7 +25,9 @@ import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
  * device half rides the row itself (`chat-remote.ts`).
  */
 import { useMeshNetworks } from "@features/mesh/mesh-store";
+import { VoiceRowMarker } from "@features/voice/voice-indicator";
 import { useAgentAvatar } from "@shared/agent-avatar/agent-avatar";
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -807,7 +809,12 @@ import {
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
 } from "./chat-session-avatar";
-import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
+import {
+	ChatAsksOutstanding,
+	approvalAsksSentence,
+	statusLabelText,
+	withQueuedAskStatuses,
+} from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -2747,7 +2754,7 @@ export function ChatSidebar({
 		return out;
 	}, [pinFacts, sessions]);
 	const {
-		rows: matching,
+		rows: searchedRows,
 		conversationMatches,
 		synthesized,
 	} = useMemo(
@@ -2777,6 +2784,19 @@ export function ChatSidebar({
 			bindingOfHit,
 			teamLabelFor,
 		],
+	);
+	/*
+	 * THE ROWS AS THE SIDEBAR DRAWS THEM, derived ONCE and before the partitions
+	 * below (`withQueuedAskStatuses` carries why): a queued ask owns the ask mark,
+	 * so the status cell must not say "answer" a second time - and because the
+	 * section a row files under reads the SAME status code, the derivation has to
+	 * happen before `pinnedRows`/`unpinnedRows` and the arrangement, not at the
+	 * draw. Everything downstream (`pageOrder`'s lift, `sectionRows`, Tag mode's
+	 * folded cue, `sessionRow`) therefore reads one row.
+	 */
+	const matching = useMemo(
+		() => withQueuedAskStatuses(searchedRows, asksBySession),
+		[searchedRows, asksBySession],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -4170,6 +4190,7 @@ export function ChatSidebar({
 		pinned: pinned.length,
 		running: sectioned.running.length,
 		today: sectioned.today.length,
+		yesterday: sectioned.yesterday.length,
 		week: sectioned.week.length,
 		older: sectioned.older.length,
 		agents: ownAgents.length,
@@ -4714,6 +4735,14 @@ export function ChatSidebar({
 		nested = false,
 		tagDraggable = false,
 	) => {
+		/*
+		 * THE ROW ARRIVES DERIVED: a queued ask is shown by the ask mark below, so the
+		 * status mark, tooltip and spoken name must not say "answer" a second time.
+		 * That derivation happens ONCE, over the list and before the partitions and
+		 * the arrangement (`withQueuedAskStatuses`) - which is what keeps this row and
+		 * the section it sits in reading one row. A second derivation here is the copy
+		 * that lets the two disagree.
+		 */
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: notSent.has(row.session_id),
@@ -5045,6 +5074,12 @@ export function ChatSidebar({
 							(synthesized.has(row.session_id)
 								? t("ui.chat.sidebar.row.search_beyond")
 								: t("ui.chat.sidebar.row.recent")))}
+					{/*
+					 * THE APPROVAL'S ASK COUNT, spoken here because its mark yields the glyph
+					 * to the status bubble (`ChatAsksOutstanding`): the same sentence the
+					 * `sr-only` name appends, so pointer and screen reader hear one thing.
+					 */}
+					{approvalAsksSentence(row)}
 					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
 					{notSent.has(row.session_id)
@@ -5343,6 +5378,12 @@ export function ChatSidebar({
 				 * predicate, several channels" rule; the pixels are `BackgroundWorkLane`
 				 * under the status cell (the trio of #840 is retired).
 				 */}
+				{/*
+				 * SESSION VOICE'S MARK: on exactly the row whose session holds the
+				 * machine-wide slot, so a switch visibly moves it off the old row.
+				 * `shrink-0`: the title's clip pays for it.
+				 */}
+				<VoiceRowMarker sessionId={row.session_id} />
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested
 			    rows already inherit the identity from their parent, and a row that
@@ -5764,7 +5805,8 @@ export function ChatSidebar({
 			return withFlyout(
 				<div
 					onBlur={keepFlyoutWhileFocusStaysInRow}
-					className={cn(rowBoxStyle, current && rowCurrent)}
+					/* User content, as the menu path's row box below (round 1, M1). */
+					className={cn(rowBoxStyle, current && rowCurrent, USER_CONTENT_CLASS)}
 				>
 					{rowButton}
 					{/*
@@ -6500,6 +6542,14 @@ export function ChatSidebar({
 					 * an opaque fill over its parent's box-shadow (round 3, D10).
 					 */
 					dragging && rowDraggingMark,
+					/*
+					 * THE WHOLE ROW IS USER CONTENT (review round 1, M1): the title and
+					 * every sibling act's `aria-label`/`title` (`Pin "<title>"`,
+					 * `Archive "<title>"`) name the chat, so the box is the region, not
+					 * just the title span. Row clicks stay countable through the
+					 * structural `data-chat-row`/`data-tour-tag` the hook keeps.
+					 */
+					USER_CONTENT_CLASS,
 				)}
 			>
 				{/*
@@ -7011,6 +7061,9 @@ export function ChatSidebar({
 								title={!up ? moveBoundarySentence(row.session_id) : undefined}
 								onSelect={() => movePinnedRow(row.session_id, -1, true)}
 								className={cn(
+									// Only at the boundary, where `title` names the chat; the
+									// live item's "Move up" stays a counted label (round 1, M1).
+									!up && USER_CONTENT_CLASS,
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 									/*
@@ -7046,6 +7099,7 @@ export function ChatSidebar({
 								title={!down ? moveBoundarySentence(row.session_id) : undefined}
 								onSelect={() => movePinnedRow(row.session_id, 1, true)}
 								className={cn(
+									!down && USER_CONTENT_CLASS,
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 									// The chord follows its item's disabled step - see the note on the row above.
@@ -9587,7 +9641,11 @@ export function ChatSidebar({
 		 * two regions share and has to be measured rather than assumed (review round
 		 * 1, m-1).
 		 */
-		<p ref={pinRef} className="pb-2 text-meta text-warning">
+		<p
+			ref={pinRef}
+			// The sentence quotes the chat's title.
+			className={cn("pb-2 text-meta text-warning", USER_CONTENT_CLASS)}
+		>
 			{t("ui.chat.sidebar.pins.failure", {
 				action: pinFailure.pinned ? "pin" : "unpin",
 				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
@@ -9838,6 +9896,8 @@ export function ChatSidebar({
 								className={cn(
 									rowBoxStyle,
 									"group",
+									// A draft's title and its discard act's label name it (round 1, M1).
+									USER_CONTENT_CLASS,
 									/*
 									 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
 									 * (design round 2, D13, measured on the session rows):

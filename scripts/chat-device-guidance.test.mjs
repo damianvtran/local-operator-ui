@@ -52,7 +52,8 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { DeviceGuidance, messageRuns } from "./src/renderer/src/features/chat/device/chat-header-device";',
+			'export { DeviceGuidance } from "./src/renderer/src/features/chat/device/chat-header-device";',
+			'export { messageRuns } from "./src/renderer/src/shared/lib/message-runs";',
 			'export { pairingGuidance } from "./src/renderer/src/features/chat/device/chat-device-model";',
 			'export { t } from "./src/i18n/messages";',
 			'export * as locale from "./src/i18n/locale";',

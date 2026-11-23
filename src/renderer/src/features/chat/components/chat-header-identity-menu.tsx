@@ -72,6 +72,7 @@
 import { Input } from "@shared/components/ui/input";
 import { PopoverContent } from "@shared/components/ui/popover";
 import { t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
@@ -560,7 +561,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					data-header-identity-constraint=""
 					className="px-2 pb-1.5 text-ink-dim text-meta"
 				>
-					{closedReason}
+					<ShortcutText text={closedReason} />
 				</p>
 			</PopoverContent>
 		);

@@ -465,7 +465,7 @@ export const OrgTeamsList: React.FC<{
 								 * a four-line row.
 								 */
 								trailing={
-									<div className="-mt-1 ml-3 shrink-0 self-start">
+									<div className="-mt-1 ms-3 shrink-0 self-start">
 										<Button
 											ref={(node) => {
 												if (node) pullButtons.current.set(team.id, node);
@@ -501,7 +501,7 @@ export const OrgTeamsList: React.FC<{
 								 * control — and the transport's own otherwise.
 								 */
 								<div
-									className="mt-1 flex flex-col items-start gap-1 pl-5"
+									className="mt-1 flex flex-col items-start gap-1 ps-5"
 									data-testid="org-team-pull-error"
 								>
 									<output className="text-meta text-danger">
@@ -715,7 +715,7 @@ const TeamSummary = ({
 					{hubDisplayName(team.name)}
 				</span>
 				{version ? (
-					<span className="ml-2 shrink-0 text-ink-dim text-meta">
+					<span className="ms-2 shrink-0 text-ink-dim text-meta">
 						{/* i18n: ignore version prefix - "v" + a version number is a technical token, not copy */}
 						v{version}
 					</span>
@@ -856,13 +856,13 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 
 /**
  * One skeleton row, the row above box for box: the same `ROW_BOX`, the chevron
- * gutter (`pl-5`, 14px glyph + 6px gap) and lines whose heights are the settled
+ * gutter (`ps-5`, 14px glyph + 6px gap) and lines whose heights are the settled
  * lines' own (`h-[1lh]` on the same type-size token, so the line box is the real
  * one and not a number kept in step by hand). Description is two bars, the meta
  * line one; the provenance line the settled row also has is the second meta bar.
  */
 const TeamRowSkeleton = () => (
-	<div className={cn(ROW_BOX, "pl-9")} data-testid="org-team-skeleton-row">
+	<div className={cn(ROW_BOX, "ps-9")} data-testid="org-team-skeleton-row">
 		<div className="flex h-[1lh] items-center text-body">
 			<Skeleton className="h-4.5 w-40" />
 		</div>

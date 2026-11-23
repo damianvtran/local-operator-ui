@@ -19,6 +19,7 @@ import { t } from "../../../../../i18n/messages";
 import {
 	type InstallSummary,
 	installBuiltins,
+	installProgressReading,
 	summaryExceptionSentence,
 	summarySentence,
 } from "../install-builtin-batch";
@@ -85,6 +86,9 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	const [done, setDone] = useState(0);
 	const [current, setCurrent] = useState<string | null>(null);
 	const [summary, setSummary] = useState<InstallSummary | null>(null);
+	/* The number of names THIS run installs, fixed at its start: the live
+	   `builtins` list shrinks as installs land (see `installProgressReading`). */
+	const [runTotal, setRunTotal] = useState(0);
 	const dismissRef = useRef<HTMLButtonElement>(null);
 	/* The action that starts the batch: where focus returns after the summary is
 	 * dismissed, because it is the section's own next control and it is what the
@@ -160,8 +164,10 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 		setRunning(true);
 		setSummary(null);
 		setDone(0);
+		const names = builtins.map((builtin) => builtin.name);
+		setRunTotal(names.length);
 		const result = await installBuiltins(
-			builtins.map((builtin) => builtin.name),
+			names,
 			(name) =>
 				desktopResult<ReusableProfile>({
 					op: "profiles.install",
@@ -184,9 +190,15 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 		await queryClient.invalidateQueries({ queryKey: ["desktop", "profiles"] });
 	}, [builtins, queryClient, running]);
 
-	if (builtins.length === 0 && !summary) return null;
+	// `!running`: the missing list can empty WHILE the run is still reporting
+	// (each install lands a profile), and the progress must not unmount mid-run.
+	if (builtins.length === 0 && !summary && !running) return null;
 
-	const total = builtins.length;
+	const { step, total } = installProgressReading(
+		done,
+		current,
+		running ? runTotal : builtins.length,
+	);
 	/*
 	 * The step the bar and the sentence BOTH report: completed installs plus the
 	 * one in flight. They used to disagree by one for the whole run — the bar
@@ -194,7 +206,6 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 	 * "Installing 1 of 6" sat over a bar at 0% and the run reached "6 of 6" with
 	 * the bar still at 83% (design round 1, D2). One quantity, one reading.
 	 */
-	const step = done + (current ? 1 : 0);
 	const exceptionLine = summary ? summaryExceptionSentence(summary) : null;
 	/*
 	 * The row presentation sits among list rows that pad themselves; the primary
@@ -222,19 +233,31 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 						{t("ui.agents.starters.action.all_builtins")}
 					</Button>
 				) : (
+					/*
+					 * RTL WRAPS THE ACTION UNDER THE SENTENCE instead of squeezing it.
+					 * The action is `shrink-0` and the Urdu one is ~50% wider than the
+					 * English (100 px against 66 px measured for "Install all 3" in the
+					 * story), so at the sidebar's 220-260 px the sentence was left a
+					 * 39-79 px sliver and broke into 3-5 lines (design review on UI
+					 * #1952). Under `rtl:` the sentence's basis becomes its own width,
+					 * so the action drops to a second line only when both cannot share
+					 * one. Scoped to RTL on purpose: in LTR the same rule would move
+					 * "Install all" under a two-line sentence at the default 260 px,
+					 * and that layout is the reviewed one.
+					 */
 					<button
 						ref={actionRef}
 						type="button"
 						onClick={() => void run()}
 						className={cn(
-							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5",
+							"flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5 rtl:flex-wrap rtl:gap-y-0.5",
 							"text-start text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart",
 							"hover:bg-elevated",
 						)}
 						data-testid="install-all-builtins-row"
 					>
 						<Layers className="size-4 shrink-0" aria-hidden="true" />
-						<span className="min-w-0 flex-1">
+						<span className="min-w-0 flex-1 rtl:basis-auto">
 							{t("ui.agents.starters.available", { count: total })}
 						</span>
 						<span className="shrink-0 font-medium text-accent">

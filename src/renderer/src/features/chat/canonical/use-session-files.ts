@@ -9,7 +9,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	REMOTE_FILES_UNSUPPORTED_SENTENCE,
+	remoteFilesUnsupportedSentence,
 	remoteUnsupportedSentence,
 } from "./remote-files";
 import {
@@ -133,7 +133,7 @@ export function useSessionFiles(
 			setSnapshot({
 				...EMPTY,
 				state: "unsupported",
-				error: REMOTE_FILES_UNSUPPORTED_SENTENCE,
+				error: remoteFilesUnsupportedSentence(),
 			});
 			return;
 		}

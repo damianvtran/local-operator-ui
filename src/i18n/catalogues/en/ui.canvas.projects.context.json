@@ -26,12 +26,11 @@
 	"ui.canvas.projects.rail_tooltip_count": {
 		"role": "button tooltip",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Same tooltip as rail_tooltip, followed by how many projects this conversation is linked to.",
+		"note": "Same tooltip as rail_tooltip, followed by how many projects this conversation is linked to. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other).",
 		"placeholders": {
 			"state": "Stable action state: open means pressing closes; closed (other) means pressing opens. Keep the select arms and keywords verbatim.",
 			"count": "Number of linked projects (ICU plural, printed with {count, number, ::group-off} as the app's other project counts do)."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other)."
+		}
 	},
 	"ui.canvas.projects.rail_aria": {
 		"role": "button accessible name",
@@ -41,11 +40,10 @@
 	"ui.canvas.projects.rail_aria_count": {
 		"role": "button accessible name",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Accessible name of the right-rail linked-projects button with the number of linked projects.",
+		"note": "Accessible name of the right-rail linked-projects button with the number of linked projects. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other).",
 		"placeholders": {
 			"count": "Number of linked projects (ICU plural, printed with {count, number, ::group-off} as the app's other project counts do)."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other)."
+		}
 	},
 	"ui.canvas.projects.loading": {
 		"role": "spinner label",

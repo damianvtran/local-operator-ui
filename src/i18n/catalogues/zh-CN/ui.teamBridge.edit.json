@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {编辑群组……} other {编辑频道……}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {编辑群组} other {编辑频道}}",
+	"ui.teamBridge.edit.description": "修改名称和描述。对话中的所有人都能看到这些信息。",
+	"ui.teamBridge.edit.topic": "描述",
+	"ui.teamBridge.edit.error.topic_too_long": "描述最多可包含{max, number}个字符。",
+	"ui.teamBridge.edit.error.topic_characters": "描述中包含不允许使用的字符。可以使用换行符和制表符。",
+	"ui.teamBridge.edit.error.invalid": "这些信息无法使用。请检查名称和描述。",
+	"ui.teamBridge.edit.error.forbidden": "你没有权限编辑此对话。",
+	"ui.teamBridge.edit.error.archived": "此对话已归档，无法编辑。",
+	"ui.teamBridge.edit.error.failed": "无法确认更改是否已保存。你填写的内容仍在，可以重试。"
+}

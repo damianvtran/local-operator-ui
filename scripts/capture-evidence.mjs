@@ -634,15 +634,18 @@ export const STORIES = [
 		},
 	],
 	/*
-	 * These three DECLARE their content height rather than the 900 the harness
+	 * These two DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
 	 * transcript became its own `overflow-auto` container, the document reports
 	 * the VIEWPORT height, so `max(documentElement.scrollHeight, declared)`
 	 * returns the declared 900 and the capture clips the conversation mid-line -
 	 * `conversation-reasoning-open` lost 2,427px including two of the three open
 	 * reasoning panels it exists to evidence. The heights are the ones these
-	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
-	 * full transcript and a re-capture is a fair comparison again.
+	 * surfaces were committed with (1409 / 3327), so the frames keep the
+	 * full transcript and a re-capture is a fair comparison again. `conversation`
+	 * carries the 1409 its removed `conversation-with-reasoning` twin was captured
+	 * at: with the `showAgentReasoning` preference gone it renders that twin's
+	 * rows (reasoning shown, closed), not the 1308 reasoning-hidden list.
 	 */
 	/*
 	 * THE PROVIDER SIGN-IN, PROVIDERS PAGE, ONBOARDING AND DISCOVERABILITY SET.
@@ -912,8 +915,15 @@ export const STORIES = [
 	["chat-message-input--secret-ask-refused", 1280, 620],
 	["chat-message-input--secret-ask-multi", 1280, 620],
 	["chat-message-input--blocking-secret-gate", 1280, 620],
-	["chat-trace--conversation", 1280, 1308],
-	["chat-trace--conversation-with-reasoning", 1280, 1409],
+	/*
+	 * The jump-to-latest control's two label states. Registered so the sweep
+	 * photographs them at the shipped window's chat width: the control is one
+	 * disc above the composer, and its claim is which words it carries when
+	 * output arrived under a scrolled-up reader.
+	 */
+	["chat-scroll-to-bottom--idle", 900, 620],
+	["chat-scroll-to-bottom--new-activity", 900, 620],
+	["chat-trace--conversation", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
@@ -4681,6 +4691,79 @@ export const STORIES = [
 					return true;
 				})()`,
 				message: "the cleared row is back to No shortcut with its Reset gone",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-empty",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="composer.send_queue"]');
+					if (!field) return "the send queue row is not rendered";
+					if (field.value !== "No shortcut") return "an unbound send row must read No shortcut, read " + JSON.stringify(field.value);
+					return true;
+				})()`,
+				message: "the Sending group shows three unbound send rows",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-assigned",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="composer.send_queue"]');
+					if (!field) return "the send queue row is not rendered";
+					if (field.value === "No shortcut") return "the captured chord did not take";
+					return true;
+				})()`,
+				message: "a captured primary+enter press is shown on the send row",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-recording",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const active = document.activeElement;
+					if (!active || active.getAttribute("data-shortcut-action") !== "composer.send_steer") return "the send steer field does not hold focus, so the frame is not the recording state";
+					return true;
+				})()`,
+				message: "the send recording state is the focused send field",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-refused",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!field) return "the console row is not rendered";
+					const refusal = document.querySelector("output");
+					if (!refusal) return "the refusal line is not rendered";
+					return true;
+				})()`,
+				message:
+					"the console row and its refusal line are drawn before the sentence is read",
+			},
+			expectSentence: {
+				selector: "output",
+				includes: "Reserved: sends the message from the composer.",
 			},
 		},
 	],
@@ -14039,10 +14122,15 @@ const main = async () => {
 	 *     file, and no per-story catch - so a throw anywhere ends the run with the
 	 *     wiped tree left on disk;
 	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
-	 *     `documentElement.dataset.capturePending` and clears it only when the
-	 *     settings page renders the Appearance switch, which the offline page never
-	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
-	 *     there. The repository's own measurement of that state is in
+	 *     `documentElement.dataset.capturePending` and clears it only once the
+	 *     settings page renders the Appearance section container
+	 *     (`[data-tour-tag="settings-appearance-section"]`) and the story has
+	 *     scrolled it to the top of the viewport. On the measured date it
+	 *     anchored instead on the section's switch, which the offline page never
+	 *     rendered, so the readiness probe threw at its 60s bound and the sweep
+	 *     ENDED there; the anchor is the section now (PR #1983), but a stub that
+	 *     never mounts the section still strands the shutter the same way. The
+	 *     repository's own measurement of that state is in
 	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
 	 *     `{"drawn":false,"counted":88,"pending":true}`.
 	 *

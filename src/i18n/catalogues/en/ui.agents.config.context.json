@@ -1,93 +1,93 @@
 {
-	"ui.agents.config.about": [
-		"inline label and tooltip on the selected row",
-		"plain, smallest register",
-		"Names what the next request is about: {kind} is the read-only word 'agent' or 'team' from the row's kind, {name} is the row's own name (data, never translated). The visible span truncates at 224 px; the tooltip carries the whole string."
-	],
-	"ui.agents.config.kind.agent": [
-		"a lowercase common noun, never capitalised",
-		"plain",
-		"Names what kind of row the next request is about. It is substituted for {kind} in 'ui.agents.config.about' and in the '({kind})' suffix of the summary rows, so it must work bare: no article, no case ending that a preposition would need. Not a heading or a button."
-	],
-	"ui.agents.config.kind.team": [
-		"a lowercase common noun, never capitalised",
-		"plain",
-		"Same slot as 'ui.agents.config.kind.agent': the word for a team of agents, used bare in 'About {kind} {name}' and in the '({kind})' summary suffix."
-	],
-	"ui.agents.config.action.clear": [
-		"button label",
-		"plain",
-		"Drops the selected 'about' row so the next request is not scoped to it. Short ghost button next to the composer."
-	],
-	"ui.agents.config.action.dismiss": [
-		"button label",
-		"plain",
-		"Clears a finished run's strip from the dock. Pairs with watch/stop in the same trailing row."
-	],
-	"ui.agents.config.action.retry": [
-		"button label",
-		"plain",
-		"Re-sends the request after a message-call failure. The text is still in the box, so this is the same call again, not a new one."
-	],
-	"ui.agents.config.action.stop": [
-		"button label",
-		"plain, decisive",
-		"Interrupts a live configuration run. Not a danger colour: the run writes through as it goes and a stop is not a rollback (see stopped.*)."
-	],
-	"ui.agents.config.action.watch": [
-		"button label with aria-expanded",
-		"plain",
-		"Expands the run's own tool rows under the strip. Toggles; the chevron mirrors in RTL."
-	],
-	"ui.agents.config.activity.empty": [
-		"empty-state sentence inside the run's detail region",
-		"plain, factual",
-		"The run has started but has not called a tool yet. Says what is missing without sounding like a failure; full sentence, wraps inside a bounded region."
-	],
-	"ui.agents.config.background_only": [
-		"inline sentence under the idle box",
-		"plain, factual",
-		"Says the run is not part of the conversation transcript, which is why it has its own surface. Two sentences; the second one is what a reader needs before pressing Send."
-	],
-	"ui.agents.config.composer.label": [
-		"screen-reader label for the composer region",
-		"plain, names the task",
-		"The surface takes free text that asks for a change to an agent or a team. Not a placeholder: it is the region's accessible name."
-	],
-	"ui.agents.config.definitions": [
-		"count phrase embedded in a summary sentence",
-		"plain, counted",
-		"{count} is how many files the run touched. English needs one/other; use the language's own plural categories. Sits between 'Configured' and the rest of the row, so it must read as a noun phrase."
-	],
-	"ui.agents.config.error.stop_refused": [
-		"error sentence under the live strip",
-		"direct, no blame",
-		"The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
-	],
-	"ui.agents.config.error.turn_failed": [
-		"status line under the run strip's 'Did not finish' title",
-		"plain, honest",
-		"Shown when the run's model failed (provider error) and the incident carried no message of its own. Says nothing was answered; must not imply the operator did anything wrong, nor that the request was refused."
-	],
-	"ui.agents.config.examples.add_twice": [
-		"clickable example request",
-		"plain, imperative",
-		"Second of three hero examples; fills the box when clicked. 'release-crew' and 'coder' are example data used across the app's samples and stay as written."
-	],
-	"ui.agents.config.examples.reads_code": [
-		"clickable example request",
-		"plain, descriptive",
-		"First of three hero examples; fills the box when clicked. Sits in a wrapping ghost row, so length is forgiving."
-	],
-	"ui.agents.config.examples.team_shipping": [
-		"clickable example request",
-		"plain, imperative",
-		"Third hero example; fills the box when clicked. 'shipping' is an example team name, kept as written."
-	],
+	"ui.agents.config.about": {
+		"role": "inline label and tooltip on the selected row",
+		"tone": "plain, smallest register",
+		"note": "Names what the next request is about: {kind} is the read-only word 'agent' or 'team' from the row's kind, {name} is the row's own name (data, never translated). The visible span truncates at 224 px; the tooltip carries the whole string."
+	},
+	"ui.agents.config.kind.agent": {
+		"role": "a lowercase common noun, never capitalised",
+		"tone": "plain",
+		"note": "Names what kind of row the next request is about. It is substituted for {kind} in 'ui.agents.config.about' and in the '({kind})' suffix of the summary rows, so it must work bare: no article, no case ending that a preposition would need. Not a heading or a button."
+	},
+	"ui.agents.config.kind.team": {
+		"role": "a lowercase common noun, never capitalised",
+		"tone": "plain",
+		"note": "Same slot as 'ui.agents.config.kind.agent': the word for a team of agents, used bare in 'About {kind} {name}' and in the '({kind})' summary suffix."
+	},
+	"ui.agents.config.action.clear": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Drops the selected 'about' row so the next request is not scoped to it. Short ghost button next to the composer."
+	},
+	"ui.agents.config.action.dismiss": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Clears a finished run's strip from the dock. Pairs with watch/stop in the same trailing row."
+	},
+	"ui.agents.config.action.retry": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Re-sends the request after a message-call failure. The text is still in the box, so this is the same call again, not a new one."
+	},
+	"ui.agents.config.action.stop": {
+		"role": "button label",
+		"tone": "plain, decisive",
+		"note": "Interrupts a live configuration run. Not a danger colour: the run writes through as it goes and a stop is not a rollback (see stopped.*)."
+	},
+	"ui.agents.config.action.watch": {
+		"role": "button label with aria-expanded",
+		"tone": "plain",
+		"note": "Expands the run's own tool rows under the strip. Toggles; the chevron mirrors in RTL."
+	},
+	"ui.agents.config.activity.empty": {
+		"role": "empty-state sentence inside the run's detail region",
+		"tone": "plain, factual",
+		"note": "The run has started but has not called a tool yet. Says what is missing without sounding like a failure; full sentence, wraps inside a bounded region."
+	},
+	"ui.agents.config.background_only": {
+		"role": "inline sentence under the idle box",
+		"tone": "plain, factual",
+		"note": "Says the run is not part of the conversation transcript, which is why it has its own surface. Two sentences; the second one is what a reader needs before pressing Send."
+	},
+	"ui.agents.config.composer.label": {
+		"role": "screen-reader label for the composer region",
+		"tone": "plain, names the task",
+		"note": "The surface takes free text that asks for a change to an agent or a team. Not a placeholder: it is the region's accessible name."
+	},
+	"ui.agents.config.definitions": {
+		"role": "count phrase embedded in a summary sentence",
+		"tone": "plain, counted",
+		"note": "{count} is how many files the run touched. English needs one/other; use the language's own plural categories. Sits between 'Configured' and the rest of the row, so it must read as a noun phrase."
+	},
+	"ui.agents.config.error.stop_refused": {
+		"role": "error sentence under the live strip",
+		"tone": "direct, no blame",
+		"note": "The backend refused the interrupt and the run is still writing. The refusal's own reason sits beneath it, already localised by the backend."
+	},
+	"ui.agents.config.error.turn_failed": {
+		"role": "status line under the run strip's 'Did not finish' title",
+		"tone": "plain, honest",
+		"note": "Shown when the run's model failed (provider error) and the incident carried no message of its own. Says nothing was answered; must not imply the operator did anything wrong, nor that the request was refused."
+	},
+	"ui.agents.config.examples.add_twice": {
+		"role": "clickable example request",
+		"tone": "plain, imperative",
+		"note": "Second of three hero examples; fills the box when clicked. 'release-crew' and 'coder' are example data used across the app's samples and stay as written."
+	},
+	"ui.agents.config.examples.reads_code": {
+		"role": "clickable example request",
+		"tone": "plain, descriptive",
+		"note": "First of three hero examples; fills the box when clicked. Sits in a wrapping ghost row, so length is forgiving."
+	},
+	"ui.agents.config.examples.team_shipping": {
+		"role": "clickable example request",
+		"tone": "plain, imperative",
+		"note": "Third hero example; fills the box when clicked. 'shipping' is an example team name, kept as written."
+	},
 	"ui.agents.config.placeholder.about": {
 		"role": "Placeholder in the composer when the request names an agent or team",
 		"tone": "Invitation, second person, imperative.",
-		"length_hint": "One short line; the name is data and may be long, so keep the surrounding words short.",
+		"length": "One short line; the name is data and may be long, so keep the surrounding words short.",
 		"placeholders": {
 			"name": "The agent or team the request is about, as stored: user-authored data, never translate it. It can be a few dozen characters, so keep the surrounding words short enough that the sentence still reads as one line at the docked width."
 		},
@@ -96,60 +96,60 @@
 	"ui.agents.config.placeholder.docked": {
 		"role": "Placeholder in the docked config composer at the bottom of the detail pane",
 		"tone": "Invitation, second person; names the job (a change) without naming one object.",
-		"length_hint": "About 45 characters in English. The narrowest docked pane is 392 px at native 1000 px (sidebar 288 + roster 288 + detail 392). The box's content area is 304 px wide there, and the English string measured 301.1709 px unwrapped: it wraps readably with no clipping and no vertical overflow (scrollHeight == clientHeight == 55). Do not lengthen it without re-running the native pane-width boundary check.",
+		"length": "About 45 characters in English. The narrowest docked pane is 392 px at native 1000 px (sidebar 288 + roster 288 + detail 392). The box's content area is 304 px wide there, and the English string measured 301.1709 px unwrapped: it wraps readably with no clipping and no vertical overflow (scrollHeight == clientHeight == 55). Do not lengthen it without re-running the native pane-width boundary check.",
 		"note": "The docked box has a fixed height and does not auto-grow, so a longer translation wraps rather than clipping; readable wrapping is accepted, clipping and vertical overflow are not. It must not name only one object (the box serves both tabs) and must not read as messaging the open agent."
 	},
 	"ui.agents.config.placeholder.hero": {
 		"role": "Placeholder in the empty configuration composer on the Agents page hero",
 		"tone": "Invitation, second person, sentence case.",
-		"length_hint": "About 25 characters in English. This is the native placeholder of a growing box, not a label; a longer string wraps to a second line in the empty state.",
+		"length": "About 25 characters in English. This is the native placeholder of a growing box, not a label; a longer string wraps to a second line in the empty state.",
 		"note": "Names no object on purpose: the same box serves the Agents and Teams tabs, so naming one would contradict the other pane. Ends with U+2026, not three periods."
 	},
-	"ui.agents.config.result.changed": [
-		"prefix in the list of changed rows",
-		"plain",
-		"Prefixed to a definition's name: 'Changed <name>'. A separate span carries the name, so this message is a bare verb in past tense."
-	],
-	"ui.agents.config.result.configured": [
-		"screen-reader prefix on the settled status",
-		"plain",
-		"Spoken before the definitions count ('Configured 2 definitions'); also reused inside the live-region sentence after a full stop. No trailing punctuation: the caller supplies it."
-	],
-	"ui.agents.config.result.created": [
-		"prefix in the list of changed rows",
-		"plain",
-		"Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
-	],
-	"ui.agents.config.state.did_not_finish": [
-		"status title",
-		"plain, honest",
-		"Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
-	],
-	"ui.agents.config.state.sending": [
-		"button label while the request is in flight",
-		"plain, progress",
-		"Replaces action.retry while the retry is being sent. U+2026, not three periods."
-	],
-	"ui.agents.config.state.stopping": [
-		"button label while the interrupt is in flight",
-		"plain, progress",
-		"Replaces action.stop while the stop request runs; the button is disabled meanwhile. U+2026."
-	],
-	"ui.agents.config.status.attached": [
-		"notice inside the run's detail region",
-		"plain, explains an outcome",
-		"The page attached to a configuration run that was already going instead of starting its own; the typed request stays in the box. Two sentences, second one reassures about the draft."
-	],
-	"ui.agents.config.stopped.kept": [
-		"settled sentence after a stop that wrote something",
-		"plain, factual",
-		"Cancellation is not rollback: whatever the run had already written is still there. Must not imply the machine was reverted."
-	],
-	"ui.agents.config.stopped.nothing": [
-		"settled sentence after a stop before any write",
-		"plain, factual",
-		"The empty-result counterpart of stopped.kept; says nothing had been changed yet, rather than showing a kept-changes list with no rows."
-	],
+	"ui.agents.config.result.changed": {
+		"role": "prefix in the list of changed rows",
+		"tone": "plain",
+		"note": "Prefixed to a definition's name: 'Changed <name>'. A separate span carries the name, so this message is a bare verb in past tense."
+	},
+	"ui.agents.config.result.configured": {
+		"role": "screen-reader prefix on the settled status",
+		"tone": "plain",
+		"note": "Spoken before the definitions count ('Configured 2 definitions'); also reused inside the live-region sentence after a full stop. No trailing punctuation: the caller supplies it."
+	},
+	"ui.agents.config.result.created": {
+		"role": "prefix in the list of changed rows",
+		"tone": "plain",
+		"note": "Prefixed to a definition's name: 'Created <name>'. Use the same verb form as result.changed."
+	},
+	"ui.agents.config.state.did_not_finish": {
+		"role": "status title",
+		"tone": "plain, honest",
+		"note": "Heading of the configuration-run strip when the run's model failed (provider error, session incident) before it could answer. Must not read as the operator's own Stop, nor as success. Short: it sits on one line beside the elapsed time."
+	},
+	"ui.agents.config.state.sending": {
+		"role": "button label while the request is in flight",
+		"tone": "plain, progress",
+		"note": "Replaces action.retry while the retry is being sent. U+2026, not three periods."
+	},
+	"ui.agents.config.state.stopping": {
+		"role": "button label while the interrupt is in flight",
+		"tone": "plain, progress",
+		"note": "Replaces action.stop while the stop request runs; the button is disabled meanwhile. U+2026."
+	},
+	"ui.agents.config.status.attached": {
+		"role": "notice inside the run's detail region",
+		"tone": "plain, explains an outcome",
+		"note": "The page attached to a configuration run that was already going instead of starting its own; the typed request stays in the box. Two sentences, second one reassures about the draft."
+	},
+	"ui.agents.config.stopped.kept": {
+		"role": "settled sentence after a stop that wrote something",
+		"tone": "plain, factual",
+		"note": "Cancellation is not rollback: whatever the run had already written is still there. Must not imply the machine was reverted."
+	},
+	"ui.agents.config.stopped.nothing": {
+		"role": "settled sentence after a stop before any write",
+		"tone": "plain, factual",
+		"note": "The empty-result counterpart of stopped.kept; says nothing had been changed yet, rather than showing a kept-changes list with no rows."
+	},
 	"ui.agents.config.summary.created": {
 		"note": "One line of the finished run's summary: the run created this definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
 		"role": "summary line lead in a completed configuration run",
@@ -160,26 +160,26 @@
 		"role": "second clause of a summary line in a completed configuration run",
 		"tone": "plain, explains a gap"
 	},
-	"ui.agents.config.summary.no_changes": [
-		"settled sentence when the run changed nothing",
-		"plain, factual",
-		"The run answered a question instead of editing definitions. The answer itself follows as free text."
-	],
-	"ui.agents.config.summary.nothing_else": [
-		"settled sentence under the changed rows",
-		"plain, factual",
-		"Says the listed changes are the whole change set, so a reader does not go looking for more. One line."
-	],
+	"ui.agents.config.summary.no_changes": {
+		"role": "settled sentence when the run changed nothing",
+		"tone": "plain, factual",
+		"note": "The run answered a question instead of editing definitions. The answer itself follows as free text."
+	},
+	"ui.agents.config.summary.nothing_else": {
+		"role": "settled sentence under the changed rows",
+		"tone": "plain, factual",
+		"note": "Says the listed changes are the whole change set, so a reader does not go looking for more. One line."
+	},
 	"ui.agents.config.summary.updated": {
 		"note": "One line of the finished run's summary: the run changed an existing definition. {name} is the agent or team name as the registry stores it, never translated. A colon and the changed-field list follow the name, so do not end the line with punctuation.",
 		"role": "summary line lead in a completed configuration run",
 		"tone": "plain past tense"
 	},
-	"ui.agents.config.summary.you_asked": [
-		"quoted request under the answer",
-		"plain, factual",
-		"{topic} is the operator's own typed text, unvalidated and possibly long: it wraps, and it is never translated or reworded."
-	],
+	"ui.agents.config.summary.you_asked": {
+		"role": "quoted request under the answer",
+		"tone": "plain, factual",
+		"note": "{topic} is the operator's own typed text, unvalidated and possibly long: it wraps, and it is never translated or reworded."
+	},
 	"ui.agents.config.banner.unavailable": {
 		"role": "composer notice when the backend could not be reached, so the composer cannot send",
 		"tone": "statement of fact, sentence case, trailing period",
@@ -200,5 +200,375 @@
 		"length": "Two words.",
 		"note": "Applied only while the region overflows and is therefore a real tab stop; when everything fits it is not a region and carries no name.",
 		"placeholders": {}
+	},
+	"ui.agents.config.title.working": {
+		"role": "Heading of the configuration run's status row while the run is going and has not reported a step yet",
+		"note": "The run is changing agents or teams in the background on the operator's behalf.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopping": {
+		"role": "Heading of the configuration run's status row after the operator pressed Stop and before the run has stopped",
+		"note": "No ellipsis: the row's own spinner carries the motion.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished": {
+		"role": "Heading of the configuration run's status row once the run finished and changed something",
+		"note": "A list of what changed follows under it.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished_no_changes": {
+		"role": "Heading of the configuration run's status row once the run finished without changing any agent or team",
+		"note": "Not an error: the run simply had nothing to change.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopped": {
+		"role": "Heading of the configuration run's status row after the operator's own Stop took effect",
+		"note": "The operator stopped it; not a failure.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.stopped_error": {
+		"role": "Heading of the configuration run's status row when the request could not be sent or started; a Retry button follows",
+		"note": "Nothing was sent, so retrying is safe; contrast with 'Finished with an error'.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.title.finished_error": {
+		"role": "Heading of the configuration run's status row when the run ran but its result could not be read back",
+		"note": "The run did run; only describing its result failed. Contrast with 'Stopped with an error'.",
+		"tone": "Plain status heading, sentence case, no trailing punctuation",
+		"length": "A few words",
+		"placeholders": {}
+	},
+	"ui.agents.config.placeholder.working": {
+		"role": "Placeholder of the configuration composer's text box while a run is going",
+		"tone": "Plain progress statement, keeps the trailing ellipsis",
+		"length": "One short line",
+		"note": "Same words as the status heading 'Working on your request', plus the ellipsis.",
+		"placeholders": {}
+	},
+	"ui.agents.config.seed_prompt": {
+		"role": "Text pre-filled into the configuration composer by 'Ask for a change'; the operator types their request after it and sends it to the assistant",
+		"tone": "Plain imperative opening, as if the operator wrote it",
+		"length": "A few words",
+		"note": "Keep the trailing colon and space: the operator's own words continue after them. {kind} is a select over agent/team/skill (other is a fallback); inflect each arm to fit the sentence. {name} is the definition's identifier and must stay exactly as given, since the assistant matches it by name.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.error.lists_unreadable": {
+		"role": "Error line under the configuration run when it finished but the page could not reload the lists to show the changes",
+		"tone": "Plain statement, no blame",
+		"length": "One sentence",
+		"note": "The run's changes did happen; only the description is missing. The lists' own Retry follows.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.send_after_setup": {
+		"role": "Error line when the configuration run started but the operator's request could not be delivered",
+		"tone": "Plain statement, then the remedy",
+		"length": "Two sentences",
+		"note": "'The box' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.start_failed": {
+		"role": "Error line when the configuration run could not be started at all",
+		"tone": "Plain statement, reassuring",
+		"length": "Two short sentences",
+		"note": "'Here' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.send_failed": {
+		"role": "Error line when a follow-up request to a running configuration run could not be delivered",
+		"tone": "Plain statement, reassuring",
+		"length": "Two short sentences",
+		"note": "'The box' is the composer text box, which still holds the request.",
+		"placeholders": {}
+	},
+	"ui.agents.config.error.stop_unacknowledged": {
+		"role": "Error line when the operator pressed Stop and the run did not confirm it",
+		"tone": "Plain statement",
+		"length": "One short sentence",
+		"note": "'The request' is the stop request; the run may still be going.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled.connecting": {
+		"role": "Reason shown in place of the configuration composer while the backend's capabilities are still loading",
+		"tone": "Plain progress statement, keeps the trailing ellipsis",
+		"length": "One short line",
+		"note": "'Backend' is the local Local Operator server.",
+		"placeholders": {}
+	},
+	"ui.agents.config.disabled.needs_newer_backend": {
+		"role": "Reason shown in place of the configuration composer when the backend is too old to support it",
+		"tone": "Plain statement, then the remedy",
+		"length": "Two sentences",
+		"note": "'Ask for a change' is the feature's name (the button label ui.agents.detail.action.ask_change); use the same translation. 'Local Operator' is the product name, never translated.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.step.creating_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.creating": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.updating_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.updating": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.editing_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)",
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.editing": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.installing_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form.",
+		"placeholders": {
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.installing": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. Shown when an install call has not named the agent yet.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.step.reading_named": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form.",
+		"placeholders": {
+			"name": "the definition's identifier, never translated"
+		}
+	},
+	"ui.agents.config.summary.step.reading": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.working": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence. Shown while a call the app cannot classify is still running.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.step.checked": {
+		"role": "Live step line in the configuration run strip and its Run steps list",
+		"tone": "Plain progress statement, no trailing punctuation",
+		"length": "A few words",
+		"note": "One line of the configuration run's live step list, naming what the run's current tool call is doing. Present progressive in English; use the language's natural 'in progress' form. {kind} is an ICU select: inflect each arm (article, case, plural) to fit the sentence. Past tense: shown once a call the app cannot classify has finished.",
+		"placeholders": {
+			"kind": "agent, team or skill: which kind of definition the run is working on (a select; other is a fallback)"
+		}
+	},
+	"ui.agents.config.summary.change.description": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.kind": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.effort": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Effort tier' is the agent's model tier setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.manager": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.instructions": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.field": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"field": "the setting's internal identifier, shown only for a setting the app has no word for; never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tools": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. A bare noun: the tools setting (which tools the agent may use).",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tools_widened": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tools_narrowed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.tool_added": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"tool": "the tool's identifier (e.g. bash), never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tool_removed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"tool": "the tool's identifier (e.g. bash), never translated"
+		}
+	},
+	"ui.agents.config.summary.change.tools_added": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Plural over {count}; use the language's own plural categories.",
+		"placeholders": {
+			"count": "how many tools, always 2 or more here"
+		}
+	},
+	"ui.agents.config.summary.change.tools_removed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Plural over {count}; use the language's own plural categories.",
+		"placeholders": {
+			"count": "how many tools, always 2 or more here"
+		}
+	},
+	"ui.agents.config.summary.change.tools_changed": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.delegation_on": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Delegation is whether the agent may launch subagents.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.delegation_off": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. Delegation is whether the agent may launch subagents.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.class_proactive": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Proactive' agents may message the operator unprompted. Use the same word as the class setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.class_reactive": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed. 'Proactive' agents may message the operator unprompted; 'reactive' ones only answer. Use the same words as the class setting.",
+		"placeholders": {}
+	},
+	"ui.agents.config.summary.change.members": {
+		"role": "One change phrase in the configuration run's settled summary, after 'Updated <name> (<kind>):'; several are joined with commas",
+		"tone": "Plain, lowercase fragment as in English (it continues a sentence)",
+		"length": "A few words",
+		"note": "Describes how one setting of an agent, team or skill changed.",
+		"placeholders": {
+			"before": "number of member entries before the run",
+			"after": "number of member entries after the run"
+		}
 	}
 }

@@ -1,23 +1,3 @@
-/** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links.
- *
- * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
- * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
- * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
- * (design review round 1, D4; agent review round 1, R1):
- *
- * > Remote rows are first-class: they file into the same bins as local rows under
- * > the same ordering rule, carry a per-row indicator, and their hover reads the
- * > owning device and its network; there is no separate remote section.
- *
- * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
- * them through the one row component (the reserved locality cell and its mark in
- * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
- * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
- * bins that sentence names are this list's own - Running, Today, This week,
- * Older, Pinned.
- */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -72,6 +52,7 @@ import {
 	type DesktopRequest,
 	RUNTIME_BUSY_CODE,
 	RUNTIME_RETIRING_CODE,
+	bulkReceiptSessionIdPattern,
 	isDesktopRefusalCode,
 } from "../../../../shared/desktop-contract";
 import {
@@ -94,6 +75,20 @@ import type { LaunchTarget } from "../../../../shared/open-session";
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
+	type FailureCause,
+	failureCauseOf,
+} from "../../features/chat/send-recovery";
+/*
+ * THE SEAM'S SHAPE AND THE CODE ITS BUDGET REFUSAL CARRIES. `AdmissionSeam` is
+ * a type (erased at build); `MESSAGE_BUDGET_CODE` is a value, because a code is
+ * a fact two modules have to spell the same way - `isRefusedBeforeAdmission`
+ * reads it as the refusal it is (see that constant's own note).
+ */
+import {
+	type AdmissionSeam,
+	MESSAGE_BUDGET_CODE,
+} from "../../features/chat/utils/message-budget";
+import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
 	mergePeerDeviceFacts,
@@ -104,6 +99,27 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
+ */
+import { quotaSafePersistStorage } from "./quota-safe-storage";
 import {
 	EMPTY_SETTINGS_INTENTS,
 	type SettingsIntentsMirror,
@@ -776,6 +792,15 @@ export type ChatDraft = {
 	submittedFiles?: ChatFile[];
 	submittedMode?: "prompt" | "steer";
 	/**
+	 * The busy-send delivery the FIRST attempt carried (`queue` / `both`), pinned
+	 * beside `submittedMode` for the same reason: the receipt hashes the whole
+	 * body, so a retry must resend the same body, not re-derive delivery from a
+	 * composer whose settings read has moved since. Like `submittedInputMode`,
+	 * a previous attempt's ABSENCE is replayed verbatim. Absent means the legacy
+	 * body (steer, or idle), exactly as the first attempt sent it.
+	 */
+	submittedDelivery?: "steer" | "queue" | "both";
+	/**
 	 * The provenance the FIRST attempt of the current message carried (arch
 	 * §4.2). Pinned beside `submittedMode` and for the same reason: the server
 	 * keys its receipt on a hash of the whole body, so a retry must replay the
@@ -827,6 +852,14 @@ export type ChatDraft = {
 	 * decision, taken where the failure was classified, read by whoever renders.
 	 */
 	errorRetry?: boolean;
+	/**
+	 * The configuration cause `sendFailureCopy` classified this failure by, when
+	 * the backend's sentence named one (no provider, no model). Kept on the row
+	 * for the same reason as `errorRetry`: the row outlives the Error, and the
+	 * sentence it keeps is this app's own, so the cause cannot be re-read from it
+	 * (agent review round 1, R1).
+	 */
+	errorCause?: FailureCause;
 	/**
 	 * Set once a message the PREVIOUS release held outside the composer has been
 	 * moved back into it (`migrateHeldClaim`), so the move happens once however
@@ -1335,7 +1368,13 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended for the same reason: the eighth, and the one this predicate is
 		 * consulted for only when the failure is a press (see the note above).
 		 */
-		code === RUNTIME_BUSY_CODE
+		code === RUNTIME_BUSY_CODE ||
+		/*
+		 * A composed payload over the transport budget: the remedy is to cut the
+		 * message, so a hint that invites the same press again would be advice that
+		 * cannot work.
+		 */
+		code === MESSAGE_BUDGET_CODE
 	);
 }
 
@@ -1455,6 +1494,15 @@ export const SEND_FAILURE_COPY = {
 	get unconfirmed() {
 		return t("ui.chat.canonical.send_failure.unconfirmed");
 	},
+	/**
+	 * A configuration cause the backend named (R1): what is missing and the fix,
+	 * in this app's words and the user's language rather than the core's English.
+	 */
+	cause(cause: FailureCause): string {
+		return cause === "no_provider"
+			? t("ui.recovery.send.failed_no_provider")
+			: t("ui.recovery.send.failed_no_model");
+	},
 	/** Unknown, and the specific fact is that nothing answered. */
 	get unreachable() {
 		return t("ui.chat.canonical.send_failure.unreachable");
@@ -1555,6 +1603,17 @@ export const SEND_FAILURE_COPY = {
 	get lateDeliveryOverlap() {
 		return t("ui.chat.canonical.send_failure.late_delivery_overlap");
 	},
+	/*
+	 * THE BUSY-SEND REFUSAL (architect D11). Raised by the page, not the store:
+	 * a busy send whose resolved mode is `queue`/`both` while the backend does
+	 * not advertise `features.busy_delivery`. The draft is kept and nothing is
+	 * sent as steer (which would claim the user meant that mode), so the
+	 * sentence states the version fact and the remedy. `false` keeps the text
+	 * with the user.
+	 */
+	get deliveryUnsupported() {
+		return t("ui.chat.canonical.send_failure.delivery_unsupported");
+	},
 } as const;
 
 /**
@@ -1629,6 +1688,8 @@ export function sendFailureCopy(
 	message: string;
 	retry: boolean;
 	code?: string;
+	/** A configuration cause the backend's sentence named (R1); see `failureCauseOf`. */
+	cause?: FailureCause;
 } {
 	const klass = sendFailureClass(error, priorAttemptUnresolved);
 	const code = codeOverride ?? sendFailureCode(error);
@@ -1723,6 +1784,32 @@ export function sendFailureCopy(
 	 * same-id resend is safe (`withholdsRetryHint` is false for it), which is what the
 	 * sentence's second clause promises.
 	 */
+	/*
+	 * A CONFIGURATION CAUSE THE BACKEND NAMED (agent review round 1, R1). The core
+	 * sends its vetted startup reasons ("No model provider is configured yet…",
+	 * "No model is selected for this session…") as the message of a 503
+	 * `runtime_unreachable`, so the arm below rewrote them to "couldn't confirm…
+	 * sending it again is safe" - and a resend is exactly the press that cannot
+	 * work until the cause is fixed. Classified here, the ONE place the raw text is
+	 * in hand: the row keeps this app's translated sentence for the cause (not the
+	 * backend's English) and the cause itself, which the row maps to its fix.
+	 * `retry` keeps the unknown class's answer: once the cause is fixed the
+	 * same-id resend is safe, and the row decides when to offer it.
+	 */
+	const cause = failureCauseOf(
+		error instanceof Error
+			? error.message
+			: typeof error === "string"
+				? error
+				: undefined,
+	);
+	if (cause)
+		return {
+			message: SEND_FAILURE_COPY.cause(cause),
+			retry: !withholdsRetryHint(code),
+			code,
+			cause,
+		};
 	if (code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable)
 		return { message: SEND_FAILURE_COPY.unconfirmed, retry: true, code };
 	/*
@@ -2214,6 +2301,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 		error instanceof UserFacingError &&
 		(error.code === SESSION_UNVALIDATED_CODE ||
 			error.code === UNREADABLE_ATTACHMENT_CODE ||
+			/*
+			 * The composed payload's own budget refusal, which the page raises through
+			 * `budgetCheckedSeam` INSIDE the admission: nothing reached the wire, so it
+			 * is the same "nothing was admitted" fact as the two above - and without
+			 * this arm it would be classed an unknown outcome, latched as a claim and
+			 * offered a Retry over bytes that would be refused for the same reason.
+			 */
+			error.code === MESSAGE_BUDGET_CODE ||
 			isStoreWriteRefusal(error.code))
 	);
 }
@@ -2776,6 +2871,69 @@ async function messageWithBusyResend(
 	});
 }
 
+/*
+ * THE LAST SEAM EACH DRAFT KEY WAS ADMITTED WITH, so a replay handed no seam of
+ * its own still carries what the press composed.
+ *
+ * It exists because the composer's payload is now the TYPED line on a pane
+ * whose host honours `beforeAdmission`: the `$skill` bodies travel through the
+ * seam instead of ahead of the press (`message-input.tsx`). A replay of that
+ * draft from any door that cannot rebuild the seam - the store's own retry, a
+ * caller that never had the composer's read - would otherwise send the typed
+ * line with the block silently gone, which is worse than the slow send it
+ * replaced: the `$name` reached the owner as prose. Measured in this file's own
+ * terms: the first attempt fails at `sessions.create`, so nothing rendered and
+ * there is no `submittedRendered` pin to replay, and the store's answer would be
+ * the raw line.
+ *
+ * ONLY READ ON A REPLAY THAT RENDERED NOTHING. A pin is what a replay prefers
+ * (`submittedRendered`, written with the latch before the wire), so this map is
+ * a fallback for the attempt that never got that far - never a second opinion
+ * about a body the owner may already hold. Cleared with the row it describes,
+ * by both endings (`finishDraft`, `discardDraft`), and overwritten by the next
+ * press on the same key.
+ */
+const lastAdmissionSeam = new Map<string, AdmissionSeam>();
+
+/**
+ * The delivery mode each busy send was pressed with, by request id.
+ *
+ * THE ONE CLIENT-SIDE SOURCE THE WAITING LABEL NEEDS. The backend publishes
+ * WHICH messages wait (`frontend.queued_steering[]`, whose `id` is this same
+ * request id) but not HOW each one will reach the turn, so the mode is
+ * remembered here at the press and joined to the queue by id in
+ * `busy-wait.ts`. It is client-local by design (spec §C): a reload loses the
+ * entries and the row loses its label rather than mislabelling it.
+ *
+ * BOUNDED AT 100, oldest out first: an entry is dead the moment its id leaves
+ * the queue, but nothing tells this module when that happens (the queue is read
+ * by the transcript, not written by this store), so the bound is what keeps a
+ * long session's map from growing without one. 100 is larger than the queue any
+ * turn holds in practice and small enough to stay a rounding error.
+ */
+const BUSY_SEND_MODES_LIMIT = 100;
+const busySendModeById = new Map<string, "steer" | "queue" | "both">();
+
+/** Record the mode a busy send was pressed with, for the transcript's label. */
+export function noteBusySend(
+	requestId: string,
+	mode: "steer" | "queue" | "both" | undefined,
+): void {
+	if (mode === undefined) return;
+	busySendModeById.set(requestId, mode);
+	// A `Map` iterates in insertion order, so the first key is the oldest.
+	while (busySendModeById.size > BUSY_SEND_MODES_LIMIT) {
+		const oldest = busySendModeById.keys().next().value;
+		if (oldest === undefined) break;
+		busySendModeById.delete(oldest);
+	}
+}
+
+/** The modes recorded so far, for `busyWaitLabels`. Read-only to callers. */
+export function busySendModes(): ReadonlyMap<string, string> {
+	return busySendModeById;
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2793,6 +2951,19 @@ export async function admitChatDraft(
 		files?: ChatFile[];
 		mode: "prompt" | "steer";
 		cwd: string;
+		/**
+		 * How a busy send reaches the running turn (see `submittedDelivery`). The
+		 * gate (`features.busy_delivery`, busy, non-steer) is applied by the
+		 * caller; the store only pins it so a replay resends the same body.
+		 */
+		delivery?: "steer" | "queue" | "both";
+		/**
+		 * The same press's mode even when `delivery` does not ride the body (a
+		 * plain-Enter steer send is the legacy body). Recorded with
+		 * `noteBusySend` for the transcript's waiting label only: it never
+		 * reaches the wire.
+		 */
+		busyMode?: "steer" | "queue" | "both";
 		/**
 		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
 		 * `mixed` since the box last emptied. Carriage only.
@@ -2838,7 +3009,7 @@ export async function admitChatDraft(
 	 * throw here is still "nothing was admitted": the composer gets its text
 	 * back rather than a held claim about a message the owner never saw.
 	 */
-	beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+	beforeAdmission?: AdmissionSeam,
 ): Promise<string | null> {
 	const store = useCanonicalSessionsStore.getState();
 	/*
@@ -2908,6 +3079,12 @@ export async function admitChatDraft(
 	const replay =
 		previous?.submittedText !== undefined &&
 		payloadMatchesClaim(previous, text, input.attachments);
+	/*
+	 * REMEMBERED FOR THE REPLAY THAT HAS NONE (see `lastAdmissionSeam`), and
+	 * written before the create - the attempt this protects against is exactly
+	 * the one that never reaches the seam.
+	 */
+	if (beforeAdmission) lastAdmissionSeam.set(key, beforeAdmission);
 	const draft: ChatDraft = previous ?? {
 		key,
 		createRequestId: crypto.randomUUID(),
@@ -2956,6 +3133,16 @@ export async function admitChatDraft(
 	const inputPath =
 		replay && previous ? previous.submittedInputPath : input.inputPath;
 	/*
+	 * THE SAME PINNING RULE GOVERNS `delivery`, FOR THE SAME REASON: it is part
+	 * of the hashed body, so the lost-response case must replay the value the
+	 * FIRST attempt sent. Replay verbatim INCLUDING ABSENCE, exactly like
+	 * `inputMode` above: on replay a turn that has since gone idle recomputes
+	 * to no delivery, and re-deriving would hash a different body for the same
+	 * request id — the one thing the pin exists to prevent.
+	 */
+	const delivery =
+		replay && previous ? previous.submittedDelivery : input.delivery;
+	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it
 	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
@@ -2991,6 +3178,7 @@ export async function admitChatDraft(
 		submittedImages: images,
 		submittedFiles: files,
 		submittedMode: mode,
+		submittedDelivery: delivery,
 		submittedInputMode: inputMode,
 		submittedInputPath: inputPath,
 		/*
@@ -3180,11 +3368,22 @@ export async function admitChatDraft(
 		 * 1's M4/m5. So the pin is used when there is one, and the seam runs when
 		 * there is not: nothing was rendered, so there is no body to keep identical.
 		 */
+		/*
+		 * AND A REPLAY WITH NO SEAM OF ITS OWN RE-RUNS THE ONE THE PRESS USED
+		 * (`lastAdmissionSeam`): the attempt that failed before this line pinned no
+		 * `submittedRendered`, so there is nothing to replay and the body it would
+		 * otherwise send is the TYPED line - the `$skill` block lives in the seam now
+		 * (`message-input.tsx`). Only on a replay: a first attempt is the one that
+		 * writes the memory, and a caller that offers no seam has already been handed
+		 * its composed payload.
+		 */
+		const seam =
+			beforeAdmission ?? (replay ? lastAdmissionSeam.get(key) : undefined);
 		const rendered =
 			replay && previous?.submittedRendered !== undefined
 				? previous.submittedRendered
-				: beforeAdmission
-					? ((await beforeAdmission(id)) ?? text)
+				: seam
+					? ((await seam(id)) ?? text)
 					: text;
 		attempted = true;
 		/*
@@ -3207,6 +3406,7 @@ export async function admitChatDraft(
 			error: undefined,
 			errorCode: undefined,
 			errorRetry: undefined,
+			errorCause: undefined,
 			admissionAttempted: true,
 			submittedRendered: rendered,
 		});
@@ -3224,6 +3424,32 @@ export async function admitChatDraft(
 		 * for the create hop, and this only settles its final text.
 		 */
 		if (id) replacePendingSendText(id, admissionRequestId, rendered);
+		/*
+		 * THE LABEL'S MODE IS THE BODY'S MODE, NOT THIS PRESS'S (agent review
+		 * round 1, R-1). On a replay `delivery` above is the FIRST attempt's pinned
+		 * value - the receipt hash demands it - while `input.busyMode` is whatever
+		 * THIS retry pressed. A lost-response retry of a queued message sent with
+		 * plain Enter (the default steer) would otherwise record `steer` for a body
+		 * the owner holds as `queue`, and the row would claim a steer that never
+		 * happened; a queue chord over a pinned steer body would claim the reverse.
+		 * So the entry is read off the body actually sent: the effective `delivery`,
+		 * whose absence already means steer.
+		 *
+		 * ONLY A BUSY SEND EARNS AN ENTRY. A first attempt's busy-ness is the
+		 * press's own (`busyMode` is present exactly when the page decided the turn
+		 * was running); a replay's is pinned with its body, where `mode` is `steer`
+		 * for a busy send and `prompt` for an idle one. Deriving on a replay also
+		 * repairs an entry the 100-entry bound evicted between attempts, or one a
+		 * first attempt never wrote. A press the gate refused has no entry and no replay:
+		 * nothing was admitted.
+		 *
+		 * Recorded just before the request, as before: an entry no queue will ever
+		 * name draws nothing, so a failed attempt costs a slot and nothing else.
+		 */
+		const bodyMode = delivery ?? "steer";
+		const busySend =
+			replay && previous ? mode !== "prompt" : input.busyMode !== undefined;
+		noteBusySend(admissionRequestId, busySend ? bodyMode : undefined);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",
@@ -3233,6 +3459,7 @@ export async function admitChatDraft(
 			images: images.length ? images : undefined,
 			...(files?.length ? { files } : {}),
 			mode,
+			delivery,
 			inputMode,
 			inputPath,
 		});
@@ -3363,6 +3590,7 @@ export async function admitChatDraft(
 			 * `errorRetry` for why the row carries it rather than the pane deriving it.
 			 */
 			errorRetry: copy.retry,
+			errorCause: copy.cause,
 		});
 		/*
 		 * DELIVERED AFTER ALL: the send is a success, so the composer stays empty,
@@ -4842,6 +5070,8 @@ type CanonicalSessionsState = {
 		superseded: number;
 		unknown: number;
 		deferred: number;
+		/** Drawn, token-bearing marks the client could not name in the request. */
+		unsupported: number;
 	}>;
 	/**
 	 * Apply one `session_status` frame to its row, and retire a dead epoch's stamps.
@@ -5249,9 +5479,21 @@ export const unreadMarkKind = unreadCompletionKind;
  * it: sending that would only inflate the batch, and counting it would put a
  * number in the label that no click can honour.
  */
-export const unreadAckableRows = (
-	rows: CanonicalSessionRow[],
-): CanonicalSessionRow[] => rows.filter(isUnreadAckableCompletion);
+export const classifyUnreadAckableRows = (rows: CanonicalSessionRow[]) => {
+	const ackable: CanonicalSessionRow[] = [];
+	let unsupported = 0;
+	for (const row of rows) {
+		if (!isUnreadAckableCompletion(row)) continue;
+		// Discovery can draw these marks, but naming one would refuse the entire
+		// batch. Report them separately from both eligibility and backend outcomes.
+		if (bulkReceiptSessionIdPattern.test(row.session_id)) ackable.push(row);
+		else unsupported++;
+	}
+	return { ackable, unsupported };
+};
+
+export const unreadAckableRows = (rows: CanonicalSessionRow[]) =>
+	classifyUnreadAckableRows(rows).ackable;
 
 /** How many rows a click would name; zero hides the control entirely. */
 export const unreadAckableCount = (rows: CanonicalSessionRow[]): number =>
@@ -5571,11 +5813,13 @@ function unboundDraftRow(draft: ChatDraft): ChatDraft {
 		error: undefined,
 		errorCode: undefined,
 		errorRetry: undefined,
+		errorCause: undefined,
 		submittedText: undefined,
 		submittedRendered: undefined,
 		submittedAttachments: undefined,
 		submittedImages: undefined,
 		submittedMode: undefined,
+		submittedDelivery: undefined,
 		submittedInputMode: undefined,
 		submittedInputPath: undefined,
 		submittedAt: undefined,
@@ -5997,6 +6241,34 @@ export function launchDraftSeed(
 				createRequestId: crypto.randomUUID(),
 				admissionRequestId: crypto.randomUUID(),
 			},
+		},
+	};
+}
+
+/**
+ * Step 3 of the quota fallback for this store (`quota-safe-storage.ts`), run
+ * only after a full write AND an image-free write were both refused.
+ *
+ * `forgotten` is the one map here that only grows - a fact per session the user
+ * removed, kept so the list does not resurrect it - so under quota pressure it
+ * keeps its NEWER half (records keep insertion order, which is the order facts
+ * were added). Halving rather than a fixed count, because no count has been
+ * measured; the oldest facts are the ones a session list is least likely to
+ * still be showing. Drafts and the active pointers are kept whole.
+ */
+export function shrinkPersistedSessions<
+	V extends { state: { forgotten?: Record<string, unknown> } },
+>(value: V): V {
+	const forgotten = value.state.forgotten;
+	if (!forgotten) return value;
+	const entries = Object.entries(forgotten);
+	return {
+		...value,
+		state: {
+			...value.state,
+			forgotten: Object.fromEntries(
+				entries.slice(Math.floor(entries.length / 2)),
+			),
 		},
 	};
 }
@@ -7723,11 +7995,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * Enumerated from the STORE rather than from the rendered list, which is
 				 * what makes the control's own count and this batch the same fact: a
 				 * search filter over the sidebar cannot make a visible count disagree
-				 * with the set that is sent. The predicate itself is `unreadAckableRows`
-				 * — the ONE home of that rule, so the surface's label and this request
-				 * cannot drift apart.
+				 * with the set that is sent. The same classification drives the sidebar
+				 * explanation, so skipped marks cannot drift into the count or batch.
 				 */
-				const items = unreadAckableRows(get().sessions).map((row) => ({
+				const { ackable, unsupported } = classifyUnreadAckableRows(
+					get().sessions,
+				);
+				const items = ackable.map((row) => ({
 					sessionId: row.session_id,
 					completionToken: row.attention?.completion_token as string,
 				}));
@@ -7744,6 +8018,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						superseded: 0,
 						unknown: 0,
 						deferred: 0,
+						unsupported,
 					};
 				const receipt = await desktopResult<CompletionAttentionAckReceipt>({
 					op: "attention.seen",
@@ -7764,6 +8039,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					superseded: receipt.superseded.length,
 					unknown: receipt.unknown.length,
 					deferred,
+					unsupported,
 				};
 			},
 			applySessionStatus: (sessionId, status, revision, epoch, counts) => {
@@ -8304,6 +8580,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			finishDraft: (key, sessionId) =>
 				set((state) => {
 					/*
+					 * The remembered seam goes with the row it belonged to (see
+					 * `lastAdmissionSeam`): the message is on the owner, so a replay of it
+					 * cannot happen, and a key that is reused (`send:<id>`) must not inherit
+					 * the last message's composition.
+					 */
+					lastAdmissionSeam.delete(key);
+					/*
 					 * The message is on the owner, so nothing about it is in flight
 					 * or waiting to be reconciled any more. Done here rather than by
 					 * the caller because every path that ends a send successfully
@@ -8431,6 +8714,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			discardDraft: (key) =>
 				set((state) => {
+					/*
+					 * An abandoned draft takes its remembered seam with it (see
+					 * `lastAdmissionSeam`): its row is gone, so nothing can replay it, and the
+					 * next press on that key writes its own before any replay could read this
+					 * one. A Map write rather than state, which is why it sits beside the other
+					 * memory this action owns (`discardPendingSends`).
+					 */
+					lastAdmissionSeam.delete(key);
 					/*
 					 * A LIVE SEND HOP IS WITHHELD FROM THE ACTS, NOT REFUSED HERE (UX round 1's
 					 * U2, remediation, 2026-09-27): the sidebar disables the discard control for
@@ -8707,12 +8998,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						submittedDelivery: _delivery,
 						submittedInputMode: _inputMode,
 						submittedInputPath: _inputPath,
 						heldClaimCode: _claimCode,
 						error: _error,
 						errorCode: _errorCode,
 						errorRetry: _errorRetry,
+						errorCause: _errorCause,
 						...kept
 					} = draft;
 					/*
@@ -9383,6 +9676,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			/*
+			 * Quota-safe (`quota-safe-storage.ts`): a full localStorage used to throw
+			 * out of zustand's persist as an uncaught `QuotaExceededError` (PostHog,
+			 * Windows). The last resort keeps the active pointers and drafts with
+			 * text, and trims `forgotten` to its newest entries - it only ever runs
+			 * once the platform has refused the full and the image-free copies.
+			 */
+			storage: quotaSafePersistStorage<Partial<CanonicalSessionsState>>({
+				storeName: "canonical-sessions-storage",
+				lastResort: shrinkPersistedSessions,
+			}),
 			merge: mergePersistedSession,
 			partialize: (state) => ({
 				activeSessionId: state.activeSessionId,

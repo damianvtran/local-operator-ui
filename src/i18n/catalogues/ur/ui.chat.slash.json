@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "API کلید",
+	"ui.chat.slash.arg.kind_role": "کردار",
+	"ui.chat.slash.arg.kind_specialist": "ماہر",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "منسلک — دوبارہ اجازت لی جائے گی",
 	"ui.chat.slash.arg.mcp_detail.reuse": "منسلک — اجازت دوبارہ استعمال ہو گی",
 	"ui.chat.slash.arg.mcp_detail.stored": "محفوظ شدہ اسناد",

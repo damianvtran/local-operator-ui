@@ -15,6 +15,10 @@ import { t } from "@shared/i18n";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import {
+	agentDescriptionText,
+	agentKindText,
+} from "../../agents/utils/agent-description";
+import {
 	identityAgentClosedCaption,
 	identityAgentClosedTitle,
 	identityAgentSettable,
@@ -275,8 +279,15 @@ export const DEFAULT_TEAM_MANAGER = "manager";
  * manager: the runtime's own phrase for an unnamed manager (`its manager is the
  * speaker`), which is distinguishable from the team chip beside it where the
  * team's name was not (design D5).
+ *
+ * KEYED FOR DISPLAY ONLY, AND A FUNCTION SO A LANGUAGE SWITCH REPAINTS IT. This
+ * is the CHIP's text. It is NOT half of the closed sentence: that sentence
+ * (`identityAgentClosedCaption`) has its own full message for an unnamed
+ * manager, so translations need not reuse the chip's grammatical form.
  */
-export const ITS_MANAGER_LABEL = "its manager";
+export function itsManagerLabel(): string {
+	return t("ui.chat.header_identity.its_manager_label");
+}
 
 /**
  * The label ladder, for both controls, from the two sources in their
@@ -360,7 +371,7 @@ export function resolveHeaderIdentity(
 	 * catalogue row's manager (what the runtime's own `_team_manager_name`
 	 * returns, and the only name a cold frame has); then the words `its manager`
 	 * - never the team's name, which read as a second chip beside the team's
-	 * own (design D5) - and the sentence says so in the runtime's own phrase.
+	 * own (design D5) - and the sentence has its own unnamed-speaker variant.
 	 * A speaker equal to the team's name is a real manager named like its team
 	 * unless the catalogue says the manager is someone else (core's fallback to
 	 * the team name fires only for a manager it cannot name).
@@ -381,7 +392,7 @@ export function resolveHeaderIdentity(
 				? hostSpeaker
 				: catalogueManager;
 		seat = {
-			speaker: named ?? ITS_MANAGER_LABEL,
+			speaker: named ?? itsManagerLabel(),
 			speakerKnown: named !== null,
 			team: strictTeam,
 			sentence: identityAgentClosedCaption(strictTeam, named),
@@ -500,4 +511,46 @@ export function headerIdentityAgentFlagged(input: {
 		manager: input.manager,
 		delegate: input.delegate,
 	});
+}
+
+/**
+ * A roster row's DESCRIPTION and META (kind) copy for the header's pickers, in
+ * the active language.
+ *
+ * WHY. The header printed `row.description` and `row.kind` exactly as the
+ * entities route served them. A built-in agent's description is the seed's
+ * English sentence there, and `kind` is the wire token (`role`), so a French
+ * reader saw English prose and an English tag beside a French menu (fr census,
+ * row 3), while the composer's `/agent` rows and the modal picker - which read
+ * the same roster - were already French. This routes the header through the
+ * SAME resolvers they use: `agentDescriptionText` (the catalogue sentence for a
+ * pristine shipped seed, the operator's own words for anything edited or
+ * uploaded) and `agentKindText` (the keyed kind tag).
+ *
+ * A TEAM'S description is always the operator's own text, so it passes through
+ * untouched (the modal picker's `withLocalizedAgentDescription` rule). Reads
+ * `t()` at call time: the caller's memo must depend on the locale.
+ */
+export function headerRosterRowText(
+	row: {
+		value: string;
+		name?: string;
+		source?: string | null;
+		description?: string | null;
+		kind?: string | null;
+	},
+	which: "team" | "agent",
+): { description: string | undefined; meta: string | undefined } {
+	const description =
+		which === "agent"
+			? agentDescriptionText({
+					name: row.name ?? row.value,
+					source: row.source,
+					description: row.description,
+				})
+			: (row.description ?? "");
+	return {
+		description: description === "" ? undefined : description,
+		meta: row.kind ? agentKindText(row.kind) : undefined,
+	};
 }

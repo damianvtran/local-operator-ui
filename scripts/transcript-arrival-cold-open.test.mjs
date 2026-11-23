@@ -100,7 +100,7 @@ after(() => {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -138,7 +138,7 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { applyHistoryPage, EMPTY_TRANSCRIPT, CanonicalTranscript } =
+const { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT, CanonicalTranscript } =
 	await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -297,4 +297,82 @@ test("a genuinely new row after the id is learned still arrives", async (t) => {
 	const texts = arrivingTexts(container);
 	assert.equal(texts.length, 1);
 	assert.match(texts[0], /A brand new message/);
+});
+
+test("a live tool row fades in without inheriting the user's rise", async (t) => {
+	const { container, render } = await mount(t);
+	const prior = recordsOf([user("Make some music")]);
+	await render(props(FRONTEND, prior));
+	// A pending music call stays inline rather than folding into the action
+	// summary, so this checks the actual tool row's class, not the fold's.
+	const live = applyEvent(EMPTY_TRANSCRIPT, {
+		type: "tool_execution_start",
+		tool_call_id: "call-1",
+		tool_name: "generate_music",
+		args: { prompt: "A short piano loop" },
+	});
+	await render(props(FRONTEND, [...prior, ...live.records]));
+	const tool = container.querySelector('[data-record-kind="tool"]');
+	assert.ok(tool, "the live tool is painted");
+	assert.ok(tool.matches(".lo-transcript-arrival"), "the tool fades in");
+	assert.ok(
+		!tool.matches(".lo-transcript-arrival-rise"),
+		"the tool never rises",
+	);
+});
+
+test("reconnect catch-up does not animate, but a subsequent live append does", async (t) => {
+	const { container, render } = await mount(t);
+	const first = recordsOf([user("Original question")]);
+	const recovered = recordsOf([
+		user("Catch-up question"),
+		answer("Catch-up answer"),
+	]);
+	await render(props(FRONTEND, first));
+	await render({ ...props(FRONTEND, first), status: "reconnecting" });
+	await render(props(FRONTEND, [...first, ...recovered]));
+	assert.ok(container.textContent.includes("Catch-up question"));
+	assert.deepEqual(arrivingTexts(container), []);
+
+	const record = recordsOf([answer("First live text")])[0];
+	const live = { ...record, complete: false, streaming: true };
+	await render(props(FRONTEND, [...first, ...recovered, live]));
+	const painted = container.querySelector(".lo-stream-ink");
+	assert.equal(painted?.textContent, "First live text");
+	assert.deepEqual(
+		arrivingTexts(container),
+		[],
+		"the answer itself never gets a parent entrance",
+	);
+
+	// A later flush must not restart the first ink's animation or fade its
+	// parent. Only newly appended text gets a new ink span.
+	const row = painted.closest('[data-record-kind="assistant"]');
+	assert.ok(row, "the first ink belongs to an assistant row");
+	await render(
+		props(FRONTEND, [
+			...first,
+			...recovered,
+			{ ...live, text: `${live.text} plus fresh ink` },
+		]),
+	);
+	const [previous, ...fresh] = container.querySelectorAll(".lo-stream-ink");
+	assert.equal(previous, painted, "already painted ink keeps its node");
+	assert.equal(previous.textContent, "First live text");
+	assert.deepEqual(
+		fresh.map((span) => span.textContent),
+		[" plus fresh ink"],
+	);
+	assert.ok(row.isConnected);
+	assert.ok(!row.matches(ARRIVAL), "the painted assistant parent stays static");
+
+	await render(
+		props(FRONTEND, [
+			...first,
+			...recovered,
+			{ ...record, text: "End uses final text" },
+		]),
+	);
+	assert.ok(container.textContent.includes("End uses final text"));
+	assert.equal(container.querySelector(".lo-stream-ink"), null);
 });

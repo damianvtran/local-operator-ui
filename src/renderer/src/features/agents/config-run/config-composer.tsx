@@ -63,7 +63,13 @@ import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { isolateClock } from "../../../../../i18n/bidi";
 import type { RunTarget } from "./config-run-store";
+import { configSeedPrompt } from "./seed-prompt";
+import { summaryText } from "./summary";
 import type { ConfigRunHandle } from "./use-config-run";
+
+// Re-exported so the page and the tests keep importing it from the composer;
+// the builder itself lives in seed-prompt.ts (see there for why).
+export { configSeedPrompt };
 
 /**
  * Nothing above this box is a transcript.
@@ -156,7 +162,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 				<li
 					// The row's own instant is its identity: a run may call the same tool
 					// on the same target twice, and an index-only key would mis-reconcile.
-					key={`${row.ts}:${row.verb}:${index}`}
+					key={`${row.ts}:${row.verb.key}:${index}`}
 					className="flex items-baseline gap-2 text-body-sm"
 				>
 					<span className="text-ink-dim tabular-nums">
@@ -167,7 +173,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 							}),
 						)}
 					</span>
-					<span className="text-ink">{row.verb}</span>
+					<span className="text-ink">{summaryText(row.verb)}</span>
 				</li>
 			))}
 		</ul>
@@ -178,11 +184,11 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
  * THE ROW'S TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design review
  * round 1 D1). A ghost button has no edge, so its box was flush with the column
  * while its label ended 8 px inside it, and the bordered Stop and the box itself
- * were on the edge. `-mr-2` is the `sm` button's `px-2`: the hover ground moves
+ * were on the edge. `-me-2` is the `sm` button's `px-2`: the hover ground moves
  * into the 24 px gutter (nothing there clips it - the dock has no overflow), and
  * the glyph lands on the column edge.
  */
-const TRAILING_GHOST = "-mr-2";
+const TRAILING_GHOST = "-me-2";
 
 /**
  * THE BOUND ON EVERYTHING THAT MAY GROW THE DOCK (agent review round 1 #1 =
@@ -331,6 +337,47 @@ const STATUS_ROW = "mb-1 flex min-h-7 items-center gap-3";
 const definitionsPhrase = (count: number): string =>
 	t("ui.agents.config.definitions", { count });
 
+/**
+ * The strip's heading for a run, read at render time so it follows the locale.
+ *
+ * TWO DIFFERENT FAILURES, TWO HEADINGS (UX review round 3, U2). "Stopped with an
+ * error" described a stopped run, and it was shown over the settle-read failure
+ * whose own body says the run FINISHED - a heading contradicting the sentence
+ * under it. The refused-stop case that shared this title no longer reaches the
+ * error state at all (U1), so the split is by what actually happened: nothing
+ * was sent (`canRetry`) versus a run that ran and then could not be read back.
+ *
+ * A TURN THAT DIED (a session incident: the provider errored) did not finish at
+ * all, and saying "Stopped" would read as the operator's own Stop (#1458 UX r1
+ * U3). `run.step` is the run's own live step line and is shown as given.
+ */
+export function runTitle(
+	run: Pick<
+		ConfigRunHandle,
+		"status" | "step" | "results" | "turnFailed" | "canRetry"
+	>,
+): string {
+	switch (run.status) {
+		case "running":
+			return run.step ?? t("ui.agents.config.title.working");
+		case "stopping":
+			return t("ui.agents.config.title.stopping");
+		case "done":
+			return run.results.length > 0
+				? t("ui.agents.config.title.finished")
+				: t("ui.agents.config.title.finished_no_changes");
+		case "stopped":
+			return t("ui.agents.config.title.stopped");
+		case "error":
+			if (run.turnFailed) return t("ui.agents.config.state.did_not_finish");
+			return run.canRetry
+				? t("ui.agents.config.title.stopped_error")
+				: t("ui.agents.config.title.finished_error");
+		default:
+			return "";
+	}
+}
+
 function ComposerStatus({
 	run,
 	about,
@@ -417,40 +464,7 @@ function ComposerStatus({
 		return () => window.removeEventListener("keydown", onKey);
 	}, [live]);
 
-	const title =
-		run.status === "running"
-			? (run.step ?? "Working on your request")
-			: run.status === "stopping"
-				? "Stopping"
-				: run.status === "done"
-					? run.results.length > 0
-						? "Finished"
-						: "Finished without changing anything"
-					: run.status === "stopped"
-						? "Stopped"
-						: run.status === "error"
-							? /*
-								 * TWO DIFFERENT FAILURES, TWO HEADINGS (UX review round 3,
-								 * U2). "Stopped with an error" described a stopped run, and
-								 * it was shown over the settle-read failure whose own body
-								 * says the run FINISHED — a heading contradicting the
-								 * sentence under it. The refused-stop case that shared this
-								 * title no longer reaches the error state at all (U1), so
-								 * the split is by what actually happened: nothing was sent
-								 * (`canRetry`) versus a run that ran and then could not be
-								 * read back.
-								 */
-								/*
-								 * A TURN THAT DIED (a session incident: the provider errored)
-								 * did not finish at all, and saying "Stopped" would read as the
-								 * operator's own Stop (#1458 UX r1 U3).
-								 */
-								run.turnFailed
-								? t("ui.agents.config.state.did_not_finish")
-								: run.canRetry
-									? "Stopped with an error"
-									: "Finished with an error"
-							: "";
+	const title = runTitle(run);
 
 	return (
 		<div
@@ -597,7 +611,7 @@ function ComposerStatus({
 								<Button
 									variant="ghost"
 									size="sm"
-									// The trailing control when no run is showing: `-mr-2` (the button's
+									// The trailing control when no run is showing: `-me-2` (the button's
 									// own `px-2`) puts its LABEL's last glyph on the column edge (D1).
 									className={showsRun ? undefined : TRAILING_GHOST}
 									onClick={onClearAbout}
@@ -820,8 +834,9 @@ function aboutLine(about: RunTarget, skill: boolean): string {
 
 /**
  * The kind word for an About line and the `(kind)` suffix of a summary row
- * (spec §5.4). Every kind is keyed; only `configSeedPrompt` below keeps the raw
- * wire word because it is the sentence sent to the model, not interface copy.
+ * (spec §5.4). Every kind is keyed. `configSeedPrompt` (seed-prompt.ts) keys its
+ * kind through an ICU select in its own sentence instead, because a noun
+ * inflects with the sentence around it.
  */
 function kindWord(target: RunTarget): string {
 	switch (target.kind) {
@@ -896,7 +911,9 @@ function RunSummary({
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
-								{result.changes.map((change) => change.label).join(", ")}
+								{result.changes
+									.map((change) => summaryText(change.label))
+									.join(", ")}
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">
@@ -942,18 +959,6 @@ function RunSummary({
  * § 3.3.1 for the decision it satisfies (key (a)) and § 3.7 for the leak row.
  */
 export const CONFIG_BOX_KEY = "agents-config";
-
-/**
- * THE SENTENCE "ASK FOR A CHANGE" PUTS IN THE BOX, built in one place.
- *
- * The pane's own button builds the same words (`agent-detail.tsx`, `team-detail.tsx`)
- * and the page's cleanup compares against them, so the shape lives here as a
- * function rather than as three copies of a template string: a change to the
- * sentence that missed one copy would leave a seeded draft the cleanup no longer
- * recognises as seeded, and the operator's next row click would keep it.
- */
-export const configSeedPrompt = (about: RunTarget): string =>
-	`Change the ${about.kind} ${about.name}: `;
 
 /**
  * THE ONE WRITER OF THE BOX'S TEXT OUTSIDE THE COMPOSER, and the fix for QA
@@ -1168,7 +1173,7 @@ export function ConfigComposer({
 	const hostPlaceholder = blockedReason
 		? blockedReason
 		: live
-			? "Working on your request…"
+			? t("ui.agents.config.placeholder.working")
 			: run.enabled
 				? undefined
 				: disabledGateLine();
@@ -1416,8 +1421,8 @@ export function ConfigComposer({
 			 * `about` is set keeps the hero's height, so the box does not move under the
 			 * caret the moment Enter is pressed (the original D4).
 			 *
-			 * `-ml-2` cancels the button's own `px-2`, so the chip's TEXT starts at the
-			 * box's left edge rather than its padding box; the hover ground then reaches
+			 * `-ms-2` cancels the button's own `px-2`, so the chip's TEXT starts at the
+			 * box's start edge rather than its padding box; the hover ground then reaches
 			 * 8 px outside the column, which a ground is allowed to do and text is not.
 			 * The inset wrapper is the band's own (`CHAT_COLUMN_INSET`, the value and not
 			 * a copy of it) so the three columns share an edge if that inset moves. The
@@ -1446,7 +1451,7 @@ export function ConfigComposer({
 								 */
 								variant="ghost"
 								size="sm"
-								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
+								className="-ms-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 								disabled={disabled}
 								onClick={() => {
 									setBoxText(t(example));

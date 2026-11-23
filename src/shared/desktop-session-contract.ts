@@ -1939,6 +1939,8 @@ export type DesktopHistoryEntry = {
 	ts_source?: "entry" | "unstated" | "served";
 };
 export type DesktopHistoryPage = {
+	/** Optional inline-ui-v1 overlay; validate against each folded row's prose. */
+	inline_ui?: unknown;
 	/** Opaque equality domain; never publication seq or a sortable UUID. */
 	journal_generation?: string;
 	journal_order_state?: "ready" | "building" | "unavailable" | "unsupported";
@@ -2341,6 +2343,12 @@ export type DesktopFeedFrame =
 				 * none is live or the read failed; absent on older cores.
 				 */
 				approvals_pair_request?: string | null;
+				/**
+				 * The oldest open MESH pairing card's id (`inviter:<id>` / `joiner:<id>`,
+				 * `features.mesh_pairing`), so the rail badge lights for a pairing on the
+				 * first frame. Null when none is open; absent on older cores.
+				 */
+				approvals_pairing_id?: string | null;
 				/** Null means the inbox store was unreadable, not verified empty. */
 				notifications?: {
 					revision: number;
@@ -2473,7 +2481,16 @@ export type DesktopFeedFrame =
 			 * pairing withdrawn or decided elsewhere arrives as a frame. Absent on
 			 * older cores, which never file a pairing card.
 			 */
-			payload: { pending: boolean; pair_request?: string | null };
+			payload: {
+				pending: boolean;
+				pair_request?: string | null;
+				/**
+				 * The oldest open mesh pairing card's id, or null
+				 * (`features.mesh_pairing`); core ORs open cards into `pending` too.
+				 * Absent on older cores.
+				 */
+				pairing_id?: string | null;
+			};
 	  }
 	/**
 	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
@@ -2513,6 +2530,21 @@ export type DesktopFeedFrame =
 			 * on `changed_keys.includes("language")`.
 			 */
 			payload: { changed_keys: string[]; language: string };
+	  }
+	/**
+	 * The machine-wide voice slot moved (`docs/design/session-voice.md`, V3): a LEVEL
+	 * like `catalogue`, published on every slot change, carrying the whole new value
+	 * rather than a revision because the value is tiny and every window needs it to
+	 * draw the toggle and the sidebar marker. No `session_id`: the slot is not one
+	 * conversation's fact, it is which conversation holds it.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "voice";
+			payload: {
+				active: { session_id: string; enabled_at: number } | null;
+			};
 	  }
 	| {
 			epoch: string;

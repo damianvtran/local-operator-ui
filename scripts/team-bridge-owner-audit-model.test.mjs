@@ -372,7 +372,9 @@ test("an unknown sender kind is never resolved against the directory", () => {
 		...auditWire,
 		sender: { account_id: "acct_ben", kind: "service", display_label: "" },
 	});
-	assert.equal(row.sender.kind, "human");
+	/* `unknown`, not `human`: the audit row then draws the neutral generic row a
+	 * channel draws for the same wire row, never a person-style plate (R1). */
+	assert.equal(row.sender.kind, "unknown");
 	assert.equal(row.sender.audit_unknown_kind, true);
 	assert.equal(model.ownerAuditSenderProfile(row.sender, people), undefined);
 	assert.equal(

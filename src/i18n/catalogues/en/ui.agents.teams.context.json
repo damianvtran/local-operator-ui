@@ -1,165 +1,165 @@
 {
-	"ui.agents.teams.action.add_member": [
-		"button label",
-		"plain, action",
-		"Appends a roster slot to the draft team. Sits at the end of the members section."
-	],
-	"ui.agents.teams.action.collaboration_aria": [
-		"accessible name for the collaboration-instructions field",
-		"plain",
-		"The visible section title is separate; this names the editable control for assistive tech. Same words as the section on purpose."
-	],
-	"ui.agents.teams.action.new_chat": [
-		"button label",
-		"plain",
-		"Starts a chat with this team as the target, manager-led."
-	],
-	"ui.agents.teams.action.project_brief_aria": [
-		"accessible name for the project-brief field",
-		"plain",
-		"Names the editable project brief; matches the section title beside it."
-	],
-	"ui.agents.teams.action.remove": [
-		"button label",
-		"plain, one word",
-		"Drops this roster slot from the draft. Row-scoped, so it needs no object."
-	],
-	"ui.agents.teams.col.count": [
-		"table column header",
-		"plain, one word",
-		"How many of this slot the team declares. Narrow numeric column."
-	],
-	"ui.agents.teams.col.member": [
-		"table column header",
-		"plain, one word",
-		"Names the column of roster roles. Distinct from the section heading 'Members'."
-	],
-	"ui.agents.teams.col.type": [
-		"table column header",
-		"plain, one word",
-		"Whether the slot names an agent or a team; values come from kind.agent/kind.team."
-	],
-	"ui.agents.teams.empty.not_found": [
-		"badge text, no name available",
-		"plain, warning register",
-		"A roster reference the resolver could not find and whose name the row did not carry. Short: it sits in a warning chip."
-	],
-	"ui.agents.teams.empty.not_found_name": [
-		"badge text naming the missing reference",
-		"plain, warning register",
-		"{name} is the stored role or manager name (data, escaped, never translated). The colon and space are part of the message; the chip truncates if the name is long."
-	],
-	"ui.agents.teams.field.manager_aria": [
-		"accessible name for the manager picker",
-		"plain, explains the role",
-		"Says what a manager is: the agent that leads the team's chat. The visible field label is shorter."
-	],
-	"ui.agents.teams.field.manager_placeholder": [
-		"select placeholder",
-		"plain",
-		"Placeholder in the manager picker before a choice is made."
-	],
-	"ui.agents.teams.field.member_placeholder": [
-		"select placeholder",
-		"plain",
-		"Placeholder in the add-member picker, which accepts either an agent or a team."
-	],
-	"ui.agents.teams.kind.agent": [
-		"select option and column value",
-		"plain, one word",
-		"The `agent` value of a roster slot or picker. Also the Type column's value, so keep it identical in both places."
-	],
-	"ui.agents.teams.kind.team": [
-		"select option and column value",
-		"plain, one word",
-		"The `team` value; pairs with kind.agent and shares its column width."
-	],
-	"ui.agents.teams.member_count": [
-		"count phrase used in prose and table summaries",
-		"plain, counted",
-		"{count} is the declared member total for a team. ICU plural; the whole phrase is the message so the noun and its number agree in the target language."
-	],
-	"ui.agents.teams.section.collaboration": [
-		"section heading",
-		"plain, noun phrase",
-		"The instructions the manager and members share. Also the field title in the editor."
-	],
-	"ui.agents.teams.section.description": [
-		"section heading",
-		"plain, noun",
-		"The team's one-line purpose; the field below is labelled 'What this team is for'."
-	],
-	"ui.agents.teams.section.manager": [
-		"section heading",
-		"plain, noun",
-		"The single agent that leads the team's chat. Also the field title for the same value."
-	],
-	"ui.agents.teams.section.members": [
-		"section heading",
-		"plain, noun",
-		"The roster of slots below the manager."
-	],
-	"ui.agents.teams.section.members_aria": [
-		"accessible name for the members table",
-		"plain",
-		"Names the roster table for assistive tech; same word as the section heading."
-	],
-	"ui.agents.teams.section.project_brief": [
-		"section heading",
-		"plain, noun phrase",
-		"The project context the team is briefed with. Also the field title when editing."
-	],
-	"ui.agents.teams.section.what_for": [
-		"field title",
-		"plain, question-shaped",
-		"Label above the description field in the editor; not the same string as the read-view heading 'Description'."
-	],
+	"ui.agents.teams.action.add_member": {
+		"role": "button label",
+		"tone": "plain, action",
+		"note": "Appends a roster slot to the draft team. Sits at the end of the members section."
+	},
+	"ui.agents.teams.action.collaboration_aria": {
+		"role": "accessible name for the collaboration-instructions field",
+		"tone": "plain",
+		"note": "The visible section title is separate; this names the editable control for assistive tech. Same words as the section on purpose."
+	},
+	"ui.agents.teams.action.new_chat": {
+		"role": "button label",
+		"tone": "plain",
+		"note": "Starts a chat with this team as the target, manager-led."
+	},
+	"ui.agents.teams.action.project_brief_aria": {
+		"role": "accessible name for the project-brief field",
+		"tone": "plain",
+		"note": "Names the editable project brief; matches the section title beside it."
+	},
+	"ui.agents.teams.action.remove": {
+		"role": "button label",
+		"tone": "plain, one word",
+		"note": "Drops this roster slot from the draft. Row-scoped, so it needs no object."
+	},
+	"ui.agents.teams.col.count": {
+		"role": "table column header",
+		"tone": "plain, one word",
+		"note": "How many of this slot the team declares. Narrow numeric column."
+	},
+	"ui.agents.teams.col.member": {
+		"role": "table column header",
+		"tone": "plain, one word",
+		"note": "Names the column of roster roles. Distinct from the section heading 'Members'."
+	},
+	"ui.agents.teams.col.type": {
+		"role": "table column header",
+		"tone": "plain, one word",
+		"note": "Whether the slot names an agent or a team; values come from kind.agent/kind.team."
+	},
+	"ui.agents.teams.empty.not_found": {
+		"role": "badge text, no name available",
+		"tone": "plain, warning register",
+		"note": "A roster reference the resolver could not find and whose name the row did not carry. Short: it sits in a warning chip."
+	},
+	"ui.agents.teams.empty.not_found_name": {
+		"role": "badge text naming the missing reference",
+		"tone": "plain, warning register",
+		"note": "{name} is the stored role or manager name (data, escaped, never translated). The colon and space are part of the message; the chip truncates if the name is long."
+	},
+	"ui.agents.teams.field.manager_aria": {
+		"role": "accessible name for the manager picker",
+		"tone": "plain, explains the role",
+		"note": "Says what a manager is: the agent that leads the team's chat. The visible field label is shorter."
+	},
+	"ui.agents.teams.field.manager_placeholder": {
+		"role": "select placeholder",
+		"tone": "plain",
+		"note": "Placeholder in the manager picker before a choice is made."
+	},
+	"ui.agents.teams.field.member_placeholder": {
+		"role": "select placeholder",
+		"tone": "plain",
+		"note": "Placeholder in the add-member picker, which accepts either an agent or a team."
+	},
+	"ui.agents.teams.kind.agent": {
+		"role": "select option and column value",
+		"tone": "plain, one word",
+		"note": "The `agent` value of a roster slot or picker. Also the Type column's value, so keep it identical in both places."
+	},
+	"ui.agents.teams.kind.team": {
+		"role": "select option and column value",
+		"tone": "plain, one word",
+		"note": "The `team` value; pairs with kind.agent and shares its column width."
+	},
+	"ui.agents.teams.member_count": {
+		"role": "count phrase used in prose and table summaries",
+		"tone": "plain, counted",
+		"note": "{count} is the declared member total for a team. ICU plural; the whole phrase is the message so the noun and its number agree in the target language."
+	},
+	"ui.agents.teams.section.collaboration": {
+		"role": "section heading",
+		"tone": "plain, noun phrase",
+		"note": "The instructions the manager and members share. Also the field title in the editor."
+	},
+	"ui.agents.teams.section.description": {
+		"role": "section heading",
+		"tone": "plain, noun",
+		"note": "The team's one-line purpose; the field below is labelled 'What this team is for'."
+	},
+	"ui.agents.teams.section.manager": {
+		"role": "section heading",
+		"tone": "plain, noun",
+		"note": "The single agent that leads the team's chat. Also the field title for the same value."
+	},
+	"ui.agents.teams.section.members": {
+		"role": "section heading",
+		"tone": "plain, noun",
+		"note": "The roster of slots below the manager."
+	},
+	"ui.agents.teams.section.members_aria": {
+		"role": "accessible name for the members table",
+		"tone": "plain",
+		"note": "Names the roster table for assistive tech; same word as the section heading."
+	},
+	"ui.agents.teams.section.project_brief": {
+		"role": "section heading",
+		"tone": "plain, noun phrase",
+		"note": "The project context the team is briefed with. Also the field title when editing."
+	},
+	"ui.agents.teams.section.what_for": {
+		"role": "field title",
+		"tone": "plain, question-shaped",
+		"note": "Label above the description field in the editor; not the same string as the read-view heading 'Description'."
+	},
 	"ui.agents.teams.field.name_hint": {
 		"role": "Description line under the Name section heading of the team form",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Says the name is how the person and their chats address the team."
 	},
 	"ui.agents.teams.field.name_label": {
 		"role": "Field label of the team name input",
 		"tone": "Short noun phrase",
-		"length_hint": "Two words",
+		"length": "Two words",
 		"note": "Distinguishes the team's name from an agent's name elsewhere."
 	},
 	"ui.agents.teams.section.manager_hint": {
 		"role": "Description line under the Manager section heading",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "The manager is the single agent that leads a team chat and delegates to members."
 	},
 	"ui.agents.teams.field.manager_label": {
 		"role": "Field label and accessible name of the manager picker",
 		"tone": "Short noun phrase",
-		"length_hint": "Two words",
+		"length": "Two words",
 		"note": "The picker also accepts a team as the manager value; the label names the usual case."
 	},
 	"ui.agents.teams.field.manager_list_notice": {
 		"role": "Notice line in the manager picker's list",
 		"tone": "Short noun phrase, no period",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "States the scope of the options: only definitions stored on this computer."
 	},
 	"ui.agents.teams.section.members_hint": {
 		"role": "Description line under the Members section heading",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Members are the agents or teams the manager may hand work to, with a count and a model for each."
 	},
 	"ui.agents.teams.field.loading_agents": {
 		"role": "Busy/status text while a member or manager picker loads",
 		"tone": "Short progressive phrase, no ellipsis",
-		"length_hint": "Two words",
+		"length": "Two words",
 		"note": "Announced by assistive technology while the list is fetched."
 	},
 	"ui.agents.teams.field.member_aria": {
 		"role": "Accessible name of a team member's agent picker",
 		"tone": "Noun plus ordinal",
-		"length_hint": "Two words plus a number",
+		"length": "Two words plus a number",
 		"note": "The number is the 1-based row position in the member table.",
 		"placeholders": {
 			"index": "1-based row number."
@@ -168,7 +168,7 @@
 	"ui.agents.teams.field.member_kind_aria": {
 		"role": "Accessible name of a member row's agent-or-team type select",
 		"tone": "Noun, ordinal, noun",
-		"length_hint": "Three words plus a number",
+		"length": "Three words plus a number",
 		"note": "'Kind' means agent versus team.",
 		"placeholders": {
 			"index": "1-based row number."
@@ -177,7 +177,7 @@
 	"ui.agents.teams.action.fewer_aria": {
 		"role": "Accessible name of the decrement button of a member's count stepper",
 		"tone": "Short imperative-ish phrase",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "{role} is the member's role name taken from the team definition.",
 		"placeholders": {
 			"role": "Member role name from the team definition; do not translate."
@@ -186,7 +186,7 @@
 	"ui.agents.teams.action.more_aria": {
 		"role": "Accessible name of the increment button of a member's count stepper",
 		"tone": "Short imperative-ish phrase",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "{role} is the member's role name taken from the team definition.",
 		"placeholders": {
 			"role": "Member role name from the team definition; do not translate."
@@ -195,7 +195,7 @@
 	"ui.agents.teams.field.count_aria": {
 		"role": "Accessible name of a member row's current count",
 		"tone": "Number, preposition, role name",
-		"length_hint": "Two words plus a number and a name",
+		"length": "Two words plus a number and a name",
 		"note": "Read out as '3 of reviewer'; the count is the number of copies of that member.",
 		"placeholders": {
 			"count": "Number of copies, 1 to 16.",
@@ -205,31 +205,89 @@
 	"ui.agents.teams.field.what_for_label": {
 		"role": "Field label of the team description textarea",
 		"tone": "Plain phrase, sentence case",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Labels the free-text purpose of the team."
 	},
 	"ui.agents.teams.action.create": {
 		"role": "Primary button label when creating a new team",
 		"tone": "Short imperative",
-		"length_hint": "Two words",
+		"length": "Two words",
 		"note": "Shown in the footer of the new-team form."
 	},
 	"ui.agents.teams.action.creating": {
 		"role": "Pending label of the create button while the write is in flight",
 		"tone": "Progressive verb with ellipsis",
-		"length_hint": "One word",
+		"length": "One word",
 		"note": "Replaces the create button's label until the write settles."
 	},
 	"ui.agents.teams.action.discard_question": {
 		"role": "Confirmation hint on the team form's discard control",
 		"tone": "Short question",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Asks before throwing away unsaved team edits."
 	},
 	"ui.agents.teams.empty.description": {
 		"role": "Empty-state text where a team has no description",
 		"tone": "Plain statement",
-		"length_hint": "Four words",
+		"length": "Four words",
 		"note": "Shown in read mode in place of the description block."
+	},
+	"ui.agents.teams.create.error_name_required": {
+		"role": "Inline error under the team-name field when the operator creates a team without a name",
+		"tone": "Plain imperative, sentence case, full stop",
+		"length": "One short sentence",
+		"note": "Sibling of the agent form's 'Give the agent a name.'; keep the two parallel.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.create.error_name_taken": {
+		"role": "Inline error under the team-name field when the name is already used by another team",
+		"tone": "Plain statement, then the two remedies",
+		"length": "Two short sentences",
+		"note": "Keep the curly quotes (or the locale's own quotation marks) around the name.",
+		"placeholders": {
+			"name": "the team name the operator typed; data, never translated"
+		}
+	},
+	"ui.agents.teams.create.error_instructions_required": {
+		"role": "Inline error under the collaboration-instructions field when a new team has none",
+		"tone": "Plain imperative, sentence case, full stop",
+		"length": "One short sentence",
+		"note": "Sibling of the agent form's 'Give the agent instructions.'.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.edit.error_generic": {
+		"role": "Fallback alert text when saving a team failed and the failure carried no sentence of its own",
+		"tone": "Plain statement, no blame",
+		"length": "One short sentence",
+		"note": "Sibling of the agent form's 'The agent could not be saved.'.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.create.title_new": {
+		"role": "Heading of the team pane while a team is being created",
+		"tone": "Title, sentence case",
+		"length": "Two words",
+		"note": "Sibling of 'New agent'.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.includes_team": {
+		"role": "Suffix after the team's member count ('3 members · Includes a team') when one member is itself a team",
+		"tone": "Muted metadata, sentence case",
+		"length": "Three or four words",
+		"note": "Keep the leading middle dot: it separates this from the count before it. The space before the dot is added by the interface.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.group.agents": {
+		"role": "Section heading inside the manager/member picker list, above the agents",
+		"tone": "Plural noun, title of a list group",
+		"length": "One word",
+		"note": "Pairs with the 'Teams' heading in the same list.",
+		"placeholders": {}
+	},
+	"ui.agents.teams.group.teams": {
+		"role": "Section heading inside the manager/member picker list, above the teams",
+		"tone": "Plural noun, title of a list group",
+		"length": "One word",
+		"note": "Pairs with the 'Agents' heading in the same list.",
+		"placeholders": {}
 	}
 }

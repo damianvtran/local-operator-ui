@@ -1,0 +1,330 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1987",
+  "locale": "zh-CN",
+  "namespace": "ui.providers.bedrock",
+  "pr": 1987,
+  "date": "2026-11-19",
+  "head": "21be3643c9d0",
+  "instance": "f1e8189586d6-pr1987-bedrock-zh-cn",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "f1e8189586d6-pr1987-bedrock-zh-cn",
+    "independence": "lopdev task subagent job ab68148cabf7 (session f1e8189586d6), anthropic/claude-opus-5-5, no fallback observed; distinct from the translator (coder, PR #1987 implementer lane bedrock-B-ui, job 07b871a99b2c, anthropic/claude-opus-5-5 per manager). Judged from English, its context sidecar, the core glossary and locale style guide (local-operator i18n/), and shipped catalogue precedent; no MT used. Minor findings were corrected by the auditor in place (repo docs do not forbid it); the hashes below are of the corrected bytes."
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (71); ICU parse OK (@formatjs/icu-messageformat-parser); argument names/types equal English per key; every plural arm set equals Intl.PluralRules cardinal categories; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Semantic pass: every value faithful to English and its context sidecar; AWS product names (Amazon Bedrock, AWS CLI, AWS SSO, SSO, IAM) and Local Operator kept Latin; {region}/{label}/{command}/{sources}/{source}/{time} preserved; region_help reads with each region_source_* phrase in place."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.access_key_id_label",
+      "current": "访问密钥 ID",
+      "replacement": "访问密钥ID",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.ambient_body",
+      "current": "使用这台电脑已提供的 AWS 凭证：环境变量、你的 AWS 配置，或运行 Local Operator 的机器所附带的角色。",
+      "replacement": "使用这台电脑已提供的AWS凭据：环境变量、你的AWS配置，或运行Local Operator的机器所附带的角色。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.ambient_none",
+      "current": "环境中未检测到 AWS 凭证。连接时仍会检查完整的 AWS 凭证链。",
+      "replacement": "环境中未检测到AWS凭据。连接时仍会检查完整的AWS凭据链。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.api_key_label",
+      "current": "Amazon Bedrock API 密钥",
+      "replacement": "Amazon Bedrock API密钥",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.checking",
+      "current": "正在检查 {region} 中的 Amazon Bedrock…",
+      "replacement": "正在检查{region}中的Amazon Bedrock……",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.connected_models",
+      "current": "已以 {label} 身份连接到 Amazon Bedrock · 可用模型 {count, plural, other {# 个}}",
+      "replacement": "已以{label}身份连接到Amazon Bedrock · 可用模型{count, plural, other {# 个}}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.connection_saved",
+      "current": "已保存 Amazon Bedrock 连接 {label}",
+      "replacement": "已保存Amazon Bedrock连接{label}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.context_failed",
+      "current": "无法读取你的 AWS 配置。",
+      "replacement": "无法读取你的AWS配置。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_credentials_rejected",
+      "current": "AWS 拒绝了这些凭证",
+      "replacement": "AWS拒绝了这些凭据",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_generic",
+      "current": "无法连接 Amazon Bedrock",
+      "replacement": "无法连接Amazon Bedrock",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_no_credentials",
+      "current": "未找到 AWS 凭证",
+      "replacement": "未找到AWS凭据",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_profile_not_found",
+      "current": "你的 AWS 配置中没有这个配置文件",
+      "replacement": "你的AWS配置中没有这个配置文件",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.error_region_invalid",
+      "current": "Amazon Bedrock 在该区域不可用",
+      "replacement": "Amazon Bedrock在该区域不可用",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.how_to_connect",
+      "current": "如何连接 Amazon Bedrock",
+      "replacement": "如何连接Amazon Bedrock",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.kind_process",
+      "current": "凭证进程",
+      "replacement": "凭据进程",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.kind_web_identity",
+      "current": "Web 身份",
+      "replacement": "Web身份",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.loading_context",
+      "current": "正在读取你的 AWS 配置…",
+      "replacement": "正在读取你的AWS配置……",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.method_aws",
+      "current": "AWS 账户",
+      "replacement": "AWS账户",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.method_aws_blurb",
+      "current": "使用 AWS 配置文件、SSO 登录、访问密钥或这台电脑上的 AWS 凭证。由 AWS 计费。",
+      "replacement": "使用AWS配置文件、SSO登录、访问密钥或这台电脑上的AWS凭据。由AWS计费。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.no_profiles_body",
+      "current": "这台电脑上没有找到 AWS 配置。请改为粘贴 Amazon Bedrock API 密钥或访问密钥，或者先设置好 AWS CLI 再回来。",
+      "replacement": "这台电脑上没有找到AWS配置。请改为粘贴Amazon Bedrock API密钥或访问密钥，或者先设置好AWS CLI再回来。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.no_profiles_title",
+      "current": "这台电脑上没有 AWS 配置文件",
+      "replacement": "这台电脑上没有AWS配置文件",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.no_sso_profiles_body",
+      "current": "在终端中运行 {command} 添加一个，然后再回来。",
+      "replacement": "在终端中运行{command}添加一个，然后再回来。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.no_sso_profiles_title",
+      "current": "这台电脑上没有 SSO 配置文件",
+      "replacement": "这台电脑上没有SSO配置文件",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.profile_label",
+      "current": "AWS 配置文件",
+      "replacement": "AWS配置文件",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.region_custom",
+      "current": "使用 {region}",
+      "replacement": "使用{region}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.region_source_config",
+      "current": "你的 Local Operator 设置",
+      "replacement": "你的Local Operator设置",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.secrets_help",
+      "current": "加密保存在这台电脑上。AWS 会向这些凭证所属的账户计费。",
+      "replacement": "加密保存在这台电脑上。AWS会向这些凭据所属的账户计费。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.session_valid_until",
+      "current": "已登录，有效至 {time}",
+      "replacement": "已登录，有效至{time}",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_expired_title",
+      "current": "此 SSO 会话已过期",
+      "replacement": "此SSO会话已过期",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_failed",
+      "current": "AWS 登录未完成。",
+      "replacement": "AWS登录未完成。",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_needs_cli",
+      "current": "在这里登录需要 AWS CLI。请安装它，或在终端中运行：",
+      "replacement": "在这里登录需要AWS CLI。请安装它，或在终端中运行：",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_sign_in",
+      "current": "使用 AWS SSO 登录",
+      "replacement": "使用AWS SSO登录",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.sso_waiting",
+      "current": "正在等待 AWS 登录完成…",
+      "replacement": "正在等待AWS登录完成……",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.tab_ambient",
+      "current": "默认凭证链",
+      "replacement": "默认凭据链",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.providers.bedrock.tab_api_key",
+      "current": "API 密钥",
+      "replacement": "API密钥",
+      "status": "fixed by the auditor in the audited bytes",
+      "note": "style guide zh-CN: no space between Chinese and Latin/placeholder runs; ellipsis …… ; credentials = 凭据 (66 uses in this repo, core catalogue; 凭证 appeared only here)"
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.providers.bedrock.context_failed",
+      "note": "Pronoun 你的 (also loading_context, error_profile_not_found, region_source_config, ambient_body): guide prefers dropping pronouns; meaning intact; deferred"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 35,
+    "nit": 1
+  },
+  "scope": "PR #1987 round 1: new namespace ui.providers.bedrock, all 71 keys (origin/main..21be3643c9 plus auditor corrections)",
+  "en_sha256": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba",
+  "context_sha256": "73941550bb926fc74be6bb35a68cf9a540702d21eada0668f2b0a2252b9da6bc",
+  "sha256": {
+    "zh-CN": "7ae4b4de67854771734ef7163a7c166657b2196524861e6485c61a1db2c924b6",
+    "en": "ce2759029a0f26381abb6d7171f40513776f11a4ab58fa3f553af017d92ad1ba"
+  }
+}

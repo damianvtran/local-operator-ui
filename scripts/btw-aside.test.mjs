@@ -367,6 +367,20 @@ const RE_ASIDE_FIRE_AND_FORGET = /const ask = askAside\(/;
 const RE_ASIDE_AWAITED = /await askAside\(/;
 const RE_ASIDE_OUTCOME = /return \{ offRecord: ask \};/;
 /*
+ * THE ASIDE TAKES THE COMPOSED QUESTION (bug 1). On a pane whose host honours
+ * `beforeAdmission` a `$skill` message carries its typed line at the press and
+ * its `<operator-skills>` block through the seam (`message-input.tsx`), and an
+ * aside is the one door that never enters `admitChatDraft` - it registers its
+ * turn through `askAside` - so the door has to ask the seam itself. Without
+ * these three the question reaches the owner with `$name` as prose, which is
+ * worse than the wait the change removes: the expansion LOOKED like it fired.
+ */
+const RE_ASIDE_SEAM_COMPOSED =
+	/asideContent = \(await beforeAdmission\(sessionId\)\) \?\? content;/;
+const RE_ASIDE_SENDS_COMPOSED =
+	/const ask = askAside\(\s*sessionId,\s*asideContent,/;
+const RE_ASIDE_SENDS_TYPED = /const ask = askAside\(\s*sessionId,\s*content,/;
+/*
  * What a `open` frame hands the renderer is what the ask must name, so the id's
  * origin is asserted rather than assumed: the routing fix is only correct if the
  * value sent with the ask is the stream's own subscription id.
@@ -450,9 +464,15 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * and the tooltip share one expression, so an unanchored pattern was satisfied by the
  * label alone and a mutation of the tooltip only (M9) passed. The tooltip's WHY
  * comment sits between the brace and the expression, hence the optional block.
+ *
+ * The steer arm now reads `t(steerHintKey(busyDefaultMode))` (round 3): the mode's
+ * own sentence, so the literal `steer_hint` is gone from this call site. The
+ * per-mode key selection itself is pinned behaviourally in
+ * busy-delivery-composer.test.mjs (`steerHintKey` for all three modes + absent);
+ * this pin keeps the call site reaching it.
  */
 const RE_SEND_VERB =
-	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\("ui\.chat\.composer\.steer_hint"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\(steerHintKey\(busyDefaultMode\)\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 /*
@@ -3585,4 +3605,40 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 			`the marker must not carry ${token}: it would move the measured box the exchange cap reads`,
 		);
 	}
+});
+
+test("an aside's question is composed through the seam before it is asked (bug 1)", () => {
+	/*
+	 * SOURCE-LEVEL, AND IT SAYS SO. The aside door lives in `chat-page.tsx`, a
+	 * component whose module graph cannot be mounted in a node test (this file's
+	 * header), so what is pinned here is the WIRING: the branch asks the seam for
+	 * its text, asks BEFORE it registers the turn, and asks with the answer rather
+	 * than with the typed line. The composer's half - that the block arrives
+	 * through the seam at all - is executed in `scripts/shared-composer.test.mjs`.
+	 *
+	 * The seam is undefined whenever nothing is left to compose (a plain attached
+	 * send, a host that ignores it), so this door is byte-identical to today's
+	 * whenever there is no `$skill` in the message.
+	 */
+	const page = read("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		page,
+		RE_ASIDE_SEAM_COMPOSED,
+		"the aside's question is replaced by the seam's answer when there is one",
+	);
+	assert.match(
+		page,
+		RE_ASIDE_SENDS_COMPOSED,
+		"and the composed text is what `askAside` receives",
+	);
+	assert.doesNotMatch(
+		page,
+		RE_ASIDE_SENDS_TYPED,
+		"the typed line alone must not reach the aside once the press has deferred its block",
+	);
+	assert.ok(
+		page.indexOf("asideContent = (await beforeAdmission(sessionId))") <
+			page.indexOf("const ask = askAside("),
+		"the composition happens before the turn is registered, so the panel paints the question it will carry",
+	);
 });

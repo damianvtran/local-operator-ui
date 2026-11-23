@@ -8,7 +8,11 @@
 
 import { HealthApi } from "@shared/api/local-operator/health-api";
 import { apiConfig, setDiscoveredBackendUrl } from "@shared/config";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { isServerReachable } from "../../../../shared/backend-status";
 import type { DaemonStatusSnapshot } from "../../../../shared/backend-status";
@@ -61,6 +65,29 @@ export const internetConnectivityQueryKey = ["internet-connectivity"];
  * @param refetchInterval - Interval in milliseconds to refetch health status (default: 5000 - 5 seconds)
  * @returns Query result with server health status
  */
+/*
+ * Module scope so every observer of `serverHealthQueryKey` carries the SAME
+ * query function: TanStack runs a query with the options of whichever observer
+ * set them last, so a passive observer with a stub would be a stub that could
+ * answer a real refetch (`useServerOffline`).
+ */
+const readServerHealth = async (): Promise<ServerHealthSignal> => {
+	const bridge = window.api?.backend;
+	if (bridge) {
+		const snapshot = await bridge.getStatus();
+		setDiscoveredBackendUrl(snapshot.url);
+		// `degraded` is still a connection: one or two missed probes on a
+		// daemon that is there. Only `detached` and `wedged` are not.
+		return { online: isServerReachable(snapshot.state), snapshot };
+	}
+	try {
+		await HealthApi.healthCheck(apiConfig.baseUrl);
+		return { online: true, snapshot: null }; // Server is online
+	} catch (_error) {
+		return { online: false, snapshot: null }; // Server is offline
+	}
+};
+
 export const useServerHealth = (refetchInterval = 5000) => {
 	const queryClient = useQueryClient();
 
@@ -79,22 +106,7 @@ export const useServerHealth = (refetchInterval = 5000) => {
 
 	return useQuery({
 		queryKey: serverHealthQueryKey,
-		queryFn: async (): Promise<ServerHealthSignal> => {
-			const bridge = window.api?.backend;
-			if (bridge) {
-				const snapshot = await bridge.getStatus();
-				setDiscoveredBackendUrl(snapshot.url);
-				// `degraded` is still a connection: one or two missed probes on a
-				// daemon that is there. Only `detached` and `wedged` are not.
-				return { online: isServerReachable(snapshot.state), snapshot };
-			}
-			try {
-				await HealthApi.healthCheck(apiConfig.baseUrl);
-				return { online: true, snapshot: null }; // Server is online
-			} catch (_error) {
-				return { online: false, snapshot: null }; // Server is offline
-			}
-		},
+		queryFn: readServerHealth,
 		// Refetch at specified interval
 		refetchInterval,
 		refetchIntervalInBackground: false,
@@ -106,6 +118,47 @@ export const useServerHealth = (refetchInterval = 5000) => {
 		placeholderData: (previousData) => previousData,
 	});
 };
+
+/**
+ * Read server health NOW, through the shared cache entry, and return it.
+ *
+ * For a press that must state its own result (the composer's and the failed
+ * row's Reconnect). `useConnectivityStatus().refetchServerStatus` would answer
+ * the same question, but mounting that hook subscribes the caller to the 5 s
+ * poll's fresh snapshot object and the config and internet queries beside it,
+ * so every line that only needs the press re-rendered on every poll (agent
+ * review round 1, M5). `fetchQuery` writes the answer into the same key, so
+ * the strip and `useServerOffline` see it too.
+ */
+export const readServerHealthNow = (
+	queryClient: QueryClient,
+): Promise<ServerHealthSignal> =>
+	queryClient.fetchQuery({
+		queryKey: serverHealthQueryKey,
+		queryFn: readServerHealth,
+		staleTime: 0,
+	});
+
+/**
+ * Whether the background service has ANSWERED that it is offline, as one boolean.
+ *
+ * WHY NOT `useServerHealth()` AT THE CALL SITE: the chat page and the composer
+ * are the two largest render trees in the app, and the health query's data is
+ * a fresh snapshot object on every 5 s poll, so reading it there would commit
+ * the whole page on every poll. This is a passive observer of the same key
+ * (`enabled: false`: it never fetches; `ChatStatusStrip`'s `useServerHealth`
+ * owns the polling) with a `select`, so its owner re-renders only when the
+ * answer flips. No reading yet is `false`: an unanswered probe is not an
+ * outage, the same default `useConnectivityStatus` takes.
+ */
+export const useServerOffline = (): boolean =>
+	useQuery({
+		queryKey: serverHealthQueryKey,
+		queryFn: readServerHealth,
+		enabled: false,
+		select: (signal: ServerHealthSignal | undefined) =>
+			signal?.online === false,
+	}).data === true;
 
 /**
  * Hook for checking if the user is connected to the internet

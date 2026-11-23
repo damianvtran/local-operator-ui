@@ -95,20 +95,15 @@ The build process will automatically use the credentials from your `.env.build` 
 
 The project includes GitHub Actions workflows for automated building, testing and publishing:
 
-- `.github/workflows/ci.yml`: Runs lint, type checks, the release-contract scripts and the desktop test suite on pushes to `main` and `dev-*`
-- `.github/workflows/version-bump-guard.yml`: Rejects a `package.json` version bump outside a `chore(release):` PR, on every pull request (any base branch)
+- `.github/workflows/ci.yml`: Runs lint, type checks, `version-bump-guard`, the release-contract scripts, bytecode build checks, and NPX smoke tests on pull requests and pushes to `main` (coalescing non-release `main` pushes into `ci-main`)
+- `.github/workflows/full-suite.yml`: Runs the sharded desktop test suite and macOS native app regression proofs (`native-proofs`) behind `Merge gate (full suite)` when a PR is labeled for the merge gate (or on `main` / nightly / manual dispatch)
 - `.github/workflows/publish.yml`: Builds and publishes distributables for all platforms when a Release is published, and does the whole release from there — nothing else on the pipeline is started or finished by hand
-
-`ci.yml` has no `pull_request` trigger: it runs when a commit lands on `main` or on
-a `dev-*` branch, not when a pull request is opened. A feature branch therefore
-gets no run from it, which is worth knowing before reading an empty checks list
-on a PR as a passing one.
 
 ### Publishing a Release
 
 The version is bumped by the **release owner**, not by feature PRs: `package.json`
 stays at the last released version on every branch, and the `Version Bump Guard`
-workflow rejects a PR that changes the version line unless its title starts with
+job in `ci.yml` (`CI Gate`) rejects a PR that changes the version line unless its title starts with
 `chore(release):`. See `AGENTS.md` § "Releasing: one owner per window, and no
 version bumps inside feature PRs" for the full doctrine, which supersedes the
 step-by-step list that used to live here.

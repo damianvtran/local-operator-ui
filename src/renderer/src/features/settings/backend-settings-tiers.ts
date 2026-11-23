@@ -142,6 +142,28 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	 * line is the decision it is detecting.
 	 */
 	"keymap.quick_send": "core",
+	/*
+	 * `core`: the label alone states the choice (steer/queue/both, with
+	 * descriptions), the section is `composer` LIVE so a write applies at the
+	 * next send, and it is a control over the surface the user is looking at —
+	 * the same three clauses the authoring rule names. Classified by decision
+	 * rather than left to the fall-through: a key that lands `advanced` by
+	 * accident is indistinguishable from one that lands there deliberately,
+	 * and this is the row the TUI and the desktop share.
+	 */
+	"delivery.busy_default": "core",
+	/*
+	 * `advanced` by the authoring rule, not by neglect. These rows are the
+	 * TUI's own `keymap.send_*` chords (D5/D12): their labels name the mode but
+	 * not the surface, and their help teaches a terminal limit ("only work in
+	 * terminals that support enhanced keys"), so a label alone does not state
+	 * the choice for a reader who is not in a terminal. The desktop's own
+	 * chords for the same three modes live in Settings -> Keyboard shortcuts
+	 * in the Sending group; the two editors are deliberately not one.
+	 */
+	"keymap.send_steer": "advanced",
+	"keymap.send_queue": "advanced",
+	"keymap.send_both": "advanced",
 	// approvals (1)
 	tool_approval_mode: "core",
 	// session (1), session_cleanup (5), session_delegated (2)

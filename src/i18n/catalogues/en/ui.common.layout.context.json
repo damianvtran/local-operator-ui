@@ -60,31 +60,31 @@
 	"ui.common.layout.chat_layout.resize_canvas_double_click_resets_the_shared_pane_width": {
 		"role": "Accessible name and tooltip of the drag handle that resizes the canvas pane",
 		"tone": "Imperative plus a one-line gesture hint",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	},
 	"ui.common.layout.chat_layout.resize_run_details_double_click_resets_the_shared_pane_width": {
 		"role": "Accessible name and tooltip of the drag handle that resizes the run details pane",
 		"tone": "Imperative plus a one-line gesture hint",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	},
 	"ui.common.layout.chat_layout.resize_browser_double_click_resets_the_shared_pane_width": {
 		"role": "Accessible name and tooltip of the drag handle that resizes the browser pane",
 		"tone": "Imperative plus a one-line gesture hint",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	},
 	"ui.common.layout.chat_layout.resize_console_double_click_resets_the_shared_pane_width": {
 		"role": "Accessible name and tooltip of the drag handle that resizes the console pane",
 		"tone": "Imperative plus a one-line gesture hint",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	},
 	"ui.common.layout.chat_layout.resize_code_review_double_click_resets_the_shared_pane_width": {
 		"role": "Accessible name and tooltip of the drag handle that resizes the code review pane",
 		"tone": "Imperative plus a one-line gesture hint",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Names the pane being resized, then the double-click reset gesture; the pane word matches the pane's own title."
 	}
 }

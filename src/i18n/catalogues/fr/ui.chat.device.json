@@ -15,7 +15,7 @@
 	"ui.chat.device.sentence.remote_did_not_answer": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture.",
 	"ui.chat.device.sentence.remote_did_not_answer_reason": "Cette conversation s’exécute sur {name}, qui n’a pas répondu à la dernière lecture ({reason}).",
 	"ui.chat.device.fact.this_device": "cet appareil",
-	"ui.chat.device.footer.move_deletes_copy": "La copie sur cet appareil est supprimée une fois le déplacement confirmé.",
+	"ui.chat.device.footer.move_deletes_copy": "Un déplacement supprime la copie sur cet appareil une fois confirmé.",
 	"ui.chat.device.label.this_device": "Cet appareil",
 	"ui.chat.device.notice.move_hold_detail": "déplacement en cours · elle continue là-bas ; impossible de l’arrêter d’ici",
 	"ui.chat.device.picker.heading.move": "Déplacer cette conversation vers",

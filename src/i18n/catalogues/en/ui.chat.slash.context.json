@@ -6,6 +6,20 @@
 		"role": "lowercase kind word in a provider-account row for a stored API key",
 		"tone": "lowercase noun phrase"
 	},
+	"ui.chat.slash.arg.kind_role": {
+		"length": "",
+		"note": "The wire value is `role`. The column is monospace and lowercase on every row (see mcp_detail and mcp_status), so keep the lowercase form where the script has case. The same word appears capitalised in the Agent Hub roster as ui.hub.teams.kind.role: keep the two consistent.",
+		"placeholders": {},
+		"role": "detail column of an agent row in the composer's /agent list for a profile you can chat with directly",
+		"tone": "lowercase single word, machine voice, no punctuation"
+	},
+	"ui.chat.slash.arg.kind_specialist": {
+		"length": "",
+		"note": "The wire value is `specialist`; the twin of kind_role. Sits in a narrow right-aligned column and is the last thing to be clipped. The same word appears capitalised in the Agent Hub roster as ui.hub.teams.kind.specialist: keep the two consistent.",
+		"placeholders": {},
+		"role": "detail column of an agent row in the composer's /agent list for a profile other agents call on",
+		"tone": "lowercase single word, machine voice, no punctuation"
+	},
 	"ui.chat.slash.arg.mcp_detail.reauthorize": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",

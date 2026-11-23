@@ -29,6 +29,8 @@ import {
  *   --------------  --------------------------------  --------------------------
  *   View members    a member, not a DM                (members panel, no write)
  *   Add members     `canInviteMembers`                POST .../members
+ *   Rename          `canRenameConversation` +         POST .../rename
+ *                   `team_bridge_conversation_rename`
  *   Join            discoverable, not a member        POST .../join
  *   Mute / levels   a member                          PUT .../notify
  *   Wake your agent own ACTIVE agent here + capability PUT .../agent-notify
@@ -75,6 +77,11 @@ export type TeamBridgeOwnAgentAction =
 export type TeamBridgeConversationMenuItem =
 	| { id: "view_members" }
 	| { id: "add_members" }
+	/* Team Integrations (RFC §10 item 2): console link-out, org owner/admin only. */
+	| { id: "manage_apps" }
+	/* Team Integrations (RFC §7.1, Flow D): the reader's own agent as alert responder. */
+	| { id: "responder" }
+	| { id: "rename"; kind: "channel" | "group"; edit?: boolean }
 	| { id: "join" }
 	| { id: "notify" }
 	| { id: "agent_notify" }
@@ -103,6 +110,9 @@ export type TeamBridgeConversationMenuItemId =
 export type TeamBridgeConversationMenuWiring = {
 	viewMembers?: boolean;
 	addMembers?: boolean;
+	manageApps?: boolean;
+	responder?: boolean;
+	rename?: boolean;
 	join?: boolean;
 	notify?: boolean;
 	agentNotify?: boolean;
@@ -125,6 +135,15 @@ export type TeamBridgeConversationMenuInput = {
 	agentNotifyEnabled?: boolean;
 	/** Only true when the caller also has `canArchiveConversation`. */
 	archivable?: boolean;
+	/**
+	 * Only true when the caller has `canRenameConversation` AND the daemon
+	 * advertises `team_bridge_conversation_rename`. The capability gate is
+	 * what keeps the item off a runtime with no rename route, where every save
+	 * would fail with an error no retry can fix.
+	 */
+	renamable?: boolean;
+	/** Full metadata PATCH capability; otherwise this is genuinely name-only. */
+	editable?: boolean;
 	wiring: TeamBridgeConversationMenuWiring;
 };
 
@@ -295,7 +314,7 @@ function ownAgentItem(
 
 /**
  * The menu, as ordered sections (a separator between each non-empty one):
- *   1. membership    View members, Add members, Join
+ *   1. membership    View members, Add members, Rename, Join
  *   2. notifications Mute/levels, Wake your agent for
  *   3. departures    Remove/Add {agent}, Leave, Archive
  */
@@ -318,7 +337,49 @@ export function conversationMenuSections(
 		canInviteMembers(conversation, selfAccountId)
 	)
 		membership.push({ id: "add_members" });
+	/* Rename sits with membership, right after Add members (operator
+	   2026-11-20): it edits the room, it is not a departure. DMs never reach
+	   here (`canRenameConversation` refuses them, as the hub does). */
+	if (
+		writable &&
+		wiring.rename &&
+		input.renamable &&
+		!dm &&
+		!conversation.builtin
+	)
+		membership.push({
+			id: "rename",
+			...(input.editable ? { edit: true } : {}),
+			kind: conversation.kind === "group" ? "group" : "channel",
+		});
 	if (writable && wiring.join && preview) membership.push({ id: "join" });
+	/*
+	 * TEAM INTEGRATIONS ENTRIES (RFC §10 item 2, U3). Channels only: an app is
+	 * installed into a channel, never a DM or group.
+	 *  - Manage apps: the hub's own `can_manage_integrations` (org owner/admin),
+	 *    never inferred from a role; absent is false, so it fails closed.
+	 *  - Alert responder: the reader's OWN agent must be an active member here -
+	 *    the hub refuses to publish a responder for any other endpoint.
+	 */
+	const channel = conversation.kind === "channel" && !preview && open;
+	if (
+		channel &&
+		wiring.manageApps &&
+		conversation.can_manage_integrations === true
+	)
+		membership.push({ id: "manage_apps" });
+	if (
+		channel &&
+		!input.readOnly &&
+		wiring.responder &&
+		conversation.members.some(
+			(row) =>
+				row.kind === "agent" &&
+				row.account_id === selfAccountId &&
+				row.state === "active",
+		)
+	)
+		membership.push({ id: "responder" });
 
 	const notifications: TeamBridgeConversationMenuItem[] = [];
 	if (writable && !preview && wiring.notify) {

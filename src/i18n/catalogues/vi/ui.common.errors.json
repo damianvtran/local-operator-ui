@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "Không thể chuyển giọng nói thành văn bản: tài khoản {provider} dùng cho tính năng chuyển giọng nói thành văn bản đã hết tín dụng. Nếu là tài khoản của bạn, hãy nạp thêm tại {destination}.",
 	"ui.common.errors.dictation_unknown": "Không thể chuyển giọng nói thành văn bản: {reason}. Hãy thử lại hoặc báo cáo kèm nhật ký ứng dụng.",
 	"ui.common.errors.dictation_unknown_clipped": "Không thể chuyển giọng nói thành văn bản: {reason} Hãy thử lại hoặc báo cáo kèm nhật ký ứng dụng.",
+	"ui.common.errors.dictation_refused_take_kept": "Không thể chuyển giọng nói thành văn bản: {reason}. Hãy loại bỏ bản ghi âm hoặc báo cáo kèm nhật ký ứng dụng.",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "Không thể chuyển giọng nói thành văn bản: {reason} Hãy loại bỏ bản ghi âm hoặc báo cáo kèm nhật ký ứng dụng.",
 	"ui.common.errors.dictation_empty": "Không nhận diện được từ nào. Hãy thử lại với micro ở gần hơn.",
 	"ui.common.errors.speech_failure": "Không thể đọc to nội dung này. Hãy thử lại.",
 	"ui.common.errors.speech_radient_sign_in": "Đăng nhập Radient của bạn đã ngừng hoạt động. Hãy đăng nhập lại trong Cài đặt.",

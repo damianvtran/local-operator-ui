@@ -1,0 +1,7 @@
+{
+	"ui.providers.stored_key.replace": "Replace key",
+	"ui.providers.stored_key.remove": "Remove key",
+	"ui.providers.stored_key.remove_confirm": "Remove this key?",
+	"ui.providers.stored_key.remove_yes": "Remove",
+	"ui.providers.stored_key.remove_failed": "The key could not be removed."
+}

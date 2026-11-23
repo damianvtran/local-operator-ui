@@ -29,6 +29,10 @@ import {
 } from "@shared/api/local-operator/hub-link-hooks";
 import type { HubLink } from "@shared/api/local-operator/hub-links";
 import { hubItemIndex } from "@shared/api/local-operator/hub-updates";
+import {
+	skillDetailKey,
+	skillsLibraryKey,
+} from "@shared/api/local-operator/skills-library-keys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
@@ -40,8 +44,6 @@ import {
 	joinSkillHub,
 	toSkillCards,
 } from "../skills-library-model";
-
-export const skillsLibraryKey = ["desktop", "skills", "library"] as const;
 
 async function readSkills(name?: string): Promise<SkillsListResult> {
 	const envelope = await desktopResult<{ data?: unknown }>({
@@ -67,7 +69,7 @@ export function useSkillsLibrary(enabled: boolean) {
 /** One skill's details; only while a row is open. */
 export function useSkillDetail(name: string | null, enabled: boolean) {
 	return useQuery({
-		queryKey: [...skillsLibraryKey, name],
+		queryKey: skillDetailKey(name),
 		enabled: enabled && Boolean(name),
 		queryFn: () => readSkills(name ?? undefined),
 		staleTime: 10_000,

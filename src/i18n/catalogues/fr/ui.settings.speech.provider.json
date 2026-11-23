@@ -1,0 +1,14 @@
+{
+	"ui.settings.speech.provider.label": "Fournisseur vocal",
+	"ui.settings.speech.provider.description": "Qui écoute et parle, pour la voix mains libres et le bouton de lecture à voix haute des messages. Seul celui que vous choisissez est utilisé ; aucun ne prend le relais de l’autre.",
+	"ui.settings.speech.provider.radient.label": "Cloud Radient",
+	"ui.settings.speech.provider.radient.description": "Facturé sur votre crédit Radient.",
+	"ui.settings.speech.provider.elevenlabs.label": "Ma clé ElevenLabs",
+	"ui.settings.speech.provider.elevenlabs.description": "Utilise votre propre compte ElevenLabs, qui vous facture directement.",
+	"ui.settings.speech.provider.ready": "Prêt",
+	"ui.settings.speech.provider.not_ready": "Pas encore prêt.",
+	"ui.settings.speech.provider.setup": "Configurer dans Fournisseurs",
+	"ui.settings.speech.provider.none_chosen": "Aucun fournisseur choisi pour l’instant. La voix mains libres reste désactivée tant que vous n’en choisissez pas un.",
+	"ui.settings.speech.provider.none_ready": "Aucun des deux fournisseurs n’est encore prêt. Configurez-en un dans Fournisseurs, puis choisissez-le ici.",
+	"ui.settings.speech.provider.save_failed": "Le choix n’a pas pu être enregistré."
+}

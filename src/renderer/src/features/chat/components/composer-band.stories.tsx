@@ -2,7 +2,7 @@ import { MessageInput } from "@shared/components/composer/message-input";
 import { type WithoutParams, t } from "@shared/i18n";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { userEvent } from "@storybook/test";
+import { expect, userEvent, waitFor } from "@storybook/test";
 import { type ReactNode, useEffect } from "react";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
@@ -221,18 +221,24 @@ const Column = ({
 	width?: number;
 	children: ReactNode;
 }) => (
-	<div className="flex h-screen w-screen justify-center bg-canvas">
+	// Mirror the app's single canvas alpha owner; the preview's outer canvas
+	// clears itself on full glass and cannot stand in for this backing.
+	<main
+		className="flex h-screen w-screen justify-center bg-canvas"
+		data-glass-region="canvas-backing"
+	>
 		<div
 			className="flex h-full w-full flex-col"
 			style={width ? { width } : undefined}
 			data-story-column={width ?? "viewport"}
+			data-glass-region="canvas"
 		>
 			<span className="border-hairline border-b bg-canvas px-6 py-2 font-mono text-ink-dim text-mono-sm">
 				{label}
 			</span>
 			{children}
 		</div>
-	</div>
+	</main>
 );
 
 const meta: Meta = {
@@ -268,6 +274,10 @@ type BandProps = {
 	recording?: boolean;
 	/** Nothing connected: the connect card replaces the chips (design section 6). */
 	noProvider?: boolean;
+	/** A provider is connected but no model is chosen (D4's second block). */
+	noModel?: boolean;
+	/** The background service answered offline (D4's third block). */
+	serverOffline?: boolean;
 };
 
 const composerBand = ({
@@ -276,6 +286,8 @@ const composerBand = ({
 	pool,
 	draft,
 	noProvider,
+	noModel,
+	serverOffline,
 	recording,
 }: BandProps) => {
 	const conversation = conversationFor(story);
@@ -287,6 +299,8 @@ const composerBand = ({
 			initialSuggestions={pool ?? DEFAULT_MESSAGE_SUGGESTIONS}
 			isSmallView={isSmallView ?? false}
 			noProvider={noProvider ?? false}
+			noModel={noModel ?? false}
+			serverOffline={serverOffline ?? false}
 			recordingProbe={recording ? GRANTED_RECORDING_PROBE : undefined}
 			onSendMessage={async () => true}
 		/>
@@ -386,6 +400,33 @@ export const EmptyChatNoProvider: Story = {
 	),
 };
 
+/**
+ * D4 (onboarding friction, 2026-11): the composer's "cannot send" line, one per
+ * block, directly under the box and visible BEFORE any press. Each carries its
+ * one-click fix. `EmptyChatNoProvider` above is the same line under the connect
+ * card; these two are the other blocks, on a chat that already has history so
+ * the splash is not there to explain it.
+ */
+export const BlockedNoModel: Story = {
+	render: () => (
+		<Column label="no model chosen: the line under the box says so and offers Choose a model">
+			{composerBand({
+				story: "blocked-no-model",
+				noModel: true,
+				draft: "Summarise my inbox",
+			})}
+		</Column>
+	),
+};
+
+export const BlockedServerOffline: Story = {
+	render: () => (
+		<Column label="background service offline: the line under the box says so and offers Reconnect">
+			{composerBand({ story: "blocked-offline", serverOffline: true })}
+		</Column>
+	),
+};
+
 /** The same state in the small view, where the band shows the status line. */
 export const EmptyChatNoProviderSmall: Story = {
 	render: () => (
@@ -414,6 +455,22 @@ export const ColumnFloor: Story = {
 	),
 };
 
+/**
+ * The D4 line at the column floor (design round 1 evidence gap 2): the longest
+ * block sentence and its fix at the narrowest column, the frame long locales
+ * (ru runs up to 2.5x English) are checked against with `?args=locale:ru`.
+ */
+export const BlockedColumnFloor: Story = {
+	render: () => (
+		<Column
+			label="column floor (550px): the offline block line and its Reconnect"
+			width={550}
+		>
+			{composerBand({ story: "blocked-floor", serverOffline: true })}
+		</Column>
+	),
+};
+
 /** One step below the floor: the prompt is gone, tip row included. */
 export const SmallView: Story = {
 	render: () => (
@@ -424,6 +481,47 @@ export const SmallView: Story = {
 			{composerBand({ story: "small-view", isSmallView: true })}
 		</Column>
 	),
+};
+
+// Keep the real compact composer on a drafted first turn with attach, mic and
+// Send present. The locale arg uses the app's own direction switch (e.g. `ur`).
+export const CompactRailDraft: Story = {
+	render: () => (
+		<Column label="Compact composer with draft" width={240}>
+			{composerBand({
+				story: "compact-rail-draft",
+				isSmallView: true,
+				draft: "Check the parser test",
+				recording: true,
+			})}
+		</Column>
+	),
+	play: async ({ canvasElement }) => {
+		await waitFor(async () => {
+			const rail = canvasElement.querySelector<HTMLElement>(
+				"[data-lo-composer-rail]",
+			);
+			if (!rail) throw new Error("The compact composer has no control rail");
+			const attach = rail.querySelector(
+				'[data-tour-tag="chat-input-attach-file-button"]',
+			);
+			const mic = rail.querySelector('[data-composer-slot="a"]');
+			const send = rail.querySelector('[data-composer-slot="b"]');
+			if (!attach || !mic || !send)
+				throw new Error("A rail control is missing");
+			await expect(send).toBeEnabled();
+			const bounds = rail.getBoundingClientRect();
+			const center = (bounds.top + bounds.bottom) / 2;
+			for (const button of [attach, mic, send]) {
+				const rect = button.getBoundingClientRect();
+				// Reserve ink overflow for the local focus ring without growing a row.
+				await expect(rect.left - bounds.left).toBeGreaterThanOrEqual(0);
+				await expect(bounds.right - rect.right).toBeGreaterThanOrEqual(0);
+				await expect((rect.top + rect.bottom) / 2).toBeCloseTo(center, 0);
+				await expect(rect.height).toBe(28);
+			}
+		});
+	},
 };
 
 /** A later sample's worst wrap: the pool's longest four at a 620px column. */

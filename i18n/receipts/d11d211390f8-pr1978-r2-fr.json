@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation re-audit (i18n round 2, after round-1 remediation), PR #1978 move dialog working set + destination probe",
+  "locale": "fr",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "486ef6f27052ab3d0695c8f005d76968e1375021",
+  "instance": "d11d211390f8-pr1978-r2-fr",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate, remediate or author these strings, and is not the round-1 auditor",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session d11d211390f8 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translators were different runs: agent coder, session 76c99189cb1d (initial 42 keys, job eacba7a3806e) and the remediation coder job beaadf6c08ec (13 probe keys + round-1 fixes). Round-1 auditor was session b973c86b28e4. Same served model family (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "d11d211390f8-pr1978-r2-fr"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main b941eb9dc (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/fr.md @ origin/main b941eb9dc (sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ 486ef6f27052ab3d0695c8f005d76968e1375021"
+  },
+  "findings": [
+    {
+      "id": "FR-R2-1",
+      "severity": "NIT",
+      "key": "ui.mesh.mesh_actions.working_set_reason_unmerged",
+      "keys": [
+        "ui.mesh.mesh_actions.working_set_reason_unmerged",
+        "ui.mesh.mesh_actions.working_set_reason_in_progress_operation"
+      ],
+      "problem": "merge rendered 'fusion' ('conflits de fusion', 'Une fusion, un rebase ou un cherry-pick') while fr.md's kept-English list keeps merge (and the same line keeps rebase/cherry-pick). Corpus mixed ('avez fusionné' in ui.code_review), so consistency only.",
+      "fix": "'conflits de merge non résolus' / 'Un merge, un rebase ou un cherry-pick est en cours ici', or record 'fusion' in fr.md."
+    },
+    {
+      "id": "FR-R2-2",
+      "severity": "NIT",
+      "key": "ui.mesh.mesh_actions.working_set_probe_no_remote",
+      "problem": "'Ce dépôt n’a pas de dépôt distant' repeats dépôt; reads heavier than the English.",
+      "fix": "'Aucun dépôt distant n’est configuré pour ce dépôt : …' or 'Ce dépôt n’a pas de remote : …'."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at 486ef6f270 (scratch node script with the repo's @formatjs/icu-messageformat-parser; negative control: the same signature/plural-arm comparison flags a dropped argument and a foreign arm on synthetic input): key set equals English (365 keys); base 1fb3d656c3..head diff of this file is exactly the 55 added working_set_* values (0 changed, 0 removed), so every other value is bytes covered by the superseded audits; every audited value parses with the same arguments, number skeletons (::group-off) and plural arguments as English; plural arms = the locale's CLDR categories, no foreign arm; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no value identical to English. Rendered fit NOT verified (no rendered frames in this lane; Electron launch forbidden on this host)."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "mesh-working-set.tsx renders the probe's raw git error line (clone_detail) verbatim in mono when it is not a fixed probe code (PROBE_CODE). That untranslated line is diagnostic terminal output (an LTR island, acceptable under the style guides); once core #4241 replaces raw detail with fixed codes, any code the UI chooses to explain in words needs new keys in all 8 locales. Not an i18n finding at this head."
+    }
+  ],
+  "round1_disposition": "FR-1 fixed (U+202F before : ; and ’ throughout, verified mechanically); FR-2 fixed (non pushés / non commitées / faites un push); FR-3 fixed 'Je confirme que…'; FR-4 fixed 'non indexés'.",
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "Vérification des fichiers de travail que ce déplacement enverrait…",
+    "ui.mesh.mesh_actions.working_set_error": "Impossible de vérifier quels fichiers de travail ce déplacement enverrait. Si cette conversation a des fichiers de travail, le déplacement vous demandera de les vérifier avant tout envoi.",
+    "ui.mesh.mesh_actions.working_set_warning": "Déplacer en cours de conversation envoie tous les fichiers de travail de cette conversation vers {device} : les worktrees ci-dessous avec leurs commits non pushés et leurs modifications non commitées, ainsi que les fichiers temporaires et la mémoire de session. Ne continuez que si {device} doit détenir ce travail.",
+    "ui.mesh.mesh_actions.working_set_changed": "Les fichiers de travail ont changé depuis votre vérification. Vérifiez la liste mise à jour et confirmez à nouveau.",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, one {{count, number, ::group-off} worktree sera envoyé} many {{count, number, ::group-off} de worktrees seront envoyés} other {{count, number, ::group-off} worktrees seront envoyés}} · {size} au total",
+    "ui.mesh.mesh_actions.working_set_detached": "HEAD détachée",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, one {{unpushed, number, ::group-off} commit non pushé} many {{unpushed, number, ::group-off} de commits non pushés} other {{unpushed, number, ::group-off} commits non pushés}} · indexés : {staged, number, ::group-off} · non indexés : {unstaged, number, ::group-off} · non suivis : {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "Arrive dans {path}",
+    "ui.mesh.mesh_actions.working_set_clone": "{device} n’a pas encore ce dépôt : il sera cloné depuis {url}.",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "{device} n’a pas encore ce dépôt : il sera cloné depuis {url} (environ {size}).",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "Retenu — non envoyé",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "Ressemble à un fichier secret : il n’est pas envoyé.",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "Contient une valeur qui ressemble à un secret : il n’est pas envoyé.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "Un commit non pushé ajoute un fichier qui ressemble à un secret : il n’est pas envoyé.",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "Un commit non pushé contient une valeur qui ressemble à un secret : il n’est pas envoyé.",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "Reste où il est",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "Dépendances",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "Sortie de build",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "Ignoré par Git",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "Fichier hors d’un worktree",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "à recréer avec {command}",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "Une autre conversation active travaille dans ce worktree : il reste où il est.",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "Ce worktree est hors du dossier personnel : il ne peut pas être placé sur l’autre appareil.",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "Ce worktree contient des conflits de fusion non résolus. Résolvez-les, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "Une fusion, un rebase ou un cherry-pick est en cours ici. Terminez-le ou annulez-le, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "Les worktrees avec des sous-modules ne sont pas encore transférés.",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "Les worktrees qui utilisent Git LFS ne sont pas encore transférés.",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "L’historique non pushé contient des éléments qui ressemblent à des secrets. Faites un push du commit ou réécrivez-le, ou retirez-le de cette branche, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "Trop volumineux pour ce déplacement. Faites-en un push, ou clonez-le sur l’autre appareil, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "L’autre appareil a déjà une autre copie de travail à cet emplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "L’autre appareil ne peut pas encore recevoir de worktrees. Mettez Local Operator à jour sur celui-ci, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "Non envoyé ({code}).",
+    "ui.mesh.mesh_actions.working_set_checkbox": "Je confirme que {device} doit recevoir ces fichiers",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "Cette version ne déplace pas encore les fichiers de travail. Les worktrees ci-dessous restent où ils sont : la conversation sur {device} n’aura pas leurs commits non pushés ni leurs modifications non commitées. Faites un push ou un commit de ce dont vous avez besoin avant le déplacement.",
+    "ui.mesh.mesh_actions.working_set_warning_without": "Ces fichiers de travail ne peuvent pas être envoyés avec ce déplacement : la conversation sur {device} ne les aura pas. Vous pouvez déplacer sans eux, ou annuler et d’abord faire un push ou un commit de votre travail.",
+    "ui.mesh.mesh_actions.working_set_unknown": "Les fichiers de travail n’ont pas pu être vérifiés : ils ne peuvent pas être envoyés avec ce déplacement et la conversation sur {device} ne les aura pas. Vous pouvez déplacer sans eux, ou annuler et réessayer.",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, one {{count, number, ::group-off} worktree reste où il est} many {{count, number, ::group-off} de worktrees restent où ils sont} other {{count, number, ::group-off} worktrees restent où ils sont}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "Je comprends que la conversation sur {device} n’aura pas ces fichiers",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "Si l’autre appareil n’a pas ce dépôt, il est cloné depuis {url} après une vérification de l’espace libre.",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "L’historique non pushé est trop volumineux pour être vérifié à la recherche de secrets : il n’est pas envoyé. Faites un push des commits ou retirez-les de cette branche, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "L’autre appareil ne peut pas cloner ce dépôt. Clonez-le d’abord sur celui-ci, puis relancez le déplacement.",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "Non déplacé : cette version ne transfère pas encore les worktrees.",
+    "ui.mesh.mesh_actions.working_set_probe_ok": "{device} peut faire un fetch et un push de ce dépôt.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_fetch": "{device} ne peut pas faire de fetch de {remote} avec ses propres accès.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_push": "{device} peut faire un fetch de {remote}, mais pas de push.",
+    "ui.mesh.mesh_actions.working_set_probe_cannot_clone": "{device} n’utilisera pas {remote} : l’adresse n’est pas autorisée, ou Git n’y est pas installé.",
+    "ui.mesh.mesh_actions.working_set_probe_no_remote": "Ce dépôt n’a pas de dépôt distant : {device} n’a nulle part où faire de fetch ni de push.",
+    "ui.mesh.mesh_actions.working_set_probe_unknown": "Impossible de vérifier si {device} peut accéder à ces dépôts. Il utilise peut-être une version plus ancienne de Local Operator.",
+    "ui.mesh.mesh_actions.working_set_probe_https_rewrite": "Depuis {device}, SSH ne passe pas, mais HTTPS oui : {url}",
+    "ui.mesh.mesh_actions.working_set_probe_remedy": "Pour corriger, exécutez ceci sur l’appareil qui prête l’accès GitHub :",
+    "ui.mesh.mesh_actions.working_set_probe_copy": "Copier la commande",
+    "ui.mesh.mesh_actions.working_set_missing_tools": "Il manque sur {device} des outils dont ces projets ont besoin. Le déplacement fonctionne quand même ; installez-les sur cet appareil avant de compiler ou de tester :",
+    "ui.mesh.mesh_actions.working_set_row_missing_tools": "Manquant sur {device} : {tools}",
+    "ui.mesh.mesh_actions.working_set_team_bridge": "{device} n’est pas inscrit à Team Bridge, que cette conversation utilise. Le déplacement fonctionne quand même.",
+    "ui.mesh.mesh_actions.working_set_kept_heading_on": "{count, plural, one {{count, number, ::group-off} worktree reste sur {source}} many {{count, number, ::group-off} de worktrees restent sur {source}} other {{count, number, ::group-off} worktrees restent sur {source}}}"
+  },
+  "prior_audits": [
+    {
+      "instance": "b973c86b28e4-pr1978-r1-fr",
+      "covers": "round 1 of the 42 working_set_* keys at dd014c1e9d; its findings are re-checked above and the row's audit moves to superseded"
+    }
+  ],
+  "scope": "PR #1978 i18n round 2 (1fb3d656c3..486ef6f270): all 55 added ui.mesh.mesh_actions.working_set_* keys (42 round-1 keys incl. remediation + 13 destination-probe/prereq keys), read in full against English and translator context; the other 310 values are unchanged bytes covered by prior audits",
+  "binding": "Verified on the committed tree at 486ef6f27052ab3d0695c8f005d76968e1375021 (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/fr/ui.mesh.json sha256 8fb9c1a29eb8384cf9714ea5f3b985be0b019a41acbae696bc32ed9c8221a235; English sha256 d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa; context sha256 177847b403d425e425346371763a0380f4104ed64e7f331065688d03239707b9.",
+  "en_sha256": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa",
+  "context_sha256": "177847b403d425e425346371763a0380f4104ed64e7f331065688d03239707b9",
+  "target_sha256": "8fb9c1a29eb8384cf9714ea5f3b985be0b019a41acbae696bc32ed9c8221a235",
+  "sha256": {
+    "fr": "8fb9c1a29eb8384cf9714ea5f3b985be0b019a41acbae696bc32ed9c8221a235",
+    "en": "d0c3a98afa79efb47dfbbfd9dfd020daf25d9ae3e728058f42c294bdefd596fa"
+  }
+}

@@ -36,6 +36,7 @@ const {
 	paletteDoorOutcome,
 	paletteReachableStepCaps,
 	paletteShortcutIntent,
+	paletteSortIntent,
 	paletteStepCaps,
 	paletteStepIndex,
 	paletteStepIntent,
@@ -369,4 +370,31 @@ test("the advertised caps are the reachable set, which is a platform fact", () =
 	// And it is advertised on exactly one platform.
 	assert.ok(paletteReachableStepCaps(true).includes("Ctrl+P"));
 	assert.ok(!paletteReachableStepCaps(false).includes("Ctrl+P"));
+});
+
+test("ctrl s is the order toggle: Control only, on every platform, and no modifiers folded in", () => {
+	const press = (key, overrides = {}) => ({
+		key,
+		metaKey: false,
+		ctrlKey: false,
+		shiftKey: false,
+		altKey: false,
+		...overrides,
+	});
+	assert.equal(paletteSortIntent(press("s", { ctrlKey: true })), true);
+	// The letter is read case-insensitively: a shifted layout still sends "s".
+	assert.equal(paletteSortIntent(press("S", { ctrlKey: true })), true);
+	// Cmd+S belongs to the app (save); a modified chord stays available.
+	assert.equal(paletteSortIntent(press("s", { metaKey: true })), false);
+	assert.equal(
+		paletteSortIntent(press("s", { ctrlKey: true, shiftKey: true })),
+		false,
+	);
+	assert.equal(
+		paletteSortIntent(press("s", { ctrlKey: true, altKey: true })),
+		false,
+	);
+	// A bare `s` is a character the reader is typing into the field.
+	assert.equal(paletteSortIntent(press("s")), false);
+	assert.equal(paletteSortIntent(press("k", { ctrlKey: true })), false);
 });

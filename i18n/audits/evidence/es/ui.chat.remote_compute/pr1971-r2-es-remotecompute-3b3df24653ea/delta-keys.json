@@ -1,0 +1,33 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "es",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+		"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+		"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+		"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+		"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "Crea una red con `lop network init` o únete a una con `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "No aplicada en esta versión.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Registrada en {network}. No aplicada en esta versión.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Esta ejecución usará el modo Ejecución en la nube.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "Qué tipo de ejecución",
+		"ui.chat.remote_compute.store.accepted_without_run": "El servidor aceptó la ejecución pero no la devolvió.",
+		"ui.chat.remote_compute.store.refused": "El servidor rechazó esta solicitud y no explicó por qué.",
+		"ui.chat.remote_compute.store.transport": "La solicitud no llegó al servidor. Inténtalo de nuevo.",
+		"ui.chat.remote_compute.card.binding": "Registrada en {network}. No aplicada en esta versión.",
+		"ui.chat.remote_compute.card.binding_none": "Ninguna red registrada. No aplicada en esta versión."
+	},
+	"counts": {
+		"keys": 10,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

@@ -39,7 +39,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { useUiPreferencesStore, persistedUiPreferences, mergePersistedUiPreferences, migrateUiPreferences, resolveRightSlotWidth, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, EMPTY_RIGHT_SLOT_MEMORY, DEFAULT_RIGHT_SLOT_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { useUiPreferencesStore, persistedUiPreferences, mergePersistedUiPreferences, migrateUiPreferences, UI_PREFERENCES_VERSION, resolveRightSlotWidth, resolveDrawnRightSlotPane, EMPTY_RIGHT_SLOT_ROUTE, EMPTY_RIGHT_SLOT_MEMORY, DEFAULT_RIGHT_SLOT_WIDTH } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { installRightSlotMemoryFollower, rightSlotKeyForView, admittedFromFor } from "./src/renderer/src/shared/store/right-slot-follower";',
 			'export { RIGHT_SLOT_MEMORY_CAP, memoryPut, memoryCarry, memoryProject, memoryRemove, memoryDismiss, memorySanitize, memoryPruneKeys } from "./src/renderer/src/shared/store/right-slot-memory";',
@@ -68,6 +68,7 @@ const {
 	persistedUiPreferences,
 	mergePersistedUiPreferences,
 	migrateUiPreferences,
+	UI_PREFERENCES_VERSION,
 	resolveRightSlotWidth,
 	resolveDrawnRightSlotPane,
 	EMPTY_RIGHT_SLOT_ROUTE,
@@ -524,11 +525,20 @@ test("(E) the memory persists without drafts, migrates from the global flags, an
 	assert.equal("isRunPanelOpen" in fromV2, false);
 
 	/*
-	 * AND THE CHAIN IS IDEMPOTENT: a v3 blob is carried through untouched, which is
-	 * what makes a rebase onto a sibling lane's step a conflict with no behaviour in
-	 * it.
+	 * AND THE CHAIN IS IDEMPOTENT: a v3 blob is carried through the later steps
+	 * untouched except for what those steps SEED - the appearance layers and, since
+	 * v7, the palette's row order - which is what makes a rebase onto a sibling
+	 * lane's step a conflict with no behaviour in it. A blob already AT the current
+	 * version is the harder case and comes back byte-identical.
 	 */
-	assert.deepEqual(migrateUiPreferences(migrated, 3), migrated);
+	assert.deepEqual(migrateUiPreferences(migrated, 3), {
+		...migrated,
+		paletteSort: "best",
+	});
+	assert.deepEqual(
+		migrateUiPreferences(migrated, UI_PREFERENCES_VERSION),
+		migrated,
+	);
 
 	// The v0 fold still runs (the chain did not lose its first step).
 	const folded = migrateUiPreferences(

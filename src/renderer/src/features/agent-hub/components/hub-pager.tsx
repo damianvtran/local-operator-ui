@@ -90,7 +90,7 @@ export const HubPager: FC<{
 					disabled={page <= 1}
 					aria-label={t("ui.common.forms.compact_pagination.previous_page")}
 				>
-					<ChevronLeft aria-hidden="true" />
+					<ChevronLeft aria-hidden="true" className="rtl:-scale-x-100" />
 					{t("ui.hub.pages.pager.previous")}
 				</Button>
 				<Button
@@ -105,7 +105,7 @@ export const HubPager: FC<{
 					aria-label={t("ui.common.forms.compact_pagination.next_page")}
 				>
 					{t("ui.hub.pages.pager.next")}
-					<ChevronRight aria-hidden="true" />
+					<ChevronRight aria-hidden="true" className="rtl:-scale-x-100" />
 				</Button>
 			</div>
 		</nav>

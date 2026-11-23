@@ -160,6 +160,32 @@ export interface TabRecord {
 	/** A close that could not complete is a retryable obligation, never proof
 	 * the view is gone. */
 	cleanupPending?: boolean;
+	/**
+	 * Set on a USER tab the host opened because the operator approved a site an
+	 * agent asked for (`BrowserHost.respondToConsent`), and null everywhere else.
+	 *
+	 * WHY IT EXISTS: before this, Allow wrote a grant and nothing navigated, so an
+	 * agent that asked the operator to "approve and sign in" left them with no page
+	 * to sign in on. The host now opens the approved page in a tab the OPERATOR owns
+	 * (so the agent cannot read credentials being typed, and opener popups such as
+	 * an MSAL sign-in are not held as an agent tab's), and this marker is what lets
+	 * the requesting session's next plain `open url=<same origin>` take that tab
+	 * over where it stands instead of opening a second one (`actions/tabs.ts`).
+	 *
+	 * It is a PICKUP RIGHT, not a capability: the tab has no nonce while it is set,
+	 * the session sees only a redacted handle, and the pickup still runs ordinary
+	 * admission. In memory only (never persisted, like `nonce`), bounded by
+	 * `expiresAt` (the access-result TTL), and cleared on pickup or hand-over.
+	 */
+	approvalPickup?: ApprovalPickup | null;
+}
+
+/** See `TabRecord.approvalPickup`. `requester` is the full `session:<id>`
+ * identity that raised the request; `origin` is the exact origin approved. */
+export interface ApprovalPickup {
+	requester: string;
+	origin: string;
+	expiresAt: number;
 }
 
 /** A snapshot ref as this host stores it: the vendored `SnapshotRef` plus where
@@ -470,6 +496,7 @@ export class TabRegistry {
 			presented: false,
 			refs: {},
 			allocationId: options.allocationId ?? "",
+			approvalPickup: null,
 		};
 		this.tabs.set(tabId, record);
 		// Internal pages are shown only for commits main armed (internal-pages.ts).
@@ -492,7 +519,10 @@ export class TabRegistry {
 	 * agent-owned count past the cap, after which the next `open` was refused with
 	 * "already driving 8 agent tabs" for tabs the user had handed over — the cap
 	 * reported by `status` and the cap enforced on `open` disagreeing (N3). */
-	private assertAgentCapacity(): void {
+	// Public so the approval pickup in `actions/tabs.ts` can refuse at the cap
+	// BEFORE it runs admission: a `once` grant spent and then refused by the
+	// hand-over's own cap check would be a grant the operator gave for nothing.
+	assertAgentCapacity(): void {
 		if (this.agentTabCount() < MAX_AGENT_TABS) return;
 		throw new BrowserHostError(
 			"tab_limit",
@@ -537,6 +567,38 @@ export class TabRegistry {
 
 	list(): TabRecord[] {
 		return [...this.tabs.values()].sort((a, b) => a.tabId - b.tabId);
+	}
+
+	/**
+	 * The live tab the host opened for `requester`'s approved request on `origin`,
+	 * or null. One predicate for the three readers (the re-approval reuse, the
+	 * `opened_tab` flag on `request_access`/`await_access`, and the `open` pickup)
+	 * so they cannot disagree about whether a tab is waiting.
+	 *
+	 * Only a tab that is STILL THE USER'S counts: once the operator hands it to
+	 * anyone (`handOver` clears the marker too) or it is gone, the pickup right is
+	 * spent. The marker's TTL is checked here rather than swept, because a stale
+	 * marker is inert once nothing reads it as live.
+	 */
+	approvalPickupTab(
+		requester: string,
+		origin: string,
+		now: number,
+	): TabRecord | null {
+		for (const record of this.list()) {
+			const pickup = record.approvalPickup;
+			if (
+				pickup &&
+				pickup.requester === requester &&
+				pickup.origin === origin &&
+				now < pickup.expiresAt &&
+				record.owner === "user" &&
+				record.handedTo === null &&
+				!record.view.webContents.isDestroyed()
+			)
+				return record;
+		}
+		return null;
 	}
 
 	/**
@@ -625,7 +687,7 @@ export class TabRegistry {
 	 *   here and the same refusal is returned, so a handle that outlives its view
 	 *   fails instead of driving something else.
 	 */
-	requireSurface(token: unknown): TabRecord {
+	private requireLiveSurface(token: unknown): TabRecord {
 		const parsed = parseSurface(token);
 		if (!parsed) {
 			throw new BrowserHostError(
@@ -650,6 +712,35 @@ export class TabRegistry {
 				{ reason: "view_destroyed" },
 			);
 		}
+		return record;
+	}
+
+	/** Terminal cleanup must distinguish a drive refusal from a gone surface,
+	 * without giving the caller a record or making the surface driveable. */
+	closeOwnedSurface(token: string, beforeClose: () => void): boolean {
+		let record: TabRecord;
+		try {
+			record = this.requireLiveSurface(token);
+			this.assertSurfaceDriveable(record);
+		} catch (error) {
+			if (error instanceof BrowserHostError) {
+				if (error.code === "tab_closed") return true;
+				if (error.code === "owner_refused") return false;
+			}
+			throw error;
+		}
+		beforeClose();
+		this.destroy(record.tabId);
+		return true;
+	}
+
+	requireSurface(token: unknown): TabRecord {
+		const record = this.requireLiveSurface(token);
+		this.assertSurfaceDriveable(record);
+		return record;
+	}
+
+	private assertSurfaceDriveable(record: TabRecord): void {
 		// The browser's own pages (lop://extensions) are management UI painted by
 		// the desktop renderer; an agent may neither read nor drive them, even on a
 		// tab it was handed. Every agent page action resolves its tab here.
@@ -677,7 +768,6 @@ export class TabRegistry {
 		// (`actions/frames.ts` `assertNotExtensionFrame`), and the three actions that
 		// would DESTROY a live request are refused where they are dispatched
 		// (`actions/tabs.ts` close, `actions/page.ts` navigation, `cdp.ts`).
-		return record;
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */
@@ -718,6 +808,10 @@ export class TabRegistry {
 		// capture keys on this, not on `handedTo`).
 		const departedDocumentEpoch = record.documentEpoch;
 		if (record.handedFrom === null) record.handedFrom = record.owner;
+		// Any hand-over spends an approval pickup: the tab now belongs to whichever
+		// session it went to, and a later `open` by the original requester must not
+		// find it as "waiting for you".
+		record.approvalPickup = null;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
 		// NOT, and deliberately: a hand-over changes who may drive a tab, not the

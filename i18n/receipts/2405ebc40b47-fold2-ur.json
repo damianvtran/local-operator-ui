@@ -1,0 +1,67 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-fold2-ur",
+	"locale": "ur",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "7a1ab39aa9 + the manager's uncommitted convergence edits in the tree (fr ui.chat.composer steer_hint/steer_hint_steer, fr ui.settings.shortcuts action.send_queue/action.send_steer, ur ui.chat.composer placeholder.waiting_both)",
+	"date": "2026-11-13",
+	"status": "passed",
+	"verdict": "PASS - 0 blocker/major, no findings",
+	"audit_kind": "DELTA audit of exactly the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8: 6 added, 2 changed) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two independently audited parents (catalogue-union-parity reports no value differences), so their audits stand in the superseded rows.",
+	"independence": "A different agent and model family from the translators. The 27 keys were translated this wave by i18n-translator anthropic/claude-sonnet-5-5 (self-reported); this audit ran read-only through the codex MCP with the strings, the English source, the context sidecar, a style-guide excerpt and the shipped vocabulary pasted into the prompt. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.action.send_queue",
+		"ui.settings.shortcuts.action.send_steer",
+		"ui.settings.shortcuts.category.sending",
+		"ui.settings.shortcuts.category.sending_description",
+		"ui.settings.shortcuts.reserved.enter",
+		"ui.settings.shortcuts.capture.send_newline",
+		"ui.settings.shortcuts.capture.send_needs_modifier",
+		"ui.settings.shortcuts.capture.panel_enter",
+		"ui.settings.shortcuts.capture.send_prompt",
+		"ui.settings.shortcuts.row_help.send_steer",
+		"ui.settings.shortcuts.row_help.send_queue",
+		"ui.settings.shortcuts.row_help.send_both",
+		"ui.chat.composer.placeholder.waiting_steer",
+		"ui.chat.composer.placeholder.waiting_queue",
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_steer",
+		"ui.chat.composer.steer_hint_queue",
+		"ui.chat.composer.steer_hint_both",
+		"ui.chat.composer.placeholder.waiting",
+		"ui.chat.composer.steer_hint",
+		"ui.chat.canonical.send_failure.delivery_unsupported",
+		"ui.chat.canonical.transcript.busy_wait.steer",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.deferred"
+	],
+	"rounds": "Round 4 is the verdict recorded here: PASS, no blocker or major, no findings. Rounds 1-3 each failed on at least one major.\n\nRound 1: 1 major on ui.chat.composer.steer_hint, whose « موجودہ باری » lacked the object marker « کو » and so read as unidiomatic Urdu; a minor on placeholder.waiting_both for naming the modes without saying what Enter and Esc do.\n\nRound 2: 2 majors on ui.settings.shortcuts.row_help.send_steer and row_help.send_queue, whose « کو بدل دیتا ہے » said the shortcut changes the « مصروف ہونے پر ترسیل » setting rather than overriding it for this one message.\n\nRound 3: 1 major on ui.chat.composer.placeholder.waiting_both, an ungrammatical fragment that did not say Enter first queues the message and then steers; a minor on ui.settings.shortcuts.row_help.send_steer, where « مرحلہ روک دیتا ہے » says the step stops rather than that it is interrupted, overstating the outcome against the shipped wording. The same overstatement was recorded as a finding on the backend twin, wire.settings.keymap.send_steer.help, in the same round.\n\nRound 4 did NOT repeat that row_help.send_steer minor, and the wording on disk is unchanged from round 3: the retained record is round 4's verdict on these bytes, not a claim that every earlier minor was rewritten. The same is true of the canonical pass's one ur minor, on ui.chat.canonical.send_failure.delivery_unsupported (the imperative « ہدایت دیں » used as a mode name, where the corpus ships the noun « ہدایت »), which is recorded with its shipped value and disposition in the superseded receipt 2405ebc40b47-fold-ur.json and was not repeated in round 4; that value is also unchanged on disk.\n\nui.chat.canonical's own pass ran earlier: PASS with that single minor, and the fold2 rounds that followed did not reopen it.",
+	"source": "Verdict and finding text transcribed from the manager's retained audit records: session 2405ebc40b47 scratchpad/audit-fold2.json (round 1), audit-fold2-r2.json (round 2), audit-fold2-r3.json (round 3), audit-fold2-r4.json (round 4) and audit-fold-canonical.json (the canonical pass, whose per-locale receipt is i18n/receipts/2405ebc40b47-fold-ur.json). Catalogue hashes are of the bytes on disk at assembly time; the audit prompt was built from these same files, and no audited file has been edited since round 4's read.",
+	"namespaces": {
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"en_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+			"ur_sha256": "1a0b0e8b1e09ad9e1875653ba074aae2250c13c38ced37bb8b3c43bd651baed3",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"en_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+			"ur_sha256": "f3fe6178dc23fa578d52ed61dc912dfd0573a03b2722955d2061f1ebd1542123",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
+			"ur_sha256": "881786135ed640a123cc9bd68e63be03513ad726e1f45e7cefc273d37dbc0c5a",
+			"findings": []
+		}
+	}
+}

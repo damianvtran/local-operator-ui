@@ -95,6 +95,12 @@ on:
     # this repository (a runner image, a registry, the date).
     - cron: '37 6 * * *'
   workflow_dispatch:
+    inputs:
+      native_proofs:
+        description: 'Run macOS native app regression proofs on demand (mid-review QA)'
+        type: boolean
+        required: false
+        default: false
 
 # ONE group PER REF, and never cancel one in progress: each completed `main` run
 # is the record of that commit's suite result, so
@@ -125,6 +131,14 @@ jobs:
     timeout-minutes: 5
     outputs:
       unit: ${{ steps.classify.outputs.unit }}
+      pack: ${{ steps.classify.outputs.pack }}
+      # Whether the NATIVE PROOFS lane is needed for this diff. Deliberately a
+      # separate output from `pack`: `pack` is computed with `--all` (a label
+      # asks for the whole suite, and that stays true for the tests), which made
+      # it true for every diff and forced every labelled PR through one capped
+      # macOS runner slot. This one is diff-derived and is read by
+      # `native-proofs` alone. See `scripts/native-scope.mjs`.
+      native: ${{ steps.native.outputs.native }}
       # The lane list, from scripts/desktop-test-shards.mjs's `matrix` mode, which
       # derives it from SHARD_COUNT. It is emitted here rather than as a literal
       # matrix below because a literal is a SECOND place to change the lane count,
@@ -137,6 +151,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Depth 2 so the native-scope step can diff the PR's own change
+          # locally, with no API call and no extra network fetch. On a
+          # `labeled` event the checkout is `refs/pull/N/merge`, whose `HEAD^1`
+          # is the base and whose `HEAD` carries the PR's changes.
+          fetch-depth: 2
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -152,6 +172,55 @@ jobs:
       - name: Emit the shard matrix (the lane count lives in SHARD_COUNT)
         id: shards
         run: node scripts/desktop-test-shards.mjs matrix --github-output "$GITHUB_OUTPUT"
+
+      # Does THIS diff need the macOS native lane? Fail-closed: a diff we cannot
+      # compute, an empty list, or an unreadable file all answer `true`, and the
+      # only way to answer `false` is a changed-path list that touches none of
+      # the surfaces in scripts/native-scope.mjs.
+      - name: Native scope (diff-derived on pull requests and branch dispatches)
+        id: native
+        run: |
+          set -uo pipefail
+          changed="$RUNNER_TEMP/native-changed.txt"
+          # A pull request's merge ref carries the base as `HEAD^1`. A branch
+          # dispatch has no such parent - the branch may be many commits long - so
+          # its change is everything since the merge-base with the base branch.
+          # Both answer the same question: what is THIS change.
+          resolve_diff() {
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              git rev-parse -q --verify 'HEAD^1' >/dev/null 2>&1 || return 1
+              git diff --name-only --no-renames 'HEAD^1' HEAD > "$changed"
+              return 0
+            fi
+            base="${GITHUB_BASE_REF:-main}"
+            # A shallow checkout has no ancestry to walk: `merge-base` answers
+            # nothing while the clone is shallow, whatever depth the base ref was
+            # fetched at (round-2 QA measured exactly that - one commit resolved,
+            # two did not). The depth here is a DISPATCH-only cost, and a
+            # dispatch is rare, so the boundary goes rather than the question.
+            git fetch --no-tags --unshallow origin >/dev/null 2>&1 || true
+            git fetch --no-tags origin "refs/heads/$base:refs/remotes/origin/$base" \
+              >/dev/null 2>&1 || return 1
+            merge_base="$(git merge-base HEAD "refs/remotes/origin/$base" 2>/dev/null || true)"
+            [ -n "$merge_base" ] || return 1
+            git diff --name-only --no-renames "$merge_base" HEAD > "$changed"
+          }
+          case "$GITHUB_EVENT_NAME" in
+            pull_request|workflow_dispatch)
+              if ! resolve_diff; then
+                echo "could not compute this change's diff; treating the scope as unknown" >&2
+                : > "$changed"
+              fi
+              node scripts/native-scope.mjs --changed-file "$changed" \
+                --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              # `push` and `schedule` are the post-merge safety net: the lane is
+              # deliberately not asked for there, so its scope is not consulted.
+              node scripts/native-scope.mjs --force true \
+                --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+              ;;
+          esac
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,
@@ -733,6 +802,331 @@ jobs:
         run: |
           node scripts/desktop-test-shards.mjs verify --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --unit "$UNIT_SCOPE" --classifier "$CLASSIFIER_RESULT" --workers "$WORKER_RESULT" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --receipts "$RUNNER_TEMP/desktop-shard-receipts"
 
+  # The four macOS native app regression proofs (`asks_regression`,
+  # `notifications_native`, `model_uncertainty_native`, `app_icon_badge_native`),
+  # moved out of per-push `ci.yml`'s `npx-sanity-check` (~9.6 macOS-minutes per
+  # push on a 5-slot account-wide macOS runner cap) into the terminal merge gate.
+  #
+  # Runs on a `pull_request` (`labeled` merge-gate run) when the DIFF needs it -
+  # `needs.changes.outputs.native != 'false'`, answered by
+  # `scripts/native-scope.mjs` from the changed paths, NOT from `pack`, which
+  # `changes` computes with `--all` and which is therefore true for every diff.
+  # That distinction is the whole point: gating on `pack` charged every backend
+  # PR one capped macOS slot. It also runs on demand via `workflow_dispatch` with
+  # `native_proofs=true` for mid-review QA. Skipped on `push` to `main` and
+  # `schedule` (where `asks_regression` has no PR merge base to compare against).
+  # `merge-gate` enforces the other half: a `skipped` `native-proofs` is never
+  # accepted on a `pull_request` or a `workflow_dispatch` unless the same
+  # diff-derived scope said the lane was unnecessary - so a dispatch that asks
+  # NOT to prove a native-touching head is red, not a false pass.
+  native-proofs:
+    name: Native App Proofs (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 55
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.native != 'false' &&
+      (github.event_name == 'pull_request' || inputs.native_proofs == true)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
+      - name: Build and pack
+        # Fork pull_request jobs cannot read repository secrets. This disposable
+        # tarball proves packaging and launch, not OAuth authentication, so use
+        # explicit non-secret fixtures on every CI run rather than giving untrusted
+        # code credentials or weakening the build's required-variable guards.
+        # publish.yml and signed-update-candidate.yml retain the real bindings;
+        # this job never publishes its fixture-configured package.
+        env:
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: "ci-fixture-unused"
+          VITE_MICROSOFT_CLIENT_ID: 00000000-0000-4000-8000-000000000001
+          VITE_MICROSOFT_TENANT_ID: 00000000-0000-4000-8000-000000000002
+
+          # THE HEAP CEILING `publish.yml` ALREADY CARRIES, for the same build.
+          # `npm pack` runs the prepack script (`pnpm run build:npm` ->
+          # `electron-vite build`), and on Node 22's default ~2 GB heap the renderer
+          # pass aborts on macos-latest: run 40628162002 (8c5c5b23, 2026-10-28
+          # 03:41Z), job 122634096939, logged `7694 modules transformed`, then
+          # `rendering chunks...` and `Mark-Compact 1961.6 (2075.3) -> 1930.9
+          # (2050.0) MB`, `FATAL ERROR: Ineffective mark-compacts near heap limit
+          # Allocation failed - JavaScript heap out of memory`, `Abort trap: 6` on
+          # `npm pack`, exit 134. Same signature in runs 40625952174 (a22fd4bf, job
+          # 122625611670) and 40567859580 (cbc7ddbe, job 122430145666), on Node
+          # 22.23.4 and 22.23.3 respectively.
+          #
+          # The cause is not proven: the last green main run of this same job
+          # (40594559669, 1a707a36) packed a 36.3 MB unpacked tarball through this
+          # same path, so either the renderer's growth erodes the default heap's
+          # headroom or the runner draw varies. 4096 MB is a CEILING, not an
+          # allocation: it sits inside the ~7 GB macOS runner and only stops the
+          # default limit aborting a build that would otherwise fit.
+          #
+          # Bound on this step, not the job, because only this step builds: the npx
+          # launch and asks-regression steps below run the packed app and keep a
+          # user's environment. The ubuntu leg shares the step and stays under the
+          # default 2 GB (job 122634096771 succeeded in that run), so the ceiling
+          # only widens headroom there. This workflow sets no other NODE_OPTIONS
+          # for this to overwrite.
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+        # npm pack triggers the prepack script, which builds the npm-channel
+        # bundle (plain JS, no V8 bytecode). Do not add a separate pnpm build
+        # here: it would emit bytecode that prepack then overwrites, which is
+        # exactly the ambiguity that let the broken artifact ship.
+        run: |
+          npm pack
+          # Seal this canonical build before any native scene can touch outputs.
+          node scripts/model-uncertainty-native.mjs --write-build-receipt "$RUNNER_TEMP/model-case-build.json"
+
+      # This is the real production app already compiled by npm pack, not a
+      # Storybook surrogate. macOS already owns Electron launch in this job;
+      # Linux's documented sandbox limitation is not waived for screenshots.
+      # 15 minutes, up from 8, because the case table ships three cases and each
+      # case boots the app TWICE (control + candidate): six boots and ONE control
+      # renderer build (the candidate renderer arrives prebuilt from the job's
+      # "Build and pack" step), plus the capture sequences. The run that proved
+      # the producer works end to end spent its first 60 s on the control boot's
+      # build and its last minute on the candidate's, and an 8-minute ceiling left
+      # no room for the frames. Bounded deliberately: a timeout must stay a FAIL,
+      # so this is a ceiling that fits the work rather than a wait, and the script's
+      # own per-boot timeouts (150 s each) are what stop a hung app.
+      - name: Exercise assembled asks and capture regression frames
+        id: asks_regression
+        # The producer this step runs is now a CASE TABLE (scripts/asks-app-regression.mjs):
+        # the asks scenario is its first entry and two further cases ride the same
+        # step, each with its own candidate and derived-control leg. The file name and
+        # the artifact names below keep their historical spelling on purpose - QA
+        # howtos and review threads resolve against those paths. Adding a case is a
+        # table entry, not a workflow change.
+        timeout-minutes: 15
+        env:
+          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
+          VITE_GOOGLE_CLIENT_SECRET: 'ci-fixture-unused'
+          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-4000-8000-000000000001'
+          VITE_MICROSOFT_TENANT_ID: '00000000-0000-4000-8000-000000000002'
+          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          # THE CONTROL IS THE BASE THIS CANDIDATE WAS BUILT FROM, resolved here
+          # rather than pinned to a historical commit. A pinned revision stops
+          # being able to satisfy the control leg's byte-identity requirement as
+          # soon as `main` moves - its `src/main` is then older than the merged
+          # head's - and the producer dies with `control reuse mismatch src/main`
+          # before it renders anything (measured on run 38916579072). This
+          # checkout is GitHub's MERGE ref, so `HEAD^1` is main as of THIS run,
+          # which is the baseline the change must be judged against.
+          #
+          # The depth-2 fetch brings that parent and its tree in; a depth-1
+          # checkout carries neither. `origin/main` is not consulted: on a fork
+          # PR the remote's `main` is the FORK's, which is why the parent of the
+          # merge ref is the honest source here.
+          git fetch --no-tags --depth=2 origin "$(git rev-parse HEAD)" || true
+          if git rev-parse --verify --quiet "HEAD^2^{commit}" >/dev/null; then
+            CONTROL="$(git rev-parse HEAD^1 2>/dev/null)" || true
+          else
+            # On `workflow_dispatch` the checkout is a branch tip rather than
+            # `refs/pull/N/merge`, so `HEAD^1` is the previous branch commit, not
+            # `main`. Fetch `main` into the private ref `asks-app-regression.mjs`
+            # reserves and derive the merge-base against `HEAD`.
+            git fetch --no-tags --no-write-fetch-head origin +refs/heads/main:refs/asks-control/main || true
+            CONTROL="$(git merge-base refs/asks-control/main HEAD 2>/dev/null || git rev-parse refs/asks-control/main 2>/dev/null)" || true
+          fi
+          if [ -z "$CONTROL" ]; then
+            echo '::error::the asks regression control could not be derived: this checkout has neither a PR merge parent nor a reachable main base. Refusing rather than booting an arbitrary control.'
+            exit 1
+          fi
+          git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
+          echo "asks regression control (merge base of this run): $CONTROL"
+          ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
+
+      # THE POSITIVE FOREGROUND PROOF FOR `notifications.read`, AND THE ONLY
+      # SHOWN WINDOW IN THIS REPOSITORY. A read means "a human saw this", so the
+      # main process refuses it unless the real window is focused; every other
+      # scene launches headless and therefore proves only the refusal. This step
+      # is the other half: a genuinely shown window on this EPHEMERAL
+      # GitHub-HOSTED macOS runner's own desktop (never a self-hosted runner,
+      # never the operator's machine - `resolvedWindowMode` and the scene both
+      # refuse anything else), a trusted input on a real row, main's real guard
+      # letting it through, and the PINNED core backend's SQLite showing exactly
+      # the tested revision read while an unrelated row and a revision raced
+      # behind the click stay unread. A runner with no interactive desktop FAILS
+      # here rather than falling back to headless, because a headless "success"
+      # would be a false positive.
+      #
+      # The backend is the pinned core revision, installed from its own extra and
+      # run on loopback under a throwaway HOME/config with a synthetic bearer.
+      # Nothing here talks to a provider or an operator account.
+      - name: Prove the positive foreground notification read on a shown window
+        id: notifications_native
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
+          LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/notifications-app-scene.mjs
+
+      # Opt-in model case reuses this job's canonical app/Electron. It never
+      # expands the default asks fixture/matrix or downloads a local runtime.
+      - name: Prove model uncertainty against owned published core
+        id: model_uncertainty_native
+        timeout-minutes: 12
+        env:
+          LOCAL_OPERATOR_CORE_REF: a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed
+          MODEL_CASE_EXPECTED_HEAD: ${{ github.sha }}
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote https://github.com/damianvtran/local-operator.git refs/tags/v0.94.15 | cut -f1)" = "$LOCAL_OPERATOR_CORE_REF"
+          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
+          # Reuse only after the preceding owned scene has reaped its workers.
+          CORE_VENV="$CORE_VENV" python3 - <<'PY'
+          import os, subprocess
+          root = os.environ['CORE_VENV']
+          rows = subprocess.check_output(['ps', '-axo', 'pid=,command='], text=True)
+          assert not any(root + '/bin/' in row for row in rows.splitlines()), 'prior core environment still in use'
+          PY
+          mkdir -p "$RUNNER_TEMP/model-core-wheel"
+          "$CORE_VENV/bin/pip" download --quiet --only-binary=:all: --no-deps --dest "$RUNNER_TEMP/model-core-wheel" local-operator==0.94.15
+          CORE_WHEEL="$RUNNER_TEMP/model-core-wheel/local_operator-0.94.15-py3-none-macosx_11_0_universal2.whl"
+          CORE_WHEEL="$CORE_WHEEL" python3 - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          assert hashlib.sha256(Path(os.environ['CORE_WHEEL']).read_bytes()).hexdigest() == '17b4fccdeb78fa0f14ab03aacb246de2acec34beb00264956497891de6e9d58b'
+          PY
+          "$CORE_VENV/bin/pip" install --quiet --upgrade "$CORE_WHEEL"
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          ASKS_APP_ROOT="$PWD" \
+          ASKS_OUTPUT="$PWD/artifacts/model-uncertainty" \
+          MODEL_CASE_BUILD_RECEIPT="$RUNNER_TEMP/model-case-build.json" \
+          node scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate
+          # An accidentally exiting helper must not make a zero status look like
+          # joined cleanup; require both receipts and post-cleanup acceptance.
+          node --input-type=module -e 'import { verifyModelExitArtifacts } from "./scripts/model-uncertainty-native.mjs"; verifyModelExitArtifacts("artifacts/model-uncertainty");'
+
+      - name: Upload real model uncertainty evidence
+        if: ${{ always() && steps.model_uncertainty_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-uncertainty-native-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}
+          path: artifacts/model-uncertainty/
+          if-no-files-found: error
+          retention-days: 7
+
+      # Headless deliberately hides the Dock tile. This proves the real native
+      # getBadge() API through main CDP, NOT Dock pixels; renderer frames are
+      # uploaded separately alongside hidden/unfocused window facts. Never reuse
+      # or widen the notifications lane's shown-window exception for this scene.
+      - name: Prove native app-icon badge API readback without showing a window
+        id: app_icon_badge_native
+        timeout-minutes: 12
+        env:
+          # Merged core PR #3320, including approval baseline remediation.
+          # The scene verifies the installed commit against this merged pin.
+          LOCAL_OPERATOR_CORE_REF: 3a001653fa1f08d434ca7582ca68581c792369d7
+          VITE_DISABLE_BACKEND_MANAGER: 'true'
+          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
+          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
+          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
+        run: |
+          set -euo pipefail
+          CORE_VENV="$RUNNER_TEMP/app-icon-badge-core-venv"
+          python3 -m venv "$CORE_VENV"
+          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
+          "$CORE_VENV/bin/pip" install --quiet \
+            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
+          # Cross-check this build hash against native-scene.json, not a source ref.
+          shasum -a 256 out/main/index.js
+          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
+          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
+          node scripts/app-icon-badge-scene.mjs
+
+      - name: Upload native app-icon badge API and renderer evidence
+        if: ${{ always() && (steps.app_icon_badge_native.outcome == 'success' || steps.app_icon_badge_native.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-icon-badge-native-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}
+          path: artifacts/app-icon-badge-native/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload notifications native foreground evidence
+        if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-native-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}
+          path: artifacts/notifications-native/
+          if-no-files-found: error
+          retention-days: 7
+
+      # A run that completed must have produced frames, or this step fails red.
+      # The step above being SKIPPED (an earlier gate went red) is not a missing
+      # artifact, and reporting it as one buries the real failure under a second,
+      # misleading one - which is what the outcome guard and the sibling below
+      # separate. Partial evidence from a failed run is still uploaded, quietly.
+      - name: Upload assembled asks frames and measurements
+        if: ${{ always() && steps.asks_regression.conclusion == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asks-app-regression-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}
+          path: artifacts/asks-app/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload partial asks frames from a failed run
+        if: ${{ always() && steps.asks_regression.conclusion == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: asks-app-regression-partial-${{ github.event.pull_request.number || 'dispatch' }}-${{ github.run_id }}
+          path: artifacts/asks-app/
+          if-no-files-found: ignore
+          retention-days: 7
+
   # THE REQUIRED CHECK: `Merge gate (full suite)`. ONE stable name for the whole
   # suite, so renaming or re-sharding a job never becomes a ruleset edit that
   # strands in-flight pull requests on a check that will never report again - the
@@ -741,13 +1135,14 @@ jobs:
   # `needs:` EVERY suite producer in this file: `changes` (the classifier every
   # shard receipt is checked against), `test` (all four shards - a matrix job
   # reports one result, and `cancelled` is how a shard past its ceiling reports),
-  # and `desktop-tests-result` (the fail-closed reconstruction of the inventory).
-  # The guard in scripts/ci-scope.test.mjs pins `needs` to exactly those three, so a job
-  # added to this file without being added here fails a test instead of silently
-  # escaping the gate.
+  # `desktop-tests-result` (the fail-closed reconstruction of the inventory), and
+  # `native-proofs` (the four macOS native app regression proofs).
+  # The guard in scripts/ci-scope.test.mjs pins `needs` to every job in this file
+  # except `merge-gate`, so a job added here without being added to `needs` fails
+  # a test instead of silently escaping the gate.
   merge-gate:
     name: Merge gate (full suite)
-    needs: [changes, test, desktop-tests-result]
+    needs: [changes, test, desktop-tests-result, native-proofs]
     # NO LABEL CONDITION - hostile case 1 in this file's header. This job always
     # runs whenever the workflow runs, whatever label started it, and `always()`
     # keeps it running when a dependency failed so the required check goes RED
@@ -770,23 +1165,61 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # THE VERDICT IS A MODULE NOW, so this job needs the file on disk. It had
+      # no checkout while the verdict was an inline heredoc; when the decision
+      # moved into scripts/merge-gate-verdict.mjs the `node -e` import below
+      # failed with ERR_MODULE_NOT_FOUND (full-suite run 45227197375, every suite
+      # job green). That failed CLOSED - red, never a false green - but it made
+      # the gate impossible to pass.
+      #
+      # Sparse and credential-free: the verdict needs only its own module (it has
+      # no imports; scripts/ci-scope.test.mjs derives the import closure and fails
+      # if the list below stops covering it). A checkout failure here fails this
+      # job, which is the fail-closed answer, so there is deliberately no
+      # `continue-on-error`.
+      - name: Check out the verdict module
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/merge-gate-verdict.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Fail on any failed or cancelled suite job
         env:
           NEEDS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          NATIVE_SCOPE: ${{ needs.changes.outputs.native }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          node --input-type=module <<'NODE'
-          const needs = JSON.parse(process.env.NEEDS);
-          // A `skipped` need is a PASS by design: the classifier decided this
-          // diff cannot affect the unit suite, and reddening that would fail
-          // every pull request the classifier correctly narrowed. `failure` and
-          // `cancelled` are not - a job past `timeout-minutes` reports as
-          // `cancelled`. Nothing here can be skipped by a LABEL (hostile case 1
-          // in this file's header), so a `skipped` verdict is never a label.
-          const bad = Object.entries(needs).filter(([, v]) => v.result !== 'success' && v.result !== 'skipped');
-          for (const [job, v] of Object.entries(needs)) console.log(`${job}: ${v.result}`);
-          if (bad.length) {
-            console.log(`::error title=Merge gate::${bad.map(([job, v]) => `${job}=${v.result}`).join(', ')}`);
-            process.exit(1);
-          }
-          console.log('Full suite green on this head.');
-          NODE
+          # The verdict lives in scripts/merge-gate-verdict.mjs so its skip
+          # matrix is unit-tested (scripts/merge-gate-verdict.test.mjs) instead
+          # of being reachable only by spending a full-suite run. It is strictly
+          # fail-closed: only `success`, or a skip this file has a reason for,
+          # passes. `changes` can never skip; `native-proofs` may skip on a pull
+          # request or a dispatch ONLY when the diff-derived scope says no
+          # changed path can alter the packed app.
+          # Which runs never ask for the lane at all: a push, the nightly, or a
+          # dispatch of the default branch (the same post-merge role, another
+          # trigger). A dispatch of a BRANCH is the mid-review QA case and must
+          # answer the scope question like a pull request does.
+          native_skip_allowed=false
+          case "$EVENT_NAME" in
+            push|schedule) native_skip_allowed=true ;;
+            workflow_dispatch)
+              if [ "${GITHUB_REF}" = "refs/heads/${DEFAULT_BRANCH}" ]; then
+                native_skip_allowed=true
+              fi
+              ;;
+          esac
+          export NATIVE_SKIP_ALLOWED="$native_skip_allowed"
+          node --input-type=module -e '
+            import { applyVerdict } from "./scripts/merge-gate-verdict.mjs";
+            applyVerdict({
+              needs: JSON.parse(process.env.NEEDS),
+              eventName: process.env.EVENT_NAME,
+              nativeScope: process.env.NATIVE_SCOPE,
+              nativeSkipAllowed: process.env.NATIVE_SKIP_ALLOWED,
+            });
+          '

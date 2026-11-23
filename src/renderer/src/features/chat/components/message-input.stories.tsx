@@ -873,6 +873,38 @@ export const AwaitingReply: Story = {
 	),
 };
 
+/** A queue default: the busy placeholder and hint name the queue. */
+export const AwaitingReplyQueue: Story = {
+	render: () => (
+		<Frame label="awaiting reply under a queue default">
+			<MessageInput
+				isLoading={true}
+				messages={NONEMPTY}
+				conversationId="story"
+				awaitingReply={true}
+				busyDefaultMode="queue"
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};
+
+/** A both default: the busy placeholder and hint name wait-then-interrupt. */
+export const AwaitingReplyBoth: Story = {
+	render: () => (
+		<Frame label="awaiting reply under a both default">
+			<MessageInput
+				isLoading={true}
+				messages={NONEMPTY}
+				conversationId="story"
+				awaitingReply={true}
+				busyDefaultMode="both"
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};
+
 /** The transport is down: the shared derivation yields the hint, as it does here. */
 export const AwaitingReplyTransportDown: Story = {
 	render: () => (
@@ -2769,6 +2801,117 @@ const SESSION_READINGS = {
 	} as CanonicalFrontendState,
 };
 
+const populatedRail = (width: number, dir: "ltr" | "rtl" = "ltr") => {
+	const conversation = `story-populated-composer-rail-${width}`;
+	return (
+		<div className="bg-canvas p-6" dir={dir}>
+			<div className="@container/chatcol" style={{ width, maxWidth: "100%" }}>
+				<WithDraft
+					conversation={conversation}
+					text="Review the parser tests and flag any missing edge cases."
+				>
+					<MessageInput
+						isLoading={false}
+						isSmallView={width < 550}
+						messages={NONEMPTY}
+						conversationId={conversation}
+						cwd="/Users/you"
+						cwdWritePath={MOVING_CWD}
+						sessionStatus={{ ...SESSION_READINGS, onCommand: () => undefined }}
+						recordingProbe={{
+							canUseRadientSpeech: true,
+							speechBlock: "checking",
+						}}
+						onSendMessage={async () => true}
+					/>
+				</WithDraft>
+			</div>
+		</div>
+	);
+};
+
+const assertDock: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+	await waitFor(async () => {
+		const shelf = canvasElement.querySelector("[data-lo-composer-shelf]");
+		const editor = canvasElement.querySelector("[data-lo-composer-editor]");
+		const rail = canvasElement.querySelector("[data-lo-composer-rail]");
+		if (!shelf || !editor || !rail) throw new Error("The dock did not render");
+		const cwd = shelf.querySelector("[data-lo-cwd-chip] > button");
+		const status = shelf.querySelector("[data-lo-session-strip]");
+		const draft = editor.querySelector("textarea");
+		if (!cwd || !status || !draft)
+			throw new Error("Missing shelf or draft content");
+		const rtl = getComputedStyle(rail).direction === "rtl";
+		const start = (box: DOMRect) => (rtl ? -box.right : box.left);
+		const end = (box: DOMRect) => (rtl ? -box.left : box.right);
+		const shelfBounds = shelf.getBoundingClientRect();
+		const cwdBounds = cwd.getBoundingClientRect();
+		const statusBounds = status.getBoundingClientRect();
+		// The workspace has its own row now; validate the actual separation,
+		// rather than which flex or order utility produced it.
+		await expect(start(cwdBounds)).toBeGreaterThanOrEqual(start(shelfBounds));
+		await expect(start(statusBounds)).toBeGreaterThanOrEqual(end(cwdBounds));
+		await expect(end(statusBounds)).toBeLessThanOrEqual(end(shelfBounds) + 0.5);
+		await expect(shelfBounds.bottom).toBeLessThanOrEqual(
+			editor.getBoundingClientRect().top,
+		);
+		await expect(editor.getBoundingClientRect().width).toBeLessThan(
+			editor.parentElement?.getBoundingClientRect().width ?? 0,
+		);
+		await expect(getComputedStyle(rail).backgroundColor).toBe(
+			"rgba(0, 0, 0, 0)",
+		);
+		const selectors = [
+			'[data-tour-tag="chat-input-attach-file-button"]',
+			'[data-composer-picker="model"]',
+			'[data-composer-picker="effort"]',
+			'[data-composer-slot="a"]',
+			'[data-composer-slot="b"]',
+		];
+		const bounds = rail.getBoundingClientRect();
+		let previous: Element = draft;
+		let lastEnd = start(bounds);
+		for (const selector of selectors) {
+			const button = rail.querySelector(selector);
+			if (!button) throw new Error(`Missing editor control: ${selector}`);
+			const box = button.getBoundingClientRect();
+			await expect(button).toBeEnabled();
+			await expect(
+				previous.compareDocumentPosition(button) &
+					Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+			await expect(box.top + box.height / 2).toBeCloseTo(
+				bounds.top + bounds.height / 2,
+				0,
+			);
+			await expect(start(box)).toBeGreaterThanOrEqual(lastEnd);
+			await expect(end(box)).toBeLessThanOrEqual(end(bounds) + 0.5);
+			previous = button;
+			lastEnd = end(box);
+		}
+		await expect(lastEnd).toBeCloseTo(end(bounds), 0);
+	});
+};
+
+/** The real pickers stay reachable in the inset editor at every width. */
+export const PopulatedRail: Story = {
+	render: () => populatedRail(1024),
+	play: assertDock,
+};
+export const PopulatedRailNarrow: Story = {
+	render: () => populatedRail(320),
+	play: assertDock,
+};
+
+export const PopulatedRailRtl: Story = {
+	render: () => populatedRail(320, "rtl"),
+	play: assertDock,
+};
+export const PopulatedRailFloor: Story = {
+	render: () => populatedRail(240),
+	play: assertDock,
+};
+
 /**
  * The masked sentence WITH the working-directory chip and the readings on the
  * row beside it, at the composer's own 1024px measure (design round 3, D4).
@@ -3394,7 +3537,7 @@ export const PendingSendPdfRemoveFocus: Story = {
 export const PendingSendMixed: Story = {
 	render: () => (
 		<PendingSendHarness
-			label="mixed row: an image keeps its 100px thumbnail tile, a PDF takes the wider file card"
+			label="mixed row: the thumbnail and wider PDF card share the same height"
 			chips={PENDING_MIXED_CHIPS}
 			byteSizes={PENDING_PDF_BYTES}
 		/>
@@ -3499,8 +3642,8 @@ export const PendingSendEightFiles: Story = {
 
 /**
  * The narrow rung with an image and two files: the wrapping case at the width
- * where the file card and the 100px tile can no longer share one line. The long
- * filename is the card's own truncation test, not a row-overflow test.
+ * where all three attachments no longer share one line. The long filename
+ * is the card's own truncation test, not a row-overflow test.
  */
 const PENDING_NARROW_CHIPS = [
 	{ id: "narrow-image", path: STAGED_IMAGE_DATA_URL },
@@ -3555,7 +3698,9 @@ export const PendingSendImageRemoveFocus: Story = {
 			'[data-attachment-id="focus-image"]',
 		);
 		if (!card) throw new Error("the image tile is not in this story");
-		const button = card.querySelector("button");
+		const button = card.querySelector<HTMLButtonElement>(
+			'button[aria-label="Remove attachment"]',
+		);
 		if (!button) throw new Error("the image tile has no remove control");
 		const before = card.getBoundingClientRect();
 		button.focus();
@@ -3849,6 +3994,61 @@ export const SendLock: Story = {
 	play: async ({ canvasElement }) => {
 		if (!holdAndReset(canvasElement)) return;
 		await assertMutedNoticeAlone(canvasElement);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE BUSY-SEND REFUSAL (S2, architect D11). The page refuses a busy send
+ * whose resolved mode the backend cannot honour — the draft is kept and
+ * nothing is sent as steer — and raises this sentence. A failure, not a
+ * statement of fact, so the row is not muted; and no Retry, because a retry
+ * would meet the same refusal. Clear is the only control, and the box keeps
+ * the user's words.
+ */
+export const BusyDeliveryUnsupported: Story = {
+	render: () => (
+		<PendingSendHarness
+			row="in-flight"
+			stageChip={false}
+			returned={{ text: "and here is the second one" }}
+			sendError={{
+				message: SEND_FAILURE_COPY.deliveryUnsupported,
+				muted: false,
+				retry: false,
+			}}
+			label="this backend cannot carry a queued or combined busy send: the sentence, the user's message still in the box, and only Clear to press"
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		/*
+		 * THE REFUSAL'S OWN CLAIMS, not the send lock's: a failure (not a fact),
+		 * one sentence naming the version gap, the user's text still in the box
+		 * (the draft is kept), and Clear as the only control — Retry would meet
+		 * the same refusal.
+		 */
+		const alert = canvasElement.querySelector('[role="alert"]');
+		if (!alert)
+			throw new Error(
+				"the refusal is not announced: the notice row is missing",
+			);
+		const text = alert.textContent ?? "";
+		if (!/cannot change delivery while busy/i.test(text))
+			throw new Error(`the refusal no longer states the version gap: ${text}`);
+		const box = composerField(canvasElement);
+		if (
+			!box ||
+			(box as HTMLTextAreaElement).value !== "and here is the second one"
+		)
+			throw new Error(
+				"the refusal dropped the user's words: the draft must be kept",
+			);
+		const buttons = [...alert.querySelectorAll("button")];
+		if (buttons.length !== 1)
+			throw new Error(
+				`the refusal offers ${buttons.length} controls; Retry would meet the same refusal, so only Clear may stand beside it`,
+			);
 		releaseShutter();
 	},
 };

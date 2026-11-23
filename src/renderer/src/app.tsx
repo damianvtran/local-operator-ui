@@ -1,3 +1,4 @@
+import { BackendStartupGate } from "@shared/components/common/backend-startup-panel";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect, useRef } from "react";
@@ -25,6 +26,7 @@ import {
 } from "@features/chat/new-chat-shortcut";
 import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
+import { useQueuedAskAttention } from "@features/chat/use-queued-ask-attention";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { useConversationRecents } from "@features/command-palette/use-conversation-recents";
@@ -70,6 +72,7 @@ import { t } from "../../i18n/messages";
 import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
 import { PhonePairingHost } from "@features/phone-pairing/pairing-popup";
+import { QwenVoiceController } from "@features/voice/qwen-voice-controller";
 import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -465,6 +468,14 @@ const App: FC = () => {
 	 */
 	useConsoleAttention();
 
+	/*
+	 * The window's claim about conversations holding an open queued ask, pushed to
+	 * app-main so the dock/tray badge counts a queued ask once instead of as a
+	 * blocking question (`shared/app-attention-queued-asks.ts`). Mounted here, once,
+	 * because it speaks for the whole window rather than for a row.
+	 */
+	useQueuedAskAttention();
+
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
@@ -812,6 +823,12 @@ const App: FC = () => {
 	return (
 		<OnboardingProvider>
 			{/*
+			 * SESSION VOICE'S CONTROLLER, at the root rather than in the chat page, so
+			 * an exchange survives navigation: words sent from one route are answered
+			 * aloud on any other. It renders nothing (`features/voice`).
+			 */}
+			<QwenVoiceController />
+			{/*
 			 * `relative` is load-bearing, not decoration.
 			 *
 			 * This root already declared `h-screen overflow-hidden`, which reads as
@@ -1117,6 +1134,9 @@ const App: FC = () => {
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
+								{/* This app's own server starting or failed to start, on
+								    routes the chat status strip does not cover. */}
+								<BackendStartupGate />
 								<Suspense
 									fallback={
 										<>

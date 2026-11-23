@@ -1,0 +1,77 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-fr",
+	"date": "2026-11-21",
+	"locale": "fr",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+		"shipped_terms": "src/i18n/catalogues/fr/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"fr": "7ab54ebe7e3ed78859f456488b2abdcedc5087417e5788eac158ebb3a7e26db7"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-FR1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.group_count",
+			"current": "{total, plural, one {# alerte} many {# d’alertes} other {# alertes}}, {resolved, number} résolue(s)",
+			"replacement": "{total, plural, one {# alerte} many {# d’alertes} other {# alertes}}, résolues : {resolved, number}",
+			"note": "'(s)' is a print-form hack the ICU message can avoid; renders '1 alerte, 1 résolue(s)'. Mirrors ru's 'устранено: N' shape with no new ICU argument; U+202F before ':' per the fr guide."
+		},
+		{
+			"id": "T-FR2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.teamBridge.alerts.fingerprint_title",
+				"ui.teamBridge.alerts.claim.taken_by"
+			],
+			"current": "'Empreinte de l’incident : {id}', 'Escaladée : {who}…' (U+0020 before ':')",
+			"replacement": "U+0020 -> U+202F before ':' in both values",
+			"note": "fr style guide (Punctuation) requires espace fine insécable U+202F before : ; ! ?; measured U+0020 at both sites."
+		},
+		{
+			"id": "T-FR3",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.severity",
+			"current": "{worst, select, yes {Pire SEV{level}} other {SEV{level}}}",
+			"replacement": "{worst, select, yes {Max. SEV{level}} other {SEV{level}}}",
+			"note": "'Pire SEV2' is a calque: French does not qualify a severity level with 'pire'; on a group card the badge means the highest severity in the group."
+		},
+		{
+			"id": "T-FR4",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.apps.menu",
+			"current": "Gérer les applis…",
+			"replacement": "Gérer les applications…",
+			"note": "Colloquial 'applis' appears nowhere else in the fr catalogues (measured: 'applications' 9, 'applis' 1 = this key)."
+		},
+		{
+			"id": "T-FR5",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.responder.tier_detail",
+			"current": "prepare {… puis vous demande avant tout changement en production.}",
+			"replacement": "prepare {Comme Trier, et ouvre aussi des pull requests de correctif ou d’annulation dans les dépôts autorisés. Vous consulte avant tout changement en production.}",
+			"note": "'puis' (then) adds a sequence the English does not have: asking before a production change is a standing rule, not a step after opening a PR."
+		},
+		{
+			"id": "T-FR-C1",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.claim.taken_by",
+			"current": "renders 'Prise en charge par Un intervenant' when the server names no agent",
+			"replacement": "inherits English C1: follow the en fix (e.g. claimed arm 'Prise en charge : {who}' / 'Asignada a: {who}')",
+			"note": "Capitalised fragment ui.teamBridge.alerts.claim.holder_unknown inserted mid-sentence; source-side defect, recorded here so the locale fix lands with it."
+		}
+	]
+}

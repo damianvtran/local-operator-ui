@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "d4a6e6933490",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "sha256": {
+    "ru": "4e1c1326f13880e09344331974849ebc6c2ac4a1887163bea1a017da2b0a745f",
+    "en": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.result_label",
+      "note": "Label is capitalised for standalone use (aria-label, alt, tile title) but ru broken sentences place {name} mid-sentence: 'Не удалось воспроизвести Созданное видео.' Reads as a proper designation, not a grammar error; same pre-existing pattern as media.image_label ('Не удалось отобразить Изображение 2.'). Fix is source-side (a mid-sentence form or reordered sentence), outside this key's scope."
+    }
+  ]
+}

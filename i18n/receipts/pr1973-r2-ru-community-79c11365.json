@@ -1,0 +1,63 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent translation audit, round 2 (delta), PR #1973",
+ "locale": "ru",
+ "namespace": "ui.community",
+ "pr": 1973,
+ "date": "2026-11-18",
+ "head": "72da4b833910bfe97fdaf9e4198faf24b94e5a8a",
+ "instance": "pr1973-r2-ru-community-79c11365",
+ "auditor": {
+  "agent": "reviewer",
+  "role": "independent i18n auditor (reviewer role); did not translate, author, suggest or apply these strings",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Reviewer session ef5cbe7f8a91, a fresh reviewer task for PR #1973 round 2; not the translator (coder job e584f309bede, session 1e4dc439a105), not the round-1 auditor whose suggestions these values are (session 9bf5768d1c00), and not the implementer who applied them. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+  "instance": "pr1973-r2-ru-community-79c11365"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "audited_values": {
+  "ui.community.noplan.trial.title": "Начните 30-дневный пробный период Team",
+  "ui.community.noplan.trial.create_org_hint": "Откроется Radient Console. Вернитесь сюда, чтобы начать пробный период для созданной организации.",
+  "ui.community.noplan.trial.start": "Начать 30-дневный пробный период Team",
+  "ui.community.noplan.trial.reconciling": "Завершение настройки пробного периода Team…",
+  "ui.community.noplan.trial.ask_owner": "Попросить владельца начать пробный период",
+  "ui.community.noplan.trial.ask_owner_body": "Начать пробный период может только владелец или администратор {org}. Участие в сообществе от этого не зависит.",
+  "ui.community.noplan.trial.ask_owner_body_unnamed": "Начать пробный период может только владелец или администратор вашей организации. Участие в сообществе от этого не зависит.",
+  "ui.community.join.joining": "Присоединение…",
+  "ui.community.join.loading": "Загрузка правил…",
+  "ui.community.composer.checking": "Проверка…",
+  "ui.community.composer.cancelling": "Отменяется…",
+  "ui.community.browse.filter.not_joined": "Не мои"
+ },
+ "prior_round": {
+  "instance": "pr1973-r1-ru-community-ff9b1f6e",
+  "head": "aeecfe4aa9446031abf56959ce723c38aa3a37f0",
+  "rebased_head": "65b1ee0be4e97d49729e77b64a078d4257356e3d",
+  "findings_applied": [
+   "M2-ru",
+   "M5-ru",
+   "N2-ru"
+  ],
+  "note": "Keys not listed in audited_values are byte-identical to the round-1 audited bytes (aeecfe4a == 65b1ee0b for this file). Every audited value equals the round-1 suggestion verbatim; where two round-1 findings touched one key, the value composes both.",
+  "receipt": "i18n/receipts/pr1973-r1-ru-community-ff9b1f6e.json"
+ },
+ "scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 12 changed ui.community values (round-1 findings M2-ru, M5-ru, N2-ru applied); rest of the file byte-identical to the round-1 audited bytes.",
+ "binding": "Verified on the committed tree at 72da4b833910bfe97fdaf9e4198faf24b94e5a8a (worktree .worktrees/community-ui): target src/i18n/catalogues/ru/ui.community.json sha256 b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede; English sha256 1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7; context sha256 8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219.",
+ "en_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+ "context_sha256": "8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219",
+ "target_sha256": "b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede",
+ "sha256": {
+  "ru": "b83e0aa5b4ce62394b259c8ae65b2d6406611fbb133cfb7c625828d37f271ede",
+  "en": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7"
+ }
+}

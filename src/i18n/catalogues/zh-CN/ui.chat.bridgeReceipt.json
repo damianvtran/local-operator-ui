@@ -1,5 +1,21 @@
 {
 	"ui.chat.bridgeReceipt.received": "收到来自 {sender} 的消息",
 	"ui.chat.bridgeReceipt.unavailable": "消息正文不可用。",
-	"ui.chat.bridgeReceipt.provenance": "外部消息 · 不可信内容"
+	"ui.chat.bridgeReceipt.provenance": "外部消息 · 不可信内容",
+	"ui.chat.bridgeReceipt.loading": "正在加载消息……",
+	"ui.chat.bridgeReceipt.pending": "等待送达智能体。",
+	"ui.chat.bridgeReceipt.held": "已暂扣，等待审核。",
+	"ui.chat.bridgeReceipt.held_transient": "等待筛查——尚未展示给智能体。",
+	"ui.chat.bridgeReceipt.refused": "已被审核拒绝。",
+	"ui.chat.bridgeReceipt.not_admitted": "未送达此智能体。",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "消息正文不可用。请登录Team Bridge后加载。",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "消息正文不可用。该消息由另一个Team Bridge账户接收。",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "消息正文不可用。你已不在此对话中。",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "此消息已被删除。",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "消息正文不可用。Team Bridge无法加载这条较早的消息。",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "无法连接Radient——正在重试。",
+	"ui.chat.bridgeReceipt.show_more": "展开",
+	"ui.chat.bridgeReceipt.show_less": "收起",
+	"ui.chat.bridgeReceipt.more": "{count, plural, other {另有{count, number}条消息}}",
+	"ui.chat.bridgeReceipt.thread_reply": "讨论串回复"
 }

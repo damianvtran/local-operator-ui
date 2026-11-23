@@ -1,6 +1,6 @@
 {
 	"scenario": "notification-details",
-	"proves": "#1907 notification details UI: a long multi-paragraph item with links and earlier revisions, beside short unread items and one read item",
+	"proves": "#1907 notification details UI: a long multi-paragraph item with links and earlier revisions, seeded READ (an unfocused window cannot mark it read), beside short unread items and one short read item",
 	"session": {
 		"id": "fa1907000001",
 		"title": "Mac proof: nightly data checks",
@@ -21,6 +21,7 @@
 	"notifications": [
 		{
 			"id": "n_macproofdetailaa",
+			"read": true,
 			"priority": "high",
 			"title": "Nightly import: 3 sources failed, 2 recovered on retry",
 			"body": [

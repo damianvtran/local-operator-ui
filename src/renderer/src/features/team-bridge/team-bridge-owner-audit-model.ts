@@ -157,11 +157,14 @@ export function ownerAuditChronology(
  *   own disclosure, fed from the wire row.
  *
  * NARROWING. `sender.kind` is a free string on this wire (hub vocabularies are
- * additive). `human` and `agent` pass through; anything else becomes `human`
- * MARKED `audit_unknown_kind` (a passthrough field), so the caller can refuse
- * to resolve it against the directory: drawing a person's name on a sender of
- * an unknown kind would be inventing an identity, whereas the stored label (or
- * the "Unknown person" placeholder) claims nothing. `body` keeps its null: null
+ * additive). `human`, `agent` and `integration` pass through; anything else
+ * becomes `unknown` MARKED `audit_unknown_kind` (a passthrough field), so the
+ * caller can refuse to resolve it against the directory: drawing a person's
+ * name on a sender of an unknown kind would be inventing an identity, whereas
+ * the stored label (or the "Unknown sender" placeholder) claims nothing. It
+ * maps to `unknown` rather than `human` so the audit row draws the same
+ * neutral generic row a channel draws for that wire row - a person-style
+ * initial plate would still suggest a teammate (review R1). `body` keeps its null: null
  * means "the hub sent no text", which the row says in the open, and inventing
  * an empty string would draw an empty prose block instead.
  */
@@ -175,7 +178,7 @@ export function ownerAuditToBridgeMessage(
 		seq: message.seq,
 		sender: {
 			account_id: message.sender.account_id,
-			kind: kind ?? "human",
+			kind: kind ?? "unknown",
 			display_label: message.sender.display_label,
 			...(kind === null ? { audit_unknown_kind: true } : {}),
 		},
@@ -191,7 +194,8 @@ export function ownerAuditToBridgeMessage(
 		origin:
 			message.origin === "human" ||
 			message.origin === "agent" ||
-			message.origin === "system"
+			message.origin === "system" ||
+			message.origin === "integration"
 				? message.origin
 				: "system",
 		agent_label: message.agent_label ?? undefined,
@@ -203,9 +207,18 @@ export function ownerAuditToBridgeMessage(
 	};
 }
 
-/** `human` / `agent`, or null for a kind this build does not know. */
-export function ownerAuditSenderKind(kind: string): "human" | "agent" | null {
-	return kind === "human" || kind === "agent" ? kind : null;
+/**
+ * `human` / `agent` / `integration`, or null for a kind this build does not
+ * know. An integration app passes through as itself so the row draws it as an
+ * app (`teamBridgeSenderPresentation`); mapping it to `human` + the unknown
+ * marker would print an app's name in a person's slot.
+ */
+export function ownerAuditSenderKind(
+	kind: string,
+): "human" | "agent" | "integration" | null {
+	return kind === "human" || kind === "agent" || kind === "integration"
+		? kind
+		: null;
 }
 
 /**
@@ -247,5 +260,7 @@ export function ownerAuditSenderProfile(
 	people: readonly TeamBridgeDirectoryMember[],
 ): TeamBridgeDirectoryMember | undefined {
 	if (sender.audit_unknown_kind === true) return undefined;
+	// An app is never a directory member, whatever its id.
+	if (sender.kind !== "human" && sender.kind !== "agent") return undefined;
 	return people.find((row) => row.account_id === sender.account_id);
 }

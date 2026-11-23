@@ -38,7 +38,10 @@ import { teamDisplayName } from "../../../shared/api/local-operator/team-display
  * without path aliases). The resolver itself reaches `@shared/i18n`, which the
  * bundling tests already alias.
  */
-import { agentDescriptionText } from "../../agents/utils/agent-description";
+import {
+	agentDescriptionText,
+	agentKindText,
+} from "../../agents/utils/agent-description";
 import { brandOf } from "../../providers/provider-catalog";
 /*
  * The picker's own validation, limits and duplicate rule. Imported rather than
@@ -1164,8 +1167,10 @@ export function argumentRows(
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A
 					// team row carries none, so its detail column is empty rather
-					// than an invented count.
-					detail: asText(row.kind) || undefined,
+					// than an invented count. The two kinds the registry defines read
+					// through the catalogue (lowercase, like every other word in this
+					// monospace column); anything else stays as stored.
+					detail: agentKindText(asText(row.kind)) || undefined,
 					current: Boolean(current) && current === value,
 				};
 			});

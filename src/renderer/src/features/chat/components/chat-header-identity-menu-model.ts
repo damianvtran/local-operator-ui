@@ -35,7 +35,7 @@
  * below the fold.
  */
 
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import type { PickerOption } from "../pickers/picker-host";
 
@@ -279,7 +279,7 @@ export function identityMenuSeedActive(rows: readonly PickerOption[]): number {
  * just happened to a specific row.
  */
 export function identityMenuRefusalAnnouncement(label: string): string {
-	return `${label} cannot take the seat.`;
+	return t("ui.chat.header_identity.cannot_take_seat", { label });
 }
 
 /*
@@ -291,10 +291,18 @@ export function identityMenuRefusalAnnouncement(label: string): string {
  * this app's yet. The untyped variant is an edge (a roster carrying no manager
  * row at all), but it is reachable, so it states the one exit that remains.
  */
-export const IDENTITY_MENU_NO_SETTABLE_TYPED =
-	"No profile here can take the seat — clear the search, or switch the team.";
-export const IDENTITY_MENU_NO_SETTABLE =
-	"No profile can take the seat — switch the team.";
+/*
+ * FUNCTIONS, NOT CONSTANTS: a module constant would be resolved once, at load,
+ * in whatever language was active then, and a language switch would leave the
+ * old sentence in the footer. Each call reads the catalogue now, the same rule
+ * `identityMenuBands` follows (the callers subscribe to the locale).
+ */
+export function identityMenuNoSettableTyped(): string {
+	return t("ui.chat.header_identity.no_settable_typed");
+}
+export function identityMenuNoSettable(): string {
+	return t("ui.chat.header_identity.no_settable");
+}
 
 /**
  * What the panel's footer says, or `null` for a list that fits.
@@ -317,7 +325,6 @@ export function identityMenuFooter(input: {
 	hasSettable: boolean;
 }): string | null {
 	const { view, kind, query, overflowing, hasSettable } = input;
-	const noun = kind === "team" ? "teams" : "agents";
 	const typed = query.trim();
 
 	if (typed !== "") {
@@ -328,15 +335,41 @@ export function identityMenuFooter(input: {
 		 * nothing can be picked, and the count is not the answer the user needs.
 		 * The resolution names the exits that exist; see the constants above.
 		 */
-		if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE_TYPED;
-		return view.matches === view.total
-			? `${view.total} ${noun} match`
-			: `${view.matches} of ${view.total} ${noun} match`;
+		if (!hasSettable) return identityMenuNoSettableTyped();
+		/*
+		 * ONE WHOLE SENTENCE PER (KIND, SHAPE), each with its own plural arm on the
+		 * count the noun agrees with, so a language reorders the count and the noun
+		 * freely (Urdu and Hindi put the noun first). The kind is NOT a `select`
+		 * inside one message: the four-band-heading keys set that precedent, and a
+		 * translator should read one complete phrase, not a branching template.
+		 * `1 agent matches` is a deliberate grammar fix over the old `1 agents
+		 * match` concatenation.
+		 */
+		if (view.matches === view.total) {
+			return kind === "team"
+				? t("ui.chat.header_identity.footer_match_teams", {
+						count: view.total,
+					})
+				: t("ui.chat.header_identity.footer_match_agents", {
+						count: view.total,
+					});
+		}
+		return kind === "team"
+			? t("ui.chat.header_identity.footer_partial_teams", {
+					matches: view.matches,
+					total: view.total,
+				})
+			: t("ui.chat.header_identity.footer_partial_agents", {
+					matches: view.matches,
+					total: view.total,
+				});
 	}
 	if (!overflowing) return null;
 	/* The untyped edge: the whole visible roster is refused. See above. */
-	if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE;
-	return `${view.total} ${noun} in all — scroll, or type to filter`;
+	if (!hasSettable) return identityMenuNoSettable();
+	return kind === "team"
+		? t("ui.chat.header_identity.footer_all_teams", { count: view.total })
+		: t("ui.chat.header_identity.footer_all_agents", { count: view.total });
 }
 
 /*
@@ -457,46 +490,33 @@ export type IdentityAgentConstraint = {
  * `delegate`, and nothing in this app says "coordinating".
  */
 export function identityAgentConstraintCaption(teamLabel: string): string {
-	return `${teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.`;
+	return t("ui.chat.header_identity.team_led_by_manager", { team: teamLabel });
 }
 
 /**
- * The sentence a CLOSED agent control states, for the runtime's strict rule
- * (local-operator core PR #2050, `AgentSlotOwnedByTeam`).
- *
- * WHERE THE WORDS COME FROM. It is the runtime's own attach refusal,
- * `Session._team_agent_slot_refusal("attach")`:
- *
- *   team <team> owns this session: <manager> is the speaker, so /agent is
- *   closed. Run /team clear to detach the team first.
- *
- * byte for byte, with `<team>` the team's SLUG (what the runtime prints, and
- * what the composer's own `/agent` refusal will print if one is typed) rather
- * than the catalogue label the chip shows: the closed control and the notice a
- * typed `/agent` returns are then the same words, and every word of this
- * sentence has a source. The label is one hover away on the team chip. When the
- * runtime cannot name a manager it says `its manager is the speaker`;
- * `speaker: null` is that case, so a blank or team-named speaker reads `its
- * manager` rather than "team lopdev owns this session: lopdev is the speaker".
- *
- * THE WAY OUT IS `/team clear`, NOT A CONTROL. This app ships no detach row
- * in its team menu (the menu lists teams only, and its `No team` label is an
- * assign affordance rather than a verb), so the only exit that exists is the
- * slash command the runtime itself names, typed in the composer. The
- * sentence does not promise a button.
- *
- * DELIBERATELY ABSENT: any sentence about the profile a team's attach
- * silently REPLACES (`/team X` over an earlier `/agent`). Core WILL add a
- * short notice for it (a clause naming the dropped profile and the new
- * speaker, only when one was dropped), but its wording is not final, and a
- * line written here now would be a paraphrase of words that do not exist yet.
- * Add it only when core's wording lands, quoting core's words, never ours.
+ * Display-only reason for the strict team-owned seat. English mirrors core's
+ * attach refusal byte for byte, but no runtime text is read or parsed here.
+ * Use two complete messages so the locale owns the unnamed-manager phrasing.
+ * The only exit is a command typed in the composer, not a control in this menu.
  */
 export function identityAgentClosedCaption(
 	team: string,
 	speaker: string | null,
 ): string {
-	return `team ${team} owns this session: ${speaker ?? "its manager"} is the speaker, so /agent is closed. Run /team clear to detach the team first.`;
+	const args = {
+		team: isolateLtr(team),
+		agentCommand: isolateLtr("/agent"),
+		detachCommand: isolateLtr("/team clear"),
+	};
+	return speaker === null
+		? t(
+				"ui.chat.header_identity.agent_seat_closed_caption_unknown_speaker",
+				args,
+			)
+		: t("ui.chat.header_identity.agent_seat_closed_caption_known_speaker", {
+				...args,
+				speaker: isolateLtr(speaker),
+			});
 }
 
 /**
@@ -504,15 +524,16 @@ export function identityAgentClosedCaption(
  * (its label when it has one) so the screen says what the screen says.
  *
  * WHY A LEAD LINE AND NOT A DIFFERENT SENTENCE (design D2/D3). The sentence
- * under it is the runtime's refusal byte for byte and names the team by SLUG,
+ * under it mirrors the runtime's refusal in English and names the team by SLUG,
  * which appears nowhere else on screen; the lead supplies the label (and the
- * sentence-case statement a caption needs above it) without touching the
- * runtime's words. `closed` is the runtime's own word for the state (`/agent is
+ * sentence-case statement a caption needs above it). `closed` is the runtime's own word for the state (`/agent is
  * closed`). It also names the dialog (`aria-labelledby`), which Radix would
  * otherwise announce with no name.
  */
 export function identityAgentClosedTitle(teamLabel: string): string {
-	return `Agent seat closed by ${teamLabel}`;
+	return t("ui.chat.header_identity.agent_seat_closed_title", {
+		team: teamLabel,
+	});
 }
 
 /**
@@ -528,8 +549,9 @@ export function identityAgentClosedTitle(teamLabel: string): string {
  * caption does not - what THIS row would need - while the rule itself keeps
  * one home, the caption.
  */
-export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
-	"Needs a delegating profile here.";
+export function identityAgentNotSettableReason(): string {
+	return t("ui.chat.header_identity.needs_delegating_profile");
+}
 
 /**
  * The constraint a bound team puts on the agent panel, or `null` when there is

@@ -131,7 +131,9 @@ jobs:
     # mints no app token.
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Successful sweeps finish in ~25-45 s (`ci-minutes-4074-report.md`: 0.4-0.7 min);
+    # hung sweeps previously lingered 10-15 min until the next `*/15` cron evicted them.
+    timeout-minutes: 3
     # Job-level `permissions:` REPLACES the workflow block, so everything this
     # job needs is listed. `actions: write` is the one scope beyond read, and
     # it is what lets `gh workflow run` dispatch helpdesk.yml; it is safe HERE

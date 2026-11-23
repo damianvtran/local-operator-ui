@@ -41,6 +41,7 @@ import {
 } from "./ci-scope.mjs";
 import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
 import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
+import { gateVerdict } from "./merge-gate-verdict.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -152,6 +153,17 @@ test("A1: every job is gated on flags that exist, or is declared ungated", () =>
 			`${job} is ungated with no reason recorded`,
 		);
 	}
+});
+
+test("A1: the owner-finish regression follows unit scope and stays hosted-only", () => {
+	const job = "browser-owner-finish";
+	const planFor = (path) => jobPlan(flagsFor([categoryOf(path)], [path]));
+	// Evidence enables unit without types, so this catches a wrong flag as well.
+	assert.equal(planFor("docs/evidence/example.md")[job], "run");
+	assert.equal(planFor("docs/README.md")[job], "skip");
+	assert.match(jobIf(job), /github\.event_name == 'pull_request'/);
+	assert.equal(Object.hasOwn(JOB_COMMANDS, job), false);
+	assert.ok(Object.hasOwn(LOCAL_EXCLUSIONS, job));
 });
 
 // ---------------------------------------------------------------------------
@@ -3443,10 +3455,75 @@ test("A18: CI Gate needs every job and reds only on failure or cancellation", ()
 	);
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
 	assert.ok(
-		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}",
+		),
 	);
-	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/);
+	assert.match(body, /v\.result === 'success'/);
 	assert.match(body, /process\.exit\(1\)/);
+
+	// Execute the real CI Gate step script to prove fail-closed allowlist behaviour:
+	// - `version-bump-guard` skipped on `pull_request` MUST fail; skipped on `push` passes.
+	// - `changes` skipped or any `abandoned`/`failure`/`cancelled` result MUST fail.
+	const gateScript = body.split("<<'NODE'\n")[1].replace(/\n\s*NODE\s*$/, "");
+	const runCiGate = (needsPayload, eventName) =>
+		spawnSync(process.execPath, ["--input-type=module", "-e", gateScript], {
+			encoding: "utf8",
+			env: {
+				PATH: process.env.PATH,
+				NEEDS: JSON.stringify(needsPayload),
+				EVENT_NAME: eventName,
+			},
+		});
+	const allGreenCi = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runCiGate(allGreenCi, "pull_request").status, 0);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"push",
+		).status,
+		0,
+		"version-bump-guard legitimately skips on push to main",
+	);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"pull_request",
+		).status,
+		1,
+		"a skipped version-bump-guard on a pull request must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, changes: { result: "skipped" } }, "pull_request")
+			.status,
+		1,
+		"a skipped changes classifier must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, lint: { result: "abandoned" } }, "pull_request")
+			.status,
+		1,
+		"an abandoned or unknown result must fail closed",
+	);
+
+	// Main-push concurrency coalescing: non-release `main` pushes coalesce into
+	// `'ci-main'` with `cancel-in-progress` false on `main`, while release bumps
+	// (`chore(release)`) and `workflow_dispatch` on `main` keep per-SHA records,
+	// and PR `synchronize` still cancels in-progress runs.
+	assert.match(workflow.concurrency.group, /'ci-main'/u);
+	assert.match(
+		workflow.concurrency.group,
+		/startsWith\(github\.event\.head_commit\.message,\s*'chore\(release\)'\)/u,
+	);
+	assert.match(workflow.concurrency.group, /ci-main-release-\{0\}-\{1\}/u);
+	assert.equal(
+		workflow.concurrency["cancel-in-progress"],
+		"${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}",
+	);
 	// The existing required check keeps its exact, LITERAL name and no matrix:
 	// a matrix suffixes the rendered name, and an expression name is posted raw
 	// when the job is skipped, so either shape strands the required check
@@ -3591,13 +3668,119 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 		"no `if:` in this file may mention a label - a skipped required check is a pass",
 	);
 
-	// The aggregate body: skipped passes, failed/cancelled reds.
+	// The aggregate body: fail-closed allowlist. On `pull_request` (or on-demand
+	// `native_proofs=true`), a skipped or failed `native-proofs` MUST fail
+	// `merge-gate` unless `needs.changes.outputs.pack` is literally `'false'`;
+	// on `push` to `main` / `schedule` (and `workflow_dispatch` with
+	// `native_proofs != true`), `native-proofs` legitimately skips.
+	// The verdict now lives in scripts/merge-gate-verdict.mjs, so this contract
+	// pins BOTH halves: the step still passes the event, the needs payload and the
+	// diff-derived native scope, and the step still calls the module rather than
+	// carrying its own copy of the decision.
 	assert.ok(
-		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}" &&
+				step.env?.NATIVE_SCOPE === "${{ needs.changes.outputs.native }}",
+		),
+		"the gate step must read the diff-derived native scope, not a pack scope",
 	);
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
-	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/u);
-	assert.match(body, /process\.exit\(1\)/u);
+	assert.match(body, /merge-gate-verdict\.mjs/u);
+	assert.match(body, /applyVerdict/u);
+	// `changes` runs `--all`, so `pack` is true for every diff; a gate that still
+	// read it for native selection would restore the queue-wide cost this change
+	// removes.
+	assert.doesNotMatch(body, /PACK_SCOPE/u);
+
+	const runMergeGate = (
+		needsPayload,
+		{
+			eventName = "pull_request",
+			nativeScope = "true",
+			nativeSkipAllowed = "",
+		} = {},
+	) => {
+		const { bad } = gateVerdict({
+			needs: needsPayload,
+			eventName,
+			nativeScope,
+			nativeSkipAllowed,
+		});
+		return { status: bad.length ? 1 : 0 };
+	};
+	const allGreenSuite = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runMergeGate(allGreenSuite).status, 0);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "skipped" },
+		}).status,
+		1,
+		"a skipped native-proofs on pull_request when a native surface changed must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "failure" },
+		}).status,
+		1,
+		"a failed native-proofs on pull_request must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "pull_request", nativeScope: "false" },
+		).status,
+		0,
+		"native-proofs may skip when the diff proved it unnecessary",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "push", nativeScope: "true", nativeSkipAllowed: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on push to main",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "schedule", nativeScope: "true", nativeSkipAllowed: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on nightly schedule",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "workflow_dispatch", nativeScope: "true" },
+		).status,
+		1,
+		"a skipped native-proofs on a dispatch that needs it must fail merge-gate",
+	);
+	// The hole this change closes, pinned so it cannot reopen: the old rule
+	// keyed on `native_proofs` being REQUESTED, so a dispatch with the input
+	// false certified a native-touching head with no proof behind it.
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "workflow_dispatch", nativeScope: "false" },
+		).status,
+		0,
+		"a dispatch may skip only when the diff itself proved it unnecessary",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			changes: { result: "skipped" },
+		}).status,
+		1,
+		"changes must never skip in full-suite.yml",
+	);
 
 	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
 	// here with the workflow: both edits (remove, then add) and the label name.
@@ -3616,6 +3799,101 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	);
 	assert.match(ritual, /"label",\s*"create"/u);
 	assert.match(ritual, /full-suite\.yml/u);
+});
+
+/*
+ * A18 - the merge gate has its verdict module ON DISK before it imports it.
+ *
+ * Why: the verdict moved from an inline heredoc into
+ * scripts/merge-gate-verdict.mjs, but the `merge-gate` job had never had a
+ * checkout (it never needed one). Full-suite run 45227197375 went green on every
+ * suite job and then red on `Merge gate (full suite)` with ERR_MODULE_NOT_FOUND:
+ * fail-closed, but a gate that can never pass. Four review/QA rounds ran the step
+ * body from a working tree where the file existed, so only a contract on the job
+ * SHAPE catches this before a runner does.
+ *
+ * The imported paths are derived from the step's `run` text and the module's own
+ * relative imports are walked transitively (the same rule
+ * scripts/test-publish-workflow.mjs applies to publish.yml's sparse lists), so
+ * giving merge-gate-verdict.mjs an import without widening the sparse set fails
+ * here. A bare package import is flagged too: a sparse checkout has no
+ * node_modules, so the verdict must stay dependency-free.
+ * Mutation: delete the checkout step; move it after the verdict step; drop
+ * `scripts/merge-gate-verdict.mjs` from `sparse-checkout`; add
+ * `import "./ci-scope.mjs"` to the verdict module.
+ */
+test("A18: the merge gate checks out every module its verdict step imports", () => {
+	const gate = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8")).jobs[
+		"merge-gate"
+	];
+	// Statement-anchored (line-start `import`/`export ... from`, side-effect
+	// `import "x"`, and `import("x")`), so prose in comments such as
+	// `from "a dispatch"` is not read as a module specifier.
+	const importsOf = (text) =>
+		[
+			...text.matchAll(
+				/^\s*(?:import|export)\s[^;]*?\bfrom\s*["']([^"']+)["']|^\s*import\s*["']([^"']+)["']|\bimport\(\s*["'`]([^"'`]+)["'`]\s*\)/gmu,
+			),
+		].map((match) => match[1] ?? match[2] ?? match[3]);
+
+	const verdictAt = gate.steps.findIndex((step) =>
+		importsOf(step.run ?? "").some((spec) => spec.startsWith("./scripts/")),
+	);
+	assert.ok(verdictAt >= 0, "the gate must import its verdict from ./scripts/");
+	const checkoutAt = gate.steps.findIndex((step) =>
+		/^actions\/checkout@/u.test(step.uses ?? ""),
+	);
+	assert.ok(
+		checkoutAt >= 0 && checkoutAt < verdictAt,
+		"merge-gate must check out the repository BEFORE the verdict step imports from it",
+	);
+	const checkout = gate.steps[checkoutAt];
+	// No `continue-on-error`: a failed checkout must red the gate (fail-closed).
+	assert.equal(checkout["continue-on-error"], undefined);
+	assert.equal(checkout.with?.["persist-credentials"], false);
+
+	// Transitive closure of repo-relative modules, starting from the step's run.
+	const needed = new Set();
+	const bare = [];
+	const walk = (specs, fromDir) => {
+		for (const spec of specs) {
+			if (spec.startsWith("node:")) continue;
+			if (!spec.startsWith(".")) {
+				bare.push(spec);
+				continue;
+			}
+			const path = join(fromDir, spec).replace(/^\.\//u, "");
+			if (needed.has(path)) continue;
+			needed.add(path);
+			walk(
+				importsOf(readFileSync(join(repoRoot, path), "utf8")),
+				join(path, ".."),
+			);
+		}
+	};
+	walk(importsOf(gate.steps[verdictAt].run), ".");
+	assert.ok(needed.has("scripts/merge-gate-verdict.mjs"));
+	assert.deepEqual(
+		bare,
+		[],
+		"a sparse checkout has no node_modules: the verdict must import no packages",
+	);
+
+	// No sparse list means the whole tree is checked out, which covers anything.
+	const listed = checkout.with?.["sparse-checkout"];
+	if (listed === undefined) return;
+	assert.equal(checkout.with["sparse-checkout-cone-mode"], false);
+	const sparse = new Set(
+		String(listed)
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean),
+	);
+	assert.deepEqual(
+		[...needed].filter((path) => !sparse.has(path)),
+		[],
+		"every module the verdict step imports must be in merge-gate's sparse checkout",
+	);
 });
 
 /*

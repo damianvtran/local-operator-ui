@@ -94,6 +94,29 @@ export const installBuiltins = async (
 	return summariseInstalls(outcomes);
 };
 
+/**
+ * The step and total the progress meter shows.
+ *
+ * WHY THE TOTAL IS THE RUN'S, NOT THE LIST'S (PostHog D6: "Invalid prop value
+ * 7..12 supplied to Progress" in ~300 sessions). The component used to read
+ * `total` from the live `builtins` prop - the catalogue's MISSING starters -
+ * while `done` counted this run's installs. Each install lands a profile, and
+ * any refetch of the profile list during the run (window focus, the desktop
+ * feed) shrinks that missing list, so the bar was asked for 7 of 4. The run's
+ * own name count is fixed when the run starts, so it is the only total `done`
+ * can be measured against. The clamp is the invariant stated in code: a meter
+ * never reads past its maximum, whatever a future caller passes.
+ */
+export const installProgressReading = (
+	done: number,
+	current: string | null,
+	runTotal: number,
+): { step: number; total: number } => {
+	const total = Math.max(0, runTotal);
+	const step = Math.min(total, Math.max(0, done + (current ? 1 : 0)));
+	return { step, total };
+};
+
 /** Count what happened, in the three buckets the summary speaks in. */
 export const summariseInstalls = (
 	outcomes: readonly InstallOutcome[],

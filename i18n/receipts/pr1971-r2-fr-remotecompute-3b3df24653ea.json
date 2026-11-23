@@ -1,0 +1,94 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "3b3df24653ea",
+		"instance": "pr1971-r2-fr-remotecompute-3b3df24653ea",
+		"model": "deepseek/deepseek-flash",
+		"independence": "Independent i18n auditor: this session did not write the translations. The translator was the PR's remediation coder (deepseek/deepseek-flash) in a different session; this round read the bytes at bec0906c52 and corrected only strings it rejected, listed under `corrections`.",
+		"independent_from_translator_session": true
+	},
+	"model": "deepseek/deepseek-flash",
+	"instance": "pr1971-r2-fr-remotecompute-3b3df24653ea",
+	"locale": "fr",
+	"namespace": "ui.chat.remote_compute",
+	"date": "2026-11-18",
+	"head": "bec0906c52c4ac429ecf9caed5262b33f639ee2b",
+	"branch": "feat/remote-compute-device-row",
+	"pull_request": "https://github.com/damianvtran/local-operator-ui/pull/1971",
+	"scope": "Round-2 delta audit of the 10 ui.chat.remote_compute keys the round-1 remediation added or changed (row.network_remedy, sheet.network.not_enforced/recorded, sheet.tier.cloud_run.selected/group_label, store.accepted_without_run/refused/transport, card.binding, card.binding_none), against the English source, its context sidecars, the glossary and the locale guide at damianvtran/local-operator 066f8e58, plus the shipped corpus for reused terms. Regressions introduced by the remediation were looked for directly. The other 73 keys are unchanged bytes and were not re-read.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"inputs": {
+		"english": "src/i18n/catalogues/en/ui.chat.remote_compute.json",
+		"english_sha256": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+		"context": "src/i18n/catalogues/en/ui.chat.remote_compute.context.json",
+		"context_sha256": "b406e50f5e18d4142006e9af578b6884ba570a6f81d1964ae7c50b0d6c4d18b1",
+		"target": "src/i18n/catalogues/fr/ui.chat.remote_compute.json",
+		"target_sha256": "aecd76fa4d8d6400e8c884df70c17a5769bd7f884bb5016469d1ac6e404c4b84",
+		"glossary": "i18n/glossary.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0",
+		"glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "i18n/style-guides/fr.md @ damianvtran/local-operator 066f8e58b4fe3f3aed5eaec4d05d53b87e6877b0"
+	},
+	"sha256": {
+		"en": "fd979d696bd31120863c8c9d9679d6ab9c21dcb4633aa406d52fdf6c9ed98332",
+		"fr": "aecd76fa4d8d6400e8c884df70c17a5769bd7f884bb5016469d1ac6e404c4b84"
+	},
+	"claim_check": {
+		"rule": "network binding is recorded, not enforced; no locale may render it as isolated, secured, segmented or private",
+		"sweep": "every value of ui.chat.remote_compute in the locale was scanned for isolé/sécurisé/privé/segment, aislad/segur/privat/segment, 隔离/安全/私有/分段, изолир/защищ/приватн/сегмент/огранич, cô lập/an toàn/riêng tư/phân đoạn/bảo mật, الگ تھلگ/محفوظ/نجی/منقسم/پابند, अलग/सुरक्षित/निजी/खंडित/प्रतिबंधित — zero matches",
+		"store_transport": "no locale claims the run failed or that nothing was charged; all say only that the request did not reach the server, then ask for a retry",
+		"store_accepted_without_run": "no locale claims nothing was started; all say the server accepted the run and did not return it",
+		"result": "passes in all seven locales"
+	},
+	"delta": {
+		"keys": [
+			"ui.chat.remote_compute.row.network_remedy",
+			"ui.chat.remote_compute.sheet.network.not_enforced",
+			"ui.chat.remote_compute.sheet.network.recorded",
+			"ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"ui.chat.remote_compute.sheet.tier.group_label",
+			"ui.chat.remote_compute.store.accepted_without_run",
+			"ui.chat.remote_compute.store.refused",
+			"ui.chat.remote_compute.store.transport",
+			"ui.chat.remote_compute.card.binding",
+			"ui.chat.remote_compute.card.binding_none"
+		],
+		"english_bytes": {
+			"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+			"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+			"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+			"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+			"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+			"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+			"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+			"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+			"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+			"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+		},
+		"record": "i18n/audits/evidence/fr/ui.chat.remote_compute/pr1971-r2-fr-remotecompute-3b3df24653ea/delta-keys.json"
+	},
+	"corrections": [
+		{
+			"key": "ui.chat.remote_compute.sheet.tier.cloud_run.selected",
+			"from": "Cette exécution utilisera Exécution cloud.",
+			"to": "Cette exécution utilisera le mode Exécution cloud.",
+			"reason": "a translated tier name used as a common noun needs its article in French; the note line only survives a bare capitalised name after a verb in English. 'le mode' is the corpus's own framing (16 attestations, including row.sentence.ready's 'le mode d'achat de l'exécution'). The tier name stays verbatim."
+		}
+	],
+	"findings": {
+		"minor": [],
+		"nit": [
+			{
+				"key": "ui.chat.remote_compute.sheet.network.not_enforced",
+				"issue": "'Non appliquée dans cette version.' is a feminine participle on a line that names no feminine noun (réseau is masculine); round 1 recorded the same ellipsis as a nit on card.binding, and the key now stands alone, so the antecedent is elided rather than absent. The claim itself is intact and understood; 'Sans effet dans cette version.' would state it without the agreement question. Left rather than churning a settled term across the four keys that share it."
+			},
+			{
+				"key": "ui.chat.remote_compute.row.network_remedy",
+				"issue": "'Créez-en un' elides the noun; the visible 'nécessite un réseau' / 'réessayer' reason line sits directly above it in the same row, which is the antecedent, and round 1 accepted the identical shape for row.sentence.network."
+			}
+		]
+	},
+	"notes": "Severity counts are the RESIDUAL findings on the corrected bytes. Strings this audit rejected were corrected in the same round and are listed under corrections; they are not counted as unresolved. Translator metadata is the round-1 remediation coder (coder, deepseek/deepseek-flash), recorded on the ledger row by ledger-assemble."
+}

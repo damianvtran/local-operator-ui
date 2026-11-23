@@ -1,0 +1,160 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "090976849b8e",
+    "instance": "090976849b8e-voiceui-zh-CN",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "model_family_disclosure": "Same model family as the translator (anthropic/claude-sonnet-5-5), different session and agent role; not an independent model."
+  },
+  "locale": "zh-CN",
+  "audit_date": "2026-11-19",
+  "scope": "Voice UI strings added on feat/qwen-voice-ui-2026-11-17 at translations commit bad1701b2d: ui.chat.voice (81 keys), ui.settings.voice (2 keys), ui.settings.speech.provider (12 keys), ui.providers.stored_key (5 keys)",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "namespaces": {
+    "ui.chat.voice": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "3a67a9b3367106bea7d20df23e9aadb7326f3a08ac02ca30368f8fb2db816b3d",
+        "en": "aa52d50e2b93f7e762d4cc9e1c2489f62e09a47663c8ca130eb02d6af600829a"
+      },
+      "context_sha256": "43c5962762a2fa3a9bf85cf48fbc2e3f365832bd36fc8c65f9753c21618530a8",
+      "key_count": 81,
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.voice.approve_on_screen",
+          "en": "Approve on screen",
+          "current": "在屏幕上审批",
+          "problem": "Uses 审批 as a verb («在屏幕上审批») though approve_waiting/the existing ui.chat.approval.option.approve say 批准 (审批 is the noun, glossary).",
+          "suggested": "在屏幕上批准"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.voice.notice_elsewhere_prefix",
+          "en": "Voice is on in",
+          "current": "语音已开启于",
+          "problem": "«语音已开启于» is bookish/stilted; 60 says «语音已在另一个对话中开启».",
+          "suggested": "语音已在以下对话中开启："
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.voice.idle_caption",
+          "en": "Say something",
+          "current": "说点什么吧",
+          "problem": "Sentence particle 吧 in status copy (guide bans 啦/哦/呀; 吧 is the same softening register).",
+          "suggested": "说点什么"
+        }
+      ]
+    },
+    "ui.settings.voice": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "51dc0c16c6968f47e8c0e0358b3d119ad151e91ccade277955ffe8954feb874a",
+        "en": "95ddbac28cef6267b75b5b2feae2770fa7d369210d2334f5c85a4b9f8c401497"
+      },
+      "context_sha256": "486cd3292afdddc3d4af9bc481af0e432e57030dceecf4ca9585f2990a3fb333",
+      "key_count": 2,
+      "findings": []
+    },
+    "ui.settings.speech.provider": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "979ad7f5cf13143734ff669180ddfb0290132bd46b9788c70e94dbf0541b4b7f",
+        "en": "579fc25531675bed6fb054d51e37e078d1174fbdd9b930c75b38c0a866d3e2f8"
+      },
+      "context_sha256": "f6d3835453c3477a7d40da11574165fcf16ab801a6db0d12410e627540681520",
+      "key_count": 12,
+      "findings": []
+    },
+    "ui.providers.stored_key": {
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "1b41401225036ff13907e8635b9586e7187ce854d251ec922002d09838100f1e",
+        "en": "3c619b87498ac9f279378a86ee4cd87561b446ae5e3dcc1025edaf6932d99cdf"
+      },
+      "context_sha256": "7037b459a94c8acd004571f99a9fef5b53393dc8732b53f8aa8c9afc131714d9",
+      "key_count": 5,
+      "findings": []
+    }
+  },
+  "back_translations": [
+    {
+      "key": "ui.chat.voice.approval_waiting",
+      "target": "请在屏幕上批准或拒绝。语音无法回应审批。",
+      "back": "Please approve or reject on screen. Voice can't respond to approvals."
+    },
+    {
+      "key": "ui.chat.voice.card_pending",
+      "target": "请先在屏幕上回答问题或审批。",
+      "back": "Please first answer the question or approval on screen."
+    },
+    {
+      "key": "ui.chat.voice.not_enabled",
+      "target": "此对话已不再开启语音。",
+      "back": "Voice is no longer on in this conversation."
+    },
+    {
+      "key": "ui.chat.voice.stream_lost",
+      "target": "语音收不到此对话的更新了。重新连接之前，回复不会被朗读。",
+      "back": "Voice can't receive this conversation's updates. Replies won't be read aloud until it reconnects."
+    },
+    {
+      "key": "ui.chat.voice.notice_elsewhere_prefix",
+      "target": "语音已开启于",
+      "back": "Voice has been enabled at [title]"
+    },
+    {
+      "key": "ui.chat.voice.dictation_off_voice_elsewhere",
+      "target": "语音已在“{title}”中开启。移到此处或关闭语音后即可听写。",
+      "back": "Voice has been enabled in “{title}”. Move it here or turn voice off to dictate."
+    },
+    {
+      "key": "ui.chat.voice.byok_speech_rate_limited",
+      "target": "你的语音提供商目前已达上限，所以这条回复没有朗读。",
+      "back": "Your voice provider has hit its limit for now, so this reply wasn't read aloud."
+    },
+    {
+      "key": "ui.chat.voice.provider_unset",
+      "target": "请先选择语音提供商：Radient或你自己的ElevenLabs密钥。语音模式只会使用你选择的那一个。",
+      "back": "Please first choose a voice provider: Radient or your own ElevenLabs key. Voice mode will only use the one you chose."
+    },
+    {
+      "key": "ui.settings.speech.provider.radient.description",
+      "target": "按你的Radient额度计费。",
+      "back": "Billed against your Radient credit."
+    },
+    {
+      "key": "ui.settings.speech.provider.elevenlabs.description",
+      "target": "使用你自己的ElevenLabs账户，由ElevenLabs向你计费。",
+      "back": "Uses your own ElevenLabs account, billed to you by ElevenLabs."
+    },
+    {
+      "key": "ui.settings.speech.provider.none_ready",
+      "target": "两个提供商都还没有就绪。请先在“提供商”中设置一个，再回到这里选择。",
+      "back": "Neither provider is ready yet. First set one up in “Providers”, then come back here to choose."
+    },
+    {
+      "key": "ui.providers.stored_key.remove_confirm",
+      "target": "移除此密钥？",
+      "back": "Remove this key?"
+    }
+  ],
+  "checks": [
+    "English, context and target SHA-256 recomputed from the bytes on disk at the worktree HEAD named in scope; each namespace block names exactly those bytes.",
+    "ICU parity: every message of the 4 namespaces (100 keys) parsed with the project's own @formatjs/icu-messageformat-parser (v3.5.21) and compared with English: same argument names/types ({title}, {reason}, {time}, {count}); key sets and key order equal English's; 700/700 (7 locales x 100 keys) clean. NFC on every message; no bidi control characters; no leading/trailing or doubled whitespace; no message identical to English; brand names (Radient, ElevenLabs, macOS, Local Operator), the 30-second figure, the ↑ arrow and ' · ' separators preserved wherever English has them; final-stop and ellipsis shape matches English (two ur/hi empty_history differences are the SOV verb after the closing quote, accepted).",
+    "Every string read against its English value and en .context.json sidecar (role, tone, note), against this locale's style guide and the core glossary (hashes in references), and against the sibling already-audited backend wording local_operator/i18n/catalogues/<locale>/wire.voice.json for provider/approval/conversation/key terms.",
+    "Neighbour consistency measured against existing UI catalogues of this locale: Retry, Settings, Providers (ui.settings.model.provider_callout.providers_link) / Provider, Reconnect, Pause, Approve/Deny (ui.chat.approval.option.*), Remove/Delete, Ready, Dictation, Speak aloud, API key, Radient credit, composer wording (ui.agents.config.banner.unavailable).",
+    "Register: es tú, fr vous, ru вы, vi bạn, zh 你, hi आप, ur آپ — consistent per style guide; no please-particles except where the zh style guide's 请 rule applies (checked per directive).",
+    "Length fit judged from character counts and from voice-composer.tsx layout (chips shrink-0, captions truncate); no rendered frame was produced or reviewed in this audit.",
+    "Back-translations of the 12 most consequential strings (approval, pending-card, voice-not-enabled, stream-lost, voice-elsewhere, provider-unset, rate limit, Radient/ElevenLabs billing, none-ready, key removal) recorded in back_translations for the namespaces this receipt covers."
+  ],
+  "references": {
+    "glossary_sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+    "style_guide_sha256": "615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6",
+    "core_origin_main": "4a5aea9bd"
+  }
+}

@@ -12,7 +12,6 @@ import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
 import { Spinner } from "@shared/components/common/spinner";
-import { ToggleSetting } from "@shared/components/common/toggle-setting";
 import { HostingSelect } from "@shared/components/hosting/hosting-select";
 import { ModelSelect } from "@shared/components/hosting/model-select";
 import {
@@ -374,12 +373,6 @@ export const SettingsPage: FC = () => {
 	 */
 	useI18nLocale();
 	const glass = useWindowGlass();
-	const showAgentReasoning = useUiPreferencesStore(
-		(state) => state.showAgentReasoning,
-	);
-	const setShowAgentReasoning = useUiPreferencesStore(
-		(state) => state.setShowAgentReasoning,
-	);
 	/*
 	 * The transcript display mode (issue #756): read raw and parsed on the way to
 	 * the control, so a token this build does not know renders as the default mode
@@ -1783,41 +1776,11 @@ export const SettingsPage: FC = () => {
 										glass={glass.state}
 									/>
 									{/*
-									 * The reasoning preference's only control.
-									 *
-									 * The preference, the grouping rule that honours it and the
-									 * panel that renders it all shipped in this refactor without
-									 * anything that could turn it on, so a complete feature was
-									 * unreachable and its default was the whole of its
-									 * behaviour. Appearance rather than a chat menu, because it
-									 * changes what every conversation shows rather than acting
-									 * on the one in front of you.
-									 *
-									 * `ToggleSetting` rather than a hand-rolled row. This was
-									 * a `Label htmlFor` over a `Switch id` first, which cannot
-									 * work: the switch renders as a `button`, `htmlFor` only
-									 * associates with labelable elements, and the helper
-									 * sentence was announced to nobody. That component solves
-									 * exactly this and had no callers, which is the only reason
-									 * the row got written twice.
-									 */}
-									<ToggleSetting
-										searchRow="appearance.reasoning"
-										value={showAgentReasoning}
-										label={t(
-											"ui.settings.appearance.settings_page.show_agent_reasoning",
-										)}
-										description={t(
-											"ui.settings.appearance.settings_page.adds_the_agent_s_reasoning_and_thinking_rows_to_conversations_the",
-										)}
-										onChange={async (next) => setShowAgentReasoning(next)}
-									/>
-									{/*
-									 * The transcript display mode, the second control of a pair: this row
-									 * changes how RESPONSES are drawn, the switch above changes whether
-									 * REASONING is drawn at all. They compose — neither rewrites the other's
-									 * rows — which is what the issue's "compose instead of competing" asks
-									 * for. The mode is ALSO reachable from the conversation itself (see the
+									 * The transcript display mode: this row changes how RESPONSES are
+									 * drawn. It used to be the second of a pair with a "show agent
+									 * reasoning" switch above it; that switch was removed because the
+									 * canonical transcript has no reasoning record for it to show, so it
+									 * changed nothing on screen. The mode is ALSO reachable from the conversation itself (see the
 									 * header's `Transcript display` submenu), because a reader looking for
 									 * it is looking at the transcript rather than at this page.
 									 */}
@@ -1863,7 +1826,14 @@ export const SettingsPage: FC = () => {
 							 */}
 							{/* Notifications precedes Speech in the rail and document order. */}
 							<NotificationsSection sectionRef={sectionRefs.notifications} />
-							<SpeechSection sectionRef={sectionRefs.speech} />
+							<SpeechSection
+								sectionRef={sectionRefs.speech}
+								onOpenProviders={(provider) =>
+									navigate(
+										`/settings?section=providers&provider=${encodeURIComponent(provider)}`,
+									)
+								}
+							/>
 							<KeyboardShortcutsSection
 								sectionRef={sectionRefs.keyboard}
 								focusKey={settingFocusKey}

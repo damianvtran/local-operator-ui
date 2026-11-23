@@ -42,6 +42,7 @@
  * Scroll paging inherits that rule rather than restating it — a reader
  * following the tail neither loads a page nor has their offset corrected.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import {
 	FlagLine,
@@ -53,6 +54,7 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
@@ -62,12 +64,20 @@ import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { formatDateTime, t } from "@shared/i18n";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
+import {
+	type WithoutParams,
+	formatDateTime,
+	formatList,
+	t,
+} from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import {
+	busySendModes,
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -105,8 +115,10 @@ import {
 	type PointerEvent,
 	type ReactNode,
 	type RefObject,
+	createContext,
 	memo,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -133,8 +145,14 @@ import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import {
+	UndeliveredLineView,
+	undeliveredSentence,
+	useSendRecoveryAction,
+} from "../components/send-recovery-action";
 import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { BridgeCardBodySection } from "../components/trace/bridge-card-body";
 import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
 	type BridgeLabelResolver,
@@ -186,6 +204,12 @@ import {
 	tracePanePaint,
 } from "../open-trace";
 import {
+	type FailureCause,
+	keepsSendAgain,
+	recoveryForFailure,
+	sendBlockFor,
+} from "../send-recovery";
+import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 	parseTranscriptDisplayMode,
@@ -193,7 +217,8 @@ import {
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
-import { parseReplies } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
+import { type BusyWaitState, busyWaitLabels } from "./busy-wait";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
@@ -215,6 +240,7 @@ import {
 	isImageGenTool,
 	isSoundGenTool,
 } from "./image-gen-card-model";
+import { InlineUiHost } from "./inline-ui-host";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
@@ -236,6 +262,7 @@ import {
 	OlderHistorySlotReserve,
 } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
+import { paintKeepsTopAnchor } from "./paint-top-anchor";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -500,7 +527,9 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * ("At least N actions - earlier rows of this turn are not loaded").
 	 */
 	const minimum = (stated: string) =>
-		segment.facts.partial ? `at least ${stated}` : stated;
+		segment.facts.partial
+			? t("ui.chat.canonical.condense.at_least", { stated })
+			: stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -525,7 +554,14 @@ function condenseSentence(segment: SegmentPlan): string {
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
 		if (segment.facts.durationS !== null) {
-			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+			/* Keyed as one clause with the duration slot, like its sibling
+			 * `worked_for`: the word order is the language's. This sentence is the
+			 * bar's settle announcement and its "Copy" text (never painted). */
+			parts.push(
+				t("ui.chat.canonical.transcript.took_duration", {
+					duration: formatDuration(segment.facts.durationS),
+				}),
+			);
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(
@@ -542,8 +578,18 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
-	const lead = segment.label ?? "Turn condensed";
-	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
+	const lead = segment.label ?? t("ui.chat.canonical.condense.turn_condensed");
+	// The frame is keyed too: where the colon sits (French spaces it) and the
+	// closing stop are the language's, not this file's. So is the separator
+	// between the clauses (code review R2): `formatList` is CLDR's narrow list,
+	// `"a, b"` in English exactly as the hard-coded ", " was, `、` in zh-CN and
+	// `، ` in Urdu - no catalogue key, so no translation round.
+	return parts.length === 0
+		? t("ui.chat.canonical.condense.sentence_bare", { lead })
+		: t("ui.chat.canonical.condense.sentence", {
+				lead,
+				parts: formatList(parts),
+			});
 }
 
 /**
@@ -859,6 +905,21 @@ export type CanonicalTranscriptProps = {
 	 */
 	restoredScroll?: PaintedScroll | null;
 	/**
+	 * Whether the cached paint behind these rows is the WHOLE conversation - the
+	 * cache entry's `complete` - or absent when no paint seeded this pane.
+	 *
+	 * WHY THE COLUMN READS IT (P2 of the session-switch plan). `mb-auto` is this
+	 * column's top anchor, and it is right for a conversation that fits and wrong
+	 * for a cached FRAGMENT: when the taller page lands the column overflows, the
+	 * margin resolves to zero, and every row drops to the bottom in one frame
+	 * (measured: first visible row +200.6 px, last row +212.6 px, 26/26 and 16/16
+	 * runs at 500/700 KB tool results). So the anchor is dropped while such a
+	 * fragment is stale, and only then; the rule and its truth table live in
+	 * `paint-top-anchor.ts`. Absent or null is "no cache entry" - a live pane, or
+	 * a caller that set `stale` itself - which keeps today's layout.
+	 */
+	paintComplete?: boolean | null;
+	/**
 	 * True when this conversation is owned by another device (the catalogue's
 	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
 	 * of the loading indicator: for a peer's conversation every wait this pane
@@ -986,6 +1047,69 @@ export type CanonicalTranscriptProps = {
 	onStartNewChat?: () => void;
 };
 
+/**
+ * §F3's line under a message that did not go out, with the fix its cause earns.
+ *
+ * THE FIX IS NEW (D3, onboarding friction 2026-11): 62 external users pressed
+ * "Send again" here, and for three causes a resend cannot work - nothing
+ * connected, no model chosen, the background service not answering - the row
+ * offered only that press. `recoveryForFailure` names the fix from the code and
+ * sentence the store kept, with the composer's LIVE verdict as the tie-breaker
+ * (a row that failed while the service was down is fixed by reconnecting). A
+ * configuration fix REPLACES "Send again" (the resend would fail identically
+ * until it is applied); a reconnect sits BESIDE it.
+ *
+ * A component of its own so the two reads it needs (provider census, server
+ * health) mount only for the one row that is undelivered, never for every
+ * user row in the transcript.
+ */
+export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
+	undelivered,
+}) => {
+	useI18nLocale();
+	const { needsProvider, needsModel, isKnown } = useProviderStatus();
+	const serverOffline = useServerOffline();
+	const block = sendBlockFor({
+		noProvider: needsProvider,
+		noModel: needsModel,
+		serverOffline,
+	});
+	const recovery = recoveryForFailure({
+		code: undelivered.code,
+		message: undelivered.message,
+		cause: undelivered.cause,
+		block,
+		/*
+		 * U2: a configuration cause retires once the live verdict is READ and
+		 * clear. Offline outranks it inside `sendBlockFor`, so a read taken while
+		 * the service is down never counts as "fixed".
+		 */
+		verdictKnown: isKnown && !serverOffline,
+	});
+	const fix = useSendRecoveryAction();
+	return (
+		<UndeliveredLineView
+			sentence={undeliveredSentence({
+				message: undelivered.message,
+				recovery,
+				block,
+				/*
+				 * Q2: the row's Reconnect states its result here, as the composer's
+				 * does; only a reconnect's outcome belongs to this row.
+				 */
+				outcome: recovery === "reconnect" ? fix.outcome : null,
+			})}
+			recovery={recovery}
+			offerSendAgain={undelivered.retry !== false && keepsSendAgain(recovery)}
+			retryDisabled={undelivered.retryDisabled}
+			busy={fix.busy}
+			onFix={fix.run}
+			onSendAgain={undelivered.onSendAgain}
+			onEdit={undelivered.onEdit}
+		/>
+	);
+};
+
 // ---------------------------------------------------------------- rows
 
 /**
@@ -1026,6 +1150,18 @@ export type UndeliveredTurn = {
 	 * so every pre-U4 caller keeps the button as it was.
 	 */
 	retryDisabled?: boolean;
+	/**
+	 * The machine code the store kept for this failure (`draft.errorCode`), so
+	 * the row can name the fix its cause earns (`recoveryForFailure`, D3).
+	 * Absent for a claim nothing classified.
+	 */
+	code?: string;
+	/**
+	 * The configuration cause the store classified this failure by
+	 * (`draft.errorCause`, agent review round 1 R1), so the row can name its fix
+	 * although its sentence is this app's own rather than the backend's.
+	 */
+	cause?: FailureCause;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -1106,6 +1242,38 @@ const toolAudioLabel = (
 	count: number,
 ): string => audio.name ?? soundLabel(index + 1, count);
 
+/**
+ * THE BUSY-SEND WAITING LABELS, provided by the pane and read by a row.
+ *
+ * WHY A CONTEXT RATHER THAN PROPS. `UserRow` is memoised on its record and the
+ * pane is what holds the `frontend` frame, so threading the queue into every
+ * row's props would hand every row a new prop on every token and re-render the
+ * whole window; a context value that only changes when the queue or the
+ * streaming flag changes keeps the rows' own memo intact. `busy-wait.ts` owns
+ * the rule - which ids get a label and which sentence each state earns - and
+ * this is only the seam between the frame and the rows.
+ *
+ * `null` outside the pane (a row rendered on its own, a story that mounts only
+ * the row): a row with no provider draws nothing, which is the same answer as
+ * "not queued".
+ */
+const BusyWaitLabels = createContext<ReadonlyMap<string, BusyWaitState> | null>(
+	null,
+);
+
+/**
+ * The one sentence each waiting state says, as explicit ids rather than a
+ * composed string: `t` is typed against `keys.gen.ts`, and a template literal
+ * would widen the key to `string` and lose that contract.
+ */
+const BUSY_WAIT_KEYS: Record<BusyWaitState, WithoutParams> = {
+	steer: "ui.chat.canonical.transcript.busy_wait.steer",
+	queue: "ui.chat.canonical.transcript.busy_wait.queue",
+	both: "ui.chat.canonical.transcript.busy_wait.both",
+	joined: "ui.chat.canonical.transcript.busy_wait.joined",
+	deferred: "ui.chat.canonical.transcript.busy_wait.deferred",
+};
+
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
@@ -1144,6 +1312,13 @@ const UserRow = memo(function UserRow({
 	 * per-surface one the mesh components carry for the same reason.
 	 */
 	useI18nLocale();
+	/*
+	 * The waiting label, when the backend holds this exact message in the running
+	 * turn's queue (`busy-wait.ts` owns the rule). Read off the pane's context
+	 * rather than passed down, and `null` when this row is not queued - which is
+	 * the ordinary case: nothing is drawn.
+	 */
+	const busyWait = useContext(BusyWaitLabels)?.get(record.id) ?? null;
 	/*
 	 * Which link on this turn the toolbar is about, if any. ONE subject per row,
 	 * decided by one hook (`use-link-subject.ts`), because the alternative is one
@@ -1810,6 +1985,43 @@ const UserRow = memo(function UserRow({
 					<TurnTimestamp timestamp={record.ts} scope="turn" />
 				</span>
 				{/*
+				 * THE WAITING LINE, ONE ROW BELOW THE MESSAGE IT IS ABOUT (spec §C).
+				 *
+				 * It says what Enter did while the turn runs - steers, queues, queues then
+				 * steers - and it is drawn ONLY while the backend holds this id in
+				 * `frontend.queued_steering` (`busy-wait.ts`), so it cannot claim a wait that
+				 * is not happening. The mode itself is the client's own record of the press;
+				 * the queue is the owner's fact (`backend session/frontend_state.py`).
+				 *
+				 * NO ICON AND NO LIVE REGION: the connection strip owns the one live region
+				 * (the undelivered line below records the same rule), and the row is a status
+				 * line the reader reaches by reading, not an interruption. It is NOT shown
+				 * beside the undelivered line: a message that failed to be delivered is not
+				 * waiting - the failure sentence is the truth about it and this would
+				 * contradict it.
+				 *
+				 * `data-busy-wait` is the rig's address for the line, the same structural-
+				 * marker rule the undelivered row follows.
+				 *
+				 * `justify-end` PLACES THE BOX; `text-end` ALIGNS WHAT WRAPS INSIDE IT
+				 * (agent review round 1, D1). A sentence long enough to take a second line
+				 * starts that line at the box's start edge - the left in LTR, under the
+				 * bubble rather than under the stamp - because the default `text-align`
+				 * never follows the flex axis. `text-end` is the writing-direction end
+				 * (right in LTR, left in RTL), which is the edge the stamp above it sits
+				 * on, so a wrapped line stays flush with the message it belongs to.
+				 */}
+				{busyWait !== null && undelivered === null && (
+					<div
+						data-busy-wait
+						className={cn(
+							"flex w-full justify-end text-end text-meta text-ink-muted",
+						)}
+					>
+						{t(BUSY_WAIT_KEYS[busyWait])}
+					</div>
+				)}
+				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
 				 * The sentence is fixed rather than backend-authored: what the app KNOWS
@@ -1828,57 +2040,7 @@ const UserRow = memo(function UserRow({
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
 				 * same structural-marker rule the row's own archive press follows.
 				 */}
-				{undelivered !== null && (
-					<div
-						data-undelivered
-						className={cn(
-							"flex w-full items-center justify-end gap-3 text-danger text-meta",
-						)}
-					>
-						<span className={cn("flex items-center gap-1")}>
-							<CircleAlert
-								aria-hidden="true"
-								className={cn("size-3.5 shrink-0")}
-							/>
-							{undelivered.message ??
-								t("ui.chat.canonical.transcript.not_delivered")}
-						</span>
-						{undelivered.retry !== false && (
-							<button
-								type="button"
-								/*
-								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
-								 * 1, U4): the row keeps its statement and both controls, and the
-								 * box's own Send is the live affordance for this message until the
-								 * text changes. `aria-disabled` rather than `disabled` - see the
-								 * `UndeliveredTurn.retryDisabled` note.
-								 */
-								aria-disabled={undelivered.retryDisabled || undefined}
-								className={cn(
-									undelivered.retryDisabled
-										? "text-ink-muted"
-										: "cursor-pointer underline",
-								)}
-								onClick={(event) => {
-									if (undelivered.retryDisabled) {
-										event.preventDefault();
-										return;
-									}
-									undelivered.onSendAgain();
-								}}
-							>
-								{t("ui.chat.canonical.transcript.send_again")}
-							</button>
-						)}
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onEdit}
-						>
-							{t("ui.chat.canonical.transcript.edit")}
-						</button>
-					</div>
-				)}
+				{undelivered !== null && <UndeliveredLine undelivered={undelivered} />}
 			</div>
 		</MessageContainer>
 	);
@@ -1887,6 +2049,8 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
+	revealOnMount,
+	animateStream,
 	closesTurn,
 	answerRail,
 	foot = null,
@@ -1895,6 +2059,8 @@ const AssistantRow = memo(function AssistantRow({
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
+	revealOnMount: boolean;
+	animateStream: boolean;
 	closesTurn: boolean;
 	/**
 	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
@@ -1945,6 +2111,17 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	const inserts = useMemo(() => {
+		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
+		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
+		// do not paint in this Markdown container; neither changes the stored text.
+		const { prefix, rest } = splitReplyPrefix(record.text);
+		const start = prefix.length + rest.length - rest.trimStart().length;
+		return record.inlineUi.widgets.map(({ offset, value }) => ({
+			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			node: <InlineUiHost value={value} />,
+		}));
+	}, [record.inlineUi, record.text, remainingContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2076,9 +2253,13 @@ const AssistantRow = memo(function AssistantRow({
 				 * the same component at the same key - so the settle moves no node;
 				 * what settles is exactly what the full parse makes of the same string.
 				 */}
-				{record.streaming ? (
+				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
 						content={remainingContent}
+						// A joined stream or a receipt gap cannot certify that its text
+						// is a new suffix. It and the authoritative settle both paint now.
+						animateInk={animateStream && !record.truncated}
+						revealOnMount={revealOnMount}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -2087,18 +2268,12 @@ const AssistantRow = memo(function AssistantRow({
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
-						/*
-						 * Linkification is the settled row's, and the streaming half is
-						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
-						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open block is parsed but never linked or
-						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
-						 * link to a path that does not exist. That is the same hazard the
-						 * old `linkify={!record.streaming}` line refused, now enforced per
-						 * block instead of per row.
-						 */
-						linkify
+						// A figure can already own focus and a horizontal scroll position
+						// before completion. Once it exists, the one authoritative parse
+						// owns its slot through end and durable refresh; no DOM handoff.
+						streaming={record.streaming}
+						linkify={!record.streaming}
+						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
@@ -2778,6 +2953,8 @@ const ToolRow = memo(function ToolRow({
 					className={cn(
 						"whitespace-pre font-mono",
 						interruptedNotRun ? "text-ink" : "text-danger",
+						// The reason a call did not run quotes the call (review round 1, Q2).
+						USER_CONTENT_CLASS,
 					)}
 				>
 					{record.notRunReason}
@@ -3216,6 +3393,23 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 }) {
 	useI18nLocale();
 	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	/*
+	 * THE BODY READ'S GATE. Core advertises `team_bridge_card_body` when its
+	 * entry-keyed display-store read exists; without it the pane keeps today's
+	 * sentence and asks nothing. The read is answered by THIS machine's daemon
+	 * for a session it hosts, so a child transcript (the parent route refuses
+	 * child ids) and a conversation hosted on another device (its journal and
+	 * display store live there) keep the old sentence too, rather than rendering
+	 * a refusal as if it were the message's state.
+	 */
+	const bodyCapable = usePassiveDesktopFeature("team_bridge_card_body");
+	const sessionId = scope && !scope.childId ? scope.sessionId : null;
+	const remote = useCanonicalSessionsStore((state) =>
+		sessionId
+			? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+			: false,
+	);
+	const bodyEnabled = bodyCapable && sessionId !== null && !remote;
 	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
 	const received = t("ui.chat.bridgeReceipt.received", { sender });
 	const target =
@@ -3227,6 +3421,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 			})
 		: "";
 	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	/*
+	 * The open pane's headline says WHERE the message sits as well as who sent
+	 * it: a reply inside a thread reads differently from a top-level post, and the
+	 * body below it is otherwise context-free. The collapsed row keeps its
+	 * shorter summary.
+	 */
+	const thread = receipt.thread ? t("ui.chat.bridgeReceipt.thread_reply") : "";
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3239,9 +3440,17 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 					<BridgeDetailPane
 						isError={false}
 						view={{
-							headline: [received, target].filter(Boolean).join(" · "),
+							headline: [received, target, thread].filter(Boolean).join(" · "),
 							body: null,
-							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							/*
+							 * When the read is offered, the body section below owns the
+							 * outcome sentence. When it is not (older backend, child or
+							 * remote transcript), today's sentence stays in this slot, above
+							 * the provenance line, so that pane is unchanged (review R3).
+							 */
+							outcome: bodyEnabled
+								? null
+								: t("ui.chat.bridgeReceipt.unavailable"),
 							internals: [],
 							raw: record.text,
 						}}
@@ -3262,6 +3471,17 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 								</time>
 							) : null}
 						</div>
+						{/*
+						 * Under the provenance line on purpose: the label is what frames
+						 * the text that follows as someone else's untrusted words.
+						 */}
+						{bodyEnabled ? (
+							<BridgeCardBodySection
+								sessionId={sessionId}
+								entryId={record.id}
+								enabled
+							/>
+						) : null}
 					</BridgeDetailPane>
 				}
 			/>
@@ -3735,6 +3955,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	sessionCwd,
 	enter = false,
+	animateStream = false,
 	isSmallView,
 	scope,
 	capable,
@@ -3769,6 +3990,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	approvalEpoch = null,
 }: {
 	row: Row;
+	animateStream?: boolean;
 	/**
 	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
 	 * frontend frames, so the frame itself is not a prop). It is the identity a
@@ -3939,6 +4161,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
+					revealOnMount={enter}
+					animateStream={animateStream}
 					closesTurn={row.closesTurn}
 					answerRail={answerRail}
 					foot={foot}
@@ -4107,6 +4331,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * node and the animation plays exactly once.
 					 */
 					entered.current &&
+						record.kind !== "assistant" &&
 						(record.kind === "user"
 							? "lo-transcript-arrival-rise"
 							: "lo-transcript-arrival"),
@@ -4156,8 +4381,11 @@ const OPEN_TRACE_MS = 60_000;
  * changes the answer, and a refusal without it is a dead end. The search
  * jump's copy carries the same tail.
  */
-const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+function checkpointJumpMissCopy(): string {
+	// A function, not a constant: read per refusal so it speaks the locale
+	// active now, not the one active when this module loaded.
+	return t("ui.chat.canonical.checkpoint_jump.miss");
+}
 
 /**
  * The reader's place in a reversed scroller, as the paint cache stores it.
@@ -4266,6 +4494,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	staleIndicatorDelayMs = STALE_INDICATOR_DELAY_MS,
 	paintRunning = false,
 	restoredScroll = null,
+	paintComplete = null,
 	remote = false,
 	missing = false,
 	missingTemporary = false,
@@ -4303,6 +4532,40 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * THE WAITING LABELS FOR BUSY SENDS THE OWNER HAS QUEUED.
+	 *
+	 * Two sources meet here and nowhere else: `frontend.queued_steering` (the
+	 * daemon's own list; its ids are the ids the send's echo row carries) says
+	 * WHICH messages are waiting, and `noteBusySend`'s map says how each was
+	 * sent. The fold itself is `busyWaitLabels` in `busy-wait.ts`; this is only
+	 * the wiring.
+	 *
+	 * THE HOOK IS KEYED ON A CHEAP SIGNATURE, not on the frame: `queued_steering`
+	 * is a new array on every frame, so a memo keyed on it would hand React a
+	 * new map every time and re-render every user row in the list on every
+	 * streamed token. The map is empty until the backend reports an id that
+	 * `noteBusySend` knows, so the one string below changes exactly when a
+	 * label can appear or disappear. And `busyWaitLabels` answers the empty case
+	 * with ONE shared frozen instance, so a turn's start and end hand the rows
+	 * the same value rather than a fresh empty map.
+	 */
+	const busyWaitQueueSignature = useMemo(() => {
+		const ids = (frontend?.queued_steering ?? [])
+			.map((item) => (typeof item.id === "string" ? item.id : ""))
+			.join("\u0000");
+		return `${frontend?.streaming ? "1" : "0"}\u0001${ids}`;
+	}, [frontend?.queued_steering, frontend?.streaming]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the signature stands in for both frame inputs (rebuilt whenever the queue or the streaming flag changes); listing them directly would re-derive the map on every streamed token and re-render every user row. The modes map is not a dependency: it only matters for an id that has since entered the queue, and that entry moves the signature.
+	const busyWaitByRecord = useMemo(
+		() =>
+			busyWaitLabels(
+				frontend?.queued_steering ?? [],
+				Boolean(frontend?.streaming),
+				busySendModes(),
+			),
+		[busyWaitQueueSignature],
+	);
 	/*
 	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
 	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
@@ -4350,6 +4613,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
+		feedReady: boolean;
 	} | null>(null);
 	/*
 	 * The attachment scope: the caller's when it supplied one (the child
@@ -4939,6 +5203,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
 	const paneGap = status !== "live";
+	const motionFeedReady = !paneGap && !awaitingHydration;
 
 	/*
 	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
@@ -5374,6 +5639,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+	/*
+	 * The column's top anchor, for THIS pane: the ordinary layout unless the rows
+	 * are a stale cached fragment (see `paint-top-anchor.ts`).
+	 */
+	const topAnchor = paintKeepsTopAnchor({
+		stale,
+		complete: paintComplete === true,
+		hasEntry: paintComplete !== null && paintComplete !== undefined,
+	});
 
 	/*
 	 * The END of the click-to-visible trace: the first commit that paints a
@@ -5832,7 +6106,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * refusal speaks, so that is the argument rather than a second loop.
 	 */
 	const jumpToCheckpoint = useCallback(
-		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		(id: string) => void jumpTo(id, checkpointJumpMissCopy()),
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(
@@ -7143,6 +7417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
+			feedReady: motionFeedReady,
 		};
 		slotExtents.current.clear();
 		previousSlotPlan.current = {
@@ -7175,15 +7450,29 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			),
 		};
 	}
-	const known = arrivalLedger.current.ids;
+	const ledger = arrivalLedger.current;
+	const known = ledger.ids;
 	let lastKnown = -1;
 	rows.forEach((row, index) => {
 		if (known.has(row.record.id)) lastKnown = index;
 	});
 	const arriving = new Set(
-		paneIsLive ? rows.slice(lastKnown + 1).map((row) => row.record.id) : [],
+		paneIsLive
+			? rows
+					.slice(lastKnown + 1)
+					.filter(
+						({ record }) =>
+							!record.sourcePrecedes &&
+							((motionFeedReady && ledger.feedReady) ||
+								(record.kind === "user" && record.local)),
+					)
+					.map(({ record }) => record.id)
+			: [],
 	);
 	useLayoutEffect(() => {
+		// A reconnect may deliver its catch-up tail in the same commit as
+		// `status: live`. Seed that commit before allowing another arrival.
+		ledger.feedReady = motionFeedReady;
 		for (const row of rows) known.add(row.record.id);
 		viewState.current.store.prune(
 			new Set(rawRecords.current.map((record) => record.id)),
@@ -7237,7 +7526,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
-					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
+					enter={arriving.has(row.record.id)}
+					animateStream={
+						row.record.kind === "assistant" &&
+						row.record.streaming &&
+						motionFeedReady
+					}
 					isSmallView={isSmallView}
 					scope={mediaScope}
 					capable={attachmentsCapable}
@@ -7368,9 +7662,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										approvalEpoch={frontend?.epoch ?? null}
 										key={row.record.id}
 										row={index === 0 ? atTraceTier(row) : row}
-										enter={
-											arriving.has(row.record.id) &&
-											row.record.kind !== "assistant"
+										enter={arriving.has(row.record.id)}
+										animateStream={
+											row.record.kind === "assistant" &&
+											row.record.streaming &&
+											motionFeedReady
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
@@ -7410,9 +7706,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
-				enter={
-					arriving.has(group.row.record.id) &&
-					group.row.record.kind !== "assistant"
+				enter={arriving.has(group.row.record.id)}
+				animateStream={
+					group.row.record.kind === "assistant" &&
+					group.row.record.streaming &&
+					motionFeedReady
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
@@ -7992,13 +8290,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * `scrollable`-conditioned `justify-end`, which would need a threshold to
 						 * tune and could oscillate around the fill point.
 						 *
+						 * AND IT IS WITHDRAWN WHILE THE ROWS ARE A STALE CACHED FRAGMENT
+						 * (`topAnchor`, from `paint-top-anchor.ts`). "Only while it fits" is the
+						 * defect on that path: a cached suffix often fits the pane, and the page
+						 * that replaces it usually does not, so the margin would resolve to zero
+						 * at the moment the page lands and every row would jump by the leftover
+						 * height. Bottom-packing the fragment from its first frame is the same
+						 * layout the page will leave behind, so the landing moves nothing.
+						 *
 						 * The empty state is untouched by it: a collapsed pane is `h-0` (see
 						 * `collapsed` above), so there is no free space for a margin to absorb
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
 						 */
-						className={cn("relative mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn(
+							"relative flex flex-col",
+							topAnchor && "mb-auto",
+							CHAT_MEASURE,
+						)}
 					>
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
@@ -8545,8 +8855,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * renders exactly as before.
 	 */
 	return (
-		<FlagLinesProvider sessionId={sessionId}>
-			{transcriptColumn}
-		</FlagLinesProvider>
+		<BusyWaitLabels.Provider value={busyWaitByRecord}>
+			<FlagLinesProvider sessionId={sessionId}>
+				{transcriptColumn}
+			</FlagLinesProvider>
+		</BusyWaitLabels.Provider>
 	);
 };

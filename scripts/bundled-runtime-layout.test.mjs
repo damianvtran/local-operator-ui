@@ -345,8 +345,22 @@ test("the staging scripts stage every platform's uv triples from the pinned rele
 			script.includes("UV_ARCHIVE_MEMBER//\\{triple\\}"),
 		"the Unix stager must expand the archive member from the definition rather than assume the tar layout",
 	);
+	// Extraction is the .NET API, never the `Expand-Archive` cmdlet: runner
+	// image 20261116.315 broke the cmdlet in the release chain's Windows
+	// PowerShell 5.1 child (publish run 44488970816), the same module-resolution
+	// class `Get-Sha256` already avoids. The comment block may still name the
+	// cmdlet, so only an actual call on a code line fails this.
 	assert.ok(
-		windowsScript.includes("Expand-Archive") &&
+		!/^\s*Expand-Archive\b/m.test(windowsScript),
+		"the Windows stager must not call Expand-Archive; it breaks in Windows PowerShell 5.1 on current runner images",
+	);
+	assert.ok(
+		windowsScript.includes(
+			"[System.IO.Compression.ZipFile]::ExtractToDirectory($archivePath, $extractDir)",
+		) &&
+			windowsScript.includes(
+				"Add-Type -AssemblyName System.IO.Compression.FileSystem",
+			) &&
 			windowsScript.includes("Get-FileHash") &&
 			windowsScript.includes(".Replace('{triple}', $Triple)"),
 		"the Windows stager must verify, extract and expand the member the same way",

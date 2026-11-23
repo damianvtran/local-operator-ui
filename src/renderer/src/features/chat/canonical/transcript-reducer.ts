@@ -2,6 +2,11 @@ import {
 	type BridgeReceipt,
 	bridgeReceiptOf,
 } from "../components/trace/bridge-receipt-model";
+import {
+	type InlineUiOverlay,
+	inlineUiForRow,
+	readInlineUi,
+} from "./inline-ui-parts";
 
 /**
  * Canonical transcript reducer.
@@ -296,6 +301,8 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/** View-only placement, verified against this exact text. */
+			inlineUi?: InlineUiOverlay;
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
@@ -3352,6 +3359,7 @@ function durableRecord(
 	 *   idempotent.
 	 */
 	previous?: TranscriptRecord,
+	inlineUiEnvelope?: unknown,
 ): TranscriptRecord | null {
 	const payload = entry.payload ?? {};
 	const ts = Math.round((entry.ts ?? 0) * 1000);
@@ -3659,7 +3667,7 @@ function durableRecord(
 				: {}),
 			...(customType === "team_bridge_message"
 				? {
-						bridgeReceipt: bridgeReceiptOf(details),
+						bridgeReceipt: bridgeReceiptOf(details, text),
 					}
 				: {}),
 			attribution:
@@ -3773,10 +3781,15 @@ function durableRecord(
 			? (payload.tool_calls as Record<string, unknown>[])
 			: [];
 		const text = messageText(payload);
+		const inlineUi = readInlineUi(
+			inlineUiForRow(inlineUiEnvelope, entry.id),
+			text,
+			previous?.kind === "assistant" ? previous.inlineUi : undefined,
+		);
 		// An assistant row that only carried tool calls has no prose to show;
 		// its tool rows are painted from the paired `tool` results. It still
 		// occupies its id so a live echo of it coalesces instead of duplicating.
-		if (!text && toolCalls.length > 0) {
+		if (!text && !inlineUi && toolCalls.length > 0) {
 			return {
 				kind: "assistant",
 				id: entry.id,
@@ -3794,6 +3807,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
+			...(inlineUi ? { inlineUi } : {}),
 			complete: true,
 			streaming: false,
 			/* The final-response fact, read from the journal row's own payload. */
@@ -4587,7 +4601,7 @@ export function applyPeerSourcePayload(
 			const position = index.get(entry.id) ?? index.get(toolKey);
 			const current = position === undefined ? undefined : records[position];
 			if (!current) continue;
-			let record = durableRecord(entry, current);
+			let record = durableRecord(entry, current, page.inline_ui);
 			if (!record) continue;
 			/*
 			 * The continuation stamp is the ROW's, not the read's (the rule
@@ -4842,7 +4856,7 @@ export function applyHistoryPage(
 			state.records[state.index.get(entry.id) ?? -1] ??
 			state.records[state.index.get(entryCallKey(entry)) ?? -1] ??
 			previousRecordForSupplement(state, entry);
-		let record = durableRecord(entry, previous);
+		let record = durableRecord(entry, previous, page.inline_ui);
 		// A continuation page may contain only the immutable queued original, not
 		// its later prune. Keep the already correlated applied overlay rather than
 		// rolling a signed completion back to a proposal on that partial read.
@@ -5557,6 +5571,15 @@ export function applyEvent(
 			let next = state;
 			for (const record of state.records) {
 				if (record.kind === "assistant" && record.streaming) {
+					// If message_end never arrived, only the agent-end's exact row
+					// projection can seal a provisional widget. A tombstone or a
+					// missing/mismatched projection leaves the same prose-only row.
+					const { inlineUi: priorInlineUi, ...base } = record;
+					const inlineUi = readInlineUi(
+						inlineUiForRow(event.inline_ui, record.id),
+						record.text,
+						priorInlineUi,
+					);
 					/*
 					 * The settle stamp rides the same sweep that clears `streaming`: a
 					 * record the turn end settles (an aborted stream is the one this arm
@@ -5564,7 +5587,8 @@ export function applyEvent(
 					 * the span composition reads as `settledAt ?? ts`.
 					 */
 					next = upsert(next, {
-						...record,
+						...base,
+						...(inlineUi ? { inlineUi } : {}),
 						streaming: false,
 						settledAt: now,
 						/*
@@ -5771,6 +5795,10 @@ export function applyEvent(
 				return state;
 			}
 			const position = state.index.get(messageId);
+			const overlay =
+				message.role === "assistant"
+					? inlineUiForRow(event.inline_ui, messageId)
+					: undefined;
 			const delta = String(event.delta ?? "");
 			// The event's OWN text is the whole text this case may use. The
 			// producer assembles `message.content` once, at the END of the call, for
@@ -5800,14 +5828,19 @@ export function applyEvent(
 				 * shape the old branch was written against, and it stays correct for
 				 * any producer that sends one.
 				 */
-				if (!body && !delta) return state;
+				const text = body + delta;
+				const attested = readInlineUi(overlay, text, undefined, options.seed);
+				const inlineUi = attested?.widgets.length ? attested : undefined;
+				if (!text && !inlineUi) return state;
 				return upsert(state, {
 					kind: "assistant",
 					id: messageId,
 					ts: now,
-					text: body ? body + delta : delta,
+					text,
+					...(inlineUi ? { inlineUi } : {}),
 					streaming: true,
-					truncated: body === "" ? "prefix" : undefined,
+					truncated:
+						!body && !(options.seed && attested) ? "prefix" : undefined,
 					...(incoming ? { frame: incoming } : {}),
 					stopReason: null,
 					error: false,
@@ -5887,6 +5920,27 @@ export function applyEvent(
 			// branches below stamp it.
 			const nextFrame = advancedFrame(current.frame, incoming);
 			if (options.seed === true && !body) {
+				// For a marked message the reconnect update carries all projected
+				// prose as delta. A validated sidecar whose basis equals that delta
+				// is proof of a full snapshot, not a chunk. Never replace a prefix
+				// we already saw with a divergent or shorter snapshot.
+				const seedIsCurrent = !incoming || nextFrame === incoming;
+				const seededInlineUi = seedIsCurrent
+					? readInlineUi(overlay, delta, current.inlineUi, true)
+					: undefined;
+				if (seededInlineUi && delta.startsWith(current.text)) {
+					return upsert(state, {
+						...current,
+						text: delta,
+						// Empty is wire provenance, not a figure or a way to erase an
+						// already painted valid figure on an overlapping seed.
+						inlineUi: seededInlineUi.widgets.length
+							? seededInlineUi
+							: current.inlineUi && { ...current.inlineUi, text: delta },
+						truncated: undefined,
+						...(nextFrame ? { frame: nextFrame } : {}),
+					});
+				}
 				/*
 				 * A SEEDED DELTA-ONLY frame, against a row already on screen.
 				 *
@@ -5919,11 +5973,17 @@ export function applyEvent(
 				 * is a running snapshot of the whole message, so the append path below is
 				 * exactly right for it and is left to handle it — seeded or live alike.
 				 */
-				if (!current.text && !delta) return state;
+				const text = current.text || delta;
+				const inlineUi = seedIsCurrent
+					? readInlineUi(overlay, text, current.inlineUi)
+					: current.inlineUi;
+				if (!text && !inlineUi) return state;
+				const { inlineUi: _previousOverlay, ...base } = current;
 				streamDiagnostics.seededDeltaWithheld += current.text ? 1 : 0;
 				return upsert(state, {
-					...current,
-					text: current.text || delta,
+					...base,
+					text,
+					...(inlineUi ? { inlineUi } : {}),
 					// The seed states the row as of the snapshot, so the snapshot's
 					// own cursor is the position this text belongs to — advanced,
 					// never regressed (see `advancedFrame`).
@@ -5952,14 +6012,25 @@ export function applyEvent(
 			let next: string;
 			if (body) {
 				next = body + delta;
-				if (next.length <= current.text.length) return state;
+				if (
+					next.length < current.text.length ||
+					(next.length === current.text.length &&
+						(!overlay || next !== current.text))
+				)
+					return state;
 			} else {
-				if (!delta) return state;
 				next = current.text + delta;
 			}
+			const inlineUi = readInlineUi(overlay, next, current.inlineUi);
+			// A widget can complete without a prose delta. Still require the
+			// exact basis and the normal cursor/order checks above.
+			if (next === current.text && (!inlineUi || inlineUi === current.inlineUi))
+				return state;
+			const { inlineUi: _previousOverlay, ...base } = current;
 			return upsert(state, {
-				...current,
+				...base,
 				text: next,
+				...(inlineUi ? { inlineUi } : {}),
 				// The frame that carried this text IS the row's new position: a later
 				// re-delivery of the same frame (or an interleave from the
 				// predecessor stream) is refused by the gate above rather than
@@ -6075,6 +6146,11 @@ export function applyEvent(
 			 */
 			const previous =
 				position === undefined ? undefined : state.records[position];
+			const inlineUi = readInlineUi(
+				inlineUiForRow(event.inline_ui, messageId),
+				text,
+				previous?.kind === "assistant" ? previous.inlineUi : undefined,
+			);
 			/*
 			 * THE SAME COMPLETION MARK THE DURABLE READ GIVES THE SAME FACT.
 			 *
@@ -6099,7 +6175,10 @@ export function applyEvent(
 				id: messageId,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
-				...(text || toolCalls.length === 0 ? { complete: true } : {}),
+				...(inlineUi ? { inlineUi } : {}),
+				...(text || inlineUi || toolCalls.length === 0
+					? { complete: true }
+					: {}),
 				streaming: false,
 				/**
 				 * THE FINAL-RESPONSE FACT, recorded at the one moment the frame states it
@@ -6224,6 +6303,9 @@ export function applyEvent(
 				}),
 				has_more: state.hasMore,
 				cursor_missing: false,
+				// Catch-up is another history producer; the same row validator must
+				// see its overlay on both the merge and replacement paths.
+				inline_ui: event.inline_ui,
 				...(acceptedDomain ? { journal_generation: familyGeneration } : {}),
 			};
 			// `reset` is the producer stating that this replay REPLACES the viewport
