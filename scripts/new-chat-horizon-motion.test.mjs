@@ -637,58 +637,96 @@ test("tiny bursts that settle in one step still share the paint deadline", () =>
 	h.stop();
 });
 
-test("post-arrival one-pixel wakes preserve sustained renderer pressure", (t) => {
+for (const displayHz of [60, 120]) {
+	test(`30 Hz one-pixel input stays responsive on a ${displayHz} Hz renderer`, (t) => {
+		const h = fixture();
+		h.intersect(true);
+		h.flush(4500);
+		const before = h.paints();
+		const displayPeriod = 1000 / displayHz;
+		const slotForStep = (i) => 5000 + i * (displayHz / 30) * displayPeriod;
+		for (let i = 1; i <= 18; i++) {
+			const slot = slotForStep(i);
+			h.pointer("pointermove", 650 + i, 250, "mouse", slot - 4);
+			if (h.frames.size) h.flush(slot);
+			assert.equal(h.frames.size, 0, "each small step has already settled");
+		}
+		const paints = h.paints() - before;
+		t.diagnostic(`4 ms queued per wake: ${paints}/18 one-pixel steps painted`);
+		assert.equal(paints, 18, "unrequested time is not renderer pressure");
+		const smallStepPose = h.dots();
+		const sweepSlot = slotForStep(19);
+		h.pointer("pointermove", 1290, 250, "mouse", sweepSlot - 4);
+		assert.equal(h.frames.size, 1);
+		h.flush(sweepSlot);
+		assert.equal(h.paints(), before + 19);
+		const travel = Math.abs(lowerLobe(h.dots()) - lowerLobe(smallStepPose));
+		t.diagnostic(
+			`following sweep moved ${travel.toFixed(2)} CSS px on its first frame`,
+		);
+		assert.ok(travel > 1, "a broad sweep still steers on the first frame");
+		assert.equal(h.frames.size, 1, "the broad sweep continues steering");
+		h.stop();
+	});
+}
+
+test("one-pixel wakes queued for 30 ms preserve sustained renderer pressure", (t) => {
 	const h = fixture();
 	const still = fixture({ quiet: true });
 	h.intersect(true);
 	h.flush(4500);
 	const before = h.paints();
 	for (let i = 1; i <= 18; i++) {
-		const now = 5000 + (1000 * i) / 30;
-		h.pointer("pointermove", 650 + i, 250, "mouse", now);
-		if (h.frames.size) h.flush(now);
+		const slot = 5000 + (1000 * i) / 30;
+		h.pointer("pointermove", 650 + i, 250, "mouse", slot - 30);
+		assert.equal(h.frames.size, i <= 4 ? 1 : 0, `request ${i}`);
+		if (h.frames.size) h.flush(slot);
 		assert.equal(h.frames.size, 0, "each small step has already settled");
 	}
 	const paints = h.paints() - before;
-	t.diagnostic(`30 Hz one-pixel stream: ${paints} paints over 600 ms`);
+	t.diagnostic(
+		`30 ms queued per wake: ${paints} paints, ${h.frames.size} RAFs pending`,
+	);
 	assert.equal(
 		paints,
-		5,
-		"four late callbacks trigger exact rest, then no work",
+		4,
+		"the fourth late wake paints exact rest, then no work",
 	);
 	assert.deepEqual(h.dots(), still.dots());
 	h.stop();
 	still.stop();
 });
 
-test("a lapse after a slow input stream does not count as renderer pressure", () => {
+test("an input lapse clears earlier late wakes without dropping fresh motion", (t) => {
 	const h = fixture();
 	h.intersect(true);
+	// Finish arrival on time so it cannot seed the streak under test.
+	h.flush(4485);
 	h.flush(4500);
 	const rest = h.dots();
-	// Wake on time, then end the stream one late frame short of the cutoff.
-	for (let i = 1; i <= 4; i++) {
-		const now = 4500 + 1000 / 60 + (1000 * (i - 1)) / 30;
-		h.pointer("pointermove", 650 + i, 250, "mouse", now);
-		h.flush(now);
+	// Stop one late wake short of fallback, then deliver a genuinely late
+	// wake after a lapse. A fast wake would clear the streak even without a lapse.
+	for (let i = 1; i <= 3; i++) {
+		const slot = 5000 + (1000 * i) / 30;
+		h.pointer("pointermove", 650 + i, 250, "mouse", slot - 30);
+		h.flush(slot);
 		assert.equal(h.frames.size, 0);
 	}
 	const before = h.paints();
 	const settled = h.dots();
 	assert.notDeepEqual(settled, rest);
 	const next = 6500;
-	h.pointer("pointermove", 655, 250, "mouse", next);
+	h.pointer("pointermove", 654, 250, "mouse", next - 30);
 	assert.equal(h.paints(), before, "the dormant stream did not keep drawing");
-	assert.equal(
-		h.frames.size,
-		1,
-		"fresh motion wakes immediately after a lapse",
-	);
+	assert.equal(h.frames.size, 1, "fresh motion wakes after a lapse");
 	h.flush(next);
 	assert.equal(h.paints(), before + 1);
 	assert.notDeepEqual(h.dots(), settled);
 	assert.notDeepEqual(h.dots(), rest, "the gap did not trigger the fallback");
 	assert.equal(h.frames.size, 0);
+	t.diagnostic(
+		"3 late wakes, input lapse, then 1 late wake: fresh motion painted and settled",
+	);
 	h.stop();
 });
 

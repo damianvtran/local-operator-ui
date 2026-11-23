@@ -367,21 +367,23 @@ export function trackNewChatHorizon(
 		// A dropped frame can be ordinary input or a resize; don't react to
 		// one. A sustained ~30 Hz renderer should keep its time for the
 		// composer. Settle once and don't retry until the next draft's splash.
-		const waking = wakeRequestedAt !== undefined;
-		// Small moves can settle on every paint, even on a busy renderer. Keep
-		// counting across adjacent wakes; reset only if nobody requested work
-		// for two late-frame intervals. Use the request time, not a potentially
-		// delayed callback, to distinguish that input lapse from renderer lag.
+		const requestedAt = wakeRequestedAt;
+		const waking = requestedAt !== undefined;
+		// Only queued time is evidence of renderer pressure: a continuation
+		// starts at the previous tick, a wake at its own request. Small moves
+		// can settle after each paint. Clear the old streak after an input
+		// lapse, but still count this wake if it was late.
 		if (
-			wakeRequestedAt !== undefined &&
+			waking &&
 			previousTick !== undefined &&
-			wakeRequestedAt - previousTick > 2 * LATE_FRAME_MS
+			requestedAt - previousTick > 2 * LATE_FRAME_MS
 		) {
-			previousTick = undefined;
+			lateFrames = 0;
 		}
+		const queuedAt = requestedAt ?? previousTick;
 		wakeRequestedAt = undefined;
 		lateFrames =
-			previousTick !== undefined && now - previousTick > LATE_FRAME_MS
+			queuedAt !== undefined && now - queuedAt > LATE_FRAME_MS
 				? lateFrames + 1
 				: 0;
 		previousTick = now;
