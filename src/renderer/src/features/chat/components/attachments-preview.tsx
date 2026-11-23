@@ -1,17 +1,32 @@
 import { dataUrlHeader, mimeTypeForPath } from "@features/chat/utils/file-kind";
 import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
-import { Button, Tooltip } from "@shared/components/ui";
+import {
+	Button,
+	Dialog,
+	DialogContent,
+	DialogTitle,
+	DialogTrigger,
+	Tooltip,
+} from "@shared/components/ui";
 import {
 	previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
-import { t } from "@shared/i18n";
+import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Attachment } from "@shared/store/conversation-input-store";
-import { X } from "lucide-react";
+import { LoaderCircle, Maximize2, X } from "lucide-react";
 import type { FC } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { AttachmentKindIcon, attachmentMetaLine } from "./attachment-file-card";
 
 /**
@@ -44,40 +59,10 @@ const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
 // Regex for extracting the MIME type from a data URI
 const MIME_TYPE_REGEX = /^data:([^;,]+)/;
 
-/**
- * The 100px media tile. One sunken ground and a radius, no border: the ground
- * step already separates it from the composer, so a hairline would only add a
- * line that carries nothing.
- */
-const TILE = cn(
-	"relative flex size-25 flex-col items-center justify-center",
-	"overflow-hidden rounded-md bg-sunken",
-);
-
-/**
- * A non-image file's card (contract §6): wider than the tile because a filename
- * is the content, and a 100px square truncates the one fact a person reads.
- *
- * The remove control sits in the same reserved top-right corner as the tile's,
- * always rendered, so neither hover nor focus moves the name or the meta line.
- */
-const FILE_CARD = cn(
-	"relative flex h-25 w-60 flex-col justify-between",
-	"overflow-hidden rounded-md bg-sunken p-3 pr-9",
-);
-
-/**
- * The dwell preview that appears above the tile after a deliberate hover. A
- * true floating overlay, so this is one of the few places `shadow-overlay`
- * belongs. It fades in place — no translate, because hover never moves
- * anything.
- */
-const LARGE_PREVIEW = cn(
-	"invisible absolute -top-80 left-0 z-50 size-75 p-2",
-	"rounded-lg bg-elevated shadow-overlay",
-	"opacity-0 transition-[opacity,visibility] duration-base ease-out-quart",
-	"group-hover:visible group-hover:opacity-100 group-hover:delay-[1500ms]",
-);
+// Same height for both kinds; the document still needs more inline room than a thumbnail.
+const CHIP = "relative h-20 max-w-full shrink-0 rounded-md bg-sunken";
+const TILE = cn(CHIP, "w-20");
+const FILE_CARD = cn(CHIP, "flex w-62 items-center gap-2 py-2 ps-2 pe-8");
 
 /**
  * The overlay corner the remove control reserves on every chip.
@@ -86,10 +71,43 @@ const LARGE_PREVIEW = cn(
  * moved between them would read as two different affordances.
  */
 const REMOVE_CORNER = cn(
-	"absolute top-1 right-1 z-10",
-	"bg-surface/85 text-danger hover:bg-danger-wash hover:text-danger",
+	"absolute end-1 top-1 z-10",
+	"bg-surface text-ink-muted hover:bg-danger-wash hover:text-danger",
+	// Hide only on mouse-only systems; hybrid touch devices also need a visible target.
+	"[@media(hover:hover)_and_(pointer:fine)_and_(not_(any-pointer:coarse))]:opacity-0",
+	"group-hover/chip:opacity-100! group-focus-within/chip:opacity-100!",
 	"disabled:bg-sunken disabled:text-ink-disabled",
 );
+
+function RemoveAttachmentButton({
+	id,
+	disabled,
+	onRemove,
+}: {
+	id: string;
+	disabled: boolean;
+	onRemove: (id: string) => void;
+}) {
+	const label = t("ui.chat.composer_media.remove_attachment");
+	return (
+		<Tooltip content={label} disabled={disabled}>
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon-sm"
+				className={REMOVE_CORNER}
+				onClick={(event) => {
+					event.stopPropagation();
+					onRemove(id);
+				}}
+				disabled={disabled}
+				aria-label={label}
+			>
+				<X aria-hidden="true" />
+			</Button>
+		</Tooltip>
+	);
+}
 
 /**
  * Check if a file is an image based on its path/URL
@@ -251,8 +269,8 @@ function useAttachmentSize(attachment: string): number | null {
  * A read that cannot land — over the 64 MiB preview cap, a file that moved —
  * or lands and cannot be DECODED (a truncated image, a codec Chromium lacks)
  * falls back to the same name-and-icon body a non-media file gets, and the
- * hover preview is not rendered at all. The tile says WHY in its `title`
- * rather than looking the same for every cause. Both degrades are stated
+ * expanded preview is not rendered at all. If available, the failure reason
+ * is exposed separately from the filename. Both degrades are stated
  * rather than dressed as a picture that is still coming.
  *
  * MEMOISED, AND IT TAKES ITS ID RATHER THAN A CLOSURE (perf, QA round 1 on PR
@@ -300,114 +318,123 @@ const AttachmentTile = memo(function AttachmentTile({
 				? t("ui.chat.composer_media.preview_failed")
 				: null;
 
-	/*
-	 * A non-media file has nothing to show but its name, so the name is the tile
-	 * body and the caption strip is skipped rather than printing it twice. A
-	 * media file whose bytes did not arrive wears that same body: "which file is
-	 * this" is the fact that survives the missing preview.
-	 */
-	const fileBody = (
-		<div
-			className={cn(
-				"flex size-full flex-col items-center justify-center gap-1.5",
-				"bg-accent-wash p-2 text-center text-accent",
-			)}
-		>
-			<AttachmentKindIcon
-				name={fileName}
-				mimeType={mimeType}
-				className="size-4.5"
-			/>
-			<span className={cn("line-clamp-2 break-all font-medium text-meta")}>
-				{fileName}
-			</span>
-		</div>
-	);
+	const name = fileName || t("ui.chat.composer_media.pasted_image");
+	const triggerLabelId = useId();
+	const mediaError = () => setUndecodableUrl(readyUrl);
 
 	return (
-		<div className={cn("group relative")} data-attachment-id={id}>
-			<div className={TILE} title={reason ?? undefined}>
-				{url && image ? (
-					<img
-						src={url}
-						alt={fileName}
-						onError={() => setUndecodableUrl(url)}
-						className={cn("size-full object-cover")}
-					/>
-				) : url && video ? (
-					<video
-						src={url}
-						preload="metadata"
-						muted
-						onError={() => setUndecodableUrl(url)}
-						className={cn("size-full object-cover")}
-					/>
-				) : !image && !video ? (
-					fileBody
-				) : degraded ? (
-					fileBody
-				) : null}
-				{/* Pasted images have no name, so the strip would be an empty bar. */}
-				{(image || video) && fileName && !degraded && (
-					<span
+		<div className={cn(TILE, "group/chip")} data-attachment-id={id}>
+			{url ? (
+				// The staging row has its own scroller. A portaled preview can leave
+				// that scroller, and a real trigger gives touch and keyboard the same view.
+				<Dialog>
+					<DialogTrigger asChild>
+						<Button
+							type="button"
+							variant="ghost"
+							className="relative size-full overflow-hidden rounded-md p-0 focus-visible:-outline-offset-2"
+							aria-labelledby={triggerLabelId}
+						>
+							{/* Replay masks text, not attributes (including names and tooltips). */}
+							<span
+								id={triggerLabelId}
+								className={cn("sr-only", USER_CONTENT_CLASS)}
+							>
+								{t("ui.chat.attachments.expand_aria", { name })}
+							</span>
+							{image ? (
+								<img
+									src={url}
+									alt=""
+									onError={mediaError}
+									className="size-full object-cover"
+								/>
+							) : (
+								<video
+									src={url}
+									preload="metadata"
+									muted
+									onError={mediaError}
+									className="size-full object-cover"
+								/>
+							)}
+							<span className="absolute start-1 top-1 grid size-5 place-items-center rounded-sm bg-surface text-ink-muted">
+								<Maximize2 aria-hidden="true" />
+							</span>
+							{fileName && (
+								<span className="absolute inset-x-0 bottom-0 truncate bg-surface px-1.5 py-0.5 text-center text-ink text-meta">
+									{fileName}
+								</span>
+							)}
+						</Button>
+					</DialogTrigger>
+					<DialogContent
+						aria-describedby={undefined}
 						className={cn(
-							"absolute inset-x-0 bottom-0 truncate",
-							"bg-surface/85 px-1.5 py-0.5",
-							"text-center text-ink text-meta",
+							"max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] gap-3 overflow-y-auto p-4",
+							image ? "max-w-2xl" : "max-w-3xl",
+							USER_CONTENT_CLASS,
 						)}
 					>
-						{fileName}
-					</span>
-				)}
-				<Tooltip
-					content={t("ui.chat.composer_media.remove_attachment")}
-					disabled={disabled}
+						<DialogTitle className="truncate pe-10">{name}</DialogTitle>
+						<div className="grid min-h-0 place-items-center overflow-hidden rounded-md bg-media-surface">
+							{image ? (
+								<img
+									src={url}
+									alt=""
+									className="max-h-[min(70dvh,36rem)] w-full object-contain"
+								/>
+							) : video ? (
+								<video
+									src={url}
+									controls
+									preload="metadata"
+									muted
+									className="max-h-[min(70dvh,36rem)] w-full object-contain"
+								/>
+							) : null}
+						</div>
+					</DialogContent>
+				</Dialog>
+			) : (
+				<div
+					className="flex size-full flex-col items-center justify-center gap-1 px-1 text-center text-ink-muted"
+					title={reason ?? undefined}
 				>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className={REMOVE_CORNER}
-						onClick={(event) => {
-							event.stopPropagation();
-							onRemove(id);
-						}}
-						disabled={disabled}
-						aria-label={t("ui.chat.composer_media.remove_attachment")}
-					>
-						<X aria-hidden="true" />
-					</Button>
-				</Tooltip>
-			</div>
-			{(image || video) && url && (
-				<div data-lo-floating="" className={LARGE_PREVIEW}>
-					{url && image ? (
-						<img
-							src={url}
-							alt={fileName}
-							className={cn("size-full object-contain")}
-						/>
-					) : url && video ? (
-						<video
-							src={url}
-							controls
-							preload="metadata"
-							muted
-							className={cn("size-full object-contain")}
-						/>
-					) : null}
+					{degraded ? (
+						<>
+							<span className="max-w-full truncate font-medium text-meta">
+								{name}
+							</span>
+							<span className="line-clamp-3 text-meta leading-tight">
+								{t("ui.chat.composer_media.preview_failed")}
+							</span>
+							{reason &&
+								reason !== t("ui.chat.composer_media.preview_failed") && (
+									<span className="sr-only">{reason}</span>
+								)}
+						</>
+					) : (
+						<output className="flex flex-col items-center gap-1">
+							<LoaderCircle
+								className="size-4 motion-safe:animate-spin"
+								aria-hidden="true"
+							/>
+							<span className="line-clamp-2 text-meta leading-tight">
+								{t("ui.projects.project_updates.preview_loading")}
+							</span>
+						</output>
+					)}
 				</div>
 			)}
+			<RemoveAttachmentButton id={id} disabled={disabled} onRemove={onRemove} />
 		</div>
 	);
 });
 
 /**
- * A non-image file's card: the type glyph, the name, and `TYPE · size`.
- *
- * WHY A CARD AND NOT THE 100px TILE (contract §6). A PDF has no thumbnail, and a
- * square tile left a clamped two-line name as the only thing a person could
- * recognise. The wider row keeps the whole filename readable and states what the
- * tile could not: what kind of file it is and how big.
+ * A non-media file's name is the preview. Keep it alongside its kind and size
+ * rather than making it fit the width of a thumbnail.
  */
 const AttachmentFileCard = memo(function AttachmentFileCard({
 	attachment,
@@ -432,41 +459,26 @@ const AttachmentFileCard = memo(function AttachmentFileCard({
 	const probedSize = useAttachmentSize(attachment);
 	const size = byteSize ?? probedSize;
 	return (
-		<div className={FILE_CARD} data-attachment-id={id}>
-			<AttachmentKindIcon
-				name={fileName}
-				mimeType={mimeType}
-				className="size-5 shrink-0 text-ink-muted"
-			/>
-			<div className={cn("flex min-w-0 flex-col gap-0.5")}>
+		<div className={cn(FILE_CARD, "group/chip")} data-attachment-id={id}>
+			<span className="grid size-7 shrink-0 place-items-center rounded-sm bg-surface text-ink-muted">
+				<AttachmentKindIcon
+					name={fileName}
+					mimeType={mimeType}
+					className="size-4.5"
+				/>
+			</span>
+			<div className="flex min-w-0 flex-col gap-0.5">
 				<span
-					className={cn("line-clamp-2 break-all text-body-sm text-ink")}
+					className="line-clamp-2 wrap-anywhere font-medium text-body-sm text-ink"
 					title={fileName}
 				>
 					{fileName}
 				</span>
-				<span className={cn("truncate text-ink-muted text-meta")}>
+				<span className="truncate text-ink-muted text-meta">
 					{attachmentMetaLine(fileName, mimeType, size)}
 				</span>
 			</div>
-			<Tooltip
-				content={t("ui.chat.composer_media.remove_attachment")}
-				disabled={disabled}
-			>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					className={REMOVE_CORNER}
-					onClick={(event) => {
-						event.stopPropagation();
-						onRemove(id);
-					}}
-					disabled={disabled}
-					aria-label={t("ui.chat.composer_media.remove_attachment")}
-				>
-					<X aria-hidden="true" />
-				</Button>
-			</Tooltip>
+			<RemoveAttachmentButton id={id} disabled={disabled} onRemove={onRemove} />
 		</div>
 	);
 });
@@ -515,11 +527,22 @@ const AttachmentRow: FC<{
 	);
 
 	return (
-		<div className={cn("flex flex-col gap-1 py-2")}>
+		<div className="flex min-w-0 flex-col gap-2 py-2">
+			<div className="flex flex-wrap items-baseline justify-between gap-x-2 text-meta">
+				<span className="flex items-baseline gap-1.5 font-medium text-ink">
+					{t("ui.canvas.files.attachments")}
+					<span className="font-normal text-ink-muted tabular-nums">
+						{formatNumber(chips.length)}
+					</span>
+				</span>
+				<span className="text-ink-muted" data-attachment-pending="true">
+					{t("ui.chat.attachments.pending_caption")}
+				</span>
+			</div>
 			{/* The chips name the user's files, in text and in `title` (review
 			    round 1, Q3): text and attributes stay out of autocapture, text out
 			    of replay. */}
-			<div className={cn("flex flex-wrap gap-3", USER_CONTENT_CLASS)}>
+			<div className={cn("flex flex-wrap gap-2", USER_CONTENT_CLASS)}>
 				{chips.map((chip) =>
 					chip.image || chip.video ? (
 						<AttachmentTile
@@ -549,12 +572,6 @@ const AttachmentRow: FC<{
 					),
 				)}
 			</div>
-			<span
-				className={cn("text-ink-muted text-meta")}
-				data-attachment-pending="true"
-			>
-				{t("ui.chat.attachments.pending_caption")}
-			</span>
 		</div>
 	);
 });

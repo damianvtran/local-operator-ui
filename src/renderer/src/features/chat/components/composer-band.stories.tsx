@@ -2,7 +2,7 @@ import { MessageInput } from "@shared/components/composer/message-input";
 import { type WithoutParams, t } from "@shared/i18n";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { userEvent } from "@storybook/test";
+import { expect, userEvent, waitFor } from "@storybook/test";
 import { type ReactNode, useEffect } from "react";
 import type { Message } from "../types/message";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
@@ -221,18 +221,24 @@ const Column = ({
 	width?: number;
 	children: ReactNode;
 }) => (
-	<div className="flex h-screen w-screen justify-center bg-canvas">
+	// Mirror the app's single canvas alpha owner; the preview's outer canvas
+	// clears itself on full glass and cannot stand in for this backing.
+	<main
+		className="flex h-screen w-screen justify-center bg-canvas"
+		data-glass-region="canvas-backing"
+	>
 		<div
 			className="flex h-full w-full flex-col"
 			style={width ? { width } : undefined}
 			data-story-column={width ?? "viewport"}
+			data-glass-region="canvas"
 		>
 			<span className="border-hairline border-b bg-canvas px-6 py-2 font-mono text-ink-dim text-mono-sm">
 				{label}
 			</span>
 			{children}
 		</div>
-	</div>
+	</main>
 );
 
 const meta: Meta = {
@@ -475,6 +481,47 @@ export const SmallView: Story = {
 			{composerBand({ story: "small-view", isSmallView: true })}
 		</Column>
 	),
+};
+
+// Keep the real compact composer on a drafted first turn with attach, mic and
+// Send present. The locale arg uses the app's own direction switch (e.g. `ur`).
+export const CompactRailDraft: Story = {
+	render: () => (
+		<Column label="Compact composer with draft" width={240}>
+			{composerBand({
+				story: "compact-rail-draft",
+				isSmallView: true,
+				draft: "Check the parser test",
+				recording: true,
+			})}
+		</Column>
+	),
+	play: async ({ canvasElement }) => {
+		await waitFor(async () => {
+			const rail = canvasElement.querySelector<HTMLElement>(
+				"[data-lo-composer-rail]",
+			);
+			if (!rail) throw new Error("The compact composer has no control rail");
+			const attach = rail.querySelector(
+				'[data-tour-tag="chat-input-attach-file-button"]',
+			);
+			const mic = rail.querySelector('[data-composer-slot="a"]');
+			const send = rail.querySelector('[data-composer-slot="b"]');
+			if (!attach || !mic || !send)
+				throw new Error("A rail control is missing");
+			await expect(send).toBeEnabled();
+			const bounds = rail.getBoundingClientRect();
+			const center = (bounds.top + bounds.bottom) / 2;
+			for (const button of [attach, mic, send]) {
+				const rect = button.getBoundingClientRect();
+				// Reserve ink overflow for the local focus ring without growing a row.
+				await expect(rect.left - bounds.left).toBeGreaterThanOrEqual(0);
+				await expect(bounds.right - rect.right).toBeGreaterThanOrEqual(0);
+				await expect((rect.top + rect.bottom) / 2).toBeCloseTo(center, 0);
+				await expect(rect.height).toBe(28);
+			}
+		});
+	},
 };
 
 /** A later sample's worst wrap: the pool's longest four at a 620px column. */

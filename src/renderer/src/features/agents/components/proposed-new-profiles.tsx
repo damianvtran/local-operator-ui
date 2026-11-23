@@ -24,11 +24,20 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
  * - Capability-gated by the caller: without `profile_proposals` nothing renders
  *   and no proposal request is sent.
  */
-import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
-import { proposedNewProfiles } from "@shared/api/local-operator/profile-proposals";
+import {
+	useProfileProposal,
+	useProfileProposals,
+} from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	type ProfileProposalKind,
+	proposedNewProfiles,
+} from "@shared/api/local-operator/profile-proposals";
 import { cn } from "@shared/lib/utils";
 import { t } from "../../../../../i18n/messages";
-import { ProfileProposalPanel } from "./profile-proposal-panel";
+import {
+	ProfileProposalPanel,
+	type ProposalReveal,
+} from "./profile-proposal-panel";
 
 export function ProposedNewGroup({
 	kind,
@@ -93,15 +102,35 @@ export function ProposedNewGroup({
 	);
 }
 
-/** True when `name` is a pending create proposal the roster does not list. */
+/**
+ * Pending creates absent from the roster, plus a routed skill-create decision
+ * until its real detail is ready. Other callers keep their existing predicate.
+ */
 export function useIsProposedNew(
-	kind: "agent" | "team",
+	kind: ProfileProposalKind,
 	name: string | null,
 	existing: readonly string[] | undefined,
 	enabled: boolean,
+	proposalId: string | null = null,
+	detailReady = true,
 ): boolean {
 	const list = useProfileProposals(enabled);
+	const detail = useProfileProposal(
+		proposalId ?? "",
+		enabled && Boolean(proposalId),
+	);
 	if (!enabled || !name || !existing) return false;
+	// A decision removes a create from the pending list before the library can
+	// refetch. Keep its routed acknowledgement until both roster and detail exist;
+	// rejection has no row to replace it and must not land on a missing error.
+	const routed = detail.data;
+	if (
+		(!existing.includes(name) || !detailReady) &&
+		routed?.kind === kind &&
+		routed.name === name &&
+		routed.operation === "create"
+	)
+		return true;
 	return proposedNewProfiles(list.data, kind, existing).some(
 		(proposal) => proposal.name === name,
 	);
@@ -111,10 +140,17 @@ export function ProposedNewPane({
 	kind,
 	name,
 	proposalId,
+	reveal,
 }: {
-	kind: "agent" | "team";
+	/*
+	 * `skill` as well (PR #2026 round 1, R2/U1): a skill create proposal has no
+	 * library card to open, and SkillDetail on the missing name returned its
+	 * load error before the panel slot, so Review led to "couldn't load skill".
+	 */
+	kind: ProfileProposalKind;
 	name: string;
 	proposalId: string | null;
+	reveal?: ProposalReveal | null;
 }) {
 	return (
 		<div data-testid="proposed-new-pane" className="space-y-4">
@@ -125,6 +161,7 @@ export function ProposedNewPane({
 				name={name}
 				enabled
 				proposalId={proposalId}
+				reveal={reveal}
 			/>
 		</div>
 	);

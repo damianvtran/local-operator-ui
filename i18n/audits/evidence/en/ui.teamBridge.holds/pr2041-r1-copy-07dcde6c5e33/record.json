@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "kind": "copy-audit-receipt-manifest",
+  "pr": 2041,
+  "head": "a5234b713481c79dbdf0e14ef7e4cd021e1733ea",
+  "base": "1e9110a276ebb911d31bfb605bba989b8e3e597e",
+  "date": "2026-11-22",
+  "locale": "en",
+  "namespace": "ui.teamBridge.holds",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "model": "openai/gpt-6.2-sol",
+    "session": "07dcde6c5e33",
+    "independent_of_translator": true
+  },
+  "source": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.holds.json",
+    "sha256": "dd28e16a89b33e324d3a35de77ba97409539c815fd957ddfe92194ec052576e7"
+  },
+  "context": {
+    "path": "src/i18n/catalogues/en/ui.teamBridge.holds.context.json",
+    "sha256": "8688a6747254647cad5a9799b040bfae68a711e1df5d4c351114b5fcd7160dae"
+  },
+  "keys_audited": [
+    "ui.teamBridge.holds.hide_local",
+    "ui.teamBridge.holds.hide_local_label",
+    "ui.teamBridge.holds.hidden_local",
+    "ui.teamBridge.holds.restore_local",
+    "ui.teamBridge.holds.restore_local_label",
+    "ui.teamBridge.holds.hide_failed"
+  ],
+  "verdict": "TERMINAL — no blocker or major",
+  "source_findings": [
+    {
+      "id": "C1",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.holds.hide_failed",
+      "current": "Could not update hidden messages on this device.",
+      "replacement": "Could not save the change on this device. If the message is still listed, try again.",
+      "why": "Names the local preference change, not an update to the messages themselves, and gives a conditional retry after stale-state or preference-write failure.",
+      "disposition": "follow-up; no blocker or major"
+    }
+  ],
+  "independent_locale_receipts": {
+    "es": {
+      "path": "i18n/receipts/pr2041-r1-es-copy-07dcde6c5e33.json",
+      "sha256": "f3708a5003ca0c88559e4141f1e855c6fdf42189a42a86f1b42125ae04fa7e8c",
+      "target_sha256": "9efdb5bf68e8ec1fac98be06409e56f177f8d4f8456743067151e3690f68ea12",
+      "status": "clean-with-findings"
+    },
+    "fr": {
+      "path": "i18n/receipts/pr2041-r1-fr-copy-07dcde6c5e33.json",
+      "sha256": "886ff6476d413e8285550352bbf2127e42826cfa67b1721dcf6b028d367f5b7f",
+      "target_sha256": "89156255a4bd3bc2e5e7f1dd35762e991731fbbe863b9b747ee2305a7e93da91",
+      "status": "clean-with-findings"
+    },
+    "hi": {
+      "path": "i18n/receipts/pr2041-r1-hi-copy-07dcde6c5e33.json",
+      "sha256": "5c8bb787801777c73e480d22f409ab15f0f5c3e240ac2b07c9fee453afdd7118",
+      "target_sha256": "6655af66852ff82e65323a03ded279f4dd5fe4c6eda75d463509ad4e92ca8f3a",
+      "status": "clean"
+    },
+    "ru": {
+      "path": "i18n/receipts/pr2041-r1-ru-copy-07dcde6c5e33.json",
+      "sha256": "485293a6ea1c824d214a671b1150236650622e1898d5e6e025be990a88a2f18d",
+      "target_sha256": "83bf425b0d6591fa78122bbcde272eed589e542dd87b27d3a01bda1ee6c1d9ff",
+      "status": "clean"
+    },
+    "ur": {
+      "path": "i18n/receipts/pr2041-r1-ur-copy-07dcde6c5e33.json",
+      "sha256": "177ada372bf5978685f5e28c79a6dfc6541f29ae47daf0172b4cd52251646753",
+      "target_sha256": "a3488db64dc257bf842d0fd843f554d77f5f21d51f8a3d16e540be90271a4cfb",
+      "status": "clean"
+    },
+    "vi": {
+      "path": "i18n/receipts/pr2041-r1-vi-copy-07dcde6c5e33.json",
+      "sha256": "cc0f69686ad25f66405850492651d11fe2f96fd9e39dad87e668072d7e060538",
+      "target_sha256": "130541fbd822939808f7cfaa6da31a7228ea9c178bf20afd56b76bca6ee3f4a6",
+      "status": "clean"
+    },
+    "zh-CN": {
+      "path": "i18n/receipts/pr2041-r1-zh-CN-copy-07dcde6c5e33.json",
+      "sha256": "9962dddcd14d53eeb66f7dde001c4dd461b17d1bbfa7e99e2c77186f89694d73",
+      "target_sha256": "80f621e6f1c740aa59a9e09a9e73acfba53023880a79c454af413a97d2ed657a",
+      "status": "clean-with-findings"
+    }
+  },
+  "rendered_evidence": {
+    "method": "Local Operator desktop harness browser against manager-owned frozen-head Storybook, synthetic; one owned tab reused and closed",
+    "story": "team-bridge-held-messages--hide-and-restore-locally",
+    "observations": {
+      "en": {
+        "before_accessible_button": "Hide on this device: message 5ac4b3e8",
+        "after_heading": "Hidden on this device: 1",
+        "after_accessible_button": "Restore message 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "Could not update hidden messages on this device."
+      },
+      "es": {
+        "before_accessible_button": "Ocultar en este dispositivo: mensaje 5ac4b3e8",
+        "after_heading": "Ocultos en este dispositivo: 1",
+        "after_accessible_button": "Restaurar el mensaje 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "No se pudieron actualizar los mensajes ocultos en este dispositivo."
+      },
+      "fr": {
+        "before_accessible_button": "Masquer sur cet appareil : message 5ac4b3e8",
+        "after_heading": "Masqués sur cet appareil : 1",
+        "after_accessible_button": "Rétablir le message 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "Impossible de mettre à jour les messages masqués sur cet appareil."
+      },
+      "hi": {
+        "before_accessible_button": "इस डिवाइस पर छिपाएँ: संदेश 5ac4b3e8",
+        "after_heading": "इस डिवाइस पर छिपाए गए संदेश: 1",
+        "after_accessible_button": "फिर दिखाएँ: संदेश 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "इस डिवाइस पर छिपाए गए संदेशों की सूची अपडेट नहीं हो सकी।"
+      },
+      "ru": {
+        "before_accessible_button": "Скрыть на этом устройстве: сообщение 5ac4b3e8",
+        "after_heading": "Скрыто на этом устройстве: 1",
+        "after_accessible_button": "Показать снова: сообщение 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "Не удалось обновить список скрытых сообщений на этом устройстве."
+      },
+      "ur": {
+        "before_accessible_button": "اس ڈیوائس پر چھپائیں: پیغام ⁨5ac4b3e8⁩",
+        "after_heading": "اس ڈیوائس پر چھپائے گئے پیغامات: 1",
+        "after_accessible_button": "دوبارہ دکھائیں: پیغام ⁨5ac4b3e8⁩",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "اس ڈیوائس پر چھپائے گئے پیغامات کی فہرست اپ ڈیٹ نہیں ہو سکی۔"
+      },
+      "vi": {
+        "before_accessible_button": "Ẩn trên thiết bị này: tin nhắn 5ac4b3e8",
+        "after_heading": "Đã ẩn trên thiết bị này: 1",
+        "after_accessible_button": "Hiện lại tin nhắn 5ac4b3e8",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "Không thể cập nhật danh sách tin nhắn đã ẩn trên thiết bị này."
+      },
+      "zh-CN": {
+        "before_accessible_button": "在此设备上隐藏：编号为 5ac4b3e8 的消息",
+        "after_heading": "在此设备上隐藏：1 条",
+        "after_accessible_button": "恢复显示编号为 5ac4b3e8 的消息",
+        "restore_revealed_same_reference": true,
+        "failure_catalogue_format_only": "无法更新此设备上隐藏的消息。"
+      }
+    },
+    "screenshot_sha256": {
+      "en": {
+        "visible.png": "f21a5b5d1b738a909508af89a53699399d3d17d2c22e95e04f5f7f6154d656d8",
+        "hidden.png": "3c24aa3e2a2b9b283d3e34d188616a57cabfef83140e5961b0f31ea0854ceba2"
+      },
+      "es": {
+        "visible.png": "b52773bebffe854d3297f18c5b52b15a38c316da74cc6258e2730b08bc91c250",
+        "hidden.png": "1a56ad9691abc4f2a85b5ffd9f81bb30c2e80d95c49ac9f064773e7ac0a04c8a"
+      },
+      "fr": {
+        "visible.png": "5c933fefe136bf6b2870cad590c2fa5d5dacbc439330bcad9fba6fabd02d51bf",
+        "hidden.png": "2306ec4966fccd7b5a407a90b553f7f715928dca3b4095c358da4f27a3c73014"
+      },
+      "hi": {
+        "visible.png": "18f36a9cc55774be23142498a6ebe27e58c90a5222116f25f832d042241e4f31",
+        "hidden.png": "70042326a96d9b8aa1ec0bf56bc976f65aa42b00e3150696dcc21a8a0e2100c8"
+      },
+      "ru": {
+        "visible.png": "467470d860e4d527a488f1663abf49175862baa28571d5fe24fb1e72ece8b8ca",
+        "hidden.png": "254df2390a85d805162f666a1d3b7ec70321076c737efc8f840c03b2c76e73bb"
+      },
+      "ur": {
+        "visible.png": "9e835da9c5a75d8c5c873df49704011e49868bdc86abacd1e3a1ae448d9760db",
+        "hidden.png": "2521ffa761c14af58be0b52daca8c7a68987cf097868d515e2fe31aacca8f613"
+      },
+      "vi": {
+        "visible.png": "bcf7785813b42fda003b3745b4600eb4c913a991a53eb2a67458597468bf8d2d",
+        "hidden.png": "9a8610a5caaa3f937ad49324e9c08d1f18214dcdff516eca33fc6fd29f7d182e"
+      },
+      "zh-CN": {
+        "visible.png": "ddd79e5bbd9c1659c43cba61e40b32cb9a67ff4d23e9d8db3791b532bcf1fff5",
+        "hidden.png": "c1fd2bc90c3cdcf3766c9126e42fba6628f769a3142daf67f551c9ceefaaa334"
+      }
+    },
+    "contact_sheet_sha256": "afc9ceba27d50ab9d802175503c3f2dccb78be9b6b7ccee4bf511f31bcd60807",
+    "limits": "Screenshots are in reviewer-session scratch; the observations above are the retained text evidence. Error copy formatted with intl-messageformat only; story has neither failure path, shell badge nor persistent storage. This is not native layout or live evidence."
+  },
+  "mechanical": "copy_scan.py: scanned 11 files, 1328 candidate strings; 0 findings. 62 unchanged message lines per catalogue and 62 context blocks byte-identical to base, 7 prior receipts verified; 48 new values matched ICU structure, NFC and bidi checks."
+}

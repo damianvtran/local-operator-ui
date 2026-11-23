@@ -67,11 +67,17 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { useServerOffline } from "@shared/hooks/use-connectivity-status";
-import { formatDateTime, formatList, t } from "@shared/i18n";
+import {
+	type WithoutParams,
+	formatDateTime,
+	formatList,
+	t,
+} from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import {
+	busySendModes,
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -109,8 +115,10 @@ import {
 	type PointerEvent,
 	type ReactNode,
 	type RefObject,
+	createContext,
 	memo,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -209,7 +217,8 @@ import {
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
-import { parseReplies } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
+import { type BusyWaitState, busyWaitLabels } from "./busy-wait";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
@@ -231,6 +240,7 @@ import {
 	isImageGenTool,
 	isSoundGenTool,
 } from "./image-gen-card-model";
+import { InlineUiHost } from "./inline-ui-host";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
@@ -1232,6 +1242,38 @@ const toolAudioLabel = (
 	count: number,
 ): string => audio.name ?? soundLabel(index + 1, count);
 
+/**
+ * THE BUSY-SEND WAITING LABELS, provided by the pane and read by a row.
+ *
+ * WHY A CONTEXT RATHER THAN PROPS. `UserRow` is memoised on its record and the
+ * pane is what holds the `frontend` frame, so threading the queue into every
+ * row's props would hand every row a new prop on every token and re-render the
+ * whole window; a context value that only changes when the queue or the
+ * streaming flag changes keeps the rows' own memo intact. `busy-wait.ts` owns
+ * the rule - which ids get a label and which sentence each state earns - and
+ * this is only the seam between the frame and the rows.
+ *
+ * `null` outside the pane (a row rendered on its own, a story that mounts only
+ * the row): a row with no provider draws nothing, which is the same answer as
+ * "not queued".
+ */
+const BusyWaitLabels = createContext<ReadonlyMap<string, BusyWaitState> | null>(
+	null,
+);
+
+/**
+ * The one sentence each waiting state says, as explicit ids rather than a
+ * composed string: `t` is typed against `keys.gen.ts`, and a template literal
+ * would widen the key to `string` and lose that contract.
+ */
+const BUSY_WAIT_KEYS: Record<BusyWaitState, WithoutParams> = {
+	steer: "ui.chat.canonical.transcript.busy_wait.steer",
+	queue: "ui.chat.canonical.transcript.busy_wait.queue",
+	both: "ui.chat.canonical.transcript.busy_wait.both",
+	joined: "ui.chat.canonical.transcript.busy_wait.joined",
+	deferred: "ui.chat.canonical.transcript.busy_wait.deferred",
+};
+
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
@@ -1270,6 +1312,13 @@ const UserRow = memo(function UserRow({
 	 * per-surface one the mesh components carry for the same reason.
 	 */
 	useI18nLocale();
+	/*
+	 * The waiting label, when the backend holds this exact message in the running
+	 * turn's queue (`busy-wait.ts` owns the rule). Read off the pane's context
+	 * rather than passed down, and `null` when this row is not queued - which is
+	 * the ordinary case: nothing is drawn.
+	 */
+	const busyWait = useContext(BusyWaitLabels)?.get(record.id) ?? null;
 	/*
 	 * Which link on this turn the toolbar is about, if any. ONE subject per row,
 	 * decided by one hook (`use-link-subject.ts`), because the alternative is one
@@ -1936,6 +1985,43 @@ const UserRow = memo(function UserRow({
 					<TurnTimestamp timestamp={record.ts} scope="turn" />
 				</span>
 				{/*
+				 * THE WAITING LINE, ONE ROW BELOW THE MESSAGE IT IS ABOUT (spec §C).
+				 *
+				 * It says what Enter did while the turn runs - steers, queues, queues then
+				 * steers - and it is drawn ONLY while the backend holds this id in
+				 * `frontend.queued_steering` (`busy-wait.ts`), so it cannot claim a wait that
+				 * is not happening. The mode itself is the client's own record of the press;
+				 * the queue is the owner's fact (`backend session/frontend_state.py`).
+				 *
+				 * NO ICON AND NO LIVE REGION: the connection strip owns the one live region
+				 * (the undelivered line below records the same rule), and the row is a status
+				 * line the reader reaches by reading, not an interruption. It is NOT shown
+				 * beside the undelivered line: a message that failed to be delivered is not
+				 * waiting - the failure sentence is the truth about it and this would
+				 * contradict it.
+				 *
+				 * `data-busy-wait` is the rig's address for the line, the same structural-
+				 * marker rule the undelivered row follows.
+				 *
+				 * `justify-end` PLACES THE BOX; `text-end` ALIGNS WHAT WRAPS INSIDE IT
+				 * (agent review round 1, D1). A sentence long enough to take a second line
+				 * starts that line at the box's start edge - the left in LTR, under the
+				 * bubble rather than under the stamp - because the default `text-align`
+				 * never follows the flex axis. `text-end` is the writing-direction end
+				 * (right in LTR, left in RTL), which is the edge the stamp above it sits
+				 * on, so a wrapped line stays flush with the message it belongs to.
+				 */}
+				{busyWait !== null && undelivered === null && (
+					<div
+						data-busy-wait
+						className={cn(
+							"flex w-full justify-end text-end text-meta text-ink-muted",
+						)}
+					>
+						{t(BUSY_WAIT_KEYS[busyWait])}
+					</div>
+				)}
+				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
 				 * The sentence is fixed rather than backend-authored: what the app KNOWS
@@ -1963,6 +2049,8 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
+	revealOnMount,
+	animateStream,
 	closesTurn,
 	answerRail,
 	foot = null,
@@ -1971,6 +2059,8 @@ const AssistantRow = memo(function AssistantRow({
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
+	revealOnMount: boolean;
+	animateStream: boolean;
 	closesTurn: boolean;
 	/**
 	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
@@ -2021,6 +2111,17 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	const inserts = useMemo(() => {
+		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
+		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
+		// do not paint in this Markdown container; neither changes the stored text.
+		const { prefix, rest } = splitReplyPrefix(record.text);
+		const start = prefix.length + rest.length - rest.trimStart().length;
+		return record.inlineUi.widgets.map(({ offset, value }) => ({
+			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			node: <InlineUiHost value={value} />,
+		}));
+	}, [record.inlineUi, record.text, remainingContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2152,9 +2253,13 @@ const AssistantRow = memo(function AssistantRow({
 				 * the same component at the same key - so the settle moves no node;
 				 * what settles is exactly what the full parse makes of the same string.
 				 */}
-				{record.streaming ? (
+				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
 						content={remainingContent}
+						// A joined stream or a receipt gap cannot certify that its text
+						// is a new suffix. It and the authoritative settle both paint now.
+						animateInk={animateStream && !record.truncated}
+						revealOnMount={revealOnMount}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -2163,18 +2268,12 @@ const AssistantRow = memo(function AssistantRow({
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
-						/*
-						 * Linkification is the settled row's, and the streaming half is
-						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
-						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open block is parsed but never linked or
-						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
-						 * link to a path that does not exist. That is the same hazard the
-						 * old `linkify={!record.streaming}` line refused, now enforced per
-						 * block instead of per row.
-						 */
-						linkify
+						// A figure can already own focus and a horizontal scroll position
+						// before completion. Once it exists, the one authoritative parse
+						// owns its slot through end and durable refresh; no DOM handoff.
+						streaming={record.streaming}
+						linkify={!record.streaming}
+						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
@@ -3856,6 +3955,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	sessionCwd,
 	enter = false,
+	animateStream = false,
 	isSmallView,
 	scope,
 	capable,
@@ -3890,6 +3990,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	approvalEpoch = null,
 }: {
 	row: Row;
+	animateStream?: boolean;
 	/**
 	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
 	 * frontend frames, so the frame itself is not a prop). It is the identity a
@@ -4060,6 +4161,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
+					revealOnMount={enter}
+					animateStream={animateStream}
 					closesTurn={row.closesTurn}
 					answerRail={answerRail}
 					foot={foot}
@@ -4228,6 +4331,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * node and the animation plays exactly once.
 					 */
 					entered.current &&
+						record.kind !== "assistant" &&
 						(record.kind === "user"
 							? "lo-transcript-arrival-rise"
 							: "lo-transcript-arrival"),
@@ -4429,6 +4533,40 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	});
 	const sessionId = frontend?.session_id ?? null;
 	/*
+	 * THE WAITING LABELS FOR BUSY SENDS THE OWNER HAS QUEUED.
+	 *
+	 * Two sources meet here and nowhere else: `frontend.queued_steering` (the
+	 * daemon's own list; its ids are the ids the send's echo row carries) says
+	 * WHICH messages are waiting, and `noteBusySend`'s map says how each was
+	 * sent. The fold itself is `busyWaitLabels` in `busy-wait.ts`; this is only
+	 * the wiring.
+	 *
+	 * THE HOOK IS KEYED ON A CHEAP SIGNATURE, not on the frame: `queued_steering`
+	 * is a new array on every frame, so a memo keyed on it would hand React a
+	 * new map every time and re-render every user row in the list on every
+	 * streamed token. The map is empty until the backend reports an id that
+	 * `noteBusySend` knows, so the one string below changes exactly when a
+	 * label can appear or disappear. And `busyWaitLabels` answers the empty case
+	 * with ONE shared frozen instance, so a turn's start and end hand the rows
+	 * the same value rather than a fresh empty map.
+	 */
+	const busyWaitQueueSignature = useMemo(() => {
+		const ids = (frontend?.queued_steering ?? [])
+			.map((item) => (typeof item.id === "string" ? item.id : ""))
+			.join("\u0000");
+		return `${frontend?.streaming ? "1" : "0"}\u0001${ids}`;
+	}, [frontend?.queued_steering, frontend?.streaming]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the signature stands in for both frame inputs (rebuilt whenever the queue or the streaming flag changes); listing them directly would re-derive the map on every streamed token and re-render every user row. The modes map is not a dependency: it only matters for an id that has since entered the queue, and that entry moves the signature.
+	const busyWaitByRecord = useMemo(
+		() =>
+			busyWaitLabels(
+				frontend?.queued_steering ?? [],
+				Boolean(frontend?.streaming),
+				busySendModes(),
+			),
+		[busyWaitQueueSignature],
+	);
+	/*
 	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
 	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
 	 * again for the whole of a reconnect (`use-canonical-session`'s gap arm sets
@@ -4475,6 +4613,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
+		feedReady: boolean;
 	} | null>(null);
 	/*
 	 * The attachment scope: the caller's when it supplied one (the child
@@ -5064,6 +5203,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
 	const paneGap = status !== "live";
+	const motionFeedReady = !paneGap && !awaitingHydration;
 
 	/*
 	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
@@ -7277,6 +7417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
+			feedReady: motionFeedReady,
 		};
 		slotExtents.current.clear();
 		previousSlotPlan.current = {
@@ -7309,15 +7450,29 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			),
 		};
 	}
-	const known = arrivalLedger.current.ids;
+	const ledger = arrivalLedger.current;
+	const known = ledger.ids;
 	let lastKnown = -1;
 	rows.forEach((row, index) => {
 		if (known.has(row.record.id)) lastKnown = index;
 	});
 	const arriving = new Set(
-		paneIsLive ? rows.slice(lastKnown + 1).map((row) => row.record.id) : [],
+		paneIsLive
+			? rows
+					.slice(lastKnown + 1)
+					.filter(
+						({ record }) =>
+							!record.sourcePrecedes &&
+							((motionFeedReady && ledger.feedReady) ||
+								(record.kind === "user" && record.local)),
+					)
+					.map(({ record }) => record.id)
+			: [],
 	);
 	useLayoutEffect(() => {
+		// A reconnect may deliver its catch-up tail in the same commit as
+		// `status: live`. Seed that commit before allowing another arrival.
+		ledger.feedReady = motionFeedReady;
 		for (const row of rows) known.add(row.record.id);
 		viewState.current.store.prune(
 			new Set(rawRecords.current.map((record) => record.id)),
@@ -7371,7 +7526,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
-					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
+					enter={arriving.has(row.record.id)}
+					animateStream={
+						row.record.kind === "assistant" &&
+						row.record.streaming &&
+						motionFeedReady
+					}
 					isSmallView={isSmallView}
 					scope={mediaScope}
 					capable={attachmentsCapable}
@@ -7502,9 +7662,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										approvalEpoch={frontend?.epoch ?? null}
 										key={row.record.id}
 										row={index === 0 ? atTraceTier(row) : row}
-										enter={
-											arriving.has(row.record.id) &&
-											row.record.kind !== "assistant"
+										enter={arriving.has(row.record.id)}
+										animateStream={
+											row.record.kind === "assistant" &&
+											row.record.streaming &&
+											motionFeedReady
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
@@ -7544,9 +7706,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
-				enter={
-					arriving.has(group.row.record.id) &&
-					group.row.record.kind !== "assistant"
+				enter={arriving.has(group.row.record.id)}
+				animateStream={
+					group.row.record.kind === "assistant" &&
+					group.row.record.streaming &&
+					motionFeedReady
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
@@ -8691,8 +8855,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * renders exactly as before.
 	 */
 	return (
-		<FlagLinesProvider sessionId={sessionId}>
-			{transcriptColumn}
-		</FlagLinesProvider>
+		<BusyWaitLabels.Provider value={busyWaitByRecord}>
+			<FlagLinesProvider sessionId={sessionId}>
+				{transcriptColumn}
+			</FlagLinesProvider>
+		</BusyWaitLabels.Provider>
 	);
 };

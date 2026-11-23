@@ -12,6 +12,10 @@ import type {
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import {
+	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
+	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+} from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -369,7 +373,12 @@ const api = {
 		},
 		stream: {
 			subscribe: (
-				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				args: {
+					sessionId: string;
+					epoch?: string;
+					afterSeq?: number;
+					inlineUi?: boolean;
+				},
 				// The contract's own type rather than a fourth transcription of the
 				// frame: a local copy is where a new field (here `status`, which
 				// carries a 404) gets dropped silently between main and the renderer.
@@ -456,6 +465,29 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/*
+	 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK (`shared/app-attention-queued-asks.ts`).
+	 *
+	 * The window is the only reader of the queued-ask index, and the feed frame for a
+	 * conversation carries no ask count, so the dock/tray projection can only know
+	 * this if the window says it. `report` is a claim, sent on change; `onResync` is
+	 * main asking for it again after a reset it could not let the window see.
+	 */
+	appAttention: {
+		reportQueuedAskSessions: (ids: readonly string[]): void => {
+			ipcRenderer.send(APP_ATTENTION_QUEUED_ASKS_CHANNEL, [...ids]);
+		},
+		onQueuedAskSessionsResync: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on(APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(
+					APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+					handler,
+				);
+			};
+		},
+	},
 	/**
 	 * The window chrome: the synchronous facts the shell lays out from, the report
 	 * the renderer sends back on every theme change, and the state main pushes.

@@ -401,6 +401,18 @@ function cases(root) {
 			stderr: /GH_TOKEN is required to resolve the tag/,
 		},
 		{
+			// The workflow passes an empty directory argument after a failed download.
+			// Pin the typed refusal so skipping the guarded CLI cannot look green.
+			script: "signed-update-verdict.mjs",
+			args: [""],
+			cwd: plain,
+			env: { GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_RUN_ID: "12345" },
+			status: 1,
+			stdout:
+				/^Signed update proof: BLOCKED \(workflow_dispatch, run 12345\) — NO_PROOF_ARTIFACT:/,
+			stderr: /^$/,
+		},
+		{
 			script: "release-state.mjs",
 			args: ["open"],
 			cwd: plain,

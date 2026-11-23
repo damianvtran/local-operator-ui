@@ -809,7 +809,12 @@ import {
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
 } from "./chat-session-avatar";
-import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
+import {
+	ChatAsksOutstanding,
+	approvalAsksSentence,
+	statusLabelText,
+	withQueuedAskStatuses,
+} from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -2749,7 +2754,7 @@ export function ChatSidebar({
 		return out;
 	}, [pinFacts, sessions]);
 	const {
-		rows: matching,
+		rows: searchedRows,
 		conversationMatches,
 		synthesized,
 	} = useMemo(
@@ -2779,6 +2784,19 @@ export function ChatSidebar({
 			bindingOfHit,
 			teamLabelFor,
 		],
+	);
+	/*
+	 * THE ROWS AS THE SIDEBAR DRAWS THEM, derived ONCE and before the partitions
+	 * below (`withQueuedAskStatuses` carries why): a queued ask owns the ask mark,
+	 * so the status cell must not say "answer" a second time - and because the
+	 * section a row files under reads the SAME status code, the derivation has to
+	 * happen before `pinnedRows`/`unpinnedRows` and the arrangement, not at the
+	 * draw. Everything downstream (`pageOrder`'s lift, `sectionRows`, Tag mode's
+	 * folded cue, `sessionRow`) therefore reads one row.
+	 */
+	const matching = useMemo(
+		() => withQueuedAskStatuses(searchedRows, asksBySession),
+		[searchedRows, asksBySession],
 	);
 	/*
 	 * Whether that answer is a full page rather than the whole answer. The answer
@@ -4717,6 +4735,14 @@ export function ChatSidebar({
 		nested = false,
 		tagDraggable = false,
 	) => {
+		/*
+		 * THE ROW ARRIVES DERIVED: a queued ask is shown by the ask mark below, so the
+		 * status mark, tooltip and spoken name must not say "answer" a second time.
+		 * That derivation happens ONCE, over the list and before the partitions and
+		 * the arrangement (`withQueuedAskStatuses`) - which is what keeps this row and
+		 * the section it sits in reading one row. A second derivation here is the copy
+		 * that lets the two disagree.
+		 */
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: notSent.has(row.session_id),
@@ -5048,6 +5074,12 @@ export function ChatSidebar({
 							(synthesized.has(row.session_id)
 								? t("ui.chat.sidebar.row.search_beyond")
 								: t("ui.chat.sidebar.row.recent")))}
+					{/*
+					 * THE APPROVAL'S ASK COUNT, spoken here because its mark yields the glyph
+					 * to the status bubble (`ChatAsksOutstanding`): the same sentence the
+					 * `sr-only` name appends, so pointer and screen reader hear one thing.
+					 */}
+					{approvalAsksSentence(row)}
 					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
 					{notSent.has(row.session_id)

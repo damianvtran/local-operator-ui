@@ -25,6 +25,12 @@
 		"length": "Two short sentences.",
 		"placeholders": {}
 	},
+	"ui.common.actions.discard": {
+		"role": "button label beside a kept recording",
+		"tone": "Short abandonment verb; the thing being abandoned is named in the sentence beside it.",
+		"note": "Throws the kept recording away. Deletes nothing that was already sent, and does not close the row it sits in - the row leaves with the recording. One word, so it fits beside ui.common.actions.retry.",
+		"length": "One word."
+	},
 	"ui.common.actions.retry": {
 		"role": "button label",
 		"tone": "Direct recovery verb.",

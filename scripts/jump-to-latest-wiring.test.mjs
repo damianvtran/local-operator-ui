@@ -16,7 +16,7 @@ import { test } from "node:test";
  *
  * There is no jsdom in this tree, so placement and prop-flow are pinned at the
  * source, as `composer-tabs.test.mjs` does for the same reasons. The rendered
- * behaviour (chip appears, grows the label, hides on return, send snaps) is
+ * behaviour of the chip (appears, grows the label, hides on return) is
  * proven by the headless frames under `docs/pr-evidence/jump-to-latest/`.
  */
 const code = (path) =>
@@ -25,6 +25,7 @@ const code = (path) =>
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 
 const HOOK = "src/renderer/src/shared/hooks/use-scroll-to-bottom.ts";
+const SEND_HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
@@ -56,22 +57,29 @@ test("a new record does not reset the chip; a conversation does", () => {
 	assert.match(hook, /updateScrollPosition\(\);/);
 });
 
-test("sending snaps to the newest row without an animation", () => {
-	const hook = code(HOOK);
-	// `scrollTo` + `behavior: "smooth"` is the WHEEL's way back; a send has to
-	// land in the commit that paints the echo.
-	assert.match(hook, /container\.scrollTop = 0;/);
-	assert.match(hook, /snapToBottom/);
-
+test("the send receipt leaves the transcript's scroll position to the pane", () => {
 	const page = code(CHAT_PAGE);
-	assert.match(page, /if \(!originBound\) snapToBottom\(\);/);
-	// An origin-bound send lands in a conversation this pane is not showing; the
-	// visible reader must not be moved by somebody else's message.
-	// The snap is after admission, where the echo exists: a refused press must
-	// not move the reader. `admitChatDraft` is the door every send passes.
-	const admit = page.indexOf("admitChatDraft(");
-	const snap = page.indexOf("snapToBottom();");
-	assert.ok(admit > 0 && snap > admit, "snap must follow admission");
+	// The echo commits before receipt. A reader can already be away from the
+	// tail or move there while the receipt is pending; neither case is consent
+	// to move. The reversed scroller already follows for a pinned reader.
+	const admit = page.indexOf("const id = await flushSync(() =>");
+	const done = page.indexOf("trackFirstMessageSent();", admit);
+	assert.ok(admit >= 0 && done > admit, "locate the send and its receipt");
+	const send = page.slice(admit, done);
+	assert.match(send, /admitChatDraft\(/);
+	assert.doesNotMatch(send, /snapToBottom\(|scrollToBottom\(/);
+});
+
+test("only a send without an echo uses the composer scroll fallback", () => {
+	const hook = code(SEND_HOOK);
+	assert.match(
+		hook,
+		/onSubmit\?\.\(\s*submitted,\s*\(\) => \{\s*echoPainted = true;/,
+	);
+	assert.match(
+		hook,
+		/if \(!echoPainted && scrollToBottom\) \{\s*requestAnimationFrame\(\(\) => \{\s*scrollToBottom\(\);/,
+	);
 });
 
 test("the chat page derives the register from its transcript and passes it on", () => {

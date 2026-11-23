@@ -72,6 +72,7 @@ const bundle = await build({
 			// main process applies are importable here rather than re-spelled.
 			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
+			'export * from "./src/main/browser/extensions/passkey-custody";',
 			'export * from "./src/main/browser/host";',
 			// The download capture and the file-transfer policy pair. Bundled so the
 			// arm-gated save path, the name refusal and the caps can be driven against a
@@ -179,6 +180,9 @@ const {
 	TAB_ACTIONS_MENU_ACTION_IDS,
 	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
+	PasskeyCustody,
+	PASSKEY_PROMPT_DOCUMENTS,
+	CUSTODY_REFUSAL_REASON,
 	BrowserHost,
 	CdpPool,
 	isReportableLoadFailure,
@@ -3024,10 +3028,8 @@ function makeHost(overrides = {}) {
 		dir: join(root, `approvals-host-${Math.random()}`),
 	});
 	const ownership = new OwnershipLedger({
-		closeTab: async (token) => {
-			registry.destroy(registry.requireSurface(token).tabId);
-			return true;
-		},
+		closeTab: async (token) =>
+			registry.closeOwnedSurface(token, () => approvals.forgetDocument(token)),
 		isLive: (token) => {
 			try {
 				registry.requireSurface(token);
@@ -3327,6 +3329,137 @@ test("real dispatcher records allocation, fences peers, recovers and finishes ex
 		(await host.dispatch("owner_finish", owner, "finish-retry")).state,
 		"closed",
 	);
+});
+
+test("owner_finish stays pending during a passkey prompt and retries the exact allocation", async () => {
+	const { host, registry, removed } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "held-allocation",
+	};
+	const url = "https://approved.example/";
+	await host.dispatch("request_access", { ...owner, url }, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
+	const record = registry.requireSurface(tab);
+	const human = registry.create({ owner: "user", sessionId: null });
+	const custody = new PasskeyCustody();
+	registry.setCustodyGate(custody);
+	const [provider, [document]] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	const { tabId } = record;
+	const { id: webContentsId } = record.view.webContents;
+	let frameGone = false;
+	assert.equal(
+		custody.admit({
+			tabId,
+			webContentsId,
+			url: `chrome-extension://${provider}${document}`,
+			isInstalled: (id) => id === provider,
+			frame: { isDestroyed: () => frameGone },
+		}),
+		true,
+	);
+	assert.deepEqual(await host.dispatch("owner_finish", owner, "finish"), {
+		state: "pending",
+	});
+	assert.equal(registry.byWebContents(webContentsId), record);
+	assert.deepEqual(removed, []);
+	assert.equal(custody.isHeld(webContentsId), true);
+
+	const resumed = { ...owner, owner_generation: "g2" };
+	const recovered = await host.dispatch(
+		"owner_recover",
+		{ ...resumed, previous_generation: owner.owner_generation },
+		"resume",
+	);
+	assert.equal(
+		recovered.tab,
+		"",
+		"custody must not disclose a reusable handle",
+	);
+	await assert.rejects(() => host.dispatch("owner_finish", owner, "stale"), {
+		code: "owner_refused",
+	});
+	await assert.rejects(
+		() => host.dispatch("read", { ...resumed, tab }, "held-read"),
+		(error) => error.data?.reason === CUSTODY_REFUSAL_REASON,
+	);
+	frameGone = true;
+	assert.deepEqual(
+		custody.release({
+			tabId,
+			at: custody.viewForTab(tabId).at,
+			hasProviderFrame: () => false,
+			reload: () => assert.fail("no live prompt remains to reload"),
+		}),
+		{ ok: true, reloaded: false },
+	);
+	const wrongNonce = `${tab.slice(0, -1)}${tab.endsWith("a") ? "b" : "a"}`;
+	await assert.rejects(
+		() => host.dispatch("close", { ...resumed, tab: wrongNonce }, "nonce"),
+		{ code: "tab_closed", data: { reason: "unknown_handle" } },
+	);
+	assert.equal(
+		registry.closeOwnedSurface(wrongNonce, () => assert.fail("wrong nonce")),
+		true,
+		"a nonce mismatch is indistinguishable from an absent surface",
+	);
+	await host.dispatch(
+		"owner_finish",
+		{ ...resumed, owner_proof: "b".repeat(40) },
+		"wrong-proof",
+	);
+	assert.deepEqual(removed, [], "another proof must not close this allocation");
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "retry"), {
+		state: "closed",
+	});
+	assert.deepEqual(removed, [{ tabId, webContentsId }]);
+	assert.deepEqual(registry.list(), [human]);
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "again"), {
+		state: "closed",
+	});
+	assert.equal(removed.length, 1);
+});
+
+test("owner_finish keeps protected documents and retained scopes distinct from closed", async () => {
+	const { host, registry, removed } = makeHost();
+	const owner = {
+		requester: "session:alice",
+		owner_proof: "a".repeat(40),
+		owner_generation: "g1",
+		allocation_id: "protected-allocation",
+	};
+	const url = "https://approved.example/";
+	await host.dispatch("request_access", { ...owner, url }, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
+	const record = registry.requireSurface(tab);
+	for (const protectedUrl of [
+		"about:blank#lop-extensions",
+		"chrome-extension://test/page.html",
+	]) {
+		record.view.webContents.url = protectedUrl;
+		assert.deepEqual(await host.dispatch("owner_finish", owner, "finish"), {
+			state: "pending",
+		});
+		assert.deepEqual(removed, []);
+	}
+	record.view.webContents.url = url;
+	await host.dispatch(
+		"owner_retain",
+		{ ...owner, reason: "keep for review" },
+		"retain",
+	);
+	assert.deepEqual(
+		await host.dispatch("owner_finish", owner, "finish-retained"),
+		{
+			state: "retained",
+		},
+	);
+	assert.deepEqual(registry.list(), [record]);
+	assert.deepEqual(removed, []);
 });
 
 test("current unapproved document refuses every driven read and input after autonomous navigation", async () => {

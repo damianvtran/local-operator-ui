@@ -689,14 +689,12 @@ const runSerialise = async () => {
  * nothing in this file looked at it. This does: the REAL component, a real React
  * root, a real commit per keystroke.
  *
- * WHAT IS STUBBED AND WHY IT CANNOT FLATTER THE RESULT. The two seams the copy
- * test already stubs (`@shared/components/ui`, `@shared/hooks/use-file-blob-url`)
- * are replaced so the bench does not read private files or paint real bytes: the
- * file bridge answers `loading`, so a tile paints its 100px ground and no `<img>`.
- * That removes DECODE work (where a browser would differ from node) and keeps what
- * is measured — this component's own JavaScript per commit — which is
- * engine-independent: QA's CPython anchor and V8 agreed on the per-call costs of
- * exactly these helpers.
+ * WHAT IS STUBBED AND WHY IT CANNOT FLATTER THE RESULT. The file bridge returns
+ * the pasted URL unchanged or a synthetic blob URL for a picked path, so both
+ * timed rows render the same ready-thumbnail path without touching local files.
+ * Radix keeps the preview portal unmounted because typing does not open it.
+ * jsdom does not measure image decode. The UI barrel is narrowed to the real
+ * primitives this row uses so the bench does not boot unrelated surfaces.
  */
 const ATTACHMENT_COMMITS = Number(process.env.PERF_BENCH_COMMITS ?? 20);
 const ATTACHMENT_MOUNTS = 5;
@@ -710,6 +708,13 @@ const ATTACHMENT_MOUNTS = 5;
 const ATTACHMENT_COMMIT_CEILING_MS = 3;
 const STUB_MODULES = /^@shared\/(components\/ui|hooks\/use-file-blob-url)$/;
 const ANY_MODULE = /.*/;
+const CLOSED_PREVIEW_TRIGGER =
+	/<button[^>]*aria-haspopup="dialog"[^>]*aria-expanded="false"/;
+const FILE_GLYPH = /<svg/g;
+const MEDIA_PREVIEW = /<(?:img|video)\b|aria-haspopup="dialog"/;
+const PICKED_IMAGE = /<img[^>]*src="blob:/;
+const PICKED_VIDEO = /<video[^>]*src="blob:/;
+const PASTED_IMAGE = /<img[^>]*src="data:image\/png;base64,/;
 
 const medianOf = (samples) => {
 	const sorted = [...samples].sort((a, b) => a - b);
@@ -764,8 +769,15 @@ const loadAttachmentPreview = async () => {
 						{ filter: ANY_MODULE, namespace: "attachment-fixture" },
 						(args) => ({
 							contents: args.path.endsWith("components/ui")
-								? 'import React from "react"; export const Button = ({children, size, variant, ...props}) => React.createElement("button", props, children); export const Tooltip = ({children}) => children;'
-								: 'export const useFileBlobUrl = () => ({status: "loading"}); export const previewFailureReason = () => "bridge failure";',
+								? [
+										'export { Button } from "@shared/components/ui/button";',
+										'export { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@shared/components/ui/dialog";',
+										'export { Tooltip } from "@shared/components/ui/tooltip";',
+									].join("\n")
+								: [
+										'export const useFileBlobUrl = (path) => ({ status: "ready", url: path.startsWith("data:") ? path : `blob:http://localhost/${encodeURIComponent(path)}` });',
+										'export const previewFailureReason = () => "bridge failure";',
+									].join("\n"),
 							resolveDir: process.cwd(),
 						}),
 					);
@@ -879,10 +891,16 @@ const renderChip = async (path) => {
 		);
 	});
 	const html = host.innerHTML;
+	const hasOpenDialog = document.querySelector('[role="dialog"]') !== null;
 	await act(async () => {
 		root.unmount();
 	});
 	host.remove();
+	assert.equal(
+		hasOpenDialog,
+		false,
+		"rendering a chip opened the preview portal",
+	);
 	return html;
 };
 
@@ -995,7 +1013,7 @@ test(`${ARM} B7: the attachment row's commit is flat in payload size`, async () 
 	 * THE INVARIANT THIS ROW PROTECTS: what a keystroke costs in the attachment
 	 * row is set by the ROW (how many chips, how much markup) and never by the
 	 * BYTES sitting behind them. Six pasted images and six picked paths are the
-	 * same row to this component — six chips, same 100px tiles — so the two
+	 * same ready-thumbnail path — six chips with closed dialogs — so the two
 	 * figures must land in the same neighbourhood; the `+ 0.5` is slack for a
 	 * host where the picked row is too fast to compare against (a ratio alone
 	 * would let 0.02 vs 0.06 ms pass as "3x").
@@ -1032,34 +1050,43 @@ test(`${ARM} B7: the attachment row's commit is flat in payload size`, async () 
 /*
  * AND THE CLASSIFIERS STILL SAY WHAT THEY SAID. Bounding a scan to the tail or to
  * a `data:` header is only correct if the `endsWith` answers do not move, so this
- * reads them off the rendered markup instead of off the source: a media tile
- * carries ONE `<svg>` (its remove button), a file card carries TWO (the type glyph
- * as well). Uppercase extensions matter — `.PNG` and `.MP4` are still media — and a
- * `.pdf` is still a card. `data:` URLs are pinned in both shapes too, because the
- * header is now the only part of them read.
+ * reads them off the rendered markup instead of off the source. A ready media
+ * tile has a thumbnail in its closed dialog trigger; a file card has a type
+ * glyph and no media. Uppercase extensions and `data:` headers both matter.
  */
 test(`${ARM} B7b: bounding the scans did not move the classification`, async () => {
-	const svgCount = (html) => (html.match(/<svg/g) ?? []).length;
+	const assertClosedPreview = (html, thumbnail, label) => {
+		assert.match(html, thumbnail, `${label} stopped being a media tile`);
+		assert.match(
+			html,
+			CLOSED_PREVIEW_TRIGGER,
+			`${label} lost its closed preview trigger`,
+		);
+	};
+	const assertFileCard = (html, label) => {
+		assert.equal(
+			(html.match(FILE_GLYPH) ?? []).length,
+			2,
+			`${label} lost its file glyph`,
+		);
+		assert.doesNotMatch(
+			html,
+			MEDIA_PREVIEW,
+			`${label} rendered a media preview`,
+		);
+	};
 	const png = await renderChip("/Users/operator/Shots/PHOTO.PNG");
-	assert.equal(
-		svgCount(png),
-		1,
-		"an uppercase .PNG stopped being a media tile",
-	);
+	assertClosedPreview(png, PICKED_IMAGE, "an uppercase .PNG");
 	assert.ok(png.includes("PHOTO.PNG"), "the tile lost its filename caption");
 	const mp4 = await renderChip("/Users/operator/Clips/clip.MP4");
-	assert.equal(
-		svgCount(mp4),
-		1,
-		"an uppercase .MP4 stopped being a media tile",
-	);
+	assertClosedPreview(mp4, PICKED_VIDEO, "an uppercase .MP4");
 	const pdf = await renderChip("/tmp/report.pdf");
-	assert.equal(svgCount(pdf), 2, "a .pdf stopped being a file card");
+	assertFileCard(pdf, "a .pdf");
 	assert.ok(pdf.includes("report.pdf"), "the card lost its filename");
 	const pastedImage = await renderChip(pastedImagePath(1));
-	assert.equal(svgCount(pastedImage), 1, "a pasted image stopped being a tile");
+	assertClosedPreview(pastedImage, PASTED_IMAGE, "a pasted image");
 	const pastedPdf = await renderChip("data:application/pdf;base64,AA");
-	assert.equal(svgCount(pastedPdf), 2, "a pasted PDF stopped being a card");
+	assertFileCard(pastedPdf, "a pasted PDF");
 	assert.ok(
 		pastedPdf.includes("Pasted application/pdf"),
 		"a pasted PDF lost its header-derived name",

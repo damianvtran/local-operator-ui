@@ -71,6 +71,11 @@ const RE_LOCAL_ONLY_STATUS =
 	/Discarded on this device without server confirmation/;
 const RE_NOTIFICATION_CLAIM = /sender (?:was|has been) notified/;
 const RE_UNARMED_INSTRUCTION = /Discard it so the sender/;
+const RE_ATTACHMENT_CONTROL = /attachment/;
+const RE_HIDE_FAILED = /Could not update hidden messages on this device/;
+const RE_HELD_LOADING = /Loading held messages/;
+const RE_HELD_LIST_ERROR = /Held messages could not be loaded/;
+const RE_RESTORE_LOCAL = /Restore message a1234567/;
 
 const NOW = Date.parse("2026-11-18T12:00:00Z");
 const hold = (over = {}) => ({
@@ -86,6 +91,66 @@ const hold = (over = {}) => ({
 	deliver_until: "2026-11-25T10:00:00Z",
 	decision: null,
 	...over,
+});
+
+test("local hide requires an expired Deliver window and settled missing details", () => {
+	const receipt = "1".repeat(64);
+	const exact = hold({
+		can_deliver: false,
+		deliver_until: "2026-11-07T10:00:00Z",
+		discard_receipt: receipt,
+	});
+	const unavailable = { state: "unavailable" };
+	assert.equal(m.holdAffordance(exact, NOW).state, "deliver_expired");
+	assert.equal(m.canHideHoldLocally(exact, unavailable), true);
+	assert.equal(m.canHideHoldLocally(exact, { state: "loading" }), false);
+	for (const candidate of [
+		{ ...exact, hold_code: "screening_failed" },
+		{ ...exact, deliver_until: "2999-01-01T00:00:00Z" },
+	]) {
+		assert.equal(m.holdAffordance(candidate, NOW).state, "open");
+		assert.equal(m.canHideHoldLocally(candidate, unavailable), false);
+	}
+	assert.equal(
+		m.canHideHoldLocally({ ...exact, can_deliver: true }, unavailable),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(
+			{ ...exact, discard_receipt: "malformed" },
+			unavailable,
+		),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(
+			{ ...exact, decision: { word: "discard" } },
+			unavailable,
+		),
+		false,
+	);
+	const ready = (message) => ({
+		state: "ready",
+		message,
+		binding: { state: "none" },
+	});
+	assert.equal(m.canHideHoldLocally(exact, ready({ body: null })), true);
+	assert.equal(
+		m.canHideHoldLocally(exact, ready({ body: null, attachments: [{}] })),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(exact, ready({ body: "recovered" })),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(exact, ready({ body: null, files: [{}] })),
+		false,
+	);
+	assert.equal(
+		m.canHideHoldLocally(exact, ready({ body: null, attachment_count: 1 })),
+		false,
+	);
 });
 
 test("every hold kind on the operator's machine reads as a plain reason", () => {
@@ -976,7 +1041,16 @@ const viewBundle = await build({
 		},
 	],
 	stdin: {
-		contents: `export { HeldMessagesView } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages"; export { TeamBridgeRequestsView } from "./src/renderer/src/features/team-bridge/team-bridge-approvals";`,
+		contents: `
+			export { HeldMessagesView, TeamBridgeHeldMessages } from "./src/renderer/src/features/team-bridge/team-bridge-held-messages";
+			export { TeamBridgeRequestsView } from "./src/renderer/src/features/team-bridge/team-bridge-approvals";
+			export { useHeldMessages } from "./src/renderer/src/features/team-bridge/use-team-bridge-holds";
+			export { createHeldHidePreference, visibleHeldCount, useVisibleHeldCount, HELD_HIDE_STORAGE_KEY } from "./src/renderer/src/features/team-bridge/team-bridge-held-hide-preference";
+			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
+			export { holdsKey, holdDetailKey } from "./src/renderer/src/features/team-bridge/team-bridge-holds-keys";
+			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
+			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
+		`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -994,11 +1068,506 @@ const viewBundle = await build({
 });
 await writeFile(viewOut, viewBundle.outputFiles[0].text);
 after(() => unlink(viewOut));
-const { HeldMessagesView, TeamBridgeRequestsView } = await import(
-	new URL(`../${viewOut}`, import.meta.url)
-);
+const {
+	HeldMessagesView,
+	TeamBridgeRequestsView,
+	createHeldHidePreference,
+	visibleHeldCount,
+	HELD_HIDE_STORAGE_KEY,
+} = await import(new URL(`../${viewOut}`, import.meta.url));
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const expiredForLocalHide = hold({
+	message_id: "bcmsg_a1234567deadbeef",
+	can_deliver: false,
+	deliver_until: "2026-11-07T10:00:00Z",
+	actionable: true,
+	discard_receipt: "a".repeat(64),
+});
+const hidePage = (items) => ({ items, enabled: true, key_protection: null });
+const unavailableDetail = () => ({ state: "unavailable" });
+
+function memoryPreference() {
+	let stored = null;
+	const storage = {
+		getItem: () => stored,
+		setItem: (key, value) => {
+			assert.equal(key, HELD_HIDE_STORAGE_KEY);
+			stored = value;
+		},
+	};
+	return { storage, restart: () => createHeldHidePreference(() => storage) };
+}
+
+test("only the same account and exact receipt are hidden after restart; observed recovery persists", async () => {
+	const other = hold({ message_id: "bcmsg_other", actionable: true });
+	const raw = hidePage([expiredForLocalHide, other]);
+	const [same, anotherAccount, newReceipt] = await Promise.all([
+		m.addLocalHoldRevisions("account-a", raw),
+		m.addLocalHoldRevisions("account-b", raw),
+		m.addLocalHoldRevisions(
+			"account-a",
+			hidePage([
+				{ ...expiredForLocalHide, discard_receipt: "b".repeat(64) },
+				other,
+			]),
+		),
+	]);
+	const { restart, storage } = memoryPreference();
+	const first = restart();
+	const revision = same.items[0].localHideRevision;
+	assert.notEqual(revision, expiredForLocalHide.discard_receipt);
+	assert.equal(visibleHeldCount(same, first.snapshot()), 2);
+	assert.equal(first.hide(revision), true);
+	assert.deepEqual(JSON.parse(storage.getItem(HELD_HIDE_STORAGE_KEY)), [
+		revision,
+	]);
+	const second = restart();
+	assert.deepEqual(
+		m.projectHeldMessages(same.items, second.snapshot(), unavailableDetail)
+			.visible,
+		[other],
+	);
+	assert.equal(visibleHeldCount(same, second.snapshot()), 1);
+	assert.equal(visibleHeldCount(anotherAccount, second.snapshot()), 2);
+	assert.equal(visibleHeldCount(newReceipt, second.snapshot()), 2);
+	assert.deepEqual(
+		m.projectHeldMessages(same.items, second.snapshot(), () => ({
+			state: "loading",
+		})).hidden,
+		[same.items[0]],
+	);
+	const restored = m.projectHeldMessages(same.items, second.snapshot(), () => ({
+		state: "ready",
+		message: { body: "synthetic recovery" },
+		binding: { state: "shown", hash: "0".repeat(64) },
+	}));
+	assert.deepEqual(restored.visible, same.items);
+	assert.deepEqual(restored.hidden, []);
+	second.revealRecovered(restored.recovered);
+	assert.equal(visibleHeldCount(same, restart().snapshot()), 2);
+});
+
+test("blocked persistence never claims a hide or restore succeeded", async () => {
+	const {
+		items: [item],
+	} = await m.addLocalHoldRevisions(
+		"account-a",
+		hidePage([expiredForLocalHide]),
+	);
+	const revision = item.localHideRevision;
+	let raw = null;
+	const pref = createHeldHidePreference(() => ({
+		getItem: () => raw,
+		setItem: () => {
+			throw new Error("synthetic storage refusal");
+		},
+	}));
+	assert.equal(pref.hide(revision), false);
+	assert.equal(pref.snapshot().size, 0);
+	raw = JSON.stringify([revision]);
+	const blockedRestore = createHeldHidePreference(() => ({
+		getItem: () => raw,
+		setItem: () => {
+			throw new Error("synthetic storage refusal");
+		},
+	}));
+	assert.equal(blockedRestore.restore(revision), false);
+	assert.equal(blockedRestore.snapshot().has(revision), true);
+	blockedRestore.revealRecovered([revision]);
+	assert.equal(blockedRestore.snapshot().has(revision), false);
+});
+
+async function withMountedHeldQueue({ audit = false }, run) {
+	const { JSDOM } = await import("jsdom");
+	const { createRoot } = await import("react-dom/client");
+	const { act } = await import("react");
+	const { QueryClient, QueryClientProvider } = await import(
+		"@tanstack/react-query"
+	);
+	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
+		url: "http://localhost",
+	});
+	const globals = {
+		window: dom.window,
+		document: dom.window.document,
+		HTMLElement: dom.window.HTMLElement,
+		IS_REACT_ACT_ENVIRONMENT: true,
+	};
+	const saved = Object.keys(globals).map((key) => [
+		key,
+		Object.getOwnPropertyDescriptor(globalThis, key),
+	]);
+	for (const [key, value] of Object.entries(globals))
+		Object.defineProperty(globalThis, key, { value, configurable: true });
+	const host = dom.window.document.getElementById("root");
+	const calls = [];
+	let auditContent = null;
+	dom.window.api = {
+		desktop: {
+			request: async (request) => {
+				calls.push(request);
+				assert.equal(request.expected_account_id, "account-a");
+				if (audit && request.op === "team_bridge.owner_audit.messages") {
+					assert.equal(request.tenant_id, "tenant-a");
+					assert.equal(
+						request.conversation_id,
+						expiredForLocalHide.conversation_id,
+					);
+					return {
+						status: 200,
+						body: {
+							result: {
+								messages: auditContent
+									? [
+											{
+												id: expiredForLocalHide.message_id,
+												conversation_id: expiredForLocalHide.conversation_id,
+												seq: expiredForLocalHide.seq,
+												created_at: expiredForLocalHide.held_at,
+												sender: {
+													account_id: "synthetic-sender",
+													kind: "human",
+												},
+												body: null,
+												...auditContent,
+											},
+										]
+									: [],
+							},
+						},
+					};
+				}
+				assert.equal(request.op, "team_bridge.holds.list", "read-only fixture");
+				return {
+					status: 200,
+					body: { result: hidePage([expiredForLocalHide]) },
+				};
+			},
+		},
+	};
+	let client;
+	let ui;
+	const mount = async (run) => {
+		// Re-evaluate the same compiled source with the same renderer storage and
+		// a new query client, like a renderer restart (not a shared module singleton).
+		ui = await import(
+			new URL(`../${viewOut}?held-hide=${run}`, import.meta.url)
+		);
+		client = new QueryClient({
+			defaultOptions: { queries: { retry: false, gcTime: 0 } },
+		});
+		client.setQueryData(ui.radientUserKeys.user(), {
+			account: { id: "account-a" },
+		});
+		client.setQueryData(ui.teamBridgeKeys.statusFor("account-a"), {
+			account_id: "account-a",
+			state: "ready",
+			local: { enabled: true },
+			status: { tenants: audit ? [{ tenant_id: "tenant-a" }] : [] },
+		});
+		client.setQueryData(ui.desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {
+				radient: 1,
+				team_bridge_hold_release: 1,
+				team_bridge_owner_audit: Number(audit),
+			},
+		});
+		const Badge = () =>
+			createElement(
+				"output",
+				{},
+				ui.useVisibleHeldCount(ui.useHeldMessages(true).data),
+			);
+		await act(() =>
+			root.render(
+				createElement(
+					QueryClientProvider,
+					{ client },
+					createElement(Badge),
+					createElement(ui.TeamBridgeHeldMessages, { hideWhenEmpty: true }),
+				),
+			),
+		);
+	};
+	const until = async (predicate, label) => {
+		const started = Date.now();
+		while (!predicate() && Date.now() - started < 1000) {
+			await act(() => new Promise((resolve) => setTimeout(resolve, 5)));
+		}
+		assert.ok(predicate(), `renderer reached ${label}; badge ${badge()}`);
+	};
+	const badge = () => host.querySelector("output").textContent;
+	const button = (label) => host.querySelector(`button[aria-label="${label}"]`);
+	const hide = "Hide on this device: message a1234567";
+	const restore = "Restore message a1234567";
+	const untilButton = (label) => until(() => button(label), label);
+	let root = createRoot(host);
+	try {
+		await run({
+			act,
+			dom,
+			host,
+			calls,
+			mount,
+			badge,
+			button,
+			hide,
+			restore,
+			until,
+			untilButton,
+			setAuditContent: (content) => {
+				auditContent = content;
+			},
+			refreshDetails: () =>
+				act(() =>
+					client.invalidateQueries({
+						queryKey: ui.holdDetailKey("account-a", expiredForLocalHide, [
+							"tenant-a",
+						]),
+						exact: true,
+					}),
+				),
+			refreshList: () =>
+				act(() =>
+					client.invalidateQueries({
+						queryKey: ui.holdsKey("account-a"),
+						exact: true,
+					}),
+				),
+			restart: async (next) => {
+				await act(() => root.unmount());
+				client.clear();
+				root = createRoot(host);
+				await mount(next);
+			},
+		});
+		assert.deepEqual(
+			[...new Set(calls.map(({ op }) => op))],
+			audit
+				? ["team_bridge.holds.list", "team_bridge.owner_audit.messages"]
+				: ["team_bridge.holds.list"],
+			"only the list and its owner-audit join may issue requests",
+		);
+	} finally {
+		await act(() => root.unmount());
+		client?.clear();
+		dom.window.close();
+		for (const [key, descriptor] of saved) {
+			if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+			else delete globalThis[key];
+		}
+	}
+}
+
+test("mounted queue hides locally and restores after restart at badge zero without any disposition", () =>
+	withMountedHeldQueue(
+		{},
+		async ({
+			act,
+			dom,
+			calls,
+			mount,
+			restart,
+			badge,
+			button,
+			hide,
+			restore,
+			untilButton,
+		}) => {
+			await mount(1);
+			await untilButton(hide);
+			assert.equal(badge(), "1");
+			await act(() => button(hide).click());
+			assert.equal(badge(), "0");
+			assert.equal(button(hide), null);
+			assert.equal(
+				dom.window.document.activeElement.textContent,
+				"Hidden on this device: 1",
+			);
+			assert.ok(button(restore));
+			await restart(2);
+			await untilButton(restore);
+			assert.equal(badge(), "0");
+			await act(() => button(restore).click());
+			assert.equal(badge(), "1");
+			assert.equal(button(restore), null);
+			assert.ok(button(hide));
+			assert.equal(
+				dom.window.document.activeElement.textContent,
+				"Held messages",
+			);
+			assert.deepEqual(
+				calls,
+				[1, 2].map(() => ({
+					op: "team_bridge.holds.list",
+					expected_account_id: "account-a",
+				})),
+			);
+		},
+	));
+
+const syntheticImage = {
+	attachments: [
+		{ id: "synthetic-image", mime: "image/png", state: "available", size: 32 },
+	],
+};
+const attachmentControl = (host) =>
+	host.querySelector('button[aria-expanded="false"]');
+
+test("mounted image-only audit recovery restores the badge and cannot be hidden when loaded", () =>
+	withMountedHeldQueue(
+		{ audit: true },
+		async ({
+			act,
+			dom,
+			host,
+			mount,
+			restart,
+			badge,
+			button,
+			hide,
+			restore,
+			untilButton,
+			until,
+			setAuditContent,
+			refreshDetails,
+		}) => {
+			await mount("image-initial");
+			await untilButton(hide);
+			assert.equal(badge(), "1");
+			await act(() => button(hide).click());
+			assert.equal(badge(), "0");
+			assert.ok(button(restore));
+
+			setAuditContent(syntheticImage);
+			await refreshDetails();
+			await until(
+				() => attachmentControl(host),
+				"image-only attachment control",
+			);
+			assert.match(attachmentControl(host).textContent, RE_ATTACHMENT_CONTROL);
+			assert.equal(badge(), "1");
+			assert.equal(button(restore), null);
+			assert.equal(button(hide), null);
+			assert.equal(
+				dom.window.localStorage.getItem(HELD_HIDE_STORAGE_KEY),
+				"[]",
+			);
+
+			await restart("image-loaded");
+			await until(
+				() => attachmentControl(host),
+				"already-loaded image-only attachment control",
+			);
+			assert.equal(badge(), "1");
+			assert.equal(button(hide), null);
+		},
+	));
+
+test("mounted recovery keeps the row visible when saving fails and retries on a later read", () =>
+	withMountedHeldQueue(
+		{ audit: true },
+		async ({
+			act,
+			dom,
+			host,
+			mount,
+			restart,
+			badge,
+			button,
+			hide,
+			restore,
+			untilButton,
+			until,
+			setAuditContent,
+			refreshDetails,
+			refreshList,
+		}) => {
+			await mount("recovery-initial");
+			await untilButton(hide);
+			await act(() => button(hide).click());
+			assert.equal(badge(), "0");
+			const stale = dom.window.localStorage.getItem(HELD_HIDE_STORAGE_KEY);
+			assert.equal(JSON.parse(stale).length, 1);
+			const nativeSet = dom.window.Storage.prototype.setItem;
+			let attempts = 0;
+			dom.window.Storage.prototype.setItem = function (key, value) {
+				if (key === HELD_HIDE_STORAGE_KEY && ++attempts === 1)
+					throw new Error("synthetic transient storage refusal");
+				return nativeSet.call(this, key, value);
+			};
+
+			setAuditContent({
+				files: [{ id: "synthetic-file", state: "available", size: 32 }],
+			});
+			await refreshDetails();
+			await until(() => attachmentControl(host), "file-only recovery");
+			assert.equal(badge(), "1");
+			assert.equal(button(restore), null);
+			assert.match(host.textContent, RE_HIDE_FAILED);
+			assert.equal(attempts, 1, "a render does not retry the failed write");
+			assert.equal(
+				dom.window.localStorage.getItem(HELD_HIDE_STORAGE_KEY),
+				stale,
+			);
+
+			// Losing audit content again before the next list read must not re-hide it.
+			setAuditContent(null);
+			await refreshDetails();
+			await untilButton(hide);
+			assert.equal(badge(), "1");
+			assert.equal(attempts, 1);
+			await refreshList();
+			assert.equal(
+				attempts,
+				2,
+				"the next successful list read retries the write",
+			);
+			assert.equal(
+				dom.window.localStorage.getItem(HELD_HIDE_STORAGE_KEY),
+				"[]",
+			);
+			await until(
+				() => !host.querySelector('[role="alert"]'),
+				"recovery alert cleared",
+			);
+
+			await restart("recovery-restart");
+			await untilButton(hide);
+			assert.equal(badge(), "1");
+			assert.equal(button(restore), null);
+		},
+	));
+
+test("hidden-only rows keep Restore alongside list loading and error feedback", () => {
+	for (const [listState, status] of [
+		["loading", RE_HELD_LOADING],
+		["error", RE_HELD_LIST_ERROR],
+	]) {
+		const html = renderToStaticMarkup(
+			createElement(HeldMessagesView, {
+				listState,
+				items: [],
+				hideWhenEmpty: true,
+				detail: unavailableDetail,
+				onDecide: () => assert.fail("unexpected disposition"),
+				onRetry: () => {},
+				localHide: {
+					hiddenItems: [
+						{ ...expiredForLocalHide, localHideRevision: "a".repeat(64) },
+					],
+					onChange: () => true,
+				},
+			}),
+		);
+		assert.match(html, RE_RESTORE_LOCAL);
+		assert.match(html, status);
+		if (listState === "error") assert.match(html, RE_RETRY);
+	}
+});
+
 const RE_RETRY = />Try again</;
 const RE_RECEIPT_ONLY = /couldn’t be loaded\. It can no longer be delivered/;
 const RE_UNREAD_BUTTON = /without reading it"/;

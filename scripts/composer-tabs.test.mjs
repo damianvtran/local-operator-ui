@@ -2437,9 +2437,15 @@ test("with nothing connected neither the button nor Enter sends", () => {
 	 * raises, and the form's own submit -- because removing them wholesale left every
 	 * neighbouring suite green (review round 3 R3-m2).
 	 */
+	/*
+	 * `sendKey` is `sendKeyOf(...)`'s answer, the one predicate for "this press
+	 * sends" (plain Enter, or a bound send chord): the refusal gates the same key
+	 * the send does, so a bound chord is refused too. The inline Enter test this
+	 * pin used to read is the one that predicate replaced.
+	 */
 	assert.match(
 		source,
-		/sendRefused &&\s*event\.key === "Enter" &&\s*!event\.shiftKey &&\s*!event\.nativeEvent\.isComposing\s*\) \{\s*event\.preventDefault\(\);/,
+		/sendRefused && sendKey\) \{\s*event\.preventDefault\(\);/,
 		"Enter is not refused when nothing can answer",
 	);
 	assert.match(

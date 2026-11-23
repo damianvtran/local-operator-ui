@@ -82,6 +82,18 @@ declare global {
 			 */
 			telemetryEnabled: boolean;
 			/**
+			 * The window's claim about which conversations hold an open queued ask, and
+			 * main's request to send it again (`shared/app-attention-queued-asks.ts`).
+			 *
+			 * An `answer` status beside one of these ids is already counted by the
+			 * window's own ask badge, so app-main must not count it as a blocking gate
+			 * too; an `approval` stays a gate either way.
+			 */
+			appAttention: {
+				reportQueuedAskSessions: (ids: readonly string[]) => void;
+				onQueuedAskSessionsResync: (callback: () => void) => () => void;
+			};
+			/**
 			 * The window chrome, the same three calls the preload exposes.
 			 *
 			 * `facts` is a function rather than a value so the renderer reads it once, in

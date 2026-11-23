@@ -18,9 +18,11 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -171,6 +173,13 @@ import {
 	lockAnswerOutlived,
 	retryOfferedForFailureCode,
 } from "../composer-notice";
+import type { DeliveryMode } from "../composer-send-key";
+import {
+	BUSY_DEFAULT_STALE_TIME,
+	BUSY_DELIVERY_UNSUPPORTED_CODE,
+	busyDefaultFromSettings,
+	evaluateBusySend,
+} from "../composer-send-key";
 import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
@@ -427,6 +436,7 @@ function SessionPanel({
 			 * answer is there.
 			 */
 			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+			inlineUi: desktopFeatureEnabled(panelCapabilities.data, "inline_ui"),
 			journalOrder: desktopFeatureEnabled(
 				panelCapabilities.data,
 				"journal_order",
@@ -907,11 +917,13 @@ function SessionPanel({
 		() => activityFingerprint(canonical.transcript.records),
 		[canonical.transcript.records],
 	);
-	const { isFarFromBottom, hasNewActivity, scrollToBottom, snapToBottom } =
-		useScrollToBottom(container, {
+	const { isFarFromBottom, hasNewActivity, scrollToBottom } = useScrollToBottom(
+		container,
+		{
 			contentKey: streamId,
 			activity: newActivityFingerprint,
-		});
+		},
+	);
 	/*
 	 * THE TURN-IS-ALIVE READING, read through the HOLD - `frontend ?? heldFrontend` -
 	 * for the CLAIM surfaces AND, since round 1's D2, for every consumer that
@@ -1295,6 +1307,47 @@ function SessionPanel({
 	const inputModeEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"input_mode",
+	);
+	/*
+	 * AND WHETHER THE HARNESS WILL CARRY A BUSY-SEND DELIVERY.
+	 *
+	 * The same negotiation shape as `inputModeEnabled` — and the wire field is
+	 * the same kind of optional metadata an older harness's `.strict()` schema
+	 * would refuse — so `delivery` rides the body only on a backend that
+	 * advertises `features.busy_delivery`. A busy send whose resolved mode the
+	 * backend cannot honour is refused below, never sent as steer.
+	 */
+	const busyDeliverySupported = desktopFeatureEnabled(
+		capabilities.data,
+		"busy_delivery",
+	);
+	/*
+	 * THE BUSY-SEND DEFAULT, READ AT SEND TIME from the shared settings query.
+	 *
+	 * The same `/v1/settings` projection Backend settings renders
+	 * (`desktopKeys.settings`), so a write made in the TUI reaches the desktop
+	 * at its next focus (the query refetches on window focus and is replaced
+	 * on a Backend-settings write): a stale read is one send behind, never
+	 * ambiguous. Read in `send`, not here, so the value asked about is the one
+	 * in force at the press; unloaded or absent reads `steer` (see
+	 * `busyDefaultFromSettings`).
+	 *
+	 * `BUSY_DEFAULT_STALE_TIME` (imported from `composer-send-key`, one value
+	 * the page and its test share) is the neighbours' freshness window
+	 * (`settings-page` and `speech-shortcuts-group` read the same projection):
+	 * the shared query without it would inherit the five-minute default and a
+	 * `delivery.busy_default` change made in the TUI or Backend settings
+	 * could sit unseen for minutes while sends resolve to `steer`.
+	 */
+	const busyDefaultQuery = useQuery({
+		queryKey: desktopKeys.settings,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled: desktopFeatureEnabled(capabilities.data, "settings"),
+		staleTime: BUSY_DEFAULT_STALE_TIME,
+	});
+	/** The busy-send default at render, for the composer's busy sentences. */
+	const busyDefaultMode = busyDefaultFromSettings(
+		busyDefaultQuery.data?.settings,
 	);
 	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
@@ -1791,6 +1844,7 @@ function SessionPanel({
 		openDraftPicker,
 		note: slashNote,
 	} = useSlashDispatch({
+		paneIdentity: identity,
 		sessionId,
 		canonical,
 		rebind,
@@ -1846,10 +1900,20 @@ function SessionPanel({
 			draftPickable && draftIdentity && preview.data
 				? {
 						target: draftTarget,
-						select: (selection) =>
-							useCanonicalSessionsStore
-								.getState()
-								.setDraftModel(draftIdentity, selection),
+						select: (selection, condition) => {
+							const store = useCanonicalSessionsStore.getState();
+							const current = store.drafts[draftIdentity];
+							// The snapshot model and store entry share an immutable value.
+							// Read/compare/write in one turn, including the default (null).
+							if (
+								!current ||
+								current.sessionId ||
+								(condition && (current.model ?? null) !== condition.previous)
+							)
+								return false;
+							store.setDraftModel(draftIdentity, selection);
+							return true;
+						},
 					}
 				: undefined,
 		/*
@@ -2052,6 +2116,14 @@ function SessionPanel({
 		 * success path performs - that would yank the reader out of the chat they chose.
 		 */
 		options?: { originBound?: boolean },
+		/*
+		 * Which delivery mode the press selected, from the composer's send-key
+		 * predicate (`composer-send-key.ts`): the chord mode when the press was a
+		 * bound chord, `null` for plain Enter. Resolved against the settings
+		 * default below; `undefined` (the suggestion grid, a retry) is plain
+		 * Enter by construction.
+		 */
+		delivery?: DeliveryMode | null,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		/*
@@ -2668,6 +2740,34 @@ function SessionPanel({
 				}
 			}
 			/*
+			 * THE BUSY-SEND GATE, resolved AT THE PRESS beside `mode` (architect D11).
+			 * The default is the settings value in force NOW, not at render time, and
+			 * a resolved queue/both this backend cannot honour REFUSES here — before
+			 * any admission, with the draft kept and nothing sent as steer.
+			 *
+			 * `busy` reads `turnAliveRef`, not the render closure: `send` awaits the
+			 * stream and the admission seams before this point, so by the time the
+			 * gate answers the render that closed over `turnAlive` is stale — a turn
+			 * that ended inside the flight would still resolve a busy delivery.
+			 * `evaluateBusySend` is the page's assembly, extracted so a test drives
+			 * it for real rather than pinning it by regex (M2): refusing before
+			 * resolving is the seam's own order.
+			 */
+			const evaluation = evaluateBusySend({
+				chordDelivery: delivery ?? null,
+				settings: busyDefaultQuery.data?.settings,
+				busy: turnAliveRef.current,
+				busyDeliverySupported,
+			});
+			if (evaluation.refused) {
+				setSendError(SEND_FAILURE_COPY.deliveryUnsupported);
+				setSendErrorCode(BUSY_DELIVERY_UNSUPPORTED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const deliveryValue = evaluation.delivery;
+			/*
 			 * ONE COMMIT FOR THE PRESS (operator report, 2026-11-11: the transcript went
 			 * blank for a few frames after Send). The call's synchronous prefix marks
 			 * the draft `pending` - a store update, which React always commits
@@ -2680,6 +2780,9 @@ function SessionPanel({
 			 * claim, the echo, the wait line and the composer's clear together; the
 			 * create and the message POST after the prefix are unaffected.
 			 */
+			// The reversed transcript follows the echo if pinned, or holds the
+			// reading anchor if not. Don't scroll on receipt: it arrives after
+			// the echo and can interrupt someone who scrolled in the meantime.
 			const id = await flushSync(() =>
 				admitChatDraft(
 					key,
@@ -2688,16 +2791,30 @@ function SessionPanel({
 						attachments,
 						images,
 						...(files.length ? { files } : {}),
-						mode: turnAlive ? "steer" : "prompt",
+						mode: turnAliveRef.current ? "steer" : "prompt",
 						cwd,
 						/*
-						 * The capability gate, applied HERE rather than at the composer: this
+						 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
 						 * function already reads the capability map for the `@` affordance,
 						 * and one gate at the one seam every door passes is what keeps the
 						 * suggestion grid's own sends (which pass no `inputMode`) on the
 						 * legacy body by construction.
 						 */
 						inputMode: inputModeEnabled ? inputMode : undefined,
+						/*
+						 * Resolved above: present only for a busy send whose mode is not
+						 * steer on a backend that advertises `features.busy_delivery`
+						 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
+						 */
+						delivery: deliveryValue,
+						/*
+						 * The same press's mode for the transcript's waiting label, which is
+						 * true for a steer send too - it queues while the turn runs, it just
+						 * rides no field. Never on the wire: the store records it so
+						 * `busy-wait.ts` can name a queued row (`waitMode`'s note in
+						 * composer-send-key.ts).
+						 */
+						busyMode: evaluation.waitMode ?? undefined,
 					},
 					sessionId,
 					onEchoPainted,
@@ -2705,19 +2822,6 @@ function SessionPanel({
 				),
 			);
 			if (!id) return false;
-			/*
-			 * SENDING PUTS THE NEWEST ROW UNDER THE READER, immediately: the echo was
-			 * just painted in this commit, and a smooth scroll would spend the first
-			 * frames of the reader's own message travelling down through the turn
-			 * above it. This is the ONE place every send door passes (the composer's
-			 * own submit only covers its own), so the suggestion grid and the
-			 * dictated deliverer snap by the same rule.
-			 *
-			 * NOT for an origin-bound send: that door finishes a dictated press in a
-			 * conversation this pane is NOT showing, and snapping the visible pane
-			 * would move a reader who never sent anything.
-			 */
-			if (!originBound) snapToBottom();
 			/*
 			 * The composer's own attachments, written to the Files panel here because
 			 * this is the only place they exist. They are NOT on the wire: a canonical
@@ -4991,8 +5095,10 @@ function SessionPanel({
 						 * unconsumed outcome has to be surfaced here rather than dropped into a
 						 * `void` (round 1, U2).
 						 */
-						onCommand: (invocation: SlashCommandInvocation) =>
-							void stableDispatchFromControl(invocation),
+						onCommand: (
+							invocation: SlashCommandInvocation,
+							anchor?: HTMLElement,
+						) => void stableDispatchFromControl(invocation, anchor),
 						/*
 						 * The SAME query `EffortPicker` renders from, by the
 						 * same key, so React Query serves both from one cache
@@ -5531,6 +5637,7 @@ function SessionPanel({
 						 * the band's gate.
 						 */
 						turnAlive,
+						busyDefaultMode,
 						stopOutcome,
 						/*
 						 * The clock-withhold half of the disputed idle (U9): true while

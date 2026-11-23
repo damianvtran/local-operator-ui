@@ -2431,6 +2431,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.get"),
 			sessionId,
+			inlineUi: z.boolean().optional(),
 			journalOrder: z.boolean().optional(),
 			orderIds: z.array(z.string().min(1).max(128)).max(512).optional(),
 			/*
@@ -2512,6 +2513,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.history"),
 			sessionId,
+			inlineUi: z.boolean().optional(),
 			beforeId: id.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
 			/*
@@ -2708,6 +2710,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.message"),
+			inlineUi: z.boolean().optional(),
 			sessionId,
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
@@ -2732,6 +2735,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			inputMode: z.enum(["typed", "dictated", "mixed"]).optional(),
 			inputPath: z.string().max(1024).optional(),
+			/*
+			 * HOW A BUSY-SEND MESSAGE REACHES THE RUNNING TURN (`steer`, `queue`,
+			 * `both`), and the harness gate is what keeps this `optional`:
+			 * `features.busy_delivery`. Absent means steer — the same answer a
+			 * body from an older build gets — so an older harness's own `.strict()`
+			 * schema never sees the key at all. Only ever set on a busy send whose
+			 * resolved mode is not `steer` (the renderer gates it, like
+			 * `inputMode`); `prompt` sends ignore it.
+			 */
+			delivery: z.enum(["steer", "queue", "both"]).optional(),
 		})
 		.strict(),
 	z
@@ -11387,6 +11400,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "sessions.get": {
 			const query = new URLSearchParams();
+			if (request.inlineUi === true) query.set("inline_ui", "1");
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
 				/*
@@ -11452,9 +11466,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 
 		case "sessions.history": {
-			const query = new URLSearchParams({
-				limit: String(request.limit ?? 100),
-			});
+			const query = new URLSearchParams();
+			if (request.inlineUi === true) query.set("inline_ui", "1");
+			query.set("limit", String(request.limit ?? 100));
 			if (request.beforeId) query.set("before_id", request.beforeId);
 			/*
 			 * `open_frame=1` only when the caller negotiated it (see the request
@@ -11598,6 +11612,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					images: request.images ?? [],
 					...(request.files?.length ? { files: request.files } : {}),
 					mode: request.mode ?? "prompt",
+					...(request.inlineUi === true ? { inline_ui: true } : {}),
 					/*
 					 * ABSENT, not empty, when the app has nothing to say: an older harness
 					 * validates this body with `extra="forbid"`, so a key present-but-null
@@ -11609,6 +11624,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 */
 					...(request.inputMode ? { input_mode: request.inputMode } : {}),
 					...(request.inputPath ? { input_path: request.inputPath } : {}),
+					/*
+					 * ABSENT, not empty, when the send has no delivery to name: an
+					 * older harness validates this body with `extra="forbid"`, so a
+					 * key present-but-null would be refused where a missing one is
+					 * simply a legacy body. The gate (`features.busy_delivery` and a
+					 * busy, non-steer send) is applied by the caller before this key
+					 * is ever set.
+					 */
+					...(request.delivery ? { delivery: request.delivery } : {}),
 				},
 			};
 		case "sessions.command":

@@ -118,7 +118,9 @@ export const menuFullWiring: TeamBridgeConversationMenuInput["wiring"] = {
  */
 export const menuSectionsFor = (
 	conversation: TeamBridgeConversation,
-	options: { rename?: boolean } = {},
+	/* `integrations` adds the Team Integrations entries' wiring (Manage apps,
+	   Alert responder); off by default so existing menu stories are unchanged. */
+	options: { rename?: boolean; integrations?: boolean } = {},
 ) =>
 	conversationMenuSections({
 		conversation,
@@ -127,5 +129,10 @@ export const menuSectionsFor = (
 		agentNotifyEnabled: true,
 		archivable: conversation.can_administer === true && !conversation.builtin,
 		renamable: options.rename === true && canRenameConversation(conversation),
-		wiring: { ...menuFullWiring, rename: options.rename === true },
+		wiring: {
+			...menuFullWiring,
+			rename: options.rename === true,
+			manageApps: options.integrations === true,
+			responder: options.integrations === true,
+		},
 	});

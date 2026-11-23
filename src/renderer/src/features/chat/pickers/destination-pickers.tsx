@@ -205,6 +205,10 @@ export type PickerContext = {
 	canonical: CanonicalSessionHandle;
 	commands: SlashCommandMeta[];
 	onClose: () => void;
+	/** The actual composer trigger, never inferred from focus after an owner round trip. */
+	quickPickerAnchor?: HTMLElement;
+	/** Outside dismissal must not take focus back from the user's next action. */
+	onCloseOutside?: () => void;
 	/** Post a system line into the transcript area (view-only). */
 	note: (text: string, error?: boolean) => void;
 	/**
@@ -244,7 +248,11 @@ export type PickerContext = {
  */
 export type DraftPickerSession = {
 	target: DraftSelectionTarget;
-	select: (selection: DesktopModelSelection | null) => void;
+	select: (
+		selection: DesktopModelSelection | null,
+		/** A relative effort change may only commit against the selection it read. */
+		condition?: { previous: DesktopModelSelection | null },
+	) => boolean;
 };
 
 type Entities<T = Record<string, unknown>> = {
@@ -488,42 +496,40 @@ const DEFAULT_SAVE_FAILURE = () =>
  * dropping `invisible` would read both reserved wordings into the checkbox's
  * name (review round 3, n1).
  *
- * `capped` is for a label whose third wording carries a NAME of unbounded
- * length - the model dialog's. Reserving the name in force did not hold: a
- * ticked pick that saved a longer name grew the label by a line and moved the
- * rows after all (design round 3 D3, review n2), and reserving the longest name
- * the catalogue lists would hold every dialog five lines tall for a row few
- * users pick. So a capped label is a FIXED height instead: at least three
- * lines (the tallest of the default dialog's wordings), the two name-free
- * wordings reserved, and the named wording cut at three lines with an
- * ellipsis. The cut is visual only; the accessible name keeps the whole
- * sentence.
  */
 const ReservedLabelText: FC<{
 	text: string;
 	/**
 	 * Every wording the label can show. Uncapped, the two not on screen are
-	 * reserved; capped, the first two are, and the third is the one cut.
+	 * reserved; capped, only the first two can grow the reserve. The named
+	 * wording keeps its full DOM text and hover title when visually clamped.
 	 */
 	wordings: readonly [string, string, string];
-	capped?: boolean;
-}> = ({ text, wordings, capped = false }) => {
-	const [reserveA = "", reserveB = ""] = capped
+	capLines?: 2 | 3;
+}> = ({ text, wordings, capLines }) => {
+	const [reserveA = "", reserveB = ""] = capLines
 		? wordings
 		: wordings.filter((wording) => wording !== text);
-	const cut = capped && text === wordings[2];
+	const cut = capLines !== undefined && text === wordings[2];
 	return (
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
 			className={cn(
 				"grid",
-				capped && "min-h-[3lh]",
+				capLines === 2 && "min-h-[2lh]",
+				capLines === 3 && "min-h-[3lh]",
 				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
 				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
 			)}
 		>
-			<span className={cn("col-start-1 row-start-1", cut && "line-clamp-3")}>
+			<span
+				className={cn(
+					"col-start-1 row-start-1",
+					cut && (capLines === 2 ? "line-clamp-2" : "line-clamp-3"),
+				)}
+				title={cut ? text : undefined}
+			>
 				{text}
 			</span>
 		</span>
@@ -569,31 +575,16 @@ function useDraftPick(
 	const [busy, setBusy] = useState(false);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
-	 * The selection in force, seeded from the pane and advanced by every pick the
-	 * backend confirmed.
-	 *
-	 * `draft.target` is a snapshot taken when this dialog OPENED — `PickerOutlet`
-	 * is handed the context that spawned it — so it does not move when the pane's
-	 * own value does: the store write a pick performs re-renders the pane and
-	 * leaves this dialog reading the value it was opened on. Without a local
-	 * memory the dialog therefore contradicts itself the instant a pick succeeds,
-	 * the strip and the result strip naming the new model while the header
-	 * sentence and the checkmark still name the old one (review round 1, R2). It
-	 * is the same defect the session's picker fixed for its own lagging owner
-	 * frame in QA Q2, which is why it is a remembered receipt and not a re-read.
-	 *
-	 * It is also what keeps the dialog's other half honest: the ladder an effort
-	 * pick offers is read from THIS selection's `sessions.preview` resolution, so
-	 * an effort dialog opened after a model pick offers the new model's rungs
-	 * rather than the previous model's.
-	 *
-	 * The pane stays the authority for a dialog that has not picked (the seed is
-	 * the prop) and for a re-open (a fresh mount re-seeds from the pane).
+	 * The pane's selection is authoritative when it moves. A local receipt
+	 * bridges the gap before the next pane render (and standalone picker hosts
+	 * that retain the context they mounted); it must not mask a later pane pick.
 	 */
-	const [picked, setPicked] = useState<DesktopModelSelection | null>(
-		draft?.target.model ?? null,
-	);
-	const selection = picked ?? draft?.target.model ?? null;
+	const seed = draft?.target.model ?? null;
+	const [picked, setPicked] = useState<{
+		base: DesktopModelSelection | null;
+		selection: DesktopModelSelection;
+	} | null>(null);
+	const selection = picked && picked.base === seed ? picked.selection : seed;
 	/**
 	 * What this dialog's preview is resolved for: the pane's target with the
 	 * selection in force substituted for the one it opened on. Undefined `model`
@@ -670,6 +661,8 @@ function useDraftPick(
 				 *     is `checked: false` and the pick is refused out loud.
 				 */
 				carry?: string;
+				/** Relative to the model and ladder shown when this effort was chosen. */
+				relativeEffort?: boolean;
 				/**
 				 * A check that the backend's OWN resolution shows the pick applied,
 				 * before it is recorded on the draft.
@@ -805,8 +798,24 @@ function useDraftPick(
 						return;
 					}
 				}
-				draft.select(chosen);
-				setPicked(chosen);
+				// Another popup can settle a model while this preview is in flight.
+				// A relative rung must never write that older whole model back.
+				if (
+					draft.select(
+						chosen,
+						reading.relativeEffort ? { previous: seed } : undefined,
+					) === false
+				) {
+					refuse(
+						reading.refused ??
+							t(
+								"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change",
+								{ refused: "" },
+							).trimStart(),
+					);
+					return;
+				}
+				setPicked({ base: seed, selection: chosen });
 				setResult({
 					tone: "success",
 					/*
@@ -849,7 +858,7 @@ function useDraftPick(
 				setBusy(false);
 			}
 		},
-		[draft, queryClient, refuse, carriesFast],
+		[draft, queryClient, refuse, carriesFast, seed],
 	);
 	return {
 		pick,
@@ -908,6 +917,8 @@ export const ModelPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
+	quickPickerAnchor,
+	onCloseOutside,
 	note,
 	draft,
 }) => {
@@ -2066,6 +2077,17 @@ export const ModelPicker: FC<PickerContext> = ({
 			 * the consequence for THIS pick rather than describing a general option.
 			 */
 			title={t("ui.chat.pickers.models.title")}
+			quick={{
+				kind: "model",
+				anchor: quickPickerAnchor,
+				context:
+					options.find((option) => option.current)?.label ??
+					shownSelector ??
+					"",
+				onCloseOutside,
+				// Opening Connect is an action in this picker, not a reason to discard its search.
+				ignoreOutside: () => useConnectProviderStore.getState().open,
+			}}
 			description={
 				draft
 					? shownSelector
@@ -2276,65 +2298,40 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * global change behind a per-conversation control. The session's picker
 				 * keeps it, where "this session vs the default" is the actual question.
 				 */
-				<div
-					className={cn(
-						"flex gap-3",
-						/*
-						 * `items-start` only once the scope control is there.
-						 *
-						 * The control puts a second line under the default checkbox, and a
-						 * row of buttons centred against a two-line block reads as float
-						 * rather than as alignment. WITHOUT the control the row is the one
-						 * line per side it has always been, and it renders exactly as it did
-						 * before this change — the frames, state by state, are the check: an
-						 * alignment nudge in a state this change does not enter is a delta
-						 * nobody asked for.
-						 */
-						/*
-						 * The control also always takes the left end, in every mode: a draft
-						 * pane has no persist checkbox, so the base layout right-aligned its
-						 * buttons there; with a control beside them the row is a two-sided
-						 * one again.
-						 */
-						draft && !scopeControl ? "justify-end" : "justify-between",
-						scopeControl ? "items-start" : "items-center",
+				<div className="grid gap-1">
+					{(!draft || scopeControl) && (
+						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 py-1">
+							{!draft && (
+								<div className="min-w-0 grow basis-48 [&_label]:min-w-0 [&_label]:flex-1">
+									{/* The control, not the saved model's name, sets the width.
+									 * A long label must not wrap the adjacent scope control. */}
+									<PickerCheck
+										checked={persistDefault}
+										disabled={unconfirmedModel}
+										onCheckedChange={onPersistDefaultChange}
+										tone="muted"
+									>
+										<ReservedLabelText
+											wordings={persistWordings}
+											// The scope box can wrap below this label. Don't leave a
+											// third line of empty space before it; only cap the named
+											// receipt, so translations of the controls still fit.
+											capLines={scopeControl ? 2 : 3}
+											text={
+												!persistDefault
+													? persistWordings[0]
+													: savedModel
+														? persistWordings[2]
+														: persistWordings[1]
+											}
+										/>
+									</PickerCheck>
+								</div>
+							)}
+							{scopeControl}
+						</div>
 					)}
-				>
-					{/*
-					 * The list controls on the LEFT: the default-scope checkbox (session
-					 * mode only) and the scope control, which every mode carries because
-					 * the LIST is what it changes. Wrapping keeps the narrow dialog's
-					 * toolbar readable rather than letting one long label push the
-					 * refresh control off the row.
-					 */}
-					<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-						{!draft && (
-							<PickerCheck
-								checked={persistDefault}
-								disabled={unconfirmedModel}
-								onCheckedChange={onPersistDefaultChange}
-								tone="muted"
-							>
-								{/*
-								 * Ticked, the label states what is saved rather than promising
-								 * a pick that may never happen (UX round 1, U5).
-								 */}
-								<ReservedLabelText
-									capped
-									wordings={persistWordings}
-									text={
-										!persistDefault
-											? persistWordings[0]
-											: savedModel
-												? persistWordings[2]
-												: persistWordings[1]
-									}
-								/>
-							</PickerCheck>
-						)}
-						{scopeControl}
-					</div>
-					<div className="flex items-center gap-2">
+					<div className="flex min-w-0 flex-wrap items-center">
 						{!draft && (
 							<Button
 								variant="ghost"
@@ -2381,28 +2378,7 @@ export const ModelPicker: FC<PickerContext> = ({
 								else setLive(true);
 							}}
 							disabled={catalogue.isFetching}
-							/*
-							 * A RESERVED WIDTH for the slot the label changes inside (design D1).
-							 *
-							 * The label swap is not a text change in place: with the row laid out
-							 * `justify-between`, the narrower busy label let every control to its
-							 * left slide. Measured on this change's own frames: `Set current model as
-							 * default` sat at x 389-551 settled and x 427-589 in flight - a 38px
-							 * shift under a pointer that is not moving, twice per open, and again on
-							 * every cadence tick.
-							 *
-							 * 149px IS THE IDLE LABEL'S OWN BOX, read off the DOM rather than off a
-							 * frame: in the served story the control is 149 wide settled, 132 in
-							 * flight and 132 while the user's click is out - i.e. `Refreshing…` and
-							 * `Checking…` are both NARROWER than the reserve, so the slot's edges do
-							 * not move and the click target stays where the user aimed it. (132 was
-							 * the first attempt, taken from the text's ink in the frames rather than
-							 * from the box: it left a 17px shift, because the idle label's box is
-							 * wider than its glyphs.)
-							 *
-							 * `min-w` rather than a fixed `w`: a theme with wider type is free to
-							 * grow the control rather than truncate it.
-							 */
+							// Keep this slot stable when its label swaps on provider refresh.
 							className="min-w-[149px]"
 						>
 							{refreshing ? (
@@ -2427,6 +2403,8 @@ export const EffortPicker: FC<PickerContext> = ({
 	sessionId,
 	canonical,
 	onClose,
+	quickPickerAnchor,
+	onCloseOutside,
 	draft,
 	note,
 }) => {
@@ -2547,9 +2525,12 @@ export const EffortPicker: FC<PickerContext> = ({
 		),
 		enabled: Boolean(draft),
 	});
-	const draftModel = draft
-		? bandReadings(draftPreview.data?.snapshot, null).effort
-		: null;
+	// Retained query data is useful for the composer's readings, not for
+	// offering old model rungs as controls for a newly selected model.
+	const draftModel =
+		draft && !draftPreview.isPlaceholderData
+			? bandReadings(draftPreview.data?.snapshot, null).effort
+			: null;
 	const model = draft
 		? draftModel
 		: (runningFrontend(canonical)?.effective_model ??
@@ -2641,7 +2622,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * because the owner has not resolved it yet.
 	 */
 	const loading = draft
-		? draftPreview.isLoading
+		? draftPreview.isLoading || draftPreview.isPlaceholderData
 		: entities.isLoading && cachedRungs.length === 0;
 	const noOptions = options.length === 0 && !loading;
 	/*
@@ -2705,6 +2686,12 @@ export const EffortPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.effort.title")}
+			quick={{
+				kind: "effort",
+				anchor: quickPickerAnchor,
+				context: noOptions ? undefined : label,
+				onCloseOutside,
+			}}
 			toolbar={
 				!draft ? (
 					<PickerCheck
@@ -2835,6 +2822,7 @@ export const EffortPicker: FC<PickerContext> = ({
 				void draftPick.pick(
 					selection ? { ...selection, reasoning_effort: value } : null,
 					{
+						relativeEffort: true,
 						describe: () =>
 							t(
 								"ui.chat.pickers.destination_pickers.effort_for_this_conversation",

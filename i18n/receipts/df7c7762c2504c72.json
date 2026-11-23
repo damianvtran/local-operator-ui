@@ -1,0 +1,21 @@
+{
+  "record_kind": "REPLACEMENT",
+  "date": "2026-11-22",
+  "locale": "zh-CN",
+  "namespace": "ui.agents.pending",
+  "head": "6a4faefba284c84bb88a09e17295d9f0b71db041",
+  "auditor": {"agent": "reviewer", "session": "a733fbf103c2", "instance": "df7c7762c2504c72", "model": "openai/gpt-6.2-sol", "fallback_from": "anthropic/claude-opus-5-5", "independent": true},
+  "translation_provenance": {"source": "manager brief", "original_model": "anthropic/claude-opus-5-5", "remediation_fallback_model": "openai/gpt-6.1-sol", "per_key_attribution": "unknown"},
+  "source_path": "src/i18n/catalogues/en/ui.agents.pending.json",
+  "source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+  "context_path": "src/i18n/catalogues/en/ui.agents.pending.context.json",
+  "context_sha256": "980c743dee0a8582cf3f572891388375e798f68a4fd827d4b97746a84b265f63",
+  "target_path": "src/i18n/catalogues/zh-CN/ui.agents.pending.json",
+  "target_sha256": "d60dd425118e766810d5a6af5c324e13314b97643d169e41fd1be10c0aa351ab",
+  "authority": {"repo": "damianvtran/local-operator", "revision": "b42471d3935cb7e95d64428af27c32626665f4c0", "glossary": "i18n/glossary.md", "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8", "style": "i18n/style-guides/zh-CN.md", "style_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"},
+  "status": "passed",
+  "findings": [{"id": "I18N-ZH-1", "severity": "minor", "key": "ui.agents.pending.skill_needs_update", "finding": "请 adds politeness that the zh-CN guide reserves for source copy containing 'please'. The adjacent update gate uses this form, but English here is a direct instruction. Removing 请 preserves the remedy and meaning.", "disposition": "deferred — non-gating style polish"}],
+  "observations": ["Reviewed all 15 values against English, context and live call sites. 等待你批准 represents the operator decision; 智能体、团队、技能 match tabs; 新建提案 and 更改提案 are proposals, not applied operations. 已过期 marks a stale proposal, and the skill note clearly identifies the prerequisite.", "审核 is the review action, not the approval decision. Each accessible name names its kind and distinguishes creation from modification. 显示全部/收起 match expand/collapse and the tooltip retains both arguments."],
+  "execution": {"method": "Node source-only assertions with the repository's FormatJS ICU parser and IntlMessageFormat", "actual": "zh-CN: 15 values/context keys, 16 ICU formatting cases, no manual bidi controls — PASS", "verified": "CLDR other only, count interpolation, both distinct three-arm review selects including label-in-name and name retention, show_all and tab_title arguments"},
+  "limits": "Prior evidence unavailable per brief; newly audited from current bytes, not reconstructed. No rendered fit, native/manual QA or release approval claimed."
+}

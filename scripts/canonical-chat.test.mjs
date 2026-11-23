@@ -2700,10 +2700,16 @@ test("one rule decides what the same message means, and the composer keeps no se
 		"src/renderer/src/shared/hooks/use-message-input.ts",
 		"utf8",
 	);
+	/*
+	 * WHITESPACE-TOLERANT since the busy-delivery slice (S2): the hook's
+	 * `handleSubmit` gained an options parameter, and the formatter reflowed
+	 * this statement across lines. The pin is about the READS, not the layout,
+	 * so it matches the two fragments rather than one formatting.
+	 */
 	assert.match(
 		hook,
-		/const staged = conversationId \? stagedPayloadOf\(conversationId\) : undefined;/,
-		"the submit no longer reads its payload from the row that holds it, so what it sends and what it shows can disagree",
+		/const staged = conversationId\s*\? stagedPayloadOf\(conversationId\)\s*: undefined;/,
+		"the submit no longer reads its payload from the following the row that holds it, so what it sends and what it shows can disagree",
 	);
 	assert.match(
 		hook,
@@ -5493,7 +5499,8 @@ test("the submit path cannot re-decide what a draft is", async () => {
 		"the composer exempts `whole` from the plan again, so a whole-draft command is being routed back through the message path — the path that used to re-decide it",
 	);
 	// (b) The dispatcher takes the planner's answer (a name and its args) and has
-	// no text-shape guard left to disagree with the planner.
+	// no text-shape guard left to disagree with the planner. Its only optional
+	// extra input is a DOM anchor for picker placement, not draft text.
 	const dispatcher = code(
 		await readFile(
 			"src/renderer/src/features/chat/components/slash-dispatch.ts",
@@ -5506,8 +5513,8 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	);
 	assert.match(
 		dispatcher,
-		/async \(\s*invocation: SlashCommandInvocation,?\s*\): Promise<SlashDispatchOutcome>/,
-		"the dispatcher no longer takes a `SlashCommandInvocation`; handing it text lets a second whole-draft decision exist again",
+		/async \(\s*invocation: SlashCommandInvocation(?:,\s*quickPickerAnchor\?: HTMLElement)?,?\s*\): Promise<SlashDispatchOutcome>/,
+		"the dispatcher must take a `SlashCommandInvocation` and at most an optional `HTMLElement` picker anchor; handing it text lets a second whole-draft decision exist again",
 	);
 	// (c) The canonical send path never asks whether the text is a command: it is
 	// the model path, and the composer has already dealt with every command.
@@ -5744,7 +5751,10 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 	);
 });
 
-test("the user's echo fades INTO position once; every other arriving row stays ink only (operator request, 2026-11-11)", () => {
+const RE_TRANSCRIPT_ROW_ARRIVAL =
+	/entered\.current &&\s*record\.kind !== "assistant" &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/;
+
+test("the user's echo rises once; passive rows fade in and assistant parents never animate", () => {
 	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
 	const rule = (selector) => {
 		const at = css.indexOf(`${selector} {`);
@@ -5782,15 +5792,18 @@ test("the user's echo fades INTO position once; every other arriving row stays i
 		css.indexOf(".lo-transcript-arrival {"),
 	);
 	assert.doesNotMatch(plain, /transform/);
-	// Only a USER row takes the rise, and the class is fixed at mount (`entered`
-	// is a ref read once), so owner coalescing cannot replay it.
+	// Only a user row rises. Passive rows fade in, but an assistant parent
+	// must never fade: that would dim text already painted while the fresh ink
+	// animates below it. The mount ref prevents owner coalescing from replaying
+	// the entrance; transcript-arrival-cold-open.test.mjs exercises the DOM.
 	const row = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
 	assert.match(
 		row,
-		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
+		RE_TRANSCRIPT_ROW_ARRIVAL,
+		"users rise, passive arrivals fade, and assistant parents receive neither class",
 	);
 	assert.match(row, /const entered = useRef\(enter\);/);
 });

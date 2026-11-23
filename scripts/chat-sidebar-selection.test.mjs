@@ -1414,6 +1414,8 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const SKILLS_LIBRARY =
 	"src/renderer/src/features/agents/components/skills-library.tsx";
+const PENDING_APPROVALS =
+	"src/renderer/src/features/agents/components/pending-approvals.tsx";
 const PROPOSED_NEW =
 	"src/renderer/src/features/agents/components/proposed-new-profiles.tsx";
 const CANVAS_SECTION =
@@ -1750,6 +1752,22 @@ const ROW_STATE_GROUNDS = [
 		stubs: { proposal: { name: "agent" }, selected: "agent", rowCurrent },
 		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
 		groundFile: AGENTS_PAGE,
+	},
+	{
+		// The list, not the surrounding sunken panel or the roster aside,
+		// supplies the ground for the approval rows.
+		what: "the Agents pending approvals summary row",
+		rowFile: PENDING_APPROVALS,
+		expression: () =>
+			expressionAfter(PENDING_APPROVALS, "aria-current={current"),
+		stubs: { current: true, rowCurrent },
+		ground: () =>
+			literalClassAt(
+				PENDING_APPROVALS,
+				'data-testid="pending-approvals-list"',
+				"after",
+			),
+		groundFile: PENDING_APPROVALS,
 	},
 	{
 		/* The retained FileRowItem module still names/paints rowCurrent, so the

@@ -198,8 +198,6 @@ const DEFERRED_PANELS = {
 		"the message actions toolbar over a Bridge row",
 	"src/renderer/src/shared/components/common/find-replace-widget.tsx":
 		"the find bar floating inside the editor",
-	"src/renderer/src/features/chat/components/attachments-preview.tsx":
-		"the composer tile's dwell preview, a 300px surface that marking blind changes with no browser run in this cycle to look at it",
 	"src/renderer/src/features/chat/components/canvas/inline-edit.tsx":
 		"the canvas inline-edit popover over the CodeMirror surface: the same unverified-pixels reason",
 	"src/renderer/src/features/team-bridge/attachments/inline-image-tile.tsx":

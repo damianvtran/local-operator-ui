@@ -348,6 +348,7 @@ export function formatQuickSendTokens(
 		down: "Down",
 		left: "Left",
 		right: "Right",
+		enter: "Enter",
 	};
 	return value
 		.split("+")

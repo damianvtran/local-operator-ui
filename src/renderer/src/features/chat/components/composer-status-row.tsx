@@ -2579,7 +2579,13 @@ export const ComposerStatusRow = ({
 									 * ~37px and never deforms, the snippet is `min-w-0 truncate` and yields
 									 * first, and the count is `shrink-0` so it is never cut mid-figure.
 									 */}
-									<span className={cn("shrink-0", goalStalled && "text-ink")}>
+									<span
+										className={cn(
+											"shrink-0",
+											goalStalled && "text-ink",
+											"font-medium",
+										)}
+									>
 										{t("ui.chat.composer.status.goal_label")}
 									</span>
 									{/*
@@ -2671,7 +2677,7 @@ export const ComposerStatusRow = ({
 								tabIndex={0}
 								data-status-goal-body=""
 								className={cn(
-									"font-sans text-body-sm text-ink-muted whitespace-pre-wrap break-words",
+									"font-sans text-body-sm text-ink whitespace-pre-wrap break-words",
 									CAPPED_BLOCK,
 								)}
 							>
@@ -2733,7 +2739,13 @@ export const ComposerStatusRow = ({
 							data-status-loop=""
 							className={cn(CHIP_READOUT, loopFirst ? FIRST_CHIP : undefined)}
 						>
-							<Repeat aria-hidden={true} className={cn("size-3.5 shrink-0")} />
+							<Repeat
+								aria-hidden={true}
+								className={cn(
+									"size-3.5 shrink-0",
+									loopIsRunning(loop.status) && "text-ink",
+								)}
+							/>
 							{/*
 							 * The clause is ONE text flow, and the progress yields from INSIDE it — leaving
 							 * `Loop: running` where the column cannot carry the rest. The progress stays a node
@@ -2753,10 +2765,16 @@ export const ComposerStatusRow = ({
 							 * agree wherever both apply, and neither is a proxy for the other: the class rule
 							 * marks the arrangement, the measurement marks the box.
 							 */}
-							<span>
+							<span
+								className={cn(
+									loopIsRunning(loop.status) && "font-medium text-ink",
+								)}
+							>
 								{`${t("ui.chat.composer.status.loop_label")} ${loopStatusWord(loop)}`}
 								{itemFits && (
-									<span className={cn(NARROW_HIDDEN)}>
+									<span
+										className={cn(NARROW_HIDDEN, "font-normal text-ink-muted")}
+									>
 										{loopProgress(loop)}
 									</span>
 								)}
@@ -2980,7 +2998,12 @@ export const ComposerStatusRow = ({
 								 * compress with the countdown, and the count is the bounded fact the
 								 * row's doctrine protects.
 								 */}
-								<span className="shrink-0 whitespace-nowrap">
+								<span
+									className={cn(
+										"shrink-0 whitespace-nowrap",
+										askAttention && "font-semibold text-ink",
+									)}
+								>
 									{askChipCountClause(askView)}
 								</span>
 								{askDeadlineText === null ? null : (
@@ -2995,7 +3018,7 @@ export const ComposerStatusRow = ({
 									 */
 									<span
 										className={cn(
-											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
+											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap text-ink-muted",
 											ASK_SENTENCE_NARROW,
 										)}
 									>
@@ -3019,7 +3042,7 @@ export const ComposerStatusRow = ({
 									 */
 									<span
 										className={cn(
-											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
+											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap text-ink-muted",
 											ASK_VALUE_WIDE,
 											ASK_VALUE_NARROW,
 										)}

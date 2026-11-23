@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "听写失败：听写所用的{provider}账户额度已用完。如果是你的账户，前往{destination}充值。",
 	"ui.common.errors.dictation_unknown": "听写失败：{reason}。重试，或连同应用日志一起报告此问题。",
 	"ui.common.errors.dictation_unknown_clipped": "听写失败：{reason} 重试，或连同应用日志一起报告此问题。",
+	"ui.common.errors.dictation_refused_take_kept": "听写失败：{reason}。丢弃录音，或连同应用日志一起报告此问题。",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "听写失败：{reason} 丢弃录音，或连同应用日志一起报告此问题。",
 	"ui.common.errors.dictation_empty": "未识别到任何话语。靠近麦克风一点后重试。",
 	"ui.common.errors.speech_failure": "无法朗读此内容。重试。",
 	"ui.common.errors.speech_radient_sign_in": "Radient登录已失效。在“设置”中重新登录。",

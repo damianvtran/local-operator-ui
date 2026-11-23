@@ -614,10 +614,21 @@ test("the picker host hides the native browser view while it is open", () => {
 	 * would be a dialog the user cannot see. Registered in the one host BOTH
 	 * presenters render through, so a picker added later inherits it.
 	 */
+	const host = code(HOST);
 	assert.match(
-		code(HOST),
-		/useSuppressBrowserView\(open, "dialog", "panel-picker"\);/,
-		"PickerHost must register with the browser-view policy",
+		host,
+		/useSuppressBrowserView\(open && !anchor, "dialog", "panel-picker"\);/,
+		"dialogs, including typed picker fallbacks, must register with the browser-view policy",
+	);
+	// A chip popup suppresses only on measured overlap, but it still has to
+	// register its actual portalled rectangle with the same policy.
+	assert.match(
+		host,
+		/const Content = anchor \? PopoverContent : DialogContent;/,
+	);
+	assert.match(
+		code("src/renderer/src/shared/components/ui/popover.tsx"),
+		/useMeasuredBrowserViewPanel<HTMLDivElement>\("popover"\)/,
 	);
 });
 

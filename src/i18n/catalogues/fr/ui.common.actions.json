@@ -6,6 +6,7 @@
 	"ui.common.actions.dismiss": "Ignorer",
 	"ui.common.actions.more_info": "Plus d’infos",
 	"ui.common.actions.retry": "Réessayer",
+	"ui.common.actions.discard": "Écarter",
 	"ui.common.actions.retry_again": "Réessayer",
 	"ui.common.actions.retrying": "Nouvelle tentative…",
 	"ui.common.actions.date_time_picker.select_date": "Sélectionner une date",

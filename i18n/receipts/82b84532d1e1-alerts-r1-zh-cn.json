@@ -1,0 +1,59 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-zh-cn",
+	"date": "2026-11-21",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/zh-CN.md sha256:615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6",
+		"shipped_terms": "src/i18n/catalogues/zh-CN/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"zh-CN": "2bf8eb889bddcbcbcf758bc0468d84fec07a568c9b38311b42825544cd4a027c"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-ZH1",
+			"severity": "MINOR",
+			"keys": [
+				"ui.teamBridge.alerts.claim.holder_for_owner",
+				"ui.teamBridge.alerts.claim.taken_by",
+				"ui.teamBridge.alerts.fire_count",
+				"ui.teamBridge.alerts.group_count",
+				"ui.teamBridge.alerts.last_fired",
+				"ui.teamBridge.alerts.open_labelled",
+				"ui.teamBridge.alerts.open_on",
+				"ui.teamBridge.alerts.responder.description",
+				"ui.teamBridge.alerts.responder.read_only",
+				"ui.teamBridge.alerts.responder.severity_hint",
+				"ui.teamBridge.alerts.responder.severity_label",
+				"ui.teamBridge.alerts.responder.tier_detail",
+				"ui.teamBridge.alerts.responder.tier_label",
+				"ui.teamBridge.alerts.responder.title",
+				"ui.teamBridge.alerts.review_ask",
+				"ui.teamBridge.alerts.severity"
+			],
+			"current": "e.g. '在 {host} 中打开', '由 {who} 认领', '最高 SEV{level}', '已触发 # 次', '{agent} 可以做什么'",
+			"replacement": "Remove the space at every CJK–Latin/placeholder/# boundary: '在{host}中打开', '由{who}认领', '最高SEV{level}', '已触发#次', '{total, plural, other {#条告警}}，已恢复{resolved, number}条', '{agent}可以做什么', etc. (27 sites).",
+			"note": "zh-CN guide: 'No space inserted between Chinese text and Latin/digit runs'. Shipped zh-CN catalogues: 4466 unspaced vs 301 spaced boundaries (measured); this namespace spaces all 27."
+		},
+		{
+			"id": "T-ZH2",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.responder.tier_detail",
+			"current": "triage {认领告警中的事件，…}",
+			"replacement": "triage {认领触发中的告警，以只读权限调查，并在告警话题中发布发现。}",
+			"note": "'告警中的事件' reads as 'events inside the alerts'; the English is 'claim firing alerts'."
+		}
+	]
+}

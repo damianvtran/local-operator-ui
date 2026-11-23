@@ -241,6 +241,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "inline_ui"
 	| "session_tags"
 	/**
 	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
@@ -740,6 +741,17 @@ export type DesktopFeature =
 	 * the replay rule that goes with it.
 	 */
 	| "input_mode"
+	/**
+	 * `delivery` on `sessions.message`: how a message sent while the session is
+	 * busy reaches the running turn (`steer` / `queue` / `both`).
+	 *
+	 * ITS OWN KEY for the same reason `input_mode` has one: the field rides a
+	 * body an older harness validates with `extra="forbid"`, so a renderer
+	 * must ASK before sending it. Absent means the legacy body (field absent,
+	 * which the wire reads as steer), and a resolved queue/both without the key
+	 * is refused rather than sent as steer (see `composer-send-key.ts`).
+	 */
+	| "busy_delivery"
 	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
@@ -1351,6 +1363,7 @@ function streamCapabilityFlags(
 ): StreamCapabilityFlags {
 	return {
 		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		inlineUi: desktopFeatureEnabled(capabilities, "inline_ui"),
 		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
 		peerJournalSource: desktopFeatureEnabled(
 			capabilities,

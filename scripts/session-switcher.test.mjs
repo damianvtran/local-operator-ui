@@ -4,6 +4,11 @@ import { test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
+/* The bundle below is CJS and resolves its externals through this same `require`,
+ * so anything this file hands the tree has to come from here too - see the
+ * `@tanstack/react-query` note in `mountSwitcher`. */
+const require = createRequire(import.meta.url);
+
 /**
  * The Ctrl+Tab recent-session switcher: its rows, its stepping, the chord, the
  * focus predicate that arbitrates it against the in-app browser, and the run's
@@ -56,6 +61,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { switcherSessions } from "./src/renderer/src/features/chat/chat-temporary";',
+			'export { FLEET_ASKS_QUERY_KEY } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { buildSwitcherRows, stepSwitcherCursor, initialSwitcherCursor, commitSessionId, switcherPress, SESSION_SWITCHER_ROW_CAP, SESSION_SWITCHER_REVEAL_MS } from "./src/renderer/src/features/session-switcher/session-switcher-model";',
 			'export { browserOwnsTabChord, registerBrowserChordRoot } from "./src/renderer/src/features/browser/hooks/use-browser-chords";',
 			'export { interruptEscapeApplies } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
@@ -117,7 +123,7 @@ const bundle = await build({
 
 const module = { exports: {} };
 new Function("require", "module", "exports", bundle.outputFiles[0].text)(
-	createRequire(import.meta.url),
+	require,
 	module,
 	module.exports,
 );
@@ -131,6 +137,7 @@ const {
 	switcherPress,
 	SESSION_SWITCHER_ROW_CAP,
 	SESSION_SWITCHER_REVEAL_MS,
+	FLEET_ASKS_QUERY_KEY,
 	browserOwnsTabChord,
 	registerBrowserChordRoot,
 	interruptEscapeApplies,
@@ -520,6 +527,9 @@ async function mountSwitcher({
 	sessions = [],
 	recents = [],
 	displayed = null,
+	/** The aggregate's rows, seeded into the cache the switcher already reads - the
+	 * real read on this app, since the catalogue route never fills `asks_open`. */
+	asks = null,
 	/** The route the switcher is asked from: only a chat route has a conversation
 	 * on screen (review round 1's F2). */
 	route = "/chat/abc",
@@ -553,9 +563,15 @@ async function mountSwitcher({
 	const { createElement: h, act } = await import("react");
 	const { createRoot } = await import("react-dom/client");
 	const { MemoryRouter } = await import("react-router-dom");
-	const { QueryClient, QueryClientProvider } = await import(
-		"@tanstack/react-query"
-	);
+	/*
+	 * REQUIRED, NOT DYNAMICALLY IMPORTED: the component bundle reaches
+	 * `@tanstack/react-query` through `require` (it is external to esbuild), and
+	 * the package ships separate ESM and CJS builds - so a dynamic `import` here
+	 * hands the tree a DIFFERENT `QueryClientContext` from the one the hooks read,
+	 * and every `useOptionalQueryClient` in the bundle falls back to its inert
+	 * private client. One module instance is what makes the seeded cache visible.
+	 */
+	const { QueryClient, QueryClientProvider } = require("@tanstack/react-query");
 
 	useUiPreferencesStore.setState({ conversationRecents: recents });
 	useCanonicalSessionsStore.setState({
@@ -581,6 +597,17 @@ async function mountSwitcher({
 			),
 		);
 	});
+	/*
+	 * The aggregate answer lands WHILE the surface is mounted, the way the poll's
+	 * first response does, so the seed notifies the observer that is already
+	 * reading. Seeded before the render it would sit in a cache entry this harness
+	 * gives `gcTime: 0` and be collected before anything read it.
+	 */
+	if (asks !== null) {
+		await act(async () => {
+			client.setQueryData(FLEET_ASKS_QUERY_KEY, asks);
+		});
+	}
 
 	const key = async (init) => {
 		let event = null;
@@ -711,6 +738,56 @@ test("holding the chord paints after the delay with the moved cursor, and releas
 		await keyup({ key: "Control", ctrlKey: false });
 		assert.deepEqual(opened(), ["older"]);
 		assert.equal(panel(), null, "the commit takes the overlay with it");
+	} finally {
+		await unmount();
+	}
+});
+
+test("a row holding a queued ask draws the ask mark inside itself, and a row without one does not", async () => {
+	/*
+	 * THE WHOLE DEFECT WAS THE WIRING (design round 1, D1): the switcher drew the
+	 * derived status mark and nothing else, so an idle conversation holding a
+	 * question was a bare ring - pixel-identical, and to a screen reader
+	 * word-identical, to one with nothing waiting. This mounts the shipped
+	 * component with the aggregate seeded into the cache the app already reads and
+	 * asserts the row's own contents, not a composition of them.
+	 */
+	const { key, rows, wait, unmount } = await mountSwitcher({
+		sessions: ["current", "previous", "older"],
+		recents: ["current", "previous", "older"],
+		displayed: "current",
+		asks: [
+			{
+				ask_id: "a-1",
+				session_id: "previous",
+				status: "open",
+				created_at: Date.now() - 60_000,
+				expires_at: Date.now() + 900_000,
+				questions: [{ id: "q", question: "Proceed?" }],
+			},
+		],
+	});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		const asked = rows().find((row) => row.dataset.sessionId === "previous");
+		const plain = rows().find((row) => row.dataset.sessionId === "older");
+		assert.ok(asked);
+		// One ask glyph, and it is INSIDE the row: the mark's label is part of the
+		// button's content, so the row's accessible name carries the count.
+		assert.equal(
+			asked.querySelectorAll(".lucide-message-circle-question").length,
+			1,
+		);
+		assert.match(
+			asked.querySelector('[role="img"]')?.getAttribute("aria-label") ?? "",
+			/^1 ask outstanding\./,
+		);
+		// The row with no ask keeps today's contents: no mark, no added node.
+		assert.equal(
+			plain?.querySelectorAll(".lucide-message-circle-question").length,
+			0,
+		);
 	} finally {
 		await unmount();
 	}
