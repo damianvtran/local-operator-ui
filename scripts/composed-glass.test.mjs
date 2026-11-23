@@ -264,6 +264,10 @@ test("Bridge assigns the shared alpha owners without a second opaque header", ()
  * `canvas-content` column is translucent, and an opaque `bg-*` on the wrapper
  * around the docked composer stood out as a flat block (operator report,
  * 2026-11-20). Source pin; the alpha itself is the CDP guard's to read. */
+const AGENTS_FRAME_DOCK =
+	/<WorkspaceFrame\s+variant="full-height">\s*<main\b[\s\S]*?<ConfigComposer\b[\s\S]*?<\/main>\s*<\/WorkspaceFrame>/;
+const FULL_HEIGHT_CANVAS_CONTENT =
+	/data-glass-region=\{\s*inset\s*\?\s*variant === "chat" \|\| variant === "full-height"\s*\?\s*"canvas-content"/;
 const DOCK_WRAPPER = /<div className="([^"]*)">\s*<ConfigComposer\b/;
 const OWN_GROUND = /(^|\s)bg-/;
 test("Agents docked composer inherits the canvas-content ground", () => {
@@ -271,7 +275,20 @@ test("Agents docked composer inherits the canvas-content ground", () => {
 		"src/renderer/src/features/agents/components/agents-page.tsx",
 		"utf8",
 	);
-	assert.ok(page.includes('data-glass-region="canvas-content"'));
+	const frame = readFileSync(
+		"src/renderer/src/shared/components/common/workspace-frame.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		AGENTS_FRAME_DOCK,
+		'AgentsPage wraps <main> and the docked <ConfigComposer> in <WorkspaceFrame variant="full-height">',
+	);
+	assert.match(
+		frame,
+		FULL_HEIGHT_CANVAS_CONTENT,
+		'WorkspaceFrame assigns data-glass-region="canvas-content" for variant="full-height"',
+	);
 	const dock = page.match(DOCK_WRAPPER);
 	assert.ok(dock, "the docked ConfigComposer wrapper is found");
 	assert.doesNotMatch(dock[1], OWN_GROUND, `dock wrapper: "${dock[1]}"`);
