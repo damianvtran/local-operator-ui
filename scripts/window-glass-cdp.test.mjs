@@ -164,12 +164,14 @@ const AUDIT = `(() => {
     const bg = getComputedStyle(el).backgroundColor;
     out[name] = { pts, slabs, own, bg, borderTop: getComputedStyle(el).borderTopWidth, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
-  const frames = document.querySelectorAll('main > [data-workspace-frame]');
+  const outlet = document.querySelector('main[data-workspace-outlet]');
+  const frames = [...(outlet?.querySelectorAll('[data-workspace-frame]') ?? [])].filter((el) => el.getClientRects().length > 0);
   const frame = frames[0];
   out.frameCount = frames.length;
   out.frame = !frame ? null : {
     own: alphaOf(getComputedStyle(frame).backgroundColor),
-    outletOwn: alphaOf(getComputedStyle(frame.parentElement).backgroundColor),
+    outletOwn: alphaOf(getComputedStyle(outlet).backgroundColor),
+    role: frame.dataset.glassRegion,
     split: !!frame.querySelector(':scope > [data-glass-split]'),
   };
   const root = getComputedStyle(document.documentElement);
@@ -494,7 +496,7 @@ const ROUTES = [
 	 * and skips the app's primary input would call a total audit without it. */
 	{
 		hash: "#/chat",
-		legacy: true,
+		frameRole: "canvas-content",
 		must: ["sidebar", "rail", "content", "composer"],
 	},
 	{
@@ -511,9 +513,9 @@ const ROUTES = [
 	 * they are asserted by the targeted test below (a profile with an empty
 	 * board cannot measure a card, and the test says which it measured). */
 	{ hash: "#/projects", must: ["sidebar", "canvas"] },
-	/* The Browser route: the chrome band is its large ground now; the host is
-	 * clear while a live page renders, so it is not read as the ground. */
-	{ hash: "#/browser", legacy: true, must: ["sidebar", "chrome"] },
+	/* The separate Browser band is measured over a live page, while the inset
+	 * keeps its elevated ground around the safe edges of the native view. */
+	{ hash: "#/browser", frameRole: "pane", must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
 	/* Notifications: the page's own canvas region (it has no page-sidebar), whose
@@ -528,22 +530,23 @@ const ROUTES = [
  * it, or if an inset split keeps a second canvas behind its regional grounds.
  */
 function assertFrameGround(route, audit, coverage, tag) {
-	assert.equal(
-		audit.frameCount,
-		route.legacy ? 0 : 1,
-		`${tag}: outlet frame count`,
-	);
-	if (route.legacy) return;
+	assert.equal(audit.frameCount, 1, `${tag}: exactly one visible body frame`);
 	assert.ok(audit.frame, `${tag}: frame missing`);
 	assert.equal(
 		audit.frame.split,
 		route.split === true,
 		`${tag}: split at route root`,
 	);
+	const role = route.frameRole ?? "canvas-backing";
+	assert.equal(audit.frame.role, role, `${tag}: frame paint role`);
 	const alpha = route.split
 		? 0
 		: coverage === "full"
-			? Number(audit.vars["--lo-glass-a-canvas"])
+			? Number(
+					audit.vars[
+						role === "pane" ? "--lo-glass-a-elevated" : "--lo-glass-a-canvas"
+					],
+				)
 			: 1;
 	assert.ok(
 		Math.abs(audit.frame.own - alpha) <= TOLERANCE,
@@ -631,41 +634,40 @@ for (const [themeName, label] of [
 				}
 				await wait(300);
 			};
-			/*
-			 * THE CHROME BAND CAN ONLY BE MEASURED OVER A LIVE PAGE. The host paints
-			 * its pane rung on the loading, error and start states by design, so the
-			 * band composites over it there; with a live page the host is clear and
-			 * the band must read the app sidebar's raw surface. A scratch profile has
-			 * no tabs, so the guard opens one and points it at this run's own CDP
-			 * endpoint - a local URL, not the network - through the real URL bar
-			 * (native setter plus input event, so React sees the draft; Enter commits
-			 * it the way a user's would).
-			 */
+			/* The live route chrome switches from the elevated rung to the
+			 * sidebar's raw surface. Open a new tab on this run's local CDP
+			 * endpoint through the address row so the audit sees that state. */
 			const openLivePage = async () => {
 				await go({ hash: "#/browser", must: ["sidebar"] });
-				/*
-				 * THE NON-LIVE STATE IS ONE OWNER (review round 2, F2): with no live page the
-				 * bars must paint nothing, so the route host's pane rung is the only ground.
-				 * The first gate painted the band nothing but left the utilities' opaque
-				 * roles at alpha 1.0 - a start page made of two opaque bars over a film.
-				 * Read before a page is opened; on a reused app that already has one, the
-				 * state is not observable and the read is skipped.
-				 */
-				const startBars = await cdp.ev(`(() => {
+				/* Until a page is live, the outer band and body are adjacent elevated
+				 * planes. The nested tab strip must stay clear to avoid double alpha.
+				 * A reused app may already be live, making the empty read inapplicable. */
+				const startBars = await cdp.ev(String.raw`(() => {
           if (!(document.documentElement.dataset.glass ?? "").split(" ").includes("pane")) return null;
           if (document.querySelector("[data-glass-chrome-live]")) return null;
-          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\(([^)]+)\)$/); if (m) { const p = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } return 1; };
-          return [...document.querySelectorAll('[data-glass-region="chrome"]')].map((el) => alpha(getComputedStyle(el).backgroundColor));
+          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^(?:rgba?\(|color\(srgb )([^)]*)\)$/); if (m) { const parts = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return parts.length > 3 ? Number(parts[3]) : 1; } return 1; };
+          const band = document.querySelector("[data-browser-route-chrome]");
+          const nested = [...(band?.querySelectorAll('[data-glass-region="chrome"]') ?? [])];
+          return { band: band ? alpha(getComputedStyle(band).backgroundColor) : null, nested: nested.map((el) => alpha(getComputedStyle(el).backgroundColor)), elevated: Number(getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-elevated")) };
         })()`);
 				if (startBars !== null) {
-					assert.ok(
-						startBars.length > 0,
-						`${label}: the start page has chrome bars to measure`,
+					assert.notEqual(
+						startBars.band,
+						null,
+						`${label}: start page chrome band`,
 					);
-					for (const a of startBars)
+					assert.ok(
+						Math.abs(startBars.band - startBars.elevated) <= TOLERANCE,
+						`${label}: non-live band uses elevated alpha`,
+					);
+					assert.ok(
+						startBars.nested.length > 0,
+						`${label}: the start page has nested chrome to measure`,
+					);
+					for (const alpha of startBars.nested)
 						assert.ok(
-							a <= 0.006,
-							`${label}: a non-live chrome bar paints its own ground at ${a} - the host pane rung must be the only owner`,
+							alpha <= 0.006,
+							`${label}: nested chrome compounds the band: ${alpha}`,
 						);
 				}
 				await cdp.ev(

@@ -605,15 +605,39 @@
 main[data-workspace-outlet] {
 	background-color: var(--lo-surface);
 }
-html[data-glass] main[data-workspace-outlet] {
+html[data-glass] main[data-workspace-outlet],
+html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"] {
 	background-color: transparent;
 }
 .workspace-frame {
 	margin-inline: 8px;
 	margin-block-end: 8px;
-	border-radius: 10px;
+	--workspace-frame-radius: 10px;
+	border-radius: var(--workspace-frame-radius);
 	overflow: clip;
 	background-color: var(--lo-canvas);
+}
+
+/* A native WebContentsView is rectangular and intercepts pointer input
+ * outside a DOM clip. Insetting both coordinates by .3r places even its
+ * four corners inside the common circle: sqrt(2) * .7r < r. Round bounds
+ * inward again when reporting them to Electron; no native view covers the
+ * gutter, even when the dock disappears and it reaches the trailing corners. */
+.workspace-frame[data-workspace-browser] {
+	padding: calc(var(--workspace-frame-radius) * 0.3);
+	background-color: var(--lo-elevated);
+}
+/* Keep the frame in place while the Browser chunk loads. The tab strip's
+ * floor is one spacing-9 row plus its 1px rule; the URL band is fixed. */
+:root {
+	--browser-tab-track-min: calc(var(--spacing) * 9);
+	--browser-address-row-h: 37px;
+}
+[data-browser-route-pending-chrome] {
+	min-height: calc(
+		var(--panel-top-pad, 0px) + var(--browser-tab-track-min) + 1px +
+			var(--browser-address-row-h)
+	);
 }
 
 /*
@@ -3094,10 +3118,10 @@ html[data-glass~="pane"] [data-glass-region="composer"] {
  * own rule stays as the separation. The "glass chrome field" contract context
  * is retired with the layer; the tab row now models the shipped stack.
  *
- * THE BAND PAINTS ONLY OVER A LIVE PAGE (`data-glass-chrome-live`); without
- * one, the bars go CLEAR and the route host's pane rung is the only ground, so
- * the loading, error and empty states keep the paint they were designed on
- * instead of stacking a band over the role fills their utilities still carry.
+ * The LIVE route's outer band (`data-glass-chrome-live`) uses surface alpha.
+ * Without a page the outer band uses the same elevated alpha as the adjacent
+ * inset; nested tracks stay clear. Neither paints beneath the other, and the
+ * inset keeps its backdrop behind the safe edges of the rectangular view.
  * The first version of this gate left those fills at alpha 1.0 (review round
  * 2, F2); clearing them is what makes the state coherent.
  *
@@ -3136,10 +3160,27 @@ html[data-glass~="pane"]
 	[data-glass-region="chrome"] {
 	background-color: transparent;
 }
-html[data-glass~="pane"]
-	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]
-	[data-glass-region="pane"][data-glass-split][data-glass-chrome-live] {
+/* The route host is only an ownership scope: its chrome and inset are
+ * separate siblings, never alpha painted over a backing. The pane-hosted
+ * Browser still uses its original enclosing pane ground. */
+html[data-glass] [data-browser-route-shell][data-glass-split][data-glass-region="pane"] {
 	background-color: transparent;
+}
+html[data-glass~="pane"] [data-browser-route-shell] > [data-browser-route-chrome],
+html[data-glass~="pane"] [data-browser-route-pending-chrome],
+html[data-glass~="pane"] [data-workspace-frame][data-workspace-browser][data-glass-region="pane"] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
+		transparent
+	);
+}
+html[data-glass~="pane"] [data-browser-route-shell][data-glass-chrome-live] > [data-browser-route-chrome] {
+	background-color: color-mix(
+		in srgb,
+		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),
+		transparent
+	);
 }
 
 /*
@@ -3963,39 +4004,18 @@ input[data-colour-hue]::-moz-range-thumb {
 html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	background-color: var(--color-surface);
 }
-/* No opaque backing behind the sidebar or rail. Their own region rules paint
- * over the window material; canvas-content alone owns the inset's solid/glass
- * ground. The clear gaps are shell space, not another canvas layer. */
-[data-workspace-shell]:has([data-chat-workspace])
-	main[data-glass-region="canvas-backing"] {
-	background-color: transparent;
-}
-/* The left edge is mounted on the shell column, not on its glass child. */
-[data-workspace-shell]:has([data-chat-workspace])
-	:is(
-		[data-workspace-sidebar-column],
-		[data-panel-rail-host],
-		[data-workspace-inset]
-	)
-	[data-panel-edge] {
+/* WorkspaceFrame owns the geometry. Keep only Chat's internal pane
+ * seams quiet; the shell owns its rail joins (including adjacent Fleet Asks). */
+[data-workspace-inset] [data-panel-edge] {
 	display: none;
-}
-[data-chat-workspace] {
-	padding-block-start: var(--panel-top-pad, 0px);
 }
 [data-workspace-inset] > [data-chat-region="header"] {
 	padding-inline: 12px;
 }
 [data-workspace-inset] {
+	/* Chat's pane occupants also mount in flush hosts. Inside the framed
+	 * workspace, their shared clearance is already above the tabs. */
 	--panel-top-pad: 0px;
-	flex: 1 1 0;
-	min-height: 0;
-	width: auto;
-	margin: 0 8px 8px;
-	border-radius: 10px;
-}
-html:not([data-glass]) [data-workspace-inset] {
-	background-color: var(--color-canvas);
 }
 [data-workspace-shell]:has([data-chat-workspace])
 	[data-workspace-inset]

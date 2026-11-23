@@ -642,16 +642,16 @@ split route keeps the existing separate navigation, canvas and pane grounds
 instead. No new paint behind those regions and no opaque sticky band as a fix
 for double alpha.
 
-**Migration status.** This branch adopts the outlet for Settings, Agents
-(including direct detail), Agent Hub, Schedules, Projects, Library, Notifications
-and enabled Mesh. Chat still needs to use the primitive at its own body boundary,
-including loading and error; don't wrap the separate Chat work or carry its
-workspace tabs or composer styling to other pages. Browser needs its own placement
-beneath the tab/address bars, with native paint and pointer verification before
-any claim that its `WebContentsView` respects the gutters or corner clip. Team
-Bridge retains the flush body until its portal, early Back and narrow thread
-layout can be exercised; its shell-mounted navigation stays outside the frame.
-This is a local rollout, not approval to ship a mix of framed and unframed pages.
+**Placement.** Settings, Agents, Agent Hub, Schedules, Projects, Library,
+Notifications, enabled Mesh and Team Bridge use the outlet frame, including
+full-page details. Team Bridge keeps the same left-column portal and early
+Back; the conversation/thread replacement stays inside the right-hand frame.
+Chat mounts its body after workspace tabs and keeps `canvas-content` as the
+only body paint; its loading and route-error arms use the same boundary. The
+native Browser route mounts its body after its tab/address chrome and reports
+one rectangular viewport inset far enough to clear the rounded corners. The
+native view does not inherit CSS clipping, and the embedded Chat Browser does
+not adopt this route frame.
 
 **Evidence.** Switch routes in one window at standard and narrow sizes, including
 direct details, Back, enabled/disabled destinations and first versus settled
@@ -660,6 +660,18 @@ band paint and focus. Exercise light/dark, RTL, fullscreen, and Off / Sidebars
 only / Full app. Renderer geometry and screenshots are not native hit testing:
 measure Browser resize, clicks, overlays, and route-exit hide (and Console's grid
 and crop after its Chat host moves) in the actual app.
+
+**Offline integrated preview.** The source checks cover 17 live route patterns
+in pending and settled states, including the shell/adapter boundary and Browser
+bounds reporting. They are not a rendered frame or native click check. The
+previous 1380×900 Settings capture shows clipped glyphs on the trailing edge
+while the spinner is visible, not in the settled frame. Its recorded body rect
+stayed at `[268, 32, 1104, 860]` throughout that sample. The matched route now
+prevents a retained Chat portal from painting into the zero-width rail host;
+that is a source invariant, not proof that the portal caused those pixels or
+that they are gone. Recapture this transition, the complete route matrix and
+the native Browser interactions on this candidate before asking for approval.
+Do not merge or release before the operator has seen that evidence.
 
 ### Panels: one seam, edge-to-edge, fading at the top
 

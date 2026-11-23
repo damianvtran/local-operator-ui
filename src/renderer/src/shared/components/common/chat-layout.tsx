@@ -134,6 +134,8 @@ type ChatLayoutProps = {
 	routeSidebar?: { keeper?: ReactNode; label?: string } | false;
 	/** Its gutter already separates the route from the two true shell rails. */
 	insetRouteBody?: boolean;
+	/** Stories default to the mounted rail; the app supplies the matched route. */
+	showChatRail?: boolean;
 };
 
 /**
@@ -174,6 +176,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	content,
 	routeSidebar = false,
 	insetRouteBody = false,
+	showChatRail = true,
 }) => {
 	/*
 	 * The measured boxes and pane stop are physical coordinates, while the
@@ -267,7 +270,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	 * measured row (window minus sidebar minus rail) from the window alone.
 	 */
 	const railMounted = useUiPreferencesStore((s) => s.rightSlotRoute.mounted);
-	const railWidth = railMounted ? PANEL_RAIL_WIDTH_PX : 0;
+	// Suspense may retain the last Chat tree while a lazy route is pending.
+	// Route identity wins over its layout-effect store fact: a portal must
+	// not paint into the zero-width host at the new route's trailing edge.
+	const railWidth = showChatRail && railMounted ? PANEL_RAIL_WIDTH_PX : 0;
 	const [railHost, setRailHost] = useState<HTMLElement | null>(null);
 	const [leftHost, setLeftHost] = useState<HTMLElement | null>(null);
 	const routeOwnsSidebar = routeSidebar !== false;
@@ -739,7 +745,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 						} as CSSProperties
 					}
 				>
-					<PanelRailHostContext.Provider value={railHost}>
+					<PanelRailHostContext.Provider value={showChatRail ? railHost : null}>
 						{/*
 						 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
 						 * pane BESIDE the route rather than over it. The measured box stays the
@@ -904,7 +910,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					 * moves only what the portal puts inside it.
 					 */
 					className="panel-top-pad relative h-full shrink-0 bg-surface"
-					style={{ width: railWidth }}
+					style={{
+						width: railWidth,
+						display: railWidth === 0 ? "none" : undefined,
+					}}
 				>
 					{/* Fleet Asks can still abut the rail with no gutter between them. */}
 					{(!insetRouteBody || fleetAsksOpen) && <PanelEdge side="start" />}

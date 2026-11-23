@@ -62,8 +62,7 @@ const SHELL_STORIES =
  * Every full-height panel that has to paint through the strip, the file it is
  * defined in, and the class list that proves it. The list is the migration the
  * operator asked for, not only the screenshot: the app sidebar, the shell's
- * pane rail, every legacy right-slot occupant, the still-flush Team Bridge and
- * Browser routes. The adopted inset columns are pinned separately below.
+ * pane rail, every legacy right-slot occupant, the Browser chrome and the standalone Bridge columns. The adopted inset columns are pinned separately below.
  */
 const PANEL_COLUMNS = [
 	{
@@ -76,17 +75,6 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
 		classes: ['className="panel-top-pad relative h-full shrink-0 bg-surface"'],
-	},
-	{
-		/*
-		 * The chat route's conversation column: the route root is `panel-flush`, so
-		 * this column's `canvas` ground starts at y0 and its header is pushed below
-		 * the strip by its own pad (design round 1, D1).
-		 */
-		path: CHAT_CONTENT,
-		classes: [
-			'className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"',
-		],
 	},
 	{
 		path: "src/renderer/src/features/chat/components/canvas/index.tsx",
@@ -121,7 +109,7 @@ const PANEL_COLUMNS = [
 		 */
 		path: BROWSER_SURFACE,
 		classes: [
-			'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+			'"panel-flush relative flex min-h-0 flex-1 flex-col outline-none!"',
 			'className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}',
 		],
 	},
@@ -136,13 +124,9 @@ const PANEL_COLUMNS = [
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		classes: [
 			'className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"',
-			// The thread column is built through `cn()` since main's narrow takeover
-			// (`@max-[1024px]/bridge:invisible`) landed, so the pin is the quoted
-			// class string rather than a whole `className="…"` attribute. Its ground
-			// is `canvas` since the Team Bridge visual refresh (#1668): the timeline
-			// is the reading plane beside the `surface` rail. The rule this pins is
-			// unchanged - the box that pads the strip paints its own ground.
-			'"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas"',
+			// Standalone still pads the reading column; the Shell's frame already
+			// consumed that band when Bridge owns the primary route body.
+			'!clearanceReserved && "panel-top-pad"',
 		],
 	},
 	{
@@ -244,22 +228,12 @@ test("the panel root utility is the only way a route reaches y0", () => {
 	const roots = [
 		{
 			path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
-			// `@container/bridge relative` is main's: the container query is what the
-			// narrow takeover keys on, and `relative` anchors it WITHOUT offsetting
-			// the panel. It rides on this PR's root contract (`panel-flush` cancels
-			// the shell pad, `flex-1` keeps the bottom strip), so the pin is the
-			// merged class string - re-read from the markup, never restored.
-			literal:
-				'className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"',
+			literal: 'clearanceReserved ? "[--panel-top-pad:0px]" : "panel-flush"',
 		},
 		{
 			path: BROWSER_SURFACE,
 			literal:
-				'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
-		},
-		{
-			path: CHAT_PAGE,
-			literal: 'className="panel-flush flex min-h-0 flex-1 flex-col"',
+				'"panel-flush relative flex min-h-0 flex-1 flex-col outline-none!"',
 		},
 	];
 	for (const { path, literal } of roots) {
@@ -308,7 +282,6 @@ test("no flush root leaves its content under the lane", () => {
 	const flushFiles = [
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		BROWSER_SURFACE,
-		CHAT_PAGE,
 	];
 	for (const path of flushFiles) {
 		const source = readSource(path);
@@ -325,54 +298,30 @@ test("no flush root leaves its content under the lane", () => {
 	}
 });
 
-test("the chat dock pads once: the route is flush, so each column's own pad is the only one", () => {
-	/*
-	 * Design round 1, D1. The right-slot occupants (canvas, asks, run panel,
-	 * browser and console panes) each wear `panel-top-pad`, and so does the rail
-	 * host. That is only correct if the row they sit in starts at y0. On
-	 * 842d2f513f the chat route was an ORDINARY page: `<main>`'s shell pad moved
-	 * the whole row to y32 and each occupant then padded a second time, so the
-	 * dock's ground began 32px down (a band in the strip) and its first row sat
-	 * at ~y66. The fix is the contract's own: the route root is `panel-flush`,
-	 * and the conversation column pads itself like every other column.
-	 */
+test("Chat tabs reuse the lane while the dock gets no second clearance", () => {
 	const page = readSource(CHAT_PAGE);
-	const rootAt = page.indexOf("export function ChatPage()");
-	assert.notEqual(rootAt, -1, "ChatPage must stay the route component");
-	// The FIRST element `ChatPage` returns, past any explanatory comment.
-	const returned = page.slice(page.indexOf("return (", rootAt));
-	const root = returned.slice(returned.indexOf("<div"));
-	assert.match(
-		root,
-		/^<div className="panel-flush flex min-h-0 flex-1 flex-col">/,
-		"the chat route's root must be `panel-flush` (and `flex-1`, so the bottom 32px are not lost): without it `<main>`'s pad moves the dock down and the occupants' own pad doubles it",
-	);
+	assert.doesNotMatch(page, /className="panel-flush/);
 	const content = readSource(CHAT_CONTENT);
-	const column = content.slice(
-		content.indexOf("ref={chatContainerRef}"),
-		content.indexOf("<ChatHeader"),
-	);
+	assert.match(content, /<ChatWorkspace tabs=\{workspaceTabs\}>/);
+	assert.doesNotMatch(content, /className="panel-top-pad [^"]*bg-canvas"/);
+	const css = readSource("src/renderer/src/styles/index.css");
+	assert.match(css, /\[data-workspace-inset\] \{[^}]*--panel-top-pad: 0px;/);
 	assert.match(
-		column,
-		/className="panel-top-pad [^"]*bg-canvas"/,
-		"the conversation column must pad itself on its own `canvas` ground: under a flush root nothing else keeps the chat header out of the lane",
+		css,
+		/margin-block-start: calc\(-1 \* var\(--panel-top-pad, 0px\)\);/,
 	);
-	/*
-	 * The evidence scene must be built the way the route is, or its frames
-	 * certify a layout the app does not draw: `ChatShellFrame` mirrors
-	 * `app.tsx`'s padded `<main>`, so its route row must be the flush root and
-	 * its conversation stand-in the padded column.
-	 */
+	// This intentionally older story exercises the standalone flush-panel
+	// recipe, not the Chat route's native tabs. Keep its own geometry honest.
 	const stories = readSource(SHELL_STORIES);
 	assert.match(
 		stories,
 		/ref=\{rowRef\}\s*data-tour-tag="pane-row"\s*className="panel-flush flex min-h-0 w-full flex-1 overflow-hidden"/,
-		"the chat shell story's pane row must be the route's flush root, as `ChatPage` is",
+		"the standalone chat shell story's pane row is its flush root",
 	);
 	assert.match(
 		stories,
 		/data-tour-tag="chat-column"\s*(?:\/\*[\s\S]*?\*\/\s*)?className="panel-top-pad [^"]*bg-canvas"/,
-		"the chat shell story's conversation stand-in must pad itself on `canvas`, as `chat-content` does",
+		"the standalone story's conversation stand-in must pad itself on `canvas`",
 	);
 });
 

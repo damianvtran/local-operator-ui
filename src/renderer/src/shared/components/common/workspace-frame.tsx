@@ -1,9 +1,18 @@
-import type { ReactNode } from "react";
+import { type ReactNode, createContext, useContext } from "react";
+
+const WorkspaceClearance = createContext(false);
+
+/** Standalone pages still own their legacy clearance; framed routes do not. */
+export function useWorkspaceClearance(): boolean {
+	return useContext(WorkspaceClearance);
+}
 
 interface WorkspaceFrameProps {
 	children: ReactNode;
-	/** Legacy routes already own the placement of their body below chrome. */
+	/** Chrome-owning routes mount their own frame below that chrome. */
 	inset?: boolean;
+	/** Chrome-owning bodies keep their own paint roles without changing geometry. */
+	variant?: "chat" | "browser";
 }
 
 /**
@@ -15,6 +24,7 @@ interface WorkspaceFrameProps {
 export function WorkspaceFrame({
 	children,
 	inset = true,
+	variant,
 }: WorkspaceFrameProps) {
 	return (
 		<div
@@ -26,9 +36,21 @@ export function WorkspaceFrame({
 					: "contents"
 			}
 			data-workspace-frame={inset ? "" : undefined}
-			data-glass-region={inset ? "canvas-backing" : undefined}
+			data-workspace-inset={inset && variant === "chat" ? "" : undefined}
+			data-workspace-browser={inset && variant === "browser" ? "" : undefined}
+			data-glass-region={
+				inset
+					? variant === "chat"
+						? "canvas-content"
+						: variant === "browser"
+							? "pane"
+							: "canvas-backing"
+					: undefined
+			}
 		>
-			{children}
+			<WorkspaceClearance.Provider value={inset}>
+				{children}
+			</WorkspaceClearance.Provider>
 		</div>
 	);
 }

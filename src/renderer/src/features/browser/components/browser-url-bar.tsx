@@ -1649,7 +1649,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			   against a white page (3.30:1 dark / 3.92:1 light; hairline would be
 			   1.23:1 and fail as an edge). */
 			data-glass-region="chrome"
-			className="flex h-[37px] w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1"
+			className="flex h-(--browser-address-row-h) w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
 			{detailsWanted && (

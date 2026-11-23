@@ -50,13 +50,14 @@ const FLOORS = JSON.parse(
 );
 
 test("workspace glass leaves the sidebars unbacked and paints the inset only once", () => {
-	const content = read(
-		"src/renderer/src/features/chat/components/chat-content.tsx",
+	const adapter = read(
+		"src/renderer/src/features/chat/components/chat-workspace.tsx",
 	);
-	assert.match(
-		content,
-		/data-workspace-inset=""\s+data-glass-region="canvas-content"/,
+	const primitive = read(
+		"src/renderer/src/shared/components/common/workspace-frame.tsx",
 	);
+	assert.match(adapter, /<WorkspaceFrame variant="chat">/);
+	assert.match(primitive, /variant === "chat"\s*\? "canvas-content"/);
 	const rule = (selector) => {
 		const body = CSS_NO_COMMENTS.split(`${selector} {`)[1]?.split("}")[0];
 		assert.ok(body, selector);
@@ -72,12 +73,14 @@ test("workspace glass leaves the sidebars unbacked and paints the inset only onc
 		/\n\[data-workspace-shell\]:has\(\[data-chat-workspace\]\)\s*\{[^}]*background/,
 	);
 	assert.match(
-		rule(`${shell}\n\tmain[data-glass-region="canvas-backing"]`),
+		rule(
+			'html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"]',
+		),
 		/background-color: transparent/,
 	);
 	assert.match(
-		rule("html:not([data-glass]) [data-workspace-inset]"),
-		/background-color: var\(--color-canvas\)/,
+		rule(".workspace-frame"),
+		/background-color: var\(--lo-canvas\)/,
 	);
 	assert.match(
 		rule('html[data-glass] [data-glass-region="canvas-content"]'),

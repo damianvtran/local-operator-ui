@@ -16,11 +16,13 @@ import {
 import { AgentMessagesOnboarding } from "@features/agent-messages/agent-messages-onboarding";
 import { useAgentMessagesBusy } from "@features/agent-messages/use-agent-messages-busy";
 import { useAidaTarget } from "@features/aida/use-aida-target";
+import { BrowserRoutePending } from "@features/browser/components/browser-workspace";
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { ChatWorkspace } from "@features/chat/components/chat-workspace";
 import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import {
@@ -376,8 +378,8 @@ const App: FC = () => {
 				handle="redirect"
 				element={<Navigate to="/chat" replace />}
 			/>
-			<Route path="/chat" handle="chrome" element={<ChatPage />} />
-			<Route path="/chat/:agentId" handle="chrome" element={<ChatPage />} />
+			<Route path="/chat" handle="chat" element={<ChatPage />} />
+			<Route path="/chat/:agentId" handle="chat" element={<ChatPage />} />
 			<Route path="/agents" element={<AgentsPage />} />
 			<Route path="/agents/:agentId" element={<AgentsPage />} />
 			<Route path="/settings" element={<SettingsPage />} />
@@ -434,10 +436,9 @@ const App: FC = () => {
 	// /browser-old or an unmatched detail must take the real redirect, not a
 	// special layout that this route will never actually mount.
 	const placement = matchRoutes(routes, pathname)?.at(-1)?.route.handle;
-	// Boot and catch-all go straight to Chat, so they use its (legacy) chrome
-	// placement rather than briefly mounting an unrelated outlet frame.
-	const routeHasOwnChromeRow =
-		placement === "chrome" || placement === "redirect";
+	// The boot and catch-all redirects already use Chat's shell geometry.
+	const chatOwnsBody = placement === "chat" || placement === "redirect";
+	const routeHasOwnChromeRow = chatOwnsBody || placement === "chrome";
 	/*
 	 * TEAM BRIDGE TAKES THE LEFT COLUMN (operator, 2026-11-03: "the left sidebar
 	 * becomes the team bridge view" - two sidebars side by side were unpopular).
@@ -448,7 +449,10 @@ const App: FC = () => {
 	 * host.
 	 */
 	const routeOwnsSidebar = placement === "bridge";
-	const insetRouteBody = !routeHasOwnChromeRow && !routeOwnsSidebar;
+	// A frame can separate the shell rails even when the route, not the
+	// outlet, mounts it. Team Bridge only takes the shell's left column.
+	const browserOwnsBody = placement === "chrome";
+	const outletWrapsRoute = !routeHasOwnChromeRow;
 	const routeContent = useRoutes(routes);
 	/*
 	 * Team Bridge banners, watched in the SHELL because the page is the one place
@@ -877,8 +881,16 @@ const App: FC = () => {
 		return () => document.removeEventListener("keydown", onKeyDown);
 	}, [catalogueReady, isOnboardingActive, navigate, temporaryChats]);
 
-	// Keep the startup telemetry mounted across placement changes. Its visible
-	// band sits inside the frame on adopted routes, just above the route fallback.
+	// Keep the startup telemetry mounted across placement changes. The
+	// lazy chunk's fallback uses the same body boundary as its destination.
+	const routePending = (
+		<div
+			data-workspace-route-pending=""
+			className="flex min-h-0 flex-1 items-center justify-center"
+		>
+			<Spinner size="lg" label={t("ui.common.loading.page")} />
+		</div>
+	);
 	const routeBody = (
 		<>
 			<BackendStartupGate />
@@ -891,12 +903,13 @@ const App: FC = () => {
 						 * now (round 1, m2) rather than an empty slab with no way out.
 						 */}
 						{routeOwnsSidebar && <TeamBridgeEarlyColumn />}
-						<div
-							data-workspace-route-pending=""
-							className="flex grow items-center justify-center"
-						>
-							<Spinner size="lg" label={t("ui.common.loading.page")} />
-						</div>
+						{chatOwnsBody ? (
+							<ChatWorkspace>{routePending}</ChatWorkspace>
+						) : browserOwnsBody ? (
+							<BrowserRoutePending>{routePending}</BrowserRoutePending>
+						) : (
+							routePending
+						)}
 					</>
 				}
 			>
@@ -1162,7 +1175,8 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
-						insetRouteBody={insetRouteBody}
+						insetRouteBody
+						showChatRail={placement === "chat"}
 						/*
 						 * `StripFeedKeeper` replaces the navigation's catalogue feed while it is
 						 * unmounted, so the chat list and Aida's marks are current the moment
@@ -1176,10 +1190,10 @@ const App: FC = () => {
 						}
 						content={
 							<main
-								data-glass-region={
-									insetRouteBody ? undefined : "canvas-backing"
-								}
-								data-workspace-outlet={insetRouteBody ? "" : undefined}
+								data-workspace-outlet=""
+								// Chat's legacy nested glass corrections still key on this scope.
+								// The outlet itself never paints a backing under glass.
+								data-glass-region={chatOwnsBody ? "canvas-backing" : undefined}
 								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
@@ -1214,7 +1228,7 @@ const App: FC = () => {
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
-								<WorkspaceFrame inset={insetRouteBody}>
+								<WorkspaceFrame inset={outletWrapsRoute}>
 									{routeBody}
 								</WorkspaceFrame>
 							</main>

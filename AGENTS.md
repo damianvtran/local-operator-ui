@@ -111,10 +111,13 @@ columns. True shell rails and the titlebar stay outside; the gutter replaces
 seams only where it actually separates the page from those rails.
 
 Share the frame, not the page layout: keep pane grounds, sticky bands, focus
-and local scroll ownership. Chat's titlebar tabs and composer are Chat-only.
-Chat, native Browser and Team Bridge remain legacy placements in this local
-rollout until their own boundaries and interactions are verified. Never wrap
-an existing Chat frame or assume CSS clips Browser's native `WebContentsView`.
+and local scroll ownership. Chat's tabs and Browser's tab/address rails stay
+outside their own body frame; the outlet never wraps those bodies again. Team
+Bridge mounts its left rail in the shell and takes the outlet frame on the
+right. Browser reports a rectangular host fully inside the rounded clip, not
+rounded native hit testing. Keep the embedded Chat Browser unchanged. Source
+checks are not rendered or native verification; the integrated preview is held
+until the operator has seen the complete candidate and its screenshots.
 
 ### Panels run to the window edge
 

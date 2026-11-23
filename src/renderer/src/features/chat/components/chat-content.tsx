@@ -179,6 +179,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import { ChatWorkspace } from "./chat-workspace";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
@@ -201,6 +202,7 @@ import { QuestionDock } from "./trace/question-dock";
  */
 type ChatContentProps = {
 	workspaceTabs?: ReactNode;
+	workspaceNotice?: ReactNode;
 	activeTab: "chat" | "raw";
 	onTabChange: (tab: "chat" | "raw") => void;
 	agentName: string;
@@ -951,6 +953,7 @@ const CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX;
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
 		workspaceTabs,
+		workspaceNotice,
 		activeTab,
 		onTabChange,
 		agentName,
@@ -2894,11 +2897,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * canonical user bubble carries a note. Each is annotated where it
 					 * sits.
 					 *
-					 * `panel-top-pad` because the chat route is a flush panel route
-					 * (`ChatPage`'s root, design round 1, D1): this column's `canvas`
-					 * ground starts at y0 under the transparent lane, and the pad is
-					 * what moves the header below the OS controls. It is padding, not
-					 * a margin, so the ground stays continuous through the strip.
+					 * The frame starts below the titlebar and owns the canvas paint.
+					 * This column keeps only its scroll box and its semantic role.
 					 */}
 					<div
 						ref={chatContainerRef}
@@ -2908,14 +2908,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * column's inline-end edge, and it is a SCROLLBAR clearance rather than
 						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
 						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
-						 *
-						 * AN INLINE STYLE, not a conditional class, for two reasons. This
-						 * element's class attribute is a literal thumbprint two guards read
-						 * (`lane-leading.test.mjs`: a full-height column wears `panel-top-pad`
-						 * and paints `bg-canvas`, matched as one string), and moving it into a
-						 * `cn(...)` call broke both of that file's cases; and the value is a
-						 * pixel measured against the band's reach, the same class of value
-						 * `PaneSlot` sets inline for its width.
 						 *
 						 * It sits on this inner surface rather than on the column itself so the
 						 * column's own box - the width the right pane's capacity is measured
@@ -2927,7 +2919,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								? { paddingInlineEnd: CHAT_SEAM_INSET_PX }
 								: undefined
 						}
-						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
+						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*
@@ -4274,17 +4266,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			</div>
 		);
 		return (
-			<div data-chat-workspace="" className="flex h-full min-h-0 flex-col">
-				{workspaceTabs}
-				<div
-					data-workspace-inset=""
-					data-glass-region="canvas-content"
-					className="flex min-w-0 flex-col"
-				>
-					{workspaceHeader}
-					{paneRow}
-				</div>
-			</div>
+			<ChatWorkspace tabs={workspaceTabs}>
+				{workspaceNotice}
+				{workspaceHeader}
+				{paneRow}
+			</ChatWorkspace>
 		);
 	},
 );

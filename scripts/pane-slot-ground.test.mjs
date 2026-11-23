@@ -353,8 +353,10 @@ test("the panel rail paints the lane's final stop and its HOST carries the seam 
 		`${CHAT_LAYOUT}: the rail host must be \`panel-top-pad relative h-full shrink-0 bg-surface\`. Without \`relative\` the seam resolves against the page and the host is no longer the box that anchors it (agent review round 1, B1).`,
 	);
 	assert.match(
-		withoutComments(layoutSource),
-		/data-panel-rail-host=""[\s\S]*?className="panel-top-pad relative h-full shrink-0 bg-surface"[\s\S]{0,120}?<PanelEdge side="start" \/>/,
+		withoutComments(layoutSource).match(
+			/data-panel-rail-host=""[\s\S]*?<\/div>/,
+		)?.[0] ?? "",
+		/className="panel-top-pad relative h-full shrink-0 bg-surface"[\s\S]*?\(!insetRouteBody \|\| fleetAsksOpen\) && <PanelEdge side="start" \/>/,
 		`${CHAT_LAYOUT}: the rail's seam must be mounted on \`data-panel-rail-host\`. The rail's own root is a \`panel-top-pad\` content box and a seam inside it starts at the pad (y=32 on macOS), which is the defect this change removes (agent review round 1, B1; QA round 1, Q-1).`,
 	);
 	const rail = read(
@@ -691,9 +693,13 @@ test("both asks drawer mounts preserve their width and floating scrim", () => {
 
 test("the moved titlebar reserves both physical native corners, independent of the drawer", () => {
 	const content = withoutComments(read(CHAT_CONTENT));
+	assert.match(content, /<ChatWorkspace tabs=\{workspaceTabs\}>/);
+	const adapter = read(
+		"src/renderer/src/features/chat/components/chat-workspace.tsx",
+	);
 	assert.match(
-		content,
-		/data-chat-workspace=""[^>]*>\s*\{workspaceTabs\}\s*<div\s+data-workspace-inset=""/,
+		adapter,
+		/data-chat-workspace=""[^>]*>[\s\S]*?\{tabs \?\?[\s\S]*?<WorkspaceFrame variant="chat">/,
 	);
 	assert.ok(!content.includes("rightSlotOccupied"));
 	const layout = read(

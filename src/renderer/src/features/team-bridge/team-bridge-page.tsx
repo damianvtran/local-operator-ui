@@ -17,6 +17,7 @@ import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-
 import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Spinner } from "@shared/components/common/spinner";
+import { useWorkspaceClearance } from "@shared/components/common/workspace-frame";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { Alert } from "@shared/components/ui/alert";
@@ -1270,6 +1271,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
 	const railHosted = useLeftSidebarHosted();
+	const clearanceReserved = useWorkspaceClearance();
 	const [quickView, setQuickView] = useState<TeamBridgeQuickView | null>(
 		initialQuickView ?? null,
 	);
@@ -3787,7 +3789,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		<div
 			data-glass-split=""
 			data-glass-region="canvas"
-			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
+			className={cn(
+				"@container/bridge relative flex min-h-0 w-full flex-1 overflow-hidden bg-canvas",
+				// The dock occupants still mount in legacy panels elsewhere. Tell
+				// them this route has already consumed the platform clearance.
+				clearanceReserved ? "[--panel-top-pad:0px]" : "panel-flush",
+			)}
 		>
 			{/*
 			 * THE RAIL, IN WHICHEVER COLUMN IS ITS (operator, 2026-11-03: one
@@ -3831,15 +3838,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    transcript - and the composer is a raised `elevated` card. Before
 			    this the rail and pane were both `surface` (ΔE00 0.00), so the only
 			    visible step on screen was the hover band. The pane paints its own
-			    `canvas` rather than inheriting the root's because it wears
-			    `panel-top-pad`, and the box that pads must be the box that paints
-			    (AGENTS.md "Panels run to the window edge"). */}
+			    `canvas` rather than inheriting the split root's, so the thread and
+			    members panes don't compound their glass over its canvas. */}
 			<section
 				/* The reading column alone owns the canvas alpha. The rail/thread
 				 * own their surface alpha directly, never over a canvas backing. */
 				data-glass-region="canvas-content"
 				className={cn(
-					"panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas",
+					"flex min-w-0 flex-1 flex-col bg-canvas",
+					!clearanceReserved && "panel-top-pad",
 					(threadIsOpen || membersPanelShown) &&
 						"@max-[1024px]/bridge:invisible",
 				)}

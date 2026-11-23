@@ -234,6 +234,7 @@ import {
 	headerHostKey,
 	headerIdentityControlsShown,
 } from "./chat-header-identity-model";
+import { ChatWorkspace } from "./chat-workspace";
 import type { DirectoryWritePath } from "./directory-indicator";
 import {
 	type AidaWakeIdentity,
@@ -328,7 +329,9 @@ function SessionPanel({
 	sessionId,
 	onStartNewChat,
 	workspaceTabs,
+	routeNotice,
 }: {
+	routeNotice: ReactNode;
 	workspaceTabs: (activeTitle: string) => ReactNode;
 	identity: string;
 	draftKey: string | null;
@@ -5075,39 +5078,44 @@ function SessionPanel({
 			 * of one message, and the failure furthest on screen from the control
 			 * that resolves it. `composerSendError` below carries all of it,
 			 * remedies included, to the one place the user is already looking. */}
-			{options && (
-				<div
-					className={cn(
-						"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
-					)}
-				>
-					{[
-						"model",
-						"agent",
-						"team",
-						"rename",
-						"resume",
-						"fork",
-						"new",
-						"settings",
-					].map((command) => (
-						<button
-							key={command}
-							type="button"
-							className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
-							onClick={() => {
-								setOptions(false);
-								void dispatch({ name: command, args: "" });
-							}}
-						>
-							{optionsCommandLabel(command)}
-						</button>
-					))}
-				</div>
-			)}
 			<div className={cn("min-h-0 flex-1")}>
 				<ChatContent
 					workspaceTabs={workspaceTabs(title)}
+					workspaceNotice={
+						<>
+							{routeNotice}
+							{options && (
+								<div
+									className={cn(
+										"flex flex-wrap gap-2 border-b border-hairline px-4 py-2 text-body-sm",
+									)}
+								>
+									{[
+										"model",
+										"agent",
+										"team",
+										"rename",
+										"resume",
+										"fork",
+										"new",
+										"settings",
+									].map((command) => (
+										<button
+											key={command}
+											type="button"
+											className={cn("rounded-md px-2 py-1 hover:bg-elevated")}
+											onClick={() => {
+												setOptions(false);
+												void dispatch({ name: command, args: "" });
+											}}
+										>
+											{optionsCommandLabel(command)}
+										</button>
+									))}
+								</div>
+							)}
+						</>
+					}
 					activeTab={tab}
 					onTabChange={setTab}
 					onStartNewChat={onStartNewChat}
@@ -5853,61 +5861,23 @@ export function ChatPage() {
 				? null
 				: { key: mountKey, draftKey, sessionId: id };
 	}, [mountKey, draftKey, id]);
-	// The route-level sentence, when one shows; see the `role="alert"` note below.
+	// A failed route always speaks. Connection failures stand down when
+	// the strip or compatibility banner already owns the failure and Retry.
 	const routeSentence =
 		routeError ||
 		(error && !stripSpeaksConnection && !coveredByCompatibilityBanner
 			? error
 			: null);
+	// The shell consumes the OS clearance; ChatWorkspace fits tabs into
+	// that band when integrated. Put the route notice INSIDE the body, so
+	// it cannot push the tabs out of the native drag lane or add a second pad.
+	const routeNotice = routeSentence && (
+		<p role="alert" className="px-4 py-2 text-body-sm text-danger">
+			{routeSentence}
+		</p>
+	);
 	return (
-		/*
-		 * THE CHAT ROUTE IS A PANEL ROUTE (design round 1, D1).
-		 *
-		 * Every column on this route owns a ground that has to reach the window's
-		 * top edge: the conversation (`canvas`), whichever pane holds the right
-		 * slot (`elevated`) and the shell's 44px rail host. As an ordinary page
-		 * the route sat under `<main>`'s shell pad, so the whole row began at y32
-		 * and each slot occupant's own `panel-top-pad` padded a SECOND time - a
-		 * band in the strip above the dock and its first row 32px lower than the
-		 * conversation's. `panel-flush` cancels the shell pad, so the row starts
-		 * at y0 and the one pad each column wears is the only one: the
-		 * conversation column pads itself in `chat-content.tsx`, the occupants
-		 * already do. `flex-1` rather than `h-full`, as on every flush root: the
-		 * negative margin is absorbed by the grow, so the bottom 32px are not lost.
-		 */
-		<div className="panel-flush flex min-h-0 flex-1 flex-col">
-			{/*
-			 * ONE sentence above the panel: a legacy route that names no
-			 * conversation, or a store failure the composer does not own. A
-			 * switch no longer has a failure of its own to state here - the
-			 * target pane speaks for its own stream (see `openSession`).
-			 *
-			 * TWO FAILURES, ONE REGION, AND ONLY ONE OF THEM YIELDS (§F2, R11).
-			 *
-			 * `routeError` is a NAV fact - this conversation is not on this machine,
-			 * the route did not resolve - and the strip does not state it, so it always
-			 * renders. `error` is the store's catalogue failure, which for a dead
-			 * backend IS the connection fact the strip owns; while the strip speaks,
-			 * this half stands down so one press of Retry is not offered twice for one
-			 * root cause. AND WHERE THE STRIP IS SILENT BUT THE COMPATIBILITY BANNER IS
-			 * UP (QA round 1's Q-1), the banner owns the fact instead: the store's
-			 * sentence is the same incident the banner is stating, so this half stands
-			 * down to it as well.
-			 */}
-			{routeSentence && (
-				/*
-				 * `panel-top-pad` on a wrapper: the root is flush, so this sentence -
-				 * the route's first row whenever it shows - would otherwise sit under
-				 * the drag lane and the traffic lights. The pad is the wrapper's so the
-				 * sentence keeps its own `py-2`. The `New chat` arm below is reached
-				 * only beneath this sentence (see its note), so it needs no pad.
-				 */
-				<div className="panel-top-pad">
-					<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
-						{routeSentence}
-					</p>
-				</div>
-			)}
+		<div className="flex min-h-0 flex-1 flex-col">
 			{!enabled ? (
 				/*
 				 * A PANE-level state, presented as one: centred in the column, the shape the
@@ -5924,63 +5894,54 @@ export function ChatPage() {
 				 * sentence from being the pane's first 30 pixels, whatever the band does
 				 * (design round 1, D2).
 				 */
-				<div
-					className={cn(
-						"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
-						"text-body text-ink-muted",
-					)}
-				>
-					<p className={cn("text-center")}>
-						{/*
-						 * THE LOADING SENTENCE CARRIES THE REASSURANCE (task-17, U3).
-						 * This pane is the whole chat surface for the length of the
-						 * capabilities handshake, composer included, so a reader with a
-						 * conversation open and nowhere to type cannot tell "the app is
-						 * dialling its server" from "your conversation is gone". The
-						 * clause states the one fact true of the wait: the conversation
-						 * itself is untouched while the backend is being reached.
-						 */}
-						{capabilities.isLoading
-							? t("ui.chat.page_chrome.backend.connecting")
-							: capabilities.error
-								? userFacingMessage(
-										capabilities.error,
-										t("ui.chat.page_chrome.backend.no_answer"),
-									)
-								: (pairingSentence ??
-									t("ui.chat.page_chrome.backend.update_needed"))}
-					</p>
-					{offerRetry && (
-						<button
-							type="button"
-							className={cn("underline")}
-							onClick={() => void paneRetry()}
-						>
-							{t("ui.common.actions.retry")}
-						</button>
-					)}
-				</div>
+				<ChatWorkspace>
+					{routeNotice}
+					<div
+						className={cn(
+							"flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-2 p-6",
+							"text-body text-ink-muted",
+						)}
+					>
+						<p className={cn("text-center")}>
+							{/*
+							 * THE LOADING SENTENCE CARRIES THE REASSURANCE (task-17, U3).
+							 * This pane is the whole chat surface for the length of the
+							 * capabilities handshake, composer included, so a reader with a
+							 * conversation open and nowhere to type cannot tell "the app is
+							 * dialling its server" from "your conversation is gone". The
+							 * clause states the one fact true of the wait: the conversation
+							 * itself is untouched while the backend is being reached.
+							 */}
+							{capabilities.isLoading
+								? t("ui.chat.page_chrome.backend.connecting")
+								: capabilities.error
+									? userFacingMessage(
+											capabilities.error,
+											t("ui.chat.page_chrome.backend.no_answer"),
+										)
+									: (pairingSentence ??
+										t("ui.chat.page_chrome.backend.update_needed"))}
+						</p>
+						{offerRetry && (
+							<button
+								type="button"
+								className={cn("underline")}
+								onClick={() => void paneRetry()}
+							>
+								{t("ui.common.actions.retry")}
+							</button>
+						)}
+					</div>
+				</ChatWorkspace>
 			) : identity ? (
-				<div
-					className={cn(
-						"min-h-0 flex-1",
-						/*
-						 * ONE PAD PER ROW. With the sentence above it this row starts below
-						 * the strip, so the columns inside it (the conversation, the slot's
-						 * pane) must not pad for the strip again: the sentence's wrapper
-						 * already consumed it. Zeroing the shell's published number here is
-						 * what keeps `panel-top-pad` meaning "the strip that is still above
-						 * me" rather than a second 32px band under the sentence.
-						 */
-						routeSentence && "[--panel-top-pad:0px]",
-					)}
-				>
+				<div className="min-h-0 flex-1">
 					<SessionPanel
 						key={mountKey}
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
 						onStartNewChat={startNewChatRoute}
+						routeNotice={routeNotice}
 						workspaceTabs={(activeTitle) => (
 							<WorkspaceTabs
 								activeKey={workspaceActiveKey}
@@ -6017,15 +5978,18 @@ export function ChatPage() {
 				 * control remains, without the deleted heading or its promise - the
 				 * affordance that state actually needs, and nothing else.
 				 */
-				<div className={cn("p-6")}>
-					<button
-						type="button"
-						className={cn("rounded-md border border-control px-3 py-2")}
-						onClick={() => stage(undefined, true)}
-					>
-						{t("ui.shell.sidebar_navigation.new_chat")}
-					</button>
-				</div>
+				<ChatWorkspace>
+					{routeNotice}
+					<div className={cn("p-6")}>
+						<button
+							type="button"
+							className={cn("rounded-md border border-control px-3 py-2")}
+							onClick={() => stage(undefined, true)}
+						>
+							{t("ui.shell.sidebar_navigation.new_chat")}
+						</button>
+					</div>
+				</ChatWorkspace>
 			)}
 		</div>
 	);
