@@ -194,22 +194,69 @@ for (const gesture of ["wheel", "touchstart", "pointerdown", "keydown"]) {
 
 test("content growing during the flight cannot strand it short of the tail", () => {
 	/*
-	 * Streaming growth in a column-reverse scroller extends the range away from
-	 * the tail; the browser may also nudge the offset. The target is the
-	 * constant 0, so the landing frame is 0 whatever happened in between.
+	 * Streaming growth ABOVE a reader in a column-reverse scroller is absorbed by
+	 * the browser's scroll anchoring, which shifts `scrollTop` away from the tail
+	 * by the grown height - on every frame a token lands. A driver that stepped
+	 * relatively (`scrollTop += step`) would carry every shift and land short;
+	 * this one writes the absolute eased offset each frame, so each write must
+	 * equal the model's value for that frame whatever the anchoring did, and the
+	 * landing must be exactly 0 and STAY 0 (agent review round 1, R1-3).
 	 */
 	const el = fakeScroller(-1200);
 	const env = fakeEnv();
 	const { outcomes } = run(el, env);
+	const duration = m.tailScrollDurationMs(1200);
+	env.step(16); // the first frame reads start and starts the clock
+	let elapsed = 0;
 	let frames = 0;
 	while (env.pending() && frames < 200) {
+		el.scrollTop = el.scrollTop - 40; // the anchoring shift of one token
 		env.step(16);
-		// A layout correction (e.g. the paging hook) moving the offset mid-flight.
-		if (frames === 3) el.scrollTop = el.scrollTop - 300;
+		elapsed += 16;
 		frames++;
+		assert.equal(
+			el.scrollTop,
+			m.tailOffsetAt(-1200, elapsed, duration),
+			`frame ${frames} is the absolute eased offset, not a step from the shifted one`,
+		);
 	}
 	assert.deepEqual(outcomes, ["landed"]);
 	assert.equal(el.scrollTop, 0);
+	const writes = el.writes.length;
+	env.step(16);
+	assert.equal(el.scrollTop, 0, "the landing holds: no frame is left queued");
+	assert.equal(el.writes.length, writes, "and nothing writes after it");
+});
+
+test("the start is read on the first frame, so a shift before it is not a jump (Q-1)", () => {
+	/*
+	 * A send asks at the echo's paint; the echo then lands and the browser's
+	 * anchoring moves the reader one row farther away before the first frame.
+	 * The first frame must start from THAT position (a no-op write), not snap
+	 * back to the call-time offset, and the trip is timed from it.
+	 */
+	const el = fakeScroller(-3020);
+	const env = fakeEnv();
+	run(el, env);
+	el.scrollTop = -3130; // the echo's anchoring shift, after the call
+	el.writes.length = 0;
+	env.step(16);
+	assert.deepEqual(
+		el.writes,
+		[-3130],
+		"the first frame writes where the reader is",
+	);
+	let frames = 1;
+	while (env.pending() && frames < 200) {
+		env.step(16);
+		frames++;
+	}
+	assert.equal(el.scrollTop, 0);
+	assert.equal(
+		frames,
+		Math.ceil(m.tailScrollDurationMs(3130) / 16) + 1,
+		"timed from the post-shift distance",
+	);
 });
 
 test("mid-flight writes are claimed by the paging sink; the landing is left to be observed", () => {
@@ -217,16 +264,24 @@ test("mid-flight writes are claimed by the paging sink; the landing is left to b
 	const env = fakeEnv();
 	const acks = [];
 	let released = 0;
+	const flight = [];
 	const unregister = m.registerScrollerWriteSink(el, {
 		acknowledge: (before, after) => acks.push([before, after]),
 		releaseHold: () => {
 			released++;
 		},
+		setFlight: (active) => flight.push(active),
 	});
 	run(el, env);
 	assert.equal(released, 1, "the reader-hold is dropped as the flight starts");
+	assert.deepEqual(
+		flight,
+		[true],
+		"the pager is told a flight owns the offset",
+	);
 	while (env.pending()) env.step(16);
 	assert.equal(el.scrollTop, 0);
+	assert.deepEqual(flight, [true, false], "and told when it ends");
 	assert.equal(
 		acks.length,
 		el.writes.length - 1,
@@ -241,9 +296,52 @@ test("mid-flight writes are claimed by the paging sink; the landing is left to b
 		assert.ok(before <= after);
 	}
 	unregister();
-	const el2 = fakeScroller(-2000);
-	m.registerScrollerWriteSink(el2, { acknowledge() {}, releaseHold() {} });
-	assert.doesNotThrow(unregister, "unregister only removes its own sink");
+});
+
+test("unregister only removes its own sink, not a newer one on the same scroller", () => {
+	/*
+	 * The transcript can remount under a mounted scroller: the new hook registers
+	 * before the old one's cleanup runs. The stale cleanup must leave the new
+	 * sink in place, or the next flight's frames go unclaimed.
+	 */
+	const el = fakeScroller(-2000);
+	const older = [];
+	const newer = [];
+	const unregisterOlder = m.registerScrollerWriteSink(el, {
+		acknowledge: (b, a) => older.push([b, a]),
+		releaseHold() {},
+	});
+	const unregisterNewer = m.registerScrollerWriteSink(el, {
+		acknowledge: (b, a) => newer.push([b, a]),
+		releaseHold() {},
+	});
+	unregisterOlder();
+	const env = fakeEnv();
+	run(el, env);
+	env.step(16);
+	env.step(16);
+	assert.ok(newer.length > 0, "the newer sink still receives acknowledgements");
+	assert.equal(older.length, 0);
+	unregisterNewer();
+	const after = newer.length;
+	env.step(16);
+	assert.equal(newer.length, after, "its own unregister does remove it");
+});
+
+test("a cancelled flight also tells the pager it is over", () => {
+	const el = fakeScroller(-2000);
+	const flight = [];
+	const unregister = m.registerScrollerWriteSink(el, {
+		acknowledge() {},
+		releaseHold() {},
+		setFlight: (active) => flight.push(active),
+	});
+	const env = fakeEnv();
+	run(el, env);
+	env.step(16);
+	el.fire("wheel");
+	assert.deepEqual(flight, [true, false]);
+	unregister();
 });
 
 test("a scroller with no paging sink (another host) still animates", () => {

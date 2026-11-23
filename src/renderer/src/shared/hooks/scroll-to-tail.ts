@@ -132,10 +132,17 @@ export function planTailScroll(
  * scrolled-up reader left; a send is that reader asking to leave it, and a
  * hold left armed would make the next streaming resize "correct" the flight
  * back toward where they were - visible as a one-frame jump mid-animation.
+ *
+ * `setFlight` brackets an animated flight. Releasing the hold once at takeoff
+ * is not enough: the hook can RE-arm it mid-flight (a settle timer from the
+ * reader's last scroll, a scroll event the browser's own anchoring shifted so
+ * our claim did not match), and a re-armed hold corrects toward a mid-flight
+ * position. The flag tells every hold path to stand down until the flight ends.
  */
 export type ScrollerWriteSink = {
 	acknowledge: (before: number, after: number) => void;
 	releaseHold: () => void;
+	setFlight?: (active: boolean) => void;
 };
 
 const sinks = new WeakMap<object, ScrollerWriteSink>();
@@ -229,8 +236,7 @@ export function scrollToTail(
 		if (acknowledge) sinks.get(el)?.acknowledge(before, el.scrollTop);
 	};
 
-	const start = el.scrollTop;
-	const plan = planTailScroll(start, env.reducedMotion());
+	const plan = planTailScroll(el.scrollTop, env.reducedMotion());
 	if (plan === "none") {
 		settle("none");
 		return () => {};
@@ -243,13 +249,22 @@ export function scrollToTail(
 		return () => {};
 	}
 
-	const duration = tailScrollDurationMs(Math.abs(start));
+	/*
+	 * Start and duration are read on the FIRST frame, not here (QA round 1, Q-1):
+	 * a send calls in at the echo's paint, and the browser's scroll anchoring then
+	 * moves the reader one row (~110 px) farther from the tail as the echo is
+	 * added. A start read now made the first visible step a jump of that row's
+	 * height and timed the trip from the shorter distance.
+	 */
+	let start = 0;
+	let duration = 0;
 	let handle = 0;
 	let t0: number | null = null;
 	const stop = (outcome: TailScrollOutcome) => {
 		if (settled) return;
 		env.caf(handle);
 		for (const type of CANCEL_EVENTS) el.removeEventListener(type, onInput);
+		sinks.get(el)?.setFlight?.(false);
 		settle(outcome);
 	};
 	const onInput = () => stop("cancelled");
@@ -261,7 +276,11 @@ export function scrollToTail(
 		 * and starting earlier would spend part of a short flight invisibly.
 		 */
 		const now = env.now();
-		if (t0 === null) t0 = now;
+		if (t0 === null) {
+			t0 = now;
+			start = el.scrollTop;
+			duration = tailScrollDurationMs(Math.abs(start));
+		}
 		const elapsed = now - t0;
 		const landing = elapsed >= duration;
 		/*
@@ -280,6 +299,7 @@ export function scrollToTail(
 		}
 		handle = env.raf(frame);
 	};
+	sinks.get(el)?.setFlight?.(true);
 	for (const type of CANCEL_EVENTS)
 		el.addEventListener(type, onInput, { passive: true });
 	handle = env.raf(frame);

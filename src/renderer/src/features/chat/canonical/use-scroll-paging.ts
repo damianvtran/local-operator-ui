@@ -509,6 +509,17 @@ export function useScrollPaging({
 	 * mid-gesture is a position the reader is still leaving.
 	 */
 	const scrollSettle = useRef<number>(0);
+	/**
+	 * True while a scroll-to-tail flight (`scroll-to-tail.ts`) is moving this
+	 * scroller. Every hold path stands down for its duration: the flight writes
+	 * `scrollTop` each frame, so any sample taken now is a position the reader is
+	 * passing through, and a correction toward it is a backward jump the next
+	 * frame happens to overwrite (UX measured -670 -> -8270 mid-flight, PR #2068
+	 * R1-2/U1). The two arms that re-armed it were a settle timer still pending
+	 * from the reader's last scroll and a scroll event the single own-write slot
+	 * could not claim (the browser's anchoring shift, -661 vs our -606).
+	 */
+	const flying = useRef(false);
 
 	/** The scroller's geometry, in the terms the policy is written in. */
 	const measure = useCallback((): PagingGeometry | null => {
@@ -624,7 +635,7 @@ export function useScrollPaging({
 	 */
 	const refreshReaderHold = useCallback(() => {
 		const el = containerRef.current;
-		if (!el) return;
+		if (!el || flying.current) return;
 		/*
 		 * A reveal's hold is FINITE and has priority while it lives: it was sampled
 		 * BEFORE the growth this module dispatched, and re-sampling mid-settling
@@ -673,7 +684,7 @@ export function useScrollPaging({
 	const correctAnchor = useCallback(() => {
 		const el = containerRef.current;
 		const held = anchor.current.sample;
-		if (!el || !held || navigating.current) return;
+		if (!el || !held || navigating.current || flying.current) return;
 		/*
 		 * THE TAIL GATE. At the tail the reader is following, not holding: the
 		 * newest content must stay pinned, and a correction fired out there would
@@ -764,6 +775,7 @@ export function useScrollPaging({
 				onNavigation: (active) => {
 					navigating.current = active;
 				},
+				suspended: () => flying.current,
 			}),
 		[
 			sampleAnchor,
@@ -1299,9 +1311,18 @@ export function useScrollPaging({
 			acknowledge: acknowledgeOwnWrite,
 			releaseHold: () => {
 				anchor.current = { sample: null, until: 0, inputRevision: 0 };
+				// The layout transaction is the same hold by another route (R1-1),
+				// and a settle still pending from the reader's last scroll would
+				// re-sample mid-flight (R1-2).
+				layout.drop();
+				if (scrollSettle.current) window.clearTimeout(scrollSettle.current);
+				scrollSettle.current = 0;
+			},
+			setFlight: (active) => {
+				flying.current = active;
 			},
 		});
-	}, [containerRef, acknowledgeOwnWrite]);
+	}, [containerRef, acknowledgeOwnWrite, layout]);
 
 	useEffect(() => {
 		const el = containerRef.current;
@@ -1408,9 +1429,13 @@ export function useScrollPaging({
 			 * Anything else that moved the viewport - the reader's own drag, the
 			 * browser's anchoring, a re-clamp - re-reads the standing hold once the
 			 * motion settles. See `refreshReaderHold` for the rules it applies.
+			 * Not while a flight owns the offset (`flying`): the landing's own
+			 * unclaimed event schedules the re-read once it is over.
 			 */
-			if (scrollSettle.current) window.clearTimeout(scrollSettle.current);
-			scrollSettle.current = window.setTimeout(refreshReaderHold, SETTLE_MS);
+			if (!flying.current) {
+				if (scrollSettle.current) window.clearTimeout(scrollSettle.current);
+				scrollSettle.current = window.setTimeout(refreshReaderHold, SETTLE_MS);
+			}
 			if (moved !== 0 && performance.now() <= dragUntil) {
 				input(moved > 0 ? "up" : "down", true);
 				return;

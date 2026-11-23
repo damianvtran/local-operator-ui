@@ -11,7 +11,7 @@ const CACHE = join(ROOT, "node_modules", ".cache", "transcript-paging-hook");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
+			'export { useScrollPaging, ANCHOR_HOLD_MS } from "./src/renderer/src/features/chat/canonical/use-scroll-paging";\nexport { MAX_ACT_ASKS, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";\nexport { scrollToTail } from "./src/renderer/src/shared/hooks/scroll-to-tail";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -28,8 +28,13 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "use-scroll-paging.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { useScrollPaging, ANCHOR_HOLD_MS, SETTLE_MS, MAX_ACT_ASKS } =
-	await import(new URL(`file://${bundlePath}`).href);
+const {
+	useScrollPaging,
+	ANCHOR_HOLD_MS,
+	SETTLE_MS,
+	MAX_ACT_ASKS,
+	scrollToTail,
+} = await import(new URL(`file://${bundlePath}`).href);
 const { createRoot } = await import("react-dom/client");
 
 after(() => {
@@ -343,6 +348,45 @@ function mountHook(options = {}) {
 		pointerDown,
 		scrollEvent,
 		ownWrite,
+		/** The scroller itself, for a writer outside the hook (scroll-to-tail). */
+		scroller,
+	};
+}
+
+/*
+ * A scroll-to-tail flight on the mounted hook's scroller, on its own clock.
+ * Bundled with the hook so the driver finds the sink the hook registered (one
+ * module instance, one registry) - which is the integration under test.
+ */
+function startFlight(hook) {
+	let clock = 0;
+	let queued = null;
+	const outcomes = [];
+	const env = {
+		raf: (cb) => {
+			queued = cb;
+			return 1;
+		},
+		caf: () => {
+			queued = null;
+		},
+		now: () => clock,
+		reducedMotion: () => false,
+	};
+	const cancel = scrollToTail(hook.scroller, env, (o) => outcomes.push(o));
+	return {
+		outcomes,
+		cancel,
+		/** One flight frame, then the `scroll` event its write fires. */
+		step(ms = 16) {
+			clock += ms;
+			const cb = queued;
+			queued = null;
+			const before = hook.scrollTop;
+			cb?.(clock);
+			if (hook.scrollTop !== before) hook.scrollEvent();
+		},
+		pending: () => queued !== null,
 	};
 }
 
@@ -1386,6 +1430,113 @@ test("a deliberate retry holds the reader's place on the landing's own frame", a
 			before + 24,
 			"the deliberate retry's landing is corrected on the frame it lands",
 		);
+	} finally {
+		hook.close();
+	}
+});
+
+/*
+ * PR #2068 (send smooth-scroll), agent review round 1: the flight against the
+ * MOUNTED pager. The driver's own tests prove what it sends to a sink; these
+ * prove the hook registers that sink on its scroller and that every hold path
+ * stands down while the flight owns the offset.
+ */
+test("a flight finds the pager's sink: the standing hold is released and growth mid-flight is not corrected (R1-3)", async () => {
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		hook.setScrollTop(-2000);
+		hook.readerInput();
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		const flight = startFlight(hook);
+		flight.step(); // first frame: reads start, no motion
+		flight.step();
+		const mid = hook.scrollTop;
+		assert.ok(mid > -2000 && mid < 0, "mid-flight");
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			mid,
+			"the released hold writes nothing against the flight",
+		);
+		while (flight.pending()) flight.step();
+		assert.deepEqual(flight.outcomes, ["landed"]);
+		assert.equal(hook.scrollTop, 0);
+	} finally {
+		hook.close();
+	}
+
+	// Control: the same standing hold with no flight still corrects the growth,
+	// so the silence above is the sink's doing, not a hold that never existed.
+	const control = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		control.setScrollTop(-2000);
+		control.readerInput();
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		control.flushFrames(2);
+		control.growAboveAnchor();
+		assert.equal(
+			control.scrollTop,
+			-1976,
+			"the hold corrects without a flight",
+		);
+	} finally {
+		control.close();
+	}
+});
+
+test("mid-flight, an unclaimed scroll and a pending settle cannot re-arm the hold (R1-2/U1)", async () => {
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		hook.setScrollTop(-3000);
+		// The reader's last scroll leaves a settle timer pending at takeoff.
+		hook.readerInput();
+		const flight = startFlight(hook);
+		flight.step();
+		flight.step();
+		// The browser's own anchoring shifts the offset: an event the single
+		// own-write slot cannot claim (-661 vs our -606 in the UX trace).
+		hook.setScrollTop(hook.scrollTop - 55);
+		hook.scrollEvent();
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+		const mid = hook.scrollTop;
+		hook.growAboveAnchor();
+		assert.equal(hook.scrollTop, mid, "no anchor write mid-flight");
+		hook.growAboveAnchor();
+		assert.equal(hook.scrollTop, mid, "still none on the next resize");
+		while (flight.pending()) flight.step();
+		assert.equal(hook.scrollTop, 0);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a layout transaction begun away from the tail is dropped by the flight and writes nothing after landing (R1-1)", () => {
+	const hook = mountHook({ hiddenRows: 0, hasMore: false });
+	try {
+		hook.setScrollTop(-1500);
+		const release = hook.layout.retainMotion();
+		hook.layout.begin(); // the entry slot's height transition starts
+		const flight = startFlight(hook);
+		while (flight.pending()) {
+			flight.step();
+			const at = hook.scrollTop;
+			hook.setRowTop(140 + ((hook.scrollTop * 7) % 200)); // the slot animating
+			hook.layout.commit(true);
+			assert.equal(hook.scrollTop, at, "the transition never fights a frame");
+		}
+		assert.equal(hook.scrollTop, 0);
+		for (let i = 0; i < 15; i++) {
+			hook.setRowTop(400 + i * 10);
+			hook.layout.commit(true);
+		}
+		assert.equal(
+			hook.scrollTop,
+			0,
+			"the reader stays on the tail after landing",
+		);
+		release();
 	} finally {
 		hook.close();
 	}

@@ -9,6 +9,12 @@ export type ScrollLayoutCoordinator = {
 	heldId: () => string | null;
 	retarget: (from: string, to: string) => void;
 	cancel: () => void;
+	/**
+	 * Forget the captured anchor without touching motion/navigation leases. A
+	 * scroll-to-tail flight calls this (via the pager's `releaseHold`) because the
+	 * reader has asked to leave the place the transaction is defending.
+	 */
+	drop: () => void;
 	retainMotion: () => () => void;
 	retainNavigation: () => () => void;
 };
@@ -30,6 +36,13 @@ export function createScrollLayoutCoordinator(options: {
 	onNavigation?: (active: boolean) => void;
 	onMissingAnchor?: (id: string) => void;
 	replaceHeld?: (sample: AnchorSample) => void;
+	/**
+	 * True while something else owns the offset (a scroll-to-tail flight). The
+	 * flight rewrites `scrollTop` every frame, so any anchor captured or defended
+	 * now is a position the reader is passing through: correcting toward it
+	 * would pull them backward against their own request (PR #2068, R1-2).
+	 */
+	suspended?: () => boolean;
 }): ScrollLayoutCoordinator {
 	let motions = 0;
 	let navigating = 0;
@@ -40,6 +53,7 @@ export function createScrollLayoutCoordinator(options: {
 	} | null = null;
 	return {
 		begin() {
+			if (options.suspended?.()) return;
 			if (transaction && transaction.input === options.inputRevision()) return;
 			const tail = options.following();
 			transaction = {
@@ -52,6 +66,10 @@ export function createScrollLayoutCoordinator(options: {
 			if (navigating > 0) return true;
 			const current = transaction;
 			if (!current) return true;
+			if (options.suspended?.()) {
+				transaction = null;
+				return true;
+			}
 			if (!retain && motions === 0) transaction = null;
 			if (current.input !== options.inputRevision()) {
 				transaction = null;
@@ -59,6 +77,18 @@ export function createScrollLayoutCoordinator(options: {
 			}
 			if (current.tail) {
 				if (options.following()) options.write("tail");
+				return true;
+			}
+			/*
+			 * A HELD (non-tail) transaction ends the moment the reader is at the
+			 * tail, exactly as the pager's `correctAnchor` tail gate drops its sample.
+			 * Without this a retained transaction (the entry slot's 240 ms height
+			 * transition commits every frame) kept "restoring" a row the reader had
+			 * left, writing them back off the tail right after a send's flight landed
+			 * (PR #2068, R1-1). Nothing is written: following is not our offset to fix.
+			 */
+			if (options.following()) {
+				transaction = null;
 				return true;
 			}
 			const after = current.sample ? options.measure(current.sample.id) : null;
@@ -116,6 +146,9 @@ export function createScrollLayoutCoordinator(options: {
 			motions = 0;
 			navigating = 0;
 			options.onNavigation?.(false);
+		},
+		drop() {
+			transaction = null;
 		},
 		retainNavigation() {
 			navigating += 1;
