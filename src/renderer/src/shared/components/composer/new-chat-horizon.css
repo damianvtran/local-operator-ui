@@ -1,0 +1,97 @@
+/* Only the growing empty splash opts into this paper tone. The ellipse ends
+   inside all four edges, so the band's gutters and the docked box cannot open
+   a seam. The deep palette role tints the resting paper, never the controls.
+   The picker hides the art without unmounting its draft-owned controller, so
+   a retained but suppressed horizon must not tint the surrounding band. */
+[data-lo-composer-splash]:has(
+		.new-chat-horizon:not([data-lo-horizon-suppressed])
+	) {
+	--horizon-paper: light-dark(
+		color-mix(in oklab, var(--lo-sunken) 35%, transparent),
+		color-mix(in oklab, var(--lo-media-surface) 80%, var(--lo-sunken))
+	);
+	background-image: radial-gradient(
+		ellipse 50% 46% at 50% 46%,
+		var(--horizon-paper),
+		color-mix(in oklab, var(--horizon-paper) 86%, transparent) 34%,
+		color-mix(in oklab, var(--horizon-paper) 29%, transparent) 73%,
+		transparent 100%
+	);
+}
+
+/* Full app glass already supplies the conversation backing. Lay the same
+   ellipse over it as a tint, not as a second ground; sidebar-only glass
+   deliberately keeps the solid conversation's paper above. */
+html[data-glass~="canvas"]
+	[data-lo-composer-splash]:has(
+		.new-chat-horizon:not([data-lo-horizon-suppressed])
+	) {
+	--horizon-paper: light-dark(
+		color-mix(in oklab, var(--lo-sunken) 22%, transparent),
+		color-mix(in oklab, var(--lo-media-surface) 24%, transparent)
+	);
+}
+
+.new-chat-horizon {
+	position: relative;
+	/* Keep the existing 32px mark slot: the extra ink borrows from the blank
+	   space around it, not from the measured greeting/suggestion budget. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	inline-size: 100%;
+	block-size: 2rem;
+}
+
+.new-chat-horizon__scene {
+	position: absolute;
+	left: 50%;
+	/* The crossing is at y=150 in the backing sheet. Position it on the
+	   glyph without enlarging the in-flow block or its measured neighbours. */
+	inset-block-start: calc(50% - 150px);
+	translate: -50% 0;
+	inline-size: min(100%, 900px);
+	block-size: 240px;
+	contain: strict;
+	pointer-events: none;
+	color: light-dark(
+		color-mix(in oklab, var(--lo-ink) 75%, var(--lo-accent-alt)),
+		color-mix(in oklab, var(--lo-ink) 63%, var(--lo-accent-alt))
+	);
+	/* Canvas consumes these two resolved colours. There is no CSS outline. */
+	outline-color: light-dark(
+		color-mix(in oklab, var(--lo-ink-muted) 78%, var(--lo-ink)),
+		color-mix(in oklab, var(--lo-ink-muted) 72%, var(--lo-accent-alt))
+	);
+}
+
+.new-chat-horizon__mark [data-brand-mark] {
+	/* More ink on the upper stroke makes the figure part of the engraved relief;
+	   the ground stays visible around it, without a second painted disc. */
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in oklab, var(--lo-ink) 53%, var(--lo-ink-muted)),
+		color-mix(in oklab, var(--lo-ink-muted) 82%, var(--lo-canvas))
+	);
+}
+
+.new-chat-horizon__scene[data-quiet] {
+	opacity: 0.54;
+}
+
+@media (forced-colors: active) {
+	[data-lo-composer-splash]:has(
+			.new-chat-horizon:not([data-lo-horizon-suppressed])
+		) {
+		background-image: none;
+	}
+
+	.new-chat-horizon__scene {
+		display: none;
+	}
+
+	.new-chat-horizon__mark [data-brand-mark] {
+		forced-color-adjust: none;
+		background: CanvasText;
+	}
+}

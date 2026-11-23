@@ -493,7 +493,7 @@ import {
 	activeModelForDefault,
 	writeModelDefaultSettings,
 } from "@features/chat/pickers/model-default-settings";
-import { BrandMark } from "@shared/components/common/brand-mark";
+import { NewChatHorizon } from "./new-chat-horizon";
 
 /**
  * A send that did not land, described for the composer that owns its text.
@@ -11394,25 +11394,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								: "hidden",
 						)}
 					>
+						{/* The argument picker hides this wrapper, but dismissing it
+						    must not grant the current draft another animation budget.
+						    All send blocks mute motion; only setup dims the print. */}
+						{showEmptyChatPrompt ? (
+							<NewChatHorizon
+								key={conversationId}
+								quiet={noProvider || noModel || serverOffline}
+								dimmed={noProvider}
+								suppressed={!showSplash}
+							/>
+						) : null}
 						{showSplash ? (
 							<>
-								{/*
-								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
-								 * (the app's own mark, `ink-muted`, not an illustration), the
-								 * greeting, then the chips"), in its BUBBLE - the operator's call on
-								 * the preview (2026-09-24) - and through the one `BrandMark` the
-								 * sidebar uses, so the empty state and the brand row cannot drift
-								 * into two treatments of one mark.
-								 *
-								 * `ink-muted` rather than `ink`: the mark is decoration on a screen
-								 * whose subject is the greeting, and §H spends the loudest ink there.
-								 * Unnamed (so `aria-hidden`) because the greeting below says
-								 * everything this figure means. `data-lo-empty-mark` is the handle
-								 * the driver's `first-send` scene waits on.
-								 */}
-								<span data-lo-empty-mark="" className="contents">
-									<BrandMark className="size-8" tone="ink-muted" />
-								</span>
 								{/*
 								 * With nothing connected there is no question to ask yet: the card
 								 * below says what to do, and a headline inviting a prompt the app
