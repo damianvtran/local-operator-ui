@@ -496,8 +496,12 @@ export const composerPlaceholder = (state: {
 		return t(COMPOSER_PLACEHOLDER.waiting);
 	}
 	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
-	if (state.voiceOn) return t(COMPOSER_PLACEHOLDER.voice);
-	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
+	// Voice is the invitation said for this mode, so it sits INSIDE the
+	// invitation slot: a host's own sentence (`idle`) still wins over it.
+	return (
+		state.idle ??
+		t(state.voiceOn ? COMPOSER_PLACEHOLDER.voice : COMPOSER_PLACEHOLDER.idle)
+	);
 };
 
 /**

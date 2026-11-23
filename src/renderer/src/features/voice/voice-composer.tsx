@@ -648,6 +648,27 @@ const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
 /* COPY                                                                        */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * A LABEL, THEN THE WORDS: the label ends in its own colon ("You said:"), and the
+ * gap after it is one rule for every locale. A full-width colon (zh-CN `：`) has the
+ * space built into its glyph, so it takes none; every other colon gets one.
+ */
+const LabelledCaption: FC<{ label: string; text: string }> = ({
+	label,
+	text,
+}) => {
+	const tight = label.endsWith("\uFF1A");
+	return (
+		<span
+			className={cn("flex min-w-0 items-baseline", tight ? "gap-0" : "gap-1")}
+		>
+			<span className="shrink-0 font-medium text-ink-muted">{label}</span>
+			{!tight && " "}
+			<span className="truncate">{text}</span>
+		</span>
+	);
+};
+
 const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 	switch (caption.kind) {
 		case "idle":
@@ -656,30 +677,24 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 			return <>{t("ui.chat.voice.starting_caption")}</>;
 		case "heard":
 			return (
-				<>
-					<span className="shrink-0 font-medium text-ink-muted">
-						{t("ui.chat.voice.heard_label")}
-					</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.heard_label")}
+					text={caption.text}
+				/>
 			);
 		case "said":
 			return (
-				<>
-					<span className="shrink-0 font-medium text-ink-muted">
-						{t("ui.chat.voice.said_label")}
-					</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			);
 		case "ended":
 			return caption.text ? (
-				<>
-					<span className="shrink-0 font-medium text-ink-muted">
-						{t("ui.chat.voice.said_label")}
-					</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			) : null;
 		case "interrupted":
 			return (
@@ -835,9 +850,11 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 				 * reply now, so the line is no longer a warning that text is missing -
 				 * it says only how much was spoken. The strip's own cut chip stays, because
 				 * the spoken tail is gone in four seconds and "the rest is above" is still
-				 * the fact the person needs when they look up.
+				 * the fact the person needs when they look up. AN OLDER SERVER sends no
+				 * `full_text`: the row then holds the capped spoken text, so "first part
+				 * only" under it would read as the row being complete - no line there.
 				 */}
-				{row.truncated && (
+				{row.truncated && row.hasFullText && (
 					<span
 						data-voice-story-cut=""
 						className="mt-1 flex items-center gap-1 text-meta text-ink-dim"
@@ -1175,9 +1192,11 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					id={panelId}
 					data-voice-history=""
 					/*
-					 * A LABELLED REGION THAT SCROLLS: Chromium (Electron 35 is 134) puts a
-					 * scrollable box with no focusable child in the tab order itself, so the
-					 * long reply is reachable by keyboard without a `tabIndex` here.
+					 * A LABELLED REGION THAT SCROLLS, no `tabIndex`: the sticky header's
+					 * Clear button is a focusable child whenever there is a row to read, so
+					 * Chromium (Electron 35 is 134) does not add the scroller to the tab
+					 * order itself. Keyboard scrolling works from Clear - arrow keys and
+					 * Page Up/Down scroll its scrollable ancestor.
 					 */
 					aria-label={t("ui.chat.voice.history")}
 					className={cn(
@@ -1266,9 +1285,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						type="button"
 						data-voice-cut=""
 						onClick={() => onScrollToNewest?.()}
-						className="flex h-6 shrink-0 items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
+						title={t("ui.chat.voice.cut_chip")}
+						/*
+						 * THE ONE CHIP THAT GIVES: at the narrow dock the status chip, the
+						 * cut chip, Pause, Silence and the History toggle together are wider
+						 * than the band, and `overflow-hidden` clipped the toggle away. The
+						 * caption is already at zero, so this truncates ("Cut short · re…")
+						 * and the title carries the whole sentence.
+						 */
+						className="flex h-6 min-w-0 shrink items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
 					>
-						{t("ui.chat.voice.cut_chip")}
+						<span className="truncate">{t("ui.chat.voice.cut_chip")}</span>
 					</button>
 				)}
 				{view.caption ? (
@@ -1366,6 +1393,9 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					 * words, and the caption is the one that truncates.
 					 */
 					aria-label={
+						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
+					}
+					title={
 						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
 					}
 					className="shrink-0 gap-0.5 px-1.5 text-meta text-ink-muted"

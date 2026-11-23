@@ -2249,6 +2249,11 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 		t(COMPOSER_PLACEHOLDER.voice),
 	);
 	assert.equal(
+		composerPlaceholder({ ...base, voiceOn: true, idle: "Host copy" }),
+		"Host copy",
+		"voice ranks INSIDE the invitation slot: a host's own sentence still wins",
+	);
+	assert.equal(
 		composerPlaceholder({ ...base, voiceOn: true, awaitingReply: true }),
 		t(COMPOSER_PLACEHOLDER.waiting),
 		"a turn in flight is still said first",

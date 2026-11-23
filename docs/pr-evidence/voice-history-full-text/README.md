@@ -26,3 +26,16 @@ The stories' `play` functions measure the geometry the operator reported (band i
 the shelf; open History bounded and scrolling). With `voice-composer.tsx` reverted to `origin/main` the
 `HistoryOpen` play fails with `AssertionError: expected 66 to be greater than or equal to 74` (the band
 8 px outside the editor box on the left); with this change it passes.
+
+## Round 1 additions
+
+| File | Story | What it shows |
+|---|---|---|
+| `before-light-narrow-cut-open.png` | `voice-composer-band--narrow-cut-history-open` | Pre-fix chip (`shrink-0`): the History toggle sits at x 410–436, outside the 57–384 band, clipped. |
+| `after-light-narrow-cut-open.png`, `after-dark-narrow-cut-open.png` | same | The cut chip truncates ("Cut short · …", full sentence in its `title`); Pause, Silence and the History toggle (349–375) are inside the band. |
+| `after-light-server-shape-open.png` | `voice-composer-band--server-shape-history-open` | `full_text` in the shape the server's `display_text` emits (local-operator#4491): `Name · Qty · Note` rows, `- ` bullets, `(code block omitted)`, blank-line paragraphs. |
+
+The `NarrowCutHistoryOpen` play now checks every control's right edge against the band's. With the chip's
+`shrink-0` restored it fails with `expected 436.53125 to be less than or equal to 384`; with this change it
+passes (toggle right edge 375). `SERVER_FULL` in the stories file is the real `display_text` output for a
+markdown reply, produced by running `speakable.py` from the server PR head `44fe027c5a`.

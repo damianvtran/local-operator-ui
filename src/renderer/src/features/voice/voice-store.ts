@@ -79,6 +79,12 @@ export type VoiceStoryRow =
 			 * long reply read from it ends mid-thought; History reads this instead.
 			 */
 			full: string | null;
+			/**
+			 * `full` is the server's own `full_text`, not the spoken text standing in
+			 * for it. An older server sends none, and a cut reply's `full` is then
+			 * itself capped, so a row must not describe itself as the whole reply.
+			 */
+			hasFullText: boolean;
 			/** The AUDIO was cut at the server's cap; `full` is never cut. */
 			truncated: boolean;
 	  }
@@ -237,12 +243,14 @@ function completeStoryRow(
 		)
 			continue;
 		const next = [...story];
+		// An empty or whitespace-only `full_text` is no display text either: the
+		// spoken words still say something, a blank row would not.
+		const fullText = spoken.fullText?.trim();
 		next[index] = {
 			...row,
 			spoken: spoken.text,
-			// An empty `full_text` is no display text either: the spoken words
-			// still say something, a blank row would not.
-			full: spoken.fullText || spoken.text,
+			full: fullText || spoken.text,
+			hasFullText: Boolean(fullText),
 			truncated: spoken.truncated,
 		};
 		return next;
@@ -356,6 +364,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 						heard: text,
 						spoken: null,
 						full: null,
+						hasFullText: false,
 						truncated: false,
 					},
 				]),

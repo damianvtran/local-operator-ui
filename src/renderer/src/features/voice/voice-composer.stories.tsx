@@ -57,7 +57,19 @@ const FULL = [
 	"Nothing else changes: the rest of the session runs as before, and the notes stay in the transcript for the next person to read.",
 ].join("\n");
 
-function seed(scenario: "working" | "cut") {
+/*
+ * THE SERVER'S REAL `full_text` SHAPE, not this file's own: the output of
+ * `display_text` from local-operator PR #4491 (`local_operator/voice/speakable.py`)
+ * run on a markdown reply with a table, a nested bullet list, a fenced block and a
+ * closing sentence. Cells join with " · ", rows and bullets keep one line each,
+ * paragraphs are separated by a blank line, a fence is the placeholder line.
+ */
+const SERVER_FULL =
+	"Here is how the two hook types compare.\n\nName \u00b7 Qty \u00b7 Note\nPreToolUse \u00b7 2 \u00b7 Before an action\nSessionStart \u00b7 1 \u00b7 At the start or after a memory reset\n\nTwo things to know:\n\n- The record is in context before the first action.\n- It is also re-read after a reset.\n  * even in a nested list\n\n(code block omitted)\n\nNothing else changes: the rest of the session runs as before, and the notes stay in the transcript for the next person to read.";
+
+type Scenario = "working" | "cut" | "server";
+
+function seed(scenario: Scenario) {
 	const store = useVoiceStore.getState();
 	const t0 = new Date(2026, 10, 23, 11, 2).getTime();
 	store.setActive({ session_id: SESSION, enabled_at: t0 });
@@ -76,7 +88,7 @@ function seed(scenario: "working" | "cut") {
 	store.setLastSpoken({
 		sessionId: SESSION,
 		text: SPOKEN,
-		fullText: FULL,
+		fullText: scenario === "server" ? SERVER_FULL : FULL,
 		truncated: true,
 		at: t0 + 20_000,
 	});
@@ -97,7 +109,7 @@ function VoiceBand({
 	history,
 }: {
 	width: number;
-	scenario: "working" | "cut";
+	scenario: Scenario;
 	history: boolean;
 }) {
 	const [ready, setReady] = useState(false);
@@ -209,6 +221,57 @@ async function expectBandInsideCard(canvasElement: HTMLElement, open: boolean) {
 	await expect(panel.scrollHeight).toBeGreaterThan(panel.clientHeight);
 }
 
+/*
+ * THE STRIP'S CONTROLS INSIDE THE BAND: with the cut chip up at the narrow dock the
+ * status chip, cut chip, Pause, Silence and History toggle together outgrew the
+ * band, and `overflow-hidden` clipped the toggle away - the person could not open
+ * or close History. Every control's right edge must be inside the band's.
+ */
+async function expectStripControlsInsideBand(canvasElement: HTMLElement) {
+	await expectBandInsideCard(canvasElement, true);
+	await waitFor(() => {
+		if (!canvasElement.querySelector("[data-voice-cut]"))
+			throw new Error("the cut chip is not up");
+	});
+	const band = canvasElement.querySelector("[data-voice-band]");
+	if (!band) throw new Error("band missing");
+	const right = band.getBoundingClientRect().right;
+	for (const selector of [
+		"[data-voice-cut]",
+		"[data-voice-action]",
+		"[data-voice-history-toggle]",
+	]) {
+		for (const control of canvasElement.querySelectorAll(selector)) {
+			await expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(
+				right,
+			);
+		}
+	}
+	const toggle = canvasElement.querySelector("[data-voice-history-toggle]");
+	await expect(toggle?.getBoundingClientRect().width).toBeGreaterThan(0);
+}
+
+/*
+ * THE REPLY AS THE SERVER SENDS IT: one line per table row and bullet, a blank line
+ * between paragraphs, the fence as a placeholder line. `pre-line` is what turns
+ * those newlines into lines; read back as `innerText`, which follows layout.
+ */
+async function expectServerShapeLines(canvasElement: HTMLElement) {
+	await expectBandInsideCard(canvasElement, true);
+	const reply = canvasElement.querySelector<HTMLElement>(
+		"[data-voice-story=exchange] .whitespace-pre-line",
+	);
+	if (!reply) throw new Error("the reply is missing");
+	await expect(getComputedStyle(reply).whiteSpace).toBe("pre-line");
+	const lines = reply.innerText.split("\n");
+	await expect(lines).toContain("Name \u00b7 Qty \u00b7 Note");
+	await expect(lines).toContain("PreToolUse \u00b7 2 \u00b7 Before an action");
+	await expect(lines).toContain("(code block omitted)");
+	await expect(
+		lines.filter((line) => line === "").length,
+	).toBeGreaterThanOrEqual(4);
+}
+
 export const Closed: Story = {
 	render: () => <VoiceBand width={900} scenario="working" history={false} />,
 	play: ({ canvasElement }) => expectBandInsideCard(canvasElement, false),
@@ -232,4 +295,13 @@ export const NarrowHistoryOpen: Story = {
 };
 export const NarrowCutHistoryOpen: Story = {
 	render: () => <VoiceBand width={393} scenario="cut" history />,
+	play: ({ canvasElement }) => expectStripControlsInsideBand(canvasElement),
+};
+export const ServerShapeHistoryOpen: Story = {
+	render: () => <VoiceBand width={900} scenario="server" history />,
+	play: ({ canvasElement }) => expectServerShapeLines(canvasElement),
+};
+export const NarrowServerShapeHistoryOpen: Story = {
+	render: () => <VoiceBand width={393} scenario="server" history />,
+	play: ({ canvasElement }) => expectServerShapeLines(canvasElement),
 };

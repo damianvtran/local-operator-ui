@@ -50,7 +50,7 @@
 	"ui.chat.voice.approve_on_screen": "在屏幕上审批",
 	"ui.chat.voice.mic_blocked_caption": "macOS不允许Local Operator听到你",
 	"ui.chat.voice.cut_chip": "已截断 · 其余内容在上方 ↑",
-	"ui.chat.voice.spoken_part_note": "朗读内容：仅前半部分",
+	"ui.chat.voice.spoken_part_note": "朗读内容：仅开头部分",
 	"ui.chat.voice.history_hide": "隐藏历史",
 	"ui.chat.voice.history_clear": "清除",
 	"ui.chat.voice.history_last": "最近{count}条",

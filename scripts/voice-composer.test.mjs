@@ -231,6 +231,7 @@ const bundle = await build({
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+			export * as i18n from "./src/i18n";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -270,6 +271,7 @@ const {
 	useVoiceStore,
 	useVoiceSwitchStore,
 	registerVoiceRouteOpener,
+	i18n,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 // The switch is OFF by default; these cases are about voice ON.
@@ -786,6 +788,18 @@ test("cut short shows after a cut reply, and the next take retires it", async ()
 	const cut = window.document.querySelector("[data-voice-cut]");
 	assert.ok(cut, "the cut chip is up");
 	assert.equal(cut.textContent?.trim(), "Cut short · rest above ↑");
+	/*
+	 * jsdom has no layout, so the narrow band's overflow cannot be measured here
+	 * (the `NarrowCutHistoryOpen` story's play does). What is asserted is the
+	 * contract that fix rests on: the chip may shrink and truncate - `shrink-0`
+	 * pinned it at its full width and pushed the History toggle out of the band -
+	 * and its title still says the whole sentence.
+	 */
+	assert.match(cut.className, /\bmin-w-0\b/);
+	assert.match(cut.className, /\bshrink\b/);
+	assert.doesNotMatch(cut.className, /\bshrink-0\b/);
+	assert.ok(cut.querySelector(".truncate"), "the words are what truncates");
+	assert.equal(cut.getAttribute("title"), "Cut short · rest above ↑");
 	await act(async () => {
 		cut.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
 	});
@@ -937,6 +951,31 @@ test("D4: the strip, its history and the notice share the composer's content col
 	assert.match(notice.className, /\bpx-3\b/);
 });
 
+test("the chevron-only History toggle carries a title the same as its name", async () => {
+	await mountStrip();
+	await voiceReady();
+	const toggle = () =>
+		window.document.querySelector("[data-voice-history-toggle]");
+	// The open state is remembered per window: read each state off the toggle.
+	const seen = new Set();
+	for (let press = 0; press < 2; press++) {
+		const open = toggle().getAttribute("aria-expanded") === "true";
+		assert.equal(
+			toggle().getAttribute("title"),
+			open ? "Hide history" : "History",
+		);
+		assert.equal(
+			toggle().getAttribute("title"),
+			toggle().getAttribute("aria-label"),
+		);
+		seen.add(open);
+		await act(async () => {
+			toggle().dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		});
+	}
+	assert.equal(seen.size, 2, "both states were checked");
+});
+
 test("D8: the History chevron points down when closed and up when open", async () => {
 	await mountStrip();
 	await voiceReady();
@@ -1000,6 +1039,7 @@ test("History shows the whole reply on its own lines, and notes the audio cut on
 		heard: "compare the hooks",
 		spoken: "Hook When it runs PreToolUse Before an action",
 		full,
+		hasFullText: true,
 		truncated: false,
 		...patch,
 	});
@@ -1035,6 +1075,31 @@ test("History shows the whole reply on its own lines, and notes the audio cut on
 	);
 	assert.match(row.textContent, /PreToolUse · Before an action/);
 
+	/*
+	 * AN OLDER SERVER sends no `full_text`: the row holds the capped spoken text,
+	 * so "first part only" under it would read as the row being complete. The
+	 * strip's own cut chip still follows `truncated`; the row says nothing extra.
+	 */
+	await act(async () => {
+		useVoiceStore.setState({
+			story: [
+				exchange({
+					full: "Hook When it runs PreToolUse Before an action",
+					hasFullText: false,
+					truncated: true,
+				}),
+			],
+		});
+	});
+	await flush();
+	row = window.document.querySelector('[data-voice-story="exchange"]');
+	assert.equal(
+		row.querySelector("[data-voice-story-cut]"),
+		null,
+		"no note under capped text from a server with no full_text",
+	);
+	assert.match(row.textContent, /Hook When it runs PreToolUse/);
+
 	// A reply with nothing yet reads as work in progress, not a blank row.
 	await act(async () => {
 		useVoiceStore.setState({
@@ -1056,6 +1121,41 @@ test("the strip's caption labels end in a colon, so the label is a separator", a
 	});
 	await flush();
 	assert.match(caption().textContent, /^You said:\s/);
+});
+
+test("a full-width colon takes no gap after it; every other colon takes one", async () => {
+	/*
+	 * ONE RULE FOR EVERY LOCALE: zh-CN labels end in `：`, whose glyph carries its
+	 * own space, so the caption must not add a second one; `:` and fr's ` :` do.
+	 */
+	i18n.registerCatalogue("zh-CN", {
+		"ui.chat.voice.heard_label": "你说：",
+	});
+	await mountStrip();
+	await voiceReady();
+	const heard = async () => {
+		await act(async () => {
+			const store = useVoiceStore.getState();
+			store.noteTake(AT, "检查测试", Date.now());
+			store.setExchange("working", AT);
+		});
+		await flush();
+		return caption().firstElementChild;
+	};
+	i18n.setLocale("zh-CN");
+	try {
+		const cn = await heard();
+		assert.match(cn.className, /\bgap-0\b/);
+		assert.equal(cn.textContent, "你说：检查测试", "no space after ：");
+	} finally {
+		i18n.setLocale("en");
+	}
+	await act(async () => {
+		useVoiceStore.setState({ story: [], exchange: null, lastTake: null });
+	});
+	const en = await heard();
+	assert.match(en.className, /\bgap-1\b/);
+	assert.match(en.textContent, /^You said: /);
 });
 
 test("D2: the first frame of an enable is Starting voice, never the stale rig status", async () => {
@@ -1326,6 +1426,7 @@ const story = [
 		heard: "Run the tests on the login redirect.",
 		spoken: "Three suites ran.",
 		full: "Three suites ran.",
+		hasFullText: true,
 		truncated: false,
 	},
 	{

@@ -3053,6 +3053,11 @@ test("History keeps the reply the server cleaned for display, and falls back to 
 	assert.equal(full.full, fullText);
 	assert.equal(full.spoken, spokenText);
 	assert.equal(full.truncated, true);
+	assert.equal(
+		full.hasFullText,
+		true,
+		"the row knows its text is the server's",
+	);
 	// An older server sends no `full_text`: today's behaviour, the spoken text.
 	const older = answer(store, "s-older", {
 		text: spokenText,
@@ -3060,6 +3065,11 @@ test("History keeps the reply the server cleaned for display, and falls back to 
 	});
 	assert.equal(older.full, spokenText);
 	assert.equal(older.truncated, false);
+	assert.equal(
+		older.hasFullText,
+		false,
+		"the spoken text stands in; a cut one must not claim to be the whole reply",
+	);
 	// An empty one is no display text: a blank row would say nothing true.
 	const empty = answer(store, "s-empty", {
 		text: spokenText,
@@ -3067,6 +3077,15 @@ test("History keeps the reply the server cleaned for display, and falls back to 
 		truncated: false,
 	});
 	assert.equal(empty.full, spokenText);
+	assert.equal(empty.hasFullText, false);
+	// Whitespace alone is no display text either: it would draw a blank row.
+	const blank = answer(store, "s-blank", {
+		text: spokenText,
+		fullText: " \n\t\n ",
+		truncated: false,
+	});
+	assert.equal(blank.full, spokenText);
+	assert.equal(blank.hasFullText, false);
 	// The take's own row starts with nothing shown, which renders as "Working".
 	store.noteTake("s-new", "and now", Date.now());
 	assert.equal(useVoiceStore.getState().story.at(-1).full, null);
