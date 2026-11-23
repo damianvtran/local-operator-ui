@@ -8,6 +8,10 @@ import {
 	parseLocator,
 	resolveLocator,
 } from "../vendor/driver/ax-locator";
+import {
+	assertKeyNotIntoAuthPrompt,
+	assertPointOutsideAuthPrompt,
+} from "./auth-prompt-input";
 import { armHostClipboardWrite, clearHostClipboardArm } from "./clipboard-shim";
 import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import {
@@ -780,6 +784,10 @@ export async function press(
 				);
 			}
 		}
+		// A TARGETLESS key goes wherever focus is; if that is a password
+		// manager's prompt, the agent would be typing into vault UI (review B4).
+		// A key aimed at a page element was focused there just above.
+		if (!target) assertKeyNotIntoAuthPrompt(ctx, record);
 		let keyDownFailed = true;
 		try {
 			await ctx.cdp.send(contents, "Input.dispatchKeyEvent", {
@@ -945,6 +953,9 @@ export async function hover(
 		y = Math.round(point.y * 100) / 100;
 	}
 
+	// A point inside a password manager's prompt is not the agent's to move to
+	// (review S1); measured now, per dispatch, and only while one is present.
+	await assertPointOutsideAuthPrompt(ctx, record, x, y);
 	await ctx.cdp.send(contents, "Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		x,

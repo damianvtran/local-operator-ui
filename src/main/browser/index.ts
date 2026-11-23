@@ -946,10 +946,12 @@ async function initializeBrowserHost(
 		 *   - a NATIVE request this tab's document started (Electron's own chooser,
 		 *     which is how Apple platform passkeys arrive).
 		 *
-		 * Neither holds the tab. The only refusals are the three actions that would
-		 * destroy the request (`close`, `navigate`, and driving the provider's own
-		 * prompt document), and a passive autofill card is not a request at all: it is
-		 * never recorded, never projected and never refuses anything.
+		 * Neither holds the tab. A REQUEST refuses only the three actions that would
+		 * destroy it (`close`, `navigate`, and driving the provider's own prompt
+		 * document). A provider frame PRESENT in the tab — a passive card too —
+		 * additionally refuses capture, positional input inside its rect and
+		 * targetless keys while it has focus (`AuthRequests.quarantine`). A passive
+		 * card is still never recorded or projected: no notice, no WAITING row.
 		 */
 		let authSweepTimer: ReturnType<typeof setInterval> | null = null;
 		const syncAuthSweep = (): void => {
@@ -1469,13 +1471,17 @@ async function initializeBrowserHost(
 							// its way to committing (review R3).
 							frame: (event as { frame?: Electron.WebFrameMain | null }).frame,
 							// The tab's own passkey signal makes the generic host document
-							// a real ceremony rather than its passive card.
-							corroborated: passkeyNotices.viewFor(tabId) !== null,
+							// a real ceremony; only a still-PENDING signal counts, never a
+							// retained NotAllowedError notice (review B5). A signal that
+							// arrives after this admission reclassifies it
+							// (`authRequests.corroborate`, console-message below).
+							corroborated: passkeyNotices.pendingFor(tabId) !== null,
 						})
 					) {
-						// A clip would outlive the prompt: the one capture artefact that
-						// would still carry it after the fact (`.actions/recording.ts`).
-						// Screenshots and reads continue — the tab is the agent's.
+						// A clip running now may already carry the prompt: discarded
+						// (`actions/recording.ts`). New captures are refused while the
+						// frame is present (`AuthRequests.quarantine`); reads and input
+						// outside the prompt continue — the tab is the agent's.
 						discardRecordingForAuthPrompt(view.webContents.id);
 						return;
 					}
@@ -1529,9 +1535,11 @@ async function initializeBrowserHost(
 		/*
 		 * THE TWO ENFORCEMENT POINTS, installed together because they must agree:
 		 * `registry` refuses the actions that would destroy a pending request
-		 * (`close`, `navigate`, the provider's own prompt document) and `cdp` refuses
-		 * the document-replacing commands that would reach the page another way.
-		 * Neither refuses anything else, and neither one holds a tab.
+		 * (`close`, `navigate`, the provider's own prompt document) and, while a
+		 * provider frame is present, the captures and prompt-bound input; `cdp`
+		 * refuses the document-replacing and capture commands that would reach the
+		 * page another way. Reads, scroll and input outside the prompt pass, and
+		 * neither one holds a tab.
 		 */
 		registry.setAuthRequestGate(authRequests);
 		cdp.setAuthRequestGate(authRequests);
@@ -2092,6 +2100,11 @@ async function initializeBrowserHost(
 		// above refuse inactive windows; retaining the logical owner removes the
 		// reactivation/menu race against an asynchronous renderer focus report.
 		options.window.on("blur", resetMenuShortcutSuppression);
+		// Engagement is a LIVE signal (review B3): a person who left the app is not
+		// engaging any tab, so a provider document cannot load on the strength of
+		// a selection made before they left (`tab-engagement.ts`).
+		const endEngagementOnBlur = (): void => engagement.windowBlurred();
+		options.window.on("blur", endEngagementOnBlur);
 		options.window.on("closed", resetChordFocus);
 		// A renderer that reloads (HMR, Cmd+R on a non-browser route) or crashes runs
 		// no unmount cleanup, so its `focusout`/`report(false)` never arrives and the
@@ -2121,6 +2134,7 @@ async function initializeBrowserHost(
 			);
 			options.window.webContents.removeListener("focus", resetPageFocus);
 			options.window.removeListener("blur", resetMenuShortcutSuppression);
+			options.window.removeListener("blur", endEngagementOnBlur);
 			options.window.removeListener("closed", resetChordFocus);
 			options.window.webContents.removeListener(
 				"did-start-navigation",
@@ -2660,7 +2674,16 @@ async function initializeBrowserHost(
 				// ONLY the message is used: the event's `frame` is the top frame even for a
 				// child's line (measured), so the frame is resolved from the nonce instead.
 				const { message } = event as unknown as { message: string };
-				if (passkeyNotices.observe(tabId, message)) notifyChanged();
+				if (passkeyNotices.observe(tabId, message)) {
+					// LATE CORROBORATION (review B5): 1Password's generic host document
+					// is admitted before the page's pending `credentials.get()` is
+					// observed, so it went in as a passive card. A pending signal now
+					// makes the still-present frame the ceremony it is (notice, and
+					// close/navigate refused). A NotAllowedError notice does not.
+					if (passkeyNotices.pendingFor(tabId))
+						authRequests.corroborate(contents.id);
+					notifyChanged();
+				}
 			});
 			/*
 			 * A PAGE PRESS IS A DISMISSAL EVEN WHEN THE PAGE ALREADY HAS FOCUS
@@ -2679,8 +2702,19 @@ async function initializeBrowserHost(
 			 * and is not involved.
 			 */
 			contents.on("before-mouse-event", (_event, mouse) => {
-				if (mouse.type === "mouseDown")
-					addressOverlay?.dismissForTab(tabId, "page_pointer");
+				if (mouse.type !== "mouseDown") return;
+				addressOverlay?.dismissForTab(tabId, "page_pointer");
+				// A PERSON'S PRESS ON THE PAGE engages the tab (review S4): the
+				// tab-strip selection alone missed a click straight into an already
+				// selected tab. The event cannot tell a person from CDP, so an agent
+				// input command in flight for this view makes it the agent's
+				// (`tab-engagement.ts` has the Electron source this rests on).
+				engagement.pagePressed(tabId, {
+					synthetic: cdp.isDispatchingInput(contents.id),
+					windowFocused:
+						!options.window.isDestroyed() && options.window.isFocused(),
+					active: registry.activeTab?.tabId === tabId,
+				});
 			});
 			// The user's own navigation starts here; a page/agent-initiated one shares
 			// the event, which is why the design scopes "navigating dismisses" to the

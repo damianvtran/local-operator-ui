@@ -1,7 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import type { ConflictingAction } from "./extensions/auth-request";
+import type {
+	ConflictingAction,
+	QuarantinedAction,
+} from "./extensions/auth-request";
 import {
 	displayTitleFor,
 	displayUrlFor,
@@ -375,6 +378,11 @@ export class TabRegistry {
 	 * host after construction. Null refuses nothing. */
 	private authRequests: {
 		conflict(webContentsId: number, action: ConflictingAction): Error | null;
+		/** Presence-keyed (`AuthRequests.quarantine`); optional so a gate that
+		 * predates it still installs, and absent means "nothing present". */
+		quarantine?(webContentsId: number, action: QuarantinedAction): Error | null;
+		promptPresent?(webContentsId: number): boolean;
+		presenceEpoch?(webContentsId: number): number;
 	} | null = null;
 
 	setAuthRequestGate(gate: TabRegistry["authRequests"]): void {
@@ -392,6 +400,28 @@ export class TabRegistry {
 	): void {
 		const conflict = this.authRequests?.conflict(webContentsId, action);
 		if (conflict) throw conflict;
+	}
+
+	/**
+	 * Refuse an action that would take a provider prompt's pixels or drive it
+	 * (`QuarantinedAction`) while one is present in this view. Presence-keyed,
+	 * not request-keyed: see `extensions/auth-request.ts` "PRESENCE-KEYED".
+	 */
+	assertNoAuthPrompt(webContentsId: number, action: QuarantinedAction): void {
+		const refusal = this.authRequests?.quarantine?.(webContentsId, action);
+		if (refusal) throw refusal;
+	}
+
+	/** Whether a provider prompt frame is present in this view (fail closed on
+	 * an unreadable answer, inside the gate). */
+	authPromptPresent(webContentsId: number): boolean {
+		return this.authRequests?.promptPresent?.(webContentsId) ?? false;
+	}
+
+	/** The view's provider-frame admission epoch; a capture compares it across
+	 * its own await to catch an admission that landed while it was in flight. */
+	authPromptEpoch(webContentsId: number): number {
+		return this.authRequests?.presenceEpoch?.(webContentsId) ?? 0;
 	}
 
 	/**

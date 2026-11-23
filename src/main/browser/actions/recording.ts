@@ -13,6 +13,7 @@ import {
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { CdpContents } from "../cdp";
 import { BrowserHostError } from "../errors";
+import { AUTH_REQUEST_REFUSAL_REASON } from "../extensions/auth-request";
 import { CDP_DEADLINE_MS } from "../vendor/driver/deadline";
 import type { BrowserActionContext } from "./context";
 import { requesterOf, stringParam } from "./context";
@@ -802,6 +803,14 @@ function capWords(bytes: number): string {
 
 /** D9's start-error taxonomy: version first, then Chromium's own text. */
 function classifyStartFailure(error: unknown): BrowserHostError {
+	// The pool's capture backstop already answered with the typed prompt
+	// refusal; re-wording it as an engine failure would send the agent to
+	// "update the desktop app" for a password manager on screen.
+	if (
+		error instanceof BrowserHostError &&
+		error.data?.reason === AUTH_REQUEST_REFUSAL_REASON
+	)
+		return error;
 	const message = error instanceof Error ? error.message : String(error);
 	const major = chromiumMajor();
 	if (major > 0 && major < RECORD_FIRST_CHROMIUM_MAJOR) {
@@ -1441,6 +1450,15 @@ export async function recordStart(
 			);
 		}
 	}
+	// A PROVIDER PROMPT ON SCREEN (architect option A, review S3): a clip of it
+	// would hand the agent vault UI, so the start is refused HERE — after the
+	// same-owner, path and limit refusals and before the first CDP call or the
+	// replace of another owner's recording, which is the ordering contract
+	// above. Both engines pass this one point. The admission-time discard
+	// (`discardRecordingForAuthPrompt`) still covers a prompt that arrives
+	// while the start is in flight or once it is running.
+	ctx.registry.assertNoAuthPrompt(id, "capture");
+	const promptEpoch = ctx.registry.authPromptEpoch(id);
 	if (active) {
 		// The other owner's session is gone (the wedge `owner_recover` exists to
 		// avoid), so its recording is discarded rather than allowed to block this
@@ -1552,6 +1570,18 @@ export async function recordStart(
 			await clearViewport(ctx.cdp, contents, viewportToken);
 		}
 		throw error;
+	}
+	// A prompt that became present without the admission-time discard reaching
+	// this start (an admission between the pre-check and the reservation, or a
+	// provider frame the committed tree shows) is the same discard: the clip
+	// may already carry it, so nothing is registered and nothing is published.
+	if (
+		!entry.cancelled &&
+		(ctx.registry.authPromptEpoch(id) !== promptEpoch ||
+			ctx.registry.authPromptPresent(id))
+	) {
+		entry.cancelled = true;
+		entry.cancelReason = PROMPT_DISCARD_REASON;
 	}
 	// The tab was released while this start was in flight (`forget`/`detach`, or a
 	// DevTools detach): registering now would leave a recording on a handle nobody

@@ -296,6 +296,11 @@ export async function navigateView(
 	ctx.registry.assertNoConflictingAuthRequest(view.webContents.id, "navigate");
 	const contents = view.webContents;
 	return withOriginGate(ctx, view, requester, approved, async () => {
+		// AGAIN, immediately before the load (review B7): `withOriginGate` awaits
+		// its gate setup, and a ceremony admitted in that window would otherwise
+		// be replaced by the `loadURL` below. Nothing is awaited between this
+		// check and the load, so the check and the act are one turn.
+		ctx.registry.assertNoConflictingAuthRequest(contents.id, "navigate");
 		const settled = settle(contents, timeoutMs);
 		// Both arms are started before either is awaited, so a load that finishes
 		// before the settle's listeners are armed cannot be missed.

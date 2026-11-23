@@ -215,6 +215,7 @@ function fixture(options = {}) {
 		stream(options.chunks ?? [Buffer.from("ftyp-av1-payload")]);
 	const ctx = {
 		registry: {
+			...NO_AUTH_PROMPT,
 			requireSurface: (token) => {
 				const contents = tabs.get(String(token));
 				if (!contents) throw new Error(`no tab ${token}`);
@@ -273,6 +274,15 @@ function fixture(options = {}) {
 }
 
 // ---- 1. start -------------------------------------------------------------
+
+/** The registry's provider-prompt gate with no prompt present: what every case
+ * here is about. The prompt-present refusal and its races are pinned in
+ * `scripts/auth-request.test.mjs` against the real registry. */
+const NO_AUTH_PROMPT = {
+	assertNoAuthPrompt: () => {},
+	authPromptPresent: () => false,
+	authPromptEpoch: () => 0,
+};
 
 test("record_start without a size sends the fixed capture params and writes nothing", async () => {
 	const dir = scratchDir();
@@ -393,7 +403,10 @@ test("the stream is read on the page's own session", async () => {
 	const path = join(dir, "clip.mp4");
 	const ctx = {
 		cdp,
-		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
+		registry: {
+			...NO_AUTH_PROMPT,
+			requireSurface: () => ({ view: { webContents: contents } }),
+		},
 	};
 	await mod.recordStart(ctx, { tab: "tab", requester: "session:a", path }, "r");
 	await mod.recordStop(ctx, { tab: "tab", requester: "session:a" }, "r");
@@ -869,7 +882,10 @@ function poolFixture(answer) {
 	const contents = contentsFor(9001 + nextViewId++, { debugger: debuggerLike });
 	const ctx = {
 		cdp,
-		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
+		registry: {
+			...NO_AUTH_PROMPT,
+			requireSurface: () => ({ view: { webContents: contents } }),
+		},
 	};
 	return { cdp, contents, debuggerLike, ctx, sent };
 }
@@ -3024,7 +3040,10 @@ async function screencastPool(encoderOptions) {
 	const ctx = {
 		cdp,
 		recordingEncoder: encoder.service,
-		registry: { requireSurface: () => ({ view: { webContents: contents } }) },
+		registry: {
+			...NO_AUTH_PROMPT,
+			requireSurface: () => ({ view: { webContents: contents } }),
+		},
 	};
 	await cdp.attach(contents);
 	return { encoder, cdp, dbg, contents, ctx, dir: scratchDir() };

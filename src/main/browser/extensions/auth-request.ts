@@ -17,11 +17,12 @@
  *      instead (review R5 BLOCKER).
  *
  * WHAT A TAB IS NOW. Never held. An agent-owned tab keeps serving its agent:
- * query, screenshot, click, type and navigate all continue while a passkey
- * prompt is on screen, and no projection is raised for a passive autofill card.
- * What a live ceremony keeps is REQUEST-scoped and TAB-scoped: exactly three
- * actions are refused, and each of them would destroy or hijack the request
- * the person is answering:
+ * query, read, snapshot, hit_test, styles, scroll, click and type all continue
+ * while a passkey prompt is on screen, and no projection is raised for a
+ * passive autofill card. Two independent, narrow scopes refuse the rest:
+ *
+ * 1. CEREMONY-KEYED (the request's lifecycle; `conflict`). Exactly three
+ *    actions would destroy or hijack the request the person is answering:
  *
  *   - `close`    — the tab's document (and the in-flight `credentials.get()`)
  *                  disappears with it;
@@ -31,11 +32,28 @@
  *                  (`actions/frames.ts` `assertNotExtensionFrame` is the third,
  *                  independent line; this is the typed form of the refusal).
  *
- * Everything else — including a whole-tab screenshot that happens to include
- * the prompt — is allowed, because the operator's requirement is that the agent
- * continues its work in that tab and no "Return to Agent" control exists. That
- * trade-off is deliberate and is NOT true before a person engages the tab: see
- * "WHAT IS ADMITTED" below.
+ * 2. PRESENCE-KEYED (the provider's pixels and focus; `quarantine`). While a
+ *    provider frame is PRESENT in the tab — a passive card as much as a
+ *    ceremony, because the card renders vault items too — the agent may not
+ *    take the provider's pixels or drive the provider's UI by position:
+ *
+ *   - `capture` — screenshot, recording and the CDP capture commands; a
+ *                 capture would hand the agent an image of vault UI
+ *                 (architect option A, review S2/S3, superseding the earlier
+ *                 "a whole-tab screenshot that includes the prompt is allowed"
+ *                 decision, which leaked exactly that);
+ *   - `input`   — a coordinate mouse/touch dispatch whose point falls inside a
+ *                 provider frame's rect (review S1); outside it, input works;
+ *   - `key`     — a targetless key while the provider frame holds focus (or
+ *                 focus is unknowable): it would type into the vault UI
+ *                 (review B4). A key aimed at a page element still works.
+ *
+ *    Presence is read from the frames themselves (`promptPresent`), NOT from
+ *    whether a request is recorded: a passive card is no request yet is still
+ *    vault UI. An unreadable answer counts as present (fail closed). None of
+ *    this can happen before a person engages the tab, because nothing is
+ *    admitted before that ("WHAT IS ADMITTED" below), so the agent's ordinary
+ *    work on a login page it reached by itself sees no refusal at all.
  *
  * WHAT IS ADMITTED, and why the document alone cannot decide it. Only an
  * installed, enabled extension's known prompt documents
@@ -154,6 +172,19 @@ export interface AdmittedFrame {
  * union is never refused: that is the whole point of this module. */
 export type ConflictingAction = "close" | "navigate" | "prompt_document";
 
+/** The presence-keyed actions (`quarantine`): what a provider frame on screen
+ * refuses whether or not it is a ceremony. */
+export type QuarantinedAction = "capture" | "input" | "key";
+
+/** Every admitted provider frame of one view, ceremony or not: the presence
+ * `quarantine` keys on, and the frames a later passkey signal reclassifies
+ * (`corroborate`). */
+interface Presence {
+	tabId: number;
+	providerId: string;
+	frames: AdmittedFrame[];
+}
+
 interface Request extends PendingAuthRequestView {
 	webContentsId: number;
 	/** The Chrome Web Store id of the prompt's extension, or null for a request
@@ -171,6 +202,16 @@ interface Request extends PendingAuthRequestView {
 	 * destroyed and stops counting.
 	 */
 	frames: AdmittedFrame[];
+	/**
+	 * A native/host request (`beginNative`): it has no provider frame by
+	 * construction, so frame liveness can never say it is over. It ends only
+	 * when the chooser settles (`settleByRequestId`), the document it was
+	 * started from is replaced (`committed`), or the tab goes (`forget`) —
+	 * review B6: the sweep used to expire it within a second because
+	 * `hasProviderFrame` was false, dropping the close/navigate refusal while
+	 * the system sheet was still up.
+	 */
+	native: boolean;
 }
 
 export interface AuthRequestOptions {
@@ -183,7 +224,9 @@ export interface AuthRequestOptions {
 	/**
 	 * Whether this view's COMMITTED frame tree still holds a provider frame.
 	 * Read by `sweep`; absent means "assume yes", so without it no request ends
-	 * by itself (fail closed).
+	 * by itself (fail closed). Read by `promptPresent` too, where absent means
+	 * "only the admitted frames count" (a host always wires it; a throw is the
+	 * unreadable case and counts as present).
 	 */
 	hasProviderFrame?: (webContentsId: number) => boolean;
 	log?: (message: string) => void;
@@ -197,6 +240,12 @@ export interface AuthRequestOptions {
  */
 export class AuthRequests {
 	private readonly requests = new Map<number, Request>();
+	private readonly presence = new Map<number, Presence>();
+	/** Per view, bumped on EVERY admission. A capture that began before an
+	 * admission and returns after it compares epochs and drops its image
+	 * (review S2: a prompt admitted while `Page.captureScreenshot` is in flight
+	 * is in the pixels, and the pre-check alone cannot see it). */
+	private readonly epochs = new Map<number, number>();
 	private sequence = 0;
 
 	constructor(private readonly options: AuthRequestOptions = {}) {}
@@ -240,34 +289,121 @@ export class AuthRequests {
 			installed = false; // fail closed: an unanswerable check refuses
 		}
 		if (!installed) return false;
+		const frame: AdmittedFrame = request.frame ?? NEVER_DESTROYED;
+		// PRESENCE FIRST, for every admitted kind: the passive card is vault UI
+		// too, so it is quarantined from capture and positional input even though
+		// it is never a request (no notice, no row).
+		this.epochs.set(
+			request.webContentsId,
+			(this.epochs.get(request.webContentsId) ?? 0) + 1,
+		);
+		const present = this.presence.get(request.webContentsId);
+		if (present) present.frames.push(frame);
+		else
+			this.presence.set(request.webContentsId, {
+				tabId: request.tabId,
+				providerId,
+				frames: [frame],
+			});
 		const ceremony =
 			request.corroborated === true ||
 			passkeyPromptKind(request.url) === "ceremony";
-		if (!ceremony) return true; // passive card: nothing to record, no hold
-		const frame: AdmittedFrame = request.frame ?? NEVER_DESTROYED;
+		if (!ceremony) return true; // passive card: nothing to record, no notice
 		const existing = this.requests.get(request.webContentsId);
 		if (existing) {
 			existing.frames.push(frame);
 			return true;
 		}
+		this.open(request.webContentsId, request.tabId, providerId, [frame]);
+		return true;
+	}
+
+	/**
+	 * The tab's own passkey signal arrived AFTER its generic host document was
+	 * admitted (review B5). 1Password loads `notification.html` before the
+	 * page's `credentials.get()` is observed, so the admission-time
+	 * `corroborated` was false and the ceremony went unrecorded: no notice, and
+	 * `close`/`navigate` were not refused while a person was answering it. The
+	 * still-present admitted frames become the ceremony now. Returns whether a
+	 * request was opened; idempotent.
+	 */
+	corroborate(webContentsId: number): boolean {
+		if (this.requests.has(webContentsId)) return false;
+		const present = this.presence.get(webContentsId);
+		if (!present) return false;
+		const alive = present.frames.filter(isAlive);
+		if (alive.length === 0) return false;
+		this.open(webContentsId, present.tabId, present.providerId, [...alive]);
+		return true;
+	}
+
+	private open(
+		webContentsId: number,
+		tabId: number,
+		providerId: string,
+		frames: AdmittedFrame[],
+	): void {
 		this.sequence += 1;
-		const requestId = `auth-${request.tabId}-${this.sequence}`;
 		const record: Request = {
-			webContentsId: request.webContentsId,
-			tabId: request.tabId,
-			requestId,
+			webContentsId,
+			tabId,
+			requestId: `auth-${tabId}-${this.sequence}`,
 			at: (this.options.now ?? Date.now)(),
 			kind: "ceremony",
 			dismissed: false,
 			providerId,
-			frames: [frame],
+			frames,
+			native: false,
 		};
-		this.requests.set(request.webContentsId, record);
+		this.requests.set(webContentsId, record);
 		this.options.log?.(
-			`[browser] tab ${request.tabId}: a passkey request from extension ${providerId} is live; the agent keeps working in this tab`,
+			`[browser] tab ${tabId}: a passkey request from extension ${providerId} is live; the agent keeps working in this tab`,
 		);
-		this.project(() => this.options.onBegin?.(viewOf(record)), request.tabId);
-		return true;
+		this.project(() => this.options.onBegin?.(viewOf(record)), tabId);
+	}
+
+	/**
+	 * Whether a provider frame is PRESENT in this view: an admitted frame still
+	 * alive (including the placeholder of a frame admitted without a handle,
+	 * which only a main-document commit removes) or a provider frame in the
+	 * committed tree. Keyed on the frames, never on `requests` — a passive card
+	 * is no request but is still vault UI (architect option A). An unreadable
+	 * answer is "present" (fail closed).
+	 */
+	promptPresent(webContentsId: number): boolean {
+		try {
+			const present = this.presence.get(webContentsId);
+			if (present) {
+				present.frames = present.frames.filter(isAlive);
+				if (present.frames.length > 0) return true;
+				this.presence.delete(webContentsId);
+			}
+			return this.options.hasProviderFrame?.(webContentsId) ?? false;
+		} catch {
+			return true;
+		}
+	}
+
+	/** The admission epoch of this view (see `epochs`). */
+	presenceEpoch(webContentsId: number): number {
+		return this.epochs.get(webContentsId) ?? 0;
+	}
+
+	/**
+	 * The presence-keyed refusal (`QuarantinedAction`), or null when no provider
+	 * frame is present. Callers that can narrow further (input outside the
+	 * frame's rect, a key aimed at a page element) do so BEFORE asking; this
+	 * answers only "is vault UI on screen in this view".
+	 */
+	quarantine(
+		webContentsId: number,
+		action: QuarantinedAction,
+	): BrowserHostError | null {
+		if (!this.promptPresent(webContentsId)) return null;
+		return authPromptRefusal(
+			action,
+			this.requests.get(webContentsId)?.requestId ?? null,
+		);
 	}
 
 	/**
@@ -291,6 +427,7 @@ export class AuthRequests {
 			dismissed: false,
 			providerId: null,
 			frames: [],
+			native: true,
 		};
 		this.requests.set(request.webContentsId, record);
 		this.project(() => this.options.onBegin?.(viewOf(record)), request.tabId);
@@ -335,6 +472,9 @@ export class AuthRequests {
 	sweep(webContentsId: number): boolean {
 		const record = this.requests.get(webContentsId);
 		if (!record) return false;
+		// A native request has no frame to watch; only its own settle or teardown
+		// ends it (review B6).
+		if (record.native) return true;
 		let present = true;
 		try {
 			present =
@@ -391,14 +531,27 @@ export class AuthRequests {
 	 * navigation is also the ordinary way a site's own request ends.
 	 */
 	committed(webContentsId: number): void {
+		const present = this.presence.get(webContentsId);
+		if (present) {
+			present.frames = present.frames.filter(
+				(frame) => frame !== NEVER_DESTROYED,
+			);
+			if (present.frames.length === 0) this.presence.delete(webContentsId);
+		}
 		const record = this.requests.get(webContentsId);
 		if (!record) return;
+		// The document a native request's promise lived in is gone.
+		if (record.native) {
+			this.end(record, "the document that started it was replaced");
+			return;
+		}
 		record.frames = record.frames.filter((frame) => frame !== NEVER_DESTROYED);
 		this.sweep(webContentsId);
 	}
 
 	/** The view is gone, or the tab changed hands: drop its request outright. */
 	forget(webContentsId: number, why = "tab closed"): void {
+		this.presence.delete(webContentsId);
 		const record = this.requests.get(webContentsId);
 		if (record) this.end(record, why);
 	}
@@ -466,13 +619,36 @@ const ACTION_LABEL: Record<ConflictingAction, string> = {
 	prompt_document: "reading or driving the password manager's prompt",
 };
 
+const QUARANTINE_MESSAGE: Record<QuarantinedAction, string> = {
+	capture:
+		"capturing that tab would take a picture of the password manager's prompt that is open in it, so nothing was captured. query, read, snapshot, hit_test, styles, scroll and input outside the prompt all continue; screenshot and record_start work again once the prompt closes.",
+	input:
+		"that point is inside the password manager's prompt, which is not yours to drive, so nothing was dispatched. Input at any point outside the prompt, and selector-based click and type, still work.",
+	key: "a key with no target would go to the password manager's prompt, which has focus, so nothing was pressed. Pass a selector or ref to press it on a page element instead.",
+};
+
+/** The presence-keyed refusal (`AuthRequests.quarantine`). Same typed reason as
+ * the ceremony refusal, with the `action` that was refused, so an agent can
+ * pick the named alternative instead of retrying. `requestId` is null for a
+ * passive card, which is no request. */
+export function authPromptRefusal(
+	action: QuarantinedAction,
+	requestId: string | null,
+): BrowserHostError {
+	return new BrowserHostError("owner_refused", QUARANTINE_MESSAGE[action], {
+		reason: AUTH_REQUEST_REFUSAL_REASON,
+		action,
+		requestId,
+	});
+}
+
 export function authRequestRefusal(
 	request: PendingAuthRequestView,
 	action: ConflictingAction,
 ): BrowserHostError {
 	return new BrowserHostError(
 		"owner_refused",
-		`${ACTION_LABEL[action]} would cancel a passkey request the user is completing in that tab. The tab is still yours: query, screenshot, click, type and work in other tabs all continue, and this action works again when the request ends.`,
+		`${ACTION_LABEL[action]} would cancel a passkey request the user is completing in that tab. The tab is still yours: query, read, click, type and work in other tabs all continue, and this action works again when the request ends.`,
 		{ reason: AUTH_REQUEST_REFUSAL_REASON, requestId: request.requestId },
 	);
 }

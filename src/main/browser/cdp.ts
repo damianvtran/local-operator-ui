@@ -159,27 +159,52 @@ export interface CdpAuthRequestGate {
 		webContentsId: number,
 		action: "navigate" | "close" | "prompt_document",
 	): Error | null;
+	/** Presence-keyed: a provider frame is on screen in this view. Optional so
+	 * a ceremony-only gate still installs; absent refuses no capture. */
+	quarantine?(
+		webContentsId: number,
+		action: "capture" | "input" | "key",
+	): Error | null;
 }
 
 /**
- * The ONLY commands a live passkey request refuses: the ones that REPLACE the
- * document the ceremony is pending in. `credentials.get()` is a document-scoped
- * promise, so navigating the main frame away cancels the very request the person
- * is answering in that tab — the one interfering action an agent can take that
- * is not already covered by the registry's `navigate` refusal (this is the
- * BACKSTOP for a path that reaches the pool without going through it).
- *
- * Everything else passes, including `IO.read`, `Page.startScreenRecording` and
- * every capture: the agent keeps the tab (operator requirement, 2026-11-23), so
- * a screenshot that happens to include the prompt is delivered. That is not a
- * weakening of the pre-engagement guard — before a person engages the tab the
- * provider frame is never admitted at all (`auth-request.ts` "WHAT IS
- * ADMITTED"), so there is nothing on screen to capture.
+ * The commands a live passkey REQUEST refuses (ceremony-keyed): the ones that
+ * REPLACE the document the ceremony is pending in. `credentials.get()` is a
+ * document-scoped promise, so navigating the main frame away cancels the very
+ * request the person is answering in that tab — the one interfering action an
+ * agent can take that is not already covered by the registry's `navigate`
+ * refusal (this is the BACKSTOP for a path that reaches the pool without going
+ * through it).
  */
 const AUTH_INTERFERING_METHODS: ReadonlySet<string> = new Set([
 	"Page.navigate",
 	"Page.reload",
 	"Page.navigateToHistoryEntry",
+]);
+
+/**
+ * The commands a PRESENT provider frame refuses (presence-keyed; architect
+ * option A, review S2/S3). Each one produces pixels of the composited surface,
+ * provider frame included, that the agent would then hold: a passive autofill
+ * card renders vault items as much as a passkey prompt does. The `screenshot`
+ * and `record_start` actions refuse first with their own typed answer; this is
+ * the BACKSTOP for any path that reaches the pool without them (the HQ
+ * engine's screencast restart and tail frame, a future action).
+ *
+ * `IO.read` is here because the only stream this host reads is a recording's
+ * (`actions/recording.ts`); a recording is discarded the moment a prompt frame
+ * is admitted, so refusing the read while one is present costs nothing and
+ * closes the window between admission and that discard.
+ *
+ * Before a person engages the tab no provider frame is admitted, so none of
+ * this refuses anything on a login page the agent reached by itself.
+ */
+const AUTH_CAPTURE_METHODS: ReadonlySet<string> = new Set([
+	"Page.captureScreenshot",
+	"Page.startScreencast",
+	"Page.startScreenRecording",
+	"Page.captureSnapshot",
+	"IO.read",
 ]);
 
 /**
@@ -203,17 +228,34 @@ export class CdpPool {
 		return this.keyDispatches.has(webContentsId);
 	}
 
+	private readonly inputDispatches = new Map<number, number>();
+
+	/** Any CDP `Input.*` command of this host is in flight for the view. The
+	 * page's native input events (`before-mouse-event`, `before-input-event`)
+	 * fire for those too, so this is how the host tells an agent's press from a
+	 * person's (`extensions/tab-engagement.ts`). Chromium runs those callbacks
+	 * before the command answers, so the window covers them. */
+	isDispatchingInput(webContentsId: number): boolean {
+		return this.inputDispatches.has(webContentsId);
+	}
+
 	private trackKeyDispatch<T>(
 		id: number,
 		method: string,
 		send: () => Promise<T>,
 	): Promise<T> {
-		if (method !== "Input.dispatchKeyEvent") return send();
-		this.keyDispatches.set(id, (this.keyDispatches.get(id) ?? 0) + 1);
+		if (!method.startsWith("Input.")) return send();
+		const counters =
+			method === "Input.dispatchKeyEvent"
+				? [this.keyDispatches, this.inputDispatches]
+				: [this.inputDispatches];
+		for (const counter of counters) counter.set(id, (counter.get(id) ?? 0) + 1);
 		const release = () => {
-			const count = this.keyDispatches.get(id) ?? 0;
-			if (count <= 1) this.keyDispatches.delete(id);
-			else this.keyDispatches.set(id, count - 1);
+			for (const counter of counters) {
+				const count = counter.get(id) ?? 0;
+				if (count <= 1) counter.delete(id);
+				else counter.set(id, count - 1);
+			}
 		};
 		try {
 			return send().finally(release);
@@ -637,15 +679,20 @@ export class CdpPool {
 		deadlineMs: number,
 		sessionId?: string,
 	): Promise<T> {
-		// THE SECOND CHOKE POINT for a live passkey request (the first is
-		// `registry.requireSurface`): every command any action sends lands here, so
-		// an action that skipped the registry still cannot cancel a request that is
-		// pending in this document. Only document-replacing commands are refused —
-		// an in-flight screenshot is NOT dropped any more, because the agent keeps
-		// the tab (operator requirement, 2026-11-23).
+		// THE SECOND CHOKE POINT for a provider prompt (the first is the registry):
+		// every command any action sends lands here, so an action that skipped the
+		// registry still cannot cancel a request pending in this document, nor
+		// take a picture of a provider frame present in it. Reads and input pass:
+		// the agent keeps the tab (operator requirement, 2026-11-23); positional
+		// input and targetless keys are narrowed at their own call sites, which
+		// can measure the frame's rect and focus (`actions/input.ts`).
 		if (this.authRequests && AUTH_INTERFERING_METHODS.has(method)) {
 			const conflict = this.authRequests.conflict(contents.id, "navigate");
 			if (conflict) throw conflict;
+		}
+		if (this.authRequests?.quarantine && AUTH_CAPTURE_METHODS.has(method)) {
+			const refusal = this.authRequests.quarantine(contents.id, "capture");
+			if (refusal) throw refusal;
 		}
 		return this.dispatch<T>(contents, method, params, deadlineMs, sessionId);
 	}
