@@ -40,8 +40,8 @@ import {
 	runJobs,
 } from "./ci-scope.mjs";
 import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
-import { gateVerdict } from "./merge-gate-verdict.mjs";
 import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
+import { gateVerdict } from "./merge-gate-verdict.mjs";
 
 /*
  * The contract of the change-scope classifier, in the form CI and
@@ -3685,7 +3685,11 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 
 	const runMergeGate = (
 		needsPayload,
-		{ eventName = "pull_request", nativeScope = "true", nativeSkipAllowed = "" } = {},
+		{
+			eventName = "pull_request",
+			nativeScope = "true",
+			nativeSkipAllowed = "",
+		} = {},
 	) => {
 		const { bad } = gateVerdict({
 			needs: needsPayload,
