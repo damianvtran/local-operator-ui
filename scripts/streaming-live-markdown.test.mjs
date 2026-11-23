@@ -330,6 +330,64 @@ test("unmodified selected ink survives a gap and a later paragraph correction", 
 		);
 	}));
 
+test("an open-block correction keeps the exact selected formatted leaf without replay", (t) =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		let tick = 0;
+		t.mock.method(performance, "now", () => tick);
+		const inks = () =>
+			Array.from(
+				container.querySelectorAll(".lo-stream-ink"),
+				(node) => node.textContent,
+			);
+		await paint("Select");
+		await paint("Select **Read** the tail draft.");
+		const strong = container.querySelector("strong");
+		const span = strong.querySelector(".lo-stream-ink");
+		const node = span.firstChild;
+		const selection = document.getSelection();
+		selection.setBaseAndExtent(node, 0, node, 4);
+		const checkSelection = () => {
+			const range = selection.getRangeAt(0);
+			assert.equal(selection.toString(), "Read");
+			assert.ok(range.startContainer === node && range.endContainer === node);
+			assert.deepEqual([range.startOffset, range.endOffset], [0, 4]);
+			assert.ok(container.querySelector("strong") === strong);
+			assert.ok(strong.firstChild === span && span.firstChild === node);
+		};
+		let corrected = "";
+		for (const [source, text] of [
+			[
+				"Select **Read** the corrected tail.",
+				"Select Read the corrected tail.",
+			],
+			[
+				"Select **Read** the [doc](https://example.invalid).",
+				"Select Read the doc.",
+			],
+		]) {
+			tick += 20; // Rewrite while the original clock would still be active.
+			await paint(source);
+			checkSelection();
+			assert.deepEqual(inks(), []);
+			assert.deepEqual(
+				Array.from(
+					container.querySelectorAll("p > span"),
+					(leaf) => leaf.textContent,
+				),
+				[" "],
+				"the rewritten leaf must not inherit a stale wrapper",
+			);
+			assert.equal(container.textContent, text);
+			assert.equal(container.querySelector("a"), null, "open links stay inert");
+			corrected = source;
+		}
+		tick += 500;
+		await paint(`${corrected} Fresh words.`);
+		checkSelection();
+		assert.deepEqual(inks(), [" Fresh words."]);
+		assert.equal(container.textContent, "Select Read the doc. Fresh words.");
+	}));
+
 test("Japanese chunks ink just the new text; Latin and combining sequences stay joined", (t) =>
 	withLiveRenderer(async ({ container, paint }) => {
 		let tick = 0;
@@ -353,6 +411,28 @@ test("Japanese chunks ink just the new text; Latin and combining sequences stay 
 				[piece],
 			);
 			assert.equal(container.textContent, source);
+		}
+		for (const [prefix, suffix] of [
+			["ユーザー", "名"],
+			["テスト", "ー"],
+			["テストー", "です"],
+			["ﾃｽﾄ", "ｰ"],
+			["これは", "一例"],
+		]) {
+			const key = prefix;
+			tick += 500;
+			await paint(prefix, { key, revealOnMount: true });
+			tick += 500;
+			await paint(prefix + suffix, { key });
+			assert.deepEqual(
+				Array.from(
+					container.querySelectorAll(".lo-stream-ink"),
+					(node) => node.textContent,
+				),
+				[suffix],
+				`${prefix} + ${suffix}`,
+			);
+			assert.equal(container.textContent, prefix + suffix);
 		}
 		await paint("of", { key: "ligature", revealOnMount: true });
 		const word = container.querySelector(".lo-stream-ink");
@@ -420,6 +500,38 @@ test("compaction keeps a local selected batch and its boundary, not unrelated wr
 			assert.ok(selection.anchorNode === node, where);
 			assert.equal(selection.toString(), node.textContent.slice(0, end), where);
 		}
+	}));
+
+test("descendant blur keeps the local drag hold; window blur releases it", (t) =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		const win = document.defaultView;
+		let tick = 0;
+		t.mock.method(performance, "now", () => tick);
+		let source = "Stable seed.";
+		await paint(source, { revealOnMount: true });
+		const button = document.body.appendChild(document.createElement("button"));
+		button.focus();
+		const down = new win.MouseEvent("pointerdown", {
+			bubbles: true,
+			button: 0,
+		});
+		Object.defineProperties(down, {
+			isPrimary: { value: true },
+			pointerId: { value: 1 },
+		});
+		container.querySelector("p").dispatchEvent(down);
+		button.blur();
+		const inkCount = () => container.querySelectorAll(".lo-stream-ink").length;
+		tick += 500;
+		source += " First append.";
+		await paint(source);
+		assert.equal(inkCount(), 2, "descendant blur must not compact during drag");
+		win.dispatchEvent(new win.FocusEvent("blur"));
+		tick += 500;
+		source += " Second append.";
+		await paint(source);
+		assert.equal(inkCount(), 1, "window blur releases the hold");
+		assert.equal(container.textContent, source);
 	}));
 
 test("growing a direct fence updates its literal, not the Markdown lead", () =>

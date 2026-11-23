@@ -3,9 +3,11 @@ import type { Element, Root, Text } from "hast";
 export type InkBatch = {
 	/** Source offset, relative to this Markdown block. */
 	start: number;
+	/** After a rewrite, only these committed source intervals can keep a span. */
+	retained?: ReadonlyMap<number, number>;
 	/** Clock starts at commit, not when React starts rendering. */
 	paintedAt?: number;
-	/** Keep the committed boundary, but never fade text appended during recovery. */
+	/** Keep the committed boundary without fading on recovery or correction. */
 	static?: true;
 };
 
@@ -17,10 +19,10 @@ export const INK_DURATION_MS = 120;
 const WORD_GAP = /[ \t\n\r]/;
 const GRAPHEME_TAIL = /[\p{M}\p{Grapheme_Extend}\p{Emoji_Modifier}\u200d]/u;
 // Han/kana and their sentence separators can take a boundary without a space.
-// Require this on BOTH sides so this never introduces an in-word span for a
-// joining or ligature-forming script, or splits an emoji/ZWJ sequence.
+// Include the Common-script kana long-vowel marks explicitly, without widening
+// the rule to unrelated Common characters. Both neighbors must still qualify.
 const UNSPACED_PROSE =
-	/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}、。！？]$/u;
+	/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ーｰ、。！？]$/u;
 
 function afterUnspacedProse(source: string, index: number) {
 	const last = source.charCodeAt(index - 1);
@@ -59,7 +61,35 @@ export function nextInkStart(source: string, from: number): number | null {
 	return null;
 }
 
-type InkPiece = { text: string; batch?: InkBatch };
+/** Keep boundaries in proven unchanged source, never a clock on a rewrite. */
+export function retainInkPrefix(
+	before: string,
+	after: string,
+	batches: readonly InkBatch[],
+	committedPieces: (batch: InkBatch) => Iterable<readonly [number, number]>,
+): readonly InkBatch[] {
+	if (batches.length === 0) return batches;
+	let prefix = 0;
+	const length = Math.min(before.length, after.length);
+	while (
+		prefix < length &&
+		before.charCodeAt(prefix) === after.charCodeAt(prefix)
+	)
+		prefix++;
+	const retained: InkBatch[] = [];
+	for (const batch of batches) {
+		if (batch.start >= prefix) break;
+		const pieces = new Map<number, number>();
+		for (const [start, end] of committedPieces(batch)) {
+			if (end <= prefix) pieces.set(start, end);
+		}
+		if (pieces.size > 0)
+			retained.push({ ...batch, retained: pieces, static: true });
+	}
+	return retained;
+}
+
+type InkPiece = { text: string; start: number; batch?: InkBatch };
 // Private to this renderer. Never serialize parser bookkeeping into the DOM.
 export const STREAM_INK = Symbol("streamInk");
 export type InkText = Element & { [STREAM_INK]: InkPiece[] };
@@ -94,16 +124,23 @@ function leafPieces(node: Text, source: string, batches: readonly InkBatch[]) {
 		else upper = mid;
 	}
 	let active = batches[lower - 1];
+	const pushPiece = (end: number) => {
+		// Do not cut a leaf at the correction boundary (it may split a word or
+		// grapheme) or let a retired batch acquire differently parsed text later.
+		const batch =
+			active?.retained && active.retained.get(cursor) !== end
+				? undefined
+				: active;
+		pieces.push({ text: source.slice(cursor, end), start: cursor, batch });
+		cursor = end;
+	};
 	for (let i = lower; i < batches.length; i++) {
 		const batch = batches[i];
 		if (batch.start >= end) break;
-		if (batch.start > cursor) {
-			pieces.push({ text: source.slice(cursor, batch.start), batch: active });
-			cursor = batch.start;
-		}
+		if (batch.start > cursor) pushPiece(batch.start);
 		active = batch;
 	}
-	pieces.push({ text: source.slice(cursor, end), batch: active });
+	pushPiece(end);
 	return pieces;
 }
 

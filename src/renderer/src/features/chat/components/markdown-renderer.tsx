@@ -56,6 +56,7 @@ import {
 	STREAM_INK,
 	markStreamingInk,
 	nextInkStart,
+	retainInkPrefix,
 } from "../utils/streaming-ink";
 import { citationAwareAnchor } from "./credential-citation";
 import { remarkCredentialCitations } from "./credential-citation-remark";
@@ -876,9 +877,12 @@ const OPEN_BLOCK_COMPONENTS: Components = {
 	a: ({ children }) => <>{children}</>,
 };
 
-// A source batch can paint multiple Markdown leaves. Index its actual nodes
-// so compaction checks only the retiring pieces, not the whole transcript.
-const inkNodes = new WeakMap<InkBatch, Set<HTMLSpanElement>>();
+// A batch can paint multiple leaves. Index the actual spans for selection
+// compaction and their source intervals so a rewrite cannot create new spans.
+const inkNodes = new WeakMap<
+	InkBatch,
+	Map<HTMLSpanElement, readonly [number, number]>
+>();
 
 function selectionRanges(root: HTMLElement | null) {
 	const ranges: Range[] = [];
@@ -893,7 +897,7 @@ function selectionRanges(root: HTMLElement | null) {
 
 function anchorsSelection(batch: InkBatch, ranges: readonly Range[]) {
 	if (ranges.length === 0) return false;
-	for (const span of inkNodes.get(batch) ?? []) {
+	for (const span of inkNodes.get(batch)?.keys() ?? []) {
 		const before = span.previousSibling;
 		// The preceding text can grow when this boundary disappears. Retain
 		// that boundary as well if a range or caret is in the preceding node.
@@ -911,8 +915,9 @@ function anchorsSelection(batch: InkBatch, ranges: readonly Range[]) {
 
 const AnimatedInk = memo(function AnimatedInk({
 	text,
+	start,
 	batch,
-}: { text: string; batch: InkBatch }) {
+}: { text: string; start: number; batch: InkBatch }) {
 	// When Markdown re-parents an existing leaf, the new DOM node inherits the
 	// original clock. No keyframe can start over just because the parser gained
 	// an emphasis/list marker. A normal append keeps this span and its clock.
@@ -922,16 +927,19 @@ const AnimatedInk = memo(function AnimatedInk({
 			: `${batch.paintedAt - performance.now()}ms`,
 	);
 	const ref = useRef<HTMLSpanElement>(null);
+	const end = start + text.length;
 	useLayoutEffect(() => {
 		const span = ref.current;
 		if (!span) return;
-		const nodes = inkNodes.get(batch) ?? new Set<HTMLSpanElement>();
+		const nodes =
+			inkNodes.get(batch) ??
+			new Map<HTMLSpanElement, readonly [number, number]>();
 		inkNodes.set(batch, nodes);
-		nodes.add(span);
+		nodes.set(span, [start, end]);
 		return () => {
 			nodes.delete(span);
 		};
-	}, [batch]);
+	}, [batch, start, end]);
 	return (
 		<span
 			ref={ref}
@@ -952,9 +960,14 @@ const inkLeaf: Components["span"] = ({ node, children, ...props }) => {
 	if (!pieces) return <span {...props}>{children}</span>;
 	return (
 		<>
-			{pieces.map(({ text, batch }) =>
+			{pieces.map(({ text, start, batch }) =>
 				batch ? (
-					<AnimatedInk key={batch.start} text={text} batch={batch} />
+					<AnimatedInk
+						key={batch.start}
+						text={text}
+						start={start}
+						batch={batch}
+					/>
 				) : (
 					text
 				),
@@ -1223,7 +1236,8 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		const options = { capture: true, signal: hold.signal };
 		win.addEventListener("pointerup", release, options);
 		win.addEventListener("pointercancel", release, options);
-		win.addEventListener("blur", release, options);
+		// Focus moving off a descendant is not the end of a pointer gesture.
+		win.addEventListener("blur", release, { signal: hold.signal });
 	};
 	const scannerRef = useRef<BlockScanner | null>(null);
 	if (scannerRef.current === null) {
@@ -1280,16 +1294,36 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		// Eligibility controls minting, not DOM ownership. A gap or rewrite
 		// elsewhere cannot take the already painted segments from this block.
 		const oldClosed = previous?.closedElements[key];
-		let prior =
-			previous?.openStart === start &&
-			(extendsPaint ||
-				source === previous.content.slice(start, previous.openEnd))
-				? previous.openInk
-				: previous?.pendingStart === start && source === previous.pendingSource
-					? previous.pendingInk
-					: oldClosed?.props.source === source
-						? oldClosed.props.ink
-						: undefined;
+		let prior: readonly InkBatch[] | undefined;
+		const before =
+			!extendsPaint && previous?.openStart === start
+				? previous.content.slice(start, previous.openEnd)
+				: undefined;
+		if (previous?.openStart === start && (extendsPaint || source === before)) {
+			prior = previous.openInk;
+		} else if (
+			before !== undefined &&
+			previous &&
+			key ===
+				previous.closedElements.length + Number(previous.pendingSource !== null)
+		) {
+			// A same-block correction reparses the whole block. Keep only the
+			// ink ownership proved by its unchanged source prefix, so an intact
+			// formatted leaf can reconcile without keeping rewritten words in ink.
+			prior = retainInkPrefix(
+				before,
+				source,
+				previous.openInk ?? NO_INK,
+				(batch) => inkNodes.get(batch)?.values() ?? [],
+			);
+		} else if (
+			previous?.pendingStart === start &&
+			source === previous.pendingSource
+		) {
+			prior = previous.pendingInk;
+		} else if (oldClosed?.props.source === source) {
+			prior = oldClosed.props.ink;
+		}
 		// Keep the same React leaf type even when starting from a static seed;
 		// the first new sibling must not replace its existing text node.
 		prior ??= NO_INK;
