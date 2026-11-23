@@ -330,6 +330,46 @@ test("unmodified selected ink survives a gap and a later paragraph correction", 
 		);
 	}));
 
+test("a rejected correction boundary leaves one stable plain text node", (t) =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		let tick = 0;
+		t.mock.method(performance, "now", () => tick);
+		const corrected = "Lead Corrected text.";
+		const suffix = " Fresh live suffix.";
+		const selection = document.getSelection();
+		const inks = () =>
+			Array.from(
+				container.querySelectorAll(".lo-stream-ink"),
+				(node) => node.textContent,
+			);
+		for (const [word, start, end] of [
+			["Corrected", 5, 14],
+			["Lead", 0, 4],
+		]) {
+			await paint("Lead", { key: word });
+			await paint("Lead **Read** the draft.", { key: word });
+			assert.ok(container.querySelector("strong .lo-stream-ink"));
+			tick += 20;
+			await paint(corrected, { key: word });
+			const leaf = container.querySelector("p");
+			const node = leaf.firstChild;
+			assert.equal(container.textContent, corrected);
+			assert.deepEqual(inks(), []);
+			assert.equal(leaf.childNodes.length, 1, "no phantom plain-text boundary");
+			assert.equal(node.data, corrected);
+			selection.setBaseAndExtent(node, start, node, end);
+			tick += 520;
+			await paint(corrected + suffix, { key: word });
+			const range = selection.getRangeAt(0);
+			assert.equal(selection.toString(), word);
+			assert.ok(range.startContainer === node && range.endContainer === node);
+			assert.deepEqual([range.startOffset, range.endOffset], [start, end]);
+			assert.deepEqual(inks(), [suffix]);
+			assert.equal(container.textContent, corrected + suffix);
+			selection.removeAllRanges();
+		}
+	}));
+
 test("an open-block correction keeps the exact selected formatted leaf without replay", (t) =>
 	withLiveRenderer(async ({ container, document, paint }) => {
 		let tick = 0;

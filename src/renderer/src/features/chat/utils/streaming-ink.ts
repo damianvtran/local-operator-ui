@@ -131,7 +131,12 @@ function leafPieces(node: Text, source: string, batches: readonly InkBatch[]) {
 			active?.retained && active.retained.get(cursor) !== end
 				? undefined
 				: active;
-		pieces.push({ text: source.slice(cursor, end), start: cursor, batch });
+		const text = source.slice(cursor, end);
+		const previous = pieces[pieces.length - 1];
+		// A rejected mapping must not leave adjacent text nodes: dropping that
+		// batch on a later append would merge the nodes and collapse a selection.
+		if (!batch && previous && !previous.batch) previous.text += text;
+		else pieces.push({ text, start: cursor, batch });
 		cursor = end;
 	};
 	for (let i = lower; i < batches.length; i++) {
