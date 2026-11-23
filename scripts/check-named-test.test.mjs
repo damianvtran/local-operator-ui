@@ -83,8 +83,19 @@ test("the guarded test", () => { clearInterval(timer); });
 test("a different test", () => {});
 `;
 
+// A pending promise is NOT portable: Node 22's runner cancels an unsettled test
+// with ERR_TEST_FAILURE ("Promise resolution is still pending but the event loop
+// has already resolved") and exits 1 in milliseconds, where Node 24 keeps
+// waiting - measured on both, and it reddened the gate run 45245854343 on shard 4.
+// A synchronous block cannot be cancelled by any runner, so it outlives the
+// bound deterministically, which is the property this case exists to prove.
 const HANGING = `import test from "node:test";
-test("the guarded test", async () => { await new Promise(() => {}); });
+test("the guarded test", () => {
+	const until = Date.now() + 30000;
+	while (Date.now() < until) {
+		// deliberately blocks, so no runner version can end the run for us
+	}
+});
 `;
 
 // The name appears only in a comment: the filter matches nothing, the file has
