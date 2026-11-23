@@ -62,6 +62,7 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
 import {
+	DESKTOP_CONTRACT_REFUSAL_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	RUNTIME_BUSY_CODE,
 } from "../../../../shared/desktop-contract";
@@ -2581,6 +2582,32 @@ export const answerOwnerIsBusy = (error: unknown): boolean =>
 	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
 
 /**
+ * Whether main's OWN schema refused an answer, so it never left this app.
+ *
+ * WHY IT HAS ITS OWN SENTENCE (operator report, 2026-11-23). A queued ask drawn
+ * through core's legacy mirror was answered with a request id the contract did
+ * not admit, and the user read "Your answer was not sent. Invalid desktop
+ * operation." - the transport's diagnostic, which names neither the answer nor
+ * what happened to it. The contract now admits that id
+ * (`ASK_MIRROR_REQUEST_ID_PATTERN`), but any future body the contract refuses
+ * would land in the same place, so the refusal is translated here, once, for
+ * both surfaces that paint an answer's failure: the gate press
+ * (`unsentAnswerMessage`) and the queued-ask row (`askRefusalSentence`).
+ *
+ * Keyed on the 422 status AND main's exact detail: the daemon's own 422s carry
+ * their own words (or a validation list), and those stay the route's to say.
+ * Lives here rather than in `ask-answer.ts` for the reason the busy pair above
+ * does - this module may not import that one.
+ */
+export const answerRefusedByAppContract = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.status === 422 &&
+	error.message === DESKTOP_CONTRACT_REFUSAL_DETAIL;
+
+export const answerRefusedByAppContractMessage = (): string =>
+	t("ui.chat.ask_queue.refusal.not_addressable");
+
+/**
  * The app's own sentence for a refusal that arrived WITHOUT one.
  *
  * WHY IT IS A CHOICE, not one constant (agent review F5, QA round 1 Q-2). The
@@ -2689,6 +2716,8 @@ const askRefusalAuthored = (error: unknown): boolean => {
  */
 export const askRefusalSentence = (error: unknown): string => {
 	if (answerOwnerIsBusy(error)) return answerBusyMessage();
+	if (answerRefusedByAppContract(error))
+		return answerRefusedByAppContractMessage();
 	if (askRefusalAuthored(error))
 		return userFacingMessage(error, askAlreadySettledMessage());
 	const classified = askRefusalFallback(error);

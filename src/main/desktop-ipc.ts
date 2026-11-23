@@ -6,6 +6,7 @@ import {
 } from "electron";
 import { LANGUAGE_SETTING_KEY } from "../i18n/locale";
 import {
+	DESKTOP_CONTRACT_REFUSAL_DETAIL,
 	type DesktopResponse,
 	desktopRequestSchema,
 } from "../shared/desktop-contract";
@@ -381,7 +382,7 @@ export function registerDesktopIPC(
 			if (!parsed.success || !MESH_PAIRING_MAIN_OPS.has(parsed.data.op))
 				return Promise.resolve({
 					status: 422,
-					body: { detail: "Invalid desktop operation." }, // i18n: ignore wire diagnostic, mirrors desktop-transport
+					body: { detail: DESKTOP_CONTRACT_REFUSAL_DETAIL },
 				});
 			return meshPairing
 				? meshPairing(event, parsed.data as PairingMainRequest)

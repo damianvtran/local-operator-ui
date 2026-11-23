@@ -5068,6 +5068,7 @@ export type MessageParams = {
 	"ui.chat.ask_queue.refusal.already_settled": undefined;
 	"ui.chat.ask_queue.refusal.busy": undefined;
 	"ui.chat.ask_queue.refusal.expired": undefined;
+	"ui.chat.ask_queue.refusal.not_addressable": undefined;
 	"ui.chat.ask_queue.response.answered": { askId: string };
 	"ui.chat.ask_queue.response.declined": { askId: string };
 	"ui.chat.ask_queue.response.dismissed": {

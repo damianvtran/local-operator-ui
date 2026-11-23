@@ -23,6 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "وہ سوال پہلے ہی طے ہو چکا تھا، اس لیے آپ کا جواب نہیں بھیجا گیا۔",
 	"ui.chat.ask_queue.refusal.busy": "آپ کے جواب کی ابھی تصدیق نہیں ہوئی۔ ایجنٹ مصروف ہے۔",
 	"ui.chat.ask_queue.refusal.expired": "یہ سوال جواب دینے کے لیے بہت پرانا ہو چکا ہے — ایجنٹ سے دوبارہ پوچھیں۔",
+	"ui.chat.ask_queue.refusal.not_addressable": "آپ کا جواب نہیں بھیجا گیا۔ ایپ اسے اس شکل میں نہیں ڈھال سکی جو یہ سیشن قبول کرتا ہے، اس لیے اس ڈیوائس سے کچھ نہیں بھیجا گیا۔",
 	"ui.chat.ask_queue.response.answered": "جواب دیا گیا — پہنچایا جا رہا ہے (سوال {askId})",
 	"ui.chat.ask_queue.response.declined": "سوال {askId} پر انکار کر دیا گیا — ایجنٹ کو بتا دیا گیا",
 	"ui.chat.ask_queue.response.dismissed": "آپ نے ہٹا دیا{hasVia, select, yes { ({via})} other {}} — {reason} (سوال {askId})",

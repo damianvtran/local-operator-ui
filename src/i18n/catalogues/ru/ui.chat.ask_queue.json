@@ -23,6 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "Этот вопрос уже решён, поэтому ваш ответ не отправлен.",
 	"ui.chat.ask_queue.refusal.busy": "Ваш ответ пока не подтверждён. Агент занят.",
 	"ui.chat.ask_queue.refusal.expired": "Срок этого запроса истёк, ответить на него уже нельзя — спросите агента ещё раз.",
+	"ui.chat.ask_queue.refusal.not_addressable": "Ваш ответ не отправлен. Приложению не удалось привести его к виду, который принимает эта сессия, поэтому с этого устройства ничего не ушло.",
 	"ui.chat.ask_queue.response.answered": "Ответ дан — передаётся (запрос {askId})",
 	"ui.chat.ask_queue.response.declined": "Запрос {askId} отклонён — агент уведомлён",
 	"ui.chat.ask_queue.response.dismissed": "Убрано вами{hasVia, select, yes { ({via})} other {}} — {reason} (запрос {askId})",
