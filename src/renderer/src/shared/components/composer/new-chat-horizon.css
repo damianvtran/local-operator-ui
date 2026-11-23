@@ -28,58 +28,24 @@
 
 .new-chat-horizon__scene {
 	position: absolute;
-	inset-inline: 0;
-	/* Scene y=139 aligns to the fixed mark centre. Preserve that anchor when
-	   the engraving shrinks, and clip/feather the flanks on the smallest pane. */
-	inset-block-start: calc(50% - 139px);
-	block-size: 172px;
-	overflow: clip;
-	mask-image: linear-gradient(
-		to right,
-		transparent,
-		black min(12%, 3.5rem),
-		black max(88%, calc(100% - 3.5rem)),
-		transparent
-	);
+	left: 50%;
+	/* The crossing is at y=150 in the backing sheet. Position it on the
+	   glyph without enlarging the in-flow block or its measured neighbours. */
+	inset-block-start: calc(50% - 150px);
+	translate: -50% 0;
+	inline-size: min(100%, 900px);
+	block-size: 240px;
+	contain: strict;
 	pointer-events: none;
 	color: light-dark(
-		color-mix(in oklab, var(--lo-ink-muted) 88%, var(--lo-accent-alt)),
-		color-mix(in oklab, var(--lo-ink-muted) 76%, var(--lo-canvas))
+		color-mix(in oklab, var(--lo-ink) 75%, var(--lo-accent-alt)),
+		color-mix(in oklab, var(--lo-ink) 63%, var(--lo-accent-alt))
 	);
-}
-
-.new-chat-horizon__engraving {
-	position: absolute;
-	inset-block-start: 139px;
-	left: 50%;
-	translate: -50% -80.814%; /* Same anchor as MARK_Y / HEIGHT. */
-	inline-size: clamp(28rem, 100%, 40rem);
-}
-
-.new-chat-horizon__paint {
-	display: block;
-	inline-size: 100%;
-	block-size: auto;
-}
-
-.new-chat-horizon__flecks {
-	color: var(--lo-accent-alt);
-	stroke-opacity: 0.43;
-}
-
-.new-chat-horizon__rake {
-	position: absolute;
-	left: 30.625%; /* Bounds of the highlight's viewBox within the engraving. */
-	top: 4.651%;
-	inline-size: 53.125%;
-	block-size: auto;
-	color: light-dark(
-		color-mix(in oklab, var(--lo-ink-muted) 72%, var(--lo-accent-alt)),
-		color-mix(in oklab, var(--lo-ink) 84%, var(--lo-accent-alt))
+	/* Canvas consumes these two resolved colours. There is no CSS outline. */
+	outline-color: light-dark(
+		color-mix(in oklab, var(--lo-ink-muted) 78%, var(--lo-ink)),
+		color-mix(in oklab, var(--lo-ink-muted) 72%, var(--lo-accent-alt))
 	);
-	opacity: 0.78;
-	transform: translate3d(0, 0, 0);
-	transition: transform 180ms ease-out;
 }
 
 .new-chat-horizon__mark [data-brand-mark] {
@@ -94,13 +60,6 @@
 
 .new-chat-horizon__scene[data-quiet] {
 	opacity: 0.54;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.new-chat-horizon__rake {
-		transform: none !important;
-		transition: none;
-	}
 }
 
 @media (forced-colors: active) {

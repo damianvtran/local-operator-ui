@@ -11385,7 +11385,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					>
 						{showSplash ? (
 							<>
-								<NewChatHorizon splash={splash} quiet={noProvider} />
+								<NewChatHorizon quiet={noProvider} />
 								{/*
 								 * With nothing connected there is no question to ask yet: the card
 								 * below says what to do, and a headline inviting a prompt the app
