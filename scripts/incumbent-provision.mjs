@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn } from "node:child_process";
+import { spawn as nodeSpawn, spawnSync } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
@@ -13,10 +13,31 @@ const BACKEND_READY_MS = 120_000;
 // 120 s health budget on top, rather than competing with installation.
 const INSTALL_READY_MS = 5 * 60_000 + BACKEND_READY_MS;
 const clock = () => performance.now();
+const PS_COLUMNS = /\s+/;
 export const ended = (child) =>
 	child.exitCode !== null || child.signalCode !== null;
 const describeExit = (child) =>
 	child.signalCode ? `signal ${child.signalCode}` : `exit ${child.exitCode}`;
+
+// Node's exit fields lag the kernel. Darwin can even accept a signal for an
+// unreaped zombie, so neither those fields nor kill's return prove liveness.
+function ownedProcessLive(child) {
+	if (!child.pid || ended(child)) return false;
+	const ps = spawnSync(
+		"/bin/ps",
+		["-o", "ppid=,stat=", "-p", String(child.pid)],
+		{
+			encoding: "utf8",
+			timeout: PROBE_MS,
+		},
+	);
+	if (ps.status === 1 && !ps.stdout?.trim() && !ps.stderr?.trim()) return false;
+	if (ps.status !== 0) return undefined;
+	const [parent, state] = ps.stdout.trim().split(PS_COLUMNS);
+	if (!parent || !state) return undefined;
+	if (Number(parent) !== process.pid || "ZX".includes(state[0])) return false;
+	return "DIRSTUW".includes(state[0]) ? true : undefined;
+}
 
 export function candidateReadiness(inheritedSelection) {
 	return {
@@ -52,13 +73,21 @@ export function ownChildren(signalTarget = process) {
 		signal,
 		track(
 			child,
-			{ now = clock, sleep = delay, term = 60_000, kill = 5_000 } = {},
+			{
+				now = clock,
+				sleep = delay,
+				term = 60_000,
+				kill = 5_000,
+				isLive = (child) => !ended(child),
+			} = {},
 		) {
 			let pending;
 			let cancelledAt;
-			const reap = async () => {
-				let termSentAt;
-				async function wait(ms) {
+			const reap = async (observeTerm) => {
+				let termRequestedLive = false;
+				let forced = false;
+				const observing = new AbortController();
+				async function wait(ms, observe) {
 					const deadline = now() + ms;
 					while (!ended(child)) {
 						const t = now();
@@ -69,30 +98,47 @@ export function ownChildren(signalTarget = process) {
 							? Math.min(deadline, cancelledAt + 1_000)
 							: deadline;
 						if (t >= end) break;
+						if (!signal.aborted) observe?.(observing.signal);
 						await sleep(Math.min(POLL_MS, end - t));
 					}
 					return ended(child);
 				}
-				// ChildProcess.kill targets only this child. `child.killed` means
-				// a signal was sent, not that the exact PID was reaped.
-				if (child.pid && !ended(child)) {
-					const sendingAt = now();
-					if (child.kill("SIGTERM")) termSentAt = sendingAt;
-					if (!(await wait(term)) && !ended(child)) {
-						child.kill("SIGKILL");
-						cancelledAt = undefined;
-						if (!(await wait(kill)))
-							throw new Error(
-								`owned PID ${child.pid} did not exit after SIGKILL`,
-							);
+				try {
+					if (child.pid && !ended(child)) {
+						// Unknown OS state is not readiness evidence, but the exact
+						// ChildProcess handle still owns cleanup. Wait for Node to
+						// reap even when the kernel already reports a zombie.
+						// Cancellation has a short leash and cannot earn a PASS.
+						const live = signal.aborted ? undefined : isLive(child);
+						if (live !== false)
+							termRequestedLive = child.kill("SIGTERM") && live === true;
+						if (
+							!(await wait(term, termRequestedLive ? observeTerm : undefined))
+						) {
+							observing.abort();
+							if (
+								!ended(child) &&
+								(signal.aborted || isLive(child) !== false)
+							) {
+								forced = true;
+								child.kill("SIGKILL");
+							}
+							cancelledAt = undefined;
+							if (!(await wait(kill)))
+								throw new Error(
+									`owned PID ${child.pid} did not exit during cleanup`,
+								);
+						}
 					}
+					children.delete(child);
+					return { termRequestedLive, forced };
+				} finally {
+					observing.abort();
 				}
-				children.delete(child);
-				return { termSentAt };
 			};
 			// Share the exact same cleanup promise across cancel and finally.
-			const release = () => {
-				pending ??= Promise.resolve().then(reap);
+			const release = (observeTerm) => {
+				pending ??= Promise.resolve().then(() => reap(observeTerm));
 				return pending;
 			};
 			children.set(child, release);
@@ -129,6 +175,7 @@ export async function provisionIncumbent({
 	fetch = globalThis.fetch,
 	now = clock,
 	sleep = delay,
+	isLive = ownedProcessLive,
 	// In a non-cancelled run, give SIGTERM the incumbent's documented
 	// shutdown budget (115 s at v0.57.8) before escalating.
 	timeouts = { readiness: INSTALL_READY_MS, term: 120_000, kill: 5_000 },
@@ -142,10 +189,10 @@ export async function provisionIncumbent({
 
 	const registry = owned ?? ownChildren(signalTarget);
 	const { signal } = registry;
-	async function probe(ms = PROBE_MS) {
+	async function probe(ms = PROBE_MS, stop = signal) {
 		try {
 			const response = await fetch(HEALTH, {
-				signal: AbortSignal.any([signal, AbortSignal.timeout(ms)]),
+				signal: AbortSignal.any([signal, stop, AbortSignal.timeout(ms)]),
 				redirect: "error",
 			});
 			const observedAt = now();
@@ -163,6 +210,7 @@ export async function provisionIncumbent({
 	let release;
 	let spawnError;
 	let healthAt;
+	let shutdownWitness;
 	let failure;
 	try {
 		signal.throwIfAborted();
@@ -192,6 +240,7 @@ export async function provisionIncumbent({
 				sleep,
 				term: timeouts.term,
 				kill: timeouts.kill,
+				isLive,
 			});
 			child.on("error", (error) => {
 				spawnError = error;
@@ -227,14 +276,42 @@ export async function provisionIncumbent({
 				`readiness timed out after ${timeouts.readiness} ms; no health observed at ${HEALTH}`,
 			);
 
-		// No natural-exit grace: the OK must come from a live incumbent, and
-		// we must successfully initiate its shutdown before it exits.
-		const { termSentAt } = await release();
+		// Check kernel liveness after the OK, immediately before requesting
+		// shutdown. A clean exit alone is ambiguous even if kill returned true.
+		// For a cooperative exit, require the backend to close during TERM
+		// grace while the same app PID is still alive (not just afterwards).
+		let closingWhileLive = false;
+		let checking = false;
+		const { termRequestedLive, forced } = await release((stop) => {
+			if (checking || closingWhileLive || ended(child)) return;
+			checking = true;
+			// Do not block the reaper on a fetch: its grace and cancellation
+			// deadlines take priority over collecting a graceful-exit witness.
+			void probe(PROBE_MS, stop)
+				.then((state) => {
+					if (!stop.aborted && state === "closed" && isLive(child) === true)
+						closingWhileLive = true;
+				})
+				.catch(() => {})
+				.finally(() => {
+					checking = false;
+				});
+		});
 		signal.throwIfAborted();
-		if (termSentAt === undefined || termSentAt < healthAt)
+		if (!termRequestedLive)
 			throw new Error(
-				`incumbent exited before readiness was confirmed (${describeExit(child)})`,
+				`incumbent exited before readiness was confirmed or was not verifiably live (${describeExit(child)})`,
 			);
+		if (child.signalCode === "SIGTERM") {
+			shutdownWitness = "terminated by SIGTERM";
+		} else if (!forced && child.exitCode === 0 && closingWhileLive) {
+			shutdownWitness =
+				"backend closed after SIGTERM while the incumbent was still alive";
+		} else {
+			throw new Error(
+				`HTTP OK observed, but no attributable incumbent shutdown was witnessed (${describeExit(child)})`,
+			);
+		}
 		// A leftover backend could falsely satisfy the candidate's later probe.
 		if ((await probe()) !== "closed")
 			throw new Error(
@@ -258,6 +335,6 @@ export async function provisionIncumbent({
 		? result("FAIL", failure)
 		: result(
 				"PASS",
-				`HTTP OK observed at ${HEALTH}; incumbent ended (${describeExit(child)})`,
+				`HTTP OK observed at ${HEALTH}; incumbent ended (${describeExit(child)}); shutdown witness: ${shutdownWitness}`,
 			);
 }

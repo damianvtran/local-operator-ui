@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { fstatSync, readFileSync, writeSync } from "node:fs";
 import { test } from "node:test";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { provisionIncumbent } from "./incumbent-provision.mjs";
 
 function rig({
@@ -12,12 +14,16 @@ function rig({
 	backendSurvivesExit = false,
 	ignoreTerm = false,
 	exitBeforeTerm = false,
+	cleanExitOnTerm = false,
+	cooperative = false,
 	inFlight,
+	shutdownProbe,
 	onSleep,
 	defaultTimeouts = false,
 } = {}) {
 	let time = 0;
 	let launchedAt;
+	let cleanExitAt;
 	const signalTarget = new EventEmitter();
 	const requests = [];
 	const launches = [];
@@ -32,7 +38,8 @@ function rig({
 				return false; // The PID exited before the signal could be sent.
 			}
 			signals.push([this.pid, signal]);
-			if (signal === "SIGKILL" || !ignoreTerm) this.signalCode = signal;
+			if (signal === "SIGTERM" && cleanExitOnTerm) cleanExitAt = time + 500;
+			else if (signal === "SIGKILL" || !ignoreTerm) this.signalCode = signal;
 			return true;
 		},
 	});
@@ -67,16 +74,19 @@ function rig({
 					return child;
 				},
 				signalTarget,
+				isLive: (child) => child.exitCode === null && child.signalCode === null,
 				async fetch(url, options) {
 					requests.push({ url, options });
 					if (launchedAt !== undefined && requests.length === 2 && inFlight)
 						return inFlight({ child, signalTarget, launches, options });
+					if (signals.length && shutdownProbe) return shutdownProbe(options);
 					const running = child.exitCode === null && child.signalCode === null;
 					if (
 						busy ||
 						(launchedAt !== undefined &&
 							time - launchedAt >= healthAt &&
-							(running || backendSurvivesExit))
+							(running || backendSurvivesExit) &&
+							!(cooperative && cleanExitAt !== undefined))
 					)
 						return { ok: true };
 					throw new TypeError("fetch failed", {
@@ -85,9 +95,15 @@ function rig({
 				},
 				now: () => time,
 				async sleep(ms) {
+					// Let the async shutdown probe observe the closed port before
+					// advancing the fake clock through the clean exit.
+					if (cleanExitAt !== undefined) await new Promise(setImmediate);
 					time += ms;
 					onSleep?.({ signalTarget, signals });
-					if (launchedAt !== undefined && time - launchedAt >= exitAt)
+					if (
+						time >= cleanExitAt ||
+						(launchedAt !== undefined && time - launchedAt >= exitAt)
+					)
 						child.exitCode = 0;
 				},
 				timeouts: defaultTimeouts
@@ -107,7 +123,7 @@ test("observes backend health before initiating incumbent shutdown", async () =>
 	assert.deepEqual(control.signals, [[417, "SIGTERM"]]);
 	assert.deepEqual(control.launches[0].args, [
 		"--window-mode=inactive",
-		"--use-mock-keychain",
+		MOCK_KEYCHAIN_SWITCH,
 	]);
 	assert.equal(control.launches[0].options.env.HOME, "/vm/home");
 	assert.equal(
@@ -120,6 +136,36 @@ test("observes backend health before initiating incumbent shutdown", async () =>
 				url === "http://127.0.0.1:1111/health" && options.redirect === "error",
 		),
 	);
+});
+
+test("a cooperative exit needs backend closure while the owned PID is still live", async () => {
+	const control = rig({
+		healthAt: 250,
+		cleanExitOnTerm: true,
+		cooperative: true,
+	});
+	const result = await control.run();
+	assert.equal(result.verdict, "PASS", result.detail);
+	assert.ok(
+		result.detail.includes(
+			"backend closed after SIGTERM while the incumbent was still alive",
+		),
+		result.detail,
+	);
+	assert.deepEqual(control.signals, [[417, "SIGTERM"]]);
+});
+
+test("a successful kill call and clean exit do not substitute for a shutdown witness", async () => {
+	const control = rig({ healthAt: 250, cleanExitOnTerm: true });
+	const result = await control.run();
+	assert.equal(result.verdict, "FAIL", result.detail);
+	assert.ok(
+		result.detail.includes(
+			"no attributable incumbent shutdown was witnessed (exit 0)",
+		),
+		result.detail,
+	);
+	assert.deepEqual(control.signals, [[417, "SIGTERM"]]);
 });
 
 test("R4: exit 0 before health fails rather than treating install exit as readiness", async () => {
@@ -149,7 +195,9 @@ test("an OK does not pass if the child exits before our SIGTERM can be sent", as
 	const result = await control.run();
 	assert.equal(result.verdict, "FAIL");
 	assert.ok(
-		result.detail.includes("exited before readiness was confirmed (exit 0)"),
+		result.detail.includes(
+			"exited before readiness was confirmed or was not verifiably live (exit 0)",
+		),
 		result.detail,
 	);
 	assert.deepEqual(control.signals, []);
@@ -205,6 +253,70 @@ test("rejects an OK received after the incumbent exits during the probe", async 
 	assert.deepEqual(control.signals, []);
 });
 
+test(
+	"Darwin: an unreaped Node child cannot confer readiness",
+	{ skip: process.platform !== "darwin" },
+	async () => {
+		let child;
+		let requests = 0;
+		let beforeOK;
+		const requestsToSignal = [];
+		const result = await provisionIncumbent({
+			tag: "node-zombie",
+			paths: { executable: process.execPath, log: "/dev/null" },
+			env: {},
+			signalTarget: new EventEmitter(),
+			spawn(executable, _args, options) {
+				child = spawn(executable, ["-e", "process.exit(0)"], options);
+				const kill = child.kill.bind(child);
+				child.kill = (signal) => {
+					requestsToSignal.push(signal);
+					return kill(signal);
+				};
+				return child;
+			},
+			async fetch() {
+				if (++requests === 2) {
+					// Keep the JS event loop on this stack until Darwin marks the
+					// child Z. Yielding here would let Node observe/reap it first.
+					const deadline = performance.now() + 1_000;
+					let state;
+					do {
+						state = spawnSync(
+							"/bin/ps",
+							["-o", "stat=", "-p", String(child.pid)],
+							{
+								encoding: "utf8",
+							},
+						).stdout.trim();
+					} while (!state.startsWith("Z") && performance.now() < deadline);
+					beforeOK = {
+						state,
+						exitCode: child.exitCode,
+						signalCode: child.signalCode,
+					};
+					return { ok: true };
+				}
+				throw new TypeError("fetch failed", {
+					cause: { code: "ECONNREFUSED" },
+				});
+			},
+		});
+		assert.ok(beforeOK?.state.startsWith("Z"), JSON.stringify(beforeOK));
+		assert.equal(beforeOK.exitCode, null);
+		assert.equal(beforeOK.signalCode, null);
+		assert.equal(result.verdict, "FAIL", result.detail);
+		assert.equal(requests, 2, result.detail);
+		assert.ok(
+			result.detail.includes("exited before readiness was confirmed"),
+			result.detail,
+		);
+		assert.deepEqual(requestsToSignal, []);
+		assert.equal(child.exitCode, 0);
+		assert.throws(() => process.kill(child.pid, 0), { code: "ESRCH" });
+	},
+);
+
 for (const signal of ["SIGTERM", "SIGINT"]) {
 	test(`${signal} during provisioning reaps the exact PID and closes the log`, async () => {
 		let fd;
@@ -239,11 +351,20 @@ for (const signal of ["SIGTERM", "SIGINT"]) {
 	});
 }
 
-test("cancellation shortens an already-running normal shutdown grace", async () => {
+test("cancellation aborts the shutdown probe and shortens normal shutdown grace", async () => {
+	const probes = [];
 	const control = rig({
 		defaultTimeouts: true,
 		ignoreTerm: true,
 		healthAt: 250,
+		shutdownProbe({ signal }) {
+			probes.push(signal);
+			return new Promise((_, reject) => {
+				signal.addEventListener("abort", () => reject(signal.reason), {
+					once: true,
+				});
+			});
+		},
 		onSleep({ signalTarget, signals }) {
 			if (signals.length === 1) signalTarget.emit("SIGTERM");
 		},
@@ -254,6 +375,8 @@ test("cancellation shortens an already-running normal shutdown grace", async () 
 		[417, "SIGTERM"],
 		[417, "SIGKILL"],
 	]);
+	assert.equal(probes.length, 1);
+	assert.equal(probes[0].reason.message, "cancelled by SIGTERM");
 	assert.equal(control.now(), 1_500); // 250 to health + 250 to cancellation + 1000 TERM grace.
 });
 
