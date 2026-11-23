@@ -4,6 +4,7 @@ import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
 import { BrowserSafeTooltip } from "@shared/components/ui/browser-safe-tooltip";
 import { useCurrentView } from "@shared/hooks/use-route-params";
+import { useCloseSettings } from "@shared/hooks/use-settings-route";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Settings } from "lucide-react";
@@ -32,23 +33,38 @@ import { useNavigate } from "react-router-dom";
  */
 export const SettingsGear: FC = () => {
 	const navigate = useNavigate();
+	const closeSettings = useCloseSettings();
 	const currentView = useCurrentView();
+	/*
+	 * ONE CONTROL, TWO DIRECTIONS (operator, 2026-11-23: "gear_closes: Yes, gear
+	 * toggles"). Settings is a route with no OS chrome to close it, so the gear
+	 * is the toggle the user already reaches for: while the page is open it
+	 * closes, on every other route it opens. The ACCESSIBLE NAME stays "Settings"
+	 * (`aria-current="page"` already says the page is this one), and only the
+	 * tooltip names the direction, because a name that changes under the pointer
+	 * is a name a screen reader has to rediscover.
+	 */
+	const isOpen = currentView === "settings";
 	return (
 		<BrowserSafeTooltip
-			content={t("ui.shell.sidebar_navigation.settings")}
+			content={
+				isOpen
+					? t("ui.settings.navigation.settings_page.close_settings")
+					: t("ui.shell.sidebar_navigation.settings")
+			}
 			side="top"
 		>
 			<button
 				type="button"
 				data-tour-tag="nav-item-settings"
-				onClick={() => navigate("/settings")}
-				aria-current={currentView === "settings" ? "page" : undefined}
+				onClick={() => (isOpen ? closeSettings() : navigate("/settings"))}
+				aria-current={isOpen ? "page" : undefined}
 				aria-label={t("ui.shell.sidebar_navigation.settings")}
 				className={cn(
 					"flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
 					"transition-colors duration-fast ease-out-quart",
 					"hover:bg-row-hover hover:text-ink",
-					currentView === "settings" && "text-ink",
+					isOpen && "text-ink",
 				)}
 			>
 				<Settings size={16} aria-hidden="true" />

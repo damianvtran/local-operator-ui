@@ -371,6 +371,9 @@ export const SettingsSearch = forwardRef<
 		<div
 			ref={rootRef}
 			className={cn("relative @container w-full", className)}
+			/* The page's Esc handler (`settings-escape.ts`) reads this widget's own
+			   text/open state: while it has either, Escape belongs to the search. */
+			data-settings-search=""
 			onBlur={(event) => {
 				const next = event.relatedTarget as Node | null;
 				// Focus that stayed inside the widget — the Clear button, most of

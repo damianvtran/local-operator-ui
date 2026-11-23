@@ -112,6 +112,7 @@ import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { NotificationsSection } from "./notifications-section";
 import { RadientAccountSection } from "./radient-account-section";
+import { SettingsContentSurface } from "./settings-close-surface";
 import {
 	SettingsSearch,
 	type SettingsSearchHandle,
@@ -1269,24 +1270,13 @@ export const SettingsPage: FC = () => {
 				/>
 			</div>
 
-			<div
-				data-glass-region="canvas-content"
-				/*
-				 * THE CONTENT COLUMN OWNS ITS GROUND FROM y0 (operator, 2026-11-04:
-				 * "a section above the settings in the titlebar area that isn't
-				 * properly filled"). The root is `data-glass-split`, so under window
-				 * glass the root and `<main>` paint nothing and `canvas-content` alone
-				 * paints the canvas. That marker used to sit on the `panel-scroll`
-				 * scroller, whose pad is a MARGIN - so the painted box began below
-				 * the strip and the desktop showed through above it. The ground now
-				 * lives on this full-height column, which pads with `panel-top-pad`
-				 * (the box that wears the pad is the box that paints, AGENTS.md
-				 * "Panels run to the window edge"), the same shape as Library and
-				 * Agents. The scroller inside starts below the padding, so its clip is
-				 * still the content edge and scrolled text never paints into the strip.
-				 */
-				className="panel-top-pad flex min-h-0 min-w-0 flex-1 flex-col"
-			>
+			{/*
+			 * The content column, its ground, the pinned Close button and the Esc
+			 * scope. Kept as one component (`settings-close-surface.tsx`) so the
+			 * button and the key cannot disagree about what closing means, and so
+			 * the column's ground rules live beside the control that sits on them.
+			 */}
+			<SettingsContentSurface>
 				<div
 					ref={contentContainerRef}
 					data-settings-content
@@ -2095,7 +2085,7 @@ export const SettingsPage: FC = () => {
 						</div>
 					</div>
 				</div>
-			</div>
+			</SettingsContentSurface>
 		</div>
 	);
 };
