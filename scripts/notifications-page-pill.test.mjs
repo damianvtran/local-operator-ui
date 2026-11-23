@@ -357,6 +357,28 @@ test(
 				await page.settle(() => page.rows().length === 100),
 				"page one drew",
 			);
+			/*
+			 * NO HEADER ROW (2026-11-23): refresh renders inside the toolbar, and the
+			 * only sibling before the toolbar is the compact header's sr-only h1.
+			 */
+			const toolbar = page.container.querySelector(
+				"[data-notifications-toolbar]",
+			);
+			assert.ok(
+				toolbar.contains(
+					page.container.querySelector("[data-notifications-refresh]"),
+				),
+				"refresh is inside the toolbar",
+			);
+			const before = [...toolbar.parentElement.children].slice(
+				0,
+				[...toolbar.parentElement.children].indexOf(toolbar),
+			);
+			assert.deepEqual(
+				before.map((node) => `${node.tagName}.${node.className}`),
+				["H1.sr-only"],
+				"nothing but the sr-only title precedes the toolbar",
+			);
 			page.instrument();
 			await scrollDeep(page, 3);
 			await page.settle();
@@ -406,13 +428,20 @@ test(
 				"the arrivals are not drawn above a deep viewport",
 			);
 
-			/* In the page header, never inside the scroll port (design round 6, D1). */
+			/* In the toolbar, never inside the scroll port (design round 6, D1). */
 			const button = window.document.querySelector(
 				"[data-notifications-back-to-top]",
 			);
 			assert.ok(
 				!page.grid().contains(button),
 				"the chip takes no room in the list",
+			);
+			/* Beside refresh in the toolbar's trailing group, not a header row (2026-11-23). */
+			assert.ok(
+				page.container
+					.querySelector("[data-notifications-toolbar-trailing]")
+					?.contains(button),
+				"the chip sits in the toolbar's trailing group",
 			);
 			await act(async () => {
 				button.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -624,10 +653,16 @@ test(
 				shiftKey: true,
 			});
 			assert.equal(selectedRows(page).length, 4);
-			assert.equal(
-				page.container.querySelector("[data-notifications-toolbar]").dataset
-					.notificationsToolbar,
-				"selection",
+			const toolbar = page.container.querySelector(
+				"[data-notifications-toolbar]",
+			);
+			assert.equal(toolbar.dataset.notificationsToolbar, "selection");
+			/* Refresh stays reachable while selecting, as it was in the old header. */
+			assert.ok(
+				toolbar.contains(
+					page.container.querySelector("[data-notifications-refresh]"),
+				),
+				"refresh is in the selection bar too",
 			);
 		} finally {
 			await page.unmount();
