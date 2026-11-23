@@ -221,7 +221,8 @@ export function statusLabelText(
 	row: Pick<CanonicalSessionRow, "status">,
 ): string | undefined {
 	if (row.status?.code === "recent") return t("ui.chat.sidebar.row.recent");
-	return row.status?.label;
+	// An empty label is "none": `withQueuedAskStatus` leaves one on purpose.
+	return row.status?.label || undefined;
 }
 
 /**
@@ -281,6 +282,60 @@ export function statusSpokenText(
 			statusLabelText(row) ??
 			t("ui.chat.sidebar.row.recent"));
 	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;
+}
+
+/**
+ * The row as the SIDEBAR DRAWS IT when a queued ask already owns the ask glyph.
+ *
+ * ## The bug this closes (2026-11-22)
+ *
+ * One open queued ask drew two identical `MessageCircleQuestion` glyphs: the
+ * status mark (code `answer`) and `ChatAsksOutstanding` (the count). The core
+ * claims the record's `pending` for an open queued ask
+ * (`runtime/serving.py::_sync_queued_ask_pending`) and its status ladder files
+ * any non-approval `pending` under `answer` ABOVE busy and idle
+ * (`session/catalog.py::status_code`), so the code says "ask" while hiding
+ * whether the session is working or resting. This file's own rule (see
+ * {@link ChatAsksOutstanding}) is that a queued ask is a SECOND mark and not a
+ * status: the session "may be busy, idle or done while its asks sit unanswered".
+ *
+ * ## What it does
+ *
+ * When the code is `answer` AND the ask badge will draw (`count > 0`, the same
+ * count {@link ChatAsksOutstanding} resolves), the code and its label are
+ * rebuilt from what the row still knows: `busy` while `live_state` is `busy`,
+ * otherwise `recent` (the resting ring). An unread completion's kind is NOT
+ * recoverable (it is read off the code, which `answer` replaced), so it is not
+ * guessed at: the ring is the honest resting mark.
+ * One function feeds the glyph, the tooltip and the screen-reader name, so the
+ * words cannot say "Answer needed" under a ring.
+ *
+ * ## What it leaves alone
+ *
+ * `approval` (a blocking gate) is never touched. `answer` with NO count is a
+ * blocking question gate with no queue row behind it, so its glyph is the only
+ * ask mark and stays. Ordering and the Running section read the wire code, not
+ * this row.
+ */
+export function withQueuedAskStatus(
+	row: CanonicalSessionRow,
+	open?: number | null,
+): CanonicalSessionRow {
+	if (row.status?.code !== "answer") return row;
+	const count = typeof open === "number" ? open : row.asks_open;
+	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
+		return row;
+	if (row.live_state === "busy") {
+		// The /info panel's own status word for this state, so no new copy (a new
+		// key in a shipped namespace needs seven ledger re-audits).
+		return {
+			...row,
+			status: { code: "busy", label: t("ui.chat.pickers.info_panel.busy") },
+		};
+	}
+	// The wire's `answer` label ("Answer needed") is dropped with the code: an
+	// empty label reads as none, so the callers fall to the resting word.
+	return { ...row, status: { code: "recent", label: "" } };
 }
 
 /**
