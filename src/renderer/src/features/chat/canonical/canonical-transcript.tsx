@@ -1963,6 +1963,8 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
+	revealOnMount,
+	animateStream,
 	closesTurn,
 	answerRail,
 	foot = null,
@@ -1971,6 +1973,8 @@ const AssistantRow = memo(function AssistantRow({
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
+	revealOnMount: boolean;
+	animateStream: boolean;
 	closesTurn: boolean;
 	/**
 	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
@@ -2155,6 +2159,10 @@ const AssistantRow = memo(function AssistantRow({
 				{record.streaming ? (
 					<StreamingMarkdown
 						content={remainingContent}
+						// A joined stream or a receipt gap cannot certify that its text
+						// is a new suffix. It and the authoritative settle both paint now.
+						animateInk={animateStream && !record.truncated}
+						revealOnMount={revealOnMount}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -3856,6 +3864,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	sessionCwd,
 	enter = false,
+	animateStream = false,
 	isSmallView,
 	scope,
 	capable,
@@ -3890,6 +3899,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	approvalEpoch = null,
 }: {
 	row: Row;
+	animateStream?: boolean;
 	/**
 	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
 	 * frontend frames, so the frame itself is not a prop). It is the identity a
@@ -4060,6 +4070,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
+					revealOnMount={enter}
+					animateStream={animateStream}
 					closesTurn={row.closesTurn}
 					answerRail={answerRail}
 					foot={foot}
@@ -4228,6 +4240,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * node and the animation plays exactly once.
 					 */
 					entered.current &&
+						record.kind !== "assistant" &&
 						(record.kind === "user"
 							? "lo-transcript-arrival-rise"
 							: "lo-transcript-arrival"),
@@ -4475,6 +4488,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
+		feedReady: boolean;
 	} | null>(null);
 	/*
 	 * The attachment scope: the caller's when it supplied one (the child
@@ -5064,6 +5078,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
 	const paneGap = status !== "live";
+	const motionFeedReady = !paneGap && !awaitingHydration;
 
 	/*
 	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
@@ -7277,6 +7292,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
+			feedReady: motionFeedReady,
 		};
 		slotExtents.current.clear();
 		previousSlotPlan.current = {
@@ -7309,15 +7325,29 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			),
 		};
 	}
-	const known = arrivalLedger.current.ids;
+	const ledger = arrivalLedger.current;
+	const known = ledger.ids;
 	let lastKnown = -1;
 	rows.forEach((row, index) => {
 		if (known.has(row.record.id)) lastKnown = index;
 	});
 	const arriving = new Set(
-		paneIsLive ? rows.slice(lastKnown + 1).map((row) => row.record.id) : [],
+		paneIsLive
+			? rows
+					.slice(lastKnown + 1)
+					.filter(
+						({ record }) =>
+							!record.sourcePrecedes &&
+							((motionFeedReady && ledger.feedReady) ||
+								(record.kind === "user" && record.local)),
+					)
+					.map(({ record }) => record.id)
+			: [],
 	);
 	useLayoutEffect(() => {
+		// A reconnect may deliver its catch-up tail in the same commit as
+		// `status: live`. Seed that commit before allowing another arrival.
+		ledger.feedReady = motionFeedReady;
 		for (const row of rows) known.add(row.record.id);
 		viewState.current.store.prune(
 			new Set(rawRecords.current.map((record) => record.id)),
@@ -7371,7 +7401,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
-					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
+					enter={arriving.has(row.record.id)}
+					animateStream={
+						row.record.kind === "assistant" &&
+						row.record.streaming &&
+						motionFeedReady
+					}
 					isSmallView={isSmallView}
 					scope={mediaScope}
 					capable={attachmentsCapable}
@@ -7502,9 +7537,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										approvalEpoch={frontend?.epoch ?? null}
 										key={row.record.id}
 										row={index === 0 ? atTraceTier(row) : row}
-										enter={
-											arriving.has(row.record.id) &&
-											row.record.kind !== "assistant"
+										enter={arriving.has(row.record.id)}
+										animateStream={
+											row.record.kind === "assistant" &&
+											row.record.streaming &&
+											motionFeedReady
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
@@ -7544,9 +7581,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
-				enter={
-					arriving.has(group.row.record.id) &&
-					group.row.record.kind !== "assistant"
+				enter={arriving.has(group.row.record.id)}
+				animateStream={
+					group.row.record.kind === "assistant" &&
+					group.row.record.streaming &&
+					motionFeedReady
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}

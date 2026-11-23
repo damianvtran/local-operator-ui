@@ -24,7 +24,11 @@ import {
 	useRadientCredentialProbe,
 } from "@shared/hooks/use-credentials";
 import type { Message } from "../types/message";
-import { MarkdownRenderer, StreamingMarkdown } from "./markdown-renderer";
+import {
+	MarkdownRenderer,
+	StreamingMarkdown,
+	streamingRenderStats,
+} from "./markdown-renderer";
 import type { SlashCommandInvocation } from "./slash-submit";
 import "./story-electron-shim";
 
@@ -41,8 +45,8 @@ import "./story-electron-shim";
  * - **Naive**: the whole document re-parsed on every chunk. This is what
  *   showing streaming text costs if you just mount `MarkdownRenderer` — and
  *   the reason the old UI showed a one-line pill instead.
- * - **Block-split**: `StreamingMarkdown`, which parses each block once and
- *   renders the in-flight block as plain text.
+ * - **Block-split**: `StreamingMarkdown`, which keeps settled blocks and only
+ *   parses the current Markdown tail between boundaries.
  *
  * Each chunk is committed with `flushSync` so the parse and reconciliation
  * land inside the measured window instead of a later idle frame. The numbers
@@ -165,6 +169,20 @@ const buildFixture = (): string => {
 	return blocks.join("\n\n");
 };
 
+const buildFenceFixture = () => {
+	// A fence may interrupt this paragraph without a blank line. Keeping both
+	// in one block exposes any reparse of its stable Markdown lead while the
+	// much larger literal body grows.
+	const lead = "Read **the fixture** and compare it with `source.ts`. ".repeat(
+		14,
+	);
+	const code = Array.from(
+		{ length: 560 },
+		(_, i) => `const receipt${i} = await readFixture(${i});`,
+	).join("\n");
+	return `${lead}\n\`\`\`ts\n${code}\n\`\`\`\n\nThe fenced example is complete.`;
+};
+
 const bucketFor = (size: number): number | null => {
 	let best: number | null = null;
 	let bestDistance = Number.POSITIVE_INFINITY;
@@ -184,6 +202,7 @@ const mean = (values: number[]): number =>
 type HarnessProps = {
 	/** Characters revealed per chunk. */
 	charsPerChunk?: number;
+	fixtureKind?: "mixed" | "open-fence";
 	/** Which renderer sits on the bench. */
 	mode?: "naive" | "block-split";
 	/**
@@ -204,11 +223,16 @@ type HarnessProps = {
 const StreamingPerfHarness = ({
 	charsPerChunk = 20,
 	mode = "block-split",
+	fixtureKind = "mixed",
 	stopAt,
 	pointAt,
 }: HarnessProps) => {
-	const fixture = useMemo(buildFixture, []);
+	const fixture = useMemo(
+		() => (fixtureKind === "open-fence" ? buildFenceFixture() : buildFixture()),
+		[fixtureKind],
+	);
 	const [text, setText] = useState("");
+	const [settled, setSettled] = useState(false);
 	const [samples, setSamples] = useState<ChunkSample[]>([]);
 	const [pointSample, setPointSample] = useState<ChunkSample | null>(null);
 	const [running, setRunning] = useState(false);
@@ -220,7 +244,11 @@ const StreamingPerfHarness = ({
 		if (runningRef.current) return;
 		runningRef.current = true;
 		setRunning(true);
+		setSettled(false);
 		setText("");
+		streamingRenderStats.tail = 0;
+		streamingRenderStats.settled = 0;
+		streamingRenderStats.markdown = 0;
 		setSamples([]);
 		setPointSample(null);
 
@@ -230,18 +258,27 @@ const StreamingPerfHarness = ({
 		// The browser tool's bounded accessibility snapshot can omit the table
 		// once the large document fills the tree. Keep the same measured samples
 		// machine-readable in console output; this adds no work inside a chunk.
-		const report = (pointMs: number | null = null) => {
+		const report = (
+			pointMs: number | null = null,
+			finalCommitMs: number | null = null,
+		) => {
 			const total = collected.reduce((sum, sample) => sum + sample.ms, 0);
 			console.info(
 				"[streaming-perf]",
 				JSON.stringify({
 					mode,
+					fixtureKind,
 					fixtureChars: fixture.length,
 					streamedChars: end,
 					charsPerChunk,
 					chunks: collected.length,
 					totalMs: total,
 					meanMsPerChunk: total / collected.length,
+					firstCommitMs: collected[0]?.ms,
+					finalCommitMs,
+					tailRenders: streamingRenderStats.tail,
+					closedRenders: streamingRenderStats.settled,
+					markdownParses: streamingRenderStats.markdown,
 					frameBudgetMs: FRAME_BUDGET_MS,
 					overBudgetChunks: collected.filter(
 						(sample) => sample.ms > FRAME_BUDGET_MS,
@@ -252,9 +289,8 @@ const StreamingPerfHarness = ({
 			);
 		};
 		const finish = () => {
-			setSamples([...collected]);
-
 			if (pointAt) {
+				setSamples([...collected]);
 				// Fresh mount, one cold render — the same work a chunk of that
 				// accumulated size forces the naive renderer through.
 				setText("");
@@ -271,7 +307,12 @@ const StreamingPerfHarness = ({
 				return;
 			}
 
-			report();
+			// The live row switches to the canonical full parse at message_end.
+			// Measure that last commit separately, not as another delta.
+			const beforeSettle = performance.now();
+			flushSync(() => setSettled(true));
+			report(null, performance.now() - beforeSettle);
+			setSamples([...collected]);
 			runningRef.current = false;
 			setRunning(false);
 		};
@@ -376,10 +417,10 @@ const StreamingPerfHarness = ({
 			)}
 
 			<div className="max-w-[720px] rounded-md border border-hairline bg-surface p-4">
-				{mode === "naive" ? (
+				{mode === "naive" || settled ? (
 					<MarkdownRenderer content={text} />
 				) : (
-					<StreamingMarkdown content={text} />
+					<StreamingMarkdown content={text} animateInk />
 				)}
 			</div>
 		</div>
@@ -413,6 +454,10 @@ export const BlockSplit: Story = {
 /** A faster stream, closer to what a quick model actually delivers. */
 export const BlockSplitFast: Story = {
 	args: { mode: "block-split", charsPerChunk: 80 },
+};
+
+export const GrowingOpenFence: Story = {
+	args: { mode: "block-split", charsPerChunk: 80, fixtureKind: "open-fence" },
 };
 
 /* ------------------------------------------------------------------------

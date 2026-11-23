@@ -16,14 +16,23 @@
 		opacity: 1;
 	}
 }
-.lo-transcript-arrival {
-	animation: lo-transcript-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
-}
-@media (prefers-reduced-motion: reduce) {
-	.lo-transcript-arrival {
-		animation: none;
+/* Inline prose starts higher than a passive row: 0.8 clears 4.5:1 for the
+ * 59 generated theme ink/surface pairs on their solid-surface model. Both
+ * keep final geometry and use the global Reduce Motion cap. */
+@keyframes lo-stream-ink {
+	from {
+		opacity: var(--lo-stream-ink-from, 0.55);
 	}
+	to {
+		opacity: 1;
+	}
+}
+.lo-stream-ink {
+	--lo-stream-ink-from: 0.8;
+}
+.lo-stream-ink,
+.lo-transcript-arrival {
+	animation: lo-stream-ink var(--duration-fast) var(--ease-out-quart);
 }
 
 /* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the

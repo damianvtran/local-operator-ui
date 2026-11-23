@@ -5745,7 +5745,10 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 	);
 });
 
-test("the user's echo fades INTO position once; every other arriving row stays ink only (operator request, 2026-11-11)", () => {
+const RE_TRANSCRIPT_ROW_ARRIVAL =
+	/entered\.current &&\s*record\.kind !== "assistant" &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/;
+
+test("the user's echo rises once; passive rows fade in and assistant parents never animate", () => {
 	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
 	const rule = (selector) => {
 		const at = css.indexOf(`${selector} {`);
@@ -5783,15 +5786,18 @@ test("the user's echo fades INTO position once; every other arriving row stays i
 		css.indexOf(".lo-transcript-arrival {"),
 	);
 	assert.doesNotMatch(plain, /transform/);
-	// Only a USER row takes the rise, and the class is fixed at mount (`entered`
-	// is a ref read once), so owner coalescing cannot replay it.
+	// Only a user row rises. Passive rows fade in, but an assistant parent
+	// must never fade: that would dim text already painted while the fresh ink
+	// animates below it. The mount ref prevents owner coalescing from replaying
+	// the entrance; transcript-arrival-cold-open.test.mjs exercises the DOM.
 	const row = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
 	assert.match(
 		row,
-		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
+		RE_TRANSCRIPT_ROW_ARRIVAL,
+		"users rise, passive arrivals fade, and assistant parents receive neither class",
 	);
 	assert.match(row, /const entered = useRef\(enter\);/);
 });
