@@ -317,6 +317,8 @@ export class DesktopStreamRelay {
 		 * unknown query parameter and never emits the events anyway.
 		 */
 		query.set("supplements", "1");
+		// Advertise the installed viewer, not a user preference or a send flag.
+		query.set("inline_ui", "1");
 		if (args.journalOrder === true)
 			appendJournalOrderIds(
 				query,

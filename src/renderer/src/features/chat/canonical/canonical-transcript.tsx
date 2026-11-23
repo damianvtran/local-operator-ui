@@ -209,7 +209,7 @@ import {
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
-import { parseReplies } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
@@ -231,6 +231,7 @@ import {
 	isImageGenTool,
 	isSoundGenTool,
 } from "./image-gen-card-model";
+import { InlineUiHost } from "./inline-ui-host";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
@@ -2021,6 +2022,17 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	const inserts = useMemo(() => {
+		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
+		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
+		// do not paint in this Markdown container; neither changes the stored text.
+		const { prefix, rest } = splitReplyPrefix(record.text);
+		const start = prefix.length + rest.length - rest.trimStart().length;
+		return record.inlineUi.widgets.map(({ offset, value }) => ({
+			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			node: <InlineUiHost value={value} />,
+		}));
+	}, [record.inlineUi, record.text, remainingContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2155,6 +2167,7 @@ const AssistantRow = memo(function AssistantRow({
 				{record.streaming ? (
 					<StreamingMarkdown
 						content={remainingContent}
+						inserts={inserts}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -2175,6 +2188,7 @@ const AssistantRow = memo(function AssistantRow({
 						 * block instead of per row.
 						 */
 						linkify
+						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).

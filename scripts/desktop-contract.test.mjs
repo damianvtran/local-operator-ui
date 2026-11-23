@@ -602,7 +602,12 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			"POST",
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
-		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		[
+			{ op: "sessions.get", sessionId },
+			`/${sessionId}?inline_ui=1`,
+			"GET",
+			undefined,
+		],
 		/*
 		 * THE OPEN-FRAME FLAG, AT THE ONE HOP THAT BUILDS THE QUERY (agent review
 		 * round 1, F6). With `open_frame=1` the backend counts `limit` in PAINTABLE
@@ -614,7 +619,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 		 */
 		[
 			{ op: "sessions.history", sessionId, limit: 100 },
-			`/${sessionId}/history?limit=100`,
+			`/${sessionId}/history?inline_ui=1&limit=100`,
 			"GET",
 			undefined,
 		],
@@ -626,13 +631,13 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				beforeId: "entry-1",
 				openFrame: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
+			`/${sessionId}/history?inline_ui=1&limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
 			undefined,
 		],
 		[
 			{ op: "sessions.history", sessionId, limit: 50, openFrame: false },
-			`/${sessionId}/history?limit=50`,
+			`/${sessionId}/history?inline_ui=1&limit=50`,
 			"GET",
 			undefined,
 		],
@@ -657,6 +662,24 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			`/${sessionId}/messages`,
 			"POST",
 			{ request_id: requestId, text: "hello", images: [], mode: "steer" },
+		],
+		[
+			{
+				op: "sessions.message",
+				sessionId,
+				requestId,
+				text: "hello",
+				inlineUi: true,
+			},
+			`/${sessionId}/messages`,
+			"POST",
+			{
+				request_id: requestId,
+				text: "hello",
+				images: [],
+				mode: "prompt",
+				inline_ui: true,
+			},
 		],
 		[
 			{

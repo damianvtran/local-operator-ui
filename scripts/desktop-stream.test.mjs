@@ -341,6 +341,9 @@ test("the open-frame flag rides the subscribe only on the renderer's own `true` 
 			"only the literal `true` asks for the open frame",
 		);
 		assert.ok(
+			urls.every((url) => new URL(url).searchParams.get("inline_ui") === "1"),
+		);
+		assert.ok(
 			urls.every((url) => url.includes("frontend_replace=1")),
 			"and the flag this relay DOES fix on the renderer's behalf is untouched",
 		);

@@ -2708,6 +2708,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.message"),
+			inlineUi: z.boolean().optional(),
 			sessionId,
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
@@ -11363,7 +11364,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 				},
 			};
 		case "sessions.get": {
-			const query = new URLSearchParams();
+			const query = new URLSearchParams({ inline_ui: "1" });
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
 				/*
@@ -11429,7 +11430,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 
 		case "sessions.history": {
+			// This viewer decodes inline-ui-v1. Older servers ignore the query key.
 			const query = new URLSearchParams({
+				inline_ui: "1",
 				limit: String(request.limit ?? 100),
 			});
 			if (request.beforeId) query.set("before_id", request.beforeId);
@@ -11575,6 +11578,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					images: request.images ?? [],
 					...(request.files?.length ? { files: request.files } : {}),
 					mode: request.mode ?? "prompt",
+					...(request.inlineUi === true ? { inline_ui: true } : {}),
 					/*
 					 * ABSENT, not empty, when the app has nothing to say: an older harness
 					 * validates this body with `extra="forbid"`, so a key present-but-null

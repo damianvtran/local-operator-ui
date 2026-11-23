@@ -39,6 +39,8 @@ export type StreamCapabilityFlags = {
 	openFrame: boolean;
 	journalOrder: boolean;
 	peerJournalSource: boolean;
+	/** Unlike read-side query negotiation, a strict POST needs backend support. */
+	inlineUi?: boolean;
 };
 
 let recorded: StreamCapabilityFlags | null = null;
@@ -68,6 +70,7 @@ export function recordStreamCapabilityFlags(
 		openFrame: flags.openFrame === true,
 		journalOrder: flags.journalOrder === true,
 		peerJournalSource: flags.peerJournalSource === true,
+		...(flags.inlineUi === true ? { inlineUi: true } : {}),
 	};
 }
 

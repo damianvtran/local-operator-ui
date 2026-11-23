@@ -87,6 +87,35 @@ const desktopBackendCompatibilityMessage = () =>
 export async function desktopRequest(
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
+	if (request.op !== "sessions.message") return sendDesktopRequest(request);
+	// GET advertisement is harmless on legacy runtimes; their strict message
+	// body is not. Negotiate here for every send from the capabilities answer,
+	// never from a previous stream or a user toggle.
+	const { inlineUi: _inlineUi, ...base } = request;
+	if (recordedStreamCapabilityFlags()?.inlineUi !== true)
+		return sendDesktopRequest(base);
+	const response = await sendDesktopRequest({ ...base, inlineUi: true });
+	// A runtime can be downgraded between capability polls. Retry only the
+	// strict-schema refusal that proves admission was never attempted, with the
+	// exact same request id. A timeout or any other 422 stays the caller's error.
+	const detail = (response.body as { detail?: unknown } | null)?.detail;
+	if (response.status === 422 && Array.isArray(detail) && detail.length === 1) {
+		const issue = detail[0];
+		if (
+			issue?.type === "extra_forbidden" &&
+			Array.isArray(issue.loc) &&
+			issue.loc.length === 2 &&
+			issue.loc[0] === "body" &&
+			issue.loc[1] === "inline_ui"
+		)
+			return sendDesktopRequest(base);
+	}
+	return response;
+}
+
+async function sendDesktopRequest(
+	request: DesktopRequest,
+): Promise<DesktopResponse> {
 	// A rejected IPC call or a dead dev proxy means the request never reached a
 	// backend, so there is no HTTP status to report. That is `status: null` --
 	// stated here rather than left to fall out of a failed `instanceof` check in
@@ -1388,6 +1417,7 @@ function openStreamTransport(
 	 * The proxy forwards it; an older backend ignores it.
 	 */
 	query.set("frontend_replace", "1");
+	query.set("inline_ui", "1");
 	/*
 	 * The same forwarded open-frame negotiation main's relay sends, and forwarded
 	 * for the same reason: this proxy must not claim on a renderer's behalf that

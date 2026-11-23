@@ -1,9 +1,16 @@
 import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { cn } from "@shared/lib/utils";
-import type { CSSProperties, FC, MouseEvent as ReactMouseEvent } from "react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { Root } from "hast";
+import type {
+	CSSProperties,
+	FC,
+	MouseEvent as ReactMouseEvent,
+	ReactNode,
+} from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, {
 	type Components,
+	type ExtraProps,
 	type UrlTransform,
 	defaultUrlTransform,
 } from "react-markdown";
@@ -79,7 +86,11 @@ export type MarkdownStyleProps = {
 	lineHeight?: number | string;
 };
 
+/** Trusted view nodes positioned against this exact Markdown source. */
+export type MarkdownInsert = { offset: number; node: ReactNode };
+
 type MarkdownRendererProps = {
+	inserts?: readonly MarkdownInsert[];
 	content: string;
 	styleProps?: MarkdownStyleProps;
 	className?: string;
@@ -785,6 +796,7 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		credentialCitations = false,
 		skillNames,
 		documentId,
+		inserts,
 	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
@@ -799,6 +811,44 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		 * tokens the plugin will meet cannot drift on a leading newline.
 		 */
 		useLinkEvidence(trimmed, linkify, documentId);
+		const baseComponents = credentialCitations
+			? MARKDOWN_COMPONENTS_WITH_CITATIONS
+			: MARKDOWN_COMPONENTS;
+		// Insert AFTER parsing one whole document: cutting the input into
+		// snippets would break reference links, lists and path evidence across
+		// the cut. Only our AST pass creates this element; Markdown HTML is inert.
+		const inline = useMemo(() => {
+			if (!inserts?.length) return;
+			const components = {
+				...baseComponents,
+				"lo-inline-widget": ({ node }: ExtraProps) => {
+					const index = node?.properties.index;
+					return typeof index === "number" ? inserts[index]?.node : null;
+				},
+			};
+			const insertWidgets = () => (tree: Root) => {
+				const children: Root["children"] = [];
+				let index = 0;
+				const pushBefore = (offset: number) => {
+					while (index < inserts.length && inserts[index].offset <= offset) {
+						children.push({
+							type: "element",
+							tagName: "lo-inline-widget",
+							properties: { index: index++ },
+							children: [],
+						});
+					}
+				};
+				for (const child of tree.children) {
+					const offset = child.position?.start.offset;
+					if (offset !== undefined) pushBefore(offset);
+					children.push(child);
+				}
+				pushBefore(trimmed.length);
+				tree.children = children;
+			};
+			return { components, rehype: [...rehypePlugins, insertWidgets] };
+		}, [baseComponents, inserts, rehypePlugins, trimmed.length]);
 
 		return (
 			<div
@@ -807,13 +857,9 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 			>
 				<ReactMarkdown
 					remarkPlugins={remarkPlugins}
-					rehypePlugins={rehypePlugins}
+					rehypePlugins={inline?.rehype ?? rehypePlugins}
 					urlTransform={LINK_URL_TRANSFORM}
-					components={
-						credentialCitations
-							? MARKDOWN_COMPONENTS_WITH_CITATIONS
-							: MARKDOWN_COMPONENTS
-					}
+					components={inline?.components ?? baseComponents}
 				>
 					{trimmed}
 				</ReactMarkdown>
@@ -974,6 +1020,7 @@ const OpenFenceBody = ({ info, body }: { info: string; body: string }) => {
 };
 
 type StreamingMarkdownProps = {
+	inserts?: readonly MarkdownInsert[];
 	content: string;
 	styleProps?: MarkdownStyleProps;
 	className?: string;
@@ -1005,6 +1052,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	content,
 	styleProps,
 	className,
+	inserts,
 }) => {
 	const scannerRef = useRef<BlockScanner | null>(null);
 	if (scannerRef.current === null) {
@@ -1058,6 +1106,42 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	if (tail !== "")
 		blocks.push({ key: blocks.length, source: tail, closed: false });
 	const style = useStyleVariables(styleProps);
+	// Keep the existing keyed prose nodes in one list even when a widget
+	// appears. Placement visits existing spans without re-parsing closed text.
+	let cursor = 0;
+	let insertIndex = 0;
+	const children: ReactNode[] = [];
+	const pushBefore = (offset: number) => {
+		while (
+			inserts &&
+			insertIndex < inserts.length &&
+			inserts[insertIndex].offset <= offset
+		) {
+			children.push(
+				<Fragment key={`widget-${insertIndex}`}>
+					{inserts[insertIndex].node}
+				</Fragment>,
+			);
+			insertIndex += 1;
+		}
+	};
+	for (const block of blocks) {
+		if (inserts && insertIndex < inserts.length) {
+			const start = content.indexOf(block.source, cursor);
+			if (start >= 0) {
+				pushBefore(start);
+				cursor = start + block.source.length;
+			}
+		}
+		children.push(
+			<ParsedBlock
+				key={block.key}
+				source={block.source}
+				closed={block.closed}
+			/>,
+		);
+	}
+	pushBefore(content.length);
 
 	return (
 		<div
@@ -1074,13 +1158,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 			 * block n is the same block for the life of the message, and the open
 			 * block's key is the index it will hold once closed.
 			 */}
-			{blocks.map((block) => (
-				<ParsedBlock
-					key={block.key}
-					source={block.source}
-					closed={block.closed}
-				/>
-			))}
+			{children}
 		</div>
 	);
 };
