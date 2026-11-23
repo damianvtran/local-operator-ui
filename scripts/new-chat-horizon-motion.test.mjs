@@ -33,6 +33,8 @@ function fixture({
 	forced = false,
 	hidden = false,
 	preview = true,
+	suppressed = false,
+	devicePixelRatio = 3,
 } = {}) {
 	const paper = new EventTarget();
 	const canvas = new EventTarget();
@@ -92,7 +94,7 @@ function fixture({
 			}
 		};
 	Object.assign(view, {
-		devicePixelRatio: 3,
+		devicePixelRatio,
 		performance: { now: () => now },
 		matchMedia(query) {
 			if (query === "(prefers-reduced-motion: reduce)") return motion;
@@ -130,9 +132,13 @@ function fixture({
 			return box;
 		},
 	});
-	const stop = preview
-		? trackNewChatHorizon(paper, canvas, quiet, true)
-		: trackNewChatHorizon(paper, canvas, quiet);
+	const controller = trackNewChatHorizon(
+		paper,
+		canvas,
+		quiet,
+		preview,
+		suppressed,
+	);
 	const notify = (name, ...args) => {
 		for (const observer of observers) {
 			if (observer.name === name) observer.callback(...args);
@@ -144,7 +150,8 @@ function fixture({
 		colors,
 		canvas,
 		ctx,
-		stop,
+		stop: controller.dispose,
+		setPresentation: controller.setPresentation,
 		observers,
 		dots: () => dots,
 		fills: () => fills,
@@ -162,6 +169,18 @@ function fixture({
 		visibility(hidden) {
 			document.hidden = hidden;
 			document.dispatchEvent(new Event("visibilitychange"));
+		},
+		loseContext() {
+			// A real loss clears the bitmap and resets drawing state. The browser
+			// will try to restore it unless the loss is cancelled by the owner.
+			dots = [];
+			ctx.dpr = 1;
+			return canvas.dispatchEvent(
+				new Event("contextlost", { cancelable: true }),
+			);
+		},
+		restoreContext() {
+			canvas.dispatchEvent(new Event("contextrestored"));
 		},
 		resize(width) {
 			canvas.clientWidth = width;
@@ -534,6 +553,77 @@ test("offscreen or hidden work is cancelled and never restarts itself", () => {
 	h.preview();
 	assert.equal(h.frames.size, 0);
 	assert.equal(h.state(), "still");
+});
+
+test("Canvas2D loss stops motion and same-size restore repaints the bounded settled print once", () => {
+	const h = fixture({ devicePixelRatio: 1.5 });
+	const still = fixture({ quiet: true, devicePixelRatio: 1.5 });
+	h.intersect(true);
+	assert.equal(h.frames.size, 1);
+	const before = h.paints();
+	assert.equal(h.loseContext(), true, "allow default browser restoration");
+	assert.equal(h.frames.size, 0, "lost canvas must not keep an rAF");
+	h.pointer("pointermove", 10, 50);
+	h.preview();
+	assert.equal(h.frames.size, 0);
+	assert.equal(h.paints(), before);
+	h.restoreContext();
+	assert.equal(h.canvas.width, 1350);
+	assert.equal(h.canvas.height, 360);
+	assert.equal(h.ctx.dpr, 1.5);
+	assert.deepEqual(h.dots(), still.dots());
+	assert.equal(h.paints(), before + 1);
+	assert.equal(h.state(), "still");
+	assert.equal(h.frames.size, 0);
+	h.stop();
+	still.stop();
+	h.loseContext();
+	h.restoreContext();
+	assert.equal(h.paints(), before + 1, "restore listener removed on disposal");
+});
+
+test("context restores without hidden work and paints at the correct scale on reveal", () => {
+	const h = fixture({ devicePixelRatio: 1.5 });
+	h.intersect(true);
+	h.setPresentation(false, true);
+	const count = h.paints();
+	const reads = h.reads();
+	h.intersect(false);
+	h.loseContext();
+	h.restoreContext();
+	h.resize(900);
+	h.theme({ color: "hidden near ink", outlineColor: "hidden far ink" });
+	h.pointer("pointermove", 10, 50);
+	h.preview();
+	assert.equal(h.frames.size, 0);
+	assert.equal(h.paints(), count);
+	assert.deepEqual(
+		h.reads(),
+		reads,
+		"hidden callbacks do not sample style or bounds",
+	);
+	assert.equal(h.ctx.dpr, 1, "leave the transform dirty until reveal");
+	h.setPresentation(false, false);
+	assert.equal(h.paints(), count, "not drawable until intersection returns");
+	h.intersect(true);
+	assert.equal(h.ctx.dpr, 1.5);
+	assert.equal(h.paints(), count + 1);
+	assert.ok(h.dots().length > 0);
+	assert.ok(h.fills().includes("hidden near ink"));
+	assert.equal(h.frames.size, 0);
+	h.stop();
+});
+
+test("a draft that starts behind its picker has no deferred arrival to replay", () => {
+	const h = fixture({ suppressed: true, preview: false });
+	assert.equal(h.paints(), 0);
+	// A reveal can commit before the first observer callback (e.g. restored
+	// input immediately dismissed). Neither callback order may start motion.
+	h.setPresentation(false, false);
+	h.intersect(true);
+	assert.ok(h.dots().length > 0);
+	assert.equal(h.frames.size, 0);
+	h.stop();
 });
 
 test("reduced motion and onboarding keep a full static print; forced colors suppress particles", () => {

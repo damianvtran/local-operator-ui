@@ -181,8 +181,9 @@ export function projectHelix(
 export function trackNewChatHorizon(
 	paper: HTMLElement,
 	canvas: HTMLCanvasElement,
-	quiet: boolean,
+	initialQuiet: boolean,
 	previewEnabled = false,
+	initiallySuppressed = false,
 ) {
 	const doc = paper.ownerDocument;
 	const view = doc.defaultView;
@@ -196,7 +197,14 @@ export function trackNewChatHorizon(
 	let height = 0;
 	let dpr = 1;
 	let visible: boolean | undefined;
-	let arriving = !quiet && !reduced.matches && !forced.matches && !doc.hidden;
+	let quiet = initialQuiet;
+	let suppressed = initiallySuppressed;
+	let contextLost = false;
+	// Picker and context events share one check in the paint/scheduling path.
+	let canvasUnavailable = suppressed;
+	let restoreTransform = false;
+	let arriving =
+		!quiet && !suppressed && !reduced.matches && !forced.matches && !doc.hidden;
 	let pose = arriving ? arrival(0) : REST;
 	let arrivalStarted: number | undefined;
 	let steerStarted: number | undefined;
@@ -219,6 +227,7 @@ export function trackNewChatHorizon(
 
 	const paint = () => {
 		if (
+			canvasUnavailable ||
 			!width ||
 			!height ||
 			doc.hidden ||
@@ -262,30 +271,40 @@ export function trackNewChatHorizon(
 			ctx.fill();
 		}
 	};
-	const palette = () => {
+	const readPalette = () => {
 		// Read resolved CSS colours (including light-dark), never the raw
 		// custom property expression, and only on setup/palette changes.
 		const style = view.getComputedStyle(canvas);
 		near = style.color;
 		far = style.outlineColor;
 		light = style.colorScheme === "light";
+	};
+	const palette = () => {
+		if (canvasUnavailable) return;
+		readPalette();
 		paint();
 	};
 	const resize = () => {
+		if (canvasUnavailable) return false;
 		bounds = undefined;
 		const nextWidth = canvas.clientWidth;
 		const nextHeight = canvas.clientHeight;
 		const nextDpr = Math.min(view.devicePixelRatio || 1, MAX_DPR);
-		if (width === nextWidth && height === nextHeight && dpr === nextDpr) return;
-		width = nextWidth;
-		height = nextHeight;
-		dpr = nextDpr;
-		canvas.width = Math.round(width * dpr);
-		canvas.height = Math.round(height * dpr);
+		if (width !== nextWidth || height !== nextHeight || dpr !== nextDpr) {
+			width = nextWidth;
+			height = nextHeight;
+			dpr = nextDpr;
+			canvas.width = Math.round(width * dpr);
+			canvas.height = Math.round(height * dpr);
+		} else if (!restoreTransform) return false;
+		// Restoration resets drawing state even when backing dimensions are unchanged.
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		restoreTransform = false;
 		paint();
+		return true;
 	};
 	const canMove = () =>
+		!canvasUnavailable &&
 		!quiet &&
 		!budgetLimited &&
 		!reduced.matches &&
@@ -314,7 +333,7 @@ export function trackNewChatHorizon(
 		}
 		// A dropped frame can be ordinary input or a resize; don't react to
 		// one. A sustained ~30 Hz renderer should keep its time for the
-		// composer. Settle once and don't retry until the next splash mount.
+		// composer. Settle once and don't retry until the next draft's splash.
 		lateFrames =
 			previousTick !== undefined && now - previousTick > LATE_FRAME_MS
 				? lateFrames + 1
@@ -403,12 +422,41 @@ export function trackNewChatHorizon(
 		steer(0, 0);
 	};
 	const suspend = () => {
+		if (canvasUnavailable) return;
 		// A hidden or interrupted arrival never restarts by itself. On return
 		// the paper already holds its full settled impression.
 		settle();
 		if (forced.matches && width && height) ctx.clearRect(0, 0, width, height);
 		resize();
 		paint();
+	};
+	const loseContext = () => {
+		// Leave the event uncancelled so Chromium attempts restoration. Neither
+		// rendering pressure nor a lost backing store should replay the entrance.
+		contextLost = canvasUnavailable = true;
+		settle();
+	};
+	const restoreContext = () => {
+		if (!contextLost) return;
+		contextLost = false;
+		canvasUnavailable = suppressed;
+		restoreTransform = true;
+		if (canvasUnavailable) return;
+		readPalette();
+		resize();
+	};
+	const setPresentation = (nextQuiet: boolean, nextSuppressed: boolean) => {
+		if (quiet === nextQuiet && suppressed === nextSuppressed) return;
+		const revealing = suppressed && !nextSuppressed;
+		quiet = nextQuiet;
+		suppressed = nextSuppressed;
+		canvasUnavailable = suppressed || contextLost;
+		// The picker and readiness changes are interruptions of this draft,
+		// not a fresh entrance. In particular, leave its budget fallback intact.
+		settle();
+		if (canvasUnavailable) return;
+		if (revealing) readPalette();
+		if (!resize()) paint();
 	};
 	const preview = (event: Event) => {
 		if (!canMove()) return;
@@ -432,6 +480,7 @@ export function trackNewChatHorizon(
 	const windowed = new view.IntersectionObserver(([entry]) => {
 		if (!entry || entry.isIntersecting === visible) return;
 		visible = entry.isIntersecting;
+		if (canvasUnavailable) return;
 		// Layout paint is immediate, but autoplay needs actual intersection.
 		if (arriving && canMove() && width && height) begin();
 		else suspend();
@@ -452,19 +501,26 @@ export function trackNewChatHorizon(
 	paper.addEventListener("pointerleave", leave, { passive: true });
 	paper.addEventListener("pointercancel", leave, { passive: true });
 	if (previewEnabled) canvas.addEventListener("lo:horizon-preview", preview);
-	return () => {
-		stop();
-		size.disconnect();
-		windowed.disconnect();
-		theme.disconnect();
-		reduced.removeEventListener("change", suspend);
-		forced.removeEventListener("change", suspend);
-		view.removeEventListener("resize", resize);
-		doc.removeEventListener("visibilitychange", suspend);
-		paper.removeEventListener("pointermove", move);
-		paper.removeEventListener("pointerleave", leave);
-		paper.removeEventListener("pointercancel", leave);
-		if (previewEnabled)
-			canvas.removeEventListener("lo:horizon-preview", preview);
+	canvas.addEventListener("contextlost", loseContext);
+	canvas.addEventListener("contextrestored", restoreContext);
+	return {
+		setPresentation,
+		dispose() {
+			stop();
+			size.disconnect();
+			windowed.disconnect();
+			theme.disconnect();
+			reduced.removeEventListener("change", suspend);
+			forced.removeEventListener("change", suspend);
+			view.removeEventListener("resize", resize);
+			doc.removeEventListener("visibilitychange", suspend);
+			paper.removeEventListener("pointermove", move);
+			paper.removeEventListener("pointerleave", leave);
+			paper.removeEventListener("pointercancel", leave);
+			if (previewEnabled)
+				canvas.removeEventListener("lo:horizon-preview", preview);
+			canvas.removeEventListener("contextlost", loseContext);
+			canvas.removeEventListener("contextrestored", restoreContext);
+		},
 	};
 }

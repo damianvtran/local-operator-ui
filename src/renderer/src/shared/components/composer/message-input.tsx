@@ -11383,9 +11383,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								: "hidden",
 						)}
 					>
+						{/* The argument picker hides this wrapper, but dismissing it
+						    must not grant the current draft another animation budget.
+						    All send blocks mute motion; only setup dims the print. */}
+						{showEmptyChatPrompt ? (
+							<NewChatHorizon
+								key={conversationId}
+								quiet={noProvider || noModel || serverOffline}
+								dimmed={noProvider}
+								suppressed={!showSplash}
+							/>
+						) : null}
 						{showSplash ? (
 							<>
-								<NewChatHorizon quiet={noProvider} />
 								{/*
 								 * With nothing connected there is no question to ask yet: the card
 								 * below says what to do, and a headline inviting a prompt the app

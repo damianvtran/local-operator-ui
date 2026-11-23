@@ -1,7 +1,11 @@
 /* Only the growing empty splash opts into this paper tone. The ellipse ends
    inside all four edges, so the band's gutters and the docked box cannot open
-   a seam. The deep palette role tints the resting paper, never the controls. */
-[data-lo-composer-splash]:has(.new-chat-horizon) {
+   a seam. The deep palette role tints the resting paper, never the controls.
+   The picker hides the art without unmounting its draft-owned controller, so
+   a retained but suppressed horizon must not tint the surrounding band. */
+[data-lo-composer-splash]:has(
+		.new-chat-horizon:not([data-lo-horizon-suppressed])
+	) {
 	--horizon-paper: light-dark(
 		color-mix(in oklab, var(--lo-sunken) 35%, transparent),
 		color-mix(in oklab, var(--lo-media-surface) 80%, var(--lo-sunken))
@@ -18,7 +22,10 @@
 /* Full app glass already supplies the conversation backing. Lay the same
    ellipse over it as a tint, not as a second ground; sidebar-only glass
    deliberately keeps the solid conversation's paper above. */
-html[data-glass~="canvas"] [data-lo-composer-splash]:has(.new-chat-horizon) {
+html[data-glass~="canvas"]
+	[data-lo-composer-splash]:has(
+		.new-chat-horizon:not([data-lo-horizon-suppressed])
+	) {
 	--horizon-paper: light-dark(
 		color-mix(in oklab, var(--lo-sunken) 22%, transparent),
 		color-mix(in oklab, var(--lo-media-surface) 24%, transparent)
@@ -73,7 +80,9 @@ html[data-glass~="canvas"] [data-lo-composer-splash]:has(.new-chat-horizon) {
 }
 
 @media (forced-colors: active) {
-	[data-lo-composer-splash]:has(.new-chat-horizon) {
+	[data-lo-composer-splash]:has(
+			.new-chat-horizon:not([data-lo-horizon-suppressed])
+		) {
 		background-image: none;
 	}
 
