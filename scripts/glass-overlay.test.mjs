@@ -45,6 +45,8 @@ const CSS_PATH = "src/renderer/src/styles/index.css";
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 const CSS = read(CSS_PATH);
 const CSS_NO_COMMENTS = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+const CLEAR_OUTLET_BACKING =
+	/(?:^|,)\s*html\[data-glass\]\s+main\[data-workspace-outlet\]\[data-glass-region="canvas-backing"\]\s*\{[^}]*background-color: transparent;/m;
 const FLOORS = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
 );
@@ -72,12 +74,7 @@ test("workspace glass leaves the sidebars unbacked and paints the inset only onc
 		CSS_NO_COMMENTS,
 		/\n\[data-workspace-shell\]:has\(\[data-chat-workspace\]\)\s*\{[^}]*background/,
 	);
-	assert.match(
-		rule(
-			'html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"]',
-		),
-		/background-color: transparent/,
-	);
+	assert.match(CSS_NO_COMMENTS, CLEAR_OUTLET_BACKING);
 	assert.match(
 		rule(".workspace-frame"),
 		/background-color: var\(--lo-canvas\)/,

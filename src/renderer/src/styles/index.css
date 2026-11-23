@@ -606,7 +606,8 @@ main[data-workspace-outlet] {
 	background-color: var(--lo-surface);
 }
 html[data-glass] main[data-workspace-outlet],
-html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"] {
+html[data-glass]
+	main[data-workspace-outlet][data-glass-region="canvas-backing"] {
 	background-color: transparent;
 }
 .workspace-frame-shell {
@@ -633,7 +634,8 @@ html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"]
 @supports (clip-path: shape(from 0 0, line to 100% 100%, close)) {
 	.workspace-frame-shell::before {
 		--gutter-and-radius: calc(
-			var(--workspace-frame-gutter) + var(--workspace-frame-radius)
+			var(--workspace-frame-gutter) +
+			var(--workspace-frame-radius)
 		);
 		content: "";
 		grid-area: 1 / 1;
@@ -678,8 +680,10 @@ html[data-glass] main[data-workspace-outlet][data-glass-region="canvas-backing"]
 }
 [data-browser-route-pending-chrome] {
 	min-height: calc(
-		var(--panel-top-pad, 0px) + var(--browser-tab-track-min) + 1px +
-			var(--browser-address-row-h)
+		var(--panel-top-pad, 0px) +
+		var(--browser-tab-track-min) +
+		1px +
+		var(--browser-address-row-h)
 	);
 }
 
@@ -2385,10 +2389,18 @@ html[data-glass] body,
 html[data-glass] #app {
 	background-color: transparent;
 }
-html[data-glass] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"] {
+html[data-glass]
+	:is(
+		main,
+		:where([data-workspace-frame])
+	)[data-glass-region="canvas-backing"] {
 	background-color: var(--lo-canvas);
 }
-html[data-glass~="canvas"] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"] {
+html[data-glass~="canvas"]
+	:is(
+		main,
+		:where([data-workspace-frame])
+	)[data-glass-region="canvas-backing"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-canvas) calc(var(--lo-glass-a-canvas) * 100%),
@@ -2449,8 +2461,12 @@ html[data-glass~="sidebar"] [data-glass-region="page-sidebar"] {
 /* Only a direct split route replaces the inset's wash. A nested tool/pane
  * must not clear it, nor may a split React has hidden behind its Suspense
  * fallback. The legacy main selector still serves the flush routes. */
-html[data-glass] main[data-glass-region="canvas-backing"]:has([data-glass-split]),
-html [data-workspace-frame][data-glass-region="canvas-backing"]:has(> [data-glass-split]):not(:has(> [data-workspace-route-pending])),
+html[data-glass]
+	main[data-glass-region="canvas-backing"]:has([data-glass-split]),
+html
+	[data-workspace-frame][data-glass-region="canvas-backing"]:has(
+		> [data-glass-split]
+	):not(:has(> [data-workspace-route-pending])),
 html[data-glass] [data-glass-split] {
 	background-color: transparent;
 }
@@ -2564,7 +2580,8 @@ html[data-glass~="pane"] [data-glass-region="pane-leaf"] {
 html[data-glass~="sidebar"] [data-glass-region="sidebar"],
 html[data-glass~="sidebar"] [data-glass-region="page-sidebar"],
 html[data-glass~="canvas"] [data-glass-region="canvas"],
-html[data-glass~="canvas"] :is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
+html[data-glass~="canvas"]
+	:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
 html[data-glass~="canvas"] [data-glass-region="panel"],
 html[data-glass~="pane"] [data-glass-region="pane"] {
 	--color-row-hover: color-mix(
@@ -2613,7 +2630,10 @@ html[data-glass~="sidebar"]
 html[data-glass~="canvas"]
 	:is(
 		[data-glass-region="canvas"],
-		:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"],
+		:is(
+				main,
+				:where([data-workspace-frame])
+			)[data-glass-region="canvas-backing"],
 		[data-glass-region="panel"]
 	)
 	[data-glass-placeholder],
@@ -3206,19 +3226,25 @@ html[data-glass~="pane"]
 /* The route host is only an ownership scope: its chrome and inset are
  * separate siblings, never alpha painted over a backing. The pane-hosted
  * Browser still uses its original enclosing pane ground. */
-html[data-glass] [data-browser-route-shell][data-glass-split][data-glass-region="pane"] {
+html[data-glass]
+	[data-browser-route-shell][data-glass-split][data-glass-region="pane"] {
 	background-color: transparent;
 }
-html[data-glass~="pane"] [data-browser-route-shell] > [data-browser-route-chrome],
+html[data-glass~="pane"]
+	[data-browser-route-shell]
+	> [data-browser-route-chrome],
 html[data-glass~="pane"] [data-browser-route-pending-chrome],
-html[data-glass~="pane"] [data-workspace-frame][data-workspace-browser][data-glass-region="pane"] {
+html[data-glass~="pane"]
+	[data-workspace-frame][data-workspace-browser][data-glass-region="pane"] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-elevated) calc(var(--lo-glass-a-elevated) * 100%),
 		transparent
 	);
 }
-html[data-glass~="pane"] [data-browser-route-shell][data-glass-chrome-live] > [data-browser-route-chrome] {
+html[data-glass~="pane"]
+	[data-browser-route-shell][data-glass-chrome-live]
+	> [data-browser-route-chrome] {
 	background-color: color-mix(
 		in srgb,
 		var(--lo-surface) calc(var(--lo-glass-a-surface) * 100%),

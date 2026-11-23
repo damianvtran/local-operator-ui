@@ -45,7 +45,7 @@ const FRAME_OVERFLOW = /overflow: clip;/;
 const DECORATIVE_FRAME_STYLES =
 	/(?:^|\s)(?:border(?:-color|-width|-style)?|box-shadow|outline|margin-top|margin-block-start|padding[^:]*):/;
 const SPLIT_PAINT_GUARD =
-	/html \[data-workspace-frame\]\[data-glass-region="canvas-backing"\]:has\(> \[data-glass-split\]\):not\(:has\(> \[data-workspace-route-pending\]\)\),\s*html\[data-glass\] \[data-glass-split\] \{\s*background-color: transparent;/;
+	/(?:^|,)\s*html\s+\[data-workspace-frame\]\[data-glass-region="canvas-backing"\]:has\(\s*>\s*\[data-glass-split\]\s*\):not\(:has\(\s*>\s*\[data-workspace-route-pending\]\s*\)\),\s*html\[data-glass\]\s+\[data-glass-split\]\s*\{\s*background-color: transparent;/m;
 
 /** Compile the actual JSX with inert page leaves. This exercises React Router's
  * matcher without importing App's live IPC, feature hooks or Electron process. */
