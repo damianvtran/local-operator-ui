@@ -167,6 +167,7 @@ const installControls = (start = {}) => {
  * scripts the answer.
  */
 window.__editCalls = [];
+window.__voiceTextCalls = [];
 window.api = {
 	desktop: {
 		request: async (request) => {
@@ -204,6 +205,11 @@ window.api = {
 					};
 				return reply;
 			}
+			if (request?.op === "voice.text") {
+				// What `/voice/text` answers, scripted per case; every request is kept.
+				window.__voiceTextCalls.push(request);
+				return { status: 200, body: { result: window.__voiceText } };
+			}
 			if (request?.op === "voice.status") {
 				return {
 					status: 200,
@@ -226,7 +232,8 @@ const bundle = await build({
 		contents: `
 			export { VoiceComposerStrip, ComposerVoiceButton, composerVoiceView, dictationOffReason, storyTime } from "./src/renderer/src/features/voice/voice-composer";
 			export { useVoiceStore } from "./src/renderer/src/features/voice/voice-store";
-			export { registerVoiceRouteOpener } from "./src/renderer/src/features/voice/qwen-voice-controller";
+			export { registerVoiceRouteOpener, replaySpoken, spokenSourceOf } from "./src/renderer/src/features/voice/qwen-voice-controller";
+			export { SpokenSummaryBlock, SpokenReplyNote } from "./src/renderer/src/features/voice/spoken-summary-block";
 			export { applyVoiceActive, controlVoice } from "./src/renderer/src/features/voice/use-voice-status";
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { useVoiceSwitchStore } from "./src/renderer/src/features/voice/use-voice-switch";
@@ -271,6 +278,10 @@ const {
 	useVoiceStore,
 	useVoiceSwitchStore,
 	registerVoiceRouteOpener,
+	replaySpoken,
+	spokenSourceOf,
+	SpokenSummaryBlock,
+	SpokenReplyNote,
 	i18n,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -305,8 +316,12 @@ afterEach(async () => {
 	window.__voiceStatusExtra = null;
 	window.__editReply = null;
 	window.__editCalls = [];
+	window.__voiceTextCalls = [];
+	window.__voiceText = null;
 	window.api.desktop.qwenVoice = undefined;
 	useVoiceStore.setState({
+		spoken: {},
+		reveal: null,
 		active: undefined,
 		rig: undefined,
 		activity: null,
@@ -1937,4 +1952,375 @@ test("SWITCH: with the switch off the wave button does not render", async () => 
 	} finally {
 		useVoiceSwitchStore.setState({ enabled: true });
 	}
+});
+
+/* -------------------------------------------------------------------------- */
+/* THE SPOKEN SUMMARY (the agent's `Spoken:` paragraph)                        */
+/* -------------------------------------------------------------------------- */
+
+const SUMMARY_TEXT = "Use SessionStart: it runs at the start of every session.";
+const REPLY_FULL = "Hook · When it runs\nSessionStart · At the start";
+const MSG = "msg-7";
+
+/** A summary exchange row, as the controller's `setLastSpoken` completes it. */
+const summaryRow = (patch = {}) => ({
+	kind: "exchange",
+	at: Date.parse("2026-11-23T11:07:00Z"),
+	sessionId: AT,
+	heard: "compare the hooks",
+	spoken: SUMMARY_TEXT,
+	full: REPLY_FULL,
+	hasFullText: true,
+	truncated: false,
+	source: "summary",
+	messageId: MSG,
+	...patch,
+});
+
+test("History: a summary row shows the summary, a link to the full reply and Replay - not the reply", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		useVoiceStore.setState({ story: [summaryRow()] });
+	});
+	await openHistory();
+	const row = window.document.querySelector('[data-voice-story="exchange"]');
+	assert.match(row.textContent, /Use SessionStart: it runs at the start/);
+	assert.doesNotMatch(row.textContent, /Hook · When it runs/);
+	const link = row.querySelector("[data-voice-story-link]");
+	assert.equal(link.textContent.trim(), "Full reply in chat ↑");
+	assert.ok(row.querySelector("[data-voice-story-replay]"));
+	assert.equal(row.querySelector("[data-voice-story-cut]"), null);
+
+	// The link asks the transcript to show THIS message, once per press.
+	await act(async () => {
+		link.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.deepEqual(
+		{ ...useVoiceStore.getState().reveal, nonce: undefined },
+		{ sessionId: AT, messageId: MSG, nonce: undefined },
+	);
+	const first = useVoiceStore.getState().reveal.nonce;
+	await act(async () => {
+		link.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(useVoiceStore.getState().reveal.nonce, first + 1);
+
+	// A summary cut at the cap says so, as the row's own cut.
+	await act(async () => {
+		useVoiceStore.setState({ story: [summaryRow({ truncated: true })] });
+	});
+	await flush();
+	const cut = window.document
+		.querySelector('[data-voice-story="exchange"]')
+		.querySelector("[data-voice-story-cut]");
+	assert.match(cut.textContent, /Spoken aloud: first part only/);
+});
+
+test("History: a reply row (fallback, or an older server) is the full-reply rendering, with no link", async () => {
+	await mountStrip();
+	await voiceReady();
+	for (const patch of [
+		{ source: "reply" },
+		{ source: undefined, messageId: undefined },
+	]) {
+		await act(async () => {
+			useVoiceStore.setState({
+				story: [summaryRow({ spoken: "Hook When it runs", ...patch })],
+			});
+		});
+		await openHistory();
+		const row = window.document.querySelector('[data-voice-story="exchange"]');
+		assert.equal(
+			row.querySelector(".whitespace-pre-line").textContent,
+			REPLY_FULL,
+		);
+		assert.equal(row.querySelector("[data-voice-story-link]"), null);
+		assert.equal(row.querySelector("[data-voice-story-replay]"), null);
+	}
+});
+
+test("older server: a missing spoken_source reads as the reply", () => {
+	assert.equal(spokenSourceOf({ text: "x", spoken_chars: 1 }), "reply");
+	assert.equal(
+		spokenSourceOf({ text: "x", spoken_chars: 1, spoken_source: "reply" }),
+		"reply",
+	);
+	assert.equal(
+		spokenSourceOf({ text: "x", spoken_chars: 1, spoken_source: "summary" }),
+		"summary",
+	);
+	assert.equal(
+		spokenSourceOf({ text: "x", spoken_chars: 1, spoken_source: "other" }),
+		"reply",
+	);
+	assert.equal(spokenSourceOf(null), "reply");
+});
+
+/** The rig's bridge, recording what it was asked to say. */
+function installSpeak() {
+	const spoken = [];
+	window.api.desktop.qwenVoice = {
+		speak: async (request) => {
+			spoken.push(request);
+			return { spoken: true };
+		},
+		setMuted: async (muted) => controlStatus({ muted }),
+	};
+	return spoken;
+}
+
+async function mountBlock(props) {
+	if (root) {
+		await act(async () => {
+			root.unmount();
+		});
+		root = null;
+	}
+	window.document.body.innerHTML = "<div id='root'></div>";
+	root = createRoot(window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(SpokenSummaryBlock, {
+					sessionId: AT,
+					messageId: MSG,
+					summary: SUMMARY_TEXT,
+					streaming: false,
+					...props,
+				}),
+				React.createElement(SpokenReplyNote, { sessionId: AT, messageId: MSG }),
+			),
+		);
+	});
+	await flush();
+	return window.document.querySelector("[data-spoken-summary]");
+}
+
+const spokenFrom = (source, patch = {}) =>
+	useVoiceStore.getState().setLastSpoken({
+		sessionId: AT,
+		text: SUMMARY_TEXT,
+		truncated: false,
+		messageId: MSG,
+		source,
+		at: Date.now(),
+		...patch,
+	});
+
+test("the block: voice off, or a message this window never spoke, is 'Spoken summary' with no control", async () => {
+	let block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "static");
+	assert.match(block.textContent, /Spoken summary/);
+	assert.match(block.textContent, /Use SessionStart/);
+	assert.equal(block.querySelector("[data-spoken-control]"), null);
+	assert.equal(block.getAttribute("aria-label"), "Spoken summary");
+
+	// Voice on, but this window never spoke the message (an older turn).
+	await voiceReady();
+	block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "static");
+	assert.equal(block.querySelector("[data-spoken-control]"), null);
+});
+
+test("the block: spoken, cut, stopped early and muted each say so, and offer the right control", async () => {
+	await voiceReady();
+	await act(async () => spokenFrom("summary"));
+	let block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "spoken");
+	assert.match(block.textContent, /Spoken aloud/);
+	assert.ok(block.querySelector('[data-spoken-control="replay"]'));
+
+	await act(async () => spokenFrom("summary", { truncated: true }));
+	block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "cut");
+	assert.match(block.textContent, /Spoken aloud · first part only/);
+
+	// A barge-in marks the message, not just the strip's three-second word.
+	await act(async () => {
+		spokenFrom("summary");
+		const store = useVoiceStore.getState();
+		store.notePlayback("started", AT, Date.now() - 5000);
+		store.notePlayback("cancelled", AT, Date.now());
+	});
+	block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "stopped");
+	assert.match(block.textContent, /stopped early/);
+	assert.ok(block.querySelector('[data-spoken-control="replay"]'));
+
+	await act(async () => spokenFrom("summary", { muted: true }));
+	block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "muted");
+	assert.match(block.textContent, /Not spoken \(muted\)/);
+	assert.ok(block.querySelector('[data-spoken-control="play"]'));
+	assert.equal(block.querySelector('[data-spoken-control="replay"]'), null);
+});
+
+test("the block: speaking says so, with no control, and a streaming paragraph is 'To be spoken'", async () => {
+	await voiceReady();
+	await act(async () => {
+		spokenFrom("summary");
+		useVoiceStore.getState().setActivity("speaking");
+	});
+	let block = await mountBlock();
+	assert.equal(block.getAttribute("data-spoken-summary"), "speaking");
+	assert.equal(block.textContent.trim().startsWith("Speaking"), true);
+	assert.equal(block.querySelector("[data-spoken-control]"), null);
+
+	await act(async () => {
+		useVoiceStore.setState({ spoken: {}, lastSpoken: null, activity: null });
+		useVoiceStore.getState().setExchange("working", AT);
+	});
+	block = await mountBlock({ streaming: true, summary: "Use Session" });
+	assert.equal(block.getAttribute("data-spoken-summary"), "upcoming");
+	assert.match(block.textContent, /To be spoken/);
+	assert.match(block.textContent, /Use Session/);
+});
+
+test("Replay is an explicit source reference: the server picks the paragraph, the rig says it, no History row moves", async () => {
+	await voiceReady();
+	const said = installSpeak();
+	window.__voiceText = {
+		text: SUMMARY_TEXT,
+		spoken_chars: SUMMARY_TEXT.length,
+		spoken_source: "summary",
+		truncated: false,
+		full_text: REPLY_FULL,
+	};
+	await act(async () => {
+		// The earlier turn was spoken (no row to complete); a NEW take is then out.
+		spokenFrom("summary", { at: Date.now() - 6000 });
+		useVoiceStore.getState().noteTake(AT, "and the tests?", Date.now() - 4000);
+	});
+	// An unanswered take is in flight: a replay must not hand it the old summary.
+	const block = await mountBlock();
+	await act(async () => {
+		block
+			.querySelector('[data-spoken-control="replay"]')
+			.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.equal(window.__voiceTextCalls.length, 1);
+	assert.deepEqual(window.__voiceTextCalls[0].source, {
+		kind: "message",
+		messageId: MSG,
+	});
+	assert.deepEqual(said, [{ text: SUMMARY_TEXT, kind: "reply" }]);
+	const row = useVoiceStore.getState().story.at(-1);
+	assert.equal(row.spoken, null, "the in-flight take's row stays unanswered");
+	assert.equal(useVoiceStore.getState().spoken[MSG].source, "summary");
+});
+
+test("Play on a muted block unmutes, then replays", async () => {
+	await voiceReady();
+	const said = installSpeak();
+	window.__voiceText = {
+		text: SUMMARY_TEXT,
+		spoken_chars: 10,
+		spoken_source: "summary",
+	};
+	await act(async () => spokenFrom("summary", { muted: true }));
+	const block = await mountBlock();
+	await act(async () => {
+		block
+			.querySelector('[data-spoken-control="play"]')
+			.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.equal(said.length, 1);
+	assert.equal(useVoiceStore.getState().spoken[MSG].muted, false);
+});
+
+test("replaySpoken is a direct call: it neither reads nor writes the turn fold's dedupe", async () => {
+	await voiceReady();
+	const said = installSpeak();
+	window.__voiceText = { text: "Again.", spoken_chars: 6 };
+	await replaySpoken(AT, MSG);
+	await replaySpoken(AT, MSG);
+	// Twice asked, twice spoken: the dedupe guards the automatic path only.
+	assert.equal(said.length, 2);
+	// An older server: no spoken_source, so the record reads as the reply.
+	assert.equal(useVoiceStore.getState().spoken[MSG].source, "reply");
+});
+
+test("the fallback footnote: a cut reply says so under the reply, with Replay", async () => {
+	await voiceReady();
+	await act(async () => spokenFrom("reply", { truncated: true }));
+	if (root) {
+		await act(async () => root.unmount());
+		root = null;
+	}
+	window.document.body.innerHTML = "<div id='root'></div>";
+	root = createRoot(window.document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(SpokenReplyNote, { sessionId: AT, messageId: MSG }),
+		);
+	});
+	await flush();
+	const note = window.document.querySelector("[data-spoken-reply-note]");
+	assert.match(note.textContent, /Spoken aloud: first part only/);
+	assert.ok(note.querySelector('[data-spoken-control="replay"]'));
+	await act(async () => spokenFrom("reply", { truncated: false }));
+	await flush();
+	assert.equal(window.document.querySelector("[data-spoken-reply-note]"), null);
+});
+
+test("the strip: Replay sits left of Pause, shows the summary at rest, and goes with the next take", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		const store = useVoiceStore.getState();
+		store.noteTake(AT, "compare the hooks", Date.now() - 5000);
+		spokenFrom("summary", { at: Date.now() - 4000 });
+	});
+	await flush();
+	assert.equal(chipText(), "Listening");
+	assert.match(
+		caption().textContent,
+		/Use SessionStart/,
+		"the summary is kept",
+	);
+	const replay = window.document.querySelector('[data-voice-action="replay"]');
+	assert.ok(replay);
+	const pause = window.document.querySelector('[data-voice-action="pause"]');
+	assert.equal(
+		replay.compareDocumentPosition(pause) &
+			window.Node.DOCUMENT_POSITION_FOLLOWING,
+		window.Node.DOCUMENT_POSITION_FOLLOWING,
+		"Replay is before Pause",
+	);
+
+	// A reply spoken from its own text keeps today's idle caption (no long line).
+	await act(async () =>
+		spokenFrom("reply", { text: "A very long first part." }),
+	);
+	await flush();
+	assert.doesNotMatch(caption().textContent, /A very long first part/);
+
+	// The next take retires both.
+	await act(async () => {
+		useVoiceStore.getState().noteTake(AT, "and the tests", Date.now() + 1000);
+	});
+	await flush();
+	assert.equal(
+		window.document.querySelector('[data-voice-action="replay"]'),
+		null,
+	);
+});
+
+test("the cut chip follows the server's cut for a summary too, and a normal summary has none", async () => {
+	await mountStrip();
+	await voiceReady();
+	await act(async () => {
+		useVoiceStore.getState().noteTake(AT, "compare", Date.now() - 5000);
+		spokenFrom("summary", { at: Date.now() - 4000 });
+	});
+	await flush();
+	assert.equal(window.document.querySelector("[data-voice-cut]"), null);
+	await act(async () => spokenFrom("summary", { truncated: true }));
+	await flush();
+	assert.ok(window.document.querySelector("[data-voice-cut]"));
 });

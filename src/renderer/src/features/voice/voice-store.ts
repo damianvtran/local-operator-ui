@@ -39,6 +39,35 @@ export type VoicePhase =
 	| "working"
 	| "error";
 
+/**
+ * What the server spoke: the agent's own `Spoken:` paragraph (`summary`), or the
+ * reply itself, cleaned and capped (`reply`). The wire field is `spoken_source`;
+ * an older server sends none, and absence reads as `reply` - today's behaviour.
+ */
+export type VoiceSpokenSource = "summary" | "reply";
+
+/**
+ * WHAT THE RIG WAS ASKED TO SAY FOR ONE MESSAGE, kept by message id so the
+ * transcript can draw the spoken summary's block in the state the audio is in
+ * (spoken, cut short, stopped early, muted) without asking the server again.
+ * This window's own record: a message spoken before a reload has none, and its
+ * block reads as a plain "Spoken summary".
+ */
+export type VoiceSpokenEntry = {
+	sessionId: string;
+	source: VoiceSpokenSource;
+	/** The server cut what was spoken at its cap. */
+	truncated: boolean;
+	/** The playback was cut by the person speaking (a barge-in). */
+	interrupted: boolean;
+	/** The speaker was muted when it was spoken: nothing was heard. */
+	muted: boolean;
+	at: number;
+};
+
+/** How many messages' spoken records are kept; a window's recent turns. */
+export const VOICE_SPOKEN_KEPT = 24;
+
 /** The live half of the exchange, as the rig reports it. */
 export type VoiceActivity = "speaking" | "hearing";
 
@@ -87,6 +116,13 @@ export type VoiceStoryRow =
 			hasFullText: boolean;
 			/** The AUDIO was cut at the server's cap; `full` is never cut. */
 			truncated: boolean;
+			/**
+			 * What was spoken, and for which message. `summary` means the Voice line
+			 * is the agent's spoken paragraph with a link to the full reply, not the
+			 * reply itself; `reply` is History as the full-text change drew it.
+			 */
+			source: VoiceSpokenSource;
+			messageId: string | null;
 	  }
 	| { kind: "interrupted"; at: number; sessionId: string; seconds: number }
 	| { kind: "not_sent"; at: number; sessionId: string; heard: string };
@@ -114,9 +150,20 @@ type VoiceStoreState = {
 		sessionId: string;
 		text: string;
 		truncated: boolean;
+		/** Which message was spoken and what the server picked (`summary`/`reply`). */
+		messageId?: string;
+		source: VoiceSpokenSource;
 		/** When the words went out, so the cut chip can retire on the next take. */
 		at: number;
 	} | null;
+	/** Per-message spoken records (see `VoiceSpokenEntry`), bounded, by message id. */
+	spoken: Record<string, VoiceSpokenEntry>;
+	/**
+	 * A request from the History panel to show one message in the transcript
+	 * ("Full reply in chat"). A nonce so asking twice for the same message scrolls
+	 * twice; the transcript settles it, the way the notification drawer's does.
+	 */
+	reveal: { sessionId: string; messageId: string; nonce: number } | null;
 	/**
 	 * The last take this window relayed, so the strip can say "You said …" while
 	 * the answer is being worked out. The take's text is the rig's transcript of
@@ -180,14 +227,10 @@ type VoiceStoreActions = {
 		reason?: VoiceExchangeError,
 	) => void;
 	setActivity: (activity: VoiceActivity | null) => void;
-	setLastSpoken: (spoken: {
-		sessionId: string;
-		text: string;
-		/** The uncapped display text; absent from an older server, then `text`. */
-		fullText?: string;
-		truncated: boolean;
-		at: number;
-	}) => void;
+	setLastSpoken: (spoken: SpokenInput) => void;
+	/** Ask the transcript to show one message; see `reveal`. */
+	requestReveal: (sessionId: string, messageId: string) => void;
+	settleReveal: (nonce: number) => void;
 	setDroppedTake: (at: number | null) => void;
 	/** A take was relayed: the strip's subject and the history's `You:` half. */
 	noteTake: (sessionId: string, text: string, at: number) => void;
@@ -216,6 +259,26 @@ type VoiceStoreActions = {
 	setCardPending: (sessionId: string, pending: boolean) => void;
 };
 
+type SpokenInput = {
+	sessionId: string;
+	text: string;
+	/** The uncapped display text; absent from an older server, then `text`. */
+	fullText?: string;
+	truncated: boolean;
+	/** The message spoken; absent for a gate announcement. */
+	messageId?: string;
+	source: VoiceSpokenSource;
+	/** The speaker was muted when this went out. */
+	muted?: boolean;
+	/**
+	 * An explicit second take of a message already spoken (Replay): it refreshes
+	 * the strip and the message's record but completes no History row, because no
+	 * take is waiting on it.
+	 */
+	replay?: boolean;
+	at: number;
+};
+
 /** Oldest rows fall off the front, so the panel's "last 5" is the whole bound. */
 function capStory(story: VoiceStoryRow[]): VoiceStoryRow[] {
 	return story.length > VOICE_STORY_LIMIT
@@ -226,13 +289,7 @@ function capStory(story: VoiceStoryRow[]): VoiceStoryRow[] {
 /** Fill the newest unanswered exchange for a session, or add nothing. */
 function completeStoryRow(
 	story: VoiceStoryRow[],
-	spoken: {
-		sessionId: string;
-		text: string;
-		fullText?: string;
-		truncated: boolean;
-		at: number;
-	},
+	spoken: SpokenInput,
 ): VoiceStoryRow[] {
 	for (let index = story.length - 1; index >= 0; index--) {
 		const row = story[index];
@@ -252,10 +309,28 @@ function completeStoryRow(
 			full: fullText || spoken.text,
 			hasFullText: Boolean(fullText),
 			truncated: spoken.truncated,
+			source: spoken.source,
+			messageId: spoken.messageId ?? null,
 		};
 		return next;
 	}
 	return story;
+}
+
+/** Record one message's spoken state, newest last, oldest dropped past the bound. */
+function keepSpoken(
+	spoken: Record<string, VoiceSpokenEntry>,
+	messageId: string,
+	entry: VoiceSpokenEntry,
+): Record<string, VoiceSpokenEntry> {
+	const next = { ...spoken };
+	// Re-insert so a replayed message is the newest key, not the next to go.
+	delete next[messageId];
+	next[messageId] = entry;
+	const keys = Object.keys(next);
+	for (const key of keys.slice(0, Math.max(0, keys.length - VOICE_SPOKEN_KEPT)))
+		delete next[key];
+	return next;
 }
 
 export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
@@ -264,6 +339,8 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		rig: undefined,
 		activity: null,
 		lastSpoken: null,
+		spoken: {},
+		reveal: null,
 		lastTake: null,
 		lastRefused: null,
 		playbackStartedAt: null,
@@ -337,19 +414,49 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 								: (state.readyAt ?? Date.now()),
 			})),
 		setActivity: (activity) => set({ activity }),
-		setLastSpoken: (lastSpoken) =>
+		setLastSpoken: (input) =>
 			set((state) => ({
-				lastSpoken,
+				lastSpoken: {
+					sessionId: input.sessionId,
+					text: input.text,
+					truncated: input.truncated,
+					messageId: input.messageId,
+					source: input.source,
+					at: input.at,
+				},
+				spoken: input.messageId
+					? keepSpoken(state.spoken, input.messageId, {
+							sessionId: input.sessionId,
+							source: input.source,
+							truncated: input.truncated,
+							interrupted: false,
+							muted: input.muted === true,
+							at: input.at,
+						})
+					: state.spoken,
 				/*
 				 * The history's `Voice:` half lands on the row its take opened: the take is
 				 * relayed first and the reply is spoken afterwards, so the newest row for
 				 * this session that nothing has answered yet is that take's own row. A
 				 * spoken line with no such row (a gate announcement, or a reply spoken
 				 * after the window was reloaded) has no exchange to complete and adds
-				 * none - a row with no question would say nothing true.
+				 * none - a row with no question would say nothing true. A REPLAY has none
+				 * either, and must not hand a message's summary to a take still in flight.
 				 */
-				story: completeStoryRow(state.story, lastSpoken),
+				story: input.replay
+					? state.story
+					: completeStoryRow(state.story, input),
 			})),
+		requestReveal: (sessionId, messageId) =>
+			set((state) => ({
+				reveal: {
+					sessionId,
+					messageId,
+					nonce: (state.reveal?.nonce ?? 0) + 1,
+				},
+			})),
+		settleReveal: (nonce) =>
+			set((state) => (state.reveal?.nonce === nonce ? { reveal: null } : {})),
 		setDroppedTake: (droppedTakeAt) => set({ droppedTakeAt }),
 		noteTake: (sessionId, text, at) =>
 			set((state) => ({
@@ -366,6 +473,8 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 						full: null,
 						hasFullText: false,
 						truncated: false,
+						source: "reply",
+						messageId: null,
 					},
 				]),
 			})),
@@ -438,8 +547,20 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				set({ playbackStartedAt: null });
 				return;
 			}
+			const spokenId = state.lastSpoken?.messageId;
+			const spokenEntry = spokenId ? state.spoken[spokenId] : undefined;
 			set({
 				playbackStartedAt: null,
+				// The block under the message says "stopped early" for as long as the
+				// message is on screen; the strip's own word retires in three seconds.
+				...(spokenId && spokenEntry && spokenEntry.sessionId === sessionId
+					? {
+							spoken: {
+								...state.spoken,
+								[spokenId]: { ...spokenEntry, interrupted: true },
+							},
+						}
+					: {}),
 				tick: { kind: "interrupted", sessionId, at, seconds },
 				story: capStory([
 					...state.story,

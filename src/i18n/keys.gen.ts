@@ -8521,6 +8521,7 @@ export type MessageParams = {
 	"ui.chat.voice.error_not_sent": undefined;
 	"ui.chat.voice.error_provider_unset": undefined;
 	"ui.chat.voice.error_start_failed": undefined;
+	"ui.chat.voice.full_reply_link": undefined;
 	"ui.chat.voice.go_there": undefined;
 	"ui.chat.voice.heard_label": undefined;
 	"ui.chat.voice.history": undefined;
@@ -8554,7 +8555,9 @@ export type MessageParams = {
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
 	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.play": undefined;
 	"ui.chat.voice.provider_unset": undefined;
+	"ui.chat.voice.replay": undefined;
 	"ui.chat.voice.reply_ended": undefined;
 	"ui.chat.voice.retry": undefined;
 	"ui.chat.voice.said_label": undefined;
@@ -8567,6 +8570,13 @@ export type MessageParams = {
 	"ui.chat.voice.stream_reconnect": undefined;
 	"ui.chat.voice.strip_pause": undefined;
 	"ui.chat.voice.strip_resume": undefined;
+	"ui.chat.voice.summary_cut": undefined;
+	"ui.chat.voice.summary_label": undefined;
+	"ui.chat.voice.summary_muted": undefined;
+	"ui.chat.voice.summary_speaking": undefined;
+	"ui.chat.voice.summary_static": undefined;
+	"ui.chat.voice.summary_stopped": undefined;
+	"ui.chat.voice.summary_upcoming": undefined;
 	"ui.chat.voice.switched_from": { title: string };
 	"ui.chat.voice.switched_from_untitled": undefined;
 	"ui.chat.voice.take_too_long": undefined;

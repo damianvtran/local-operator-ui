@@ -1600,7 +1600,7 @@ const READS_INPUT_MODE = /input_mode|inputMode/;
 const controllerBundle = await build({
 	stdin: {
 		contents:
-			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice, voiceEventEffects, applyByokMessage } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
+			'export { feedTurns, sendVoiceTake, takeIsEcho, isEcho, isQwenPhrase, isQwenPhraseHeard, markPhraseSpoken, PHRASE_ECHO_WINDOW_MS, rememberSpoken, speechMs, viewedSessionId, spokenTruncated, spokenSourceOf, LONG_TAKE_MS, noteSpeechSegment, takeDroppedNotice, voiceEventEffects, applyByokMessage } from "./src/renderer/src/features/voice/qwen-voice-controller"; export { useVoiceStore, voicePhaseOf, activityOfEvent } from "./src/renderer/src/features/voice/voice-store"; export { scheduleReplyEndTone, playReplyEndTone, END_TONE_HZ, END_NOTE_SECONDS } from "./src/renderer/src/features/voice/voice-earcons";',
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -2901,6 +2901,18 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.equal(spokenTruncated(undefined), false);
 	assert.equal(spokenTruncated(null), false);
+	// The server's `spoken_source`: only an explicit "summary" is one; a server
+	// from before the field (and any value this app does not know) is the reply.
+	const { spokenSourceOf } = await controller();
+	const base = { text: "a", spoken_chars: 1 };
+	assert.equal(
+		spokenSourceOf({ ...base, spoken_source: "summary" }),
+		"summary",
+	);
+	assert.equal(spokenSourceOf({ ...base, spoken_source: "reply" }), "reply");
+	assert.equal(spokenSourceOf(base), "reply");
+	assert.equal(spokenSourceOf({ ...base, spoken_source: "other" }), "reply");
+	assert.equal(spokenSourceOf(undefined), "reply");
 	// And the speak path records it for the panel, and plays the cue only on an
 	// ended playback (a cancelled one is an interruption, not an end).
 	const source = readFileSync(
@@ -2909,7 +2921,7 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.match(
 		source,
-		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*fullText: spoken\.full_text,\s*truncated: spokenTruncated\(spoken\),\s*at: Date\.now\(\),?\s*\}\)/,
+		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*fullText: spoken\.full_text,\s*truncated: spokenTruncated\(spoken\),[\s\S]*?source: spokenSourceOf\(spoken\),[\s\S]*?at: Date\.now\(\),?\s*\}\)/,
 	);
 	/*
 	 * THE DECISION MOVED INTO `voiceEventEffects` (QA round 4), so the scan names

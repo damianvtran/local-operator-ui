@@ -778,6 +778,14 @@ export type DesktopVoiceText = {
 	 * absent (a server from before the field), which is today's behaviour.
 	 */
 	full_text?: string;
+	/**
+	 * What `text` is: the agent's own `Spoken:` paragraph (`summary`), or the
+	 * reply itself, cleaned and capped (`reply`). Optional and additive: a server
+	 * from before the spoken summary sends none, and absence reads as `reply`,
+	 * today's behaviour. With `summary`, `truncated` says the summary itself was
+	 * cut at the cap; with `reply` it says the reply's tail was.
+	 */
+	spoken_source?: "summary" | "reply";
 };
 
 /**

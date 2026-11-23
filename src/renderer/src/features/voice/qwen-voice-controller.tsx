@@ -60,7 +60,11 @@ import type { DesktopVoiceText } from "../../../../shared/desktop-control-contra
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceSwitchSync } from "./use-voice-switch";
 import { playReplyEndTone } from "./voice-earcons";
-import { activityOfEvent, useVoiceStore } from "./voice-store";
+import {
+	type VoiceSpokenSource,
+	activityOfEvent,
+	useVoiceStore,
+} from "./voice-store";
 import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
 import {
 	VOICE_TAKE_ROW_TTL_MS,
@@ -904,13 +908,32 @@ export function spokenTruncated(
 }
 
 /**
+ * What the server spoke for a message: its `spoken_source`, with a missing field
+ * (a server from before the summary) reading as `reply` - the whole reply cleaned
+ * and capped, which is what every older server does.
+ */
+export function spokenSourceOf(
+	spoken: DesktopVoiceText | null | undefined,
+): VoiceSpokenSource {
+	return spoken?.spoken_source === "summary" ? "summary" : "reply";
+}
+
+/**
  * Speak one source reference: the server resolves the words (`/voice/text`),
  * main checks they are the words it just relayed, and the rig says them. The
  * renderer never composes what is spoken.
+ *
+ * `replay` is the ONE way a message is spoken twice. The turn fold's dedupe
+ * (`voice-turns.ts`, a message id spoken once across reconnect replays) guards
+ * the AUTOMATIC path - a replayed stream frame must not read a reply out again -
+ * and lives in `stepVoiceTurns`, upstream of this function; a person pressing
+ * Replay is an explicit new take and calls here directly, so no dedupe set is
+ * written, read or bypassed.
  */
 async function speakSource(
 	sessionId: string,
 	source: VoiceSpeakSource,
+	options: { replay?: boolean } = {},
 ): Promise<void> {
 	if (source.kind === "gate") {
 		// The announcement's on-screen half: the approval card is the only answer.
@@ -945,11 +968,33 @@ async function speakSource(
 		text: spoken.text,
 		fullText: spoken.full_text,
 		truncated: spokenTruncated(spoken),
+		// A gate announcement is never a message's summary.
+		...(source.kind === "message" ? { messageId: source.messageId } : {}),
+		source: spokenSourceOf(spoken),
+		muted: useVoiceStore.getState().rig?.muted === true,
+		replay: options.replay === true,
 		at: Date.now(),
 	});
 	const answer = await bridge()?.speak({ text: spoken.text, kind });
 	if (answer && !answer.spoken)
 		console.warn(`[voice] the rig did not speak: ${answer.reason ?? ""}`);
+}
+
+/**
+ * REPLAY: say one message's spoken words again, on the person's press. The
+ * request is a source reference like every other - the server picks the
+ * paragraph again - so the renderer composes nothing, and a take is not owed an
+ * answer, so no History row is touched.
+ */
+export async function replaySpoken(
+	sessionId: string,
+	messageId: string,
+): Promise<void> {
+	await speakSource(
+		sessionId,
+		{ kind: "message", messageId },
+		{ replay: true },
+	);
 }
 
 /**

@@ -49,6 +49,7 @@ import {
 	MicOff,
 	Pause,
 	Play,
+	RotateCcw,
 	Square,
 	TriangleAlert,
 	Volume2,
@@ -70,6 +71,7 @@ import {
 	openSpeechSettings,
 	openVoiceSession,
 	pauseQwenVoice,
+	replaySpoken,
 	resumeQwenVoice,
 	setQwenMuted,
 	startQwenRig,
@@ -77,6 +79,7 @@ import {
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
 import {
 	type VoiceExchangeError,
+	type VoiceSpokenSource,
 	type VoiceStoryRow,
 	type VoiceTick,
 	useVoiceStore,
@@ -173,6 +176,13 @@ export type VoiceComposerView =
 				| null;
 			/** The reply was cut at the cap and the next take has not started. */
 			cut: boolean;
+			/**
+			 * The message the strip's Replay would say again: the last one this window
+			 * spoke, offered only at rest and until the next take starts. Absent while
+			 * the rig is busy, because a second take over a playing one is a barge-in
+			 * nobody asked for.
+			 */
+			replay?: string;
 	  };
 
 /**
@@ -235,6 +245,9 @@ export function composerVoiceView(
 			sessionId: string;
 			text: string;
 			truncated: boolean;
+			/** Absent for a gate announcement, and for a server with no summary. */
+			messageId?: string;
+			source?: VoiceSpokenSource;
 			at: number;
 		} | null;
 		/** The take a card refused, for the band's own refusal line (U1). */
@@ -296,6 +309,22 @@ export function composerVoiceView(
 	const take = state.lastTake?.sessionId === sessionId ? state.lastTake : null;
 	const spoken =
 		state.lastSpoken?.sessionId === sessionId ? state.lastSpoken : null;
+	/*
+	 * REPLAY AND THE KEPT SUMMARY BELONG TO THE LAST SPOKEN MESSAGE UNTIL THE
+	 * NEXT TAKE (spoken-summary design): the spoken tail is gone in seconds and the
+	 * person may want it again, so the strip keeps the words and the control until
+	 * a newer take replaces them. Only a MESSAGE can be replayed (a gate
+	 * announcement has no message), and only the server's own summary is kept as the
+	 * resting caption - a reply's first 800 characters would be a long line of the
+	 * reply the History row already holds.
+	 */
+	const lastWords =
+		spoken !== null && (take === null || take.at < spoken.at) ? spoken : null;
+	const replay = lastWords?.messageId;
+	const restingCaption: VoiceCaption =
+		lastWords?.source === "summary"
+			? { kind: "said", text: lastWords.text }
+			: { kind: "idle" };
 	const refused =
 		state.lastRefused?.sessionId === sessionId ? state.lastRefused : null;
 	/*
@@ -486,6 +515,7 @@ export function composerVoiceView(
 				caption: { kind: "ended", text: spoken?.text ?? null },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 		if (tick.kind === "interrupted" && lived < 3000) {
@@ -495,6 +525,7 @@ export function composerVoiceView(
 				caption: { kind: "interrupted", seconds: tick.seconds },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 	}
@@ -516,9 +547,10 @@ export function composerVoiceView(
 	return {
 		kind: "here",
 		chip: "listening",
-		caption: { kind: "idle" },
+		caption: restingCaption,
 		action: null,
 		cut,
+		replay,
 	};
 }
 
@@ -803,6 +835,14 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 			</div>
 		);
 	}
+	/*
+	 * `source` decides what the Voice line is: the agent's summary (with a link to
+	 * the full reply) or, for a reply the server spoke from its own text and for
+	 * any older server, the whole reply as the full-text change drew it. A summary
+	 * row needs the text that was spoken and the message to link to.
+	 */
+	const summarySpoken =
+		row.source === "summary" && row.spoken !== null && row.messageId !== null;
 	return (
 		<div
 			data-voice-story="exchange"
@@ -831,7 +871,17 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 				{t("ui.chat.voice.voice_label")}
 			</span>
 			<span className="min-w-0">
-				{row.full ? (
+				{summarySpoken ? (
+					/*
+					 * THE SUMMARY IS WHAT VOICE SAID (spoken-summary design): the agent's own
+					 * short paragraph, with the way to the whole reply - which is in the chat,
+					 * not repeated here - and Replay. `spoken` is the server's text for it,
+					 * the very words the rig was given.
+					 */
+					<span className="block whitespace-pre-line break-words text-ink">
+						{row.spoken}
+					</span>
+				) : row.full ? (
 					/*
 					 * THE WHOLE REPLY, line breaks kept: the server sends `full_text` one
 					 * table row or bullet per line, and `pre-line` is what turns those
@@ -845,6 +895,38 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 						{t("ui.chat.voice.working_row")}
 					</span>
 				)}
+				{summarySpoken && row.messageId && (
+					<span className="mt-1 flex items-center gap-1 text-meta">
+						<Button
+							type="button"
+							variant="link"
+							size="sm"
+							data-voice-story-link=""
+							onClick={() =>
+								useVoiceStore
+									.getState()
+									.requestReveal(row.sessionId, row.messageId ?? "")
+							}
+							className="h-6 px-0 text-meta"
+						>
+							{t("ui.chat.voice.full_reply_link")}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							data-voice-story-replay=""
+							aria-label={t("ui.chat.voice.replay")}
+							title={t("ui.chat.voice.replay")}
+							onClick={() =>
+								void replaySpoken(row.sessionId, row.messageId ?? "")
+							}
+							className="size-6 shrink-0 text-ink-muted"
+						>
+							<RotateCcw aria-hidden="true" />
+						</Button>
+					</span>
+				)}
 				{/*
 				 * WHAT WAS CUT IS THE AUDIO, NOT THE ROW (spec §3): the row shows the whole
 				 * reply now, so the line is no longer a warning that text is missing -
@@ -852,9 +934,10 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 				 * the spoken tail is gone in four seconds and "the rest is above" is still
 				 * the fact the person needs when they look up. AN OLDER SERVER sends no
 				 * `full_text`: the row then holds the capped spoken text, so "first part
-				 * only" under it would read as the row being complete - no line there.
+				 * only" under it would read as the row being complete - no line there. A
+				 * SUMMARY row shows what was spoken, so its cut is always the row's own.
 				 */}
-				{row.truncated && row.hasFullText && (
+				{row.truncated && (row.hasFullText || summarySpoken) && (
 					<span
 						data-voice-story-cut=""
 						className="mt-1 flex items-center gap-1 text-meta text-ink-dim"
@@ -1309,6 +1392,23 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					<span className="min-w-0 flex-1" />
 				)}
 				{failureAction}
+				{view.replay && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						data-voice-action="replay"
+						aria-label={t("ui.chat.voice.replay")}
+						title={t("ui.chat.voice.replay")}
+						onClick={() => {
+							if (sessionId && view.replay)
+								void replaySpoken(sessionId, view.replay);
+						}}
+						className="shrink-0 text-ink-muted"
+					>
+						<RotateCcw aria-hidden="true" />
+					</Button>
+				)}
 				{pauseable && (
 					<Button
 						type="button"
