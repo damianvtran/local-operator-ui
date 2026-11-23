@@ -314,10 +314,19 @@ test("dismiss is the band's trailing quiet action and nothing below the band is 
 		true,
 		"the trigger lives inside the band",
 	);
+	/*
+	 * THE BAND'S LAST CHILD IS ITS FOOT, NOT THE TRIGGER (design spec S2): the
+	 * progress count and the copyable id sit below the actions' row, so `Dismiss…`
+	 * is the trailing control of the ROW rather than of the band.
+	 */
 	assert.equal(
-		band.lastElementChild,
+		trigger.parentElement?.lastElementChild,
 		trigger,
-		"it is the band's trailing action",
+		"it is the action row's trailing control",
+	);
+	assert.ok(
+		band.lastElementChild?.hasAttribute("data-lo-ask-foot"),
+		"the band's own last row is the foot",
 	);
 	for (const cls of ["ms-auto", "shrink-0", "text-ink-muted"])
 		assert.ok(
@@ -326,33 +335,56 @@ test("dismiss is the band's trailing quiet action and nothing below the band is 
 		);
 	const send = buttonWithText(band, "Send answer");
 	assert.ok(send, "send answer is in the band");
-	const group = send.parentElement;
-	assert.equal(group.parentElement, band, "the answer pair is one group");
+	/*
+	 * ONE ACTIONS ROW (design spec S2): send, decline and dismiss share a single
+	 * flex row inside the band; `ms-auto` is what parks dismiss at that row's end,
+	 * and the foot below is the band's second row.
+	 */
+	const actionsRow = send.parentElement;
+	assert.ok(actionsRow, "the actions have a row");
 	assert.equal(
-		group.contains(trigger),
-		false,
-		"dismiss is parked outside the pair so `ms-auto` sends it to the end",
+		actionsRow.parentElement,
+		band,
+		"the row is the band's first child",
+	);
+	assert.equal(
+		trigger.parentElement,
+		actionsRow,
+		"dismiss rides in the same row as the answer pair",
+	);
+	assert.equal(
+		actionsRow.lastElementChild,
+		trigger,
+		"and is its trailing control",
 	);
 	const decline = buttonWithText(band, "Decline");
 	assert.ok(decline, "an open ask can be declined");
-	assert.equal(decline.parentElement, group, "decline rides with send");
+	assert.equal(decline.parentElement, actionsRow, "decline rides with send");
 	const bandClasses = band.className.split(WHITESPACE);
-	// The wrap is new; every transform and ground the band already had stays, so
-	// its 34 px footprint and the card's at-rest height do not move.
+	/*
+	 * THE GROUND IS THE CARD'S AND THE RULE IS A HAIRLINE (design spec S2/D9); the
+	 * sticky bleed, the z-index and the bottom padding are unchanged.
+	 */
 	for (const cls of [
-		"flex-wrap",
-		"gap-y-1",
+		"flex-col",
 		"sticky",
 		"bottom-0",
 		"z-[1]",
 		"-mx-3",
-		"-mt-2",
 		"-mb-3",
 		"pt-2",
 		"pb-3",
-		"bg-elevated",
+		"bg-surface",
+		"border-t",
+		"border-hairline",
 	])
 		assert.ok(bandClasses.includes(cls), `band keeps ${cls}`);
+	for (const cls of ["bg-elevated", "-mt-2"])
+		assert.equal(
+			bandClasses.includes(cls),
+			false,
+			`the band no longer wears ${cls}`,
+		);
 	assert.equal(
 		band.nextElementSibling,
 		null,

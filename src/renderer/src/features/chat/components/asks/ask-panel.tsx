@@ -49,7 +49,6 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { formatNumber } from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -71,6 +70,7 @@ import {
 	useState,
 } from "react";
 import { isolateValue } from "../../../../../../i18n/bidi";
+import { formatNumber } from "../../../../../../i18n/format";
 import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
