@@ -29,7 +29,6 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { JUMP_HIGHLIGHT_MS } from "@shared/lib/jump-highlight";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
 	forgetBridgeComposerRows,
@@ -68,7 +67,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import type {
 	TeamBridgeAttachmentCapability,
@@ -1171,16 +1170,9 @@ export type TeamBridgePageViewProps = {
 	onCommunityChange?: (communityId: TeamBridgeCommunityId) => void;
 	/** "Browse communities…"; omitted, the row is not drawn. */
 	onBrowseCommunities?: () => void;
-	/**
-	 * Opens the session holding an alert responder's pending ask (Team
-	 * Integrations U1). The container owns routing; omitted, no alert card
-	 * draws the "Review ask" button.
-	 */
-	onReviewAlertAsk?: (ask: { askId: string; sessionId: string }) => void;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
-	onReviewAlertAsk,
 	ownerAudit,
 	requests,
 	requestsViewRequested = false,
@@ -2974,13 +2966,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			? rosterFor(tenantId).find((row) => row.account_id === selfAccountId)
 			: undefined;
 	/*
-	 * The actions every alert card in the shown conversation may start (Team
-	 * Integrations). "Responders" follows the conversation menu's own rule for
-	 * the "Alert responder" item - a channel where the reader's agent is an
-	 * active member - so the card never offers what the menu would not.
+	 * The hub reports that a claim is waiting, not which local ask it belongs
+	 * to. Only wire "Responders", using the conversation menu's own rule for
+	 * the "Alert responder" item so the card never offers what the menu would not.
 	 */
 	const alertActions: TeamBridgeAlertActions = {
-		onReviewAsk: onReviewAlertAsk,
 		onResponders:
 			shown &&
 			!readOnly &&
@@ -5511,17 +5501,6 @@ const TeamBridgeOwnedPage: FC<{
 	 * effect below, then are cleared so a refetch cannot re-select it.
 	 */
 	const [searchParams, setSearchParams] = useSearchParams();
-	const navigate = useNavigate();
-	/* The responder's ask lives in its own session on this device (U1): open
-	   that session the way every other "open conversation" path does. */
-	const reviewAlertAsk = (ask: { askId: string; sessionId: string }) => {
-		void useCanonicalSessionsStore
-			.getState()
-			.openSession(ask.sessionId)
-			.then((opened) => {
-				if (opened) navigate(`/chat/${encodeURIComponent(ask.sessionId)}`);
-			});
-	};
 	const requestedConversation = searchParams.get("conversation");
 	const requestedTenant = searchParams.get("tenant");
 	const requestedRoot = searchParams.get("thread");
@@ -7541,7 +7520,6 @@ const TeamBridgeOwnedPage: FC<{
 		<>
 			{communityJoin}
 			<TeamBridgePageView
-				onReviewAlertAsk={reviewAlertAsk}
 				ownerAudit={ownerAudit}
 				requests={requestsSlot}
 				requestsViewRequested={requestsViewRequested}
