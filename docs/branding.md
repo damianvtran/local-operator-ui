@@ -634,7 +634,11 @@ read on their own grounds, even with no inspector open.
 
 **Share the boundary, not the layout.** The outlet holds the same frame through
 loading, empty, error and content. Ordinary routes spend the platform's
-clearance before the frame. Settings (including subsection links) and Agents
+clearance before the frame, and that 32px band above it is painted in the
+gutter's own role and colour (the shell/tab `surface`, at the sidebar's glass
+alpha when covered) — never left as bare window material — so the inset reads
+the same on all four sides. The band stays a window drag surface; tabs will
+later occupy it on every page, as they already do on Chat. Settings (including subsection links) and Agents
 (including saved-agent detail) explicitly match a full-height split variant:
 the secondary navigation sidebar runs full height from y0 to the bottom on
 `surface`, while the content pane sits beside it inside `<WorkspaceFrame
@@ -834,6 +838,9 @@ route inventory and body boundary.
   typography, inset and spacing within and between sections as Today, Running
   and the other conversation groups. Match their uppercase display on the
   group label only, not in translation strings or on a containing section.
+  The app sidebar draws them this way on every route, not only while Chat is
+  open: no route decides the heading variant, the row fills or the built-in
+  install action's style.
 
 #### Shared inset evidence
 

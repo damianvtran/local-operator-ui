@@ -6,6 +6,7 @@ import { JSDOM } from "jsdom";
 import {
 	checkRouteFrame,
 	findLeadingColumn,
+	insetBandGround,
 	readRouteFrame,
 	stripAboveInset,
 	stripPanelGrounds,
@@ -716,19 +717,6 @@ test("the recorded Chat and Browser strips read exactly as they did before the f
 		false,
 		"the sunken chrome ground is Browser's alone",
 	);
-	// The outlet's intentional clear glass above a shared inset is unchanged:
-	// no DOM paint inside that outlet, and only there.
-	const clear = { x: 690, bg: null, tag: null, inOutlet: true };
-	assert.equal(accepted(clear, recorded["/settings"], "outlet", false), true);
-	assert.equal(
-		accepted(
-			{ ...clear, inOutlet: false },
-			recorded["/settings"],
-			"outlet",
-			false,
-		),
-		false,
-	);
 	assert.equal(stripAboveInset(recorded["/settings"], "outlet", true), false);
 	assert.equal(stripAboveInset(recorded["/chat"], "chat", false), false);
 	assert.equal(stripAboveInset(recorded["/settings"], "outlet", false), true);
@@ -835,4 +823,97 @@ test("findLeadingColumn descends past full-width bg-surface split roots under gl
 		null,
 		"partial-height panel must not be classified as a leading column",
 	);
+});
+
+/*
+ * THE BAND ABOVE AN ORDINARY INSET (design round 7, D2). Before this round a
+ * probe in that band was accepted when it read NO paint - the exemption that
+ * let 32px of bare window material pass above a frame whose side and bottom
+ * gutters were painted. `beforeFix` is that predicate, kept as the negative
+ * control: it accepts the clear band, the new one must not.
+ */
+test("the band above an ordinary inset must carry the gutter's paint; clear glass now fails", () => {
+	const reading = recorded["/settings"];
+	const gutter = reading.perimeter.paint;
+	assert.equal(insetBandGround(reading), gutter);
+	const clear = { x: 690, bg: null, tag: null, inOutlet: true };
+	const painted = { x: 690, bg: gutter, tag: "div", inOutlet: true };
+	// Negative control: the old exemption passed exactly the hole.
+	assert.equal(beforeFix(clear, reading, "outlet", false), true);
+	assert.equal(accepted(clear, reading, "outlet", false), false);
+	assert.equal(accepted(painted, reading, "outlet", false), true);
+	// A panel ground that is NOT the gutter's (the canvas, an opaque surface)
+	// is a different role in the band, not a match.
+	for (const bg of [reading.canvasGround, reading.surfaceGround])
+		assert.equal(accepted({ ...painted, bg }, reading, "outlet", false), false);
+	// With no real gutter paint there is nothing the band may match.
+	for (const [label, change] of [
+		[
+			"no perimeter",
+			(r) => {
+				r.perimeter = null;
+			},
+		],
+		[
+			"hidden perimeter",
+			(r) => {
+				r.perimeter.display = "none";
+			},
+		],
+		[
+			"transparent gutter",
+			(r) => {
+				r.perimeter.paint = "rgba(0, 0, 0, 0)";
+			},
+		],
+		[
+			"mis-roled gutter",
+			(r) => {
+				r.perimeter.rolePaint = r.canvasGround;
+			},
+		],
+	]) {
+		const broken = structuredClone(reading);
+		change(broken);
+		assert.equal(insetBandGround(broken), null, label);
+		assert.equal(
+			accepted({ ...painted }, broken, "outlet", false),
+			false,
+			label,
+		);
+	}
+});
+
+/*
+ * The band's paint and geometry at source: one in-flow element, net-zero in
+ * height (so the frame keeps y32), the same glass selector list as the gutter
+ * pseudo, no app-region of its own, and only where the outlet draws the inset.
+ */
+test("the inset band is painted by the gutter's own glass rule and moves nothing", () => {
+	const appSource = readFileSync("src/renderer/src/app.tsx", "utf8");
+	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	assert.match(
+		appSource,
+		/\{outletWrapsRoute \? \(\s*<div data-workspace-top-band="" aria-hidden="true" \/>\s*\) : null\}\s*\{\/\* Trailing caption buttons/,
+	);
+	const rule = css.match(/\n\t\[data-workspace-top-band\] \{([^}]+)\}/);
+	assert.ok(rule, "band rule present");
+	const pad = "var(--panel-top-pad, var(--chrome-strip-h, 0px))";
+	assert.ok(rule[1].includes(`height: ${pad};`), rule[1]);
+	assert.ok(
+		rule[1]
+			.replace(/\s+/g, " ")
+			.includes(`margin-block-start: calc( -1 * ${pad} );`),
+		rule[1],
+	);
+	assert.doesNotMatch(rule[1], /app-region|pointer-events/);
+	const glass = css.match(
+		/html\[data-glass~="sidebar"\] \.workspace-frame-shell::before,([^{]+)\{/,
+	);
+	assert.ok(glass, "shared glass rule present");
+	assert.match(
+		glass[1],
+		/html\[data-glass~="sidebar"\] \[data-workspace-top-band\]/,
+	);
+	assert.doesNotMatch(css, /\[data-workspace-top-band\][^{]*\{[^}]*app-region/);
 });

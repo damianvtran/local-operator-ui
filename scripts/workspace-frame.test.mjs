@@ -52,7 +52,7 @@ const SPLIT_SIDEBAR_PAD =
 const SPLIT_INSET_PAD =
 	/\[data-workspace-frame-full-height\]\s+\[data-workspace-safe-content\]\s*\{[^}]*padding-block-start: max\(\s*0px,\s*calc\(\s*var\(--workspace-safe-top, 0px\) -\s*var\(--workspace-frame-block-start, 0px\)\s*\)\s*\);/;
 const SIDEBAR_PERIMETER_RULE =
-	/html\[data-glass~="sidebar"\] \.workspace-frame-shell::before,\s*html\[data-glass~="sidebar"\] \[data-workspace-tabs\] \{([^}]+)\}/;
+	/html\[data-glass~="sidebar"\] \.workspace-frame-shell::before,\s*html\[data-glass~="sidebar"\] \[data-workspace-top-band\],\s*html\[data-glass~="sidebar"\]\s+main\[data-workspace-outlet\]:not\(\[data-workspace-full-height\]\)\s+> \[data-chrome-route-band\],\s*html\[data-glass~="sidebar"\] \[data-workspace-tabs\] \{([^}]+)\}/;
 const FRAME_OVERFLOW = /overflow: clip;/;
 const DECORATIVE_FRAME_STYLES =
 	/(?:^|\s)(?:border(?:-color|-width|-style)?|box-shadow|outline|margin-top|padding[^:]*):/;

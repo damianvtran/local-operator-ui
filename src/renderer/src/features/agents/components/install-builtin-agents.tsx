@@ -224,10 +224,17 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 			{!running &&
 				!summary &&
 				(presentation === "primary" ? (
+					/*
+					 * BORDERLESS AT SOURCE (design round 7, D1). This was a bordered
+					 * `secondary` Button that a Chat-only stylesheet rule stripped, so the
+					 * same sidebar drew a pill on every other route. `ghost` has no border
+					 * or resting fill on any route; `text-ink` keeps the label the weight
+					 * it had on Chat (ghost's own default is `ink-muted`).
+					 */
 					<Button
 						ref={actionRef}
-						variant="secondary"
-						className="w-full"
+						variant="ghost"
+						className="w-full text-ink"
 						onClick={() => void run()}
 					>
 						{t("ui.agents.starters.action.all_builtins")}

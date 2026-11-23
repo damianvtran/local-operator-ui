@@ -730,6 +730,33 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 			close
 		);
 	}
+	/*
+	 * THE BAND ABOVE AN ORDINARY INSET (design round 7, D2): the outlet's 32px
+	 * clearance, painted in the same role as the gutters around the opening
+	 * so the frame reads inset on all four sides instead of floating under a
+	 * strip of bare window material. In flow and net-zero (height and negative
+	 * margin are the same `panel-top-pad` length), so the frame keeps y32 and
+	 * the route body moves nothing. Inside this @supports for the same reason
+	 * as the gutter: without shape() neither is painted, so they cannot
+	 * disagree. Its glass paint is the `.workspace-frame-shell::before` rule's
+	 * selector list below, so the two cannot drift either.
+	 */
+	[data-workspace-top-band] {
+		flex: none;
+		height: var(--panel-top-pad, var(--chrome-strip-h, 0px));
+		margin-block-start: calc(
+			-1 *
+			var(--panel-top-pad, var(--chrome-strip-h, 0px))
+		);
+		background-color: var(--lo-surface);
+	}
+	/* Windows/Linux trailing caption buttons put the clearance in this in-flow
+	 * band instead (the pad above is then 0), so it takes the same paint on an
+	 * ordinary route; on a full-height route it is an overlay and stays clear. */
+	main[data-workspace-outlet]:not([data-workspace-full-height])
+		> [data-chrome-route-band] {
+		background-color: var(--lo-surface);
+	}
 }
 
 /* A native WebContentsView is rectangular and intercepts pointer input
@@ -4227,11 +4254,19 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 
 /* Leave the actual buttons, menus, titles and focus targets where React owns
  * them; the inset takes away their paint, never their hit areas. */
+/*
+ * THE SIDEBAR'S ROWS ARE KEYED OFF THE SIDEBAR, NOT THE CHAT ROUTE (design
+ * round 7, D1). These sidebar selectors used to sit under
+ * `[data-workspace-shell]:has([data-chat-workspace])`, so the same sidebar drew
+ * filled current rows and pill buttons everywhere but Chat. They now apply in
+ * the shell on every route; only the panel rail - which only Chat mounts - keeps
+ * the Chat gate. `scripts/chat-sidebar-route-invariant.test.mjs` holds this.
+ */
 [data-workspace-inset]
 	> [data-chat-region="header"]
 	button:not([data-lo-floating] *),
 [data-workspace-shell]:has([data-chat-workspace]) [data-panel-rail-item],
-[data-workspace-shell]:has([data-chat-workspace])
+[data-workspace-shell]
 	:is(
 		[data-sidebar-band],
 		[data-entity],
@@ -4243,7 +4278,7 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	border-width: 0;
 	box-shadow: none;
 }
-[data-workspace-shell]:has([data-chat-workspace])
+[data-workspace-shell]
 	:is(
 		[data-session-row]:not([data-dragging]),
 		[data-temporary-row] > [data-chat-row][aria-current="page"],
@@ -4271,6 +4306,10 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 /* The strip and exposed gutter continue the sidebar's raw ground. The strip
  * also needs that ground for its unfilled ellipsis over native material. */
 html[data-glass~="sidebar"] .workspace-frame-shell::before,
+html[data-glass~="sidebar"] [data-workspace-top-band],
+html[data-glass~="sidebar"]
+	main[data-workspace-outlet]:not([data-workspace-full-height])
+	> [data-chrome-route-band],
 html[data-glass~="sidebar"] [data-workspace-tabs] {
 	background-color: color-mix(
 		in srgb,

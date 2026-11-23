@@ -1244,6 +1244,23 @@ const App: FC = () => {
 								data-glass-region={chatOwnsBody ? "canvas-backing" : undefined}
 								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
+								{/*
+								 * THE BAND ABOVE AN ORDINARY INSET IS PAINTED IN THE GUTTER ROLE
+								 * (design round 7, D2). Under glass the outlet is transparent, so
+								 * the 32px clearance above the frame showed bare window material
+								 * while the side and bottom gutters (`.workspace-frame-shell::before`)
+								 * carried the sidebar's surface - a hole along one edge only. This
+								 * in-flow element takes back exactly the outlet's own pad (its CSS
+								 * cancels it with a negative margin), so the frame stays at y32;
+								 * it is a real element rather than a pseudo so the route-tops probe
+								 * can read its paint. Only where the outlet draws the inset: Chat's
+								 * tabs and Browser's chrome already fill the band, and full-height
+								 * split routes start their panes at y0. It declares no app-region,
+								 * so the lane's (or the route band's) drag surface is unchanged.
+								 */}
+								{outletWrapsRoute ? (
+									<div data-workspace-top-band="" aria-hidden="true" />
+								) : null}
 								{/* Trailing caption buttons use this drag band on Windows/Linux.
 								    It stays in flow on ordinary pages and overlays split paint.
 								    macOS and leading WCO use ChatLayout's lane instead. */}

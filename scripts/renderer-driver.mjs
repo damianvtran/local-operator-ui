@@ -309,6 +309,7 @@ import { pythonChildEnv } from "./python-child-env.mjs";
 import {
 	checkRouteFrame,
 	findLeadingColumn,
+	insetBandGround,
 	readRouteFrame,
 	stripAboveInset,
 	stripPanelGrounds,
@@ -43663,12 +43664,12 @@ async function sceneRouteTops(cdp) {
 			 * strip is whichever panel is behind it. The body, html and #app are
 			 * SKIPPED deliberately - they paint the window's fallback canvas, and
 			 * accepting them would let a hole read as a panel. A probe therefore
-			 * reports panel paint (or no DOM paint if the clearance is clear glass).
-			 * Two shapes read no paint by construction: the intentional clear glass
-			 * above a shared inset, and the shell's own gutter, painted by a
-			 * ::before this stack cannot return. stripProbeAccepted accepts exactly
-			 * those two, and the perimeter read beside them is what proves the
-			 * second one is painted at all. (No backticks in here: this reading is
+			 * reports panel paint, or no DOM paint for a hole. One shape reads no
+			 * paint by construction: the shell's own gutter, painted by a ::before
+			 * this stack cannot return; stripProbeAccepted accepts exactly that, and
+			 * the perimeter read beside it is what proves it is painted at all. The
+			 * band above an ordinary inset is a real element in the gutter's paint
+			 * (design round 7, D2), so clear glass there is a FAIL. (No backticks in here: this reading is
 			 * itself a template literal, so one would end it.)
 			 */
 			const groundAt = (x) => {
@@ -43813,7 +43814,7 @@ async function sceneRouteTops(cdp) {
 			const stripOverBody = stripAboveInset(reading, stripOwner, fullHeight);
 			const panelGrounds = stripPanelGrounds(reading);
 			check(
-				`${path}: every y8 probe has panel paint or the outlet's intentional clear glass above the inset`,
+				`${path}: every y8 probe has panel paint, and the band above an ordinary inset has the gutter's paint`,
 				reading.stripGrounds.length > 0 &&
 					reading.stripGrounds.every((probe) =>
 						stripProbeAccepted(probe, reading, {
@@ -43821,7 +43822,7 @@ async function sceneRouteTops(cdp) {
 							fullHeight,
 						}),
 					),
-				`y8: ${JSON.stringify(reading.stripGrounds)}; grounds ${panelGrounds.join(", ")}; Browser chrome ${reading.browserChromeGround}; clear outlet expected ${stripOverBody}`,
+				`y8: ${JSON.stringify(reading.stripGrounds)}; grounds ${panelGrounds.join(", ")}; Browser chrome ${reading.browserChromeGround}; gutter-painted band expected ${stripOverBody}`,
 			);
 			check(
 				`${path}: the window's left edge in the strip belongs to the sidebar's surface`,
@@ -43834,7 +43835,8 @@ async function sceneRouteTops(cdp) {
 				const expectedStripGround =
 					!ownsChrome && !fullHeight
 						? stripOverBody
-							? null
+							? // A missing gutter paint must fail here, never match a null probe.
+								(insetBandGround(reading) ?? "(no painted gutter)")
 							: reading.surfaceGround
 						: reading.leadingColumnGround;
 				check(

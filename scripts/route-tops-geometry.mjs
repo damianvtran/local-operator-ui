@@ -230,13 +230,47 @@ export function stripPanelGrounds(reading) {
 }
 
 /*
- * Above a shared inset an outlet body deliberately leaves the strip clear, so a
- * probe there is allowed to report no DOM paint. Only that shape: not a rail,
- * not Chat's or Browser's own strip, and not a full-height route (its split
- * panes start at y0 and cover the strip themselves).
+ * The strip above an ordinary route's shared inset, under glass: the outlet is
+ * transparent there, and the band (`[data-workspace-top-band]`) is what paints
+ * it. Only that shape: not a rail, not Chat's or Browser's own strip, and not a
+ * full-height route (its split panes start at y0 and cover the strip
+ * themselves).
+ *
+ * THIS USED TO BE AN EXEMPTION (design round 7, D2): a probe here was accepted
+ * when it read NO paint, so a bare 32px of window material above a frame whose
+ * other three gutters were painted passed every run. The shape is now held to
+ * `insetBandAccepted` instead - the gutter's own paint, never clear glass.
  */
 export function stripAboveInset(reading, owner, fullHeight = false) {
 	return Boolean(reading.glass) && owner === "outlet" && !fullHeight;
+}
+
+/*
+ * The ground the band above an ordinary inset must read: the computed paint of
+ * the shell's `::before` (the side and bottom gutters), and only when that paint
+ * is real - generated, not transparent, the role's own paint and a panel ground.
+ * Anything else (no perimeter, a hidden or unpainted one) has no gutter to
+ * match, so it answers null and every band probe fails.
+ */
+export function insetBandGround(reading) {
+	const perimeter = reading.perimeter;
+	if (!perimeter) return null;
+	const generated = perimeter.content === '""' && perimeter.display !== "none";
+	const paint = perimeter.paint;
+	if (
+		!generated ||
+		paint === null ||
+		["transparent", "rgba(0, 0, 0, 0)"].includes(paint) ||
+		paint !== perimeter.rolePaint ||
+		!stripPanelGrounds(reading).includes(paint)
+	)
+		return null;
+	return paint;
+}
+
+export function insetBandAccepted(probe, reading) {
+	const ground = insetBandGround(reading);
+	return ground !== null && probe.bg === ground;
 }
 
 /*
@@ -268,7 +302,7 @@ export function stripProbeAccepted(
 	{ owner, fullHeight = false },
 ) {
 	if (stripAboveInset(reading, owner, fullHeight) && probe.inOutlet)
-		return probe.bg === null;
+		return insetBandAccepted(probe, reading);
 	if (stripPanelGrounds(reading).includes(probe.bg)) return true;
 	// Browser's opaque chrome is sunken, not the elevated body under it, so its
 	// own ground has to be accepted inside its outlet as well.

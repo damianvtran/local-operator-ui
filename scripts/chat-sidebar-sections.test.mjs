@@ -297,8 +297,8 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 		scroller,
 		/\bmin-h-0 flex-1 overflow-y-auto p-1 \[overflow-anchor:none\] \[scrollbar-gutter:stable\]/,
 	);
-	const sharedSpacing =
-		/workspaceLauncher \? "sidebar-section-stack" : "space-y-4"/;
+	// One rhythm on every route (design round 7, D1): no route-gated spacing.
+	const sharedSpacing = /\n\s*"sidebar-section-stack",\n/;
 	assert.match(scroller, sharedSpacing);
 	const scrollLayers = [
 		...pane.matchAll(
@@ -317,8 +317,7 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 	assert.ok(scroller.includes(flowLayers[0][0].trim()));
 	for (const region of ["entities", "chats"]) {
 		const tag = regionTag(region);
-		assert.match(tag, /className=\{cn\(/);
-		assert.match(tag, sharedSpacing);
+		assert.match(tag, /className="relative sidebar-section-stack"/);
 		assert.doesNotMatch(tag, /overflow(-y)?-(auto|scroll)/);
 	}
 	assert.doesNotMatch(

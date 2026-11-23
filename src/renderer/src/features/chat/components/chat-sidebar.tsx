@@ -117,7 +117,6 @@ import {
 	Bot,
 	CheckCheck,
 	ChevronDown,
-	ChevronRight,
 	ChevronUp,
 	Copy,
 	FileText,
@@ -149,9 +148,7 @@ import {
 	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
-	type Ref,
 	type SetStateAction,
-	createElement,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -237,7 +234,6 @@ import {
 } from "../chat-remote";
 import {
 	type ArchiveView,
-	chatCountAnnouncement,
 	hitsAnswerQuery,
 	lostRowsToStaleAnswer,
 	rowTrailingStatement,
@@ -266,7 +262,6 @@ import {
 	entityMore,
 	entityQueryAdmits,
 	entityRows,
-	entitySectionGap,
 	foldedLiveCue,
 	groupRows,
 	isEntitySection,
@@ -279,7 +274,6 @@ import {
 	parseSidebarView,
 	raiseSectionCap,
 	rosterFieldShown,
-	sectionGrownHintId,
 	sectionIsGrown,
 	sectionMoreLabel,
 	sectionMoreName,
@@ -1084,8 +1078,6 @@ export function ChatSidebar({
 	useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
-	const workspaceLauncher =
-		location.pathname === "/chat" || location.pathname.startsWith("/chat/");
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
@@ -4269,7 +4261,7 @@ export function ChatSidebar({
 	 * short roster. This call site is the ONE place the component asks the question.
 	 */
 	const rosterFilterShown = rosterFieldShown(
-		workspaceLauncher || isOpen("agents", true),
+		true,
 		query,
 		rosterFilter,
 		ownAgents.length,
@@ -7473,13 +7465,7 @@ export function ChatSidebar({
 					toggle(key);
 				}}
 			>
-				{workspaceLauncher ? (
-					<History aria-hidden="true" className="size-3.5 text-ink-dim" />
-				) : open ? (
-					<ChevronDown className="size-3.5" />
-				) : (
-					<ChevronRight className="size-3.5" />
-				)}
+				<History aria-hidden="true" className="size-3.5 text-ink-dim" />
 			</button>
 		);
 		return (
@@ -7490,7 +7476,6 @@ export function ChatSidebar({
 						staged && rowCurrent,
 					)}
 				>
-					{!workspaceLauncher && history}
 					{/* Clicking the name has always staged a draft, but nothing on the
 				    row said so, so the primary action of the whole sidebar was
 				    invisible and went unused. The glyph is the label for that
@@ -7506,7 +7491,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
-						data-workspace-launch={workspaceLauncher ? kind : undefined}
+						data-workspace-launch={kind}
 						className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
@@ -7538,7 +7523,7 @@ export function ChatSidebar({
 								// equal weight the secondary control was the louder mark of
 								// the two, so the eye landed on "manage" first.
 								"size-4 shrink-0",
-								workspaceLauncher ? "text-ink-muted" : "text-ink opacity-0",
+								"text-ink-muted",
 								// The duration governs the transition INTO the current
 								// state, so the resting value is the fade-OUT and the
 								// hovered value is the fade-in: quick to appear, gentler to
@@ -7579,7 +7564,7 @@ export function ChatSidebar({
 					{badge > 0 && (
 						<span className="sr-only">{groupBadgeLabel(badge)}</span>
 					)}
-					{workspaceLauncher && history}
+					{history}
 					{/*
 					 * THE ROSTER'S PIN (issue #663), a SIBLING of the name button rather
 					 * than a glyph inside it, because it is a control: pressing it writes
@@ -8006,196 +7991,6 @@ export function ChatSidebar({
 							) : null)}
 					</div>
 				)}
-			</div>
-		);
-	};
-	/*
-	 * The one place a search count is worded, for both call sites: the group
-	 * headings and the All chats row. They held two copies of one expression,
-	 * which is how the same false total had to be found twice; a count stated in
-	 * two places is a count that can be stated two ways.
-	 *
-	 * While the answer is clipped the number is a floor, so it says so — a
-	 * trailing `+` on the badge and "or more" for a screen reader, and "At least"
-	 * in the tooltip that names the whole claim. The `+` is not decoration: the
-	 * badge is the only part of the sentence a sighted user reads at a glance.
-	 */
-	const countBadge = (count: number) => (
-		<span
-			className="text-meta tabular-nums"
-			title={
-				query
-					? t("ui.chat.sidebar.search.count_tooltip", {
-							clipped: clipped ? "yes" : "no",
-							count_display: String(count),
-							count,
-						})
-					: undefined
-			}
-		>
-			{/*
-			 * The glyphs and the sentence are ONE claim, so only one of them is spoken.
-			 * A clipped badge renders `100+` and the `sr-only` span adds ` or more
-			 * matching`, which gave the group the accessible name `All chats 100+ or
-			 * more matching` — "or more" twice, once as the `+` and once in words
-			 * (design round 6, D23). `aria-hidden` on the glyphs is the same shape the
-			 * row's own mark uses: what a sighted reader sees, and a sentence carrying
-			 * it for everyone else, rather than a sum of the two.
-			 */}
-			<span aria-hidden="true">
-				{count}
-				{clipped ? "+" : ""}
-			</span>
-			{/*
-			 * A query turns these numbers from "what you have" into "what matched",
-			 * with identical styling, so the count needs to say which claim it is
-			 * making (design round 1, D5); a clipped answer adds the third claim, and
-			 * the sentence is rendered in BOTH states rather than only under a query
-			 * (design round 7, D25). What each state announces, and why it is pure and
-			 * tested, is `chatCountAnnouncement` in `features/chat/chat-search.ts`.
-			 */}
-			<span className="sr-only">
-				{chatCountAnnouncement(count, Boolean(query), clipped)}
-			</span>
-		</span>
-	);
-	/*
-	 * A section's header, as a ROW of controls rather than one button.
-	 *
-	 * The toggle is the whole header — clicking anywhere on it collapses the group
-	 * — so a second control nested inside it would be a button within a button:
-	 * one hit area for two actions, where an inner click also toggles the group
-	 * and neither control can be activated independently. They are SIBLINGS here,
-	 * which is what lets the action sit in the header at all; the toggle keeps
-	 * every property it had (the row's `data-chat-row` stamp, so the arrow walk
-	 * still visits it, and its `aria-expanded`).
-	 *
-	 * `action` is undefined for every group but the one that can carry one, so the
-	 * row renders as it always did for the rest — including the two properties
-	 * that follow from carrying one:
-	 *
-	 * - the row is a NAMED CONTAINER (`@container/chatheading`), which is the width
-	 *   the action's own label sheds against;
-	 * - and it STICKS to the top of the list's scroll box, so the control travels
-	 *   with the pile it clears instead of sitting 632px above it once the operator
-	 *   has scrolled into his own 38 rows (design D2). Sticky only here: the other
-	 *   three headings would be a layout change nothing asked for, and this row is
-	 *   bounded by its own section, so it un-sticks on its own when the group ends.
-	 *   The ground is `bg-surface` (the panel's own) because rows scroll under it.
-	 *
-	 * The label carries `min-w-0 flex-1 truncate` — this file's own idiom for the
-	 * one flexed label that renders a string it can run out of, since a fixed
-	 * literal cannot truncate anything and a 28px row cannot hold a wrapped line.
-	 */
-	const heading = (
-		key: string,
-		label: string,
-		initial: boolean,
-		count?: number,
-		glyph?: LucideIcon,
-		action?: ReactNode,
-		toggleRef?: Ref<HTMLButtonElement>,
-		// Ordinary (non-sticky) controls after the toggle: unlike `action`, which
-		// pins the whole row, these cost no height and no pinned chrome.
-		trailing?: ReactNode,
-	) => {
-		/*
-		 * A GROWN SECTION SAYS SO, AND NAMES THE WAY BACK (UX round 1's U1 and U5,
-		 * design round 1's D1 and D2). Both streams MEASURED this heading as silent:
-		 * the band is `AE` 0 between the resting and grown states (eight rows and
-		 * twelve draw the same heading), `title: null` and `aria-describedby: null` on
-		 * the toggle, and in the grown state the foot is GONE (`foot: null`) - so the
-		 * reader who raised a cap can neither tell this section from a shipped one nor
-		 * find the press that puts it back.
-		 *
-		 * THE HINT IS ON THE TOGGLE, not on a second control: the press that already
-		 * exists IS the reset (collapse, then reopen, returns the shipped list), and
-		 * the operator's decided shape is copy on an existing affordance. It is read
-		 * from the same map `cappedRows` slices rows with, so the heading cannot claim
-		 * a raise the draw does not show.
-		 *
-		 * TWO CHANNELS, ONE SENTENCE: `title` is the pointer's channel (the heading is
-		 * the only thing on screen in the grown state, so the hover is where a reader
-		 * who is looking will find it), and the `sr-only` element the toggle points its
-		 * `aria-describedby` at is the channel for every other reader - `title` alone
-		 * reaches no keyboard reader, and engines are least reliable about it. The
-		 * element is rendered only while the hint applies, so the id is never dangling.
-		 *
-		 * NO VISUAL MARK, DELIBERATELY: a badge or tint on this band is a pixel change on
-		 * a surface whose frames this round cannot re-shoot, and it is the design
-		 * re-check's call rather than this pass's - what must not be missing is a state
-		 * a screen reader can already hear and a pointer can already read.
-		 */
-		const grownHint = sectionIsGrown(sectionCaps[key])
-			? SECTION_GROWN_HINT
-			: null;
-		return (
-			<div
-				className={cn(
-					"@container/chatheading flex h-7 items-center gap-1",
-					/*
-					 * `-top-2` because the scroll box carries `pt-2`: pinning at `top: 0` pins to
-					 * the CONTENT edge, 9px below the box's own edge (8px of padding plus the
-					 * 1px `border-t`), and padding is not a clip — the row sliding up keeps its
-					 * tail visible in that band, cut mid-glyph at the hairline. The negative
-					 * offset starts the pinned row's own box at the box's edge, so rows go UNDER
-					 * it rather than past it (design D2-2), and the resting layout is unchanged.
-					 */
-					action && "sticky -top-2 z-10 bg-surface",
-				)}
-			>
-				<button
-					ref={toggleRef}
-					type="button"
-					data-chat-row
-					/*
-					 * The section a driver scene expands (`data-chat-section={key}`): a collapsed
-					 * section draws no rows, and its own label is a copy string, so a scene that
-					 * reached it by text would be asserting a copy edit - the convention
-					 * `data-chat-row` and `data-session-delete` already follow.
-					 */
-					data-chat-section={key}
-					className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-row-hover"
-					aria-expanded={query ? true : isOpen(key, initial)}
-					/* `title` is the pointer's copy; both it and the description below come
-					 * from ONE sentence (`SECTION_GROWN_HINT`), so they cannot drift. */
-					title={grownHint ?? undefined}
-					aria-describedby={grownHint ? sectionGrownHintId(key) : undefined}
-					onClick={() => toggle(key, initial)}
-				>
-					{query || isOpen(key, initial) ? (
-						<ChevronDown className="size-3.5" />
-					) : (
-						<ChevronRight className="size-3.5" />
-					)}
-					{/*
-					 * THE SECTION'S OWN GLYPH (operator, 2026-09-25: "improve the design of
-					 * the team/agent collapsibles to be more modern"). A muted leading mark
-					 * is how the reference's group headers read - `BOT Agents` rather than a
-					 * bare word - and it earns its pixel by being the only thing that
-					 * distinguishes two sections whose labels are otherwise the same shape.
-					 * `aria-hidden`, because the label beside it already names the section.
-					 */}
-					{glyph
-						? createElement(glyph, {
-								"aria-hidden": true,
-								className: "size-3.5 shrink-0 text-ink-dim",
-							})
-						: null}
-					<span className="min-w-0 flex-1 truncate text-start">{label}</span>
-					{/* A zero badge next to a group that already says it is empty is the
-			    same fact twice; only a non-zero count carries information. */}
-					{count !== undefined && count !== 0 && countBadge(count)}
-				</button>
-				{/* The hint the toggle points at, and ONLY while it applies: a rendered
-			    but unreferenced element is a reading cost with no reader. */}
-				{grownHint && (
-					<span id={sectionGrownHintId(key)} className="sr-only">
-						{grownHint}
-					</span>
-				)}
-				{action}
-				{trailing}
 			</div>
 		);
 	};
@@ -9104,10 +8899,7 @@ export function ChatSidebar({
 			 * overflow once (measured 890/576), and the merged scroller is the
 			 * one pane that can contain it.
 			 */
-			className={cn(
-				"relative",
-				workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
-			)}
+			className="relative sidebar-section-stack"
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
@@ -9204,18 +8996,18 @@ export function ChatSidebar({
 			    reach a conversation, so dimming them says "unavailable" about the one
 			    thing that still works. Design round 1, D1. */}
 			{/*
-			 * NO `space-y-4` ON THE WRAPPER ANY MORE, and it is not a tidy-up: the
-			 * rhythm between two entity sections is CONDITIONAL on whether the one above
-			 * it draws rows (`entitySectionGap` carries the measurement and the reason),
-			 * and a parent `space-y-*` would set a `margin-top` on the
-			 * same element the child's class does - two declarations of one property,
-			 * settled by stylesheet order rather than by the decision.
+			 * ONE PRESENTATION ON EVERY ROUTE (design round 7, D1). This region used to
+			 * switch on `location.pathname` - the Chat route drew the uppercase
+			 * `sectionLabel` headings inside `sidebar-section-stack`, every other route
+			 * drew the older chevron + glyph disclosure rows spaced by a conditional
+			 * margin (`entitySectionGap`) - so the same sidebar moved its TODAY row 16px
+			 * and its Agents label 32px whenever the reader left Chat. The approved Chat
+			 * rendering (docs/branding.md, "Sidebar sections") is now the only one: the
+			 * rhythm between sections is the stack's own, and no route predicate may
+			 * decide it again (`scripts/chat-sidebar-route-invariant.test.mjs`).
 			 */}
 			{showList && (
-				<div
-					data-workspace-launcher={workspaceLauncher ? "" : undefined}
-					className={workspaceLauncher ? "sidebar-section-stack" : "pb-2"}
-				>
+				<div data-workspace-launcher="" className="sidebar-section-stack">
 					{/*
 					 * THE ENTITY ROWS ARE THE POPOVER'S SWITCHES TOO.
 					 *
@@ -9238,143 +9030,126 @@ export function ChatSidebar({
 					 */}
 					{isSectionShown(view, "agents") && (
 						<section>
-							{workspaceLauncher
-								? sectionLabel(
-										t(SIDEBAR_SECTION_LABEL.agents),
-										hubControls("agent"),
-									)
-								: heading(
-										"agents",
-										t(SIDEBAR_SECTION_LABEL.agents),
-										true,
-										undefined,
-										Bot,
-										undefined,
-										undefined,
-										hubControls("agent"),
-									)}
-							{(workspaceLauncher || query || isOpen("agents", true)) && (
-								<>
-									{profiles.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-dim">
-											{t("ui.chat.sidebar.agents.loading")}
-										</p>
-									)}
-									{hubLines("agent")}
-									{rosterFilterShown && (
-										/*
-										 * THE ROSTER'S OWN FILTER (issue #663), and the gate is the whole
-										 * argument for it existing: at `SIDEBAR_SECTION_ROWS` agents or
-										 * fewer the entire roster is on screen and a second field next
-										 * to the list's would be furniture; past the cap the section's
-										 * own `Show N more` stops being a way to FIND one agent, which
-										 * is the friction this field removes. So the chrome appears
-										 * exactly when the section is cap-bound OR a filter is applied
-										 * (`rosterFilterShown` carries the lifecycle rule and the bug it
-										 * closes): a filter always keeps its field, so the pair cannot
-										 * come apart.
-										 *
-										 * AND THE FIELD ALSO RIDES A LIST QUERY (UX round 1's U2,
-										 * design re-check round 3). A list query force-opens the rows
-										 * (`query || isOpen`) and this field is that body's own control,
-										 * so it draws while the body does - reading the disclosure ALONE
-										 * was U2: the heading press under a query is the panel's
-										 * documented no-op on the rows and the chevron, yet it took
-										 * `Filter agents` off the screen and stepped everything below it
-										 * up by the field's own height. The query still narrows agents by
-										 * name through the backend search; this field narrows the ROSTER
-										 * in place on top of it, so the reader keeps the control that
-										 * clears their own filter. THE SECOND CLAUSE IS UNTOUCHED: the
-										 * field still needs a cap-bound roster or an applied filter, so a
-										 * query alone draws nothing over a short roster.
-										 *
-										 * IT IS NOT THE LIST'S FIELD one level up, and that separation
-										 * is the point: the list's query goes through the backend and
-										 * narrows the whole column (agents and chats together), while
-										 * this narrows the ROSTER in place - typing an agent's name
-										 * here must not empty the conversations beside it. So it is
-										 * local state, its own field, drawn the list field's way (same
-										 * box, same step, the clear control returning the caret through
-										 * `clearSearch`).
-										 *
-										 * THE FIELD KEEPS ITS OWN KEYS. The panel's key handler treats
-										 * an Escape in any input as the search field's - clearing the
-										 * LIST's query and walking the caret to the first chats row -
-										 * and walks Home/End/arrows to the list's ends, so every key
-										 * this field means something by is stopped HERE: Escape clears
-										 * the filter and keeps the caret, ArrowDown enters the
-										 * matching rows, and ArrowUp/Home/End keep their default
-										 * (the panel's walk would otherwise land the caret on the
-										 * list's first or last row).
-										 *
-										 * `mt-1` ABOVE IT is design round 1's D5: the field sat
-										 * flush against the heading's own bottom edge, reading
-										 * closer to `Agents` than to the rows it filters.
-										 */
-										<div className="relative mt-1 mb-2">
-											<input
-												ref={rosterFilterRef}
-												data-roster-filter
-												aria-label={t("ui.chat.sidebar.agents.filter")}
-												placeholder={t("ui.chat.sidebar.agents.filter")}
-												className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
-												value={rosterFilter}
-												onChange={(event) =>
-													setRosterFilter(event.target.value)
-												}
-												onKeyDown={(event) => {
-													if (event.key === "Escape") {
-														event.preventDefault();
-														event.stopPropagation();
-														if (rosterFilter)
-															clearSearch(
-																rosterFilterRef.current,
-																setRosterFilter,
-															);
-														return;
-													}
-													if (event.key === "ArrowDown") {
-														event.preventDefault();
-														event.stopPropagation();
-														// The first DRAWN agent row - the pin hook is what
-														// identifies an agent's row in the entity region.
-														navRef.current
-															?.querySelector("[data-agent-pin]")
-															?.closest("[data-entity]")
-															?.querySelector<HTMLElement>("[data-entity-name]")
-															?.focus();
-														return;
-													}
-													if (
-														event.key === "ArrowUp" ||
-														event.key === "Home" ||
-														event.key === "End"
-													) {
-														// The caret keeps its default; only the panel's walk
-														// is stopped (see the block comment above).
-														event.stopPropagation();
-													}
-												}}
-											/>
-											{rosterFilter && (
-												<Button
-													variant="ghost"
-													size="icon-sm"
-													className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
-													onClick={() =>
+							{sectionLabel(
+								t(SIDEBAR_SECTION_LABEL.agents),
+								hubControls("agent"),
+							)}
+							<>
+								{profiles.isLoading && (
+									<p aria-live="polite" className="text-meta text-ink-dim">
+										{t("ui.chat.sidebar.agents.loading")}
+									</p>
+								)}
+								{hubLines("agent")}
+								{rosterFilterShown && (
+									/*
+									 * THE ROSTER'S OWN FILTER (issue #663), and the gate is the whole
+									 * argument for it existing: at `SIDEBAR_SECTION_ROWS` agents or
+									 * fewer the entire roster is on screen and a second field next
+									 * to the list's would be furniture; past the cap the section's
+									 * own `Show N more` stops being a way to FIND one agent, which
+									 * is the friction this field removes. So the chrome appears
+									 * exactly when the section is cap-bound OR a filter is applied
+									 * (`rosterFilterShown` carries the lifecycle rule and the bug it
+									 * closes): a filter always keeps its field, so the pair cannot
+									 * come apart.
+									 *
+									 * AND THE FIELD ALSO RIDES A LIST QUERY (UX round 1's U2,
+									 * design re-check round 3). A list query force-opens the rows
+									 * (`query || isOpen`) and this field is that body's own control,
+									 * so it draws while the body does - reading the disclosure ALONE
+									 * was U2: the heading press under a query is the panel's
+									 * documented no-op on the rows and the chevron, yet it took
+									 * `Filter agents` off the screen and stepped everything below it
+									 * up by the field's own height. The query still narrows agents by
+									 * name through the backend search; this field narrows the ROSTER
+									 * in place on top of it, so the reader keeps the control that
+									 * clears their own filter. THE SECOND CLAUSE IS UNTOUCHED: the
+									 * field still needs a cap-bound roster or an applied filter, so a
+									 * query alone draws nothing over a short roster.
+									 *
+									 * IT IS NOT THE LIST'S FIELD one level up, and that separation
+									 * is the point: the list's query goes through the backend and
+									 * narrows the whole column (agents and chats together), while
+									 * this narrows the ROSTER in place - typing an agent's name
+									 * here must not empty the conversations beside it. So it is
+									 * local state, its own field, drawn the list field's way (same
+									 * box, same step, the clear control returning the caret through
+									 * `clearSearch`).
+									 *
+									 * THE FIELD KEEPS ITS OWN KEYS. The panel's key handler treats
+									 * an Escape in any input as the search field's - clearing the
+									 * LIST's query and walking the caret to the first chats row -
+									 * and walks Home/End/arrows to the list's ends, so every key
+									 * this field means something by is stopped HERE: Escape clears
+									 * the filter and keeps the caret, ArrowDown enters the
+									 * matching rows, and ArrowUp/Home/End keep their default
+									 * (the panel's walk would otherwise land the caret on the
+									 * list's first or last row).
+									 *
+									 * `mt-1` ABOVE IT is design round 1's D5: the field sat
+									 * flush against the heading's own bottom edge, reading
+									 * closer to `Agents` than to the rows it filters.
+									 */
+									<div className="relative mt-1 mb-2">
+										<input
+											ref={rosterFilterRef}
+											data-roster-filter
+											aria-label={t("ui.chat.sidebar.agents.filter")}
+											placeholder={t("ui.chat.sidebar.agents.filter")}
+											className="h-8 w-full rounded-md bg-row-hover pe-9 ps-2 text-body-sm"
+											value={rosterFilter}
+											onChange={(event) => setRosterFilter(event.target.value)}
+											onKeyDown={(event) => {
+												if (event.key === "Escape") {
+													event.preventDefault();
+													event.stopPropagation();
+													if (rosterFilter)
 														clearSearch(
 															rosterFilterRef.current,
 															setRosterFilter,
-														)
-													}
-													aria-label={t("ui.chat.sidebar.agents.clear_filter")}
-												>
-													<X aria-hidden="true" />
-												</Button>
-											)}
-										</div>
-									)}
-									{/*
+														);
+													return;
+												}
+												if (event.key === "ArrowDown") {
+													event.preventDefault();
+													event.stopPropagation();
+													// The first DRAWN agent row - the pin hook is what
+													// identifies an agent's row in the entity region.
+													navRef.current
+														?.querySelector("[data-agent-pin]")
+														?.closest("[data-entity]")
+														?.querySelector<HTMLElement>("[data-entity-name]")
+														?.focus();
+													return;
+												}
+												if (
+													event.key === "ArrowUp" ||
+													event.key === "Home" ||
+													event.key === "End"
+												) {
+													// The caret keeps its default; only the panel's walk
+													// is stopped (see the block comment above).
+													event.stopPropagation();
+												}
+											}}
+										/>
+										{rosterFilter && (
+											<Button
+												variant="ghost"
+												size="icon-sm"
+												className="absolute top-1/2 end-1 -translate-y-1/2 focus-visible:outline-offset-[-2px]!"
+												onClick={() =>
+													clearSearch(rosterFilterRef.current, setRosterFilter)
+												}
+												aria-label={t("ui.chat.sidebar.agents.clear_filter")}
+											>
+												<X aria-hidden="true" />
+											</Button>
+										)}
+									</div>
+								)}
+								{/*
 									    A user with no agents of their own gets the shortcut as the
 									    next step rather than as a quiet line: on a fresh install this
 									    section previously showed six rows the user had not installed
@@ -9383,259 +9158,210 @@ export function ChatSidebar({
 									    list, and nothing to install either, so only the create row
 									    remains.
 									*/}
-									{/*
-									 * ONE element across both states, and the batch's own control is the
-									 * same child at the same index in each, because the two states differ
-									 * in a way the batch itself causes.
-									 *
-									 * The completion summary is owned by `InstallBuiltinAgents`, and the
-									 * batch's last act is to invalidate `profiles`: the six installs land
-									 * as the user's own agents, `ownAgents` stops being empty, and this
-									 * block used to swap a `div` for a fragment in place. React unmounts
-									 * a subtree whose element type changes, so the summary was destroyed
-									 * ~89ms after it was painted: on the built app against the real
-									 * backend the section went straight from the shortcut to the six-row
-									 * list, and `"6 installed. Done"` was caught in the DOM once by a
-									 * MutationObserver and never seen again. The collision arm's "5
-									 * installed, 1 skipped. Skipped 1: you already have an agent called
-									 * `coder`." is the sentence a user actually needs, and it was
-									 * unreadable by construction (QA round 1, Q1).
-									 *
-									 * So the state lives somewhere that does not move: the outer element
-									 * is the empty state's padded box in one case and `display: contents`
-									 * in the other, which contributes no box at all, so the rows and the
-									 * batch's control lay out exactly as they did as bare children; the
-									 * variable content sits in its own `contents` child so the batch is
-									 * at index 1 either way. Same treatment as the live region in
-									 * `install-builtin-agents.tsx`, for the same reason (U11): what the
-									 * user has to be able to read cannot be the thing that gets
-									 * replaced. DO NOT split this back into one call site per branch.
-									 *
-									 * AND A DISMISSED OFFER RENDERS NO BOX AT ALL. The reader's own
-									 * statement that they do not want this offer takes the whole empty
-									 * block with it, and the section is down to its heading and the
-									 * create row below. That state cannot collide with the batch this
-									 * element exists to keep alive: the dismiss control is absent
-									 * whenever the batch owns the section (its `onBusyChange` report),
-									 * so by the time a dismissal can be pressed there is no progress
-									 * and no summary on screen for it to destroy — and the swap this
-									 * comment is about is never raced by a dismissal.
-									 */}
-									{!emptyBlockDismissed && (
-										<div
-											className={cn(
-												agentsEmpty
-													? "flex flex-col gap-2 px-3 py-2"
-													: "contents",
-											)}
-											data-testid={
-												agentsEmpty ? "agents-sidebar-empty" : undefined
-											}
-										>
-											<div className="contents">
-												{agentsEmpty ? (
-													<>
-														{/*
-														 * The dismiss control rides the "No agents yet" line's row, at its
-														 * end: that line is what the offer is FOR — the empty section — and
-														 * the row is the block's first line wherever the block starts.
-														 * `items-center` sits the glyph's centre on the paragraph's own
-														 * centre rather than a line-height below it.
-														 *
-														 * IT EXISTS ONLY WHILE THERE IS AN OFFER TO DISMISS AND THE BATCH IS
-														 * SHOWING NOTHING: `builtinOfferOnScreen` requires the empty state
-														 * and a non-empty, undismissed catalogue, and `agentsOfferBusy` is
-														 * the batch's own report — while it is true the control does not
-														 * exist, so a press can never take the progress or the summary off
-														 * screen (QA round 1's Q1 and UX round 2's U11 are the work this
-														 * protects). The control takes the sidebar's own icon-sm ghost step
-														 * (28px square, 14px glyph, the accessible name carrying the
-														 * sentence a bare glyph cannot), the same step the chats search's
-														 * clear control below takes.
-														 */}
-														<div className="flex items-center justify-between gap-2">
-															<p className="text-body-sm text-ink">
-																{t("ui.chat.sidebar.agents.empty")}
-															</p>
-															{builtinOfferOnScreen && !agentsOfferBusy && (
-																<Button
-																	variant="ghost"
-																	size="icon-sm"
-																	data-testid="agents-offer-dismiss"
-																	aria-label={t(
-																		"ui.chat.sidebar.agents.dismiss_offer",
-																	)}
-																	onClick={() => {
-																		offerDismissedByPressRef.current = true;
-																		dismissBuiltinOffer(offerSignature);
-																	}}
-																>
-																	<X aria-hidden="true" />
-																</Button>
-															)}
-														</div>
-														{/*
-														 * The offer is CONDITIONAL on there being something to offer, and it
-														 * names what that is.
-														 *
-														 * It used to render unconditionally: on a backend with no packaged
-														 * profiles the section still said "Built-in agents are ready to
-														 * install" while offering nothing that installs one — the same
-														 * paragraph, pixel-identical, in a state whose whole point is that
-														 * there is nothing to install (design round 1, D3). And what it
-														 * promised was a list of activities rather than the roles on offer,
-														 * including a "research" role that is not among the packaged
-														 * profiles, with no count at all until the batch had started (UX
-														 * round 1, U6). Derived from the rows the backend sent, because
-														 * the catalogue is the authority on what can be installed and a
-														 * hand-written list can disagree with it.
-														 */}
-														{availableBuiltins.length > 0 && (
-															<p className="text-meta text-ink-muted">
-																{builtinOfferSentence(availableBuiltins)}
-															</p>
-														)}
-													</>
-												) : rosterFilterShown && rosterFilter.trim() ? (
-													/*
-													 * WHILE THE ROSTER FILTER IS APPLIED THE CAP IS BYPASSED, the
-													 * promise the list's own search makes one level up
-													 * (`pageRows` under `searching`): a filter that returned
-													 * eight of eleven matches would make the reader page the
-													 * column to find the one they typed. The `Show N more`
-													 * foot goes WITH the cap, so nothing here can offer a page
-													 * the section is not on. An empty answer says so rather
-													 * than falling back to the full roster, which would read
-													 * as "the filter did nothing".
+								{/*
+								 * ONE element across both states, and the batch's own control is the
+								 * same child at the same index in each, because the two states differ
+								 * in a way the batch itself causes.
+								 *
+								 * The completion summary is owned by `InstallBuiltinAgents`, and the
+								 * batch's last act is to invalidate `profiles`: the six installs land
+								 * as the user's own agents, `ownAgents` stops being empty, and this
+								 * block used to swap a `div` for a fragment in place. React unmounts
+								 * a subtree whose element type changes, so the summary was destroyed
+								 * ~89ms after it was painted: on the built app against the real
+								 * backend the section went straight from the shortcut to the six-row
+								 * list, and `"6 installed. Done"` was caught in the DOM once by a
+								 * MutationObserver and never seen again. The collision arm's "5
+								 * installed, 1 skipped. Skipped 1: you already have an agent called
+								 * `coder`." is the sentence a user actually needs, and it was
+								 * unreadable by construction (QA round 1, Q1).
+								 *
+								 * So the state lives somewhere that does not move: the outer element
+								 * is the empty state's padded box in one case and `display: contents`
+								 * in the other, which contributes no box at all, so the rows and the
+								 * batch's control lay out exactly as they did as bare children; the
+								 * variable content sits in its own `contents` child so the batch is
+								 * at index 1 either way. Same treatment as the live region in
+								 * `install-builtin-agents.tsx`, for the same reason (U11): what the
+								 * user has to be able to read cannot be the thing that gets
+								 * replaced. DO NOT split this back into one call site per branch.
+								 *
+								 * AND A DISMISSED OFFER RENDERS NO BOX AT ALL. The reader's own
+								 * statement that they do not want this offer takes the whole empty
+								 * block with it, and the section is down to its heading and the
+								 * create row below. That state cannot collide with the batch this
+								 * element exists to keep alive: the dismiss control is absent
+								 * whenever the batch owns the section (its `onBusyChange` report),
+								 * so by the time a dismissal can be pressed there is no progress
+								 * and no summary on screen for it to destroy — and the swap this
+								 * comment is about is never raced by a dismissal.
+								 */}
+								{!emptyBlockDismissed && (
+									<div
+										className={cn(
+											agentsEmpty
+												? "flex flex-col gap-2 px-3 py-2"
+												: "contents",
+										)}
+										data-testid={
+											agentsEmpty ? "agents-sidebar-empty" : undefined
+										}
+									>
+										<div className="contents">
+											{agentsEmpty ? (
+												<>
+													{/*
+													 * The dismiss control rides the "No agents yet" line's row, at its
+													 * end: that line is what the offer is FOR — the empty section — and
+													 * the row is the block's first line wherever the block starts.
+													 * `items-center` sits the glyph's centre on the paragraph's own
+													 * centre rather than a line-height below it.
 													 *
-													 * THE BRANCH READS `rosterFilterShown` (the field's own gate),
-													 * not `rosterFilter` alone: it is the one spelling of "the
-													 * filter applies", so a stored filter can never narrow a
-													 * section whose field is not on screen (design D2 / B3 / U3).
-													 *
-													 * AND THE SENTENCE COUNTS `drawnFilteredAgents` (UX round 1's
-													 * U1), not the matches: a LIST query can drop every admitted
-													 * agent's row (name misses, no rows survive), and testing the
-													 * matches alone left the section a blank gap under a field
-													 * that said nothing. The two sets this file carries are the
-													 * matches (`filteredAgents`) and the rows that draw
-													 * (`drawnFilteredAgents`); the sentence is about the
-													 * second, which is what the reader sees.
-													 */
-													drawnFilteredAgents.length > 0 ? (
-														drawnFilteredAgents.map((row) =>
-															entity("agent", row.name, row.id),
-														)
-													) : (
-														<p className="text-meta text-ink-muted">
-															{t("ui.chat.sidebar.agents.no_match")}
+													 * IT EXISTS ONLY WHILE THERE IS AN OFFER TO DISMISS AND THE BATCH IS
+													 * SHOWING NOTHING: `builtinOfferOnScreen` requires the empty state
+													 * and a non-empty, undismissed catalogue, and `agentsOfferBusy` is
+													 * the batch's own report — while it is true the control does not
+													 * exist, so a press can never take the progress or the summary off
+													 * screen (QA round 1's Q1 and UX round 2's U11 are the work this
+													 * protects). The control takes the sidebar's own icon-sm ghost step
+													 * (28px square, 14px glyph, the accessible name carrying the
+													 * sentence a bare glyph cannot), the same step the chats search's
+													 * clear control below takes.
+													 */}
+													<div className="flex items-center justify-between gap-2">
+														<p className="text-body-sm text-ink">
+															{t("ui.chat.sidebar.agents.empty")}
 														</p>
+														{builtinOfferOnScreen && !agentsOfferBusy && (
+															<Button
+																variant="ghost"
+																size="icon-sm"
+																data-testid="agents-offer-dismiss"
+																aria-label={t(
+																	"ui.chat.sidebar.agents.dismiss_offer",
+																)}
+																onClick={() => {
+																	offerDismissedByPressRef.current = true;
+																	dismissBuiltinOffer(offerSignature);
+																}}
+															>
+																<X aria-hidden="true" />
+															</Button>
+														)}
+													</div>
+													{/*
+													 * The offer is CONDITIONAL on there being something to offer, and it
+													 * names what that is.
+													 *
+													 * It used to render unconditionally: on a backend with no packaged
+													 * profiles the section still said "Built-in agents are ready to
+													 * install" while offering nothing that installs one — the same
+													 * paragraph, pixel-identical, in a state whose whole point is that
+													 * there is nothing to install (design round 1, D3). And what it
+													 * promised was a list of activities rather than the roles on offer,
+													 * including a "research" role that is not among the packaged
+													 * profiles, with no count at all until the batch had started (UX
+													 * round 1, U6). Derived from the rows the backend sent, because
+													 * the catalogue is the authority on what can be installed and a
+													 * hand-written list can disagree with it.
+													 */}
+													{availableBuiltins.length > 0 && (
+														<p className="text-meta text-ink-muted">
+															{builtinOfferSentence(availableBuiltins)}
+														</p>
+													)}
+												</>
+											) : rosterFilterShown && rosterFilter.trim() ? (
+												/*
+												 * WHILE THE ROSTER FILTER IS APPLIED THE CAP IS BYPASSED, the
+												 * promise the list's own search makes one level up
+												 * (`pageRows` under `searching`): a filter that returned
+												 * eight of eleven matches would make the reader page the
+												 * column to find the one they typed. The `Show N more`
+												 * foot goes WITH the cap, so nothing here can offer a page
+												 * the section is not on. An empty answer says so rather
+												 * than falling back to the full roster, which would read
+												 * as "the filter did nothing".
+												 *
+												 * THE BRANCH READS `rosterFilterShown` (the field's own gate),
+												 * not `rosterFilter` alone: it is the one spelling of "the
+												 * filter applies", so a stored filter can never narrow a
+												 * section whose field is not on screen (design D2 / B3 / U3).
+												 *
+												 * AND THE SENTENCE COUNTS `drawnFilteredAgents` (UX round 1's
+												 * U1), not the matches: a LIST query can drop every admitted
+												 * agent's row (name misses, no rows survive), and testing the
+												 * matches alone left the section a blank gap under a field
+												 * that said nothing. The two sets this file carries are the
+												 * matches (`filteredAgents`) and the rows that draw
+												 * (`drawnFilteredAgents`); the sentence is about the
+												 * second, which is what the reader sees.
+												 */
+												drawnFilteredAgents.length > 0 ? (
+													drawnFilteredAgents.map((row) =>
+														entity("agent", row.name, row.id),
 													)
 												) : (
-													cappedRows(
-														"agents",
-														agentRows.map((row) =>
-															entity("agent", row.name, row.id),
-														),
-													)
-												)}
-											</div>
-											{/* Renders nothing once every built-in is installed. */}
-											<InstallBuiltinAgents
-												builtins={availableBuiltins}
-												presentation={agentsEmpty ? "primary" : "row"}
-												onBusyChange={setAgentsOfferBusy}
-											/>
+													<p className="text-meta text-ink-muted">
+														{t("ui.chat.sidebar.agents.no_match")}
+													</p>
+												)
+											) : (
+												cappedRows(
+													"agents",
+													agentRows.map((row) =>
+														entity("agent", row.name, row.id),
+													),
+												)
+											)}
 										</div>
-									)}
-									<button
-										ref={createAgentRowRef}
-										type="button"
-										className={cn(rowStyle, "w-full text-ink-muted")}
-										onClick={() => navigate("/agents?create=agent")}
-									>
-										<Plus className="size-4" />
-										{t("ui.chat.sidebar.agents.create")}
-									</button>
-								</>
-							)}
+										{/* Renders nothing once every built-in is installed. */}
+										<InstallBuiltinAgents
+											builtins={availableBuiltins}
+											presentation={agentsEmpty ? "primary" : "row"}
+											onBusyChange={setAgentsOfferBusy}
+										/>
+									</div>
+								)}
+								<button
+									ref={createAgentRowRef}
+									type="button"
+									className={cn(rowStyle, "w-full text-ink-muted")}
+									onClick={() => navigate("/agents?create=agent")}
+								>
+									<Plus className="size-4" />
+									{t("ui.chat.sidebar.agents.create")}
+								</button>
+							</>
 						</section>
 					)}
-					{/*
-					 * THE GAP BETWEEN THE TWO SECTIONS IS CONDITIONAL, and it is not a smaller
-					 * constant. Measured at 360px: the 16px between these sections is SHARED
-					 * - an open `Agents` above needs a section rhythm's 16px between the two,
-					 * and a shorter constant would tighten that case unasked - while a
-					 * collapsed section hands the heading below it the list's own 8px step,
-					 * because a section that draws no rows has nothing for a section rhythm to
-					 * separate. Operator report, 2026-09-27, asked twice: "shrink the gap
-					 * between agents and teams headers when agents is collapsed, there's an
-					 * extra gap wasting space there."
-					 *
-					 * `mt-4` and `mt-2` are the design's own two steps - the 16px section tier
-					 * and the 8px a label takes when the section above draws no rows to
-					 * separate - and they live in `entitySectionGap`: this is the only site
-					 * that takes the conditional, and a query force-opens the section, which
-					 * is the same condition the rows' own gate reads.
-					 *
-					 * AND THE CONDITION'S OTHER HALF IS THE VIEW GATE ITSELF (design round
-					 * 1, D1): `Agents` switched off in the popover leaves NO section above
-					 * Teams, and without `isSectionShown(view, "agents")` this margin still
-					 * took the 16px tier for a section that is not drawn - a hidden first
-					 * block keeping the between-sections lead (first ink y=72 against the
-					 * first block's y=57, the same gap in all twelve themes). A hidden first
-					 * section hands its slot over here the way a hidden chats section does in
-					 * the list below: nothing drawn above, nothing to separate.
-					 */}
 					{isSectionShown(view, "teams") && (
-						<section
-							className={
-								workspaceLauncher
-									? undefined
-									: entitySectionGap(
-											isSectionShown(view, "agents") &&
-												(Boolean(query) || isOpen("agents", true)),
-										)
-							}
-						>
-							{workspaceLauncher
-								? sectionLabel(
-										t(SIDEBAR_SECTION_LABEL.teams),
-										hubControls("team"),
-									)
-								: heading(
-										"teams",
-										t(SIDEBAR_SECTION_LABEL.teams),
-										true,
-										undefined,
-										Users,
-										undefined,
-										undefined,
-										hubControls("team"),
-									)}
-							{(workspaceLauncher || query || isOpen("teams", true)) && (
-								<>
-									{teams.isLoading && (
-										<p aria-live="polite" className="text-meta text-ink-dim">
-											{t("ui.chat.sidebar.teams.loading")}
-										</p>
-									)}
-									{hubLines("team")}
-									{teams.data &&
-										cappedRows(
-											"teams",
-											teams.data.map((team) => entity("team", team.name)),
-										)}
-									<button
-										type="button"
-										className={cn(rowStyle, "w-full text-ink-muted")}
-										onClick={() => navigate("/agents?create=team")}
-									>
-										<Plus className="size-4" />
-										{t("ui.chat.sidebar.teams.create")}
-									</button>
-								</>
+						<section>
+							{sectionLabel(
+								t(SIDEBAR_SECTION_LABEL.teams),
+								hubControls("team"),
 							)}
+							<>
+								{teams.isLoading && (
+									<p aria-live="polite" className="text-meta text-ink-dim">
+										{t("ui.chat.sidebar.teams.loading")}
+									</p>
+								)}
+								{hubLines("team")}
+								{teams.data &&
+									cappedRows(
+										"teams",
+										teams.data.map((team) => entity("team", team.name)),
+									)}
+								<button
+									type="button"
+									className={cn(rowStyle, "w-full text-ink-muted")}
+									onClick={() => navigate("/agents?create=team")}
+								>
+									<Plus className="size-4" />
+									{t("ui.chat.sidebar.teams.create")}
+								</button>
+							</>
 						</section>
 					)}
 				</div>
@@ -9831,10 +9557,7 @@ export function ChatSidebar({
 				lastPinPress.current = null;
 				lastArchivePress.current = null;
 			}}
-			className={cn(
-				"relative",
-				workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
-			)}
+			className="relative sidebar-section-stack"
 		>
 			{/*
 			 * ONE LIST, SECTIONED BY WHAT A READER ASKS OF IT (§C1; design round 1, D1).
@@ -11104,7 +10827,7 @@ export function ChatSidebar({
 					}}
 					className={cn(
 						"relative min-h-0 flex-1 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]",
-						workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
+						"sidebar-section-stack",
 					)}
 					/*
 					 * The reader's own gesture ends the Tag-mode foot's anchor hold
@@ -11118,7 +10841,7 @@ export function ChatSidebar({
 					{pinFailureLine}
 					{listShown && temporaryEnabled && !query.trim() && (
 						<SidebarTemporaryGroup
-							workspaceHeading={workspaceLauncher}
+							workspaceHeading
 							rows={temporaryRows}
 							// The same current row the normal list marks (`currentSessionRowId`):
 							// a temporary first send lists its row here from the create's answer.
