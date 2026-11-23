@@ -306,6 +306,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { checkRouteFrame, readRouteFrame } from "./route-tops-geometry.mjs";
 import { sceneSidebarDocking } from "./sidebar-docking-scene.mjs";
 import {
 	prepareSidebarLayoutScene,
@@ -43452,25 +43453,16 @@ async function assertBuildIsCurrent() {
  * it is drawn. On macOS that second band put /settings' rail and content on 64 against
  * the chat header's 32.
  *
- * WHAT IT MEASURES. Per route: `main`'s first element that is not the band (the route's
- * own root - on settings that is the box both the rail and the content sit in, and it is
- * the box the report is about), plus the lane, the band, the app sidebar, and the
- * settings rail and content where those exist. The frames are captures of the same
- * state, so the claim can be read as numbers and looked at as pixels.
+ * WHAT IT MEASURES. Per route: the outlet and effective body frame (Chat and
+ * Browser keep their own chrome outside it), plus the lane, band, sidebar and
+ * settings columns. Read the gutter pseudo's computed shape and paint in the
+ * same snapshot. Those CSS readings aren't a substitute for looking at the PNG
+ * or for checking how the native material composites on screen.
  *
- * SINCE 2026-09-27 IT ALSO MEASURES THE RUNG, and the two halves of that day's report
- * together: the settings rail took `elevated` to separate it from the app sidebar
- * ("a slightly different background shade to differentiate from the main sidebar"), so
- * the lane must carry that rung across the rail's width from y0 down - the readings
- * below assert the lane's resolved STOP LIST (colour/position pairs, read back off the
- * computed gradient) against each column's painted ground. The rail gave the rung up
- * again on 2026-09-30 (flat `surface`, after the split it required was reported as
- * mismatched blocks), so every column standing on today's tree is on `surface`; the
- * assertion is about the rule rather than the value and is unchanged. And every
- * route column's
- * RIGHT RULE was removed ("either make it extend all the way up or remove the right
- * border"), because a rule cannot reach y0 from inside the clipped content column, so
- * the scene refuses the hairline role anywhere in the lane.
+ * The lane is an overlay; the strip read identifies the panel or route chrome
+ * behind it, not the colour of a former titlebar gradient. A leading column
+ * inside the inset cannot carry an edge through this strip, so the no-right-rule
+ * check remains independent of which ground the shell paints.
  *
  * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
  * there IS no lane above the columns, so the band there is a route's only drag surface
@@ -43549,7 +43541,7 @@ async function sceneRouteTops(cdp) {
 					height: Math.round(rect.height * 100) / 100,
 				};
 			};
-			const main = document.querySelector("main");
+			const main = document.querySelector("main[data-workspace-outlet]");
 			/*
 			 * A ROLE RESOLVED RATHER THAN GUESSED. --lo-surface is the token the
 			 * lane's band is asked for, and a one-off element is how its computed
@@ -43565,13 +43557,9 @@ async function sceneRouteTops(cdp) {
 				probe.remove();
 				return ground;
 			};
-			const frame = main?.querySelector(":scope > [data-workspace-frame-shell] > [data-workspace-frame]") ?? null;
-			const routeChild = (el) => Array.from(el?.children ?? []).find((child) => !child.hasAttribute("data-chrome-route-band")) ?? null;
-			// Chat and Browser own their chrome; both outlet slots are then layout-inert.
-			let ownRoot = routeChild(frame ?? main);
-			while (ownRoot && getComputedStyle(ownRoot).display === "contents") ownRoot = routeChild(ownRoot);
+			const { route: ownRoot, geometry } = (${readRouteFrame})(document, main, box, roleGround);
 			const lane = document.querySelector("[data-titlebar-lane]");
-			const band = document.querySelector("[data-chrome-route-band]");
+			const band = main?.querySelector(":scope > [data-chrome-route-band]") ?? null;
 			/*
 			 * THE LANE'S BAND, read back the way it is painted rather than the way it was
 			 * asked for: the stop is the first length in the RESOLVED gradient (the
@@ -43691,33 +43679,42 @@ async function sceneRouteTops(cdp) {
 			 * strip is whichever panel is behind it. The body, html and #app are
 			 * SKIPPED deliberately - they paint the window's fallback canvas, and
 			 * accepting them would let a hole read as a panel. A probe therefore
-			 * answers only when a panel owns that pixel, which is the contract.
+			 * reports panel paint (or no DOM paint if the clearance is clear glass).
 			 */
 			const groundAt = (x) => {
-				for (const el of document.elementsFromPoint(x, 8)) {
+				const stack = document.elementsFromPoint(x, 8);
+				const inOutlet = stack.includes(main);
+				for (const el of stack) {
 					if (el === document.body || el === document.documentElement || el.id === "app") continue;
 					const bg = getComputedStyle(el).backgroundColor;
 					if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-						return { x: Math.round(x), bg, tag: el.tagName.toLowerCase() };
+						return { x: Math.round(x), bg, tag: el.tagName.toLowerCase(), inOutlet };
 					}
 				}
-				return { x: Math.round(x), bg: null, tag: null };
+				return { x: Math.round(x), bg: null, tag: null, inOutlet };
 			};
 			const sidebar = box(document.querySelector("[data-sidebar-shell]") || document.querySelector("[data-sidebar-strip]"));
 			const stripX = [4, window.innerWidth - 4, window.innerWidth / 2];
 			if (sidebar) stripX.push(sidebar.left + sidebar.width / 2);
-			if (leading) stripX.push(leading.left + leading.width / 2);
+			const leadingBox = box(leading);
+			if (leadingBox) stripX.push(leadingBox.left + leadingBox.width / 2);
 			const settingsRailEl = document.querySelector('nav[aria-label="Settings sections"]');
 			if (settingsRailEl) {
 				const r = settingsRailEl.getBoundingClientRect();
 				stripX.push(r.left + r.width / 2);
 			}
 			const stripGrounds = [...new Set(stripX.map((x) => Math.round(x)))].map(groundAt);
+			const html = document.documentElement;
 			return {
-				platform: document.documentElement.getAttribute("data-chrome-platform"),
-				mode: document.documentElement.getAttribute("data-chrome-mode"),
+				...geometry,
+				platform: html.getAttribute("data-chrome-platform"),
+				mode: html.getAttribute("data-chrome-mode"),
+				fullscreen: html.getAttribute("data-chrome-fullscreen") === "true",
+				glass: html.hasAttribute("data-glass"),
+				sidebarGround: html.matches('[data-glass~="sidebar"]') ? roleGround("--lo-glass-g-surface") : surfaceGround,
+				glassGrounds: html.hasAttribute("data-glass") ? ["surface", "canvas", "elevated"].map((role) => roleGround("--lo-glass-g-" + role)) : [],
+				browserChromeGround: roleGround("--lo-sunken"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
-				routeFlush: ownRoot ? getComputedStyle(ownRoot).marginTop : null,
 				stripGrounds,
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
@@ -43727,14 +43724,9 @@ async function sceneRouteTops(cdp) {
 				sidebar: box(document.querySelector("[data-sidebar-shell]")),
 				main: box(main),
 				mainPad: main ? Number.parseFloat(getComputedStyle(main).paddingTop) : null,
-				frame: box(frame),
-				frames: document.querySelectorAll("[data-workspace-frame]").length,
-				frameRadius: frame ? getComputedStyle(frame).borderStartStartRadius : null,
-				frameShadow: frame ? getComputedStyle(frame).boxShadow : null,
-				frameBorder: frame ? getComputedStyle(frame).borderInlineStartWidth : null,
 				route: box(ownRoot),
 				routeTag: ownRoot ? ownRoot.tagName.toLowerCase() : null,
-				leadingColumn: box(leading),
+				leadingColumn: leadingBox,
 				leadingColumnGround: leading ? paintedGroundOf(leading) : null,
 				leadingColumnRule: leading
 					? getComputedStyle(leading).borderRightWidth
@@ -43778,34 +43770,8 @@ async function sceneRouteTops(cdp) {
 	}
 
 	for (const [slug, path, reading] of readings) {
-		const legacy = slug === "chat" || slug === "browser";
-		check(
-			`${path}: one outlet frame, except for the explicit legacy body placements`,
-			reading.frames === (legacy ? 0 : 1),
-			`found ${reading.frames}`,
-		);
-		if (!legacy) {
-			const { frame, main, band, bandDisplay } = reading;
-			const near = (a, b) => Math.abs(a - b) < 0.5; // CDP box measurements are rounded to 0.01px.
-			const visibleBand = band && bandDisplay !== "none" ? band.height : 0;
-			check(
-				`${path}: frame starts below one clearance and keeps 8px side and bottom gutters`,
-				frame !== null &&
-					main !== null &&
-					near(frame.top, main.top + reading.mainPad + visibleBand) &&
-					near(frame.left - main.left, 8) &&
-					near(main.left + main.width - frame.left - frame.width, 8) &&
-					near(main.top + main.height - frame.top - frame.height, 8),
-				JSON.stringify({ frame, main, pad: reading.mainPad, visibleBand }),
-			);
-			check(
-				`${path}: 10px corners without an edge or shadow`,
-				reading.frameRadius === "10px" &&
-					reading.frameBorder === "0px" &&
-					reading.frameShadow === "none",
-				`radius ${reading.frameRadius}, border ${reading.frameBorder}, shadow ${reading.frameShadow}`,
-			);
-		}
+		const owner = slug === "chat" || slug === "browser" ? slug : "outlet";
+		checkRouteFrame(path, owner, reading, check);
 	}
 
 	/*
@@ -43813,8 +43779,8 @@ async function sceneRouteTops(cdp) {
 	 * null` and a `display: none` lane are the two shapes of "this window draws no
 	 * lane", and they are answered together rather than branched on separately:
 	 * both mean the window's chrome reserves no band at the top of the client area.
-	 * The CONTROL route supplies the lane's geometry - /chat is a route this change
-	 * does not touch, which is exactly why its reading is the reference.
+	 * /chat supplies the lane geometry from the shell's own overlay, independent
+	 * of the inset below Chat's tabs.
 	 */
 	const control = readings.find(([slug]) => slug === "chat")?.[2] ?? null;
 	const laneDrawn =
@@ -43828,61 +43794,66 @@ async function sceneRouteTops(cdp) {
 
 	if (macIntegrated) {
 		/*
-		 * THE PANEL CONTRACT, IN THE RUNNING APP. The lane is a transparent overlay,
-		 * so there is no gradient left to read: what has to be true is that the
-		 * route's own box reaches y0 when it is a panel (its computed margin-top is
-		 * the negative `panel-flush`) or begins on the strip's edge when it is an
-		 * ordinary page, and that every probe at y8 across the window is a panel's
-		 * own ground. `stripGrounds` walks the element stack and skips html/body/#app,
-		 * so the window's fallback canvas cannot stand in for a panel.
+		 * The titlebar is a transparent overlay. An outlet-owned body begins at
+		 * its bottom edge; Chat tabs and Browser chrome start at y0 and cover it.
+		 * Don't mistake the first layout wrapper (notably ChatPage) for that row.
 		 */
-		for (const [, path, reading] of readings) {
+		for (const [slug, path, reading] of readings) {
+			const ownsChrome = slug === "chat" || slug === "browser";
+			const { chrome, frame } = reading;
 			check(
-				`${path}: the route's own first box starts at y0 (panel) or the strip's edge (ordinary page)`,
-				reading.route !== null &&
-					(Math.abs(reading.route.top) < 0.5 ||
-						Math.abs(reading.route.top - laneBottom) < 0.5),
-				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top}; lane ends at ${laneBottom}; route margin-top ${reading.routeFlush}`,
-				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+				`${path}: ${ownsChrome ? "route chrome covers the lane from y0" : "outlet body starts at the lane's bottom edge"}`,
+				ownsChrome
+					? !!chrome &&
+							Math.abs(chrome.top) < 0.5 &&
+							chrome.top + chrome.height >= laneBottom - 0.5
+					: !!frame && Math.abs(frame.top - laneBottom) < 0.5,
+				JSON.stringify({ chrome, frame, laneBottom }),
 			);
+			const stripOverBody = reading.glass && !ownsChrome;
+			const panelGrounds = [
+				reading.surfaceGround,
+				reading.canvasGround,
+				reading.elevatedGround,
+				...reading.glassGrounds,
+			];
 			check(
-				`${path}: the route root declares which side of the lane it is on`,
-				reading.routeFlush !== null &&
-					(Number.parseFloat(reading.routeFlush) < -0.5 ||
-						Math.abs(reading.route.top - laneBottom) < 0.5),
-				`route margin-top ${reading.routeFlush}: a panel root must cancel the shell's pad with \`panel-flush\`, and an ordinary page must start on the strip's edge`,
-			);
-			check(
-				`${path}: every probe at y8 is a panel's own ground`,
+				`${path}: every y8 probe has panel paint or the outlet's intentional clear glass above the inset`,
 				reading.stripGrounds.length > 0 &&
-					reading.stripGrounds.every((probe) =>
-						[
-							reading.surfaceGround,
-							reading.canvasGround,
-							reading.elevatedGround,
-						].includes(probe.bg),
-					),
-				`the y8 probes read ${reading.stripGrounds.map((p) => `${p.x}px=${p.bg ?? "NOTHING"}<${p.tag ?? "-"}>`).join(", ")} against surface ${reading.surfaceGround}, canvas ${reading.canvasGround}, elevated ${reading.elevatedGround}`,
+					reading.stripGrounds.every((probe) => {
+						// Above a shared inset the glass outlet deliberately leaves the
+						// strip clear. Only accept no DOM paint inside that outlet, not on
+						// a rail or on either route's own strip. Browser's opaque chrome
+						// is sunken, not the elevated body under it.
+						if (stripOverBody && probe.inOutlet) return probe.bg === null;
+						return (
+							panelGrounds.includes(probe.bg) ||
+							(slug === "browser" &&
+								probe.inOutlet &&
+								probe.bg === reading.browserChromeGround)
+						);
+					}),
+				`y8: ${JSON.stringify(reading.stripGrounds)}; grounds ${panelGrounds.join(", ")}; Browser chrome ${reading.browserChromeGround}; clear outlet expected ${stripOverBody}`,
 			);
 			check(
 				`${path}: the window's left edge in the strip belongs to the sidebar's surface`,
-				reading.stripGrounds[0]?.bg === reading.surfaceGround,
+				reading.stripGrounds[0]?.bg === reading.sidebarGround,
 				`x${reading.stripGrounds[0]?.x} reads ${reading.stripGrounds[0]?.bg}`,
 			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
 				const mid = column.left + column.width / 2;
-				const expectedStripGround = reading.frame
-					? reading.surfaceGround
+				const expectedStripGround = !ownsChrome
+					? stripOverBody
+						? null
+						: reading.surfaceGround
 					: reading.leadingColumnGround;
 				check(
-					`${path}: strip ground over the leading column belongs to the ${reading.frame ? "outlet chrome" : "flush panel"}`,
-					expectedStripGround !== null &&
-						reading.stripGrounds.some(
-							(probe) =>
-								Math.abs(probe.x - mid) <= 1 &&
-								probe.bg === expectedStripGround,
-						),
+					`${path}: strip ground over the leading column matches its owner`,
+					reading.stripGrounds.some(
+						(probe) =>
+							Math.abs(probe.x - mid) <= 1 && probe.bg === expectedStripGround,
+					),
 					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against expected ${expectedStripGround}`,
 				);
 				check(
