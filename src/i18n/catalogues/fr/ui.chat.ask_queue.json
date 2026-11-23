@@ -23,7 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "Cette question a déjà été réglée ; votre réponse n’a donc pas été envoyée.",
 	"ui.chat.ask_queue.refusal.busy": "Votre réponse n’est pas encore confirmée. L’agent est occupé.",
 	"ui.chat.ask_queue.refusal.expired": "Cette demande est trop ancienne pour recevoir une réponse — redemandez à l’agent.",
-	"ui.chat.ask_queue.refusal.not_addressable": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
+	"ui.chat.ask_queue.refusal.not_addressable": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
 	"ui.chat.ask_queue.response.answered": "Répondue — remise en cours (demande {askId})",
 	"ui.chat.ask_queue.response.declined": "Demande {askId} refusée — l’agent a été informé",
 	"ui.chat.ask_queue.response.dismissed": "Ignorée par vous{hasVia, select, yes { ({via})} other {}} — {reason} (demande {askId})",
