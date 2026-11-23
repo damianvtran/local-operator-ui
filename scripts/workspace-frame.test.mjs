@@ -365,7 +365,7 @@ test("all 17 live patterns render exactly one effective body frame pending and s
 	}
 });
 
-test("a render failure stays in the split frame and navigation resets it", async (t) => {
+test("a split-frame error keeps Retry focused on rerender and resets on Retry or navigation", async (t) => {
 	const dom = new JSDOM("<div id='test'></div>");
 	t.mock.method(console, "error", () => {});
 	const original = globalThis.window;
@@ -373,19 +373,42 @@ test("a render failure stays in the split frame and navigation resets it", async
 	const container = dom.window.document.getElementById("test");
 	const root = createRoot(container, { onCaughtError: () => {} });
 	try {
-		function BrokenRoute() {
-			throw new Error("fixture render failure");
+		const error = new Error("fixture render failure");
+		let shouldThrow = true;
+		function FailingRoute() {
+			if (shouldThrow) throw error;
+			return createElement("div", { "data-recovered-body": "" });
 		}
-		await act(() =>
-			root.render(outlet("/agents/saved", createElement(BrokenRoute))),
-		);
+		const renderSameRoute = () =>
+			act(() =>
+				root.render(outlet("/agents/saved", createElement(FailingRoute))),
+			);
+		await renderSameRoute();
 		const frame = container.querySelector(
 			"[data-workspace-frame-full-height] > [data-workspace-frame]",
 		);
 		const failure = frame?.querySelector(
 			":scope > [data-workspace-route-error][data-workspace-safe-content]",
 		);
-		assert.ok(failure?.querySelector("button"));
+		const retry = failure?.querySelector("button");
+		assert.ok(retry);
+		retry.focus();
+		assert.equal(dom.window.document.activeElement, retry);
+
+		// App recreates the inline fallback callback even when the URL and
+		// latched error haven't changed. It must leave the focused node alone.
+		await renderSameRoute();
+		assert.equal(retry.isConnected, true, "rerender remounted Retry");
+		assert.equal(dom.window.document.activeElement, retry);
+
+		shouldThrow = false;
+		await act(() => retry.click());
+		assert.ok(frame.querySelector("[data-recovered-body]"));
+		assert.equal(frame.querySelector("[data-workspace-route-error]"), null);
+
+		shouldThrow = true;
+		await renderSameRoute();
+		assert.ok(frame.querySelector("[data-workspace-route-error]"));
 		await act(() => root.render(outlet("/settings?section=integrations")));
 		assert.equal(container.querySelector("[data-workspace-frame]"), frame);
 		assert.ok(frame.querySelector("[data-fixture-body]"));

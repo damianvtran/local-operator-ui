@@ -25,6 +25,7 @@ import { build, transformSync } from "esbuild";
 
 const RENDERER_ARGUMENT_FUNCTION =
 	/function rendererArgumentFlags\([\s\S]*?\n\}/;
+const RAIL_WIDTH_EXPRESSION = /\bconst railWidth\s*=\s*([^;]+);/;
 const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
@@ -676,29 +677,45 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 	);
 });
 
-test("the shell publishes the inset the panel rail leaves, and every trailing row reads it (#872)", () => {
-	/*
-	 * The Windows/Linux caption buttons are ~138px (`src/shared/window-chrome.ts`'s
-	 * trailing reservation) and the rail is 44, so the rail clears only the buttons'
-	 * trailing part. The row that ends at the rail's left edge - the chat header
-	 * with no pane, or an open pane's toolbar - still has to clear the rest, and the
-	 * shell is the one element that knows the rail's width, so it publishes the
-	 * remainder. THE FLEET ASKS DRAWER ON SETTINGS/AGENTS HAS NO RAIL beside it, so
-	 * there the remainder must be the FULL inset: the width is `0` when the chat
-	 * surface is not mounted and the subtraction is of that number.
-	 */
+test("the shell publishes the inset the panel rail leaves, and every trailing row reads it (#872)", async () => {
 	const layout = readSource(
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
-	assert.match(
-		layout,
-		/const railWidth = railMounted \? PANEL_RAIL_WIDTH_PX : 0;/,
-		"no chat surface, no rail: the width is 0 and the inset is the full one",
+	const railWidth = layout.match(RAIL_WIDTH_EXPRESSION)?.[1];
+	assert.ok(railWidth, "read the shell's actual rail width calculation");
+	const { PANEL_RAIL_WIDTH_PX } = await bundleOf(
+		"./src/renderer/src/features/chat/chat-sidebar-layout",
 	);
+	assert.ok(PANEL_RAIL_WIDTH_PX > 0);
+	// Both inputs matter: Suspense can leave Chat's mounted flag set on a
+	// pending Settings/Agents route, but its Fleet drawer needs full clearance.
+	for (const [showChatRail, railMounted, expectedWidth, reason] of [
+		[true, true, PANEL_RAIL_WIDTH_PX, "mounted Chat subtracts the rail"],
+		[false, true, 0, "pending non-Chat ignores a stale mounted rail"],
+		[true, false, 0, "Chat without a mounted rail reserves the full inset"],
+	]) {
+		assert.equal(
+			runInNewContext(
+				railWidth,
+				{ showChatRail, railMounted, PANEL_RAIL_WIDTH_PX },
+				{ timeout: 1000 },
+			),
+			expectedWidth,
+			reason,
+		);
+	}
 	assert.match(
 		layout,
 		/"--chrome-inset-end-pane": `max\(0px, calc\(var\(--chrome-inset-end\) - \$\{railWidth\}px\)\)`/,
 		"the remainder is the OS inset less the rail's actual width",
+	);
+	assert.match(layout, /<FleetAskDrawer\b/);
+	assert.match(
+		readSource(
+			"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
+		),
+		/<AskDrawer\b[^>]*\bscope="fleet"/,
+		"the Fleet drawer uses the shared AskDrawer toolbar checked below",
 	);
 	for (const file of [
 		"src/renderer/src/features/chat/components/canvas/index.tsx",

@@ -1116,7 +1116,11 @@ test("the dock resizes by keyboard and pointer, persists, and clamps to the work
 		assert.equal(dock?.style.width, "448px");
 		assert.equal(separator?.getAttribute("aria-valuemin"), "320");
 		assert.equal(separator?.getAttribute("aria-valuemax"), "720");
-		assert.ok(dock?.className.includes("panel-top-pad"));
+		assert.equal(
+			dock.classList.contains("panel-top-pad"),
+			false,
+			"the ordinary outlet clears the chrome; the dock must not add a second inset",
+		);
 		assert.ok(dock?.className.includes("bg-surface"));
 		assert.equal(dock?.getAttribute("data-glass-region"), "pane");
 		assert.equal(

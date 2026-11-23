@@ -29,12 +29,10 @@ type ErrorBoundaryProps = {
 	 * A fallback that needs the boundary's own controls, for a surface that has
 	 * to offer a way OUT rather than only say what happened.
 	 *
-	 * `fallback` cannot do that: it is a node, so it is rendered through a wrapper
-	 * that drops `FallbackProps`, which is why a caller reaching for a retry
-	 * button had to either re-implement this component or render a dead sentence.
-	 * This prop hands the caller the same props the built-in fallback gets
-	 * (`error`, `resetErrorBoundary`) without changing what `fallback` means: the
-	 * node form stays for the surfaces that only need to say something.
+	 * `fallback` is a node for surfaces that only need to say what happened.
+	 * This render prop receives the same controls as the built-in fallback
+	 * (`error`, `resetErrorBoundary`). Return a component element if the
+	 * fallback needs hooks: the library calls this prop as a function.
 	 */
 	fallbackRender?: (props: FallbackProps) => ReactNode;
 
@@ -124,15 +122,18 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({
 		console.error(formatBoundaryError(error, info));
 	};
 
+	// A route may pass a fresh callback on every render. Use the library's
+	// render prop so it reconciles the returned elements instead of treating
+	// the callback as a new component type and unmounting a focused Retry.
+	const fallbackProps = fallbackRender
+		? { fallbackRender }
+		: fallback
+			? { fallback: <>{fallback}</> }
+			: { FallbackComponent: ErrorFallback };
+
 	return (
 		<ReactErrorBoundary
-			FallbackComponent={
-				fallbackRender
-					? (props: FallbackProps) => <>{fallbackRender(props)}</>
-					: fallback
-						? () => <>{fallback}</>
-						: ErrorFallback
-			}
+			{...fallbackProps}
 			resetKeys={resetKeys ? [...resetKeys] : undefined}
 			onError={onError}
 		>
