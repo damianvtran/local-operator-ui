@@ -67,6 +67,52 @@ export function queuedAskSessionIds(
 }
 
 /**
+ * Where a report came from, as plain booleans so the decision below is testable
+ * without an Electron event.
+ *
+ * THE FRAME CHECK IS NOT DECORATION. A report's only power is to MASK a gate: an
+ * `answer` beside a claimed id stops counting as needing the user. A subframe is
+ * the one document in this window this app does not author, and every
+ * neighbouring handler in `main/index.ts` already refuses one (`senderFrame ===
+ * webContents.mainFrame`); a claim a rogue frame could push is the same trust
+ * question, so this harness answers it the same way.
+ */
+export type QueuedAskReportOrigin = {
+	/** No window, or the window is mid-teardown. */
+	windowGone: boolean;
+	/** `event.sender === window.webContents`. */
+	senderIsMainWindow: boolean;
+	/** `event.senderFrame === window.webContents.mainFrame`; false for a null
+	 * frame (a destroyed document), which is also a reason not to believe it. */
+	senderIsMainFrame: boolean;
+};
+
+/** What main may do with one report: nothing, or set the claim to these ids. */
+export type QueuedAskReportAcceptance =
+	| { apply: false }
+	| { apply: true; ids: string[] };
+
+/**
+ * The handler's whole decision, in one place `scripts/app-attention.test.mjs`
+ * can drive: refuse a report with no window, from another document or from a
+ * subframe, then {@link parseQueuedAskSessionIds} decides the shape.
+ *
+ * A REFUSAL IS NOT AN EMPTY CLAIM. `{apply: false}` leaves the claim main
+ * already holds alone (`null`, a malformed payload and a bad sender all land
+ * here); `{apply: true, ids: []}` is a real claim and must un-mask everything.
+ */
+export function acceptQueuedAskReport(
+	origin: QueuedAskReportOrigin,
+	payload: unknown,
+): QueuedAskReportAcceptance {
+	if (origin.windowGone || !origin.senderIsMainWindow) return { apply: false };
+	if (!origin.senderIsMainFrame) return { apply: false };
+	const ids = parseQueuedAskSessionIds(payload);
+	if (ids === null) return { apply: false };
+	return { apply: true, ids };
+}
+
+/**
  * Main's ONLY acceptance of the window's claim: an array of non-empty session
  * ids within {@link MAX_QUEUED_ASK_SESSIONS}, or `null` for a refusal.
  *
@@ -86,4 +132,55 @@ export function parseQueuedAskSessionIds(payload: unknown): string[] | null {
 		ids.add(value);
 	}
 	return [...ids];
+}
+
+/**
+ * Whether the window owes main a report now, and what it is - `null` for "say
+ * nothing this time".
+ *
+ * `counts === null` IS UNREAD, NOT EMPTY (round-1 m3). The window reports on
+ * change only, so the FIRST thing a reloaded or hot-reloaded document would say
+ * is `[]` - wiping a claim main holds and main has no second reader to repair,
+ * which would flash every queued-ask conversation as a gate until the route
+ * answered. Main's own reset paths clear the claim when it is genuinely stale;
+ * an unread window has nothing to add to that, so it says nothing and lets the
+ * first authoritative answer (an empty one included) report.
+ *
+ * The key is the whole payload, so this is also the "already said that" test:
+ * an unchanged set is not a change worth an IPC call.
+ */
+export function nextQueuedAskReport(
+	counts: ReadonlyMap<string, number> | null,
+	sentKey: string | null,
+): { ids: string[]; key: string } | null {
+	if (counts === null) return null;
+	const ids = queuedAskSessionIds(counts);
+	const key = ids.join("\u0000");
+	if (key === sentKey) return null;
+	return { ids, key };
+}
+
+/**
+ * Whether one `session_status` transition can mean the claim main holds has
+ * moved.
+ *
+ * THE CLAIM IS A SET OF CONVERSATIONS, so only two transitions can change it:
+ * the frame carries `answer` (the harness files a queued ask under that code, so
+ * this conversation may have just gained one), or it names a conversation the
+ * claim ALREADY holds (its ask may have just been answered somewhere else, and
+ * whether it still holds one is exactly what a re-read answers). Every other
+ * frame leaves the set as it was - a conversation outside the claim that is not
+ * parked on a question holds no queued ask by the contract this whole file is
+ * built on.
+ *
+ * A false answer here is only ever "do not ask the index this time": the poll,
+ * the focus refetch and main's resync still own the edges this rule
+ * deliberately ignores.
+ */
+export function statusFrameMovesQueuedAskClaim(
+	sessionId: string,
+	code: string,
+	claimed: ReadonlySet<string>,
+): boolean {
+	return code === "answer" || claimed.has(sessionId);
 }

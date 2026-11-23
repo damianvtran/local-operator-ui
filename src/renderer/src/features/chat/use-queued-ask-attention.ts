@@ -1,6 +1,15 @@
+import { sessionStatusTransitions } from "@shared/hooks/use-desktop-feed";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { queuedAskSessionIds } from "../../../../shared/app-attention-queued-asks";
-import { fleetAsksBySession, useFleetAsks } from "./fleet-asks";
+import {
+	nextQueuedAskReport,
+	statusFrameMovesQueuedAskClaim,
+} from "../../../../shared/app-attention-queued-asks";
+import {
+	FLEET_ASKS_QUERY_KEY,
+	fleetAsksBySession,
+	useFleetAsks,
+} from "./fleet-asks";
 
 /**
  * THE WINDOW'S HALF OF THE DOCK/TRAY ASK FIX: which conversations hold at least
@@ -22,23 +31,43 @@ import { fleetAsksBySession, useFleetAsks } from "./fleet-asks";
  * SENT ON CHANGE ONLY. `queuedAskSessionIds` sorts, so a refetch that reorders rows
  * is not a change; the key is the whole payload, so nothing cheaper can drift. A
  * claim already sent is not re-sent, which is why main asks for it again after a
- * reset (`onQueuedAskSessionsResync`).
+ * reset (`onQueuedAskSessionsResync`). An UNREAD window (`counts === null`) says
+ * nothing at all - the first thing a reload would otherwise say is `[]`, wiping a
+ * claim main holds and would repair only on the next change (`nextQueuedAskReport`
+ * carries the reasoning).
  *
- * `rows === null` (the route has not answered, or this backend predates it) sends
- * the EMPTY set: no queued ask is claimed, so every `answer` reads as a gate -
- * exactly the pre-fix behaviour, and the safe direction of the two.
+ * FRESH ON THE EDGE, NOT ON A BACKGROUND POLL (round-1 M1). `useFleetAsks` polls
+ * every 10 s and React Query pauses an interval refetch while the document is
+ * hidden - deliberately, `fleet-asks.ts` says why - so with the window in the tray
+ * a queued ask arriving would leave the dock saying "needs you" (the reported bug)
+ * and an ask answered on a phone would leave a stale id masking a later blocking
+ * question. The feed still delivers frames to a hidden renderer (Electron's
+ * background throttling defers timers and rAF, not IPC delivery), and
+ * `invalidateQueries` refetches active observers immediately with no visibility
+ * gate (`@tanstack/query-core` refetches `refetchType ?? "active"`), so the frame
+ * is the re-read and the poll keeps its costing rule.
+ *
+ * THE INVARIANT: the claim main holds is the set the index held at the last event
+ * that could have moved it - a status frame, a poll, a focus refetch, or main's
+ * own resync - so hiding the window cannot leave it stale.
  */
 export const useQueuedAskAttention = (): void => {
 	const { rows } = useFleetAsks();
-	const ids = useMemo(
-		() => queuedAskSessionIds(rows === null ? null : fleetAsksBySession(rows)),
+	const { client, provided } = useOptionalQueryClient();
+	/** `null` is UNREAD (the route has not answered, or this backend predates
+	 * it), never "nobody has a queued ask" - see `nextQueuedAskReport`. */
+	const counts = useMemo(
+		() => (rows === null ? null : fleetAsksBySession(rows)),
 		[rows],
 	);
 	/** What main was last told, as the set's stable key; `null` before the first
 	 * push and after a resync request. */
 	const sent = useRef<string | null>(null);
+	/** The ids main's claim holds: the set this window last reported. A status
+	 * frame is judged against it to decide whether the claim may have moved. */
+	const claimed = useRef<ReadonlySet<string>>(new Set());
 	/** Counts main's requests so the push effect runs again for an UNCHANGED set:
-	 * clearing `sent` alone would not re-run it when `ids` keeps its identity. */
+	 * clearing `sent` alone would not re-run it when `counts` keeps its identity. */
 	const [resync, setResync] = useState(0);
 
 	useEffect(
@@ -51,10 +80,26 @@ export const useQueuedAskAttention = (): void => {
 	);
 
 	useEffect(() => {
+		if (!provided) return;
+		return sessionStatusTransitions.subscribe((transition) => {
+			if (
+				!statusFrameMovesQueuedAskClaim(
+					transition.sessionId,
+					transition.code,
+					claimed.current,
+				)
+			)
+				return;
+			void client.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+		});
+	}, [client, provided]);
+
+	useEffect(() => {
 		void resync;
-		const key = ids.join("\u0000");
-		if (sent.current === key) return;
-		sent.current = key;
-		window.api?.appAttention?.reportQueuedAskSessions?.(ids);
-	}, [ids, resync]);
+		const report = nextQueuedAskReport(counts, sent.current);
+		if (!report) return;
+		sent.current = report.key;
+		claimed.current = new Set(report.ids);
+		window.api?.appAttention?.reportQueuedAskSessions?.(report.ids);
+	}, [counts, resync]);
 };

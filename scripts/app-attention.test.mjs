@@ -45,6 +45,9 @@ const { unreadCompletionKind, isUnreadAckableCompletion } = await import(
 const {
 	queuedAskSessionIds,
 	parseQueuedAskSessionIds,
+	acceptQueuedAskReport,
+	nextQueuedAskReport,
+	statusFrameMovesQueuedAskClaim,
 	MAX_QUEUED_ASK_SESSIONS,
 } = await import(await moduleUrl("shared/app-attention-queued-asks.ts"));
 const attention = (
@@ -1104,5 +1107,166 @@ test("the window derives its id set from answerable counts only", () => {
 		),
 		[],
 		"a count that is not a positive safe integer says nothing about a queued ask",
+	);
+});
+
+test("main refuses a report that is not from the main window's main frame", () => {
+	const origin = (overrides = {}) => ({
+		windowGone: false,
+		senderIsMainWindow: true,
+		senderIsMainFrame: true,
+		...overrides,
+	});
+	assert.deepEqual(acceptQueuedAskReport(origin(), ["s-a"]), {
+		apply: true,
+		ids: ["s-a"],
+	});
+	assert.deepEqual(
+		acceptQueuedAskReport(origin(), []),
+		{ apply: true, ids: [] },
+		"an empty claim must land - it is how a stale id un-masks a gate",
+	);
+	for (const refusal of [
+		origin({ windowGone: true }),
+		origin({ senderIsMainWindow: false }),
+		origin({ senderIsMainFrame: false }),
+	])
+		assert.deepEqual(
+			acceptQueuedAskReport(refusal, ["s-a"]),
+			{ apply: false },
+			`refuses ${JSON.stringify(refusal)}`,
+		);
+	for (const refusal of [
+		null,
+		undefined,
+		"s-a",
+		{ ids: [] },
+		[7],
+		[""],
+		["x".repeat(257)],
+		Array.from({ length: MAX_QUEUED_ASK_SESSIONS + 1 }, (_, i) => `s-${i}`),
+	])
+		assert.deepEqual(
+			acceptQueuedAskReport(origin(), refusal),
+			{ apply: false },
+			`refuses ${JSON.stringify(refusal)?.slice(0, 40)}`,
+		);
+});
+
+test("an unread window says nothing, and an unchanged claim is not re-sent", () => {
+	assert.equal(
+		nextQueuedAskReport(null, "s-a"),
+		null,
+		"a reload must not wipe a claim main holds (round-1 m3)",
+	);
+	assert.deepEqual(
+		nextQueuedAskReport(new Map(), null),
+		{ ids: [], key: "" },
+		"an authoritative empty answer IS a claim",
+	);
+	assert.equal(
+		nextQueuedAskReport(new Map(), ""),
+		null,
+		"the same set is not worth a second IPC call",
+	);
+	assert.deepEqual(
+		nextQueuedAskReport(
+			new Map([
+				["b", 1],
+				["a", 2],
+			]),
+			"",
+		),
+		{
+			ids: ["a", "b"],
+			key: "a\u0000b",
+		},
+	);
+	assert.equal(
+		nextQueuedAskReport(
+			new Map([
+				["b", 1],
+				["a", 2],
+			]),
+			"a\u0000b",
+		),
+		null,
+		"a row reorder is not a change",
+	);
+	assert.deepEqual(
+		nextQueuedAskReport(new Map([["a", 1]]), null),
+		{ ids: ["a"], key: "a" },
+		"main's resync makes the window re-state the set it already knew",
+	);
+});
+
+test("a status frame re-reads the index only when the claim could have moved", () => {
+	const claimed = new Set(["s-a"]);
+	assert.equal(
+		statusFrameMovesQueuedAskClaim("s-new", "answer", claimed),
+		true,
+		"a queued ask is filed under `answer`, so a new one lands on that code",
+	);
+	assert.equal(
+		statusFrameMovesQueuedAskClaim("s-a", "active", claimed),
+		true,
+		"the claimed ask may have been answered elsewhere",
+	);
+	assert.equal(
+		statusFrameMovesQueuedAskClaim("s-a", "answer", claimed),
+		true,
+		"still parked: whether it still holds an ask is what the re-read settles",
+	);
+	assert.equal(
+		statusFrameMovesQueuedAskClaim("s-b", "active", claimed),
+		false,
+		"not claimed and not on `answer`: nothing about the claim moved",
+	);
+	assert.equal(statusFrameMovesQueuedAskClaim("s-b", "", claimed), false);
+});
+
+test("the status edge is wired from the transport to the claim's owner", () => {
+	/*
+	 * A SHAPE PIN, not a behaviour test: the decisions above are pure, but the two
+	 * lines that join them to the feed cannot be reached without a renderer. What
+	 * is pinned is that the `session_status` branch still publishes the edge and
+	 * the claim's owner still invalidates the fleet-asks key on it - the wiring a
+	 * refactor could drop while every pure assertion above stayed green.
+	 */
+	const transport = readFileSync(
+		new URL(
+			"../src/renderer/src/shared/hooks/use-desktop-feed.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	assert.match(transport, /publishSessionStatusTransition\(frame\)/);
+	const hook = readFileSync(
+		new URL(
+			"../src/renderer/src/features/chat/use-queued-ask-attention.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	assert.match(hook, /sessionStatusTransitions\.subscribe/);
+	assert.match(
+		hook,
+		/invalidateQueries\(\{ queryKey: FLEET_ASKS_QUERY_KEY \}\)/,
+		"the frame re-reads the index instead of a background poll",
+	);
+	/* Round-1 m1: the handler's own frame check, where the event lives. */
+	const main = readFileSync(
+		new URL("../src/main/index.ts", import.meta.url),
+		"utf8",
+	);
+	assert.match(
+		main,
+		/senderIsMainFrame:/,
+		"the handler hands the frame check in",
+	);
+	assert.match(
+		main,
+		/senderFrame === window\.webContents\.mainFrame/,
+		"a report is refused unless it is the main window's MAIN FRAME",
 	);
 });

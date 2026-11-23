@@ -29,7 +29,7 @@ import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
 import {
 	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
 	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
-	parseQueuedAskSessionIds,
+	acceptQueuedAskReport,
 } from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
@@ -3830,23 +3830,29 @@ app
 		 * carries no ask count, so the window tells main (`AppAttentionProjection`
 		 * then reads an `answer` status beside one of these ids as already counted).
 		 * The payload is re-validated HERE rather than trusted: this process never
-		 * believes a renderer shape. A refusal leaves the claim already held alone -
-		 * `null` is not "nobody has a queued ask" (`[]` is, and it must land).
+		 * believes a renderer shape, and the sender trust is the same pair every
+		 * neighbouring handler applies (`event.sender` and its MAIN FRAME - a report
+		 * can only mask a gate, so a subframe has no business pushing one).
+		 * `acceptQueuedAskReport` is the whole decision, tested in
+		 * `scripts/app-attention.test.mjs`. A refusal leaves the claim already held
+		 * alone - `null` is not "nobody has a queued ask" (`[]` is, and it must land).
 		 * Fire-and-forget on purpose: the report owes no reply, and main's answer is
 		 * the badge it already publishes.
 		 */
 		ipcMain.on(APP_ATTENTION_QUEUED_ASKS_CHANNEL, (event, payload: unknown) => {
 			const window = mainWindow;
-			if (
-				!window ||
-				window.isDestroyed() ||
-				event.sender !== window.webContents
-			)
-				return;
-			const ids = parseQueuedAskSessionIds(payload);
-			if (ids === null) return;
+			const acceptance = acceptQueuedAskReport(
+				{
+					windowGone: !window || window.isDestroyed(),
+					senderIsMainWindow: !!window && event.sender === window.webContents,
+					senderIsMainFrame:
+						!!window && event.senderFrame === window.webContents.mainFrame,
+				},
+				payload,
+			);
+			if (!acceptance.apply) return;
 			appAttention.projection.setQueuedAskSessions(
-				ids,
+				acceptance.ids,
 				appAttention.projection.currentGeneration,
 			);
 		});
