@@ -112,7 +112,7 @@ import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
 import { McpManagementSection } from "./mcp-management-section";
 import { NotificationsSection } from "./notifications-section";
 import { RadientAccountSection } from "./radient-account-section";
-import { SettingsContentSurface } from "./settings-close-surface";
+import { SettingsCloseChrome } from "./settings-close-surface";
 import {
 	SettingsSearch,
 	type SettingsSearchHandle,
@@ -1052,6 +1052,35 @@ export const SettingsPage: FC = () => {
 	 * control missing and then appearing when the config arrived. The same
 	 * surface (button + Esc scope) now wraps all of them.
 	 */
+	/*
+	 * THE COLUMN THAT WEARS THE PAD (round 4: the merge gate's tree-wide guard,
+	 * `scripts/lane-leading.test.mjs`, reads this file). `panel-flush` moves the
+	 * root to y0 and pads NOTHING, so the pad must be visible in the same file as
+	 * the root it belongs to - a reader here has to see where the first row's
+	 * clearance below the lane comes from. Both the populated page and the three
+	 * page-level states render through this one box; the button and the Esc scope
+	 * ride inside it from `settings-close-surface.tsx`.
+	 *
+	 * THE MARKER IS ON THIS COLUMN, NOT ON THE SCROLLER: the root is
+	 * `data-glass-split`, so under window glass the root and `<main>` paint
+	 * nothing and `canvas-content` alone paints the canvas. The marker used to
+	 * sit on the `panel-scroll` scroller, whose pad is a MARGIN, so the painted
+	 * box began below the strip and the desktop showed through above it. With
+	 * `panel-top-pad` here the box that pads is the box that paints, the same
+	 * shape as Library and Agents; the scroller inside starts below the padding,
+	 * so its clip is still the content edge and scrolled text never paints into
+	 * the strip. `relative` is the close button's containing block.
+	 */
+	const contentColumn = (content: ReactNode) => (
+		<div
+			data-glass-region="canvas-content"
+			className="panel-top-pad relative flex min-h-0 min-w-0 flex-1 flex-col"
+		>
+			<SettingsCloseChrome />
+			{content}
+		</div>
+	);
+
 	const stateSurface = (content: ReactNode) => (
 		/*
 		 * THE SAME ROOT THE POPULATED PAGE HAS (round 2: D7/M5). Without
@@ -1064,7 +1093,7 @@ export const SettingsPage: FC = () => {
 			data-glass-split=""
 			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
-			<SettingsContentSurface>{content}</SettingsContentSurface>
+			{contentColumn(content)}
 		</div>
 	);
 
@@ -1295,12 +1324,13 @@ export const SettingsPage: FC = () => {
 			</div>
 
 			{/*
-			 * The content column, its ground, the pinned Close button and the Esc
-			 * scope. Kept as one component (`settings-close-surface.tsx`) so the
-			 * button and the key cannot disagree about what closing means, and so
-			 * the column's ground rules live beside the control that sits on them.
+			 * The content column (`contentColumn` above, which is where the pad and
+			 * the ground marker live) with the pinned Close button and the Esc scope
+			 * inside it. The button and the key stay one component
+			 * (`settings-close-surface.tsx`) so they cannot disagree about what
+			 * closing means.
 			 */}
-			<SettingsContentSurface>
+			{contentColumn(
 				<div
 					ref={contentContainerRef}
 					data-settings-content
@@ -2127,8 +2157,8 @@ export const SettingsPage: FC = () => {
 							</div>
 						</div>
 					</div>
-				</div>
-			</SettingsContentSurface>
+				</div>,
+			)}
 		</div>
 	);
 };

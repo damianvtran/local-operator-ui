@@ -15,7 +15,9 @@
  * focus is without weakening any owner's claim; see `settings-escape.ts`.
  *
  * WHERE THE BUTTON SITS, AND WHY IT IS ABSOLUTE. The column owns its ground
- * from y0 (`panel-top-pad`, AGENTS.md "Panels run to the window edge"), and the
+ * from y0 (`panel-top-pad`, AGENTS.md "Panels run to the window edge"), and it
+ * is rendered in `settings-page.tsx` - the box that wears the pad must be
+ * visible beside the `panel-flush` root - so the button sits inside it, and the
  * scroller inside it clips at the content edge. A button placed in the
  * scrolling flow would scroll away with the page, so it is pinned to the
  * column's top inline-end corner, 16px in, and level with the page's `h1`
@@ -35,7 +37,7 @@ import { BrowserSafeTooltip } from "@shared/components/ui/browser-safe-tooltip";
 import { useCloseSettings } from "@shared/hooks/use-settings-route";
 import { t } from "@shared/i18n";
 import { X } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import { useSettingsEscapeClose } from "../settings-escape";
 
 export const SettingsCloseButton: FC = () => {
@@ -67,36 +69,16 @@ export const SettingsCloseButton: FC = () => {
 };
 
 /**
- * The content column: its ground, its Esc scope, the button above it, and the
- * scroller the page passes in as children.
+ * The column's chrome: the pinned button and the Esc scope. The COLUMN itself -
+ * its ground marker, its `panel-top-pad` - lives in `settings-page.tsx` beside
+ * the `panel-flush` root it belongs to, because a flush root pads nothing and
+ * the pad has to be readable in the same file (the tree-wide guard
+ * `scripts/lane-leading.test.mjs` exists for exactly that, and it caught this
+ * split when the column lived here: round 4's merge gate). This component is
+ * rendered inside that column and adds no box of its own.
  */
-export const SettingsContentSurface: FC<{ children: ReactNode }> = ({
-	children,
-}) => {
+export const SettingsCloseChrome: FC = () => {
 	const closeSettings = useCloseSettings();
 	useSettingsEscapeClose(closeSettings);
-	return (
-		<div
-			data-glass-region="canvas-content"
-			/*
-			 * THE CONTENT COLUMN OWNS ITS GROUND FROM y0 (operator, 2026-11-04:
-			 * "a section above the settings in the titlebar area that isn't
-			 * properly filled"). The root is `data-glass-split`, so under window
-			 * glass the root and `<main>` paint nothing and `canvas-content` alone
-			 * paints the canvas. That marker used to sit on the `panel-scroll`
-			 * scroller, whose pad is a MARGIN - so the painted box began below the
-			 * strip and the desktop showed through above it. The ground now lives
-			 * on this full-height column, which pads with `panel-top-pad` (the box
-			 * that wears the pad is the box that paints, AGENTS.md "Panels run to
-			 * the window edge"), the same shape as Library and Agents. The scroller
-			 * inside starts below the padding, so its clip is still the content
-			 * edge and scrolled text never paints into the strip. `relative` is the
-			 * close button's containing block.
-			 */
-			className="panel-top-pad relative flex min-h-0 min-w-0 flex-1 flex-col"
-		>
-			<SettingsCloseButton />
-			{children}
-		</div>
-	);
+	return <SettingsCloseButton />;
 };

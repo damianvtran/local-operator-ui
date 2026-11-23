@@ -41,8 +41,28 @@ of the box, not a layout shortfall), then 16 px at 1496, 18 px at 1500 and 132 p
 at 1728 as the centred 896 px measure takes over. From 1496 up the measure is
 centred in the column once the scroller's 8 px scrollbar is excluded (margins
 56/64, 58/66, 172/180 = start / end-without-scrollbar). The config-error scene
-(round 2) adds **5 PASS** with the daemon down; it was not re-run this round.
-No process from either run outlived it.
+adds **11 PASS** with the daemon down (5 at round 2; the driver's later
+geometry readings add checks), X plate top 64 there too. No process from either
+run outlived it.
+
+**The column that pads.** `panel-flush` moves a root to y0 and pads nothing, so
+the pad has to be visible in the file that owns the root: the content column -
+`data-glass-region="canvas-content"`, `panel-top-pad` - is rendered in
+`settings-page.tsx` beside the flush root, and only the button plus the Esc scope
+ride in `settings-close-surface.tsx`. The tree-wide guard
+`scripts/lane-leading.test.mjs` reads that file for the pairing (round 4's merge
+gate: the column had moved into the surface module and the guard saw a flush root
+with no pad). Rendering is unchanged: X `{"x":1332,"y":64,"w":32,"h":32}` at 1380
+and the same plate top in the config-error state, both measured on this head.
+
+**Files run for this round** (one bounded `node` process at a time, 1536 MB):
+`scripts/lane-leading.test.mjs` (10/10), `scripts/settings-search-annotations.test.mjs`
+(8/8), `scripts/typed-row-call-sites.test.mjs` (4/4),
+`scripts/panel-chart-motion.test.mjs` (4/4), `scripts/settings-section-routes.test.mjs`
+(5/5), `scripts/settings-close.test.mjs` (17/17), plus the two recorder files
+(32/32, 10/10) and `scripts/keyboard-shortcuts-section.test.mjs` (14/14) from
+round 3. `node scripts/affected-tests.mjs` selects 807 files for this diff
+(800 affected + 7 guards) and includes `scripts/lane-leading.test.mjs`.
 
 ## How it was reproduced
 
