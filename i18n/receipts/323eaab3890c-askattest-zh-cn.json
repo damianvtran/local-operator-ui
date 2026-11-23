@@ -1,0 +1,39 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "323eaab3890c-askattest-zh-cn",
+	"date": "2026-11-23",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor, round 2 (lopdev task session 323eaab3890c, team role \"task\" briefed as translation auditor); a fresh instance distinct from the round-1 auditor (8a7833a71450) and not the translator (lopdev coder, anthropic/claude-opus-5-5 per PR #2073 remediation comment 7115309376). Same model family as the translator: disclosed. Read only committed bytes at 50897b3afba5; edited no catalogue file.",
+	"references": {
+		"glossary": "damianvtran/local-operator@264b41bdc793 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@264b41bdc793 i18n/style-guides/zh-CN.md",
+		"shipped_terms": "src/i18n/catalogues/{en,zh-CN}/*.json at 50897b3afba5 (sibling ui.chat.asks send_answer/change_answer; DevTools, terminal, approval, not-running phrasing counted across the shipped corpus)",
+		"round1": "PR #2073 comment 7112740751 and round-1 fixed files (8a7833a71450 scratchpad ask_attest-r1)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2073,
+	"head": "50897b3afba5",
+	"round": 2,
+	"scope": "All 31 keys of ui.chat.ask_attest at 50897b3afba5. Read in full against en + en .context.json, glossary and style guide: 5 keys rewritten in English (action.confirm, action.confirming, refusal.not_eligible/not_running/refused) and 15 new keys (action.confirm_change, action.hint, refusal.answer_unconfirmed/busy/devtools/expired/not_consent_bearing/secret/sheet_open/too_long, sheet.agent, sheet.button.change/send, sheet.conversation, sheet.conversation_untitled). The 11 keys whose English and context are unchanged since round 1 were verified byte-identical to the round-1 auditor's fixed file and carried. Mechanical: key set = en (sheet.button.confirm removed), ICU placeholders byte-identical, NFC, no Cc/Cf beyond the answer_line \\n, no ASCII '...', quoted button names equal action.confirm (no ellipsis) / ui.chat.asks.send_answer, confirm vs approval kept as distinct terms.",
+	"namespace": "ui.chat.ask_attest",
+	"status": "passed",
+	"head_verdict": "clean-with-findings",
+	"sha256": {
+		"en": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+		"zh-CN": "35946565ad05bdb2650396f5b5fc2831868d329b89e2f9052d4c151c4f09cc06"
+	},
+	"context_sha256": "b9a3385f8d685540656699a8612a17272478d67b30fa6b6d4d7cd757f449d40d",
+	"findings": [
+		{
+			"id": "T17",
+			"severity": "NIT",
+			"key": "ui.chat.ask_attest.refusal.not_eligible",
+			"note": "“如需批准” most often reads 'if approval is required' (cf. 如需帮助), which leaves the approver implicit; en is 'To give your approval'. Meaning still lands in context (answer in the terminal). Optional: “要给出你的批准，请在运行此对话的终端中回答。”. Not required; HEAD bytes audited.",
+			"current": "如需批准，请在运行此对话的终端中回答。…",
+			"suggested_prefix": "要给出你的批准，请在运行此对话的终端中回答。",
+			"disposition": "deferred — optional; HEAD bytes are the audited bytes"
+		}
+	],
+	"resolved": []
+}
