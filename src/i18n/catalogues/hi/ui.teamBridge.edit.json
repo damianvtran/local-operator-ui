@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {समूह में बदलाव करें…} other {चैनल में बदलाव करें…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {समूह में बदलाव करें} other {चैनल में बदलाव करें}}",
+	"ui.teamBridge.edit.description": "नाम और विवरण बदलें। बातचीत में शामिल सभी लोगों को यह जानकारी दिखती है।",
+	"ui.teamBridge.edit.topic": "विवरण",
+	"ui.teamBridge.edit.error.topic_too_long": "विवरण में ज़्यादा से ज़्यादा {max, number} वर्ण हो सकते हैं।",
+	"ui.teamBridge.edit.error.topic_characters": "विवरण में ऐसा वर्ण है जिसका इस्तेमाल नहीं किया जा सकता। लाइन ब्रेक और टैब का इस्तेमाल कर सकते हैं।",
+	"ui.teamBridge.edit.error.invalid": "यह जानकारी इस्तेमाल नहीं की जा सकती। नाम और विवरण जाँचें।",
+	"ui.teamBridge.edit.error.forbidden": "आपको इस बातचीत में बदलाव करने की अनुमति नहीं है।",
+	"ui.teamBridge.edit.error.archived": "यह बातचीत आर्काइव हो चुकी है, इसलिए इसमें बदलाव नहीं किया जा सकता।",
+	"ui.teamBridge.edit.error.failed": "यह पुष्टि नहीं हो सकी कि बदलाव सहेजे गए हैं या नहीं। आपका ड्राफ़्ट यहीं है। फिर से कोशिश करें।"
+}

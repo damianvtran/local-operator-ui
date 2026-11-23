@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {گروپ میں ترمیم کریں…} other {چینل میں ترمیم کریں…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {گروپ میں ترمیم کریں} other {چینل میں ترمیم کریں}}",
+	"ui.teamBridge.edit.description": "نام اور تفصیل تبدیل کریں۔ گفتگو میں شامل سب لوگوں کو یہ معلومات نظر آتی ہیں۔",
+	"ui.teamBridge.edit.topic": "تفصیل",
+	"ui.teamBridge.edit.error.topic_too_long": "تفصیل میں زیادہ سے زیادہ {max, number} حروف ہو سکتے ہیں۔",
+	"ui.teamBridge.edit.error.topic_characters": "تفصیل میں ایسا حرف ہے جو استعمال نہیں کیا جا سکتا۔ لائن بریک اور ٹیب استعمال کیے جا سکتے ہیں۔",
+	"ui.teamBridge.edit.error.invalid": "یہ معلومات استعمال نہیں کی جا سکتیں۔ نام اور تفصیل چیک کریں۔",
+	"ui.teamBridge.edit.error.forbidden": "آپ کو اس گفتگو میں ترمیم کرنے کی اجازت نہیں ہے۔",
+	"ui.teamBridge.edit.error.archived": "یہ گفتگو آرکائیو ہو چکی ہے، اس لیے اس میں ترمیم نہیں کی جا سکتی۔",
+	"ui.teamBridge.edit.error.failed": "یہ تصدیق نہیں ہو سکی کہ تبدیلیاں محفوظ ہوئی ہیں یا نہیں۔ آپ کا مسودہ یہیں موجود ہے۔ دوبارہ کوشش کریں۔"
+}

@@ -736,6 +736,73 @@ jobs:
       - name: Run the tree-wide guard tests
         run: pnpm test:guards
 
+  # The desktop shards do not run on each PR. Keep the owner-finish custody
+  # regression visible here without starting Electron or changing GUARD_TESTS.
+  #
+  # Merge-ref checkout, deliberately. This job used to check out the exact PR
+  # head, which meant every branch cut before the regression test landed did not
+  # carry the test at all: `node --test` still loaded the module, the module's
+  # teardown lived inside the guarded test, and so the step sat until the job
+  # timeout instead of failing - a ten-minute hang that reads as an
+  # infrastructure fault rather than as a stale base. Testing the merge ref
+  # (base + head, what will actually land) makes the test exist, and the helper
+  # makes an absent name fail in under a second with a message that says what to
+  # do. Head provenance is still asserted, on the merge commit's second parent.
+  browser-owner-finish:
+    name: Browser Owner Finish Regression
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.unit != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the merge ref (base + this PR's head)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # The fixture aliases Electron to a stub; the lockfile supplies esbuild's
+      # platform package without running the app's Electron-fetching postinstall.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify the exact owner-finish regression
+        shell: bash
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Provenance: the merge commit's second parent IS the PR head, so this
+          # still proves the row belongs to the head under review, not to some
+          # other commit the merge ref happens to contain.
+          head="$(git rev-parse HEAD^2)"
+          test "$head" = "$PR_HEAD" || {
+            echo "::error::merge ref does not carry PR head $PR_HEAD (found $head); push a new commit so the merge ref is rebuilt"
+            exit 1
+          }
+          printf 'Browser owner-finish merge ref built from PR head: %s\n' "$head"
+
+          node scripts/check-named-test.mjs \
+            --file scripts/browser-host.test.mjs \
+            --name 'owner_finish stays pending during a passkey prompt and retries the exact allocation' \
+            --timeout-ms 300000
+
   # The plain-JS bundle isolated native QA downloads. It used to ride on Desktop
   # Tests shard 0; the shard left pull-request CI, the artifact did not - QA
   # agents fetch it by name (`ui-qa-bundle-<pr>-<run>`), so the name is kept.
@@ -1530,6 +1597,7 @@ jobs:
       - runtime-deps
       - check-types
       - guards
+      - browser-owner-finish
       - qa-bundle
       - bytecode-build
       - bytecode-build-macos

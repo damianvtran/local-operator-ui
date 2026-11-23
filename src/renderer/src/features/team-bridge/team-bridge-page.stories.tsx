@@ -16,7 +16,12 @@ import {
 	waitFor,
 	within,
 } from "@storybook/test";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+	QueryClient,
+	QueryClientProvider,
+	useMutation,
+	useQuery,
+} from "@tanstack/react-query";
 import {
 	type CSSProperties,
 	type ComponentProps,
@@ -24,8 +29,10 @@ import {
 	type ReactNode,
 	useEffect,
 	useLayoutEffect,
+	useRef,
 	useState,
 } from "react";
+import { createPortal } from "react-dom";
 import type {
 	DesktopMediaRequest,
 	DesktopMediaResponse,
@@ -76,9 +83,15 @@ import {
 	TeamBridgeRateLimitNote,
 } from "./team-bridge-page";
 import { RailGroupHeader } from "./team-bridge-rail";
+import { TeamBridgeEditDraftJournal } from "./team-bridge-rename-dialog";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
+import {
+	type TeamBridgeUpdateMutationVariables,
+	teamBridgeKeys,
+	updateMutationOptions,
+} from "./use-team-bridge";
 
 /**
  * Presentation states for the Team Bridge page.
@@ -3674,5 +3687,275 @@ export const ConversationMenuPartialLeave: Story = {
 		partialLeave: { name: "#launch", retrying: false, retryFailed: false },
 		onRetryPartialLeave: () => {},
 		onDismissPartialLeave: () => {},
+	},
+};
+
+/** A local response fixture, NOT HTTP/native evidence. Only the mutation's
+ * transport is replaced: the shipped page owns dialog/draft transitions and
+ * updateMutationOptions owns canonical cache reconciliation + invalidation.
+ * Manual settlement makes pending/dismiss/remount deterministic without timers.
+ * Unknown outcome deliberately commits before rejecting, so retry cannot rely
+ * on the misleading assumption that a failed response means no write occurred.
+ */
+function MetadataJourney({
+	args,
+	client,
+}: {
+	args: ComponentProps<typeof TeamBridgePageView>;
+	client: QueryClient;
+}) {
+	const server = useRef<TeamBridgeConversation>({
+		...channel,
+		can_administer: true,
+	});
+	const journal = useRef(new TeamBridgeEditDraftJournal());
+	const pending = useRef<{
+		variables: TeamBridgeUpdateMutationVariables;
+		resolve: (row: TeamBridgeConversation) => void;
+		reject: (error: Error) => void;
+	} | null>(null);
+	const [mount, setMount] = useState(0);
+	const [loading, setLoading] = useState(false);
+	const [dialogHost, setDialogHost] = useState<Element | null>(null);
+	useEffect(() => {
+		// Radix correctly makes the surrounding page inert. Put transport-only
+		// fixture controls inside its portal while open, with no tab stops, so
+		// the response can be settled without weakening the real modal behavior.
+		const observe = () =>
+			setDialogHost(
+				document
+					.querySelector("[data-edit-name]")
+					?.closest('[role="dialog"]') ?? null,
+			);
+		const observer = new MutationObserver(observe);
+		observer.observe(document.body, { childList: true, subtree: true });
+		observe();
+		return () => observer.disconnect();
+	}, []);
+	const key = teamBridgeKeys.conversations(
+		asTeamBridgeTenantId(channel.tenant_id),
+		self,
+	);
+	const rows = useQuery({
+		queryKey: key,
+		queryFn: async () => ({ conversations: [{ ...server.current }] }),
+		initialData: { conversations: [{ ...server.current }] },
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	const mutation = useMutation({
+		...updateMutationOptions(client),
+		mutationFn: (variables: TeamBridgeUpdateMutationVariables) =>
+			new Promise<TeamBridgeConversation>((resolve, reject) => {
+				pending.current = { variables, resolve, reject };
+			}),
+	});
+	const settle = (unknown: boolean) => {
+		const request = pending.current;
+		if (!request) return;
+		const { patch } = request.variables;
+		server.current = {
+			...server.current,
+			...(patch.name === undefined ? {} : { name: patch.name.trim() }),
+			...(patch.topic === undefined ? {} : { topic: patch.topic.trim() }),
+		};
+		pending.current = null;
+		if (unknown)
+			request.reject(new Error("Fixture: response lost after commit"));
+		else request.resolve({ ...server.current });
+	};
+	const responseControls = (
+		<div className="flex flex-wrap gap-2 bg-surface p-2" data-fixture-responses>
+			<button
+				type="button"
+				tabIndex={-1}
+				disabled={!mutation.isPending}
+				onClick={() => settle(false)}
+			>
+				Fixture: respond success
+			</button>
+			<button
+				type="button"
+				tabIndex={-1}
+				disabled={!mutation.isPending}
+				onClick={() => settle(true)}
+			>
+				Fixture: lose response after commit
+			</button>
+		</div>
+	);
+	return (
+		<>
+			{dialogHost
+				? createPortal(responseControls, dialogHost)
+				: responseControls}
+			<div
+				className="flex flex-wrap gap-2 bg-surface p-2"
+				data-metadata-fixture
+			>
+				<button type="button" onClick={() => void rows.refetch()}>
+					Fixture: refetch canonical rows
+				</button>
+				<button type="button" onClick={() => setMount((value) => value + 1)}>
+					Fixture: remount page (retain owner journal)
+				</button>
+				<button type="button" onClick={() => setLoading((value) => !value)}>
+					Fixture: toggle loading
+				</button>
+			</div>
+			<TeamBridgePageView
+				{...args}
+				key={mount}
+				conversations={loading ? [] : rows.data.conversations}
+				target={{ type: "conversation", id: channel.id }}
+				messages={[]}
+				messageState="ready"
+				listState={loading ? "loading" : "ready"}
+				metadataDrafts={journal.current}
+				renameCapabilityState="enabled"
+				updateCapabilityState="enabled"
+				onUpdate={(row, patch) =>
+					mutation.mutateAsync({
+						conversationId: row.id,
+						tenantId: row.tenant_id,
+						patch,
+					})
+				}
+			/>
+		</>
+	);
+}
+
+function MetadataJourneyProvider(
+	args: ComponentProps<typeof TeamBridgePageView>,
+) {
+	const [client] = useState(() => {
+		const owned = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false },
+				mutations: { retry: false },
+			},
+		});
+		owned.setQueryData(["radient-user", "user"], { account: { id: self } });
+		owned.setQueryData(teamBridgeKeys.statusFor(self), {
+			account_id: self,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		return owned;
+	});
+	useEffect(() => () => client.clear(), [client]);
+	return (
+		<QueryClientProvider client={client}>
+			<MetadataJourney args={args} client={client} />
+		</QueryClientProvider>
+	);
+}
+
+/** Open the real header/rail menu > Edit channel. Save waits until a fixture
+ * response button is used. Cancel/Escape, retry and remount use shipped logic.
+ * Refetch reads the in-memory server, not an invented success label. Hard
+ * browser reload intentionally resets this disposable fixture's server.
+ */
+export const MetadataFunctionalJourney: Story = {
+	render: (args) => <MetadataJourneyProvider {...args} />,
+};
+
+/** Optional executable browser contract; the separate Journey story stays idle
+ * for human-driven design/UX capture. Uses real controls and rendered page rows,
+ * never substitutes an invented success banner for cache reconciliation.
+ */
+export const MetadataFunctionalChecks: Story = {
+	...MetadataFunctionalJourney,
+	play: async ({ canvasElement }) => {
+		const body = within(canvasElement.ownerDocument.body);
+		const canvas = within(canvasElement);
+		const open = async () => {
+			await userEvent.click(
+				canvas.getByRole("button", { name: "Conversation options" }),
+			);
+			await userEvent.click(
+				await body.findByRole("menuitem", { name: "Edit channel" }),
+			);
+			return within(await body.findByRole("dialog"));
+		};
+		let dialog = await open();
+		await userEvent.clear(dialog.getByLabelText("Name"));
+		await userEvent.type(dialog.getByLabelText("Name"), "release-room");
+		await userEvent.clear(dialog.getByLabelText("Description"));
+		await userEvent.type(
+			dialog.getByLabelText("Description"),
+			"Canonical context",
+		);
+		await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+		await expect(
+			dialog.getByRole("button", { name: "Saving…" }),
+		).toBeDisabled();
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Fixture: respond success" }),
+		);
+		await waitFor(() =>
+			expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		// Header and rail both read the reconciled production QueryClient page.
+		await waitFor(() =>
+			expect(canvas.getAllByText("release-room").length).toBeGreaterThanOrEqual(
+				2,
+			),
+		);
+		await expect(canvas.getByText("Canonical context")).toBeVisible();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Fixture: refetch canonical rows" }),
+		);
+		dialog = await open();
+		await expect(dialog.getByLabelText("Description")).toHaveValue(
+			"Canonical context",
+		);
+		await userEvent.clear(dialog.getByLabelText("Description"));
+		await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+		await userEvent.click(
+			dialog.getByRole("button", {
+				name: "Fixture: lose response after commit",
+			}),
+		);
+		await expect(await dialog.findByRole("alert")).toHaveTextContent(
+			"We couldn’t confirm whether the changes were saved.",
+		);
+		await expect(dialog.getByLabelText("Description")).toHaveValue("");
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		await userEvent.click(
+			canvas.getByRole("button", {
+				name: "Fixture: remount page (retain owner journal)",
+			}),
+		);
+		dialog = await open();
+		await expect(dialog.getByLabelText("Description")).toHaveValue("");
+		await expect(dialog.getByRole("alert")).toBeVisible();
+		await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+		await userEvent.click(
+			dialog.getByRole("button", { name: "Fixture: respond success" }),
+		);
+		await waitFor(() =>
+			expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
+		await expect(
+			canvas.queryByText("Canonical context"),
+		).not.toBeInTheDocument();
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Fixture: refetch canonical rows" }),
+		);
+		dialog = await open();
+		await expect(dialog.getByLabelText("Description")).toHaveValue("");
+		await userEvent.type(dialog.getByLabelText("Description"), "discard me");
+		await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+		dialog = await open();
+		await expect(dialog.getByLabelText("Description")).toHaveValue("");
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+		);
 	},
 };

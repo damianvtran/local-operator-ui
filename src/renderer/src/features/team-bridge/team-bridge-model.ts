@@ -616,6 +616,26 @@ export function canRenameConversation(
 	);
 }
 
+/** Reconcile ONLY canonical editable metadata, not membership or read position.
+ * Empty topics are omitted by the hub: a missing response topic is a clear,
+ * not permission to retain the old topic. Match both tenant and id.
+ */
+export function withConversationMetadata(
+	page: TeamBridgeConversationList,
+	conversationId: string,
+	tenantId: string,
+	served: { name?: string; topic?: string },
+): TeamBridgeConversationList {
+	return {
+		...page,
+		conversations: page.conversations.map((row) =>
+			sameRow(row, conversationId, tenantId)
+				? { ...row, name: served.name ?? "", topic: served.topic ?? "" }
+				: row,
+		),
+	};
+}
+
 /** One row renamed in place on a cached page (the optimistic rename). */
 export function withConversationName(
 	page: TeamBridgeConversationList,

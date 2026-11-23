@@ -4538,6 +4538,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * only where it offers archive (`can_administer`), and only when the daemon
 	 * advertises `team_bridge_conversation_rename`.
 	 */
+	// Partial metadata is not a rename fallback: omission preserves stored data,
+	// empty topic clears it, and the captured owner+tenant always ride the body.
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.update"),
+			expected_account_id: id,
+			tenant_id: id,
+			conversation_id: id,
+			name: z.string().optional(),
+			topic: z.string().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.rename"),
@@ -6248,6 +6260,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		if (
+			request.op === "team_bridge.conversations.update" &&
+			request.name === undefined &&
+			request.topic === undefined
+		) {
+			ctx.addIssue({
+				code: "custom",
+				path: ["topic"],
+				message: "metadata update needs a supplied field", // i18n: ignore wire validation diagnostic, not rendered product copy
+			});
+		}
 		/*
 		 * A USAGE RESET MUST NAME ITS ACCOUNT, and this is the cross-field rule
 		 * rather than a `.refine()` on the member: the union is DISCRIMINATED on
@@ -12680,6 +12703,17 @@ export function desktopEndpoint(request: DesktopRequest): {
 							},
 						}
 					: {}),
+			};
+		case "team_bridge.conversations.update":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}`,
+				method: "PATCH",
+				body: {
+					tenant_id: request.tenant_id,
+					expected_account_id: request.expected_account_id,
+					...(request.name !== undefined ? { name: request.name } : {}),
+					...(request.topic !== undefined ? { topic: request.topic } : {}),
+				},
 			};
 		case "team_bridge.conversations.rename":
 			return {

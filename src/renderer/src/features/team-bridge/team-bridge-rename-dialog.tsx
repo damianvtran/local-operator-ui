@@ -7,6 +7,7 @@ import {
 	DialogTitle,
 } from "@shared/components/ui/dialog";
 import { Input } from "@shared/components/ui/input";
+import { Textarea } from "@shared/components/ui/textarea";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC, ReactNode } from "react";
@@ -323,6 +324,255 @@ export const TeamBridgeRenameDialog: FC<{
 							{pending
 								? t("ui.teamBridge.rename.saving")
 								: t("ui.teamBridge.rename.save")}
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
+	);
+};
+
+/** A draft belongs to one captured owner/epoch + tenant + conversation. The page
+ * retains pending/failed drafts on dismissal; normal cancellation discards it.
+ * Baselines are captured on open and never re-seeded by list refetches.
+ */
+export type TeamBridgeEditDraft = {
+	baselineName: string;
+	baselineTopic: string;
+	name: string;
+	topic: string;
+	pending: boolean;
+	error: TeamBridgeEditFailure | null;
+};
+/** The journal outlives a view remount, not its owner. Subscription is needed
+ * because a dismissed request may settle after a different view has mounted.
+ */
+export class TeamBridgeEditDraftJournal extends Map<
+	string,
+	TeamBridgeEditDraft
+> {
+	private version = 0;
+	private listeners = new Set<() => void>();
+	subscribe = (listener: () => void) => {
+		this.listeners.add(listener);
+		return () => {
+			this.listeners.delete(listener);
+		};
+	};
+	snapshot = () => this.version;
+	private publish() {
+		this.version += 1;
+		for (const listener of this.listeners) listener();
+	}
+	override set(key: string, value: TeamBridgeEditDraft): this {
+		super.set(key, value);
+		this.publish();
+		return this;
+	}
+	override delete(key: string): boolean {
+		const deleted = super.delete(key);
+		if (deleted) this.publish();
+		return deleted;
+	}
+}
+
+export type TeamBridgeEditFailure =
+	| TeamBridgeRenameFailure
+	| {
+			kind: "topic_too_long" | "topic_characters";
+	  };
+export const TEAM_BRIDGE_TOPIC_MAX = 512;
+function containsTopicControl(topic: string): boolean {
+	return [...topic].some((character) => {
+		const code = character.codePointAt(0) ?? 0;
+		return (
+			(code < 32 && code !== 9 && code !== 10 && code !== 13) ||
+			(code >= 127 && code <= 159)
+		);
+	});
+}
+
+/** Never slug an untouched legacy name just because the editor opened. */
+export function metadataPatch(
+	kind: "channel" | "group",
+	draft: TeamBridgeEditDraft,
+): { name?: string; topic?: string } {
+	const patch: { name?: string; topic?: string } = {};
+	if (draft.name !== draft.baselineName) {
+		const next = normalizedRenameName(kind, draft.name);
+		if (next !== draft.baselineName) patch.name = next;
+	}
+	if (draft.topic !== draft.baselineTopic) {
+		const next = draft.topic.trim();
+		if (next !== draft.baselineTopic) patch.topic = next;
+	}
+	return patch;
+}
+
+/** Validate only changed fields: an unchanged grandfathered value may be valid
+ * to retain even though the new-update bound would reject it as a new value.
+ */
+export function metadataValidation(patch: {
+	name?: string;
+	topic?: string;
+}): TeamBridgeEditFailure | null {
+	if (patch.name !== undefined) {
+		if (!patch.name) return { kind: "empty" };
+		if ([...patch.name].length > TEAM_BRIDGE_RENAME_MAX)
+			return { kind: "too_long" };
+	}
+	if (patch.topic !== undefined) {
+		if ([...patch.topic].length > TEAM_BRIDGE_TOPIC_MAX)
+			return { kind: "topic_too_long" };
+		if (containsTopicControl(patch.topic)) return { kind: "topic_characters" };
+	}
+	return null;
+}
+
+export function editFailure(
+	error: unknown,
+	attempted: string,
+): TeamBridgeEditFailure {
+	const details = (
+		error as { detail?: { details?: { field?: string; rule?: string } } } | null
+	)?.detail?.details;
+	if (details?.field === "topic") {
+		if (details.rule === "too_long") return { kind: "topic_too_long" };
+		if (details.rule === "control_character")
+			return { kind: "topic_characters" };
+		return { kind: "invalid" };
+	}
+	return renameFailure(error, attempted);
+}
+
+function editFailureText(
+	failure: TeamBridgeEditFailure,
+	kind: "channel" | "group",
+): ReactNode {
+	switch (failure.kind) {
+		case "topic_too_long":
+			return t("ui.teamBridge.edit.error.topic_too_long", {
+				max: TEAM_BRIDGE_TOPIC_MAX,
+			});
+		case "topic_characters":
+			return t("ui.teamBridge.edit.error.topic_characters");
+		case "invalid":
+			return t("ui.teamBridge.edit.error.invalid");
+		case "forbidden":
+			return t("ui.teamBridge.edit.error.forbidden");
+		case "archived":
+			return t("ui.teamBridge.edit.error.archived");
+		case "failed":
+			return t("ui.teamBridge.edit.error.failed");
+		default:
+			return failureText(failure, kind);
+	}
+}
+
+/** The existing rename surface expanded, not a settings/membership screen.
+ * Drafts are controlled by the owner-scoped journal so dismissing an in-flight
+ * request cannot lose its retry state, or let its completion close another room.
+ */
+export const TeamBridgeEditDialog: FC<{
+	kind: "channel" | "group";
+	draft: TeamBridgeEditDraft;
+	onChange: (draft: TeamBridgeEditDraft) => void;
+	onSave: (patch: { name?: string; topic?: string }) => void;
+	onClose: () => void;
+}> = ({ kind, draft, onChange, onSave, onClose }) => {
+	useI18nLocale();
+	const nameId = useId();
+	const topicId = useId();
+	const errorId = useId();
+	const patch = metadataPatch(kind, draft);
+	const shown = metadataValidation(patch) ?? draft.error;
+	const terminal =
+		draft.error?.kind === "archived" || draft.error?.kind === "forbidden";
+	const canSave =
+		Object.keys(patch).length > 0 &&
+		!metadataValidation(patch) &&
+		!draft.pending &&
+		!terminal;
+	const topicError =
+		shown?.kind === "topic_too_long" || shown?.kind === "topic_characters";
+	const change = (field: "name" | "topic", value: string) =>
+		onChange({
+			...draft,
+			[field]: value,
+			error: terminal ? draft.error : null,
+		});
+	return (
+		<Dialog
+			open
+			onOpenChange={(open) => {
+				if (!open) onClose();
+			}}
+		>
+			<DialogContent className="gap-4">
+				<DialogTitle>{t("ui.teamBridge.edit.title", { kind })}</DialogTitle>
+				<DialogDescription className="text-[13px] text-ink-muted">
+					{t("ui.teamBridge.edit.description")}
+				</DialogDescription>
+				<form
+					className="flex flex-col gap-4"
+					onSubmit={(event) => {
+						event.preventDefault();
+						if (canSave) onSave(patch);
+					}}
+				>
+					<label
+						htmlFor={nameId}
+						className="flex flex-col gap-1 text-[13px] text-ink-muted"
+					>
+						{t("ui.teamBridge.rename.name")}
+						<Input
+							id={nameId}
+							value={draft.name}
+							onChange={(event) => change("name", event.target.value)}
+							readOnly={draft.pending}
+							disabled={terminal}
+							aria-invalid={shown && !topicError ? true : undefined}
+							aria-describedby={shown && !topicError ? errorId : undefined}
+							data-edit-name
+						/>
+					</label>
+					<label
+						htmlFor={topicId}
+						className="flex flex-col gap-1 text-[13px] text-ink-muted"
+					>
+						{t("ui.teamBridge.edit.topic")}
+						<Textarea
+							id={topicId}
+							rows={4}
+							value={draft.topic}
+							onChange={(event) => change("topic", event.target.value)}
+							readOnly={draft.pending}
+							disabled={terminal}
+							aria-invalid={topicError ? true : undefined}
+							aria-describedby={topicError ? errorId : undefined}
+							data-edit-topic
+						/>
+					</label>
+					{shown && (
+						<p
+							id={errorId}
+							role="alert"
+							className="text-[13px] text-danger"
+							data-edit-error={shown.kind}
+						>
+							{editFailureText(shown, kind)}
+						</p>
+					)}
+					<DialogFooter>
+						<Button type="button" variant="ghost" onClick={onClose}>
+							{t("ui.teamBridge.rename.cancel")}
+						</Button>
+						<Button type="submit" variant="tonal" disabled={!canSave}>
+							{t(
+								draft.pending
+									? "ui.teamBridge.rename.saving"
+									: "ui.teamBridge.rename.save",
+							)}
 						</Button>
 					</DialogFooter>
 				</form>
