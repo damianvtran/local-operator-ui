@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -9,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import {
 	NATIVE_EXACT,
 	NATIVE_PREFIXES,
+	deriveNativeSurfaces,
 	isNativeSurface,
 	main,
 	nativeSurfacePaths,
@@ -216,4 +223,268 @@ test("no list and an explicit force both report through stdout", () => {
 	assert.match(capture([]), /native=true \(no --changed-file given/);
 	assert.match(capture(["--force", "false"]), /native=false/);
 	assert.match(capture(["--force", "true"]), /native=true/);
+});
+
+// ---------------------------------------------------------------------------
+// scripts/ and .github/ are derived, not whole prefixes.
+//
+// #2066 changed only CI plumbing and still selected the macOS lane, because
+// `scripts/` and `.github/` were whole prefixes. Every narrowing test below
+// FAILS against the prefix classifier (a7d1e70187a), which is the point: it
+// proves the test discriminates. Every control below must stay `true` on both.
+// ---------------------------------------------------------------------------
+
+/** #2066's exact changed-path list (gh pr view 2066 --json files). */
+const PR_2066 = [
+	".github/workflows/ci.yml",
+	"scripts/check-named-test.mjs",
+	"scripts/check-named-test.test.mjs",
+	"scripts/entry-point.test.mjs",
+];
+
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+test("#2066's CI-only diff does not select the native lane", () => {
+	assert.deepEqual(nativeSurfacePaths(PR_2066), []);
+	assert.equal(requiresNativeProof(PR_2066), false);
+});
+
+test("the lane's rig, its imports and the gating stay native", () => {
+	const notificationsScene = readFileSync(
+		join(ROOT, "scripts/notifications-app-scene.mjs"),
+		"utf8",
+	);
+	// The transitive control is only meaningful while the rig really imports it.
+	assert.match(notificationsScene, /from "\.\/python-child-env\.mjs"/u);
+	assert.match(
+		readFileSync(join(ROOT, "scripts/model-uncertainty-native.mjs"), "utf8"),
+		/"model_uncertainty_backend\.py"/u,
+	);
+	for (const path of [
+		// executed by the native-proofs job
+		"scripts/notifications-app-scene.mjs",
+		// spawned by the lane's model-uncertainty rig through a path literal
+		"scripts/model_uncertainty_backend.py",
+		// imported by that rig, never named in the workflow
+		"scripts/python-child-env.mjs",
+		// electron-builder afterPack hook, and a module it imports
+		"scripts/after-pack.mjs",
+		"scripts/bundled-runtime-layout.mjs",
+		// the classifier and the verdict: the gating for this lane (D14)
+		"scripts/native-scope.mjs",
+		"scripts/merge-gate-verdict.mjs",
+		".github/workflows/full-suite.yml",
+		".github/actions/electron-runtime/action.yml",
+		// package.json `files` ships `bin` (no entry of it is under scripts/)
+		"bin/local-operator-ui.js",
+		"package.json",
+		"src/main/x.ts",
+		"src/preload/x.ts",
+	]) {
+		assert.equal(isNativeSurface(path), true, `${path} must select the lane`);
+	}
+	const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+	assert.ok(pkg.files.includes("bin"), "the bin control rests on `files`");
+});
+
+test("other workflows and unexecuted tests under the derived trees are not native", () => {
+	for (const path of [
+		".github/workflows/ci.yml",
+		".github/harness-paths",
+		"scripts/native-scope.test.mjs",
+		"scripts/check-named-test.mjs",
+	]) {
+		assert.equal(isNativeSurface(path), false, `${path} is CI-only`);
+	}
+});
+
+/**
+ * A minimal repository with the same shape as this one, so derivation rules can
+ * be proved against inputs the test controls (and broken on purpose).
+ */
+function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
+	const root = mkdtempSync(join(tmpdir(), "native-scope-root-"));
+	const write = (path, text) => {
+		mkdirSync(join(root, path, ".."), { recursive: true });
+		writeFileSync(join(root, path), text);
+	};
+	write(
+		"package.json",
+		JSON.stringify({
+			files: ["bin", "scripts/shipped"],
+			scripts: {
+				build: "electron-vite build",
+				pack: "pnpm run build && electron-builder --dir",
+				lint: "node scripts/lint-only.mjs",
+			},
+			build: { afterPack: "scripts/after.mjs" },
+		}),
+	);
+	write(
+		".github/workflows/full-suite.yml",
+		[
+			"jobs:",
+			"  changes:",
+			"    steps:",
+			"      - run: node scripts/native-scope.mjs",
+			"  native-proofs:",
+			"    steps:",
+			"      - uses: ./.github/actions/rt",
+			"      # node scripts/commented-out.mjs",
+			`      - run: ${laneRun}`,
+			"  merge-gate:",
+			"    steps:",
+			"      - run: node scripts/verdict.mjs",
+			"",
+		].join("\n"),
+	);
+	write(".github/actions/rt/action.yml", "runs:\n  using: composite\n");
+	// The scene spawns a Python helper by literal (as model-uncertainty-native
+	// does) and names a test file by literal (as inventory scripts do): only
+	// the first is a surface.
+	write(
+		"scripts/scene.mjs",
+		'import { x } from "./helper.mjs";\nconst py = join(here, "backend.py");\nconst t = "scripts/listed.test.mjs";\n',
+	);
+	write("scripts/backend.py", "import json\nimport backend_util\n");
+	write("scripts/backend_util.py", "\n");
+	write("scripts/listed.test.mjs", "\n");
+	write("scripts/helper.mjs", "export const x = 1;\n");
+	write("scripts/shipped/run.mjs", "\n");
+	write("scripts/after.mjs", "\n");
+	write("scripts/lint-only.mjs", "\n");
+	return root;
+}
+
+test("each derivation source is read, and nothing else is", () => {
+	const root = fixtureRepo();
+	try {
+		const derived = deriveNativeSurfaces(root);
+		assert.equal(derived.ok, true, derived.errors.join("; "));
+		const native = (path) => isNativeSurface(path, derived);
+		assert.equal(native("scripts/scene.mjs"), true, "lane run body");
+		assert.equal(native("scripts/helper.mjs"), true, "transitive import");
+		assert.equal(native("scripts/shipped/run.mjs"), true, "package `files`");
+		assert.equal(native("scripts/after.mjs"), true, "afterPack hook");
+		assert.equal(native("scripts/native-scope.mjs"), true, "changes job");
+		assert.equal(native("scripts/verdict.mjs"), true, "merge-gate job");
+		assert.equal(native(".github/actions/rt/action.yml"), true, "used action");
+		assert.equal(
+			native("scripts/lint-only.mjs"),
+			false,
+			"non-packaging script",
+		);
+		assert.equal(
+			native("scripts/commented-out.mjs"),
+			false,
+			"a comment runs nothing",
+		);
+		assert.equal(native("scripts/backend.py"), true, "spawned by literal");
+		assert.equal(native("scripts/backend_util.py"), true, "python import");
+		assert.equal(
+			native("scripts/listed.test.mjs"),
+			false,
+			"a JS literal is a name, not an execution",
+		);
+		assert.equal(native(".github/workflows/ci.yml"), false);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("a new script in the native-proofs job is native without editing the classifier", () => {
+	const before = fixtureRepo();
+	const after = fixtureRepo({
+		laneRun: "node scripts/scene.mjs && node scripts/foo.mjs",
+	});
+	try {
+		assert.equal(
+			isNativeSurface("scripts/foo.mjs", deriveNativeSurfaces(before)),
+			false,
+		);
+		assert.equal(
+			isNativeSurface("scripts/foo.mjs", deriveNativeSurfaces(after)),
+			true,
+		);
+	} finally {
+		rmSync(before, { recursive: true, force: true });
+		rmSync(after, { recursive: true, force: true });
+	}
+});
+
+test("an underivable repository makes every scripts/ and .github/ path native", () => {
+	const breakages = {
+		"unparseable package.json": (root) =>
+			writeFileSync(join(root, "package.json"), "{ not json"),
+		"missing package.json": (root) => rmSync(join(root, "package.json")),
+		"missing full-suite.yml": (root) =>
+			rmSync(join(root, ".github/workflows/full-suite.yml")),
+		"no native-proofs job": (root) =>
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				"jobs:\n  changes:\n    steps: []\n  merge-gate:\n    steps: []\n",
+			),
+		"a lane naming no script": (root) =>
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				"jobs:\n  changes:\n    steps: []\n  native-proofs:\n    steps: []\n  merge-gate:\n    steps: []\n",
+			),
+	};
+	for (const [name, breakIt] of Object.entries(breakages)) {
+		const root = fixtureRepo();
+		try {
+			breakIt(root);
+			const derived = deriveNativeSurfaces(root);
+			assert.equal(derived.ok, false, name);
+			for (const path of [...PR_2066, "scripts/lint-only.mjs"]) {
+				assert.equal(isNativeSurface(path, derived), true, `${name}: ${path}`);
+			}
+			// Fail-closed widens only the derived trees, not the whole repository.
+			assert.equal(isNativeSurface("docs/notes.md", derived), false, name);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+});
+
+test("the CLI derives from the repository, not the cwd, and says when it fails closed", () => {
+	const directory = mkdtempSync(join(tmpdir(), "native-scope-cwd-"));
+	const broken = fixtureRepo();
+	try {
+		const changed = join(directory, "changed.txt");
+		writeFileSync(changed, `${PR_2066.join("\n")}\n`);
+		const fromElsewhere = spawnSync(
+			process.execPath,
+			[SCRIPT, "--changed-file", changed],
+			{ encoding: "utf8", cwd: directory },
+		);
+		assert.equal(fromElsewhere.status, 0, fromElsewhere.stderr);
+		assert.match(fromElsewhere.stdout, /native=false/);
+
+		writeFileSync(join(broken, "package.json"), "{ not json");
+		const summary = join(directory, "summary.md");
+		const failClosed = spawnSync(
+			process.execPath,
+			[
+				SCRIPT,
+				"--changed-file",
+				changed,
+				"--root",
+				broken,
+				"--summary",
+				summary,
+			],
+			{ encoding: "utf8", cwd: directory },
+		);
+		assert.equal(failClosed.status, 0, failClosed.stderr);
+		assert.match(failClosed.stdout, /native=true/);
+		assert.match(
+			failClosed.stderr,
+			/every scripts\/ and \.github\/ path is native/,
+		);
+		assert.match(readFileSync(summary, "utf8"), /Native scope fail-closed/);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+		rmSync(broken, { recursive: true, force: true });
+	}
 });
