@@ -388,19 +388,36 @@ test("60, 120 and 144 Hz displays all paint about 60 times a second", () => {
 	}
 });
 
-test("the exact rest pose is painted even before the next paint deadline", () => {
-	const h = fixture();
+test("the exact rest pose is painted between deadlines, but steering still waits", () => {
 	const still = fixture({ quiet: true });
-	h.intersect(true);
-	h.flush(4485);
-	const before = h.paints();
-	h.flush(4490);
-	assert.equal(h.paints(), before);
-	h.flush(4500);
-	assert.equal(h.paints(), before + 1);
-	assert.deepEqual(h.dots(), still.dots());
-	assert.equal(h.frames.size, 0);
-	h.stop();
+	for (const [label, x] of [
+		["no pending sample", undefined],
+		["pending center sample", 650],
+		["pending off-center sample", 1290],
+	]) {
+		const h = fixture();
+		h.intersect(true);
+		h.flush(4485);
+		const before = h.paints();
+		h.flush(4490);
+		assert.equal(h.paints(), before);
+		if (x !== undefined) h.pointer("pointermove", x, 250, "mouse", 4500);
+		h.flush(4500);
+		if (x === 1290) {
+			assert.equal(h.paints(), before, label);
+			const [rectReads] = h.reads();
+			h.resize(h.canvas.clientWidth);
+			h.flush(4510);
+			assert.equal(h.paints(), before + 1, label);
+			assert.equal(h.reads()[0], rectReads + 1, "resolve resized bounds");
+			assert.notDeepEqual(h.dots(), still.dots(), label);
+		} else {
+			assert.equal(h.paints(), before + 1, label);
+			assert.deepEqual(h.dots(), still.dots(), label);
+			assert.equal(h.frames.size, 0, label);
+		}
+		h.stop();
+	}
 	still.stop();
 });
 
@@ -618,6 +635,96 @@ test("tiny bursts that settle in one step still share the paint deadline", () =>
 	assert.ok(Math.abs(paints - 30) <= 1, `144 Hz quick wakes painted ${paints}`);
 	finishSteering(h, 5500, 144);
 	h.stop();
+});
+
+test("post-arrival one-pixel wakes preserve sustained renderer pressure", (t) => {
+	const h = fixture();
+	const still = fixture({ quiet: true });
+	h.intersect(true);
+	h.flush(4500);
+	const before = h.paints();
+	for (let i = 1; i <= 18; i++) {
+		const now = 5000 + (1000 * i) / 30;
+		h.pointer("pointermove", 650 + i, 250, "mouse", now);
+		if (h.frames.size) h.flush(now);
+		assert.equal(h.frames.size, 0, "each small step has already settled");
+	}
+	const paints = h.paints() - before;
+	t.diagnostic(`30 Hz one-pixel stream: ${paints} paints over 600 ms`);
+	assert.equal(
+		paints,
+		5,
+		"four late callbacks trigger exact rest, then no work",
+	);
+	assert.deepEqual(h.dots(), still.dots());
+	h.stop();
+	still.stop();
+});
+
+test("a lapse after a slow input stream does not count as renderer pressure", () => {
+	const h = fixture();
+	h.intersect(true);
+	h.flush(4500);
+	const rest = h.dots();
+	// Wake on time, then end the stream one late frame short of the cutoff.
+	for (let i = 1; i <= 4; i++) {
+		const now = 4500 + 1000 / 60 + (1000 * (i - 1)) / 30;
+		h.pointer("pointermove", 650 + i, 250, "mouse", now);
+		h.flush(now);
+		assert.equal(h.frames.size, 0);
+	}
+	const before = h.paints();
+	const settled = h.dots();
+	assert.notDeepEqual(settled, rest);
+	const next = 6500;
+	h.pointer("pointermove", 655, 250, "mouse", next);
+	assert.equal(h.paints(), before, "the dormant stream did not keep drawing");
+	assert.equal(
+		h.frames.size,
+		1,
+		"fresh motion wakes immediately after a lapse",
+	);
+	h.flush(next);
+	assert.equal(h.paints(), before + 1);
+	assert.notDeepEqual(h.dots(), settled);
+	assert.notDeepEqual(h.dots(), rest, "the gap did not trigger the fallback");
+	assert.equal(h.frames.size, 0);
+	h.stop();
+});
+
+test("a frame-aligned reversal before settling stays smooth after an isolated stall", (t) => {
+	const period = 1000 / 60;
+	const steps = [];
+	for (const gap of [period, 50, 100]) {
+		const h = fixture();
+		h.intersect(true);
+		h.flush(4500);
+		const start = 5000;
+		h.pointer("pointermove", 1290, 250, "mouse", start);
+		for (let i = 0; i < 7; i++) h.flush(start + i * period);
+		const before = lowerLobe(h.dots());
+		const paints = h.paints();
+		const reversal = start + 6 * period + gap;
+		assert.equal(h.frames.size, 1, "the original movement is still active");
+		h.pointer("pointermove", 10, 250, "mouse", reversal);
+		h.flush(reversal);
+		assert.equal(h.paints(), paints + 1, "no compensating draws");
+		const first = lowerLobe(h.dots());
+		finishSteering(h, reversal);
+		const settled = lowerLobe(h.dots());
+		t.diagnostic(
+			`${gap.toFixed(2)} ms gap: lobe ${before.toFixed(2)} → ${first.toFixed(2)} → ${settled.toFixed(2)} CSS px`,
+		);
+		steps.push({ gap, before, first, settled });
+		h.stop();
+	}
+	for (const { gap, before, first, settled } of steps) {
+		assert.ok(settled < first && first < before, `${gap} ms: no overshoot`);
+		assert.ok(
+			Math.abs(first - steps[0].first) < 0.01,
+			`${gap} ms: one normal step on fresh input`,
+		);
+	}
 });
 
 test("a horizontal reversal turns smoothly on the next paint and reaches the other edge", () => {

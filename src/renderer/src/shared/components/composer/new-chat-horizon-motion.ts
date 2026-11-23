@@ -214,6 +214,7 @@ export function trackNewChatHorizon(
 	let arrivalStarted: number | undefined;
 	let pointerPaintedAt: number | undefined;
 	let nextPaintAt: number | undefined;
+	let wakeRequestedAt: number | undefined;
 	let previousTick: number | undefined;
 	let lateFrames = 0;
 	let budgetLimited = false;
@@ -319,14 +320,14 @@ export function trackNewChatHorizon(
 		!doc.hidden &&
 		visible === true;
 	const idle = () => {
-		pointerPaintedAt = previousTick = undefined;
-		lateFrames = 0;
+		pointerPaintedAt = undefined;
 		canvas.dataset.loHorizonMotion = "still";
 	};
 	const stop = () => {
 		if (frame !== undefined) view.cancelAnimationFrame(frame);
 		frame = undefined;
-		arrivalStarted = nextPaintAt = undefined;
+		arrivalStarted = nextPaintAt = wakeRequestedAt = previousTick = undefined;
+		lateFrames = 0;
 		idle();
 	};
 	const resetPointer = () => {
@@ -366,7 +367,19 @@ export function trackNewChatHorizon(
 		// A dropped frame can be ordinary input or a resize; don't react to
 		// one. A sustained ~30 Hz renderer should keep its time for the
 		// composer. Settle once and don't retry until the next draft's splash.
-		const waking = previousTick === undefined;
+		const waking = wakeRequestedAt !== undefined;
+		// Small moves can settle on every paint, even on a busy renderer. Keep
+		// counting across adjacent wakes; reset only if nobody requested work
+		// for two late-frame intervals. Use the request time, not a potentially
+		// delayed callback, to distinguish that input lapse from renderer lag.
+		if (
+			wakeRequestedAt !== undefined &&
+			previousTick !== undefined &&
+			wakeRequestedAt - previousTick > 2 * LATE_FRAME_MS
+		) {
+			previousTick = undefined;
+		}
+		wakeRequestedAt = undefined;
 		lateFrames =
 			previousTick !== undefined && now - previousTick > LATE_FRAME_MS
 				? lateFrames + 1
@@ -382,17 +395,19 @@ export function trackNewChatHorizon(
 		// repainting at the display refresh rate or accumulating drift.
 		// Preserve the unsteered arrival's exact endpoint between deadlines;
 		// active pointer motion (including its final snap) uses the paint budget.
-		const arrivalOnlyEnd =
-			arrivalStarted !== undefined &&
-			now - arrivalStarted >= ARRIVAL_MS &&
-			!samplePending &&
-			!steering();
-		if (arrivalOnlyEnd) {
+		const arrivalEnded =
+			arrivalStarted !== undefined && now - arrivalStarted >= ARRIVAL_MS;
+		const sampledAtEnd = arrivalEnded && samplePending;
+		if (sampledAtEnd) samplePointer();
+		if (arrivalEnded && !steering()) {
 			nextPaintAt = now + PAINT_PERIOD;
 		} else {
 			nextPaintAt ??= now;
 			const eligibleAt = now + RAF_LEEWAY_MS;
 			if (eligibleAt < nextPaintAt) {
+				// This sample was only inspected to decide on the endpoint.
+				// Resolve it at paint time too if the bounds change meanwhile.
+				if (sampledAtEnd) samplePending = true;
 				frame = view.requestAnimationFrame(tick);
 				return;
 			}
@@ -416,13 +431,14 @@ export function trackNewChatHorizon(
 			if (t === 1) arrivalStarted = undefined;
 		}
 		if (steering()) {
-			// Input overwrites only the sample. Time belongs to the painted
-			// pose, so even samples arriving immediately before rAF can't starve
-			// it. A newly awake pointer gets one nominal step, not its idle gap
-			// or the age of the independent entrance animation.
+			// Time belongs to the painted pose, so even frame-aligned samples
+			// can't starve it. On wake or a late paint, take one nominal step:
+			// the latest target may have arrived just now and must not inherit
+			// the idle/stall gap. Don't spend the surplus with catch-up draws.
 			const elapsed =
 				pointerPaintedAt === undefined ? PAINT_PERIOD : now - pointerPaintedAt;
-			const blend = -Math.expm1(-elapsed / STEER_RESPONSE_MS);
+			const step = elapsed > LATE_FRAME_MS ? PAINT_PERIOD : elapsed;
+			const blend = -Math.expm1(-step / STEER_RESPONSE_MS);
 			pointer.roll += (toward.roll - pointer.roll) * blend;
 			pointer.lift += (toward.lift - pointer.lift) * blend;
 			if (
@@ -447,6 +463,7 @@ export function trackNewChatHorizon(
 	};
 	const schedule = () => {
 		if (frame !== undefined) return;
+		wakeRequestedAt = view.performance.now();
 		canvas.dataset.loHorizonMotion = "running";
 		frame = view.requestAnimationFrame(tick);
 	};
