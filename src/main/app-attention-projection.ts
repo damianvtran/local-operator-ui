@@ -31,6 +31,7 @@ export class AppAttentionProjection {
 	private aidaSession: string | null = null;
 	private gates = 0;
 	private bridgeUnread = 0;
+	private queuedAskSessions: ReadonlySet<string> = new Set();
 	private browserPending = false;
 	private meshPending = false;
 	private epoch: string | undefined;
@@ -122,6 +123,13 @@ export class AppAttentionProjection {
 		this.inboxVersion++;
 		this.emit();
 	}
+
+	// RED CONTROL (commit 1 of 2): a pass-through stub. The tests assert the
+	// behaviour, so they fail here rather than on a missing method.
+	setQueuedAskSessions(
+		_ids: readonly string[],
+		_generation = this.generation,
+	): void {}
 
 	setBridgeUnread(count: number, generation: number): void {
 		if (

@@ -10,6 +10,7 @@ const allowed = new Set([
 	"main/app-attention-projection.ts",
 	"main/app-attention-service.ts",
 	"main/app-icon-badge.ts",
+	"shared/app-attention-queued-asks.ts",
 	"shared/completion-attention.ts",
 	"shared/team-bridge-poll.ts",
 ]);
@@ -41,6 +42,11 @@ const { createAppIconBadge } = await import(
 const { unreadCompletionKind, isUnreadAckableCompletion } = await import(
 	await moduleUrl("shared/completion-attention.ts")
 );
+const {
+	queuedAskSessionIds,
+	parseQueuedAskSessionIds,
+	MAX_QUEUED_ASK_SESSIONS,
+} = await import(await moduleUrl("shared/app-attention-queued-asks.ts"));
 const attention = (
 	unseen = true,
 	token = "completion-1",
@@ -866,4 +872,243 @@ test("lifecycle and consent successful writes invalidate the account aggregate",
 	} finally {
 		service.stop();
 	}
+});
+
+/*
+ * A QUEUED ASK IS COUNTED ONCE, NEVER AS A BLOCKING GATE.
+ *
+ * The harness files a non-blocking queued ask under status code `answer`, the same
+ * code a question the agent is parked on carries, so the feed alone made an idle
+ * conversation with one queued ask read as "needs you" (dock/tray pending). These
+ * cases pin the window's claim as the discriminator: an `answer` beside a queued id
+ * is already counted by the window's badge, an `answer` without one is a gate, and
+ * an `approval` is a gate whatever else is queued.
+ */
+const answer = (code = "answer", revision = 1) => ({ code, revision });
+
+/** An open frame only populates a conversation's level when it carries a
+ * receipt for it (`attention`), so the status map alone would name nobody. */
+const levels = (statuses) => ({
+	attention: Object.fromEntries(
+		Object.keys(statuses).map((identity) => [identity, attention()]),
+	),
+	attention_status: statuses,
+});
+
+const settledProjection = () => {
+	const seen = [];
+	const projection = new AppAttentionProjection((snapshot) =>
+		seen.push(snapshot),
+	);
+	return { projection, seen, last: () => seen.at(-1) };
+};
+
+test("a queued ask is counted once and never as a blocking gate", () => {
+	const { projection, last } = settledProjection();
+	projection.setQueuedAskSessions(["s-queued"]);
+	projection.observe(
+		open(levels({ "session/s-queued": answer() })),
+	);
+	assert.equal(
+		last().pending,
+		false,
+		"the window already counts that queued ask in its own badge",
+	);
+	projection.setQueuedAskSessions([]);
+	assert.equal(
+		last().pending,
+		true,
+		"with no queued ask behind it, the same status is a question that needs you",
+	);
+});
+
+test("an answer status with no queued ask for that conversation is a gate", () => {
+	const { projection, last } = settledProjection();
+	projection.observe(
+		open(levels({ "session/s-blocking": answer() })),
+	);
+	assert.equal(last().pending, true);
+	projection.setQueuedAskSessions(["s-other"]);
+	assert.equal(
+		last().pending,
+		true,
+		"another conversation's ask masks nothing",
+	);
+});
+
+test("an approval stays a gate beside a queued ask", () => {
+	const { projection, last } = settledProjection();
+	projection.setQueuedAskSessions(["s-approval"]);
+	projection.observe(
+		open(levels({ "session/s-approval": answer("approval") })),
+	);
+	assert.equal(last().pending, true);
+});
+
+test("the gate total is the same whether the claim or the status arrives first", () => {
+	const claimFirst = settledProjection();
+	claimFirst.projection.setQueuedAskSessions(["s-a"]);
+	claimFirst.projection.observe(open(levels({ "session/s-a": answer() })));
+
+	const statusFirst = settledProjection();
+	statusFirst.projection.observe(
+		open(levels({ "session/s-a": answer() })),
+	);
+	assert.equal(statusFirst.last().pending, true);
+	statusFirst.projection.setQueuedAskSessions(["s-a"]);
+
+	assert.equal(claimFirst.last().pending, false);
+	assert.equal(
+		statusFirst.last().pending,
+		claimFirst.last().pending,
+		"a set that arrives after its status must reach the same total",
+	);
+});
+
+test("the gate total stays correct across status deltas and claim changes", () => {
+	const { projection, last } = settledProjection();
+	projection.setQueuedAskSessions(["s-a", "s-c"]);
+	projection.observe(
+		open(
+			levels({
+				"session/s-a": answer(),
+				"session/s-b": answer(),
+				"session/s-c": answer("approval"),
+			}),
+		),
+	);
+	// s-b (answer, no queued ask) and s-c (approval, queued ask) are gates.
+	assert.equal(last().pending, true);
+	projection.setQueuedAskSessions(["s-a", "s-b", "s-c"]);
+	assert.equal(
+		last().pending,
+		true,
+		"s-b's claim removes its gate; s-c's approval keeps its own",
+	);
+	projection.observe(frame("session_status", 2, answer("commit", 2), "s-c"));
+	assert.equal(
+		last().pending,
+		false,
+		"no gate survives now that both are masked",
+	);
+	projection.observe(frame("session_status", 3, answer(), "s-b"));
+	assert.equal(
+		last().pending,
+		false,
+		"a status delta must not re-add a masked gate",
+	);
+	projection.setQueuedAskSessions(["s-a"]);
+	assert.equal(
+		last().pending,
+		true,
+		"dropping s-b and s-c from the claim restores both their gates",
+	);
+	projection.observe(frame("session_status", 4, answer("complete", 3), "s-b"));
+	assert.equal(
+		last().pending,
+		false,
+		"s-b left answer, so only s-c's gate is left",
+	);
+});
+
+test("a stale generation cannot set the queued-ask claim", () => {
+	const { projection, last } = settledProjection();
+	const stale = projection.currentGeneration;
+	projection.reset();
+	projection.setQueuedAskSessions(["s-a"], stale);
+	projection.observe(open(levels({ "session/s-a": answer() })));
+	assert.equal(
+		last().pending,
+		true,
+		"the pre-reset generation's claim is ignored",
+	);
+	projection.setQueuedAskSessions(["s-a"], projection.currentGeneration);
+	assert.equal(last().pending, false);
+});
+
+test("a full reset drops the claim; an epoch replacement keeps it", () => {
+	const { projection, last } = settledProjection();
+	projection.setQueuedAskSessions(["s-a"]);
+	projection.observe(open(levels({ "session/s-a": answer() })));
+	assert.equal(last().pending, false);
+	// The open frame's own replacement, exactly as `observe("open")` performs it:
+	// conversation ids survive a reconnect, so their queued asks are still counted
+	// once - dropping the claim here would flash every queued-ask row as a gate.
+	projection.reset(false);
+	projection.observe(open(levels({ "session/s-a": answer() }), "epoch-b"));
+	assert.equal(
+		last().pending,
+		false,
+		"the claim survives an epoch replacement",
+	);
+	// A real reset (sign-out, backend change) does drop it, and main re-asks the
+	// window for a fresh claim afterwards.
+	projection.reset();
+	projection.observe(open(levels({ "session/s-a": answer() }), "epoch-c"));
+	assert.equal(last().pending, true);
+});
+
+test("the renderer's report is validated before main believes it", () => {
+	assert.deepEqual(
+		parseQueuedAskSessionIds([]),
+		[],
+		"an empty claim is a claim",
+	);
+	assert.deepEqual(
+		[...parseQueuedAskSessionIds(["b", "a", "b"])].sort(),
+		["a", "b"],
+		"a duplicate is redundant, not malformed",
+	);
+	for (const refusal of [
+		null,
+		undefined,
+		"s-a",
+		{ ids: ["s-a"] },
+		[""],
+		["s-a", 7],
+		["s-a", null],
+		["x".repeat(257)],
+		Array.from({ length: MAX_QUEUED_ASK_SESSIONS + 1 }, (_, i) => `s-${i}`),
+	])
+		assert.equal(
+			parseQueuedAskSessionIds(refusal),
+			null,
+			`refuses ${JSON.stringify(refusal)?.slice(0, 40)}`,
+		);
+	assert.equal(
+		parseQueuedAskSessionIds(
+			Array.from({ length: MAX_QUEUED_ASK_SESSIONS }, (_, i) => `s-${i}`),
+		).length,
+		MAX_QUEUED_ASK_SESSIONS,
+		"the bound itself is accepted",
+	);
+});
+
+test("the window derives its id set from answerable counts only", () => {
+	assert.deepEqual(queuedAskSessionIds(null), []);
+	assert.deepEqual(queuedAskSessionIds(undefined), []);
+	assert.deepEqual(queuedAskSessionIds(new Map()), []);
+	assert.deepEqual(
+		queuedAskSessionIds(
+			new Map([
+				["b", 1],
+				["a", 3],
+			]),
+		),
+		["a", "b"],
+		"sorted, so a row reorder is not a change worth an IPC call",
+	);
+	assert.deepEqual(
+		queuedAskSessionIds(
+			new Map([
+				["nan", Number.NaN],
+				["zero", 0],
+				["negative", -2],
+				["fraction", 1.5],
+				["", 2],
+			]),
+		),
+		[],
+		"a count that is not a positive safe integer says nothing about a queued ask",
+	);
 });
