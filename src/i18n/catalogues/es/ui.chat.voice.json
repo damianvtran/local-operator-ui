@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "Por ahora se agotó el límite de tu proveedor de voz, así que esa respuesta no se leyó en voz alta.",
 	"ui.chat.voice.provider_unset": "Elige primero un proveedor de voz: Radient o tu propia clave de ElevenLabs. El modo de voz solo usa el que elijas.",
 	"ui.chat.voice.choose_provider": "Elegir proveedor",
-	"ui.chat.voice.set_up_provider": "Configurar en Proveedores"
+	"ui.chat.voice.set_up_provider": "Configurar en Proveedores",
+	"ui.chat.voice.summary_label": "Leído en voz alta",
+	"ui.chat.voice.summary_upcoming": "Se leerá en voz alta",
+	"ui.chat.voice.summary_speaking": "Hablando",
+	"ui.chat.voice.summary_stopped": "Leído en voz alta · detenido antes de terminar",
+	"ui.chat.voice.summary_muted": "No se leyó (silenciado)",
+	"ui.chat.voice.summary_cut": "Leído en voz alta · solo la primera parte",
+	"ui.chat.voice.summary_static": "Resumen hablado",
+	"ui.chat.voice.replay": "Repetir",
+	"ui.chat.voice.play": "Reproducir",
+	"ui.chat.voice.full_reply_link": "Respuesta completa en el chat ↑"
 }

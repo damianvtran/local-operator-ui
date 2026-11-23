@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "آپ کے اسپیچ فراہم کنندہ کی حد فی الحال پوری ہو گئی ہے، اس لیے وہ جواب بول کر نہیں سنایا گیا۔",
 	"ui.chat.voice.provider_unset": "پہلے اسپیچ فراہم کنندہ چنیں: Radient یا آپ کی اپنی ElevenLabs کلید۔ وائس موڈ صرف وہی استعمال کرتا ہے جو آپ چنیں۔",
 	"ui.chat.voice.choose_provider": "فراہم کنندہ چنیں",
-	"ui.chat.voice.set_up_provider": "فراہم کنندگان میں سیٹ اپ کریں"
+	"ui.chat.voice.set_up_provider": "فراہم کنندگان میں سیٹ اپ کریں",
+	"ui.chat.voice.summary_label": "بلند آواز میں پڑھا گیا",
+	"ui.chat.voice.summary_upcoming": "بلند آواز میں پڑھا جائے گا",
+	"ui.chat.voice.summary_speaking": "بول رہی ہے",
+	"ui.chat.voice.summary_stopped": "بلند آواز میں پڑھا گیا · درمیان میں روک دیا گیا",
+	"ui.chat.voice.summary_muted": "نہیں پڑھا گیا (خاموش)",
+	"ui.chat.voice.summary_cut": "بلند آواز میں پڑھا گیا · صرف پہلا حصہ",
+	"ui.chat.voice.summary_static": "بولا جانے والا خلاصہ",
+	"ui.chat.voice.replay": "دوبارہ سنیں",
+	"ui.chat.voice.play": "چلائیں",
+	"ui.chat.voice.full_reply_link": "چیٹ میں مکمل جواب ↑"
 }

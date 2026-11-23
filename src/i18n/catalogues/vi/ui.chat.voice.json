@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "Hiện đã hết giới hạn của nhà cung cấp giọng nói của bạn nên câu trả lời đó không được đọc thành tiếng.",
 	"ui.chat.voice.provider_unset": "Hãy chọn nhà cung cấp giọng nói trước: Radient hoặc khóa ElevenLabs của riêng bạn. Chế độ giọng nói chỉ dùng nhà cung cấp bạn chọn.",
 	"ui.chat.voice.choose_provider": "Chọn nhà cung cấp",
-	"ui.chat.voice.set_up_provider": "Thiết lập trong Nhà cung cấp"
+	"ui.chat.voice.set_up_provider": "Thiết lập trong Nhà cung cấp",
+	"ui.chat.voice.summary_label": "Đã đọc to",
+	"ui.chat.voice.summary_upcoming": "Sẽ được đọc to",
+	"ui.chat.voice.summary_speaking": "Đang nói",
+	"ui.chat.voice.summary_stopped": "Đã đọc to · dừng giữa chừng",
+	"ui.chat.voice.summary_muted": "Không đọc (đã tắt tiếng)",
+	"ui.chat.voice.summary_cut": "Đã đọc to · chỉ phần đầu",
+	"ui.chat.voice.summary_static": "Tóm tắt đọc to",
+	"ui.chat.voice.replay": "Nghe lại",
+	"ui.chat.voice.play": "Phát",
+	"ui.chat.voice.full_reply_link": "Câu trả lời đầy đủ trong cuộc trò chuyện ↑"
 }
