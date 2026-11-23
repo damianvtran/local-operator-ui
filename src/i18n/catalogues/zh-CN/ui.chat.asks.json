@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "已回答 {answered}/{total}",
 	"ui.chat.asks.urgent_label": "紧急",
 	"ui.chat.asks.copy_id": "复制请求ID {id}"
-
 }

@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "Отвечено {answered} из {total}",
 	"ui.chat.asks.urgent_label": "Срочно",
 	"ui.chat.asks.copy_id": "Копировать ID запроса {id}"
-
 }

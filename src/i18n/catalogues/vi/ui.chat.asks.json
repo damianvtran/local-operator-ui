@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "Đã trả lời {answered}/{total}",
 	"ui.chat.asks.urgent_label": "Khẩn cấp",
 	"ui.chat.asks.copy_id": "Sao chép ID câu hỏi {id}"
-
 }

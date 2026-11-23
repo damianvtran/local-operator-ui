@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "{total} में से {answered} के उत्तर दिए गए",
 	"ui.chat.asks.urgent_label": "ज़रूरी",
 	"ui.chat.asks.copy_id": "सवाल ID कॉपी करें {id}"
-
 }

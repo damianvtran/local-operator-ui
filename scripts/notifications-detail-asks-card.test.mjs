@@ -558,9 +558,9 @@ test(
 		const page = await openOnA();
 		try {
 			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 2",
-				"Settled · 0",
+				"All 2",
+				"Pending 2",
+				"Settled 0",
 			]);
 			await chooseFirstOption(page);
 			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
@@ -595,9 +595,9 @@ test(
 			 * Keep its explicit delivery sentence and legal Change answer affordance. */
 			assert.match(a, RX_4);
 			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
+				"All 2",
+				"Pending 1",
+				"Settled 1",
 			]);
 			assert.ok(page.buttonIn(page.card("a-1111"), "Change answer"));
 			await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
@@ -643,9 +643,9 @@ test("Decline settles the card as Declined", BOUNDED, async () => {
 			"ask B stays pending",
 		);
 		assert.deepEqual(page.filterText(), [
-			"All · 2",
-			"Pending · 1",
-			"Settled · 1",
+			"All 2",
+			"Pending 1",
+			"Settled 1",
 		]);
 	} finally {
 		await page.unmount();
@@ -695,9 +695,9 @@ test(
 			);
 			assert.match(page.card("a-1111")?.textContent ?? "", RX_6);
 			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
+				"All 2",
+				"Pending 1",
+				"Settled 1",
 			]);
 		} finally {
 			await page.unmount();
@@ -868,7 +868,7 @@ test(
 				"a-1111",
 			);
 			assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
-			await page.press(page.buttonIn(page.pane(), "Settled · 1"));
+			await page.press(page.buttonIn(page.pane(), "Settled 1"));
 			assert.ok(
 				await page.settle(() =>
 					page.settledRows().some((row) => row.startsWith("Answered")),
@@ -876,9 +876,9 @@ test(
 				`delivered, ask A moves to Settled (${JSON.stringify(page.settledRows())})`,
 			);
 			assert.deepEqual(page.filterText(), [
-				"All · 2",
-				"Pending · 1",
-				"Settled · 1",
+				"All 2",
+				"Pending 1",
+				"Settled 1",
 			]);
 			/* Two near-identical asks: the settled row names its question AND its answer. */
 			const settled = page.pane().querySelector("[data-lo-ask-settled]");

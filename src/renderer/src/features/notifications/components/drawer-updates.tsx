@@ -163,16 +163,19 @@ export const DrawerTabs: FC<{
 						>
 							<span className="min-w-0 whitespace-normal break-words">
 								{entry.label}
+								{entry.count > 0 && (
+									<>
+										{" "}
+										<span className="tabular-nums text-ink-muted">
+											{entry.id === "updates"
+												? t("ui.notifications.drawer.unread_count", {
+														count: formatNumber(entry.count),
+													})
+												: formatNumber(entry.count)}
+										</span>
+									</>
+								)}
 							</span>
-							{entry.count > 0 && (
-								<span className="shrink-0 tabular-nums text-ink-muted">
-									{entry.id === "updates"
-										? t("ui.notifications.drawer.unread_count", {
-												count: formatNumber(entry.count),
-											})
-										: formatNumber(entry.count)}
-								</span>
-							)}
 						</button>
 					))}
 			</div>

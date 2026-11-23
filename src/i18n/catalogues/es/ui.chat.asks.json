@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "Respondidas: {answered} de {total}",
 	"ui.chat.asks.urgent_label": "Urgente",
 	"ui.chat.asks.copy_id": "Copiar el ID de la consulta {id}"
-
 }

@@ -852,7 +852,7 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 	if (!chip) throw new Error("the zero-count chip is not rendered");
 	assert.equal(
 		chip.textContent,
-		"Settled · 0",
+		"Settled 0",
 		"the chip counts the empty half",
 	);
 	await act(async () => {
@@ -870,7 +870,7 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 	);
 	assert.ok(
 		[...view.container.querySelectorAll("[data-lo-ask-filter] button")].some(
-			(b) => b.textContent === "Pending · 1",
+			(b) => b.textContent === "Pending 1",
 		),
 		"the half is named `Pending`, the opposite of `Settled` (design round 1 on #1116, D1)",
 	);
@@ -1244,7 +1244,7 @@ test("a filter press releases every hold, and a lapse under Pending leaves only 
 		true,
 		"Pending is not empty, so no sentence is inserted above a-2",
 	);
-	assert.equal(chip(view, "Pending").textContent, "Pending · 1");
+	assert.equal(chip(view, "Pending").textContent, "Pending 1");
 	/* The last pending ask lapses too: Pending is truly 0, so the sentence is owed. */
 	await view.rerender(
 		h(AskDrawer, {
@@ -2105,7 +2105,7 @@ test("a settled row shows the id, and the expanded frame owns its copy control",
 			scope: "session",
 		}),
 	);
-	const row = view.container.querySelector('[data-lo-ask-settled]');
+	const row = view.container.querySelector("[data-lo-ask-settled]");
 	const trigger = row?.querySelector("button[aria-expanded]");
 	assert.ok(row?.textContent.includes("a-declined"), "the id is on the row");
 	assert.ok(
@@ -2182,9 +2182,9 @@ test("the recommendation survives the selection moving (operator ask, 2026-10-04
 	 * labels carry a weight step reads as two kinds of row, so the badge is now an
 	 * object beside the label and no row changes weight.
 	 */
-	const recommendedMark = Array.from(staging?.querySelectorAll("span") ?? []).find(
-		(element) => element.textContent === "Recommended",
-	);
+	const recommendedMark = Array.from(
+		staging?.querySelectorAll("span") ?? [],
+	).find((element) => element.textContent === "Recommended");
 	assert.ok(
 		recommendedMark?.className.includes("rounded-full"),
 		"the mark is drawn as a pill",

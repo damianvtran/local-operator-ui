@@ -82,13 +82,16 @@ export const AskId = ({
 			{/*
 			 * A separate live region rather than the button's own text: the button's
 			 * accessible name is the action, so a name that swapped to "Copied" would
-			 * rename the control on the press. `<output>` is the native element for a
-			 * status region (its implicit role is `status`, polite). Only the pressed
-			 * card's region changes.
+			 * rename the control on the press. A bare span with `aria-live` (not
+			 * `role="status"`): the polite region is the whole contract, and the role
+			 * spelling is what the a11y lint asks a `<span>` to become an `<output>` for
+			 * - and an `<output>` here would be the SECOND one in a card whose refusal
+			 * notice is already an output, which is a selector collision no reader wants.
+			 * Only the pressed card's region changes.
 			 */}
-			<output className="sr-only">
+			<span aria-live="polite" className="sr-only">
 				{copied ? t("ui.common.actions.copied") : ""}
-			</output>
+			</span>
 		</span>
 	);
 };

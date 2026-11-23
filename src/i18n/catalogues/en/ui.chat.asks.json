@@ -48,5 +48,4 @@
 	"ui.chat.asks.progress": "{answered, number, ::group-off} of {total, number, ::group-off} answered",
 	"ui.chat.asks.urgent_label": "Urgent",
 	"ui.chat.asks.copy_id": "Copy ask id {id}"
-
 }

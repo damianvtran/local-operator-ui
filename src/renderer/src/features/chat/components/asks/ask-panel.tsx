@@ -2994,21 +2994,27 @@ export const AskPanel = ({
 						setFilter(value);
 					}}
 					className={cn(
-						"flex items-baseline gap-1 rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
+						"rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
 						filter === value
 							? "bg-sunken text-ink"
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
-					<span>{label}</span>
 					{/*
 					 * THE COUNT IS ITS OWN TOKEN (design spec S4): the same quiet register
 					 * as the tab strip's counts - a tabular numeral in `ink-muted` - so a
 					 * pressed chip does not turn its number into part of the label, and the
 					 * old boxed badge and `· n` suffix stop being two spellings of one style.
+					 *
+					 * ONE INLINE SPAN, WITH A REAL SPACE: a flex pair would put the two
+					 * words in separate items, and the accessible name would be `All2` -
+					 * the CSS gap is invisible to it.
 					 */}
-					<span className="tabular-nums text-ink-muted">
-						{formatNumber(count)}
+					<span>
+						{label}{" "}
+						<span className="tabular-nums text-ink-muted">
+							{formatNumber(count)}
+						</span>
 					</span>
 				</button>
 			))}
