@@ -2,12 +2,10 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { writeSync } from "node:fs";
 import { test } from "node:test";
-import { Script } from "node:vm";
-import { headlessRefusal, provisionIncumbent } from "./incumbent-provision.mjs";
+import { provisionIncumbent } from "./incumbent-provision.mjs";
 
 function rig({
-	capable = true,
-	bytecode = false,
+	ignoresWindowMode = false,
 	healthAt = Number.POSITIVE_INFINITY,
 	exitAt = Number.POSITIVE_INFINITY,
 	busy = false,
@@ -39,30 +37,16 @@ function rig({
 				tag: "v0.57.8",
 				paths: { executable: "/vm/incumbent", log: "/dev/null" },
 				env: { HOME: "/vm/home" },
-				checkHeadless: () =>
-					headlessRefusal("/vm/incumbent/app.asar", (archive, entry) => {
-						assert.equal(archive, "/vm/incumbent/app.asar");
-						if (entry === "package.json")
-							return Buffer.from('{"main":"./out/main/index.js"}');
-						if (bytecode) {
-							if (entry === "out/main/index.js")
-								return Buffer.from(
-									'require("./bytecode-loader.cjs");\nrequire("./index.jsc");',
-								);
-							assert.equal(entry, "out/main/index.jsc");
-							return new Script(
-								'const flags = ["--window-mode", "LOCAL_OPERATOR_UI_WINDOW_MODE", "[window-mode]"];',
-							).createCachedData();
-						}
-						assert.equal(entry, "out/main/index.js");
-						return Buffer.from(
-							capable
-								? "--window-mode LOCAL_OPERATOR_UI_WINDOW_MODE [window-mode]"
-								: "an older main entry",
-						);
-					}),
 				spawn(executable, args, options) {
-					launches.push({ executable, args, options });
+					// Model the pre-R4 app: closing the setup window quits only
+					// if headless was recognised. Older apps ignore window mode.
+					const windowMode = ignoresWindowMode
+						? "normal"
+						: args
+								.find((arg) => arg.startsWith("--window-mode="))
+								?.split("=")[1];
+					launches.push({ executable, args, options, windowMode });
+					if (windowMode === "headless") child.exitCode = 0;
 					const [stdin, stdout, stderr] = options.stdio;
 					assert.equal(stdin, "ignore");
 					assert.equal(stdout, stderr);
@@ -97,7 +81,7 @@ function rig({
 }
 
 test("observes backend health and waits for the incumbent to exit", async () => {
-	const control = rig({ bytecode: true, healthAt: 250, exitAt: 500 });
+	const control = rig({ healthAt: 250, exitAt: 500 });
 	const result = await control.run();
 	assert.equal(result.verdict, "PASS");
 	assert.ok(result.detail.includes("HTTP OK"), result.detail);
@@ -105,7 +89,7 @@ test("observes backend health and waits for the incumbent to exit", async () => 
 	assert.equal(control.child.exitCode, 0);
 	assert.deepEqual(control.signals, []);
 	assert.deepEqual(control.launches[0].args, [
-		"--window-mode=headless",
+		"--window-mode=inactive",
 		"--use-mock-keychain",
 	]);
 	assert.equal(control.launches[0].options.env.HOME, "/vm/home");
@@ -126,7 +110,7 @@ test("R4: exit 0 before health fails rather than treating install exit as readin
 	const result = await control.run();
 	assert.equal(result.verdict, "FAIL");
 	assert.ok(result.detail.includes("exit 0"), result.detail);
-	assert.ok(result.detail.includes("no health"), result.detail);
+	assert.ok(result.detail.includes("no health seen"), result.detail);
 	assert.deepEqual(control.signals, []);
 });
 
@@ -152,16 +136,13 @@ test("health then linger still passes once the owned child is reaped", async () 
 	assert.deepEqual(control.signals, [[417, "SIGTERM"]]);
 });
 
-test("a pre-window-mode signed app is blocked without running it", async () => {
-	const control = rig({ capable: false });
+test("an older incumbent that ignores inactive mode can still provision", async () => {
+	const control = rig({ ignoresWindowMode: true, healthAt: 250, exitAt: 500 });
 	const result = await control.run();
-	assert.equal(result.verdict, "BLOCKED");
-	assert.ok(result.detail.includes("v0.57.8"), result.detail);
-	assert.ok(
-		result.detail.includes("lacks --window-mode support"),
-		result.detail,
-	);
-	assert.deepEqual(control.launches, []);
+	assert.equal(result.verdict, "PASS");
+	assert.ok(result.detail.includes("HTTP OK"), result.detail);
+	assert.equal(control.launches.length, 1);
+	assert.equal(control.launches[0].windowMode, "normal");
 });
 
 test("a listener already on the health port cannot prove incumbent readiness", async () => {

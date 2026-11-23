@@ -1,6 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { posix } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { TELEMETRY_ENV, TELEMETRY_OFF_VALUE } from "./telemetry-off.mjs";
@@ -13,48 +12,22 @@ const describeExit = (child) =>
 	child.signalCode ? `signal ${child.signalCode}` : `exit ${child.exitCode}`;
 
 /**
- * Read the original signed entry point, not the checkout or a version cutoff.
- * Electron can ignore an unrecognized switch; trying it to discover support
- * could boot an older app in normal window mode. These are the bundled main
- * process's flag and launch diagnostics, not evidence that a backend started.
- */
-export function headlessRefusal(asar, extractFile) {
-	try {
-		const { main } = JSON.parse(extractFile(asar, "package.json").toString());
-		const mainPath = main.startsWith("./") ? main.slice(2) : main;
-		let entry = extractFile(asar, mainPath);
-		// Published desktop builds use electron-vite's JS shim to require the
-		// adjacent V8 bytecode. The unprotected ASCII literals live in that
-		// payload, not in the shim; read it but never execute it for capability.
-		if (
-			entry.includes("bytecode-loader.cjs") &&
-			entry.includes(`require("./${posix.basename(mainPath)}c")`)
-		)
-			entry = extractFile(asar, `${mainPath}c`);
-		if (
-			![
-				"--window-mode",
-				"LOCAL_OPERATOR_UI_WINDOW_MODE",
-				"[window-mode]",
-			].every((marker) => entry.includes(marker))
-		)
-			return "signed main entry lacks --window-mode support";
-		return null;
-	} catch (error) {
-		return `could not establish --window-mode support from the signed app: ${error.message}`;
-	}
-}
-
-/**
  * Turn the pristine VM profile into an installed incumbent profile without
  * modifying the signed bundle. A clean install exit is not readiness (R4):
  * only an HTTP OK observed during this boot can advance the update proof.
+ *
+ * A pre-R4 incumbent closes its only setup window before starting the backend.
+ * Headless mode quits on that close, so it cannot provision a pristine profile.
+ * Inactive mode shows a never-focused window on the disposable VM, where the
+ * isolation constraint is no writes to /Applications, not no windows. The
+ * macOS non-headless lifecycle keeps the app alive between setup and backend
+ * start. An older app that ignores the switch runs normally and can still
+ * provision; there is no window-mode capability gate for this boot.
  */
 export async function provisionIncumbent({
 	tag,
 	paths,
 	env,
-	checkHeadless,
 	spawn = nodeSpawn,
 	fetch = globalThis.fetch,
 	now = () => performance.now(),
@@ -67,8 +40,6 @@ export async function provisionIncumbent({
 		verdict,
 		detail: `${tag}: ${detail}`,
 	});
-	const refusal = checkHeadless();
-	if (refusal) return result("BLOCKED", refusal);
 
 	async function probe(ms = PROBE_MS) {
 		try {
@@ -112,7 +83,7 @@ export async function provisionIncumbent({
 		try {
 			child = spawn(
 				paths.executable,
-				["--window-mode=headless", MOCK_KEYCHAIN_SWITCH],
+				["--window-mode=inactive", MOCK_KEYCHAIN_SWITCH],
 				{
 					env: { ...env, [TELEMETRY_ENV]: TELEMETRY_OFF_VALUE },
 					stdio: ["ignore", log, log],
@@ -137,7 +108,7 @@ export async function provisionIncumbent({
 		else if (spawnError)
 			failure = `could not spawn incumbent: ${spawnError.message}; no health observed`;
 		else if (ended(child))
-			failure = `incumbent ended (${describeExit(child)}); no health observed`;
+			failure = `incumbent ended (${describeExit(child)}); no health seen`;
 		else
 			failure = `readiness timed out after ${timeouts.readiness} ms; no health observed at ${HEALTH}`;
 	} catch (error) {

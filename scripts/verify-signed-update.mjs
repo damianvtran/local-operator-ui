@@ -53,7 +53,7 @@ import {
 	incumbentInspectorCapability,
 	incumbentInspectorRefusal,
 } from "./incumbent-fuse-gate.mjs";
-import { headlessRefusal, provisionIncumbent } from "./incumbent-provision.mjs";
+import { provisionIncumbent } from "./incumbent-provision.mjs";
 import {
 	incumbentReleaseRefusalMessage,
 	resolveIncumbentMetadata,
@@ -123,9 +123,7 @@ function blocked(message) {
 }
 const require = createRequire(import.meta.url);
 const builder = createRequire(require.resolve("electron-builder"));
-const buildLib = createRequire(builder.resolve("app-builder-lib"));
-const { load } = buildLib("js-yaml");
-const { extractFile } = buildLib("@electron/asar");
+const { load } = createRequire(builder.resolve("app-builder-lib"))("js-yaml");
 const owned = [];
 let feed;
 let inspector;
@@ -588,14 +586,8 @@ try {
 		tag,
 		paths: { executable, log: join(evidence, "incumbent-provision.log") },
 		env: safeEnv(),
-		checkHeadless: () =>
-			headlessRefusal(
-				join(app, "Contents", "Resources", "app.asar"),
-				extractFile,
-			),
 	});
 	record("Incumbent provisioned", provisioned.verdict, provisioned.detail);
-	if (provisioned.verdict === "BLOCKED") blocked(provisioned.detail);
 	if (provisioned.verdict !== "PASS") throw new Error(provisioned.detail);
 	const legacyPython = join(
 		app,
