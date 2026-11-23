@@ -167,6 +167,8 @@ const {
 	pageMoreLabel,
 	pageOrder,
 	pageRows,
+	localHorizonMs,
+	withholdPastHorizon,
 	parseSidebarView,
 	groupRows,
 	sectionRows,
@@ -1064,6 +1066,216 @@ test("invariant 1: the viewed conversation is on screen past the page's end", ()
 		rows.slice(0, 10).map((entry) => entry.session_id),
 		"the page behind it is unchanged",
 	);
+});
+
+/*
+ * THE LOCAL HORIZON (operator report 2026-11-23: "I can't see any local messages
+ * past 21 hours, everything past that point is all remote"). The daemon pages the
+ * LOCAL catalogue (50 rows, then 50 per tail extension) but sends every peer row
+ * at once, so an arrangement over the union drew a wall of remote rows below the
+ * oldest local row the client happened to hold. `sidebarPage` mirrors the
+ * component's pipeline (`chat-sidebar.tsx`: horizon -> `pageOrder` -> `pageRows`)
+ * so these cases drive the same composition the sidebar draws.
+ */
+const local = (id, hoursAgo, extra = {}) => ({
+	...row(id, SECONDS(hoursAgo)),
+	created_at: SECONDS(hoursAgo + 1),
+	locality: "local",
+	...extra,
+});
+const remote = (id, hoursAgo, extra = {}) => ({
+	...row(id, SECONDS(hoursAgo)),
+	created_at: SECONDS(hoursAgo + 1),
+	locality: "remote",
+	owner_device: "peer-1",
+	...extra,
+});
+const sidebarPage = (
+	rows,
+	listing,
+	loads,
+	{ basis = "active", currentId } = {},
+) => {
+	const horizon = localHorizonMs(
+		new Map(rows.map((entry) => [entry.session_id, entry])),
+		listing,
+	);
+	const reachable = withholdPastHorizon(rows, horizon, basis);
+	const arranged = pageOrder(reachable.rows, "active-first", basis);
+	return {
+		horizon,
+		arranged,
+		page: pageRows(arranged, {
+			limit: pageLimit(loads),
+			currentId,
+			withheld: reachable.withheld,
+		}),
+	};
+};
+/* 50 local rows read (1h..50h), 100 remote rows spanning 0.5h..199.5h. */
+const horizonFixture = () => {
+	const locals = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index + 1}`, index + 1),
+	);
+	const remotes = Array.from({ length: 100 }, (_, index) =>
+		remote(`r${index}`, index * 2 + 0.5),
+	);
+	return { locals, remotes };
+};
+
+test("local horizon: no drawn remote row is older than an unloaded local row (2026-11-23 report)", () => {
+	const { locals, remotes } = horizonFixture();
+	const rows = [...locals, ...remotes];
+	const listing = {
+		complete: false,
+		order: "activity",
+		listingIds: [...locals, ...remotes].map((entry) => entry.session_id),
+	};
+	const { horizon, arranged, page } = sidebarPage(rows, listing, 3);
+	assert.equal(
+		horizon,
+		SECONDS(50) * 1000,
+		"the frontier is the last local row read",
+	);
+	for (const drawn of page.rows) {
+		if (drawn.locality !== "remote") continue;
+		assert.ok(
+			drawn.updated_at * 1000 > horizon,
+			`${drawn.session_id} (${drawn.updated_at}) is drawn below the local horizon`,
+		);
+	}
+	assert.equal(
+		page.rows.filter((entry) => entry.locality === "local").length,
+		50,
+		"every local row read is drawn at rung 100",
+	);
+	assert.equal(
+		arranged.length,
+		75,
+		"50 local + the 25 remote rows newer than 50h",
+	);
+	assert.equal(
+		page.remaining,
+		0,
+		"withheld rows are not counted as revealable",
+	);
+
+	/* The tail page arrives: 50 more local rows, 51h..100h. */
+	const more = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index + 51}`, index + 51),
+	);
+	const grown = sidebarPage(
+		[...rows, ...more],
+		{
+			...listing,
+			listingIds: [
+				...listing.listingIds,
+				...more.map((entry) => entry.session_id),
+			],
+		},
+		4,
+	);
+	assert.equal(grown.horizon, SECONDS(100) * 1000);
+	assert.deepEqual(
+		grown.page.rows.slice(0, page.rows.length).map((entry) => entry.session_id),
+		page.rows.map((entry) => entry.session_id),
+		"loading more only appends: nothing already drawn re-arranges",
+	);
+	const ids = grown.page.rows.map((entry) => entry.session_id);
+	assert.ok(
+		ids.indexOf("l51") < ids.indexOf("r26") &&
+			ids.indexOf("r25") < ids.indexOf("l51"),
+		"local and remote rows interleave by the clock past the old horizon",
+	);
+});
+
+test("local horizon: a complete listing withholds nothing", () => {
+	const { locals, remotes } = horizonFixture();
+	const { horizon, arranged } = sidebarPage(
+		[...locals, ...remotes],
+		{
+			complete: true,
+			order: "activity",
+			listingIds: locals.map((entry) => entry.session_id),
+		},
+		3,
+	);
+	assert.equal(horizon, null);
+	assert.equal(arranged.length, 150);
+});
+
+test("local horizon: the frontier is the LAST listed local row, skipping pinned, running, remote and unknown ids", () => {
+	const rows = [
+		local("stale-active", 500), // active_first: leads the page whatever its age
+		local("a", 2),
+		local("b", 9),
+		local("pinned-old", 400, { pinned: true }), // off_page extra
+		local("running-old", 300, { status: { code: "busy" } }), // off_page extra
+		remote("peer", 700),
+	];
+	const at = localHorizonMs(
+		new Map(rows.map((entry) => [entry.session_id, entry])),
+		{
+			complete: false,
+			order: "activity",
+			listingIds: [...rows.map((entry) => entry.session_id), "forgotten-id"],
+		},
+	);
+	assert.equal(
+		at,
+		SECONDS(9) * 1000,
+		"neither the stale active row nor the extras lower the horizon",
+	);
+	assert.equal(
+		localHorizonMs(new Map(rows.map((entry) => [entry.session_id, entry])), {
+			complete: false,
+			order: "rank",
+			listingIds: ["a", "b"],
+		}),
+		SECONDS(10) * 1000,
+		"the rank order bounds births, so it reads the frontier's created_at",
+	);
+});
+
+test("local horizon: a running remote row is never withheld, and a viewed withheld row is lifted", () => {
+	const { locals, remotes } = horizonFixture();
+	const live = remote("r-live", 150, { status: { code: "busy" } });
+	const rows = [...locals, ...remotes, live];
+	const listing = {
+		complete: false,
+		order: "activity",
+		listingIds: locals.map((entry) => entry.session_id),
+	};
+	const { page } = sidebarPage(rows, listing, 0, { currentId: "r90" });
+	const ids = page.rows.map((entry) => entry.session_id);
+	assert.ok(
+		ids.includes("r-live"),
+		"live work is never behind the horizon (A1)",
+	);
+	assert.equal(page.lifted, true);
+	assert.equal(ids[0], "r90", "the viewed remote row leads, outside the order");
+	assert.equal(ids.filter((id) => id === "r90").length, 1);
+});
+
+test("local horizon: the created basis compares each remote birth against the frontier's activity", () => {
+	const { locals, remotes } = horizonFixture();
+	const { page } = sidebarPage(
+		[...locals, ...remotes],
+		{
+			complete: false,
+			order: "activity",
+			listingIds: locals.map((entry) => entry.session_id),
+		},
+		3,
+		{ basis: "created" },
+	);
+	for (const drawn of page.rows) {
+		if (drawn.locality !== "remote") continue;
+		assert.ok(
+			drawn.created_at > SECONDS(50),
+			`${drawn.session_id} drawn below the horizon`,
+		);
+	}
 });
 
 test("invariant 1: a viewed conversation inside the page is not lifted", () => {

@@ -904,6 +904,123 @@ export function pageOrder(
 	return keyed.map((entry) => entry.row);
 }
 
+/**
+ * How far down the clock this client has READ the local catalogue, and the
+ * facts needed to say so. See `localHorizonMs` and `withholdPastHorizon`.
+ */
+export type LocalListing = {
+	/**
+	 * Whether the flat listing reached the end of the local catalogue (no
+	 * cursor left to follow). A complete listing has no horizon at all.
+	 */
+	complete: boolean;
+	/**
+	 * The order the catalogue pages were READ in: `activity` is core's
+	 * `sort=activity` (`(active_first, -mtime, id)`), `rank` the older
+	 * `(tier, wake band, -created_at, id)`. It decides which clock the frontier
+	 * row bounds - mtime for `activity`, birth for `rank`.
+	 */
+	order: "activity" | "rank";
+	/**
+	 * The ids the flat listing's pages carried, in the order they arrived (head
+	 * page, then each tail extension). Remote ids may be interleaved; they are
+	 * skipped.
+	 */
+	listingIds: readonly string[];
+};
+
+/**
+ * The clock below which an UNLOADED local conversation may still sit, in
+ * milliseconds, or null when nothing is withheld (the listing is complete, or
+ * no frontier row can be read).
+ *
+ * WHY THIS EXISTS (operator report, 2026-11-23: "I can't see any local
+ * messages past 21 hours, everything past that point is all remote"). The
+ * daemon answers the sidebar with a PAGE of local rows (50, then 50 per tail
+ * extension: `CATALOGUE_HEAD_PAGE`) plus EVERY peer row, unpaged
+ * (`desktop_sessions.py`: `sessions = page.rows + page.off_page + page.remote`;
+ * `SessionPage.remote` says "`truncated` says nothing about these rows").
+ * `pageOrder` then sorts that union newest-first, so below the oldest loaded
+ * local row only remote rows were left - a wall of `↗` rows standing in front
+ * of local conversations the client simply had not fetched yet. Worse, the foot
+ * only follows the cursor when the ladder outruns the rows HELD, and the
+ * hundreds of held remote rows meant it never did.
+ *
+ * THE FRONTIER is the LAST local row the listing carried in catalogue order -
+ * not the oldest one held, because rows ride the listing out of clock order on
+ * purpose: `active_first` rows lead the page whatever their age, and the
+ * `off_page` extras (running rows below the window, pinned rows) follow it. The
+ * pinned and running rows are skipped for that reason, which leaves the page's
+ * own tail row. Under `activity` every unloaded non-active local row has
+ * `mtime <= frontier.mtime`; and since a conversation's birth precedes its
+ * last movement, its `created_at` is under that bound too - so the ONE horizon
+ * (the frontier's mtime) bounds BOTH sidebar bases. Under `rank` the frontier's
+ * birth bounds the unloaded rows' birth within its tier; that older order has
+ * no activity bound at all, so the horizon is best-effort there (the activity
+ * head is what every current daemon serves, `session_catalogue_sort`).
+ *
+ * A frontier the client cannot read (forgotten, never held) moves the search
+ * up the listing: an EARLIER row has a NEWER clock, so falling back can only
+ * withhold more, never reveal a row too soon.
+ */
+export function localHorizonMs(
+	rowsById: ReadonlyMap<string, CanonicalSessionRow>,
+	listing: LocalListing,
+): number | null {
+	if (listing.complete) return null;
+	for (let index = listing.listingIds.length - 1; index >= 0; index -= 1) {
+		const row = rowsById.get(listing.listingIds[index]);
+		if (!row || row.locality === "remote") continue;
+		if (row.pinned === true || isRunningRow(row)) continue;
+		const at = rowTimeMs(
+			row,
+			listing.order === "activity" ? "active" : "created",
+		);
+		if (at !== null) return at;
+	}
+	return null;
+}
+
+/**
+ * The rows the arrangement may draw while the local listing is incomplete:
+ * every row EXCEPT a remote one whose clock is at or below the local horizon.
+ *
+ * THE INVARIANT (acceptance for the 2026-11-23 report): at any depth of the
+ * ladder, no drawn remote row sorts BELOW a local row that exists but is not
+ * loaded. A withheld remote row comes back the moment a tail page moves the
+ * horizon past it, and because every row that page brings sorts at or below
+ * the old horizon, nothing already drawn re-arranges - the list only grows
+ * downward, in order. The ties are withheld too (`<=`): an unloaded local row
+ * tying the horizon would otherwise land between rows on screen.
+ *
+ * WHAT IS NEVER WITHHELD: a RUNNING remote row (the page's own guarantee, A1 -
+ * a disclosure must not hide live work), every local row (they are the
+ * listing), and every row while `horizonMs` is null. A remote row with NO clock
+ * is withheld while a horizon stands: it sorts last (`byNewest`), so it is
+ * below every unloaded local row by definition. The VIEWED row is withheld like
+ * any other and handed back as `withheld`, so `pageRows` can still lift it -
+ * invariant 1 holds without drawing it out of order.
+ */
+export function withholdPastHorizon<T extends CanonicalSessionRow>(
+	rows: readonly T[],
+	horizonMs: number | null,
+	basis: SidebarBasis,
+): { rows: T[]; withheld: T[] } {
+	if (horizonMs === null) return { rows: [...rows], withheld: [] };
+	const kept: T[] = [];
+	const withheld: T[] = [];
+	for (const row of rows) {
+		if (row.locality !== "remote" || isRunningRow(row)) {
+			kept.push(row);
+			continue;
+		}
+		const at = rowTimeMs(row, basis);
+		if (at !== null && at > horizonMs) kept.push(row);
+		else withheld.push(row);
+	}
+	return { rows: kept, withheld };
+}
+
 export type PageResult = {
 	/** The rows to draw, in order. */
 	rows: CanonicalSessionRow[];
@@ -944,9 +1061,15 @@ export function pageRows(
 		limit: number;
 		currentId?: string | null;
 		searching?: boolean;
+		/**
+		 * Rows `withholdPastHorizon` kept out of the arrangement. Read ONLY to find
+		 * the viewed conversation for the lift: a remote chat the reader has open
+		 * stays on screen (invariant 1) without being drawn out of order.
+		 */
+		withheld?: readonly CanonicalSessionRow[];
 	},
 ): PageResult {
-	const { limit, currentId, searching = false } = options;
+	const { limit, currentId, searching = false, withheld = [] } = options;
 	if (searching) {
 		return { rows: [...ordered], lifted: false, remaining: 0 };
 	}
@@ -999,7 +1122,10 @@ export function pageRows(
 	 * membership test and not an index comparison - `head.includes` asks the
 	 * question the old `index < head.length` used to stand for.
 	 */
-	const viewed = ordered.find((row) => row.session_id === currentId) ?? null;
+	const viewed =
+		ordered.find((row) => row.session_id === currentId) ??
+		withheld.find((row) => row.session_id === currentId) ??
+		null;
 	if (viewed === null || head.includes(viewed)) {
 		return { rows: head, lifted: false, remaining };
 	}
