@@ -401,7 +401,10 @@ test("compact PageHeader keeps one accessible h1 and does not wrap actions", () 
 	const { PageHeader } = compile(
 		read("shared/components/common/page-header.tsx"),
 	);
-	const button = createElement("button", { "aria-label": "Refresh" });
+	const button = createElement("button", {
+		type: "button",
+		"aria-label": "Refresh",
+	});
 	const compact = renderToStaticMarkup(
 		createElement(
 			PageHeader,
@@ -411,7 +414,7 @@ test("compact PageHeader keeps one accessible h1 and does not wrap actions", () 
 	);
 	assert.equal(
 		compact,
-		'<h1 class="sr-only">Projects</h1><button aria-label="Refresh"></button>',
+		'<h1 class="sr-only">Projects</h1><button type="button" aria-label="Refresh"></button>',
 	);
 	const detail = renderToStaticMarkup(
 		createElement(PageHeader, { title: "Saved agent", icon: "svg" }, button),
