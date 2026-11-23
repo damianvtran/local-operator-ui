@@ -270,6 +270,7 @@ import {
 	groupRows,
 	isEntitySection,
 	isSectionShown,
+	localHorizonMs,
 	pageLimit,
 	pageMoreLabel,
 	pageOrder,
@@ -282,12 +283,14 @@ import {
 	sectionIsGrown,
 	sectionMoreLabel,
 	sectionMoreName,
+	shouldFetchTail,
 	shownSections,
 	tagGroupBodyRows,
 	tagGroupCollapsed,
 	tagSurfaceOn,
 	toggleSectionDisclosure,
 	toggleTagDisclosure,
+	withholdPastHorizon,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import {
@@ -1327,6 +1330,14 @@ export function ChatSidebar({
 	 */
 	const catalogueScopes = useCanonicalSessionsStore((s) => s.scopes);
 	const catalogueHead = useCanonicalSessionsStore((s) => s.head);
+	/*
+	 * The order the flat listing was READ in, from the store rather than the
+	 * capability: it is the flag both the head read and the tail extension send,
+	 * so the local horizon (`localHorizonMs`) reads the same clock the cursor walks.
+	 */
+	const catalogueActivityHead = useCanonicalSessionsStore(
+		(s) => s.catalogueActivityHead,
+	);
 	const catalogueCounts = useCanonicalSessionsStore((s) => s.counts);
 	const fetchScopePage = useCanonicalSessionsStore((s) => s.fetchScopePage);
 	const clearCatalogueScope = useCanonicalSessionsStore((s) => s.clearScope);
@@ -4106,13 +4117,43 @@ export function ChatSidebar({
 	/*
 	 * THE ARRANGEMENT, skipped while a query is on (see the block above).
 	 */
+	/*
+	 * THE LOCAL HORIZON, applied before the arrangement (operator report
+	 * 2026-11-23: below a point every row was remote). Local rows arrive a page at
+	 * a time but every peer row arrives at once, so while the flat listing still
+	 * has a cursor, a remote row older than the last local row read is withheld:
+	 * an unloaded local conversation could belong above it. The rules and the
+	 * invariant live in `chat-sidebar-view.ts` (`localHorizonMs`,
+	 * `withholdPastHorizon`); this only supplies the listing's facts. A search is
+	 * never bounded (invariant 2), and without the paged catalogue there is no
+	 * cursor and so no horizon.
+	 */
+	const horizonComplete = !groupPaging || catalogueHead.tailCursor === null;
+	const horizonFrontierMs = catalogueHead.frontierMs ?? null;
+	/*
+	 * Memoised on the scalars it reads: the frontier is captured by the store when
+	 * a page arrives (`head.frontierMs`), so no row scan happens here at all.
+	 */
+	const horizonMs = useMemo(
+		() =>
+			searchActive
+				? null
+				: localHorizonMs({
+						complete: horizonComplete,
+						order: catalogueActivityHead ? "activity" : "rank",
+						frontierMs: horizonFrontierMs,
+					}),
+		[searchActive, horizonComplete, catalogueActivityHead, horizonFrontierMs],
+	);
+	const reachable = withholdPastHorizon(rest, horizonMs, view.basis);
 	const arranged = searchActive
 		? rest
-		: pageOrder(rest, view.orderBy, view.basis);
+		: pageOrder(reachable.rows, view.orderBy, view.basis);
 	const page = pageRows(arranged, {
 		limit: pageLimit(loads),
 		currentId: selectedConversation,
 		searching: searchActive,
+		withheld: reachable.withheld,
 	});
 	const liftedRow = page.lifted ? page.rows[0] : null;
 	const pagedRows = page.lifted ? page.rows.slice(1) : page.rows;
@@ -4136,9 +4177,21 @@ export function ChatSidebar({
 	 * must never name a different page or appear when the foot does not.
 	 */
 	const footShown = !query.trim() && (page.remaining > 0 || tailMore);
+	/*
+	 * Whether the NEXT press also follows the cursor (`shouldFetchTail`). When it
+	 * does, the rows it adds are the rung's step, not `page.remaining`: the next
+	 * local page fills the rung, and `remaining` cannot see rows not yet arrived
+	 * (design round 1, D1: "Show 23 more chats" drew 50).
+	 */
+	const pressFetchesTail = shouldFetchTail({
+		next: loads + 1,
+		drawable: arranged.length,
+		groupPaging,
+		tailCursor: catalogueHead.tailCursor,
+	});
 	const footLabel = pageMoreLabel(
 		loads,
-		page.remaining > 0
+		page.remaining > 0 && !pressFetchesTail
 			? pageReveal(arranged, loads, page.remaining)
 			: ladderStep,
 	);
@@ -4147,8 +4200,8 @@ export function ChatSidebar({
 	 * BEYOND WHAT IS HELD. The two are one gesture because the reader asked for one
 	 * thing - more chats - and which of them happens is a fact about the daemon
 	 * (five hundred rows asked for, fifty arrived) rather than a choice the reader
-	 * should have to make. `rest` rather than `pagedRows`, because the rung counts
-	 * the rows the page is taken over and a lifted row is drawn outside it.
+	 * should have to make. `arranged` rather than `pagedRows`, because the rung
+	 * counts the rows the page is taken over and a lifted row is drawn outside it.
 	 */
 	const pressPageMore = (event: ReactMouseEvent<HTMLButtonElement>) => {
 		/*
@@ -4174,8 +4227,16 @@ export function ChatSidebar({
 		 */
 		const next = loads + 1;
 		setChatSidebarView({ ...view, loads: next });
-		if (!groupPaging) return;
-		if (pageLimit(next) > rest.length) void fetchCatalogueTail();
+		// Against the rows the page can DRAW; see `shouldFetchTail`.
+		if (
+			shouldFetchTail({
+				next,
+				drawable: arranged.length,
+				groupPaging,
+				tailCursor: catalogueHead.tailCursor,
+			})
+		)
+			void fetchCatalogueTail();
 	};
 	/*
 	 * WHETHER ANYTHING IS VIEWER-SET, which is what the band's middle button's
