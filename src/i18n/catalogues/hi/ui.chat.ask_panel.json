@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "कोई सवाल लंबित नहीं है। सभी निपट चुके हैं — “निपटे हुए” देखें।",
 	"ui.chat.ask_panel.empty.none_settled": "अभी कोई सवाल नहीं निपटा है। सभी अब भी लंबित हैं।",
 	"ui.chat.ask_panel.filter.all": "सभी",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "लंबित",
 	"ui.chat.ask_panel.filter.settled": "निपटे हुए",
 	"ui.chat.ask_panel.landing.many": "{count, plural, one {# सवाल की समय-सीमा खत्म हो गई} other {# सवालों की समय-सीमा खत्म हो गई}}",

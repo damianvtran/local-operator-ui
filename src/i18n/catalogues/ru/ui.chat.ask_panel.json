@@ -10,7 +10,6 @@
 	"ui.chat.ask_panel.empty.none_pending": "Нет запросов в ожидании. Все они решены — см. «Решённые».",
 	"ui.chat.ask_panel.empty.none_settled": "Решённых запросов пока нет. Все они ещё в ожидании.",
 	"ui.chat.ask_panel.filter.all": "Все",
-	"ui.chat.ask_panel.filter.chip": "{label} · {count, number}",
 	"ui.chat.ask_panel.filter.pending": "В ожидании",
 	"ui.chat.ask_panel.filter.settled": "Решённые",
 	"ui.chat.ask_panel.landing.many": "{count, plural, one {# вопрос: срок ответа истёк} few {# вопроса: срок ответа истёк} many {# вопросов: срок ответа истёк} other {# вопроса: срок ответа истёк}}",

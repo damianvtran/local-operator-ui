@@ -5022,7 +5022,6 @@ export type MessageParams = {
 	"ui.chat.ask_panel.empty.none_pending": undefined;
 	"ui.chat.ask_panel.empty.none_settled": undefined;
 	"ui.chat.ask_panel.filter.all": undefined;
-	"ui.chat.ask_panel.filter.chip": { label: string; count: number };
 	"ui.chat.ask_panel.filter.pending": undefined;
 	"ui.chat.ask_panel.filter.settled": undefined;
 	"ui.chat.ask_panel.landing.many": { count: number };

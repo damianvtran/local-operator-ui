@@ -49,6 +49,7 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { formatNumber } from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -2279,6 +2280,8 @@ export const AskPanel = ({
 	commandPlacementOf,
 	className,
 }: AskPanelProps) => {
+	/* The filter chips format their own counts, so this panel is a leaf too. */
+	useI18nLocale();
 	/*
 	 * AN UNREAD FRAME DRAWS NOTHING; AN EMPTY ONE STATES ITS EMPTINESS.
 	 *
@@ -2991,13 +2994,22 @@ export const AskPanel = ({
 						setFilter(value);
 					}}
 					className={cn(
-						"rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
+						"flex items-baseline gap-1 rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
 						filter === value
 							? "bg-sunken text-ink"
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
-					{t("ui.chat.ask_panel.filter.chip", { label, count })}
+					<span>{label}</span>
+					{/*
+					 * THE COUNT IS ITS OWN TOKEN (design spec S4): the same quiet register
+					 * as the tab strip's counts - a tabular numeral in `ink-muted` - so a
+					 * pressed chip does not turn its number into part of the label, and the
+					 * old boxed badge and `· n` suffix stop being two spellings of one style.
+					 */}
+					<span className="tabular-nums text-ink-muted">
+						{formatNumber(count)}
+					</span>
 				</button>
 			))}
 		</fieldset>

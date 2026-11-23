@@ -122,10 +122,10 @@ import {
 	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askAttentionCount,
+	askDrawerCountClause,
 	askDrawerUnavailableLine,
 	askDrawerUnreadLine,
 	askQueueView,
-	askScopeLine,
 	askScopeSubject,
 	noopDraftChange,
 } from "../../ask-queue";
@@ -440,6 +440,13 @@ export const AskDrawer = ({
 	 * chord, because this box answers none of its own.
 	 */
 	const waiting = askAttentionCount(view);
+	/*
+	 * THE BAR'S COUNT HALF, as its own value (design spec S4). `askScopeLine` joined
+	 * the subject and the clause into one string, which cannot yield at a narrow
+	 * drawer without cutting a word - so the bar composes the two here, and the
+	 * subject is what leaves first (see the bar's own note).
+	 */
+	const scopeClause = askDrawerCountClause(view);
 	const regionName =
 		waiting > 0
 			? t("ui.shell.rail.ask.aria_count", {
@@ -1203,7 +1210,9 @@ export const AskDrawer = ({
 			data-glass-region={ground === "glass" ? "pane" : undefined}
 			data-ask-drawer={scope}
 			tabIndex={-1}
-			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
+			className={cn(
+				"panel-top-pad @container/asks flex h-full flex-col bg-elevated",
+			)}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
@@ -1239,21 +1248,44 @@ export const AskDrawer = ({
 			 */}
 			<div
 				className={cn(
-					"flex h-10 shrink-0 items-center justify-between gap-2 px-2",
+					"flex h-10 shrink-0 items-center gap-2 px-3",
 					"[padding-inline-end:max(0.5rem,var(--chrome-inset-end-pane,var(--chrome-inset-end)))]",
 				)}
 			>
 				<span
-					className="truncate text-ink-muted text-xs"
+					className="flex min-w-0 flex-1 items-center gap-1.5 text-ink-muted text-meta"
 					/*
 					 * The scope line is the surface's own name, so a reader who arrives by
 					 * keyboard hears which queue this is rather than only "Asks". It is the
 					 * BAR's reading and not the list region's name (see the region's own note);
 					 * the two say the same scope and count different things on purpose.
+					 *
+					 * TWO REGISTERS, ONE LINE (design spec S4). Below 520px of drawer the
+					 * subject is the first thing to go, so the bar reads `1 outstanding`
+					 * instead of cutting a word off `This conversation`. The tab strip already
+					 * names the list, the region's own `aria-label` names the scope for assistive
+					 * tech, and the clause is the half that changes with the queue. The
+					 * separator stays a sibling of the subject, so it leaves with it rather than
+					 * dangling at a wrapped edge.
 					 */
 					data-ask-scope=""
 				>
-					{askScopeLine(scope, view)}
+					{scopeClause === "" ? (
+						<span className="truncate">{askScopeSubject(scope)}</span>
+					) : (
+						<>
+							<span className="hidden shrink-0 @min-[520px]/asks:inline">
+								{askScopeSubject(scope)}
+							</span>
+							<span
+								aria-hidden="true"
+								className="hidden shrink-0 @min-[520px]/asks:inline"
+							>
+								{" \u00b7 "}
+							</span>
+							<span className="min-w-0 truncate">{scopeClause}</span>
+						</>
+					)}
 				</span>
 				{tabs?.action}
 				<Tooltip content={t("ui.chat.asks.close_asks")}>
