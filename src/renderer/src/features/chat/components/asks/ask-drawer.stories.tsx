@@ -1194,3 +1194,151 @@ export const CommandRunDialog: Story = {
 		await screen.findByRole("dialog");
 	},
 };
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CARD CLEANUP (design spec S1-S4; Ben, 2026-11-23)
+ * ---------------------------------------------------------------------------
+ *
+ * The frames below exist so a reviewer can render BEFORE and AFTER at the two
+ * widths the drawer's pane arithmetic actually draws: the 400px floor
+ * (`min(RIGHT_SLOT_MAX_PX, row - 480)`, floored at `CANVAS_PANE_MIN_PX`) and the
+ * 640px opening width. Themes come from the preview's `theme` arg, so each story
+ * renders in light and dark without a second copy:
+ *
+ *   ?path=/story/chat-asks-queued-asks--cleanup-narrow&args=theme:localOperatorLight
+ *   ?path=/story/chat-asks-queued-asks--cleanup-narrow&args=theme:localOperatorDark
+ *
+ * What the frames are evidence for:
+ * - the question is the only `text-body` line, options are `text-body-sm` with a
+ *   2px start edge and a trailing Check when chosen (S1);
+ * - the status line is quiet, the message-since note sits under it, and the
+ *   pinned bar carries Send answer / Decline / Dismiss… plus the foot's progress
+ *   count and the id with its copy control (S2);
+ * - the scope line, the All-conversations link and the close button share one bar
+ *   row, and the tab and filter counts are plain numerals (S4);
+ * - settled rows carry their id at the row's end and the expanded frame carries
+ *   the copyable one (S3), in `SettledAtFloor`.
+ */
+
+/** Four questions, two answered: a real "2 of 4 answered" in the bar's foot. */
+const CLEANUP_ASK: PendingAsk = ask({
+	ask_id: "a-745e",
+	questions: [
+		{
+			id: "build",
+			question:
+				"Ask ids: build the recommendation on all four surfaces — a quiet id with copy at the foot of every ask card, and a-xxxx in chat becomes a chip showing open/answered/withdrawn that opens that ask?",
+			recommended: 0,
+			options: [
+				{
+					label: "Yes, build it",
+					description:
+						"About five small PRs: agent wording, desktop, app, relay, TUI.",
+				},
+				{
+					label: "Only the agent wording for now",
+					description:
+						"Cheapest: no UI change; agents name the ask in words beside its id.",
+				},
+				{ label: "Not yet", description: "Stays a prototype." },
+			],
+		},
+		{
+			id: "other-session",
+			question:
+				"When a chat mentions an ask id from a different session (ids repeat across sessions), what should the chip do?",
+			recommended: 0,
+			options: [
+				{
+					label: "Leave it plain text",
+					description: "Only ids from this session become chips.",
+				},
+				{
+					label: "Look it up; link if exactly one match",
+					description: "Shows the ask in its own session. More work.",
+				},
+			],
+		},
+		{
+			id: "trace",
+			question:
+				"A withdrawn ask leaves no trace in the chat. Add a quiet display-only line saying an ask was withdrawn?",
+			options: [{ label: "Yes, add the line" }, { label: "No" }],
+		},
+		{
+			id: "inbox",
+			question: "Fix the mobile inbox bug now, in its own lane?",
+			options: [
+				{ label: "Yes, fix now" },
+				{ label: "Fold it into the ask-id build" },
+			],
+		},
+	],
+});
+
+const CLEANUP_DRAFTS = {
+	"a-745e": {
+		build: ["Yes, build it"],
+		"other-session": ["Leave it plain text"],
+	},
+};
+
+/** The cleanup card at the 400px floor: rows wrap hardest, the foot is tightest. */
+export const CleanupNarrow: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([CLEANUP_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		/* The bar's third action: without this the frame cannot show the row's shape. */
+		onDismiss: noop,
+		drafts: CLEANUP_DRAFTS,
+	},
+};
+
+/** The same card at the 640px opening width: the bar's row should hold one line. */
+export const CleanupWide: Story = {
+	parameters: { drawerWidth: 640 },
+	args: CleanupNarrow.args,
+};
+
+/**
+ * THE SETTLED HALF AT THE FLOOR: each row shows its status chip, the full
+ * question (no clamp, per Ben's a-427e decision), the answer preview, and the ask
+ * id at the row's end. Open one to see the id move to the frame's foot with its
+ * copy control.
+ */
+export const SettledAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([
+			ONE,
+			timedOutAsk("a-1c09"),
+			answeredAsk(),
+			answeredLateAsk(),
+			declinedAsk(),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * URGENT, AT THE FLOOR: the status line grows the warning badge and the icon
+ * takes `text-warning`; the word carries the state so colour is never the only
+ * channel. Same card otherwise, so the pair reads as one state's difference.
+ */
+export const CleanupUrgent: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		...CleanupNarrow.args,
+		frontend: frontend([{ ...CLEANUP_ASK, urgent: true }]),
+	},
+};
