@@ -1,0 +1,61 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-es",
+	"date": "2026-11-21",
+	"locale": "es",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+		"shipped_terms": "src/i18n/catalogues/es/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"es": "ac7b6450aeb0fd2e21e8081ca5d8cd926f14f1f8e58f0fbe1c2a1d18c3e585e9"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-ES1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.group_count",
+			"current": "{total, plural, one {# alerta} many {# alertas} other {# alertas}}, {resolved, number} resueltas",
+			"replacement": "{total, plural, one {# alerta} many {# alertas} other {# alertas}}, resueltas: {resolved, number}",
+			"note": "Rendered '1 alerta, 1 resueltas' / '21 alertas, 1 resueltas' (measured with intl-messageformat): number disagreement whenever exactly one resolved."
+		},
+		{
+			"id": "T-ES2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.teamBridge.alerts.responder.severity_label",
+				"ui.teamBridge.alerts.responder.severity_hint"
+			],
+			"current": "'Activar a {agent} para' / 'activan a {agent}'",
+			"replacement": "severity_label: 'Despertar a {agent} con'; severity_hint: 'Las alertas de las gravedades seleccionadas despiertan a {agent}. Las de gravedad desconocida nunca lo hacen.'",
+			"note": "Glossary wake -> despertar; the shipped sibling ui.teamBridge.agentNotify.label is 'Despertar a tu agente con'. 'Activar' also collides with fire_count 'Se activó # veces' on the same card."
+		},
+		{
+			"id": "T-ES3",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.severity",
+			"current": "{worst, select, yes {Peor SEV{level}} other {SEV{level}}}",
+			"replacement": "{worst, select, yes {Máx. SEV{level}} other {SEV{level}}}",
+			"note": "'Peor SEV2' is a calque; the group badge names the highest severity in the group."
+		},
+		{
+			"id": "T-ES-C1",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.claim.taken_by",
+			"current": "renders 'La atiende Un respondedor' when the server names no agent",
+			"replacement": "inherits English C1: follow the en fix (e.g. claimed arm 'Prise en charge : {who}' / 'Asignada a: {who}')",
+			"note": "Capitalised fragment ui.teamBridge.alerts.claim.holder_unknown inserted mid-sentence; source-side defect, recorded here so the locale fix lands with it."
+		}
+	]
+}

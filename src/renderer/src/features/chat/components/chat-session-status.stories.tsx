@@ -1,6 +1,10 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
+import {
+	ChatAsksOutstanding,
+	ChatSessionStatus,
+	withQueuedAskStatus,
+} from "./chat-session-status";
 
 /** Read/unread specimens, not a receipt transition. The receipt flow is the
  * isolated browser fixture; this matrix keeps every neighbouring status legible
@@ -304,4 +308,59 @@ export const AsksOutstanding: Story = {
 			))}
 		</div>
 	),
+};
+
+/**
+ * ONE OPEN QUEUED ASK, ONE ASK MARK (operator report, 2026-11-22).
+ *
+ * The core files an open queued ask under status code `answer`, so the status
+ * glyph and the asks count both drew the question bubble. "Before" is that
+ * wiring (the wire row straight into `ChatSessionStatus`); "after" is what the
+ * sidebar draws now (`withQueuedAskStatus`). Idle rests on the ring, busy keeps
+ * its spinner; a bare `answer` with no ask badge is a blocking question and keeps
+ * its own bubble.
+ */
+export const QueuedAskSingleMark: Story = {
+	args: { row: { session_id: "specimen" } as CanonicalSessionRow },
+	render: () => {
+		const specimens = [
+			{ label: "idle, one ask", live: "idle", open: 1 },
+			{ label: "busy, one ask", live: "busy", open: 1 },
+			{ label: "idle, three asks", live: "idle", open: 3 },
+			{ label: "blocking question (no ask badge)", live: "idle", open: 0 },
+		];
+		const wire = (live: string) =>
+			({
+				session_id: "specimen",
+				live_state: live,
+				status: { code: "answer", label: "Answer needed" },
+			}) as CanonicalSessionRow;
+		const line = (
+			specimen: (typeof specimens)[number],
+			drawn: CanonicalSessionRow,
+		) => (
+			<div className="flex items-center gap-2" key={specimen.label}>
+				<ChatSessionStatus row={drawn} />
+				<ChatAsksOutstanding row={wire(specimen.live)} open={specimen.open} />
+				<span className="text-sm">{specimen.label}</span>
+			</div>
+		);
+		return (
+			<div className="flex gap-12 bg-surface p-4 text-ink">
+				<div className="flex flex-col gap-3">
+					<div className="text-xs">Before (the wire row as drawn)</div>
+					{specimens.map((specimen) => line(specimen, wire(specimen.live)))}
+				</div>
+				<div className="flex flex-col gap-3">
+					<div className="text-xs">After (what the sidebar draws)</div>
+					{specimens.map((specimen) =>
+						line(
+							specimen,
+							withQueuedAskStatus(wire(specimen.live), specimen.open),
+						),
+					)}
+				</div>
+			</div>
+		);
+	},
 };

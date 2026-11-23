@@ -461,6 +461,12 @@
 		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
 		"maxCells": 150
 	},
+	"ui.chat.composer.dictation_failed_too_long_take_kept": {
+		"role": "dictation failure row beside a Discard control, no Retry",
+		"tone": "failure sentence that states the size limit plainly, then names the one action",
+		"note": "The recording is over the app's upload limit, so sending the same bytes again cannot work and there is no Retry beside this row. Say the recording is too long to send and that the reader should discard it and record a shorter one. Do not say 'try again'; do not promise the take can be sent. The control beside it is ui.common.actions.discard.",
+		"maxCells": 150
+	},
 	"ui.chat.composer.secret_closure_notice": {
 		"role": "notice rendered above the message box while a secret ask holds the composer paused",
 		"tone": "calm explanatory sentence, sentence case, one em dash before the consequence",

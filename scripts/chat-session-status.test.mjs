@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -6,7 +7,7 @@ const require = createRequire(import.meta.url);
 const result = await build({
 	stdin: {
 		contents:
-			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react"; export { peerLinkDownLabel, peerLinkDownVisibleLabel } from "./src/renderer/src/features/mesh/peer-presence";',
+			'export { ChatSessionStatus, ChatAsksOutstanding, withQueuedAskStatus } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react"; export { peerLinkDownLabel, peerLinkDownVisibleLabel } from "./src/renderer/src/features/mesh/peer-presence";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -25,6 +26,7 @@ new Function("module", "exports", "require", result.outputFiles[0].text)(
 const {
 	ChatSessionStatus,
 	ChatAsksOutstanding,
+	withQueuedAskStatus,
 	peerLinkDownLabel,
 	peerLinkDownVisibleLabel,
 	renderToStaticMarkup,
@@ -692,4 +694,110 @@ test("a remote row inside the relay's redial grace says Reconnecting in dim ink"
 	);
 	assert.match(down, WARNING_INK_RE);
 	assert.match(down, LINK_DOWN_AGE_RE);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * ONE OPEN QUEUED ASK DRAWS ONE ASK GLYPH (operator report, 2026-11-22)
+ * ---------------------------------------------------------------------------
+ *
+ * The core files an open queued ask under status code `answer` (it claims the
+ * record's `pending`, and `catalog.status_code` ranks that above busy and idle),
+ * and the sidebar ALSO draws the ask count beside it. Both are the same
+ * `MessageCircleQuestion`, so an idle conversation with one ask read as two ask
+ * icons. The mark is rebuilt from `live_state` while the ask badge owns the ask.
+ *
+ * `cluster` is what one sidebar row draws left of the title: the status mark and
+ * the asks mark, in that order, the way `chat-sidebar.tsx` composes them. The
+ * OLD wiring is the same call without `withQueuedAskStatus` (the RED control).
+ */
+const questionGlyphs = (markup) =>
+	(markup.match(/lucide-message-circle-question/g) ?? []).length;
+const askRow = (extra = {}) => ({
+	session_id: "fixture",
+	status: { code: "answer", label: "Answer needed" },
+	...extra,
+});
+const cluster = (row, open, wired = true) => {
+	const drawn = wired ? withQueuedAskStatus(row, open) : row;
+	return (
+		renderToStaticMarkup(createElement(ChatSessionStatus, { row: drawn })) +
+		renderToStaticMarkup(createElement(ChatAsksOutstanding, { row, open }))
+	);
+};
+
+test("RED control: the old wiring drew two ask glyphs for one open ask", () => {
+	const old = cluster(askRow({ live_state: "idle" }), 1, false);
+	assert.equal(questionGlyphs(old), 2);
+	assert.match(old, /Answer needed/);
+});
+
+test("idle with one open ask: a resting ring and ONE ask mark", () => {
+	const markup = cluster(askRow({ live_state: "idle" }), 1);
+	assert.equal(questionGlyphs(markup), 1);
+	assert.match(markup, /lucide-circle /);
+	assert.doesNotMatch(markup, /Answer needed/);
+	assert.match(markup, /sr-only">Recent</);
+	// The ask mark is still there, with its count and its own sentence.
+	assert.match(markup, /aria-label="1 ask outstanding/);
+});
+
+test("busy with one open ask: the spinner and ONE ask mark", () => {
+	const markup = cluster(askRow({ live_state: "busy" }), 1);
+	assert.equal(questionGlyphs(markup), 1);
+	assert.match(markup, /lucide-loader-circle/);
+	assert.match(markup, /motion-safe:animate-spin/);
+	assert.doesNotMatch(markup, /Answer needed/);
+	assert.match(markup, /sr-only">Working</);
+});
+
+test("the count may come from the row's own field as well as the caller", () => {
+	const markup = cluster(
+		askRow({ live_state: "idle", asks_open: 3 }),
+		undefined,
+	);
+	assert.equal(questionGlyphs(markup), 1);
+	assert.match(markup, /lucide-circle /);
+});
+
+test("a blocking gate keeps its own glyph: approval, and answer with no ask badge", () => {
+	// Approval is untouched even with an ask badge beside it.
+	const approval = askRow({
+		live_state: "busy",
+		status: { code: "approval", label: "Approval needed" },
+	});
+	assert.equal(withQueuedAskStatus(approval, 2), approval);
+	// No count: the status glyph is the ONLY ask mark, so it stays.
+	for (const open of [undefined, 0, null, Number.NaN]) {
+		const row = askRow({ live_state: "busy" });
+		assert.equal(withQueuedAskStatus(row, open), row);
+		const markup = cluster(row, open);
+		assert.equal(questionGlyphs(markup), 1);
+		assert.match(markup, /Answer needed/);
+	}
+});
+
+test("other codes pass through untouched", () => {
+	for (const code of ["busy", "complete", "recent", "wedged", "error"]) {
+		const row = askRow({ status: { code, label: code } });
+		assert.equal(withQueuedAskStatus(row, 2), row);
+	}
+});
+
+test("the sidebar row is drawn from the queued-ask-aware row, with the same count as its ask mark", () => {
+	// The wiring is the bug: the helper above is right on its own and the old
+	// sidebar still drew two glyphs. Pin that `sessionRow` derives the DRAWN row
+	// from the fleet count, and that the ask mark reads the same count.
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	).replace(/\s+/g, " ");
+	assert.match(
+		source,
+		/const row = withQueuedAskStatus\(\s*listedRow,\s*asksBySession\?\.get\(listedRow\.session_id\),?\s*\);/,
+	);
+	assert.match(
+		source,
+		/<ChatAsksOutstanding\s+row=\{row\}\s+open=\{asksBySession\?\.get\(row\.session_id\)\}/,
+	);
 });

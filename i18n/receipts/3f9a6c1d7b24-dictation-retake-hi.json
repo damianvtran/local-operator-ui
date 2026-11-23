@@ -1,0 +1,134 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev i18n-audit-hi task session 2a59b0ac1069; not the translator, the lopdev coder)",
+ "agent": "translation-auditor (lopdev i18n-audit-hi task session 2a59b0ac1069; not the translator, the lopdev coder)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session header served model; every read, check and finding in this receipt ran on it.",
+ "fallback": "none",
+ "independence": "Separate session (2a59b0ac1069) from the coder who translated the keys. The translation was audited as a claim: rebuilt from the English source and en context sidecars, sibling shipped hi keys, the core glossary and hi style guide. Read-only on the worktree; this receipt is the only file written.",
+ "instance": "3f9a6c1d7b24-dictation-retake-hi",
+ "session": "2a59b0ac1069",
+ "locale": "hi",
+ "branch": "fix/dictation-retake-discard",
+ "head": "8ed6c2f23b884f27c0bc517c8d68335b4e5c0f99",
+ "repo": "damianvtran/local-operator-ui",
+ "worktree": "/Users/bentran/workspace/repos/local-operator-ui/.worktrees/stt-retry-desktop",
+ "date": "2026-11-22",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "4 new keys, hi vs en: ui.common.actions.discard; ui.chat.composer.dictation_failed_too_long_take_kept; ui.common.errors.dictation_refused_take_kept and _clipped. Checked: idiom, glossary/style guide, {reason} placeholder byte-identical to en (regex compare), NFC, no Cc/Cf (bidi/ZW) characters, no edge/double spaces, no ASCII '...', key sets equal en (55/90/143 keys), sibling consistency (dictation_failed_transient_take_kept, dictation_unknown{,_clipped}, ui.common.actions.retry/dismiss/cancel), how shipped hi words discard/delete elsewhere. Catalogue hashes cover the whole namespace files at this head.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md @ origin/main fcf58eb198)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/hi.md @ origin/main fcf58eb198)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "{reason} appears exactly once, unchanged, in both refused keys; the unclipped arm ends the placeholder with the danda '।' and the clipped arm joins with a space and no full stop, as the en context requires",
+  "Neither sentence offers a retry: too_long says 'खारिज करें और छोटी रिकॉर्डिंग करें'; refused says discard or report. Matches the en context (no 'try again').",
+  "Sibling frame matches: 'डिक्टेशन विफल: …', 'ऐप के लॉग के साथ इसे रिपोर्ट करें' are byte-identical to dictation_unknown{,_clipped}; आप-register polite imperatives; no honorific padding.",
+  "No manual bidi/zero-width/control characters; NFC; Latin digits n/a; fits maxCells 150 for too_long (about 95 code points)."
+ ],
+ "namespaces": {
+  "ui.common.actions": {
+   "namespace": "ui.common.actions",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "delta_keys_audited": [
+    "ui.common.actions.discard"
+   ],
+   "sha256": {
+    "en": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+    "hi": "072268634740d7a9a2188aa492a8e3e7b518740abc636e497e4c1ab118c9f557"
+   },
+   "context_sha256": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.actions.json",
+    "target": "src/i18n/catalogues/hi/ui.common.actions.json",
+    "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+   },
+   "findings": [
+    {
+     "id": "HI-1",
+     "severity": "minor",
+     "key": "ui.common.actions.discard",
+     "summary": "Style guide: 'Keep nukta consistently (फ़, ज़, ड़)'. The standard spelling is ख़ारिज (Persian-origin); 'खारिज' drops the nukta. The same namespace's ui.common.actions.dismiss ships as 'ख़ारिज करें' (with nukta), so two sibling buttons spell one verb two ways. (Shipped hi overall is mixed, 36 without vs 6 with, but the style guide is binding.)",
+     "proposed_replacement": "ख़ारिज करें",
+     "disposition": "open: auditor does not edit catalogues; manager/translator to apply and re-hash"
+    },
+    {
+     "id": "HI-2",
+     "severity": "nit",
+     "key": "ui.common.actions.discard",
+     "summary": "Term choice. 'खारिज करें' is shipped for discarding queued messages (ui.* 'सूची में दिए गए संदेश खारिज करें'), so it matches an existing discard sense; but the same repo words discard-a-draft as 'मिटाएँ' (ui.chat.sidebar.drafts.discard_label) and discard-changes as 'छोड़ दें'. 'मिटाएँ' would say 'throw the recording away' more plainly; 'खारिज करें' can also read as 'reject/dismiss'. Understandable with the sentence beside it and precedent exists, so not a defect.",
+     "disposition": "deferred: acceptable, recorded not churned"
+    }
+   ]
+  },
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "delta_keys_audited": [
+    "ui.chat.composer.dictation_failed_too_long_take_kept"
+   ],
+   "sha256": {
+    "en": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+    "hi": "6704f7ce6fe6984810bc4e0adbce1a07b8dbbdb9d384115ed685e88bbe4c9b81"
+   },
+   "context_sha256": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": [
+    {
+     "id": "HI-3",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictation_failed_too_long_take_kept",
+     "summary": "'खारिज' lacks the nukta; same fix as HI-1 so the sentence matches the button. Full proposed text: 'डिक्टेशन विफल: रिकॉर्डिंग भेजने के लिए बहुत लंबी है। इसे ख़ारिज करें और छोटी रिकॉर्डिंग करें।'",
+     "proposed_replacement": "डिक्टेशन विफल: रिकॉर्डिंग भेजने के लिए बहुत लंबी है। इसे ख़ारिज करें और छोटी रिकॉर्डिंग करें।",
+     "disposition": "open: apply together with HI-1"
+    },
+    {
+     "id": "HI-4",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictation_failed_too_long_take_kept",
+     "summary": "'छोटी रिकॉर्डिंग करें' is correct Hindi but slightly clipped; 'फिर से छोटी रिकॉर्डिंग करें' reads more naturally. Optional.",
+     "disposition": "deferred: understandable and correct"
+    }
+   ]
+  },
+  "ui.common.errors": {
+   "namespace": "ui.common.errors",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "delta_keys_audited": [
+    "ui.common.errors.dictation_refused_take_kept",
+    "ui.common.errors.dictation_refused_take_kept_clipped"
+   ],
+   "sha256": {
+    "en": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+    "hi": "5b1b7e3b55edfa1f4b073b198a010c4f28d174d1a3102c4af1f6d4fb36590e44"
+   },
+   "context_sha256": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.common.errors.json",
+    "target": "src/i18n/catalogues/hi/ui.common.errors.json",
+    "context": "src/i18n/catalogues/en/ui.common.errors.context.json"
+   },
+   "findings": [
+    {
+     "id": "HI-5",
+     "severity": "nit",
+     "key": "ui.common.errors.dictation_refused_take_kept / _clipped",
+     "summary": "'खारिज' lacks the nukta in both keys; same fix as HI-1. Proposed: 'डिक्टेशन विफल: {reason}। रिकॉर्डिंग ख़ारिज करें, या ऐप के लॉग के साथ इसे रिपोर्ट करें।' and 'डिक्टेशन विफल: {reason} रिकॉर्डिंग ख़ारिज करें, या ऐप के लॉग के साथ इसे रिपोर्ट करें।'",
+     "proposed_replacement": {
+      "ui.common.errors.dictation_refused_take_kept": "डिक्टेशन विफल: {reason}। रिकॉर्डिंग ख़ारिज करें, या ऐप के लॉग के साथ इसे रिपोर्ट करें।",
+      "ui.common.errors.dictation_refused_take_kept_clipped": "डिक्टेशन विफल: {reason} रिकॉर्डिंग ख़ारिज करें, या ऐप के लॉग के साथ इसे रिपोर्ट करें।"
+     },
+     "disposition": "open: apply together with HI-1"
+    }
+   ]
+  }
+ }
+}

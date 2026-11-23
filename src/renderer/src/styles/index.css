@@ -16,14 +16,23 @@
 		opacity: 1;
 	}
 }
-.lo-transcript-arrival {
-	animation: lo-transcript-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
-}
-@media (prefers-reduced-motion: reduce) {
-	.lo-transcript-arrival {
-		animation: none;
+/* Inline prose starts higher than a passive row: 0.8 clears 4.5:1 for the
+ * 59 generated theme ink/surface pairs on their solid-surface model. Both
+ * keep final geometry and use the global Reduce Motion cap. */
+@keyframes lo-stream-ink {
+	from {
+		opacity: var(--lo-stream-ink-from, 0.55);
 	}
+	to {
+		opacity: 1;
+	}
+}
+.lo-stream-ink {
+	--lo-stream-ink-from: 0.8;
+}
+.lo-stream-ink,
+.lo-transcript-arrival {
+	animation: lo-stream-ink var(--duration-fast) var(--ease-out-quart);
 }
 
 /* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
@@ -2055,6 +2064,14 @@ html .Mui-focusVisible {
 	outline-style: var(--tw-outline-style, solid);
 	outline-color: var(--color-accent);
 	outline-offset: 2px;
+}
+/* Single-line fields keep the shared keyboard ring, but use neutral text ink
+ * rather than an action accent. The effort ladder takes the place of its
+ * search field as the picker's keyboard target. Native inputs, MUI and other
+ * controls keep their existing focus treatment; forced colors can remap it. */
+html [data-lo-input]:focus-visible,
+html [data-quick-picker="effort"] [role="listbox"]:focus-visible {
+	outline-color: var(--color-ink-muted);
 }
 html :focus-visible:not([data-lo-floating]),
 html .Mui-focusVisible:not([data-lo-floating]) {

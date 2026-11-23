@@ -152,3 +152,60 @@ cooldown: only the story sets a duration.
   so the twelve-theme sweep does not cover it. That list and the manifest's
   `surfaces` count are one claim, and adding a story there owes 12 more frames;
   the story and these PNGs are the coverage this branch ships.
+
+## The row under the box: four frames for the kept take
+
+The frames above are all toasts. These four are the ROW - the surface that says
+a take was kept and carries the controls that act on it - captured from the same
+Storybook on `fix/dictation-retake-discard`. Like the six above they are rig
+output and are NOT committed (`check-evidence-structure`'s first invariant: no
+frame is committed, and a frame left in `docs/evidence-frames/` fails the gate
+until a manifest entry declares it); they were captured for this branch's review
+and live beside the rig that made them, not in the tree:
+
+```
+before-row-retry-only.png                Dictation failed: … Your recording is kept — Retry sends it again.   [Retry]
+after-row-transient-retry-and-discard.png  the same failure, now with                                        [Retry] [Discard]
+after-row-too-long-discard-only.png      Dictation failed: the recording is too long to send. Discard it and record a shorter one.   [Discard]
+after-row-rejected-discard-only.png      Dictation failed: the audio track is missing. Discard the recording, or report it with the app's log.   [Discard]
+```
+
+**The defect the pair shows.** `before-row-retry-only.png` is the row as
+`origin/main` rendered it: one sentence and one control, and that control only
+exists for the transient class. A recording the app's own plane refused for its
+size (HTTP 413, over `MAX_UPLOAD_BYTES` in `src/main/desktop-media.ts`, refused
+before it is sent) or a request the server rejected (HTTP 422) got no row at all,
+while the toast told the reader to try again - an action with no surface behind
+it, over bytes no surface could reach. In the after frames those two failures
+keep the take with a Discard control and no Retry, which is the honest pair: the
+same bytes cannot start working by being re-sent.
+
+**Each frame is the policy's output, not a copy of it.** The stories call
+`retakeOfferFor(new TranscriptionRequestError(status, detail))` - the function
+the composer asks - and hand its `{message, retry}` to `DictationTakeRow`, the
+component the composer renders. A frame that hard-coded "no Retry" would
+photograph a claim rather than the code making one. The transient frame's
+sentence still names Retry because that arm is the only one whose `retry` is
+true; the 413 frame names a shorter recording; the 422 frame quotes the server's
+own reason.
+
+**The command.** `storybook dev -p 6131` in
+`.worktrees/stt-retry-desktop`, then these `iframe.html` stories at the same
+1280x720 CSS viewport at `devicePixelRatio` 2 as the frames above:
+
+- `chat-dictation-failures--row-before-retry-only`
+- `chat-dictation-failures--row-transient-retry-and-discard`
+- `chat-dictation-failures--row-too-long-discard-only`
+- `chat-dictation-failures--row-rejected-discard-only`
+
+Captured through the app's own browser host (`browser` tool) rather than a private
+headless Chrome: the frames are 2560x1440 device pixels, the same geometry as the
+six above, and the row is static DOM so no wake press is needed - the toast
+frames' `requestAnimationFrame` problem does not apply here.
+
+**The box around the row is a stand-in, and that is the one thing these frames do
+not claim.** The row sits in the composer band, whose mount needs a microphone and
+a relay; the frame draws the band's ground, border and measure instead, and shows
+the real row in its slot. Behaviour - what Discard does to the take, that Retry
+re-sends the same bytes, that a 402 leaves no row - is driven through the shipped
+composer in `scripts/shared-composer.test.mjs`, not claimed here.

@@ -209,9 +209,11 @@ export function TranscriptEntrySlot({
 		}
 		layout.begin();
 		const release = layout.retainMotion();
-		let sampler = 0;
 		let timer = 0;
 		let done = false;
+		// The shell's observer already runs before paint on every interpolated
+		// height change. A parallel rAF sampler also committed the anchor with
+		// stale geometry, doubling the scroll work on the animating path.
 		const geometry = new ResizeObserver(() => {
 			const next = payload.getBoundingClientRect();
 			if (
@@ -238,7 +240,6 @@ export function TranscriptEntrySlot({
 			geometry.disconnect();
 			runningTarget.current = null;
 			deadline.current = null;
-			cancelAnimationFrame(sampler);
 			clearTimeout(timer);
 			preference.removeEventListener("change", finish);
 			shell.removeEventListener("transitionend", complete);
@@ -281,12 +282,6 @@ export function TranscriptEntrySlot({
 		shell.style.height = `${target}px`;
 		payload.style.opacity = "1";
 		shell.dataset.loTransitionPhase = "interpolating";
-		const frame = () => {
-			if (done) return;
-			layout.commit(true);
-			sampler = requestAnimationFrame(frame);
-		};
-		sampler = requestAnimationFrame(frame);
 		timer = window.setTimeout(finish, remaining);
 		preference.addEventListener("change", finish);
 		shell.addEventListener("transitionend", complete);

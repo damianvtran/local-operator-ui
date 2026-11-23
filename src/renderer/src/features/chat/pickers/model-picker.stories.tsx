@@ -79,7 +79,7 @@ const EFFORT_DEFAULT_FAILED = /The effort default was not saved/;
 const EFFORT_DEFAULT_LABEL = /default effort for new sessions/i;
 const EFFORT_DEFAULT_SUCCESS = /Default effort for new sessions: High/;
 const EFFORT_DEFAULT_STAYS =
-	/Effort not changed\. Default for new sessions stays Medium\./;
+	/Effort not changed\. Default for new sessions stays Low\./;
 /* Case-insensitive: ticked, the label opens with "Default for new sessions:". */
 const MODEL_DEFAULT_LABEL = /default for new sessions/i;
 import type { FC, ReactNode } from "react";
@@ -327,7 +327,10 @@ const installBridge = (
 						ok({
 							result: {
 								kind: "notice",
-								text: "Effort set",
+								text:
+									request.command === "model"
+										? receipt(CURRENT_SELECTOR, request.args ?? "").text
+										: "Effort set",
 								style: "info",
 								data: {},
 							},
@@ -558,6 +561,7 @@ type FrameProps = {
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
 	onClose?: () => void;
+	renderPicker?: (context: PickerContext) => ReactNode;
 	note?: PickerContext["note"];
 	/** The session the picker addresses (the intent stories use several). */
 	sessionId?: string;
@@ -577,6 +581,7 @@ const Frame: FC<FrameProps> = ({
 	picker = "model",
 	frontend,
 	onClose = noop,
+	renderPicker,
 	note = noop,
 	sessionId = "sess",
 }) => {
@@ -605,6 +610,7 @@ const Frame: FC<FrameProps> = ({
 	};
 	if (picker === "fast")
 		return <FastPicker {...ctx} action={{ ...MODEL_ACTION, data: {} }} />;
+	if (renderPicker) return renderPicker(ctx);
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
@@ -792,7 +798,24 @@ const pickRow = async (name: RegExp) => {
 	await userEvent.click(option);
 };
 
+// The anchored composer stories share these transport fixtures, but are kept in
+// their own module so the existing fast Node story checks need not bundle MessageInput.
+export const pickerStoryFixture = {
+	Frame,
+	MODEL_SPEC,
+	EFFORT_SPEC,
+	installBridge,
+	receipt,
+	CURRENT,
+	CATALOGUE,
+	row,
+	catalogue,
+	catalogueOnly,
+	ok,
+};
+
 const meta: Meta<typeof ModelPicker> = {
+	excludeStories: ["pickerStoryFixture"],
 	title: "chat-model-picker",
 	component: ModelPicker,
 	parameters: { layout: "centered" },
@@ -1603,7 +1626,7 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 		// The tick's own save lands before the pick: the dialog is busy until it does.
 		await waitFor(() =>
 			expect(page.__pickerSettingsWrites).toEqual([
-				{ key: "model_effort", value: "medium" },
+				{ key: "model_effort", value: "low" },
 			]),
 		);
 		await waitFor(() =>
@@ -1619,9 +1642,10 @@ export const EffortRefusedDoesNotSaveDefault: Story = {
 		);
 		// The refused High was never written.
 		expect(page.__pickerSettingsWrites).toEqual([
-			{ key: "model_effort", value: "medium" },
+			{ key: "model_effort", value: "low" },
 		]);
 		expect(screen.queryByText(EFFORT_DEFAULT_FAILED)).toBeNull();
+		expect(screen.getByRole("option", { name: "Low Current" })).toBeTruthy();
 		delete document.documentElement.dataset.capturePending;
 	},
 };
