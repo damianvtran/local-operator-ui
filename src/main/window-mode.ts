@@ -116,6 +116,28 @@ export function createHeadlessFirstRunSetup(input: {
 	};
 }
 
+/** A discovery sweep can visit a variable number of on-disk records. Give
+ * each first-run start a finite slot so one slow sweep cannot spend a later
+ * retry's time. `null` is terminal: the backend may still own the unresolved
+ * start promise, so retrying it would only wait on the same work. */
+export async function runHeadlessFirstRunAttempt(
+	start: () => Promise<boolean>,
+	timeoutMs: number,
+): Promise<boolean | null> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			start(),
+			new Promise<null>((resolve) => {
+				timer = setTimeout(() => resolve(null), timeoutMs);
+				timer.unref();
+			}),
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
 /** What the window does once its first frame is ready. */
 export type WindowShow = "focus" | "inactive" | "never";
 

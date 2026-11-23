@@ -84,8 +84,9 @@ import {
 	READINESS_POLL_INTERVAL_MS,
 } from "./backend";
 import { resolveBackendAttachForThisProcess } from "./backend/attach-backend";
-import { READINESS_BUDGET_MS } from "./backend/backend-service";
+import { READINESS_WALL_WORST_MS } from "./backend/backend-service";
 import { backendConfig, launchEnv } from "./backend/config";
+import { OWNED_RECORD_WINDOW_MS, PROBE_TIMEOUT_MS } from "./backend/discovery";
 import { LogFileType, logger } from "./backend/logger";
 import {
 	browserHostEnabled,
@@ -192,7 +193,11 @@ import {
 import { createQuitState } from "./quit-state";
 import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
-import { createUserShellPath } from "./shell-path";
+import {
+	SHELL_PATH_ANSWER_GRACE_MS,
+	SHELL_PATH_TIMEOUT_MS,
+	createUserShellPath,
+} from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
 import {
 	installSupplementProtocol,
@@ -263,6 +268,7 @@ import {
 	resolveAboutPanelAction,
 	resolveLauncherWatchPlan,
 	resolveWindowLaunchPlan,
+	runHeadlessFirstRunAttempt,
 	windowIntentPayload,
 } from "./window-mode";
 import {
@@ -5189,21 +5195,42 @@ app
 					LogFileType.INSTALLER,
 				);
 				let startAttempts = 0;
-				const maxStartAttempts = 3;
 				let backendStarted = false;
 
-				while (startAttempts < maxStartAttempts && !backendStarted) {
+				while (
+					startAttempts < FIRST_RUN_MAX_START_ATTEMPTS &&
+					!backendStarted
+				) {
 					if (windowLaunch.mode === "headless" && quitState.isQuitting())
 						return;
 					try {
-						backendStarted = await backendService.start();
+						const started =
+							windowLaunch.mode === "headless"
+								? await runHeadlessFirstRunAttempt(
+										// Native failure dialogs can stop the main thread (and its watchdog).
+										() => backendService.start({ quiet: true }),
+										HEADLESS_FIRST_RUN_ATTEMPT_MS,
+									)
+								: await backendService.start();
+						if (started === null) {
+							if (quitState.isQuitting()) return;
+							logger.error(
+								`Backend start attempt ${startAttempts + 1} did not settle within ${HEADLESS_FIRST_RUN_ATTEMPT_MS} ms`,
+								LogFileType.INSTALLER,
+							);
+							headlessFirstRunSetup.settle("start-failed");
+							return;
+						}
+						backendStarted = started;
 						if (!backendStarted) {
 							logger.error(
 								`Backend start attempt ${startAttempts + 1} failed`,
 								LogFileType.INSTALLER,
 							);
 							// Wait before retrying
-							await new Promise((resolve) => setTimeout(resolve, 2000));
+							await new Promise((resolve) =>
+								setTimeout(resolve, FIRST_RUN_START_BACKOFF_MS),
+							);
 						}
 					} catch (error) {
 						logger.error(
@@ -6197,10 +6224,26 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	READINESS_POLL_INTERVAL_MS +
 	QUIT_FAILSAFE_MARGIN_MS;
 
-// Allow the existing startup prerequisites budget plus one readiness budget.
-// The windowless watchdog is not extended by retries or a repeated close.
+const FIRST_RUN_MAX_START_ATTEMPTS = 3;
+const FIRST_RUN_START_BACKOFF_MS = 2_000;
+
+// Each headless attempt gets the launcher/interpreter and stop allowance, the
+// entire readiness wall budget, and the shell PATH resolver's limit. Reserve
+// two default address probes and room for registration/discovery work on top.
+// This is an enforced attempt budget, not a bound on the number of records.
+const HEADLESS_FIRST_RUN_ATTEMPT_MS =
+	QUIT_CLEANUP_FAILSAFE_MS +
+	READINESS_WALL_WORST_MS +
+	SHELL_PATH_TIMEOUT_MS +
+	SHELL_PATH_ANSWER_GRACE_MS +
+	2 * OWNED_RECORD_WINDOW_MS +
+	2 * PROBE_TIMEOUT_MS;
+// Reserve all three attempt slots, including the existing wait after the last
+// false result, plus handoff/timer margin. Last-window close still arms once.
 const HEADLESS_FIRST_RUN_DEADLINE_MS =
-	QUIT_CLEANUP_FAILSAFE_MS + READINESS_BUDGET_MS;
+	FIRST_RUN_MAX_START_ATTEMPTS *
+		(HEADLESS_FIRST_RUN_ATTEMPT_MS + FIRST_RUN_START_BACKOFF_MS) +
+	QUIT_FAILSAFE_MARGIN_MS;
 const headlessFirstRunSetup = createHeadlessFirstRunSetup({
 	mode: windowLaunch.mode,
 	timeoutMs: HEADLESS_FIRST_RUN_DEADLINE_MS,
