@@ -23,6 +23,7 @@
  */
 
 import {
+	ChatAsksOutstanding,
 	ChatSessionStatus,
 	withQueuedAskStatus,
 } from "@features/chat/components/chat-session-status";
@@ -43,8 +44,15 @@ export function SessionSwitcher() {
 	 * an ask is QUEUED is not a blocking gate, so this surface must not draw the
 	 * amber "Answer needed" bubble for it. The count is the same fleet aggregate
 	 * the sidebar reads (`FLEET_ASKS_QUERY_KEY` is one cache entry, so this adds
-	 * no poll), and this surface has no ask mark of its own - an idle row with an
-	 * ask rests on the ring, as it does in the list.
+	 * no poll).
+	 *
+	 * AND THE ASK MARK THE SIDEBAR DRAWS FOLLOWS THE STATUS MARK (design round 1,
+	 * D1). Deriving the status alone left a conversation holding a question as a
+	 * bare ring, pixel-identical to one that was not - the switcher is the
+	 * "where do I go" surface, so the one fact that makes a row worth opening
+	 * cannot live in a tooltip. One glyph per row in every state: `approval`
+	 * yields inside the mark itself, which is why the count has to ride the same
+	 * read here rather than a second one.
 	 */
 	const fleetAsks = useFleetAsks();
 	const asksBySession = useMemo(
@@ -118,6 +126,12 @@ export function SessionSwitcher() {
 														),
 													}
 										}
+										/* The SAME READ, handed to the mark the way the sidebar hands it: the
+										   catalogue route never fills `asks_open` (see `ChatAsksOutstanding`),
+										   and the derivation above only writes the count into a row on the
+										   codes it rewrites - so a row that keeps its own code would draw
+										   nothing from the row alone. */
+										open={asksBySession?.get(row.sessionId)}
 										active={index === cursor}
 										onCommit={() => commitAt(index)}
 										onHover={() => hoverAt(index)}
@@ -186,11 +200,15 @@ function guardNextContextMenu(): void {
 
 function SwitcherRowButton({
 	row,
+	open,
 	active,
 	onCommit,
 	onHover,
 }: {
 	row: SwitcherRow;
+	/** The conversation's outstanding ask count, from the fleet aggregate - the
+	 * same one the status derivation above used. */
+	open?: number | null;
 	active: boolean;
 	onCommit: () => void;
 	onHover: () => void;
@@ -254,6 +272,16 @@ function SwitcherRowButton({
 			) : (
 				<ChatSessionStatus row={row.row} />
 			)}
+			{/*
+			 * THE ONE ASK MARK, in the slot the sidebar gives it: beside the status mark
+			 * and before the title (design round 1, D1). It draws nothing at zero and
+			 * nothing on an approval row (the status cell's amber bubble already spends
+			 * the glyph), so a row without a question keeps today's title edge and the
+			 * status slot stays the first column on every row. Its `aria-label` is what
+			 * puts the count in this button's accessible name - the row has no name of
+			 * its own - so a screen reader hears "1 ask" where it used to hear nothing.
+			 */}
+			{row.row !== null && <ChatAsksOutstanding row={row.row} open={open} />}
 			{/* A placeholder reads quieter than a name: this row's title is missing, not
 			   called "Untitled chat". `text-ink-muted` still clears the 4.5:1 text floor
 			   on this panel in both themes. */}

@@ -989,12 +989,15 @@ test("[M-sidebar-wiring] the sidebar derives the LIST before the partitions and 
 
 test("[M-surfaces-wiring] the tag header's live cue and the switcher read derived rows too", () => {
 	/*
-	 * Neither surface has an ask mark, so neither can double - but both drew the
-	 * amber "Answer needed" bubble for a queued ask, which overstates it. The
-	 * header draws the row the sidebar hands it, and that row comes from the
-	 * derived buckets (`foldedLiveCue(bucket.rows, ...)` over rows that derive from
-	 * `matching`, pinned above); the switcher has no shared list, so it derives on
-	 * its own.
+	 * A QUEUED ASK IS A DERIVED STATUS ON BOTH SURFACES - the header draws the row
+	 * the sidebar hands it, and that row comes from the derived buckets
+	 * (`foldedLiveCue(bucket.rows, ...)` over rows that derive from `matching`,
+	 * pinned above); the switcher has no shared list, so it derives on its own.
+	 *
+	 * THE SWITCHER ALSO DRAWS THE ASK MARK (design round 1, D1), and the mark is
+	 * handed the count the way the sidebar hands it: the catalogue route never
+	 * fills `asks_open`, and the derivation only writes the count into the rows
+	 * whose code it rewrites.
 	 */
 	const header = readFileSync(TAG_HEADER, "utf8").replace(/\s+/g, " ");
 	assert.match(header, /<ChatSessionStatus row=\{live\.row\} \/>/);
@@ -1009,4 +1012,77 @@ test("[M-surfaces-wiring] the tag header's live cue and the switcher read derive
 		/withQueuedAskStatus\( row\.row, asksBySession\?\.get\(row\.sessionId\), \)/,
 	);
 	assert.match(switcher, /fleetAsksBySession\(fleetAsks\.rows\)/);
+	// The mark sits on the derived row (the switcher row's `row` prop is the result
+	// of the derivation above) and is handed that same aggregate read.
+	assert.match(
+		switcher,
+		/<ChatAsksOutstanding row=\{row\.row\} open=\{open\} \/>/,
+	);
+	assert.match(switcher, /open=\{asksBySession\?\.get\(row\.sessionId\)\}/);
+});
+
+/*
+ * THE SWITCHER'S MARK CLUSTER, RENDERED (design round 1, D1). The switcher drew
+ * no ask mark of its own before this round, so an idle conversation holding a
+ * question was a bare ring - visually and to a screen reader the same row as one
+ * with nothing waiting. These cases render the composition the switcher draws
+ * (the derived row into the status mark, the same derived row and the same count
+ * into the ask mark) and pin one ask glyph per row in every state.
+ */
+const switcherCluster = (row, open) => {
+	const derived = withQueuedAskStatus(row, open);
+	return renderToStaticMarkup(
+		createElement(
+			"div",
+			null,
+			createElement(ChatSessionStatus, { row: derived }),
+			createElement(ChatAsksOutstanding, { row: derived, open }),
+		),
+	);
+};
+const askGlyphs = (markup) =>
+	(markup.match(/lucide-message-circle-question/g) ?? []).length;
+const wireRow = (code, live_state) => ({
+	session_id: "fixture",
+	status: { code, label: code === "answer" ? "Answer needed" : code },
+	live_state,
+});
+
+test("[M-switcher-asks] one ask glyph per switcher row, in every state", () => {
+	// idle + 1 ask: the derived status rests on the ring, and the mark is the one
+	// thing on the row that says a question is waiting - beside it, not instead
+	// of it. The count rides the mark's own name, which is inside the row's
+	// button, so the row's accessible name states it too.
+	const idle = switcherCluster(wireRow("answer", "idle"), 1);
+	assert.match(idle, /lucide-circle /);
+	assert.equal(askGlyphs(idle), 1);
+	assert.match(
+		idle,
+		/aria-label="1 ask outstanding\. The agent is not blocked on you\."/,
+	);
+	// busy + 1 ask: the spinner keeps its slot and the ask mark rides beside it -
+	// the old switcher hid this spinner behind a bubble, and the new one must not.
+	const busy = switcherCluster(wireRow("answer", "busy"), 1);
+	assert.match(busy, /lucide-loader-circle/);
+	assert.equal(askGlyphs(busy), 1);
+	// A row whose own code the derivation leaves alone (this one is neither `answer`
+	// nor `approval`) carries no count of its own, so this is the case that proves
+	// the mark is reading the aggregate and not the row: without `open` it draws
+	// nothing.
+	assert.equal(
+		withQueuedAskStatus(wireRow("recent", "idle"), 1).asks_open,
+		undefined,
+	);
+	assert.equal(askGlyphs(switcherCluster(wireRow("recent", "idle"), 1)), 1);
+	// approval + 2 asks: the status cell's amber bubble already spends the glyph,
+	// so the mark yields - the row keeps exactly one bubble, and the count is
+	// heard in the status sentence rather than drawn a second time.
+	const approval = switcherCluster(wireRow("approval", "idle"), 2);
+	assert.equal(askGlyphs(approval), 1);
+	assert.match(approval, /2 asks/);
+	// Nothing outstanding draws no mark at all, which is what keeps the title edge
+	// where it was on every row without a question.
+	const none = switcherCluster(wireRow("recent", "idle"), undefined);
+	assert.equal(askGlyphs(none), 0);
+	assert.doesNotMatch(none, /role="img"/);
 });
