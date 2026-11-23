@@ -64,6 +64,7 @@ const {
 function element({ tag = "div", parent = null, ...attributes }) {
 	const node = {
 		tagName: tag.toUpperCase(),
+		nodeType: 1,
 		attributes,
 		parent,
 		value: attributes.value ?? "",
@@ -409,6 +410,45 @@ test("a tooltip owns the press only when the press landed on its own open trigge
 			defaultPrevented: true,
 			tooltip: true,
 			layer: true,
+		}),
+		true,
+	);
+});
+
+test("a hover tooltip's press is the page's when no control owns the target", () => {
+	// Round 3 Q-8: a tooltip opened by hovering the X leaves focus wherever it
+	// was, so the press lands on body (or the gear), not on the trigger.
+	const body = { tagName: "BODY" };
+	assert.equal(
+		claimed({ target: body, defaultPrevented: true, tooltip: true }),
+		false,
+		"hover tooltip + body target: the page closes",
+	);
+	assert.equal(
+		claimed({
+			target: element({ tag: "button", "data-tour-tag": "nav-item-settings" }),
+			defaultPrevented: true,
+			tooltip: true,
+		}),
+		false,
+		"hover tooltip + gear target: the page closes",
+	);
+	assert.equal(
+		claimed({
+			target: element({ tag: "button", "data-settings-close": "" }),
+			defaultPrevented: true,
+			tooltip: true,
+		}),
+		false,
+		"hover tooltip + the X itself: the page closes",
+	);
+	// A target with its own claim keeps it (the sound-preview radio; a
+	// disclosure trigger is not in the allowlist either).
+	assert.equal(
+		claimed({
+			target: element({ tag: "input", type: "radio" }),
+			defaultPrevented: true,
+			tooltip: true,
 		}),
 		true,
 	);

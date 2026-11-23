@@ -14,11 +14,13 @@ settings-close`, against an isolated daemon that run owned.
 | `before-dark` / `after-dark` | the same Settings route before and after: the branch adds the 32x32 X at the content column's top inline-end corner, 16px in, level with the title |
 | `before-light` / `after-light` | the same pair in `localOperatorLight` |
 | `before-narrow-900-dark` / `after-narrow-900-dark` | at 900 CSS px the rail is its 48px icon column; the control holds its 16px inset |
-| `after-narrow-800-dark` | at 800 CSS px (the window's floor) the scroller's `pe-14` keeps the measure clear of the pinned plate: the search field's right edge is 23 px left of the glyph |
+| `after-narrow-800-dark` | at 800 CSS px (the window's floor) the scroller's `pe-14` keeps the measure clear of the pinned plate: the search field's right edge is 16 px left of the glyph |
 | `before-rtl-ur-dark` / `after-rtl-ur-dark` | with the app in Urdu the document is RTL, the control mirrors to the inline-end = the LEFT edge (16px in), and the glyph clears the search field's leading edge (measured 16 px at 1380, round 2) |
 | `after-width-800-{dark,light}` | at 800 CSS px: the scroller's `pe-14` holds; search-field edge to glyph = 16 px |
 | `after-width-1100-{dark,light}` | 1100 CSS px: gap 16 px |
 | `after-width-1380-{dark,light}` | 1380 CSS px: gap 16 px |
+| `after-width-1500-dark` | 1500 CSS px, past the 1496 step: base `p-8` restores a centred measure (margins 58/66, the 8 px being the scroller's scrollbar) and the gap grows to 18 px |
+| `esc-hover-tooltip-dark` | the X's tooltip shown by HOVER with focus still on the gear: one Esc closes the page (round 3: Q-8) |
 | `state-config-error-dark` | the config-error state (daemon down) with the same surface: column top 0, X plate top 64 - the loaded page's own numbers - and Esc leaves |
 | `esc-focus-on-gear-dark` | opened with a real mouse press on the sidebar gear, so focus is ON the gear: the state round 1's four reviewers measured Esc dead in |
 | `esc-focus-on-rail-dark` | the same after a press on a section rail row, a sibling of the content column |
@@ -27,15 +29,20 @@ settings-close`, against an isolated daemon that run owned.
 | `esc-page-closed-dark` | after Esc closes the page into `/chat`, where the draft's composer takes focus (the composer case) |
 | `esc-focus-return-library-dark` | after the X closes the page into `/library`, which focuses nothing: the keyboard is back on the gear (round 2: U6/M4) |
 
-The scene's output for this head: **77 PASS, 0 FAIL**, `rc=0`, including one
+The scene's output for this head: **93 PASS, 0 FAIL**, `rc=0`, including one
 Esc from the gear, one from a rail row, one from the page body, one empty search
 field, one closed combobox trigger (the second press after the list closed), one
 on the focused X with its tooltip up, and one with a tooltip that was already
-open when the page mounted by hash (round 2: U8/Q-7). The clearance matrix is
-measured at 800/1100/1280/1380/1463/1464/1500 in both palettes: 16 px at every
-width below 1464, 30 px at 1500 (the step where the centred measure takes over).
-The config-error scene adds **5 PASS** with the daemon down. No process from
-either run outlived it.
+open when the page mounted by hash (round 2: U8/Q-7), and one on a tooltip shown
+by HOVER while focus sat on the gear (round 3: Q-8). The clearance matrix is
+measured at 800/1100/1280/1380/1463/1464/1495/1496/1500/1728 in both palettes:
+**16 px** at every width up to 1495 (15.5 at 1495 itself - a half-pixel rounding
+of the box, not a layout shortfall), then 16 px at 1496, 18 px at 1500 and 132 px
+at 1728 as the centred 896 px measure takes over. From 1496 up the measure is
+centred in the column once the scroller's 8 px scrollbar is excluded (margins
+56/64, 58/66, 172/180 = start / end-without-scrollbar). The config-error scene
+(round 2) adds **5 PASS** with the daemon down; it was not re-run this round.
+No process from either run outlived it.
 
 ## How it was reproduced
 
@@ -72,7 +79,11 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<daemon access_token> node scripts/renderer-driver.
   reads the same in both, and the page stays open.
 - **The width matrix is emulated viewports** (`setDeviceMetricsOverride`), the
   same instrument the design round used; the measured gaps are in this README's
-  table and the scene's own `[note] glyph-to-search clearance by width`.
+  table and the scene's own `[note] glyph-to-search clearance by width`. The
+  padding step is `md:max-[1495px]:pe-14`: a bare arbitrary `max-[…]` sorts
+  BEFORE `md:p-8` in Tailwind's emitted CSS and never wins (round 3: m1/D9/Q-9,
+  measured: 56 px at every width), and a step at 1464 puts the field's edge on
+  the plate (design round 3: gap 0).
 - **The RTL frame is a real locale switch, not a mirrored mock.** The daemon
   offers `ur` in the picker, the scene arrows to it and commits with Enter, and
   then switches back to English so a re-run starts where this one did.

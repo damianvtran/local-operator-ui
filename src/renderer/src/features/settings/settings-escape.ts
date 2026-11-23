@@ -155,7 +155,25 @@ function tooltipHoldsThisPress(target: EventTarget | null): boolean {
 	if (typeof document === "undefined") return false;
 	if (document.querySelector('[role="tooltip"]') === null) return false;
 	if (document.querySelector(OWNER_LAYER_SELECTOR) !== null) return false;
-	return closest(target, OPEN_TOOLTIP_TRIGGER_SELECTOR) !== null;
+	if (closest(target, OPEN_TOOLTIP_TRIGGER_SELECTOR) !== null) return true;
+	/*
+	 * A tooltip shown by the POINTER leaves focus where it was, so the press
+	 * lands on whatever the reader last touched: the page ground, the gear, or
+	 * nothing at all (round 3: Q-8 - hovering the X and pressing Esc dismissed
+	 * only the tooltip). Those targets have no owner of their own, so the press
+	 * is the page's; a target that DOES own its Escape (a text field, a
+	 * recorder, the sound preview's radio, a disclosure) keeps it, because the
+	 * allowlist below is deliberately narrow.
+	 */
+	const element = target as Element | null;
+	if (element === null || element === document.body) return true;
+	if (element === document.documentElement) return true;
+	// A non-element target (the document, a text node) is nobody's control.
+	if (typeof element.closest !== "function") return true;
+	return (
+		element.closest("[data-settings-close]") !== null ||
+		element.closest('[data-tour-tag="nav-item-settings"]') !== null
+	);
 }
 
 /**

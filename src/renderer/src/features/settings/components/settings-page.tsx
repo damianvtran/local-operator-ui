@@ -1306,19 +1306,25 @@ export const SettingsPage: FC = () => {
 					data-settings-content
 					data-tour-tag="settings-general-section"
 					/*
-					 * `pe-14` while the measure fills the column: below 1464px the 896px
-					 * measure is not yet clear of the scroller's edge, and the pinned Close button
-					 * (32px at a 16px inset) sat ON the content's last 8px - measured at
-					 * 900px wide, the search field's edge and the glyph both at x=860
-					 * (design round 1, D3). The extra end padding puts the text's edge
-					 * 40px left of the plate. The step back to `md:p-8` sits at 1464px,
-					 * not the `xl` token (1280): the centred measure only clears the
-					 * plate once the column is that wide, which the design round
-					 * measured (round 2: D3/D8 - at 1280 the text still ran under it,
-					 * and an `xl` step also read as a 24px jump while dragging a window
-					 * across it).
+					 * `pe-14` while the measure fills the column: below the step the
+					 * 896px measure is not yet clear of the scroller's edge, and the
+					 * pinned Close button (32px at a 16px inset) sat ON the content's
+					 * last 8px - measured at 900px wide, the search field's edge and
+					 * the glyph both at x=860 (design round 1, D3).
+					 *
+					 * WHERE THE STEP SITS, AND WHY NOT 1464 (round 3: m1/D9/Q-9). An
+					 * arbitrary `min-[1464px]` variant is emitted BEFORE Tailwind's
+					 * `md:` block, so it never won the cascade - and forcing the base
+					 * padding that early put the field's edge on the plate at 1464
+					 * (measured gap 0). The step therefore carries the `md:` prefix -
+					 * a bare `max-[…]` sorts BEFORE `md:p-8` in the emitted CSS, so
+					 * `md` is what puts the rule after the shorthand it overrides -
+					 * and sits at the first
+					 * width where the centred measure clears the plate by the same
+					 * 16px the narrow layout keeps: every width below it keeps `pe-14`,
+					 * and from 1496 up the base `p-8` restores symmetric margins.
 					 */
-					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:pe-14 min-[1464px]:pe-8"
+					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:max-[1495px]:pe-14"
 				>
 					{/*
 					 * One measured column, centred, rather than two.

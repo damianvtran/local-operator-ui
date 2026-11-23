@@ -32023,7 +32023,15 @@ const SETTINGS_CLOSE_READING = `(() => {
 	const glyph = button.querySelector('svg');
 	const glyphBox = glyph ? glyph.getBoundingClientRect() : null;
 	const style = getComputedStyle(button);
+	/* The scroller's own scrollbar eats column width on the inline-end side: a
+	   centred measure measures a few px short of symmetric against the COLUMN,
+	   and that is the scrollbar, not the layout. Read it, so the check can say so. */
+	const scroller = column.querySelector('[data-settings-content]');
+	const scrollbar = scroller
+		? Math.max(0, scroller.offsetWidth - scroller.clientWidth)
+		: 0;
 	return {
+		scrollbar,
 		route: window.location.hash,
 		box: { x: box.x, y: box.y, w: box.width, h: box.height },
 		glyph: glyphBox ? { w: glyphBox.width, h: glyphBox.height } : null,
@@ -32039,6 +32047,9 @@ const SETTINGS_CLOSE_READING = `(() => {
 				? {
 						right: fieldBox.right,
 						left: fieldBox.left,
+						/* The measure's margins inside the column: equal means centred. */
+						marginStart: fieldBox.left - columnBox.left,
+						marginEnd: columnBox.right - fieldBox.right,
 						gapToGlyph: box.left - fieldBox.right,
 						/* The RTL mirror: the field's LEADING edge against the plate. */
 						gapLeading: fieldBox.left - box.right,
@@ -32217,7 +32228,7 @@ async function sceneSettingsClose(cdp) {
 	/*     starts clearing the plate; measured here, not eyeballed.       */
 	/* ---------------------------------------------------------------- */
 
-	const WIDTHS = [800, 1100, 1280, 1380, 1463, 1464, 1500];
+	const WIDTHS = [800, 1100, 1280, 1380, 1463, 1464, 1495, 1496, 1500, 1728];
 	const gaps = [];
 	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
 		await verb(cdp, "setTheme", theme);
@@ -32233,13 +32244,30 @@ async function sceneSettingsClose(cdp) {
 			await wait(350);
 			const reading = await cdp.evaluate(SETTINGS_CLOSE_READING);
 			const gap = reading?.search?.gapToGlyph ?? -1;
-			gaps.push({ theme, width, gap, fieldRight: reading?.search?.right });
+			const marginStart = reading?.search?.marginStart ?? null;
+			const marginEnd = reading?.search?.marginEnd ?? null;
+			gaps.push({ theme, width, gap, marginStart, marginEnd });
 			check(
-				`at ${width} CSS px (${theme}) the glyph clears the search field`,
-				gap >= 4,
+				/* 15.5 rather than 16: one width lands a half-pixel short of the
+				   construction's 16 through rounding, not through layout. */
+				`at ${width} CSS px (${theme}) the glyph clears the search field by 16px`,
+				gap >= 15.5,
 				`gap=${gap} fieldRight=${reading?.search?.right} glyphX=${reading?.box?.x}`,
 			);
-			if (width === 800 || width === 1100 || width === 1380) {
+			if (width >= 1496) {
+				const scrollbar = reading?.scrollbar ?? 0;
+				check(
+					`at ${width} CSS px (${theme}) the measure is centred in the column (scrollbar excluded)`,
+					marginStart !== null &&
+						marginEnd !== null &&
+						Math.abs(marginStart - (marginEnd - scrollbar)) <= 1,
+					`margins ${marginStart}/${marginEnd} scrollbar=${scrollbar}`,
+				);
+			}
+			if (
+				[800, 1100, 1380].includes(width) ||
+				(width === 1500 && theme === "localOperatorDark")
+			) {
 				await capture(
 					`settings-close-width-${width}-${theme === "localOperatorDark" ? "dark" : "light"}`,
 				);
@@ -32438,6 +32466,54 @@ async function sceneSettingsClose(cdp) {
 			(await routeNow()) === "#/chat",
 			`route=${await routeNow()}`,
 		);
+
+		// (d1) A tooltip shown by the POINTER: hovering the X leaves focus where
+		//      it was, and the first Esc must still close the page (round 3: Q-8).
+		await openFromGear();
+		{
+			const box = await cdp.evaluate(`(() => {
+				const el = document.querySelector('[data-settings-close]');
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+			})()`);
+			if (box) {
+				await cdp.send("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: box.x,
+					y: box.y,
+					buttons: 0,
+				});
+				await wait(700);
+			}
+			const hoverState = await cdp.evaluate(`(() => {
+				const tooltip = document.querySelector('[role="tooltip"]');
+				const active = document.activeElement;
+				return {
+					tooltip: Boolean(tooltip),
+					focusIsX: active === document.querySelector('[data-settings-close]'),
+					focusTag: active ? active.tagName : null,
+				};
+			})()`);
+			await capture("settings-close-hover-tooltip-dark");
+			note("hover tooltip on the X", JSON.stringify(hoverState));
+			check(
+				"hovering the X opens its tooltip with focus elsewhere",
+				hoverState.tooltip === true && hoverState.focusIsX === false,
+				JSON.stringify(hoverState),
+			);
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await wait(400);
+			check(
+				"ONE Esc after hovering the X closes Settings (the tooltip is not an owner)",
+				(await routeNow()) === "#/chat",
+				`route=${await routeNow()}`,
+			);
+		}
 
 		// (d2) A tooltip that was ALREADY open when the page mounted must not
 		//      swallow the press (round 2: U8, Q-7 - the other ordering of the
