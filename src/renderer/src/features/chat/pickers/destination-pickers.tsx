@@ -501,28 +501,33 @@ const ReservedLabelText: FC<{
 	text: string;
 	/**
 	 * Every wording the label can show. Uncapped, the two not on screen are
-	 * reserved; capped, the first two are, and the third is the one cut.
+	 * reserved; capped, only the first two can grow the reserve. The named
+	 * wording keeps its full DOM text and hover title when visually clamped.
 	 */
 	wordings: readonly [string, string, string];
-	capped?: boolean;
-}> = ({ text, wordings, capped = false }) => {
-	const [reserveA = "", reserveB = ""] = capped
+	capLines?: 2 | 3;
+}> = ({ text, wordings, capLines }) => {
+	const [reserveA = "", reserveB = ""] = capLines
 		? wordings
 		: wordings.filter((wording) => wording !== text);
-	const cut = capped && text === wordings[2];
+	const cut = capLines !== undefined && text === wordings[2];
 	return (
 		<span
 			data-reserve-a={reserveA}
 			data-reserve-b={reserveB}
 			className={cn(
 				"grid",
-				capped && "min-h-[3lh]",
+				capLines === 2 && "min-h-[2lh]",
+				capLines === 3 && "min-h-[3lh]",
 				"before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-reserve-a)]",
 				"after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve-b)]",
 			)}
 		>
 			<span
-				className={cn("col-start-1 row-start-1", cut && "line-clamp-3")}
+				className={cn(
+					"col-start-1 row-start-1",
+					cut && (capLines === 2 ? "line-clamp-2" : "line-clamp-3"),
+				)}
 				title={cut ? text : undefined}
 			>
 				{text}
@@ -2308,7 +2313,10 @@ export const ModelPicker: FC<PickerContext> = ({
 									>
 										<ReservedLabelText
 											wordings={persistWordings}
-											capped
+											// The scope box can wrap below this label. Don't leave a
+											// third line of empty space before it; only cap the named
+											// receipt, so translations of the controls still fit.
+											capLines={scopeControl ? 2 : 3}
 											text={
 												!persistDefault
 													? persistWordings[0]
