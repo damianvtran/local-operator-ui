@@ -57,6 +57,10 @@ globalThis.localStorage = {
 
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+// D1: the foot label's wiring (see the case that reads them).
+const RE_FOOT_LABEL_STEP_WHEN_FETCHING =
+	/page\.remaining > 0 && !pressFetchesTail\s*\?\s*pageReveal\(/;
+const RE_FOOT_FETCH_DECISION = /const pressFetchesTail = shouldFetchTail\(/;
 
 /*
  * THE WIRING PATTERN the section-press source read below matches: the transition
@@ -168,6 +172,8 @@ const {
 	pageOrder,
 	pageRows,
 	localHorizonMs,
+	pageFrontierMs,
+	shouldFetchTail,
 	withholdPastHorizon,
 	parseSidebarView,
 	groupRows,
@@ -1096,10 +1102,24 @@ const sidebarPage = (
 	loads,
 	{ basis = "active", currentId } = {},
 ) => {
-	const horizon = localHorizonMs(
-		new Map(rows.map((entry) => [entry.session_id, entry])),
-		listing,
-	);
+	/*
+	 * The store captures the frontier when each page ARRIVES (`head.frontierMs`);
+	 * a fixture that names its listing ids stands for those pages, read in order.
+	 * A fixture that passes `frontierMs` states the captured value directly.
+	 */
+	const byId = new Map(rows.map((entry) => [entry.session_id, entry]));
+	const horizon = localHorizonMs({
+		complete: listing.complete,
+		order: listing.order,
+		frontierMs:
+			"frontierMs" in listing
+				? listing.frontierMs
+				: pageFrontierMs(
+						(listing.listingIds ?? [])
+							.map((id) => byId.get(id))
+							.filter(Boolean),
+					),
+	});
 	const reachable = withholdPastHorizon(rows, horizon, basis);
 	const arranged = pageOrder(reachable.rows, "active-first", basis);
 	return {
@@ -1204,37 +1224,157 @@ test("local horizon: a complete listing withholds nothing", () => {
 	assert.equal(arranged.length, 150);
 });
 
-test("local horizon: the frontier is the LAST listed local row, skipping pinned, running, remote and unknown ids", () => {
+test("local horizon: the frontier is the LAST idle local row a page carried, skipping pinned, running, core-active and remote rows", () => {
 	const rows = [
-		local("stale-active", 500), // active_first: leads the page whatever its age
+		local("stale-active", 500, { active: true }), // active_first: leads the page whatever its age
 		local("a", 2),
 		local("b", 9),
+		local("unseen-old", 350, { active: true, status: { code: "complete" } }), // R1: core-active, not running
+		local("attached-old", 360, { active: true }), // R1: core-active (`attached`)
 		local("pinned-old", 400, { pinned: true }), // off_page extra
 		local("running-old", 300, { status: { code: "busy" } }), // off_page extra
 		remote("peer", 700),
 	];
-	const at = localHorizonMs(
-		new Map(rows.map((entry) => [entry.session_id, entry])),
+	assert.equal(
+		pageFrontierMs(rows),
+		SECONDS(9) * 1000,
+		"neither the active band nor the extras lower the horizon",
+	);
+	assert.equal(
+		localHorizonMs({ complete: false, order: "activity", frontierMs: null }),
+		Number.POSITIVE_INFINITY,
+		"no frontier read: withhold every non-running remote",
+	);
+	assert.equal(
+		localHorizonMs({ complete: true, order: "activity", frontierMs: null }),
+		null,
+		"a complete listing has no horizon",
+	);
+});
+
+/*
+ * R1 (agent review round 1): core's active band is wider than "running" -
+ * unread completions and `attached` runtimes sort first whatever their age. A
+ * page made only of those rows bounds nothing, so before this fix its last row
+ * put the horizon ~197h back and 39 of 40 remote rows were drawn above unloaded
+ * idle locals at 2h and 30h.
+ */
+test("local horizon: an all-active page withholds every non-running remote (R1)", () => {
+	const actives = Array.from({ length: 50 }, (_, index) =>
+		local(`act${index}`, 1 + index * 4, {
+			active: true,
+			status: { code: index % 2 ? "complete" : "idle" },
+		}),
+	);
+	const remotes = Array.from({ length: 40 }, (_, index) =>
+		remote(`r${index}`, 3 + index * 5),
+	);
+	const live = remote("r-live", 150, { status: { code: "busy" } });
+	const { horizon, page } = sidebarPage(
+		[...actives, ...remotes, live],
 		{
 			complete: false,
 			order: "activity",
-			listingIds: [...rows.map((entry) => entry.session_id), "forgotten-id"],
+			listingIds: actives.map((entry) => entry.session_id),
 		},
+		6,
 	);
-	assert.equal(
-		at,
-		SECONDS(9) * 1000,
-		"neither the stale active row nor the extras lower the horizon",
+	assert.equal(horizon, Number.POSITIVE_INFINITY);
+	assert.deepEqual(
+		page.rows
+			.filter((entry) => entry.locality === "remote")
+			.map((entry) => entry.session_id),
+		["r-live"],
+		"only the running remote row draws while idle locals are unloaded",
 	);
+});
+
+/*
+ * R2 (agent review round 1): the horizon is the frontier's clock AT READ TIME.
+ * Touching that conversation moves its live clock to now; read live, every
+ * remote row vanished (30 drawn -> 0). The captured value does not move.
+ */
+test("local horizon: touching the frontier conversation does not hide the remote rows (R2)", () => {
+	const locals = Array.from({ length: 50 }, (_, index) =>
+		local(`l${index}`, index + 1),
+	);
+	const remotes = Array.from({ length: 30 }, (_, index) =>
+		remote(`r${index}`, index + 0.5),
+	);
+	const captured = pageFrontierMs(locals);
+	assert.equal(captured, SECONDS(50) * 1000);
+	const listing = { complete: false, order: "activity", frontierMs: captured };
+	const drawnRemotes = (rows) =>
+		sidebarPage(rows, listing, 6).page.rows.filter(
+			(entry) => entry.locality === "remote",
+		).length;
+	const before = drawnRemotes([...locals, ...remotes]);
+	const touched = locals.map((entry) =>
+		entry.session_id === "l49" ? { ...entry, updated_at: SECONDS(0) } : entry,
+	);
+	assert.equal(before, 30);
+	assert.equal(drawnRemotes([...touched, ...remotes]), 30);
+});
+
+/*
+ * R3 (agent review round 1): the older `rank` order bounds births within a
+ * tier, not activity, so it carries no usable horizon - every non-running
+ * remote is withheld until the listing completes.
+ */
+test("local horizon: a rank-ordered listing withholds every non-running remote (R3)", () => {
 	assert.equal(
-		localHorizonMs(new Map(rows.map((entry) => [entry.session_id, entry])), {
+		localHorizonMs({
 			complete: false,
 			order: "rank",
-			listingIds: ["a", "b"],
+			frontierMs: SECONDS(10) * 1000,
 		}),
-		SECONDS(10) * 1000,
-		"the rank order bounds births, so it reads the frontier's created_at",
+		Number.POSITIVE_INFINITY,
 	);
+	assert.equal(
+		localHorizonMs({ complete: true, order: "rank", frontierMs: null }),
+		null,
+	);
+});
+
+/*
+ * R4 (agent review round 1): the foot's fetch condition. It counts the rows the
+ * page can DRAW - 300 held-but-withheld remote rows once kept the cursor from
+ * ever being followed - and needs paging plus a cursor.
+ */
+test("the foot follows the cursor when the next rung outruns the drawable rows (R4)", () => {
+	const base = { groupPaging: true, tailCursor: "c1" };
+	// Rung 3 asks for 100; 50 locals + 25 drawable remotes (300 withheld).
+	assert.equal(shouldFetchTail({ ...base, next: 3, drawable: 75 }), true);
+	assert.equal(
+		shouldFetchTail({ ...base, next: 3, drawable: 375 }),
+		false,
+		"counting the withheld rows is the bug: no fetch",
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, next: 3, drawable: pageLimit(3) }),
+		false,
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, tailCursor: null, next: 3, drawable: 0 }),
+		false,
+		"no cursor: nothing to follow",
+	);
+	assert.equal(
+		shouldFetchTail({ ...base, groupPaging: false, next: 3, drawable: 0 }),
+		false,
+	);
+});
+
+/*
+ * D1 (design round 1): when the press also fetches, the label counts the
+ * rung's step - the next local page fills it - not the drawable remainder
+ * ("Show 23 more chats" drew 50). Asserted on the source, the shape this file
+ * uses for JSX-level wiring.
+ */
+test("the foot's label counts the rung's step when the press fetches (D1)", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(source, RE_FOOT_LABEL_STEP_WHEN_FETCHING);
+	assert.match(source, RE_FOOT_FETCH_DECISION);
 });
 
 test("local horizon: a running remote row is never withheld, and a viewed withheld row is lifted", () => {

@@ -283,6 +283,7 @@ import {
 	sectionIsGrown,
 	sectionMoreLabel,
 	sectionMoreName,
+	shouldFetchTail,
 	shownSections,
 	tagGroupBodyRows,
 	tagGroupCollapsed,
@@ -4081,13 +4082,23 @@ export function ChatSidebar({
 	 * never bounded (invariant 2), and without the paged catalogue there is no
 	 * cursor and so no horizon.
 	 */
-	const horizonMs = searchActive
-		? null
-		: localHorizonMs(new Map(sessions.map((row) => [row.session_id, row])), {
-				complete: !groupPaging || catalogueHead.tailCursor === null,
-				order: catalogueActivityHead ? "activity" : "rank",
-				listingIds: [...catalogueHead.pageIds, ...catalogueHead.tailIds],
-			});
+	const horizonComplete = !groupPaging || catalogueHead.tailCursor === null;
+	const horizonFrontierMs = catalogueHead.frontierMs ?? null;
+	/*
+	 * Memoised on the scalars it reads: the frontier is captured by the store when
+	 * a page arrives (`head.frontierMs`), so no row scan happens here at all.
+	 */
+	const horizonMs = useMemo(
+		() =>
+			searchActive
+				? null
+				: localHorizonMs({
+						complete: horizonComplete,
+						order: catalogueActivityHead ? "activity" : "rank",
+						frontierMs: horizonFrontierMs,
+					}),
+		[searchActive, horizonComplete, catalogueActivityHead, horizonFrontierMs],
+	);
 	const reachable = withholdPastHorizon(rest, horizonMs, view.basis);
 	const arranged = searchActive
 		? rest
@@ -4120,9 +4131,21 @@ export function ChatSidebar({
 	 * must never name a different page or appear when the foot does not.
 	 */
 	const footShown = !query.trim() && (page.remaining > 0 || tailMore);
+	/*
+	 * Whether the NEXT press also follows the cursor (`shouldFetchTail`). When it
+	 * does, the rows it adds are the rung's step, not `page.remaining`: the next
+	 * local page fills the rung, and `remaining` cannot see rows not yet arrived
+	 * (design round 1, D1: "Show 23 more chats" drew 50).
+	 */
+	const pressFetchesTail = shouldFetchTail({
+		next: loads + 1,
+		drawable: arranged.length,
+		groupPaging,
+		tailCursor: catalogueHead.tailCursor,
+	});
 	const footLabel = pageMoreLabel(
 		loads,
-		page.remaining > 0
+		page.remaining > 0 && !pressFetchesTail
 			? pageReveal(arranged, loads, page.remaining)
 			: ladderStep,
 	);
@@ -4158,13 +4181,16 @@ export function ChatSidebar({
 		 */
 		const next = loads + 1;
 		setChatSidebarView({ ...view, loads: next });
-		if (!groupPaging) return;
-		/*
-		 * Against the rows the page can DRAW, not every row held: withheld remote
-		 * rows are past the local horizon, and only the next local page reveals
-		 * them - counting them here is what kept the cursor unfollowed.
-		 */
-		if (pageLimit(next) > arranged.length) void fetchCatalogueTail();
+		// Against the rows the page can DRAW; see `shouldFetchTail`.
+		if (
+			shouldFetchTail({
+				next,
+				drawable: arranged.length,
+				groupPaging,
+				tailCursor: catalogueHead.tailCursor,
+			})
+		)
+			void fetchCatalogueTail();
 	};
 	/*
 	 * WHETHER ANYTHING IS VIEWER-SET, which is what the band's middle button's

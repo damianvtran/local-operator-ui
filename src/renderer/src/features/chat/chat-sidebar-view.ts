@@ -917,22 +917,71 @@ export type LocalListing = {
 	/**
 	 * The order the catalogue pages were READ in: `activity` is core's
 	 * `sort=activity` (`(active_first, -mtime, id)`), `rank` the older
-	 * `(tier, wake band, -created_at, id)`. It decides which clock the frontier
-	 * row bounds - mtime for `activity`, birth for `rank`.
+	 * `(tier, wake band, -created_at, id)`. Only `activity` bounds the unloaded
+	 * rows' clocks; see `localHorizonMs`.
 	 */
 	order: "activity" | "rank";
 	/**
-	 * The ids the flat listing's pages carried, in the order they arrived (head
-	 * page, then each tail extension). Remote ids may be interleaved; they are
-	 * skipped.
+	 * The frontier clock the store captured WHEN the pages arrived
+	 * (`pageFrontierMs`, kept as `head.frontierMs`), or null when no page read so
+	 * far carried an idle local row.
 	 */
-	listingIds: readonly string[];
+	frontierMs: number | null;
 };
 
 /**
+ * Whether core's `sort=activity` key files this row in its ACTIVE band - the
+ * band that sorts first whatever the row's age, so its clock bounds nothing
+ * about the rows below it.
+ *
+ * Core's set is wider than the sidebar's "running" (local-operator
+ * `session/catalog.py`: `active = pending or unseen or live_state or
+ * waiting_on > 0` - unread completions and `attached` runtimes count), and it
+ * publishes the verdict as the row's `active` flag
+ * (`server/utils/desktop_sessions.py`). The flag is read first; the running
+ * predicate is kept beside it because skipping MORE rows can only move the
+ * frontier to a newer clock, which withholds more, never reveals too soon
+ * (agent review round 1, R1).
+ */
+function inActiveBand(row: CanonicalSessionRow): boolean {
+	return row.active === true || isRunningRow(row);
+}
+
+/**
+ * The FRONTIER CLOCK of one catalogue answer under `sort=activity`: the mtime
+ * (ms) of the LAST idle local row the answer carried, in wire order, or null
+ * when it carried none.
+ *
+ * WHY THE LAST ROW AND NOT THE OLDEST HELD: rows ride an answer out of clock
+ * order on purpose - core's active band leads the page whatever its age, and
+ * the `off_page` extras (running rows below the window, pinned rows) follow it.
+ * Skipping those leaves the page's own tail row, and every UNLOADED idle local
+ * row has `mtime <=` that row's mtime. Since a conversation's birth precedes its
+ * last movement, its `created_at` is under the bound too, so the one clock
+ * serves both sidebar bases.
+ *
+ * WHY THE STORE CALLS THIS WHEN THE PAGE ARRIVES rather than the sidebar
+ * reading the frontier row live (agent review round 1, R2): the bound holds for
+ * the row's mtime AT READ TIME. Touching that conversation later jumps its live
+ * clock to now, and a live read would then withhold every remote row.
+ */
+export function pageFrontierMs(
+	rows: readonly CanonicalSessionRow[],
+): number | null {
+	for (let index = rows.length - 1; index >= 0; index -= 1) {
+		const row = rows[index];
+		if (row.locality === "remote") continue;
+		if (row.pinned === true || inActiveBand(row)) continue;
+		const at = rowTimeMs(row, "active");
+		if (at !== null) return at;
+	}
+	return null;
+}
+
+/**
  * The clock below which an UNLOADED local conversation may still sit, in
- * milliseconds, or null when nothing is withheld (the listing is complete, or
- * no frontier row can be read).
+ * milliseconds: null when nothing is withheld (the listing is complete), or
+ * `+Infinity` when no bound is known (every non-running remote row withheld).
  *
  * WHY THIS EXISTS (operator report, 2026-11-23: "I can't see any local
  * messages past 21 hours, everything past that point is all remote"). The
@@ -946,39 +995,42 @@ export type LocalListing = {
  * only follows the cursor when the ladder outruns the rows HELD, and the
  * hundreds of held remote rows meant it never did.
  *
- * THE FRONTIER is the LAST local row the listing carried in catalogue order -
- * not the oldest one held, because rows ride the listing out of clock order on
- * purpose: `active_first` rows lead the page whatever their age, and the
- * `off_page` extras (running rows below the window, pinned rows) follow it. The
- * pinned and running rows are skipped for that reason, which leaves the page's
- * own tail row. Under `activity` every unloaded non-active local row has
- * `mtime <= frontier.mtime`; and since a conversation's birth precedes its
- * last movement, its `created_at` is under that bound too - so the ONE horizon
- * (the frontier's mtime) bounds BOTH sidebar bases. Under `rank` the frontier's
- * birth bounds the unloaded rows' birth within its tier; that older order has
- * no activity bound at all, so the horizon is best-effort there (the activity
- * head is what every current daemon serves, `session_catalogue_sort`).
- *
- * A frontier the client cannot read (forgotten, never held) moves the search
- * up the listing: an EARLIER row has a NEWER clock, so falling back can only
- * withhold more, never reveal a row too soon.
+ * NO BOUND, NO REMOTE ROWS (agent review round 1, R1/R3). Two listings bound
+ * nothing: one whose pages carried only active-band rows (core sorts that band
+ * first, so every idle local row is still unloaded and may be newer than any
+ * remote row - the operator's store was measured at 51 active rows for a
+ * 50-row head), and one read in the older `rank` order, which bounds births
+ * within a tier, not activity. Both withhold every non-running remote row until
+ * the listing completes or a page supplies a frontier: showing fewer remote
+ * rows is the safe error, drawing one above an unloaded local row is the bug.
  */
-export function localHorizonMs(
-	rowsById: ReadonlyMap<string, CanonicalSessionRow>,
-	listing: LocalListing,
-): number | null {
+export function localHorizonMs(listing: LocalListing): number | null {
 	if (listing.complete) return null;
-	for (let index = listing.listingIds.length - 1; index >= 0; index -= 1) {
-		const row = rowsById.get(listing.listingIds[index]);
-		if (!row || row.locality === "remote") continue;
-		if (row.pinned === true || isRunningRow(row)) continue;
-		const at = rowTimeMs(
-			row,
-			listing.order === "activity" ? "active" : "created",
-		);
-		if (at !== null) return at;
-	}
-	return null;
+	if (listing.order !== "activity") return Number.POSITIVE_INFINITY;
+	return listing.frontierMs ?? Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Whether the foot's press must ALSO follow the catalogue cursor: the next rung
+ * asks for more rows than the arrangement can draw, and a cursor is left.
+ *
+ * AGAINST THE DRAWABLE ROWS, not every row held (the 2026-11-23 report):
+ * withheld remote rows sit past the local horizon and only the next local page
+ * reveals them, so counting them kept the cursor unfollowed. Lives here rather
+ * than in the sidebar's JSX so a test can hold it (agent review round 1, R4);
+ * the foot's label reads the same answer (design round 1, D1).
+ */
+export function shouldFetchTail(args: {
+	next: number;
+	drawable: number;
+	groupPaging: boolean;
+	tailCursor: string | null;
+}): boolean {
+	return (
+		args.groupPaging &&
+		args.tailCursor !== null &&
+		pageLimit(args.next) > args.drawable
+	);
 }
 
 /**
