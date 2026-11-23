@@ -1,10 +1,11 @@
-const MAX_X = 4;
-const MAX_Y = 2;
+// The light crosses the fine-grained crest without dragging the silhouette.
+const MAX_X = 32;
+const MAX_Y = 7;
 
 const axisOffset = (value: number, start: number, size: number, max: number) =>
 	Math.max(-1, Math.min(1, (2 * (value - start)) / size - 1)) * max;
 
-export function trackNewChatHorizon(splash: HTMLElement, paint: SVGSVGElement) {
+export function trackNewChatHorizon(splash: HTMLElement, rake: SVGSVGElement) {
 	const view = splash.ownerDocument.defaultView;
 	if (!view) return;
 
@@ -22,7 +23,7 @@ export function trackNewChatHorizon(splash: HTMLElement, paint: SVGSVGElement) {
 		if (!bounds.width || !bounds.height) return;
 		const dx = axisOffset(x, bounds.left, bounds.width, MAX_X);
 		const dy = axisOffset(y, bounds.top, bounds.height, MAX_Y);
-		paint.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0)`;
+		rake.style.transform = `translate3d(${dx.toFixed(2)}px, ${dy.toFixed(2)}px, 0)`;
 	};
 	const move = (event: PointerEvent) => {
 		if (event.pointerType !== "mouse") return;
@@ -36,7 +37,7 @@ export function trackNewChatHorizon(splash: HTMLElement, paint: SVGSVGElement) {
 		if (frame !== undefined) view.cancelAnimationFrame(frame);
 		frame = undefined;
 		bounds = undefined;
-		paint.style.removeProperty("transform");
+		rake.style.removeProperty("transform");
 	};
 	const exit = (event: PointerEvent) => {
 		if (event.pointerType === "mouse") reset();

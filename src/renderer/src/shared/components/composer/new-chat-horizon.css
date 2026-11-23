@@ -1,3 +1,20 @@
+/* Only the growing empty splash opts into this paper tone. The ellipse ends
+   inside all four edges, so the band's gutters and the docked box cannot open
+   a seam. The deep palette role tints the resting paper, never the controls. */
+[data-lo-composer-splash]:has(.new-chat-horizon) {
+	--horizon-paper: light-dark(
+		color-mix(in oklab, var(--lo-sunken) 35%, transparent),
+		color-mix(in oklab, var(--lo-media-surface) 80%, var(--lo-sunken))
+	);
+	background-image: radial-gradient(
+		ellipse 50% 46% at 50% 46%,
+		var(--horizon-paper),
+		color-mix(in oklab, var(--horizon-paper) 86%, transparent) 34%,
+		color-mix(in oklab, var(--horizon-paper) 29%, transparent) 73%,
+		transparent 100%
+	);
+}
+
 .new-chat-horizon {
 	position: relative;
 	/* Keep the existing 32px mark slot: the extra ink borrows from the blank
@@ -11,50 +28,92 @@
 
 .new-chat-horizon__scene {
 	position: absolute;
-	inset-block-start: 50%;
-	left: 50%;
-	translate: -50% -50%;
-	inline-size: min(88%, 40rem);
-	pointer-events: none;
-	/* Identity has its own role; keep the primary accent for composer actions.
-	   Palette color-scheme (not system appearance) sets the light level. */
-	color: light-dark(
-		color-mix(in oklab, var(--lo-accent-alt) 78%, transparent),
-		var(--lo-accent-alt)
+	inset-inline: 0;
+	/* Scene y=139 aligns to the fixed mark centre. Preserve that anchor when
+	   the engraving shrinks, and clip/feather the flanks on the smallest pane. */
+	inset-block-start: calc(50% - 139px);
+	block-size: 172px;
+	overflow: clip;
+	mask-image: linear-gradient(
+		to right,
+		transparent,
+		black min(12%, 3.5rem),
+		black max(88%, calc(100% - 3.5rem)),
+		transparent
 	);
+	pointer-events: none;
+	color: light-dark(
+		color-mix(in oklab, var(--lo-ink-muted) 88%, var(--lo-accent-alt)),
+		color-mix(in oklab, var(--lo-ink-muted) 76%, var(--lo-canvas))
+	);
+}
+
+.new-chat-horizon__engraving {
+	position: absolute;
+	inset-block-start: 139px;
+	left: 50%;
+	translate: -50% -80.814%; /* Same anchor as MARK_Y / HEIGHT. */
+	inline-size: clamp(28rem, 100%, 40rem);
 }
 
 .new-chat-horizon__paint {
 	display: block;
 	inline-size: 100%;
-	height: auto;
-	/* A long, diffuse belt supports the points without a spotlight behind the
-	   mark. Only this bounded paint layer moves; the mark and text stay put. */
-	background: radial-gradient(
-		ellipse 49% 17% at 50% 56%,
-		light-dark(
-			color-mix(in oklab, var(--lo-accent-alt) 11%, transparent),
-			color-mix(in oklab, var(--lo-accent-alt) 19%, transparent)
-		),
-		transparent 100%
+	block-size: auto;
+}
+
+.new-chat-horizon__flecks {
+	color: var(--lo-accent-alt);
+	stroke-opacity: 0.43;
+}
+
+.new-chat-horizon__rake {
+	position: absolute;
+	left: 30.625%; /* Bounds of the highlight's viewBox within the engraving. */
+	top: 4.651%;
+	inline-size: 53.125%;
+	block-size: auto;
+	color: light-dark(
+		color-mix(in oklab, var(--lo-ink-muted) 72%, var(--lo-accent-alt)),
+		color-mix(in oklab, var(--lo-ink) 84%, var(--lo-accent-alt))
 	);
+	opacity: 0.78;
 	transform: translate3d(0, 0, 0);
-	transition: transform 200ms ease-out;
+	transition: transform 180ms ease-out;
+}
+
+.new-chat-horizon__mark [data-brand-mark] {
+	/* More ink on the upper stroke makes the figure part of the engraved relief;
+	   the ground stays visible around it, without a second painted disc. */
+	background-image: linear-gradient(
+		to bottom,
+		color-mix(in oklab, var(--lo-ink) 53%, var(--lo-ink-muted)),
+		color-mix(in oklab, var(--lo-ink-muted) 82%, var(--lo-canvas))
+	);
 }
 
 .new-chat-horizon__scene[data-quiet] {
-	opacity: 0.55;
+	opacity: 0.54;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.new-chat-horizon__paint {
+	.new-chat-horizon__rake {
 		transform: none !important;
 		transition: none;
 	}
 }
 
 @media (forced-colors: active) {
+	[data-lo-composer-splash]:has(.new-chat-horizon) {
+		background-image: none;
+	}
+
 	.new-chat-horizon__scene {
 		display: none;
+	}
+
+	.new-chat-horizon__mark [data-brand-mark] {
+		forced-color-adjust: none;
+		background: CanvasText;
 	}
 }
