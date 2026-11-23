@@ -61,6 +61,7 @@ import {
 	X,
 } from "lucide-react";
 import {
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -2090,6 +2091,22 @@ const AskRow = ({
 				</div>
 			) : null}
 			{/*
+			 * THE SETTLED FRAME'S FOOT (design spec S3): a closed question has no pinned
+			 * bar, so the id and its copy control sit at the frame's own foot instead.
+			 * The id is drawn once per expanded row - the collapsed row's copy of it is
+			 * hidden by `SettledRow` while the row is open - and this is the copyable
+			 * one. `justify-end` keeps it in the card's quiet corner, the same corner
+			 * the live card's foot uses.
+			 */}
+			{!canAnswer && !canDecline ? (
+				<div
+					data-lo-ask-foot=""
+					className="flex min-h-6 items-center justify-end"
+				>
+					<AskId id={ask.ask_id} />
+				</div>
+			) : null}
+			{/*
 			 * THE DISMISS DOOR (harness PR #2833, SA-D5), on an OPEN ask only and only
 			 * where the caller resolved `features.ask_dismiss` — see
 			 * `AskPanelProps.onDismiss`. `canAnswer` is the same live-arm predicate the
@@ -2197,6 +2214,54 @@ const HELD_SLOT_FRAME = "rounded-md border border-hairline";
  * enough that a reader browsing the panel later does not meet a stale sentence.
  */
 export const LAPSE_NOTE_CLEAR_MS = 8000;
+
+/**
+ * ONE SETTLED ROW, WITH ITS OWN OPEN STATE (design spec S3).
+ *
+ * The disclosure is CONTROLLED here for one reason: the id belongs at the row's
+ * end while the row is closed and at the FOOT of the expanded frame once it
+ * opens (beside the copy control), so the row has to know whether it is open to
+ * draw it exactly once. The id also rides the trigger's accessible name in both
+ * states (`Answered - <question>, a-745e`), which is how a screen reader can
+ * match the id a chat message quotes.
+ *
+ * `summaryAlign="firstLine"` puts the chevron and the badge on the question's
+ * FIRST line instead of centring them over a five-line block (D12), and the
+ * chevron takes `ink-muted`: `ink-disabled` is exempt from every contrast floor,
+ * which is wrong for the surface's only affordance.
+ *
+ * The summary is a render prop because the id's visibility depends on `open`.
+ */
+const SettledRow = ({
+	label,
+	held,
+	summary,
+	children,
+}: {
+	label: string;
+	held: boolean;
+	summary: (open: boolean) => ReactNode;
+	children: ReactNode;
+}) => {
+	const [open, setOpen] = useState(false);
+	return (
+		<Disclosure
+			open={open}
+			onOpenChange={setOpen}
+			summaryAlign="firstLine"
+			triggerClassName={cn(
+				"text-ink hover:bg-row-hover hover:text-ink",
+				held && "rounded-t-[9px]",
+			)}
+			chevronClassName="text-ink-muted"
+			rowClassName="min-h-7 py-1"
+			triggerLabel={label}
+			summary={summary(open)}
+		>
+			{children}
+		</Disclosure>
+	);
+};
 
 export const AskPanel = ({
 	view,
@@ -2795,16 +2860,10 @@ export const AskPanel = ({
 		 */
 		const dismissal = outcomes?.[presentation.ask.ask_id]?.dismissed;
 		return (
-			<Disclosure
-				key={presentation.ask.ask_id}
-				triggerClassName={cn(
-					"text-ink hover:bg-row-hover hover:text-ink",
-					held && "rounded-t-[9px]",
-				)}
-				chevronClassName="text-ink-dim"
-				rowClassName="min-h-7 py-1"
-				triggerLabel={`${word} - ${question}`}
-				summary={
+			<SettledRow
+				label={`${word} - ${question}, ${presentation.ask.ask_id}`}
+				held={held}
+				summary={(open) => (
 					<span className="flex min-w-0 flex-col gap-0.5">
 						<span className="flex min-w-0 items-start gap-1.5">
 							{/*
@@ -2823,23 +2882,38 @@ export const AskPanel = ({
 								{word}
 							</Badge>
 							{/*
-							 * THE QUESTION WRAPS (operator ask, 2026-10-05): "full
-							 * questions not truncated" is what he asked for, and a
-							 * `truncate` here is what put the whole question behind a
-							 * tooltip instead of on the row. `break-words` so a long
-							 * unbroken token cannot push the row wider than the pane.
+							 * THE QUESTION WRAPS (operator ask, 2026-10-05; upheld again by his
+							 * a-427e decision on 2026-11-23): full questions, not truncated. The
+							 * answer line below keeps its own two-line clamp - the full text is
+							 * one press away in the frame, and this is the row that says what
+							 * the question was.
+							 *
+							 * `flex-1` gives the column the room the id leaves, so the id sits
+							 * at the row's END on the first line rather than wherever a short
+							 * question happens to stop.
 							 */}
-							{/*
-							 * THE ANSWER SITS IN THE QUESTION'S COLUMN (design round 1, D1): as a
-							 * sibling of the chip row it started under the chevron, so a stack of
-							 * settled rows scanned chip, question, then an answer jutting left.
-							 */}
-							<span className="flex min-w-0 flex-col gap-0.5">
+							<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 								<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
 									{isolateValue(question, dir)}
 								</span>
 								{settledAnswerLine(presentation)}
 							</span>
+							{/*
+							 * THE ID, RIGHT-ALIGNED ON THE COLLAPSED ROW (design spec S3). It is
+							 * the row's own copy of the string a user quotes in chat - quiet mono
+							 * in the muted ink, and the reason `Withdrawn` is no longer a status
+							 * with no trace. Hidden while the row is open: the expanded frame's
+							 * foot draws the copyable one, and printing it twice would put the
+							 * same token 20px apart.
+							 */}
+							{open ? null : (
+								<span
+									data-lo-ask-id=""
+									className="shrink-0 self-start font-mono text-ink-muted text-mono-sm"
+								>
+									{presentation.ask.ask_id}
+								</span>
+							)}
 						</span>
 
 						{refusal === null ? null : (
@@ -2864,10 +2938,10 @@ export const AskPanel = ({
 							</span>
 						)}
 					</span>
-				}
+				)}
 			>
 				<div className="pt-1.5">{askRow(presentation)}</div>
-			</Disclosure>
+			</SettledRow>
 		);
 	};
 
@@ -3112,7 +3186,7 @@ export const AskPanel = ({
 					 * row, a legend above them names twice what the rows already say.
 					 */}
 					{showPending && shown.pending.length > 0 ? (
-						<p className="px-3 pt-1 text-ink-dim text-meta">
+						<p className="px-3 pt-2 font-medium text-ink-muted text-meta">
 							{t("ui.chat.asks.settled_heading")}
 						</p>
 					) : null}

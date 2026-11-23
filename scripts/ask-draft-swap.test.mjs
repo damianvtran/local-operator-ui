@@ -2091,6 +2091,46 @@ test("the ask id is visible on the card and its copy control copies it", async (
 	}
 });
 
+/*
+ * THE SETTLED ROW'S ID MOVES TO THE FRAME'S FOOT WHEN IT OPENS (design spec S3).
+ * The collapsed row carries the id at its end - so a Withdrawn ask leaves a trace
+ * outside the chat message that mentioned it - and the expanded frame carries the
+ * copyable one. Drawing both would print the same token twice, 20px apart.
+ */
+test("a settled row shows the id, and the expanded frame owns its copy control", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([settled("declined", "a-declined")]),
+			scope: "session",
+		}),
+	);
+	const row = view.container.querySelector('[data-lo-ask-settled]');
+	const trigger = row?.querySelector("button[aria-expanded]");
+	assert.ok(row?.textContent.includes("a-declined"), "the id is on the row");
+	assert.ok(
+		trigger?.getAttribute("aria-label")?.endsWith(", a-declined"),
+		"the trigger's name carries the id",
+	);
+	assert.equal(
+		row?.querySelector('button[aria-label="Copy ask id a-declined"]'),
+		null,
+		"the collapsed row shows the id quietly, with no copy control",
+	);
+
+	await act(async () => trigger.click());
+	assert.equal(trigger.getAttribute("aria-expanded"), "true", "the row opened");
+	assert.equal(
+		row?.querySelector("[data-lo-ask-id]"),
+		null,
+		"the row's own id steps aside while the frame is open",
+	);
+	assert.ok(
+		row?.querySelector('button[aria-label="Copy ask id a-declined"]'),
+		"the expanded frame's foot owns the copy control",
+	);
+});
+
 test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
 	// The recommendation is a mark of its OWN, and the selection is the draft's
 	// ground plus its drawn radio. The two must be readable at once, and the
