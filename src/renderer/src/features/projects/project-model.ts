@@ -208,12 +208,13 @@ const MILESTONE_STATUS_META: Record<DesktopMilestoneStatus, ChipMeta> = {
 };
 
 export function milestoneStatusMeta(status: DesktopMilestoneStatus): ChipMeta {
-	return (
-		MILESTONE_STATUS_META[status] ?? {
-			label: String(status),
-			variant: "neutral",
-		}
-	);
+	// Own keys only, like `projectStatusMeta`: the status is wire data, and an
+	// inherited name (`__proto__`, `constructor`) would otherwise yield a
+	// prototype object with no `label` - a blank chip instead of the raw word.
+	if (Object.prototype.hasOwnProperty.call(MILESTONE_STATUS_META, status)) {
+		return MILESTONE_STATUS_META[status];
+	}
+	return { label: String(status), variant: "neutral" };
 }
 
 /** The stale badge's one label. Its presence is `progress_stale`, not a derivation here. */

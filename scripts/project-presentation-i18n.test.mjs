@@ -40,7 +40,7 @@ const bundle = await build({
 	stdin: {
 		contents: `import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { t, setLocale } from "./src/i18n";
+import { t, setLocale, currentLocale } from "./src/i18n";
 import { projectStatusMeta } from "./src/renderer/src/features/projects/project-model";
 import { InlineEditControls } from "./src/renderer/src/shared/components/inline-edit/inline-edit-controls";
 ${helper[0][0]}
@@ -102,10 +102,14 @@ for (const locale of [...locales, "fr"]) {
 			for (const [action, key] of Object.entries(actions)) {
 				assert.equal(
 					labels[action],
-					t(`ui.projects.project_editors.${key}`, { field: noun }),
+					// Mid-phrase, the noun is lower-cased in the active locale (D1).
+					t(`ui.projects.project_editors.${key}`, {
+						field: noun.toLocaleLowerCase(locale),
+					}),
 					`${locale}/${field}/${action}`,
 				);
 			}
+			// The standalone noun and the "{display} saved" toast keep its case.
 			assert.equal(
 				labels.saved,
 				t("ui.projects.project_editors.display_saved", { display: noun }),
@@ -176,4 +180,13 @@ test("presentation fixes leave field markers and wire payload expressions at the
 		'labels: editLabels("status", t("ui.projects.project_editors.status"))',
 	])
 		assert.ok(editors.includes(expression), expression);
+});
+
+test("D1: the action noun reads mid-phrase in lower case (en `Edit title`, fr `Modifier titre`)", () => {
+	setLocale("en");
+	assert.equal(labelFor("title").begin, "Edit title");
+	assert.equal(labelFor("title").name, "Title");
+	setLocale("fr");
+	assert.equal(labelFor("title").begin, "Modifier titre");
+	assert.equal(labelFor("title").name, "Titre");
 });

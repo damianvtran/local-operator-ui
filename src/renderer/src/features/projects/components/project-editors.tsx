@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { currentLocale, t } from "@shared/i18n";
 /**
  * The projects detail's field editors: every field the retired sheet could
  * edit, as an individually editable surface built on the shared inline-edit
@@ -130,25 +130,37 @@ export type CommitProjectFields = (
 // Machine field identity stays with the editor and its write payload; action
 // names must use the already-localized noun, never that wire token or user text.
 function editLabels(_field: string, display: string): InlineEditLabels {
+	/*
+	 * MID-PHRASE NOUN IS LOWER-CASED (design round 1, D1). The display noun is
+	 * the catalogue's standalone label, capitalised because it also heads a
+	 * property row ("Title"); spliced into an action template it read "Edit
+	 * Title" / "Modifier Titre", a regression from main's "Edit title". The
+	 * fold uses the ACTIVE locale's case rules (Turkish dotted I and the like)
+	 * rather than a root-locale `toLowerCase`. `name` and `saved` keep the
+	 * label as written: the noun stands alone or opens the sentence there.
+	 * Constraint: correct only while no shipped locale capitalises common
+	 * nouns (German would need a per-locale rule, not this fold).
+	 */
+	const field = display.toLocaleLowerCase(currentLocale());
 	return {
 		name: display,
 		begin: t("ui.projects.project_editors.edit_field", {
-			field: display,
+			field,
 		}),
 		accept: t("ui.projects.project_editors.save_field", {
-			field: display,
+			field,
 		}),
 		cancel: t("ui.projects.project_editors.discard_the_field_edit", {
-			field: display,
+			field,
 		}),
 		busy: t("ui.projects.project_editors.saving_the_field", {
-			field: display,
+			field,
 		}),
 		saved: t("ui.projects.project_editors.display_saved", {
 			display: String(display),
 		}),
 		retry: t("ui.projects.project_editors.retry_saving_the_field", {
-			field: display,
+			field,
 		}),
 	};
 }
