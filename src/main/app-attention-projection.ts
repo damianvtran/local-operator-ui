@@ -31,6 +31,9 @@ export class AppAttentionProjection {
 	private aidaSession: string | null = null;
 	private gates = 0;
 	private bridgeUnread = 0;
+	/** Conversations the window says hold an open queued ask (`shared/`
+	 * `app-attention-queued-asks.ts`): an `answer` status beside one of them is
+	 * already counted by the window's own badge, never a blocking gate. */
 	private queuedAskSessions: ReadonlySet<string> = new Set();
 	private browserPending = false;
 	private meshPending = false;
@@ -55,6 +58,11 @@ export class AppAttentionProjection {
 		this.sessions.clear();
 		this.inbox = undefined;
 		this.completions = this.gates = this.bridgeUnread = 0;
+		// A real reset (sign-out, backend change) drops the window's claim; main
+		// re-asks for it. An epoch replacement (`reset(false)`, from an open frame)
+		// KEEPS it: conversation ids survive a reconnect, and dropping the claim
+		// there would flash every queued-ask row as a gate until the set changes.
+		if (publish) this.queuedAskSessions = new Set();
 		// Browser consent belongs to this app host, not the backend feed epoch.
 		this.meshPending = false;
 		this.epoch = undefined;
@@ -124,12 +132,22 @@ export class AppAttentionProjection {
 		this.emit();
 	}
 
-	// RED CONTROL (commit 1 of 2): a pass-through stub. The tests assert the
-	// behaviour, so they fail here rather than on a missing method.
+	/** The window's claim about which conversations hold at least one open queued
+	 * ask. The gate total is RECOMPUTED from the stored per-session levels rather
+	 * than adjusted per id, because the claim and the `session_status` it affects
+	 * may arrive in either order and both orders must reach the same total (the map
+	 * is bounded: one latest level per conversation). */
 	setQueuedAskSessions(
-		_ids: readonly string[],
-		_generation = this.generation,
-	): void {}
+		ids: readonly string[],
+		generation = this.generation,
+	): void {
+		if (generation !== this.generation) return;
+		this.queuedAskSessions = new Set(ids);
+		this.gates = 0;
+		for (const [id, row] of this.sessions)
+			if (this.isGate(id, row)) this.gates++;
+		this.emit();
+	}
 
 	setBridgeUnread(count: number, generation: number): void {
 		if (
@@ -225,13 +243,22 @@ export class AppAttentionProjection {
 			);
 		}
 		this.gates +=
-			Number(this.isGate(next)) - Number(old ? this.isGate(old) : false);
+			Number(this.isGate(id, next)) -
+			Number(old ? this.isGate(id, old) : false);
 		this.sessions.set(id, next);
 	}
 
-	private isGate(row: SessionLevel): boolean {
+	private isGate(id: string, row: SessionLevel): boolean {
 		// Backend-derived actionable status, not an inferred numeric read receipt.
-		return row.status?.code === "approval" || row.status?.code === "answer";
+		// An approval is a gate whatever else is queued: consent parks the agent.
+		// An `answer` is a gate only when the window does NOT hold a queued ask for
+		// that conversation. The harness files a non-blocking queued ask under this
+		// same code, and the window's badge already counts it once; counting it here
+		// as well is what made an idle conversation with one queued ask read as
+		// "needs you" in the dock and tray.
+		if (row.status?.code === "approval") return true;
+		if (row.status?.code !== "answer") return false;
+		return !this.queuedAskSessions.has(id);
 	}
 
 	private validInbox(level: InboxLevel): boolean {

@@ -906,9 +906,7 @@ const settledProjection = () => {
 test("a queued ask is counted once and never as a blocking gate", () => {
 	const { projection, last } = settledProjection();
 	projection.setQueuedAskSessions(["s-queued"]);
-	projection.observe(
-		open(levels({ "session/s-queued": answer() })),
-	);
+	projection.observe(open(levels({ "session/s-queued": answer() })));
 	assert.equal(
 		last().pending,
 		false,
@@ -924,9 +922,7 @@ test("a queued ask is counted once and never as a blocking gate", () => {
 
 test("an answer status with no queued ask for that conversation is a gate", () => {
 	const { projection, last } = settledProjection();
-	projection.observe(
-		open(levels({ "session/s-blocking": answer() })),
-	);
+	projection.observe(open(levels({ "session/s-blocking": answer() })));
 	assert.equal(last().pending, true);
 	projection.setQueuedAskSessions(["s-other"]);
 	assert.equal(
@@ -951,9 +947,7 @@ test("the gate total is the same whether the claim or the status arrives first",
 	claimFirst.projection.observe(open(levels({ "session/s-a": answer() })));
 
 	const statusFirst = settledProjection();
-	statusFirst.projection.observe(
-		open(levels({ "session/s-a": answer() })),
-	);
+	statusFirst.projection.observe(open(levels({ "session/s-a": answer() })));
 	assert.equal(statusFirst.last().pending, true);
 	statusFirst.projection.setQueuedAskSessions(["s-a"]);
 

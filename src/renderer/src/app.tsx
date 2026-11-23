@@ -26,6 +26,7 @@ import {
 } from "@features/chat/new-chat-shortcut";
 import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
+import { useQueuedAskAttention } from "@features/chat/use-queued-ask-attention";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { useConversationRecents } from "@features/command-palette/use-conversation-recents";
@@ -466,6 +467,14 @@ const App: FC = () => {
 	 * header's dot and the pane's rows paint.
 	 */
 	useConsoleAttention();
+
+	/*
+	 * The window's claim about conversations holding an open queued ask, pushed to
+	 * app-main so the dock/tray badge counts a queued ask once instead of as a
+	 * blocking question (`shared/app-attention-queued-asks.ts`). Mounted here, once,
+	 * because it speaks for the whole window rather than for a row.
+	 */
+	useQueuedAskAttention();
 
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app

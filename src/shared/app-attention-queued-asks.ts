@@ -56,10 +56,14 @@ const MAX_SESSION_ID_LENGTH = 256;
 export function queuedAskSessionIds(
 	counts: ReadonlyMap<string, number> | null | undefined,
 ): string[] {
-	// RED CONTROL (commit 1 of 2): the derivation is a stub so the tests fail on
-	// their assertions, not on an import. Replaced by the fix commit.
-	void counts;
-	return [];
+	if (!counts) return [];
+	const ids: string[] = [];
+	for (const [id, count] of counts) {
+		if (typeof id !== "string" || id.length === 0) continue;
+		if (!Number.isSafeInteger(count) || count <= 0) continue;
+		ids.push(id);
+	}
+	return ids.sort();
 }
 
 /**
@@ -71,10 +75,15 @@ export function queuedAskSessionIds(
  * not believe, and the claim already held is left alone. Duplicates are folded
  * rather than refused - two readers of one conversation is a redundant claim, not
  * a malformed one.
- *
- * RED CONTROL (commit 1 of 2): stubbed to refuse everything; see the fix commit.
  */
 export function parseQueuedAskSessionIds(payload: unknown): string[] | null {
-	void payload;
-	return null;
+	if (!Array.isArray(payload)) return null;
+	if (payload.length > MAX_QUEUED_ASK_SESSIONS) return null;
+	const ids = new Set<string>();
+	for (const value of payload) {
+		if (typeof value !== "string") return null;
+		if (value.length === 0 || value.length > MAX_SESSION_ID_LENGTH) return null;
+		ids.add(value);
+	}
+	return [...ids];
 }
