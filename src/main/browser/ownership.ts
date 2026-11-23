@@ -66,7 +66,8 @@ export interface OwnershipHooks {
 	 * completed; a close that did not is `pending`, which is a retryable
 	 * obligation rather than a failure. */
 	closeTab: (token: string) => Promise<boolean>;
-	/** Whether a surface token still names a live tab. */
+	/** Whether a surface can be resolved for reuse. A drive refusal must not
+	 * be used as proof of closure by `owner_finish`. */
 	isLive: (token: string) => boolean;
 	/** Only native human handover may grant a previously unallocated capability. */
 	mayAdopt?: (token: string, requester: string) => boolean;
@@ -371,8 +372,7 @@ export class OwnershipLedger {
 					.map((allocation) => allocation.tab)
 					.filter((tab): tab is string => !!tab);
 				for (const allocation of Object.values(scope.allocations)) {
-					if (!allocation.tab || !this.hooks.isLive(allocation.tab)) {
-						if (allocation.tab) allocation.state = "closed";
+					if (!allocation.tab) {
 						if (
 							["allocating", "allocated", "cleanup_pending"].includes(
 								allocation.state,

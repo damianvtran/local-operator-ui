@@ -155,6 +155,17 @@ test("A1: every job is gated on flags that exist, or is declared ungated", () =>
 	}
 });
 
+test("A1: the owner-finish regression follows unit scope and stays hosted-only", () => {
+	const job = "browser-owner-finish";
+	const planFor = (path) => jobPlan(flagsFor([categoryOf(path)], [path]));
+	// Evidence enables unit without types, so this catches a wrong flag as well.
+	assert.equal(planFor("docs/evidence/example.md")[job], "run");
+	assert.equal(planFor("docs/README.md")[job], "skip");
+	assert.match(jobIf(job), /github\.event_name == 'pull_request'/);
+	assert.equal(Object.hasOwn(JOB_COMMANDS, job), false);
+	assert.ok(Object.hasOwn(LOCAL_EXCLUSIONS, job));
+});
+
 // ---------------------------------------------------------------------------
 // A2 - no job inherits a collateral skip, and no gate is `== 'true'`
 // ---------------------------------------------------------------------------
