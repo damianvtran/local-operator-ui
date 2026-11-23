@@ -37,6 +37,29 @@ import {
 const KNOWN_RESTING = RESTING_CODES;
 
 /**
+ * The outstanding-ask count a row may claim, or `null` for "draw nothing".
+ *
+ * ONE PREDICATE FOR THREE READERS - the mark ({@link ChatAsksOutstanding}), the
+ * status derivation ({@link withQueuedAskStatus}) and the sentence an approval
+ * row speaks ({@link approvalAsksSentence}) - because a count one of them
+ * accepted and another refused is a row whose mark, words and section disagree.
+ *
+ * `open` when the caller resolved it (the fleet aggregate on this app: the
+ * desktop catalogue route never fills the row's own field), else the row's own
+ * `asks_open`. A count the wire could not be read as a positive finite number is
+ * ABSENCE, never zero: a zero badge is a claim that something is happening.
+ */
+export function openAskCount(
+	row: Pick<CanonicalSessionRow, "asks_open">,
+	open?: number | null,
+): number | null {
+	const count = typeof open === "number" ? open : row.asks_open;
+	return typeof count === "number" && Number.isFinite(count) && count > 0
+		? count
+		: null;
+}
+
+/**
  * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
  *
  * ## Why it is a second mark rather than a status code
@@ -104,6 +127,22 @@ const KNOWN_RESTING = RESTING_CODES;
  * per-conversation count. The row's own field stays as the fallback for a
  * caller that holds a canonical row rather than the aggregate, and for a
  * backend that starts publishing it.
+ *
+ * ## An APPROVAL row keeps its own bubble, so this mark yields to it
+ *
+ * An approval parked beside an open ask drew TWO question bubbles: the status
+ * cell's amber one (code `approval`) and this mark's accent one. One glyph spent
+ * twice reads as two questions - the operator's report, 2026-11-22 - and the
+ * status cell is where every row's state is read, so the APPROVAL owns that
+ * glyph on that row and this mark draws nothing there. The glyph is the same on
+ * both, and the ink is what separates the two facts; a reader must not have to
+ * count bubbles to know whether the agent is blocked.
+ *
+ * The count does not disappear with the mark: it rides the derived row
+ * (`withQueuedAskStatus`) into the status cell's spoken name and the row's
+ * tooltip ({@link approvalAsksSentence}) - the channels a mark that is not drawn
+ * cannot claim. Every other code keeps its mark, because only `approval` already
+ * spends this glyph on the same fact.
  */
 export function ChatAsksOutstanding({
 	row,
@@ -116,9 +155,11 @@ export function ChatAsksOutstanding({
 	open?: number | null;
 }) {
 	useI18nLocale();
-	const count = typeof open === "number" ? open : row.asks_open;
-	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
-		return null;
+	// An approval's own status mark IS the question bubble (see the docblock):
+	// drawing this one beside it spends the same glyph twice.
+	if (row.status?.code === "approval") return null;
+	const count = openAskCount(row, open);
+	if (count === null) return null;
 	return (
 		/*
 		 * ONE NAME, ONE PLACE (agent review round 1, NIT-2). This node used to carry
@@ -280,7 +321,39 @@ export function statusSpokenText(
 			(clauseReplacesLabel(row, clause) ? clause : undefined) ??
 			statusLabelText(row) ??
 			t("ui.chat.sidebar.row.recent"));
-	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}`;
+	/*
+	 * THE APPROVAL'S ASK COUNT CLOSES THE NAME (operator, 2026-11-22): on that one
+	 * code the ask mark yields the glyph to the status bubble, so this sentence is
+	 * the only place the count is heard. Every other code keeps its mark and stays
+	 * silent here - the mark's own `aria-label` states it once.
+	 */
+	return `${label}${mark.unreadMark !== null ? t("ui.chat.sidebar.row.unread_suffix") : ""}${approvalAsksSentence(row)}`;
+}
+
+/**
+ * The sentence an APPROVAL row appends to its status name and tooltip: the
+ * count the ask mark would have drawn, because on that row the mark yields.
+ *
+ * ONE SPELLING FOR BOTH CHANNELS - `statusSpokenText` (the status cell's
+ * `sr-only` name, and every other arm that renders that sentence) and the
+ * sidebar row's flyout each append this, so the pointer and the screen reader
+ * hear the same number. It is a suffix rather than a full sentence so the name
+ * keeps the shape `status, level. count`.
+ *
+ * The words are `asksOutstandingLabel`'s - "2 asks" - and NOT the mark's
+ * `ui.chat.asks.outstanding_aria` sentence, whose second half ("The agent is not
+ * blocked on you") is FALSE under a blocking approval. No new key either: a
+ * count and its plural already have a translated home.
+ *
+ * Empty for every other code, and for a count no mark would have drawn.
+ */
+export function approvalAsksSentence(
+	row: CanonicalSessionRow,
+	open?: number | null,
+): string {
+	if (row.status?.code !== "approval") return "";
+	const count = openAskCount(row, open);
+	return count === null ? "" : `. ${asksOutstandingLabel(count)}`;
 }
 
 /**
@@ -311,11 +384,17 @@ export function statusSpokenText(
  *
  * ## What it does
  *
- * When the code is `answer` AND the ask badge will draw (`count > 0`, the same
- * count {@link ChatAsksOutstanding} resolves), the code and its label are
- * rebuilt: `busy` while `live_state` is `busy`, otherwise `recent` (the resting
- * ring). One function feeds the glyph, the tooltip and the screen-reader name, so
- * the words cannot say "Answer needed" under a ring.
+ * When the code is `answer` AND the ask badge will draw (a count
+ * {@link openAskCount} accepts), the code and its label are rebuilt: `busy`
+ * while `live_state` is `busy`, otherwise `recent` (the resting ring). One
+ * function feeds the glyph, the tooltip, the spoken name and - through
+ * {@link withQueuedAskStatuses} - the section the row files under, so the words
+ * cannot say "Answer needed" under a ring and the row cannot sit in RUNNING
+ * while it says "Recent".
+ *
+ * THE RESOLVED COUNT RIDES THE ROW (`asks_open`), so the derived row, its mark
+ * and its sentence resolve ONE number rather than each reading a different
+ * source.
  *
  * ## What it does NOT recover (accepted)
  *
@@ -328,20 +407,33 @@ export function statusSpokenText(
  *
  * ## What it leaves alone
  *
- * `approval` (a blocking gate) is never touched, so an approval parked beside an
- * open ask still draws its own amber bubble plus the ask mark: two different
- * facts. `answer` with NO count is a blocking question gate with no queue row
- * behind it, so its glyph is the only ask mark and stays. Ordering and the
- * Running section read the wire code, not this row.
+ * `approval`'s CODE is never touched - a blocking gate keeps its own amber
+ * bubble and its own label, `approvalAsksSentence`'s docblock says why - but its
+ * count is carried onto the row, because the ask mark YIELDS that glyph to the
+ * bubble ({@link ChatAsksOutstanding}) and a fact no mark states has to be said
+ * in words. `answer` with NO count is a blocking question gate with no queue row
+ * behind it, so its glyph is the only ask mark and stays.
+ *
+ * ORDERING AND THE SECTIONS READ THIS ROW, not the wire one: the sidebar derives
+ * the list before it partitions and arranges it ({@link withQueuedAskStatuses}),
+ * because a conversation drawn as a resting ring must not be filed under RUNNING
+ * or lifted as stopped on the reader.
  */
 export function withQueuedAskStatus(
 	row: CanonicalSessionRow,
 	open?: number | null,
 ): CanonicalSessionRow {
+	const count = openAskCount(row, open);
+	if (count === null) return row;
+	if (row.status?.code === "approval") {
+		// The glyph and the label stay the approval's; only the count joins them, so
+		// the status sentence and the tooltip can state it.
+		return { ...row, asks_open: count };
+	}
 	if (row.status?.code !== "answer") return row;
-	const count = typeof open === "number" ? open : row.asks_open;
-	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
-		return row;
+	// The derived row carries the count its own mark will draw, so a reader of the
+	// row never has to reach for the caller's map to say how many there are.
+	const carried = { ...row, asks_open: count };
 	if (row.live_state === "busy") {
 		// "Working" is the word the wire gives an ordinary busy row
 		// (`wire.session_status.working`), so a busy row with an ask does not read
@@ -349,13 +441,40 @@ export function withQueuedAskStatus(
 		// client's, and a new key in a shipped namespace needs seven ledger
 		// re-audits, so the already-translated voice-phase word stands in.
 		return {
-			...row,
+			...carried,
 			status: { code: "busy", label: t("ui.chat.voice.phase_working") },
 		};
 	}
 	// `recent` is the one code `statusLabelText` translates itself, so the wire's
 	// "Answer needed" is dropped with the code and the resting word stands in.
-	return { ...row, status: { code: "recent", label: "" } };
+	return { ...carried, status: { code: "recent", label: "" } };
+}
+
+/**
+ * A LIST's rows, each as the sidebar draws it (see {@link withQueuedAskStatus}).
+ *
+ * WHY THE LIST AND NOT JUST THE ROW: the section a conversation files under is
+ * decided BEFORE it is drawn (`chat-list-sections.ts`'s `RUNNING_CODES`, and the
+ * lift `chat-sidebar-view.ts` gives a row stopped on the reader), and both read
+ * `status.code`. Deriving at the draw alone left an idle conversation with a
+ * queued ask drawn as a resting ring but filed at the top of RUNNING - the
+ * operator's ring in the wrong section. One pass over the rows, before the
+ * partitions and the arrangement, is what makes the section, the lift, the mark,
+ * the tooltip and the spoken name read ONE row.
+ *
+ * `asksBySession` is the fleet aggregate's map (`fleet-asks.ts`), null while the
+ * route has not answered - and null is NOT "derive nothing", because a backend
+ * that predates the aggregate may still fill each row's own `asks_open`. A
+ * conversation the map does not name is derived from whatever its own field
+ * says, exactly as the mark falls back to it, so this adds no read of its own.
+ */
+export function withQueuedAskStatuses(
+	rows: readonly CanonicalSessionRow[],
+	asksBySession: ReadonlyMap<string, number> | null | undefined,
+): CanonicalSessionRow[] {
+	return rows.map((row) =>
+		withQueuedAskStatus(row, asksBySession?.get(row.session_id)),
+	);
 }
 
 /**
