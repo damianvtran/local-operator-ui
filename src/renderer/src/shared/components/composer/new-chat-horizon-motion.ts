@@ -1,6 +1,9 @@
 const TAU = 2 * Math.PI;
 const ARRIVAL_MS = 4500;
-const STEER_MS = 620;
+// A stationary target gets ~26% of the turn on the first 60 Hz paint and
+// ~90% by 127 ms. This is a response constant, not a per-event duration.
+const STEER_RESPONSE_MS = 55;
+const STEER_SETTLE_FRACTION = 0.002; // The residual roll/lift is subpixel.
 const PAINT_PERIOD = 1000 / 60;
 const RAF_LEEWAY_MS = 1; // 60/120 Hz timestamps jitter around the paint deadline.
 const LATE_FRAME_MS = 28;
@@ -12,6 +15,8 @@ const TURN_INPUT = 0.32;
 const LIFT_INPUT = 10;
 
 const unit = (value: number) => Math.max(0, Math.min(1, value));
+const sameClamped = (a: number, b: number, min: number, max: number) =>
+	a === b || (a <= min && b <= min) || (a >= max && b >= max);
 const feather = (value: number) => {
 	const t = unit(value);
 	return t * t * (3 - 2 * t);
@@ -207,14 +212,17 @@ export function trackNewChatHorizon(
 		!quiet && !suppressed && !reduced.matches && !forced.matches && !doc.hidden;
 	let pose = arriving ? arrival(0) : REST;
 	let arrivalStarted: number | undefined;
-	let steerStarted: number | undefined;
+	let pointerPaintedAt: number | undefined;
 	let nextPaintAt: number | undefined;
+	let wakeRequestedAt: number | undefined;
 	let previousTick: number | undefined;
 	let lateFrames = 0;
 	let budgetLimited = false;
-	let pointer: { roll: number; lift: number } = { roll: 0, lift: 0 };
-	let from = pointer;
-	let toward = pointer;
+	const pointer = { roll: 0, lift: 0 };
+	const toward = { roll: 0, lift: 0 };
+	let latestX: number | undefined;
+	let latestY = 0;
+	let samplePending = false;
 	let bounds: DOMRect | undefined;
 	let near: string;
 	let far: string;
@@ -311,19 +319,44 @@ export function trackNewChatHorizon(
 		!forced.matches &&
 		!doc.hidden &&
 		visible === true;
+	const idle = () => {
+		pointerPaintedAt = undefined;
+		canvas.dataset.loHorizonMotion = "still";
+	};
 	const stop = () => {
 		if (frame !== undefined) view.cancelAnimationFrame(frame);
 		frame = undefined;
-		arrivalStarted = steerStarted = nextPaintAt = previousTick = undefined;
+		arrivalStarted = nextPaintAt = wakeRequestedAt = previousTick = undefined;
 		lateFrames = 0;
-		canvas.dataset.loHorizonMotion = "still";
+		idle();
+	};
+	const resetPointer = () => {
+		latestX = bounds = undefined;
+		samplePending = false;
+		pointerPaintedAt = undefined;
+		pointer.roll = toward.roll = 0;
+		pointer.lift = toward.lift = 0;
 	};
 	const settle = () => {
 		arriving = false;
 		stop();
 		pose = REST;
-		from = pointer = toward = { roll: 0, lift: 0 };
-		bounds = undefined;
+		resetPointer();
+	};
+	const steering = () =>
+		pointer.roll !== toward.roll || pointer.lift !== toward.lift;
+	const samplePointer = () => {
+		samplePending = false;
+		if (latestX === undefined) {
+			toward.roll = toward.lift = 0;
+			return;
+		}
+		bounds ??= paper.getBoundingClientRect();
+		if (!bounds.width || !bounds.height) return;
+		toward.roll =
+			(unit((latestX - bounds.left) / bounds.width) * 2 - 1) * TURN_INPUT;
+		toward.lift =
+			(unit((latestY - bounds.top) / bounds.height) * 2 - 1) * LIFT_INPUT;
 	};
 	const tick = (now: number) => {
 		frame = undefined;
@@ -334,8 +367,23 @@ export function trackNewChatHorizon(
 		// A dropped frame can be ordinary input or a resize; don't react to
 		// one. A sustained ~30 Hz renderer should keep its time for the
 		// composer. Settle once and don't retry until the next draft's splash.
+		const requestedAt = wakeRequestedAt;
+		const waking = requestedAt !== undefined;
+		// Only queued time is evidence of renderer pressure: a continuation
+		// starts at the previous tick, a wake at its own request. Small moves
+		// can settle after each paint. Clear the old streak after an input
+		// lapse, but still count this wake if it was late.
+		if (
+			waking &&
+			previousTick !== undefined &&
+			requestedAt - previousTick > 2 * LATE_FRAME_MS
+		) {
+			lateFrames = 0;
+		}
+		const queuedAt = requestedAt ?? previousTick;
+		wakeRequestedAt = undefined;
 		lateFrames =
-			previousTick !== undefined && now - previousTick > LATE_FRAME_MS
+			queuedAt !== undefined && now - queuedAt > LATE_FRAME_MS
 				? lateFrames + 1
 				: 0;
 		previousTick = now;
@@ -347,19 +395,36 @@ export function trackNewChatHorizon(
 		}
 		// Keep one time-based motion on 60/120/144 Hz displays without
 		// repainting at the display refresh rate or accumulating drift.
-		// An endpoint gets its own exact paint even between deadlines.
-		const endOfMotion =
-			(arrivalStarted === undefined || now - arrivalStarted >= ARRIVAL_MS) &&
-			(steerStarted === undefined || now - steerStarted >= STEER_MS);
-		if (!endOfMotion) {
+		// Preserve the unsteered arrival's exact endpoint between deadlines;
+		// active pointer motion (including its final snap) uses the paint budget.
+		const arrivalEnded =
+			arrivalStarted !== undefined && now - arrivalStarted >= ARRIVAL_MS;
+		const sampledAtEnd = arrivalEnded && samplePending;
+		if (sampledAtEnd) samplePointer();
+		if (arrivalEnded && !steering()) {
+			nextPaintAt = now + PAINT_PERIOD;
+		} else {
 			nextPaintAt ??= now;
 			const eligibleAt = now + RAF_LEEWAY_MS;
 			if (eligibleAt < nextPaintAt) {
+				// This sample was only inspected to decide on the endpoint.
+				// Resolve it at paint time too if the bounds change meanwhile.
+				if (sampledAtEnd) samplePending = true;
 				frame = view.requestAnimationFrame(tick);
 				return;
 			}
-			const passed = Math.floor((eligibleAt - nextPaintAt) / PAINT_PERIOD);
-			nextPaintAt += (1 + passed) * PAINT_PERIOD;
+			// Keep the deadline across short idle gaps so a burst that settles
+			// inside one step can't wake the canvas at the full refresh rate.
+			if (waking) nextPaintAt = now + PAINT_PERIOD;
+			else {
+				const passed = Math.floor((eligibleAt - nextPaintAt) / PAINT_PERIOD);
+				nextPaintAt += (1 + passed) * PAINT_PERIOD;
+			}
+		}
+		if (samplePending) samplePointer();
+		if (arrivalStarted === undefined && !steering()) {
+			idle();
+			return;
 		}
 		let base = REST;
 		if (arrivalStarted !== undefined) {
@@ -367,59 +432,80 @@ export function trackNewChatHorizon(
 			base = arrival(t);
 			if (t === 1) arrivalStarted = undefined;
 		}
-		if (steerStarted !== undefined) {
-			// Even a late pointer move eases from the last painted pose, not
-			// from the already-nearly-finished arrival clock.
-			const t = unit((now - steerStarted) / STEER_MS);
-			const ease = 1 - (1 - t) ** 3;
-			pointer = {
-				roll: from.roll + (toward.roll - from.roll) * ease,
-				lift: from.lift + (toward.lift - from.lift) * ease,
-			};
-			if (t === 1) steerStarted = undefined;
+		if (steering()) {
+			// Time belongs to the painted pose, so even frame-aligned samples
+			// can't starve it. On wake or a late paint, take one nominal step:
+			// the latest target may have arrived just now and must not inherit
+			// the idle/stall gap. Don't spend the surplus with catch-up draws.
+			const elapsed =
+				pointerPaintedAt === undefined ? PAINT_PERIOD : now - pointerPaintedAt;
+			const step = elapsed > LATE_FRAME_MS ? PAINT_PERIOD : elapsed;
+			const blend = -Math.expm1(-step / STEER_RESPONSE_MS);
+			pointer.roll += (toward.roll - pointer.roll) * blend;
+			pointer.lift += (toward.lift - pointer.lift) * blend;
+			if (
+				Math.abs(toward.roll - pointer.roll) <=
+					TURN_INPUT * STEER_SETTLE_FRACTION &&
+				Math.abs(toward.lift - pointer.lift) <=
+					LIFT_INPUT * STEER_SETTLE_FRACTION
+			) {
+				pointer.roll = toward.roll;
+				pointer.lift = toward.lift;
+			}
 		}
+		pointerPaintedAt = steering() ? now : undefined;
 		pose = {
 			advance: base.advance,
 			roll: base.roll + pointer.roll,
 			lift: pointer.lift,
 		};
 		paint();
-		if (arrivalStarted === undefined && steerStarted === undefined) stop();
+		if (arrivalStarted === undefined && !steering()) idle();
 		else frame = view.requestAnimationFrame(tick);
 	};
 	const schedule = () => {
 		if (frame !== undefined) return;
+		wakeRequestedAt = view.performance.now();
 		canvas.dataset.loHorizonMotion = "running";
 		frame = view.requestAnimationFrame(tick);
 	};
 	const begin = () => {
 		arriving = false;
 		arrivalStarted = view.performance.now();
-		steerStarted = undefined;
-		from = pointer = toward = { roll: 0, lift: 0 };
+		resetPointer();
 		pose = arrival(0);
 		paint();
 		schedule();
 	};
-	const steer = (roll: number, lift: number) => {
-		if (roll === toward.roll && lift === toward.lift) return;
-		toward = { roll, lift };
-		steerStarted = view.performance.now();
-		from = pointer;
-		schedule();
-	};
 	const move = (event: PointerEvent) => {
 		if (event.pointerType !== "mouse" || !canMove()) return;
-		bounds ??= paper.getBoundingClientRect();
-		if (!bounds.width || !bounds.height) return;
-		const x = unit((event.clientX - bounds.left) / bounds.width) * 2 - 1;
-		const y = unit((event.clientY - bounds.top) / bounds.height) * 2 - 1;
-		steer(x * TURN_INPUT, y * LIFT_INPUT);
+		const { clientX, clientY } = event;
+		if ((bounds || samplePending) && latestX === clientX && latestY === clientY)
+			return;
+		// Off-paper coordinates already clamped to the same edge don't wake
+		// an idle canvas, either. While running, leave all mapping to the paint.
+		if (
+			frame === undefined &&
+			bounds &&
+			latestX !== undefined &&
+			sameClamped(clientX, latestX, bounds.left, bounds.left + bounds.width) &&
+			sameClamped(clientY, latestY, bounds.top, bounds.top + bounds.height)
+		)
+			return;
+		// Many events can land between paints. Keep only the newest coordinates;
+		// even the surface rect is read lazily on the first eligible paint.
+		latestX = clientX;
+		latestY = clientY;
+		samplePending = true;
+		schedule();
 	};
 	const leave = (event: PointerEvent) => {
 		if (event.pointerType !== "mouse" || !canMove()) return;
 		bounds = undefined;
-		steer(0, 0);
+		if (latestX === undefined) return;
+		latestX = undefined;
+		samplePending = true;
+		schedule();
 	};
 	const suspend = () => {
 		if (canvasUnavailable) return;
@@ -465,7 +551,7 @@ export function trackNewChatHorizon(
 		if (typeof time === "number" && Number.isFinite(time)) {
 			// Capture tools can seek a deterministic instant without wall-clock
 			// races. No controls or other public UI are introduced for this hook.
-			from = pointer = toward = { roll: 0, lift: 0 };
+			resetPointer();
 			pose = arrival(unit(time));
 			paint();
 		} else begin();
