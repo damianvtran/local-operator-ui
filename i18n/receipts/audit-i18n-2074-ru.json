@@ -1,0 +1,128 @@
+{
+	"instance": "audit-i18n-2074-ru",
+	"locale": "ru",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.chat.voice"
+	],
+	"auditor": {
+		"agent": "reviewer (lopdev team, audit-2074-ru task)",
+		"session": "unknown — session id not exposed to this task; identify by task label audit-2074-ru",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header 'Model: anthropic/claude-sonnet-5-5'); no provider fallback occurred.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only reviewer session; edited no repo file, posted nothing to GitHub, ran no writing ledger script. Not the translator session; same model family (anthropic/claude-sonnet-5-5) as the translator, separate session with no shared context. Judged from bytes at e2e2e812e2, the en context sidecar, ru style guide and shipped ru strings."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"references": {
+		"style_guide": "damianvtran/local-operator origin/main i18n/style-guides/ru.md",
+		"glossary": "origin/main i18n/glossary.md (no entry for replay/play/spoken summary)",
+		"shipped_terms": "ru spoken_part_note «Озвучено: только начало»; phase_speaking «Говорю»; ui.common.speech.speak_control.replay_speech «Повторить озвучивание»; speak_aloud «Озвучить»; ui.chat.audio.play «Воспроизвести»; retry/try_again «Повторить»; ui.chat.trace.sessions.peek.digest «сводка»"
+	},
+	"diff_audited": "git diff origin/feat/voice-history-full-text e2e2e812e2 -- ru/ui.chat.voice.json: +10 keys at end of file; the single '-' line is the prior last line gaining a trailing comma, no value changed.",
+	"scope_note": "All 10 new keys audited. Checks passed: en/ru key set and order identical (91/91); no placeholders/ICU in en or ru values; all values NFC; no Cc/Cf/bidi chars; no ASCII '...'; no double spaces; no leading/trailing space; only non-Cyrillic non-ASCII code points are U+00B7 (summary_stopped, summary_cut; matches en) and U+2191 (full_reply_link; matches en, arrow kept per sidecar; ru is LTR so no bidi handling needed). Punctuation per ru guide: sentence case, no Title Case, no '!', no spacing before ':'/';' (none used); parenthesis plain. Lengths 6-24 chars, all fit one line at 393px. summary_label/stopped/cut reuse «Озвучено» and «только начало», matching shipped spoken_part_note as the sidecar requires; summary_speaking identical to phase_speaking «Говорю» as the sidecar requires; summary_muted «Не озвучено (без звука)» consistent with byok_speech_rate_limited «не озвучен» and ru mute idiom «без звука»; play = shipped ui.chat.audio.play. Two minor findings (replay, summary_static), neither blocks.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "findings",
+			"keys_audited": 10,
+			"keys": [
+				"ui.chat.voice.summary_label",
+				"ui.chat.voice.summary_upcoming",
+				"ui.chat.voice.summary_speaking",
+				"ui.chat.voice.summary_stopped",
+				"ui.chat.voice.summary_muted",
+				"ui.chat.voice.summary_cut",
+				"ui.chat.voice.summary_static",
+				"ui.chat.voice.replay",
+				"ui.chat.voice.play",
+				"ui.chat.voice.full_reply_link"
+			],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"ru": "69b314d5af3654d991b20642c08689ed80159d5dcc4057381052a11a4dcd31d0"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"per_key": [
+				{
+					"key": "ui.chat.voice.summary_label",
+					"value": "Озвучено",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_upcoming",
+					"value": "Будет озвучено",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_speaking",
+					"value": "Говорю",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_stopped",
+					"value": "Озвучено · прервано",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_muted",
+					"value": "Не озвучено (без звука)",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_cut",
+					"value": "Озвучено · только начало",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.summary_static",
+					"value": "Устное резюме",
+					"result": "finding"
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"value": "Повторить",
+					"result": "finding"
+				},
+				{
+					"key": "ui.chat.voice.play",
+					"value": "Воспроизвести",
+					"result": "ok"
+				},
+				{
+					"key": "ui.chat.voice.full_reply_link",
+					"value": "Полный ответ в чате ↑",
+					"result": "ok"
+				}
+			],
+			"findings": [
+				{
+					"key": "ui.chat.voice.summary_static",
+					"value": "Устное резюме",
+					"severity": "minor",
+					"suggested": "Сводка для озвучивания",
+					"reason": "«Устное» = oral/by word of mouth (устный экзамен, устная договорённость) and bare «резюме» reads as CV in UI; en means a short summary written to be read aloud. «Сводка» is already the shipped ru digest/summary word (ui.chat.trace.sessions.peek.digest «сводка»). 22 chars, fits a one-line label."
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"value": "Повторить",
+					"severity": "minor",
+					"suggested": "Повторить озвучивание",
+					"reason": "Shipped ru ui.common.speech.speak_control.replay_speech = «Повторить озвучивание»; bare «Повторить» is byte-identical to shipped ui.chat.voice.retry/try_again (Retry), so the icon-only accessible name (narrow window, per sidecar) is ambiguous with Retry. 21 chars; acceptable alternative if width is tight: keep «Повторить» visible but use «Повторить озвучивание» as aria-label (needs a separate key, so only if the UI supports it)."
+				}
+			]
+		}
+	},
+	"findings_total": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	}
+}

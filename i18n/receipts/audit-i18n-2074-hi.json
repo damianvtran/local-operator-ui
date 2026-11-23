@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev audit-2074-hi reviewer task; not the translator session)",
+ "agent": "translation-auditor (lopdev audit-2074-hi reviewer task; not the translator session)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Session header served model; every read, check and verdict ran on it.",
+ "fallback": "none",
+ "independence": "Separate lopdev reviewer task session from the one that translated the keys. Same model family/name as the translator (anthropic/claude-sonnet-5-5), so independence is by session and by rebuilding the judgement from en source, context sidecar, sibling shipped hi keys, glossary and hi style guide, not by a different model. Read-only on the worktree; this receipt is the only file written.",
+ "independent_from_translator_session": true,
+ "instance": "audit-i18n-2074-hi",
+ "session": "443867b3dec1 (LOCAL_OPERATOR_SESSION_ID of this auditor session)",
+ "locale": "hi",
+ "branch": "feat/voice-spoken-summary (worktree voice-spoken-summary)",
+ "head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+ "base": "origin/feat/voice-history-full-text (ebd662e4d0db9774d4a69a65cf3f9067e170c919)",
+ "repo": "damianvtran/local-operator-ui",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+ "worktree": "/Users/bentran/workspace/repos/local-operator-ui/.worktrees/voice-spoken-summary",
+ "date": "2026-11-23",
+ "status": "passed",
+ "result": "clean",
+ "finding_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "scope": "hi vs en, 10 NEW keys in ui.chat.voice (diff = 10 additions; the only removed line is the previous last key regaining its comma). Checked: meaning vs en and context note, आप/polite-imperative register, glossary/hi style guide, consistency with shipped spoken_part_note, cut_chip, phase_speaking, phase_interrupted, mute/unmute, byok_speech_failed, ui.chat.audio.play, ICU (none), ASCII ' · ' and ↑ kept, no ASCII '...', no double/edge spaces, no Cc/Cf/bidi code points, NFC, en/hi key sets equal 91/91, one-line fit (5-35 code points; longest summary_cut 35, same length class as shipped spoken_part_note 33/cut_chip 27; label can wrap in the 393px block, icon+label buttons are 5 and 13 code points). Hashes are sha256 of whole-file bytes at this head.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md @ origin/main c47b28f09)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/hi.md @ origin/main c47b28f09)": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "verified": [
+  "summary_label 'बोलकर सुनाया गया' = 'Spoken aloud'; same stem as shipped spoken_part_note ('बोलकर सुनाया गया: केवल पहला हिस्सा'), as the context note requires.",
+  "summary_upcoming 'बोलकर सुनाया जाएगा' = future of the same stem; matches 'will be read aloud once the reply finishes'.",
+  "summary_speaking 'बोल रही है' identical to shipped phase_speaking (feminine voice, per context 'same word and person').",
+  "summary_stopped 'बोलकर सुनाया गया · बीच में रुका' - U+00B7 separator kept, ASCII-spaced; 'बीच में रुका' = stopped midway, not an error, agrees with masculine 'सुनाया गया'. Shipped phase_interrupted uses 'बीच में रोका गया'; either is valid, so not a finding.",
+  "summary_muted 'सुनाया नहीं गया (म्यूट)' = 'Not spoken (muted)'; 'म्यूट' matches shipped mute/unmute loan.",
+  "summary_cut 'बोलकर सुनाया गया · केवल पहला हिस्सा' mirrors spoken_part_note with the en middle-dot form; 'केवल पहला हिस्सा' unchanged from shipped.",
+  "summary_static 'बोला गया सारांश' = 'Spoken summary' noun phrase; en carries the same participle, no claim beyond en.",
+  "replay 'फिर से सुनाएँ' polite imperative, 2 words; 'फिर से' is the repo's retry/redo form; ok as icon-only accessible name.",
+  "play 'चलाएँ' identical to shipped ui.chat.audio.play and ui.canvas play wording.",
+  "full_reply_link 'चैट में पूरा जवाब ↑' short noun phrase with ↑ kept; 'जवाब' is the voice namespace's word for reply; same arrow-final shape as cut_chip. Arrow is not RTL-affected in hi."
+ ],
+ "namespaces": {
+  "ui.chat.voice": {
+   "namespace": "ui.chat.voice",
+   "status": "passed",
+   "result": "clean",
+   "delta_keys_audited": [
+    "ui.chat.voice.summary_label",
+    "ui.chat.voice.summary_upcoming",
+    "ui.chat.voice.summary_speaking",
+    "ui.chat.voice.summary_stopped",
+    "ui.chat.voice.summary_muted",
+    "ui.chat.voice.summary_cut",
+    "ui.chat.voice.summary_static",
+    "ui.chat.voice.replay",
+    "ui.chat.voice.play",
+    "ui.chat.voice.full_reply_link"
+   ],
+   "sha256": {
+    "en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+    "hi": "763e8b7dad7dac9673b18b5c89bd2c44a8e15d07c0a2f6f57d0224dafa8e231b"
+   },
+   "context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.voice.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.voice.json",
+    "context": "src/i18n/catalogues/en/ui.chat.voice.context.json"
+   },
+   "findings": []
+  }
+ }
+}
