@@ -4053,7 +4053,11 @@ html:not([data-glass]) [data-workspace-shell]:has([data-chat-workspace]) {
 	display: none;
 }
 [data-workspace-inset] > [data-chat-region="header"] {
-	padding-inline: 12px;
+	/* With the normal 8px gutter the first tab and frame share an edge.
+	 * The selector's glyph already sits 4px into its button, so pay only
+	 * the other half of the tab label's 8px inset here. */
+	padding-inline-start: 4px;
+	padding-inline-end: 12px;
 }
 [data-workspace-inset] {
 	/* Chat's pane occupants also mount in flush hosts. Inside the framed
@@ -4180,17 +4184,35 @@ html[data-glass~="sidebar"] [data-workspace-tabs] {
 	max-width: 50%;
 }
 [data-workspace-tab] {
+	--workspace-tab-fill: color-mix(
+		in oklab,
+		var(--color-canvas) 48%,
+		var(--color-surface)
+	);
+	position: relative;
+	isolation: isolate;
 	display: flex;
 	align-items: center;
 	min-width: 0;
 	max-width: min(218px, 100%);
 	flex: 0 0 auto;
-	border-radius: 5px;
-	background: color-mix(in oklab, var(--color-canvas) 48%, var(--color-surface));
 	color: var(--color-ink-muted);
 }
+/* In the 32px lane, a 28px tab already leaves 2px outside its hit box.
+ * Inset only the paint by another 2px per edge for 4px of visible air,
+ * without growing the no-drag scrollports or touching the button targets. */
+[data-workspace-tab]::before {
+	content: "";
+	position: absolute;
+	z-index: -1;
+	inset-block: 2px;
+	inset-inline: 0;
+	border-radius: 5px;
+	background: var(--workspace-tab-fill);
+	pointer-events: none;
+}
 [data-workspace-tab][data-active] {
-	background: color-mix(
+	--workspace-tab-fill: color-mix(
 		in oklab,
 		var(--color-row-selected) 44%,
 		var(--color-surface)

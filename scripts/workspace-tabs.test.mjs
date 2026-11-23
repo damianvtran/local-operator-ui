@@ -49,6 +49,24 @@ const source = (name) =>
 	readFileSync(new URL(`../src/renderer/src/${name}`, import.meta.url), "utf8");
 const modelPath = "features/chat/components/";
 const routePath = /^\/chat\//;
+const TAB_STRIP =
+	/\[data-workspace-tabs\]\s*\{[^}]*align-items: center;\s*min-height: 32px;/;
+const TAB_PAINT_HOST =
+	/\[data-workspace-tab\]\s*\{[^}]*position: relative;\s*isolation: isolate;/;
+const TAB_PAINT =
+	/\[data-workspace-tab\]::before\s*\{[^}]*z-index: -1;\s*inset-block: 2px;[^}]*background: var\(--workspace-tab-fill\);\s*pointer-events: none;/;
+const ACTIVE_TAB_PAINT =
+	/\[data-workspace-tab\]\[data-active\]\s*\{\s*--workspace-tab-fill:/;
+const DRAG_SPACER = /\[data-workspace-tab-spacer\]\s*\{\s*align-self: stretch;/;
+const NO_DRAG_TAB = /data-workspace-tab=""[^>]*data-titlebar-no-drag=""/;
+const TAB_TARGET = /className="flex h-7 [^"]+"\s*aria-current=/;
+const CLOSE_TARGET = /data-workspace-close=""\s*className="[^"\n]*\bsize-6\b/;
+const MORE_TARGET =
+	/data-workspace-more=""\s*data-titlebar-no-drag=""\s*className="[^"\n]*\bsize-7\b/;
+const TAB_FOCUS =
+	/\[data-workspace-tabs\] button:focus-visible\s*\{\s*outline: 2px solid var\(--color-accent\);\s*outline-offset: -2px;/;
+const HEADER_PADDING =
+	/\[data-workspace-inset\] > \[data-chat-region="header"\] \{[^}]*padding-inline-start: 4px;\s*padding-inline-end: 12px;\s*\}/;
 
 test("reopening canonical ids focuses the existing target without adding a duplicate", () => {
 	const opened = syncWorkspaceTabs([], targetA, {});
@@ -233,6 +251,27 @@ for (const [locale, check] of Object.entries({
 		assert.ok(check(label, closeTab), label);
 	});
 }
+
+test("the 32px strip leaves 4px of settled air on both sides of the tab paint without sacrificing hit area", () => {
+	const css = source("styles/index.css");
+	const strip = source(`${modelPath}workspace-tabs.tsx`);
+	// The centered 28px target leaves 2px of native lane on each edge; another
+	// 2px comes only out of its paint, not the scrollport or pointer target.
+	assert.match(css, TAB_STRIP);
+	assert.match(css, TAB_PAINT_HOST);
+	assert.match(css, TAB_PAINT);
+	assert.match(css, ACTIVE_TAB_PAINT);
+	assert.match(css, DRAG_SPACER);
+	assert.match(strip, NO_DRAG_TAB);
+	assert.match(strip, TAB_TARGET);
+	assert.match(strip, CLOSE_TARGET);
+	assert.match(strip, MORE_TARGET);
+	assert.match(css, TAB_FOCUS);
+});
+
+test("header leading padding follows direction without moving its trailing actions", () => {
+	assert.match(source("styles/index.css"), HEADER_PADDING);
+});
 
 test("titlebar activation and actions keep one navigation owner and never trust a drop payload", () => {
 	const strip = source(`${modelPath}workspace-tabs.tsx`);

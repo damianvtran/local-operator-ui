@@ -189,8 +189,8 @@ type ChatHeaderProps = {
 	 */
 	renameSessionId?: string;
 	/**
-	 * Hold the pencil's 20px box (plus the group's gap) before `renameSessionId`
-	 * exists, on a pane whose conversation will gain one - a new chat on a
+	 * In a header that owns the title, hold the pencil's 20px box (plus the
+	 * group's gap) before `renameSessionId` exists - a new chat on a
 	 * backend with `commands` (design round 1, D1a). The pencil mounted at the
 	 * create hop and pushed the line beside it 24px right with no visible cause;
 	 * an empty `aria-hidden` box of the same size makes that mount a swap in place.
@@ -1107,7 +1107,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						 */}
 						<span
 							className={cn(
-								"group/title inline-flex min-w-0 max-w-full items-center gap-1",
+								"group/title min-w-0 max-w-full items-center gap-1",
+								// The tab owns the title here. Drop an empty title slot so
+								// it can't leave a flex gap before the first selector.
+								titleInWorkspaceTab && !renaming && !avatar
+									? "hidden"
+									: "inline-flex",
 							)}
 							/*
 							 * THE TITLE IS A CLIENT-AREA SURFACE, AND THIS IS THE LINE THAT MAKES
@@ -1324,7 +1329,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Pencil className={cn("size-3")} aria-hidden="true" />
 									)}
 								</button>
-							) : renameSlotReserved ? (
+							) : renameSlotReserved && !titleInWorkspaceTab ? (
+								// Workspace rename lives in the actions menu, so a draft
+								// there has no future pencil to hold room for.
 								<span aria-hidden="true" className={cn("size-5 shrink-0")} />
 							) : null}
 						</span>
