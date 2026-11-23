@@ -84,12 +84,16 @@ export type ProjectsSearchControlsProps = {
 	resultText: string | null;
 	/**
 	 * The class that reveals the count at the width its own row can hold it
-	 * (see the count's comment): List and Timeline reveal at 37rem of
-	 * container, the Board at 47rem, whose row also carries the window
+	 * (see the count's comment): List and Timeline reveal at 47rem of
+	 * container, the Board at 57rem, whose row also carries the window
 	 * control. The default is the List/Timeline constant.
 	 */
 	countRevealClass?: string;
-	/** The board's window select, when the Board is the view. */
+	/**
+	 * Closes the cluster: the Board's window select (when the Board is the
+	 * view) and the page's refresh / New project actions. Inside the cluster,
+	 * not beside it, so the field shrinks before they wrap.
+	 */
 	trailing?: ReactNode;
 	/**
 	 * The listing read FAILED: the Filters door closes (design §2.3 — filtering
@@ -111,7 +115,7 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	onClearAll,
 	todayMs,
 	resultText,
-	countRevealClass = "@[37rem]:inline",
+	countRevealClass = "@[47rem]:inline",
 	trailing,
 	disabled = false,
 	searchFieldRef,
@@ -255,7 +259,10 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 				 * row fits the count from 592px of container (572 wrapped, 592 fit),
 				 * the Board's from 752px (732 wrapped, 752 fit) because it carries
 				 * the window control as well; the page passes the Board's constant
-				 * down. Below the boundary the row stays single-line in state 0 AND
+				 * down. Those fits predate the page's refresh / New project moving
+				 * into `trailing` (the lone header row's removal); the reveals now
+				 * add that group's ~152px, rounded up to 10rem (47 / 57rem) - a
+				 * derived boundary, not re-measured. Below the boundary the row stays single-line in state 0 AND
 				 * state 1. The sr-only announcement above stays unconditional — the
 				 * shed is a layout decision, not an information one.
 				 */
