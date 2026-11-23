@@ -113,6 +113,15 @@ export const teamBridgeConversationSchema = z
 		 * `archived_by_label` is best effort and the banner degrades without it.
 		 */
 		can_administer: z.boolean().optional(),
+		/*
+		 * TEAM INTEGRATIONS (RFC §10 item 2, U3): true for an org owner/admin, so
+		 * the client never guesses who may manage apps from a role. Today the hub
+		 * publishes it on `GET /v1/tenants/:id/integrations/channels`
+		 * (`IntegrationChannelsResponse`), not yet on the conversation view; absent
+		 * reads as false, so the "Manage apps" entry stays hidden (fail closed)
+		 * until a hub or daemon carries it here.
+		 */
+		can_manage_integrations: z.boolean().optional().catch(undefined),
 		archived_at: z.string().optional(),
 		archived_by: id.optional(),
 		archived_by_label: z.string().min(1).max(64).optional(),
@@ -461,6 +470,93 @@ export type TeamBridgeMessageOrigin = z.infer<
 >;
 export type TeamBridgeSenderKind = z.infer<typeof teamBridgeSenderKindSchema>;
 
+/*
+ * THE ALERT CARD'S DATA (Team Integrations RFC §6.1 item 2, agent-server
+ * #413/#451/#463 `models.BridgeAlertMeta`). The hub writes `alert_meta` on an
+ * integration alert ROOT only; the root's `body` is immutable and deterministic
+ * (it cannot track a severity raised later), so everything that changes over an
+ * incident's life - status, severity, fire and group counts - is read from here.
+ *
+ * FAIL SOFT, FIELD BY FIELD. The block is additive and server-owned: a hub
+ * before #413 sends none of it, and one malformed field must cost that field
+ * (the card degrades to what it can still say), never the message or the page.
+ * `severity` and `status` stay OPEN strings for the same reason the origin enum
+ * catches to `unknown`: a newer vocabulary renders as "unknown", not as a parse
+ * failure. Normalisation lives in `team-bridge-alert-model.ts`.
+ *
+ * Agent-server #465 projects a display-only `claim_summary`. Older hubs omit
+ * it; the card says no claim was reported rather than assuming it is unclaimed.
+ * A remote waiting flag conveys status, never authority to open a local ask.
+ */
+const alertString = z.string().max(512).optional().catch(undefined);
+const alertCount = z.number().int().nonnegative().optional().catch(undefined);
+export const teamBridgeAlertClaimSummarySchema = z.object({
+	state: z.string().max(32).optional().catch(undefined),
+	holder_kind: z.string().max(32).optional().catch(undefined),
+	holder_name: z.string().max(64).optional().catch(undefined),
+	owner_name: z.string().max(64).optional().catch(undefined),
+	updated_at: alertString,
+	lease_expires_at: z
+		.string()
+		.datetime({ offset: true })
+		.optional()
+		.catch(undefined),
+	waiting_approval: z.boolean().optional().catch(undefined),
+});
+export type TeamBridgeAlertClaimSummary = z.infer<
+	typeof teamBridgeAlertClaimSummarySchema
+>;
+export const teamBridgeAlertMetaSchema = z
+	.object({
+		incident_key: alertString,
+		app_id: alertString,
+		app_name: alertString,
+		source: alertString,
+		severity: alertString,
+		vendor_priority: alertString,
+		status: alertString,
+		fire_count: alertCount,
+		first_fired_at: alertString,
+		last_fired_at: alertString,
+		resolved_at: alertString,
+		grouped_count: alertCount,
+		group_resolved_count: alertCount,
+		storm: z.boolean().optional().catch(undefined),
+		is_test: z.boolean().optional().catch(undefined),
+		/* Per entry: one malformed label or link costs that chip, not the card. */
+		labels: z
+			.array(
+				z
+					.object({ key: z.string().max(128), value: z.string().max(256) })
+					.passthrough()
+					.nullable()
+					.catch(null),
+			)
+			.max(64)
+			.optional()
+			.catch(undefined),
+		links: z
+			.array(
+				z
+					.object({
+						label: z.string().max(128).optional(),
+						host: z.string().max(253),
+						url: z.string().max(2048),
+					})
+					.passthrough()
+					.nullable()
+					.catch(null),
+			)
+			.max(16)
+			.optional()
+			.catch(undefined),
+		claim_summary: teamBridgeAlertClaimSummarySchema
+			.optional()
+			.catch(undefined),
+	})
+	.passthrough();
+export type TeamBridgeAlertMeta = z.infer<typeof teamBridgeAlertMetaSchema>;
+
 /* Host-captured, owner-attested DISPLAY ONLY: never a principal, grant or
  * endpoint alias. A future/invalid leaf must not discard the history message.
  * Keep this object closed so unsupported wire shapes fall back neutrally. */
@@ -577,6 +673,10 @@ export const teamBridgeMessageSchema = z
 		delivery_summary: teamBridgeDeliverySummarySchema
 			.optional()
 			.catch(undefined),
+		/* Integration alert roots only (see `teamBridgeAlertMetaSchema`). A
+		 * malformed block costs the card, never the message: the row then
+		 * renders the app's deterministic body as an ordinary app post. */
+		alert_meta: teamBridgeAlertMetaSchema.optional().catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;

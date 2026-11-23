@@ -1,0 +1,66 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-ur",
+	"date": "2026-11-21",
+	"locale": "ur",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/ur.md sha256:7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+		"shipped_terms": "src/i18n/catalogues/ur/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"ur": "616acab5696bf0b26885353b515279edc362b60e265ca8ed670d2bd40451932f"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-UR1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.responder.title",
+			"current": "#{channel} میں الرٹس کا جواب دیں",
+			"replacement": "No catalogue change (manual bidi controls are banned in ur). Code follow-up: add '#' to SIGIL in src/i18n/bidi.ts:148 with a regression case.",
+			"note": "Measured: translate(key,{channel:'alerts-prod'},'ur') then fribidi --rtl paints 'alerts-prod#'. Pre-existing class: shipped ui.teamBridge.notify.channel paints the same; this key adds an instance."
+		},
+		{
+			"id": "T-UR2",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.responder.read_only",
+			"current": "…انہیں آپ کے آلے پر محفوظ کرنے کا…",
+			"replacement": "یہ ترتیبات ابھی محفوظ نہیں ہو سکتیں۔ Local Operator کے اس ورژن میں انہیں آپ کی ڈیوائس پر محفوظ کرنے کا کوئی معاون طریقہ نہیں، اس لیے {agent} یہاں الرٹس کا جواب نہیں دیتا۔ اختیارات پہلے سے طے شدہ اقدار دکھاتے ہیں۔",
+			"note": "Glossary device -> ڈیوائس (170 shipped uses, 'کی ڈیوائس' form); 'آلہ' is a different term for the same concept."
+		},
+		{
+			"id": "T-UR3",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.responder.severity_label",
+			"current": "{agent} کو جگائیں برائے",
+			"replacement": "{agent} کو جگائیں",
+			"note": "Trailing 'برائے' is a dangling preposition; the shipped sibling ui.teamBridge.agentNotify.label is 'اپنے ایجنٹ کو جگائیں'."
+		},
+		{
+			"id": "T-UR4",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.fingerprint",
+			"current": "id {id}",
+			"replacement": "آئی ڈی {id}",
+			"note": "Measured: fribidi --rtl paints 'a1b2c3 id' (label after the value). The shipped ur form is 'آئی ڈی' (ui.hub.links.hub_id)."
+		},
+		{
+			"id": "T-UR5",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.group_count",
+			"current": "{total, plural, one {# الرٹ} other {# الرٹس}}، {resolved, number} حل ہوئے",
+			"replacement": "{total, plural, one {# الرٹ} other {# الرٹس}}، حل شدہ: {resolved, number}",
+			"note": "'1 حل ہوئے' uses the plural verb for one."
+		}
+	]
+}

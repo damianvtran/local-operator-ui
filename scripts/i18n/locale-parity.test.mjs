@@ -42,6 +42,18 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.teamBridge.alerts.more_labels",
+		// `+{count, number}`: the alert card's label-overflow chip, one sign and a
+		// locale-formatted number, no words. The number is localized by ICU; the
+		// `+` is the same in every shipped locale. Audited in local-operator-ui
+		// #2027 round 1 (receipts i18n/receipts/82b84532d1e1-alerts-r1-*.json).
+		"language-neutral format string: a plus sign and a localized number, no words",
+	],
+	[
+		"fr:ui.teamBridge.alerts.test_badge",
+		"French noun: « Test » is the normal spelling for a test alert badge (audited in #2027 round 1).",
+	],
+	[
 		"ui.phone_pairing.platform.ios",
 		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
 	],

@@ -97,6 +97,10 @@ import {
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
+import {
+	type TeamBridgeAlertActions,
+	TeamBridgeAlertActionsContext,
+} from "./team-bridge-alert-card";
 import { TeamBridgeRequests } from "./team-bridge-approvals";
 import {
 	TeamBridgeArchiveDialog,
@@ -271,6 +275,15 @@ import {
 	type TeamBridgeRenameFailure,
 	renameFailure,
 } from "./team-bridge-rename-dialog";
+import { TeamBridgeResponderDialog } from "./team-bridge-responder-dialog";
+
+/*
+ * Org-level app administration lives in the Radient console (RFC §10 item 2:
+ * "user-console /dashboard/integrations"), so the desktop's "Manage apps"
+ * entry is a link-out, offered only with the hub's `can_manage_integrations`.
+ */
+const TEAM_INTEGRATIONS_CONSOLE_URL =
+	"https://console.radienthq.com/dashboard/integrations";
 import {
 	TeamBridgeEarlyColumn,
 	TeamBridgeRouteColumn,
@@ -999,7 +1012,7 @@ export type TeamBridgePageViewProps = {
 		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => void;
 	initialDialog?: {
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "responder";
 		conversationId: string;
 	};
 	/**
@@ -1276,7 +1289,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
-		kind: "archive" | "delete" | "rename";
+		kind: "archive" | "delete" | "rename" | "responder";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
@@ -2952,6 +2965,26 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		selfAccountId
 			? rosterFor(tenantId).find((row) => row.account_id === selfAccountId)
 			: undefined;
+	/*
+	 * The hub reports that a claim is waiting, not which local ask it belongs
+	 * to. Only wire "Responders", using the conversation menu's own rule for
+	 * the "Alert responder" item so the card never offers what the menu would not.
+	 */
+	const alertActions: TeamBridgeAlertActions = {
+		onResponders:
+			shown &&
+			!readOnly &&
+			shown.kind === "channel" &&
+			shown.status === "open" &&
+			shown.members.some(
+				(row) =>
+					row.kind === "agent" &&
+					row.account_id === selfAccountId &&
+					row.state === "active",
+			)
+				? () => setDialog({ kind: "responder", conversationId: shown.id })
+				: undefined,
+	};
 	const menuFor = (conversation: TeamBridgeConversation) => {
 		const selectedRow = isSelectedConversation(conversation);
 		const notifyWrite =
@@ -2979,6 +3012,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					wiring: {
 						viewMembers: true,
 						addMembers: Boolean(onAddMembers),
+						manageApps: true,
+						responder: true,
 						rename: Boolean(onRename),
 						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
 						notify: Boolean(notifyWrite),
@@ -3012,6 +3047,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				setMemberActionFailed(false);
 				setMembersOpen(true);
 			},
+			onManageApps: () => openConsolePage(TEAM_INTEGRATIONS_CONSOLE_URL),
+			onResponder: () =>
+				setDialog({ kind: "responder", conversationId: conversation.id }),
 			onRename: () => {
 				renameOpen.current += 1;
 				setRenameFailed(null);
@@ -4480,100 +4518,104 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											: t("ui.teamBridge.thread.empty")}
 									</p>
 								) : (
-									<TeamBridgeMessageList
-										messages={merged.messages}
-										unreadAfterSeq={unreadAfterSeq}
-										events={events}
-										presentationOf={(message) => {
-											const local = merged.localOf(message);
-											/* A CONFIRMED row the page has not carried yet is drawn from
-											   the send response; it is the server's, so it keeps full ink
-											   and its real seq - only an unconfirmed row is "local". */
-											const unconfirmed =
-												local !== undefined &&
-												(local.status !== "sent" ||
-													local.serverRow === undefined);
-											return {
-												key: merged.keyOf(message),
-												local: unconfirmed,
-												delivery:
-													local && unconfirmed
-														? {
-																status:
-																	local.status === "failed"
-																		? "failed"
-																		: "pending",
-																/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
-															   attempt: the hub dedupes a request that landed with
-															   its answer lost. EDIT puts the words back in the box
-															   and drops the row, which is the other thing a reader
-															   wants to do with a message that did not go. */
-																onRetry:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				usePendingSends
-																					.getState()
-																					.patch(local.localId, {
-																						status: "pending",
-																						autoRetried: local.autoRetried,
-																					});
-																				void deliverOptimistic(local);
-																			}
-																		: undefined,
-																onEdit:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				useConversationInputStore
-																					.getState()
-																					.returnPayload(composerKey, {
-																						text: local.body,
-																						attachments: [],
-																						replies: [],
-																					});
-																				usePendingSends
-																					.getState()
-																					.remove(local.localId);
-																			}
-																		: undefined,
-															}
-														: undefined,
-											};
-										}}
-										profileFor={(sender) =>
-											profileFor(sender, shown?.tenant_id ?? "")
-										}
-										canMessagePerson={(sender) =>
-											messageTarget(sender, shown?.tenant_id ?? "") !== null
-										}
-										onMessagePerson={
-											identityKnown
-												? (sender) =>
-														messagePerson(sender, shown?.tenant_id ?? "")
-												: undefined
-										}
-										arrivalKey={timelineArrivalKey}
-										highlightId={highlightMessageId}
-										/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
-										   turns on the virtualized path (see `TeamBridgeMessageList`): only
-										   the visible rows plus overscan mount, and the list asks for an
-										   older page when the reader nears the top. */
-										scrollRootRef={timeline.rootRef}
-										isPinned={timeline.isPinned}
-										hasOlder={olderPaging?.hasOlder ?? false}
-										loadingOlder={olderPaging?.loadingOlder ?? false}
-										onLoadOlder={olderPaging?.onLoadOlder}
-										tenantId={shown?.tenant_id}
-										accountId={selfAccountId}
-										labelFor={(sender) =>
-											labelFor(sender, shown?.tenant_id ?? "")
-										}
-										reactionContext={reactionContext}
-										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
-										   reply button and the "N replies" summary are both rendered from this
-										   prop, and a visible Reply that opens nothing is the dead end the
-										   fail-closed rule forbids. */
-										onReply={threadsAvailable ? openThreadFor : undefined}
-									/>
+									<TeamBridgeAlertActionsContext.Provider value={alertActions}>
+										<TeamBridgeMessageList
+											messages={merged.messages}
+											unreadAfterSeq={unreadAfterSeq}
+											events={events}
+											presentationOf={(message) => {
+												const local = merged.localOf(message);
+												/* A CONFIRMED row the page has not carried yet is drawn from
+												   the send response; it is the server's, so it keeps full ink
+												   and its real seq - only an unconfirmed row is "local". */
+												const unconfirmed =
+													local !== undefined &&
+													(local.status !== "sent" ||
+														local.serverRow === undefined);
+												return {
+													key: merged.keyOf(message),
+													local: unconfirmed,
+													delivery:
+														local && unconfirmed
+															? {
+																	status:
+																		local.status === "failed"
+																			? "failed"
+																			: "pending",
+																	/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
+																   attempt: the hub dedupes a request that landed with
+																   its answer lost. EDIT puts the words back in the box
+																   and drops the row, which is the other thing a reader
+																   wants to do with a message that did not go. */
+																	onRetry:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					usePendingSends
+																						.getState()
+																						.patch(local.localId, {
+																							status: "pending",
+																							autoRetried: local.autoRetried,
+																						});
+																					void deliverOptimistic(local);
+																				}
+																			: undefined,
+																	onEdit:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					useConversationInputStore
+																						.getState()
+																						.returnPayload(composerKey, {
+																							text: local.body,
+																							attachments: [],
+																							replies: [],
+																						});
+																					usePendingSends
+																						.getState()
+																						.remove(local.localId);
+																				}
+																			: undefined,
+																}
+															: undefined,
+												};
+											}}
+											profileFor={(sender) =>
+												profileFor(sender, shown?.tenant_id ?? "")
+											}
+											canMessagePerson={(sender) =>
+												messageTarget(sender, shown?.tenant_id ?? "") !== null
+											}
+											onMessagePerson={
+												identityKnown
+													? (sender) =>
+															messagePerson(sender, shown?.tenant_id ?? "")
+													: undefined
+											}
+											arrivalKey={timelineArrivalKey}
+											highlightId={highlightMessageId}
+											/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
+											   turns on the virtualized path (see `TeamBridgeMessageList`): only
+											   the visible rows plus overscan mount, and the list asks for an
+											   older page when the reader nears the top. */
+											scrollRootRef={timeline.rootRef}
+											isPinned={timeline.isPinned}
+											hasOlder={olderPaging?.hasOlder ?? false}
+											loadingOlder={olderPaging?.loadingOlder ?? false}
+											onLoadOlder={olderPaging?.onLoadOlder}
+											tenantId={shown?.tenant_id}
+											accountId={selfAccountId}
+											labelFor={(sender) =>
+												labelFor(sender, shown?.tenant_id ?? "")
+											}
+											reactionContext={reactionContext}
+											/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+											   reply button and the "N replies" summary are both rendered from this
+											   prop, and a visible Reply that opens nothing is the dead end the
+											   fail-closed rule forbids. */
+											onReply={threadsAvailable ? openThreadFor : undefined}
+										/>
+									</TeamBridgeAlertActionsContext.Provider>
 								)}
 							</div>
 						</ScrollArea>
@@ -5060,6 +5102,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					? selectable.find((row) => row.id === dialog.conversationId)
 					: undefined;
 				if (!dialog || !subject) return null;
+				if (dialog.kind === "responder") {
+					/* Read-only in this build (see the dialog's header): it writes
+					   nothing, so it needs no pending/failure state here. */
+					const agentName =
+						selfPersonFor(subject.tenant_id)?.agent?.name?.trim() ||
+						t("ui.teamBridge.sender.unknown_agent");
+					return (
+						<TeamBridgeResponderDialog
+							open
+							channelName={subject.name?.trim() ?? ""}
+							agentName={agentName}
+							onClose={() => setDialog(null)}
+						/>
+					);
+				}
 				if (dialog.kind === "rename") {
 					const kind = subject.kind === "group" ? "group" : "channel";
 					return (
