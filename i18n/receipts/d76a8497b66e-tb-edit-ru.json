@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "Independent semantic copy audit, all 10 namespace values per locale",
+  "locale": "ru",
+  "namespace": "ui.teamBridge.edit",
+  "date": "2026-11-21",
+  "head": "d793782df4782653824960b9a8d785e527e64e39",
+  "source_commit": "2508eaaa9f23f4638023f0e54b15f61467223a39",
+  "instance": "d76a8497b66e-tb-edit-ru",
+  "auditor": "copy-reviewer-d76a8497b66e",
+  "model": "openai/gpt-6.1-sol",
+  "model_provenance": "Harness reported quota/provider fallback from anthropic/claude-opus-5-5 to openai/gpt-6.1-sol before inspection. All semantic inspection and verdicts performed on the fallback model.",
+  "independence": {
+    "auditor_session": "d76a8497b66e",
+    "translator_session": "8d735d413b75",
+    "translator_model": "openai/gpt-6.1-sol",
+    "translator_provenance_source": "Delegating brief; translator authorship not independently authenticated",
+    "independent_agent": true,
+    "authored_translation": false
+  },
+  "status": "passed",
+  "sha256": {
+    "en": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+    "ru": "3334bd73bde9e710488e1771812015ce857d57092c7dbc68edeb24577a7380ad"
+  },
+  "files": {
+    "source": "src/i18n/catalogues/en/ui.teamBridge.edit.json",
+    "target": "src/i18n/catalogues/ru/ui.teamBridge.edit.json",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.edit.context.json"
+  },
+  "context_sha256": "6e1592f8a5f5112bc9462d18330cd0ceb15ece80a70a6b6dd1d5c2e3ce8cda3d",
+  "references": {
+    "glossary": {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "keys_audited": [
+    "ui.teamBridge.edit.menu",
+    "ui.teamBridge.edit.title",
+    "ui.teamBridge.edit.description",
+    "ui.teamBridge.edit.topic",
+    "ui.teamBridge.edit.error.topic_too_long",
+    "ui.teamBridge.edit.error.topic_characters",
+    "ui.teamBridge.edit.error.invalid",
+    "ui.teamBridge.edit.error.forbidden",
+    "ui.teamBridge.edit.error.archived",
+    "ui.teamBridge.edit.error.failed"
+  ],
+  "key_count": 10,
+  "semantic_assessment": "Read every source and target value against the context. Group/channel selector labels are natural and distinct. Name and Description/topic remain separate concepts. Help limits editing to name and description and visibility to conversation participants. Length limit and allowed line breaks/tabs are preserved. Invalid/forbidden/archived messages preserve their failure meaning and do not offer permission or reopen promises. Failed-save copy preserves the unsaved/draft/retry meaning without adding durability, automatic retry or atomic/partial-update guarantees. No translation broadens editing to membership, settings or access rights.",
+  "mechanical": {
+    "copy_scan": {
+      "summary": {
+        "filesScanned": 8,
+        "stringsSeen": 79,
+        "findings": 0
+      },
+      "findings": []
+    },
+    "key_parity": "10/10 exact English keys",
+    "placeholder_parity": "kind/select and max/number preserved exactly by argument/type; group and other select arms in both selectors",
+    "bidi_controls": "none of LRM/RLM, embeddings, overrides or isolates found",
+    "source_context_frozen_match": true
+  },
+  "findings": [],
+  "verdict": "APPROVED — TERMINAL (no blocker/major findings)",
+  "limitations": [
+    "Source-only semantic audit, not rendered or compiled-native proof.",
+    "No layout, truncation, font shaping or RTL rendering proof; no browser or full suite run.",
+    "Mechanical scanner is English-oriented and filters some ICU/single-token strings; all 70 target values were separately read semantically.",
+    "No backend partial-update, permission enforcement or draft-retention behavior was executed; evaluated translated claims against frozen English and context only."
+  ]
+}

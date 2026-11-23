@@ -132,6 +132,13 @@ jobs:
     outputs:
       unit: ${{ steps.classify.outputs.unit }}
       pack: ${{ steps.classify.outputs.pack }}
+      # Whether the NATIVE PROOFS lane is needed for this diff. Deliberately a
+      # separate output from `pack`: `pack` is computed with `--all` (a label
+      # asks for the whole suite, and that stays true for the tests), which made
+      # it true for every diff and forced every labelled PR through one capped
+      # macOS runner slot. This one is diff-derived and is read by
+      # `native-proofs` alone. See `scripts/native-scope.mjs`.
+      native: ${{ steps.native.outputs.native }}
       # The lane list, from scripts/desktop-test-shards.mjs's `matrix` mode, which
       # derives it from SHARD_COUNT. It is emitted here rather than as a literal
       # matrix below because a literal is a SECOND place to change the lane count,
@@ -144,6 +151,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Depth 2 so the native-scope step can diff the PR's own change
+          # locally, with no API call and no extra network fetch. On a
+          # `labeled` event the checkout is `refs/pull/N/merge`, whose `HEAD^1`
+          # is the base and whose `HEAD` carries the PR's changes.
+          fetch-depth: 2
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -159,6 +172,55 @@ jobs:
       - name: Emit the shard matrix (the lane count lives in SHARD_COUNT)
         id: shards
         run: node scripts/desktop-test-shards.mjs matrix --github-output "$GITHUB_OUTPUT"
+
+      # Does THIS diff need the macOS native lane? Fail-closed: a diff we cannot
+      # compute, an empty list, or an unreadable file all answer `true`, and the
+      # only way to answer `false` is a changed-path list that touches none of
+      # the surfaces in scripts/native-scope.mjs.
+      - name: Native scope (diff-derived on pull requests and branch dispatches)
+        id: native
+        run: |
+          set -uo pipefail
+          changed="$RUNNER_TEMP/native-changed.txt"
+          # A pull request's merge ref carries the base as `HEAD^1`. A branch
+          # dispatch has no such parent - the branch may be many commits long - so
+          # its change is everything since the merge-base with the base branch.
+          # Both answer the same question: what is THIS change.
+          resolve_diff() {
+            if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              git rev-parse -q --verify 'HEAD^1' >/dev/null 2>&1 || return 1
+              git diff --name-only --no-renames 'HEAD^1' HEAD > "$changed"
+              return 0
+            fi
+            base="${GITHUB_BASE_REF:-main}"
+            # A shallow checkout has no ancestry to walk: `merge-base` answers
+            # nothing while the clone is shallow, whatever depth the base ref was
+            # fetched at (round-2 QA measured exactly that - one commit resolved,
+            # two did not). The depth here is a DISPATCH-only cost, and a
+            # dispatch is rare, so the boundary goes rather than the question.
+            git fetch --no-tags --unshallow origin >/dev/null 2>&1 || true
+            git fetch --no-tags origin "refs/heads/$base:refs/remotes/origin/$base" \
+              >/dev/null 2>&1 || return 1
+            merge_base="$(git merge-base HEAD "refs/remotes/origin/$base" 2>/dev/null || true)"
+            [ -n "$merge_base" ] || return 1
+            git diff --name-only --no-renames "$merge_base" HEAD > "$changed"
+          }
+          case "$GITHUB_EVENT_NAME" in
+            pull_request|workflow_dispatch)
+              if ! resolve_diff; then
+                echo "could not compute this change's diff; treating the scope as unknown" >&2
+                : > "$changed"
+              fi
+              node scripts/native-scope.mjs --changed-file "$changed" \
+                --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              # `push` and `schedule` are the post-merge safety net: the lane is
+              # deliberately not asked for there, so its scope is not consulted.
+              node scripts/native-scope.mjs --force true \
+                --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
+              ;;
+          esac
 
   test:
     # The desktop test suite -- the regression guards for issues 87, 92 and 93,
@@ -745,13 +807,18 @@ jobs:
   # moved out of per-push `ci.yml`'s `npx-sanity-check` (~9.6 macOS-minutes per
   # push on a 5-slot account-wide macOS runner cap) into the terminal merge gate.
   #
-  # Runs automatically on every `pull_request` (`labeled` merge-gate run) when
-  # `needs.changes.outputs.pack != 'false'` (`changes` runs `--all` here, so every
-  # labeled PR runs it), and on demand via `workflow_dispatch` with
+  # Runs on a `pull_request` (`labeled` merge-gate run) when the DIFF needs it -
+  # `needs.changes.outputs.native != 'false'`, answered by
+  # `scripts/native-scope.mjs` from the changed paths, NOT from `pack`, which
+  # `changes` computes with `--all` and which is therefore true for every diff.
+  # That distinction is the whole point: gating on `pack` charged every backend
+  # PR one capped macOS slot. It also runs on demand via `workflow_dispatch` with
   # `native_proofs=true` for mid-review QA. Skipped on `push` to `main` and
-  # `schedule` (where `asks_regression` has no PR merge base to compare against);
-  # `merge-gate` enforces that `skipped` is NEVER accepted on a `pull_request`
-  # unless `needs.changes.outputs.pack == 'false'`.
+  # `schedule` (where `asks_regression` has no PR merge base to compare against).
+  # `merge-gate` enforces the other half: a `skipped` `native-proofs` is never
+  # accepted on a `pull_request` or a `workflow_dispatch` unless the same
+  # diff-derived scope said the lane was unnecessary - so a dispatch that asks
+  # NOT to prove a native-touching head is red, not a false pass.
   native-proofs:
     name: Native App Proofs (macOS)
     runs-on: macos-latest
@@ -759,7 +826,7 @@ jobs:
     needs: [changes]
     if: >-
       !cancelled() &&
-      needs.changes.outputs.pack != 'false' &&
+      needs.changes.outputs.native != 'false' &&
       (github.event_name == 'pull_request' || inputs.native_proofs == true)
     steps:
       - name: Checkout code
@@ -1098,38 +1165,61 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # THE VERDICT IS A MODULE NOW, so this job needs the file on disk. It had
+      # no checkout while the verdict was an inline heredoc; when the decision
+      # moved into scripts/merge-gate-verdict.mjs the `node -e` import below
+      # failed with ERR_MODULE_NOT_FOUND (full-suite run 45227197375, every suite
+      # job green). That failed CLOSED - red, never a false green - but it made
+      # the gate impossible to pass.
+      #
+      # Sparse and credential-free: the verdict needs only its own module (it has
+      # no imports; scripts/ci-scope.test.mjs derives the import closure and fails
+      # if the list below stops covering it). A checkout failure here fails this
+      # job, which is the fail-closed answer, so there is deliberately no
+      # `continue-on-error`.
+      - name: Check out the verdict module
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/merge-gate-verdict.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Fail on any failed or cancelled suite job
         env:
           NEEDS: ${{ toJSON(needs) }}
           EVENT_NAME: ${{ github.event_name }}
-          PACK_SCOPE: ${{ needs.changes.outputs.pack }}
-          NATIVE_PROOFS_INPUT: ${{ inputs.native_proofs }}
+          NATIVE_SCOPE: ${{ needs.changes.outputs.native }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          node --input-type=module <<'NODE'
-          const needs = JSON.parse(process.env.NEEDS);
-          const eventName = process.env.EVENT_NAME;
-          const packScope = process.env.PACK_SCOPE;
-          const nativeProofsInput = process.env.NATIVE_PROOFS_INPUT === 'true';
-          // Fail-closed allowlist: only `success` or an explicitly permitted `skipped`
-          // passes. `changes` can never skip. On `pull_request` (or `workflow_dispatch`
-          // with `native_proofs=true`), `native-proofs` may skip ONLY when `pack` is
-          // literally `'false'`; any other skip on a pull request fails the gate.
-          const bad = Object.entries(needs).filter(([job, v]) => {
-            if (v.result === 'success') return false;
-            if (v.result === 'skipped') {
-              if (job === 'changes') return true;
-              if (job === 'native-proofs') {
-                if (packScope === 'false') return false;
-                return eventName === 'pull_request' || nativeProofsInput;
-              }
-              return false;
-            }
-            return true;
-          });
-          for (const [job, v] of Object.entries(needs)) console.log(`${job}: ${v.result}`);
-          if (bad.length) {
-            console.log(`::error title=Merge gate::${bad.map(([job, v]) => `${job}=${v.result}`).join(', ')}`);
-            process.exit(1);
-          }
-          console.log('Full suite green on this head.');
-          NODE
+          # The verdict lives in scripts/merge-gate-verdict.mjs so its skip
+          # matrix is unit-tested (scripts/merge-gate-verdict.test.mjs) instead
+          # of being reachable only by spending a full-suite run. It is strictly
+          # fail-closed: only `success`, or a skip this file has a reason for,
+          # passes. `changes` can never skip; `native-proofs` may skip on a pull
+          # request or a dispatch ONLY when the diff-derived scope says no
+          # changed path can alter the packed app.
+          # Which runs never ask for the lane at all: a push, the nightly, or a
+          # dispatch of the default branch (the same post-merge role, another
+          # trigger). A dispatch of a BRANCH is the mid-review QA case and must
+          # answer the scope question like a pull request does.
+          native_skip_allowed=false
+          case "$EVENT_NAME" in
+            push|schedule) native_skip_allowed=true ;;
+            workflow_dispatch)
+              if [ "${GITHUB_REF}" = "refs/heads/${DEFAULT_BRANCH}" ]; then
+                native_skip_allowed=true
+              fi
+              ;;
+          esac
+          export NATIVE_SKIP_ALLOWED="$native_skip_allowed"
+          node --input-type=module -e '
+            import { applyVerdict } from "./scripts/merge-gate-verdict.mjs";
+            applyVerdict({
+              needs: JSON.parse(process.env.NEEDS),
+              eventName: process.env.EVENT_NAME,
+              nativeScope: process.env.NATIVE_SCOPE,
+              nativeSkipAllowed: process.env.NATIVE_SKIP_ALLOWED,
+            });
+          '

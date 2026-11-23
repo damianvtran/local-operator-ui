@@ -129797,6 +129797,398 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "755ca8be951b7994e6177256c8227ab74dcf816eb871c26118f5ea1dc8981c17",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-fr.json",
+					"receipt_sha256": "a65e166d2c361bf4e020d4fdeed68a5bdf73ca9b8c7ff4e2025479111d7e2fc2",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "5b015993f91fe2e5fb2a8fe254e44c57f141c14db30e6ebcb4e4569e9249c2d9",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-fr.json",
+							"receipt_sha256": "5a7b2bef7cf7bb7b4ade802e5a4eab496727f56fdb94716ced79f13b11524cd9",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "e4fcccca823de9a2769830f78b50304d9e238883fab02fa75de4ec394287bc8b",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-es.json",
+					"receipt_sha256": "35c0dde2db1ad26696a600cba89fc2d736e2193ad166c6092cfd6c5434a31be9",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "12660ec6b2da81307c1dd3e275d66480645a7fbf4af815ab7b059f32ae79d9f4",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-es.json",
+							"receipt_sha256": "0f8c9934fa6cdc296902a6d5d780677fdac6d6b0a5042c695e154a009e1a31ef",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "2bc6858b498a3e0737e1b35b32c4246b3bb3c79e831a3e8d707e9fd80299eee1",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean-with-findings",
+					"instance": "d76a8497b66e-tb-edit-delta-zh-CN",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-zh-CN.json",
+					"receipt_sha256": "2dc4928590b58690b8293f8c4a705c6bae33b7a2738aa67d57a413e1312a29af",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "1427978b7d382e82f54c0913db4b6815759b6e5753d36a9325428563cc350290",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean-with-findings",
+							"instance": "d76a8497b66e-tb-edit-zh-CN",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-zh-CN.json",
+							"receipt_sha256": "9d14385cb7d0487509952b8453257292024dd40d905a1ab275754bccc83ae5fa",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "dcff5d88c8b8eec6163ea3eb5a21370befa996bedaa2ab0e103bd91fc288bd8b",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-ru.json",
+					"receipt_sha256": "a685f97d2cacd929026486364c1c577b5ffadc674938a79cfde8b04c8546da77",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "3334bd73bde9e710488e1771812015ce857d57092c7dbc68edeb24577a7380ad",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-ru.json",
+							"receipt_sha256": "62e1ca2cbe1b64336e083d9560b55efddddb7649f7031b90a0d4f0d7dc937cb6",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "a0d0ee16ec530cc003f5bcc0dd2e7795d15f6d4329ba7cc181dc55fef163b5d1",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-vi.json",
+					"receipt_sha256": "660c3da50f1a291816ce22a6413594252f1221f7df5ba412f2cdbc33786873ea",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "626798d809955c5338d92f83f1a6f10e074bd0c5f5137139fb92837ba0ec4f8c",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-vi.json",
+							"receipt_sha256": "3d6502e9254a77c6d4343265a356ce1ca9da79189a3e6c9d8fd3837b9dd90be1",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "2cf1bf095ef7339700228b9f58f0f6e3c717e286c554c700add3bbed83f1e13c",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-ur.json",
+					"receipt_sha256": "6b2cba94781c0e877aebfda08ce34ad68f2b138247dcacacb9ff5d89d804086f",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "ea1878d763d6e2a7c9b8707c6f040f7e6b9181dfc9ec83fd0dbb9d1928b23f65",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-ur.json",
+							"receipt_sha256": "cd9cbc9dae61aa28bdfd53b5ba1bd35f965c8c22ce5d7ff5147a90c68b5ab028",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.teamBridge.edit",
+			"source_sha256": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+			"target_sha256": "a95ef97c85a9f7c2eef3bd4b1c3c295157abbd0adb1c4623cd7c0489bd13af19",
+			"translator": {
+				"agent": "translator-8d735d413b75",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-21",
+				"note": "Delta error.failed translated on resumed anthropic/claude-opus-5-5; initial translation used openai/gpt-6.1-sol, retained in prior receipts. Auditor evidence tool unavailable; parent-authorized NEW-receipt write fallback."
+			},
+			"auditors": [
+				{
+					"agent": "copy-reviewer-d76a8497b66e",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-21",
+					"result": "clean",
+					"instance": "d76a8497b66e-tb-edit-delta-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d76a8497b66e-tb-edit-delta-hi.json",
+					"receipt_sha256": "f8ef9a27c76662f05e0fc06e0c341fee6b7422cd7930241e1ec94ad61c99c907",
+					"scope": "Delta error.failed; retained 9 unchanged values via prior receipt and byte identity"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "02493b023262e7d22bd7ba329489658de5c0ae2ac702595ae9e967f4af18ddc4",
+					"target_sha256": "b2eb927ee8d9f7e083ddbb25fb5c5c19299f0860a83ae9938375eaee9b855122",
+					"auditors": [
+						{
+							"agent": "copy-reviewer-d76a8497b66e",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-21",
+							"result": "clean",
+							"instance": "d76a8497b66e-tb-edit-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d76a8497b66e-tb-edit-hi.json",
+							"receipt_sha256": "012f10e1448462446f1d247764e7222658322a282df3116c3b189d27dbfea0fa",
+							"scope": "All 10 ui.teamBridge.edit values; independent source semantic audit; not rendered or RTL proof"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
