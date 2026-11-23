@@ -1202,11 +1202,12 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
  * copy of the block (a second fade length or colour would be a second edge
  * grammar in the same window).
  *
- * THE EDIT FOOTER OPTS THE PANE OUT. It is `sticky bottom-0` INSIDE the scroller,
- * so a bottom mask would dim the Save button itself. The page cannot know whether a
- * pane is in edit mode (that is the detail component's own state), so the opt-out
- * is a `:has()` on the footer's marker rather than a prop threaded up and back;
- * Electron's Chromium supports it.
+ * THE EDIT FOOTER AND ASK ACTIONS BAR OPT THE PANE OUT. Both are `sticky bottom-0`
+ * INSIDE the scroller, so a bottom mask would dim Save or Send answer itself.
+ * The host page cannot know whether a pane is in edit mode or showing a live
+ * ask card (that is the child component's own state), so the opt-out is a
+ * `:has()` on those markers rather than a prop threaded up and back; Electron's
+ * Chromium supports it.
  */
 [data-lo-sidebar-edge-cues],
 [data-lo-pane-edge-cues] {
@@ -1221,7 +1222,7 @@ main[data-workspace-full-height] > [data-chrome-route-band] {
 	);
 }
 
-[data-lo-pane-edge-cues]:has([data-lo-pane-footer]) {
+[data-lo-pane-edge-cues]:has([data-lo-pane-footer], [data-lo-ask-actions]) {
 	mask-image: none;
 }
 

@@ -273,7 +273,9 @@ export function TeamBridgeRequestsView({
 	return (
 		<section
 			ref={sectionRef}
-			data-lo-pane-edge-cues=""
+			/* Bottom-only fade: the batch approval toolbar below pins at `-top-5`
+			 * and must stay full-contrast while rows scroll underneath it. */
+			data-lo-pane-edge-cues="bottom"
 			className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-5"
 			aria-label={t("ui.teamBridge.approvals.title")}
 		>

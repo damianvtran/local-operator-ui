@@ -308,6 +308,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
 import { pythonChildEnv } from "./python-child-env.mjs";
 import {
 	checkRouteFrame,
+	findLeadingColumn,
 	readRouteFrame,
 	stripAboveInset,
 	stripPanelGrounds,
@@ -43607,47 +43608,25 @@ async function sceneRouteTops(cdp) {
 			 * full-height nor at the route's left edge, and they must not be read as
 			 * columns here.
 			 */
-			const columnGrounds = [surfaceGround, elevatedGround];
+			const html = document.documentElement;
+			const columnGrounds = [
+				surfaceGround,
+				elevatedGround,
+				...(html.hasAttribute("data-glass")
+					? [
+							roleGround("--lo-glass-g-surface"),
+							roleGround("--lo-glass-g-elevated"),
+						]
+					: []),
+			];
 			const paintedGroundOf = (el) =>
 				el ? getComputedStyle(el).backgroundColor : null;
-			const columnAt = (el) => {
-				if (!el) return null;
-				const route = box(ownRoot);
-				const bounds = box(el);
-				if (!route || !bounds) return null;
-				if (Math.abs(bounds.left - route.left) > 0.5) return null;
-				if (bounds.height < route.height - 0.5) return null;
-				/*
-				 * A FULL-WIDTH BOX IS A PANE, NOT A LEADING COLUMN (QA round 2, Q1).
-				 * #590 puts the browser pane's own box on elevated across the route's
-				 * whole width; the widened rung set would otherwise derive it as a
-				 * column nobody registered and red five checks on /browser for a panel
-				 * this change does not govern. A column is a strip narrower than its
-				 * route - the settings rail is 220px and the rosters 280px - so the
-				 * three real columns are still derived (their before-tree red is
-				 * untouched) and /browser keeps reading as the no-column control route
-				 * it is.
-				 */
-				if (bounds.width >= route.width - 0.5) return null;
-				return el;
-			};
-			const leading = (() => {
-				if (!ownRoot) return null;
-				if (columnGrounds.includes(paintedGroundOf(ownRoot))) {
-					return columnAt(ownRoot);
-				}
-				const first = ownRoot.firstElementChild;
-				if (!first) return null;
-				if (columnGrounds.includes(paintedGroundOf(first))) {
-					return columnAt(first);
-				}
-				for (const inner of first.children) {
-					if (columnGrounds.includes(paintedGroundOf(inner))) {
-						return columnAt(inner);
-					}
-				}
-				return null;
-			})();
+			const leading = (${findLeadingColumn})(
+				ownRoot,
+				box,
+				paintedGroundOf,
+				columnGrounds,
+			);
 			const registered = document.querySelector("[data-lane-leading-column]");
 			/*
 			 * The marker's VALUE is the rung the shell was asked to paint, resolved
@@ -43715,7 +43694,6 @@ async function sceneRouteTops(cdp) {
 				stripX.push(r.left + r.width / 2);
 			}
 			const stripGrounds = [...new Set(stripX.map((x) => Math.round(x)))].map(groundAt);
-			const html = document.documentElement;
 			return {
 				...geometry,
 				platform: html.getAttribute("data-chrome-platform"),

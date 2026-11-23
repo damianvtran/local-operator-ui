@@ -1,5 +1,42 @@
 // Serialized into the route-tops CDP evaluation. Keep the read in the same
 // layout snapshot as the lane and strip probes; no outer-scope dependencies.
+export function findLeadingColumn(
+	ownRoot,
+	box,
+	paintedGroundOf,
+	columnGrounds,
+) {
+	if (!ownRoot) return null;
+	const route = box(ownRoot);
+	if (!route) return null;
+	const columnAt = (el) => {
+		if (!el) return null;
+		const bounds = box(el);
+		if (!bounds) return null;
+		if (Math.abs(bounds.left - route.left) > 0.5) return null;
+		if (bounds.height < route.height - 0.5) return null;
+		if (bounds.width >= route.width - 0.5) return null;
+		return el;
+	};
+	const matchColumn = (el) =>
+		columnGrounds.includes(paintedGroundOf(el)) ? columnAt(el) : null;
+	// Do not short-circuit when ownRoot itself carries a column ground (e.g. a
+	// `[data-glass-split]` root painted `bg-surface` with glass off): ownRoot is
+	// full-width, so descend into its children and grandchildren to locate the
+	// actual leading column (including when an `sr-only` heading precedes it).
+	const rootHit = matchColumn(ownRoot);
+	if (rootHit) return rootHit;
+	for (const child of ownRoot.children) {
+		const childHit = matchColumn(child);
+		if (childHit) return childHit;
+		for (const inner of child.children) {
+			const innerHit = matchColumn(inner);
+			if (innerHit) return innerHit;
+		}
+	}
+	return null;
+}
+
 export function readRouteFrame(document, main, box, roleGround) {
 	const outletFrames = Array.from(
 		main?.querySelectorAll(

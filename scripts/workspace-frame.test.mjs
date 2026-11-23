@@ -600,7 +600,7 @@ test("scrollable inset inner areas wire scroll-driven edge fades without dimming
 	);
 	assert.match(
 		styles,
-		/\[data-lo-pane-edge-cues\]:has\(\[data-lo-pane-footer\]\)\s*\{\s*mask-image: none;\s*\}/,
+		/\[data-lo-pane-edge-cues\]:has\(\[data-lo-pane-footer\],\s*\[data-lo-ask-actions\]\)\s*\{\s*mask-image: none;\s*\}/,
 	);
 	const fullFadeFiles = [
 		"features/settings/components/settings-page.tsx",
@@ -629,12 +629,14 @@ test("scrollable inset inner areas wire scroll-driven edge fades without dimming
 		"features/projects/components/project-board.tsx",
 		"features/projects/components/project-timeline.tsx",
 		"features/notifications/components/notifications-page.tsx",
+		"features/team-bridge/team-bridge-approvals.tsx",
+		"features/team-bridge/team-bridge-owner-audit.tsx",
 	];
 	for (const file of bottomFadeFiles) {
 		assert.match(
 			read(file),
 			/data-lo-pane-edge-cues="bottom"/,
-			`${file} has sticky top-0 headers and must use bottom-only fade`,
+			`${file} has sticky top headers and must use bottom-only fade`,
 		);
 	}
 	assert.match(
@@ -642,4 +644,40 @@ test("scrollable inset inner areas wire scroll-driven edge fades without dimming
 		/data-lo-pane-edge-cues=\{narrow \? "bottom" : ""\}/,
 		"notification-detail must switch to bottom-only fade only when narrow sticky header is active",
 	);
+});
+
+test("SettingsPage early returns stay framed in WorkspaceFrame full-height without duplicate bg-canvas slabs", () => {
+	const settings = read("features/settings/components/settings-page.tsx");
+	const guards = [
+		{
+			name: "configError",
+			start: "if (configError) {",
+			end: "if (isLoading) {",
+		},
+		{ name: "isLoading", start: "if (isLoading) {", end: "if (!config) {" },
+		{
+			name: "!config",
+			start: "if (!config) {",
+			end: 'data-glass-region="canvas"',
+		},
+	];
+	for (const { name, start, end } of guards) {
+		const from = settings.indexOf(start);
+		const to = settings.indexOf(end, from);
+		assert.ok(
+			from >= 0 && to > from,
+			`missing ${name} branch in settings-page`,
+		);
+		const branch = settings.slice(from, to);
+		assert.match(
+			branch,
+			/<WorkspaceFrame\s+variant="full-height">\s*(?:\/\*[\s\S]*?\*\/\s*|\{\/\*[\s\S]*?\*\/\}\s*)*<div\s+data-workspace-safe-content=""/,
+			`${name} must render inside <WorkspaceFrame variant="full-height"> with data-workspace-safe-content`,
+		);
+		assert.doesNotMatch(
+			branch,
+			/\bbg-canvas\b/,
+			`${name} must not paint a duplicate bg-canvas slab inside WorkspaceFrame`,
+		);
+	}
 });

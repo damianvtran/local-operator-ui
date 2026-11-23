@@ -230,8 +230,16 @@ test("inset split routes keep their grounds and local scroll without a second cl
 			path.endsWith("/agents-page.tsx") || path.endsWith("sidebar.tsx") ? 1 : 0;
 		// agents-page.tsx has 3: LegacyAgentsPage Suspense fallback, roster aside,
 		// and the detail column inside WorkspaceFrame.
+		// settings-page.tsx has 4: configError, isLoading, !config early returns,
+		// and the main content column inside WorkspaceFrame.
 		const expectedSafe =
-			path === LIBRARY_PAGE ? 0 : path.endsWith("/agents-page.tsx") ? 3 : 1;
+			path === LIBRARY_PAGE
+				? 0
+				: path.endsWith("/agents-page.tsx")
+					? 3
+					: path.endsWith("/settings-page.tsx")
+						? 4
+						: 1;
 		assert.equal(
 			sidebarPanes.length,
 			expectedSidebars,

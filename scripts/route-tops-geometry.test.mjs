@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import { JSDOM } from "jsdom";
 import {
 	checkRouteFrame,
+	findLeadingColumn,
 	readRouteFrame,
 	stripAboveInset,
 	stripPanelGrounds,
@@ -731,4 +732,107 @@ test("the recorded Chat and Browser strips read exactly as they did before the f
 	assert.equal(stripAboveInset(recorded["/settings"], "outlet", true), false);
 	assert.equal(stripAboveInset(recorded["/chat"], "chat", false), false);
 	assert.equal(stripAboveInset(recorded["/settings"], "outlet", false), true);
+});
+
+test("findLeadingColumn descends past full-width bg-surface split roots under glass-off and finds leading columns under glass-on", () => {
+	const box = (el) => el?.bounds ?? null;
+	const paintedGroundOf = (el) => el?.fixtureStyle?.backgroundColor ?? null;
+	const elevated = "rgb(52, 50, 48)";
+	const glassSurface = "color(srgb 0.16 0.15 0.15 / 0.8)";
+	const serializeFind = (ownRoot, grounds) =>
+		runInNewContext(
+			`(${findLeadingColumn})(ownRoot, box, paintedGroundOf, grounds)`,
+			{
+				ownRoot,
+				box,
+				paintedGroundOf,
+				grounds,
+			},
+		);
+
+	// 1. Settings / LegacyAgents shape with glass off: full-width [data-glass-split]
+	// root paints surface, wrapper child is transparent, <aside> grandchild paints surface.
+	const settingsRoot = make(
+		{ "data-glass-split": "" },
+		rect(0, 192, 1000, 800),
+		{ backgroundColor: surface },
+	);
+	const railWrap = append(
+		settingsRoot,
+		make({}, rect(0, 192, 220, 800), { backgroundColor: transparent }),
+	);
+	const settingsAside = append(
+		railWrap,
+		make({ "data-glass-region": "page-sidebar" }, rect(0, 192, 220, 800), {
+			backgroundColor: surface,
+		}),
+	);
+	append(
+		settingsRoot,
+		make({ "data-workspace-frame-shell": "" }, rect(0, 412, 780, 800), {
+			backgroundColor: transparent,
+		}),
+	);
+	assert.equal(
+		serializeFind(settingsRoot, [surface, elevated]),
+		settingsAside,
+		"glass-off split root carrying bg-surface must still locate nested leading column",
+	);
+
+	// 2. AgentsPage shape with glass off: sr-only heading precedes <aside> under bg-surface root.
+	const agentsRoot = make({ "data-glass-split": "" }, rect(0, 192, 1000, 800), {
+		backgroundColor: surface,
+	});
+	append(
+		agentsRoot,
+		make({}, rect(0, 192, 1, 1), { backgroundColor: transparent }),
+	);
+	const agentsAside = append(
+		agentsRoot,
+		make({ "data-glass-region": "page-sidebar" }, rect(0, 192, 280, 800), {
+			backgroundColor: surface,
+		}),
+	);
+	assert.equal(
+		serializeFind(agentsRoot, [surface, elevated]),
+		agentsAside,
+		"glass-off Agents split root must skip sr-only heading to find leading aside",
+	);
+
+	// 3. Split route under glass on: transparent root, leading aside paints glass surface.
+	settingsRoot.fixtureStyle.backgroundColor = transparent;
+	settingsAside.fixtureStyle.backgroundColor = glassSurface;
+	assert.equal(
+		serializeFind(settingsRoot, [surface, elevated, glassSurface]),
+		settingsAside,
+		"glass-on split route must locate leading column painted in --lo-glass-g-surface",
+	);
+
+	// 4. Control: full-width elevated pane (/browser) must return null.
+	const browserRoot = make({}, rect(0, 192, 1000, 800), {
+		backgroundColor: elevated,
+	});
+	append(
+		browserRoot,
+		make({}, rect(0, 192, 1000, 800), { backgroundColor: elevated }),
+	);
+	assert.equal(
+		serializeFind(browserRoot, [surface, elevated]),
+		null,
+		"full-width elevated pane must not be classified as a leading column",
+	);
+
+	// 5. Control: non-full-height card (/schedules) must return null.
+	const schedulesRoot = make({}, rect(0, 192, 1000, 800), {
+		backgroundColor: transparent,
+	});
+	append(
+		schedulesRoot,
+		make({}, rect(32, 192, 320, 200), { backgroundColor: surface }),
+	);
+	assert.equal(
+		serializeFind(schedulesRoot, [surface, elevated]),
+		null,
+		"partial-height panel must not be classified as a leading column",
+	);
 });
