@@ -1,0 +1,395 @@
+{
+	"source": "`node scripts/renderer-driver.mjs --scene route-tops` at 881ba1cb5d422f8ecc2f00a89198f5e1122100d4, dark palette, 1380x900 hidden window (QA round 6). Read from the run's own `[note] the top of <path>` lines in owned-core-rig-qa6/driver.log and trimmed to the fields the y8 strip predicate reads - every value here is copied from that log, not retyped or synthesised.",
+	"readings": {
+		"/settings": {
+			"fullHeight": true,
+			"glass": true,
+			"frame": {
+				"top": 0,
+				"left": 268,
+				"width": 1104,
+				"height": 900
+			},
+			"shell": {
+				"top": 0,
+				"left": 260,
+				"width": 1120,
+				"height": 900
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": null,
+					"tag": null,
+					"inOutlet": true
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+					"tag": "div",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 378,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "nav",
+					"inOutlet": true
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		},
+		"/settings?section=integrations": {
+			"fullHeight": true,
+			"glass": true,
+			"frame": {
+				"top": 0,
+				"left": 268,
+				"width": 1104,
+				"height": 900
+			},
+			"shell": {
+				"top": 0,
+				"left": 260,
+				"width": 1120,
+				"height": 900
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": null,
+					"tag": null,
+					"inOutlet": true
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+					"tag": "div",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 378,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "nav",
+					"inOutlet": true
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		},
+		"/agents": {
+			"fullHeight": true,
+			"glass": true,
+			"frame": {
+				"top": 0,
+				"left": 268,
+				"width": 1104,
+				"height": 900
+			},
+			"shell": {
+				"top": 0,
+				"left": 260,
+				"width": 1120,
+				"height": 900
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": null,
+					"tag": null,
+					"inOutlet": true
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+					"tag": "main",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		},
+		"/agents/local-operator": {
+			"fullHeight": true,
+			"glass": true,
+			"frame": {
+				"top": 0,
+				"left": 268,
+				"width": 1104,
+				"height": 900
+			},
+			"shell": {
+				"top": 0,
+				"left": 260,
+				"width": 1120,
+				"height": 900
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": null,
+					"tag": null,
+					"inOutlet": true
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+					"tag": "div",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		},
+		"/chat": {
+			"fullHeight": false,
+			"glass": true,
+			"frame": {
+				"top": 32,
+				"left": 268,
+				"width": 1060,
+				"height": 860
+			},
+			"shell": {
+				"top": 32,
+				"left": 260,
+				"width": 1076,
+				"height": 868
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "nav",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		},
+		"/browser": {
+			"fullHeight": false,
+			"glass": true,
+			"frame": {
+				"top": 106,
+				"left": 268,
+				"width": 1104,
+				"height": 786
+			},
+			"shell": {
+				"top": 106,
+				"left": 260,
+				"width": 1120,
+				"height": 794
+			},
+			"perimeter": {
+				"shapeSupported": true,
+				"content": "\"\"",
+				"display": "block",
+				"paint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"role": "--lo-glass-g-surface",
+				"rolePaint": "color(srgb 0.14902 0.133333 0.109804 / 0.66)"
+			},
+			"stripGrounds": [
+				{
+					"x": 4,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				},
+				{
+					"x": 1376,
+					"bg": "color(srgb 0.184314 0.164706 0.121569 / 0.74)",
+					"tag": "div",
+					"inOutlet": true
+				},
+				{
+					"x": 690,
+					"bg": "color(srgb 0.184314 0.164706 0.121569 / 0.74)",
+					"tag": "div",
+					"inOutlet": true
+				},
+				{
+					"x": 130,
+					"bg": "color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+					"tag": "div",
+					"inOutlet": false
+				}
+			],
+			"surfaceGround": "rgb(38, 34, 28)",
+			"canvasGround": "rgb(29, 27, 23)",
+			"elevatedGround": "rgb(47, 42, 31)",
+			"glassGrounds": [
+				"color(srgb 0.14902 0.133333 0.109804 / 0.66)",
+				"color(srgb 0.113725 0.105882 0.0901961 / 0.62)",
+				"color(srgb 0.184314 0.164706 0.121569 / 0.74)"
+			],
+			"browserChromeGround": "rgb(23, 21, 18)",
+			"viewport": {
+				"width": 1380,
+				"height": 900
+			}
+		}
+	}
+}

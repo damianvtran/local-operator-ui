@@ -149,6 +149,92 @@ export function readRouteFrame(document, main, box, roleGround) {
 	};
 }
 
+/*
+ * THE y8 STRIP, as three exported pieces so the scene can be judged against a
+ * RECORDED reading instead of only against a live window (QA round 6,
+ * 2026-11-23: four false reds that no fixture could reach while this predicate
+ * lived inside the driver).
+ */
+export function stripPanelGrounds(reading) {
+	return [
+		reading.surfaceGround,
+		reading.canvasGround,
+		reading.elevatedGround,
+		...(reading.glassGrounds ?? []),
+	];
+}
+
+/*
+ * Above a shared inset an outlet body deliberately leaves the strip clear, so a
+ * probe there is allowed to report no DOM paint. Only that shape: not a rail,
+ * not Chat's or Browser's own strip, and not a full-height route (its split
+ * panes start at y0 and cover the strip themselves).
+ */
+export function stripAboveInset(reading, owner, fullHeight = false) {
+	return Boolean(reading.glass) && owner === "outlet" && !fullHeight;
+}
+
+/*
+ * One probe's verdict. The first rules are the pre-change ones, unchanged.
+ *
+ * The last rule answers the false red QA round 6 found: the 8px side gutters
+ * around a full-height frame are painted by `.workspace-frame-shell::before`,
+ * and `document.elementsFromPoint` cannot return a pseudo-element, so the
+ * element stack reports no DOM paint at x=innerWidth-4 while the gutter is
+ * demonstrably painted (that round's own pixel sampling at x1373-1379, y2-30
+ * reads RGBA(38,35,29,168), identical to Chat's gutter, where the pre-change
+ * 5e10f2a frames read fully transparent). The pseudo's own paint is already
+ * read as `perimeter.paint` - the same reading whose shape/clip/role check
+ * passes on those routes - so accept THAT as the paint at a strip probe which
+ * sits in the shell's gutter ring and nowhere else.
+ *
+ * Every part of that is falsifiable, and each is a test: a shell that generates
+ * no pseudo, a pseudo it hides, a transparent or unpainted gutter, paint that
+ * is not the role's paint or not a panel ground, a probe inside the frame
+ * (where no pseudo paints), a probe outside the outlet, and any out-of-flow
+ * element covering the gutter (which reports its own bg and is judged by the
+ * panel rules). It cannot fire for Chat or Browser: both are `fullHeight:
+ * false`, and the ring requires a shell that leaves the frame a horizontal
+ * gutter at the strip row.
+ */
+export function stripProbeAccepted(
+	probe,
+	reading,
+	{ owner, fullHeight = false },
+) {
+	if (stripAboveInset(reading, owner, fullHeight) && probe.inOutlet)
+		return probe.bg === null;
+	if (stripPanelGrounds(reading).includes(probe.bg)) return true;
+	// Browser's opaque chrome is sunken, not the elevated body under it, so its
+	// own ground has to be accepted inside its outlet as well.
+	if (
+		owner === "browser" &&
+		probe.inOutlet &&
+		probe.bg === reading.browserChromeGround
+	)
+		return true;
+	const { frame, shell, perimeter } = reading;
+	if (!fullHeight || !frame || !shell || !perimeter) return false;
+	// A generated `::before` block clipped to shape() paints the shell's surface
+	// role through the gutter; without one there is no paint to accept.
+	const generated = perimeter.content === '""' && perimeter.display !== "none";
+	const painted =
+		perimeter.paint !== null &&
+		!["transparent", "rgba(0, 0, 0, 0)"].includes(perimeter.paint) &&
+		perimeter.paint === perimeter.rolePaint &&
+		stripPanelGrounds(reading).includes(perimeter.paint);
+	const right = (box) => box.left + box.width;
+	const within = (x, start, end) => x >= start - 0.5 && x <= end + 0.5;
+	// Inside the shell's own box, outside the frame: the ring the pseudo paints.
+	// The scene's gutter check pins that ring to 8px on the same reading.
+	const ring =
+		within(probe.x, shell.left, right(shell)) &&
+		!within(probe.x, frame.left, right(frame));
+	return (
+		probe.bg === null && probe.inOutlet === true && generated && painted && ring
+	);
+}
+
 export function checkRouteFrame(
 	path,
 	owner,

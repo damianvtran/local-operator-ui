@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { JSDOM } from "jsdom";
-import { checkRouteFrame, readRouteFrame } from "./route-tops-geometry.mjs";
+import {
+	checkRouteFrame,
+	readRouteFrame,
+	stripAboveInset,
+	stripPanelGrounds,
+	stripProbeAccepted,
+} from "./route-tops-geometry.mjs";
 
 const rect = (top, left, width, height) => ({ top, left, width, height });
 const surface = "rgb(40, 39, 38)";
@@ -398,4 +405,198 @@ test("the geometry check rejects offset paint, doubled internal padding, missing
 	const normal = fixture("outlet");
 	normal.shell.setAttribute("data-workspace-frame-full-height", "");
 	assert.match(failures("outlet", normal)[0], /only the named split routes/);
+});
+
+/*
+ * RECORDED READINGS, NOT SYNTHESISED. QA round 6 measured four failures of the
+ * y8 strip check on 881ba1cb - /settings, /settings?section=integrations,
+ * /agents and /agents/local-operator - and all four were the same probe at
+ * x=1376 reporting `bg:null, inOutlet:true` while that head's pixels and the
+ * pre-change frames showed the gutter going from transparent to painted. These
+ * are those readings as the driver logged them, with /chat and /browser beside
+ * them as the control rows the fix must not move.
+ */
+const recorded = JSON.parse(
+	readFileSync("scripts/fixtures/route-tops-strip-qa6-readings.json", "utf8"),
+).readings;
+const SPLIT_ROUTES = [
+	"/settings",
+	"/settings?section=integrations",
+	"/agents",
+	"/agents/local-operator",
+];
+/*
+ * THE PREDICATE AS IT STOOD BEFORE THE FIX, kept as a control rather than
+ * described: a row that passed then is compared probe by probe against the new
+ * one, which is how "this only widens the full-height case" is proved instead
+ * of asserted.
+ */
+function beforeFix(probe, reading, owner, fullHeight) {
+	if (stripAboveInset(reading, owner, fullHeight) && probe.inOutlet)
+		return probe.bg === null;
+	return (
+		stripPanelGrounds(reading).includes(probe.bg) ||
+		(owner === "browser" &&
+			probe.inOutlet &&
+			probe.bg === reading.browserChromeGround)
+	);
+}
+const verdicts = (reading, owner, fullHeight) =>
+	reading.stripGrounds.map((probe) =>
+		stripProbeAccepted(probe, reading, { owner, fullHeight }),
+	);
+const accepted = (probe, reading, owner, fullHeight) =>
+	stripProbeAccepted(probe, reading, { owner, fullHeight });
+
+test("the recorded split readings accept the gutter probe their shell's ::before paints", () => {
+	for (const path of SPLIT_ROUTES) {
+		const reading = recorded[path];
+		assert.equal(reading.fullHeight, true, path);
+		// The fixture has to keep being the false red QA measured, or the
+		// positive case below proves nothing.
+		assert.deepEqual(
+			reading.stripGrounds.filter(
+				(probe) => !beforeFix(probe, reading, "outlet", true),
+			),
+			[{ x: 1376, bg: null, tag: null, inOutlet: true }],
+			path,
+		);
+		assert.deepEqual(
+			verdicts(reading, "outlet", true),
+			reading.stripGrounds.map(() => true),
+			path,
+		);
+	}
+});
+
+test("the gutter case fails for an ungenerated, hidden, unpainted or mis-roled perimeter", () => {
+	const gutter = { x: 1376, bg: null, tag: null, inOutlet: true };
+	const rejected = (label, change = () => {}, probe = gutter) => {
+		const reading = structuredClone(recorded["/settings"]);
+		change(reading);
+		assert.equal(
+			accepted(probe, reading, "outlet", true),
+			false,
+			`${label} must not pass`,
+		);
+	};
+	assert.equal(
+		accepted(gutter, recorded["/settings"], "outlet", true),
+		true,
+		"the recorded reading itself passes",
+	);
+	rejected("a shell that generates no pseudo", (r) => {
+		r.perimeter.content = "none";
+	});
+	rejected("a pseudo the shell hides", (r) => {
+		r.perimeter.display = "none";
+	});
+	rejected("a gutter with no paint", (r) => {
+		r.perimeter.paint = null;
+	});
+	rejected("a transparent gutter", (r) => {
+		r.perimeter.paint = "rgba(0, 0, 0, 0)";
+	});
+	// Paint that is a real panel ground but not the role's own: the gutter would
+	// be a different tone from the surface it is meant to continue.
+	rejected("paint that is not the role's paint", (r) => {
+		r.perimeter.paint = r.canvasGround;
+	});
+	// Paint consistent with the role but a role no ground carries.
+	rejected("paint no panel ground carries", (r) => {
+		r.perimeter.paint = "color(srgb 1 0 0 / 0.5)";
+		r.perimeter.rolePaint = "color(srgb 1 0 0 / 0.5)";
+	});
+	// A covering element reports its OWN paint, which the panel rules judge.
+	rejected("an out-of-flow element covering the gutter", () => {}, {
+		...gutter,
+		bg: "rgb(255, 0, 0)",
+		tag: "div",
+	});
+	// Inside the frame no pseudo paints, so a hole there is still a hole.
+	rejected("a hole inside the frame's own body", () => {}, {
+		x: 690,
+		bg: null,
+		tag: null,
+		inOutlet: true,
+	});
+	assert.equal(
+		accepted(
+			{ ...gutter, inOutlet: false },
+			recorded["/settings"],
+			"outlet",
+			true,
+		),
+		false,
+		"a gutter probe outside the outlet",
+	);
+	for (const x of [100, 2000])
+		assert.equal(
+			accepted({ ...gutter, x }, recorded["/settings"], "outlet", true),
+			false,
+			`x${x} is outside the shell's own ring`,
+		);
+	// The branch is scoped to the full-height routes: Chat's strip is its own,
+	// and Browser's is covered by chrome, so neither may borrow the gutter rule.
+	for (const [path, owner] of [
+		["/chat", "chat"],
+		["/browser", "browser"],
+	])
+		assert.equal(
+			accepted(gutter, recorded[path], owner, false),
+			false,
+			`${path} must not accept a no-paint strip probe`,
+		);
+});
+
+test("the recorded Chat and Browser strips read exactly as they did before the fix", () => {
+	for (const [path, owner] of [
+		["/chat", "chat"],
+		["/browser", "browser"],
+	]) {
+		const reading = recorded[path];
+		assert.equal(reading.fullHeight, false, path);
+		assert.deepEqual(
+			verdicts(reading, owner, false),
+			reading.stripGrounds.map((probe) =>
+				beforeFix(probe, reading, owner, false),
+			),
+			path,
+		);
+		assert.deepEqual(
+			verdicts(reading, owner, false),
+			reading.stripGrounds.map(() => true),
+			path,
+		);
+	}
+	// Browser's opaque pending chrome is sunken, not the elevated body under it.
+	const browser = structuredClone(recorded["/browser"]);
+	const chrome = {
+		x: 1376,
+		bg: browser.browserChromeGround,
+		tag: "div",
+		inOutlet: true,
+	};
+	assert.equal(accepted(chrome, browser, "browser", false), true);
+	assert.equal(
+		accepted(chrome, browser, "outlet", false),
+		false,
+		"the sunken chrome ground is Browser's alone",
+	);
+	// The outlet's intentional clear glass above a shared inset is unchanged:
+	// no DOM paint inside that outlet, and only there.
+	const clear = { x: 690, bg: null, tag: null, inOutlet: true };
+	assert.equal(accepted(clear, recorded["/settings"], "outlet", false), true);
+	assert.equal(
+		accepted(
+			{ ...clear, inOutlet: false },
+			recorded["/settings"],
+			"outlet",
+			false,
+		),
+		false,
+	);
+	assert.equal(stripAboveInset(recorded["/settings"], "outlet", true), false);
+	assert.equal(stripAboveInset(recorded["/chat"], "chat", false), false);
+	assert.equal(stripAboveInset(recorded["/settings"], "outlet", false), true);
 });

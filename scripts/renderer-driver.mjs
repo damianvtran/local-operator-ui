@@ -306,7 +306,13 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
-import { checkRouteFrame, readRouteFrame } from "./route-tops-geometry.mjs";
+import {
+	checkRouteFrame,
+	readRouteFrame,
+	stripAboveInset,
+	stripPanelGrounds,
+	stripProbeAccepted,
+} from "./route-tops-geometry.mjs";
 import { sceneSidebarDocking } from "./sidebar-docking-scene.mjs";
 import {
 	prepareSidebarLayoutScene,
@@ -43679,6 +43685,12 @@ async function sceneRouteTops(cdp) {
 			 * SKIPPED deliberately - they paint the window's fallback canvas, and
 			 * accepting them would let a hole read as a panel. A probe therefore
 			 * reports panel paint (or no DOM paint if the clearance is clear glass).
+			 * Two shapes read no paint by construction: the intentional clear glass
+			 * above a shared inset, and the shell's own gutter, painted by a
+			 * ::before this stack cannot return. stripProbeAccepted accepts exactly
+			 * those two, and the perimeter read beside them is what proves the
+			 * second one is painted at all. (No backticks in here: this reading is
+			 * itself a template literal, so one would end it.)
 			 */
 			const groundAt = (x) => {
 				const stack = document.elementsFromPoint(x, 8);
@@ -43810,29 +43822,18 @@ async function sceneRouteTops(cdp) {
 							Math.abs(frame.top - (fullHeight ? 0 : laneBottom)) < 0.5,
 				JSON.stringify({ chrome, frame, laneBottom }),
 			);
-			const stripOverBody = reading.glass && !ownsChrome && !fullHeight;
-			const panelGrounds = [
-				reading.surfaceGround,
-				reading.canvasGround,
-				reading.elevatedGround,
-				...reading.glassGrounds,
-			];
+			const stripOwner = ownsChrome ? slug : "outlet";
+			const stripOverBody = stripAboveInset(reading, stripOwner, fullHeight);
+			const panelGrounds = stripPanelGrounds(reading);
 			check(
 				`${path}: every y8 probe has panel paint or the outlet's intentional clear glass above the inset`,
 				reading.stripGrounds.length > 0 &&
-					reading.stripGrounds.every((probe) => {
-						// Above a shared inset the glass outlet deliberately leaves the
-						// strip clear. Only accept no DOM paint inside that outlet, not on
-						// a rail or on either route's own strip. Browser's opaque chrome
-						// is sunken, not the elevated body under it.
-						if (stripOverBody && probe.inOutlet) return probe.bg === null;
-						return (
-							panelGrounds.includes(probe.bg) ||
-							(slug === "browser" &&
-								probe.inOutlet &&
-								probe.bg === reading.browserChromeGround)
-						);
-					}),
+					reading.stripGrounds.every((probe) =>
+						stripProbeAccepted(probe, reading, {
+							owner: stripOwner,
+							fullHeight,
+						}),
+					),
 				`y8: ${JSON.stringify(reading.stripGrounds)}; grounds ${panelGrounds.join(", ")}; Browser chrome ${reading.browserChromeGround}; clear outlet expected ${stripOverBody}`,
 			);
 			check(
