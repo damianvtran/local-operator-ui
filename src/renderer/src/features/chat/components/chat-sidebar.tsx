@@ -302,9 +302,13 @@ import { clearSearch } from "../clear-search";
  */
 import { copySessionId } from "../copy-session-id";
 import {
+	type DraftRow,
 	currentSessionRowId,
 	discardDraftLabel,
 	discardSuccessorIndex,
+	liveDraftRow,
+	typedDraftKeys,
+	typedDraftTitle,
 	unsentSessionIds,
 	untargetedDraftRows,
 } from "../draft-rows";
@@ -1074,6 +1078,30 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
  */
 const FLYOUT_COLLISION_PADDING = 8;
 
+/**
+ * One draft row, kept current with its own draft's typed title.
+ *
+ * WHY A RENDER PROP (composer typing perf, 2026-11-23): the row's words change
+ * on keystrokes, but nothing else in the sidebar does. This component owns the
+ * one subscription that follows the text, so a keystroke re-renders this row
+ * and nothing above it; the row's JSX stays in `ChatSidebar` (its handlers and
+ * `activeDraftKey` close over sidebar state, which a keystroke never changes).
+ * The selector answers the capped title, so typing past the cap or on a later
+ * line re-renders nothing at all.
+ */
+function LiveDraftRow({
+	row,
+	children,
+}: {
+	row: DraftRow;
+	children: (row: DraftRow) => ReactNode;
+}) {
+	const typedTitle = useConversationInputStore((s) =>
+		typedDraftTitle(s.inputByConversation[row.key]?.currentInput),
+	);
+	return children(liveDraftRow(row, typedTitle));
+}
+
 export function ChatSidebar({
 	selectedConversation,
 	onSelectConversation,
@@ -1640,8 +1668,15 @@ export function ChatSidebar({
 	 * listed a draft without its first line would name nothing the reader could
 	 * recognise (UX round 2, U8).
 	 */
-	const inputByConversation = useConversationInputStore(
-		(s) => s.inputByConversation,
+	/*
+	 * NOT the whole `inputByConversation` map: the composer writes a new one on
+	 * every keystroke, and selecting it re-rendered this entire sidebar per
+	 * keypress (see `typedDraftKeys`). This changes only when a draft crosses
+	 * blank <-> non-blank; each draft row's words follow the text through its
+	 * own `LiveDraftRow` subscription instead.
+	 */
+	const typedDrafts = useConversationInputStore((s) =>
+		typedDraftKeys(s.inputByConversation),
 	);
 	const markAllRead = useCanonicalSessionsStore((s) => s.markAllRead);
 	/*
@@ -4045,9 +4080,20 @@ export function ChatSidebar({
 		() => new Set(matching.map((row) => row.session_id)),
 		[matching],
 	);
+	/*
+	 * The text is read from the store at this render rather than subscribed to:
+	 * which rows exist only moves with `typedDrafts` (and `drafts`), and a row's
+	 * words between those renders are `LiveDraftRow`'s to keep current.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `typedDrafts` is the subscription that re-derives the rows when a draft turns blank or non-blank; the text itself is read fresh from the store.
 	const draftRows = useMemo(
-		() => untargetedDraftRows(drafts, inputByConversation, listedSessionIds),
-		[drafts, inputByConversation, listedSessionIds],
+		() =>
+			untargetedDraftRows(
+				drafts,
+				useConversationInputStore.getState().inputByConversation,
+				listedSessionIds,
+			),
+		[drafts, typedDrafts, listedSessionIds],
 	);
 	/*
 	 * THE ROWS `Clear all` MAY ACT ON: the listed rows minus the ones whose send hop
@@ -9875,238 +9921,244 @@ export function ChatSidebar({
 				 * list's own sections.
 				 */
 				<section data-chat-section="drafts">
-					{draftRows.map((row) => {
-						/*
-						 * ONE STATE, READ ONCE, for the reason the session rows spell out
-						 * (review round 1, A7): the wrapper and the button both paint the
-						 * current ground, and two copies of the predicate are two chances
-						 * for them to disagree.
-						 */
-						const current = row.key === activeDraftKey;
-						return (
-							/*
-							 * A WRAPPER PLUS A BUTTON, the shape the session rows settled on
-							 * for a reason that applies word for word: a nested button is invalid
-							 * HTML and unfocusable, so the discard act is the row button's
-							 * SIBLING - and the box is what carries `group`, the state the
-							 * act's reveal reads.
-							 */
-							<div
-								key={row.key}
-								className={cn(
-									rowBoxStyle,
-									"group",
-									// A draft's title and its discard act's label name it (round 1, M1).
-									USER_CONTENT_CLASS,
+					{draftRows.map((listed) => (
+						<LiveDraftRow key={listed.key} row={listed}>
+							{(row) => {
+								/*
+								 * ONE STATE, READ ONCE, for the reason the session rows spell out
+								 * (review round 1, A7): the wrapper and the button both paint the
+								 * current ground, and two copies of the predicate are two chances
+								 * for them to disagree.
+								 */
+								const current = row.key === activeDraftKey;
+								return (
 									/*
-									 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
-									 * (design round 2, D13, measured on the session rows):
-									 * `rowStyle`'s own `hover:bg-row-hover` fires only while the
-									 * pointer is over the BUTTON, so moving onto the act beside it
-									 * dropped the ground under a pointer that never left the row.
-									 * A PLAIN `hover:`, never `group-hover:` - the box carries
-									 * `group`, and `group-hover:` compiles to a DESCENDANT rule
-									 * that can never match its own carrier.
+									 * A WRAPPER PLUS A BUTTON, the shape the session rows settled on
+									 * for a reason that applies word for word: a nested button is invalid
+									 * HTML and unfocusable, so the discard act is the row button's
+									 * SIBLING - and the box is what carries `group`, the state the
+									 * act's reveal reads.
 									 */
-									!current && "hover:bg-row-hover",
-									current && rowCurrent,
-								)}
-							>
-								<button
-									type="button"
-									data-chat-row
-									data-draft-row={row.key}
-									aria-label={t("ui.chat.sidebar.row.open_draft", {
-										label: row.label,
-									})}
-									title={row.label}
-									onClick={() => {
-										openDraft(row.key);
-										navigate("/chat");
-									}}
-									className={cn(
-										rowStyle,
-										"min-w-0 flex-1 text-start",
-										current && rowCurrent,
-									)}
-								>
-									<FileText
-										className="size-4 shrink-0 text-ink-dim"
-										aria-hidden="true"
-									/>
-									<span className="min-w-0 flex-1 truncate">{row.label}</span>
-								</button>
-								{/*
-								 * THE WHY, WHERE BOTH CHANNELS CAN READ IT (design round 2's D7, UX
-								 * round 2's U6). A `title` on a `disabled` control is the pointer-only
-								 * channel engines are least reliable about, and it reaches no keyboard
-								 * reader at all - so the sentence also exists as an `sr-only` element the
-								 * control points at with `aria-describedby` while it is inapplicable.
-								 * It lives OUTSIDE the button because `aria-label` owns the button's
-								 * name; nothing reads this span as the act's label.
-								 */}
-								{/*
-								 * RENDERED ONLY WHILE IT APPLIES (QA round 2, Q2-3). The span is not
-								 * `aria-hidden`, so an `sr-only` sentence standing beside a live control is IN
-								 * the accessibility tree: the row kept announcing "Sending - this draft can be
-								 * discarded when the send settles" after the send had already been refused, while
-								 * its own Discard was enabled and its `title` said the discard was available -
-								 * two surfaces, one send, opposite claims, and the reader who cannot see the
-								 * button is the one who cannot check. The gate is the SAME `row.pending` the
-								 * press and the description read (this file's own "one state, read once" rule),
-								 * so the three cannot disagree.
-								 */}
-								{row.pending && (
-									<span id={draftWhyId(row.key)} className="sr-only">
-										{sendingDiscardWhy()}
-									</span>
-								)}
-								{/*
-								 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
-								 * deletion on hover"). Revealed by the row's hover or focus, the
-								 * session acts' own pair - and IN the Tab ring, unlike those two:
-								 * their chord (⌘⇧P / ⌘⇧A) is what let them leave it, and a draft
-								 * has no chord. At rest the act is `hidden`, so it costs the ring
-								 * nothing until its row has focus; from there the next Tab lands
-								 * on it, which is the flow the session acts' own block describes.
-								 */}
-								<button
-									type="button"
-									data-draft-discard={row.key}
-									/*
-									 * INAPPLICABLE WHILE THE ROW'S SEND HOP IS LIVE (UX round 1's U2): a
-									 * press here used to remove the row while the request went on to land
-									 * in an unread chat - a discard followed by a silent send. The
-									 * store's own semantics are unchanged (a deliberate discard still
-									 * outranks the abandoned request - its record pins that), so the
-									 * withholding is the ACT's, here and in the batch below.
-									 *
-									 * AND IT STAYS FOCUSABLE (agent review round 2's R7, design round 2's
-									 * D7): a real `disabled` attribute drops the control out of the Tab
-									 * ring and out of the arrow walk - `focus()` on it is a no-op, so a
-									 * walk step onto it dead-stopped - and it leaves the why
-									 * unannounceable. `aria-disabled` + a refused press is the app's own
-									 * idiom for exactly this (`older-history-slot.tsx`: a disabled button
-									 * cannot hold focus, and the keyboard reader is the one most likely
-									 * to be on the control; `session-status-strip.tsx` the same).
-									 */
-									aria-disabled={row.pending}
-									aria-describedby={
-										row.pending ? draftWhyId(row.key) : undefined
-									}
-									aria-label={discardDraftLabel(row.title)}
-									title={
-										row.pending
-											? sendingDiscardWhy()
-											: discardDraftLabel(row.title)
-									}
-									onClick={(event) => {
-										/*
-										 * THE REFUSED PRESS, before anything else (R7/D7): `aria-disabled`
-										 * does not stop the click, so the handler is what makes it inert -
-										 * no write, no caret move, no offer.
-										 */
-										if (row.pending) {
-											event.preventDefault();
-											return;
-										}
-										/*
-										 * THEN THE REPEAT-PRESS GUARD, the panel's own record
-										 * (`dropRepeatPress`): the row unmounts under the second click
-										 * of a double-click, and the row that slides up can carry its
-										 * act into the same spot. A dropped press writes nothing and
-										 * moves no caret.
-										 */
-										if (
-											dropRepeatPress(
-												event.detail === 0
-													? null
-													: { x: event.clientX, y: event.clientY },
-												row.key,
-											)
-										)
-											return;
-										/*
-										 * AND THE CARET LANDS SOMEWHERE, the archive's own
-										 * no-dead-cursor rule: the node the reader was on is about to
-										 * unmount. The successor is read BY KEY before the write
-										 * (`discardSuccessorIndex` carries the measured why: the old
-										 * version indexed the discard BUTTON among `[data-draft-row]`
-										 * elements, so it always landed on the first row), and the
-										 * frame callback hands focus to the row occupying that
-										 * position - the row that slid up into the gap, or the first
-										 * row of the panel when this was last.
-										 */
-										const keys = [
-											...(navRef.current?.querySelectorAll(
-												"[data-draft-row]",
-											) ?? []),
-										].map((el) => el.getAttribute("data-draft-row") ?? "");
-										const at = discardSuccessorIndex(keys, row.key);
-										discardDraft(row.key);
-										/*
-										 * A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE
-										 * (UX round 1's U1, remediation): `discardDraft` clears
-										 * `activeDraftKey`, and the chat page's residue arm has no
-										 * composer - discarding the open draft used to leave a bare
-										 * `New chat` surface. `onStageDraft(undefined, true)` is
-										 * exactly the two steps the New chat row performs (stage a
-										 * fresh draft, stay on `/chat`), and it runs only when the
-										 * pane really was on this key.
-										 */
-										if (activeDraftKey === row.key) {
-											onStageDraft(undefined, true);
+									<div
+										key={row.key}
+										className={cn(
+											rowBoxStyle,
+											"group",
+											// A draft's title and its discard act's label name it (round 1, M1).
+											USER_CONTENT_CLASS,
 											/*
-											 * THE FRESH KEY IS REMEMBERED FOR THE OFFER'S OWN PRESS (UX
-											 * round 2's U7): the snapshot restores THIS key's draft on an
-											 * Undo, and the offer's handler re-opens it only when the pane
-											 * still shows the freshly staged draft - the stored key is what
-											 * makes "the pane sits on the staged key" a fact rather than a
-											 * guess. Every discard writes it (null when the pane was not
-											 * taken), so an offer never re-opens a pane the reader has
-											 * since moved.
+											 * THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON
+											 * (design round 2, D13, measured on the session rows):
+											 * `rowStyle`'s own `hover:bg-row-hover` fires only while the
+											 * pointer is over the BUTTON, so moving onto the act beside it
+											 * dropped the ground under a pointer that never left the row.
+											 * A PLAIN `hover:`, never `group-hover:` - the box carries
+											 * `group`, and `group-hover:` compiles to a DESCENDANT rule
+											 * that can never match its own carrier.
 											 */
-											setStagedByDiscard(
-												useCanonicalSessionsStore.getState().activeDraftKey,
-											);
-										} else {
-											setStagedByDiscard(null);
-										}
-										requestAnimationFrame(() => {
-											const rows = [
-												...(navRef.current?.querySelectorAll<HTMLElement>(
-													"[data-draft-row]",
-												) ?? []),
-											];
-											const next =
-												rows[Math.min(Math.max(at, 0), rows.length - 1)] ??
-												navRef.current?.querySelector<HTMLElement>(
-													"[data-chat-row]",
-												);
-											next?.focus();
-										});
-									}}
-									className={cn(
-										"size-6 shrink-0 items-center justify-center rounded-md",
-										"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
-										"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
-										/*
-										 * COLOUR, NEVER OPACITY (design round 2's D5; branding.md §6): an
-										 * opacity-faded control fades its own background too, so the same
-										 * button lands on a different colour over each ground - measured at
-										 * 1.89:1 / 2.13:1, BELOW the disabled role the palette ships for
-										 * exactly this. The hover step is stilled explicitly, because the
-										 * measured disabled read darkened under the pointer.
-										 */
-										"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
-										"aria-disabled:hover:text-ink-disabled!",
-									)}
-								>
-									<Trash2 className="size-4" aria-hidden="true" />
-								</button>
-							</div>
-						);
-					})}
+											!current && "hover:bg-row-hover",
+											current && rowCurrent,
+										)}
+									>
+										<button
+											type="button"
+											data-chat-row
+											data-draft-row={row.key}
+											aria-label={t("ui.chat.sidebar.row.open_draft", {
+												label: row.label,
+											})}
+											title={row.label}
+											onClick={() => {
+												openDraft(row.key);
+												navigate("/chat");
+											}}
+											className={cn(
+												rowStyle,
+												"min-w-0 flex-1 text-start",
+												current && rowCurrent,
+											)}
+										>
+											<FileText
+												className="size-4 shrink-0 text-ink-dim"
+												aria-hidden="true"
+											/>
+											<span className="min-w-0 flex-1 truncate">
+												{row.label}
+											</span>
+										</button>
+										{/*
+										 * THE WHY, WHERE BOTH CHANNELS CAN READ IT (design round 2's D7, UX
+										 * round 2's U6). A `title` on a `disabled` control is the pointer-only
+										 * channel engines are least reliable about, and it reaches no keyboard
+										 * reader at all - so the sentence also exists as an `sr-only` element the
+										 * control points at with `aria-describedby` while it is inapplicable.
+										 * It lives OUTSIDE the button because `aria-label` owns the button's
+										 * name; nothing reads this span as the act's label.
+										 */}
+										{/*
+										 * RENDERED ONLY WHILE IT APPLIES (QA round 2, Q2-3). The span is not
+										 * `aria-hidden`, so an `sr-only` sentence standing beside a live control is IN
+										 * the accessibility tree: the row kept announcing "Sending - this draft can be
+										 * discarded when the send settles" after the send had already been refused, while
+										 * its own Discard was enabled and its `title` said the discard was available -
+										 * two surfaces, one send, opposite claims, and the reader who cannot see the
+										 * button is the one who cannot check. The gate is the SAME `row.pending` the
+										 * press and the description read (this file's own "one state, read once" rule),
+										 * so the three cannot disagree.
+										 */}
+										{row.pending && (
+											<span id={draftWhyId(row.key)} className="sr-only">
+												{sendingDiscardWhy()}
+											</span>
+										)}
+										{/*
+										 * THE DISCARD ACT (operator, 2026-09-26: "Each one should have a
+										 * deletion on hover"). Revealed by the row's hover or focus, the
+										 * session acts' own pair - and IN the Tab ring, unlike those two:
+										 * their chord (⌘⇧P / ⌘⇧A) is what let them leave it, and a draft
+										 * has no chord. At rest the act is `hidden`, so it costs the ring
+										 * nothing until its row has focus; from there the next Tab lands
+										 * on it, which is the flow the session acts' own block describes.
+										 */}
+										<button
+											type="button"
+											data-draft-discard={row.key}
+											/*
+											 * INAPPLICABLE WHILE THE ROW'S SEND HOP IS LIVE (UX round 1's U2): a
+											 * press here used to remove the row while the request went on to land
+											 * in an unread chat - a discard followed by a silent send. The
+											 * store's own semantics are unchanged (a deliberate discard still
+											 * outranks the abandoned request - its record pins that), so the
+											 * withholding is the ACT's, here and in the batch below.
+											 *
+											 * AND IT STAYS FOCUSABLE (agent review round 2's R7, design round 2's
+											 * D7): a real `disabled` attribute drops the control out of the Tab
+											 * ring and out of the arrow walk - `focus()` on it is a no-op, so a
+											 * walk step onto it dead-stopped - and it leaves the why
+											 * unannounceable. `aria-disabled` + a refused press is the app's own
+											 * idiom for exactly this (`older-history-slot.tsx`: a disabled button
+											 * cannot hold focus, and the keyboard reader is the one most likely
+											 * to be on the control; `session-status-strip.tsx` the same).
+											 */
+											aria-disabled={row.pending}
+											aria-describedby={
+												row.pending ? draftWhyId(row.key) : undefined
+											}
+											aria-label={discardDraftLabel(row.title)}
+											title={
+												row.pending
+													? sendingDiscardWhy()
+													: discardDraftLabel(row.title)
+											}
+											onClick={(event) => {
+												/*
+												 * THE REFUSED PRESS, before anything else (R7/D7): `aria-disabled`
+												 * does not stop the click, so the handler is what makes it inert -
+												 * no write, no caret move, no offer.
+												 */
+												if (row.pending) {
+													event.preventDefault();
+													return;
+												}
+												/*
+												 * THEN THE REPEAT-PRESS GUARD, the panel's own record
+												 * (`dropRepeatPress`): the row unmounts under the second click
+												 * of a double-click, and the row that slides up can carry its
+												 * act into the same spot. A dropped press writes nothing and
+												 * moves no caret.
+												 */
+												if (
+													dropRepeatPress(
+														event.detail === 0
+															? null
+															: { x: event.clientX, y: event.clientY },
+														row.key,
+													)
+												)
+													return;
+												/*
+												 * AND THE CARET LANDS SOMEWHERE, the archive's own
+												 * no-dead-cursor rule: the node the reader was on is about to
+												 * unmount. The successor is read BY KEY before the write
+												 * (`discardSuccessorIndex` carries the measured why: the old
+												 * version indexed the discard BUTTON among `[data-draft-row]`
+												 * elements, so it always landed on the first row), and the
+												 * frame callback hands focus to the row occupying that
+												 * position - the row that slid up into the gap, or the first
+												 * row of the panel when this was last.
+												 */
+												const keys = [
+													...(navRef.current?.querySelectorAll(
+														"[data-draft-row]",
+													) ?? []),
+												].map((el) => el.getAttribute("data-draft-row") ?? "");
+												const at = discardSuccessorIndex(keys, row.key);
+												discardDraft(row.key);
+												/*
+												 * A PANE THAT WAS SHOWING THIS DRAFT IS GIVEN A FRESH ONE
+												 * (UX round 1's U1, remediation): `discardDraft` clears
+												 * `activeDraftKey`, and the chat page's residue arm has no
+												 * composer - discarding the open draft used to leave a bare
+												 * `New chat` surface. `onStageDraft(undefined, true)` is
+												 * exactly the two steps the New chat row performs (stage a
+												 * fresh draft, stay on `/chat`), and it runs only when the
+												 * pane really was on this key.
+												 */
+												if (activeDraftKey === row.key) {
+													onStageDraft(undefined, true);
+													/*
+													 * THE FRESH KEY IS REMEMBERED FOR THE OFFER'S OWN PRESS (UX
+													 * round 2's U7): the snapshot restores THIS key's draft on an
+													 * Undo, and the offer's handler re-opens it only when the pane
+													 * still shows the freshly staged draft - the stored key is what
+													 * makes "the pane sits on the staged key" a fact rather than a
+													 * guess. Every discard writes it (null when the pane was not
+													 * taken), so an offer never re-opens a pane the reader has
+													 * since moved.
+													 */
+													setStagedByDiscard(
+														useCanonicalSessionsStore.getState().activeDraftKey,
+													);
+												} else {
+													setStagedByDiscard(null);
+												}
+												requestAnimationFrame(() => {
+													const rows = [
+														...(navRef.current?.querySelectorAll<HTMLElement>(
+															"[data-draft-row]",
+														) ?? []),
+													];
+													const next =
+														rows[Math.min(Math.max(at, 0), rows.length - 1)] ??
+														navRef.current?.querySelector<HTMLElement>(
+															"[data-chat-row]",
+														);
+													next?.focus();
+												});
+											}}
+											className={cn(
+												"size-6 shrink-0 items-center justify-center rounded-md",
+												"hidden text-ink-dim group-hover:flex group-hover:text-ink-muted",
+												"group-focus-within:flex group-focus-within:text-ink-muted hover:text-ink!",
+												/*
+												 * COLOUR, NEVER OPACITY (design round 2's D5; branding.md §6): an
+												 * opacity-faded control fades its own background too, so the same
+												 * button lands on a different colour over each ground - measured at
+												 * 1.89:1 / 2.13:1, BELOW the disabled role the palette ships for
+												 * exactly this. The hover step is stilled explicitly, because the
+												 * measured disabled read darkened under the pointer.
+												 */
+												"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+												"aria-disabled:hover:text-ink-disabled!",
+											)}
+										>
+											<Trash2 className="size-4" aria-hidden="true" />
+										</button>
+									</div>
+								);
+							}}
+						</LiveDraftRow>
+					))}
 					{/*
 					 * THE CLEAR-ALL (operator, same message: "also a subtle clear all
 					 * UX"). It clears EXACTLY the rows this section lists - the keys
