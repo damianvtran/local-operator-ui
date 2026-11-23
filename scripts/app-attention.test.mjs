@@ -1270,3 +1270,46 @@ test("the status edge is wired from the transport to the claim's owner", () => {
 		"a report is refused unless it is the main window's MAIN FRAME",
 	);
 });
+
+test("the notifications edge is wired from the transport to the claim's owner", () => {
+	/*
+	 * ROUND-2 M-A'S SHAPE PIN. A status frame rings only when the harness's
+	 * `status_dedupe_key` moves, so an ask filed into a conversation already on
+	 * `answer`/`approval` never rings it; the `notifications` frame is the
+	 * harness's own doorbell for the asks index, and the claim must follow it.
+	 * Pinned at the two joints a refactor could drop while every pure assertion
+	 * above stayed green: the transport still publishes the frame to the record,
+	 * and the claim's owner still re-reads the SAME key on it - with nothing
+	 * between the two, because the frame names counts, not asks.
+	 */
+	const transport = readFileSync(
+		new URL(
+			"../src/renderer/src/shared/hooks/use-desktop-feed.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	assert.match(transport, /publishNotificationsFrame\(frame\)/);
+	const hook = readFileSync(
+		new URL(
+			"../src/renderer/src/features/chat/use-queued-ask-attention.ts",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	assert.match(
+		hook,
+		/notificationsFrameRecord\.subscribe\(\s*invalidateClaim\s*\)/,
+		"every notifications frame re-reads the index, unfiltered: it names no ask",
+	);
+	assert.match(
+		hook,
+		/const invalidateClaim = \(\) =>\s*void client\.invalidateQueries\(\{ queryKey: FLEET_ASKS_QUERY_KEY \}\)/,
+		"and that re-read is the fleet-asks key the claim derives from",
+	);
+	assert.match(
+		hook,
+		/stopNotifications\(\);/,
+		"the listener is torn down with the effect that opened it",
+	);
+});

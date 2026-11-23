@@ -175,6 +175,9 @@ export type DesktopFeedConnection = {
  * frame rides the subscriptions that already exist - the app-level locale sync
  * and the rail's keeper/list are always mounted - and a consumer reads it
  * through `useSyncExternalStore`, which opens nothing and has a server snapshot.
+ * Its other kind of consumer wants the EDGE and no value at all: the dock/tray
+ * claim's owner (`use-queued-ask-attention.ts`) subscribes imperatively and
+ * re-reads the asks index, rendering nothing.
  *
  * ONE RECORD PER FRAME, NOT PER SUBSCRIBER. Each existing subscription receives
  * the same frame, so publication is deduplicated on the frame's identity

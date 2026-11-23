@@ -1,4 +1,7 @@
-import { sessionStatusTransitions } from "@shared/hooks/use-desktop-feed";
+import {
+	notificationsFrameRecord,
+	sessionStatusTransitions,
+} from "@shared/hooks/use-desktop-feed";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -47,9 +50,25 @@ import {
  * gate (`@tanstack/query-core` refetches `refetchType ?? "active"`), so the frame
  * is the re-read and the poll keeps its costing rule.
  *
+ * TWO DOORBELLS, BECAUSE ONE OF THEM RINGS INCOMPLETELY (round-2 M-A). A status
+ * frame is the FAST doorbell, not a complete one: the harness publishes
+ * `session_status` only when `status_dedupe_key` moves, so a queued ask added to a
+ * conversation already sitting at `answer`/`approval` - or the last one leaving
+ * while another pending item keeps it `answer` - sends no status frame at all, and
+ * a hidden claim would keep missing, or keep masking, that conversation. The
+ * `notifications` frame is the harness's own doorbell for the asks index
+ * (`desktop_feed.py`'s `_maybe_emit_notifications`: the index is probed every
+ * second and a frame is published on any identity move, a same-count replacement
+ * included), and it is published AFTER the index write it reports, so a re-read
+ * on it cannot see a pre-write index. It carries no ask identity, so every frame
+ * is "the index may have moved" - at most one per probe tick. Both invalidate the
+ * same key, one small index read per event; the status trigger stays because it
+ * rings on the transition itself rather than within the next probe tick.
+ *
  * THE INVARIANT: the claim main holds is the set the index held at the last event
- * that could have moved it - a status frame, a poll, a focus refetch, or main's
- * own resync - so hiding the window cannot leave it stale.
+ * that could have moved it - a status frame, a notifications frame, a poll, a
+ * focus refetch, or main's own resync - so hiding the window cannot leave it
+ * stale.
  */
 export const useQueuedAskAttention = (): void => {
 	const { rows } = useFleetAsks();
@@ -81,17 +100,26 @@ export const useQueuedAskAttention = (): void => {
 
 	useEffect(() => {
 		if (!provided) return;
-		return sessionStatusTransitions.subscribe((transition) => {
+		const invalidateClaim = () =>
+			void client.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+		const stopStatus = sessionStatusTransitions.subscribe((transition) => {
 			if (
-				!statusFrameMovesQueuedAskClaim(
+				statusFrameMovesQueuedAskClaim(
 					transition.sessionId,
 					transition.code,
 					claimed.current,
 				)
 			)
-				return;
-			void client.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+				invalidateClaim();
 		});
+		/* No filter: the frame names counts, not asks, so any of them may mean the
+		 * index the claim derives from moved. */
+		const stopNotifications =
+			notificationsFrameRecord.subscribe(invalidateClaim);
+		return () => {
+			stopStatus();
+			stopNotifications();
+		};
 	}, [client, provided]);
 
 	useEffect(() => {

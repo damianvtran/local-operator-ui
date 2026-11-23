@@ -173,9 +173,11 @@ export function nextQueuedAskReport(
  * parked on a question holds no queued ask by the contract this whole file is
  * built on.
  *
- * A false answer here is only ever "do not ask the index this time": the poll,
- * the focus refetch and main's resync still own the edges this rule
- * deliberately ignores.
+ * A false answer here is only ever "do not ask the index this time": the
+ * `notifications` frame (`use-queued-ask-attention.ts`) is the complete doorbell
+ * for the same fact - it rings on ANY index move, the transitions this key cannot
+ * see included - and the poll, the focus refetch and main's resync still own the
+ * edges both rules deliberately ignore.
  */
 export function statusFrameMovesQueuedAskClaim(
 	sessionId: string,
