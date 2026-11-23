@@ -301,6 +301,10 @@ export async function navigateView(
 		// be replaced by the `loadURL` below. Nothing is awaited between this
 		// check and the load, so the check and the act are one turn.
 		ctx.registry.assertNoConflictingAuthRequest(contents.id, "navigate");
+		// The agent, not the person, chose what this tab shows next: a click
+		// into the old page is no engagement of the new one (review R11), so a
+		// provider prompt on the agent's next login page needs a fresh press.
+		ctx.registry.agentNavigating(contents.id);
 		const settled = settle(contents, timeoutMs);
 		// Both arms are started before either is awaited, so a load that finishes
 		// before the settle's listeners are armed cannot be missed.

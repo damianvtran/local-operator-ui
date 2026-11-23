@@ -13,8 +13,13 @@
  *   - SET by a trusted tab-strip selection (`selected`), or by a press on the
  *     tab's own page (`pagePressed`) that is NOT synthesized by the agent;
  *   - CLEARED when the window loses focus (`windowBlurred`), when another tab
- *     (or none) becomes active (`activated`), when the person moves into the
- *     app's own chrome or chat, and when the tab closes or changes hands.
+ *     (or none) becomes active (`activated`), when the app's own renderer
+ *     takes focus FROM a page (its `focus` event; a tab-strip click already
+ *     has focus in the app, so typing in chat after one does NOT clear it),
+ *     when the AGENT replaces the tab's main document (`actions/gate.ts`
+ *     `navigateView`, review R11: the person engaged the old page, not the
+ *     agent's next one), and when the tab closes or changes hands. A
+ *     navigation the page or the person makes does not clear it.
  *
  * WHY A PAGE PRESS NEEDS `synthetic`. Electron raises `before-mouse-event` from
  * the RenderWidgetHost's mouse-event callbacks

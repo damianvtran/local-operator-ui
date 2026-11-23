@@ -42,6 +42,7 @@ import {
 	focusBrowserChordTarget,
 	presentPopupWindow,
 } from "../window-raise";
+import { providerFrameFocused } from "./actions/auth-prompt-input";
 import { discardRecordingForAuthPrompt } from "./actions/recording";
 import {
 	createRecordingEncoderService,
@@ -117,6 +118,8 @@ import {
 	type NativeAuthSource,
 	NativePasskeyNotice,
 	dismissNativePasskeyNoticeOnEscape,
+	dismissPasskeyNotice,
+	passkeyNoticeFor,
 } from "./native-passkey-notice";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
@@ -1031,11 +1034,13 @@ async function initializeBrowserHost(
 				)
 					syncPasskeyNotice();
 				/*
-				 * A native request on an AGENT tab is a ceremony: the person must
-				 * answer a system sheet that only this document's promise is waiting
-				 * for, so `close` and `navigate` on that tab are the two actions that
-				 * must not happen. Apple platform passkeys arrive exactly here. The tab
-				 * keeps serving everything else.
+				 * A native request on an AGENT tab a PERSON engages is a ceremony: the
+				 * person must answer a system sheet that only this document's promise
+				 * is waiting for, so `close` and `navigate` on that tab are the two
+				 * actions that must not happen. Apple platform passkeys arrive exactly
+				 * here. The tab keeps serving everything else. Unengaged, nothing is
+				 * recorded or refused (review R8/U6/Q4): nobody is completing it, and
+				 * the host's own chooser above still shows it.
 				 */
 				if (authSource?.owner === "agent" && request.tabId !== null) {
 					const record = registry.get(request.tabId);
@@ -1044,6 +1049,7 @@ async function initializeBrowserHost(
 							webContentsId: record.view.webContents.id,
 							tabId: record.tabId,
 							requestId: request.requestId,
+							engaged: engagement.has(record.tabId),
 						});
 					}
 				}
@@ -1255,16 +1261,13 @@ async function initializeBrowserHost(
 						// dismissal from the card itself must push it (F1).
 						onChanged: () => notifyChanged(),
 						// The card is informational: close it without answering the chooser.
-						onNoticeDismiss: ({ tabId, at }) => {
-							if (nativePasskeyNotice.dismiss(tabId, at)) syncPasskeyNotice();
-							// The same slot also carries a provider-document ceremony
-							// (`extensions/auth-request.ts`). Dismissal is presentation only: it
-							// never settles, reloads or cancels the request it describes.
-							const pending = authRequests.viewForTab(tabId);
+						// The same slot carries a native request and a provider-document
+						// ceremony, one identity per request (`passkeyNoticeFor`, review
+						// Q3). Dismissal is presentation only: it never settles, reloads or
+						// cancels the request it describes.
+						onNoticeDismiss: (notice) => {
 							if (
-								pending &&
-								pending.at === at &&
-								authRequests.dismiss(tabId, pending.requestId)
+								dismissPasskeyNotice(notice, authRequests, nativePasskeyNotice)
 							)
 								syncPasskeyNotice();
 						},
@@ -1373,15 +1376,12 @@ async function initializeBrowserHost(
 			// that would turn a cosmetic failure into a cancelled WebAuthn request.
 			try {
 				const active = registryForDownloads?.activeTab ?? null;
-				// One card, two sources, and the provider's wins for the tab the person
-				// is looking at: a provider-document ceremony is the more specific
-				// statement. A passive autofill card never reaches this function —
-				// nothing is recorded for it (`extensions/auth-request.ts`).
-				const pending = active ? authRequests.viewForTab(active.tabId) : null;
+				// One card, two sources, ONE identity per request
+				// (`native-passkey-notice.ts` `passkeyNoticeFor`). A passive autofill
+				// card never reaches this function — nothing is recorded for it
+				// (`extensions/auth-request.ts`).
 				approvalsOverlay?.setNotice(
-					pending && !pending.dismissed
-						? { tabId: pending.tabId, at: pending.at }
-						: nativePasskeyNotice.viewFor(active),
+					passkeyNoticeFor(active, authRequests, nativePasskeyNotice),
 				);
 			} catch (error) {
 				log(`[browser] passkey notice presentation failed: ${String(error)}`);
@@ -1543,6 +1543,9 @@ async function initializeBrowserHost(
 		 */
 		registry.setAuthRequestGate(authRequests);
 		cdp.setAuthRequestGate(authRequests);
+		// An agent navigation ends the person's engagement of that tab (review
+		// R11, `extensions/tab-engagement.ts`).
+		registry.setAgentNavigationListener((tabId) => engagement.clear(tabId));
 
 		/*
 		 * The live picture of an overlay-suppressed page (composite-bridge.ts). Only
@@ -3018,6 +3021,7 @@ async function initializeBrowserHost(
 							!options.window.isDestroyed() &&
 							options.window.isFocused(),
 						agentKey: cdp.isDispatchingKey(contents.id),
+						providerFocused: providerFrameFocused(contents),
 						dismiss: () =>
 							approvalsOverlay?.dismissVisibleNotice(tabId) ?? false,
 					}) || chords.input(event, input, "page", owns);
@@ -3105,6 +3109,10 @@ async function initializeBrowserHost(
 				host.clearLoadFailure(tabId);
 				webauthn.cancelForTab(tabId);
 				nativePasskeyNotice.clearTab(tabId);
+				// Every frame of the old document is gone, including a provider frame
+				// admitted without a handle; nothing else ends such a request (review
+				// R10/Q5: no production caller reached `committed` before).
+				authRequests.committed(contents.id);
 				// Returning to an approved site must not expose logs buffered while
 				// an autonomous unapproved document occupied this same WebContents.
 				stopLogCapture(contents.id);

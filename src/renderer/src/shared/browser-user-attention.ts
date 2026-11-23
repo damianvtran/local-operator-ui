@@ -25,7 +25,10 @@
  * branch is asserted without a window (`scripts/browser-user-attention.test.mjs`).
  */
 
-import type { CustodyHandoffTarget } from "./browser-passkey-custody-handoff";
+/** Where a row's click lands: `consentClickTarget`'s answer. */
+export type AttentionClickTarget =
+	| { kind: "conversation"; sessionId: string }
+	| { kind: "browser" };
 
 /** What a tab is waiting on, as main projects it (`waitingOnUser`). */
 export interface WaitingOnUserInput {
@@ -68,7 +71,7 @@ export interface BrowserAttentionRow {
 	/** The conversation the wait belongs to, or null for one no conversation
 	 * owns. Resolved to a title by the component. */
 	sessionId: string | null;
-	/** For a custody hold: its identity, so the handoff can be given back. */
+	/** When main projected the wait: part of its identity. */
 	at: number;
 }
 
@@ -130,27 +133,10 @@ export function browserAttentionRows(
 	return rows;
 }
 
-/** The parts of the user's view a click may move (the custody handoff's
- * snapshot shape). */
-export interface AttentionViewSnapshot {
-	pathname: string;
-	activeSessionId: string | null;
-	activeDraftKey: string | null;
-	browserPaneOpen: boolean;
-}
-
 /** What the shell hands `openBrowserAttention`. */
 export interface OpenBrowserAttentionDeps {
 	/** `consentClickTarget` over the current session list. */
-	target: (sessionId: string | null) => CustodyHandoffTarget;
-	currentView: () => AttentionViewSnapshot;
-	/** The custody handoffs; `begin` records the view to give back when the hold
-	 * ends — ONLY here, so a give-back only ever undoes the user's own click. */
-	beginCustodyHandoff: (
-		hold: { tabId: number; at: number },
-		target: CustodyHandoffTarget,
-		current: AttentionViewSnapshot,
-	) => void;
+	target: (sessionId: string | null) => AttentionClickTarget;
 	/** `window.api.browser.openUserAttention`: main activates the tab and
 	 * presents its held popups. Resolves `false` when main no longer has the tab
 	 * (the hold ended between the projection and the click). */
@@ -164,17 +150,14 @@ export interface OpenBrowserAttentionDeps {
 
 /**
  * A row was clicked: the ONE place a browser wait moves the user's view. Lands
- * where a consent banner's click lands, with the wait visible — the custody band
- * on the activated tab, the held popup presented, the approvals card on the
- * named request.
+ * where a consent banner's click lands, with the wait visible — the activated
+ * tab, the held popup presented, the approvals card on the named request.
  *
- * The tab is opened FIRST and its answer awaited (PR #1933 round 1, R2): a hold
- * can end between the projection and the click, and main then answers `false`.
- * Recording a custody handoff for that hold would leave an entry no `ended`
- * event ever closes, and navigating would land the user on a pane with nothing
- * waiting — so a `false` moves nothing and records nothing. The view to give
- * back is still snapshotted before the await: it must be the view the user
- * clicked from, not one a concurrent update produced.
+ * The tab is opened FIRST and its answer awaited (PR #1933 round 1, R2): a wait
+ * can end between the projection and the click, and main then answers `false`;
+ * navigating would land the user on a pane with nothing waiting, so a `false`
+ * moves nothing. (There is no give-back any more: passkey custody, which a
+ * click used to record a handoff for, is gone — `extensions/auth-request.ts`.)
  */
 export async function openBrowserAttention(
 	row: BrowserAttentionRow,
@@ -184,14 +167,7 @@ export async function openBrowserAttention(
 	if (row.kind === "site-access") {
 		if (row.entryId) deps.noteConsent(row.entryId);
 	} else if (row.tabId !== null) {
-		const current = deps.currentView();
 		if (!(await deps.openTab(row.tabId))) return;
-		if (row.kind === "passkey")
-			deps.beginCustodyHandoff(
-				{ tabId: row.tabId, at: row.at },
-				target,
-				current,
-			);
 	}
 	if (target.kind === "browser") {
 		deps.navigate("/browser");

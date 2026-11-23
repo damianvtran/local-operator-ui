@@ -217,6 +217,7 @@ test("only page-focused physical Escape claims the visible notice", () => {
 		},
 		ownsFocusedPage: true,
 		agentKey: false,
+		providerFocused: false,
 		dismiss() {
 			dismissed++;
 			return true;
@@ -230,6 +231,8 @@ test("only page-focused physical Escape claims the visible notice", () => {
 		{ input: { ...options.input, isComposing: true } },
 		{ input: { ...options.input, isAutoRepeat: true } },
 		{ dismiss: () => false },
+		// U10: Esc inside a password manager's prompt backs out of THAT prompt.
+		{ providerFocused: true },
 	])
 		assert.equal(
 			dismissNativePasskeyNoticeOnEscape({ ...options, ...override }),
@@ -240,4 +243,12 @@ test("only page-focused physical Escape claims the visible notice", () => {
 	assert.equal(dismissNativePasskeyNoticeOnEscape(options), true);
 	assert.equal(prevented, 1);
 	assert.equal(dismissed, 1);
+});
+
+test("U10: the host passes the focused frame's provider-ness to the Escape claim", () => {
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	assert.match(
+		wiring,
+		/dismissNativePasskeyNoticeOnEscape\(\{[\s\S]{0,600}providerFocused: providerFrameFocused\(contents\),/,
+	);
 });

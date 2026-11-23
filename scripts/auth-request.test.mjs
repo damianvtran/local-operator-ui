@@ -346,6 +346,7 @@ test("the provider's own prompt document is never an agent target, whatever the 
 test("a native request (Apple platform passkeys) is the same typed, tab-scoped state", () => {
 	const { requests, events } = rig();
 	const view = requests.beginNative({
+		engaged: true,
 		webContentsId: 10,
 		tabId: 1,
 		requestId: "webauthn-1",
@@ -354,6 +355,7 @@ test("a native request (Apple platform passkeys) is the same typed, tab-scoped s
 	assert.deepEqual(events, [["begin", 1]]);
 	assert.equal(
 		requests.beginNative({
+			engaged: true,
 			webContentsId: 10,
 			tabId: 1,
 			requestId: "webauthn-2",
@@ -627,7 +629,10 @@ test("host dispatch: one corner-card notice, and dismissing it settles nothing",
 	const index = readSource("src/main/browser/index.ts");
 	// The provider request shares the approvals card's notice slot with a native
 	// request; there is no second, full-width surface.
-	assert.match(index, /const pending = active \? authRequests\.viewForTab/);
+	assert.match(
+		index,
+		/passkeyNoticeFor\(active, authRequests, nativePasskeyNotice\)/,
+	);
 	assert.match(
 		index,
 		/approvalsOverlay\?\.setNotice\(/,
@@ -635,7 +640,10 @@ test("host dispatch: one corner-card notice, and dismissing it settles nothing",
 	);
 	// A dismissal from the card reaches the provider request too, and the only
 	// thing it calls is `dismiss` (presentation). No settle, no reload, no cancel.
-	assert.match(index, /authRequests\.dismiss\(tabId, pending\.requestId\)/);
+	assert.match(
+		index,
+		/dismissPasskeyNotice\(notice, authRequests, nativePasskeyNotice\)/,
+	);
 	assert.doesNotMatch(
 		index,
 		/dismiss[\s\S]{0,200}(reload\(|settleByRequestId|cancelForTab)/,
@@ -1387,6 +1395,7 @@ test("B5: a retained NotAllowedError notice is NOT a live request", () => {
 test("B6: a native request survives the sweep until its chooser settles or its document goes", () => {
 	const { requests, events } = rig(); // hasProviderFrame: () => false
 	requests.beginNative({
+		engaged: true,
 		webContentsId: 10,
 		tabId: 1,
 		requestId: "webauthn-1",
@@ -1399,6 +1408,7 @@ test("B6: a native request survives the sweep until its chooser settles or its d
 	// Document teardown ends it too.
 	const torn = rig();
 	torn.requests.beginNative({
+		engaged: true,
 		webContentsId: 10,
 		tabId: 1,
 		requestId: "webauthn-2",
@@ -1434,4 +1444,225 @@ test("B7: a ceremony admitted while navigate's gate is being set up refuses the 
 		(error) => error.data?.reason === AUTH_REQUEST_REFUSAL_REASON,
 	);
 	assert.equal(loads, 0, "the document the ceremony lives in was not replaced");
+});
+
+// ---- round 3 remediation ----------------------------------------------------
+
+test("R8/U6/Q4: a native request on an UNENGAGED agent tab records nothing and refuses nothing", () => {
+	const { requests, events } = rig();
+	assert.equal(
+		requests.beginNative({
+			webContentsId: 10,
+			tabId: 1,
+			requestId: "webauthn-1",
+			engaged: false,
+		}),
+		null,
+	);
+	assert.equal(requests.hasRequests(), false);
+	assert.equal(requests.viewForTab(1), null, "no notice source");
+	assert.equal(requests.conflict(10, "close"), null, "close allowed");
+	assert.equal(requests.conflict(10, "navigate"), null, "navigate allowed");
+	assert.deepEqual(events, [], "nothing projected");
+	// Engaged: one request, and the refusals stay exactly as before.
+	const view = requests.beginNative({
+		webContentsId: 10,
+		tabId: 1,
+		requestId: "webauthn-2",
+		engaged: true,
+	});
+	assert.equal(view?.requestId, "webauthn-2");
+	assert.deepEqual(events, [["begin", 1]]);
+	assert.equal(
+		requests.conflict(10, "close")?.data?.reason,
+		AUTH_REQUEST_REFUSAL_REASON,
+	);
+	assert.equal(
+		requests.conflict(10, "navigate")?.data?.reason,
+		AUTH_REQUEST_REFUSAL_REASON,
+	);
+	// The host passes the person's live engagement, not a constant.
+	assert.match(
+		readSource("src/main/browser/index.ts"),
+		/authRequests\.beginNative\(\{[\s\S]{0,200}engaged: engagement\.has\(record\.tabId\),/,
+	);
+});
+
+test("Q3: a native request is never projected from AuthRequests (one notice identity per request)", () => {
+	const { requests } = rig();
+	requests.beginNative({
+		webContentsId: 10,
+		tabId: 1,
+		requestId: "webauthn-1",
+		engaged: true,
+	});
+	assert.equal(requests.viewForTab(1)?.requestId, "webauthn-1");
+	assert.equal(requests.providerViewForTab(1), null);
+	const provider = rig();
+	provider.requests.admit(ceremony());
+	assert.equal(provider.requests.providerViewForTab(1)?.requestId, "auth-1-1");
+});
+
+test("U7/R12/Q6: blur mid-ceremony still admits the SAME provider's completion document in THAT tab only", () => {
+	const OTHER =
+		"chrome-extension://otherproviderid/inline/notification/notification.html";
+	const { requests } = rig({ hasProviderFrame: () => true });
+	// Engaged: the generic host is admitted (presence) and corroborated.
+	assert.equal(
+		requests.admit(ceremony(undefined, { url: PROMPT, corroborated: true })),
+		true,
+	);
+	assert.equal(requests.hasRequests(), true);
+	// The window blurs (Touch ID / 1Password unlock): engagement is gone.
+	assert.equal(
+		requests.admit(ceremony(undefined, { url: USO, engaged: false })),
+		true,
+		"the completion document of the same provider still loads",
+	);
+	// Another view (tab) with no presence of its own: still refused.
+	assert.equal(
+		requests.admit(
+			ceremony({ webContentsId: 11, tabId: 2 }, { url: USO, engaged: false }),
+		),
+		false,
+	);
+	// A different provider in the same view: refused (no latch for it). Only a
+	// known provider's document can be asked about, so the lock is checked on
+	// the provider id: an unknown one never passes `passkeyPromptProvider`.
+	assert.equal(
+		requests.admit(ceremony(undefined, { url: OTHER, engaged: false })),
+		false,
+	);
+});
+
+test("U7: once the ceremony ends, an unengaged frame is refused again (no stale latch)", () => {
+	let inTree = true;
+	const frame = {
+		gone: false,
+		isDestroyed() {
+			return this.gone;
+		},
+	};
+	const { requests } = rig({ hasProviderFrame: () => inTree });
+	requests.admit(ceremony(undefined, { frame }));
+	assert.equal(requests.hasRequests(), true);
+	frame.gone = true;
+	inTree = false;
+	requests.sweepAll();
+	assert.equal(requests.hasRequests(), false, "the request ended");
+	assert.equal(
+		requests.admit(ceremony(undefined, { url: USO, engaged: false })),
+		false,
+		"a new frame after the request ended needs fresh engagement",
+	);
+	assert.equal(
+		requests.admit(ceremony(undefined, { url: PROMPT, engaged: false })),
+		false,
+	);
+});
+
+test("U9: a frame-less admission stops quarantining once the committed tree shows its frame gone", () => {
+	let inTree = false;
+	const { requests } = rig({ hasProviderFrame: () => inTree });
+	requests.admit(ceremony(undefined, { frame: null, url: PROMPT }));
+	// Not committed yet: present (fail closed), refused.
+	assert.equal(requests.promptPresent(10), true);
+	assert.ok(requests.quarantine(10, "capture"));
+	// Committed: still present.
+	inTree = true;
+	assert.equal(requests.promptPresent(10), true);
+	// Verifiably gone from the committed tree: no longer present.
+	inTree = false;
+	assert.equal(requests.promptPresent(10), false);
+	assert.equal(requests.quarantine(10, "capture"), null);
+	assert.equal(requests.quarantine(10, "input"), null);
+	// Unreadable keeps it present (fail closed).
+	const unreadable = rig({
+		hasProviderFrame: () => {
+			throw new Error("tree unreadable");
+		},
+	});
+	unreadable.requests.admit(ceremony(undefined, { frame: null, url: PROMPT }));
+	assert.equal(unreadable.requests.promptPresent(10), true);
+});
+
+test("U9: an unmeasurable prompt rect is refused with copy that says so and names selector input", async () => {
+	const { requests, ctx, record, target } = await wired({
+		answers: {
+			"DOM.getDocument": { root: { nodeName: "#document", children: [] } },
+		},
+	});
+	requests.admit(ceremony(target, { url: PROMPT }));
+	await assert.rejects(
+		hover(ctx, { tab: surfaceToken(record), x: 400, y: 400 }),
+		(error) => {
+			assert.equal(error.data?.action, "input");
+			assert.match(error.message, /could not be measured/);
+			assert.match(error.message, /[Ss]elector- or ref-targeted/);
+			assert.doesNotMatch(
+				error.message,
+				/inside the password manager's prompt/,
+			);
+			assert.doesNotMatch(error.message, /any point outside the prompt/);
+			return true;
+		},
+	);
+	// A measured point inside keeps the original copy.
+	const measured = await wired({ answers: PROMPT_DOM });
+	measured.requests.admit(ceremony(measured.target, { url: PROMPT }));
+	await assert.rejects(
+		hover(measured.ctx, { tab: surfaceToken(measured.record), x: 150, y: 150 }),
+		(error) => /inside the password manager's prompt/.test(error.message),
+	);
+});
+
+test("R10/Q5: the host ends a frame-less request on main-document commit", () => {
+	const index = readSource("src/main/browser/index.ts");
+	assert.match(
+		index,
+		/contents\.on\("did-navigate", \(_event, url\) => \{[\s\S]{0,1200}authRequests\.committed\(contents\.id\);/,
+	);
+	// And what that call does with a never-committed frame-less admission.
+	const { requests } = rig({ hasProviderFrame: () => false });
+	requests.admit(ceremony(undefined, { frame: null }));
+	requests.sweepAll();
+	assert.ok(requests.conflict(10, "close"), "placeholder keeps it live");
+	requests.committed(10);
+	assert.equal(requests.conflict(10, "close"), null);
+	assert.equal(requests.promptPresent(10), false);
+});
+
+test("R11: an agent navigation ends the person's engagement of THAT tab", async () => {
+	const { ctx, record, contents, registry } = await wired({
+		answers: { "Page.getFrameTree": { frameTree: { frame: { id: "main" } } } },
+	});
+	const engagement = new TabEngagement();
+	registry.setAgentNavigationListener((tabId) => engagement.clear(tabId));
+	engagement.selected(record.tabId, true, true);
+	assert.equal(engagement.has(record.tabId), true);
+	contents.loadURL = async () => {
+		contents.emit("did-stop-loading");
+	};
+	await navigateView(
+		ctx,
+		record.view,
+		new URL("https://login.example/next"),
+		"session:a",
+		() => true,
+		200,
+	).catch(() => undefined);
+	assert.equal(
+		engagement.has(record.tabId),
+		false,
+		"the person engaged the old page, not the agent's next one",
+	);
+	// The host wires that listener to the engagement it admits on.
+	assert.match(
+		readSource("src/main/browser/index.ts"),
+		/registry\.setAgentNavigationListener\(\(tabId\) => engagement\.clear\(tabId\)\)/,
+	);
+	assert.doesNotMatch(
+		readSource("src/main/browser/extensions/tab-engagement.ts"),
+		/when the person moves into the\s+\* app's own chrome or chat/,
+	);
 });

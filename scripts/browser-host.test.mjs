@@ -3486,7 +3486,7 @@ test("real dispatcher records allocation, fences peers, recovers and finishes ex
 	);
 });
 
-test("owner_finish stays pending during a passkey request and retries the exact allocation", async () => {
+test("owner_finish stays pending during a passkey prompt and retries the exact allocation", async () => {
 	// Converged from main's custody version (#1975) onto the auth-request
 	// quarantine: the tab stays usable (recover hands the SAME handle back), but
 	// closing it would cancel the request the user is answering, so terminal
@@ -6044,7 +6044,11 @@ test("a hung page ends as the typed nav_timeout inside the published budget", as
 		cdp: { send: async () => ({}), subscribe: () => () => {} },
 		// The one navigation choke point asks the registry whether a passkey
 		// request would be destroyed by this navigation; no request here.
-		registry: { assertNoConflictingAuthRequest: () => {} },
+		registry: {
+			assertNoConflictingAuthRequest: () => {},
+			// The agent-navigation hook that ends a person's engagement (R11).
+			agentNavigating: () => {},
+		},
 		log: () => {},
 	};
 	const started = Date.now();

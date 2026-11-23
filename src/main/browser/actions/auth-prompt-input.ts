@@ -146,12 +146,13 @@ export async function assertPointOutsideAuthPrompt(
 	const contents = record.view.webContents;
 	if (!ctx.registry.authPromptPresent(contents.id)) return;
 	const rects = await providerRects(ctx, contents);
-	const inside =
-		rects === null ||
-		rects.some(
-			(rect) =>
-				x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
-		);
+	// Still refused when unmeasurable (fail closed), but with copy that says so
+	// rather than claiming the point was inside the prompt (review U9).
+	if (rects === null) throw authPromptRefusal("input", null, true);
+	const inside = rects.some(
+		(rect) =>
+			x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom,
+	);
 	if (inside) throw authPromptRefusal("input", null);
 }
 
@@ -169,6 +170,26 @@ export function assertKeyNotIntoAuthPrompt(
 ): void {
 	const contents = record.view.webContents;
 	if (!ctx.registry.authPromptPresent(contents.id)) return;
+	const focusedUrl = focusedFrameUrl(contents);
+	if (focusedUrl === null) return;
+	if (focusedUrl === undefined || EXTENSION_SRC.test(focusedUrl))
+		throw authPromptRefusal("key", null);
+}
+
+/**
+ * Whether the view's focused frame is verifiably an extension (provider)
+ * document. Unknowable reads as false: the one caller (the notice's Escape,
+ * review U10) only uses it to LEAVE a key to the page, so guessing "provider"
+ * would be the unsafe direction for nothing.
+ */
+export function providerFrameFocused(contents: unknown): boolean {
+	const url = focusedFrameUrl(contents);
+	return typeof url === "string" && EXTENSION_SRC.test(url);
+}
+
+/** The focused frame's URL: null when nothing is focused, undefined when it
+ * cannot be read. */
+function focusedFrameUrl(contents: unknown): string | null | undefined {
 	let focusedUrl: string | null | undefined;
 	try {
 		const focused = (
@@ -185,7 +206,5 @@ export function assertKeyNotIntoAuthPrompt(
 	} catch {
 		focusedUrl = undefined;
 	}
-	if (focusedUrl === null) return;
-	if (focusedUrl === undefined || EXTENSION_SRC.test(focusedUrl))
-		throw authPromptRefusal("key", null);
+	return focusedUrl;
 }

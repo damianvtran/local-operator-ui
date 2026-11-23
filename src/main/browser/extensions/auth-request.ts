@@ -281,7 +281,23 @@ export class AuthRequests {
 		// Engagement is the lock on the ambiguous document: an agent that opens a
 		// tab or navigates to a login page admits nothing, so the passive card
 		// never enters a tab nobody is looking at.
-		if (!request.engaged) return false;
+		//
+		// THE ONE EXCEPTION is the ceremony a person already started here (review
+		// U7/R12/Q6). 1Password finishes a passkey sign-in in a SECOND document
+		// (`universal-sign-on.html`), and between the two an unlock or Touch ID
+		// sheet owned by another process can take key focus; the window blurs and
+		// engagement ends (`tab-engagement.ts`). Refusing the completion document
+		// then strands both sides: the person cannot finish and the live request
+		// keeps refusing the agent's close/navigate. So while THIS view still
+		// holds live presence or a live request from the SAME provider — itself
+		// only ever admitted under engagement — that provider's prompt documents
+		// keep loading here. The latch is the presence itself: once it ends, a new
+		// frame needs a fresh engagement again (no stale latch, review S4/B3).
+		if (
+			!request.engaged &&
+			!this.ceremonyContinues(request.webContentsId, providerId)
+		)
+			return false;
 		let installed = false;
 		try {
 			installed = request.isInstalled(providerId);
@@ -289,7 +305,8 @@ export class AuthRequests {
 			installed = false; // fail closed: an unanswerable check refuses
 		}
 		if (!installed) return false;
-		const frame: AdmittedFrame = request.frame ?? NEVER_DESTROYED;
+		const frame: AdmittedFrame =
+			request.frame ?? this.placeholder(request.webContentsId);
 		// PRESENCE FIRST, for every admitted kind: the passive card is vault UI
 		// too, so it is quarantined from capture and positional input even though
 		// it is never a request (no notice, no row).
@@ -335,6 +352,65 @@ export class AuthRequests {
 		if (alive.length === 0) return false;
 		this.open(webContentsId, present.tabId, present.providerId, [...alive]);
 		return true;
+	}
+
+	/** Whether this view still holds a provider prompt from `providerId` that was
+	 * admitted under a person's engagement: an admitted frame of that provider
+	 * still alive, or a live provider request from it. Never a native request
+	 * (it has no provider), never another view's state. */
+	private ceremonyContinues(
+		webContentsId: number,
+		providerId: string,
+	): boolean {
+		try {
+			const present = this.presence.get(webContentsId);
+			if (present?.providerId === providerId && present.frames.some(isAlive))
+				return true;
+			const record = this.requests.get(webContentsId);
+			return (
+				record !== undefined &&
+				!record.native &&
+				record.providerId === providerId &&
+				this.sweep(webContentsId)
+			);
+		} catch {
+			// Unreadable: no latch. Fail closed means REFUSING the frame here, the
+			// opposite direction from presence (which fails closed to "present").
+			return false;
+		}
+	}
+
+	/**
+	 * Stands in for a frame `will-frame-navigate` did not name (Electron types
+	 * it `WebFrameMain | null`). Before the frame commits, the committed tree
+	 * cannot see it, so it counts as alive (fail closed). Once the committed tree
+	 * HAS shown a provider frame and then verifiably no longer does, it is gone
+	 * (review U9: a placeholder used to live until the main document changed,
+	 * keeping capture and input quarantined with no prompt on screen). An
+	 * unreadable tree keeps it alive. A frame that never commits at all is
+	 * dropped by the next main-document commit (`committed`).
+	 */
+	private placeholder(webContentsId: number): AdmittedFrame {
+		let seenCommitted = false;
+		const placeholder: AdmittedFrame & { [PLACEHOLDER]: true } = {
+			[PLACEHOLDER]: true,
+			isDestroyed: () => {
+				const read = this.options.hasProviderFrame;
+				if (!read) return false;
+				let inTree: boolean;
+				try {
+					inTree = read(webContentsId);
+				} catch {
+					return false;
+				}
+				if (inTree) {
+					seenCommitted = true;
+					return false;
+				}
+				return seenCommitted;
+			},
+		};
+		return placeholder;
 	}
 
 	private open(
@@ -416,7 +492,18 @@ export class AuthRequests {
 		webContentsId: number;
 		tabId: number;
 		requestId: string;
+		/**
+		 * Whether a person engages this tab right now (`tab-engagement.ts`), the
+		 * same check `NativePasskeyNotice.started` presents on. Required, so a
+		 * caller must decide (review R8/U6/Q4): a page that calls
+		 * `credentials.get()` by itself, or an agent clicking a passkey button,
+		 * in a tab nobody is looking at is no request a PERSON is completing, so
+		 * it records nothing, shows no notice and refuses no close/navigate. The
+		 * host's own chooser still shows it, unchanged.
+		 */
+		engaged: boolean;
 	}): PendingAuthRequestView | null {
+		if (!request.engaged) return null;
 		if (this.requests.has(request.webContentsId)) return null;
 		const record: Request = {
 			webContentsId: request.webContentsId,
@@ -525,6 +612,19 @@ export class AuthRequests {
 	}
 
 	/**
+	 * The PROVIDER-document request on this tab, or null — never a native one.
+	 * A native request already has its notice (`NativePasskeyNotice`, keyed by
+	 * the same request id); projecting it a second time from here gave one
+	 * request two notice ids, so one X/Esc dismissed one and the card fell back
+	 * to the other (review Q3). The notice slot reads this; the refusals and the
+	 * host's `pendingAuthRequest` still read `viewForTab`.
+	 */
+	providerViewForTab(tabId: number): PendingAuthRequestView | null {
+		const record = this.forTab(tabId);
+		return record && !record.native ? viewOf(record) : null;
+	}
+
+	/**
 	 * The main frame of this view committed a new document. Every frame of the
 	 * old document is gone with it, including one admitted without a handle, so
 	 * drop those placeholders and let `sweep` decide on what is left. A page
@@ -533,9 +633,7 @@ export class AuthRequests {
 	committed(webContentsId: number): void {
 		const present = this.presence.get(webContentsId);
 		if (present) {
-			present.frames = present.frames.filter(
-				(frame) => frame !== NEVER_DESTROYED,
-			);
+			present.frames = present.frames.filter((frame) => !isPlaceholder(frame));
 			if (present.frames.length === 0) this.presence.delete(webContentsId);
 		}
 		const record = this.requests.get(webContentsId);
@@ -545,7 +643,7 @@ export class AuthRequests {
 			this.end(record, "the document that started it was replaced");
 			return;
 		}
-		record.frames = record.frames.filter((frame) => frame !== NEVER_DESTROYED);
+		record.frames = record.frames.filter((frame) => !isPlaceholder(frame));
 		this.sweep(webContentsId);
 	}
 
@@ -584,10 +682,13 @@ export class AuthRequests {
 	}
 }
 
-/** Stands in for a frame `will-frame-navigate` did not name: it never reports
- * destroyed, so the request outlives it until the main document changes
- * (`committed`), the tab closes or changes hands. */
-const NEVER_DESTROYED: AdmittedFrame = { isDestroyed: () => false };
+/** Marks a frame `will-frame-navigate` did not name (`AuthRequests.placeholder`),
+ * so a main-document commit can drop exactly those. */
+const PLACEHOLDER = Symbol("auth-request.placeholder");
+
+function isPlaceholder(frame: AdmittedFrame): boolean {
+	return (frame as { [PLACEHOLDER]?: true })[PLACEHOLDER] === true;
+}
 
 function isAlive(frame: AdmittedFrame): boolean {
 	try {
@@ -627,6 +728,9 @@ const QUARANTINE_MESSAGE: Record<QuarantinedAction, string> = {
 	key: "a key with no target would go to the password manager's prompt, which has focus, so nothing was pressed. Pass a selector or ref to press it on a page element instead.",
 };
 
+const UNMEASURED_INPUT_MESSAGE =
+	"a password manager's prompt is open in that tab and its position could not be measured, so no point in the tab can be shown to be outside it and nothing was dispatched. Selector- or ref-targeted click and type still work; positional input works again once the prompt closes.";
+
 /** The presence-keyed refusal (`AuthRequests.quarantine`). Same typed reason as
  * the ceremony refusal, with the `action` that was refused, so an agent can
  * pick the named alternative instead of retrying. `requestId` is null for a
@@ -634,8 +738,16 @@ const QUARANTINE_MESSAGE: Record<QuarantinedAction, string> = {
 export function authPromptRefusal(
 	action: QuarantinedAction,
 	requestId: string | null,
+	/** The prompt's rect could not be measured (review U9): the point was not
+	 * shown to be inside it, so the copy must not say it was, nor promise that
+	 * "outside the prompt" works when no outside could be computed either. */
+	unmeasured = false,
 ): BrowserHostError {
-	return new BrowserHostError("owner_refused", QUARANTINE_MESSAGE[action], {
+	const message =
+		unmeasured && action === "input"
+			? UNMEASURED_INPUT_MESSAGE
+			: QUARANTINE_MESSAGE[action];
+	return new BrowserHostError("owner_refused", message, {
 		reason: AUTH_REQUEST_REFUSAL_REASON,
 		action,
 		requestId,

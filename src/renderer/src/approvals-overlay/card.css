@@ -196,6 +196,14 @@ html[data-opaque="1"] #approvals-card {
 	padding: 2px 0 8px;
 }
 
+/* Beside an approval: a hairline under the notice (design D8), the same rule
+ * colour the card already uses, so the notice's "this site" does not read as
+ * the approval's origin. */
+.card-notice-mixed .card-notice:not([hidden]) {
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--lo-border-control);
+}
+
 /* In a mixed card the inline X is secondary to the approval controls. */
 #approvals-notice-dismiss {
 	border-color: transparent;

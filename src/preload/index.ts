@@ -1373,25 +1373,6 @@ const api = {
 		 * ONLY path that does; `false` when the tab is gone. */
 		openUserAttention: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-open-user-attention", tabId),
-		/** The hold `{tabId, at}` ended: the renderer may give the user back the
-		 * view it saved when they opened that hold from its notification
-		 * (`passkey-custody-handoff.ts`). */
-		onPasskeyCustodyEnded: (
-			callback: (payload: { tabId: number; at: number }) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: { tabId?: unknown; at?: unknown },
-			) => {
-				if (typeof payload?.tabId !== "number") return;
-				if (typeof payload.at !== "number") return;
-				callback({ tabId: payload.tabId, at: payload.at });
-			};
-			ipcRenderer.on("browser-passkey-custody-ended", handler);
-			return () => {
-				ipcRenderer.removeListener("browser-passkey-custody-ended", handler);
-			};
-		},
 		/**
 		 * Answer the camera/microphone prompt. `trusted` is the click's
 		 * `event.isTrusted`; main refuses a decision without it, and the id is the

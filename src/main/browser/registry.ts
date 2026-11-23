@@ -415,6 +415,21 @@ export class TabRegistry {
 		this.authRequests = gate;
 	}
 
+	/** Told when the AGENT replaces a tab's main document (`actions/gate.ts`
+	 * `navigateView`); the host ends the person's engagement of that tab there
+	 * (`extensions/tab-engagement.ts`, review R11). */
+	private agentNavigationListener: ((tabId: number) => void) | null = null;
+
+	setAgentNavigationListener(listener: ((tabId: number) => void) | null): void {
+		this.agentNavigationListener = listener;
+	}
+
+	/** The agent is about to load a new main document into this view. */
+	agentNavigating(webContentsId: number): void {
+		const record = this.byWebContents(webContentsId);
+		if (record) this.agentNavigationListener?.(record.tabId);
+	}
+
 	/**
 	 * Refuse only the actions that would cancel a passkey request pending in this
 	 * tab (`extensions/auth-request.ts`). Everything else proceeds: the tab is

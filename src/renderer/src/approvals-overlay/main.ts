@@ -711,11 +711,23 @@ function renderNotice(): void {
 		if (listView) listView.hidden = true;
 	}
 	if (footerNode) footerNode.hidden = only;
+	// Notice-only: NO title (design D7). "Choose a passkey" was an imperative
+	// for a choice this card cannot offer, and the app's own chooser already
+	// carries that title for the same request. The sentence names the dialog
+	// instead, so a screen reader still announces something true.
 	if (titleNode) {
 		titleNode.textContent = only
-			? t("ui.browser.browser_webauthn_dialog.choose_a_passkey")
+			? ""
 			: t("ui.browser.browser_approvals_dock.approvals");
+		titleNode.hidden = only;
 	}
+	card?.setAttribute(
+		"aria-labelledby",
+		only ? "approvals-notice-text" : "approvals-title",
+	);
+	// Beside an approval the notice gets a hairline under it (design D8), so its
+	// "this site" does not read as the approval's origin.
+	card?.classList.toggle("card-notice-mixed", notice !== null && !only);
 }
 
 window.__approvalsCard = {

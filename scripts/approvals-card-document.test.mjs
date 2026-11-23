@@ -417,9 +417,21 @@ test("notice only: the card is the sentence and its close; Close and Escape dism
 		doc.getElementById("approvals-notice-text").textContent,
 		/This site requested a passkey/,
 	);
+	// D7: no title (the card offers no choice); the sentence names the dialog.
+	const title = doc.getElementById("approvals-title");
+	assert.equal(title.textContent, "");
+	assert.equal(visible(dom, title), false);
+	assert.doesNotMatch(doc.body.textContent, /Choose a passkey/);
 	assert.equal(
-		doc.getElementById("approvals-title").textContent,
-		"Choose a passkey",
+		doc.getElementById("approvals-card").getAttribute("aria-labelledby"),
+		"approvals-notice-text",
+	);
+	// D8: alone, the notice has no separator.
+	assert.equal(
+		doc
+			.getElementById("approvals-card")
+			.classList.contains("card-notice-mixed"),
+		false,
 	);
 	assert.equal(visible(dom, doc.getElementById("approvals-request")), false);
 	assert.equal(visible(dom, doc.getElementById("approvals-list")), false);
@@ -442,6 +454,24 @@ test("notice beside a request: Escape and the notice X target only the notice; h
 	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
 	assert.equal(visible(dom, doc.getElementById("approvals-request")), true);
 	assert.equal(doc.getElementById("approvals-title").textContent, "Approvals");
+	assert.equal(visible(dom, doc.getElementById("approvals-title")), true);
+	assert.equal(
+		doc.getElementById("approvals-card").getAttribute("aria-labelledby"),
+		"approvals-title",
+	);
+	// D8: beside an approval, a hairline in the card's control-border colour.
+	// (JSDOM does not compute border longhands from this sheet, so the class
+	// that selects the rule and the rule itself are asserted.)
+	assert.equal(
+		doc
+			.getElementById("approvals-card")
+			.classList.contains("card-notice-mixed"),
+		true,
+	);
+	assert.match(
+		readFileSync("src/renderer/src/approvals-overlay/card.css", "utf8"),
+		/\.card-notice-mixed \.card-notice:not\(\[hidden\]\) \{[^}]*border-bottom: 1px solid var\(--lo-border-control\);/,
+	);
 	doc.dispatchEvent(
 		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
 	);

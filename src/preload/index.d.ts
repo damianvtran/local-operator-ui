@@ -378,10 +378,6 @@ declare global {
 				/** A sidebar notification row's click (`user-attention.ts`): the tab
 				 * becomes active and its held popups are presented. */
 				openUserAttention: (tabId: number) => Promise<unknown>;
-				/** The hold `{tabId, at}` ended (returned, or its tab closed). */
-				onPasskeyCustodyEnded: (
-					callback: (payload: { tabId: number; at: number }) => void,
-				) => () => void;
 				/** Live composite of an overlay-suppressed page (main's
 				 * `composite-bridge.ts`). Full BGRA frames; display-only. */
 				onCompositeFrame: (

@@ -130,6 +130,57 @@ export class NativePasskeyNotice {
 	}
 }
 
+/** What the notice slot needs from the provider-document requests
+ * (`extensions/auth-request.ts` `AuthRequests`). Structural, so this module
+ * stays free of that one. */
+export interface ProviderNoticeSource {
+	providerViewForTab(tabId: number): {
+		requestId: string;
+		tabId: number;
+		at: number;
+		dismissed: boolean;
+	} | null;
+	dismiss(tabId: number, requestId: string): boolean;
+}
+
+/**
+ * The ONE notice the card shows for the active tab, or null.
+ *
+ * ONE IDENTITY PER REQUEST (review Q3). A native request used to be projected
+ * twice: here (`{tabId, at: <sequence>}`) and again from `AuthRequests`
+ * (`{tabId, at: <clock>}`), so the card's entry id switched mid-life, one X or
+ * Esc dismissed only the source whose `at` it carried, and the slot then fell
+ * back to the other, still undismissed projection: the card stayed. Now a
+ * native request is projected ONLY from `NativePasskeyNotice` (which also
+ * carries the engagement + presented gate), and a provider-document request
+ * only from `AuthRequests.providerViewForTab`, which never returns a native
+ * one. The provider's wins for the tab the person is looking at: it is the more
+ * specific statement.
+ */
+export function passkeyNoticeFor(
+	active: ActiveTab | null,
+	provider: ProviderNoticeSource,
+	native: NativePasskeyNotice,
+): Pick<Notice, "tabId" | "at"> | null {
+	const pending = active ? provider.providerViewForTab(active.tabId) : null;
+	if (pending && !pending.dismissed)
+		return { tabId: pending.tabId, at: pending.at };
+	return native.viewFor(active);
+}
+
+/** The card's X or Esc: hide the notice it carried, whichever source owns it.
+ * Presentation only — never settles, reloads or cancels the request. */
+export function dismissPasskeyNotice(
+	notice: { tabId: number; at: number },
+	provider: ProviderNoticeSource,
+	native: NativePasskeyNotice,
+): boolean {
+	const pending = provider.providerViewForTab(notice.tabId);
+	if (pending && pending.at === notice.at && !pending.dismissed)
+		return provider.dismiss(notice.tabId, pending.requestId);
+	return native.dismiss(notice.tabId, notice.at);
+}
+
 /** Only the focused page's bare, physical Escape belongs to the visible notice.
  * Claim that keystroke so it cannot also cancel the site's own flow. */
 export function dismissNativePasskeyNoticeOnEscape(options: {
@@ -147,6 +198,12 @@ export function dismissNativePasskeyNoticeOnEscape(options: {
 	>;
 	ownsFocusedPage: boolean;
 	agentKey: boolean;
+	/**
+	 * The page's focused frame is a password manager's prompt (review U10).
+	 * A person pressing Esc there is backing out of THAT prompt; claiming the
+	 * key for the notice made them press twice. Left to the page.
+	 */
+	providerFocused: boolean;
 	dismiss(): boolean;
 }): boolean {
 	const { event, input } = options;
@@ -154,6 +211,7 @@ export function dismissNativePasskeyNoticeOnEscape(options: {
 		event.defaultPrevented ||
 		!options.ownsFocusedPage ||
 		options.agentKey ||
+		options.providerFocused ||
 		input.type !== "keyDown" ||
 		input.key !== "Escape" ||
 		input.alt ||
