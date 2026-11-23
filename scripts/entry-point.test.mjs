@@ -1104,6 +1104,8 @@ const NO_ENTRY_POINT_COMPARISON = {
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",
+	"check-named-test.mjs":
+		"`ci.yml`'s owner-finish check; runs at import, and its exit code is the verdict",
 	"run-desktop-tests.mjs": "`pnpm test:desktop`'s runner; runs at import",
 	"verify-signed-update.mjs": "`signed-update-candidate.yml`; runs at import",
 };
