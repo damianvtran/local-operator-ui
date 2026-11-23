@@ -62,7 +62,9 @@ const LABEL = /^ {0,3}(\*\*|__|\*|_)?spoken(?:\1)?[ \t]*:(?:\1)?[ \t]*/i;
  * and each emphasis wrapping the whole label or only the word.
  */
 const LABEL_FORMS = ["", "**", "__", "*", "_"].flatMap((mark) => [
+	// i18n: ignore the Spoken: protocol marker the server also matches; never rendered.
 	`${mark}spoken:${mark}`,
+	// i18n: ignore the Spoken: protocol marker the server also matches; never rendered.
 	`${mark}spoken${mark}:`,
 ]);
 /**
