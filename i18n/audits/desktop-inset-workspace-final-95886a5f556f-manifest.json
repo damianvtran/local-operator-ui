@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "head": "95886a5f556f08f69b209c00dd7926b4de18fafa",
+  "scope": "Independent final-byte audit of the added ui.chat.header.auto_close_inactive_tabs label. Namespace source/target and English context are bound to the reviewed bytes; this is not native or rendered-fit evidence.",
+  "records": [
+    {
+      "locale": "es",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-es.json",
+      "receipt_sha256": "ac44a03975a077eba3ab59355711f18c8da913bda4a504e6885df4118ff1f60f",
+      "record": "i18n/audits/evidence/es/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-es/record.json",
+      "record_sha256": "ac44a03975a077eba3ab59355711f18c8da913bda4a504e6885df4118ff1f60f",
+      "companions": []
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-fr.json",
+      "receipt_sha256": "ab98d918d7427f44799cdd37f316b661df2c81b545cbefc3728d8a6b8fd468e3",
+      "record": "i18n/audits/evidence/fr/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-fr/record.json",
+      "record_sha256": "ab98d918d7427f44799cdd37f316b661df2c81b545cbefc3728d8a6b8fd468e3",
+      "companions": []
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-hi.json",
+      "receipt_sha256": "77f84acfb2571e8016f983894c856a3fefbc315673e1e7636e8c0cda6614364f",
+      "record": "i18n/audits/evidence/hi/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-hi/record.json",
+      "record_sha256": "77f84acfb2571e8016f983894c856a3fefbc315673e1e7636e8c0cda6614364f",
+      "companions": []
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ru.json",
+      "receipt_sha256": "4b589d836246925492cfb15979f8a2009c1b56bdfd4ec5d06cfdce43a8e926e0",
+      "record": "i18n/audits/evidence/ru/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-ru/record.json",
+      "record_sha256": "4b589d836246925492cfb15979f8a2009c1b56bdfd4ec5d06cfdce43a8e926e0",
+      "companions": []
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-ur.json",
+      "receipt_sha256": "7acf15dd9d69dd9c3734eb5e0c6724b5d8aa7ea20b109ae61465eb141a726724",
+      "record": "i18n/audits/evidence/ur/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-ur/record.json",
+      "record_sha256": "7acf15dd9d69dd9c3734eb5e0c6724b5d8aa7ea20b109ae61465eb141a726724",
+      "companions": []
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-vi.json",
+      "receipt_sha256": "30b00f95eff3f972ee243028406d83c1f5d3407e5d56c339d79e3bcfe8aefb02",
+      "record": "i18n/audits/evidence/vi/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-vi/record.json",
+      "record_sha256": "30b00f95eff3f972ee243028406d83c1f5d3407e5d56c339d79e3bcfe8aefb02",
+      "companions": []
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.header",
+      "receipt": "i18n/receipts/907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn.json",
+      "receipt_sha256": "3f9452835b9f6c5e761284fcfc85fbcbe7e1b78c6a4b895fc816d03e56752a4f",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.header/907e8f808adc-desktop-tabs-final-95886a5f556f-zh-cn/record.json",
+      "record_sha256": "3f9452835b9f6c5e761284fcfc85fbcbe7e1b78c6a4b895fc816d03e56752a4f",
+      "companions": []
+    }
+  ]
+}

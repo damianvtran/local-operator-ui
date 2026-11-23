@@ -1,4 +1,5 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": "Cerrar las pestañas inactivas tras {minutes, number} min",
 	"ui.chat.header.actions": "Acciones de la conversación",
 	"ui.chat.header.archive_conversation": "Archivar conversación",
 	"ui.chat.header.archived": "Archivada",

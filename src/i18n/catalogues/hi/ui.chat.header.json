@@ -1,4 +1,5 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": "{minutes, number} मिनट की निष्क्रियता के बाद टैब बंद करें",
 	"ui.chat.header.actions": "बातचीत की कार्रवाइयाँ",
 	"ui.chat.header.archive_conversation": "बातचीत संग्रहित करें",
 	"ui.chat.header.archived": "संग्रहित",

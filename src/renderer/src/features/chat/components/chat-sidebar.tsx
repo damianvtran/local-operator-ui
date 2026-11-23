@@ -124,6 +124,7 @@ import {
 	FolderPlus,
 	GitFork,
 	GripVertical,
+	History,
 	LoaderCircle,
 	type LucideIcon,
 	MessageSquarePlus,
@@ -355,6 +356,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { SidebarSectionHeading } from "./sidebar-section-heading";
 import { SidebarTemporaryGroup } from "./sidebar-temporary-group";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
@@ -1077,6 +1079,8 @@ export function ChatSidebar({
 	useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
+	const workspaceLauncher =
+		location.pathname === "/chat" || location.pathname.startsWith("/chat/");
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
@@ -4247,7 +4251,7 @@ export function ChatSidebar({
 	 * short roster. This call site is the ONE place the component asks the question.
 	 */
 	const rosterFilterShown = rosterFieldShown(
-		isOpen("agents", true),
+		workspaceLauncher || isOpen("agents", true),
 		query,
 		rosterFilter,
 		ownAgents.length,
@@ -5774,6 +5778,7 @@ export function ChatSidebar({
 				<div
 					onBlur={keepFlyoutWhileFocusStaysInRow}
 					/* User content, as the menu path's row box below (round 1, M1). */
+					data-workspace-current={current ? "" : undefined}
 					className={cn(rowBoxStyle, current && rowCurrent, USER_CONTENT_CLASS)}
 				>
 					{rowButton}
@@ -6420,6 +6425,7 @@ export function ChatSidebar({
 				/* The row's own box, and the hook the current-row ground is asserted
 				   through (`chat-sidebar-selection.test.mjs`'s CURRENT table). */
 				data-session-row={row.session_id}
+				data-workspace-current={current ? "" : undefined}
 				/*
 				 * THE DRIVER'S HOOK: the element a scene finds when it needs this row's
 				 * menu open (dispatch a `contextmenu` at it, or focus its button and
@@ -7386,6 +7392,64 @@ export function ChatSidebar({
 			fullHubLinks && linkedOrigins.length === 0
 				? unresolvedForLocalItem(hubLinks.data, kind, localId, name)
 				: [];
+		const history = (
+			<button
+				type="button"
+				data-disclosure
+				/*
+				 * THE GROUP'S OWN IDENTIFIER on the control the hand-back returns to
+				 * (review round 1, M4). The selector used to compose a lookup from the
+				 * disclosure's accessible name with the SLUG, while the control renders
+				 * `displayName` (a team's catalogue label when it has one) - so a labelled
+				 * team never resolved. `catalogueScopeKey` is `kind:name`, the same string
+				 * the pending record stores, so the lookup is independent of copy and of
+				 * which name the row draws.
+				 */
+				data-entity-key={key}
+				aria-label={
+					open
+						? t("ui.chat.sidebar.entity.collapse_chats", {
+								name: displayName,
+							})
+						: t("ui.chat.sidebar.entity.expand_chats", {
+								name: displayName,
+							})
+				}
+				aria-expanded={open}
+				className={cn(
+					"flex size-6 shrink-0 items-center justify-center rounded-md",
+					!staged && "hover:bg-row-hover",
+				)}
+				onClick={() => {
+					/*
+					 * CLOSING THE GROUP SPENDS ITS LADDER RUNG, and that is a decision
+					 * rather than tidiness. Closing already discards the group's loaded page
+					 * (`clearScope`, whose own note calls the next expansion "a fresh
+					 * question"), and a rung that outlived the disclosure would make a 41-chat
+					 * team draw 25 rows at a reader who had just asked to see the top of it -
+					 * the bound undone by a round trip through the control that exists to
+					 * apply it.
+					 */
+					if (open) {
+						setEntityLoads((current) => {
+							if (current[key] === undefined) return current;
+							const next = { ...current };
+							delete next[key];
+							return next;
+						});
+					}
+					toggle(key);
+				}}
+			>
+				{workspaceLauncher ? (
+					<History aria-hidden="true" className="size-3.5 text-ink-dim" />
+				) : open ? (
+					<ChevronDown className="size-3.5" />
+				) : (
+					<ChevronRight className="size-3.5" />
+				)}
+			</button>
+		);
 		return (
 			<div key={key} data-entity>
 				<div
@@ -7394,60 +7458,7 @@ export function ChatSidebar({
 						staged && rowCurrent,
 					)}
 				>
-					<button
-						type="button"
-						data-disclosure
-						/*
-						 * THE GROUP'S OWN IDENTIFIER on the control the hand-back returns to
-						 * (review round 1, M4). The selector used to compose a lookup from the
-						 * disclosure's accessible name with the SLUG, while the control renders
-						 * `displayName` (a team's catalogue label when it has one) - so a labelled
-						 * team never resolved. `catalogueScopeKey` is `kind:name`, the same string
-						 * the pending record stores, so the lookup is independent of copy and of
-						 * which name the row draws.
-						 */
-						data-entity-key={key}
-						aria-label={
-							open
-								? t("ui.chat.sidebar.entity.collapse_chats", {
-										name: displayName,
-									})
-								: t("ui.chat.sidebar.entity.expand_chats", {
-										name: displayName,
-									})
-						}
-						aria-expanded={open}
-						className={cn(
-							"flex size-6 shrink-0 items-center justify-center rounded-md",
-							!staged && "hover:bg-row-hover",
-						)}
-						onClick={() => {
-							/*
-							 * CLOSING THE GROUP SPENDS ITS LADDER RUNG, and that is a decision
-							 * rather than tidiness. Closing already discards the group's loaded page
-							 * (`clearScope`, whose own note calls the next expansion "a fresh
-							 * question"), and a rung that outlived the disclosure would make a 41-chat
-							 * team draw 25 rows at a reader who had just asked to see the top of it -
-							 * the bound undone by a round trip through the control that exists to
-							 * apply it.
-							 */
-							if (open) {
-								setEntityLoads((current) => {
-									if (current[key] === undefined) return current;
-									const next = { ...current };
-									delete next[key];
-									return next;
-								});
-							}
-							toggle(key);
-						}}
-					>
-						{open ? (
-							<ChevronDown className="size-3.5" />
-						) : (
-							<ChevronRight className="size-3.5" />
-						)}
-					</button>
+					{!workspaceLauncher && history}
 					{/* Clicking the name has always staged a draft, but nothing on the
 				    row said so, so the primary action of the whole sidebar was
 				    invisible and went unused. The glyph is the label for that
@@ -7463,6 +7474,7 @@ export function ChatSidebar({
 						type="button"
 						data-chat-row
 						data-entity-name
+						data-workspace-launch={workspaceLauncher ? kind : undefined}
 						className={cn(rowStyle, "flex-1 text-start", staged && rowCurrent)}
 						onClick={() => onStageDraft({ kind, name })}
 						// The visible label is the bare name, which says who but not what
@@ -7493,7 +7505,8 @@ export function ChatSidebar({
 								// DOES, and it sits 2px from the always-visible `...`. At
 								// equal weight the secondary control was the louder mark of
 								// the two, so the eye landed on "manage" first.
-								"size-4 shrink-0 text-ink opacity-0",
+								"size-4 shrink-0",
+								workspaceLauncher ? "text-ink-muted" : "text-ink opacity-0",
 								// The duration governs the transition INTO the current
 								// state, so the resting value is the fade-OUT and the
 								// hovered value is the fade-in: quick to appear, gentler to
@@ -7534,6 +7547,7 @@ export function ChatSidebar({
 					{badge > 0 && (
 						<span className="sr-only">{groupBadgeLabel(badge)}</span>
 					)}
+					{workspaceLauncher && history}
 					{/*
 					 * THE ROSTER'S PIN (issue #663), a SIBLING of the name button rather
 					 * than a glyph inside it, because it is a control: pressing it writes
@@ -8300,22 +8314,7 @@ export function ChatSidebar({
 		);
 	};
 	const sectionLabel = (label: string, action?: ReactNode) => (
-		<div
-			className={cn(
-				"flex h-6 items-center gap-1 px-2",
-				/*
-				 * The container the bulk read label sheds against
-				 * (`MARK_ALL_READ_LABEL_SHED`). Only a row that carries an action needs
-				 * one; the others keep their markup.
-				 */
-				action && "@container/chatheading",
-			)}
-		>
-			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
-				{label}
-			</h3>
-			{action}
-		</div>
+		<SidebarSectionHeading label={label} action={action} />
 	);
 	/*
 	 * THE LIST'S ONE TAB STOP (§C4 and UX-BASELINE U6; the U2 walk's 70 presses).
@@ -9073,7 +9072,10 @@ export function ChatSidebar({
 			 * overflow once (measured 890/576), and the merged scroller is the
 			 * one pane that can contain it.
 			 */
-			className={cn("relative space-y-4")}
+			className={cn(
+				"relative",
+				workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
+			)}
 		>
 			{capabilities.isLoading && (
 				<p aria-live="polite" className="text-meta text-ink-dim">
@@ -9178,7 +9180,10 @@ export function ChatSidebar({
 			 * settled by stylesheet order rather than by the decision.
 			 */}
 			{showList && (
-				<div className="pb-2">
+				<div
+					data-workspace-launcher={workspaceLauncher ? "" : undefined}
+					className={workspaceLauncher ? "sidebar-section-stack" : "pb-2"}
+				>
 					{/*
 					 * THE ENTITY ROWS ARE THE POPOVER'S SWITCHES TOO.
 					 *
@@ -9201,17 +9206,22 @@ export function ChatSidebar({
 					 */}
 					{isSectionShown(view, "agents") && (
 						<section>
-							{heading(
-								"agents",
-								t(SIDEBAR_SECTION_LABEL.agents),
-								true,
-								undefined,
-								Bot,
-								undefined,
-								undefined,
-								hubControls("agent"),
-							)}
-							{(query || isOpen("agents", true)) && (
+							{workspaceLauncher
+								? sectionLabel(
+										t(SIDEBAR_SECTION_LABEL.agents),
+										hubControls("agent"),
+									)
+								: heading(
+										"agents",
+										t(SIDEBAR_SECTION_LABEL.agents),
+										true,
+										undefined,
+										Bot,
+										undefined,
+										undefined,
+										hubControls("agent"),
+									)}
+							{(workspaceLauncher || query || isOpen("agents", true)) && (
 								<>
 									{profiles.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
@@ -9547,22 +9557,31 @@ export function ChatSidebar({
 					 */}
 					{isSectionShown(view, "teams") && (
 						<section
-							className={entitySectionGap(
-								isSectionShown(view, "agents") &&
-									(Boolean(query) || isOpen("agents", true)),
-							)}
+							className={
+								workspaceLauncher
+									? undefined
+									: entitySectionGap(
+											isSectionShown(view, "agents") &&
+												(Boolean(query) || isOpen("agents", true)),
+										)
+							}
 						>
-							{heading(
-								"teams",
-								t(SIDEBAR_SECTION_LABEL.teams),
-								true,
-								undefined,
-								Users,
-								undefined,
-								undefined,
-								hubControls("team"),
-							)}
-							{(query || isOpen("teams", true)) && (
+							{workspaceLauncher
+								? sectionLabel(
+										t(SIDEBAR_SECTION_LABEL.teams),
+										hubControls("team"),
+									)
+								: heading(
+										"teams",
+										t(SIDEBAR_SECTION_LABEL.teams),
+										true,
+										undefined,
+										Users,
+										undefined,
+										undefined,
+										hubControls("team"),
+									)}
+							{(workspaceLauncher || query || isOpen("teams", true)) && (
 								<>
 									{teams.isLoading && (
 										<p aria-live="polite" className="text-meta text-ink-dim">
@@ -9780,7 +9799,10 @@ export function ChatSidebar({
 				lastPinPress.current = null;
 				lastArchivePress.current = null;
 			}}
-			className={cn("relative space-y-4")}
+			className={cn(
+				"relative",
+				workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
+			)}
 		>
 			{/*
 			 * ONE LIST, SECTIONED BY WHAT A READER ASKS OF IT (§C1; design round 1, D1).
@@ -9861,6 +9883,7 @@ export function ChatSidebar({
 							 */
 							<div
 								key={row.key}
+								data-workspace-current={current ? "" : undefined}
 								className={cn(
 									rowBoxStyle,
 									"group",
@@ -11047,7 +11070,10 @@ export function ChatSidebar({
 						refreshFocusedInside(listPanelRef.current, listSlotRef);
 						extendCatalogueTail();
 					}}
-					className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]"
+					className={cn(
+						"relative min-h-0 flex-1 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]",
+						workspaceLauncher ? "sidebar-section-stack" : "space-y-4",
+					)}
 					/*
 					 * The reader's own gesture ends the Tag-mode foot's anchor hold
 					 * (`holdPageAnchor`): from here the scroll is theirs.
@@ -11060,6 +11086,7 @@ export function ChatSidebar({
 					{pinFailureLine}
 					{listShown && temporaryEnabled && !query.trim() && (
 						<SidebarTemporaryGroup
+							workspaceHeading={workspaceLauncher}
 							rows={temporaryRows}
 							// The same current row the normal list marks (`currentSessionRowId`):
 							// a temporary first send lists its row here from the create's answer.

@@ -172,6 +172,8 @@ type ChatHeaderProps = {
 	 * write - and absent on every live pane, where `identity` is the switcher.
 	 */
 	draftTargetSlot?: ReactNode;
+	/** The workspace tab names the conversation; keep the existing title editor. */
+	titleInWorkspaceTab?: boolean;
 	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
@@ -579,6 +581,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	identity,
 	deviceSlot,
 	draftTargetSlot,
+	titleInWorkspaceTab = false,
 	renameSessionId,
 	renameSlotReserved = false,
 	sessionId,
@@ -649,6 +652,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		temporaryInfoShown,
 	);
 	const moveRequestedRef = useRef(false);
+	const renameRequestedRef = useRef(false);
+	const actionsControlRef = useRef<HTMLButtonElement>(null);
 	/*
 	 * THE CANVAS SLOT'S TWO DOORS, read as the rail reads them (`panel-rail.tsx`):
 	 * Projects is "open" while the canvas is drawn on its Projects view, Canvas
@@ -833,7 +838,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		 * input, and that blur must find the latch past `edit` so it cannot run a
 		 * save on the way out (the race this sequence exists for). */
 		renamePhaseRef.current = "closed";
-		if (restoreFocus) renameControlRef.current?.focus();
+		if (restoreFocus) {
+			(titleInWorkspaceTab
+				? actionsControlRef
+				: renameControlRef
+			).current?.focus();
+		}
 		setRenaming(false);
 	};
 
@@ -1197,33 +1207,35 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									 * nothing, the header main drew.
 									 */}
 									{avatar}
-									<h2
-										ref={renameTitleRef}
-										data-header-title=""
-										onDoubleClick={renameSessionId ? startRename : undefined}
-										className={cn(
-											"min-w-0 max-w-full truncate font-medium text-body text-ink",
-											/*
-											 * Client-area now, so the two things such a text needs: no
-											 * native selection (a drag across a window title that
-											 * highlights like a document reads as broken, and a
-											 * double-click's word-select would race the select-all the
-											 * editor opens with), and the arrow cursor - a pointer
-											 * cursor would promise a single click the text does not act
-											 * on (the double-click and the pencil are the affordances).
-											 * `user-select: none` does not stop `dblclick`, which is the
-											 * event the editor opens on.
-											 */
-											"cursor-default select-none",
-											// The conversation's own name: no text in analytics or replay.
-											USER_CONTENT_CLASS,
-										)}
-									>
-										{agentName}
-									</h2>
+									{!titleInWorkspaceTab && (
+										<h2
+											ref={renameTitleRef}
+											data-header-title=""
+											onDoubleClick={renameSessionId ? startRename : undefined}
+											className={cn(
+												"min-w-0 max-w-full truncate font-medium text-body text-ink",
+												/*
+												 * Client-area now, so the two things such a text needs: no
+												 * native selection (a drag across a window title that
+												 * highlights like a document reads as broken, and a
+												 * double-click's word-select would race the select-all the
+												 * editor opens with), and the arrow cursor - a pointer
+												 * cursor would promise a single click the text does not act
+												 * on (the double-click and the pencil are the affordances).
+												 * `user-select: none` does not stop `dblclick`, which is the
+												 * event the editor opens on.
+												 */
+												"cursor-default select-none",
+												// The conversation's own name: no text in analytics or replay.
+												USER_CONTENT_CLASS,
+											)}
+										>
+											{agentName}
+										</h2>
+									)}
 								</>
 							)}
-							{renameSessionId ? (
+							{renameSessionId && (!titleInWorkspaceTab || renaming) ? (
 								<button
 									ref={renameControlRef}
 									type="button"
@@ -1293,8 +1305,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										// and must be visible without a pointer.
 										"transition-opacity duration-base ease-out-quart",
 										!renaming &&
+											!titleInWorkspaceTab &&
 											"opacity-0 group-hover/title:opacity-100 group-hover/title:duration-fast",
 										!renaming &&
+											!titleInWorkspaceTab &&
 											"group-focus-within/title:opacity-100 group-focus-within/title:duration-fast",
 										"hover:text-ink-muted",
 									)}
@@ -1572,6 +1586,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 * reach for.
 								 */
 								data-conversation-actions
+								ref={actionsControlRef}
 								aria-label={t("ui.chat.header.actions")}
 							>
 								<MoreHorizontal aria-hidden="true" />
@@ -1593,6 +1608,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * return focus itself when it closes.
 							 */
 							onCloseAutoFocus={(event) => {
+								// Let the menu finish closing before mounting and focusing the editor.
+								if (renameRequestedRef.current) {
+									renameRequestedRef.current = false;
+									event.preventDefault();
+									startRename();
+								}
 								if (moveRequestedRef.current) {
 									moveRequestedRef.current = false;
 									if (sessionId) requestPicker(sessionId);
@@ -1600,6 +1621,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								}
 							}}
 						>
+							{titleInWorkspaceTab && renameSessionId && (
+								<DropdownMenuItem
+									data-workspace-rename=""
+									onSelect={() => {
+										renameRequestedRef.current = true;
+									}}
+								>
+									{t("ui.chat.header.rename_conversation")}
+								</DropdownMenuItem>
+							)}
 							{/*
 							 * COPY SESSION ID (#893), AT THE TOP - above the transcript-display submenu
 							 * and therefore above the first separator.

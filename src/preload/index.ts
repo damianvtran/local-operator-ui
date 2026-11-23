@@ -50,6 +50,7 @@ import {
 	type QwenVoiceStatus,
 	type QwenVoiceTake,
 } from "../shared/desktop-contract";
+import type { DesktopFeedState } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import {
@@ -247,14 +248,17 @@ const api = {
 					ipcRenderer.removeListener("desktop-feed-frame", handler);
 				};
 			},
-			watchState: (onState: (state: { connected: boolean }) => void) => {
-				const handler = (_event: unknown, state: { connected: boolean }) =>
+			watchState: (
+				onState: (state: DesktopFeedState) => void,
+				includeWorkspaceEpoch?: boolean,
+			) => {
+				const handler = (_event: unknown, state: DesktopFeedState) =>
 					onState(state);
 				ipcRenderer.on("desktop-feed-state", handler);
 				// Ask for the CURRENT state as well as every transition: a subscriber
 				// that mounts after a reconnect would otherwise render "disconnected"
 				// until the next transition, which may never come on a healthy feed.
-				ipcRenderer.send("desktop-feed-watch");
+				ipcRenderer.send("desktop-feed-watch", includeWorkspaceEpoch === true);
 				return () => {
 					ipcRenderer.removeListener("desktop-feed-state", handler);
 				};

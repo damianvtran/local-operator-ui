@@ -1,4 +1,5 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": "Закрывать вкладки через {minutes, number} мин бездействия",
 	"ui.chat.header.actions": "Действия с разговором",
 	"ui.chat.header.archive_conversation": "Архивировать разговор",
 	"ui.chat.header.archived": "В архиве",

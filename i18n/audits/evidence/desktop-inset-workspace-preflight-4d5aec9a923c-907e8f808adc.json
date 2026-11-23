@@ -1,0 +1,37 @@
+{
+  "kind": "localization preflight; not a ledger receipt or PR review",
+  "repo": "damianvtran/local-operator-ui",
+  "date": "2026-11-22",
+  "head": "4d5aec9a923cd5483ed96b9cfc3228e279e8a817",
+  "base": "5b3407dc0378a502349ec10385b21e474549e80e",
+  "namespace": "ui.chat.header",
+  "key": "ui.chat.header.auto_close_inactive_tabs",
+  "auditor": {"agent": "lopdev reviewer", "session": "907e8f808adc", "actual_model": "openai/gpt-6.2-sol", "fallback": null, "independence": "I authored none of the source or target strings. Audited directly from the pinned source, no translation API/MT. Model from harness session header; no fallback observed."},
+  "scope": "One new menu checkbox label; off by default, 30 minutes of confirmed inactivity, closes only eligible tabs, not chats, drafts, runs or history. No product code review or native validation.",
+  "references": {"glossary": "damianvtran/local-operator@b42471d3935cb7e95d64428af27c32626665f4c0:i18n/glossary.md", "style_guides": "damianvtran/local-operator@b42471d3935cb7e95d64428af27c32626665f4c0:i18n/style-guides/{en,es,fr,hi,ru,ur,vi,zh-CN}.md", "manifest": "i18n/languages.json", "prior_receipts": "The active ui.chat.header rows in i18n/ledger.json name seven i18n/receipts/68a3f14dde44-tc-*.json files. Opened and validated all seven against base bindings; never amend or re-date them."},
+  "files": {
+    "src/i18n/catalogues/en/ui.chat.header.json": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+    "src/i18n/catalogues/en/ui.chat.header.context.json": "6020837f5c9029b1a8ce0761d43775a849c438fb6c12cc17cc1ce282cdf96828",
+    "src/i18n/catalogues/es/ui.chat.header.json": "1ff6e2e3e821182c167d5c4e4f0c73cef38ea1e5bdaf37ccdcb792a74b4e724f",
+    "src/i18n/catalogues/fr/ui.chat.header.json": "d02147409d7faedf8ee73f0aa9d8b27257836ed585d7cc43384cdfce8b05954d",
+    "src/i18n/catalogues/hi/ui.chat.header.json": "2fb58843d38a679aa34f2d2d8b07dedc4c1a251afa257dd1a74be1ab1c6115f0",
+    "src/i18n/catalogues/ru/ui.chat.header.json": "c2f10aded28760cfa1ad045da29b835865d1fba2aee9b7d7e10d198ab86a31c6",
+    "src/i18n/catalogues/ur/ui.chat.header.json": "1d4cb0882903319af649b9cb7d9a4897ba35633d4d5bdc40f12b7d0531c178ef",
+    "src/i18n/catalogues/vi/ui.chat.header.json": "ba49c9b43e1677c444871bb0b5597c2da54cb6a91a38ea3d02b98ef404b7502c",
+    "src/i18n/catalogues/zh-CN/ui.chat.header.json": "c85819d847ceb3ee4e9434080aebfa0317601a49d0cf5ac984fd96c546d49981"
+  },
+  "execution": {
+    "node scripts/i18n/generate.mjs --check": "exit 0: keys.gen.ts is byte-identical to a fresh generation",
+    "node scripts/i18n/context-parity.mjs": "exit 0: every English key covered apart from 129 existing allowed gaps in 4 namespaces",
+    "node scripts/i18n/ledger-check.mjs": "exit 1: 21 findings across 1281 entries, exactly 3 per supported locale in this namespace (source stale, target stale, receipt source bytes mismatch)",
+    "node --input-type=module (in-memory esbuild of src/i18n/messages.ts, built-in assertions, FormatJS parser and deriveReceiptAudit)": "PASS: raw SHA-256 of pinned blobs equals checkout bytes; removing the one new key yields deep equality to base dictionaries and context; seven targets match English namespace key set. Eight strings in NFC, exactly one ICU numeric minutes argument, no manual bidi marks, no English fallback, ASCII 30 in the actual translate and raw paths. The ur output has no inserted isolate for the native Urdu unit, as observed; visual order not tested. Historical receipts match recorded receipt hashes and pass on base source/target hashes; each independently rejects either fresh hash."
+  },
+  "findings": [
+    {"id": "L10N-1", "severity": "major", "scope": "all seven target locales; gate blocker", "description": "Historic namespace receipts cannot attest to the new bytes. File has changed in source and all targets.", "disposition": "Fresh immutable receipts for final bytes from evidence actually performed. Retain superseded audit history, then rerun ledger-check."},
+    {"id": "L10N-2", "severity": "minor", "locale": "vi", "path": "src/i18n/catalogues/vi/ui.chat.header.json:2", "description": "Uses thẻ for the same tab the neighbouring manual Close tab row calls tab (ui.browser.json:174), also as in Show all tabs at line 158.", "disposition": "Use established tab terminology in the existing remediation, then confirm the final bytes."},
+    {"id": "L10N-3", "severity": "minor", "locale": "ur", "path": "src/i18n/catalogues/ur/ui.chat.header.json:2", "description": "The dense nominal wording غیرفعالیت is less natural than the established verbal wording in the same namespace's temporary hint at line 25. Tab noun and ICU are already correct.", "disposition": "Prefer the sibling's established inactivity phrasing while retaining tab-only semantics; recheck RTL fit."},
+    {"id": "L10N-4", "severity": "nit", "locale": "zh-CN", "path": "src/i18n/catalogues/zh-CN/ui.chat.header.json:2", "description": "Spaces around the number conflict with style guide lines 67–69; short idiomatic wording otherwise.", "disposition": "Remove only the surrounding literal spaces; retain the ICU argument."},
+    {"id": "L10N-5", "severity": "nit", "locale": "fr", "path": "src/i18n/catalogues/fr/ui.chat.header.json:2", "description": "Breaking space between 30 and min differs from the narrow nonbreaking space used in the same namespace at lines 25 and 29.", "disposition": "Use the established nonbreaking unit spacing if editing copy in this wave."}
+  ],
+  "limits_and_handoff": "No native/visual or pseudo-locale proof. Context asks for one short line where space permits and sets no maxCells. Grapheme counts (not widths): en 32, es 41, fr 40, hi 27, ru 42, ur 39, vi 36, zh-CN 14. QA should open the actual menu at the narrow supported window width with a selected tab (including overflow), validate the menuitemcheckbox name, default unchecked state, legible unclipped wrapping and Urdu direction, number/unit order and mirrored indicator. In scope: English source, es and ru are source-fit risks by length only, all seven targets carry the key. No other phrase issue found in en/es/hi/ru. Do not promote this record into a passing receipt. After any copy edits, derive hashes again and get this independent auditor's final-byte delta confirmation plus real UI fit evidence where applicable. Store immutable per-locale evidence and use the existing assembler for fresh receipts. Do not pass --update-translator while the row is stale; the assembler refuses that path, saves obsolete hashes/auditors in superseded on normal refresh, and translator provenance can then be updated to the actual translator, not guessed."
+}

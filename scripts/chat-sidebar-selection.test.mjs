@@ -505,7 +505,7 @@ const CURRENT = [
 		what: "the entity row's disclosure control",
 		file: SIDEBAR,
 		expression: () =>
-			expressionAfterWithin(SIDEBAR, "data-entity>", "data-disclosure"),
+			expressionAfterWithin(SIDEBAR, "const history = (", "data-disclosure"),
 		stubs: { revealArmed: true, staged: true },
 		ground: false,
 		notCurrent: { revealArmed: true, staged: false },

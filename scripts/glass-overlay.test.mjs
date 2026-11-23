@@ -49,6 +49,54 @@ const FLOORS = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
 );
 
+test("workspace glass leaves the sidebars unbacked and paints the inset only once", () => {
+	const content = read(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	assert.match(
+		content,
+		/data-workspace-inset=""\s+data-glass-region="canvas-content"/,
+	);
+	const rule = (selector) => {
+		const body = CSS_NO_COMMENTS.split(`${selector} {`)[1]?.split("}")[0];
+		assert.ok(body, selector);
+		return body;
+	};
+	const shell = "[data-workspace-shell]:has([data-chat-workspace])";
+	assert.match(
+		rule(`html:not([data-glass]) ${shell}`),
+		/background-color: var\(--color-surface\)/,
+	);
+	assert.doesNotMatch(
+		CSS_NO_COMMENTS,
+		/\n\[data-workspace-shell\]:has\(\[data-chat-workspace\]\)\s*\{[^}]*background/,
+	);
+	assert.match(
+		rule(`${shell}\n\tmain[data-glass-region="canvas-backing"]`),
+		/background-color: transparent/,
+	);
+	assert.match(
+		rule("html:not([data-glass]) [data-workspace-inset]"),
+		/background-color: var\(--color-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass] [data-glass-region="canvas-content"]'),
+		/background-color: var\(--lo-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="canvas"] [data-glass-region="canvas-content"]'),
+		/var\(--lo-glass-a-canvas\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="sidebar"] [data-glass-region="sidebar"]'),
+		/var\(--lo-glass-a-surface\)/,
+	);
+	assert.match(
+		rule('html[data-glass~="sidebar"] [data-workspace-tabs]'),
+		/var\(--lo-glass-a-surface\)/,
+	);
+});
+
 const bundleOf = async (entry) => {
 	const bundle = await build({
 		stdin: { contents: `export * from "${entry}";`, resolveDir: ROOT },
