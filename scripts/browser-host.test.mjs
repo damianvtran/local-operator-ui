@@ -73,7 +73,7 @@ const bundle = await build({
 			// main process applies are importable here rather than re-spelled.
 			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
-			'export * from "./src/main/browser/extensions/passkey-custody";',
+			'export * from "./src/main/browser/extensions/auth-request";',
 			'export * from "./src/main/browser/host";',
 			'export * from "./src/main/browser/native-passkey-notice";',
 			'export { WebauthnChooser } from "./src/main/webauthn";',
@@ -183,9 +183,9 @@ const {
 	TAB_ACTIONS_MENU_ACTION_IDS,
 	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
-	PasskeyCustody,
+	AuthRequests,
 	PASSKEY_PROMPT_DOCUMENTS,
-	CUSTODY_REFUSAL_REASON,
+	AUTH_REQUEST_REFUSAL_REASON,
 	BrowserHost,
 	NativePasskeyNotice,
 	WebauthnChooser,
@@ -3486,7 +3486,11 @@ test("real dispatcher records allocation, fences peers, recovers and finishes ex
 	);
 });
 
-test("owner_finish stays pending during a passkey prompt and retries the exact allocation", async () => {
+test("owner_finish stays pending during a passkey request and retries the exact allocation", async () => {
+	// Converged from main's custody version (#1975) onto the auth-request
+	// quarantine: the tab stays usable (recover hands the SAME handle back), but
+	// closing it would cancel the request the user is answering, so terminal
+	// cleanup is refused as `pending` until the request ends.
 	const { host, registry, removed } = makeHost();
 	const owner = {
 		requester: "session:alice",
@@ -3500,17 +3504,24 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
 	const record = registry.requireSurface(tab);
 	const human = registry.create({ owner: "user", sessionId: null });
-	const custody = new PasskeyCustody();
-	registry.setCustodyGate(custody);
-	const [provider, [document]] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	let frameGone = false;
+	const requests = new AuthRequests({
+		log: () => {},
+		hasProviderFrame: () => false,
+	});
+	registry.setAuthRequestGate(requests);
+	// The ceremony document: the generic notification host alone is presence
+	// (quarantine), never a request, and presence does not refuse a close.
+	const [provider, documents] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	const document = documents.find((path) => path.includes("universal-sign-on"));
 	const { tabId } = record;
 	const { id: webContentsId } = record.view.webContents;
-	let frameGone = false;
 	assert.equal(
-		custody.admit({
+		requests.admit({
 			tabId,
 			webContentsId,
 			url: `chrome-extension://${provider}${document}`,
+			engaged: true,
 			isInstalled: (id) => id === provider,
 			frame: { isDestroyed: () => frameGone },
 		}),
@@ -3521,7 +3532,6 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	});
 	assert.equal(registry.byWebContents(webContentsId), record);
 	assert.deepEqual(removed, []);
-	assert.equal(custody.isHeld(webContentsId), true);
 
 	const resumed = { ...owner, owner_generation: "g2" };
 	const recovered = await host.dispatch(
@@ -3531,26 +3541,22 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	);
 	assert.equal(
 		recovered.tab,
-		"",
-		"custody must not disclose a reusable handle",
+		tab,
+		"a live passkey request no longer locks the tab: recover keeps its handle",
 	);
 	await assert.rejects(() => host.dispatch("owner_finish", owner, "stale"), {
 		code: "owner_refused",
 	});
 	await assert.rejects(
-		() => host.dispatch("read", { ...resumed, tab }, "held-read"),
-		(error) => error.data?.reason === CUSTODY_REFUSAL_REASON,
+		() => host.dispatch("close", { ...resumed, tab }, "held-close"),
+		(error) => error.data?.reason === AUTH_REQUEST_REFUSAL_REASON,
 	);
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "held"), {
+		state: "pending",
+	});
+	assert.deepEqual(removed, []);
+	// The prompt closes: the next cleanup's own sweep ends the request.
 	frameGone = true;
-	assert.deepEqual(
-		custody.release({
-			tabId,
-			at: custody.viewForTab(tabId).at,
-			hasProviderFrame: () => false,
-			reload: () => assert.fail("no live prompt remains to reload"),
-		}),
-		{ ok: true, reloaded: false },
-	);
 	const wrongNonce = `${tab.slice(0, -1)}${tab.endsWith("a") ? "b" : "a"}`;
 	await assert.rejects(
 		() => host.dispatch("close", { ...resumed, tab: wrongNonce }, "nonce"),

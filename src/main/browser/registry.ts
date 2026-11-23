@@ -716,12 +716,21 @@ export class TabRegistry {
 	}
 
 	/** Terminal cleanup must distinguish a drive refusal from a gone surface,
-	 * without giving the caller a record or making the surface driveable. */
+	 * without giving the caller a record or making the surface driveable.
+	 *
+	 * A live passkey request refuses the close too (`owner_refused`, so the
+	 * caller's `owner_finish` stays `pending` and retries the same allocation).
+	 * Before the auth-request quarantine this came from `requireSurface`'s
+	 * custody refusal; that refusal is gone (agent tabs stay usable while a
+	 * prompt is up), so without this check a session ending mid-sign-in would
+	 * destroy the very request the user is answering — the one action the
+	 * `close` dispatch in `actions/tabs.ts` already refuses. */
 	closeOwnedSurface(token: string, beforeClose: () => void): boolean {
 		let record: TabRecord;
 		try {
 			record = this.requireLiveSurface(token);
 			this.assertSurfaceDriveable(record);
+			this.assertNoConflictingAuthRequest(record.view.webContents.id, "close");
 		} catch (error) {
 			if (error instanceof BrowserHostError) {
 				if (error.code === "tab_closed") return true;
