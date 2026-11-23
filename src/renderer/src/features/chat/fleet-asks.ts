@@ -88,7 +88,14 @@ export const FLEET_ASKS_QUERY_KEY = ["desktop", "asks"] as const;
  * unlike the capabilities watch): React Query's default focus refetch already
  * re-asks the moment the user comes back to the window, which is the only moment
  * a stale badge could mislead anyone, and an ask is answered by a person at the
- * screen rather than by a background process.
+ * screen rather than by a background process. The APP-ATTENTION claim built on
+ * this data is NOT left on that cadence: a `notifications` or `session_status`
+ * feed frame invalidates this key (`use-queued-ask-attention.ts`), so a hidden
+ * window's dock claim still tracks a queued ask arriving or being answered
+ * elsewhere - without paying background polling for every reader of this shared
+ * key. The notifications frame is the harness's own doorbell for any asks-index
+ * move; the status frame is the faster one, and only for the transitions the
+ * harness does not dedupe away.
  */
 export const FLEET_ASKS_POLL_MS = 10_000;
 

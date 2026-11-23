@@ -82,6 +82,8 @@ import {
 	REPLY_CHIP_REMOVE_SELECTOR,
 	registerComposerFocus,
 } from "@features/chat/composer-field";
+import type { DeliveryMode as ComposerDeliveryMode } from "@features/chat/composer-send-key";
+import { sendChordBindings, sendKeyOf } from "@features/chat/composer-send-key";
 import {
 	type SendRecordingPhase,
 	dictatedSendCheck,
@@ -134,13 +136,12 @@ import {
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
 	emptyTranscriptionMessage,
-	isTransientTranscriptionFailure,
-	transcriptionFailureMessage,
-	transcriptionFailureRowMessage,
+	retakeOfferFor,
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Spinner } from "@shared/components/common/spinner";
+import { DictationTakeRow } from "@shared/components/composer/dictation-take-row";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import {
@@ -185,6 +186,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { intentOverride } from "@shared/store/settings-intents";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
@@ -494,7 +496,7 @@ import {
 	activeModelForDefault,
 	writeModelDefaultSettings,
 } from "@features/chat/pickers/model-default-settings";
-import { BrandMark } from "@shared/components/common/brand-mark";
+import { NewChatHorizon } from "./new-chat-horizon";
 
 /**
  * A send that did not land, described for the composer that owns its text.
@@ -642,6 +644,14 @@ export type MessageInputProps = {
 		 * caller leaves it absent - the send is the press it always was.
 		 */
 		options?: { originBound?: boolean },
+		/**
+		 * Which delivery mode the press selects, when the press was a bound send
+		 * chord; `null` for plain Enter and for every non-key door (the Send
+		 * button, a retry). The page resolves it against the `delivery.busy_default`
+		 * default and the `features.busy_delivery` gate; this composer only
+		 * reports what the press was.
+		 */
+		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
 	isLoading: boolean;
 	/**
@@ -695,7 +705,8 @@ export type MessageInputProps = {
 	 * different things here and only one of them may change what the user can
 	 * DO. `isInputDisabled` (below) is `isLoading && currentJobId` and it is what
 	 * disables the box and swaps Send for Stop; a canonical turn deliberately
-	 * keeps the composer live, because typing during a turn steers it and a
+	 * keeps the composer live, because typing during a turn sends it with the
+	 * configured default mode, and a
 	 * pending gate is answered here. So this one changes the PLACEHOLDER only -
 	 * the empty box says why pressing Enter does nothing instead of inviting a
 	 * message it will refuse - and it gates no send: a send that would have gone
@@ -703,6 +714,14 @@ export type MessageInputProps = {
 	 * the disabled Send control, and this prop adds no second gate).
 	 */
 	awaitingReply?: boolean;
+	/**
+	 * The resolved default busy-send mode (`delivery.busy_default`), handed
+	 * down by the page that reads the settings query. The busy placeholder and
+	 * the send hint name what Enter does while the agent works, and under a
+	 * queue/both default the old steer sentences were false; absent means
+	 * `steer`, today's behaviour.
+	 */
+	busyDefaultMode?: ComposerDeliveryMode;
 	/**
 	 * A question is pending and the composer is where it is answered.
 	 *
@@ -914,7 +933,8 @@ export type MessageInputProps = {
 	scrollToBottom?: () => void;
 	/**
 	 * Canonical-session stop control. Unlike the legacy job cancel, a turn in
-	 * flight does NOT disable the composer: typing during a turn steers it, and
+	 * flight does NOT disable the composer: typing during a turn sends it with the
+	 * configured default mode, and
 	 * a pending gate is answered here. So the stop button sits beside Send
 	 * rather than replacing it, and only while the owner is actually working.
 	 *
@@ -1241,7 +1261,10 @@ export type MessageInputProps = {
 		asks?: SessionAskFrame | null;
 		/** Trusted catalogue source, not credential-owner metadata or mesh membership. */
 		servingLocality?: "local" | "remote";
-		onCommand?: (invocation: SlashCommandInvocation) => void;
+		onCommand?: (
+			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
+		) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -1267,7 +1290,10 @@ export type MessageInputProps = {
 		 * the two readings inert with their existing copy on a backend that cannot
 		 * honour a pick. See `SessionStatusStripProps["onOpenDraftPicker"]`.
 		 */
-		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		onOpenDraftPicker?: (
+			destination: DraftPickerDestination,
+			anchor?: HTMLElement,
+		) => void;
 		/**
 		 * Where a draft's resolution IS, while it has no reading yet; see
 		 * `SessionStatusStripProps["draftResolution"]`.
@@ -1708,6 +1734,25 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
+ * The send control's tooltip while the agent works: the mode's own sentence,
+ * so a queue/both default never shows the old steer wording. `steer` names
+ * its own key (`steer_hint_steer`, text-identical to the absent-mode key);
+ * only an ABSENT mode falls back to `steer_hint`, so neither key is dead.
+ */
+export const steerHintKey = (
+	mode: ComposerDeliveryMode | undefined,
+):
+	| "ui.chat.composer.steer_hint"
+	| "ui.chat.composer.steer_hint_steer"
+	| "ui.chat.composer.steer_hint_queue"
+	| "ui.chat.composer.steer_hint_both" => {
+	if (mode === "queue") return "ui.chat.composer.steer_hint_queue";
+	if (mode === "both") return "ui.chat.composer.steer_hint_both";
+	if (mode === "steer") return "ui.chat.composer.steer_hint_steer";
+	return "ui.chat.composer.steer_hint";
+};
+
+/**
  * A `File`'s bytes as a data URL, or `null` when the read cannot produce one.
  *
  * The paste path spells this read out on `FileReader` inline because it fires and
@@ -1886,6 +1931,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSendMessage,
 			isLoading,
 			awaitingReply = false,
+			busyDefaultMode,
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
 			deviceHold,
@@ -2164,23 +2210,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const transcribeTakeRef = useRef<(take: Blob) => void>(() => {});
 		/*
-		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087).
+		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087), AND THE ROW THAT SPEAKS FOR IT.
 		 *
 		 * A take lands in `audioBlob` and is sent once; the effect below sends a take
 		 * once per (blob, nudge) pair, so a failed attempt used to leave the recording
 		 * sitting in state with nothing able to reach it - the user's speech, kept but
 		 * unreachable, and the only way back was to record again. `dictationFailure`
-		 * holds the sentence that offers the SAME bytes back when the failure is one
-		 * time can fix, and `dictationRetry` is the nudge that re-arms that one
-		 * effect: a retry is the first attempt's own path, never a second send path
-		 * beside it.
+		 * holds what the row under the box shows: the sentence, and whether that
+		 * sentence's Retry may exist. Both come from ONE decision (`retakeOfferFor`),
+		 * so a state that offers nothing and a sentence that offers a Retry can no
+		 * longer be different failures. `dictationRetry` is the nudge that re-arms the
+		 * one send effect: a retry is the first attempt's own path, never a second send
+		 * path beside it.
 		 *
-		 * Both are cleared when the take is retired - a new recording, a success - so
-		 * the offer cannot outlive the recording it describes.
+		 * Everything is cleared when the take is retired - a new recording, a success,
+		 * a discard - so the offer cannot outlive the recording it describes.
 		 */
-		const [dictationFailure, setDictationFailure] = useState<string | null>(
-			null,
-		);
+		const [dictationFailure, setDictationFailure] = useState<{
+			message: string;
+			retry: boolean;
+		} | null>(null);
 		const [dictationRetry, setDictationRetry] = useState(0);
 		/*
 		 * WHAT HAS ALREADY BEEN SENT, and why it is a ref rather than a dependency.
@@ -3026,7 +3075,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				async (
 					message: string,
 					onEchoPainted?: () => void,
-					opts?: { dictatedAway?: true; inputMode?: "dictated" | "mixed" },
+					opts?: {
+						dictatedAway?: true;
+						inputMode?: "dictated" | "mixed";
+						delivery?: ComposerDeliveryMode | null;
+					},
 				) => {
 					/*
 					 * A BUBBLE THAT CANNOT RUN IS NEVER POSTED (UX round 1, U1).
@@ -3373,6 +3426,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * validation hold and its navigation exactly as they were.
 						 */
 						opts?.dictatedAway ? { originBound: true } : undefined,
+						/*
+						 * THE EIGHTH ARGUMENT: WHICH DELIVERY MODE THE PRESS SELECTED (see
+						 * `sendKeyOf`): the chord mode when the press was a bound chord, `null`
+						 * for plain Enter. Threaded from the hook's options so the page can
+						 * resolve it against the settings default; every non-key door above
+						 * arrives with `opts` undefined and reports plain Enter.
+						 */
+						opts?.delivery ?? null,
 					);
 					if (accepted !== false) {
 						/*
@@ -4261,10 +4322,27 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					end: field.selectionEnd ?? newMessage.length,
 				};
 
+				/*
+				 * THE SEND KEY, THROUGH THE ONE PREDICATE. A bound chord confirms
+				 * the capture exactly as Enter does (the predicate treats the chord
+				 * as Enter); the capture consumes the press and the message path
+				 * never sees it, so no delivery mode travels with it.
+				 */
 				if (
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
+					sendKeyOf(
+						{
+							key: event.key,
+							shiftKey: event.shiftKey,
+							ctrlKey: event.ctrlKey,
+							metaKey: event.metaKey,
+							altKey: event.altKey,
+							isComposing: event.nativeEvent.isComposing,
+							keyCode: event.keyCode,
+						},
+						sendChordBindings(
+							useUiPreferencesStore.getState().shortcutBindings,
+						),
+					)
 				) {
 					return submitCapture();
 				}
@@ -6232,12 +6310,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * to the front: that arming is the popup PICK's gesture, and only a pick
 				 * produces the staged line that arms it.
 				 */
-				if (
-					sendRefused &&
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
-				) {
+				/*
+				 * THE SEND KEY, THROUGH THE ONE PREDICATE. Computed once here so both
+				 * arms below agree on whether this press sends, and so the planner
+				 * arm can hand the press's mode to the submit that follows (the
+				 * hook's own key handler would re-answer without it).
+				 */
+				const sendKey = sendKeyOf(
+					{
+						key: event.key,
+						shiftKey: event.shiftKey,
+						ctrlKey: event.ctrlKey,
+						metaKey: event.metaKey,
+						altKey: event.altKey,
+						isComposing: event.nativeEvent.isComposing,
+						keyCode: event.keyCode,
+					},
+					sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
+				);
+				if (sendRefused && sendKey) {
 					/*
 					 * NOTHING CAN ANSWER, so Enter does not send. The button was already
 					 * disabled and the key was not: measured live, typing with no provider
@@ -6258,11 +6349,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					explainRefusedSend();
 					return;
 				}
-				if (
-					event.key === "Enter" &&
-					!event.shiftKey &&
-					!event.nativeEvent.isComposing
-				) {
+				if (sendKey) {
 					const plan = planForDraft(newMessage, caret);
 					if (plan.kind !== "send") {
 						event.preventDefault();
@@ -6283,6 +6370,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						event.preventDefault();
 						return;
 					}
+					/*
+					 * THE MODE RIDES THE SUBMIT, not the key handler below. The hook's
+					 * own key handler re-answers the send key without this press's
+					 * mode (it sees no composer, only the event), so the send plan
+					 * submits directly with the press's own delivery selection.
+					 */
+					event.preventDefault();
+					submitMessage({ delivery: sendKey.delivery });
+					return;
 				}
 				handleKeyDown(event);
 			},
@@ -7679,26 +7775,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						endDictatedSend();
 						return;
 					}
-					// The raw server message stays on the console; the toast names the
-					// cause in a sentence a person can act on (see
-					// `transcriptionFailureMessage`), because "please try again" cannot
+					// The raw server message stays on the console; the reader gets the
+					// sentence `retakeOfferFor` chose, because "please try again" cannot
 					// fix an account with no credits or a refused sign-in.
 					console.error("Error transcribing audio:", error);
 					/*
-					 * THE TAKE STAYS WHEN TIME COULD FIX IT (#1087). A transient upstream
-					 * fault - the one class `isTransientTranscriptionFailure` names, and the
-					 * one the client has just retried - is the failure where sending the same
-					 * bytes again is an action a person can take, so the recording is offered
-					 * back rather than left in a state nothing can reach. A refusal keeps the
-					 * old behaviour: re-sending a decision cannot change it, and offering to
-					 * would be the "try again" lie this copy exists to delete.
+					 * WHAT THE FAILURE LEAVES BEHIND IS ONE DECISION (`retakeOfferFor`).
 					 *
-					 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). It carries the
-					 * retained-take sentence (`transcriptionFailureRowMessage`), not the
-					 * toast's, and the toast is withheld for this class: the row is the one
-					 * surface with the control, and two copies of the same sentence eleven
-					 * pixels apart - the louder one without the control, over the composer's
-					 * own mic and send - was the duplication this deletes.
+					 * The row exists where an action on the kept bytes exists: the transient
+					 * class where sending them again can help (#1087), an over-sized take the
+					 * app's own plane refused before sending (HTTP 413), and a request the
+					 * server rejected outright (HTTP 422). Only the first of those carries
+					 * Retry; all three carry Discard, because a recording a person can neither
+					 * send nor throw away is state they cannot leave.
+					 *
+					 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). Where it exists it also
+					 * carries the sentence, and the toast is withheld: the row is the one
+					 * surface with the controls, and two copies of the same sentence eleven
+					 * pixels apart - the louder one without them, over the composer's own mic
+					 * and send - was the duplication that round deleted. Everything else is a
+					 * refusal (402/401/403, the credit families, the desktop plane's pairing
+					 * codes), which keeps the toast and gets no row: a control beside a decision
+					 * that reproduces it is the "try again" lie this copy exists to delete.
 					 */
 					// A failed transcription sends NOTHING: the press ends here, the typed
 					// draft is untouched, and the kept take (if any) is offered back by the
@@ -7721,11 +7819,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						return;
 					}
 					endDictatedSend();
-					const transient = isTransientTranscriptionFailure(error);
+					const offer = retakeOfferFor(error);
 					setDictationFailure(
-						transient ? transcriptionFailureRowMessage(error) : null,
+						offer.keepRow
+							? { message: offer.message, retry: offer.retry }
+							: null,
 					);
-					if (!transient) showErrorToast(transcriptionFailureMessage(error));
+					if (!offer.keepRow) {
+						showErrorToast(offer.message);
+						/*
+						 * THE BYTES GO WITH THE ROW. With no row there is no control that can
+						 * reach this recording - the send effect fires on a (blob, nudge) pair,
+						 * and the nudge only exists behind the row's Retry - so holding it would
+						 * pin several megabytes of a take nobody can send until the composer
+						 * remounts. Dropping it changes nothing a person can do and gives the
+						 * memory back; the refusal's sentence still reaches them through the
+						 * toast.
+						 */
+						setAudioBlob(null);
+					}
 				} finally {
 					if (transcriptionAbortRef.current === controller) {
 						setIsTranscribingOwn(false);
@@ -7760,6 +7872,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			setDictationFailure(null);
 			setDictationRetry((attempt) => attempt + 1);
 		}, []);
+
+		/**
+		 * Throw the kept take away.
+		 *
+		 * The other half of the offer: a recording the user has decided not to send
+		 * should not sit in state until the composer remounts. Both writes land in one
+		 * commit, so the row and the bytes it describes leave together - and a retry
+		 * in flight cannot resurrect the take, because `dictationRetry` is untouched and
+		 * the send effect keys on the blob that is now gone.
+		 *
+		 * FOCUS GOES BACK TO THE BOX, synchronously and before the row unmounts: the
+		 * Discard control is the focused element and it is about to disappear, which
+		 * would otherwise drop focus to the document body - a keyboard user's next Tab
+		 * would start from the top of the page instead of the composer they were in.
+		 */
+		const discardDictation = useCallback(() => {
+			setDictationFailure(null);
+			setAudioBlob(null);
+			textareaRef.current?.focus();
+		}, [textareaRef]);
 
 		/*
 		 * One effect owns every attempt. `dictationRetry` is a TRIGGER rather than an
@@ -10159,6 +10291,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														asideAttached: aside !== null,
 														sendingUnsettled: sendUnsettled || sendInFlight,
 														awaitingReply,
+														busyDefaultMode,
 														/*
 														 * The press's own window (round 1, D6): the box says the
 														 * press landed instead of re-teaching `Esc stops` under a
@@ -10611,45 +10744,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							{dictationFailure !== null &&
 								!isTranscribing &&
 								audioBlob !== null && (
-									<div
-										data-dictation-retry=""
-										className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-									>
-										{/*
-										 * AN ERROR REGISTER, not the metadata one (design round 1,
-										 * D6). The row sat in `ink-muted` with no mark at all, so it
-										 * read as the same quiet status as "Processing audio" - and
-										 * the toast it replaces carried the danger icon. The take is
-										 * still here, but the attempt failed: the icon says which,
-										 * and the sentence stays at reading ink.
-										 */}
-										<CircleAlert
-											aria-hidden="true"
-											className="size-3.5 shrink-0 text-danger"
-										/>
-										<span className="font-medium text-body-sm text-ink-muted">
-											{dictationFailure}
-										</span>
-										<Button
-											type="button"
-											variant="link"
-											size="sm"
-											/*
-											 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
-											 * D3). The `link` variant's `h-auto p-0` left this
-											 * control 29x12px - the text's own line box - and the
-											 * underline appeared only on hover, so the one recovery
-											 * control in the state was a colour-only word. `h-7 px-2`
-											 * restores a 28px target (the size every other `sm`
-											 * control in the row takes) and `underline` makes it
-											 * look pressable at rest.
-											 */
-											className="h-7 shrink-0 px-2 underline"
-											onClick={retryDictation}
-										>
-											{t("ui.common.actions.retry")}
-										</Button>
-									</div>
+									<DictationTakeRow
+										message={dictationFailure.message}
+										retry={dictationFailure.retry}
+										onRetry={retryDictation}
+										onDiscard={discardDictation}
+									/>
 								)}
 							<div data-lo-composer-rail="" className="composer-dock-rail">
 								<Tooltip content={t("ui.chat.composer.attach_file")}>
@@ -11102,7 +11202,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														: slotB.role === "steer"
 															? /* Stop is the same slot as Send, so while text is typed the
 															     pointer has no Stop: the tooltip is where Esc is said. */
-																t("ui.chat.composer.steer_hint")
+																t(steerHintKey(busyDefaultMode))
 															: t("ui.chat.composer.send_message")
 												}
 											>
@@ -11383,25 +11483,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								: "hidden",
 						)}
 					>
+						{/* The argument picker hides this wrapper, but dismissing it
+						    must not grant the current draft another animation budget.
+						    All send blocks mute motion; only setup dims the print. */}
+						{showEmptyChatPrompt ? (
+							<NewChatHorizon
+								key={conversationId}
+								quiet={noProvider || noModel || serverOffline}
+								dimmed={noProvider}
+								suppressed={!showSplash}
+							/>
+						) : null}
 						{showSplash ? (
 							<>
-								{/*
-								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
-								 * (the app's own mark, `ink-muted`, not an illustration), the
-								 * greeting, then the chips"), in its BUBBLE - the operator's call on
-								 * the preview (2026-09-24) - and through the one `BrandMark` the
-								 * sidebar uses, so the empty state and the brand row cannot drift
-								 * into two treatments of one mark.
-								 *
-								 * `ink-muted` rather than `ink`: the mark is decoration on a screen
-								 * whose subject is the greeting, and §H spends the loudest ink there.
-								 * Unnamed (so `aria-hidden`) because the greeting below says
-								 * everything this figure means. `data-lo-empty-mark` is the handle
-								 * the driver's `first-send` scene waits on.
-								 */}
-								<span data-lo-empty-mark="" className="contents">
-									<BrandMark className="size-8" tone="ink-muted" />
-								</span>
 								{/*
 								 * With nothing connected there is no question to ask yet: the card
 								 * below says what to do, and a headline inviting a prompt the app

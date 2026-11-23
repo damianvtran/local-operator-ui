@@ -1,0 +1,21 @@
+{
+  "record_kind": "REPLACEMENT",
+  "date": "2026-11-22",
+  "locale": "es",
+  "namespace": "ui.agents.pending",
+  "head": "6a4faefba284c84bb88a09e17295d9f0b71db041",
+  "auditor": {"agent": "reviewer", "session": "a733fbf103c2", "instance": "14b674ae253c17e0", "model": "openai/gpt-6.2-sol", "fallback_from": "anthropic/claude-opus-5-5", "independent": true},
+  "translation_provenance": {"source": "manager brief", "original_model": "anthropic/claude-opus-5-5", "remediation_fallback_model": "openai/gpt-6.1-sol", "per_key_attribution": "unknown"},
+  "source_path": "src/i18n/catalogues/en/ui.agents.pending.json",
+  "source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+  "context_path": "src/i18n/catalogues/en/ui.agents.pending.context.json",
+  "context_sha256": "980c743dee0a8582cf3f572891388375e798f68a4fd827d4b97746a84b265f63",
+  "target_path": "src/i18n/catalogues/es/ui.agents.pending.json",
+  "target_sha256": "cc0a8a8fd9cd4d49962bb8cf68b8edaa72c42c456e550ce634f77cb1bf467494",
+  "authority": {"repo": "damianvtran/local-operator", "revision": "b42471d3935cb7e95d64428af27c32626665f4c0", "glossary": "i18n/glossary.md", "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8", "style": "i18n/style-guides/es.md", "style_sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"},
+  "status": "passed",
+  "findings": [],
+  "observations": ["Reviewed all 15 values against English, context and live call sites. Tu aprobación matches informal register and still signals an operator decision. Agente/Equipo/Habilidad match tab roots; the badges distinguish proposed creation, change and stale status. Actualiza names the product and review prerequisite.", "Infinitive Revisar matches the visible label and both accessible-name messages, which distinguish the action and object. Mostrar todos/Mostrar menos describe expansion and collapse; the tooltip carries both tab and waiting facts."],
+  "execution": {"method": "Node source-only assertions with the repository's FormatJS ICU parser and IntlMessageFormat", "actual": "es: 15 values/context keys, 16 ICU formatting cases, no manual bidi controls — PASS", "verified": "CLDR one/many/other, count interpolation, both distinct three-arm review selects including label-in-name and name retention, show_all and tab_title arguments"},
+  "limits": "Prior evidence unavailable per brief; newly audited from current bytes, not reconstructed. No rendered fit, native/manual QA or release approval claimed."
+}

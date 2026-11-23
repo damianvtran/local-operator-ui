@@ -4473,3 +4473,295 @@ test("a hydrating pane whose box takes a press still posts normally (case 23)", 
 	transcription.restore();
 	mic.next = null;
 });
+/* ------------------------------------------------------------------ */
+/* 5. What a failed take leaves behind (413, 422, the refusals)         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE ROW IS THE OFFER, AND THE OFFER IS ONE DECISION.
+ *
+ * Before this change a composer's failed take had exactly two outcomes: a row
+ * with Retry (the transient class) or nothing at all. A recording the app's own
+ * plane refused before sending it (413, over the 16 MiB upload cap) and a
+ * request the server rejected outright (422) fell into "nothing at all" while
+ * their copy told the reader to try again - so the bytes sat in state behind no
+ * control, and the only way out was to record again. These cases drive the real
+ * composer through the real relay seam and assert what is on screen: which
+ * controls the row carries, what it says, and what Discard does to the take.
+ *
+ * The sentence expectations read the ENGLISH catalogue the app renders (the
+ * suite's locale), so a copy edit that keeps the meaning keeps this green.
+ */
+
+/** Let a burst of real retry waits (500 ms + 1500 ms) elapse. */
+const spendTheBurst = async () => {
+	await act(async () => {
+		await new Promise((resolve) => realSetTimeout(resolve, 2400));
+	});
+	await settle();
+};
+
+/** The row under the box, or null. */
+const takeRow = (frame) =>
+	frame.container.querySelector("[data-dictation-take-row]");
+
+/** One control in that row, by its label. */
+const rowControl = (frame, label) =>
+	Array.from(takeRow(frame)?.querySelectorAll("button") ?? []).find(
+		(button) => button.textContent.trim() === label,
+	) ?? null;
+
+test("a take the plane refused for its size keeps a Discard row and offers no Retry (413)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	/*
+	 * THE PLANE'S OWN REFUSAL, verbatim: `src/main/desktop-media.ts` answers this
+	 * before the bytes reach the daemon when they are over MAX_UPLOAD_BYTES.
+	 */
+	transcription.install([REFUSED(413, "This file is too large.")]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await settle();
+
+	const row = takeRow(frame);
+	assert.ok(row, "the take is still here, so it gets a row");
+	assert.match(
+		row.textContent,
+		/too long to send/i,
+		"the row states the limit rather than echoing 'This file is too large.'",
+	);
+	assert.match(
+		row.textContent,
+		/shorter one/i,
+		"and names the fix a person can act on",
+	);
+	assert.equal(
+		rowControl(frame, "Retry"),
+		null,
+		"re-sending the same over-sized bytes cannot work, so there is no Retry",
+	);
+	const discard = rowControl(frame, "Discard");
+	assert.ok(discard, "and Discard, the one action left, is there");
+	assert.equal(
+		discard.getAttribute("aria-describedby"),
+		row.querySelector("span")?.id ?? "__none__",
+		"the bare label is tied to the sentence that says what it discards",
+	);
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a request the server rejected keeps a Discard row quoting its reason (422)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	transcription.install([REFUSED(422, "The audio track is missing.")]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await settle();
+
+	const row = takeRow(frame);
+	assert.ok(row, "the take is still here, so it gets a row");
+	assert.match(
+		row.textContent,
+		/the audio track is missing/i,
+		"the server's own reason travels, as the 5xx family quotes its own",
+	);
+	assert.equal(
+		rowControl(frame, "Retry"),
+		null,
+		"a rejected request is not retried",
+	);
+	assert.ok(rowControl(frame, "Discard"), "and Discard can reach the bytes");
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("a refusal with no action leaves no row, and the take is not retryable (402)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	transcription.install([REFUSED(402, "Payment Required")]);
+	const { calls: sent, spy } = spySends();
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: spy,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await settle();
+
+	assert.equal(
+		takeRow(frame),
+		null,
+		"a decision does not get a control that could only reproduce it",
+	);
+	assert.equal(
+		transcription.calls.length,
+		1,
+		"and the refusal was not retried",
+	);
+	/*
+	 * THE BYTES GO WITH THE ROW. Nothing on screen can reach the take once there is
+	 * no row, so holding it would pin the recording until the composer remounts.
+	 * A fresh take is what a person would do; the composer must accept it cleanly.
+	 */
+	transcription.install([OK_TRANSCRIPT("second try")]);
+	await startTake(frame);
+	await sendRecording(frame);
+	await settle();
+	assert.equal(transcription.calls.length, 1, "the new take reached the relay");
+	assert.equal(
+		sent.length,
+		1,
+		"and its words went, as a Send recording press does",
+	);
+	assert.match(
+		sent[0].content,
+		/second try/,
+		"which is the only route the refusal leaves",
+	);
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("Discard throws the kept take away and hands focus back to the box", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	transcription.install([REFUSED(413, "This file is too large.")]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await settle();
+	const discard = rowControl(frame, "Discard");
+	assert.ok(discard, "the row is up before the press");
+	await act(async () => {
+		discard.click();
+	});
+	await settle();
+
+	assert.equal(
+		takeRow(frame),
+		null,
+		"the row leaves with the take it described",
+	);
+	assert.equal(
+		window.document.activeElement,
+		frame.textarea(),
+		"and focus lands back in the box, not on the body the control unmounted from",
+	);
+	assert.equal(
+		transcription.calls.length,
+		1,
+		"discarding sends nothing - the relay saw only the first attempt",
+	);
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});
+
+test("Retry re-sends the SAME bytes, and the second answer lands them (transient 502)", async () => {
+	useConversationInputStore.setState(RESET);
+	resetDictatedSendsForTests();
+	mic.calls = 0;
+	mic.recorders = [];
+	mic.next = async () => fakeStream();
+	/*
+	 * THREE REFUSALS THEN A SUCCESS: the client spends its own burst first
+	 * (`TRANSIENT_TRANSCRIPTION_ATTEMPTS`), which is the state the row exists for.
+	 */
+	transcription.install([
+		REFUSED(502, "upstream is restarting"),
+		REFUSED(502, "upstream is restarting"),
+		REFUSED(502, "upstream is restarting"),
+		OK_TRANSCRIPT("kept take"),
+	]);
+
+	const frame = await mountAt(A, {
+		dictatedAwayDelivery: true,
+		onSendMessage: async () => true,
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	await startTake(frame);
+	await sendRecording(frame);
+	await spendTheBurst();
+
+	assert.ok(takeRow(frame), "the burst is spent and the take is offered back");
+	assert.equal(
+		transcription.calls.length,
+		3,
+		"the client's own attempts are the bound, and they all failed",
+	);
+	const retry = rowControl(frame, "Retry");
+	assert.ok(retry, "the transient class is the one with a Retry");
+	assert.ok(rowControl(frame, "Discard"), "and Discard sits beside it");
+
+	await act(async () => {
+		retry.click();
+	});
+	await settle();
+	await spendTheBurst();
+
+	assert.equal(
+		transcription.calls.length,
+		4,
+		"one more request, not a second burst",
+	);
+	assert.deepEqual(
+		transcription.calls[3].bytes,
+		transcription.calls[0].bytes,
+		"the retry spends the bytes already in hand",
+	);
+	assert.match(frame.textarea().value, /kept take/, "and the words land");
+	assert.equal(takeRow(frame), null, "the offer goes with the success");
+	await frame.unmount();
+	transcription.restore();
+	mic.next = null;
+});

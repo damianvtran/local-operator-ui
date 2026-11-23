@@ -6,6 +6,7 @@
 	"ui.common.actions.dismiss": "Bỏ qua",
 	"ui.common.actions.more_info": "Thông tin thêm",
 	"ui.common.actions.retry": "Thử lại",
+	"ui.common.actions.discard": "Loại bỏ",
 	"ui.common.actions.retry_again": "Thử lại",
 	"ui.common.actions.retrying": "Đang thử lại…",
 	"ui.common.actions.date_time_picker.select_date": "Chọn ngày",

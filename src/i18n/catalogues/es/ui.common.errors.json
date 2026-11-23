@@ -41,6 +41,8 @@
 	"ui.common.errors.dictation_provider_credits_destination": "Error de dictado: la cuenta de {provider} usada para el dictado no tiene créditos. Si es tuya, recárgala en {destination}.",
 	"ui.common.errors.dictation_unknown": "Error de dictado: {reason}. Inténtalo de nuevo o informa del problema con el registro de la app.",
 	"ui.common.errors.dictation_unknown_clipped": "Error de dictado: {reason} Inténtalo de nuevo o informa del problema con el registro de la app.",
+	"ui.common.errors.dictation_refused_take_kept": "Error de dictado: {reason}. Descarta la grabación o informa del problema con el registro de la app.",
+	"ui.common.errors.dictation_refused_take_kept_clipped": "Error de dictado: {reason} Descarta la grabación o informa del problema con el registro de la app.",
 	"ui.common.errors.dictation_empty": "No se detectó ninguna palabra. Inténtalo de nuevo un poco más cerca del micrófono.",
 	"ui.common.errors.speech_failure": "No se pudo leer esto en voz alta. Inténtalo de nuevo.",
 	"ui.common.errors.speech_radient_sign_in": "Tu inicio de sesión de Radient dejó de funcionar. Vuelve a iniciar sesión en Ajustes.",

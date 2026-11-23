@@ -105,6 +105,7 @@ import {
 	useEscapeToCancel,
 } from "./detail-parts";
 import { hubLinkSourceName } from "./hub-link-policy-controls";
+import { PendingProposalMark } from "./pending-approvals";
 
 /* ------------------------------------------------------------------ words --- */
 
@@ -217,6 +218,7 @@ export function SkillsRoster({
 	selected,
 	join,
 	marked,
+	pending,
 	onOpen,
 }: {
 	cards: readonly SkillCard[];
@@ -224,6 +226,8 @@ export function SkillsRoster({
 	join: (card: SkillCard) => SkillHubJoin | null;
 	/** `skill:<name>` -> created, for the rows a configuration run changed. */
 	marked?: ReadonlyMap<string, boolean>;
+	/** Waiting skill proposals by name (`pendingProposalsByRecord`): the row marks. */
+	pending?: ReadonlyMap<string, readonly unknown[]>;
 	onOpen: (name: string) => void;
 }) {
 	useI18nLocale();
@@ -301,6 +305,10 @@ export function SkillsRoster({
 								<span className="min-w-0 truncate text-body-sm text-ink">
 									{card.name}
 								</span>
+								<PendingProposalMark
+									kind="skill"
+									count={pending?.get(card.name)?.length ?? 0}
+								/>
 								{runMark !== undefined ? (
 									<Badge variant="attention" data-testid="skill-row-updated">
 										{t(
@@ -375,6 +383,7 @@ export function SkillsRosterBody({
 	selected,
 	join,
 	marked,
+	pending,
 	onOpen,
 }: {
 	loading: boolean;
@@ -388,6 +397,7 @@ export function SkillsRosterBody({
 	selected: string | null;
 	join: (card: SkillCard) => SkillHubJoin | null;
 	marked?: ReadonlyMap<string, boolean>;
+	pending?: ReadonlyMap<string, readonly unknown[]>;
 	onOpen: (name: string) => void;
 }) {
 	useI18nLocale();
@@ -417,6 +427,7 @@ export function SkillsRosterBody({
 			selected={selected}
 			join={join}
 			marked={marked}
+			pending={pending}
 			onOpen={onOpen}
 		/>
 	);

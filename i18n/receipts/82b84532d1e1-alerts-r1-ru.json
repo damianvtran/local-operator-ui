@@ -1,0 +1,50 @@
+{
+	"auditor": "copy-reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "82b84532d1e1-alerts-r1-ru",
+	"date": "2026-11-21",
+	"locale": "ru",
+	"independence": "Independent i18n auditor: Local Operator radientdev team copy-reviewer, session 82b84532d1e1. Not the translator (coder session fb402fa54071, anthropic/claude-opus-5-5 per PR #2027 body). Same model family as the translator: disclosed. Read only the PR's committed bytes at the head below; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@6aaacbadc405 i18n/glossary.md sha256:5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@6aaacbadc405 i18n/style-guides/ru.md sha256:f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+		"shipped_terms": "src/i18n/catalogues/ru/*.json at f2e46b15e7 (ui.teamBridge.agentNotify.label, device/session/approvals/wake usage counts)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2027,
+	"head": "f2e46b15e74fa33a390428b25cf0b1ff4e8bdaf6",
+	"scope": "All 34 keys of ui.teamBridge.alerts read in full against the en value and en .context.json, the core glossary and the locale style guide. Mechanical: key parity with en; ICU structure parsed with @formatjs/icu-messageformat-parser (arguments, select arms, CLDR plural categories) = 0 structural issues; NFC; no Cc/Cf characters; no ASCII '...'; sample renders via intl-messageformat; ur additionally through translate() + fribidi --rtl. copy_scan.py: 0 findings.",
+	"namespace": "ui.teamBridge.alerts",
+	"status": "passed",
+	"sha256": {
+		"en": "37881430b86fcf10fa2764f0943f8e1c41aa2cb830ba21c60c1bee1724e89c5d",
+		"ru": "ef3040f39b0205692de0dd34cb47803365d2a9d52b0d214efe5b6327ebb509f6"
+	},
+	"context_sha256": "08cca989c49c1b3fd18859df17315c22b67b60576f7fd7cad1a043092fcd0ac1",
+	"findings": [
+		{
+			"id": "T-RU1",
+			"severity": "MINOR",
+			"key": "ui.teamBridge.alerts.responder.description",
+			"current": "…запускается в новом сеансе, который оплачивается с вашего счёта.",
+			"replacement": "Выберите, как {agent} обрабатывает оповещения в этом канале. Каждое оповещение запускается в новой сессии, которая оплачивается с вашего счёта.",
+			"note": "Glossary/ru guide: session -> сессия; ru catalogues use сесси* 406 times and сеанс once (this key)."
+		},
+		{
+			"id": "T-RU2",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.responder.severity_label",
+			"current": "Будить {agent} для",
+			"replacement": "Будить {agent}",
+			"note": "Dangling 'для' before the SEV toggles; the shipped sibling ui.teamBridge.agentNotify.label is 'Будить вашего агента'."
+		},
+		{
+			"id": "T-RU3",
+			"severity": "NIT",
+			"key": "ui.teamBridge.alerts.severity",
+			"current": "{worst, select, yes {Худший SEV{level}} other {SEV{level}}}",
+			"replacement": "{worst, select, yes {Макс. SEV{level}} other {SEV{level}}}",
+			"note": "'Худший SEV2' is understandable but calqued; 'Макс.' matches the meaning (highest severity in the group)."
+		}
+	]
+}

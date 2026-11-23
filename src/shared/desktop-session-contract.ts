@@ -1939,6 +1939,8 @@ export type DesktopHistoryEntry = {
 	ts_source?: "entry" | "unstated" | "served";
 };
 export type DesktopHistoryPage = {
+	/** Optional inline-ui-v1 overlay; validate against each folded row's prose. */
+	inline_ui?: unknown;
 	/** Opaque equality domain; never publication seq or a sortable UUID. */
 	journal_generation?: string;
 	journal_order_state?: "ready" | "building" | "unavailable" | "unsupported";

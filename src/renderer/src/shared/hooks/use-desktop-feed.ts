@@ -175,6 +175,9 @@ export type DesktopFeedConnection = {
  * frame rides the subscriptions that already exist - the app-level locale sync
  * and the rail's keeper/list are always mounted - and a consumer reads it
  * through `useSyncExternalStore`, which opens nothing and has a server snapshot.
+ * Its other kind of consumer wants the EDGE and no value at all: the dock/tray
+ * claim's owner (`use-queued-ask-attention.ts`) subscribes imperatively and
+ * re-reads the asks index, rendering nothing.
  *
  * ONE RECORD PER FRAME, NOT PER SUBSCRIBER. Each existing subscription receives
  * the same frame, so publication is deduplicated on the frame's identity
@@ -224,6 +227,61 @@ export const notificationsFrameRecord = {
 	snapshot: (): NotificationsFrame | null => latestNotificationsFrame,
 	/* A server render has received no frame, by construction. */
 	serverSnapshot: (): NotificationsFrame | null => null,
+};
+
+/**
+ * One `session_status` transition, as the transport saw it.
+ *
+ * WHY THIS IS A RECORD AND NOT A FIELD ON `useDesktopFeed`'s ANSWER. Its reader
+ * (`use-queued-ask-attention.ts`, mounted in the app shell) acts on the edge
+ * itself - invalidate one query - and needs no render of its own; a field would
+ * paint that shell once per status frame, for a fact it only forwards. Module
+ * scope also opens no second IPC subscription: every mounted `useDesktopFeed()`
+ * publishes the same frame and the key collapses the deliveries.
+ */
+export type SessionStatusTransition = {
+	/** `${epoch}:${seq}` - the frame's identity, unique across restarts. */
+	key: string;
+	sessionId: string;
+	/** The backend's derived code AFTER this frame. */
+	code: string;
+};
+
+let latestSessionStatusTransition: SessionStatusTransition | null = null;
+const sessionStatusTransitionListeners = new Set<
+	(transition: SessionStatusTransition) => void
+>();
+
+function publishSessionStatusTransition(
+	frame: Extract<DesktopFeedFrame, { type: "session_status" }>,
+): void {
+	const key = `${frame.epoch}:${frame.seq}`;
+	if (latestSessionStatusTransition?.key === key) return;
+	latestSessionStatusTransition = {
+		key,
+		sessionId: frame.session_id,
+		code: frame.payload.code,
+	};
+	const transition = latestSessionStatusTransition;
+	for (const listener of sessionStatusTransitionListeners) listener(transition);
+}
+
+/**
+ * The record of `session_status` transitions, subscribed IMPERATIVELY.
+ *
+ * Imperatively rather than through `useSyncExternalStore` because its only
+ * reader wants the edge, not a value: it invalidates a query inside the
+ * listener and renders nothing.
+ */
+export const sessionStatusTransitions = {
+	subscribe(
+		listener: (transition: SessionStatusTransition) => void,
+	): () => void {
+		sessionStatusTransitionListeners.add(listener);
+		return () => {
+			sessionStatusTransitionListeners.delete(listener);
+		};
+	},
 };
 
 export function useDesktopFeed(): DesktopFeedConnection {
@@ -356,6 +414,14 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					frame.epoch,
 					statusFrameCounts(frame.payload),
 				);
+				/*
+				 * THE DOCK'S CLAIM IS DERIVED FROM A 10 s POLL THAT IS PAUSED WHILE THE
+				 * WINDOW IS HIDDEN, so the frame is also published to the record that
+				 * lets the claim's owner re-read the index on the edge
+				 * (`use-queued-ask-attention.ts`). Published AFTER the store write so a
+				 * listener reading the store sees it applied.
+				 */
+				publishSessionStatusTransition(frame);
 				/*
 				 * THE OTHER ALWAYS-PUBLISHED EDGE of a turn that started or finished:
 				 * the derived pair moved, and the row's bin/label read a clock this

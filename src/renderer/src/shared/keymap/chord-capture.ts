@@ -165,5 +165,16 @@ export function chordFromEvent(
 		alt: event.altKey,
 	});
 	const name = CAPTURE_KEY_NAMES[key] ?? key.toLowerCase();
-	return normalizeChord(composeCapturedChord(tokens, name));
+	const chord = normalizeChord(composeCapturedChord(tokens, name));
+	/*
+	 * A bare Enter spells no chord: it is the composer's plain send, and it is
+	 * the recorder's own edit-ender (see the section above). A MODIFIED Enter
+	 * is exactly what the send rows record, so the bare arm must say "nothing
+	 * here" — the edit-ender path already ended the edit, and the press must
+	 * not be heard as a candidate twice.
+	 */
+	if ((name === "enter" && tokens.length === 0) || chord === null) {
+		return null;
+	}
+	return chord;
 }

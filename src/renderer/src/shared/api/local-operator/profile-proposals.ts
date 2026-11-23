@@ -140,14 +140,79 @@ export function pendingProposalCount(
 	);
 }
 
+/**
+ * Whether a proposal is still waiting on the operator. `stale` is counted on
+ * purpose: a stale proposal can no longer be accepted, but it still sits in the
+ * operator's queue until they reject it (or ask for a fresh one), so the badge
+ * that sent them to Agents must keep pointing at it. Everything else is core's
+ * history, not something to act on.
+ */
+export function isAwaitingDecision(p: ProfileProposalSummary): boolean {
+	return p.state === "pending" || p.state === "stale";
+}
+
+/**
+ * Every proposal waiting on the operator, all kinds, newest first.
+ *
+ * THE ONE DERIVATION BEHIND EVERY "WAITING" NUMBER (operator report,
+ * 2026-11-21: the Agents nav row said 1 and the Agents page showed nothing to
+ * do). The nav badge (`totalPendingProposals`), the page's "Waiting for your
+ * approval" summary, the per-tab counts and the per-row marks all read this
+ * list, so the badge and the page cannot disagree about what is waiting.
+ */
+export function pendingProposals(
+	list: ProfileProposalList | undefined,
+): ProfileProposalSummary[] {
+	return (list?.proposals ?? [])
+		.filter(isAwaitingDecision)
+		.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0));
+}
+
 /** Every pending proposal, the number the Agents nav badge shows. */
 export function totalPendingProposals(
 	list: ProfileProposalList | undefined,
 ): number {
-	if (!list) return 0;
-	return list.proposals.filter(
-		(p) => p.state === "pending" || p.state === "stale",
-	).length;
+	return pendingProposals(list).length;
+}
+
+/**
+ * Waiting proposals per kind, for the Agents / Teams / Skills tab counts. The
+ * three always sum to `totalPendingProposals` (same filter, same list), which is
+ * what lets a reader reconcile the nav badge against the tabs.
+ */
+export function pendingProposalCountsByKind(
+	list: ProfileProposalList | undefined,
+): Record<ProfileProposalKind, number> {
+	const counts: Record<ProfileProposalKind, number> = {
+		agent: 0,
+		team: 0,
+		skill: 0,
+	};
+	for (const p of pendingProposals(list)) counts[p.kind] += 1;
+	return counts;
+}
+
+/**
+ * Waiting proposals of one kind grouped by record name, each group newest
+ * first: the roster's per-row marks (count = group length) and the proposal a
+ * row click opens (the group's first entry).
+ *
+ * Built from the LIST rather than core's `counts` map (`pendingProposalCount`)
+ * on purpose: `counts` has no skill arm, and a row mark that read a different
+ * source from the summary above it could say a different number.
+ */
+export function pendingProposalsByRecord(
+	list: ProfileProposalList | undefined,
+	kind: ProfileProposalKind,
+): ReadonlyMap<string, readonly ProfileProposalSummary[]> {
+	const out = new Map<string, ProfileProposalSummary[]>();
+	for (const p of pendingProposals(list)) {
+		if (p.kind !== kind) continue;
+		const group = out.get(p.name);
+		if (group) group.push(p);
+		else out.set(p.name, [p]);
+	}
+	return out;
 }
 
 /**
@@ -159,14 +224,9 @@ export function proposalsFor(
 	kind: ProfileProposalKind,
 	name: string,
 ): ProfileProposalSummary[] {
-	return (list?.proposals ?? [])
-		.filter(
-			(p) =>
-				p.kind === kind &&
-				p.name === name &&
-				(p.state === "pending" || p.state === "stale"),
-		)
-		.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0));
+	return pendingProposals(list).filter(
+		(p) => p.kind === kind && p.name === name,
+	);
 }
 
 /** Known formats can be edited before accepting; JSON is parsed before sending. */
@@ -228,7 +288,12 @@ export function proposalReviewPath(
  */
 export function proposedNewProfiles(
 	list: ProfileProposalList | undefined,
-	kind: "agent" | "team",
+	/*
+	 * `skill` too (PR #2026 round 1, R2/U1): the Skills pane uses this to tell a
+	 * pending skill CREATE from a missing skill, so Review on one opens the
+	 * review panel instead of SkillDetail's "couldn't load" error.
+	 */
+	kind: ProfileProposalKind,
 	existing: readonly string[],
 ): ProfileProposalSummary[] {
 	const known = new Set(existing);

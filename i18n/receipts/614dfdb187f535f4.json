@@ -1,0 +1,21 @@
+{
+  "record_kind": "REPLACEMENT",
+  "date": "2026-11-22",
+  "locale": "ru",
+  "namespace": "ui.agents.pending",
+  "head": "6a4faefba284c84bb88a09e17295d9f0b71db041",
+  "auditor": {"agent": "reviewer", "session": "a733fbf103c2", "instance": "614dfdb187f535f4", "model": "openai/gpt-6.2-sol", "fallback_from": "anthropic/claude-opus-5-5", "independent": true},
+  "translation_provenance": {"source": "manager brief", "original_model": "anthropic/claude-opus-5-5", "remediation_fallback_model": "openai/gpt-6.1-sol", "per_key_attribution": "unknown"},
+  "source_path": "src/i18n/catalogues/en/ui.agents.pending.json",
+  "source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+  "context_path": "src/i18n/catalogues/en/ui.agents.pending.context.json",
+  "context_sha256": "980c743dee0a8582cf3f572891388375e798f68a4fd827d4b97746a84b265f63",
+  "target_path": "src/i18n/catalogues/ru/ui.agents.pending.json",
+  "target_sha256": "522b8bcad97e53ba46fa4c2677d36bf6625ad34f1a9f8719809ecf3262f6820e",
+  "authority": {"repo": "damianvtran/local-operator", "revision": "b42471d3935cb7e95d64428af27c32626665f4c0", "glossary": "i18n/glossary.md", "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8", "style": "i18n/style-guides/ru.md", "style_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"},
+  "status": "passed",
+  "findings": [],
+  "observations": ["Reviewed all 15 values against English, context and live call sites. Одобрения is approval, not confirmation; Агент/Команда/Навык match the tabs. The operation badges preserve the proposal state, Устарело indicates stale status, and the product-update note says how to regain skill review.", "Проверить is an infinitive, not an approval command. The create labels use the cases required by создать; update labels use the cases required by для. Показать все/Свернуть describe the two list states, and the tooltip carries both facts."],
+  "execution": {"method": "Node source-only assertions with the repository's FormatJS ICU parser and IntlMessageFormat", "actual": "ru: 15 values/context keys, 16 ICU formatting cases, no manual bidi controls — PASS", "verified": "CLDR one/few/many/other, count interpolation and integer agreement, both distinct three-arm review selects including label-in-name and name retention, show_all and tab_title arguments"},
+  "limits": "Prior evidence unavailable per brief; newly audited from current bytes, not reconstructed. No rendered fit, native/manual QA or release approval claimed."
+}

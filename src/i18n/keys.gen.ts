@@ -35,6 +35,7 @@ import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsPending from "./catalogues/en/ui.agents.pending.json";
 import enUiAgentsProposals from "./catalogues/en/ui.agents.proposals.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
@@ -192,6 +193,7 @@ import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
+import enUiTeamBridgeAlerts from "./catalogues/en/ui.teamBridge.alerts.json";
 import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
 import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
@@ -218,6 +220,7 @@ import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
+import esUiAgentsPending from "./catalogues/es/ui.agents.pending.json";
 import esUiAgentsProposals from "./catalogues/es/ui.agents.proposals.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
@@ -375,6 +378,7 @@ import esUiSharedUnifiedDiff from "./catalogues/es/ui.shared.unified_diff.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
+import esUiTeamBridgeAlerts from "./catalogues/es/ui.teamBridge.alerts.json";
 import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
 import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
@@ -401,6 +405,7 @@ import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
+import frUiAgentsPending from "./catalogues/fr/ui.agents.pending.json";
 import frUiAgentsProposals from "./catalogues/fr/ui.agents.proposals.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
@@ -558,6 +563,7 @@ import frUiSharedUnifiedDiff from "./catalogues/fr/ui.shared.unified_diff.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
+import frUiTeamBridgeAlerts from "./catalogues/fr/ui.teamBridge.alerts.json";
 import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
 import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
@@ -584,6 +590,7 @@ import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
 import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
+import hiUiAgentsPending from "./catalogues/hi/ui.agents.pending.json";
 import hiUiAgentsProposals from "./catalogues/hi/ui.agents.proposals.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
@@ -741,6 +748,7 @@ import hiUiSharedUnifiedDiff from "./catalogues/hi/ui.shared.unified_diff.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
+import hiUiTeamBridgeAlerts from "./catalogues/hi/ui.teamBridge.alerts.json";
 import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
 import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
@@ -767,6 +775,7 @@ import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
+import ruUiAgentsPending from "./catalogues/ru/ui.agents.pending.json";
 import ruUiAgentsProposals from "./catalogues/ru/ui.agents.proposals.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
@@ -924,6 +933,7 @@ import ruUiSharedUnifiedDiff from "./catalogues/ru/ui.shared.unified_diff.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import ruUiTeamBridgeAlerts from "./catalogues/ru/ui.teamBridge.alerts.json";
 import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
 import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
@@ -950,6 +960,7 @@ import urUiAgents from "./catalogues/ur/ui.agents.json";
 import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
 import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
+import urUiAgentsPending from "./catalogues/ur/ui.agents.pending.json";
 import urUiAgentsProposals from "./catalogues/ur/ui.agents.proposals.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
@@ -1107,6 +1118,7 @@ import urUiSharedUnifiedDiff from "./catalogues/ur/ui.shared.unified_diff.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
+import urUiTeamBridgeAlerts from "./catalogues/ur/ui.teamBridge.alerts.json";
 import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
 import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
@@ -1133,6 +1145,7 @@ import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
 import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
+import viUiAgentsPending from "./catalogues/vi/ui.agents.pending.json";
 import viUiAgentsProposals from "./catalogues/vi/ui.agents.proposals.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
@@ -1290,6 +1303,7 @@ import viUiSharedUnifiedDiff from "./catalogues/vi/ui.shared.unified_diff.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
+import viUiTeamBridgeAlerts from "./catalogues/vi/ui.teamBridge.alerts.json";
 import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
 import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
@@ -1316,6 +1330,7 @@ import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
 import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
+import zhCNUiAgentsPending from "./catalogues/zh-CN/ui.agents.pending.json";
 import zhCNUiAgentsProposals from "./catalogues/zh-CN/ui.agents.proposals.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
@@ -1473,6 +1488,7 @@ import zhCNUiSharedUnifiedDiff from "./catalogues/zh-CN/ui.shared.unified_diff.j
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
+import zhCNUiTeamBridgeAlerts from "./catalogues/zh-CN/ui.teamBridge.alerts.json";
 import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approvals.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
 import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
@@ -1502,6 +1518,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsPages,
+	...enUiAgentsPending,
 	...enUiAgentsProposals,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
@@ -1659,6 +1676,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiShell,
 	...enUiShellMenubar,
 	...enUiShellRail,
+	...enUiTeamBridgeAlerts,
 	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
 	...enUiTeamBridgeHolds,
@@ -1693,6 +1711,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
 		...esUiAgentsPages,
+		...esUiAgentsPending,
 		...esUiAgentsProposals,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
@@ -1850,6 +1869,7 @@ export const bundledCatalogues: Readonly<
 		...esUiShell,
 		...esUiShellMenubar,
 		...esUiShellRail,
+		...esUiTeamBridgeAlerts,
 		...esUiTeamBridgeApprovals,
 		...esUiTeamBridgeArchive,
 		...esUiTeamBridgeHolds,
@@ -1878,6 +1898,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
 		...frUiAgentsPages,
+		...frUiAgentsPending,
 		...frUiAgentsProposals,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
@@ -2035,6 +2056,7 @@ export const bundledCatalogues: Readonly<
 		...frUiShell,
 		...frUiShellMenubar,
 		...frUiShellRail,
+		...frUiTeamBridgeAlerts,
 		...frUiTeamBridgeApprovals,
 		...frUiTeamBridgeArchive,
 		...frUiTeamBridgeHolds,
@@ -2063,6 +2085,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsModels,
 		...hiUiAgentsNavigation,
 		...hiUiAgentsPages,
+		...hiUiAgentsPending,
 		...hiUiAgentsProposals,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
@@ -2220,6 +2243,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiShell,
 		...hiUiShellMenubar,
 		...hiUiShellRail,
+		...hiUiTeamBridgeAlerts,
 		...hiUiTeamBridgeApprovals,
 		...hiUiTeamBridgeArchive,
 		...hiUiTeamBridgeHolds,
@@ -2248,6 +2272,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
 		...ruUiAgentsPages,
+		...ruUiAgentsPending,
 		...ruUiAgentsProposals,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
@@ -2405,6 +2430,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiShell,
 		...ruUiShellMenubar,
 		...ruUiShellRail,
+		...ruUiTeamBridgeAlerts,
 		...ruUiTeamBridgeApprovals,
 		...ruUiTeamBridgeArchive,
 		...ruUiTeamBridgeHolds,
@@ -2433,6 +2459,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsModels,
 		...urUiAgentsNavigation,
 		...urUiAgentsPages,
+		...urUiAgentsPending,
 		...urUiAgentsProposals,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
@@ -2590,6 +2617,7 @@ export const bundledCatalogues: Readonly<
 		...urUiShell,
 		...urUiShellMenubar,
 		...urUiShellRail,
+		...urUiTeamBridgeAlerts,
 		...urUiTeamBridgeApprovals,
 		...urUiTeamBridgeArchive,
 		...urUiTeamBridgeHolds,
@@ -2618,6 +2646,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsModels,
 		...viUiAgentsNavigation,
 		...viUiAgentsPages,
+		...viUiAgentsPending,
 		...viUiAgentsProposals,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
@@ -2775,6 +2804,7 @@ export const bundledCatalogues: Readonly<
 		...viUiShell,
 		...viUiShellMenubar,
 		...viUiShellRail,
+		...viUiTeamBridgeAlerts,
 		...viUiTeamBridgeApprovals,
 		...viUiTeamBridgeArchive,
 		...viUiTeamBridgeHolds,
@@ -2803,6 +2833,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsModels,
 		...zhCNUiAgentsNavigation,
 		...zhCNUiAgentsPages,
+		...zhCNUiAgentsPending,
 		...zhCNUiAgentsProposals,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
@@ -2960,6 +2991,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiShell,
 		...zhCNUiShellMenubar,
 		...zhCNUiShellRail,
+		...zhCNUiTeamBridgeAlerts,
 		...zhCNUiTeamBridgeApprovals,
 		...zhCNUiTeamBridgeArchive,
 		...zhCNUiTeamBridgeHolds,
@@ -3493,6 +3525,21 @@ export type MessageParams = {
 	"ui.agents.pages.search_aria": undefined;
 	"ui.agents.pages.tab.agents": undefined;
 	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.pending.count_aria": { count: number };
+	"ui.agents.pending.heading": undefined;
+	"ui.agents.pending.kind.agent": undefined;
+	"ui.agents.pending.kind.skill": undefined;
+	"ui.agents.pending.kind.team": undefined;
+	"ui.agents.pending.operation.create": undefined;
+	"ui.agents.pending.operation.update": undefined;
+	"ui.agents.pending.review": undefined;
+	"ui.agents.pending.review_aria": { kind: string; name: string };
+	"ui.agents.pending.review_create_aria": { kind: string; name: string };
+	"ui.agents.pending.show_all": { count: string };
+	"ui.agents.pending.show_fewer": undefined;
+	"ui.agents.pending.skill_needs_update": undefined;
+	"ui.agents.pending.stale": undefined;
+	"ui.agents.pending.tab_title": { tab: string; waiting: string };
 	"ui.agents.proposals.accept": undefined;
 	"ui.agents.proposals.accept_edits": undefined;
 	"ui.agents.proposals.accepted": { name: string };
@@ -5323,6 +5370,7 @@ export type MessageParams = {
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
+	"ui.chat.canonical.send_failure.delivery_unsupported": undefined;
 	"ui.chat.canonical.send_failure.gate_lock": undefined;
 	"ui.chat.canonical.send_failure.generic": undefined;
 	"ui.chat.canonical.send_failure.gone": undefined;
@@ -5756,6 +5804,11 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.verb.wrote.running": undefined;
 	"ui.chat.canonical.tool_row.verb.wrote.settled": undefined;
 	"ui.chat.canonical.transcript.answer_may_be_missing": undefined;
+	"ui.chat.canonical.transcript.busy_wait.both": undefined;
+	"ui.chat.canonical.transcript.busy_wait.deferred": undefined;
+	"ui.chat.canonical.transcript.busy_wait.joined": undefined;
+	"ui.chat.canonical.transcript.busy_wait.queue": undefined;
+	"ui.chat.canonical.transcript.busy_wait.steer": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.earlier_text_offscreen": undefined;
@@ -5827,6 +5880,7 @@ export type MessageParams = {
 	"ui.chat.composer.dictated_away.transcription_failed": { title: string };
 	"ui.chat.composer.dictated_away.transcription_failed_body": undefined;
 	"ui.chat.composer.dictated_away.untitled_chat": undefined;
+	"ui.chat.composer.dictation_failed_too_long_take_kept": undefined;
 	"ui.chat.composer.dictation_failed_transient": undefined;
 	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
 	"ui.chat.composer.insert_transcript": undefined;
@@ -5844,6 +5898,9 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.temporary": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
+	"ui.chat.composer.placeholder.waiting_both": undefined;
+	"ui.chat.composer.placeholder.waiting_queue": undefined;
+	"ui.chat.composer.placeholder.waiting_steer": undefined;
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
 	"ui.chat.composer.secret_ask_open": undefined;
@@ -5872,6 +5929,9 @@ export type MessageParams = {
 	"ui.chat.composer.starting": undefined;
 	"ui.chat.composer.starting_recording": undefined;
 	"ui.chat.composer.steer_hint": undefined;
+	"ui.chat.composer.steer_hint_both": undefined;
+	"ui.chat.composer.steer_hint_queue": undefined;
+	"ui.chat.composer.steer_hint_steer": undefined;
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
@@ -8743,6 +8803,7 @@ export type MessageParams = {
 	"ui.common.actions.date_time_picker.set_to_current_time369877": {
 		label: string;
 	};
+	"ui.common.actions.discard": undefined;
 	"ui.common.actions.dismiss": undefined;
 	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": undefined;
 	"ui.common.actions.file_actions_menu.file_actions": undefined;
@@ -8934,6 +8995,8 @@ export type MessageParams = {
 		destination: string;
 	};
 	"ui.common.errors.dictation_radient_credits": undefined;
+	"ui.common.errors.dictation_refused_take_kept": { reason: string };
+	"ui.common.errors.dictation_refused_take_kept_clipped": { reason: string };
 	"ui.common.errors.dictation_sign_in_refused": undefined;
 	"ui.common.errors.dictation_unknown": { reason: string };
 	"ui.common.errors.dictation_unknown_clipped": { reason: string };
@@ -13921,11 +13984,20 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_console": undefined;
 	"ui.settings.shortcuts.action.open_linked_projects": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
+	"ui.settings.shortcuts.action.send_both": undefined;
+	"ui.settings.shortcuts.action.send_queue": undefined;
+	"ui.settings.shortcuts.action.send_steer": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
+	"ui.settings.shortcuts.capture.panel_enter": undefined;
+	"ui.settings.shortcuts.capture.send_needs_modifier": undefined;
+	"ui.settings.shortcuts.capture.send_newline": undefined;
+	"ui.settings.shortcuts.capture.send_prompt": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.category.sending": undefined;
+	"ui.settings.shortcuts.category.sending_description": undefined;
 	"ui.settings.shortcuts.category.speech_to_text": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
@@ -13967,6 +14039,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.reserved.close": undefined;
 	"ui.settings.shortcuts.reserved.copy": undefined;
 	"ui.settings.shortcuts.reserved.cut": undefined;
+	"ui.settings.shortcuts.reserved.enter": undefined;
 	"ui.settings.shortcuts.reserved.find": undefined;
 	"ui.settings.shortcuts.reserved.minimise": undefined;
 	"ui.settings.shortcuts.reserved.new_chat": undefined;
@@ -13991,6 +14064,9 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
 	"ui.settings.shortcuts.row.linked_projects": undefined;
+	"ui.settings.shortcuts.row_help.send_both": undefined;
+	"ui.settings.shortcuts.row_help.send_queue": undefined;
+	"ui.settings.shortcuts.row_help.send_steer": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;
@@ -14221,6 +14297,43 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.alerts.apps.menu": undefined;
+	"ui.teamBridge.alerts.claim.holder_for_owner": {
+		holder: string;
+		owner: string;
+	};
+	"ui.teamBridge.alerts.claim.holder_unknown": undefined;
+	"ui.teamBridge.alerts.claim.resolved_unclaimed": undefined;
+	"ui.teamBridge.alerts.claim.resolved_unreported": undefined;
+	"ui.teamBridge.alerts.claim.taken_by": { state: string; who: string };
+	"ui.teamBridge.alerts.claim.unclaimed": undefined;
+	"ui.teamBridge.alerts.claim.unreported": undefined;
+	"ui.teamBridge.alerts.fingerprint_title": { id: string };
+	"ui.teamBridge.alerts.fire_count": { count: number };
+	"ui.teamBridge.alerts.group_count": { total: number; resolved: number };
+	"ui.teamBridge.alerts.last_fired": { time: string };
+	"ui.teamBridge.alerts.more_labels": { count: number };
+	"ui.teamBridge.alerts.open_labelled": { label: string; host: string };
+	"ui.teamBridge.alerts.open_on": { host: string };
+	"ui.teamBridge.alerts.resolved_at": { time: string };
+	"ui.teamBridge.alerts.responder.close": undefined;
+	"ui.teamBridge.alerts.responder.default_badge": undefined;
+	"ui.teamBridge.alerts.responder.description": { agent: string };
+	"ui.teamBridge.alerts.responder.locked_badge": undefined;
+	"ui.teamBridge.alerts.responder.menu": undefined;
+	"ui.teamBridge.alerts.responder.read_only": { agent: string };
+	"ui.teamBridge.alerts.responder.severity_hint": { agent: string };
+	"ui.teamBridge.alerts.responder.severity_label": { agent: string };
+	"ui.teamBridge.alerts.responder.tier_detail": { tier: string };
+	"ui.teamBridge.alerts.responder.tier_label": { agent: string };
+	"ui.teamBridge.alerts.responder.tier_name": { tier: string };
+	"ui.teamBridge.alerts.responder.title": { channel: string };
+	"ui.teamBridge.alerts.responders": undefined;
+	"ui.teamBridge.alerts.review_ask": undefined;
+	"ui.teamBridge.alerts.severity": { worst: string; level: string };
+	"ui.teamBridge.alerts.severity_unknown": undefined;
+	"ui.teamBridge.alerts.status": { status: string };
+	"ui.teamBridge.alerts.test_badge": undefined;
 	"ui.teamBridge.approvals.approve": undefined;
 	"ui.teamBridge.approvals.approve_locked": undefined;
 	"ui.teamBridge.approvals.approve_selected": undefined;

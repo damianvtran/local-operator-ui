@@ -26,6 +26,11 @@ import { PostHog } from "posthog-node";
 import icon from "../../resources/icon.png?asset";
 import { t } from "../i18n/index";
 import { LANGUAGE_SETTING_KEY, subscribeLocale } from "../i18n/locale";
+import {
+	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
+	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+	acceptQueuedAskReport,
+} from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
@@ -3616,6 +3621,9 @@ app
 		// through the window in between.
 		backendService.onBackendReady(() => {
 			appAttention.reset();
+			// The reset dropped the window's queued-ask claim; only the window can answer
+			// it again (`shared/app-attention-queued-asks.ts`).
+			requestQueuedAskResync();
 			// Negotiate outside delivery. A restarted/older core drops all image
 			// eligibility until its own capability answers; never 404-probe per event.
 			notificationAvatarAvailable = false;
@@ -3737,6 +3745,10 @@ app
 				 */
 				qwenVoice.observeFrame(frame);
 				appAttention.observe(frame);
+				// An open frame replaces the epoch. Re-ask anyway: the window pushes on a
+				// change only, so a claim that drifted (a reload, a window that was closed
+				// when it changed) would otherwise stand until the next real change.
+				if (frame.type === "open") requestQueuedAskResync();
 				if (frame.type === "notification") {
 					desktopNotifier.observe(frame.session_id, frame);
 					return;
@@ -3768,7 +3780,10 @@ app
 				window.webContents.send("desktop-feed-frame", frame);
 			},
 			(state: DesktopFeedState) => {
-				if (!state.connected) appAttention.reset();
+				if (!state.connected) {
+					appAttention.reset();
+					requestQueuedAskResync();
+				}
 				const window = mainWindow;
 				if (!window || window.isDestroyed()) return;
 				window.webContents.send("desktop-feed-state", state);
@@ -3808,6 +3823,53 @@ app
 				} satisfies DesktopFeedState);
 			},
 		);
+
+		/**
+		 * Main's request for the window's queued-ask claim (`shared/
+		 * app-attention-queued-asks.ts`). The window pushes on CHANGE only, so every
+		 * path that drops the claim main already holds owes this call; without it a
+		 * conversation whose queued ask did not change would read as needing the user
+		 * from the reset until the next change.
+		 */
+		function requestQueuedAskResync(): void {
+			const window = mainWindow;
+			if (!window || window.isDestroyed()) return;
+			window.webContents.send(APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL);
+		}
+
+		/*
+		 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK.
+		 *
+		 * The window is the only reader of the queued-ask index and a feed frame
+		 * carries no ask count, so the window tells main (`AppAttentionProjection`
+		 * then reads an `answer` status beside one of these ids as already counted).
+		 * The payload is re-validated HERE rather than trusted: this process never
+		 * believes a renderer shape, and the sender trust is the same pair every
+		 * neighbouring handler applies (`event.sender` and its MAIN FRAME - a report
+		 * can only mask a gate, so a subframe has no business pushing one).
+		 * `acceptQueuedAskReport` is the whole decision, tested in
+		 * `scripts/app-attention.test.mjs`. A refusal leaves the claim already held
+		 * alone - `null` is not "nobody has a queued ask" (`[]` is, and it must land).
+		 * Fire-and-forget on purpose: the report owes no reply, and main's answer is
+		 * the badge it already publishes.
+		 */
+		ipcMain.on(APP_ATTENTION_QUEUED_ASKS_CHANNEL, (event, payload: unknown) => {
+			const window = mainWindow;
+			const acceptance = acceptQueuedAskReport(
+				{
+					windowGone: !window || window.isDestroyed(),
+					senderIsMainWindow: !!window && event.sender === window.webContents,
+					senderIsMainFrame:
+						!!window && event.senderFrame === window.webContents.mainFrame,
+				},
+				payload,
+			);
+			if (!acceptance.apply) return;
+			appAttention.projection.setQueuedAskSessions(
+				acceptance.ids,
+				appAttention.projection.currentGeneration,
+			);
+		});
 
 		/*
 		 * The viewer record and the control endpoint that backs it: the artifact

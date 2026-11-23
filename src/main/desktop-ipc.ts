@@ -660,6 +660,7 @@ export function registerDesktopIPC(
 				epoch?: unknown;
 				afterSeq?: unknown;
 				openFrame?: unknown;
+				inlineUi?: unknown;
 				journalOrder?: unknown;
 				orderIds?: unknown;
 				peerJournalSource?: unknown;
@@ -670,6 +671,7 @@ export function registerDesktopIPC(
 				(input.afterSeq !== undefined && typeof input.afterSeq !== "number") ||
 				(input.openFrame !== undefined &&
 					typeof input.openFrame !== "boolean") ||
+				(input.inlineUi !== undefined && typeof input.inlineUi !== "boolean") ||
 				(input.journalOrder !== undefined &&
 					typeof input.journalOrder !== "boolean") ||
 				(input.peerJournalSource !== undefined &&
@@ -692,6 +694,7 @@ export function registerDesktopIPC(
 					epoch: input.epoch as string | undefined,
 					afterSeq: input.afterSeq as number | undefined,
 					openFrame: input.openFrame as boolean | undefined,
+					inlineUi: input.inlineUi as boolean | undefined,
 					journalOrder: input.journalOrder as boolean | undefined,
 					orderIds: input.orderIds as string[] | undefined,
 					peerJournalSource: input.peerJournalSource as boolean | undefined,

@@ -7,6 +7,7 @@ import { AgentsPage } from "@features/agents/components/agents-page";
 import { useConfigRunStore } from "@features/agents/config-run/config-run-store";
 import type { ReusableTeam } from "@shared/api/local-operator/profile-hooks";
 import { GlobalScrollbarStyles } from "@shared/components/common/global-scrollbar-styles";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	type FC,
@@ -15,6 +16,10 @@ import {
 	useLayoutEffect,
 	useRef,
 } from "react";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../../shared/desktop-contract";
 import {
 	CAPABILITIES,
 	HoldShutterUntil,
@@ -303,6 +308,176 @@ const LIVE_CAPABILITIES = {
 	},
 };
 
+/* ------------------------------------------------- waiting proposals -- */
+
+/** A proposal summary as `profileProposals.list` sends it. */
+type WaitingProposal = {
+	id: string;
+	kind: "agent" | "team" | "skill";
+	name: string;
+	label?: string | null;
+	operation: string;
+	fields: string[];
+	state: "pending" | "stale";
+	stale: boolean;
+	origin: { trust: "agent" | "owner" | "untrusted"; session_id?: string };
+	created_at: number;
+};
+
+const waiting = (
+	over: Partial<WaitingProposal> &
+		Pick<WaitingProposal, "id" | "kind" | "name">,
+): WaitingProposal => ({
+	operation: "update",
+	fields: ["instructions"],
+	state: "pending",
+	stale: false,
+	origin: { trust: "agent", session_id: "synthetic-conversation" },
+	created_at: 1794232800,
+	...over,
+});
+
+/**
+ * Answer the proposal reads over the bridge `installBridge` just put in place,
+ * delegating every other op to it. The detail read builds a one-paragraph diff
+ * per field, enough for the review panel a Review press opens to draw its card.
+ */
+const answerProposals = (proposals: readonly WaitingProposal[]) => {
+	const page = window as unknown as {
+		api: {
+			desktop: { request: (r: DesktopRequest) => Promise<DesktopResponse> };
+		};
+	};
+	const inner = page.api.desktop.request;
+	const ok = (result: unknown): DesktopResponse => ({
+		status: 200,
+		body: { result },
+	});
+	page.api.desktop.request = async (request) => {
+		if (request.op === "profileProposals.list")
+			return ok({ proposals, counts: {} });
+		if (request.op === "profileProposals.get") {
+			const hit = proposals.find(
+				(p) => p.id === (request as { proposalId?: string }).proposalId,
+			);
+			if (!hit) return inner(request);
+			return ok({
+				...hit,
+				changes: hit.fields.map((field) => ({
+					field,
+					label: field,
+					before_text: "Be direct and cite sources.",
+					after_text: "Be concise and cite primary sources.",
+					format: "text",
+				})),
+			});
+		}
+		return inner(request);
+	};
+};
+
+/**
+ * Answer `skills.list` from a list of names, over whatever bridge is in place
+ * (the proposal answerer included), delegating every other op to it.
+ */
+const answerSkills = (names: readonly string[]) => {
+	const page = window as unknown as {
+		api: {
+			desktop: { request: (r: DesktopRequest) => Promise<DesktopResponse> };
+		};
+	};
+	const inner = page.api.desktop.request;
+	page.api.desktop.request = async (request) => {
+		if (request.op !== "skills.list") return inner(request);
+		const named = (request as { name?: string }).name;
+		if (named && !names.includes(named))
+			return {
+				status: 404,
+				body: { detail: { code: "not_found", message: `No skill ${named}.` } },
+			};
+		return {
+			status: 200,
+			body: {
+				result: {
+					data: {
+						skills: names.map((name) => ({
+							name,
+							description: `What ${name} does.`,
+							source: "installed",
+							editable: true,
+							installed: true,
+						})),
+					},
+				},
+			},
+		};
+	};
+};
+
+/** A skill CREATE proposal: no library card exists for its name yet. */
+const SKILL_CREATE_PROPOSAL = [
+	waiting({
+		id: "pp_skill_new",
+		kind: "skill",
+		name: "press-digest",
+		operation: "create",
+		fields: ["description", "body"],
+	}),
+];
+
+/** The operator's case: one TEAM proposal, read from the Agents tab. */
+const ONE_TEAM_PROPOSAL = [
+	waiting({
+		id: "pp_team_content",
+		kind: "team",
+		name: "content",
+		label: "Content",
+	}),
+];
+
+/** Every kind, a stale one, a create, and more than the three rows shown collapsed. */
+const MIXED_PROPOSALS = [
+	waiting({
+		id: "pp_agent_scout",
+		kind: "agent",
+		name: "trend-scout",
+		fields: ["instructions", "tools"],
+		created_at: 1794232900,
+	}),
+	waiting({
+		id: "pp_team_content",
+		kind: "team",
+		name: "content",
+		label: "Content",
+		state: "stale",
+		stale: true,
+		fields: ["members"],
+		created_at: 1794232850,
+	}),
+	waiting({
+		id: "pp_agent_new",
+		kind: "agent",
+		name: "press-officer",
+		operation: "create",
+		fields: ["description", "instructions"],
+		created_at: 1794232800,
+	}),
+	waiting({
+		id: "pp_skill_research",
+		kind: "skill",
+		name: "research-brief",
+		fields: ["body"],
+		created_at: 1794232700,
+	}),
+	waiting({
+		id: "pp_team_helpdesk",
+		kind: "team",
+		name: "helpdesk",
+		fields: ["instructions"],
+		created_at: 1794232600,
+	}),
+];
+
 /* --------------------------------------------------------------- the rig -- */
 
 /**
@@ -335,6 +510,24 @@ const Scene: FC<{
 	 * change every other frame this world draws, so the patch is per story.
 	 */
 	agentOverrides?: Record<string, Partial<WorldProfile>>;
+	/**
+	 * Profile proposals waiting for the operator. Present (even empty), the
+	 * backend advertises `profile_proposals` and answers the proposal reads from
+	 * this list; omitted, the capability is off, as in every other frame here.
+	 */
+	proposals?: readonly WaitingProposal[];
+	/**
+	 * Skill names the library lists. Present, the backend advertises
+	 * `skill_library` and answers `skills.list` from it (a named read for a
+	 * name it lacks is core's 404); omitted, there is no Skills tab.
+	 */
+	skills?: readonly string[];
+	/**
+	 * The frame's height in px instead of the whole viewport: the 600 px
+	 * window minimum (`WINDOW_MIN_HEIGHT`, `src/main/window-mode.ts`) is a
+	 * height a default Storybook canvas never has (PR #2026 round 1, D1).
+	 */
+	frameHeight?: number;
 }> = ({
 	at,
 	children,
@@ -342,6 +535,9 @@ const Scene: FC<{
 	capabilities = LIVE_CAPABILITIES,
 	effectiveFails,
 	agentOverrides,
+	proposals,
+	skills,
+	frameHeight,
 }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
 	rows.current ??= AGENTS.map((row) => ({
@@ -352,12 +548,27 @@ const Scene: FC<{
 	useLayoutEffect(() => {
 		installBridge(rows.current as WorldProfile[], {
 			teams: [...TEAMS, ...extraTeams],
-			capabilities,
+			capabilities: {
+				...capabilities,
+				features: {
+					...capabilities.features,
+					...(proposals ? { profile_proposals: 1 } : {}),
+					...(skills ? { skill_library: 1 } : {}),
+				},
+			},
 			effectiveFails,
 		});
-	}, [extraTeams, capabilities, effectiveFails]);
+		if (proposals) answerProposals(proposals);
+		if (skills) answerSkills(skills);
+	}, [extraTeams, capabilities, effectiveFails, proposals, skills]);
 	return (
-		<div className="flex h-screen flex-col overflow-hidden bg-canvas">
+		<div
+			className={cn(
+				"flex flex-col overflow-hidden bg-canvas",
+				frameHeight === undefined && "h-screen",
+			)}
+			style={frameHeight === undefined ? undefined : { height: frameHeight }}
+		>
 			{/*
 			 * THE APP'S REAL 8 PX SCROLLBAR SHEET (`main.tsx` mounts it for every
 			 * window). The pane's 24 px edge is `px-4` plus a stable 8 px gutter on each
@@ -1076,6 +1287,142 @@ export const TeamMemberOverridesEditing: Story = {
 			extraTeams={OVERRIDES_EXTRA}
 		>
 			<PressEdit />
+		</Scene>
+	),
+};
+
+/*
+ * WAITING FOR YOUR APPROVAL (operator report, 2026-11-21): the Agents nav badge
+ * counted a pending proposal and the page showed nothing to do. These frames are
+ * the page with proposals waiting; `PendingNone` is the control (capability on,
+ * nothing waiting: no summary, no marks).
+ */
+const summaryShows = (text: string) => () =>
+	Boolean(
+		document
+			.querySelector('[data-testid="pending-approvals"]')
+			?.textContent?.includes(text),
+	);
+
+/** Capability on, nothing waiting: the page is exactly as before. */
+export const PendingNone: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={[]}>
+			<HoldShutterUntil done={rowExists("manager")} />
+		</Scene>
+	),
+};
+
+/** One TEAM proposal while the AGENTS tab is open: the operator's screen. */
+export const PendingOneTeamOnAgentsTab: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={ONE_TEAM_PROPOSAL}>
+			<HoldShutterUntil done={summaryShows("Content")} />
+		</Scene>
+	),
+};
+
+/** Mixed kinds, a stale one and a create: three rows, then "Show all 5". */
+export const PendingMixed: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS}>
+			<HoldShutterUntil done={summaryShows("trend-scout")} />
+		</Scene>
+	),
+};
+
+/** Mixed, on the Teams tab: the marked row and the tab's count. */
+export const PendingMixedTeamsTab: Story = {
+	render: () => (
+		<Scene at="/agents?kind=team" proposals={MIXED_PROPOSALS}>
+			<HoldShutterUntil done={rowExists("content")} />
+		</Scene>
+	),
+};
+
+/** Where Review lands: the team, its review panel open at the proposal. */
+export const PendingReviewOpened: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=team&name=content&proposal=pp_team_content"
+			proposals={ONE_TEAM_PROPOSAL}
+		>
+			<HoldShutterUntil done={paneSays("Proposed change to")} />
+		</Scene>
+	),
+};
+
+/*
+ * PR #2026 round 1 remediation frames.
+ */
+
+/** Press "Show all" once the summary offers it (the expanded geometry). */
+const ExpandSummary: FC = () => {
+	useEffect(() => {
+		const press = () => {
+			const more = [
+				...document.querySelectorAll<HTMLButtonElement>(
+					'[data-testid="pending-approvals"] button[aria-expanded="false"]',
+				),
+			][0];
+			if (!more) return false;
+			more.click();
+			return true;
+		};
+		if (press()) return;
+		const observer = new MutationObserver(() => {
+			if (press()) observer.disconnect();
+		});
+		observer.observe(document.body, { childList: true, subtree: true });
+		return () => observer.disconnect();
+	}, []);
+	return null;
+};
+
+/**
+ * D1/U3: five waiting, "Show all" open, in a 600 px frame (the window
+ * minimum). The summary stops at its cap and scrolls inside; the roster keeps
+ * its floor and "Add agent manually" stays on screen.
+ */
+export const PendingMixedExpandedAt600: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS} frameHeight={600}>
+			<ExpandSummary />
+			<HoldShutterUntil done={summaryShows("Show fewer")} />
+		</Scene>
+	),
+};
+
+/** The same at 600 px, collapsed: the first thing an operator sees. */
+export const PendingMixedAt600: Story = {
+	render: () => (
+		<Scene at="/agents" proposals={MIXED_PROPOSALS} frameHeight={600}>
+			<HoldShutterUntil done={summaryShows("trend-scout")} />
+		</Scene>
+	),
+};
+
+/**
+ * R2/U1: Review on a skill CREATE proposal, skill library ON. The skill does
+ * not exist yet, so the pane is the review panel (Accept / Edit & accept /
+ * Reject), not SkillDetail's "couldn't load" error.
+ */
+export const PendingSkillCreateReview: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=skill&name=press-digest&proposal=pp_skill_new"
+			proposals={SKILL_CREATE_PROPOSAL}
+			skills={["summarize", "web-research"]}
+		>
+			<HoldShutterUntil
+				done={() =>
+					Boolean(
+						document.querySelector(
+							'[data-testid="proposed-new-pane"] [data-proposal-id="pp_skill_new"] button',
+						),
+					)
+				}
+			/>
 		</Scene>
 	),
 };

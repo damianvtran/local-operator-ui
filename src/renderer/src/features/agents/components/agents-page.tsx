@@ -57,6 +57,14 @@ import {
 	useTeamDetail,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import {
+	type ProfileProposalKind,
+	type ProfileProposalSummary,
+	pendingProposalCountsByKind,
+	pendingProposals,
+	pendingProposalsByRecord,
+} from "@shared/api/local-operator/profile-proposals";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import {
@@ -64,6 +72,7 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@shared/components/ui/alert";
+import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -124,7 +133,14 @@ import {
 import { HubLinksPanel } from "./hub-links-panel";
 import { HubUpdatePanel } from "./hub-update-panel";
 import { MissingDefinitionError } from "./missing-definition-error";
-import { ProfileProposalPanel } from "./profile-proposal-panel";
+import {
+	PendingApprovalsSummary,
+	PendingProposalMark,
+} from "./pending-approvals";
+import {
+	ProfileProposalPanel,
+	type ProposalReveal,
+} from "./profile-proposal-panel";
 import {
 	ProposedNewGroup,
 	ProposedNewPane,
@@ -395,6 +411,14 @@ export function AgentsPage() {
 	 * fix is the key, and this is the question that goes with it (D1/U1/Q1).
 	 */
 	const [pendingNav, setPendingNav] = useState<NavIntent | null>(null);
+	/*
+	 * The last navigation that named a proposal, as a reveal request for the
+	 * record's review panel (`ProposalReveal`: R3's nonce, U5's focus choice).
+	 * Set in `go()`, i.e. only once the dirty-edit guard let the move happen.
+	 */
+	const [proposalReveal, setProposalReveal] = useState<ProposalReveal | null>(
+		null,
+	);
 	const [dirtyIdentity, setDirtyIdentity] = useState<string | null>(null);
 	const run = useConfigRun();
 	const marks = useConfigRunStore((state) => state.marks);
@@ -509,6 +533,17 @@ export function AgentsPage() {
 			if (next.create !== null && next.create !== undefined)
 				search.set("create", next.create);
 			if (next.duplicate) search.set("duplicate", next.duplicate);
+			// The record's `ProfileProposalPanel` reads it to open and scroll to
+			// that proposal (the pending-approvals summary and marked rows set it).
+			if (next.proposal) {
+				search.set("proposal", next.proposal);
+				const id = next.proposal;
+				setProposalReveal((last) => ({
+					id,
+					request: (last?.request ?? 0) + 1,
+					focus: next.revealFocus !== false,
+				}));
+			}
 			// Any real navigation resolves a pending question, whichever route asked
 			// for it (the guard's own button, a browser Back, a deep link).
 			setPendingNav(null);
@@ -571,6 +606,7 @@ export function AgentsPage() {
 				name={itemName}
 				enabled={desktopFeatureEnabled(capabilities.data, "profile_proposals")}
 				proposalId={params.get("proposal")}
+				reveal={proposalReveal}
 			/>
 			{/* Full inventory keeps healthy policy editing available; legacy servers
 			    retain the existing pending-only path without receiving skill rows. */}
@@ -836,11 +872,58 @@ export function AgentsPage() {
 		capabilities.data,
 		"profile_proposals",
 	);
+	/*
+	 * WHAT IS WAITING FOR THE OPERATOR, read once for the whole page (operator
+	 * report, 2026-11-21: the nav badge said 1, the page showed nothing to do).
+	 * The same cached list the nav badge polls (`useProfileProposals` shares one
+	 * query key), run through the same `pendingProposals` filter, so the summary,
+	 * the tab counts and the row marks cannot disagree with the badge. With the
+	 * capability off the read never runs and every derivation below is empty.
+	 */
+	const proposalList = useProfileProposals(proposalsEnabled);
+	const proposalData = proposalsEnabled ? proposalList.data : undefined;
+	const waiting = pendingProposals(proposalData);
+	const waitingByKind = pendingProposalCountsByKind(proposalData);
+	const waitingFor = (kind: ProfileProposalKind) =>
+		pendingProposalsByRecord(proposalData, kind);
+	/*
+	 * A ROW WITH A PROPOSAL WAITING OPENS AT THAT PROPOSAL: the newest one goes in
+	 * `?proposal=`, which the record's panel highlights and scrolls into view, so
+	 * the click that follows the mark lands on Accept/Reject rather than on the
+	 * top of a long editor with the panel below the fold. Still through the
+	 * dirty-edit guard, like every other roster click.
+	 */
+	const openRecord = (
+		records: ReadonlyMap<string, readonly ProfileProposalSummary[]>,
+		rowName: string,
+	) =>
+		requestGo({
+			name: rowName,
+			proposal: records.get(rowName)?.[0]?.id,
+			// A row click keeps focus on the row (U5); Review is the focus move.
+			revealFocus: false,
+		});
+
 	const selectedIsProposedNew = useIsProposedNew(
 		teamMode ? "team" : "agent",
 		skillMode ? null : selected,
 		(teamMode ? teams.data : profiles.data)?.map((row) => row.name),
 		proposalsEnabled,
+	);
+	/*
+	 * A SKILL CREATE PROPOSAL HAS NO CARD TO OPEN (PR #2026 round 1, R2/U1).
+	 * Only once the library has loaded (`existing` undefined until then, so a
+	 * slow list never flashes the proposal pane over a real skill), and only for
+	 * a name the library does not list: an existing skill's proposals stay in
+	 * its own SkillDetail panel.
+	 */
+	const selectedIsProposedNewSkill = useIsProposedNew(
+		"skill",
+		skillMode ? selected : null,
+		skills.library.data ? skills.cards.map((card) => card.name) : undefined,
+		proposalsEnabled,
+		skillMode ? params.get("proposal") : null,
+		Boolean(skillDetail.data?.skill_detail),
 	);
 
 	if (agentId)
@@ -911,241 +994,288 @@ export function AgentsPage() {
 				data-workspace-safe-content=""
 				className="flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
-				{/*
-				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
-				 * tabs, search and scope are one control stack, so they sit closer to each
-				 * other than to the list below and the button beneath it. Each is
-				 * full-width, so their right edges are one line.
-				 */}
-				<div className="space-y-2 pt-4">
-					<Tabs
-						value={skillMode ? "skill" : teamMode ? "team" : "agent"}
-						onValueChange={(next) =>
+				<div className="flex min-h-0 flex-1 flex-col gap-3 pt-4">
+					{/*
+					 * ABOVE THE TABS, SO IT IS ON EVERY TAB: a proposal for a team must be
+					 * visible from the Agents tab (the operator's case), and Review switches
+					 * to the right tab and record itself.
+					 */}
+					<PendingApprovalsSummary
+						proposals={waiting}
+						currentProposalId={params.get("proposal")}
+						/*
+						 * Without `skill_library` there is no Skills tab or pane to review a
+						 * skill proposal in (R5/U2/D2): the row stays (the nav badge counts
+						 * it, so the summary must too) but says to update instead of Review.
+						 */
+						reviewable={(proposal) =>
+							proposal.kind !== "skill" || skillsOffered
+						}
+						onReview={(proposal) =>
 							requestGo({
-								kind: next as "agent" | "team" | "skill",
-								name: null,
+								kind: proposal.kind,
+								name: proposal.name,
+								proposal: proposal.id,
 							})
 						}
-					>
-						<TabsList
-							aria-label={t("ui.agents.pages.browse_aria")}
-							className="w-full"
-						>
-							<BrowseTab
-								value="agent"
-								testId="agents-tab"
-								icon={<Bot className="size-3.5" />}
-								label={t("ui.agents.pages.tab.agents")}
-								count={profiles.data?.length ?? null}
-								compact={skillsOffered}
-							/>
-							<BrowseTab
-								value="team"
-								testId="teams-tab"
-								icon={<Users className="size-3.5" />}
-								label={t("ui.agents.pages.tab.teams")}
-								count={teams.data?.length ?? null}
-								compact={skillsOffered}
-							/>
-							{/*
-							 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
-							 * (`skill_library`). Absent, the strip is the two-tab strip it
-							 * always was and the page sends no skill request. Same trigger
-							 * as its siblings (`BrowseTab`), so all three fit the 256 px
-							 * column by one rule rather than the new one being the odd one.
-							 */}
-							{skillsOffered ? (
-								<BrowseTab
-									value="skill"
-									testId="skills-tab"
-									noPanel
-									compact
-									icon={<Sparkles className="size-3.5" />}
-									label={t("ui.agents.skills.tab")}
-									count={skills.library.data ? skills.cards.length : null}
-								/>
-							) : null}
-						</TabsList>
-					</Tabs>
+					/>
 
-					<div className="relative">
-						<Search
-							aria-hidden="true"
-							className="pointer-events-none absolute top-2 start-2 size-4 text-ink-dim"
-						/>
-						<Input
-							className="ps-8"
-							type="search"
-							aria-label={
-								skillMode
-									? t("ui.agents.skills.search_aria")
-									: t("ui.agents.pages.search_aria")
+					{/*
+					 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
+					 * tabs, search and scope are one control stack, so they sit closer to each
+					 * other than to the list below and the button beneath it. Each is
+					 * full-width, so their right edges are one line.
+					 */}
+					<div className="space-y-2">
+						<Tabs
+							value={skillMode ? "skill" : teamMode ? "team" : "agent"}
+							onValueChange={(next) =>
+								requestGo({
+									kind: next as "agent" | "team" | "skill",
+									name: null,
+								})
 							}
-							placeholder={
-								skillMode
-									? t("ui.agents.skills.search")
+						>
+							<TabsList
+								aria-label={t("ui.agents.pages.browse_aria")}
+								className="w-full"
+							>
+								<BrowseTab
+									value="agent"
+									testId="agents-tab"
+									icon={<Bot className="size-3.5" />}
+									label={t("ui.agents.pages.tab.agents")}
+									count={profiles.data?.length ?? null}
+									waiting={waitingByKind.agent}
+									compact={skillsOffered || waitingByKind.skill > 0}
+								/>
+								<BrowseTab
+									value="team"
+									testId="teams-tab"
+									icon={<Users className="size-3.5" />}
+									label={t("ui.agents.pages.tab.teams")}
+									count={teams.data?.length ?? null}
+									waiting={waitingByKind.team}
+									compact={skillsOffered || waitingByKind.skill > 0}
+								/>
+								{/*
+								 * THE THIRD TAB, OFFERED ONLY WHEN CORE SAYS IT CAN FILL IT
+								 * (`skill_library`). Absent, the strip is the two-tab strip it
+								 * always was and the page sends no skill request. Same trigger
+								 * as its siblings (`BrowseTab`), so all three fit the 256 px
+								 * column by one rule rather than the new one being the odd one.
+								 */}
+								{/* A disabled Skills tab still accounts for waiting skill proposals on
+								 * legacy cores: tab counts reconcile with the summary, but no
+								 * unusable navigation is offered (R5/U2/D2). */}
+								{skillsOffered || waitingByKind.skill > 0 ? (
+									<BrowseTab
+										value="skill"
+										testId="skills-tab"
+										disabled={!skillsOffered}
+										noPanel
+										compact
+										icon={<Sparkles className="size-3.5" />}
+										label={t("ui.agents.skills.tab")}
+										count={skills.library.data ? skills.cards.length : null}
+										waiting={waitingByKind.skill}
+									/>
+								) : null}
+							</TabsList>
+						</Tabs>
+
+						<div className="relative">
+							<Search
+								aria-hidden="true"
+								className="pointer-events-none absolute top-2 start-2 size-4 text-ink-dim"
+							/>
+							<Input
+								className="ps-8"
+								type="search"
+								aria-label={
+									skillMode
+										? t("ui.agents.skills.search_aria")
+										: t("ui.agents.pages.search_aria")
+								}
+								placeholder={
+									skillMode
+										? t("ui.agents.skills.search")
+										: teamMode
+											? t("ui.agents.pages.search.teams")
+											: t("ui.agents.pages.search.agents")
+								}
+								value={search}
+								onChange={(event) => setSearch(event.target.value)}
+							/>
+						</div>
+
+						{/*
+						 * The scope axis for this page is WHO OWNS the definition — on-device
+						 * versus shipped — where the hub's is where it lives. Same register, same
+						 * meaning of "showing", which is what makes the two read as one system.
+						 * Teams have no `source` on the wire, so the control is the agents' alone
+						 * rather than a chip row that does nothing.
+						 */}
+						{!teamMode && !skillMode && profiles.data ? (
+							<fieldset className="m-0 min-w-0 border-0 p-0">
+								<legend className="sr-only">
+									{t("ui.agents.pages.scope_legend")}
+								</legend>
+								{/*
+								 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
+								 * and pushed the segments' right edge in from the tabs' and the search's.
+								 * The legend keeps the group's accessible name, and `aria-pressed` on
+								 * each segment keeps its state, so nothing a screen reader had is lost;
+								 * the segments are the visible words. `flex-1` makes the group span the
+								 * column like its two siblings.
+								 */}
+								<div
+									data-glass-well=""
+									className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+								>
+									{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
+										<Button
+											key={value}
+											variant="ghost"
+											size="sm"
+											aria-pressed={scope === value}
+											onClick={() => setScope(value)}
+											className={cn("flex-1", scope === value && rowCurrent)}
+										>
+											{t(SCOPE_LABEL[value])}
+										</Button>
+									))}
+								</div>
+							</fieldset>
+						) : null}
+						{/*
+						 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
+						 * `fieldset` + glass well + `aria-pressed` segments in the same place.
+						 * Four segments, not six: Other tool and Project appear under All and
+						 * the search box matches their source word, and a fifth segment would
+						 * not fit the 256 px column. The labels ARE the row's source words.
+						 */}
+						{skillMode && skills.library.data ? (
+							<fieldset className="m-0 min-w-0 border-0 p-0">
+								<legend className="sr-only">
+									{t("ui.agents.skills.scope_legend")}
+								</legend>
+								<div
+									data-glass-well=""
+									className="flex gap-0.5 rounded-md bg-sunken p-0.5"
+								>
+									{SKILL_SCOPES.map((value) => (
+										<Button
+											key={value}
+											variant="ghost"
+											size="sm"
+											aria-pressed={skillScope === value}
+											data-testid={`skills-scope-${value}`}
+											onClick={() => setSkillScope(value)}
+											className={cn(
+												"flex-1",
+												skillScope === value && rowCurrent,
+											)}
+										>
+											{t(SKILL_SCOPE_LABEL[value])}
+										</Button>
+									))}
+								</div>
+							</fieldset>
+						) : null}
+					</div>
+
+					{/* The roster: a listbox, so arrow keys move between rows (U12). */}
+					<div
+						/*
+						 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
+						 * so rows dissolve into the footer instead of being sliced at it.
+						 */
+						data-lo-pane-edge-cues
+						/*
+						 * `min-h-32` IS THE ROSTER'S FLOOR (PR #2026 round 1, D1/U3): the
+						 * pending-approvals summary above shrinks (its list scrolls inside it)
+						 * before this region drops below ~3 rows, so at the 600 px window
+						 * minimum the roster and the footer button stay on screen.
+						 */
+						className="min-h-32 flex-1 overflow-y-auto"
+					>
+						{skillMode ? (
+							<SkillsRosterBody
+								loading={skills.library.isLoading}
+								failed={Boolean(skills.library.error)}
+								cards={skillRows}
+								total={skills.cards.length}
+								search={search}
+								scope={skillScope}
+								selected={selected}
+								join={skills.join}
+								marked={
+									new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+								}
+								pending={waitingFor("skill")}
+								onOpen={(rowName) => openRecord(waitingFor("skill"), rowName)}
+							/>
+						) : listError ? null : !profiles.data && !teams.data ? (
+							<RosterSkeleton />
+						) : rows.length === 0 ? (
+							<p className="px-1 py-2 text-body-sm text-ink-muted">
+								{search
+									? t("ui.agents.pages.empty.search", { query: search })
 									: teamMode
-										? t("ui.agents.pages.search.teams")
-										: t("ui.agents.pages.search.agents")
-							}
-							value={search}
-							onChange={(event) => setSearch(event.target.value)}
-						/>
+										? t("ui.agents.pages.empty.teams")
+										: t(EMPTY_BY_SCOPE[scope])}
+							</p>
+						) : (
+							<Roster
+								rows={rows}
+								name={creating ? null : selected}
+								teamMode={teamMode}
+								printName={printName}
+								marked={
+									new Map(marks.map((mark) => [targetKey(mark), mark.created]))
+								}
+								/*
+								 * THROUGH THE GUARD, never straight to the route: a dirty draft on the
+								 * row being left has to be asked about (D1/U1/Q1), and the pane is
+								 * keyed by record, so the navigation IS the discard.
+								 */
+								pending={waitingFor(teamMode ? "team" : "agent")}
+								onOpen={(rowName) =>
+									openRecord(waitingFor(teamMode ? "team" : "agent"), rowName)
+								}
+							/>
+						)}
+						{/*
+						 * Pending proposals for a name the roster does not have yet, under
+						 * the roster the Agents badge leads to (F4/U-F4, U6).
+						 */}
+						{skillMode || listError || !rosterNames ? null : (
+							<ProposedNewGroup
+								kind={teamMode ? "team" : "agent"}
+								existing={rosterNames}
+								selected={creating ? null : selected}
+								enabled={proposalsEnabled}
+								onOpen={(rowName) => requestGo({ name: rowName })}
+							/>
+						)}
 					</div>
 
 					{/*
-					 * The scope axis for this page is WHO OWNS the definition — on-device
-					 * versus shipped — where the hub's is where it lives. Same register, same
-					 * meaning of "showing", which is what makes the two read as one system.
-					 * Teams have no `source` on the wire, so the control is the agents' alone
-					 * rather than a chip row that does nothing.
+					 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
+					 * affordance, not a boxed button - a bordered secondary was the heaviest
+					 * object in the column for a secondary job.
 					 */}
-					{!teamMode && !skillMode && profiles.data ? (
-						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">
-								{t("ui.agents.pages.scope_legend")}
-							</legend>
-							{/*
-							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
-							 * and pushed the segments' right edge in from the tabs' and the search's.
-							 * The legend keeps the group's accessible name, and `aria-pressed` on
-							 * each segment keeps its state, so nothing a screen reader had is lost;
-							 * the segments are the visible words. `flex-1` makes the group span the
-							 * column like its two siblings.
-							 */}
-							<div
-								data-glass-well=""
-								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
-							>
-								{(Object.keys(SCOPE_LABEL) as Scope[]).map((value) => (
-									<Button
-										key={value}
-										variant="ghost"
-										size="sm"
-										aria-pressed={scope === value}
-										onClick={() => setScope(value)}
-										className={cn("flex-1", scope === value && rowCurrent)}
-									>
-										{t(SCOPE_LABEL[value])}
-									</Button>
-								))}
-							</div>
-						</fieldset>
-					) : null}
-					{/*
-					 * THE SKILLS TAB'S SCOPE, THE AGENTS' CONTROL (design spec §2): the same
-					 * `fieldset` + glass well + `aria-pressed` segments in the same place.
-					 * Four segments, not six: Other tool and Project appear under All and
-					 * the search box matches their source word, and a fifth segment would
-					 * not fit the 256 px column. The labels ARE the row's source words.
-					 */}
-					{skillMode && skills.library.data ? (
-						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">
-								{t("ui.agents.skills.scope_legend")}
-							</legend>
-							<div
-								data-glass-well=""
-								className="flex gap-0.5 rounded-md bg-sunken p-0.5"
-							>
-								{SKILL_SCOPES.map((value) => (
-									<Button
-										key={value}
-										variant="ghost"
-										size="sm"
-										aria-pressed={skillScope === value}
-										data-testid={`skills-scope-${value}`}
-										onClick={() => setSkillScope(value)}
-										className={cn("flex-1", skillScope === value && rowCurrent)}
-									>
-										{t(SKILL_SCOPE_LABEL[value])}
-									</Button>
-								))}
-							</div>
-						</fieldset>
-					) : null}
+					<AddManuallyButton
+						teamMode={teamMode}
+						// `hidden` (display:none) on the Skills tab: there is nothing to add by
+						// hand until U2, and a class rather than a conditional keeps this block
+						// byte-identical to the Agents/Teams one it shares.
+						className={cn(skillMode && "hidden")}
+						disabled={!catalogueEnabled}
+						onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
+					/>
 				</div>
-
-				{/* The roster: a listbox, so arrow keys move between rows (U12). */}
-				<div
-					/*
-					 * The roster scroller takes the pane's 24 px edge mask (design spec s3),
-					 * so rows dissolve into the footer instead of being sliced at it.
-					 */
-					data-lo-pane-edge-cues
-					className="min-h-0 flex-1 overflow-y-auto"
-				>
-					{skillMode ? (
-						<SkillsRosterBody
-							loading={skills.library.isLoading}
-							failed={Boolean(skills.library.error)}
-							cards={skillRows}
-							total={skills.cards.length}
-							search={search}
-							scope={skillScope}
-							selected={selected}
-							join={skills.join}
-							marked={
-								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
-							}
-							onOpen={(rowName) => requestGo({ name: rowName })}
-						/>
-					) : listError ? null : !profiles.data && !teams.data ? (
-						<RosterSkeleton />
-					) : rows.length === 0 ? (
-						<p className="px-1 py-2 text-body-sm text-ink-muted">
-							{search
-								? t("ui.agents.pages.empty.search", { query: search })
-								: teamMode
-									? t("ui.agents.pages.empty.teams")
-									: t(EMPTY_BY_SCOPE[scope])}
-						</p>
-					) : (
-						<Roster
-							rows={rows}
-							name={creating ? null : selected}
-							teamMode={teamMode}
-							printName={printName}
-							marked={
-								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
-							}
-							/*
-							 * THROUGH THE GUARD, never straight to the route: a dirty draft on the
-							 * row being left has to be asked about (D1/U1/Q1), and the pane is
-							 * keyed by record, so the navigation IS the discard.
-							 */
-							onOpen={(rowName) => requestGo({ name: rowName })}
-						/>
-					)}
-					{/*
-					 * Pending proposals for a name the roster does not have yet, under
-					 * the roster the Agents badge leads to (F4/U-F4, U6).
-					 */}
-					{skillMode || listError || !rosterNames ? null : (
-						<ProposedNewGroup
-							kind={teamMode ? "team" : "agent"}
-							existing={rosterNames}
-							selected={creating ? null : selected}
-							enabled={proposalsEnabled}
-							onOpen={(rowName) => requestGo({ name: rowName })}
-						/>
-					)}
-				</div>
-
-				{/*
-				 * GHOST, FULL-WIDTH, LEFT-ALIGNED (design spec D15): it is the list's last
-				 * affordance, not a boxed button - a bordered secondary was the heaviest
-				 * object in the column for a secondary job.
-				 */}
-				<AddManuallyButton
-					teamMode={teamMode}
-					// `hidden` (display:none) on the Skills tab: there is nothing to add by
-					// hand until U2, and a class rather than a conditional keeps this block
-					// byte-identical to the Agents/Teams one it shares.
-					className={cn(skillMode && "hidden")}
-					disabled={!catalogueEnabled}
-					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
-				/>
 			</aside>
 
 			{/*
@@ -1298,6 +1428,13 @@ export function AgentsPage() {
 													retryingLabel={t("ui.agents.skills.retrying")}
 												/>
 											</div>
+										) : selected && selectedIsProposedNewSkill ? (
+											<ProposedNewPane
+												kind="skill"
+												name={selected}
+												proposalId={params.get("proposal")}
+												reveal={proposalReveal}
+											/>
 										) : selected ? (
 											<SkillDetail
 												key={selected}
@@ -1333,6 +1470,7 @@ export function AgentsPage() {
 																"profile_proposals",
 															)}
 															proposalId={params.get("proposal")}
+															reveal={proposalReveal}
 														/>
 													)
 												}
@@ -1453,6 +1591,7 @@ export function AgentsPage() {
 											kind={teamMode ? "team" : "agent"}
 											name={selected}
 											proposalId={params.get("proposal")}
+											reveal={proposalReveal}
 										/>
 									) : selected && detailError ? (
 										<MissingDefinitionError
@@ -1717,6 +1856,8 @@ function BrowseTab({
 	icon,
 	label,
 	count,
+	waiting = 0,
+	disabled = false,
 	compact,
 	noPanel = false,
 }: {
@@ -1725,6 +1866,14 @@ function BrowseTab({
 	icon: ReactNode;
 	label: string;
 	count: number | null;
+	/**
+	 * Proposals of this kind waiting for the operator. An ATTENTION count, so it
+	 * is the shared accent `AttentionBadge`, never the subtle total numeral beside
+	 * it; it is what tells someone on the Agents tab that the badge's 1 is a team.
+	 */
+	waiting?: number;
+	/** Count-only Skills tab on a legacy core; its summary row explains updating. */
+	disabled?: boolean;
 	compact: boolean;
 	/**
 	 * Radix points every trigger's `aria-controls` at a `TabsContent` this page does
@@ -1737,9 +1886,20 @@ function BrowseTab({
 	return (
 		<TabsTrigger
 			value={value}
+			disabled={disabled}
 			data-testid={testId}
 			{...(noPanel ? { "aria-controls": undefined } : {})}
-			title={count === null ? label : `${label} ${count}`}
+			title={
+				waiting > 0
+					? // The separator is the catalogue's (R6/Q1), so RTL locales order it.
+						t("ui.agents.pending.tab_title", {
+							tab: count === null ? label : `${label} ${count}`,
+							waiting: t("ui.agents.pending.count_aria", { count: waiting }),
+						})
+					: count === null
+						? label
+						: `${label} ${count}`
+			}
 			className={cn("min-w-0", compact ? "flex-auto px-2" : "flex-1")}
 		>
 			{compact ? null : icon}
@@ -1750,12 +1910,30 @@ function BrowseTab({
 				<span
 					className={cn(
 						"min-w-[2ch] font-normal text-ink-dim tabular-nums",
-						compact && "sr-only",
+						/*
+						 * With an attention count beside it the TOTAL steps aside (still
+						 * in the accessible name and `title`): label + total + badge did
+						 * not fit a third of the 256 px column, and the label is what
+						 * truncated ("Tea…"), which is the one word the mark is about.
+						 */
+						(compact || waiting > 0) && "sr-only",
 					)}
 				>
 					{count}
 				</span>
 			)}
+			{waiting > 0 ? (
+				<>
+					<AttentionBadge
+						aria-hidden="true"
+						count={waiting}
+						data-testid={`${testId}-pending`}
+					/>
+					<span className="sr-only">
+						{t("ui.agents.pending.count_aria", { count: waiting })}
+					</span>
+				</>
+			) : null}
 		</TabsTrigger>
 	);
 }
@@ -1767,6 +1945,13 @@ type NavIntent = {
 	create?: "agent" | "team" | null;
 	/** The name a "Duplicate as new agent" form starts from. */
 	duplicate?: string;
+	/** A proposal id the opened record's review panel should open and scroll to. */
+	proposal?: string;
+	/**
+	 * Whether that panel also takes focus (default true). False for a roster
+	 * row click, which keeps focus in the list (U5); see `ProposalReveal`.
+	 */
+	revealFocus?: boolean;
 };
 
 /**
@@ -1945,10 +2130,13 @@ function Roster({
 	name,
 	teamMode,
 	marked,
+	pending,
 	printName,
 	onOpen,
 }: {
 	rows: readonly (ReusableProfile | ReusableTeam)[];
+	/** Waiting proposals by record name (`pendingProposalsByRecord`): the row marks. */
+	pending?: ReadonlyMap<string, readonly ProfileProposalSummary[]>;
 	/** The definition the page is showing, or null. */
 	name: string | null;
 	teamMode: boolean;
@@ -2081,6 +2269,11 @@ function Roster({
 								>
 									{rowLabel(row)}
 								</span>
+								{/* Proposals waiting on this record (the missing tree-row dot). */}
+								<PendingProposalMark
+									kind={teamMode ? "team" : "agent"}
+									count={pending?.get(row.name)?.length ?? 0}
+								/>
 								{mark !== undefined ? (
 									<Badge variant="attention" data-testid="roster-row-updated">
 										{/*

@@ -1347,7 +1347,7 @@ export const DraftActionableTooltip: Story = {
 							context_window: 400_000,
 						})}
 						draft={true}
-						onOpenDraftPicker={open}
+						onOpenDraftPicker={() => undefined}
 					/>
 				</div>
 			);
@@ -1394,7 +1394,7 @@ export const DraftActionableHovered: Story = {
 						context_window: 400_000,
 					})}
 					draft={true}
-					onOpenDraftPicker={open}
+					onOpenDraftPicker={() => undefined}
 				/>
 			</Frame>
 		</div>

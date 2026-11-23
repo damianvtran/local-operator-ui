@@ -1,0 +1,116 @@
+{
+	"audit_id": "dictation-retake-ur",
+	"mode": "independent first-round i18n audit of the dictation retake/discard copy (4 keys, 3 namespaces)",
+	"locale": "ur",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/dictation-retake-discard",
+	"head_sha": "8ed6c2f23b",
+	"audit_date": "2026-11-22",
+	"translator": {
+		"agent": "coder",
+		"note": "named in the audit brief; not inspected further"
+	},
+	"auditor": {
+		"agent": "task (lopdev)",
+		"session": "4e484ec8dfbf",
+		"instance": "5e56905b576b",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session runtime header 'Model: anthropic/claude-sonnet-5-5'; no fallback observed",
+		"independent_from_translator": true
+	},
+	"instance": "5e56905b576b",
+	"model": "anthropic/claude-sonnet-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"references": {
+		"glossary": "damianvtran/local-operator@fcf58eb198f3 i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@fcf58eb198f3 i18n/style-guides/ur.md sha256 7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4",
+		"shipped_terms": "src/i18n/catalogues/{en,ur} at 8ed6c2f23b: all 15 'Discard*' English values in ur, ui.common.actions.retry, siblings dictation_failed_transient_take_kept, dictation_unknown{,_clipped}, dictated_away.*"
+	},
+	"method": "Read each en value and its .context.json against the ur value, the core glossary and the ur style guide. Mechanically checked per namespace: key sets equal en/ur (55/55, 90/90, 143/143); ICU placeholder lists of the four keys equal en ({reason} byte-identical in both errors keys, none elsewhere); NFC; no Cc/Cf characters (so no manual RLM/LRM/FSI/PDI); no ASCII '...'; Urdu full stop ۔ and quotes “ ”; _clipped arm has no stop after {reason}, matching dictation_unknown_clipped; wording of the Retry reference 'دوبارہ کوشش کریں' matches ui.common.actions.retry. Not done: no rendered fit/bidi screenshot (text audit only). No MT service used.",
+	"namespaces": {
+		"ui.common.actions": {
+			"status": "passed",
+			"keys": [
+				"ui.common.actions.discard"
+			],
+			"sha256": {
+				"en": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+				"ur": "b8706fc7cdbc175cfd25d2d40e90479864647ddf644a295666b52f3126bc7fc5"
+			},
+			"context_sha256": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"id": "N1",
+						"severity": "nit",
+						"key": "ui.common.actions.discard",
+						"note": "'مسترد کریں' (reject) is the wording of the only other bare 'Discard' label (ui.teamBridge.holds.discard) and is used consistently across all four audited keys, so it passes. Elsewhere ur words Discard as 'رد کریں' (10 of 14 keys) or 'ترک کریں' (2). In the refused row 'مسترد' next to a server rejection reason can read as 'the server rejected it'. Recorded, not churned; if the product later unifies, 'رد کریں' is the dominant form.",
+						"proposed": "رد کریں / ریکارڈنگ رد کریں"
+					}
+				]
+			}
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"keys": [
+				"ui.chat.composer.dictation_failed_too_long_take_kept"
+			],
+			"sha256": {
+				"en": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+				"ur": "65c04c886fbb6ba55d525768899f5dde34764dac873c9b81c64abc062a56fe9b"
+			},
+			"context_sha256": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"id": "N1",
+						"severity": "nit",
+						"key": "ui.chat.composer.dictation_failed_too_long_take_kept",
+						"note": "'مسترد کریں' (reject) is the wording of the only other bare 'Discard' label (ui.teamBridge.holds.discard) and is used consistently across all four audited keys, so it passes. Elsewhere ur words Discard as 'رد کریں' (10 of 14 keys) or 'ترک کریں' (2). In the refused row 'مسترد' next to a server rejection reason can read as 'the server rejected it'. Recorded, not churned; if the product later unifies, 'رد کریں' is the dominant form.",
+						"proposed": "رد کریں / ریکارڈنگ رد کریں"
+					},
+					{
+						"id": "N2",
+						"severity": "nit",
+						"key": "ui.chat.composer.dictation_failed_too_long_take_kept",
+						"note": "'ایک مختصر ریکارڈنگ کریں' is colloquial and understood; the sibling dictated_away keys say 'دوبارہ ریکارڈ کریں'. Optional.",
+						"proposed": "ڈکٹیشن ناکام: ریکارڈنگ بھیجنے کے لیے بہت لمبی ہے۔ اسے مسترد کریں اور مختصر ریکارڈ کریں۔"
+					}
+				]
+			}
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"keys": [
+				"ui.common.errors.dictation_refused_take_kept",
+				"ui.common.errors.dictation_refused_take_kept_clipped"
+			],
+			"sha256": {
+				"en": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+				"ur": "f243fb75681f290fd1a5459ed9e51014b86678763a192f1b1111aad22a148518"
+			},
+			"context_sha256": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2",
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"id": "N1",
+						"severity": "nit",
+						"key": "ui.common.errors.dictation_refused_take_kept",
+						"note": "'مسترد کریں' (reject) is the wording of the only other bare 'Discard' label (ui.teamBridge.holds.discard) and is used consistently across all four audited keys, so it passes. Elsewhere ur words Discard as 'رد کریں' (10 of 14 keys) or 'ترک کریں' (2). In the refused row 'مسترد' next to a server rejection reason can read as 'the server rejected it'. Recorded, not churned; if the product later unifies, 'رد کریں' is the dominant form.",
+						"proposed": "رد کریں / ریکارڈنگ رد کریں"
+					}
+				]
+			}
+		}
+	}
+}

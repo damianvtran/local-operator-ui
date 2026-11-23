@@ -122,6 +122,7 @@ const bundled = await build({
 	stdin: {
 		contents: `
 			export { PickerHost } from "./src/renderer/src/features/chat/pickers/picker-host";
+			export { matchModelPickerOptions } from "./src/renderer/src/features/chat/pickers/model-picker-match";
 		`,
 		resolveDir: ROOT,
 		loader: "tsx",
@@ -141,7 +142,9 @@ const bundled = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, `picker-host-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundled.outputFiles[0].text);
-const { PickerHost } = await import(pathToFileURL(bundlePath).href);
+const { PickerHost, matchModelPickerOptions } = await import(
+	pathToFileURL(bundlePath).href
+);
 
 /*
  * `git blame`-free guard on the fixture below: the option shape this file builds
@@ -185,10 +188,15 @@ const type = async (input, text) => {
 	});
 };
 
-const key = (element, name) =>
+const key = (element, name, options) =>
 	act(() => {
 		element.dispatchEvent(
-			new dom.window.KeyboardEvent("keydown", { key: name, bubbles: true }),
+			new dom.window.KeyboardEvent("keydown", {
+				key: name,
+				bubbles: true,
+				cancelable: true,
+				...options,
+			}),
 		);
 	});
 
@@ -687,6 +695,280 @@ test("a pass that brings the sentence's row back AND drops the held row still na
 		"and Enter sends the row the footer now names",
 	);
 	view.unmount();
+});
+
+const effortRows = [
+	{ value: "low", label: "Low" },
+	{ value: "medium", label: "Medium", current: true },
+	{ value: "xhigh", label: "xHigh" },
+	{ value: "high", label: "High" },
+];
+
+test("quick effort is a focused ladder without search, and keys act on its announced row", () => {
+	const calls = [];
+	let closed = false;
+	const view = mount({
+		open: true,
+		onClose: () => {
+			closed = true;
+		},
+		title: "Effort",
+		quick: { kind: "effort" },
+		options: effortRows,
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const list = document.querySelector('[role="listbox"]');
+		assert.equal(document.querySelector('input, [role="combobox"]'), null);
+		assert.equal(
+			document.querySelector("[data-quick-picker]").dataset.pickerPlacement,
+			"fallback",
+		);
+		assert.equal(document.querySelector(".bg-scrim"), null);
+		assert.equal(document.activeElement, list);
+		assert.equal(announced(list), marked());
+		assert.match(labelOf(announced(list)), /^Medium/);
+		key(list, "ArrowDown");
+		assert.equal(labelOf(announced(list)), "xHigh");
+		key(list, "ArrowDown");
+		assert.equal(labelOf(announced(list)), "High");
+		key(list, "Enter", { isComposing: true });
+		key(list, "Escape", { isComposing: true });
+		assert.deepEqual(calls, []);
+		assert.equal(closed, false);
+		key(list, "Enter");
+		assert.deepEqual(calls, ["high"]);
+		key(list, "Escape");
+		assert.equal(closed, true);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("effort parks focus on Close until a ladder exists, without advertising retained rows", () => {
+	const calls = [];
+	const props = {
+		open: true,
+		onClose: () => {},
+		title: "Effort",
+		quick: { kind: "effort" },
+		options: effortRows,
+		onPick: (value) => calls.push(value),
+	};
+	const view = mount({ ...props, loading: true });
+	try {
+		const close = document.querySelector("[data-picker-footer] button");
+		assert.equal(document.activeElement, close);
+		const list = () => document.querySelector('[role="listbox"]');
+		for (const state of [
+			{ loading: true },
+			{ loadError: "Catalogue failed" },
+			{ options: [] },
+		]) {
+			view.render({ ...props, ...state });
+			assert.equal(list(), null);
+			assert.equal(document.querySelector('[role="combobox"]'), null);
+			assert.equal(document.activeElement, close);
+			assert.equal(footerNames(), null);
+			key(close, "Enter");
+			assert.deepEqual(calls, []);
+		}
+		view.render(props);
+		assert.equal(document.activeElement, list());
+		assert.match(labelOf(announced(list())), /^Medium/);
+		view.render({ ...props, loadError: "Catalogue failed after open" });
+		assert.equal(document.activeElement, close);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("model load errors do not advertise Enter despite retained rows", () => {
+	const calls = [];
+	const view = mount({
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		options: interleaved(),
+		loadError: "Catalogue failed",
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const input = document.querySelector('input[role="combobox"]');
+		assert.equal(document.activeElement, input);
+		assert.equal(input.getAttribute("aria-expanded"), "false");
+		assert.equal(document.querySelector('[role="listbox"]'), null);
+		key(input, "Enter");
+		assert.deepEqual(calls, []);
+		assert.equal(footerNames(), null);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("a query entered with no model catalogue does not pin the recovered list", async () => {
+	const haiku = {
+		value: "anthropic/claude-haiku-4-5",
+		label: "Claude Haiku 4.5",
+	};
+	const calls = [];
+	const base = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		matcher: matchModelPickerOptions,
+		onPick: (value) => calls.push(value),
+	};
+	const failed = { ...base, options: [], loadError: "Catalogue failed" };
+	const view = mount(failed);
+	try {
+		const input = document.querySelector('input[role="combobox"]');
+		const error = [...document.querySelectorAll("p")].find(
+			(node) => node.textContent === failed.loadError,
+		);
+		// jsdom has no layout; give the error envelope a nonzero measurement
+		// so an accidental reservation is observable after the list mounts.
+		error.parentElement.getBoundingClientRect = () => ({ height: 51.5 });
+		await type(input, "haiku");
+		key(input, "Enter");
+		assert.deepEqual(calls, []);
+		view.render({ ...base, options: [], loading: true });
+		view.render({ ...base, options: [haiku], notice: "Some providers failed" });
+		assert.equal(input.value, "haiku");
+		assert.equal(document.activeElement, input);
+		const row = announced(input);
+		assert.equal(labelOf(row), haiku.label);
+		const envelope = row.closest('[role="listbox"]').parentElement;
+		assert.equal(envelope.style.height, "");
+		key(input, "Enter");
+		assert.deepEqual(calls, [haiku.value]);
+
+		// A search that starts on a real list can reserve space even through
+		// zero hits, but a different notice must not inherit that budget.
+		await type(input, "");
+		envelope.getBoundingClientRect = () => ({ height: 128 });
+		await type(input, "haiku");
+		assert.equal(envelope.style.height, "128px");
+		await type(input, "no results");
+		assert.equal(envelope.style.height, "128px");
+		await type(input, "");
+		assert.equal(envelope.style.height, "");
+		await type(input, "no results");
+		assert.equal(envelope.style.height, "128px");
+		view.render({ ...base, options: [haiku] });
+		assert.equal(envelope.style.height, "");
+		view.render({ ...base, options: [haiku], notice: "Some providers failed" });
+		assert.equal(envelope.style.height, "");
+		await type(input, "");
+		assert.equal(
+			announced(input).querySelector(".truncate")?.textContent,
+			haiku.label,
+		);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("literal exact model labels and selectors cannot redirect Enter to another provider", async () => {
+	const original = {
+		value: "anthropic/claude-haiku-4-5",
+		label: "Claude Haiku 4.5",
+	};
+	const routed = {
+		value: `openrouter/${original.value}`,
+		label: `Anthropic: ${original.label}`,
+	};
+	const calls = [];
+	const view = mount({
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		options: [original, routed],
+		matcher: matchModelPickerOptions,
+		onPick: (value) => calls.push(value),
+	});
+	try {
+		const input = document.querySelector('input[role="combobox"]');
+		for (const [query, expected] of [
+			[routed.label.toUpperCase(), routed],
+			[original.value, original],
+		]) {
+			await type(input, query);
+			assert.equal(labelOf(announced(input)), expected.label);
+			assert.equal(document.activeElement, input);
+			key(input, "Enter");
+		}
+		assert.deepEqual(calls, [routed.value, original.value]);
+	} finally {
+		view.unmount();
+	}
+});
+
+test("model quick search ranks exact names and selectors, but a refresh preserves steering", async () => {
+	const partial = {
+		value: "anthropic/claude-opus-5-extended",
+		label: "Claude Opus 5 Extended",
+		current: true,
+	};
+	const whole = { value: "anthropic/claude-opus-5", label: "Claude Opus 5" };
+	const disabled = {
+		...whole,
+		value: "disabled/claude-opus-5",
+		disabled: true,
+	};
+	const calls = [];
+	const props = {
+		open: true,
+		onClose: () => {},
+		title: "Model",
+		quick: { kind: "model" },
+		matcher: matchModelPickerOptions,
+		options: [partial, disabled, whole],
+		onPick: (value) => calls.push(value),
+	};
+	const view = mount(props);
+	try {
+		const input = document.querySelector("input");
+		assert.equal(labelOf(announced(input)), partial.label);
+		await type(input, whole.label);
+		assert.equal(announced(input).getAttribute("aria-disabled"), null);
+		assert.equal(labelOf(announced(input)), whole.label);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value]);
+
+		// A real async reorder keeps the extended row we steered to, not its slot.
+		key(input, "ArrowDown");
+		assert.equal(labelOf(announced(input)), partial.label);
+		view.render({ ...props, options: [whole, partial, disabled] });
+		assert.equal(labelOf(announced(input)), partial.label);
+
+		await type(input, whole.value);
+		assert.equal(
+			announced(input).querySelector(".truncate")?.textContent,
+			whole.label,
+		);
+		assert.equal(document.activeElement, input);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+		await type(input, disabled.value);
+		assert.equal(
+			announced(input),
+			null,
+			"a disabled exact match is not automatically selected",
+		);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+		await type(input, "no matching model");
+		assert.equal(announced(input), null);
+		assert.equal(input.hasAttribute("aria-controls"), false);
+		key(input, "Enter");
+		assert.deepEqual(calls, [whole.value, whole.value]);
+	} finally {
+		view.unmount();
+	}
 });
 
 test("typing retires the sentence even when the row it names survives", async () => {
