@@ -2,6 +2,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { getCurrentPath } from "@shared/utils/path-utils";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { NavigateFunction } from "react-router-dom";
 import { openConversation } from "../open-conversation";
 import {
@@ -80,19 +81,24 @@ export function useWorkspaceTabs(
 	);
 	const removeInactive = useCallback(
 		(keys: ReadonlySet<string>, stillCurrent: () => boolean) => {
-			setTabs((items) => {
-				// React may apply this after another eligibility change or feed event.
+			// Only a matching expiry reply takes this synchronous path. React can
+			// cache an eager updater before commit; commit the strip and its layout-
+			// effect preference write before input, feed, or opt-out can interleave.
+			flushSync(() => {
 				if (
 					!stillCurrent() ||
 					!useUiPreferencesStore.getState().workspaceAutoClose
 				)
-					return items;
+					return;
 				const active = targetOf(useCanonicalSessionsStore.getState());
-				return items.filter(
-					(tab) =>
-						!keys.has(tab.key) ||
-						tab.pinned ||
-						sameWorkspaceTarget(tab.target, active),
+				// Keep the updater pure if React replays it over earlier tab actions.
+				setTabs((items) =>
+					items.filter(
+						(tab) =>
+							!keys.has(tab.key) ||
+							tab.pinned ||
+							sameWorkspaceTarget(tab.target, active),
+					),
 				);
 			});
 		},

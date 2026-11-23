@@ -17,7 +17,7 @@ for (const [key, value] of Object.entries({
 }
 after(() => dom.window.close());
 const require = createRequire(import.meta.url);
-const { createElement, act } = require("react");
+const { createElement, act, startTransition } = require("react");
 const { createRoot } = require("react-dom/client");
 
 // Use the same store actions and navigation rule as the renderer. Only the
@@ -80,6 +80,18 @@ function Fixture({ feedAvailable }) {
 }
 const ids = () => current.tabs.map((tab) => tab.target.id);
 const find = (id) => current.tabs.find((tab) => tab.target.id === id);
+const tabSnapshot = () => {
+	const key = preferences.persist.getOptions().name;
+	const saved = JSON.parse(dom.window.localStorage.getItem(key)).state
+		.workspaceTabs;
+	assert.deepEqual(saved, preferences.getState().workspaceTabs);
+	return {
+		rendered: dom.window.document
+			.querySelector("output")
+			.textContent.split(","),
+		saved: saved.map(({ id }) => id),
+	};
+};
 
 async function mount(
 	t,
@@ -262,6 +274,7 @@ function installTransport(
 	return {
 		calls,
 		watches: () => initialWatch,
+		subscriptions: () => listeners.size + states.size,
 		disconnect: () => {
 			for (const f of states) f({ connected: false });
 		},
@@ -351,8 +364,9 @@ test("cold proof arms without new frames; one fresh batch drops only untouched l
 	const tick = withClock(t);
 	await tick(WORKSPACE_INACTIVE_MS);
 	assert.equal(feed.watches(), 0);
+	assert.equal(feed.subscriptions(), 0);
 	assert.deepEqual(feed.calls, []);
-	assert.deepEqual(ids(), open);
+	assert.deepEqual(tabSnapshot(), { rendered: open, saved: open });
 	await enable();
 	assert.equal(feed.watches(), 1);
 	assert.deepEqual(feed.calls, [[L, M, B]]);
@@ -367,10 +381,8 @@ test("cold proof arms without new frames; one fresh batch drops only untouched l
 		[L, M, B],
 		[L, M, B],
 	]);
-	assert.deepEqual(
-		ids(),
-		reordered.filter((id) => ![B, L, M].includes(id)),
-	);
+	const kept = reordered.filter((id) => ![B, L, M].includes(id));
+	assert.deepEqual(tabSnapshot(), { rendered: kept, saved: kept });
 	assert.ok(find(K).pinned);
 	assert.equal(
 		canonical.getState().sessions,
@@ -496,6 +508,96 @@ for (const [kind, interrupt] of Object.entries({
 		assert.deepEqual(feed.calls, [[B], [B], [B], [B]]);
 	});
 }
+
+function resolveAtExpiryDecision(delayed) {
+	const boundary = Promise.withResolvers();
+	const row = wireRow(B);
+	const proof = row.workspace_rest;
+	Object.defineProperty(row, "workspace_rest", {
+		get() {
+			// Signal from the real receipt reader. The awaiting test resumes after
+			// the expiry continuation, before act drains any merely queued render.
+			boundary.resolve();
+			return proof;
+		},
+	});
+	delayed.resolve(result([row]));
+	return boundary.promise;
+}
+
+for (const [kind, interrupt] of Object.entries({
+	"unsent input": () =>
+		composer.setState({ inputByConversation: { [`send:${B}`]: pending } }),
+	"feed gap": (feed) => feed.gap(),
+	"opt-out": () => preferences.getState().setWorkspaceAutoClose(false),
+})) {
+	for (const when of ["before", "after"]) {
+		test(`${kind} ${when} the expiry decision respects its commit boundary`, async (t) => {
+			const delayed = Promise.withResolvers();
+			const feed = installTransport(t, {
+				answer: (_requested, count) =>
+					count === 2 ? delayed.promise : result([wireRow(B)]),
+			});
+			await mount(t, { feedAvailable: true, rows: rowsFor([A, B]) });
+			t.after(() => assert.equal(feed.subscriptions(), 0));
+			const tick = withClock(t);
+			await enable();
+			await tick(WORKSPACE_INACTIVE_MS);
+			assert.deepEqual(feed.calls, [[B], [B]]);
+			// Drain unrelated React work before testing the eager updater path.
+			await act(() => current.focusHandled());
+			await act(() => current.focusHandled());
+			const open = { rendered: [A, B], saved: [A, B] };
+			assert.deepEqual(tabSnapshot(), open);
+			let atOverride;
+			await act(async () => {
+				if (when === "after") await resolveAtExpiryDecision(delayed);
+				atOverride = tabSnapshot();
+				interrupt(feed);
+				if (when === "before") delayed.resolve(result([wireRow(B)]));
+			});
+			assert.deepEqual(
+				tabSnapshot(),
+				atOverride,
+				"a veto must not be followed by a stale render or preference write",
+			);
+			assert.deepEqual(
+				atOverride,
+				when === "before" ? open : { rendered: [A], saved: [A] },
+			);
+			assert.deepEqual(feed.calls, [[B], [B]]);
+			assert.equal(canonical.getState().activeSessionId, A);
+			assert.equal(dom.window.location.hash, `#/chat/${A}`);
+			assert.equal(current.focusRequested, false);
+		});
+	}
+}
+
+test("a deferred sibling reorder replays without resurrecting an expired tab", async (t) => {
+	const delayed = Promise.withResolvers();
+	const feed = installTransport(t, {
+		answer: (_requested, count) =>
+			count === 2 ? delayed.promise : result([wireRow(B)]),
+	});
+	await mount(t, {
+		feedAvailable: true,
+		ids: [A, B, C],
+		rows: rowsFor([A, B]),
+	});
+	const tick = withClock(t);
+	await enable();
+	await tick(WORKSPACE_INACTIVE_MS);
+	await act(async () => {
+		// An older, lower-priority tab action can be replayed after the sync
+		// removal, as with reordering from a continuous drag event.
+		startTransition(() => current.move(find(C).key, find(A).key));
+		await resolveAtExpiryDecision(delayed);
+		assert.deepEqual(tabSnapshot(), { rendered: [A, C], saved: [A, C] });
+	});
+	assert.deepEqual(tabSnapshot(), { rendered: [C, A], saved: [C, A] });
+	assert.deepEqual(feed.calls, [[B], [B]]);
+	assert.equal(current.focusRequested, false);
+});
 
 test("only open can establish an epoch after a gap or disconnect, not an old watch snapshot", async (t) => {
 	const feed = installTransport(t, { startEpoch: null });
