@@ -793,7 +793,7 @@ jobs:
           # other commit the merge ref happens to contain.
           head="$(git rev-parse HEAD^2)"
           test "$head" = "$PR_HEAD" || {
-            echo "::error::merge ref does not carry PR head $PR_HEAD (found $head); re-merge the base branch and re-run"
+            echo "::error::merge ref does not carry PR head $PR_HEAD (found $head); push a new commit so the merge ref is rebuilt"
             exit 1
           }
           printf 'Browser owner-finish merge ref built from PR head: %s\n' "$head"

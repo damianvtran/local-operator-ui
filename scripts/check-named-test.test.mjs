@@ -10,16 +10,20 @@
  *     "this branch predates that test" message, instead of occupying the CI
  *     job until its ten-minute timeout (the incident this guards);
  *   - a revision that carries the name but emits no exact passing row fails
- *     instead of exiting zero having verified nothing.
+ *     instead of exiting zero having verified nothing;
+ *   - a run that prints the row and THEN fails (a throwing `after` hook, a
+ *     file-level error) fails, because the CI step this replaces ran under
+ *     `bash -e -o pipefail` and a hang fix must not buy speed with that check.
  *
- * Every case builds its fixture in a temp dir, so the suite never depends on,
- * or mutates, the real test file. Duration assertions are generous caps whose
- * only job is to distinguish "fail fast" from "wait for the job timeout".
+ * Every case builds its fixture in a temp dir and removes it afterwards, so the
+ * suite never depends on, or mutates, the real test file. Duration assertions are
+ * generous caps whose only job is to distinguish "fail fast" from "wait for the
+ * job timeout".
  */
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -31,20 +35,31 @@ const FAST_MS = 20_000;
 // Hoisted: the repo's Biome config warns on regex literals created in a scope
 // (useTopLevelRegex), and these are all fixed assertions.
 const RE_NOT_PRESENT = /is not present in/;
-const RE_PREDATES = /predates that test/;
-const RE_UPDATE_FROM_BASE = /update it from the base branch/;
+const RE_RENAMED_OR_REMOVED = /renamed or removed that test/;
+const RE_UPDATE_NAME = /update this job's --name/;
 const RE_VERIFIED_ROW = /verified exact passing row: the guarded test/;
 const RE_KILLED = /did not finish within 2s and was killed/;
 const RE_NOT_A_HANG = /failure, not a pass, and not a hang/;
 const RE_NO_EXACT_ROW = /without an exact passing row/;
 const RE_UNKNOWN_OPTION = /unknown option/;
+const RE_EXITED = /exited 1/;
+const RE_ROW_NOT_PASS = /did not pass even though the named row may appear/;
+
+const fixtureDirs = [];
 
 function fixture(name, source) {
 	const dir = mkdtempSync(join(tmpdir(), "check-named-test-"));
+	fixtureDirs.push(dir);
 	const file = join(dir, name);
 	writeFileSync(file, source);
 	return file;
 }
+
+// Leave no temp directories behind: a CI runner is disposable, an operator's
+// machine is not, and this suite is run locally while guarding a CI job.
+test.after(() => {
+	for (const dir of fixtureDirs) rmSync(dir, { recursive: true, force: true });
+});
 
 function run(args) {
 	const started = Date.now();
@@ -75,12 +90,20 @@ test("the guarded test", async () => { await new Promise(() => {}); });
 // The name appears only in a comment: the filter matches nothing, the file has
 // no handle to hold, so node exits zero having run nothing. Without the exact
 // row requirement this case would look green.
+// Prints the exact passing row, then fails in an `after` hook. The old CI step
+// ran under `bash -e -o pipefail` and went red; a helper that trusts the row
+// alone would call this green.
+const ROW_THEN_FAILING_HOOK = `import test, { after } from "node:test";
+after(() => { throw new Error("hook failed after the test body"); });
+test("the guarded test", () => {});
+`;
+
 const NAME_ONLY_IN_COMMENT = `import test from "node:test";
 // the guarded test: renamed below, the old name survives only in this comment
 test("the renamed test", () => {});
 `;
 
-test("a revision without the named test fails fast and says to update the branch", () => {
+test("a head without the named test fails fast and names the two real causes", () => {
 	const file = fixture("absent.test.mjs", HOLDS_HANDLE);
 	const result = run([
 		"--file",
@@ -93,8 +116,8 @@ test("a revision without the named test fails fast and says to update the branch
 
 	assert.equal(result.status, 2, result.stderr);
 	assert.match(result.stderr, RE_NOT_PRESENT);
-	assert.match(result.stderr, RE_PREDATES);
-	assert.match(result.stderr, RE_UPDATE_FROM_BASE);
+	assert.match(result.stderr, RE_RENAMED_OR_REMOVED);
+	assert.match(result.stderr, RE_UPDATE_NAME);
 	// The whole point: seconds, not the job's timeout.
 	assert.ok(
 		result.elapsedMs < FAST_MS,
@@ -135,6 +158,26 @@ test("a run that outlives its bound is killed and reported, never left hanging",
 		result.elapsedMs < FAST_MS,
 		`took ${result.elapsedMs}ms, expected bounded`,
 	);
+});
+
+test("a failing run that still printed the row is a failure, not a pass", () => {
+	const file = fixture("hook-fails.test.mjs", ROW_THEN_FAILING_HOOK);
+	const result = run([
+		"--file",
+		file,
+		"--name",
+		"the guarded test",
+		"--timeout-ms",
+		"60000",
+	]);
+
+	assert.equal(
+		result.status,
+		1,
+		`expected 1, got ${result.status}: ${result.stderr}`,
+	);
+	assert.match(result.stderr, RE_EXITED);
+	assert.match(result.stderr, RE_ROW_NOT_PASS);
 });
 
 test("a zero exit with no matching row is a failure, not a pass", () => {

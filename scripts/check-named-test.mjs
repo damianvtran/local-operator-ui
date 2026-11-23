@@ -26,25 +26,36 @@
  *     burning the job timeout (exit 2).
  *   - A run that outlives its own bound is killed, its process group with it, and
  *     reported as a timeout rather than a hang (exit 3).
- *   - Success requires the exact numbered passing row `ok <n> - <name>`, with no
- *     `# SKIP`/`# TODO` directive, so hazard 2 cannot pass silently (exit 1).
+ *   - Success requires the exact numbered passing row `ok <n> - <name>` AND a
+ *     zero child exit. The exit half matters as much as the row: a suite whose
+ *     hooks fail (`after` throwing, for instance) can still emit the passing
+ *     row before node exits non-zero, and the CI step this replaces ran under
+ *     `bash -e -o pipefail`, so it failed. Dropping that would have been a
+ *     regression traded for a hang fix.
  *
- * CONSTRAINTS
- * -----------
- * - Dependency-free on purpose: it runs before `pnpm install` in some jobs, and
- *   it must not add weight to the CI surface it is guarding.
- * - The name is matched literally and anchored; a newline or a regex
- *   metacharacter in the name is rejected rather than silently reinterpreted.
+ * CONSTRAINTS AND KNOWN LIMITS
+ * ----------------------------
+ * - Dependency-free on purpose: its only caller runs it after `pnpm install`,
+ *   and it must not add weight to the CI surface it is guarding.
+ * - The name is matched literally and anchored; regex metacharacters are
+ *   ESCAPED (not rejected), and a newline in the name is rejected rather than
+ *   silently reinterpreted.
+ * - Three name shapes cannot pass and are out of scope for a gate: a name
+ *   containing `#` (the TAP line escapes it), a name whose source spelling
+ *   needs an escape inside a string literal (`\\`, `\'`), and a test nested
+ *   inside `describe`. Each fails loudly rather than passing wrongly, which is
+ *   the safe direction; the gate's own name uses none of them.
  * - The child runs in its own process group so a timeout kills any grandchildren
- *   the test file spawned; a plain `child.kill()` leaves those holding the pipe.
+ *   the test file spawned; killing only the child leaves those holding the pipe.
  *
  * Usage:
  *   node scripts/check-named-test.mjs --file scripts/browser-host.test.mjs \
  *     --name "owner_finish stays pending during a passkey prompt and retries the exact allocation" \
  *     [--timeout-ms 300000]
  *
- * Exit codes: 0 exact passing row found; 1 run finished without that row;
- * 2 name absent from the file (stale revision); 3 timeout; 64 usage error.
+ * Exit codes: 0 exact passing row found and the run exited zero; 1 the run
+ * finished without that row, or with it but non-zero; 2 name absent from the
+ * file (renamed or removed); 3 timeout; 64 usage error.
  */
 
 import { spawn } from "node:child_process";
@@ -112,9 +123,13 @@ function childEnv() {
 /**
  * Kill the child and anything it spawned. The child is detached into its own
  * process group, so a negative pid reaches the whole tree.
+ *
+ * Always attempt the group kill, even when the leader has already exited: a
+ * grandchild can outlive its parent while still holding the output pipe, and
+ * the pipe is what keeps `close` from firing. ESRCH just means it is already
+ * gone.
  */
 function killTree(child) {
-	if (child.exitCode !== null || child.signalCode !== null) return;
 	try {
 		process.kill(-child.pid, "SIGKILL");
 	} catch {
@@ -148,7 +163,7 @@ function main() {
 	if (!source.includes(args.name)) {
 		fail(
 			EXIT_NAME_ABSENT,
-			`the test "${args.name}" is not present in ${args.file} at this revision, so there is nothing to verify. This branch predates that test - update it from the base branch (merge the base in) and let the job run again.`,
+			`the test "${args.name}" is not present in ${args.file}, so there is nothing to verify. The merge ref includes the base branch, so this means the pull request renamed or removed that test; if it was renamed, update this job's --name, and if the branch is older than the test, merge the base in.`,
 		);
 		return;
 	}
@@ -189,6 +204,17 @@ function main() {
 		killTree(child);
 	}, args.timeoutMs);
 
+	// A cancelled job must not leave the test running: forward the signals this
+	// process receives to the child's group, then report the interruption.
+	for (const signal of ["SIGINT", "SIGTERM"]) {
+		process.on(signal, () => {
+			clearTimeout(timer);
+			killTree(child);
+			process.stderr.write(`::error::interrupted by ${signal}\n`);
+			process.exit(EXIT_NO_ROW);
+		});
+	}
+
 	child.on("close", (code, signal) => {
 		clearTimeout(timer);
 
@@ -198,6 +224,19 @@ function main() {
 			fail(
 				EXIT_TIMEOUT,
 				`node --test for "${args.name}" did not finish within ${Math.round(args.timeoutMs / 1000)}s and was killed (signal ${signal ?? "none"}). A run that outlives its bound is a failure, not a pass, and not a hang.`,
+			);
+			return;
+		}
+
+		// A row printed by a run that then failed is not a pass. The suite's own
+		// hooks can fail after the test body, so the exit status is part of the
+		// verdict - the old `bash -e -o pipefail` step enforced exactly this.
+		if (code !== 0) {
+			process.stderr.write(stdout);
+			process.stderr.write(stderr);
+			fail(
+				EXIT_NO_ROW,
+				`node --test for "${args.name}" exited ${code ?? signal} (signal ${signal ?? "none"}), so the run did not pass even though the named row may appear above. A failing hook or a file-level error leaves the row in place; the job fails with the run.`,
 			);
 			return;
 		}
