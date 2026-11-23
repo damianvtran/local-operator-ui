@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { build } from "esbuild";
 
 const bundle = await build({
@@ -158,7 +159,8 @@ function fixture({
 		paints: () => paints,
 		state: () => canvas.dataset.loHorizonMotion,
 		reads: () => [rectReads, colorReads],
-		pointer(type, clientX, clientY, pointerType = "mouse") {
+		pointer(type, clientX, clientY, pointerType = "mouse", time = now) {
+			now = time;
 			const event = new Event(type);
 			Object.assign(event, { pointerType, clientX, clientY });
 			paper.dispatchEvent(event);
@@ -408,9 +410,12 @@ test("sustained late frames settle once and stop decorative work for the mounted
 	h.intersect(true);
 	for (const now of [17, 50, 83, 116, 133]) h.flush(now);
 	assert.equal(h.state(), "running", "an isolated delay streak recovers");
-	h.pointer("pointermove", 1290, 450);
-	for (const now of [166, 199, 232]) h.flush(now);
+	for (const now of [166, 199, 232]) {
+		h.pointer("pointermove", 1290 - now, 450, "mouse", now);
+		h.flush(now);
+	}
 	const before = h.paints();
+	h.pointer("pointermove", 1000, 50, "mouse", 265);
 	h.flush(265);
 	assert.equal(h.paints(), before + 1);
 	assert.deepEqual(
@@ -450,6 +455,22 @@ test("shipping configuration ignores preview seeks and replays", () => {
 	h.stop();
 });
 
+function finishSteering(h, start, displayHz = 60) {
+	// Allows the full edge-to-edge turn to converge, but never an idle loop.
+	let elapsed = 0;
+	while (h.frames.size && elapsed < 400) {
+		elapsed += 1000 / displayHz;
+		h.flush(start + elapsed);
+	}
+	assert.equal(h.frames.size, 0, "steering must settle without an idle loop");
+	return elapsed;
+}
+
+// Read the lower edge of a lobe left of the glyph. This band witnesses the
+// stock horizontal turn with a real CSS-pixel coordinate from the canvas arcs.
+const lowerLobe = (dots) =>
+	Math.max(...dots.filter(({ x }) => x > 125 && x < 175).map(({ y }) => y));
+
 test("mouse input eases to a clamped pose, repaints theme/resize, and rests after leaving", () => {
 	const h = fixture();
 	h.intersect(true);
@@ -458,22 +479,29 @@ test("mouse input eases to a clamped pose, repaints theme/resize, and rests afte
 	h.pointer("pointermove", -1000, 9000, "touch");
 	h.pointer("pointermove", -1000, 9000, "pen");
 	assert.equal(h.frames.size, 0);
-	h.pointer("pointermove", 10, 50);
+	h.pointer("pointermove", 10, 50, "mouse", 5000);
 	h.pointer("pointermove", -1000, 9000);
 	assert.equal(h.frames.size, 1);
+	assert.deepEqual(
+		h.reads(),
+		[0, 1],
+		"an input burst never reads layout or style",
+	);
+	h.flush(5000);
+	const firstStep = h.dots();
+	assert.notDeepEqual(firstStep, rest);
 	assert.deepEqual(h.reads(), [1, 1]);
-	h.flush(4800);
-	const halfway = h.dots();
-	assert.notDeepEqual(halfway, rest);
-	h.flush(5120);
-	assert.notDeepEqual(h.dots(), halfway);
-	assert.equal(h.frames.size, 0);
+	const stationaryAt = 5000 + finishSteering(h, 5000);
+	const clamped = h.dots();
+	assert.notDeepEqual(clamped, firstStep);
+	h.pointer("pointermove", -1000, 9000);
+	assert.equal(h.frames.size, 0, "same raw mouse coordinate stays idle");
 	h.pointer("pointermove", 10, 450);
-	assert.equal(h.frames.size, 0, "same clamped mouse target stays idle");
+	assert.equal(h.frames.size, 0, "same clamped target stays idle");
 	h.pointer("pointercancel", 10, 450, "touch");
 	assert.equal(h.frames.size, 0);
 	h.pointer("pointerleave");
-	h.flush(5740);
+	finishSteering(h, stationaryAt);
 	assert.deepEqual(h.dots(), rest);
 	assert.equal(h.frames.size, 0);
 	h.theme({ color: "new near", outlineColor: "new far" });
@@ -483,6 +511,141 @@ test("mouse input eases to a clamped pose, repaints theme/resize, and rests afte
 	assert.equal(h.canvas.width, 600);
 	assert.ok(h.dots().every(({ x }) => x < 400));
 	assert.equal(h.frames.size, 0);
+	h.stop();
+});
+
+test("first and sustained pointer samples change painted geometry before the stream stops", async (t) => {
+	let settledGeometry;
+	for (const [inputHz, displayHz] of [
+		[125, 60],
+		[240, 120],
+		[1000, 144],
+	]) {
+		await t.test(
+			`${inputHz} Hz raw + frame-aligned input / ${displayHz} Hz display`,
+			(stream) => {
+				const h = fixture();
+				h.intersect(true);
+				h.flush(4500);
+				const start = 5000;
+				const rest = h.dots();
+				const before = h.paints();
+				let firstChange;
+				let firstTravel;
+				let changes = 0;
+				let previous = rest;
+				let nextInput = 1;
+				const send = (elapsed, time) =>
+					h.pointer("pointermove", 970 + elapsed / 2, 440, "mouse", time);
+				for (let i = 1; i <= displayHz / 2; i++) {
+					const elapsed = (1000 * i) / displayHz;
+					while ((1000 * nextInput) / inputHz < elapsed) {
+						const sample = (1000 * nextInput++) / inputHz;
+						send(sample, start + sample);
+					}
+					// Browser input can be delivered immediately before rAF. Pin that
+					// ordering and timestamp on every frame, as well as raw-rate bursts.
+					send(elapsed, start + elapsed);
+					const painted = h.paints();
+					h.flush(start + elapsed);
+					assert.ok(h.paints() - painted <= 1);
+					if (!isDeepStrictEqual(h.dots(), previous)) {
+						firstChange ??= elapsed;
+						firstTravel ??= Math.abs(lowerLobe(h.dots()) - lowerLobe(rest));
+						changes++;
+					}
+					previous = h.dots();
+				}
+				const paints = h.paints() - before;
+				const atEndOfInput = h.dots();
+				stream.diagnostic(
+					`first change ${firstChange?.toFixed(2) ?? "none"} ms / ${firstTravel?.toFixed(2) ?? "0"} CSS px at the lobe, ${changes} changed geometries / ${paints} paints by 500 ms`,
+				);
+				assert.ok(
+					firstChange <= 1000 / displayHz,
+					"visible on the first eligible frame",
+				);
+				assert.ok(
+					firstTravel > 1,
+					"first step moves actual ink, not just a float",
+				);
+				assert.ok(
+					changes >= 28,
+					"changes throughout the stream, not just after release",
+				);
+				assert.ok(
+					Math.abs(paints - 30) <= 1,
+					"bounded to the existing paint cadence",
+				);
+				const settleTime = finishSteering(h, start + 500, displayHz);
+				const finalTravel = Math.abs(lowerLobe(h.dots()) - lowerLobe(rest));
+				stream.diagnostic(
+					`final travel ${finalTravel.toFixed(2)} CSS px at the lobe, idle after ${settleTime.toFixed(2)} ms`,
+				);
+				assert.notDeepEqual(
+					h.dots(),
+					atEndOfInput,
+					"last target continues settling after input stops",
+				);
+				settledGeometry ??= h.dots();
+				assert.deepEqual(
+					h.dots(),
+					settledGeometry,
+					"same target at every rate",
+				);
+				assert.deepEqual(
+					h.reads(),
+					[1, 1],
+					"the stream reuses the cached bounds and palette",
+				);
+				h.stop();
+			},
+		);
+	}
+});
+
+test("tiny bursts that settle in one step still share the paint deadline", () => {
+	const h = fixture();
+	h.intersect(true);
+	h.flush(4500);
+	const before = h.paints();
+	for (let i = 1; i <= 72; i++) {
+		const now = 5000 + (1000 * i) / 144;
+		h.pointer("pointermove", 650 + i / 10, 250, "mouse", now);
+		h.flush(now);
+	}
+	const paints = h.paints() - before;
+	assert.ok(Math.abs(paints - 30) <= 1, `144 Hz quick wakes painted ${paints}`);
+	finishSteering(h, 5500, 144);
+	h.stop();
+});
+
+test("a horizontal reversal turns smoothly on the next paint and reaches the other edge", () => {
+	const h = fixture();
+	h.intersect(true);
+	h.flush(4500);
+	const rest = h.dots();
+	const neutral = lowerLobe(rest);
+	h.pointer("pointermove", 1290, 250, "mouse", 5000);
+	const rightAt = 5000 + finishSteering(h, 5000);
+	const right = lowerLobe(h.dots());
+	h.pointer("pointermove", 10, 250, "mouse", rightAt + 1000);
+	h.flush(rightAt + 1000);
+	const first = lowerLobe(h.dots());
+	assert.ok(
+		first > Math.min(right, neutral) && first < Math.max(right, neutral),
+	);
+	const secondAt = rightAt + 1000 + 1000 / 60;
+	h.flush(secondAt);
+	const second = lowerLobe(h.dots());
+	assert.ok(Math.sign(second - first) === Math.sign(first - right));
+	const finish = secondAt + finishSteering(h, secondAt);
+	const left = lowerLobe(h.dots());
+	assert.ok(Math.sign(left - neutral) === -Math.sign(right - neutral));
+	assert.ok(Math.sign(left - second) === Math.sign(second - first));
+	h.pointer("pointercancel", 10, 250);
+	finishSteering(h, finish, 144);
+	assert.deepEqual(h.dots(), rest);
 	h.stop();
 });
 
@@ -506,23 +669,33 @@ test("light paper lifts only mid-ink levels and never changes grain geometry", (
 	h.stop();
 });
 
-test("late input has its own easing clock and does not snap the arrival", () => {
+test("late input advances immediately without consuming the arrival clock or snapping", () => {
 	const h = fixture();
+	const control = fixture();
 	h.intersect(true);
-	h.flush(4200);
-	const unsteered = h.dots();
-	h.pointer("pointermove", 1290, 450);
-	h.flush(4200);
-	assert.deepEqual(
-		h.dots(),
-		unsteered,
-		"the new input starts from the painted roll",
-	);
+	control.intersect(true);
+	for (const now of [4400, 4417, 4433, 4450, 4467]) {
+		h.flush(now);
+		control.flush(now);
+	}
+	assert.deepEqual(h.dots(), control.dots());
+	h.pointer("pointermove", 1290, 250, "mouse", 4483);
+	h.flush(4483);
+	control.flush(4483);
+	const first = lowerLobe(h.dots()) - lowerLobe(control.dots());
+	assert.ok(Math.abs(first) > 1, `observed lobe delta: ${first}`);
 	h.flush(4500);
-	assert.equal(h.frames.size, 1, "only the user-initiated burst remains");
-	h.flush(4820);
-	assert.equal(h.frames.size, 0);
+	control.flush(4500);
+	assert.equal(control.frames.size, 0, "the stock arrival has completed");
+	assert.equal(h.frames.size, 1, "only the pointer remains active");
+	finishSteering(h, 4500);
+	const settled = lowerLobe(h.dots()) - lowerLobe(control.dots());
+	assert.ok(
+		Math.sign(first) === Math.sign(settled) &&
+			Math.abs(first) < Math.abs(settled),
+	);
 	h.stop();
+	control.stop();
 });
 
 test("offscreen or hidden work is cancelled and never restarts itself", () => {
