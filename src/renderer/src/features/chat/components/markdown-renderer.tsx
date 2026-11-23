@@ -6,6 +6,7 @@ import type {
 	FC,
 	ReactElement,
 	MouseEvent as ReactMouseEvent,
+	PointerEvent as ReactPointerEvent,
 } from "react";
 import {
 	memo,
@@ -875,6 +876,39 @@ const OPEN_BLOCK_COMPONENTS: Components = {
 	a: ({ children }) => <>{children}</>,
 };
 
+// A source batch can paint multiple Markdown leaves. Index its actual nodes
+// so compaction checks only the retiring pieces, not the whole transcript.
+const inkNodes = new WeakMap<InkBatch, Set<HTMLSpanElement>>();
+
+function selectionRanges(root: HTMLElement | null) {
+	const ranges: Range[] = [];
+	const selection = root?.ownerDocument.getSelection();
+	if (!root || !selection) return ranges;
+	for (let i = 0; i < selection.rangeCount; i++) {
+		const range = selection.getRangeAt(i);
+		if (range.intersectsNode(root)) ranges.push(range);
+	}
+	return ranges;
+}
+
+function anchorsSelection(batch: InkBatch, ranges: readonly Range[]) {
+	if (ranges.length === 0) return false;
+	for (const span of inkNodes.get(batch) ?? []) {
+		const before = span.previousSibling;
+		// The preceding text can grow when this boundary disappears. Retain
+		// that boundary as well if a range or caret is in the preceding node.
+		if (
+			ranges.some(
+				(range) =>
+					range.intersectsNode(span) ||
+					(before !== null && range.intersectsNode(before)),
+			)
+		)
+			return true;
+	}
+	return false;
+}
+
 const AnimatedInk = memo(function AnimatedInk({
 	text,
 	batch,
@@ -887,10 +921,26 @@ const AnimatedInk = memo(function AnimatedInk({
 			? undefined
 			: `${batch.paintedAt - performance.now()}ms`,
 	);
+	const ref = useRef<HTMLSpanElement>(null);
+	useLayoutEffect(() => {
+		const span = ref.current;
+		if (!span) return;
+		const nodes = inkNodes.get(batch) ?? new Set<HTMLSpanElement>();
+		inkNodes.set(batch, nodes);
+		nodes.add(span);
+		return () => {
+			nodes.delete(span);
+		};
+	}, [batch]);
 	return (
 		<span
-			className="lo-stream-ink"
-			style={delay === undefined ? undefined : { animationDelay: delay }}
+			ref={ref}
+			className={batch.static ? undefined : "lo-stream-ink"}
+			style={
+				batch.static || delay === undefined
+					? undefined
+					: { animationDelay: delay }
+			}
 		>
 			{text}
 		</span>
@@ -1115,9 +1165,13 @@ type PaintedStream = {
 	openEnd: number;
 	openInk: readonly InkBatch[] | undefined;
 	pendingStart: number;
+	pendingSource: string | null;
 	pendingInk: readonly InkBatch[] | undefined;
 	closedEnd: number;
-	closedElements: readonly ReactElement[];
+	closedElements: readonly ReactElement<{
+		source: string;
+		ink?: readonly InkBatch[];
+	}>[];
 	animateInk: boolean;
 };
 
@@ -1149,6 +1203,28 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 }) => {
 	const painted = useRef<PaintedStream | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
+	// During a local pointer gesture, a collapsed selection can still be the
+	// start of a drag. End the hold even if the pointer is released outside.
+	const drag = useRef<AbortController | null>(null);
+	useEffect(() => () => drag.current?.abort(), []);
+	const beginDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+		if (!event.isPrimary || event.button !== 0) return;
+		const win = event.currentTarget.ownerDocument.defaultView;
+		if (!win) return;
+		drag.current?.abort();
+		const hold = new win.AbortController();
+		const pointerId = event.pointerId;
+		drag.current = hold;
+		const release = (end: Event) => {
+			if ("pointerId" in end && end.pointerId !== pointerId) return;
+			hold.abort();
+			if (drag.current === hold) drag.current = null;
+		};
+		const options = { capture: true, signal: hold.signal };
+		win.addEventListener("pointerup", release, options);
+		win.addEventListener("pointercancel", release, options);
+		win.addEventListener("blur", release, options);
+	};
 	const scannerRef = useRef<BlockScanner | null>(null);
 	if (scannerRef.current === null) {
 		scannerRef.current = createBlockScanner();
@@ -1199,17 +1275,39 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	const freshAt = canReveal ? (previous?.content.length ?? 0) : content.length;
 	const newBatches: InkBatch[] = [];
 	const now = performance.now();
-	let preserveSelection: boolean | undefined;
-	const inkFor = (source: string, start: number) => {
-		if (!animateInk) return undefined;
+	let ranges: Range[] | undefined;
+	const inkFor = (source: string, start: number, key: number) => {
+		// Eligibility controls minting, not DOM ownership. A gap or rewrite
+		// elsewhere cannot take the already painted segments from this block.
+		const oldClosed = previous?.closedElements[key];
 		let prior =
-			!extendsPaint || !previous.animateInk
-				? NO_INK
-				: ((previous.openStart === start
-						? previous.openInk
-						: previous.pendingStart === start
-							? previous.pendingInk
-							: undefined) ?? NO_INK);
+			previous?.openStart === start &&
+			(extendsPaint ||
+				source === previous.content.slice(start, previous.openEnd))
+				? previous.openInk
+				: previous?.pendingStart === start && source === previous.pendingSource
+					? previous.pendingInk
+					: oldClosed?.props.source === source
+						? oldClosed.props.ink
+						: undefined;
+		// Keep the same React leaf type even when starting from a static seed;
+		// the first new sibling must not replace its existing text node.
+		prior ??= NO_INK;
+		if (!canReveal) {
+			// Catch-up may extend or reparent an existing span. Keep its key
+			// and boundary, but settle this block's ink without replay on resume.
+			if (
+				previous?.openStart === start &&
+				start + source.length > previous.openEnd &&
+				extendsPaint &&
+				prior.some((batch) => !batch.static)
+			) {
+				prior = prior.map((batch) =>
+					batch.static ? batch : { ...batch, static: true },
+				);
+			}
+			return prior;
+		}
 		// Trailing whitespace was trimmed in the previous open block. Its
 		// first visible appearance belongs to this append, not the old node.
 		const freshSource =
@@ -1224,18 +1322,16 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 			now - (prior[expired].paintedAt ?? now) >= INK_DURATION_MS
 		)
 			expired++;
-		if (expired > 0) {
-			// Don't unwrap a node that may hold a selection, including the
-			// collapsed anchor where a new pointer drag is beginning. The next
-			// append after selection can compact it; no extra timer or commit.
-			if (preserveSelection === undefined) {
-				const selection = rootRef.current?.ownerDocument.getSelection();
-				preserveSelection =
-					!!selection &&
-					(!selection.isCollapsed ||
-						rootRef.current?.contains(selection.anchorNode) === true);
-			}
-			if (!preserveSelection) prior = prior.slice(expired);
+		if (expired > 0 && drag.current === null) {
+			ranges ??= selectionRanges(rootRef.current);
+			const activeRanges = ranges;
+			prior =
+				activeRanges.length === 0
+					? prior.slice(expired)
+					: prior.filter(
+							(batch, i) =>
+								i >= expired || anchorsSelection(batch, activeRanges),
+						);
 		}
 		const cut = nextInkStart(source, first);
 		if (cut === null) return prior;
@@ -1244,27 +1340,42 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		return [...prior, batch];
 	};
 
-	// Reuse the actual closed elements, not just their memoised parses. On a
-	// tail-only commit React no longer needs a new element for each old block.
-	// A non-append correction invalidates the prefix and all of its provenance.
-	const retained =
-		extendsPaint && previous.animateInk === animateInk ? previous : null;
-	let closedEnd = retained?.closedEnd ?? 0;
-	let closedElements = retained?.closedElements ?? [];
+	// Append reuses the closed array without revisiting old blocks. On a
+	// rewrite the scanner has reset; reuse only same-key, same-source blocks
+	// it actually closed again. Changed Markdown still goes through the parser.
+	let closedEnd = extendsPaint ? previous.closedEnd : 0;
+	let closedElements = extendsPaint ? previous.closedElements : [];
 	if (closedElements.length < scanner.blocks.length) {
 		const next = closedElements.slice();
 		for (let key = next.length; key < scanner.blocks.length; key++) {
 			const source = scanner.blocks[key];
 			const start = content.indexOf(source, closedEnd);
-			const ink = inkFor(source, start);
-			next.push(<ParsedBlock key={key} source={source} closed ink={ink} />);
+			const old = previous?.closedElements[key];
+			next.push(
+				!extendsPaint && old?.props.source === source ? (
+					old
+				) : (
+					<ParsedBlock
+						key={key}
+						source={source}
+						closed
+						ink={inkFor(source, start, key)}
+					/>
+				),
+			);
 			closedEnd = start + source.length;
 		}
 		closedElements = next;
 	}
-	const openInk = inkFor(tail, openStart);
+	const openInk = inkFor(
+		tail,
+		openStart,
+		closedElements.length + Number(pendingClosed !== null),
+	);
 	const pendingInk =
-		pendingClosed === null ? undefined : inkFor(pendingClosed, blockStart);
+		pendingClosed === null
+			? undefined
+			: inkFor(pendingClosed, blockStart, closedElements.length);
 	useLayoutEffect(() => {
 		const now = performance.now();
 		for (const batch of newBatches) batch.paintedAt ??= now;
@@ -1274,6 +1385,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 			openEnd: tailEnd,
 			openInk,
 			pendingStart: blockStart,
+			pendingSource: pendingClosed,
 			pendingInk,
 			closedElements,
 			closedEnd,
@@ -1285,6 +1397,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	return (
 		<div
 			ref={rootRef}
+			onPointerDownCapture={beginDrag}
 			className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
 			style={style}
 		>
@@ -1294,8 +1407,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 			 * by slot AND key: a block moving from the open slot to the pending slot
 			 * to the array was a remount each time (every block was rendered twice,
 			 * measured by `streamingRenderStats`), which is a DOM replacement under
-			 * the reader. Blocks are append-only, so the index is a stable identity:
-			 * block n is the same block for the life of the message, and the open
+			 * the reader. During an append the index stays stable, and the open
 			 * block's key is the index it will hold once closed.
 			 */}
 			{[

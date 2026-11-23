@@ -281,6 +281,147 @@ test("a genuinely new stream fades once; a split Arabic word or emoji stays in o
 		assert.equal(container.querySelector(".lo-stream-ink"), null);
 	}));
 
+test("unmodified selected ink survives a gap and a later paragraph correction", () =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		const selection = document.getSelection();
+		const seed = "Read this new sentence.";
+		await paint(seed, { revealOnMount: true });
+		const first = container.querySelector(".lo-stream-ink");
+		const node = first.firstChild;
+		selection.setBaseAndExtent(node, 0, node, 4);
+		await paint(seed, { animateInk: false });
+		assert.equal(selection.toString(), "Read");
+		assert.ok(selection.anchorNode === node, "gap preserves the exact anchor");
+
+		// A catch-up chunk cannot inherit even a still-running old animation.
+		await paint(`${seed} Catch-up.`, { animateInk: false });
+		assert.ok(
+			container.querySelector("p > span") === first,
+			"catch-up keeps the span",
+		);
+		assert.equal(container.querySelector(".lo-stream-ink"), null);
+		await paint(`${seed} Catch-up.`);
+		await paint(`${seed} Catch-up. **new** complete prose.\n\nTail draft.\n`);
+		const selected = container.querySelector(
+			"strong .lo-stream-ink",
+		).firstChild;
+		selection.setBaseAndExtent(selected, 0, selected, 3);
+		const link = "[doc](https://example.invalid)";
+		const corrected = `${seed} Catch-up. **new** complete prose.\n\nTail ${link}.`;
+		await paint(corrected);
+		assert.equal(selection.toString(), "new");
+		assert.ok(
+			selection.anchorNode === selected,
+			"correction preserves the exact anchor",
+		);
+		assert.equal(
+			container.querySelector("p:nth-child(2)").textContent,
+			"Tail doc.",
+		);
+		assert.equal(container.querySelector("p:nth-child(2) a"), null);
+		await paint(`${corrected}\n\nFollowing paragraph.\n`);
+		assert.equal(
+			container.querySelector("p:nth-child(2) a").href,
+			"https://example.invalid/",
+		);
+		assert.ok(
+			selection.anchorNode === selected,
+			"correction preserves the exact anchor",
+		);
+	}));
+
+test("Japanese chunks ink just the new text; Latin and combining sequences stay joined", (t) =>
+	withLiveRenderer(async ({ container, paint }) => {
+		let tick = 0;
+		t.mock.method(performance, "now", () => tick);
+		let source = "";
+		const pieces = [
+			"これは",
+			"テストです。",
+			"次の文が出ます。",
+			"さらに続きます。",
+		];
+		for (const piece of pieces) {
+			tick += 500;
+			source += piece;
+			await paint(source, { revealOnMount: true });
+			assert.deepEqual(
+				Array.from(
+					container.querySelectorAll(".lo-stream-ink"),
+					(node) => node.textContent,
+				),
+				[piece],
+			);
+			assert.equal(container.textContent, source);
+		}
+		await paint("of", { key: "ligature", revealOnMount: true });
+		const word = container.querySelector(".lo-stream-ink");
+		await paint("office cafe", { key: "ligature" });
+		assert.equal(word.textContent, "office");
+		const cafe = word.nextSibling;
+		await paint("office cafe\u0301 👩", { key: "ligature" });
+		assert.equal(cafe.textContent, " cafe\u0301");
+		const emoji = cafe.nextSibling;
+		await paint("office cafe\u0301 👩🏽‍💻", { key: "ligature" });
+		assert.equal(emoji.textContent, " 👩🏽‍💻");
+		assert.equal(container.textContent, "office cafe\u0301 👩🏽‍💻");
+	}));
+
+test("compaction keeps a local selected batch and its boundary, not unrelated wrappers", (t) =>
+	withLiveRenderer(async ({ container, document, paint }) => {
+		let tick = 0;
+		t.mock.method(performance, "now", () => tick);
+		const outside = document.body.appendChild(document.createElement("p"));
+		outside.textContent = "Outside the transcript";
+		const selection = document.getSelection();
+		for (const where of ["outside", "caret", "range", "drag"]) {
+			let source = "Stable seed.";
+			const props = { key: where };
+			await paint(source, props);
+			const stable = container.querySelector("p").firstChild;
+			source += " selection";
+			await paint(source, props);
+			const inked = container.querySelector(".lo-stream-ink").firstChild;
+			const node =
+				where === "outside"
+					? outside.firstChild
+					: where === "range"
+						? inked
+						: stable;
+			const end = where === "caret" || where === "drag" ? 0 : 7;
+			selection.setBaseAndExtent(node, 0, node, end);
+			const win = document.defaultView;
+			const dispatch = (target, type) => {
+				const event = new win.MouseEvent(type, { bubbles: true, button: 0 });
+				Object.defineProperties(event, {
+					isPrimary: { value: true },
+					pointerId: { value: 1 },
+				});
+				target.dispatchEvent(event);
+			};
+			if (where === "drag")
+				dispatch(container.querySelector("p"), "pointerdown");
+			for (let i = 0; i < 105; i++) {
+				if (where === "drag" && i === 5) {
+					assert.equal(container.querySelectorAll(".lo-stream-ink").length, 6);
+					dispatch(outside, "pointerup");
+				}
+				tick += 150;
+				source += ` batch${i}`;
+				await paint(source, props);
+				if (where === "drag" && i < 5) continue;
+				const max = where === "outside" ? 1 : where === "range" ? 3 : 2;
+				assert.ok(
+					container.querySelectorAll(".lo-stream-ink").length <= max,
+					where,
+				);
+			}
+			assert.equal(container.textContent, source);
+			assert.ok(selection.anchorNode === node, where);
+			assert.equal(selection.toString(), node.textContent.slice(0, end), where);
+		}
+	}));
+
 test("growing a direct fence updates its literal, not the Markdown lead", () =>
 	withLiveRenderer(async ({ container, paint }) => {
 		let source = "Stable **lead** before the code.\n```ts\nconst initial = 1;";

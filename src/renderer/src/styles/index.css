@@ -16,16 +16,19 @@
 		opacity: 1;
 	}
 }
-/* Incoming prose and passive rows are readable on their first frame, even on
- * a slow client. Their geometry is final immediately. Use the global reduced
- * motion duration cap rather than cancelling/restarting on preference changes. */
+/* Inline prose starts higher than a passive row: 0.8 clears 4.5:1 for the
+ * 59 generated theme ink/surface pairs on their solid-surface model. Both
+ * keep final geometry and use the global Reduce Motion cap. */
 @keyframes lo-stream-ink {
 	from {
-		opacity: 0.55;
+		opacity: var(--lo-stream-ink-from, 0.55);
 	}
 	to {
 		opacity: 1;
 	}
+}
+.lo-stream-ink {
+	--lo-stream-ink-from: 0.8;
 }
 .lo-stream-ink,
 .lo-transcript-arrival {

@@ -5,6 +5,8 @@ export type InkBatch = {
 	start: number;
 	/** Clock starts at commit, not when React starts rendering. */
 	paintedAt?: number;
+	/** Keep the committed boundary, but never fade text appended during recovery. */
+	static?: true;
 };
 
 // The shared --duration-fast motion token (styles/index.css). CSS still owns
@@ -14,6 +16,17 @@ export const INK_DURATION_MS = 120;
 
 const WORD_GAP = /[ \t\n\r]/;
 const GRAPHEME_TAIL = /[\p{M}\p{Grapheme_Extend}\p{Emoji_Modifier}\u200d]/u;
+// Han/kana and their sentence separators can take a boundary without a space.
+// Require this on BOTH sides so this never introduces an in-word span for a
+// joining or ligature-forming script, or splits an emoji/ZWJ sequence.
+const UNSPACED_PROSE =
+	/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}、。！？]$/u;
+
+function afterUnspacedProse(source: string, index: number) {
+	const last = source.charCodeAt(index - 1);
+	const start = last >= 0xdc00 && last <= 0xdfff ? index - 2 : index - 1;
+	return UNSPACED_PROSE.test(source.slice(start, index));
+}
 
 /**
  * One entrance per committed batch, not per character/word. If a delta
@@ -32,7 +45,10 @@ export function nextInkStart(source: string, from: number): number | null {
 		const next = String.fromCodePoint(source.codePointAt(i) ?? 0);
 		if (
 			!GRAPHEME_TAIL.test(next) &&
-			(gap !== null || i === 0 || WORD_GAP.test(source[i - 1]))
+			(gap !== null ||
+				i === 0 ||
+				WORD_GAP.test(source[i - 1]) ||
+				(UNSPACED_PROSE.test(next) && afterUnspacedProse(source, i)))
 		) {
 			// Include newly exposed separating whitespace in the new span, so
 			// React doesn't write even one character into the old selected node.
