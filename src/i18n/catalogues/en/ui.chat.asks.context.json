@@ -89,9 +89,6 @@
 	"ui.chat.asks.other_label": {
 		"note": "Answer option that is not one of the offered choices; also the label of that answer in the summary."
 	},
-	"ui.chat.asks.urgent": {
-		"note": "Screen-reader-only prefix marking the ask as urgent."
-	},
 	"ui.chat.asks.no_answer": {
 		"note": "Shown in an ask's summary when the reader answered nothing."
 	},
@@ -305,7 +302,7 @@
 		"role": "warning badge on an open ask card, after the status sentence",
 		"tone": "one word, sentence case, no trailing period",
 		"length": "One word.",
-		"note": "The visible word for urgency: the ask's time window is short. Distinct from ui.chat.asks.urgent, which is a screen-reader-only sentence that ends in a period. The badge and the icon's warning colour carry the state together, never colour alone.",
+		"note": "The visible word for urgency: the ask's time window is short. The badge and the icon's warning colour carry the state together, never colour alone.",
 		"placeholders": {}
 	},
 	"ui.chat.asks.copy_id": {

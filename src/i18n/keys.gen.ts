@@ -5143,7 +5143,6 @@ export type MessageParams = {
 	"ui.chat.asks.status.withdrawn": undefined;
 	"ui.chat.asks.status.withdrawn_label": undefined;
 	"ui.chat.asks.update_answer": undefined;
-	"ui.chat.asks.urgent": undefined;
 	"ui.chat.asks.urgent_label": undefined;
 	"ui.chat.attachment_refusal.cannot_upload": undefined;
 	"ui.chat.attachment_refusal.clause.read": { name: string };

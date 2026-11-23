@@ -94,6 +94,16 @@ export const DrawerTabs: FC<{
 		{ id: "all", label: t("ui.notifications.drawer.tab.all"), count: 0 },
 	];
 	const shown = sessionless ? tabs.filter((entry) => entry.id === "all") : tabs;
+	/*
+	 * THE CYCLE VISITS ONLY THE TABS THAT ARE DRAWN (agent review round 1, m5). The
+	 * strip stopped painting `All conversations` when that door moved into the bar
+	 * (S4), but `shown` still carried it, so ArrowRight from Updates walked onto a
+	 * stop with no control to land on: `onTab("all")` opened the fleet drawer and the
+	 * focus hand-off below queried an element that no longer existed. The quiet link
+	 * in the bar is the door to that scope now, so the keyboard must not invent a
+	 * second one - the cycle drops it rather than the strip keeping a hidden stop.
+	 */
+	const cycle = shown.filter((entry) => entry.id !== "all");
 	/* Ctrl+Tab / Ctrl+Shift+Tab and the arrows cycle (design § 18). */
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 		const step =
@@ -107,7 +117,7 @@ export const DrawerTabs: FC<{
 		if (step === 0) return;
 		event.preventDefault();
 		const index = shown.findIndex((entry) => entry.id === tab);
-		const next = shown[(index + step + shown.length) % shown.length];
+		const next = cycle[(index + step + cycle.length) % cycle.length];
 		onTab(next.id);
 		(
 			event.currentTarget.querySelector(

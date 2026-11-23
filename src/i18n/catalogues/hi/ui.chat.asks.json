@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "हटाएँ…",
 	"ui.chat.asks.other_label": "अन्य",
 	"ui.chat.asks.recommended": "सुझाया गया",
-	"ui.chat.asks.urgent": "ज़रूरी।",
 	"ui.chat.asks.no_answer": "कोई जवाब नहीं दिया गया",
 	"ui.chat.asks.changed_handoff": "बदला गया — एजेंट को अभी यह नहीं सौंपा गया।",
 	"ui.chat.asks.send_answer": "जवाब भेजें",

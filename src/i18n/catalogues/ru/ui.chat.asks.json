@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "Убрать…",
 	"ui.chat.asks.other_label": "Другое",
 	"ui.chat.asks.recommended": "Рекомендуется",
-	"ui.chat.asks.urgent": "Срочно.",
 	"ui.chat.asks.no_answer": "Ответ не дан",
 	"ui.chat.asks.changed_handoff": "Изменено — агенту ещё не передано.",
 	"ui.chat.asks.send_answer": "Отправить ответ",

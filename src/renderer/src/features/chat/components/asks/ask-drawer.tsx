@@ -126,6 +126,7 @@ import {
 	askDrawerUnavailableLine,
 	askDrawerUnreadLine,
 	askQueueView,
+	askScopeLine,
 	askScopeSubject,
 	noopDraftChange,
 } from "../../ask-queue";
@@ -133,6 +134,7 @@ import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
 import { useAskActionsHeight } from "./ask-bounds";
 import { AskPanel, type AskPanelProps } from "./ask-panel";
+import { AsksScopeIcon } from "./asks-scope-icon";
 
 /**
  * What "the drawer's first control" means when focus enters it.
@@ -1260,13 +1262,15 @@ export const AskDrawer = ({
 					 * BAR's reading and not the list region's name (see the region's own note);
 					 * the two say the same scope and count different things on purpose.
 					 *
-					 * TWO REGISTERS, ONE LINE (design spec S4). Below 520px of drawer the
-					 * subject is the first thing to go, so the bar reads `1 outstanding`
-					 * instead of cutting a word off `This conversation`. The tab strip already
-					 * names the list, the region's own `aria-label` names the scope for assistive
-					 * tech, and the clause is the half that changes with the queue. The
-					 * separator stays a sibling of the subject, so it leaves with it rather than
-					 * dangling at a wrapped edge.
+					 * TWO REGISTERS, ONE LINE (design spec S4). At 520px of drawer and up the bar
+					 * carries the locale-owned whole (`askScopeLine`, one keyed phrase so a
+					 * language can order the two halves its own way) and truncates it as a unit;
+					 * below that the subject would eat the count, which is the half that changes
+					 * with the queue, so only the clause is drawn and the SCOPE GLYPH carries the
+					 * subject (agent review round 1, m2): the bar used to read `3 outstanding`
+					 * for both scopes, and 496px is the common width at a 1280 window. The glyph
+					 * is the app's own mark for this pair (`AsksScopeIcon`, the rail door's) and
+					 * a compact marker rather than copy, so no new key was needed.
 					 */
 					data-ask-scope=""
 				>
@@ -1274,16 +1278,24 @@ export const AskDrawer = ({
 						<span className="truncate">{askScopeSubject(scope)}</span>
 					) : (
 						<>
-							<span className="hidden shrink-0 @min-[520px]/asks:inline">
-								{askScopeSubject(scope)}
+							<AsksScopeIcon
+								scope={scope}
+								aria-hidden="true"
+								size={14}
+								className="shrink-0 @min-[520px]/asks:hidden"
+							/>
+							<span
+								data-ask-scope-line=""
+								className="hidden min-w-0 truncate @min-[520px]/asks:inline"
+							>
+								{askScopeLine(scope, view)}
 							</span>
 							<span
-								aria-hidden="true"
-								className="hidden shrink-0 @min-[520px]/asks:inline"
+								data-ask-scope-clause=""
+								className="min-w-0 truncate @min-[520px]/asks:hidden"
 							>
-								{" \u00b7 "}
+								{scopeClause}
 							</span>
-							<span className="min-w-0 truncate">{scopeClause}</span>
 						</>
 					)}
 				</span>

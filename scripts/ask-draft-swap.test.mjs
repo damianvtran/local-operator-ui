@@ -954,8 +954,18 @@ test("the bar counts the Pending half, and a timed-out-only drawer is settled (d
 		}),
 	);
 	const scope = view.container.querySelector("[data-ask-scope]");
+	/*
+	 * THE WIDE REGISTER, not the bar's whole text: below its 520px breakpoint the bar
+	 * draws the clause alone, so both registers are in the DOM at once and only the
+	 * marked one can be read as the sentence. `[data-ask-scope-clause]` is the narrow
+	 * half (see the bar's own note).
+	 */
+	assert.ok(
+		scope?.querySelector("svg"),
+		"below the 520px register the scope glyph is what names the queue",
+	);
 	assert.equal(
-		scope?.textContent,
+		scope?.querySelector("[data-ask-scope-line]")?.textContent,
 		"This conversation · 1 question waiting",
 		"the timed-out ask is a settled row, and settled rows are not in the title",
 	);
@@ -964,7 +974,7 @@ test("the bar counts the Pending half, and a timed-out-only drawer is settled (d
 		h(AskDrawer, { frontend: frontend([movedOn]), scope: "session" }),
 	);
 	assert.equal(
-		lapsedOnly.container.querySelector("[data-ask-scope]")?.textContent,
+		lapsedOnly.container.querySelector("[data-ask-scope-line]")?.textContent,
 		"This conversation · All asks settled",
 	);
 	const pendingChip = [
@@ -2432,5 +2442,78 @@ test("a door-opened drawer lands on the answer, not on the suggested command's C
 		{ tag: withCommand.tag, text: withCommand.text },
 		{ tag: plain.tag, text: plain.text },
 		"and lands where it lands on the same ask without a command",
+	);
+});
+
+/*
+ * THE SETTLED ROW'S IDENTITY IS THE ASK, NOT ITS POSITION (agent review round 1, M1).
+ *
+ * `SettledRow` owns its row's `open` state and the settled half is newest-first, so an
+ * insertion above an expanded row is an ordinary event (another ask settles) - and an
+ * unkeyed list reconciles that by POSITION, which moves the expansion onto its
+ * neighbour. The `Disclosure` used to carry `key={ask_id}`; this pins that the wrapper
+ * carries it now, with the row's own state as the witness rather than the markup.
+ */
+test("an expanded settled row stays open when a newer ask is inserted above it (agent review round 1, M1)", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([settled("declined", "a-old")]),
+			scope: "session",
+		}),
+	);
+	const triggerOf = (id) =>
+		[
+			...view.container.querySelectorAll(
+				"[data-lo-ask-settled] button[aria-expanded]",
+			),
+		].find((button) => button.getAttribute("aria-label")?.endsWith(`, ${id}`));
+	const opened = triggerOf("a-old");
+	assert.ok(opened, "the settled row is drawn");
+	await act(async () => {
+		opened.click();
+	});
+	assert.equal(
+		triggerOf("a-old")?.getAttribute("aria-expanded"),
+		"true",
+		"the row opened",
+	);
+
+	await view.rerender(
+		h(AskDrawer, {
+			frontend: frontend([
+				{
+					...settled("answered", "a-new"),
+					delivered: true,
+					created_at: TS + 10 * 60_000,
+				},
+				settled("declined", "a-old"),
+			]),
+			scope: "session",
+		}),
+	);
+	/*
+	 * THE SAME NODE, WHICH IS THE MECHANISM RATHER THAN A SYMPTOM. React's own key
+	 * warning is a poor witness here: it is emitted once per component in a dev run, so
+	 * by the time this test renders, another test in this file has usually spent it -
+	 * measured, the warning printed from the unkeyed control run and this assertion
+	 * still read empty. A keyed child is REUSED for its ask when another is inserted
+	 * above it; an unkeyed one is reused for its POSITION, which mounts a fresh,
+	 * collapsed row for `a-old` and leaves the expansion on `a-new`.
+	 */
+	assert.equal(
+		triggerOf("a-old"),
+		opened,
+		"the expanded row is still the same row, not a fresh one in a shifted slot",
+	);
+	assert.equal(
+		triggerOf("a-old")?.getAttribute("aria-expanded"),
+		"true",
+		"the open row is the ask that was opened, whatever arrived above it",
+	);
+	assert.equal(
+		triggerOf("a-new")?.getAttribute("aria-expanded"),
+		"false",
+		"the newcomer takes its own state, not the position's",
 	);
 });

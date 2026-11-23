@@ -1457,6 +1457,19 @@ const AskRow = ({
 					.join(" ")
 			: null;
 
+	/*
+	 * THE CARD'S FOOT, ONE SPELLING (agent review round 1, m1). Two states draw it: a
+	 * settled frame, and a live card whose dismiss chooser has taken the action row's
+	 * place. The foot is where a live card names the string a user quotes back at the
+	 * agent, so opening the chooser must not take it off screen - the band that held
+	 * it is not drawn while the chooser is up (`dismissOpen` gates the band itself).
+	 */
+	const foot = (
+		<div data-lo-ask-foot="" className="flex min-h-6 items-center justify-end">
+			<AskId id={ask.ask_id} />
+		</div>
+	);
+
 	return (
 		<div
 			ref={rowRef}
@@ -1658,13 +1671,15 @@ const AskRow = ({
 						/*
 						 * A HAIRLINE BETWEEN QUESTIONS (design spec, D4/D14). Four questions 8px
 						 * apart read as one wall of text; each question after the first starts
-						 * with a rule and 12px of air above it. The rule is decoration
-						 * (`border-hairline`), never a control boundary.
+						 * with a rule and the same 8px of air above it that the card's own `gap-2`
+						 * puts below the previous one (design review round 1, D4: 12px above and
+						 * 8px below put the rule nearer the question it separated). The rule is
+						 * decoration (`border-hairline`), never a control boundary.
 						 */
 						<div
 							key={question.id}
 							className={
-								index === 0 ? undefined : "border-hairline border-t pt-3"
+								index === 0 ? undefined : "border-hairline border-t pt-2"
 							}
 						>
 							<AskQuestionField
@@ -1798,7 +1813,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy || !retryPending}
 							onClick={outcome.retry}
-							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-meta hover:bg-sunken"
+							className="min-h-6 rounded-md border border-control px-2 py-1 text-ink text-meta hover:bg-row-hover"
 						>
 							{t("ui.common.actions.retry")}
 						</button>
@@ -2099,14 +2114,7 @@ const AskRow = ({
 			 * one. `justify-end` keeps it in the card's quiet corner, the same corner
 			 * the live card's foot uses.
 			 */}
-			{!canAnswer && !canDecline ? (
-				<div
-					data-lo-ask-foot=""
-					className="flex min-h-6 items-center justify-end"
-				>
-					<AskId id={ask.ask_id} />
-				</div>
-			) : null}
+			{!canAnswer && !canDecline ? foot : null}
 			{/*
 			 * THE DISMISS DOOR (harness PR #2833, SA-D5), on an OPEN ask only and only
 			 * where the caller resolved `features.ask_dismiss` — see
@@ -2165,7 +2173,7 @@ const AskRow = ({
 							}}
 							data-lo-ask-dismiss-reason={reason}
 							className={cn(
-								"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-sunken",
+								"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-row-hover",
 								busy && "text-ink-dim",
 								pressedReason === reason && "bg-sunken",
 							)}
@@ -2195,6 +2203,8 @@ const AskRow = ({
 					>
 						{t("ui.chat.asks.dismiss.cancel")}
 					</button>
+					{/* The chooser is a step, not a different card: the id stays in the foot. */}
+					{foot}
 				</div>
 			) : null}
 		</div>
@@ -2255,7 +2265,15 @@ const SettledRow = ({
 				held && "rounded-t-[9px]",
 			)}
 			chevronClassName="text-ink-muted"
-			rowClassName="min-h-7 py-1"
+			/*
+			 * TWO RAILS, NOT THREE (design review round 1, D2 = spec D14). The old row drew
+			 * the chevron on its own edge (x=33 at 400), the pill at x=48 and the card's
+			 * question at x=41 - a 7px jog between a settled row and the card it files
+			 * under. `gap-0` puts the summary's own column on the card's text rail (42 against
+			 * the card's padded 41, one pixel) and leaves the chevron as a hanging mark on
+			 * the card's BORDER rail (28), which is the outline convention this reads like.
+			 */
+			rowClassName="min-h-7 gap-0 py-1"
 			triggerLabel={label}
 			summary={summary(open)}
 		>
@@ -2863,7 +2881,14 @@ export const AskPanel = ({
 		 */
 		const dismissal = outcomes?.[presentation.ask.ask_id]?.dismissed;
 		return (
+			/*
+			 * KEYED BY THE ASK, NOT BY THE SLOT (agent review round 1, M1). `SettledRow` holds
+			 * the row's own `open` state, so an unkeyed list reconciles it by POSITION: a newer
+			 * ask settling above an expanded row moved the expansion onto its neighbour. The
+			 * old `Disclosure` carried `key={ask_id}` here; the wrapper has to carry it now.
+			 */
 			<SettledRow
+				key={presentation.ask.ask_id}
 				label={`${word} - ${question}, ${presentation.ask.ask_id}`}
 				held={held}
 				summary={(open) => (

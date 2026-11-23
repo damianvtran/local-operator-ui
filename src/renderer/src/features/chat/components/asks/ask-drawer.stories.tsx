@@ -53,6 +53,10 @@ import type {
 	PendingAsk,
 } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
+import {
+	DrawerAllConversations,
+	DrawerTabs,
+} from "../../../notifications/components/drawer-updates";
 import { AskDrawer } from "./ask-drawer";
 
 const TS = 1_760_000_000_000;
@@ -822,6 +826,33 @@ const LONG_TEXT_ASK: PendingAsk = ask({
 	],
 });
 
+/**
+ * THE SAME LONG QUESTION, ANSWERED AND DELIVERED (design review round 1, D3): the
+ * fixture the settled row's no-clamp decision needs, because a history row is the
+ * one place that question is drawn with no card around it to scroll.
+ */
+const LONG_SETTLED_ASK: PendingAsk = ask({
+	ask_id: "a-9c31",
+	status: "answered",
+	answered_at: TS + 4 * MINUTE,
+	delivered: true,
+	answers: { rollout: [LONG_LABEL_C] },
+	answered_by: { surface: "desktop" },
+	questions: [
+		{
+			id: "rollout",
+			question: LONG_QUESTION,
+			recommended: 0,
+			options: [
+				{ label: LONG_LABEL_A },
+				{ label: LONG_LABEL_B },
+				{ label: LONG_LABEL_C },
+			],
+			multi: false,
+		},
+	],
+});
+
 /** Full text at 560, a mid-band width the card must hold: nothing elides. */
 export const FullTextAtWidth: Story = {
 	args: {
@@ -1340,5 +1371,61 @@ export const CleanupUrgent: Story = {
 	args: {
 		...CleanupNarrow.args,
 		frontend: frontend([{ ...CLEANUP_ASK, urgent: true }]),
+	},
+};
+
+/**
+ * THE BAR WITH ITS THIRD CONTROL, AT THE FLOOR (design review round 1, D3).
+ *
+ * `DrawerAllConversations` is the quiet link into the fleet scope, and it is mounted
+ * only where a session drawer passes `tabs.action`. No story did, so the 40px bar
+ * carrying scope + link + close at 400 - the width where the three compete hardest,
+ * and where a long translation is likeliest to push one out - was never in a frame.
+ * The strip is drawn here too, because the link's whole reason for moving up is the
+ * row the strip no longer spends.
+ */
+export const BarAllConversationsAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([ONE, answeredAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		tabs: {
+			strip: (
+				<DrawerTabs
+					tab="asks"
+					onTab={noop}
+					asks={1}
+					unreadUpdates={0}
+					sessionless={false}
+				/>
+			),
+			body: null,
+			action: <DrawerAllConversations onSelect={noop} />,
+		},
+	},
+};
+
+/**
+ * A SETTLED ROW WITH A LONG QUESTION (design review round 1, D3).
+ *
+ * Every settled row a story rendered asked a one-line question, so the decision
+ * that rows show questions IN FULL - the answer line is the half that clamps
+ * (Ben, a-427e, 2026-11-23) - was never photographed on the fixture that tests it.
+ * This is `LONG_QUESTION` answered and delivered, closed: the row wraps to four or
+ * five lines and nothing elides.
+ */
+export const SettledRowFullTextAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([LONG_SETTLED_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
 	},
 };

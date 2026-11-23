@@ -14,7 +14,6 @@
 	"ui.chat.asks.dismiss.trigger": "Descartar…",
 	"ui.chat.asks.other_label": "Otro",
 	"ui.chat.asks.recommended": "Recomendada",
-	"ui.chat.asks.urgent": "Urgente.",
 	"ui.chat.asks.no_answer": "Sin respuesta",
 	"ui.chat.asks.changed_handoff": "Modificada — aún no se ha entregado al agente.",
 	"ui.chat.asks.send_answer": "Enviar respuesta",

@@ -952,3 +952,37 @@ test("an unknown dismissed_reason falls back to the no-reply sentence", async ()
 	assert.equal(text.includes("no longer needed"), false);
 	await rig.unmount();
 });
+
+/*
+ * THE ID SURVIVES THE STEP THE CHOOSER OPENS (agent review round 1, m1).
+ *
+ * The band that carries the card's foot is not drawn while the chooser is open - the
+ * chooser takes its place - so the id used to leave the card on the very press that
+ * begins a dismissal, and the spec's "the foot id shows in every state" was false for
+ * exactly the state where the user is about to quote it back at the agent. The foot is
+ * the card's own child now, shared by both states rather than owned by the band.
+ */
+test("the card's foot keeps the id visible while the chooser is open (agent review round 1, m1)", async () => {
+	const rig = await mount(
+		panelElement([openAsk("a-1")], { onDismiss: () => undefined }),
+	);
+	const footOf = () =>
+		rowOf(rig.container, "a-1").querySelector("[data-lo-ask-foot]");
+	assert.ok(footOf(), "the idle card draws its foot");
+
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	const foot = footOf();
+	assert.ok(foot, "the chooser is a step in the card, not a different card");
+	assert.equal(
+		foot.textContent.includes("a-1"),
+		true,
+		"the id is still on screen while the reader picks a reason",
+	);
+	assert.ok(
+		foot.querySelector('button[aria-label="Copy ask id a-1"]'),
+		"and it is still the copyable one",
+	);
+	await rig.unmount();
+});

@@ -210,6 +210,12 @@ const ReadStateProbe = () => {
 
 /** The Notifications page instead of the drawer: same transport, same cache. */
 let screenKind = "drawer";
+/**
+ * THE TABS THE KEYBOARD ASKED FOR (agent review round 1, m5). `DrawerTabs` reports the
+ * chosen tab and nothing else observable says which stop the cycle landed on, so the
+ * strip's `onTab` records here and the cycle test reads it.
+ */
+const tabCalls = [];
 const PageScreen = () => h(DRAWER.NotificationsPage, { nowMs: NOW });
 const Screen = () => {
 	if (screenKind === "page") return h(PageScreen);
@@ -225,7 +231,7 @@ const Screen = () => {
 		),
 		h(DRAWER.DrawerTabs, {
 			tab: "updates",
-			onTab: () => {},
+			onTab: (next) => tabCalls.push(next),
 			asks: 0,
 			unreadUpdates: unread,
 			sessionless: false,
@@ -1834,5 +1840,48 @@ test("QA: replay an actual core HTTP partial receipt, preserving the global fact
 		assert.equal(final.unread_count, 2);
 	} finally {
 		client.clear();
+	}
+});
+
+/*
+ * THE TAB CYCLE VISITS ONLY THE TABS THAT ARE DRAWN (agent review round 1, m5).
+ *
+ * `All conversations` left the strip for the drawer's own bar (design spec S4), but
+ * the cycle still carried it: ArrowRight from Updates called `onTab("all")` - which
+ * opens the fleet drawer - and the focus hand-off then queried a `[data-drawer-tab]`
+ * that no longer exists, so the stop was invisible, unfocusable and silent. The bar's
+ * quiet link is that scope's door now; the keyboard must not invent a second one.
+ */
+test("the tab cycle skips the All conversations stop, which the strip no longer draws", async () => {
+	tabCalls.length = 0;
+	const rig = await mount();
+	try {
+		const strip = rig.q('[role="tablist"]');
+		assert.ok(strip, "the strip is drawn");
+		assert.equal(
+			rig.q('[data-drawer-tab="all"]'),
+			null,
+			"no control carries the stop, so no cycle may land on it",
+		);
+		await act(async () => {
+			strip.parentElement.dispatchEvent(
+				new window.KeyboardEvent("keydown", {
+					key: "ArrowRight",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.deepEqual(
+			tabCalls,
+			["asks"],
+			"from Updates, forwards is Asks - never the fleet scope behind an undrawn stop",
+		);
+		assert.equal(
+			window.document.activeElement?.getAttribute("data-drawer-tab"),
+			"asks",
+			"and the keyboard lands on the tab the cycle chose",
+		);
+	} finally {
+		await rig.unmount?.();
 	}
 });
