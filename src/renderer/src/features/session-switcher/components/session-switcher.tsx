@@ -22,9 +22,14 @@
  * no focus.
  */
 
-import { ChatSessionStatus } from "@features/chat/components/chat-session-status";
+import {
+	ChatSessionStatus,
+	withQueuedAskStatus,
+} from "@features/chat/components/chat-session-status";
+import { fleetAsksBySession, useFleetAsks } from "@features/chat/fleet-asks";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { cn } from "@shared/lib/utils";
+import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { t } from "../../../../../i18n/messages";
 import type { SwitcherRow } from "../session-switcher-model";
@@ -32,6 +37,20 @@ import { useSessionSwitcherKeys } from "../use-session-switcher-keys";
 
 export function SessionSwitcher() {
 	const { visible, rows, cursor, commitAt, hoverAt } = useSessionSwitcherKeys();
+	/*
+	 * THE ROW'S STATUS MARK, derived from the queued-ask count like the sidebar's
+	 * (`withQueuedAskStatus`): a conversation whose wire code is `answer` because
+	 * an ask is QUEUED is not a blocking gate, so this surface must not draw the
+	 * amber "Answer needed" bubble for it. The count is the same fleet aggregate
+	 * the sidebar reads (`FLEET_ASKS_QUERY_KEY` is one cache entry, so this adds
+	 * no poll), and this surface has no ask mark of its own - an idle row with an
+	 * ask rests on the ring, as it does in the list.
+	 */
+	const fleetAsks = useFleetAsks();
+	const asksBySession = useMemo(
+		() => (fleetAsks.rows === null ? null : fleetAsksBySession(fleetAsks.rows)),
+		[fleetAsks.rows],
+	);
 	/* The native browser view paints above ALL DOM, so an overlay that does not
 	 * register is invisible wherever a browser pane is on screen. Same funnel as
 	 * every dialog (`useSuppressBrowserView`), one id of its own. */
@@ -88,7 +107,17 @@ export function SessionSwitcher() {
 								{rows.map((row, index) => (
 									<SwitcherRowButton
 										key={row.sessionId}
-										row={row}
+										row={
+											row.row === null
+												? row
+												: {
+														...row,
+														row: withQueuedAskStatus(
+															row.row,
+															asksBySession?.get(row.sessionId),
+														),
+													}
+										}
 										active={index === cursor}
 										onCommit={() => commitAt(index)}
 										onHover={() => hoverAt(index)}

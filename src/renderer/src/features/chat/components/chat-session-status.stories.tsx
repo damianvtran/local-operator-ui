@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import {
 	ChatAsksOutstanding,
 	ChatSessionStatus,
+	approvalAsksSentence,
 	withQueuedAskStatus,
 } from "./chat-session-status";
 
@@ -360,6 +361,61 @@ export const QueuedAskSingleMark: Story = {
 						),
 					)}
 				</div>
+			</div>
+		);
+	},
+};
+
+/**
+ * AN APPROVAL WITH A QUEUED ASK DRAWS ONE BUBBLE (operator report, 2026-11-23).
+ *
+ * `withQueuedAskStatus` returns early for any code but `answer`, so this case kept
+ * drawing two `MessageCircleQuestion` glyphs after #2053: the status cell's amber
+ * approval bubble and the ask mark's accent one - one glyph spent twice on the
+ * same row, which is what the operator reported. The APPROVAL owns the glyph
+ * (every row's state is read in the status cell), the ask mark yields, and the
+ * count moves into the row's sentence (the `sr-only` name and the row's tooltip,
+ * `approvalAsksSentence`) - so the count is still said, just not drawn twice.
+ *
+ * The sentence is printed beside each specimen because it is the half a still
+ * cannot show: the visual claim IS that the last two rows look identical, and
+ * only the words differ.
+ */
+export const ApprovalWithQueuedAsk: Story = {
+	args: { row: { session_id: "specimen" } as CanonicalSessionRow },
+	render: () => {
+		const specimens = [
+			{ label: "approval, one ask", open: 1 },
+			{ label: "approval, three asks", open: 3 },
+			{
+				label: "approval with no ask (the blocking gate alone)",
+				open: undefined,
+			},
+		];
+		const wire = () =>
+			({
+				session_id: "specimen",
+				live_state: "idle",
+				status: { code: "approval", label: "Approval needed" },
+			}) as CanonicalSessionRow;
+		return (
+			<div className="flex flex-col gap-3 bg-surface p-4 text-ink">
+				<div className="text-xs">
+					one bubble: the approval owns the glyph, the count is spoken
+				</div>
+				{specimens.map((specimen) => {
+					const drawn = withQueuedAskStatus(wire(), specimen.open);
+					return (
+						<div className="flex items-center gap-2" key={specimen.label}>
+							<ChatSessionStatus row={drawn} />
+							<ChatAsksOutstanding row={drawn} open={specimen.open} />
+							<span className="text-sm">{specimen.label}</span>
+							<span className="text-meta text-ink-muted">
+								{approvalAsksSentence(drawn)}
+							</span>
+						</div>
+					);
+				})}
 			</div>
 		);
 	},

@@ -122,6 +122,11 @@ const ROSTER = [
  * is the count the ask mark reads here (the fleet route is not mocked, so the
  * sidebar falls back to the row's field). Each row must draw ONE ask mark: a
  * ring when idle, the spinner when busy.
+ *
+ * THE APPROVAL ROWS (operator report, 2026-11-23) are the case that used to draw
+ * two bubbles: `approval` already owns the amber question glyph, so the ask mark
+ * yields it and the count is spoken in the row's sentence instead. Their frames
+ * are therefore indistinguishable from a bare approval - which is the claim.
  */
 const ASK_ROSTER = [
 	wireRow(
@@ -168,6 +173,24 @@ const ASK_ROSTER = [
 		{ code: "recent", label: "Recent" },
 		false,
 		{ live_state: "idle", pending: null },
+	),
+	wireRow(
+		"q6",
+		"Approval with an open ask",
+		1_760_000_000,
+		BARE,
+		{ code: "approval", label: "Approval needed" },
+		false,
+		{ live_state: "idle", pending: "approval", asks_open: 1 },
+	),
+	wireRow(
+		"q7",
+		"Approval with two open asks, pictured",
+		1_759_999_900,
+		PICTURED,
+		{ code: "approval", label: "Approval needed" },
+		true,
+		{ live_state: "idle", pending: "approval", asks_open: 2 },
 	),
 ];
 let activeRoster: typeof ROSTER = ROSTER;
