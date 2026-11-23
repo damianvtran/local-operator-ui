@@ -3156,8 +3156,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 4,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-es.json",
+					"receipt_sha256": "293cdd845e7384ddf8025283cc3326e6ec3f968a6813bd45f91c5dfa1600f03a",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -4291,15 +4309,33 @@
 			"locale": "es",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
-			"target_sha256": "b71b6788b8f28924511f3ececa7294c6b77759d6f094cd1e9d7fa9777c7f5e6f",
+			"target_sha256": "4b179a418ce36f34b1433e5e9ca633365fb72763823e436a35a86d0767194524",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-es.json",
+					"receipt_sha256": "293cdd845e7384ddf8025283cc3326e6ec3f968a6813bd45f91c5dfa1600f03a",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -4644,6 +4680,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
+					"target_sha256": "b71b6788b8f28924511f3ececa7294c6b77759d6f094cd1e9d7fa9777c7f5e6f",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -11258,15 +11300,33 @@
 			"locale": "es",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a79b49cdfb97ac2d5628b9012e7fca6b2d646f802da0a8b3c07e8a03abe0821",
-			"target_sha256": "97f900b73660d7ac5bb6434f2ab9de22b982ac78113cce4b337ebae41c9eb442",
+			"target_sha256": "81cb32b7c33ea4ac77376f5872a8f55f97af6502c0e407aeb6b1cf1cbceed84e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-es.json",
+					"receipt_sha256": "293cdd845e7384ddf8025283cc3326e6ec3f968a6813bd45f91c5dfa1600f03a",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -11576,6 +11636,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a79b49cdfb97ac2d5628b9012e7fca6b2d646f802da0a8b3c07e8a03abe0821",
+					"target_sha256": "97f900b73660d7ac5bb6434f2ab9de22b982ac78113cce4b337ebae41c9eb442",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -17217,8 +17283,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-fr.json",
+					"receipt_sha256": "5f0cdea7e8c378b5fcf5b671fa59cd3b2a2d1923b0d3b6e10e8d5e76c750b98b",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -18403,15 +18487,33 @@
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
-			"target_sha256": "4b62186cd526b063045ed4461ee5d2090027aa4dc8444d34bdf274571a20c4ac",
+			"target_sha256": "73d7571e222b88a76625ee4ce023ec186e2bfad65898f13c5d66ab7824c1faf6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-fr.json",
+					"receipt_sha256": "5f0cdea7e8c378b5fcf5b671fa59cd3b2a2d1923b0d3b6e10e8d5e76c750b98b",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -18784,6 +18886,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d40a6dec002642c08b7cdea304e871c87fd1a29569e22bae6a75a854a4dc30a0",
+					"target_sha256": "4b62186cd526b063045ed4461ee5d2090027aa4dc8444d34bdf274571a20c4ac",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -25769,8 +25877,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-fr.json",
+					"receipt_sha256": "5f0cdea7e8c378b5fcf5b671fa59cd3b2a2d1923b0d3b6e10e8d5e76c750b98b",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -31800,8 +31926,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-hi.json",
+					"receipt_sha256": "1002d796d37cfe410498cd62c683bbf90f325307bac34f1d56cfabe5ca068206",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -32969,8 +33113,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-hi.json",
+					"receipt_sha256": "1002d796d37cfe410498cd62c683bbf90f325307bac34f1d56cfabe5ca068206",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -40196,8 +40358,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-hi.json",
+					"receipt_sha256": "1002d796d37cfe410498cd62c683bbf90f325307bac34f1d56cfabe5ca068206",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -45922,8 +46102,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ru.json",
+					"receipt_sha256": "061b598ebe9724ec23b240238535c73af75047e7701cc1ddcd975560e70f02a5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -47067,8 +47265,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ru.json",
+					"receipt_sha256": "061b598ebe9724ec23b240238535c73af75047e7701cc1ddcd975560e70f02a5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -54154,8 +54370,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ru.json",
+					"receipt_sha256": "061b598ebe9724ec23b240238535c73af75047e7701cc1ddcd975560e70f02a5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -60097,8 +60331,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ur.json",
+					"receipt_sha256": "3ef57371a671bacb4d4ec0b2e1bec8e87c069b47360655a86bd36a72a06610c5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -61310,8 +61562,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ur.json",
+					"receipt_sha256": "3ef57371a671bacb4d4ec0b2e1bec8e87c069b47360655a86bd36a72a06610c5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -68397,8 +68667,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-ur.json",
+					"receipt_sha256": "3ef57371a671bacb4d4ec0b2e1bec8e87c069b47360655a86bd36a72a06610c5",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -74160,8 +74448,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-vi.json",
+					"receipt_sha256": "5138c282e4926fa9fbb3f0c522109fcb3795c1456b6f05fe8a22849fca1ef851",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -75341,8 +75647,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-vi.json",
+					"receipt_sha256": "5138c282e4926fa9fbb3f0c522109fcb3795c1456b6f05fe8a22849fca1ef851",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -82897,8 +83221,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-vi.json",
+					"receipt_sha256": "5138c282e4926fa9fbb3f0c522109fcb3795c1456b6f05fe8a22849fca1ef851",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -89007,8 +89349,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-zh-cn.json",
+					"receipt_sha256": "5658d5a0be8d75eb199b26c19ab71ef775221d8a864dfe1dd517240d9589ce52",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -90164,8 +90524,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "8cca634d2d29-fold3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-zh-cn.json",
+					"receipt_sha256": "5658d5a0be8d75eb199b26c19ab71ef775221d8a864dfe1dd517240d9589ce52",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -98046,8 +98424,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main d8ff920195's recorded translators (see superseded, which carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 0526fd6c2b). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "8cca634d2d29-fold3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/8cca634d2d29-fold3-zh-cn.json",
+					"receipt_sha256": "5658d5a0be8d75eb199b26c19ab71ef775221d8a864dfe1dd517240d9589ce52",
+					"scope": "delta audit of the 27 branch keys on merged bytes",
+					"note": "Third fold (origin/main d8ff920195). Independent cross-family delta audit of the branch's keys on the merged file; other keys byte-identical to audited parents."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
