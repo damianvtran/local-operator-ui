@@ -557,11 +557,7 @@ test(
 	async () => {
 		const page = await openOnA();
 		try {
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 2",
-				"Settled 0",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 2", "Settled 0"]);
 			await chooseFirstOption(page);
 			await page.press(page.buttonIn(page.card("a-1111"), "Send answer"));
 			assert.ok(
@@ -594,11 +590,7 @@ test(
 			/* Acceptance settles the user's decision; delivery is a separate window.
 			 * Keep its explicit delivery sentence and legal Change answer affordance. */
 			assert.match(a, RX_4);
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 1",
-				"Settled 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			assert.ok(page.buttonIn(page.card("a-1111"), "Change answer"));
 			await page.press(page.buttonIn(page.card("a-1111"), "Change answer"));
 			await page.press(
@@ -642,11 +634,7 @@ test("Decline settles the card as Declined", BOUNDED, async () => {
 			"open",
 			"ask B stays pending",
 		);
-		assert.deepEqual(page.filterText(), [
-			"All 2",
-			"Pending 1",
-			"Settled 1",
-		]);
+		assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 	} finally {
 		await page.unmount();
 	}
@@ -694,11 +682,7 @@ test(
 				page.pane().querySelector("[data-lo-ask-settled] button"),
 			);
 			assert.match(page.card("a-1111")?.textContent ?? "", RX_6);
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 1",
-				"Settled 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 		} finally {
 			await page.unmount();
 		}
@@ -875,11 +859,7 @@ test(
 				),
 				`delivered, ask A moves to Settled (${JSON.stringify(page.settledRows())})`,
 			);
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 1",
-				"Settled 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			/* Two near-identical asks: the settled row names its question AND its answer. */
 			const settled = page.pane().querySelector("[data-lo-ask-settled]");
 			assert.ok(settled.textContent.includes(QUESTION_A));

@@ -850,11 +850,7 @@ test("a filter whose half is empty says so, and the boundary label goes with the
 		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
 	].find((b) => (b.textContent ?? "").startsWith("Settled"));
 	if (!chip) throw new Error("the zero-count chip is not rendered");
-	assert.equal(
-		chip.textContent,
-		"Settled 0",
-		"the chip counts the empty half",
-	);
+	assert.equal(chip.textContent, "Settled 0", "the chip counts the empty half");
 	await act(async () => {
 		chip.click();
 	});

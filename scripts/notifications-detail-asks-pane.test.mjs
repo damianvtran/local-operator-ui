@@ -1268,11 +1268,7 @@ test(
 						!page.buttonIn(page.card("a-1111"), "Change answer"),
 				),
 			);
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 1",
-				"Settled 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			assert.equal(page.card("a-1111").dataset.loAskStatus, "answered");
 			assert.equal(Boolean(page.buttonIn(page.card("a-1111"), "Retry")), false);
 			assert.equal(stateBlob(page.container).includes(SECRET_VALUE), false);
@@ -1310,11 +1306,7 @@ test(
 				"a-1111",
 				"the action slot acknowledges this ask instead of substituting the unrelated pending ask",
 			);
-			assert.deepEqual(page.filterText(), [
-				"All 2",
-				"Pending 1",
-				"Settled 1",
-			]);
+			assert.deepEqual(page.filterText(), ["All 2", "Pending 1", "Settled 1"]);
 			assert.equal(page.card("a-2222").dataset.loAskStatus, "open");
 		} finally {
 			await page.unmount();
