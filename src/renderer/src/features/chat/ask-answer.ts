@@ -119,6 +119,7 @@ import type { AskDismissReason } from "./ask-queue";
  * One disposition, one predicate, one sentence — wherever the ask is painted.
  */
 import {
+	ATTESTED_DOOR,
 	answerBusyMessage,
 	answerOwnerIsBusy,
 	answerRefusedByAppContract,
@@ -1399,7 +1400,7 @@ export const dismissQueuedAsk = async (
 
 /**
  * Answer (or change the answer to) a QUEUED ask AS THE OPERATOR: the card's
- * "Confirm as operator…" door (`asks.attestedAnswer`, `src/main/ask-attest.ts`).
+ * "Confirm and send…" door (`asks.attestedAnswer`, `src/main/ask-attest.ts`).
  *
  * WHY A SEPARATE DOOR. The plain Submit/Update posts `sessions.answer`, which core
  * stamps `unverified` from a desktop the runtime cannot identify - and the
@@ -1452,6 +1453,30 @@ export const confirmQueuedAsk = async (
 			return { status: "refused" };
 		return { status: "sent" };
 	} catch (error) {
+		/*
+		 * A BUSY runtime keeps its `runtime_busy` code (muted ink, queue refresh) but is
+		 * marked as this door's, so the sentence says "confirm again in a moment"
+		 * rather than the plain path's, which implies a resend this door never makes
+		 * (UX round 1, U5).
+		 */
+		if (answerOwnerIsBusy(error) && error instanceof DesktopControlError) {
+			const detail =
+				typeof error.detail === "object" && error.detail !== null
+					? error.detail
+					: {};
+			return {
+				status: "failed",
+				request,
+				error: new DesktopControlError(
+					error.status,
+					error.message,
+					error,
+					error.code,
+					error.retryAfterMs,
+					{ ...detail, door: ATTESTED_DOOR },
+				),
+			};
+		}
 		return { status: "failed", request, error };
 	} finally {
 		lock.release();

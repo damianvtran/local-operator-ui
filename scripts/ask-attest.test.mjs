@@ -87,7 +87,11 @@ const {
 	askAttestSocketPath,
 	askForwardRequest,
 	askImageDigests,
+	askSessionLabel,
+	askSheet,
 	attestAskAnswer,
+	liveAskRow,
+	sheetText,
 	attestProvenanceRefusal,
 	dialAttest,
 	freezeAskAnswer,
@@ -191,6 +195,19 @@ const askRow = (over = {}) => ({
 
 const listed = (...asks) => ({ status: 200, body: { result: { asks } } });
 
+/** A `sessions.list` answer naming the conversation and its bound agent (S1). */
+const sessionsListed = (
+	rows = [{ id: SID, name: "Tidy old exports", binding: { agent: "cleaner" } }],
+) => ({ status: 200, body: { result: { sessions: rows } } });
+
+/** An answered row whose recorded answer was itself confirmed (a trusted stamp). */
+const answeredRow = (over = {}) =>
+	askRow({
+		status: "answered",
+		answered_by: { surface: "desktop", proof: "app-signature" },
+		...over,
+	});
+
 /** Bidi isolates (`messages.ts` isolateArguments) stripped, for text asserts. */
 const plain = (text) => text.replace(/[\u2066-\u2069]/g, "");
 
@@ -231,6 +248,7 @@ function host(overrides = {}) {
 			calls.reads += 1;
 			return listed(askRow());
 		},
+		readSessions: async () => sessionsListed(),
 		showSheet: async (sheet) => {
 			calls.sheets.push(sheet);
 			return true;
@@ -239,7 +257,11 @@ function host(overrides = {}) {
 		configDir: () => scratch,
 		forward: async (input) => {
 			calls.forward.push(JSON.stringify(input));
-			return { status: 200, body: { result: { status: "answered" } } };
+			// Serve's receipt for an answer the runtime stamped trusted (S3).
+			return {
+				status: 200,
+				body: { result: { detail: "answered", consent_bearing: true } },
+			};
 		},
 		nowMs: () => clock.ms,
 		attest: async (path, frame) => {
@@ -535,7 +557,6 @@ test("the sheet's words come from main's own read; a secret is never shown", asy
 			answers: {
 				q1: ["Yes, delete it"],
 				q2: ["only the csv files"],
-				pw: ["hunter2"],
 			},
 		}),
 		h,
@@ -544,10 +565,9 @@ test("the sheet's words come from main's own read; a secret is never shown", asy
 	const detail = plain(sheet.detail);
 	assert.match(detail, /Delete ~\/workspace\/old-exports\?\n→ Yes, delete it/);
 	assert.match(detail, /Anything else\?\n→ “only the csv files”/);
-	assert.match(detail, /Paste the token\n→ \(hidden\)/);
-	assert.doesNotMatch(detail, /hunter2/);
 	assert.equal(plain(sheet.message), "Send this answer as yours?");
-	assert.equal(sheet.actionLabel, "Confirm");
+	// D3: the button repeats the question's verb.
+	assert.equal(sheet.actionLabel, "Send");
 	assert.equal(sheet.cancelLabel, "Cancel");
 });
 
@@ -599,7 +619,7 @@ test("an answer main's read cannot back raises no sheet", async () => {
 
 test("revise needs an answered, undelivered ask", async () => {
 	const ok = host({
-		readAsks: async () => listed(askRow({ status: "answered" })),
+		readAsks: async () => listed(answeredRow()),
 	});
 	const response = await attestAskAnswer(respond({ revise: true }), ok.host);
 	assert.equal(response.status, 200);
@@ -608,9 +628,9 @@ test("revise needs an answered, undelivered ask", async () => {
 		"Change your answer to this?",
 	);
 	assert.equal(JSON.parse(ok.calls.attest[0].frame).act, "revise");
+	assert.equal(ok.calls.sheets[0].actionLabel, "Change answer");
 	const delivered = host({
-		readAsks: async () =>
-			listed(askRow({ status: "answered", delivered: true })),
+		readAsks: async () => listed(answeredRow({ delivered: true })),
 	});
 	assertRefused(
 		await attestAskAnswer(respond({ revise: true }), delivered.host),
@@ -888,5 +908,227 @@ test("index.ts wires the ask host like the pairing host: refusal env, debug swit
 	assert.match(body, /cancelId: 1/);
 	assert.match(body, /ASK_ATTEST_PROBE_WORLD_ID/);
 	assert.match(body, /readAsks: \(\) => sendDesktop\(\{ op: "asks\.list" \}\)/);
+	// S1: the conversation the sheet names comes from main's own catalogue read,
+	// schema-valid as sent.
+	assert.match(
+		body,
+		/readSessions: \(\) =>\s*sendDesktop\(\{\s*op: "sessions\.list"/,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "sessions.list",
+			limit: 500,
+			include_archived: true,
+			include_temporary: true,
+		}).success,
+		true,
+	);
 	assert.equal(ASK_ATTEST_PROBE_WORLD_ID, 1985);
+});
+
+/* ------------------------------------------------ round 1 remediation (S/Q/M) */
+
+test("S1: the sheet names the conversation and agent, so two sessions' identical asks differ", async () => {
+	const OTHER = "bbbbbbbbbbbb";
+	const sessions = sessionsListed([
+		{ id: SID, name: "Tidy old exports", binding: { agent: "cleaner" } },
+		{ id: OTHER, name: "Release prep", binding: { agent: null } },
+	]);
+	const sheets = [];
+	for (const sessionId of [SID, OTHER]) {
+		const { host: h, calls } = host({
+			readAsks: async () => listed(askRow({ session_id: sessionId })),
+			readSessions: async () => sessions,
+		});
+		const response = await attestAskAnswer(respond({ sessionId }), h);
+		assert.equal(response.status, 200);
+		sheets.push(calls.sheets[0]);
+	}
+	assert.notEqual(JSON.stringify(sheets[0]), JSON.stringify(sheets[1]));
+	const first = plain(sheets[0].detail);
+	assert.match(
+		first,
+		/^Conversation: Tidy old exports \(0123456789ab\)\nAsked by: cleaner\n\n/,
+	);
+	const second = plain(sheets[1].detail);
+	assert.match(second, /^Conversation: Release prep \(bbbbbbbbbbbb\)\n\n/);
+	assert.doesNotMatch(second, /Asked by/);
+	// A failed or missing catalogue read still names the session id; never a refusal.
+	for (const readSessions of [
+		async () => ({ status: 503, body: {} }),
+		async () => {
+			throw new Error("down");
+		},
+		async () => sessionsListed([]),
+	]) {
+		const { host: h, calls } = host({ readSessions });
+		assert.equal((await attestAskAnswer(respond(), h)).status, 200);
+		assert.match(
+			plain(calls.sheets[0].detail),
+			/^Conversation: 0123456789ab\n\n/,
+		);
+	}
+	assert.equal(askSessionLabel({ result: { sessions: "x" } }, SID), null);
+});
+
+test("S2: agent- and person-written sheet text is one flat line: no fake answer line, no bidi", async () => {
+	assert.equal(
+		sheetText("Delete ~/Photos?\n→ No\n\nThen: tidy?"),
+		"Delete ~/Photos? → No Then: tidy?",
+	);
+	assert.equal(
+		sheetText("abc\u202Eevil\u200B\u2066x\u2069 \u2028 y"),
+		"abcevilx y",
+	);
+	const { host: h, calls } = host({
+		readAsks: async () =>
+			listed(
+				askRow({
+					questions: [
+						{
+							id: "q1",
+							question: "Delete ~/Photos?\n→ No\n\nThen: tidy temp files?",
+							options: [{ label: "Yes, delete it" }],
+						},
+						{ id: "q2", question: "Note?" },
+					],
+				}),
+			),
+		readSessions: async () =>
+			sessionsListed([{ id: SID, name: "Evil\n→ Yes\u202E", binding: {} }]),
+	});
+	await attestAskAnswer(
+		respond({
+			answers: { q1: ["Yes, delete it"], q2: ["ok\n→ (hidden)\u202E"] },
+		}),
+		h,
+	);
+	const detail = plain(calls.sheets[0].detail);
+	// Exactly one arrow line per answered question: the agent cannot draw a third.
+	assert.equal(
+		detail.split("\n").filter((line) => line.startsWith("→")).length,
+		2,
+	);
+	assert.match(detail, /^Conversation: Evil → Yes \(0123456789ab\)/);
+	assert.match(detail, /→ “ok → \(hidden\)”/);
+	// On the RAW sheet: the only format characters left are `t()`'s own isolates
+	// around each interpolated value (\u2066-\u2069), never the agent's override.
+	assert.doesNotMatch(calls.sheets[0].detail, /[\u202A-\u202E\u200B]/);
+});
+
+test("S3: a delivered answer the runtime did not stamp consent-bearing is not reported confirmed", async () => {
+	for (const result of [
+		{ detail: "answered", consent_bearing: false },
+		{ detail: "answered", consent_bearing: null },
+		{ detail: "answered" },
+	]) {
+		const { host: h, calls } = host({
+			forward: async (input) => {
+				calls.forward.push(JSON.stringify(input));
+				return { status: 200, body: { result } };
+			},
+		});
+		assertRefused(await attestAskAnswer(respond(), h), "not_consent_bearing");
+		assert.equal(calls.forward.length, 1, "the answer was sent exactly once");
+	}
+	// A non-2xx forward (busy, settled) passes through untouched for the card's copy.
+	const busy = { status: 409, body: { detail: { code: "runtime_busy" } } };
+	const { host: h } = host({ forward: async () => busy });
+	assert.equal(await attestAskAnswer(respond(), h), busy);
+});
+
+test("S4: an answer to a secret question is never attested", async () => {
+	const { host: h, calls } = host();
+	assertRefused(
+		await attestAskAnswer(
+			respond({ answers: { q1: ["Yes, delete it"], pw: ["hunter2"] } }),
+			h,
+		),
+		"secret_answer",
+	);
+	assertNothingSent(calls, "secret");
+	assert.equal(calls.sheets.length, 0, "no sheet for content it cannot show");
+});
+
+test("S5: typed text longer than the sheet shows is never attested", async () => {
+	const { host: h, calls } = host();
+	assertRefused(
+		await attestAskAnswer(
+			respond({ answers: { q1: ["Yes, delete it"], q2: ["x".repeat(401)] } }),
+			h,
+		),
+		"answer_too_long",
+	);
+	assertNothingSent(calls, "too long");
+	assert.equal(calls.sheets.length, 0);
+	// Exactly the limit still fits on the sheet.
+	const fits = host();
+	const response = await attestAskAnswer(
+		respond({ answers: { q1: ["Yes, delete it"], q2: ["x".repeat(400)] } }),
+		fits.host,
+	);
+	assert.equal(response.status, 200);
+});
+
+test("Q1: a confirmed change to an answer that was not itself confirmed is refused", async () => {
+	for (const answered_by of [
+		{ surface: "unverified" },
+		{ surface: "remote" },
+		{ surface: "chat" },
+		undefined,
+	]) {
+		const { host: h, calls } = host({
+			readAsks: async () => listed(answeredRow({ answered_by })),
+		});
+		assertRefused(
+			await attestAskAnswer(respond({ revise: true }), h),
+			"answer_unconfirmed",
+		);
+		assertNothingSent(calls, JSON.stringify(answered_by));
+		assert.equal(calls.sheets.length, 0);
+	}
+	// Checked on the re-read too: the stamp the sheet was raised against must hold.
+	let reads = 0;
+	const { host: h, calls } = host({
+		readAsks: async () =>
+			listed(
+				answeredRow(
+					reads++ === 0 ? {} : { answered_by: { surface: "unverified" } },
+				),
+			),
+	});
+	assertRefused(
+		await attestAskAnswer(respond({ revise: true }), h),
+		"answer_unconfirmed",
+	);
+	assertNothingSent(calls, "re-read");
+	// A first answer is untouched by the rule.
+	assert.ok(
+		"row" in liveAskRow([askRow()], freezeAskAnswer(respond()), NOW_MS),
+	);
+});
+
+test("M1: image data in the URL-safe alphabet is refused, not digested differently from core", () => {
+	for (const data_b64 of ["ab-_", "abcd-efg", "abc_"])
+		assert.throws(
+			() =>
+				askImageDigests([
+					{ question_id: "q1", mime_type: "image/png", data_b64 },
+				]),
+			RangeError,
+		);
+	assert.equal(
+		askImageDigests([
+			{ question_id: "q1", mime_type: "image/png", data_b64: "ab+/" },
+		]).length,
+		1,
+	);
+});
+
+test("askSheet without a label still names the session", () => {
+	const row = liveAskRow([askRow()], freezeAskAnswer(respond()), NOW_MS).row;
+	assert.match(
+		plain(askSheet(freezeAskAnswer(respond()), row).detail),
+		/^Conversation: 0123456789ab\n/,
+	);
 });

@@ -57,6 +57,29 @@
  *   A missing socket (cold runtime, no listener) or a refused verdict is a keyed
  *   403 the card renders, offering the unconfirmed send or the conversation -
  *   never a silent forward as if it were verified.
+ *   8. Read the forward's own receipt: serve answers `consent_bearing` from the
+ *      runtime's STAMP. Anything but `true` (a stale or impostor listener that
+ *      said ok, an older serve) is the keyed `not_consent_bearing` - the ONE
+ *      refusal after which the answer WAS sent - so the card never reports a
+ *      confirmation the guard will not count (security review round 1, S3).
+ *
+ * WHAT MAIN REFUSES TO ATTEST, because the sheet could not show it honestly:
+ *   - an answer to a SECRET question (the sheet shows "(hidden)", so the person
+ *     would vouch for content they cannot see; a secret is never consent) - S4;
+ *   - typed text longer than the sheet shows (`ASK_SHEET_TEXT_LIMIT`) - S5;
+ *   - a CHANGE to an answer that was not itself confirmed: core keeps the WEAKEST
+ *     surface across an answer and its revisions (`asks/store.py` fold, deliberate
+ *     anti-laundering, owned by core #4493), so a confirmed revision of a
+ *     plain-sent answer can never become consent. Main reads `answered_by` from
+ *     its own `asks.list` row and refuses unless it is a guard-trusted surface
+ *     (QA round 1, Q1). Absent `answered_by` is unverified: fail closed.
+ *
+ * WHAT THE SHEET NAMES (security review round 1, S1): the conversation (its
+ * title from main's own `sessions.list` read, plus its session id) and the agent
+ * bound to it, so a renderer that names ANOTHER session's identical ask cannot get
+ * an indistinguishable sheet. Every agent- or person-written string on the sheet
+ * is flattened (`sheetText`: newlines collapsed, control/format/bidi characters
+ * stripped) so a question cannot draw a fake answer line (S2).
  *
  * WHICH ACTS. Only `respond` and `revise` are attested: they carry an answer the
  * guard may read as consent. Decline and dismiss approve nothing, so they keep
@@ -123,7 +146,27 @@ export type AskAttestRefusal =
 	/** The ask's words, questions or deadline changed while the sheet was open. */
 	| "ask_changed"
 	/** The ask's deadline passed before the answer could be attested. */
-	| "expired";
+	| "expired"
+	/** The answer includes a secret question's value, which the sheet cannot show. */
+	| "secret_answer"
+	/** Typed text is longer than the sheet shows. */
+	| "answer_too_long"
+	/** A change to an answer that was not itself confirmed (core keeps the weakest). */
+	| "answer_unconfirmed"
+	/** SENT, but the runtime did not stamp it consent-bearing (see step 8). */
+	| "not_consent_bearing";
+
+/**
+ * Core's `asks.surfaces.GUARD_TRUSTED_SURFACES`: the stamps the dangerous-delete
+ * guard counts as the operator's. Mirrored, not owned: main reads it only to
+ * refuse a revise-confirm that core's weakest-surface fold could never honour.
+ */
+export const GUARD_TRUSTED_SURFACES: ReadonlySet<string> = new Set([
+	"terminal",
+	"tui",
+	"desktop",
+	"mirror",
+]);
 
 export type AskAttestedAnswerRequest = Extract<
 	DesktopRequest,
@@ -185,18 +228,29 @@ export type AskAttestImage = {
  * bound to the question it answers and its MIME type, sorted (order is not part of
  * the answer). The queued-ask route carries no images today, so `askAttestFrame`
  * defaults to none; this is the rule a future image answer must use.
+ *
+ * STANDARD ALPHABET ONLY (code review round 1, M1). Node's base64 decoder also
+ * accepts the URL-safe `-`/`_`; Python's `b64decode` does not (it drops them and
+ * then fails), so the two sides would digest different bytes for one payload.
+ * Such a payload THROWS here: a caller must refuse to attest an image core could
+ * never match rather than send a digest that silently fails closed.
  */
 export function askImageDigests(
 	images: readonly AskWireImage[],
 ): AskAttestImage[] {
 	return images
-		.map((image) => ({
-			question_id: String(image.question_id ?? ""),
-			mime_type: String(image.mime_type ?? ""),
-			sha256: createHash("sha256")
-				.update(Buffer.from(String(image.data_b64 ?? ""), "base64"))
-				.digest("hex"),
-		}))
+		.map((image) => {
+			const text = String(image.data_b64 ?? "");
+			if (/[-_]/.test(text))
+				throw new RangeError("image data is not standard base64"); // i18n: ignore main-process diagnostic, never shown
+			return {
+				question_id: String(image.question_id ?? ""),
+				mime_type: String(image.mime_type ?? ""),
+				sha256: createHash("sha256")
+					.update(Buffer.from(text, "base64"))
+					.digest("hex"),
+			};
+		})
 		.sort((a, b) =>
 			a.question_id !== b.question_id
 				? a.question_id < b.question_id
@@ -290,6 +344,8 @@ export type MainAskRow = {
 	delivered: boolean;
 	/** Epoch ms of the deadline, or null when the row names none. */
 	expiresAtMs: number | null;
+	/** `answered_by.surface` of the recorded answer, or null when the row has none. */
+	answeredBySurface: string | null;
 	questions: MainAskQuestion[];
 };
 
@@ -327,6 +383,7 @@ function mainAskRow(raw: unknown): MainAskRow | null {
 		delivered: row.delivered === true,
 		expiresAtMs:
 			typeof expires === "number" && Number.isFinite(expires) ? expires : null,
+		answeredBySurface: str(record(row.answered_by)?.surface) || null,
 		questions,
 	};
 }
@@ -346,7 +403,9 @@ export function liveAskRow(
 	asks: unknown,
 	answer: FrozenAskAnswer,
 	nowMs: number,
-): { row: MainAskRow } | { refusal: "ask_closed" | "ask_read_failed" } {
+):
+	| { row: MainAskRow }
+	| { refusal: "ask_closed" | "ask_read_failed" | "answer_unconfirmed" } {
 	if (!Array.isArray(asks)) return { refusal: "ask_read_failed" };
 	const raw = asks.find((item) => {
 		const row = record(item);
@@ -369,7 +428,37 @@ export function liveAskRow(
 	const keys = Object.keys(answer.answers);
 	if (keys.length === 0 || keys.some((key) => !ids.has(key)))
 		return { refusal: "ask_closed" };
+	// Q1: core's fold keeps the weakest surface, so only a change to an answer that
+	// was ITSELF trusted can still be consent afterwards. Checked on both reads.
+	if (
+		answer.act === "revise" &&
+		!GUARD_TRUSTED_SURFACES.has(row.answeredBySurface ?? "")
+	)
+		return { refusal: "answer_unconfirmed" };
 	return { row };
+}
+
+/**
+ * Whether the sheet can show `answer` honestly enough to attest it: no secret
+ * question's value (S4) and no typed text past `ASK_SHEET_TEXT_LIMIT` (S5).
+ * Measured on the flattened text the sheet would draw.
+ */
+export function askAttestable(
+	answer: FrozenAskAnswer,
+	row: MainAskRow,
+): "secret_answer" | "answer_too_long" | null {
+	for (const question of row.questions) {
+		const values = answer.answers[question.id];
+		if (!values) continue;
+		if (question.secret) return "secret_answer";
+		for (const value of values)
+			if (
+				!question.options.includes(value) &&
+				sheetText(value).length > ASK_SHEET_TEXT_LIMIT
+			)
+				return "answer_too_long";
+	}
+	return null;
 }
 
 /** The words of one native confirmation sheet, built by MAIN alone. */
@@ -381,11 +470,52 @@ export type AskSheet = {
 	cancelLabel: string;
 };
 
-function clip(text: string): string {
-	const flat = text.trim();
-	return flat.length > ASK_SHEET_TEXT_LIMIT
-		? `${flat.slice(0, ASK_SHEET_TEXT_LIMIT)}…`
-		: flat;
+/** Unicode control (Cc) and format (Cf: bidi overrides/isolates, zero-width) characters. */
+const SHEET_INVISIBLE = /[\p{Cc}\p{Cf}]/gu;
+
+/**
+ * Agent- or person-written text as ONE flat line for the native sheet (S2): every
+ * whitespace run (newlines, U+2028/2029 included) becomes one space, and control
+ * and format characters are removed, so a question cannot draw its own fake
+ * "→ No" line and a bidi override cannot reorder what the person reads.
+ */
+export function sheetText(text: string): string {
+	return text
+		.replace(/\s+/gu, " ")
+		.replace(SHEET_INVISIBLE, "")
+		.replace(/\s+/gu, " ")
+		.trim();
+}
+
+function clip(text: string, limit = ASK_SHEET_TEXT_LIMIT): string {
+	const flat = sheetText(text);
+	return flat.length > limit ? `${flat.slice(0, limit)}…` : flat;
+}
+
+/** How many characters of a conversation title or agent name the sheet shows. */
+export const ASK_SHEET_LABEL_LIMIT = 120;
+
+/**
+ * Which conversation an ask belongs to, from MAIN's own read (`sessions.list`):
+ * its display name and bound agent, each "" when the read has none.
+ */
+export type AskSessionLabel = { title: string; agent: string };
+
+/** The conversation's row in a `sessions.list` answer, reduced to the sheet's label. */
+export function askSessionLabel(
+	body: unknown,
+	sessionId: string,
+): AskSessionLabel | null {
+	const sessions = record(record(body)?.result)?.sessions;
+	if (!Array.isArray(sessions)) return null;
+	const row = sessions
+		.map(record)
+		.find((item) => item !== null && item.id === sessionId);
+	if (!row) return null;
+	return {
+		title: str(row.name),
+		agent: str(record(row.binding)?.agent),
+	};
 }
 
 /**
@@ -395,8 +525,28 @@ function clip(text: string): string {
  * sent (clipped for length) because it IS what will be sent - and a secret
  * question's value is never put on screen.
  */
-export function askSheet(answer: FrozenAskAnswer, row: MainAskRow): AskSheet {
+export function askSheet(
+	answer: FrozenAskAnswer,
+	row: MainAskRow,
+	label: AskSessionLabel | null = null,
+): AskSheet {
 	const lines: string[] = [];
+	// S1: the session id ALWAYS (it is what the attestation is bound to), the title
+	// and the agent when main's read has them.
+	const title = clip(label?.title ?? "", ASK_SHEET_LABEL_LIMIT);
+	const agent = clip(label?.agent ?? "", ASK_SHEET_LABEL_LIMIT);
+	const where = [
+		title
+			? t("ui.chat.ask_attest.sheet.conversation", {
+					title,
+					session: answer.sessionId,
+				})
+			: t("ui.chat.ask_attest.sheet.conversation_untitled", {
+					session: answer.sessionId,
+				}),
+	];
+	if (agent) where.push(t("ui.chat.ask_attest.sheet.agent", { agent }));
+	lines.push(where.join("\n"));
 	for (const question of row.questions) {
 		const values = answer.answers[question.id];
 		if (!values) continue;
@@ -427,7 +577,12 @@ export function askSheet(answer: FrozenAskAnswer, row: MainAskRow): AskSheet {
 				? t("ui.chat.ask_attest.sheet.message_revise")
 				: t("ui.chat.ask_attest.sheet.message_respond"),
 		detail: lines.join("\n\n"),
-		actionLabel: t("ui.chat.ask_attest.sheet.button.confirm"),
+		// D3: the button repeats the question's verb (macOS alert convention, and the
+		// mesh sheet's "Admit"/"Join").
+		actionLabel:
+			answer.act === "revise"
+				? t("ui.chat.ask_attest.sheet.button.change")
+				: t("ui.chat.ask_attest.sheet.button.send"),
 		cancelLabel: t("ui.chat.ask_attest.sheet.button.cancel"),
 	};
 }
@@ -467,6 +622,11 @@ export type AskAnswerHost = {
 	/** Main's own `asks.list` read (`GET /v1/desktop/asks`). */
 	readAsks: () => Promise<DesktopResponse>;
 	/**
+	 * Main's own `sessions.list` read, for the conversation the sheet names (S1).
+	 * A failed or missing read is not a refusal: the sheet still names the session id.
+	 */
+	readSessions: () => Promise<DesktopResponse>;
+	/**
 	 * Show `sheet` WINDOW-MODAL on the main window and resolve true ONLY for its
 	 * action button. Cancel, Escape, closing it, an abort through `signal` (the
 	 * ask's expiry) or any failure is false.
@@ -497,6 +657,19 @@ export function askAttestRefusal(reason: AskAttestRefusal): DesktopResponse {
 			},
 		},
 	};
+}
+
+async function readSessionLabel(
+	host: AskAnswerHost,
+	sessionId: string,
+): Promise<AskSessionLabel | null> {
+	try {
+		const response = await host.readSessions();
+		if (!(response.status >= 200 && response.status < 300)) return null;
+		return askSessionLabel(response.body, sessionId);
+	} catch {
+		return null;
+	}
 }
 
 async function readLiveAsk(
@@ -542,7 +715,10 @@ export async function attestAskAnswer(
 	try {
 		const before = await readLiveAsk(host, answer, nowMs());
 		if ("refusal" in before) return askAttestRefusal(before.refusal);
-		const sheet = askSheet(answer, before.row);
+		const unshowable = askAttestable(answer, before.row);
+		if (unshowable) return askAttestRefusal(unshowable);
+		const label = await readSessionLabel(host, answer.sessionId);
+		const sheet = askSheet(answer, before.row, label);
 		const expiresAtMs = before.row.expiresAtMs;
 		// The ask's own clock closes the sheet: a confirmation after expiry is no answer.
 		const expiry = new AbortController();
@@ -572,7 +748,7 @@ export async function attestAskAnswer(
 		const again = await readLiveAsk(host, answer, nowMs());
 		if ("refusal" in again) return askAttestRefusal(again.refusal);
 		// What the person read must still be true: same deadline, same words.
-		const reread = askSheet(answer, again.row);
+		const reread = askSheet(answer, again.row, label);
 		if (
 			again.row.expiresAtMs !== expiresAtMs ||
 			reread.message !== sheet.message ||
@@ -598,7 +774,17 @@ export async function attestAskAnswer(
 			askAttestFrame(answer),
 		);
 		if (failure) return askAttestRefusal(failure);
-		return host.forward(askForwardRequest(answer));
+		const forwarded = await host.forward(askForwardRequest(answer));
+		// Step 8 (S3): a delivered answer the runtime did not stamp consent-bearing
+		// must not read as a confirmation. A non-2xx forward (busy, settled) is the
+		// ordinary refusal and passes through for the card's own copy.
+		if (
+			forwarded.status >= 200 &&
+			forwarded.status < 300 &&
+			record(record(forwarded.body)?.result)?.consent_bearing !== true
+		)
+			return askAttestRefusal("not_consent_bearing");
+		return forwarded;
 	} finally {
 		host.sheet.close();
 	}

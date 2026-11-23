@@ -4475,6 +4475,19 @@ app
 							: false,
 					readAsks: () => sendDesktop({ op: "asks.list" }),
 					/*
+					 * The conversation the sheet names (security review round 1, S1), from
+					 * main's own catalogue read. Archived and temporary rows included so
+					 * any conversation that can hold an ask is found; a row past the page
+					 * still gets a sheet naming its session id.
+					 */
+					readSessions: () =>
+						sendDesktop({
+							op: "sessions.list",
+							limit: 500,
+							include_archived: true,
+							include_temporary: true,
+						}),
+					/*
 					 * The TRUSTED CONTROL, the pairing sheet's shape: window-modal,
 					 * button 0 confirms and is the ONLY approval; Cancel is both the
 					 * default and the cancel id, so a held Return and Escape dismiss.

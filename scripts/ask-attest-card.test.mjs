@@ -16,14 +16,14 @@ import { build } from "esbuild";
  *  - main's keyed refusals become the reader's sentence (`askAttestRefusalSentence`,
  *    through the shared `askRefusalSentence`), and none of them is an owner verdict
  *    that could shut the change door.
- *  - the card draws "Confirm as operator…" beside Send answer ONLY where a surface
+ *  - the card draws "Confirm and send…" beside Send answer ONLY where a surface
  *    wires `onConfirm`, and plain Send answer is unchanged beside it.
  */
 
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
+			'export { AskPanel, askConfirmChangeWithheld } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView, askRefusalSentence, askRefusalIsOwner, askAttestRefusalSentence } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { confirmQueuedAsk, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
@@ -63,6 +63,7 @@ const { renderToStaticMarkup } = await import("react-dom/server");
 const {
 	AskPanel,
 	askQueueView,
+	askConfirmChangeWithheld,
 	askRefusalSentence,
 	askRefusalIsOwner,
 	askAttestRefusalSentence,
@@ -75,7 +76,9 @@ await unlink(bundlePath);
 
 const SESSION = "0f9c1e2d3a4b";
 const NOW = 1_700_000_000_000;
-const CONFIRM_LABEL = "Confirm as operator…";
+const CONFIRM_LABEL = "Confirm and send…";
+const HINT =
+	"Only a confirmed answer counts as your approval for deleting or moving files.";
 
 const openAsk = (overrides = {}) => ({
 	ask_id: "a-attest",
@@ -217,18 +220,46 @@ test("nothing is sent without a session, an ask, answers, or the lock", async ()
 /* --------------------------------------------------------- the sentence ---- */
 
 test("main's refusals read as keyed copy, never as an owner verdict", () => {
+	// Each sentence LEADS with the route that works (D2/U3); where it mentions the
+	// unconfirmed send it says that send won't count as approval.
 	const cases = [
-		["listener_unavailable", /conversation isn't running/],
-		["listener_refused", /didn't accept the confirmation/],
-		["frame_refused", /didn't accept the confirmation/],
-		["timeout", /didn't accept the confirmation/],
-		["not_packaged", /can't confirm answers as yours/],
-		["dev_flag", /can't confirm answers as yours/],
-		["devtools_open", /can't confirm answers as yours/],
+		[
+			"listener_unavailable",
+			/^Open the conversation, then confirm again\..*won't count as your approval\.$/,
+		],
+		[
+			"listener_refused",
+			/^Confirm again\..*didn't accept the confirmation.*won't count as your approval\.$/,
+		],
+		["frame_refused", /^Confirm again\./],
+		["timeout", /^Confirm again\./],
+		[
+			"not_packaged",
+			/^To give your approval, answer in the terminal running this conversation\./,
+		],
+		["dev_flag", /^To give your approval, answer in the terminal/],
+		["window_mode", /^To give your approval, answer in the terminal/],
+		["devtools_open", /^Close DevTools, then confirm again\.$/],
+		["debugger_attached", /^Close DevTools, then confirm again\.$/],
 		["window_not_focused", /Bring this window to the front/],
 		["ask_changed", /changed or closed/],
-		["expired", /changed or closed/],
-		["sheet_open", /wasn't confirmed/],
+		["ask_closed", /changed or closed/],
+		[
+			"expired",
+			/^This question expired before you confirmed, so nothing was sent\. It can't be answered any more\.$/,
+		],
+		["sheet_open", /^Finish the confirmation that is already open\.$/],
+		["secret_answer", /hidden value can't be confirmed/],
+		["answer_too_long", /too long to show in full/],
+		[
+			"answer_unconfirmed",
+			/sent without confirming, so changing it can't make it count.*Confirm and send\.$/,
+		],
+		[
+			"not_consent_bearing",
+			/^Your answer was sent, but it wasn't confirmed as yours/,
+		],
+		["ask_read_failed", /^The answer wasn't confirmed\. Try again\.$/],
 	];
 	for (const [reason, sentence] of cases) {
 		const error = refusal(reason);
@@ -250,7 +281,7 @@ test("main's refusals read as keyed copy, never as an owner verdict", () => {
 
 /* ------------------------------------------------------------- the card ---- */
 
-test("the card offers Confirm as operator… only where a surface wires onConfirm", () => {
+test("the card offers Confirm and send… only where a surface wires onConfirm", () => {
 	const without = panelMarkup();
 	assert.equal(without.includes(CONFIRM_LABEL), false);
 	assert.match(without, /Send answer/);
@@ -285,4 +316,76 @@ test("both ask surfaces wire the confirm door", () => {
 	);
 	assert.match(fleet, /onConfirm=\{onConfirm\}/);
 	assert.match(fleet, /confirmQueuedAsk\(/);
+});
+
+/* ------------------------------------------------ round 1 remediation (U/D/Q) */
+
+test("U5: a busy runtime on the confirm door says confirm again, and stays a busy outcome", async () => {
+	const busy = new DesktopControlError(
+		409,
+		"busy",
+		undefined,
+		"runtime_busy",
+		1500,
+		{ code: "runtime_busy", retry_after_ms: 1500 },
+	);
+	const outcome = await confirmQueuedAsk(
+		{
+			taskId: "a-attest",
+			answers: { q1: ["Yes, delete it"] },
+			sessionId: SESSION,
+			lock: createSendLock(),
+		},
+		async () => {
+			throw busy;
+		},
+	);
+	assert.equal(outcome.status, "failed");
+	assert.equal(
+		outcome.error.code,
+		"runtime_busy",
+		"muted ink and refresh still read the code",
+	);
+	assert.equal(outcome.error.retryAfterMs, 1500);
+	assert.equal(
+		askRefusalSentence(outcome.error),
+		"The agent was busy and didn't take your answer. Confirm again in a moment.",
+	);
+	// The plain door's busy refusal keeps the plain sentence.
+	assert.notEqual(askRefusalSentence(busy), askRefusalSentence(outcome.error));
+	assert.equal(askAttestRefusalSentence(busy), null);
+});
+
+test("D1/U2: the approval hint sits under the row only where Confirm is drawn", () => {
+	assert.equal(panelMarkup().includes(HINT), false);
+	const markup = panelMarkup({ onConfirm: () => undefined });
+	assert.equal(markup.includes(HINT), true);
+	assert.doesNotMatch(markup, /operator/i, "the card never says 'operator'");
+});
+
+test("D6: the confirm label reserves the in-flight width, so the row does not shift", () => {
+	const markup = panelMarkup({ onConfirm: () => undefined });
+	// Both words are laid out in one grid cell; the one not shown is invisible.
+	assert.match(
+		markup,
+		/<span class="col-start-1 row-start-1 invisible" aria-hidden="true">Confirming…<\/span>/,
+	);
+});
+
+test("Q1: Confirm change is withheld only when the recorded answer's stamp is known untrusted", () => {
+	for (const surface of ["unverified", "remote", "chat"])
+		assert.equal(
+			askConfirmChangeWithheld(openAsk({ answered_by: { surface } })),
+			true,
+			surface,
+		);
+	for (const surface of ["desktop", "tui", "terminal", "mirror"])
+		assert.equal(
+			askConfirmChangeWithheld(openAsk({ answered_by: { surface } })),
+			false,
+			surface,
+		);
+	// Unknown: the control stays, and main (which reads the row itself) decides.
+	assert.equal(askConfirmChangeWithheld(openAsk()), false);
+	assert.equal(askConfirmChangeWithheld(openAsk({ answered_by: null })), false);
 });
