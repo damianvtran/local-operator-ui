@@ -193,7 +193,13 @@ jobs:
               return 0
             fi
             base="${GITHUB_BASE_REF:-main}"
-            git fetch --no-tags --depth=1 origin "refs/heads/$base:refs/remotes/origin/$base" \
+            # A shallow checkout has no ancestry to walk: `merge-base` answers
+            # nothing while the clone is shallow, whatever depth the base ref was
+            # fetched at (round-2 QA measured exactly that - one commit resolved,
+            # two did not). The depth here is a DISPATCH-only cost, and a
+            # dispatch is rare, so the boundary goes rather than the question.
+            git fetch --no-tags --unshallow origin >/dev/null 2>&1 || true
+            git fetch --no-tags origin "refs/heads/$base:refs/remotes/origin/$base" \
               >/dev/null 2>&1 || return 1
             merge_base="$(git merge-base HEAD "refs/remotes/origin/$base" 2>/dev/null || true)"
             [ -n "$merge_base" ] || return 1
