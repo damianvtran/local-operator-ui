@@ -37,7 +37,12 @@ const ABS = join(REPO, FIXTURE);
 /* ONE temp root per run, reaped in the `after` below. Every fixture here is
  * built inside it, so no case reads this checkout's state and a killed run
  * leaves nothing behind in the working tree. */
-const SCRATCH = mkdtempSync(join(tmpdir(), "i18n-added-strings-"));
+const SCRATCH = mkdtempSync(
+	join(
+		process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(),
+		"i18n-added-strings-",
+	),
+);
 
 /* The parsed fixture, built on FIRST USE - this was module-load state, and that
  * was the whole reason this file could not run on a loaded host.
@@ -1211,4 +1216,60 @@ test("a base path containing a space is absent, not unreadable", () => {
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
+});
+
+// Exercise the CLI, not just the helper: token equality in base cannot prove
+// that a newly exposed technical state value was already user-visible copy.
+test("CLI rejects new state sinks and setter-only edits without restoring technical tokens", () => {
+	const dir = scratchRepo();
+	const path = join(dir, "src/renderer/state.tsx");
+	mkdirSync(dirname(path), { recursive: true });
+	const initial =
+		'import { useState } from "react";\nfunction C() {\nconst [value, setValue] = useState("unknown");\nreturn null;\n}\n';
+	writeFileSync(path, initial);
+	commitScratchBase(dir);
+	const check = (text, status, expected) => {
+		writeFileSync(path, text);
+		const result = spawnSync(
+			process.execPath,
+			[CHECKER, "--repo", dir, "--base", "HEAD"],
+			{ env: gitEnv(), encoding: "utf8" },
+		);
+		assert.equal(result.status, status, result.stdout + result.stderr);
+		if (expected)
+			assert.ok(
+				result.stdout.includes(expected),
+				result.stdout + result.stderr,
+			);
+		assert.ok(!result.stdout.includes("RESTORED:"), result.stdout);
+	};
+	check(
+		initial.replace("return null", "return <p>{value}</p>"),
+		1,
+		"src/renderer/state.tsx:4: state:initializer: unknown",
+	);
+	const technical = initial
+		.replace(
+			"const [value",
+			"// i18n: ignore opaque protocol version identifier\nconst [value",
+		)
+		.replace("return null", "return <p>{value}</p>");
+	check(technical, 0);
+	check(
+		technical.replace(
+			"// i18n: ignore opaque protocol version identifier\n",
+			"",
+		),
+		1,
+		"state:initializer: unknown",
+	);
+	writeFileSync(path, technical);
+	commitScratchBase(dir);
+	check(
+		technical.replace("return <p>", 'setValue("unknown");\nreturn <p>'),
+		1,
+		"src/renderer/state.tsx:5: state:setter: unknown",
+	);
+
+	check(technical, 0);
 });
