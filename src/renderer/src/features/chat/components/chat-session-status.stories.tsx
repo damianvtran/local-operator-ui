@@ -346,13 +346,13 @@ export const QueuedAskSingleMark: Story = {
 			</div>
 		);
 		return (
-			<div className="flex gap-12 p-4">
+			<div className="flex gap-12 bg-surface p-4 text-ink">
 				<div className="flex flex-col gap-3">
-					<div className="text-xs">Before (wire row)</div>
+					<div className="text-xs">Before (the wire row as drawn)</div>
 					{specimens.map((specimen) => line(specimen, wire(specimen.live)))}
 				</div>
 				<div className="flex flex-col gap-3">
-					<div className="text-xs">After (withQueuedAskStatus)</div>
+					<div className="text-xs">After (what the sidebar draws)</div>
 					{specimens.map((specimen) =>
 						line(
 							specimen,

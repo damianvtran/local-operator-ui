@@ -49,6 +49,7 @@ const wireRow = (
 	agent: { id: string; name: string },
 	status: { code: string; label: string },
 	pictured: boolean,
+	extra: Record<string, unknown> = {},
 ) => ({
 	id,
 	name,
@@ -61,6 +62,7 @@ const wireRow = (
 	agent_id: agent.id,
 	avatar_sha256: pictured ? SHA : null,
 	status,
+	...extra,
 });
 
 const ROSTER = [
@@ -114,6 +116,62 @@ const ROSTER = [
 	),
 ];
 
+/**
+ * One open queued ask, with and without a picture. The core files such a session
+ * under status code `answer` (it hides busy/idle), and the row's own `asks_open`
+ * is the count the ask mark reads here (the fleet route is not mocked, so the
+ * sidebar falls back to the row's field). Each row must draw ONE ask mark: a
+ * ring when idle, the spinner when busy.
+ */
+const ASK_ROSTER = [
+	wireRow(
+		"q1",
+		"Idle with an open ask, pictured",
+		1_760_000_500,
+		PICTURED,
+		{ code: "answer", label: "Answer needed" },
+		true,
+		{ live_state: "idle", pending: "ask", asks_open: 1 },
+	),
+	wireRow(
+		"q2",
+		"Idle with an open ask",
+		1_760_000_400,
+		BARE,
+		{ code: "answer", label: "Answer needed" },
+		false,
+		{ live_state: "idle", pending: "ask", asks_open: 1 },
+	),
+	wireRow(
+		"q3",
+		"Busy with an open ask, pictured",
+		1_760_000_300,
+		PICTURED,
+		{ code: "answer", label: "Answer needed" },
+		true,
+		{ live_state: "busy", pending: "ask", asks_open: 2 },
+	),
+	wireRow(
+		"q4",
+		"Busy with an open ask",
+		1_760_000_200,
+		BARE,
+		{ code: "answer", label: "Answer needed" },
+		false,
+		{ live_state: "busy", pending: "ask", asks_open: 1 },
+	),
+	wireRow(
+		"q5",
+		"Plain idle, no ask",
+		1_760_000_100,
+		BARE,
+		{ code: "recent", label: "Recent" },
+		false,
+		{ live_state: "idle", pending: null },
+	),
+];
+let activeRoster: typeof ROSTER = ROSTER;
+
 if (typeof window !== "undefined") {
 	// biome-ignore lint/suspicious/noExplicitAny: the preload bridge is a mock here.
 	const api = ((window as any).api ?? {}) as any;
@@ -134,7 +192,7 @@ if (typeof window !== "undefined") {
 						},
 					});
 				case "sessions.list":
-					return ok({ sessions: ROSTER, truncated: false });
+					return ok({ sessions: activeRoster, truncated: false });
 				case "profiles.list":
 					return ok({ profiles: [] });
 				case "teams.list":
@@ -151,7 +209,8 @@ if (typeof window !== "undefined") {
 	(window as unknown as { api: unknown }).api = api;
 }
 
-const Page: FC = () => {
+const Page: FC<{ roster?: typeof ROSTER }> = ({ roster = ROSTER }) => {
+	activeRoster = roster;
 	const client = useQueryClient();
 	useEffect(() => {
 		client.setQueryData(agentAvatarsQueryKey, {
@@ -192,3 +251,8 @@ type Story = StoryObj;
 
 /** Running, done and failed, each with a picture and without, in one list. */
 export const MixedRows: Story = {};
+
+/** One open queued ask per row: a ring or the spinner, plus ONE ask mark. */
+export const QueuedAsk: Story = {
+	render: () => <Page roster={ASK_ROSTER} />,
+};

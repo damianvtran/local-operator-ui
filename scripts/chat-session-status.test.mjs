@@ -748,7 +748,7 @@ test("busy with one open ask: the spinner and ONE ask mark", () => {
 	assert.match(markup, /lucide-loader-circle/);
 	assert.match(markup, /motion-safe:animate-spin/);
 	assert.doesNotMatch(markup, /Answer needed/);
-	assert.match(markup, /sr-only">Busy</);
+	assert.match(markup, /sr-only">Working</);
 });
 
 test("the count may come from the row's own field as well as the caller", () => {
@@ -791,7 +791,7 @@ test("the sidebar row is drawn from the queued-ask-aware row, with the same coun
 	const source = readFileSync(
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
-	);
+	).replace(/\s+/g, " ");
 	assert.match(
 		source,
 		/const row = withQueuedAskStatus\(\s*listedRow,\s*asksBySession\?\.get\(listedRow\.session_id\),?\s*\);/,

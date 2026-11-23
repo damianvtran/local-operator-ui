@@ -221,8 +221,7 @@ export function statusLabelText(
 	row: Pick<CanonicalSessionRow, "status">,
 ): string | undefined {
 	if (row.status?.code === "recent") return t("ui.chat.sidebar.row.recent");
-	// An empty label is "none": `withQueuedAskStatus` leaves one on purpose.
-	return row.status?.label || undefined;
+	return row.status?.label;
 }
 
 /**
@@ -292,30 +291,48 @@ export function statusSpokenText(
  * One open queued ask drew two identical `MessageCircleQuestion` glyphs: the
  * status mark (code `answer`) and `ChatAsksOutstanding` (the count). The core
  * claims the record's `pending` for an open queued ask
- * (`runtime/serving.py::_sync_queued_ask_pending`) and its status ladder files
- * any non-approval `pending` under `answer` ABOVE busy and idle
- * (`session/catalog.py::status_code`), so the code says "ask" while hiding
- * whether the session is working or resting. This file's own rule (see
- * {@link ChatAsksOutstanding}) is that a queued ask is a SECOND mark and not a
- * status: the session "may be busy, idle or done while its asks sit unanswered".
+ * (`local_operator/session/runtime/serving.py::_sync_queued_ask_pending`) and its
+ * status ladder files any non-approval `pending` under `answer` ABOVE busy and
+ * idle (`local_operator/session/catalog.py::status_code`), so the code says "ask"
+ * while hiding whether the session is working or resting. This file's own rule
+ * (see {@link ChatAsksOutstanding}) is that a queued ask is a SECOND mark and not
+ * a status: the session "may be busy, idle or done while its asks sit
+ * unanswered".
+ *
+ * ## An EXCEPTION to "the client does not derive status", and why it is bounded
+ *
+ * The contract (`desktop-session-contract.ts`'s status frame), `chat-sidebar.tsx`
+ * and `destination-pickers.tsx` all say the backend owns the code and its label
+ * and a client must not rebuild them. This function does, for exactly one input
+ * shape, because the backend's code is the thing that doubles the mark and the
+ * harness is deliberately left alone (its "Answer needed" label and its
+ * stopped-on-reader ordering are pinned there). The rebuild reads two facts the
+ * row already carries, `live_state` and the ask count, and nothing else.
  *
  * ## What it does
  *
  * When the code is `answer` AND the ask badge will draw (`count > 0`, the same
  * count {@link ChatAsksOutstanding} resolves), the code and its label are
- * rebuilt from what the row still knows: `busy` while `live_state` is `busy`,
- * otherwise `recent` (the resting ring). An unread completion's kind is NOT
- * recoverable (it is read off the code, which `answer` replaced), so it is not
- * guessed at: the ring is the honest resting mark.
- * One function feeds the glyph, the tooltip and the screen-reader name, so the
- * words cannot say "Answer needed" under a ring.
+ * rebuilt: `busy` while `live_state` is `busy`, otherwise `recent` (the resting
+ * ring). One function feeds the glyph, the tooltip and the screen-reader name, so
+ * the words cannot say "Answer needed" under a ring.
+ *
+ * ## What it does NOT recover (accepted)
+ *
+ * A session that is attached, or that holds an unread completion, rests on the
+ * plain ring here. Both are real states under `answer`, but re-deriving them
+ * would be the second derivation of precedence the contract forbids (the unread
+ * kind rides `attention.kind`, and the check/attached glyphs hang off codes this
+ * function would have to guess). The ask mark carries the ask; the ring says
+ * "nothing is running".
  *
  * ## What it leaves alone
  *
- * `approval` (a blocking gate) is never touched. `answer` with NO count is a
- * blocking question gate with no queue row behind it, so its glyph is the only
- * ask mark and stays. Ordering and the Running section read the wire code, not
- * this row.
+ * `approval` (a blocking gate) is never touched, so an approval parked beside an
+ * open ask still draws its own amber bubble plus the ask mark: two different
+ * facts. `answer` with NO count is a blocking question gate with no queue row
+ * behind it, so its glyph is the only ask mark and stays. Ordering and the
+ * Running section read the wire code, not this row.
  */
 export function withQueuedAskStatus(
 	row: CanonicalSessionRow,
@@ -326,15 +343,18 @@ export function withQueuedAskStatus(
 	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return row;
 	if (row.live_state === "busy") {
-		// The /info panel's own status word for this state, so no new copy (a new
-		// key in a shipped namespace needs seven ledger re-audits).
+		// "Working" is the word the wire gives an ordinary busy row
+		// (`wire.session_status.working`), so a busy row with an ask does not read
+		// "Busy" beside its neighbours' "Working". The wire catalogue is not this
+		// client's, and a new key in a shipped namespace needs seven ledger
+		// re-audits, so the already-translated voice-phase word stands in.
 		return {
 			...row,
-			status: { code: "busy", label: t("ui.chat.pickers.info_panel.busy") },
+			status: { code: "busy", label: t("ui.chat.voice.phase_working") },
 		};
 	}
-	// The wire's `answer` label ("Answer needed") is dropped with the code: an
-	// empty label reads as none, so the callers fall to the resting word.
+	// `recent` is the one code `statusLabelText` translates itself, so the wire's
+	// "Answer needed" is dropped with the code and the resting word stands in.
 	return { ...row, status: { code: "recent", label: "" } };
 }
 
