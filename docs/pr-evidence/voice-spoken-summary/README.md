@@ -26,7 +26,8 @@ File name: `<frame>-<state>-<theme>-<width>.png`. Theme `light` = `localOperator
 | 17 | Right to left (`ur`): the block's Replay on the trailing (left) edge, and the fallback footnote with its Replay beside the note | `--spoken` / `--fallback-history-open`, `?args=theme:<theme>;locale:ur` | wide |
 
 Frames 4a, 6, 7, 10, 11 exist in light and dark, wide and narrow (20 files); 5, 8, 9, 14, 16 are wide light and dark;
-13 is all four; 15 is two frames and 17 two frames, each light and dark. 42 files. Every frame was re-rendered from
+13 is all four; 15 is two frames and 17 two frames, each light and dark; 7 also has two narrow light frames in `vi` and `fr`
+(Q-5, below). 44 files. Every frame was re-rendered from
 the head that carries the round-1 fixes (the 30 first-round frames included), by one script, so none is a stale frame.
 
 ### The narrow strip (design D3), measured
@@ -37,6 +38,33 @@ only item this change added to that row, so hiding it renders the #2065 layout. 
 the one that gives by design). The summary caption box was 60 px with it and 100 px without, and the caption truncates in
 both. Fix: at the narrow dock, while a cut chip is up, the strip does not draw its own Replay (the block or footnote under
 the message carries one, and the chip points at it): chip back to 76 px. The `Said: Us...` caption stays truncated by design.
+
+### The narrow History row in long locales (QA round 2, Q-5), measured
+
+`SummaryRowControls` (the link and Replay in a History summary row) was one nowrap flex row. At the 393 px dock the
+`vi` link ("Câu trả lời đầy đủ trong cuộc trò chuyện ↑") is 244.9 px wide, which pushed Replay past the History's edge.
+Fix: the row is `flex-wrap` (the link stays whole, Replay drops under it when it does not fit).
+
+Measured in real Chrome (460 px viewport, 393 px column, `localOperatorLight`, story
+`voice-spoken-summary--narrow-spoken-history-open&args=theme:localOperatorLight;locale:<loc>`), the same script before
+(class reverted) and after:
+
+| Locale | Before: History scrollWidth / clientWidth, Replay right edge vs History edge (383) | After |
+|---|---|---|
+| vi | 344 / 325, 401.7 (18.7 px past) | 325 / 325, Replay wraps under the link, 152.8 |
+| fr | 325 / 325, 372.5 (fits) | 325 / 325, 372.5 (still one line) |
+| en, ru, es, hi, zh-CN | 325 / 325, fits | unchanged |
+| ur (RTL) | 325 / 325, fits | unchanged |
+
+`vi` reproduces QA's numbers (Replay 377.7 to 401.7). `fr` did NOT overflow in this rig (10.5 px of room), so QA's +5 px
+on `fr` is not reproduced here (a different font fallback is the likely difference); the wrap covers it either way.
+`7-spoken-history-vi-light-narrow.png` is the wrapped row; `7-spoken-history-fr-light-narrow.png` is `fr` on one line.
+The committed `en` narrow frames (7 and 11, light and dark) were re-rendered at this head and differ from the committed
+files only by text anti-aliasing (max channel difference 79 on 13 px above 40 of 468,740 in frame 7 light; no layout box
+moved: same height 1019, English does not wrap), so they are kept. The same check runs as the story's `play`
+(`NarrowSpokenHistoryOpen`: History `scrollWidth <= clientWidth` and both controls inside its right edge), in whichever
+locale the URL pins. Run in Storybook over CDP: no play error in en, vi, fr, ru, es, ur, hi, zh-CN at this head; with the
+class reverted, `vi` logs `AssertionError: expected false to be true` from `expectNoHistoryOverflow`.
 
 ### Right to left (Q-1, D2)
 

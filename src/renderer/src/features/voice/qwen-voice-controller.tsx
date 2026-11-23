@@ -1055,6 +1055,9 @@ export async function replaySpoken(
 	);
 }
 
+/** A Replay press sits between reading the offer and its speak request opening. */
+let replayPressClaimed = false;
+
 /**
  * THE PRESS OF EVERY REPLAY (block, strip, History, footnote): a muted speaker is
  * unmuted first, because the person asked to hear it now (the strip's "Play"
@@ -1066,11 +1069,45 @@ export async function pressReplay(
 	sessionId: string,
 	messageId: string,
 ): Promise<void> {
-	const state = useVoiceStore.getState();
-	const offer = replayOffer(replayFactsOf(state, sessionId));
-	if (!offer || offer.disabled) return;
-	if (state.rig?.muted === true) await setQwenMuted(false);
-	await replaySpoken(sessionId, messageId);
+	/*
+	 * THE CLAIM IS TAKEN BEFORE THE FIRST AWAIT. `speakRequest` (what makes every
+	 * entry point read "busy") opens only inside `speakSource`, after the unmute's
+	 * round trip, so without this a second press in that window sees muted + not
+	 * busy and starts a second unmute and a second speak. Released as soon as the
+	 * request is open (from then on `busy` is the guard) or on any way out.
+	 */
+	if (replayPressClaimed) return;
+	const offerNow = () => {
+		const offer = replayOffer(
+			replayFactsOf(useVoiceStore.getState(), sessionId),
+		);
+		return offer && !offer.disabled ? offer : null;
+	};
+	if (!offerNow()) return;
+	replayPressClaimed = true;
+	let speaking: Promise<void>;
+	try {
+		if (useVoiceStore.getState().rig?.muted === true) {
+			try {
+				await setQwenMuted(false);
+			} catch (error) {
+				// The unmute was refused: the person is no better off for a take they
+				// could not hear, and the state is what it was. Silence, not an error.
+				console.warn(
+					`[voice] could not unmute: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return;
+			}
+		}
+		// The slot moved, the page paused or something else started meanwhile.
+		if (!offerNow()) return;
+		// `replaySpoken` runs synchronously up to `speakRequest`'s write, so the
+		// request is open before the claim is released below.
+		speaking = replaySpoken(sessionId, messageId);
+	} finally {
+		replayPressClaimed = false;
+	}
+	await speaking;
 }
 
 /**

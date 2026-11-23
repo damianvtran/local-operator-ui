@@ -2550,6 +2550,148 @@ test("one rule: while MUTED all three say Play, and pressing unmutes, then speak
 	}
 });
 
+/** A muted rig whose unmute answers when the test says (or fails when it says so). */
+function installSlowUnmute() {
+	const unmutes = [];
+	const said = [];
+	let settle = () => {};
+	const rig = (muted) => ({ rig: "ready", webui_url: null, clients: 1, muted });
+	window.api.desktop.qwenVoice = {
+		speak: async (request) => {
+			said.push(request);
+			return { spoken: true };
+		},
+		setMuted: (muted) =>
+			new Promise((resolve, reject) => {
+				unmutes.push(muted);
+				settle = (failure, status) =>
+					failure ? reject(failure) : resolve(status ?? rig(muted));
+			}),
+	};
+	return {
+		unmutes,
+		said,
+		answer: (status) => act(async () => settle(undefined, status)),
+		fail: () => act(async () => settle(new Error("unmute refused"))),
+		rig,
+	};
+}
+
+/** The four entry points of Replay, each resolved to its control after a fresh mount. */
+const REPLAY_SURFACES = {
+	strip: async () => (await mountEntryPoints()).strip(),
+	history: async () => (await mountEntryPoints()).history(),
+	block: async () =>
+		(await mountBlock()).querySelector("[data-spoken-control]"),
+	footnote: async () => {
+		await mountBlock();
+		return window.document.querySelector(
+			"[data-spoken-reply-note] [data-spoken-control]",
+		);
+	},
+};
+
+async function mutedWithControl(surface) {
+	await voiceReady();
+	window.__voiceText = SUMMARY_REPLY;
+	window.__voiceTextCalls = [];
+	const rig = installSlowUnmute();
+	await act(async () => useVoiceStore.getState().setRig(rig.rig(true)));
+	await spokenEarlier();
+	if (surface === "footnote")
+		await act(async () => spokenFrom("reply", { truncated: true }));
+	const control = await REPLAY_SURFACES[surface]();
+	assert.ok(control, `${surface}: offered`);
+	assert.equal(control.getAttribute("aria-label"), "Play", surface);
+	return { rig, control };
+}
+
+const resetSpoken = () =>
+	act(async () => {
+		useVoiceStore.setState({
+			spoken: {},
+			lastSpoken: null,
+			speakRequest: null,
+		});
+	});
+
+test("double press while MUTED: a second press during the unmute is a no-op - one unmute, one voice.text, one speak - on all four entry points", async () => {
+	for (const surface of Object.keys(REPLAY_SURFACES)) {
+		const { rig, control } = await mutedWithControl(surface);
+		// Back to back: the unmute has not answered, so no speak request is open yet.
+		await click(control);
+		await click(control);
+		assert.equal(rig.unmutes.length, 1, `${surface}: one unmute`);
+		assert.equal(window.__voiceTextCalls.length, 0, `${surface}: not yet`);
+		await rig.answer();
+		await flush();
+		assert.equal(
+			window.__voiceTextCalls.length,
+			1,
+			`${surface}: one voice.text`,
+		);
+		assert.equal(rig.said.length, 1, `${surface}: one speak`);
+		await resetSpoken();
+	}
+});
+
+test("double press while MUTED: a failed unmute speaks nothing, releases the claim, and the next press goes through", async () => {
+	for (const surface of Object.keys(REPLAY_SURFACES)) {
+		const { rig, control } = await mutedWithControl(surface);
+		await click(control);
+		await click(control);
+		await rig.fail();
+		await flush();
+		assert.equal(
+			rig.unmutes.length,
+			1,
+			`${surface}: the second press was a no-op`,
+		);
+		assert.equal(
+			window.__voiceTextCalls.length,
+			0,
+			`${surface}: nothing asked`,
+		);
+		assert.equal(rig.said.length, 0, `${surface}: nothing spoken`);
+		const state = useVoiceStore.getState();
+		assert.equal(state.speakRequest, null, `${surface}: no request left open`);
+		assert.equal(state.rig?.muted, true, `${surface}: still muted, as before`);
+		// The claim is gone: a later press unmutes and speaks.
+		await click(control);
+		assert.equal(
+			rig.unmutes.length,
+			2,
+			`${surface}: a later press tries again`,
+		);
+		await rig.answer();
+		await flush();
+		assert.equal(window.__voiceTextCalls.length, 1, `${surface}: then speaks`);
+		assert.equal(rig.said.length, 1, `${surface}: once`);
+		await resetSpoken();
+	}
+});
+
+test("a press whose unmute lands after the page paused speaks nothing and releases the claim", async () => {
+	const { rig, control } = await mutedWithControl("strip");
+	await click(control);
+	await act(async () => {
+		useVoiceStore
+			.getState()
+			.setRig({ rig: "ready", webui_url: null, clients: 1, paused: true });
+	});
+	// The unmute's own answer carries the paused page, as main's status would.
+	await rig.answer({ ...rig.rig(false), paused: true });
+	await flush();
+	assert.equal(window.__voiceTextCalls.length, 0, "paused meanwhile: no take");
+	assert.equal(rig.said.length, 0);
+	await act(async () => useVoiceStore.getState().setRig(rig.rig(true)));
+	await click(window.document.querySelector('[data-voice-action="replay"]'));
+	assert.equal(rig.unmutes.length, 2, "the claim was released");
+	await rig.answer();
+	await flush();
+	assert.equal(rig.said.length, 1);
+});
+
 test("one rule: while anything is being said or asked, all three wait, mounted, and a press does nothing", async () => {
 	for (const busy of [
 		() => useVoiceStore.getState().setActivity("speaking"),
@@ -2618,6 +2760,20 @@ test("m2/U4: Replay keeps its focus when pressed, and the block's label is one p
 	assert.match(live.textContent, /Speaking/);
 	await act(async () => release({ spoken: true }));
 	await flush();
+});
+
+test("Q-5: a History summary row's controls wrap instead of running past the row's edge (393px vi/fr links are wider than the column)", async () => {
+	await voiceReady();
+	await spokenEarlier();
+	await mountEntryPoints();
+	const link = window.document.querySelector("[data-voice-story-link]");
+	const replay = window.document.querySelector("[data-voice-story-replay]");
+	assert.ok(link && replay);
+	// jsdom has no layout, so the real-width proof is the story's own play check at
+	// 393px (`NarrowSpokenHistoryOpen`, run in vi and fr); this pins the cause: the
+	// link and Replay share ONE flex row, and that row must be allowed to wrap.
+	assert.equal(link.parentElement, replay.parentElement);
+	assert.match(link.parentElement.className, /\bflex-wrap\b/);
 });
 
 test("R-M1: another conversation's History row keeps its summary and loses the link and Replay; a stale reveal is never left behind", async () => {

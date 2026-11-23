@@ -397,8 +397,35 @@ export const NarrowSpoken: Story = {
 	render: () => <Scene width={393} frame="spoken" history={false} />,
 	play: ({ canvasElement }) => expectBlock(canvasElement, "spoken", true),
 };
+/**
+ * QA r2 Q-5: at 393px the summary row's link and Replay must fit the History's
+ * own width in every locale (vi's link is the widest, fr's next); the row wraps
+ * rather than scrolling sideways. Measured in the real layout, so it runs in the
+ * locale the URL pins: `...&args=theme:localOperatorLight;locale:vi`.
+ */
+async function expectNoHistoryOverflow(canvasElement: HTMLElement) {
+	await waitFor(() => {
+		if (!canvasElement.querySelector("[data-voice-story-replay]"))
+			throw new Error("History row not drawn yet");
+	});
+	const history = canvasElement.querySelector<HTMLElement>(
+		"[data-voice-history]",
+	);
+	const edge = history?.getBoundingClientRect().right ?? 0;
+	await expect(
+		history ? history.scrollWidth <= history.clientWidth : false,
+	).toBe(true);
+	for (const control of canvasElement.querySelectorAll(
+		"[data-voice-story-link], [data-voice-story-replay]",
+	))
+		await expect(control.getBoundingClientRect().right <= edge + 0.5).toBe(
+			true,
+		);
+}
+
 export const NarrowSpokenHistoryOpen: Story = {
 	render: () => <Scene width={393} frame="spoken" history />,
+	play: ({ canvasElement }) => expectNoHistoryOverflow(canvasElement),
 };
 export const NarrowFallbackHistoryOpen: Story = {
 	render: () => <Scene width={393} frame="fallback" history />,

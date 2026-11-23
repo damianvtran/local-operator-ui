@@ -819,7 +819,10 @@ const SummaryRowControls: FC<{ sessionId: string; messageId: string }> = ({
 	const holder = useVoiceStore((s) => s.active?.session_id === sessionId);
 	if (!holder) return null;
 	return (
-		<span className="mt-1 flex items-center gap-1 text-meta">
+		// WRAPS: the link is nowrap and its label runs long in vi and fr, so a single
+		// row pushed Replay past the History's edge at the 393px dock (QA r2 Q-5:
+		// vi +34px, fr +5px). Wrapping keeps the whole link readable.
+		<span className="mt-1 flex flex-wrap items-center gap-x-1 text-meta">
 			<Button
 				type="button"
 				variant="link"
