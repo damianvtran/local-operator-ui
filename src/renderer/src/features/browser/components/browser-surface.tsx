@@ -694,26 +694,27 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
-	// The viewport may be absent while the host starts or retries. Bind to the
-	// ready DOM node, not to the lifetime of BrowserSurface, so recovery attaches
-	// it again and the unavailable arm immediately withdraws its native view.
-	const stopRouteViewport = useRef<(() => void) | null>(null);
-	const attachRouteViewport = useCallback(
-		(element: HTMLDivElement | null) => {
-			stopRouteViewport.current?.();
-			stopRouteViewport.current = null;
-			if (!element) return;
-			// Both the native host and overlay hit tests read the same safe box.
-			const readRect = () => measureBrowserRouteRect(element);
-			const unregisterRect = registerBrowserViewRect(readRect);
-			const stop = trackBrowserRouteRect(readRect, chrome.setContentRect);
-			stopRouteViewport.current = () => {
-				unregisterRect();
-				stop();
-			};
-		},
-		[chrome.setContentRect],
-	);
+	const availability = state?.availability;
+	const waitingForBrowser = availability && availability.status !== "ready";
+	const routeViewportReady =
+		isRoutePage && chrome.available && !waitingForBrowser;
+	// React 18 can replay effects without reattaching the DOM ref. The tracker
+	// must resample the attached node after the transport's replay cleanup, even
+	// if its bounds did not move. The render gate also tears it down when the
+	// ready node is replaced by the startup or retry UI, not just on route exit.
+	useLayoutEffect(() => {
+		if (!routeViewportReady) return;
+		const element = contentRef.current;
+		if (!element) return;
+		// Both the native host and overlay hit tests read the same safe box.
+		const readRect = () => measureBrowserRouteRect(element);
+		const unregisterRect = registerBrowserViewRect(readRect);
+		const stop = trackBrowserRouteRect(readRect, chrome.setContentRect);
+		return () => {
+			unregisterRect();
+			stop();
+		};
+	}, [chrome.setContentRect, routeViewportReady]);
 
 	// ---- layout: report the rectangle ---------------------------------------
 	// `useLayoutEffect` so the first report lands before the browser paints: with
@@ -1104,8 +1105,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
-	const availability = state?.availability;
-	if (availability && availability.status !== "ready") {
+	if (waitingForBrowser) {
 		const status = (
 			<output
 				className="flex h-full flex-col items-center justify-center gap-3 bg-elevated p-6 text-center"
@@ -1565,7 +1565,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				    deliberate paused state is the difference between "a dialog is open"
 				    and "the browser broke" (design 11.3). */}
 				<div
-					ref={isRoutePage ? attachRouteViewport : contentRef}
+					ref={contentRef}
 					// `min-w-0` because the content element is now a flex SIBLING of the dock: a
 					// flex item's default `min-width: auto` refuses to shrink below its content, so
 					// the dock would push the column wider instead of narrowing it and the

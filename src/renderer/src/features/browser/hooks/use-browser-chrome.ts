@@ -320,8 +320,6 @@ export { browserBridgeAvailable };
 /**
  * Send one rectangle to main, unconditionally and without waiting.
  *
- * Extracted so the two call sites that must NOT go through the frame scheduler
- * (a null rect, and the unmount) can share one implementation of "deliver it".
  * A delivery that fails is corrected by the next report; reporting it in the band
  * would put a message there for a transient during a drag.
  */
@@ -808,7 +806,9 @@ export function useBrowserChrome(): BrowserChrome {
 		if (frame.current !== null) return;
 		frame.current = requestAnimationFrame(() => {
 			frame.current = null;
-			deliverContentRect(pendingRect.current);
+			const pending = pendingRect.current;
+			pendingRect.current = null;
+			if (pending !== null) deliverContentRect(pending);
 		});
 	}, []);
 
@@ -816,13 +816,9 @@ export function useBrowserChrome(): BrowserChrome {
 	// is, this mount's last word about the rectangle is the hide. It is idempotent
 	// on main's side (`setContentRect(null)` hides a view that is already hidden),
 	// which is what makes it safe to send even when the caller already reported it.
-	useEffect(
-		() => () => {
-			if (frame.current !== null) cancelAnimationFrame(frame.current);
-			deliverContentRect(null);
-		},
-		[],
-	);
+	// Effect replay keeps the refs alive, so cleanup must also forget the
+	// cancelled frame and pending sample or a fresh setup cannot schedule again.
+	useEffect(() => () => setContentRect(null), [setContentRect]);
 
 	/**
 	 * Show or hide the native view.
