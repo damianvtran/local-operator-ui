@@ -3802,6 +3802,101 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 });
 
 /*
+ * A18 - the merge gate has its verdict module ON DISK before it imports it.
+ *
+ * Why: the verdict moved from an inline heredoc into
+ * scripts/merge-gate-verdict.mjs, but the `merge-gate` job had never had a
+ * checkout (it never needed one). Full-suite run 45227197375 went green on every
+ * suite job and then red on `Merge gate (full suite)` with ERR_MODULE_NOT_FOUND:
+ * fail-closed, but a gate that can never pass. Four review/QA rounds ran the step
+ * body from a working tree where the file existed, so only a contract on the job
+ * SHAPE catches this before a runner does.
+ *
+ * The imported paths are derived from the step's `run` text and the module's own
+ * relative imports are walked transitively (the same rule
+ * scripts/test-publish-workflow.mjs applies to publish.yml's sparse lists), so
+ * giving merge-gate-verdict.mjs an import without widening the sparse set fails
+ * here. A bare package import is flagged too: a sparse checkout has no
+ * node_modules, so the verdict must stay dependency-free.
+ * Mutation: delete the checkout step; move it after the verdict step; drop
+ * `scripts/merge-gate-verdict.mjs` from `sparse-checkout`; add
+ * `import "./ci-scope.mjs"` to the verdict module.
+ */
+test("A18: the merge gate checks out every module its verdict step imports", () => {
+	const gate = load(readFileSync(join(repoRoot, FULL_SUITE_YML), "utf8")).jobs[
+		"merge-gate"
+	];
+	// Statement-anchored (line-start `import`/`export ... from`, side-effect
+	// `import "x"`, and `import("x")`), so prose in comments such as
+	// `from "a dispatch"` is not read as a module specifier.
+	const importsOf = (text) =>
+		[
+			...text.matchAll(
+				/^\s*(?:import|export)\s[^;]*?\bfrom\s*["']([^"']+)["']|^\s*import\s*["']([^"']+)["']|\bimport\(\s*["'`]([^"'`]+)["'`]\s*\)/gmu,
+			),
+		].map((match) => match[1] ?? match[2] ?? match[3]);
+
+	const verdictAt = gate.steps.findIndex((step) =>
+		importsOf(step.run ?? "").some((spec) => spec.startsWith("./scripts/")),
+	);
+	assert.ok(verdictAt >= 0, "the gate must import its verdict from ./scripts/");
+	const checkoutAt = gate.steps.findIndex((step) =>
+		/^actions\/checkout@/u.test(step.uses ?? ""),
+	);
+	assert.ok(
+		checkoutAt >= 0 && checkoutAt < verdictAt,
+		"merge-gate must check out the repository BEFORE the verdict step imports from it",
+	);
+	const checkout = gate.steps[checkoutAt];
+	// No `continue-on-error`: a failed checkout must red the gate (fail-closed).
+	assert.equal(checkout["continue-on-error"], undefined);
+	assert.equal(checkout.with?.["persist-credentials"], false);
+
+	// Transitive closure of repo-relative modules, starting from the step's run.
+	const needed = new Set();
+	const bare = [];
+	const walk = (specs, fromDir) => {
+		for (const spec of specs) {
+			if (spec.startsWith("node:")) continue;
+			if (!spec.startsWith(".")) {
+				bare.push(spec);
+				continue;
+			}
+			const path = join(fromDir, spec).replace(/^\.\//u, "");
+			if (needed.has(path)) continue;
+			needed.add(path);
+			walk(
+				importsOf(readFileSync(join(repoRoot, path), "utf8")),
+				join(path, ".."),
+			);
+		}
+	};
+	walk(importsOf(gate.steps[verdictAt].run), ".");
+	assert.ok(needed.has("scripts/merge-gate-verdict.mjs"));
+	assert.deepEqual(
+		bare,
+		[],
+		"a sparse checkout has no node_modules: the verdict must import no packages",
+	);
+
+	// No sparse list means the whole tree is checked out, which covers anything.
+	const listed = checkout.with?.["sparse-checkout"];
+	if (listed === undefined) return;
+	assert.equal(checkout.with["sparse-checkout-cone-mode"], false);
+	const sparse = new Set(
+		String(listed)
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean),
+	);
+	assert.deepEqual(
+		[...needed].filter((path) => !sparse.has(path)),
+		[],
+		"every module the verdict step imports must be in merge-gate's sparse checkout",
+	);
+});
+
+/*
  * The ritual is a COMMAND, so the three ways it can strand a head are STATES, not
  * strings: a number that names no pull request, a pull request that is not open,
  * and a label event that starts NO run. Reported as success, each leaves the

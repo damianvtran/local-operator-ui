@@ -1165,6 +1165,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # THE VERDICT IS A MODULE NOW, so this job needs the file on disk. It had
+      # no checkout while the verdict was an inline heredoc; when the decision
+      # moved into scripts/merge-gate-verdict.mjs the `node -e` import below
+      # failed with ERR_MODULE_NOT_FOUND (full-suite run 45227197375, every suite
+      # job green). That failed CLOSED - red, never a false green - but it made
+      # the gate impossible to pass.
+      #
+      # Sparse and credential-free: the verdict needs only its own module (it has
+      # no imports; scripts/ci-scope.test.mjs derives the import closure and fails
+      # if the list below stops covering it). A checkout failure here fails this
+      # job, which is the fail-closed answer, so there is deliberately no
+      # `continue-on-error`.
+      - name: Check out the verdict module
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/merge-gate-verdict.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Fail on any failed or cancelled suite job
         env:
           NEEDS: ${{ toJSON(needs) }}
