@@ -261,12 +261,33 @@ function withPr2066Files() {
 	};
 }
 
+/**
+ * The same derivation on a checkout where #2066's ADDED files are absent - a
+ * branch cut before it, or a diff that deletes them. Both overlays are explicit
+ * because the real tree is not a constant: #2066 merged first, so these files
+ * exist on main, and a leg that read the checkout as-is passed on #2070's merge
+ * ref and failed on main (run 45269866259, job 138030068841). A test whose
+ * answer depends on what else has merged is the flake class this suite exists
+ * to keep out, so neither leg may depend on it.
+ */
+function withoutPr2066AddedFiles() {
+	const derived = nativeSurfacesFor(ROOT);
+	const added = new Set([
+		"scripts/check-named-test.mjs",
+		"scripts/check-named-test.test.mjs",
+	]);
+	return {
+		...derived,
+		exists: (path) => !added.has(path) && derived.exists(path),
+	};
+}
+
 test("#2066's CI-only diff does not select the native lane", () => {
 	const derived = withPr2066Files();
 	assert.deepEqual(nativeSurfacePaths(PR_2066, derived), []);
 	assert.equal(requiresNativeProof(PR_2066, derived), false);
-	// ...and without the overlay (the files absent) it fails closed.
-	assert.equal(requiresNativeProof(PR_2066, nativeSurfacesFor(ROOT)), true);
+	// ...and with its added files absent, the same list fails closed (F1).
+	assert.equal(requiresNativeProof(PR_2066, withoutPr2066AddedFiles()), true);
 });
 
 test("the lane's rig, its imports and the gating stay native", () => {
