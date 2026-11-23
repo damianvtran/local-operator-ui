@@ -42,6 +42,25 @@
  * `deriveNativeSurfaces` for the three sources and the D14 argument for why
  * the derivation cannot be narrowed by the diff it is judging.
  *
+ * A CHANGED PATH THE CHECKOUT DOES NOT HAVE IS NATIVE. The classifier reads the
+ * merge ref, and the `changes` job diffs with `--no-renames`, so a PR that
+ * deletes or renames a helper the lane runs shows the old path as changed while
+ * nothing in the tree names it any more — the derivation alone would call it
+ * CI-only and skip exactly the lane that would fail (#2070 review F1, measured
+ * with `model_uncertainty_backend.py` and `evidence-run-guard.py`). So any
+ * changed `scripts/` or `.github/` path absent from the checkout selects the
+ * lane. The accepted cost: deleting a genuinely CI-only helper (e.g.
+ * `scripts/check-named-test.mjs` once it exists) also spends one macOS slot,
+ * because absence alone cannot tell a CI-only file from a lane helper.
+ *
+ * RELEASE-ONLY SCRIPTS ARE OUT, ON PURPOSE. Some scripts shape the shipped app
+ * but run only in the publish/signed-update workflows — e.g.
+ * `render-mac-entitlements.mjs`, `macos-entitlement-policy.mjs`,
+ * `check-packaged-closure.mjs` from `publish.yml`. The PR lane never executes
+ * them, so running it for a diff to them proves nothing about them; those
+ * workflows are their proof. They are `native=false` by design, not by
+ * omission.
+ *
  * Usage::
  *
  *   git diff --name-only "$base" "$head" > "$RUNNER_TEMP/changed.txt"
@@ -59,7 +78,15 @@ import {
 	readdirSync,
 	statSync,
 } from "node:fs";
-import { dirname, join, normalize, relative, resolve, sep } from "node:path";
+import {
+	dirname,
+	join,
+	normalize,
+	posix,
+	relative,
+	resolve,
+	sep,
+} from "node:path";
 import { fileURLToPath } from "node:url";
 import { MAIN_BUNDLE_PREFIXES, MAIN_BUNDLE_ROOT_FILES } from "./ci-scope.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
@@ -157,8 +184,10 @@ const SCRIPT_TOKEN =
 	/(?<![\w./-])(?:\.\/)?((?:scripts|bin)\/[\w@+./-]*?\.(?:mjs|cjs|js|mts|cts|ts|sh|py|json))(?![\w/-])/gu;
 const LOCAL_USES = /^\s*-?\s*uses:\s*['"]?\.\/([^\s'"#]+)/u;
 // `pnpm run x`, `pnpm x`, `npm run x`, `npm pack`, `yarn x` …
+// `[ \t]`, never `\s`: a match must stay on its own line, or `- name: Install
+// pnpm` followed by `uses: …` reads `uses:` as a script name (#2070 N1).
 const PACKAGE_RUNNER =
-	/\b(?:pnpm|npm|yarn)\s+(?:--?[\w-]+(?:=\S+)?\s+)*(?:run(?:-script)?\s+)?([\w:.-]+)/gu;
+	/\b(?:pnpm|npm|yarn)[ \t]+(?:--?[\w-]+(?:=\S+)?[ \t]+)*(?:run(?:-script)?[ \t]+)?([\w:.-]+)/gu;
 // Built-in package-manager commands and the lifecycle scripts they run. These
 // are the hooks a lane can execute without naming a script file: the lane's
 // `pnpm install` runs `postinstall`/`prepare`, its `npm pack` runs `prepack`.
@@ -192,8 +221,10 @@ const RESOLVE_SUFFIXES = [
 const WALKABLE = /\.(?:mjs|cjs|js|mts|cts|ts)$/u;
 // A string literal naming a non-JS helper a script spawns, e.g.
 // `join(SCRIPT_ROOT, "model_uncertainty_backend.py")` in the lane's
-// model-uncertainty rig. Not an import, so IMPORT_EDGES cannot see it; it
-// counts when the named file exists beside the script or from the root.
+// model-uncertainty rig. Not an import, so IMPORT_EDGES cannot see it. Both
+// candidate locations (beside the script, from the root) are followed when the
+// file is absent, so a name the rig still uses stays native after a diff
+// deletes or renames its target (#2070 F1).
 // Deliberately NOT JS or JSON: inventory scripts the gating jobs import name
 // every test file as a literal, and following those made 1,337 paths native
 // (measured), i.e. the old whole-prefix behaviour by another route.
@@ -204,6 +235,115 @@ const PYTHON_IMPORT = /^\s*(?:from|import)\s+([A-Za-z_]\w*)/gmu;
 const PACKAGING_SCRIPT_NAME =
 	/^(?:pre|post)?(?:build|pack|dist|release)(?::|$)|notar|sign/u;
 const PACKAGING_COMMAND = /\belectron-(?:builder|vite)\b/u;
+
+// Lane steps can run a script without spelling `scripts/…` (#2070 M2): a step
+// with `working-directory: scripts` then `node foo.mjs`, or `cd scripts &&
+// node ./foo.mjs`. SCRIPT_TOKEN cannot see those, so the gating jobs' steps are
+// also read as commands run from a directory. All per line, never across one.
+const WORKING_DIRECTORY = /^\s*(?:-\s+)?working-directory:\s*['"]?([^'"#\s]+)/u;
+const STEPS_LINE = /^\s*steps:\s*$/u;
+// `node|python|bash|sh|tsx|bun [flags] <path>`. The path may not start with
+// `-` (stdin `-`, or a flag the group did not consume).
+const INTERPRETER =
+	/(?:^|[\s(])(?:node|python3?|bash|sh|tsx|bun)[ \t]+((?:-{1,2}[\w-]+(?:=\S+)?[ \t]+)*)(['"]?)([^\s'"<>|&;)-][^\s'"<>|&;)]*)\2/gu;
+// Inline code or a module, not a file: what it names SCRIPT_TOKEN already reads.
+const INLINE_FLAG = /(?:^|\s)(?:-e|--eval|-p|--print|-c|-m)(?=\s|$)/u;
+// `./foo.sh` or `../x.mjs` run directly, after optional `VAR=value` prefixes.
+const DIRECT_EXEC = /^(?:\w+=\S*[ \t]+)*(\.{1,2}\/[^\s'"<>|&;)]+)/u;
+const CHANGE_DIRECTORY = /^(?:cd|pushd)(?:[ \t]+(['"]?)([^'"\s]+)\1)?\s*$/u;
+const WORKSPACE_VAR = /^\$(?:\{GITHUB_WORKSPACE\}|GITHUB_WORKSPACE)(?:\/|$)/u;
+// Variables that name runner scratch, never the checkout: a script there is
+// not a repository file, so it cannot be a `scripts/` surface.
+const OUT_OF_TREE_VAR =
+	/^\$(?:\{(?:RUNNER_TEMP|RUNNER_TOOL_CACHE|HOME|TMPDIR)\}|(?:RUNNER_TEMP|RUNNER_TOOL_CACHE|HOME|TMPDIR)\b)/u;
+const OUTSIDE = Symbol("outside the checkout");
+
+/**
+ * Resolve `target` (a directory or script path from a run body) against `dir`.
+ *
+ * Returns a repository-relative path, `OUTSIDE` for anything that cannot be in
+ * the checkout, or `null` when it cannot be known (an unknown `dir`, a variable
+ * that might expand into the checkout). `null` is the fail-closed answer.
+ */
+function resolveRunPath(dir, target) {
+	if (dir === null) return null;
+	let base = dir;
+	let rest = target;
+	if (WORKSPACE_VAR.test(rest)) {
+		base = "";
+		rest = rest.replace(WORKSPACE_VAR, "");
+	}
+	if (OUT_OF_TREE_VAR.test(rest) || rest.startsWith("/") || base === OUTSIDE)
+		return OUTSIDE;
+	if (/[$`~*]/u.test(rest)) return null;
+	const joined = posix.normalize(posix.join(base, rest)).replace(/\/+$/u, "");
+	if (joined === "..") return OUTSIDE;
+	if (joined.startsWith("../")) return OUTSIDE;
+	return joined === "." ? "" : joined;
+}
+
+/**
+ * Every script a workflow job (or composite action) runs by interpreter or
+ * direct execution, resolved against its step's `working-directory`, the job's
+ * `defaults.run.working-directory`, and any `cd`/`pushd` earlier in the step.
+ *
+ * Steps are split at the first list indentation under `steps:`. A `cd` only
+ * lasts for its own step, as on a runner. Returns `{ paths, unresolved }`;
+ * the caller fails the derivation on any `unresolved` entry.
+ */
+export function runInvocations(text) {
+	const lines = text.split("\n");
+	const stepsAt = lines.findIndex((line) => STEPS_LINE.test(line));
+	let jobDefault = "";
+	for (const line of lines.slice(0, stepsAt < 0 ? lines.length : stepsAt)) {
+		const match = WORKING_DIRECTORY.exec(line);
+		if (match) jobDefault = match[1];
+	}
+	const chunks = [];
+	if (stepsAt < 0) chunks.push(lines);
+	else {
+		let indent = null;
+		for (const line of lines.slice(stepsAt + 1)) {
+			const item = /^(\s*)-\s/u.exec(line);
+			if (indent === null && item) indent = item[1].length;
+			if (item && item[1].length === indent) chunks.push([line]);
+			else if (chunks.length) chunks.at(-1).push(line);
+		}
+	}
+	const paths = [];
+	const unresolved = [];
+	const record = (dir, target) => {
+		const rel = resolveRunPath(dir, target);
+		if (rel === null) unresolved.push(target);
+		else if (rel !== OUTSIDE && rel) paths.push(rel);
+	};
+	for (const chunk of chunks) {
+		let stepDir = jobDefault;
+		for (const line of chunk) {
+			const match = WORKING_DIRECTORY.exec(line);
+			if (match) stepDir = match[1];
+		}
+		let dir = resolveRunPath("", stepDir);
+		for (const line of chunk) {
+			if (WORKING_DIRECTORY.test(line)) continue;
+			for (const raw of line.split(/&&|\|\||;/u)) {
+				const segment = raw.trim().replace(/^(?:run:\s*|-\s+run:\s*)/u, "");
+				const cd = CHANGE_DIRECTORY.exec(segment);
+				if (cd) {
+					dir = cd[2] ? resolveRunPath(dir, cd[2]) : null;
+					continue;
+				}
+				const direct = DIRECT_EXEC.exec(segment);
+				if (direct) record(dir, direct[1]);
+				for (const call of segment.matchAll(INTERPRETER)) {
+					if (INLINE_FLAG.test(call[1])) continue;
+					record(dir, call[3]);
+				}
+			}
+		}
+	}
+	return { paths, unresolved };
+}
 
 function toRelative(root, absolute) {
 	const rel = relative(root, absolute);
@@ -271,13 +411,15 @@ export function jobBody(workflowText, jobName) {
  * and its imports are in it because the `changes` job executes them.
  *
  * FAIL-CLOSED. Unreadable or unparseable `package.json` / `full-suite.yml`, a
- * gating job missing from the workflow, or a lane job that names no script at
- * all yields `{ ok: false }`, and `isNativeSurface` then treats every path
- * under `DERIVED_PREFIXES` as native.
+ * gating job missing from the workflow, a used composite action with no
+ * readable `action.yml`, a gating step that runs a script from a directory
+ * that cannot be resolved (`cd "$SOMEWHERE"`, `working-directory: ${{ … }}`),
+ * or a lane job whose own steps name no script yields `{ ok: false }`, and
+ * `isNativeSurface` then treats every path under `DERIVED_PREFIXES` as native.
  *
- * Beyond imports, a walked file's string literals that name an existing `.py`
- * or `.sh` helper (beside it or from the root) are followed, and Python helpers follow their
- * sibling-module imports — the lane's model-uncertainty rig runs
+ * Beyond imports, a walked file's string literals that name a `.py` or `.sh`
+ * helper (beside it or from the root, present or not) are followed, and Python
+ * helpers follow their sibling-module imports — the lane's model-uncertainty rig runs
  * `scripts/model_uncertainty_backend.py` by `join(SCRIPT_ROOT, "…py")`.
  *
  * Residual risk, stated: a path a rig assembles from pieces (no literal names
@@ -434,13 +576,24 @@ export function deriveNativeSurfaces(root = REPO_ROOT) {
 			runScript(name);
 	}
 
-	// (c) The gating jobs, and the local composite actions they use.
-	let laneNamedAScript = false;
+	// (c) The gating jobs, and the local composite actions they use. Returns
+	// the scripts THIS text's own steps name (not its actions' or lifecycle
+	// hooks'), which is what the "lane names no script" guard counts.
 	const visitedActions = new Set();
 	const scanWorkflowText = (text) => {
-		const before = seeds.size + visitedScripts.size;
 		scanCommand(text);
-		if (seeds.size + visitedScripts.size > before) laneNamedAScript = true;
+		const named = new Set(
+			[...text.matchAll(SCRIPT_TOKEN)].map((match) => match[1]),
+		);
+		const invoked = runInvocations(text);
+		for (const path of invoked.paths) {
+			addPath(path);
+			named.add(path);
+		}
+		for (const target of invoked.unresolved)
+			errors.push(
+				`a gating step runs \`${target}\` from a directory that cannot be resolved`,
+			);
 		for (const line of text.split("\n")) {
 			const uses = LOCAL_USES.exec(line);
 			if (!uses) continue;
@@ -448,6 +601,13 @@ export function deriveNativeSurfaces(root = REPO_ROOT) {
 			if (visitedActions.has(actionDir)) continue;
 			visitedActions.add(actionDir);
 			addPrefix(actionDir);
+			// A used action with no readable definition hides whatever it runs.
+			if (
+				!["action.yml", "action.yaml"].some((name) =>
+					isFile(join(root, actionDir, name)),
+				)
+			)
+				errors.push(`${actionDir} has no action.yml or action.yaml file`);
 			for (const name of ["action.yml", "action.yaml"]) {
 				const path = join(root, actionDir, name);
 				if (!isFile(path)) continue;
@@ -463,17 +623,23 @@ export function deriveNativeSurfaces(root = REPO_ROOT) {
 				}
 			}
 		}
+		return named;
 	};
 	for (const job of LANE_GATING_JOBS) {
 		const body = jobBody(workflow, job);
 		if (body === null)
 			return fail(`${LANE_WORKFLOW} has no \`${job}\` job to derive from`);
-		laneNamedAScript = false;
-		scanWorkflowText(body);
-		if (job === "native-proofs" && !laneNamedAScript)
-			return fail("the native-proofs job names no script: derivation is empty");
+		const named = scanWorkflowText(body);
+		// Counts only scripts the job's own steps run or name, not `pnpm
+		// install`'s lifecycle hooks: those run in any job, so they say nothing
+		// about whether the lane's rig was read (#2070 QA Q1).
+		if (job === "native-proofs" && named.size === 0)
+			return fail(
+				"the native-proofs job's own steps name no script: derivation is empty",
+			);
 	}
-	if (errors.length) return fail("a composite action could not be read");
+	if (errors.length)
+		return fail("the gating jobs or their actions could not be fully read");
 
 	// Transitive static relative imports from every seed.
 	const queue = [...seeds];
@@ -496,32 +662,41 @@ export function deriveNativeSurfaces(root = REPO_ROOT) {
 		const follow = (rel) => {
 			if (rel && !walked.has(rel)) queue.push(rel);
 		};
+		// A name that resolves to no file is still followed (#2070 F1): the walk
+		// then finds nothing to read, but the name stays in `files`, so a diff
+		// deleting or renaming what the rig still names selects the lane.
 		if (isPython) {
-			// Stdlib names resolve to no sibling file and are dropped.
+			// Stdlib names become absent `scripts/<name>.py` members. Harmless, and
+			// right: a file added under that name would shadow the stdlib module.
 			for (const match of text.matchAll(PYTHON_IMPORT)) {
 				const sibling = join(root, dirname(path), `${match[1]}.py`);
-				if (isFile(sibling)) follow(toRelative(root, sibling));
+				follow(toRelative(root, sibling));
 			}
 			continue;
 		}
 		for (const edge of IMPORT_EDGES) {
 			for (const match of text.matchAll(edge)) {
 				const target = resolve(root, dirname(path), match[1]);
-				const hit = RESOLVE_SUFFIXES.map((suffix) => `${target}${suffix}`).find(
-					isFile,
+				const candidates = RESOLVE_SUFFIXES.map(
+					(suffix) => `${target}${suffix}`,
 				);
-				follow(toRelative(root, hit ?? target));
+				const hit = candidates.find(isFile);
+				// Extensionless and absent: every file it could resolve to.
+				for (const candidate of hit ? [hit] : candidates)
+					follow(toRelative(root, candidate));
 			}
 		}
 		// Spawned helpers named by a literal: a miss would let a rig change skip
 		// its own proof.
 		for (const match of text.matchAll(FILE_LITERAL)) {
 			const literal = match[1].replace(LEADING_DOT_SLASH, "");
-			const hit = [
+			const candidates = [
 				resolve(root, dirname(path), literal),
 				resolve(root, literal),
-			].find(isFile);
-			if (hit) follow(toRelative(root, hit));
+			];
+			const hit = candidates.find(isFile);
+			for (const candidate of hit ? [hit] : candidates)
+				follow(toRelative(root, candidate));
 		}
 	}
 
@@ -531,7 +706,15 @@ export function deriveNativeSurfaces(root = REPO_ROOT) {
 		return fail("no native script was derived");
 	// The gating workflow itself: editing it can change or remove the lane.
 	files.add(LANE_WORKFLOW);
-	return { ok: true, files, prefixes: [...prefixes], errors };
+	return {
+		ok: true,
+		files,
+		prefixes: [...prefixes],
+		errors,
+		// Whether a changed path exists in the tree this was derived from; see
+		// "A changed path the checkout does not have is native" in the header.
+		exists: (path) => isFile(join(root, path)),
+	};
 }
 
 const derivedByRoot = new Map();
@@ -562,6 +745,10 @@ export function isNativeSurface(path, derived = nativeSurfacesFor()) {
 		return false;
 	// Unknown derivation: the whole tree is native, as it was before.
 	if (!derived?.ok) return true;
+	// Deleted or renamed away (`--no-renames`): nothing in the tree can vouch
+	// that the lane never ran it. No `exists` to ask is unknown, so native too.
+	if (typeof derived.exists !== "function" || !derived.exists(normalized))
+		return true;
 	if (derived.files.has(normalized)) return true;
 	return derived.prefixes.some((prefix) => normalized.startsWith(prefix));
 }

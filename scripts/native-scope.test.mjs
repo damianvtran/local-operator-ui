@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	chmodSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	renameSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -19,7 +21,9 @@ import {
 	isNativeSurface,
 	main,
 	nativeSurfacePaths,
+	nativeSurfacesFor,
 	requiresNativeProof,
+	runInvocations,
 } from "./native-scope.mjs";
 
 const SCRIPT = fileURLToPath(new URL("./native-scope.mjs", import.meta.url));
@@ -244,9 +248,25 @@ const PR_2066 = [
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
+/**
+ * This checkout's derivation as #2066's merge ref sees it: #2066 ADDS
+ * `check-named-test.mjs` and its test, so on that ref they exist. Without the
+ * overlay they are absent here, and an absent changed path is native (F1).
+ */
+function withPr2066Files() {
+	const derived = nativeSurfacesFor(ROOT);
+	return {
+		...derived,
+		exists: (path) => PR_2066.includes(path) || derived.exists(path),
+	};
+}
+
 test("#2066's CI-only diff does not select the native lane", () => {
-	assert.deepEqual(nativeSurfacePaths(PR_2066), []);
-	assert.equal(requiresNativeProof(PR_2066), false);
+	const derived = withPr2066Files();
+	assert.deepEqual(nativeSurfacePaths(PR_2066, derived), []);
+	assert.equal(requiresNativeProof(PR_2066, derived), false);
+	// ...and without the overlay (the files absent) it fails closed.
+	assert.equal(requiresNativeProof(PR_2066, nativeSurfacesFor(ROOT)), true);
 });
 
 test("the lane's rig, its imports and the gating stay native", () => {
@@ -290,9 +310,9 @@ test("the lane's rig, its imports and the gating stay native", () => {
 test("other workflows and unexecuted tests under the derived trees are not native", () => {
 	for (const path of [
 		".github/workflows/ci.yml",
-		".github/harness-paths",
+		".github/CODEOWNERS",
 		"scripts/native-scope.test.mjs",
-		"scripts/check-named-test.mjs",
+		"scripts/storybook-music-scope.mjs",
 	]) {
 		assert.equal(isNativeSurface(path), false, `${path} is CI-only`);
 	}
@@ -303,6 +323,8 @@ test("other workflows and unexecuted tests under the derived trees are not nativ
  * be proved against inputs the test controls (and broken on purpose).
  */
 function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
+	// Every file a test asserts `false` for must exist here: an absent changed
+	// path under scripts/ or .github/ is native whatever the derivation says.
 	const root = mkdtempSync(join(tmpdir(), "native-scope-root-"));
 	const write = (path, text) => {
 		mkdirSync(join(root, path, ".."), { recursive: true });
@@ -316,6 +338,8 @@ function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
 				build: "electron-vite build",
 				pack: "pnpm run build && electron-builder --dir",
 				lint: "node scripts/lint-only.mjs",
+				// N1 trap: a runner match crossing a newline reads `uses:` as a name.
+				"uses:": "node scripts/uses-trap.mjs",
 			},
 			build: { afterPack: "scripts/after.mjs" },
 		}),
@@ -329,6 +353,8 @@ function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
 			"      - run: node scripts/native-scope.mjs",
 			"  native-proofs:",
 			"    steps:",
+			"      - name: Install pnpm",
+			"        uses: pnpm/action-setup@v4",
 			"      - uses: ./.github/actions/rt",
 			"      # node scripts/commented-out.mjs",
 			`      - run: ${laneRun}`,
@@ -344,8 +370,9 @@ function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
 	// the first is a surface.
 	write(
 		"scripts/scene.mjs",
-		'import { x } from "./helper.mjs";\nconst py = join(here, "backend.py");\nconst t = "scripts/listed.test.mjs";\n',
+		'import { x } from "./helper.mjs";\nimport "./noext";\nconst py = join(here, "backend.py");\nconst t = "scripts/listed.test.mjs";\n',
 	);
+	write("scripts/noext.mjs", "\n");
 	write("scripts/backend.py", "import json\nimport backend_util\n");
 	write("scripts/backend_util.py", "\n");
 	write("scripts/listed.test.mjs", "\n");
@@ -353,6 +380,9 @@ function fixtureRepo({ laneRun = "node scripts/scene.mjs" } = {}) {
 	write("scripts/shipped/run.mjs", "\n");
 	write("scripts/after.mjs", "\n");
 	write("scripts/lint-only.mjs", "\n");
+	write("scripts/commented-out.mjs", "\n");
+	write("scripts/uses-trap.mjs", "\n");
+	write(".github/workflows/ci.yml", "jobs: {}\n");
 	return root;
 }
 
@@ -387,6 +417,12 @@ test("each derivation source is read, and nothing else is", () => {
 			"a JS literal is a name, not an execution",
 		);
 		assert.equal(native(".github/workflows/ci.yml"), false);
+		assert.equal(native("scripts/noext.mjs"), true, "extensionless import");
+		assert.equal(
+			native("scripts/uses-trap.mjs"),
+			false,
+			"a runner match stays on its line (N1)",
+		);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
@@ -397,6 +433,8 @@ test("a new script in the native-proofs job is native without editing the classi
 	const after = fixtureRepo({
 		laneRun: "node scripts/scene.mjs && node scripts/foo.mjs",
 	});
+	for (const root of [before, after])
+		writeFileSync(join(root, "scripts/foo.mjs"), "\n");
 	try {
 		assert.equal(
 			isNativeSurface("scripts/foo.mjs", deriveNativeSurfaces(before)),
@@ -410,6 +448,130 @@ test("a new script in the native-proofs job is native without editing the classi
 		rmSync(before, { recursive: true, force: true });
 		rmSync(after, { recursive: true, force: true });
 	}
+});
+
+/**
+ * #2070 review F1. CI diffs the merge ref with `--no-renames`, so a deleted or
+ * renamed helper is a changed path the tree no longer has and nothing names.
+ * Each case is derived from the tree AFTER the change, as CI would.
+ */
+test("a deleted or renamed lane helper still selects the lane", () => {
+	// The reviewer's two repros, on this repository: present they are native;
+	// gone from the tree (the merge ref of a deleting PR) they must stay so.
+	const derived = nativeSurfacesFor(ROOT);
+	for (const path of [
+		"scripts/model_uncertainty_backend.py",
+		"scripts/evidence-run-guard.py",
+	]) {
+		assert.equal(isNativeSurface(path, derived), true, `${path} present`);
+		const deleted = {
+			...derived,
+			exists: (candidate) => candidate !== path && derived.exists(candidate),
+		};
+		assert.equal(isNativeSurface(path, deleted), true, `${path} deleted`);
+	}
+
+	const cases = {
+		// a `.py` the rig spawns by literal
+		"scripts/backend.py": (root) => rmSync(join(root, "scripts/backend.py")),
+		// a Python sibling import of that helper
+		"scripts/backend_util.py": (root) =>
+			rmSync(join(root, "scripts/backend_util.py")),
+		// an extensionless JS import
+		"scripts/noext.mjs": (root) => rmSync(join(root, "scripts/noext.mjs")),
+		// Accepted fail-closed cost: a CI-only helper's deletion also runs the
+		// lane, because absence alone cannot tell it from a lane helper.
+		"scripts/lint-only.mjs": (root) =>
+			rmSync(join(root, "scripts/lint-only.mjs")),
+	};
+	for (const [path, remove] of Object.entries(cases)) {
+		const root = fixtureRepo();
+		try {
+			assert.equal(
+				isNativeSurface(path, deriveNativeSurfaces(root)),
+				path !== "scripts/lint-only.mjs",
+				`${path} present`,
+			);
+			remove(root);
+			const after = deriveNativeSurfaces(root);
+			assert.equal(after.ok, true, after.errors.join("; "));
+			assert.equal(isNativeSurface(path, after), true, `${path} deleted`);
+			// (b): what the tree still names stays in the derived set, so the
+			// answer does not rest on the absence rule alone.
+			if (path !== "scripts/lint-only.mjs")
+				assert.ok(after.files.has(path), `${path} still derived`);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+
+	// A renamed lane rig: `--no-renames` lists the old path (gone) and the new.
+	const root = fixtureRepo({ laneRun: "node scripts/scene2.mjs" });
+	try {
+		renameSync(
+			join(root, "scripts/scene.mjs"),
+			join(root, "scripts/scene2.mjs"),
+		);
+		const derived = deriveNativeSurfaces(root);
+		assert.equal(isNativeSurface("scripts/scene.mjs", derived), true);
+		assert.equal(
+			requiresNativeProof(["scripts/scene.mjs", "scripts/scene2.mjs"], derived),
+			true,
+		);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+/** #2070 review M2: scripts a lane step runs without spelling `scripts/…`. */
+test("a lane script run from another directory is native", () => {
+	const shapes = {
+		"working-directory": "node wd-only.mjs\n        working-directory: scripts",
+		"cd &&": "cd scripts && node ./wd-only.mjs",
+		"cd on its own line": "|\n          cd scripts\n          node wd-only.mjs",
+		"direct execution": "cd scripts && ./wd-only.mjs",
+	};
+	const before = fixtureRepo();
+	try {
+		writeFileSync(join(before, "scripts/wd-only.mjs"), "\n");
+		assert.equal(
+			isNativeSurface("scripts/wd-only.mjs", deriveNativeSurfaces(before)),
+			false,
+			"control: not run",
+		);
+	} finally {
+		rmSync(before, { recursive: true, force: true });
+	}
+	for (const [shape, run] of Object.entries(shapes)) {
+		const root = fixtureRepo({
+			laneRun: `node scripts/scene.mjs\n      - run: ${run}`,
+		});
+		try {
+			writeFileSync(join(root, "scripts/wd-only.mjs"), "\n");
+			const derived = deriveNativeSurfaces(root);
+			assert.equal(derived.ok, true, `${shape}: ${derived.errors.join("; ")}`);
+			assert.equal(
+				isNativeSurface("scripts/wd-only.mjs", derived),
+				true,
+				shape,
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}
+	// Runner scratch is never the checkout, and inline code is not a file.
+	assert.deepEqual(
+		runInvocations(
+			[
+				"    steps:",
+				'      - run: node "$RUNNER_TEMP/probe.mjs"',
+				"      - run: node --input-type=module -e 'import(\"./x.mjs\")'",
+				"      - run: python3 - <<'PY'",
+				"      - run: python3 -m venv .venv",
+			].join("\n"),
+		),
+		{ paths: [], unresolved: [] },
+	);
 });
 
 test("an underivable repository makes every scripts/ and .github/ path native", () => {
@@ -428,6 +590,73 @@ test("an underivable repository makes every scripts/ and .github/ path native", 
 			writeFileSync(
 				join(root, ".github/workflows/full-suite.yml"),
 				"jobs:\n  changes:\n    steps: []\n  native-proofs:\n    steps: []\n  merge-gate:\n    steps: []\n",
+			),
+		// M1: a used composite action whose definition cannot be read.
+		"a used action with no action file": (root) => {
+			rmSync(join(root, ".github/actions/rt/action.yml"));
+			mkdirSync(join(root, ".github/actions/rt/action.yml"));
+		},
+		// Root reads a mode-000 file anyway, so this one only proves as a user.
+		...(process.getuid?.() === 0
+			? {}
+			: {
+					"an unreadable action.yml": (root) =>
+						chmodSync(join(root, ".github/actions/rt/action.yml"), 0),
+				}),
+		// M1: every gating script lives under bin/, so nothing under scripts/
+		// is derived, which can only mean the reading went wrong.
+		"no native script derived": (root) => {
+			writeFileSync(
+				join(root, "package.json"),
+				JSON.stringify({ files: ["bin"], scripts: {} }),
+			);
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				"jobs:\n  changes:\n    steps:\n      - run: node bin/a.js\n  native-proofs:\n    steps:\n      - run: node bin/b.js\n  merge-gate:\n    steps:\n      - run: node bin/c.js\n",
+			);
+			mkdirSync(join(root, "bin"), { recursive: true });
+			for (const name of ["a", "b", "c"])
+				writeFileSync(join(root, `bin/${name}.js`), "\n");
+		},
+		// Q1: `pnpm install` reaches `prepare`, which names a script, yet the
+		// lane's own steps name none; the hook must not satisfy the guard.
+		"a lane whose only script comes from an install hook": (root) => {
+			writeFileSync(
+				join(root, "package.json"),
+				JSON.stringify({
+					files: ["bin"],
+					scripts: { prepare: "node scripts/hook.mjs" },
+					build: { afterPack: "scripts/after.mjs" },
+				}),
+			);
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				"jobs:\n  changes:\n    steps:\n      - run: node scripts/native-scope.mjs\n  native-proofs:\n    steps:\n      - run: pnpm install --frozen-lockfile\n  merge-gate:\n    steps:\n      - run: node scripts/verdict.mjs\n",
+			);
+			writeFileSync(join(root, "scripts/hook.mjs"), "\n");
+		},
+		// M2: a script run from a directory nobody can resolve.
+		"a lane step cd-ing into a variable": (root) =>
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				readFileSync(
+					join(root, ".github/workflows/full-suite.yml"),
+					"utf8",
+				).replace(
+					"      - run: node scripts/scene.mjs",
+					'      - run: node scripts/scene.mjs\n      - run: cd "$SOMEWHERE" && node ./x.mjs',
+				),
+			),
+		"a lane step with an expression working-directory": (root) =>
+			writeFileSync(
+				join(root, ".github/workflows/full-suite.yml"),
+				readFileSync(
+					join(root, ".github/workflows/full-suite.yml"),
+					"utf8",
+				).replace(
+					"      - run: node scripts/scene.mjs",
+					"      - run: node scripts/scene.mjs\n      - run: node x.mjs\n        working-directory: ${{ inputs.dir }}",
+				),
 			),
 	};
 	for (const [name, breakIt] of Object.entries(breakages)) {
@@ -452,7 +681,14 @@ test("the CLI derives from the repository, not the cwd, and says when it fails c
 	const broken = fixtureRepo();
 	try {
 		const changed = join(directory, "changed.txt");
-		writeFileSync(changed, `${PR_2066.join("\n")}\n`);
+		// CI-only paths this checkout HAS (#2066's added files are absent here,
+		// and an absent path is native by design).
+		const ciOnly = [
+			".github/workflows/ci.yml",
+			"scripts/entry-point.test.mjs",
+			"scripts/storybook-music-scope.mjs",
+		];
+		writeFileSync(changed, `${ciOnly.join("\n")}\n`);
 		const fromElsewhere = spawnSync(
 			process.execPath,
 			[SCRIPT, "--changed-file", changed],
