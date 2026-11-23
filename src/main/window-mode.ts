@@ -44,6 +44,78 @@ export const WINDOW_MODES = ["normal", "headless", "inactive"] as const;
 
 export type WindowMode = (typeof WINDOW_MODES)[number];
 
+export function resolveHeadlessWindowClose(input: {
+	mode: WindowMode;
+	windowsRemaining: boolean;
+	firstRunSetupInFlight: boolean;
+}): "ignore" | "defer" | "end" {
+	if (input.mode !== "headless" || input.windowsRemaining) return "ignore";
+	return input.firstRunSetupInFlight ? "defer" : "end";
+}
+
+/**
+ * R4 (signed-update run 45085505238): the installer's `finally` can close the
+ * last window before the post-install start reaches `/health`. Windows/Linux
+ * already exempt installation in their ordinary close policy, but headless
+ * returns before the platform policy. Track this one handoff, not all startup:
+ * a serving headless run still ends on last close, and a stranded first run
+ * gets one deadline from its first windowless close, not another per retry.
+ */
+export function createHeadlessFirstRunSetup(input: {
+	mode: WindowMode;
+	timeoutMs: number;
+	onDeferred(): void;
+	onFailure(reason: "install-failed" | "start-failed" | "deadline"): void;
+}) {
+	let state: "idle" | "pending" | "failed" = "idle";
+	let deadline: ReturnType<typeof setTimeout> | null = null;
+	const clearDeadline = () => {
+		if (deadline) clearTimeout(deadline);
+		deadline = null;
+	};
+	return {
+		begin() {
+			if (input.mode === "headless") state = "pending";
+		},
+		windowClosed(windowsRemaining: boolean, quitting: boolean) {
+			const decision = resolveHeadlessWindowClose({
+				mode: input.mode,
+				windowsRemaining,
+				firstRunSetupInFlight: state === "pending",
+			});
+			if (decision === "defer" && !quitting && !deadline) {
+				deadline = setTimeout(() => {
+					deadline = null;
+					state = "failed";
+					input.onFailure("deadline");
+				}, input.timeoutMs);
+				// A watchdog must not itself keep an abandoned run alive.
+				deadline.unref();
+				input.onDeferred();
+			}
+			return decision;
+		},
+		settle(
+			outcome: "reachable" | "install-failed" | "start-failed",
+			windowsRemaining = false,
+		): boolean {
+			if (state !== "pending") return false;
+			state = "idle";
+			clearDeadline();
+			if (
+				outcome === "reachable" ||
+				(outcome === "start-failed" && windowsRemaining)
+			)
+				return false;
+			state = "failed";
+			input.onFailure(outcome);
+			return true;
+		},
+		failed: () => state === "failed",
+		clearDeadline,
+	};
+}
+
 /** What the window does once its first frame is ready. */
 export type WindowShow = "focus" | "inactive" | "never";
 

@@ -41,11 +41,13 @@ const {
 	WINDOW_MIN_WIDTH,
 	WINDOW_MODE_ENV,
 	WINDOW_SIZE_ENV,
+	createHeadlessFirstRunSetup,
 	describeWindowLaunch,
 	hotkeysAllowed,
 	parseWindowMode,
 	parseWindowSize,
 	readWindowIntent,
+	resolveHeadlessWindowClose,
 	resolveLauncherWatchPlan,
 	resolveSecondLaunchShow,
 	resolveWindowLaunchPlan,
@@ -55,6 +57,118 @@ const {
 		bundle.outputFiles[0].text,
 	).toString("base64")}`
 );
+
+test("only a windowless headless first run defers its last-window close", () => {
+	for (const mode of ["normal", "inactive", "headless"]) {
+		for (const windowsRemaining of [false, true]) {
+			for (const firstRunSetupInFlight of [false, true]) {
+				const expected =
+					mode !== "headless" || windowsRemaining
+						? "ignore"
+						: firstRunSetupInFlight
+							? "defer"
+							: "end";
+				assert.equal(
+					resolveHeadlessWindowClose({
+						mode,
+						windowsRemaining,
+						firstRunSetupInFlight,
+					}),
+					expected,
+					`${mode}/${windowsRemaining}/${firstRunSetupInFlight}`,
+				);
+			}
+		}
+	}
+});
+
+function firstRunSetup(t, mode = "headless") {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const events = [];
+	const setup = createHeadlessFirstRunSetup({
+		mode,
+		timeoutMs: 100,
+		onDeferred: () => events.push("deferred"),
+		onFailure: (reason) => events.push(reason),
+	});
+	return { setup, events, tick: (ms) => t.mock.timers.tick(ms) };
+}
+
+test("installer finally can close before start succeeds; serving close still ends", (t) => {
+	const { setup, events, tick } = firstRunSetup(t);
+	setup.begin();
+	assert.equal(setup.windowClosed(true, false), "ignore");
+	tick(100);
+	assert.deepEqual(events, [], "no deadline while a window is still present");
+	assert.equal(setup.windowClosed(false, false), "defer");
+	tick(99);
+	assert.equal(setup.settle("reachable"), false);
+	assert.equal(setup.failed(), false);
+	tick(100);
+	assert.deepEqual(events, ["deferred"], "readiness disarms the deadline");
+	assert.equal(setup.windowClosed(false, false), "end");
+});
+
+test("the first deferred close owns the deadline, even if closes repeat", (t) => {
+	const { setup, events, tick } = firstRunSetup(t);
+	setup.begin();
+	assert.equal(setup.windowClosed(false, false), "defer");
+	tick(99);
+	assert.equal(setup.windowClosed(false, false), "defer");
+	assert.deepEqual(events, ["deferred"]);
+	tick(1);
+	assert.deepEqual(events, ["deferred", "deadline"]);
+	assert.equal(setup.failed(), true);
+	assert.equal(
+		setup.settle("start-failed"),
+		false,
+		"a late start failure cannot quit twice",
+	);
+	tick(100);
+	assert.deepEqual(events, ["deferred", "deadline"]);
+});
+
+for (const outcome of ["install-failed", "start-failed"]) {
+	test(`windowless headless ${outcome} terminates before the deadline`, (t) => {
+		const { setup, events, tick } = firstRunSetup(t);
+		setup.begin();
+		assert.equal(setup.windowClosed(false, false), "defer");
+		assert.equal(setup.settle(outcome), true);
+		assert.equal(setup.failed(), true);
+		tick(100);
+		assert.deepEqual(events, ["deferred", outcome]);
+	});
+}
+
+test("a quit disarms the deadline and its own close cannot rearm it", (t) => {
+	const { setup, events, tick } = firstRunSetup(t);
+	setup.begin();
+	assert.equal(setup.windowClosed(false, false), "defer");
+	setup.clearDeadline();
+	assert.equal(setup.windowClosed(false, true), "defer");
+	tick(100);
+	assert.deepEqual(events, ["deferred"]);
+});
+
+test("a headless run with a window keeps the existing start-failure policy", (t) => {
+	const { setup, events, tick } = firstRunSetup(t);
+	setup.begin();
+	assert.equal(setup.settle("start-failed", true), false);
+	assert.equal(setup.windowClosed(false, false), "end");
+	tick(100);
+	assert.deepEqual(events, []);
+});
+
+for (const mode of ["normal", "inactive"]) {
+	test(`${mode} first-run lifecycle never takes over quit`, (t) => {
+		const { setup, events, tick } = firstRunSetup(t, mode);
+		setup.begin();
+		assert.equal(setup.windowClosed(false, false), "ignore");
+		assert.equal(setup.settle("install-failed"), false);
+		tick(100);
+		assert.deepEqual(events, []);
+	});
+}
 
 const raise = await import(
 	`data:text/javascript;base64,${Buffer.from(
