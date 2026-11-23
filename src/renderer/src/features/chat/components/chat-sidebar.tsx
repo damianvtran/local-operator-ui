@@ -809,7 +809,11 @@ import {
 	ChatSessionAvatar,
 	ChatSessionAvatarEdit,
 } from "./chat-session-avatar";
-import { ChatAsksOutstanding, statusLabelText } from "./chat-session-status";
+import {
+	ChatAsksOutstanding,
+	statusLabelText,
+	withQueuedAskStatus,
+} from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -4713,10 +4717,19 @@ export function ChatSidebar({
 		});
 	};
 	const sessionRow = (
-		row: CanonicalSessionRow,
+		listedRow: CanonicalSessionRow,
 		nested = false,
 		tagDraggable = false,
 	) => {
+		/*
+		 * THE ROW AS DRAWN: a queued ask is shown by the ask mark below, so the status
+		 * mark, tooltip and spoken name must not say "answer" a second time (see
+		 * `withQueuedAskStatus`). Ordering and sections read the wire row, upstream.
+		 */
+		const row = withQueuedAskStatus(
+			listedRow,
+			asksBySession?.get(listedRow.session_id),
+		);
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
 			unstarted: notSent.has(row.session_id),
