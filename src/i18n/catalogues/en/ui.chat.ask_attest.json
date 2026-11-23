@@ -1,0 +1,19 @@
+{
+	"ui.chat.ask_attest.action.confirm": "Confirm as operator…",
+	"ui.chat.ask_attest.action.confirming": "Waiting for your confirmation…",
+	"ui.chat.ask_attest.refusal.changed": "This question changed or closed while you were confirming. Check it, then try again.",
+	"ui.chat.ask_attest.refusal.not_eligible": "This copy of the app can't confirm answers as yours. Development builds and automated launches never can. Send it unconfirmed instead.",
+	"ui.chat.ask_attest.refusal.not_running": "This answer couldn't be confirmed as yours because the conversation isn't running. Send it unconfirmed, or open the conversation and confirm again.",
+	"ui.chat.ask_attest.refusal.refused": "The conversation didn't accept the confirmation. Send it unconfirmed, or open the conversation and confirm again.",
+	"ui.chat.ask_attest.refusal.retry": "The answer wasn't confirmed. Try again.",
+	"ui.chat.ask_attest.refusal.window": "Bring this window to the front, then confirm again.",
+	"ui.chat.ask_attest.sheet.answer_line": "{question}\n→ {answer}",
+	"ui.chat.ask_attest.sheet.button.cancel": "Cancel",
+	"ui.chat.ask_attest.sheet.button.confirm": "Confirm",
+	"ui.chat.ask_attest.sheet.consent_note": "Confirming records this answer as given by you on this Mac, so the agent can treat it as your consent.",
+	"ui.chat.ask_attest.sheet.message_respond": "Send this answer as yours?",
+	"ui.chat.ask_attest.sheet.message_revise": "Change your answer to this?",
+	"ui.chat.ask_attest.sheet.no_value": "(no answer)",
+	"ui.chat.ask_attest.sheet.secret_value": "(hidden)",
+	"ui.chat.ask_attest.sheet.typed_value": "“{value}”"
+}

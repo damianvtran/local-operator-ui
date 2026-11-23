@@ -81,7 +81,6 @@
  */
 
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { type Socket, createConnection } from "node:net";
 import { join } from "node:path";
 import { formatList } from "../i18n/format";
 import { t } from "../i18n/index";
@@ -89,8 +88,32 @@ import type {
 	DesktopRequest,
 	DesktopResponse,
 } from "../shared/desktop-contract";
-import { DEV_DRIVER_ENV } from "./dev-driver";
-import { AGENT_LAUNCH_FLAGS, type WindowMode } from "./window-mode";
+import {
+	ATTEST_ACTIVATION_TIMEOUT_MS,
+	ATTEST_DEBUG_SWITCHES,
+	ATTEST_DIAL_TIMEOUT_MS,
+	type AttestDialFailure,
+	type AttestDocument,
+	type AttestProvenanceFacts,
+	type AttestProvenanceRefusal,
+	type AttestSocketConnect,
+	type AttestStaticRefusal,
+	attestProvenanceRefusal,
+	attestStaticRefusal,
+	boundedActivation as boundedPageActivation,
+	dialAttest,
+	refusalEnv,
+	sameAttestDocument,
+} from "./app-attest";
+
+/*
+ * The gate, the dialler and the document identity live in `app-attest.ts`, shared
+ * with the ask answer attestation (`ask-attest.ts`). They were extracted from this
+ * file with no behaviour change; the names below are this module's original
+ * exports, kept so every caller and `scripts/mesh-pairing-attest.test.mjs` read
+ * the same API as before.
+ */
+export { refusalEnv };
 
 /** The one desktop op main attests before forwarding. */
 export const MESH_PAIRING_ANSWER_OP = "pairings.answer" as const;
@@ -120,10 +143,10 @@ export const MESH_PAIRING_DEADLINE_S = 30;
  * above it; a slower listener is refused rather than waited on, and a refused
  * dial spends nothing on core's side.
  */
-export const MESH_PAIRING_DIAL_TIMEOUT_MS = 10_000;
+export const MESH_PAIRING_DIAL_TIMEOUT_MS = ATTEST_DIAL_TIMEOUT_MS;
 
 /** How long main waits for the renderer to report its activation state, in ms. */
-export const MESH_PAIRING_ACTIVATION_TIMEOUT_MS = 1_000;
+export const MESH_PAIRING_ACTIVATION_TIMEOUT_MS = ATTEST_ACTIVATION_TIMEOUT_MS;
 
 /**
  * How long a minted confirmation stays consumable, in ms, counted from the
@@ -150,16 +173,7 @@ export const MESH_PAIRING_ATTEST_REFUSED = "pairing_attest_refused";
 
 /** Why main would not attest. Stable strings: the renderer and the tests key on them. */
 export type PairingProvenanceRefusal =
-	| "not_macos"
-	| "not_packaged"
-	| "remote_debugging"
-	| "dev_flag"
-	| "window_mode"
-	| "no_window"
-	| "window_not_visible"
-	| "window_not_focused"
-	| "devtools_open"
-	| "debugger_attached"
+	| AttestProvenanceRefusal
 	| "no_user_action"
 	/** The answer carried no live token: never minted, expired, or already spent. */
 	| "no_confirmation"
@@ -175,131 +189,29 @@ export type PairingProvenanceRefusal =
 	| "pairing_changed";
 
 /** The refusals that depend only on how the app was launched (see `pairingStaticRefusal`). */
-export type PairingStaticRefusal = Extract<
-	PairingProvenanceRefusal,
-	"not_macos" | "not_packaged" | "remote_debugging" | "dev_flag" | "window_mode"
->;
+export type PairingStaticRefusal = AttestStaticRefusal;
 
 /** Why the attestation itself failed (after the gate passed). */
-export type PairingAttestFailure =
-	| "listener_unavailable"
-	| "listener_refused"
-	| "frame_refused"
-	| "timeout"
-	| "expired";
+export type PairingAttestFailure = AttestDialFailure | "expired";
 
 /** The facts the gate decides on. Everything here is read by main, never sent by a renderer. */
-export type PairingProvenanceFacts = {
-	platform: NodeJS.Platform;
-	packaged: boolean;
-	argv: readonly string[];
-	env: Readonly<Record<string, string | undefined>>;
-	windowMode: WindowMode;
-	window: {
-		visible: boolean;
-		minimized: boolean;
-		focused: boolean;
-		devToolsOpened: boolean;
-		debuggerAttached: boolean;
-	} | null;
-};
-
-/**
- * Environment variables that mean "something other than a person drives this
- * process". The dev driver's whole family shares the `DEV_DRIVER_ENV` prefix;
- * the smoke test is the packaged-bundle rig.
- */
-const DRIVER_ENV_PREFIXES = [DEV_DRIVER_ENV, "LOCAL_OPERATOR_UI_SMOKE_TEST"];
-
-/**
- * Merge env sources for the `dev_flag` refusal, keeping, per key, any NON-EMPTY
- * value from any source.
- *
- * Why not a plain spread: main has two envs - the launch snapshot (`launchEnv`)
- * and `process.env` after the cwd `.env` was folded in with `override: true`.
- * A spread lets the later source win per key, so a `.env` line
- * `LOCAL_OPERATOR_UI_DEV_DRIVER=` would blank a driver variable the process was
- * launched with, and the refusal (which treats empty as unset, see the test "an
- * empty dev-driver env var is not a driver") would pass a launch the driver
- * still arms from `launchEnv`. Keeping any non-empty value means a driver
- * variable set in EITHER env refuses. Use it only for refusals: for a fact that
- * GRANTS something (window mode, driver arming) a merged env is the wrong read,
- * and main uses `launchEnv` alone.
- */
-export function refusalEnv(
-	...sources: readonly Readonly<Record<string, string | undefined>>[]
-): Record<string, string> {
-	const merged: Record<string, string> = {};
-	for (const source of sources)
-		for (const [key, value] of Object.entries(source))
-			if (value !== undefined && value !== "" && !(key in merged))
-				merged[key] = value;
-	return merged;
-}
+export type PairingProvenanceFacts = AttestProvenanceFacts;
 
 /** Switches that attach a debugger/driver, matched as `--name` or `--name=value`. */
-export const MESH_PAIRING_DEBUG_SWITCHES = [
-	"--remote-debugging-port",
-	"--remote-debugging-pipe",
-	"--remote-debugging-address",
-	"--inspect",
-	"--inspect-brk",
-	"--inspect-port",
-	"--inspect-publish-uid",
-];
+export const MESH_PAIRING_DEBUG_SWITCHES = ATTEST_DEBUG_SWITCHES;
 
-function hasSwitch(argv: readonly string[], name: string): boolean {
-	return argv.some((arg) => arg === name || arg.startsWith(`${name}=`));
-}
-
-/**
- * The launch half of the gate: `null` when this process could ever attest.
- *
- * Split out so main can tell the renderer UP FRONT (`pairings.eligibility`) that
- * a card here can only be answered from a terminal (design D1 / UX U1: an unsigned
- * or dev build used to take six digits and then refuse them). Nothing here changes
- * while the process lives, so one read at mount is the truth for the session.
- */
+/** The launch half of the gate (`app-attest.ts` `attestStaticRefusal`). */
 export function pairingStaticRefusal(
 	facts: Omit<PairingProvenanceFacts, "window">,
 ): PairingStaticRefusal | null {
-	if (facts.platform !== "darwin") return "not_macos";
-	if (!facts.packaged) return "not_packaged";
-	if (MESH_PAIRING_DEBUG_SWITCHES.some((name) => hasSwitch(facts.argv, name)))
-		return "remote_debugging";
-	if (
-		facts.argv.some((arg) => arg.startsWith("--lo-")) ||
-		AGENT_LAUNCH_FLAGS.some((name) => hasSwitch(facts.argv, name)) ||
-		Object.keys(facts.env).some(
-			(key) =>
-				facts.env[key] !== undefined &&
-				facts.env[key] !== "" &&
-				DRIVER_ENV_PREFIXES.some((prefix) => key.startsWith(prefix)),
-		)
-	)
-		return "dev_flag";
-	if (facts.windowMode !== "normal") return "window_mode";
-	return null;
+	return attestStaticRefusal(facts);
 }
 
-/**
- * The gate: `null` when main may attest, else the first rule that refused.
- *
- * Order is cheapest-and-most-structural first so the reason a person reads is the
- * one that matters (a dev build says "not packaged", not "window not focused").
- */
+/** The whole gate (`app-attest.ts` `attestProvenanceRefusal`). */
 export function pairingProvenanceRefusal(
 	facts: PairingProvenanceFacts,
 ): PairingProvenanceRefusal | null {
-	const launch = pairingStaticRefusal(facts);
-	if (launch) return launch;
-	const window = facts.window;
-	if (window === null) return "no_window";
-	if (window.debuggerAttached) return "debugger_attached";
-	if (window.devToolsOpened) return "devtools_open";
-	if (!window.visible || window.minimized) return "window_not_visible";
-	if (!window.focused) return "window_not_focused";
-	return null;
+	return attestProvenanceRefusal(facts);
 }
 
 /** `<config>/run/attest/mesh-pairing.sock` - core's `run_dir(config, "run/attest")`. */
@@ -344,7 +256,7 @@ export function meshPairingFrame(
 }
 
 /** How the dialler connects; injected so tests use a real socket in a scratch dir or a double. */
-export type PairingSocketConnect = (path: string) => Socket;
+export type PairingSocketConnect = AttestSocketConnect;
 
 /**
  * Dial the listener and attest one frame: `null` on success, else why not.
@@ -358,53 +270,13 @@ export function attestMeshPairing(
 	socketPath: string,
 	frame: MeshPairingAttestFrame,
 	{
-		connect = (path) => createConnection(path),
+		connect,
 		timeoutMs = MESH_PAIRING_DIAL_TIMEOUT_MS,
 	}: { connect?: PairingSocketConnect; timeoutMs?: number } = {},
 ): Promise<PairingAttestFailure | null> {
-	return new Promise((resolve) => {
-		let settled = false;
-		let buffer = "";
-		let greeted = false;
-		const socket = connect(socketPath);
-		const finish = (outcome: PairingAttestFailure | null) => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timer);
-			socket.destroy();
-			resolve(outcome);
-		};
-		const timer = setTimeout(() => finish("timeout"), timeoutMs);
-		socket.setEncoding("utf8");
-		socket.on("error", () =>
-			finish(greeted ? "frame_refused" : "listener_unavailable"),
-		);
-		socket.on("close", () =>
-			finish(greeted ? "frame_refused" : "listener_unavailable"),
-		);
-		socket.on("data", (chunk: string) => {
-			buffer += chunk;
-			let newline = buffer.indexOf("\n");
-			while (newline >= 0 && !settled) {
-				const line = buffer.slice(0, newline);
-				buffer = buffer.slice(newline + 1);
-				let reply: { ok?: unknown } | null = null;
-				try {
-					reply = JSON.parse(line) as { ok?: unknown };
-				} catch {
-					reply = null;
-				}
-				const ok = reply !== null && reply.ok === true;
-				if (!greeted) {
-					if (!ok) return finish("listener_refused");
-					greeted = true;
-					socket.write(`${JSON.stringify(frame)}\n`);
-				} else {
-					return finish(ok ? null : "frame_refused");
-				}
-				newline = buffer.indexOf("\n");
-			}
-		});
+	return dialAttest(socketPath, frame, {
+		...(connect ? { connect } : {}),
+		timeoutMs,
 	});
 }
 
@@ -415,12 +287,7 @@ export function attestMeshPairing(
  * token alone can survive a same-site navigation that reuses the frame host, so
  * the count is what makes "the same document" mean the same loaded page.
  */
-export type PairingDocument = {
-	webContentsId: number;
-	processId: number;
-	frameToken: string;
-	generation: number;
-};
+export type PairingDocument = AttestDocument;
 
 /**
  * The ONE answer a confirmation vouches for, frozen by main before anything is
@@ -483,12 +350,7 @@ export type PairingConfirmationBinding = {
 };
 
 function sameDocument(a: PairingDocument, b: PairingDocument): boolean {
-	return (
-		a.webContentsId === b.webContentsId &&
-		a.processId === b.processId &&
-		a.frameToken === b.frameToken &&
-		a.generation === b.generation
-	);
+	return sameAttestDocument(a, b);
 }
 
 function sameBinding(
@@ -699,21 +561,11 @@ export function meshPairingEligibility(
  * Ask the page, bounded: a hung renderer is refused rather than awaited, and the
  * timer is cleared once the page answers (code review F3).
  */
-async function boundedActivation(host: PairingAnswerHost): Promise<boolean> {
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	try {
-		return await Promise.race([
-			host.userActivation().catch(() => false),
-			new Promise<boolean>((resolve) => {
-				timer = setTimeout(
-					() => resolve(false),
-					MESH_PAIRING_ACTIVATION_TIMEOUT_MS,
-				);
-			}),
-		]);
-	} finally {
-		clearTimeout(timer);
-	}
+function boundedActivation(host: PairingAnswerHost): Promise<boolean> {
+	return boundedPageActivation(
+		() => host.userActivation(),
+		MESH_PAIRING_ACTIVATION_TIMEOUT_MS,
+	);
 }
 
 export type PairingConfirmRequest = Extract<

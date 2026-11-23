@@ -1,0 +1,126 @@
+{
+	"ui.chat.ask_attest.action.confirm": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button on an ask card that sends the answer after a native confirmation, recording it as the operator's own",
+		"tone": "ends with an ellipsis because a confirmation follows"
+	},
+	"ui.chat.ask_attest.action.confirming": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "button label while the native confirmation sheet is open",
+		"tone": "progress; ends with an ellipsis"
+	},
+	"ui.chat.ask_attest.refusal.changed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the question changed or closed during confirmation",
+		"tone": "what happened, what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.not_eligible": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when this build or launch can never confirm answers",
+		"tone": "what happened, what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.not_running": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message under an ask card when the confirmation could not reach the conversation",
+		"tone": "what happened, what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.refused": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the conversation rejected the confirmation",
+		"tone": "what happened, what to do; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.retry": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "generic inline message when the confirmation did not complete",
+		"tone": "short; ends with a full stop"
+	},
+	"ui.chat.ask_attest.refusal.window": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "inline message when the window was hidden or unfocused during confirmation",
+		"tone": "an instruction; ends with a full stop"
+	},
+	"ui.chat.ask_attest.sheet.answer_line": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"question": "the agent's question text",
+			"answer": "the chosen answer(s)"
+		},
+		"role": "one line pair in the confirmation sheet: the agent's question, then the chosen answer on a new line after an arrow",
+		"tone": "keep the line break and the arrow"
+	},
+	"ui.chat.ask_attest.sheet.button.cancel": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "the sheet's cancel button",
+		"tone": "one verb"
+	},
+	"ui.chat.ask_attest.sheet.button.confirm": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "the sheet's confirm button",
+		"tone": "one verb"
+	},
+	"ui.chat.ask_attest.sheet.consent_note": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "last paragraph of the confirmation sheet explaining what confirming means",
+		"tone": "plain, reassuring; ends with a full stop"
+	},
+	"ui.chat.ask_attest.sheet.message_respond": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "title of the macOS confirmation sheet shown before an answer to an agent's question is sent as the operator's own",
+		"tone": "a short yes/no question"
+	},
+	"ui.chat.ask_attest.sheet.message_revise": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "title of the macOS confirmation sheet shown before a changed answer replaces the operator's earlier one",
+		"tone": "a short yes/no question"
+	},
+	"ui.chat.ask_attest.sheet.no_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "shown when a question carries no answer value",
+		"tone": "short, in parentheses"
+	},
+	"ui.chat.ask_attest.sheet.secret_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "shown instead of a secret answer so it never appears on screen",
+		"tone": "short, in parentheses"
+	},
+	"ui.chat.ask_attest.sheet.typed_value": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {
+			"value": "the text the operator typed"
+		},
+		"role": "wraps an answer the operator typed themselves (not one of the offered options) in quotation marks",
+		"tone": "use the locale's quotation marks"
+	}
+}

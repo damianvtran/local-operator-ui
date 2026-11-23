@@ -1,0 +1,19 @@
+{
+	"ui.chat.ask_attest.action.confirm": "以操作者身份确认…",
+	"ui.chat.ask_attest.action.confirming": "正在等待你确认…",
+	"ui.chat.ask_attest.refusal.changed": "你确认期间此问题已更改或关闭。请检查后重试。",
+	"ui.chat.ask_attest.refusal.not_eligible": "此应用副本无法以你的名义确认回答。开发版本和自动化启动始终无法确认。请改为不经确认直接发送。",
+	"ui.chat.ask_attest.refusal.not_running": "无法以你的名义确认此回答，因为该对话未在运行。可以不经确认直接发送，或打开对话后再次确认。",
+	"ui.chat.ask_attest.refusal.refused": "对话未接受此确认。可以不经确认直接发送回答，或打开对话后再次确认。",
+	"ui.chat.ask_attest.refusal.retry": "回答未确认。请重试。",
+	"ui.chat.ask_attest.refusal.window": "请将此窗口置于最前，然后再次确认。",
+	"ui.chat.ask_attest.sheet.answer_line": "{question}\n→ {answer}",
+	"ui.chat.ask_attest.sheet.button.cancel": "取消",
+	"ui.chat.ask_attest.sheet.button.confirm": "确认",
+	"ui.chat.ask_attest.sheet.consent_note": "确认后，此回答将记录为你在这台 Mac 上给出的回答，代理可以将其视为你的同意。",
+	"ui.chat.ask_attest.sheet.message_respond": "以你的名义发送此回答？",
+	"ui.chat.ask_attest.sheet.message_revise": "将你的回答改为此内容？",
+	"ui.chat.ask_attest.sheet.no_value": "（无回答）",
+	"ui.chat.ask_attest.sheet.secret_value": "（已隐藏）",
+	"ui.chat.ask_attest.sheet.typed_value": "“{value}”"
+}
