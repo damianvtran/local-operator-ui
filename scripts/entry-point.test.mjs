@@ -223,6 +223,20 @@ function cases(root) {
 		{ ...desktopInventoryRefusal, cwd: plain, env: {} },
 		{ ...musicEvidenceRefusal, cwd: plain, env: {} },
 		{
+			// `full-suite.yml`'s native-scope step. The refusal path is what this table
+			// can pin without a checkout: an unknown argument must stop the step rather
+			// than exit 0 with no output file, which the workflow would read as unset
+			// scope - and unset scope runs the lane, so a silent pass here would be a
+			// gate that cannot be narrowed AND cannot be trusted.
+			script: "native-scope.mjs",
+			args: ["--nope"],
+			cwd: plain,
+			env: {},
+			status: 2,
+			stdout: /^$/,
+			stderr: /^native-scope: unknown argument: --nope\n$/,
+		},
+		{
 			// Technical help exercises the real shared entry door without sealing
 			// outputs or loading Python/core/native/network/keychain prerequisites.
 			script: "model-uncertainty-native.mjs",
