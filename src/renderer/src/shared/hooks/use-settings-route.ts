@@ -44,11 +44,42 @@ export function isSettingsPath(pathname: string): boolean {
 	return pathname === SETTINGS_PATH;
 }
 
-/** `pathname + search` of the route the reader left to enter Settings. */
-let returnTarget: string | null = null;
+/** The memory this feature keeps: one target, and the last route outside. */
+export type SettingsReturnState = {
+	returnTarget: string | null;
+	lastOutsideRoute: string | null;
+};
 
-/** The last location seen OUTSIDE Settings, kept so re-entry can pin it again. */
-let lastOutsideRoute: string | null = null;
+const INITIAL_RETURN_STATE: SettingsReturnState = {
+	returnTarget: null,
+	lastOutsideRoute: null,
+};
+
+let returnState: SettingsReturnState = INITIAL_RETURN_STATE;
+
+/**
+ * The tracker's whole rule, as a pure step (round 2: M2b).
+ *
+ * Exported so the route logic has CI coverage without a renderer: entering
+ * re-pins the last outside route; a query change inside Settings keeps it; any
+ * departure records the new outside route AND clears the target, which is what
+ * makes a second close press before the commit idempotent (round 1: R3).
+ */
+export function nextSettingsReturn(
+	state: SettingsReturnState,
+	pathname: string,
+	search: string,
+): SettingsReturnState {
+	if (isSettingsPath(pathname)) {
+		return { ...state, returnTarget: state.lastOutsideRoute };
+	}
+	return { lastOutsideRoute: `${pathname}${search}`, returnTarget: null };
+}
+
+/** Where Close lands, for a given memory (the cold-open fallback included). */
+export function settingsCloseTarget(state: SettingsReturnState): string {
+	return state.returnTarget ?? SETTINGS_CLOSE_FALLBACK;
+}
 
 /**
  * Remember the route Settings is entered FROM. Mounted once, in `App`, so the
@@ -65,15 +96,7 @@ export function useSettingsReturnTracking(): void {
 	 * only read by a press, which cannot arrive before the commit that follows.
 	 */
 	useEffect(() => {
-		if (isSettingsPath(pathname)) {
-			// Re-pinning the SAME outside route on every in-page query change is
-			// harmless by construction: `lastOutsideRoute` only moves outside Settings.
-			returnTarget = lastOutsideRoute;
-			return;
-		}
-		lastOutsideRoute = `${pathname}${search}`;
-		// The visit is over: a stale target must not answer a later close.
-		returnTarget = null;
+		returnState = nextSettingsReturn(returnState, pathname, search);
 	}, [pathname, search]);
 }
 
@@ -90,7 +113,9 @@ export function useSettingsReturnTracking(): void {
 export function useCloseSettings(): () => void {
 	const navigate = useNavigate();
 	return useCallback(() => {
-		const target = returnTarget ?? SETTINGS_CLOSE_FALLBACK;
+		// Read, not consumed: the tracker clears it when the route leaves, so a
+		// second press before the commit re-navigates the same target.
+		const target = settingsCloseTarget(returnState);
 		/*
 		 * `replace`, so the route the reader returns to does not grow a history
 		 * entry for a page they have left. The router's own back stack is the
@@ -106,10 +131,4 @@ export function useCloseSettings(): () => void {
 			gear?.focus({ preventScroll: true });
 		});
 	}, [navigate]);
-}
-
-/** Test seam: the record is module state, and each case starts from nothing. */
-export function __resetSettingsReturn(): void {
-	returnTarget = null;
-	lastOutsideRoute = null;
 }

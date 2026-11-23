@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-close|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-close|settings-close-error|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -32013,11 +32013,13 @@ function readDaemonSnapshot(cdp) {
 const SETTINGS_CLOSE_READING = `(() => {
 	const button = document.querySelector('[data-settings-close]');
 	const column = document.querySelector('[data-glass-region="canvas-content"]');
+	/* The title is OPTIONAL: the page-level states (loading, error, no-config)
+	   render the surface without the h1, and the plate is still measurable. */
 	const title = column ? column.querySelector('h1') : null;
-	if (!button || !column || !title) return null;
+	if (!button || !column) return null;
 	const box = button.getBoundingClientRect();
 	const columnBox = column.getBoundingClientRect();
-	const titleBox = title.getBoundingClientRect();
+	const titleBox = title ? title.getBoundingClientRect() : null;
 	const glyph = button.querySelector('svg');
 	const glyphBox = glyph ? glyph.getBoundingClientRect() : null;
 	const style = getComputedStyle(button);
@@ -32026,7 +32028,7 @@ const SETTINGS_CLOSE_READING = `(() => {
 		box: { x: box.x, y: box.y, w: box.width, h: box.height },
 		glyph: glyphBox ? { w: glyphBox.width, h: glyphBox.height } : null,
 		column: { top: columnBox.top, left: columnBox.left, right: columnBox.right, width: columnBox.width },
-		title: { top: titleBox.top, bottom: titleBox.bottom },
+		title: titleBox ? { top: titleBox.top, bottom: titleBox.bottom } : null,
 		insetEnd: columnBox.right - box.right,
 		/* The search row's own edge, for the overlap question at narrow widths
 		   (design round 1, D3): the glyph must clear it. */
@@ -32034,10 +32036,18 @@ const SETTINGS_CLOSE_READING = `(() => {
 			const field = column.querySelector('[data-settings-search]');
 			const fieldBox = field ? field.getBoundingClientRect() : null;
 			return fieldBox
-				? { right: fieldBox.right, gapToGlyph: box.left - fieldBox.right }
+				? {
+						right: fieldBox.right,
+						left: fieldBox.left,
+						gapToGlyph: box.left - fieldBox.right,
+						/* The RTL mirror: the field's LEADING edge against the plate. */
+						gapLeading: fieldBox.left - box.right,
+					}
 				: null;
 		})(),
-		centredOnTitle: Math.abs((box.top + box.height / 2) - (titleBox.top + titleBox.height / 2)) <= 2,
+		centredOnTitle: titleBox
+			? Math.abs((box.top + box.height / 2) - (titleBox.top + titleBox.height / 2)) <= 2
+			: null,
 		insideColumn: box.top >= columnBox.top - 0.5 && box.right <= columnBox.right + 0.5,
 		ariaLabel: button.getAttribute('aria-label'),
 		shortcuts: button.getAttribute('aria-keyshortcuts'),
@@ -32199,6 +32209,54 @@ async function sceneSettingsClose(cdp) {
 		})
 		.catch(() => null);
 	await wait(500);
+
+	/* ---------------------------------------------------------------- */
+	/* 2b. The clearance question across the widths a window is dragged   */
+	/*     through (round 2: D3/D8). The step back to the scroller's own   */
+	/*     padding sits at 1464px because that is where the 896px measure  */
+	/*     starts clearing the plate; measured here, not eyeballed.       */
+	/* ---------------------------------------------------------------- */
+
+	const WIDTHS = [800, 1100, 1280, 1380, 1463, 1464, 1500];
+	const gaps = [];
+	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
+		await verb(cdp, "setTheme", theme);
+		for (const width of WIDTHS) {
+			await cdp
+				.send("Emulation.setDeviceMetricsOverride", {
+					width,
+					height: 900,
+					deviceScaleFactor: 2,
+					mobile: false,
+				})
+				.catch(() => null);
+			await wait(350);
+			const reading = await cdp.evaluate(SETTINGS_CLOSE_READING);
+			const gap = reading?.search?.gapToGlyph ?? -1;
+			gaps.push({ theme, width, gap, fieldRight: reading?.search?.right });
+			check(
+				`at ${width} CSS px (${theme}) the glyph clears the search field`,
+				gap >= 4,
+				`gap=${gap} fieldRight=${reading?.search?.right} glyphX=${reading?.box?.x}`,
+			);
+			if (width === 800 || width === 1100 || width === 1380) {
+				await capture(
+					`settings-close-width-${width}-${theme === "localOperatorDark" ? "dark" : "light"}`,
+				);
+			}
+		}
+	}
+	note("glyph-to-search clearance by width", JSON.stringify(gaps));
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1380,
+			height: 900,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(400);
 
 	/* ---------------------------------------------------------------- */
 	/* 3. Esc during a recording is the recorder's, not the page's.      */
@@ -32381,6 +32439,48 @@ async function sceneSettingsClose(cdp) {
 			`route=${await routeNow()}`,
 		);
 
+		// (d2) A tooltip that was ALREADY open when the page mounted must not
+		//      swallow the press (round 2: U8, Q-7 - the other ordering of the
+		//      same defect). Reached the way the reviewers reached it: the gear
+		//      keeps focus and its tooltip, and the route changes underneath by
+		//      hash rather than by a click (a click dismisses the tooltip).
+		await verb(cdp, "navigate", "/chat");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-tour-tag="nav-item-settings"]'))`,
+		);
+		await cdp.evaluate(
+			`document.querySelector('[data-tour-tag="nav-item-settings"]')?.focus()`,
+		);
+		await wait(700);
+		const tooltipBeforeMount = await cdp.evaluate(
+			`Boolean(document.querySelector('[role="tooltip"]'))`,
+		);
+		await cdp.evaluate(`window.location.hash = "#/settings?section=general"`);
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-settings-close]'))`,
+		);
+		await wait(300);
+		const tooltipAtMount = await cdp.evaluate(
+			`Boolean(document.querySelector('[role="tooltip"]'))`,
+		);
+		note(
+			"tooltip state before/after mounting Settings by hash",
+			JSON.stringify({ tooltipBeforeMount, tooltipAtMount }),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"a tooltip open BEFORE the page mounted does not swallow the first Esc",
+			(await routeNow()) === "#/chat",
+			`route=${await routeNow()} tooltipBefore=${tooltipBeforeMount} tooltipAtMount=${tooltipAtMount}`,
+		);
+
 		// (e) The search owns Esc only while it has text or an open panel: an
 		//     empty field with its panel closed is the page's (round 1: U3).
 		await openFromGear();
@@ -32478,6 +32578,7 @@ async function sceneSettingsClose(cdp) {
 		);
 		await verb(cdp, "press", { selector: "[data-settings-close]" });
 		await wait(600);
+		await capture("settings-close-return-library-dark");
 		const returnedFocus = await activeNow();
 		note(
 			"focus after closing to a route with no composer",
@@ -32630,6 +32731,11 @@ async function sceneSettingsClose(cdp) {
 		const mirrored = await cdp.evaluate(SETTINGS_CLOSE_READING);
 		note("settings close button in RTL (ur)", JSON.stringify(mirrored));
 		check(
+			"in RTL the glyph clears the search field's leading edge",
+			(mirrored?.search?.gapLeading ?? -1) >= 4,
+			`gapLeading=${mirrored?.search?.gapLeading}`,
+		);
+		check(
 			"in RTL the button sits 16px in from the column's LEFT (inline-end) edge",
 			mirrored?.direction === "rtl" &&
 				Math.abs(
@@ -32683,6 +32789,58 @@ async function sceneSettingsClose(cdp) {
 		);
 	}
 
+	return frames;
+}
+
+/**
+ * The config-ERROR state, with the daemon down (round 2: D7/M5).
+ *
+ * The populated page is photographed by `settings-close`; this scene answers the
+ * other half of the pair - that the X exists before the config answers, sits at
+ * the same plate top as on the loaded page (64), and that Esc leaves. Runs with
+ * a dead backend on purpose, so it takes no `--backend` and asserts no liveness.
+ */
+async function sceneSettingsCloseError(cdp) {
+	const frames = [];
+	const capture = async (label) => {
+		const frame = await captureSettled(cdp, label);
+		if (frame) frames.push(frame);
+		return frame;
+	};
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await verb(cdp, "navigate", "/settings");
+	const ready = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-settings-close]'))`,
+		600,
+	);
+	check(
+		"the config-error state still renders the Close button",
+		ready === true,
+		"no close button while the config read is failing",
+	);
+	if (ready !== true) return frames;
+	await wait(800);
+	const reading = await cdp.evaluate(SETTINGS_CLOSE_READING);
+	note("the Close button in the config-error state", JSON.stringify(reading));
+	check(
+		"the state page's column starts at the populated page's own top",
+		Math.abs(reading?.column?.top ?? -1) <= 0.5,
+		`columnTop=${reading?.column?.top}`,
+	);
+	check(
+		"the state page's X sits at the populated page's plate top",
+		Math.abs((reading?.box?.y ?? -1) - 64) <= 1,
+		`plateTop=${reading?.box?.y}`,
+	);
+	await capture("settings-close-error-state-dark");
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	await wait(500);
+	check(
+		"Esc leaves the config-error state",
+		(await cdp.evaluate("window.location.hash")) === "#/chat",
+		`route=${await cdp.evaluate("window.location.hash")}`,
+	);
 	return frames;
 }
 
@@ -52138,6 +52296,8 @@ async function main() {
 			 * The Settings page's close affordances (PR1 of the tabs work): the pinned X,
 			 * Esc during a recording vs after it, and the gear toggle. Needs `--backend`.
 			 */ else if (SCENE === "settings-close") await sceneSettingsClose(cdp);
+			else if (SCENE === "settings-close-error")
+				await sceneSettingsCloseError(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);

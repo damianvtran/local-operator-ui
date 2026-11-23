@@ -22,8 +22,10 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { settingsEscapeIsClaimed } from "./src/renderer/src/features/settings/settings-escape";
+			export { settingsEscapeIsClaimed, isBareEscape } from "./src/renderer/src/features/settings/settings-escape";
 			export { tourGearNeedsClick } from "./src/renderer/src/features/onboarding/tour/tour-gear-open";
+			export { nextSettingsReturn, settingsCloseTarget, isSettingsPath } from "./src/renderer/src/shared/hooks/use-settings-route";
+			export { KEYMAP_ACTIONS } from "./src/renderer/src/shared/keymap/keymap-registry";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -44,9 +46,15 @@ const bundlePath = new URL(
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
-const { settingsEscapeIsClaimed, tourGearNeedsClick } = await import(
-	bundlePath.href
-);
+const {
+	settingsEscapeIsClaimed,
+	isBareEscape,
+	tourGearNeedsClick,
+	nextSettingsReturn,
+	settingsCloseTarget,
+	isSettingsPath,
+	KEYMAP_ACTIONS,
+} = await import(bundlePath.href);
 
 /*
  * A target with just enough of an element to answer `closest`: the selectors the
@@ -64,8 +72,10 @@ function element({ tag = "div", parent = null, ...attributes }) {
 		matches(selector) {
 			return selector.split(",").some((part) => {
 				const clause = part.trim();
-				const role = /^\[role="([^"]+)"\]$/.exec(clause);
-				if (role) return attributes.role === role[1];
+				const attributeEquals = /^\[([a-z-]+)="([^"]*)"\]$/.exec(clause);
+				if (attributeEquals) {
+					return attributes[attributeEquals[1]] === attributeEquals[2];
+				}
 				const marker = /^\[([a-z-]+)\]$/.exec(clause);
 				if (marker) return marker[1] in attributes;
 				if (clause === "input") return tag === "input";
@@ -77,6 +87,7 @@ function element({ tag = "div", parent = null, ...attributes }) {
 				return false;
 			});
 		},
+		hasAttribute: (name) => name in attributes,
 		closest(selector) {
 			let current = node;
 			while (current) {
@@ -186,9 +197,9 @@ test("a press inside an overlay belongs to the overlay", () => {
 	assert.equal(claimed({ target: inDialog }), true);
 });
 
-test("a prevented press is the owner's - unless the only owner was a tooltip", () => {
+test("a prevented press is its owner's - a tooltip trigger's own tooltip excepted", () => {
 	// A dialog, menu or select marks its dismissal handled in the capture phase;
-	// the page must stand aside for that (round 1: R2's class of bug, inverted).
+	// the page must stand aside for that.
 	assert.equal(
 		claimed({
 			target: element({ tag: "button" }),
@@ -197,21 +208,20 @@ test("a prevented press is the owner's - unless the only owner was a tooltip", (
 		}),
 		true,
 	);
-	// A tooltip does the same, and is not a surface a press is owed to: the
-	// Close button's own tooltip must not swallow the reader's first Escape
-	// (round 1: U2, Q-3).
-	assert.equal(
-		claimed({
-			target: element({ tag: "button" }),
-			defaultPrevented: true,
-			tooltip: true,
-		}),
-		false,
-	);
 	// Nothing open at all: a prevented press with no layer is still not ours.
 	assert.equal(
 		claimed({ target: element({ tag: "button" }), defaultPrevented: true }),
 		true,
+	);
+	// A tooltip's own trigger: the press is the page's (see the trigger-keyed
+	// case below for the full matrix).
+	assert.equal(
+		claimed({
+			target: element({ tag: "button", "data-state": "instant-open" }),
+			defaultPrevented: true,
+			tooltip: true,
+		}),
+		false,
 	);
 });
 
@@ -281,4 +291,135 @@ test("the tour step calls the seam rather than deciding inline", () => {
 		"utf8",
 	);
 	assert.match(steps, /if \(tourGearNeedsClick\(button\)\)/);
+});
+
+test("only a caret owns Escape; sliders, radios and checkboxes do not", () => {
+	// Round 2 M1: `input` as a blanket claim made Esc dead after a keyboard
+	// adjustment on any of Settings' sliders and its native radios.
+	for (const type of [
+		"range",
+		"radio",
+		"checkbox",
+		"button",
+		"file",
+		"color",
+	]) {
+		assert.equal(
+			claimed({ target: element({ tag: "input", type }) }),
+			false,
+			`input[type=${type}] must not own the press`,
+		);
+	}
+	for (const type of [
+		"text",
+		"search",
+		"email",
+		"url",
+		"tel",
+		"password",
+		"number",
+		"",
+	]) {
+		assert.equal(
+			claimed({ target: element({ tag: "input", type }) }),
+			true,
+			`input[type=${type || "(default)"}] is a caret`,
+		);
+	}
+	assert.equal(claimed({ target: element({ tag: "textarea" }) }), true);
+	assert.equal(claimed({ target: element({ tag: "select" }) }), true);
+	assert.equal(
+		claimed({ target: element({ tag: "div", contenteditable: "true" }) }),
+		true,
+	);
+});
+
+test("a bare Escape closes; every modifier makes it a chord", () => {
+	assert.equal(isBareEscape({ key: "Escape" }), true);
+	assert.equal(isBareEscape({ key: "Esc" }), true);
+	assert.equal(isBareEscape({ key: "Enter" }), false);
+	for (const modifier of ["ctrlKey", "metaKey", "altKey", "shiftKey"]) {
+		assert.equal(
+			isBareEscape({ key: "Escape", [modifier]: true }),
+			false,
+			`${modifier}+Escape is a chord, not a close`,
+		);
+	}
+});
+
+test("the return target: cold fallback, no re-pin on a query change, cleared on leave", () => {
+	const cold = nextSettingsReturn(
+		{ returnTarget: null, lastOutsideRoute: null },
+		"/settings",
+		"",
+	);
+	assert.equal(settingsCloseTarget(cold), "/chat", "cold deep link falls back");
+
+	const entered = nextSettingsReturn(cold, "/agents", "?tab=teams");
+	assert.equal(entered.returnTarget, null, "still outside: no target yet");
+	const inside = nextSettingsReturn(entered, "/settings", "?section=general");
+	assert.equal(settingsCloseTarget(inside), "/agents?tab=teams");
+	const moved = nextSettingsReturn(inside, "/settings", "?section=appearance");
+	assert.equal(
+		settingsCloseTarget(moved),
+		"/agents?tab=teams",
+		"an in-page query change must not re-pin",
+	);
+	// Two close presses before the route commits read the same target (R3).
+	assert.equal(settingsCloseTarget(moved), settingsCloseTarget(moved));
+	const left = nextSettingsReturn(moved, "/agents", "?tab=teams");
+	assert.equal(left.returnTarget, null, "the visit ends when the route leaves");
+	const reentered = nextSettingsReturn(left, "/settings", "");
+	assert.equal(
+		settingsCloseTarget(reentered),
+		"/agents?tab=teams",
+		"re-entry pins the route just left",
+	);
+	assert.equal(isSettingsPath("/settings"), true);
+	assert.equal(isSettingsPath("/settings/advanced"), false);
+});
+
+test("a tooltip owns the press only when the press landed on its own open trigger", () => {
+	const trigger = element({ tag: "button", "data-state": "instant-open" });
+	// Tooltip open, press on the trigger: the page closes (round 1 U2; U8/Q-7's
+	// ordering included, because the trigger keeps its state after the tooltip
+	// node unmounts).
+	assert.equal(
+		claimed({ target: trigger, defaultPrevented: true, tooltip: true }),
+		false,
+	);
+	// A tooltip open elsewhere must NOT discard a real owner's claim (M3): the
+	// sound preview's radio and the disclosure's trigger claim by preventDefault.
+	const radio = element({ tag: "input", type: "radio" });
+	assert.equal(
+		claimed({ target: radio, defaultPrevented: true, tooltip: true }),
+		true,
+	);
+	const plainButton = element({ tag: "button" });
+	assert.equal(
+		claimed({ target: plainButton, defaultPrevented: true, tooltip: true }),
+		true,
+	);
+	// A real overlay layer outranks the tooltip rule.
+	const dialog = element({ role: "dialog" });
+	const inDialog = element({ tag: "button", parent: dialog });
+	assert.equal(
+		claimed({
+			target: inDialog,
+			defaultPrevented: true,
+			tooltip: true,
+			layer: true,
+		}),
+		true,
+	);
+});
+
+test("no keymap action can reach the gear", () => {
+	// The gear is click-only (round 1 R5's check, restored without a renderer):
+	// every action is a panel toggle or a composer send, and none names Settings.
+	assert.ok(KEYMAP_ACTIONS.length > 0);
+	for (const action of KEYMAP_ACTIONS) {
+		assert.match(action.id, /^(panel|composer)\./);
+		assert.doesNotMatch(action.id, /settings/i);
+	}
 });

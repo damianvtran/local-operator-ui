@@ -66,6 +66,37 @@ import { useEffect } from "react";
 const EDITABLE_SELECTOR =
 	'input, textarea, select, [contenteditable="true"], [contenteditable=""]';
 
+/**
+ * The input types whose Escape is the field's.
+ *
+ * WHY AN ALLOWLIST (round 2: M1). `input` as a blanket claim also matched
+ * `type=range` and `type=radio` - the window-glass slider, contrast, the theme
+ * editor's controls, notification volume, the speech-provider radios - which
+ * have no Escape of their own, so after a keyboard adjustment on one, Esc did
+ * nothing until focus moved: the same dead end U3 and U4 were fixed for. Only
+ * a caret has something to undo; a slider's Escape is the page's.
+ */
+const TEXT_INPUT_TYPES = new Set([
+	"",
+	"text",
+	"search",
+	"email",
+	"url",
+	"tel",
+	"password",
+	"number",
+]);
+
+/** Whether this element is a caret the press belongs to. */
+function isTextEntry(element: Element): boolean {
+	const tag = element.tagName.toLowerCase();
+	if (tag === "textarea" || tag === "select") return true;
+	if (element.hasAttribute("contenteditable")) return true;
+	if (tag !== "input") return false;
+	const type = (element.getAttribute("type") ?? "").toLowerCase();
+	return TEXT_INPUT_TYPES.has(type);
+}
+
 /** The recorder's own marker. */
 const RECORDER_SELECTOR = "[data-shortcut-recorder]";
 
@@ -93,23 +124,38 @@ function settingsSearchOwnsEscape(root: Element): boolean {
 }
 
 /**
- * Whether the only thing that consumed this press was a tooltip.
+ * The tooltip trigger's own open state, as Radix renders it.
  *
- * Radix dismisses a tooltip from a CAPTURE listener on the document and calls
- * `preventDefault()` first, so by the time a bubble listener reads the event a
- * tooltip has "handled" it. That is true of a dialog too - but a dialog is a
- * surface the press was aimed at, while a tooltip is a hint beside the control
- * the reader is on. The distinction is read from what is open: with any real
- * overlay layer mounted the press stays theirs; with a tooltip alone it does
- * not. (Round 1: U2, Q-3 - the Close button's tooltip made the reader press
- * Escape twice, with `aria-keyshortcuts="Escape"` on the button.)
+ * `data-state` is on the TRIGGER, so it survives the tooltip being unmounted
+ * during the same press - which is exactly what the `[role="tooltip"]` node
+ * does not (round 2: U8, Q-7 measured that ordering).
  */
-function onlyTooltipHoldsThePress(): boolean {
+const OPEN_TOOLTIP_TRIGGER_SELECTOR =
+	'[data-state="delayed-open"], [data-state="instant-open"]';
+
+/**
+ * Whether THIS press was the tooltip's to consume, and nothing else's.
+ *
+ * Radix dismisses a tooltip from a CAPTURE listener and calls `preventDefault()`
+ * first, so by the time a bubble listener reads the event a tooltip has
+ * "handled" it. That is true of a dialog too - but a dialog is a surface the
+ * press was aimed at, while a tooltip is a hint beside the control the reader
+ * is on. Three conditions, each earned:
+ *
+ *  1. a tooltip is mounted and no real overlay layer is (a layer always wins);
+ *  2. the press's TARGET is the trigger whose tooltip is open. Keying to the
+ *     target is what keeps a real owner's claim intact when an unrelated
+ *     tooltip happens to be open: the sound preview (R2/Q-4) and the disclosure
+ *     selection (R4) claim by `preventDefault` from ordinary controls, and the
+ *     page must keep standing aside for them (round 2: M3);
+ *  3. the trigger reads as open, so a tooltip that was ALREADY open when the
+ *     page mounted is still recognised after its layer has dismissed (U8/Q-7).
+ */
+function tooltipHoldsThisPress(target: EventTarget | null): boolean {
 	if (typeof document === "undefined") return false;
-	return (
-		document.querySelector('[role="tooltip"]') !== null &&
-		document.querySelector(OWNER_LAYER_SELECTOR) === null
-	);
+	if (document.querySelector('[role="tooltip"]') === null) return false;
+	if (document.querySelector(OWNER_LAYER_SELECTOR) !== null) return false;
+	return closest(target, OPEN_TOOLTIP_TRIGGER_SELECTOR) !== null;
 }
 
 /**
@@ -120,9 +166,9 @@ function onlyTooltipHoldsThePress(): boolean {
  * during the same discrete event, so by the time a bubble listener runs the
  * tooltip is gone from the DOM - and a live read then answers "nothing open",
  * which is exactly the wrong answer for the tooltip rule below. The hook takes
- * the snapshot in its own capture listener, registered before any layer's.
+ * the snapshot in its own WINDOW capture listener, the first phase of any press.
  */
-export type EscPressContext = { tooltipOnlyAtStart?: boolean };
+export type EscPressContext = { tooltipOwnedThePress?: boolean };
 
 /**
  * Whether something nearer than the page has a claim on this Escape.
@@ -135,16 +181,16 @@ export function settingsEscapeIsClaimed(
 	context: EscPressContext = {},
 ): boolean {
 	if (event.defaultPrevented) {
-		const tooltipOnly =
-			context.tooltipOnlyAtStart ?? onlyTooltipHoldsThePress();
-		if (!tooltipOnly) return true;
+		const tooltipOwned =
+			context.tooltipOwnedThePress ?? tooltipHoldsThisPress(event.target);
+		if (!tooltipOwned) return true;
 	}
 	const target = event.target;
 	if (closest(target, RECORDER_SELECTOR) !== null) return true;
 	const search = closest(target, SETTINGS_SEARCH_SELECTOR);
 	if (search !== null) return settingsSearchOwnsEscape(search);
 	const editable = closest(target, EDITABLE_SELECTOR);
-	if (editable !== null) {
+	if (editable !== null && isTextEntry(editable)) {
 		// A combobox is judged by its own rule below, not as a bare input: a
 		// closed one must not claim the key forever.
 		if (editable.getAttribute("role") !== "combobox") return true;
@@ -152,6 +198,28 @@ export function settingsEscapeIsClaimed(
 	const combobox = closest(target, '[role="combobox"]');
 	if (combobox?.getAttribute("aria-expanded") === "true") return true;
 	return pressLandsOnOverlay(target);
+}
+
+/** The press this feature answers: a bare Escape, never a chord. */
+export type EscapeLike = {
+	key: string;
+	ctrlKey?: boolean;
+	metaKey?: boolean;
+	altKey?: boolean;
+	shiftKey?: boolean;
+};
+
+/**
+ * Whether a press is the bare Escape Settings answers.
+ *
+ * Pure and exported (round 2: M2a): a MODIFIED Escape is a chord - the shortcut
+ * recorders store `ctrl+escape`/`alt+escape` as bindings, and Windows reserves
+ * Ctrl+Esc - so only the bare press closes the page. "Esc" is the legacy
+ * spelling the app's own END_EDIT_KEYS also accepts.
+ */
+export function isBareEscape(event: EscapeLike): boolean {
+	if (event.key !== "Escape" && event.key !== "Esc") return false;
+	return !(event.ctrlKey || event.metaKey || event.altKey || event.shiftKey);
 }
 
 /**
@@ -164,34 +232,28 @@ export function settingsEscapeIsClaimed(
 export function useSettingsEscapeClose(onClose: () => void): void {
 	useEffect(() => {
 		/*
-		 * CAPTURE, so the snapshot runs before any layer's dismiss handler:
-		 * listeners on one node fire in registration order, and this one is
-		 * registered when the page mounts while a tooltip's layer registers when
-		 * it opens.
+		 * CAPTURE, and on WINDOW rather than the document. Two orderings had to be
+		 * defeated, and both are registration-order accidents: a Radix layer's
+		 * `document` capture listener runs before a listener this page registers
+		 * LATER (a gear tooltip can already be open when a hash or history change
+		 * mounts the page - round 2: U8, Q-7), and `document` listeners fire in
+		 * registration order among themselves. Window capture is the first phase
+		 * of any press, so this snapshot always runs before every layer's.
 		 */
-		let tooltipOnlyAtStart = false;
+		let tooltipOwnedThePress = false;
 		const snapshot = (event: KeyboardEvent) => {
-			if (event.key !== "Escape" && event.key !== "Esc") return;
-			tooltipOnlyAtStart = onlyTooltipHoldsThePress();
+			if (!isBareEscape(event)) return;
+			tooltipOwnedThePress = tooltipHoldsThisPress(event.target);
 		};
 		const onKeyDown = (event: KeyboardEvent) => {
-			// "Esc" is the legacy spelling the app's own END_EDIT_KEYS also accepts.
-			if (event.key !== "Escape" && event.key !== "Esc") return;
-			/*
-			 * A MODIFIED Escape is a chord, not this key: the shortcut recorders
-			 * store `ctrl+escape`/`alt+escape` as bindings, and Windows itself
-			 * reserves Ctrl+Esc. Only the bare press closes the page.
-			 */
-			if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) {
-				return;
-			}
-			if (settingsEscapeIsClaimed(event, { tooltipOnlyAtStart })) return;
+			if (!isBareEscape(event)) return;
+			if (settingsEscapeIsClaimed(event, { tooltipOwnedThePress })) return;
 			onClose();
 		};
-		document.addEventListener("keydown", snapshot, true);
+		window.addEventListener("keydown", snapshot, true);
 		document.addEventListener("keydown", onKeyDown);
 		return () => {
-			document.removeEventListener("keydown", snapshot, true);
+			window.removeEventListener("keydown", snapshot, true);
 			document.removeEventListener("keydown", onKeyDown);
 		};
 	}, [onClose]);

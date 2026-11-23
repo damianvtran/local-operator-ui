@@ -1053,7 +1053,19 @@ export const SettingsPage: FC = () => {
 	 * surface (button + Esc scope) now wraps all of them.
 	 */
 	const stateSurface = (content: ReactNode) => (
-		<SettingsContentSurface>{content}</SettingsContentSurface>
+		/*
+		 * THE SAME ROOT THE POPULATED PAGE HAS (round 2: D7/M5). Without
+		 * `panel-flush` the shell's top pad stayed above the column and the column
+		 * added its own on top - the states sat 32px low, the X jumped up when the
+		 * config arrived, and the ground showed three tones under window glass.
+		 */
+		<div
+			data-glass-region="canvas"
+			data-glass-split=""
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
+		>
+			<SettingsContentSurface>{content}</SettingsContentSurface>
+		</div>
 	);
 
 	const isLoading = isConfigLoading;
@@ -1294,16 +1306,19 @@ export const SettingsPage: FC = () => {
 					data-settings-content
 					data-tour-tag="settings-general-section"
 					/*
-					 * `pe-14` while the measure fills the column: below `xl` the 896px
-					 * measure runs to the scroller's edge, and the pinned Close button
+					 * `pe-14` while the measure fills the column: below 1464px the 896px
+					 * measure is not yet clear of the scroller's edge, and the pinned Close button
 					 * (32px at a 16px inset) sat ON the content's last 8px - measured at
 					 * 900px wide, the search field's edge and the glyph both at x=860
 					 * (design round 1, D3). The extra end padding puts the text's edge
-					 * 40px left of the plate; at `xl` and above the centred measure
-					 * already clears it, and the padding returns to the scroller's own
-					 * `md:p-8`.
+					 * 40px left of the plate. The step back to `md:p-8` sits at 1464px,
+					 * not the `xl` token (1280): the centred measure only clears the
+					 * plate once the column is that wide, which the design round
+					 * measured (round 2: D3/D8 - at 1280 the text still ran under it,
+					 * and an `xl` step also read as a 24px jump while dragging a window
+					 * across it).
 					 */
-					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:pe-14 xl:pe-8"
+					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:pe-14 min-[1464px]:pe-8"
 				>
 					{/*
 					 * One measured column, centred, rather than two.
