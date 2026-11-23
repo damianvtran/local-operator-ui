@@ -1,15 +1,19 @@
 import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { cn } from "@shared/lib/utils";
-import type { Root } from "hast";
+import type { Element, Root } from "hast";
 import type {
 	CSSProperties,
+	ComponentProps,
 	FC,
 	ReactElement,
 	MouseEvent as ReactMouseEvent,
+	ReactNode,
 	PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+	createContext,
 	memo,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -18,6 +22,7 @@ import {
 } from "react";
 import ReactMarkdown, {
 	type Components,
+	type ExtraProps,
 	type UrlTransform,
 	defaultUrlTransform,
 } from "react-markdown";
@@ -102,7 +107,12 @@ export type MarkdownStyleProps = {
 	lineHeight?: number | string;
 };
 
+/** Trusted view nodes positioned against this exact Markdown source. */
+export type MarkdownInsert = { offset: number; node: ReactNode };
+
 type MarkdownRendererProps = {
+	inserts?: readonly MarkdownInsert[];
+	streaming?: boolean;
 	content: string;
 	styleProps?: MarkdownStyleProps;
 	className?: string;
@@ -781,6 +791,113 @@ const useLinkEvidence = (
 	}, [content, linkify, documentId]);
 };
 
+const MarkdownInsertContext = createContext<{
+	inserts?: readonly MarkdownInsert[];
+	openStart?: number;
+}>({});
+
+function MarkdownWidget({ node }: ExtraProps) {
+	const { inserts } = useContext(MarkdownInsertContext);
+	const index = node?.properties.index;
+	return typeof index === "number" ? inserts?.[index]?.node : null;
+}
+
+function StreamingAwareAnchor({
+	node,
+	...props
+}: ComponentProps<typeof MarkdownAnchor> & ExtraProps) {
+	const { openStart } = useContext(MarkdownInsertContext);
+	if (
+		openStart !== undefined &&
+		(node?.position?.start.offset ?? Number.POSITIVE_INFINITY) >= openStart
+	)
+		return <>{props.children}</>;
+	return <MarkdownAnchor {...props} />;
+}
+
+// react-markdown keys siblings by tag occurrence. A stable component type
+// and a top-level slot keep the same figure DOM across deltas and end.
+const WIDGET_COMPONENTS = {
+	a: StreamingAwareAnchor,
+	"lo-inline-widget": MarkdownWidget,
+};
+const RICH_MARKDOWN_COMPONENTS = {
+	...MARKDOWN_COMPONENTS,
+	...WIDGET_COMPONENTS,
+};
+const RICH_MARKDOWN_COMPONENTS_WITH_CITATIONS = {
+	...MARKDOWN_COMPONENTS_WITH_CITATIONS,
+	...WIDGET_COMPONENTS,
+};
+const ORDERED_LIST_MARKER = /^\d{1,9}(?=[.)])/;
+
+/** Insert only into the output AST: references and link evidence still see one
+ * Markdown document. Removing a fence can leave adjacent items parsed as one
+ * list; split at direct item spans to recover the original top-level boundary. */
+function placeMarkdownInserts(
+	tree: Root,
+	source: string,
+	inserts: readonly MarkdownInsert[],
+) {
+	const children: Root["children"] = [];
+	let index = 0;
+	const pushBefore = (offset: number) => {
+		while (index < inserts.length && inserts[index].offset <= offset) {
+			children.push({
+				type: "element",
+				tagName: "lo-inline-widget",
+				properties: { index: index++ },
+				children: [],
+			});
+		}
+	};
+	for (const child of tree.children) {
+		const start = child.position?.start.offset;
+		if (start !== undefined) pushBefore(start);
+		if (
+			child.type !== "element" ||
+			(child.tagName !== "ul" && child.tagName !== "ol") ||
+			index === inserts.length
+		) {
+			children.push(child);
+			continue;
+		}
+		let segment: Element = { ...child, children: [] };
+		let itemEnd: number | undefined;
+		for (const item of child.children) {
+			if (item.type === "element" && item.tagName === "li") {
+				const itemStart = item.position?.start.offset;
+				const next = inserts[index]?.offset;
+				if (
+					itemEnd !== undefined &&
+					itemStart !== undefined &&
+					next !== undefined &&
+					next >= itemEnd &&
+					next <= itemStart
+				) {
+					children.push(segment);
+					pushBefore(itemStart);
+					segment = { ...child, children: [] };
+					if (child.tagName === "ol") {
+						// A new list has its own source marker, not the previous
+						// list's continuation number.
+						const marker = ORDERED_LIST_MARKER.exec(source.slice(itemStart));
+						segment.properties = {
+							...child.properties,
+							start: marker ? Number(marker[0]) : 1,
+						};
+					}
+				}
+				itemEnd = item.position?.end.offset;
+			}
+			segment.children.push(item);
+		}
+		children.push(segment);
+	}
+	pushBefore(source.length);
+	tree.children = children;
+}
+
 /**
  * Renders a complete markdown document.
  *
@@ -808,6 +925,8 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		credentialCitations = false,
 		skillNames,
 		documentId,
+		inserts,
+		streaming = false,
 	}) => {
 		const trimmed = useMemo(() => content.trim(), [content]);
 		const { remarkPlugins, rehypePlugins } = useMathPipeline(
@@ -822,24 +941,57 @@ export const MarkdownRenderer: FC<MarkdownRendererProps> = memo(
 		 * tokens the plugin will meet cannot drift on a leading newline.
 		 */
 		useLinkEvidence(trimmed, linkify, documentId);
+		const hasWidgets = Boolean(inserts?.length);
+		const baseComponents = credentialCitations
+			? hasWidgets
+				? RICH_MARKDOWN_COMPONENTS_WITH_CITATIONS
+				: MARKDOWN_COMPONENTS_WITH_CITATIONS
+			: hasWidgets
+				? RICH_MARKDOWN_COMPONENTS
+				: MARKDOWN_COMPONENTS;
+		const inline = useMemo(
+			() =>
+				inserts?.length
+					? [
+							...rehypePlugins,
+							() => (tree: Root) =>
+								placeMarkdownInserts(tree, trimmed, inserts),
+						]
+					: rehypePlugins,
+			[rehypePlugins, inserts, trimmed],
+		);
+		// Widget-bearing rows keep this full-document tree for both phases. Only
+		// closed explicit links are active while the tail is still being written.
+		const scannerRef = useRef<BlockScanner | null>(null);
+		let openStart: number | undefined;
+		if (streaming) {
+			scannerRef.current ??= createBlockScanner();
+			scanMarkdownBlocks(scannerRef.current, trimmed);
+			// The last completed fence also closed the prose before its slot,
+			// even when CommonMark merges list items across the removed fence.
+			const widgetBoundary = inserts?.[inserts.length - 1]?.offset ?? 0;
+			openStart = Math.max(scannerRef.current.blockStart, widgetBoundary);
+		}
+		const context = useMemo(
+			() => ({ inserts, openStart }),
+			[inserts, openStart],
+		);
 
 		return (
 			<div
 				className={cn("lo-markdown", USER_CONTENT_CLASS, className)}
 				style={style}
 			>
-				<ReactMarkdown
-					remarkPlugins={remarkPlugins}
-					rehypePlugins={rehypePlugins}
-					urlTransform={LINK_URL_TRANSFORM}
-					components={
-						credentialCitations
-							? MARKDOWN_COMPONENTS_WITH_CITATIONS
-							: MARKDOWN_COMPONENTS
-					}
-				>
-					{trimmed}
-				</ReactMarkdown>
+				<MarkdownInsertContext.Provider value={context}>
+					<ReactMarkdown
+						remarkPlugins={remarkPlugins}
+						rehypePlugins={inline}
+						urlTransform={LINK_URL_TRANSFORM}
+						components={baseComponents}
+					>
+						{trimmed}
+					</ReactMarkdown>
+				</MarkdownInsertContext.Provider>
 			</div>
 		);
 	},
@@ -1427,7 +1579,6 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 		};
 	});
 	const style = useStyleVariables(styleProps);
-
 	return (
 		<div
 			ref={rootRef}

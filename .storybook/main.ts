@@ -10,6 +10,9 @@ import { pruneStorybookCacheFromEnv } from "../scripts/storybook-cache-prune.mjs
 import { musicStoryScope } from "../scripts/storybook-music-scope.mjs";
 
 const musicScope = musicStoryScope(process.env);
+// Index only the production transcript fixtures during this evidence lane.
+// The preview (including the real theme and glass paint) is unchanged.
+const inlineUiEvidence = process.env.LOP_STORYBOOK_INLINE_UI_EVIDENCE === "1";
 
 /*
  * Bound Storybook's on-disk cache. Storybook 8.6 never evicts it and keys it per
@@ -48,7 +51,9 @@ function getAbsolutePath(value: string) {
 }
 /** @type { import('@storybook/react-vite').StorybookConfig } */
 const config: StorybookConfig = {
-	stories: musicScope.stories,
+	stories: inlineUiEvidence
+		? ["../src/renderer/src/features/chat/canonical/inline-ui.stories.tsx"]
+		: musicScope.stories,
 	addons: [
 		getAbsolutePath("@storybook/addon-essentials"),
 		getAbsolutePath("@chromatic-com/storybook"),
@@ -73,7 +78,7 @@ const config: StorybookConfig = {
 		 * checker, which costs only the types-driven prop tables on the docs pages:
 		 * no story renders differently, and every committed frame is a story.
 		 */
-		reactDocgen: musicScope.reactDocgen,
+		reactDocgen: inlineUiEvidence ? false : musicScope.reactDocgen,
 	},
 	viteFinal: async (config) => {
 		// Add JSX runtime configuration

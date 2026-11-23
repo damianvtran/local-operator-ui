@@ -427,6 +427,7 @@ function SessionPanel({
 			 * answer is there.
 			 */
 			openFrame: desktopFeatureEnabled(panelCapabilities.data, "open_frame"),
+			inlineUi: desktopFeatureEnabled(panelCapabilities.data, "inline_ui"),
 			journalOrder: desktopFeatureEnabled(
 				panelCapabilities.data,
 				"journal_order",

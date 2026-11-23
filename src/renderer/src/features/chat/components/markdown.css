@@ -339,7 +339,21 @@
 	margin: 1rem 0;
 }
 
-.lo-markdown table {
+/* Inline figures inherit the conversation's ground. The Markdown flow owns
+   their spacing; authored tables keep their separate formatting policy. */
+.lo-markdown > [data-lo-inline-ui] {
+	margin-block: 1rem;
+}
+
+.lo-markdown > [data-lo-inline-ui]:first-child {
+	margin-block-start: 0;
+}
+
+.lo-markdown > [data-lo-inline-ui]:last-child {
+	margin-block-end: 0;
+}
+
+.lo-markdown table:where(:not([data-lo-inline-ui] *)) {
 	border-collapse: collapse;
 	width: 100%;
 	/* Explicit rather than defaulted, because the table fix below rests on it:
@@ -350,8 +364,8 @@
 	margin: 0.75rem 0;
 }
 
-.lo-markdown th,
-.lo-markdown td {
+.lo-markdown th:where(:not([data-lo-inline-ui] *)),
+.lo-markdown td:where(:not([data-lo-inline-ui] *)) {
 	border: 1px solid var(--lo-hairline);
 	padding: 0.5rem 0.75rem;
 	text-align: left;
@@ -360,7 +374,7 @@
 /* The header ground plus the cell hairlines carry the structure. Zebra striping
    on top of both was a third redundant signal, and it was the only rule in this
    file that needed a fourth neutral. */
-.lo-markdown th {
+.lo-markdown th:where(:not([data-lo-inline-ui] *)) {
 	background-color: var(--lo-sunken);
 	font-weight: 600;
 }
@@ -393,8 +407,8 @@
  * cell narrower than a single word; it does not affect intrinsic sizing, so it
  * cannot re-create the squeeze `word-break` did.
  */
-.lo-markdown th,
-.lo-markdown td {
+.lo-markdown th:where(:not([data-lo-inline-ui] *)),
+.lo-markdown td:where(:not([data-lo-inline-ui] *)) {
 	word-break: normal;
 	overflow-wrap: break-word;
 	/* A CEILING on how much min-content one cell may demand, not a second
@@ -423,8 +437,8 @@
  * ids and SHAs in code spans inside tables constantly. `pre code` is outside
  * tables and keeps its own rule.
  */
-.lo-markdown td code,
-.lo-markdown th code {
+.lo-markdown td:where(:not([data-lo-inline-ui] *)) code,
+.lo-markdown th:where(:not([data-lo-inline-ui] *)) code {
 	word-break: normal;
 	overflow-wrap: inherit;
 }

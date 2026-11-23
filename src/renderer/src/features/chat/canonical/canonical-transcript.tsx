@@ -209,7 +209,7 @@ import {
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
-import { parseReplies } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
@@ -231,6 +231,7 @@ import {
 	isImageGenTool,
 	isSoundGenTool,
 } from "./image-gen-card-model";
+import { InlineUiHost } from "./inline-ui-host";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
 import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
@@ -2025,6 +2026,17 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	const inserts = useMemo(() => {
+		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
+		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
+		// do not paint in this Markdown container; neither changes the stored text.
+		const { prefix, rest } = splitReplyPrefix(record.text);
+		const start = prefix.length + rest.length - rest.trimStart().length;
+		return record.inlineUi.widgets.map(({ offset, value }) => ({
+			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			node: <InlineUiHost value={value} />,
+		}));
+	}, [record.inlineUi, record.text, remainingContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2156,7 +2168,7 @@ const AssistantRow = memo(function AssistantRow({
 				 * the same component at the same key - so the settle moves no node;
 				 * what settles is exactly what the full parse makes of the same string.
 				 */}
-				{record.streaming ? (
+				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
 						content={remainingContent}
 						// A joined stream or a receipt gap cannot certify that its text
@@ -2171,18 +2183,12 @@ const AssistantRow = memo(function AssistantRow({
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
-						/*
-						 * Linkification is the settled row's, and the streaming half is
-						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
-						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open block is parsed but never linked or
-						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
-						 * link to a path that does not exist. That is the same hazard the
-						 * old `linkify={!record.streaming}` line refused, now enforced per
-						 * block instead of per row.
-						 */
-						linkify
+						// A figure can already own focus and a horizontal scroll position
+						// before completion. Once it exists, the one authoritative parse
+						// owns its slot through end and durable refresh; no DOM handoff.
+						streaming={record.streaming}
+						linkify={!record.streaming}
+						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).

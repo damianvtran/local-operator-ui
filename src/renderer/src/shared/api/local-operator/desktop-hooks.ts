@@ -241,6 +241,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "inline_ui"
 	| "session_tags"
 	/**
 	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
@@ -1349,6 +1350,7 @@ function streamCapabilityFlags(
 ): StreamCapabilityFlags {
 	return {
 		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		inlineUi: desktopFeatureEnabled(capabilities, "inline_ui"),
 		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
 		peerJournalSource: desktopFeatureEnabled(
 			capabilities,

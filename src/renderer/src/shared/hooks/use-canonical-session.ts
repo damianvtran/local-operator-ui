@@ -2623,6 +2623,7 @@ export function useCanonicalSessionStream(
 		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
 		 */
 		openFrame?: boolean;
+		inlineUi?: boolean;
 		journalOrder?: boolean;
 		/**
 		 * THE COMPLETE PEER-SOURCE CAPABILITY (`features.peer_journal_source`),
@@ -2642,6 +2643,7 @@ export function useCanonicalSessionStream(
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
+	const inlineUi = options.inlineUi === true;
 	const journalOrder = options.journalOrder === true;
 	const journalOrderRef = useRef(journalOrder);
 	journalOrderRef.current = journalOrder;
@@ -3851,6 +3853,7 @@ export function useCanonicalSessionStream(
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						inlineUi: true,
 						sessionId,
 						...(beforeId ? { beforeId } : {}),
 						// Never past the walk's own bound: the route clamps at 500 anyway,
@@ -5933,6 +5936,7 @@ export function useCanonicalSessionStream(
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
 					openFrame: openFrameRef.current,
+					inlineUi,
 					...(journalOrderRef.current
 						? {
 								journalOrder,
@@ -6509,6 +6513,9 @@ export function useCanonicalSessionStream(
 		 * change already performs, never a second one.
 		 */
 		isSession,
+		// An initial legacy-shaped subscription cannot acquire overlays simply
+		// because the capability poll finished; reopen with the fresh declaration.
+		inlineUi,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
@@ -7368,6 +7375,7 @@ export function useCanonicalSessionStream(
 					const generation = viewRef.current.transcript.journalGeneration;
 					const page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						...(kind === "payload" ? { inlineUi: true } : {}),
 						sessionId: requested,
 						limit: 100,
 						journalOrder: true,
@@ -7386,6 +7394,7 @@ export function useCanonicalSessionStream(
 					Extract<DesktopSessionFrame, { type: "snapshot" }>
 				>({
 					op: "sessions.get",
+					inlineUi: true,
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
@@ -7523,6 +7532,7 @@ export function useCanonicalSessionStream(
 				const projected = openFrameRef.current;
 				return desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					beforeId,
 					limit: 100,
@@ -7616,6 +7626,7 @@ export function useCanonicalSessionStream(
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					limit: 100,
 					openFrame: openFrameRef.current,

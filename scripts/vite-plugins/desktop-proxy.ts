@@ -74,6 +74,7 @@ export function desktopProxyPlugin(): Plugin {
 					const frontendReplace =
 						requestUrl.searchParams.get("frontend_replace") ?? "";
 					const openFrame = requestUrl.searchParams.get("open_frame") ?? "";
+					const inlineUi = requestUrl.searchParams.get("inline_ui") === "1";
 					const journalOrder = requestUrl.searchParams.get("journal_order");
 					const peerJournalSource = requestUrl.searchParams.get(
 						"peer_journal_source",
@@ -127,6 +128,7 @@ export function desktopProxyPlugin(): Plugin {
 						process.env.LOCAL_OPERATOR_DESKTOP_BACKEND_URL ||
 						"http://127.0.0.1:1111";
 					const query = new URLSearchParams();
+					if (inlineUi) query.set("inline_ui", "1");
 					if (epoch) query.set("epoch", epoch);
 					if (afterSeq > 0) query.set("after_seq", String(afterSeq));
 					/*
