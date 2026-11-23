@@ -43464,11 +43464,10 @@ async function assertBuildIsCurrent() {
  * inside the inset cannot carry an edge through this strip, so the no-right-rule
  * check remains independent of which ground the shell paints.
  *
- * THE ASSERTION IS macOS' AND SAYS SO. On Windows and Linux with the buttons trailing
- * there IS no lane above the columns, so the band there is a route's only drag surface
- * and its caption clearance, and a route's first box legitimately starts at the caption
- * height; on a host that is not a macOS integrated window the scene prints the readings
- * and asserts only the mechanics rather than the macOS answer.
+ * Full-height split routes paint from y0 in every chrome mode. Only their
+ * inner content clears the real lane/band (or fullscreen spacing). Ordinary
+ * routes still start below that clearance. The strip colour walk below is
+ * macOS-only; the geometry contract applies regardless of host.
  *
  * RUN TWICE PER TREE, like every before/after pair: once at 1380x900 and once at
  * 800x600, with `--run-label` keeping the frame names apart in one directory.
@@ -43476,9 +43475,9 @@ async function assertBuildIsCurrent() {
 async function sceneRouteTops(cdp) {
 	const ROUTES = [
 		["chat", "/chat"],
-		["settings", "/settings"],
-		["settings-integrations", "/settings?section=integrations"],
-		["agents", "/agents"],
+		["settings", "/settings", true],
+		["settings-integrations", "/settings?section=integrations", true],
+		["agents", "/agents", true],
 		/*
 		 * The saved-agent route draws the SAME 280px roster as `/agents` does, and it
 		 * is here because a sweep that covers only the route the operator screenshotted
@@ -43488,7 +43487,7 @@ async function sceneRouteTops(cdp) {
 		 * unconditional and renders without an agent to show, which is what this route
 		 * needs a reading of.
 		 */
-		["agents-detail", "/agents/local-operator"],
+		["agents-detail", "/agents/local-operator", true],
 		["agent-hub", "/agent-hub"],
 		["schedules", "/schedules"],
 		/*
@@ -43748,7 +43747,7 @@ async function sceneRouteTops(cdp) {
 			};
 		})()`);
 
-	for (const [slug, path] of ROUTES) {
+	for (const [slug, path, fullHeight = false] of ROUTES) {
 		await verb(cdp, "navigate", path);
 		const landed = await waitForRoute(cdp, path);
 		check(
@@ -43765,13 +43764,13 @@ async function sceneRouteTops(cdp) {
 		await wait(600);
 		frames.push(await captureSettled(cdp, `route-tops-${slug}${RUN_LABEL}`));
 		const reading = await readTops();
-		readings.push([slug, path, reading]);
+		readings.push([slug, path, reading, fullHeight]);
 		note(`the top of ${path}`, JSON.stringify(reading));
 	}
 
-	for (const [slug, path, reading] of readings) {
+	for (const [slug, path, reading, fullHeight] of readings) {
 		const owner = slug === "chat" || slug === "browser" ? slug : "outlet";
-		checkRouteFrame(path, owner, reading, check);
+		checkRouteFrame(path, owner, reading, check, fullHeight);
 	}
 
 	/*
@@ -43794,23 +43793,24 @@ async function sceneRouteTops(cdp) {
 
 	if (macIntegrated) {
 		/*
-		 * The titlebar is a transparent overlay. An outlet-owned body begins at
-		 * its bottom edge; Chat tabs and Browser chrome start at y0 and cover it.
+		 * Ordinary outlet bodies begin below the transparent overlay. Full-height
+		 * split panes cover it, as do Chat tabs and Browser chrome.
 		 * Don't mistake the first layout wrapper (notably ChatPage) for that row.
 		 */
-		for (const [slug, path, reading] of readings) {
+		for (const [slug, path, reading, fullHeight] of readings) {
 			const ownsChrome = slug === "chat" || slug === "browser";
 			const { chrome, frame } = reading;
 			check(
-				`${path}: ${ownsChrome ? "route chrome covers the lane from y0" : "outlet body starts at the lane's bottom edge"}`,
+				`${path}: ${ownsChrome ? "route chrome covers the lane from y0" : fullHeight ? "split body starts at y0" : "outlet body starts at the lane's bottom edge"}`,
 				ownsChrome
 					? !!chrome &&
 							Math.abs(chrome.top) < 0.5 &&
 							chrome.top + chrome.height >= laneBottom - 0.5
-					: !!frame && Math.abs(frame.top - laneBottom) < 0.5,
+					: !!frame &&
+							Math.abs(frame.top - (fullHeight ? 0 : laneBottom)) < 0.5,
 				JSON.stringify({ chrome, frame, laneBottom }),
 			);
-			const stripOverBody = reading.glass && !ownsChrome;
+			const stripOverBody = reading.glass && !ownsChrome && !fullHeight;
 			const panelGrounds = [
 				reading.surfaceGround,
 				reading.canvasGround,
@@ -43843,11 +43843,12 @@ async function sceneRouteTops(cdp) {
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
 				const mid = column.left + column.width / 2;
-				const expectedStripGround = !ownsChrome
-					? stripOverBody
-						? null
-						: reading.surfaceGround
-					: reading.leadingColumnGround;
+				const expectedStripGround =
+					!ownsChrome && !fullHeight
+						? stripOverBody
+							? null
+							: reading.surfaceGround
+						: reading.leadingColumnGround;
 				check(
 					`${path}: strip ground over the leading column matches its owner`,
 					reading.stripGrounds.some(

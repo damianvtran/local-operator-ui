@@ -12,9 +12,8 @@ import { JSDOM } from "jsdom";
  * WHAT IS PINNED:
  * - the four catalogue states (loading skeleton, empty, error with Retry,
  *   populated);
- * - the header's layout contract: it sizes to its content while keeping the
- *   design's 136px floor, and the building line is one of its flow rows above
- *   the results (the fixed-height defect painted it over the grid);
+ * - the header's flow: semantic title only, working controls, and a building
+ *   row above the results (a fixed-height header once painted over the grid);
  * - a failed refetch with last-good pages keeps the rows and adds an inline
  *   warning rather than replacing the painted grid with the blocking error;
  * - an image card's thumbnail read waits for the card to be near the viewport;
@@ -746,13 +745,10 @@ test("a failed listing draws the error and its Retry control", async () => {
  * WHAT THIS LANE CAN AND CANNOT SEE, stated rather than implied: jsdom performs
  * no layout, so every `getBoundingClientRect` is 0x0 and an intersection
  * assertion here would pass whether or not the defect exists. This case pins
- * the CAUSE instead: the header no longer declares a fixed height at >=800px
- * (the box the overflowing tracks escaped), its minimum is the design's 136px,
- * every track it renders is a direct child in normal flow, and the results
+ * the CAUSE instead: the header has no fixed height or obsolete title-track
+ * minimum, every visible track is a direct child in normal flow, and the results
  * container follows the header rather than sitting under an absolutely
- * positioned overlay. The pixels were measured separately from the rendered
- * Storybook stories (Library/Tab/Building and InShellBuilding) at
- * 1380x900 and 900x800; those readings are in the pull request description.
+ * positioned overlay. Those checks need a browser to become pixel evidence.
  */
 test("the header sizes to its tracks and the building row stays above the results at both widths", async () => {
 	ANSWER.rows = ROWS;
@@ -809,24 +805,28 @@ test("the header sizes to its tracks and the building row stays above the result
 			"the page root is a horizontal row, not a vertical stack",
 		);
 
-		const headerClasses = header.className.split(CLASS_TOKENS);
-		assert.ok(
-			headerClasses.includes("min-[800px]:min-h-[136px]"),
-			"the design's 136px remains a floor at >=800px",
-		);
-		assert.equal(
-			headerClasses.includes("min-[800px]:h-[136px]"),
-			false,
-			"a fixed 136px height is exactly what let 188px of tracks overflow",
-		);
+		assert.doesNotMatch(header.className, /(?:^|:)(?:min-)?h-\[/);
+		const headings = header.querySelectorAll("h1");
+		assert.equal(headings.length, 1);
+		assert.equal(headings[0].textContent, "Library");
+		assert.ok(headings[0].classList.contains("sr-only"));
+		assert.ok(header.querySelector("[data-library-search]"));
+		assert.equal(header.querySelectorAll("button[aria-pressed]").length, 2);
 
-		/* The four rendered tracks the old fixed box under-counted. */
-		const tracks = [...header.children].map((child) =>
+		/* The clipped semantic heading must not add a visual track. */
+		const visibleTracks = [...header.children].filter(
+			(child) => !child.classList.contains("sr-only"),
+		);
+		const tracks = visibleTracks.map((child) =>
 			child.className.split(CLASS_TOKENS),
 		);
 		assert.equal(
 			tracks.filter((classes) => classes.includes("h-12")).length,
-			2,
+			1,
+		);
+		assert.equal(
+			tracks.filter((classes) => classes.includes("min-h-8")).length,
+			1,
 		);
 		assert.equal(
 			tracks.filter((classes) => classes.includes("min-h-10")).length,
@@ -837,7 +837,7 @@ test("the header sizes to its tracks and the building row stays above the result
 			"the 40px Librarian track is reserved even while its row is empty",
 		);
 		assert.equal(tracks.filter((classes) => classes.includes("h-4")).length, 1);
-		for (const child of header.children) {
+		for (const child of visibleTracks) {
 			assert.equal(
 				OUT_OF_FLOW.test(child.className),
 				false,

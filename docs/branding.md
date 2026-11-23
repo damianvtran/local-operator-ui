@@ -621,22 +621,35 @@ for staging, dismissal and focus return.
 
 ### Shared inset for primary pages
 
-**One inner frame, not an inset window.** Use `WorkspaceFrame` below the route's
-chrome. It gives the body 8px logical inline and bottom gutters and 10px corners,
-without a border, `PanelEdge`, shadow or second backing. App navigation, native
-controls and drag surfaces, the real panel rail and shell-level Fleet Asks stay
-outside it. The visible gutter replaces the shell seams where it separates the
+**One inner frame, not an inset window.** Use `WorkspaceFrame` at the route body
+boundary. The ordinary frame has 8px logical inline and bottom gutters and 10px
+corners, without a border, `PanelEdge`, shadow or second backing. App navigation,
+native controls and drag surfaces, the real panel rail and shell-level Fleet
+Asks are shell chrome, not children of the inset. The visible gutter replaces the shell seams where it separates the
 page from those rails, not on legacy flush joins. It continues the shell/tab
 `surface` ground (at the sidebar's own glass alpha when covered) in the exposed
 gutters and corners only. Bare native material here reads as a dark outline;
 filling behind the frame instead would double the body glass. The rails must
 read on their own grounds, even with no inspector open.
 
-**Share the boundary, not the layout.** The outlet consumes the platform's
-clearance once and holds the same frame through loading, empty, error and content.
-Route-local actions, independent list/detail scrolling, sticky bands, narrow
-layout replacements and focus return stay with the page. Keep content cards,
-semantic boundaries and visible focus; don't wrap each column in a card.
+**Share the boundary, not the layout.** The outlet holds the same frame through
+loading, empty, error and content. Ordinary routes spend the platform's
+clearance before the frame. Settings (including subsection links) and Agents
+(including saved-agent detail) explicitly match a full-height frame variant:
+the frame and pane grounds touch y0 and the bottom, with the same rounded
+lateral inset. They clear the transparent lane or trailing caption band once
+inside each pane, above its scrollport, so neither controls nor scrolled rows
+can sit under the drag target. Fullscreen uses the normal smaller clearance
+inside the same grounds. Route-local actions, independent list/detail scrolling,
+sticky bands, narrow layout replacements and focus return stay with the page.
+Keep content cards, semantic boundaries and visible focus; don't wrap each
+column in a card.
+
+**Show the work, not a second tab label.** A redundant page identity is an
+`sr-only` h1, not an icon, display heading and introduction above the controls.
+Keep selected item names and meaningful headings, setup or safety instructions,
+empty and error text, and the actual controls. If there is no toolbar, don't
+leave an empty title row.
 
 **Share geometry, not an alpha layer.** Off stays solid. Sidebars only keeps
 its sidebar coverage and solid page/pane grounds. Full app keeps the existing
@@ -682,7 +695,8 @@ A full-height panel is a region that owns a ground at the window's edge — the 
 sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
 popover. These rules apply to genuine edge-to-edge chrome and legacy flush surfaces. A
 route-local column inside the [Shared inset](#shared-inset-for-primary-pages)
-does not take its own OS clearance or draw `PanelEdge`.
+never draws `PanelEdge`. Only the explicit full-height split variant spends
+native clearance inside its panes rather than above the frame.
 
 - **An edge-to-edge panel draws one seam, and still no border.** The tone step is
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
@@ -1042,7 +1056,7 @@ Those need a human and a screenshot.
 
 | Step | Size | Use |
 |---|---|---|
-| `text-display` | 28px | The largest text in the app. A page title, not a headline. |
+| `text-display` | 28px | The largest text in the app. A meaningful page or detail title, not a headline or a second tab label. |
 | `text-title` | 20px | Section and dialog titles |
 | `text-heading` | 16px | Group headings, card titles |
 | `text-body` | 14px | Default body |

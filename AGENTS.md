@@ -105,10 +105,17 @@ palette at Soft, Gentle, Strong and High too.
 ### Shared inset for primary pages
 
 Use one [Shared inset](docs/branding.md#shared-inset-for-primary-pages) at the route
-body boundary. The outlet owns platform clearance and keeps the frame through
-route loading, error and content. Do not cancel its pad or repeat it in nested
-columns. True shell rails and the titlebar stay outside; the gutter replaces
-seams only where it actually separates the page from those rails.
+body boundary. The outlet keeps the frame through loading, error and content.
+Ordinary routes spend native clearance before their frame. Settings (including
+subsection links) and Agents (including saved-agent detail) opt in through their
+matched route: their frame and pane grounds paint to y0 and the bottom edge,
+with the lateral gutter intact. Each pane spends the clearance once inside its
+paint, outside its scrollport. Keep the drag lane/band above that paint and out
+of the pane's controls; do not add another pad to nested content.
+
+When the tab already names the page, keep its semantic `h1` without a visual
+title or intro track. Show the working controls first and keep meaningful state,
+selected-item titles, instructions and feedback.
 
 Share the frame, not the page layout: keep pane grounds, sticky bands, focus
 and local scroll ownership. Chat's tabs and Browser's tab/address rails stay
@@ -136,8 +143,9 @@ legacy routes, not columns inside a Shared inset.
   offset panel is a band. This was reported three times (the Library sidebar,
   the canvas right bar, and Team Bridge) and each time the bug was the same
   relocation — the space existed, but outside the surface that should own it.
-  A Shared inset route instead has an intentional, shell-owned boundary below
-  the lane, and its columns do not take separate clearance.
+  An ordinary Shared inset route instead has a shell-owned boundary below the
+  lane. Only the matched full-height split routes use the inset panel contract
+  above; do not add panel padding to any other framed route.
   **The element that wears `panel-top-pad` must be the same box that paints the
   panel's ground.** A padded wrapper with no ground of its own is exactly the
   band this rule forbids; a content column inside a grounded, `panel-flush`

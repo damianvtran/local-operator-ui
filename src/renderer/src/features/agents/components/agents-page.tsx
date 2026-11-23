@@ -846,7 +846,15 @@ export function AgentsPage() {
 		return (
 			<Suspense
 				fallback={
-					<p className="p-6 text-body">{t("ui.agents.pages.loading_saved")}</p>
+					<div
+						data-workspace-route-pending=""
+						data-workspace-safe-content=""
+						className="min-h-0 flex-1"
+					>
+						<p className="p-6 text-body">
+							{t("ui.agents.pages.loading_saved")}
+						</p>
+					</div>
 				}
 			>
 				<LegacyAgentsPage />
@@ -878,6 +886,8 @@ export function AgentsPage() {
 			/* Keep roster and detail glass separate inside the shared route frame. */
 			className="flex min-h-0 flex-1 bg-canvas text-ink"
 		>
+			{/* Outside the roster so narrow detail still has its page heading. */}
+			<h1 className="sr-only">{t("ui.agents.pages.heading")}</h1>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
 			 *
@@ -895,18 +905,16 @@ export function AgentsPage() {
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
 				data-glass-region="page-sidebar"
+				data-workspace-safe-content=""
 				className="flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
-				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
-
 				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
 				 * tabs, search and scope are one control stack, so they sit closer to each
 				 * other than to the list below and the button beneath it. Each is
 				 * full-width, so their right edges are one line.
 				 */}
-				<div className="space-y-2">
+				<div className="space-y-2 pt-4">
 					<Tabs
 						value={skillMode ? "skill" : teamMode ? "team" : "agent"}
 						onValueChange={(next) =>
@@ -1145,6 +1153,7 @@ export function AgentsPage() {
 			 */}
 			<main
 				data-glass-region="canvas-content"
+				data-workspace-safe-content=""
 				className="flex min-w-0 flex-1 flex-col"
 			>
 				{/*

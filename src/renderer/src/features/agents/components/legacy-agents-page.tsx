@@ -128,8 +128,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 		>
 			{/* The sidebar itself is width:100% — the 280px lives here, and the
 			    pane must not shrink when the agent list has a long name in it. */}
-			{/* The direct-detail route shares the inset; the roster keeps its own
-			    surface and scroller, not a second titlebar pad. */}
+			{/* The roster and detail clear the native lane inside their paint. */}
 			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
@@ -142,19 +141,14 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 			    keeps its scrolling inside the pane instead of the window. */}
 			<div
 				data-glass-region="canvas-content"
+				data-workspace-safe-content=""
 				className="h-full grow overflow-hidden"
 			>
-				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
-				    header sits in the same measured column as the settings below it,
-				    so the page title and the fields it heads share one left edge. */}
+				{/* The selected name (not the tab name) shares the form’s left edge. */}
 				<div className="flex h-full flex-col gap-8 p-4 sm:p-6 lg:p-8">
-					<div className="mx-auto w-full max-w-4xl">
-						<PageHeader
-							title={t("ui.agents.navigation.legacy.title")}
-							icon={Bot}
-							subtitle={t("ui.agents.navigation.legacy.subtitle")}
-						>
-							{selectedAgent && (
+					{selectedAgent ? (
+						<div className="mx-auto w-full max-w-4xl">
+							<PageHeader title={selectedAgent.name} icon={Bot}>
 								<div className="flex items-center gap-2">
 									{/*
 									 * The two secondary actions collapse into a menu once the
@@ -269,9 +263,14 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 										</Button>
 									</Tooltip>
 								</div>
-							)}
-						</PageHeader>
-					</div>
+							</PageHeader>
+						</div>
+					) : (
+						<PageHeader
+							variant="compact"
+							title={t("ui.agents.navigation.legacy.title")}
+						/>
+					)}
 
 					<div className="min-h-0 grow overflow-hidden">
 						<AgentSettings

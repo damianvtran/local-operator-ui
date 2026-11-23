@@ -62,7 +62,7 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { FolderKanban, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -749,8 +749,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
 				<PageHeader
+					variant="compact"
 					title={t("ui.projects.projects_page.projects")}
-					icon={FolderKanban}
 				/>
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
@@ -813,11 +813,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 */}
 			<div className="@container flex shrink-0 flex-col gap-8 px-6 pt-6">
 				<PageHeader
+					variant="compact"
 					title={t("ui.projects.projects_page.projects")}
-					icon={FolderKanban}
-					subtitle={t(
-						"ui.projects.projects_page.workstreams_you_and_your_agents_track_across_sessions",
-					)}
 				>
 					<div className="flex items-center gap-2">
 						<Button

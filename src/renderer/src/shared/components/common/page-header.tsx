@@ -11,14 +11,17 @@ import type { FC, ReactNode } from "react";
  */
 type PageHeaderProps = {
 	title: string;
-	icon: LucideIcon;
-	subtitle?: string;
 	children?: ReactNode;
-};
+} & (
+	| { variant: "compact"; icon?: never; subtitle?: never }
+	| { variant?: "display"; icon: LucideIcon; subtitle?: string }
+);
 
 /**
- * The title block at the top of a route, with its icon on the left and any page
- * actions on the right.
+ * Use `compact` when navigation already names the route: keep its h1 for
+ * heading navigation, without an icon, exposition or a flex item that leaves a
+ * gap. The caller owns any toolbar. Display headers are for meaningful content
+ * identity, such as a selected item's name.
  *
  * ## Two pieces of chrome deliberately not carried over
  *
@@ -33,17 +36,14 @@ type PageHeaderProps = {
  * `ink-muted`, subordinate to the title, which is the hierarchy that was
  * intended in the first place.
  *
- * The title is `text-display` — 28px, the largest step in the app, and the only
- * place it is used. There is no step above it on purpose: a desktop app has no
- * hero.
+ * The visible title uses `text-display`, the largest step in the app. There
+ * is no step above it on purpose: a desktop app has no hero.
  *
  * ## No bottom margin
  *
  * It shipped `mb-8`, which stacked with whatever gap its page already had —
- * every one of the four routes that use it lays its content out as a flex
- * column. A component does not own its outer margin; the container owns the
- * gap, and all four containers now set `gap-8` explicitly, which is the same
- * 32px said once in a place you can see it.
+ * routes set their own flex rhythm. A component does not own its outer margin;
+ * the container owns the gap.
  *
  * ## Why it wraps, and why it is a container
  *
@@ -59,28 +59,35 @@ type PageHeaderProps = {
  * width the header actually has rather than against the viewport. The two
  * things between this header and the window edge — the app rail and a list
  * pane — are both independently collapsible, so the viewport does not know
- * how much room is left. `agents-page.tsx` is the one caller that needs it.
+ * how much room is left. The saved agent detail needs it.
  */
-export const PageHeader: FC<PageHeaderProps> = ({
-	title,
-	icon: Icon,
-	subtitle,
-	children,
-}) => (
-	<div className="@container flex flex-wrap items-start justify-between gap-4">
-		<div className="flex min-w-0 items-start gap-4">
-			<Icon
-				size={24}
-				aria-hidden="true"
-				className="mt-1 shrink-0 text-ink-muted"
-			/>
-			<div className="flex flex-col gap-1">
-				<h1 className="text-display text-ink">{title}</h1>
-				{subtitle && (
-					<p className="max-w-200 text-body text-ink-muted">{subtitle}</p>
-				)}
+export const PageHeader: FC<PageHeaderProps> = (props) => {
+	const { title, children } = props;
+	if (props.variant === "compact") {
+		return (
+			<>
+				<h1 className="sr-only">{title}</h1>
+				{children}
+			</>
+		);
+	}
+	const { icon: Icon, subtitle } = props;
+	return (
+		<div className="@container flex flex-wrap items-start justify-between gap-4">
+			<div className="flex min-w-0 items-start gap-4">
+				<Icon
+					size={24}
+					aria-hidden="true"
+					className="mt-1 shrink-0 text-ink-muted"
+				/>
+				<div className="flex min-w-0 flex-col gap-1">
+					<h1 className="wrap-anywhere text-display text-ink">{title}</h1>
+					{subtitle && (
+						<p className="max-w-200 text-body text-ink-muted">{subtitle}</p>
+					)}
+				</div>
 			</div>
+			{children}
 		</div>
-		{children}
-	</div>
-);
+	);
+};

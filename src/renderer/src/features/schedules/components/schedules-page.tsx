@@ -79,7 +79,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -387,14 +387,10 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 		monitorsReadError;
 
 	return (
-		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
+				variant="compact"
 				title={t("ui.schedules.schedules_page.schedules")}
-				icon={CalendarDays}
-				subtitle={t(
-					"ui.schedules.schedules_page.work_your_conversations_do_on_a_schedule_repeating_or_once",
-				)}
 			>
 				{/*
 				 * A way to ask for a fresh read, because the listing's own poll is a
@@ -404,16 +400,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				 * interval stays - the poll is what keeps the page honest without a
 				 * press - and this is the press for when the user knows it moved.
 				 */}
-				{/*
-				 * The two header controls are ONE group, and the group is what
-				 * `justify-between` places. As three siblings the icon was stranded
-				 * mid-header (measured on `list`: icon box x=757..788 at the 60% mark,
-				 * CTA x=1079..1255, 291 px of empty band between them) and at the app's
-				 * minimum width the header wrapped so that the SECONDARY control held
-				 * the right corner while `New scheduled task` dropped to its own line at
-				 * the left edge - the primary action demoted below a secondary one. The
-				 * group keeps them adjacent and wraps as a pair (design round 3).
-				 */}
+				{/* Keep refresh and create adjacent at narrow widths. */}
 				<div className="flex items-center gap-2">
 					<Button
 						variant="secondary"

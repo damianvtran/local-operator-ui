@@ -11,15 +11,15 @@ interface WorkspaceFrameProps {
 	children: ReactNode;
 	/** Chrome-owning routes mount their own frame below that chrome. */
 	inset?: boolean;
-	/** Chrome-owning bodies keep their own paint roles without changing geometry. */
-	variant?: "chat" | "browser";
+	/** Split routes paint to the window edge; Chat and Browser own their body paint. */
+	variant?: "full-height" | "chat" | "browser";
 }
 
 /**
  * One inset around the route body, not around the titlebar or shell rails.
- * The outlet reserves the platform chrome band before this boundary. A page
- * with its own toolbar (Chat, native Browser) can instead use it below that
- * toolbar, without taking the outlet frame as well.
+ * Ordinary routes reserve clearance outside this boundary. Full-height split
+ * routes instead keep their separate grounds under the lane and clear it inside
+ * each pane. Chat and native Browser mount this frame after their own chrome.
  */
 export function WorkspaceFrame({
 	children,
@@ -35,6 +35,9 @@ export function WorkspaceFrame({
 				inset ? "workspace-frame-shell min-h-0 min-w-0 flex-1" : "contents"
 			}
 			data-workspace-frame-shell={inset ? "" : undefined}
+			data-workspace-frame-full-height={
+				inset && variant === "full-height" ? "" : undefined
+			}
 		>
 			<div
 				className={

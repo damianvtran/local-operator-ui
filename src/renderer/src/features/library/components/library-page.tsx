@@ -638,7 +638,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	if (!enabled) {
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
-				<PageHeader title={t("ui.library.page.title")} icon={LibraryBig} />
+				<PageHeader variant="compact" title={t("ui.library.page.title")} />
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
 						<Spinner label={t("ui.library.page.checking")} />
@@ -815,36 +815,20 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					data-glass-region="canvas-content"
 					className="flex min-w-0 flex-1 flex-col"
 				>
-					{/*
-					 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
-					 * A fixed `h-[136px]` held two 48px rows plus the 40px Librarian track
-					 * only by ignoring the 4px row gaps and the 24px vertical padding; when
-					 * the building line rendered, the remaining tracks overflowed the box and
-					 * painted over the results (the flex parent had already given the header
-					 * its fixed share). `min-h` keeps the reserved track from shrinking
-					 * below the spec's height while every rendered row - including the
-					 * building line - stays in flow and pushes the results down.
-					 */}
+					{/* Controls and Librarian status size the band; no title track. */}
 					<header
 						data-library-header=""
-						className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:min-h-[136px]"
+						className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2"
 					>
-						<div className="flex h-12 min-w-0 items-center gap-2">
-							<LibraryBig
-								size={20}
-								aria-hidden="true"
-								className="text-ink-muted"
-							/>
-							<h1 className="text-title text-ink">
-								{t("ui.library.page.title")}
-							</h1>
-							<span className="ms-2 text-meta tabular-nums text-ink-dim">
+						<PageHeader variant="compact" title={t("ui.library.page.title")} />
+						<div className="flex min-h-8 min-w-0 items-center gap-2">
+							<span className="text-meta tabular-nums text-ink-dim">
 								{t("ui.library.page.loaded_count", {
 									loaded: String(rows.length),
 									total: String(total),
 								})}
 							</span>
-							<div className="ms-auto flex items-center rounded-sm border border-control">
+							<div className="ms-auto flex shrink-0 items-center rounded-sm border border-control">
 								<Button
 									variant="ghost"
 									size="icon-sm"

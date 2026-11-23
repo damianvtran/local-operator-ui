@@ -8,7 +8,7 @@ import type { FC } from "react";
  * Props for the SidebarHeader component
  */
 type SidebarHeaderProps = {
-	/** Title to display in the header */
+	/** Section name for heading navigation; the tab already names it visually. */
 	title: string;
 	/** Current search query */
 	searchQuery: string;
@@ -65,8 +65,8 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	useI18nLocale();
 	return (
 		<div className="p-4">
-			<div className="mb-3 flex items-center justify-between gap-2">
-				<h2 className="truncate text-heading text-ink">{title}</h2>
+			<h2 className="sr-only">{title}</h2>
+			<div className="mb-3 flex items-center justify-end">
 				<div className="flex shrink-0 gap-1">
 					{onImportAgentClick && (
 						<Tooltip content={importAgentTooltip}>

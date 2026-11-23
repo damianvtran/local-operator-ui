@@ -1,4 +1,8 @@
 import { BackendStartupGate } from "@shared/components/common/backend-startup-panel";
+import {
+	ErrorBoundary,
+	ErrorFallback,
+} from "@shared/components/common/error-boundary";
 import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
@@ -232,7 +236,7 @@ const App: FC = () => {
 	 * mount would be a second subscriber competing to write it.
 	 */
 	useDocumentDirection();
-	const { pathname } = useLocation();
+	const { pathname, search } = useLocation();
 
 	// Check if this is a first-time user
 	const { isOnboardingActive } = useCheckFirstTimeUser();
@@ -380,9 +384,13 @@ const App: FC = () => {
 			/>
 			<Route path="/chat" handle="chat" element={<ChatPage />} />
 			<Route path="/chat/:agentId" handle="chat" element={<ChatPage />} />
-			<Route path="/agents" element={<AgentsPage />} />
-			<Route path="/agents/:agentId" element={<AgentsPage />} />
-			<Route path="/settings" element={<SettingsPage />} />
+			<Route path="/agents" handle="full-height" element={<AgentsPage />} />
+			<Route
+				path="/agents/:agentId"
+				handle="full-height"
+				element={<AgentsPage />}
+			/>
+			<Route path="/settings" handle="full-height" element={<SettingsPage />} />
 			<Route path="/agent-hub" element={<AgentHubPage />} />
 			<Route path="/agent-hub/:agentId" element={<AgentDetailsPage />} />
 			<Route path="/schedules" element={<SchedulesPage />} />
@@ -453,6 +461,7 @@ const App: FC = () => {
 	// outlet, mounts it. Team Bridge only takes the shell's left column.
 	const browserOwnsBody = placement === "chrome";
 	const outletWrapsRoute = !routeHasOwnChromeRow;
+	const outletFullHeight = placement === "full-height";
 	const routeContent = useRoutes(routes);
 	/*
 	 * Team Bridge banners, watched in the SHELL because the page is the one place
@@ -886,6 +895,7 @@ const App: FC = () => {
 	const routePending = (
 		<div
 			data-workspace-route-pending=""
+			data-workspace-safe-content={outletFullHeight ? "" : undefined}
 			className="flex min-h-0 flex-1 items-center justify-center"
 		>
 			<Spinner size="lg" label={t("ui.common.loading.page")} />
@@ -913,7 +923,26 @@ const App: FC = () => {
 					</>
 				}
 			>
-				{routeContent}
+				{outletFullHeight ? (
+					// Keep a failed split route in the same paint boundary as pending
+					// and content. Navigation or the existing Retry can reset it.
+					<ErrorBoundary
+						resetKeys={[pathname, search]}
+						fallbackRender={(props) => (
+							<div
+								data-workspace-route-error=""
+								data-workspace-safe-content=""
+								className="min-h-0 flex-1 overflow-hidden"
+							>
+								<ErrorFallback {...props} />
+							</div>
+						)}
+					>
+						{routeContent}
+					</ErrorBoundary>
+				) : (
+					routeContent
+				)}
 			</Suspense>
 		</>
 	);
@@ -1191,44 +1220,22 @@ const App: FC = () => {
 						content={
 							<main
 								data-workspace-outlet=""
+								data-workspace-full-height={outletFullHeight ? "" : undefined}
 								// Chat's legacy nested glass corrections still key on this scope.
 								// The outlet itself never paints a backing under glass.
 								data-glass-region={chatOwnsBody ? "canvas-backing" : undefined}
 								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
-								{/*
-								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
-								 *
-								 * Settings, agents, agent hub and schedules have no 40px toolbar row of
-								 * their own. On Windows and Linux - where the OS draws its caption
-								 * buttons INTO the client area and nothing is drawn above the columns -
-								 * the band is the drag surface a frameless window needs and the caption
-								 * clearance the page's heading needs. The rules in `styles/index.css`
-								 * gate it to exactly those two platforms with the buttons NOT leading,
-								 * in the SELECTORS rather than by cascade order, so which of the band
-								 * and the lane is drawn cannot change when either rule moves.
-								 *
-								 * macOS IS NOT IN THAT GATE, and that is the fix this element carries:
-								 * `ChatLayout` already draws the 32px lane above BOTH columns there -
-								 * the same drag surface and the same clearance - and a band on top of
-								 * it was a SECOND inset that put the settings rail and its content
-								 * 32px below the chat header ("for sub-views like the settings page,
-								 * the sidebar and view doesn't go all the way to the top",
-								 * 2026-09-26). The element stays in the tree, rendered as nothing
-								 * there, so "where the OS draws" is decided in one place - the
-								 * `data-chrome-*` attributes on the document element, the same ones
-								 * the lane is gated on - rather than by a second JS platform read
-								 * that could drift from it.
-								 *
-								 * `/chat` is excluded because `ChatLayout` already draws the lane above
-								 * both of its columns.
-								 * `/browser` is excluded because the browser pane brings its own 40px
-								 * toolbar, which is the row the controls sit over on that route.
-								 */}
+								{/* Trailing caption buttons use this drag band on Windows/Linux.
+								    It stays in flow on ordinary pages and overlays split paint.
+								    macOS and leading WCO use ChatLayout's lane instead. */}
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
-								<WorkspaceFrame inset={outletWrapsRoute}>
+								<WorkspaceFrame
+									inset={outletWrapsRoute}
+									variant={outletFullHeight ? "full-height" : undefined}
+								>
 									{routeBody}
 								</WorkspaceFrame>
 							</main>

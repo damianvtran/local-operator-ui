@@ -65,7 +65,7 @@ type ErrorBoundaryProps = {
  * `sunken` — a code ground for code, which is the whole reason `sunken` exists
  * and is why the block needs no border to read as output.
  */
-const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
+export const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 	useI18nLocale();
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">

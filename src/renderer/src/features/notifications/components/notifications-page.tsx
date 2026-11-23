@@ -63,7 +63,6 @@ import {
 } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import {
-	Bell,
 	Check,
 	CheckCheck,
 	ChevronDown,
@@ -1857,7 +1856,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	if (!enabled) {
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
-				<PageHeader title={t("ui.notifications.page.title")} icon={Bell} />
+				<PageHeader
+					variant="compact"
+					title={t("ui.notifications.page.title")}
+				/>
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
 						<Spinner label={t("ui.notifications.page.checking")} />
@@ -1900,11 +1902,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			data-glass-region="canvas"
 		>
 			<div className="flex shrink-0 flex-col gap-4 px-6 pt-6">
-				<PageHeader
-					title={t("ui.notifications.page.title")}
-					icon={Bell}
-					subtitle={t("ui.notifications.page.subtitle")}
-				>
+				<PageHeader variant="compact" title={t("ui.notifications.page.title")}>
 					<div className="flex flex-wrap items-center gap-2">
 						{list.newerCount > 0 && (
 							/*

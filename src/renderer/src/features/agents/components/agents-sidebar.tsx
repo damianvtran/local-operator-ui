@@ -495,6 +495,7 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	return (
 		<div
 			data-glass-region="page-sidebar"
+			data-workspace-safe-content=""
 			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			<SidebarHeader

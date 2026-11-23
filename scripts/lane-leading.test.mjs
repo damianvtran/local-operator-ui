@@ -19,8 +19,9 @@
  *      strip. Two utilities in `styles/index.css` state it once: `panel-flush`
  *      (a route root that cancels the shell's ordinary-content pad) and
  *      `panel-top-pad` (a panel column whose first row starts below the strip).
- *   3. Adopted routes get one clearance on `<main>`; their split panes keep
- *      the same local grounds/scroll and no longer pad their own first rows.
+ *   3. Ordinary inset routes get one clearance on `<main>`. Settings and
+ *      Agents use the matched full-height variant, where each painted pane
+ *      has the marker for the shared clearance outside its scrollport.
  *   4. A scroll region clips at the panel's content edge, so its pad must sit
  *      OUTSIDE the scroller, never on it.
  *
@@ -155,8 +156,8 @@ test("every full-height panel owns the strip and pads its own first row", () => 
 	}
 });
 
-// The same pane grounds and local overflow contracts survive the move. Pin them
-// separately from the edge-to-edge panels; neither set may borrow the other's pad.
+// Pane grounds and local overflow survive the move. No inset route should
+// use the legacy utilities on top of its matched route clearance.
 const INSET_COLUMNS = [
 	[
 		LIBRARY_PAGE,
@@ -202,12 +203,30 @@ const INSET_COLUMNS = [
 	],
 ];
 
-test("adopted split routes keep their grounds and local scroll without a second clearance", () => {
+test("inset split routes keep their grounds and local scroll without a second clearance", () => {
 	for (const [path, classes] of INSET_COLUMNS) {
 		const source = readSource(path);
 		for (const literal of classes) {
 			assert.ok(source.includes(literal), `${path} lost ${literal}`);
 		}
+		const markedPanes = [
+			...source.matchAll(
+				/data-glass-region="(page-sidebar|canvas-content)"\s+data-workspace-safe-content=""/g,
+			),
+		].map((match) => match[1]);
+		const expected =
+			path === LIBRARY_PAGE
+				? []
+				: path.endsWith("/agents-page.tsx")
+					? ["page-sidebar", "canvas-content"]
+					: path.endsWith("sidebar.tsx")
+						? ["page-sidebar"]
+						: ["canvas-content"];
+		assert.deepEqual(
+			markedPanes,
+			expected,
+			`${path}: each full-height ground, not its scroller, owns clearance`,
+		);
 		assert.doesNotMatch(
 			source,
 			/["' ]panel-(?:top-pad|flush|scroll) /,
@@ -216,7 +235,7 @@ test("adopted split routes keep their grounds and local scroll without a second 
 	}
 });
 
-test("the panel root utility is the only way a route reaches y0", () => {
+test("legacy flush roots still reach y0 without losing their bottom edge", () => {
 	/*
 	 * The roots are asserted separately from the columns because they do a
 	 * different job: they cancel the shell's `<main>` pad so the panel's own
