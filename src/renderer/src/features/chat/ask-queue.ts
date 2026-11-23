@@ -2714,7 +2714,65 @@ const askRefusalAuthored = (error: unknown): boolean => {
  * - which is how a green suite sat beside a dead branch. `ask-queue.test.mjs`
  * now names both.
  */
+/**
+ * The keyed sentence for MAIN's refusal of a "Confirm as operator…" press
+ * (`code: ask_attest_refused`, `src/main/ask-attest.ts`), or null for any other
+ * error.
+ *
+ * WHY KEYED HERE rather than main's `detail.message`: main's sentence is an
+ * English diagnostic for logs, and the reader needs to know what to do next,
+ * which depends on the reason. The groups follow what the person can act on:
+ *  - the conversation is not running (no listener): send unconfirmed, or open it;
+ *  - the runtime refused the confirmation (verdict or frame): same two ways out;
+ *  - this build or launch can never confirm (dev/unsigned build, a debugger,
+ *    DevTools, a driver or rig launch): send unconfirmed - never a retry loop;
+ *  - the window lost the front: bring it back and confirm again;
+ *  - the ask changed, closed or expired under the sheet: check it again;
+ *  - anything else (another sheet open, a failed read): try again.
+ * Never a silent fallback to the unconfirmed send: that is the person's choice.
+ */
+const ASK_ATTEST_NOT_ELIGIBLE = new Set([
+	"not_macos",
+	"not_packaged",
+	"remote_debugging",
+	"dev_flag",
+	"window_mode",
+	"devtools_open",
+	"debugger_attached",
+]);
+const ASK_ATTEST_WINDOW = new Set([
+	"no_window",
+	"window_not_visible",
+	"window_not_focused",
+]);
+const ASK_ATTEST_CHANGED = new Set(["ask_closed", "ask_changed", "expired"]);
+const ASK_ATTEST_REFUSED = new Set([
+	"listener_refused",
+	"frame_refused",
+	"timeout",
+]);
+
+export const askAttestRefusalSentence = (error: unknown): string | null => {
+	if (!(error instanceof DesktopControlError)) return null;
+	if (error.code !== "ask_attest_refused") return null;
+	const detail = error.detail as { reason?: unknown } | undefined;
+	const reason = typeof detail?.reason === "string" ? detail.reason : "";
+	if (reason === "listener_unavailable")
+		return t("ui.chat.ask_attest.refusal.not_running");
+	if (ASK_ATTEST_REFUSED.has(reason))
+		return t("ui.chat.ask_attest.refusal.refused");
+	if (ASK_ATTEST_NOT_ELIGIBLE.has(reason))
+		return t("ui.chat.ask_attest.refusal.not_eligible");
+	if (ASK_ATTEST_WINDOW.has(reason))
+		return t("ui.chat.ask_attest.refusal.window");
+	if (ASK_ATTEST_CHANGED.has(reason))
+		return t("ui.chat.ask_attest.refusal.changed");
+	return t("ui.chat.ask_attest.refusal.retry");
+};
+
 export const askRefusalSentence = (error: unknown): string => {
+	const attest = askAttestRefusalSentence(error);
+	if (attest !== null) return attest;
 	if (answerOwnerIsBusy(error)) return answerBusyMessage();
 	if (answerRefusedByAppContract(error))
 		return answerRefusedByAppContractMessage();
