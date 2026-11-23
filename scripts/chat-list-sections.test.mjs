@@ -41,7 +41,7 @@ const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/chat-list-sections";',
+			'export * from "./src/renderer/src/features/chat/chat-list-sections"; export { withQueuedAskStatuses } from "./src/renderer/src/features/chat/components/chat-session-status";',
 		resolveDir: ROOT,
 		loader: "ts",
 	},
@@ -53,17 +53,24 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	// `chat-session-status.tsx` joins this bundle for the derivation test below, so
+	// the build needs the app's JSX runtime and path aliases (its siblings read
+	// the same tsconfig; the alias map above is what keeps this file standalone).
+	jsx: "automatic",
+	tsconfig: "tsconfig.app.json",
 });
 
 const {
 	CHAT_LIST_SECTIONS,
 	CHAT_LIST_SECTION_LABEL,
 	isRunningRow,
+	isStoppedOnReader,
 	relativeTime,
 	relativeTimeSentence,
 	rowTimeMs,
 	sectionRows,
 	sectionOf,
+	withQueuedAskStatuses,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -690,4 +697,57 @@ test("waiting is Running even when the conversation last moved long ago", () => 
 	});
 	assert.equal(isRunningRow(waiting), true);
 	assert.equal(sectionOf(waiting, NOW, ACTIVE), "running");
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * ONE DERIVED ROW SPEAKS FOR BOTH THE MARK AND THE SECTION (2026-11-23)
+ * ---------------------------------------------------------------------------
+ *
+ * The wire code for an open queued ask is `answer`, so an idle conversation
+ * with one ask filed under RUNNING and was lifted as "stopped on the reader" -
+ * while PR #2053 had already made it draw as a resting ring. The two disagreed
+ * because the section read the wire row and the mark read a derived one; the
+ * sidebar now derives the LIST first (`withQueuedAskStatuses`), and these cases
+ * pin what that has to mean for the section and the lift.
+ */
+const QUEUED_ASK = { status: { code: "answer", label: "Answer needed" } };
+const ASK_COUNT = new Map([["s", 1]]);
+
+test("[M-section-idle-asks1] an idle conversation with a queued ask is not running and not stopped on the reader", () => {
+	const [derived] = withQueuedAskStatuses(
+		[row({ ...QUEUED_ASK, live_state: "idle", ...at(NOW - HOUR) })],
+		ASK_COUNT,
+	);
+	assert.equal(isRunningRow(derived), false);
+	assert.equal(sectionOf(derived, NOW, ACTIVE), "today");
+});
+
+test("[M-section-busy-asks1] a busy conversation with a queued ask stays Running, and is not stopped on the reader", () => {
+	const [derived] = withQueuedAskStatuses(
+		[row({ ...QUEUED_ASK, live_state: "busy", ...at(NOW - HOUR) })],
+		ASK_COUNT,
+	);
+	assert.equal(isRunningRow(derived), true);
+	assert.equal(sectionOf(derived, NOW, ACTIVE), "running");
+});
+
+test("[M-section-blocking] a blocking answer and an approval still file under Running", () => {
+	const answer = row({ ...QUEUED_ASK, live_state: "idle" });
+	// No count: a question gate with no queue row behind it, so the code stands.
+	const [blocking] = withQueuedAskStatuses([answer], new Map());
+	assert.equal(blocking, answer);
+	assert.equal(isRunningRow(blocking), true);
+	assert.equal(isStoppedOnReader(blocking), true);
+	assert.equal(sectionOf(blocking, NOW, ACTIVE), "running");
+	// An approval keeps its own code even with a queued ask beside it.
+	const approval = row({
+		status: { code: "approval", label: "Approval needed" },
+		live_state: "idle",
+	});
+	const [gate] = withQueuedAskStatuses([approval], ASK_COUNT);
+	assert.equal(gate.status.code, "approval");
+	assert.equal(isRunningRow(gate), true);
+	assert.equal(isStoppedOnReader(gate), true);
+	assert.equal(sectionOf(gate, NOW, ACTIVE), "running");
 });

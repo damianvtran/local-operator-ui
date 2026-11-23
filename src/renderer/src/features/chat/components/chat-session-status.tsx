@@ -36,6 +36,39 @@ import {
  * ring and the sentence agree on what "resting" means. */
 const KNOWN_RESTING = RESTING_CODES;
 
+/*
+ * RED CONTROL SCAFFOLD (commit 1 of 2: the tests, operator report 2026-11-23).
+ *
+ * The exports the new cases import, at the OLD behaviour: the list helper hands
+ * every row back untouched and the approval sentence is empty, so the tests fail
+ * on what the RUNNING section, the glyph count and the spoken name actually say -
+ * not on a missing import. The next commit implements them; this block is
+ * deleted there.
+ */
+export function openAskCount(
+	row: Pick<CanonicalSessionRow, "asks_open">,
+	open?: number | null,
+): number | null {
+	const count = typeof open === "number" ? open : row.asks_open;
+	return typeof count === "number" && Number.isFinite(count) && count > 0
+		? count
+		: null;
+}
+
+export function approvalAsksSentence(
+	_row: CanonicalSessionRow,
+	_open?: number | null,
+): string {
+	return "";
+}
+
+export function withQueuedAskStatuses(
+	rows: readonly CanonicalSessionRow[],
+	_asksBySession: ReadonlyMap<string, number> | null | undefined,
+): CanonicalSessionRow[] {
+	return [...rows];
+}
+
 /**
  * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
  *
