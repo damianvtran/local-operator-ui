@@ -1,3 +1,4 @@
+import { registerScrollerWriteSink } from "@shared/hooks/scroll-to-tail";
 import {
 	type RefObject,
 	useCallback,
@@ -1280,6 +1281,27 @@ export function useScrollPaging({
 	useEffect(() => {
 		if (olderFailed) setFailureSuperseded(false);
 	}, [olderFailed]);
+
+	/*
+	 * Offer `acknowledgeOwnWrite` (and a hold release) to the page's
+	 * scroll-to-tail motion, which writes this scroller from outside the
+	 * transcript. See `ScrollerWriteSink` in `scroll-to-tail.ts` for why both
+	 * halves are needed: unclaimed animation frames could be read as a drag, and
+	 * a standing hold would pull the flight back toward the reader's old place on
+	 * the next streaming resize. Releasing the hold is the same reset the tail
+	 * gate in `correctAnchor` performs once the reader reaches the tail; a send
+	 * only performs it at the start of the trip instead of the end.
+	 */
+	useEffect(() => {
+		const el = containerRef.current;
+		if (!el) return;
+		return registerScrollerWriteSink(el, {
+			acknowledge: acknowledgeOwnWrite,
+			releaseHold: () => {
+				anchor.current = { sample: null, until: 0, inputRevision: 0 };
+			},
+		});
+	}, [containerRef, acknowledgeOwnWrite]);
 
 	useEffect(() => {
 		const el = containerRef.current;
