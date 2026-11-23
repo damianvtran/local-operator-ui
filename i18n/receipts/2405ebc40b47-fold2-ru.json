@@ -1,0 +1,66 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-fold2-ru",
+	"locale": "ru",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "7a1ab39aa9 + the manager's uncommitted convergence edits",
+	"date": "2026-11-13",
+	"status": "passed",
+	"audit_kind": "DELTA audit of exactly the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8: 6 added, 2 changed) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two independently audited parents (catalogue-union-parity reports no value differences), so their audits stand in the superseded rows.",
+	"independence": "A different agent and model family from the translators. The 27 keys were translated this wave by i18n-translator anthropic/claude-sonnet-5-5 (self-reported); this audit ran read-only through the codex MCP with the strings, the English source, the context sidecar, a style-guide excerpt and the shipped vocabulary pasted into the prompt. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.action.send_queue",
+		"ui.settings.shortcuts.action.send_steer",
+		"ui.settings.shortcuts.category.sending",
+		"ui.settings.shortcuts.category.sending_description",
+		"ui.settings.shortcuts.reserved.enter",
+		"ui.settings.shortcuts.capture.send_newline",
+		"ui.settings.shortcuts.capture.send_needs_modifier",
+		"ui.settings.shortcuts.capture.panel_enter",
+		"ui.settings.shortcuts.capture.send_prompt",
+		"ui.settings.shortcuts.row_help.send_steer",
+		"ui.settings.shortcuts.row_help.send_queue",
+		"ui.settings.shortcuts.row_help.send_both",
+		"ui.chat.composer.placeholder.waiting_steer",
+		"ui.chat.composer.placeholder.waiting_queue",
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_steer",
+		"ui.chat.composer.steer_hint_queue",
+		"ui.chat.composer.steer_hint_both",
+		"ui.chat.composer.placeholder.waiting",
+		"ui.chat.composer.steer_hint",
+		"ui.chat.canonical.send_failure.delivery_unsupported",
+		"ui.chat.canonical.transcript.busy_wait.steer",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.deferred"
+	],
+	"rounds": "Round 2 PASS, 0 findings. Round 1 failed on 4 majors (action.send_both, row_help.send_steer, row_help.send_queue, composer.placeholder.waiting_both) plus 1 minor; the first edit batch fixed them and round 2 re-audited the whole 27-key set on those bytes. No finding is open.",
+	"source": "Verdict and finding text transcribed without rewording from the manager's retained audit record: session 2405ebc40b47 scratchpad/round 2 (audit-fold2-r2.json). Catalogue hashes are of the bytes on disk at assembly time; the audit prompt was built from these same files, and no audited file was edited after the round that cleared it.",
+	"namespaces": {
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"en_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+			"ru_sha256": "a7bbfcd83e5b23fb749996e6ed336e39f5ed694220cd308b696aa3259137b747",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"en_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+			"ru_sha256": "e5b208d8d6ea3a241621382b85d8c9c5946a313105cac981c7da537c4de23b92",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
+			"ru_sha256": "6407525c9b48d56a9df6a06e40c164d2127ff0eda6312a157b59c29389aeaa34",
+			"findings": []
+		}
+	}
+}

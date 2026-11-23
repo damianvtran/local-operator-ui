@@ -31,6 +31,12 @@
 			"description": "Theme and the terminal features the TUI is allowed to use."
 		},
 		{
+			"name": "composer",
+			"title": "Message sending",
+			"scope": "live",
+			"description": "How a message you send while the agent is working is delivered. A change applies at once in the terminal and the desktop app."
+		},
+		{
 			"name": "keymap",
 			"title": "Hotkeys",
 			"scope": "live",
@@ -2616,6 +2622,45 @@
 			"unit": ""
 		},
 		{
+			"key": "delivery.busy_default",
+			"section": "composer",
+			"label": "Delivery when busy",
+			"kind": "enum",
+			"help": "What Enter does while the agent works. A Send as … key overrides it.",
+			"value": "steer",
+			"default": "steer",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "steer",
+					"label": "steer",
+					"description": "Interrupt a running tool now"
+				},
+				{
+					"value": "queue",
+					"label": "queue",
+					"description": "Wait; never interrupt tools"
+				},
+				{
+					"value": "both",
+					"label": "queue, then steer",
+					"description": "Wait, then steer if slow"
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "",
+			"unit": ""
+		},
+		{
 			"key": "keymap.new_session",
 			"section": "keymap",
 			"label": "New session",
@@ -2707,6 +2752,75 @@
 			"hotkey_scope": "desktop",
 			"unit": "",
 			"clearable": true
+		},
+		{
+			"key": "keymap.send_steer",
+			"section": "keymap",
+			"label": "Send as steer",
+			"kind": "hotkey",
+			"help": "Send now, interrupting the step. Overrides Delivery when busy.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
+			"unit": ""
+		},
+		{
+			"key": "keymap.send_queue",
+			"section": "keymap",
+			"label": "Send as queue",
+			"kind": "hotkey",
+			"help": "Wait for the step; never interrupt tools. Overrides Delivery when busy.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
+			"unit": ""
+		},
+		{
+			"key": "keymap.send_both",
+			"section": "keymap",
+			"label": "Send as queue, then steer",
+			"kind": "hotkey",
+			"help": "Wait, then steer if slow. Overrides Delivery when busy.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
+			"unit": ""
 		},
 		{
 			"key": "tool_approval_mode",

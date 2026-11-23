@@ -3962,8 +3962,8 @@ test("the line, the hint and every control read the one pair", () => {
 	);
 	assert.match(
 		page,
-		/mode: turnAlive \? "steer" : "prompt",/,
-		"the send mode reads the pair",
+		/mode: turnAliveRef\.current \? "steer" : "prompt",/,
+		"the send mode reads the pair, through the ref the page refreshes after the awaits (busy delivery)",
 	);
 	// NOTHING may go back to the raw field - that is the blanking defect this
 	// pair exists to remove, in every one of its consumers.
