@@ -45,7 +45,7 @@
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} dòng",
 	"ui.chat.asks.proposal.field_changed": "{label}: đã thay đổi",
 	"ui.chat.asks.proposal.review": "Xem lại thay đổi",
-	"ui.chat.asks.progress": "Đã trả lời {answered}/{total}",
+	"ui.chat.asks.progress": "Đã trả lời {answered, number, ::group-off}/{total, number, ::group-off}",
 	"ui.chat.asks.urgent_label": "Khẩn cấp",
 	"ui.chat.asks.copy_id": "Sao chép ID câu hỏi {id}"
 }

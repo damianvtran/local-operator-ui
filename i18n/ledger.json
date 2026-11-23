@@ -2631,8 +2631,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "431c79b12b01ea2cf8bb731d3568da39169fe1b7997a194a7c66c226f218c8d8",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "64d522563f9fa86e1c666f79e69cbc1fe4ebd69977e9cc3930a50721237356cd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -2641,21 +2641,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "3cc1fe293b5d-1857r1-es",
+					"instance": "ec772324f103-askpanel-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-es.json",
-					"receipt_sha256": "7e0e946d51e2284c4c2ad0e2be43b6a573356edc9dea59faeac8c9c2763ba1f2",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-es.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-es.json",
+					"receipt_sha256": "d4eaefdea01fc85b042ba241ef2c44461c24896ee05a47bfa5616c87263eee88",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-es.json"
 				}
 			],
 			"status": "audited",
@@ -2892,6 +2892,30 @@
 							"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "431c79b12b01ea2cf8bb731d3568da39169fe1b7997a194a7c66c226f218c8d8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "3cc1fe293b5d-1857r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-es.json",
+							"receipt_sha256": "7e0e946d51e2284c4c2ad0e2be43b6a573356edc9dea59faeac8c9c2763ba1f2",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-es.json"
 						}
 					],
 					"status": "audited"
@@ -16693,8 +16717,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "1e3c49748c682952eec327941d4d4e4e0fe142ecc41caa57c5df64ff2b0b0d20",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "30774b6aa37faa94d60f241d56904d1df84ab83ca4ff76589359df54db672e8b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -16703,21 +16727,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "3cc1fe293b5d-1857r1-fr",
+					"instance": "ec772324f103-askpanel-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-fr.json",
-					"receipt_sha256": "5f5cf73c3023c5f42b6655b65be42f94915b1da9c5fa7406d24ff238fc7180ca",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-fr.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-fr.json",
+					"receipt_sha256": "14d242e31070a778c662a82e6f19b6c29a162f3f3fd0d8045ef8bb0fda34de49",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-fr.json"
 				}
 			],
 			"status": "audited",
@@ -16954,6 +16978,30 @@
 							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "1e3c49748c682952eec327941d4d4e4e0fe142ecc41caa57c5df64ff2b0b0d20",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "3cc1fe293b5d-1857r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-fr.json",
+							"receipt_sha256": "5f5cf73c3023c5f42b6655b65be42f94915b1da9c5fa7406d24ff238fc7180ca",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-fr.json"
 						}
 					],
 					"status": "audited"
@@ -31336,8 +31384,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "38da6cec0b4c3117c26dffcc4e5ba8f0d2031b34ec08036f92a97f8ceb02d5a5",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "476934c035e79498302983bae6b18b286a03f7037e25386b3f22e82309cf8068",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
@@ -31346,21 +31394,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "3cc1fe293b5d-1857r1-hi",
+					"instance": "ec772324f103-askpanel-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 3,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-hi.json",
-					"receipt_sha256": "66d2a7a3855ba227975206c1168005249426d277ae5c9359abd4eff50b1e1415",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-hi.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-hi.json",
+					"receipt_sha256": "456eee3fdd011fb566c01261bb9962c34455c65077e25b6a010f45de5e03e165",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-hi.json"
 				}
 			],
 			"status": "audited",
@@ -31597,6 +31645,30 @@
 							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "38da6cec0b4c3117c26dffcc4e5ba8f0d2031b34ec08036f92a97f8ceb02d5a5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "3cc1fe293b5d-1857r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-hi.json",
+							"receipt_sha256": "66d2a7a3855ba227975206c1168005249426d277ae5c9359abd4eff50b1e1415",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-hi.json"
 						}
 					],
 					"status": "audited"
@@ -45600,8 +45672,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "769c7a1dc312f989bbd57e6e0e3761ddaf456fdf0265a98ecbcb4490e87e355f",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "7afc9a99a375609046d8c32aa851c061f2baf25e89d10de4751906f56a14e99d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
@@ -45610,21 +45682,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "3cc1fe293b5d-1857r1-ru",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "ec772324f103-askpanel-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ru.json",
-					"receipt_sha256": "35363475e9e5f28a11d5ec013be354da7ca4060fa624a5029c93a34cb8a6526f",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ru.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-ru.json",
+					"receipt_sha256": "73e69750c466b279d8bcbb6f4106b28cef5e483f0f93f16a6b762132a4aea5b0",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-ru.json"
 				}
 			],
 			"status": "audited",
@@ -45838,6 +45910,30 @@
 							"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "769c7a1dc312f989bbd57e6e0e3761ddaf456fdf0265a98ecbcb4490e87e355f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "3cc1fe293b5d-1857r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ru.json",
+							"receipt_sha256": "35363475e9e5f28a11d5ec013be354da7ca4060fa624a5029c93a34cb8a6526f",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ru.json"
 						}
 					],
 					"status": "audited"
@@ -59757,8 +59853,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "1375fe46b440506c55750b40a409a1dd375329f890562b88d60d36cbb9154ec6",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "5a9c5c7ba567fe8e52dfa2f817821956eec13ff79830443ccd57909827c3c744",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -59767,21 +59863,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "3cc1fe293b5d-1857r1-ur",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "ec772324f103-askpanel-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ur.json",
-					"receipt_sha256": "b99d9109695806631406f5951d629c5c3a428fd50eae4fc34e19ef48e1f45e82",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ur.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-ur.json",
+					"receipt_sha256": "0d895da49430e2dcc97c57c59170eccb2783ff4be69c9256131a1317a454fefd",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-ur.json"
 				}
 			],
 			"status": "audited",
@@ -59995,6 +60091,30 @@
 							"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "1375fe46b440506c55750b40a409a1dd375329f890562b88d60d36cbb9154ec6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "3cc1fe293b5d-1857r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ur.json",
+							"receipt_sha256": "b99d9109695806631406f5951d629c5c3a428fd50eae4fc34e19ef48e1f45e82",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ur.json"
 						}
 					],
 					"status": "audited"
@@ -73912,8 +74032,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "cc8c5d662889ba9a26aacc9d2cfc8831f6fedf799418e0aa68aea88688a838ad",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "83806ef6129d982902b31981274b8472667761056f543d583ff44675be6d6964",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
@@ -73922,21 +74042,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "3cc1fe293b5d-1857r1-vi",
+					"instance": "ec772324f103-askpanel-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-vi.json",
-					"receipt_sha256": "c1861fbcfd60b2bb871d16e047016e1e4f5991f20803ba5c895b80b808ac8c7d",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-vi.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-vi.json",
+					"receipt_sha256": "2bcceadaa6fd6b7adfd731ca8c9a7cb15a30eb454ce86880c7061411c9b17cad",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-vi.json"
 				}
 			],
 			"status": "audited",
@@ -74167,6 +74287,30 @@
 							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "cc8c5d662889ba9a26aacc9d2cfc8831f6fedf799418e0aa68aea88688a838ad",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "3cc1fe293b5d-1857r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-vi.json",
+							"receipt_sha256": "c1861fbcfd60b2bb871d16e047016e1e4f5991f20803ba5c895b80b808ac8c7d",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-vi.json"
 						}
 					],
 					"status": "audited"
@@ -88813,8 +88957,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
-			"target_sha256": "605ad0c5d01f08652a9555263eb500fe6fa61f49e3b9826612932fe7e85c4d3a",
+			"source_sha256": "6a54f2dce9168bce2ae679584a9f643139841d111694092afaf52467ba8db275",
+			"target_sha256": "6055095f38ffff3927ba7f94160b364ba1f2af1e0de4038892c82bcc611116ab",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -88823,21 +88967,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "3cc1fe293b5d-1857r1-zh-cn",
+					"instance": "ec772324f103-askpanel-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json",
-					"receipt_sha256": "2192d78e886a4e9f9db81593fc76c70291609c527e0362fd9095c8d92da48e73",
-					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
-					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json"
+					"receipt": "i18n/receipts/ec772324f103-askpanel-zh-cn.json",
+					"receipt_sha256": "bc94b1a27d80a1be046d8ef664883482f2d508fca20287a4ae1c2480532e75e8",
+					"scope": "ui.chat.asks: 3 added keys (progress, urgent_label, copy_id), independent audit 2026-11-23",
+					"note": "Independent audit of 3 keys added by the ask-panel cleanup (coder lane, radient/auto, no fallback; translator of record unchanged). Auditor-applied minor fixes. Detail: i18n/receipts/ec772324f103-askpanel-zh-cn.json"
 				}
 			],
 			"status": "audited",
@@ -89068,6 +89212,30 @@
 							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
 							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+					"target_sha256": "605ad0c5d01f08652a9555263eb500fe6fa61f49e3b9826612932fe7e85c4d3a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "3cc1fe293b5d-1857r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json",
+							"receipt_sha256": "2192d78e886a4e9f9db81593fc76c70291609c527e0362fd9095c8d92da48e73",
+							"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+							"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json"
 						}
 					],
 					"status": "audited"
@@ -110413,8 +110581,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "5198ede42db19b5d36d07fbac3df7ccfaa35e178cf5068feb00dfacfdefae4a2",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "c7d50a809529da57265b1ceaff46f2ec597122bd1f5fa035fb05ecceea0d4fb6",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -110422,24 +110590,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "f212882f-s3d-es",
+					"instance": "ec772324f103-askpanel-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f212882f-s3d-es.json",
-					"receipt_sha256": "10a413967921582735cb1f00876306ae00d61ef758ac097d96ced3ff50c30701",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt f212882f-s3d-es).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-es.json",
+					"receipt_sha256": "d4eaefdea01fc85b042ba241ef2c44461c24896ee05a47bfa5616c87263eee88",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-es.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "5198ede42db19b5d36d07fbac3df7ccfaa35e178cf5068feb00dfacfdefae4a2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "f212882f-s3d-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f212882f-s3d-es.json",
+							"receipt_sha256": "10a413967921582735cb1f00876306ae00d61ef758ac097d96ced3ff50c30701",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt f212882f-s3d-es).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -111242,8 +111436,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "a8f4093d79cc17d18d5d342f7bd71811dc8aa4e2330c7d6074e70549a0829a63",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "2489ff97d99c3b2735398696d81a879e7b9dc37e28e2c8fe7a7fae0bbdc909f5",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -111251,24 +111445,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "564797e3-s3c-fr",
+					"instance": "ec772324f103-askpanel-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/564797e3-s3c-fr.json",
-					"receipt_sha256": "ee4d0127880c89ce6c1b71c76510344a1a114f2428573b15a6356da852bcd1ac",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt 564797e3-s3c-fr).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-fr.json",
+					"receipt_sha256": "14d242e31070a778c662a82e6f19b6c29a162f3f3fd0d8045ef8bb0fda34de49",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-fr.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "a8f4093d79cc17d18d5d342f7bd71811dc8aa4e2330c7d6074e70549a0829a63",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "564797e3-s3c-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/564797e3-s3c-fr.json",
+							"receipt_sha256": "ee4d0127880c89ce6c1b71c76510344a1a114f2428573b15a6356da852bcd1ac",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt 564797e3-s3c-fr).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -112071,8 +112291,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "ee698c0e322fb7e5e3e3e2c2117056536a0f5d23d7b6f95aec26ccb264293871",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "7aa1a8336f1329d021deb0c62cdc7791459a283242ea93084fecdd105e09c63a",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -112080,24 +112300,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "cbb5be6a-s3c-hi",
+					"instance": "ec772324f103-askpanel-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
-					"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-hi.json",
+					"receipt_sha256": "456eee3fdd011fb566c01261bb9962c34455c65077e25b6a010f45de5e03e165",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-hi.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "ee698c0e322fb7e5e3e3e2c2117056536a0f5d23d7b6f95aec26ccb264293871",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "cbb5be6a-s3c-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
+							"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -112876,8 +113122,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "d7280bee3640b1ce7d19f9d1889a964253cc31540a549f42dfdbb45ebc55da39",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "80174b4d7f1ed165f84505d8b9ff5bb824517ff19ebddab07619671e50b3c298",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -112885,24 +113131,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "task",
 					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "3a7aab10-s3c-ru",
+					"instance": "ec772324f103-askpanel-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
-					"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-ru.json",
+					"receipt_sha256": "73e69750c466b279d8bcbb6f4106b28cef5e483f0f93f16a6b762132a4aea5b0",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-ru.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "d7280bee3640b1ce7d19f9d1889a964253cc31540a549f42dfdbb45ebc55da39",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "3a7aab10-s3c-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
+							"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -113705,8 +113977,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "8a86fbb2159da3e3686b36ead61f991a90911ffdadb2b7907e58c8528b368097",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "ce4a5792ffe075685ed7f0f786333e6a2920487c2dc6c129656fdabe700feb38",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -113714,24 +113986,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "cf2017e0-s3d-ur",
+					"instance": "ec772324f103-askpanel-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf2017e0-s3d-ur.json",
-					"receipt_sha256": "69037dd667156365f793bbd30f75442bed1577fa9f24bde52a9e15a6ff5236f6",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt cf2017e0-s3d-ur).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-ur.json",
+					"receipt_sha256": "0d895da49430e2dcc97c57c59170eccb2783ff4be69c9256131a1317a454fefd",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-ur.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "8a86fbb2159da3e3686b36ead61f991a90911ffdadb2b7907e58c8528b368097",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "cf2017e0-s3d-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf2017e0-s3d-ur.json",
+							"receipt_sha256": "69037dd667156365f793bbd30f75442bed1577fa9f24bde52a9e15a6ff5236f6",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt cf2017e0-s3d-ur).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -114510,8 +114808,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "48600ef3edea22d789e074be0cf91061a4204f3cb870eba146766f630a5bc7be",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "7588635e1d4a831ffe7a7fe10f1f3cf8412c4eebf404096cf36b3139c7d4d67b",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -114519,24 +114817,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "91291702-s3d-vi",
+					"instance": "ec772324f103-askpanel-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/91291702-s3d-vi.json",
-					"receipt_sha256": "79d9ba9ac20491eb50f8356e0591f7ca639a2bc8692f235b550f68a71aaac464",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt 91291702-s3d-vi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-vi.json",
+					"receipt_sha256": "2bcceadaa6fd6b7adfd731ca8c9a7cb15a30eb454ce86880c7061411c9b17cad",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-vi.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "48600ef3edea22d789e074be0cf91061a4204f3cb870eba146766f630a5bc7be",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "91291702-s3d-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/91291702-s3d-vi.json",
+							"receipt_sha256": "79d9ba9ac20491eb50f8356e0591f7ca639a2bc8692f235b550f68a71aaac464",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt 91291702-s3d-vi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -115315,8 +115639,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.ask_panel",
-			"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
-			"target_sha256": "e23225ba1f80fe540f4ac4e2c62375616d413f790baea92f6a8eb9f33df67c77",
+			"source_sha256": "0901bb6e3f9c3cfd38761e8e9a5bce290006d82641255d17d1495a0e040a9ba1",
+			"target_sha256": "49d0172f756cca82e5e25e1c5e051053955fdef3ef87888ab64454e45e2d5bff",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -115324,24 +115648,50 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "task",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "0d833311-s3d-zh-cn",
+					"instance": "ec772324f103-askpanel-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0d833311-s3d-zh-cn.json",
-					"receipt_sha256": "f157ec6fb7ad8ae77b7c952f0b26b0bc963de150a51112b7e858211c9ca8c620",
-					"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt 0d833311-s3d-zh-cn).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/ec772324f103-askpanel-zh-cn.json",
+					"receipt_sha256": "bc94b1a27d80a1be046d8ef664883482f2d508fca20287a4ae1c2480532e75e8",
+					"scope": "ui.chat.ask_panel: removal of filter.chip, delta audit 2026-11-23",
+					"note": "Delta audit: ui.chat.ask_panel.filter.chip removed in all locales; the other 19 values byte-identical to origin/main. Detail: i18n/receipts/ec772324f103-askpanel-zh-cn.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6f3b94408a9defb687aaa4c8691bc28b913ea41d80a8046b033f9eea144b27b4",
+					"target_sha256": "e23225ba1f80fe540f4ac4e2c62375616d413f790baea92f6a8eb9f33df67c77",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "0d833311-s3d-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0d833311-s3d-zh-cn.json",
+							"receipt_sha256": "f157ec6fb7ad8ae77b7c952f0b26b0bc963de150a51112b7e858211c9ca8c620",
+							"scope": "ui.chat.ask_panel: 20 keys read against English before release (wave s3d, receipt 0d833311-s3d-zh-cn).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

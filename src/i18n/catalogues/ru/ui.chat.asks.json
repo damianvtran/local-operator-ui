@@ -45,7 +45,7 @@
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} строк",
 	"ui.chat.asks.proposal.field_changed": "{label}: изменено",
 	"ui.chat.asks.proposal.review": "Просмотреть изменения",
-	"ui.chat.asks.progress": "Отвечено {answered} из {total}",
+	"ui.chat.asks.progress": "Отвечено {answered, number, ::group-off} из {total, number, ::group-off}",
 	"ui.chat.asks.urgent_label": "Срочно",
 	"ui.chat.asks.copy_id": "Копировать ID запроса {id}"
 }

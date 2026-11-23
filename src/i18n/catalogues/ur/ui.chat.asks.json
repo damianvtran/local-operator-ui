@@ -45,7 +45,7 @@
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} سطریں",
 	"ui.chat.asks.proposal.field_changed": "{label}: تبدیل شدہ",
 	"ui.chat.asks.proposal.review": "تبدیلیوں کا جائزہ لیں",
-	"ui.chat.asks.progress": "{total} میں سے {answered} کے جواب دیے گئے",
+	"ui.chat.asks.progress": "{total, number, ::group-off} میں سے {answered, number, ::group-off} کے جواب دیے گئے",
 	"ui.chat.asks.urgent_label": "فوری",
-	"ui.chat.asks.copy_id": "سوال ID نقل کریں {id}"
+	"ui.chat.asks.copy_id": "سوال ID {id} نقل کریں"
 }

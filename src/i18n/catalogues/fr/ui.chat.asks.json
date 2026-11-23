@@ -45,7 +45,7 @@
 	"ui.chat.asks.proposal.field_lines": "{label} : +{added, number} −{removed, number} lignes",
 	"ui.chat.asks.proposal.field_changed": "{label} : modifié",
 	"ui.chat.asks.proposal.review": "Examiner les modifications",
-	"ui.chat.asks.progress": "Répondues : {answered} sur {total}",
-	"ui.chat.asks.urgent_label": "Urgent",
+	"ui.chat.asks.progress": "Répondues : {answered, number, ::group-off} sur {total, number, ::group-off}",
+	"ui.chat.asks.urgent_label": "Prioritaire",
 	"ui.chat.asks.copy_id": "Copier l’ID de la demande {id}"
 }
