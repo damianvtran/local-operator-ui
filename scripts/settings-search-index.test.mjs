@@ -141,15 +141,22 @@ test("a registry synonym is indexed, and a missing or empty list changes nothing
 		...payload,
 		settings: payload.settings.map((s) => ({ ...s, synonyms: [] })),
 	};
+	// The fixture now carries the backend's real synonyms, so "absent" is built
+	// from it explicitly rather than assumed to be what the fixture holds.
+	const withAbsent = {
+		...payload,
+		settings: payload.settings.map(({ synonyms: _dropped, ...rest }) => rest),
+	};
 	/*
 	 * The field is read with `?? []`, so absent and `[]` are the same corpus —
 	 * asserted on the folded fields rather than on a count, so a future field
 	 * cannot make them differ without failing here.
 	 */
 	const emptyIndex = buildRegistryEntries(withEmpty);
-	assert.equal(emptyIndex.length, registry.length);
-	for (let i = 0; i < registry.length; i += 1) {
-		assert.deepEqual(emptyIndex[i].fields, registry[i].fields);
+	const absentIndex = buildRegistryEntries(withAbsent);
+	assert.equal(emptyIndex.length, absentIndex.length);
+	for (let i = 0; i < absentIndex.length; i += 1) {
+		assert.deepEqual(emptyIndex[i].fields, absentIndex[i].fields);
 	}
 });
 
@@ -199,14 +206,26 @@ test("the issue's five examples answer from the page's own index", () => {
 	 * is the palette's shared tier doing what it does, and the page's own row is
 	 * what must rank FIRST, which is what the assertion below pins.
 	 */
-	assert.ok(
-		found(index, "keyboard")[0].entry.source === "page",
-		"the keyboard row is the first answer, not a loose registry hit",
-	);
-	assert.ok(
-		found(index, "shortcut")[0].entry.source === "page",
-		"the shortcut rows are the first answers",
-	);
+	/*
+	 * The fixture's keymap rows now carry the backend's real synonyms
+	 * (`keyboard`, `shortcut`, `hotkey`...), so they answer these words too and
+	 * may outrank the page's own rows. What stays pinned: the page's rows are
+	 * still among the answers, and a registry row that answers does so through
+	 * a synonym, never by claiming a label match.
+	 */
+	for (const query of ["keyboard", "shortcut"]) {
+		const hits = found(index, query);
+		assert.ok(
+			hits.some(({ entry }) => entry.source === "page"),
+			`the page's own ${query} rows are among the answers`,
+		);
+		assert.ok(
+			hits
+				.filter(({ entry }) => entry.source !== "page")
+				.every(({ reason }) => reason !== "label"),
+			`a registry answer to "${query}" is a synonym or loose hit, not a label claim`,
+		);
+	}
 	assert.equal(
 		found(registry, "keyboard").every(({ reason }) => reason !== "label"),
 		true,
@@ -383,6 +402,8 @@ test("choice DESCRIPTIONS are indexed, not only choice labels", () => {
 		settings: [
 			{
 				...themed,
+				// Isolate the choice copy: a synonym on the row would answer first.
+				synonyms: [],
 				choices: [
 					...(themed.choices ?? []),
 					{

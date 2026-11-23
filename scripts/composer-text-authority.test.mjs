@@ -132,6 +132,27 @@ const bundle = await build({
 	},
 	plugins: [
 		{
+			// `use-message-input` reads `shortcutBindings` off the preferences store
+			// (the send chords). The real store pulls in MUI, whose `require("react")`
+			// cannot load from a bundle that keeps react external; the shipped initial
+			// state is empty, so every action dispatches on its registry default.
+			name: "ui-preferences-stub",
+			setup(builder) {
+				builder.onResolve(
+					{ filter: /^@shared\/store\/ui-preferences-store$/ },
+					() => ({ path: "ui-preferences", namespace: "ui-preferences-stub" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "ui-preferences-stub" },
+					() => ({
+						contents: `const state = { shortcutBindings: {} };
+export const useUiPreferencesStore = { getState: () => state, subscribe: () => () => {} };`,
+						loader: "js",
+					}),
+				);
+			},
+		},
+		{
 			// The echo registry is React and a live EventSource; the composer's contract
 			// with it is one call, and none of these cases is about it.
 			name: "text-authority-fixture",
