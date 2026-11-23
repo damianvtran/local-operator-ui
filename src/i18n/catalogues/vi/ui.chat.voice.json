@@ -84,10 +84,10 @@
 	"ui.chat.voice.summary_upcoming": "Sẽ được đọc to",
 	"ui.chat.voice.summary_speaking": "Đang nói",
 	"ui.chat.voice.summary_stopped": "Đã đọc to · dừng giữa chừng",
-	"ui.chat.voice.summary_muted": "Không đọc (đã tắt tiếng)",
+	"ui.chat.voice.summary_muted": "Không được đọc to (đã tắt tiếng)",
 	"ui.chat.voice.summary_cut": "Đã đọc to · chỉ phần đầu",
 	"ui.chat.voice.summary_static": "Tóm tắt đọc to",
-	"ui.chat.voice.replay": "Nghe lại",
+	"ui.chat.voice.replay": "Phát lại",
 	"ui.chat.voice.play": "Phát",
 	"ui.chat.voice.full_reply_link": "Câu trả lời đầy đủ trong cuộc trò chuyện ↑"
 }

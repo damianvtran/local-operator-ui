@@ -2298,7 +2298,7 @@ const AssistantRow = memo(function AssistantRow({
 						documentId={record.id}
 					/>
 				)}
-				{spoken ? (
+				{spoken && !spoken.held ? (
 					<SpokenSummaryBlock
 						sessionId={conversationId}
 						messageId={record.id}

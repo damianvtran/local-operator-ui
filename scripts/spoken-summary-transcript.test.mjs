@@ -198,13 +198,18 @@ const mount = async (t, list) => {
 	t.after(async () => {
 		await act(async () => root?.unmount());
 		container.remove();
-		useVoiceStore.setState({
-			active: undefined,
-			rig: undefined,
-			spoken: {},
-			exchange: null,
-			activity: null,
-			lastSpoken: null,
+		// In act: a test that mounted twice still has its first root's block
+		// subscribed when the second cleanup runs, and the write re-renders it.
+		await act(async () => {
+			useVoiceStore.setState({
+				active: undefined,
+				rig: undefined,
+				spoken: {},
+				exchange: null,
+				activity: null,
+				lastSpoken: null,
+				speakRequest: null,
+			});
 		});
 	});
 	await act(async () => {
@@ -358,20 +363,34 @@ test("a message spoken from the reply (an older server, or no paragraph) draws n
 	assert.ok(note.querySelector('[data-spoken-control="replay"]'));
 });
 
-test("streaming: the block draws from the label on, and a half-written label never shows", async (t) => {
+test("streaming: a block draws from the whole label on, and a half-written label never shows", async (t) => {
 	await voiceOn();
 	await act(async () =>
 		useVoiceStore.getState().setExchange("working", SESSION),
 	);
-	const partial = await mount(t, recordsFor(`${REPLY}\n\nSpo`, true));
+	// `Spoke` is the start of the label: hidden from the prose, and no block yet.
+	const partial = await mount(t, recordsFor(`${REPLY}\n\nSpoke`, true));
+	assert.equal(partial.querySelector("[data-spoken-summary]"), null);
+	assert.doesNotMatch(partial.textContent, /Spoke/);
+
+	// An ordinary paragraph that merely starts like it is prose, not a block.
+	const prose = await mount(t, recordsFor(`${REPLY}\n\nSpotify is one`, true));
+	assert.equal(prose.querySelector("[data-spoken-summary]"), null);
+	assert.match(prose.textContent, /Spotify is one/);
+	const short = await mount(t, recordsFor(`${REPLY}\n\nSpo`, true));
+	assert.equal(short.querySelector("[data-spoken-summary]"), null);
+	assert.match(short.textContent, /Spo/);
+
+	// The whole label (its colon) is the block, "To be spoken", no raw label.
+	const labelled = await mount(t, recordsFor(`${REPLY}\n\nSpoken:`, true));
 	assert.equal(
-		partial
+		labelled
 			.querySelector("[data-spoken-summary]")
 			?.getAttribute("data-spoken-summary"),
 		"upcoming",
 	);
-	assert.doesNotMatch(partial.textContent, /Spo(?!ken summary|ken aloud)/);
-	assert.match(partial.textContent, /To be spoken/);
+	assert.match(labelled.textContent, /To be spoken/);
+	assert.doesNotMatch(labelled.textContent, /Spoken:/);
 
 	const words = await mount(
 		t,
@@ -381,4 +400,15 @@ test("streaming: the block draws from the label on, and a half-written label nev
 	assert.equal(blocks.length, 1);
 	assert.match(blocks[0].textContent, /Use Session/);
 	assert.doesNotMatch(words.textContent, /Spoken: /);
+});
+
+test("the block sits under a reply that ends in a code block, as the last thing", async (t) => {
+	const list = recordsFor(
+		`${REPLY}\n\n\`\`\`json\n{"hook": "SessionStart"}\n\`\`\`\n\nSpoken: ${SUMMARY}`,
+	);
+	const container = await mount(t, list);
+	const block = container.querySelector("[data-spoken-summary]");
+	assert.ok(block);
+	assert.ok(container.querySelector("pre, code"));
+	assert.doesNotMatch(container.textContent, /Spoken: /);
 });

@@ -86,8 +86,8 @@
 	"ui.chat.voice.summary_stopped": "بلند آواز میں پڑھا گیا · درمیان میں روک دیا گیا",
 	"ui.chat.voice.summary_muted": "نہیں پڑھا گیا (خاموش)",
 	"ui.chat.voice.summary_cut": "بلند آواز میں پڑھا گیا · صرف پہلا حصہ",
-	"ui.chat.voice.summary_static": "بولا جانے والا خلاصہ",
-	"ui.chat.voice.replay": "دوبارہ سنیں",
+	"ui.chat.voice.summary_static": "بلند آواز کے لیے خلاصہ",
+	"ui.chat.voice.replay": "دوبارہ چلائیں",
 	"ui.chat.voice.play": "چلائیں",
 	"ui.chat.voice.full_reply_link": "چیٹ میں مکمل جواب ↑"
 }

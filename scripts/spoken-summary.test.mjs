@@ -15,7 +15,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { splitSpokenSummary } from "./src/renderer/src/features/voice/spoken-summary";
-			export { spokenBlockView, replyCutNote } from "./src/renderer/src/features/voice/spoken-summary-model";
+			export { spokenBlockView, replyCutNote, replayOffer, replayFactsOf } from "./src/renderer/src/features/voice/spoken-summary-model";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -24,12 +24,19 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { splitSpokenSummary, spokenBlockView, replyCutNote } = await import(
+const {
+	splitSpokenSummary,
+	spokenBlockView,
+	replyCutNote,
+	replayOffer,
+	replayFactsOf,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
 const split = (text, streaming = false) =>
 	splitSpokenSummary(text, { streaming });
+const split2 = (text, streaming) => splitSpokenSummary(text, { streaming });
 
 test("no marker: nothing to fold, the reply is untouched", () => {
 	assert.equal(split("Just a reply.\n\nWith two paragraphs."), null);
@@ -148,115 +155,291 @@ test("streaming: the block begins with the label, and the raw label never shows"
 		split("Body.\n\nSpoken: Use Session", true)?.summary,
 		"Use Session",
 	);
-	// The label itself half written is held back, not painted as prose.
+	// From `spoke` on, a half-written label is held back from the prose and NO
+	// block is drawn: the label is not whole, so there is nothing to label yet.
 	for (const partial of [
-		"Sp",
-		"Spo",
 		"Spoke",
 		"Spoken",
 		"**Spoken",
-		"**Spoken:*",
+		"_Spoke",
+		"**Spoken**",
 	]) {
 		const got = split(`Body.\n\n${partial}`, true);
 		assert.equal(got?.body, "Body.", partial);
+		assert.equal(got?.held, true, partial);
 		assert.equal(got?.summary, "", partial);
 	}
-	// One letter is just a letter, and a longer non-label is prose.
-	assert.equal(split("Body.\n\nS", true), null);
+	// The whole label (colon and any closing mark arriving) is the block.
+	for (const whole of ["Spoken:", "**Spoken:*", "**Spoken**:", "_Spoken:"]) {
+		const got = split(`Body.\n\n${whole}`, true);
+		assert.equal(got?.body, "Body.", whole);
+		assert.equal(got?.held, undefined, whole);
+		assert.equal(got?.summary, "", whole);
+	}
+	// Fewer than five letters is an ordinary word: prose, and no block.
+	for (const word of ["S", "Sp", "Spo", "Spok", "_Sp", "**Spo"])
+		assert.equal(split(`Body.\n\n${word}`, true), null, word);
 	assert.equal(split("Body.\n\nSpot the difference", true), null);
 	// Not a prefix any more once the paragraph has moved on.
 	assert.equal(split("Body.\n\nSpoken-word poetry is fun", true), null);
 });
 
+/*
+ * THE STREAMING SWEEP (review m1, QA Q-4): every label form the server accepts,
+ * revealed one character at a time, against the three promises - an ordinary
+ * paragraph is never held or boxed past `Spoke`; a half label never reaches the
+ * prose from `spoke` on and draws no block; a whole label draws the block, and
+ * only the words. `violations` is the sweep's own judge, so the negative control
+ * below can hand it a rule that breaks each promise and see it fire.
+ */
+const FORMS = [
+	["Spoken:", ""],
+	["**Spoken:**", ""],
+	["**Spoken**:", ""],
+	["__Spoken:__", ""],
+	["_Spoken:_", ""],
+	["*Spoken:*", ""],
+	["*Spoken*:", ""],
+	["spoken:", ""],
+];
+
+function violations(splitFn) {
+	const found = [];
+	for (const [label] of FORMS) {
+		const words = "Use SessionStart.";
+		const text = `Body.\n\n${label} ${words}`;
+		const start = "Body.\n\n".length;
+		// The label is whole at its colon: that is when the server's rule matches.
+		const labelEnd = start + label.indexOf(":") + 1;
+		for (let end = start + 1; end <= text.length; end += 1) {
+			const got = splitFn(text.slice(0, end), true);
+			const shown = text.slice(start, end);
+			const letters = shown.replace(/^[*_]+/, "").length;
+			const tag = `${label} @${end - start}`;
+			if (end >= labelEnd) {
+				// The label is whole: the block, the words only, no label in the body.
+				if (!got || got.held || got.body !== "Body.")
+					found.push(`${tag}: block expected`);
+				else if (/spoken/i.test(got.summary))
+					found.push(`${tag}: label in summary`);
+			} else if (letters >= 5) {
+				// Half a label, long enough to hold: hidden and no block.
+				if (!got || got.held !== true || got.body !== "Body.")
+					found.push(`${tag}: hold expected`);
+			} else if (got !== null) {
+				found.push(`${tag}: too short to hold`);
+			}
+		}
+	}
+	// An ordinary paragraph is prose at every length, bar the one-delta `Spoke`.
+	for (const word of [
+		"Spotify is great.",
+		"Sport is fun.",
+		"Spokesperson said no.",
+		"Spoke to the team.",
+		"Spoken language is odd.",
+	]) {
+		const text = `Body.\n\n${word}`;
+		for (let end = "Body.\n\n".length + 1; end <= text.length; end += 1) {
+			const got = splitFn(text.slice(0, end), true);
+			const shown = text.slice("Body.\n\n".length, end);
+			if (got !== null && !/^spoke(n)?$/i.test(shown))
+				found.push(`${word} @${shown}: held or boxed`);
+		}
+	}
+	return found;
+}
+
+test("streaming sweep: every label form, one character at a time", () => {
+	assert.deepEqual(violations(split2), []);
+});
+
+test("streaming sweep: the negative control fires on each broken rule", () => {
+	// Never holds: a half label reaches the prose.
+	assert.ok(
+		violations((text) => splitSpokenSummary(text, { streaming: false }))
+			.length > 0,
+	);
+	// Holds from two characters, as the old rule did: "Spotify" is boxed.
+	const eager = (text, streaming) => {
+		const got = splitSpokenSummary(text, { streaming });
+		if (got) return got;
+		const tail = text.split("\n\n").at(-1);
+		return tail.length >= 2 && "spoken:".startsWith(tail.toLowerCase())
+			? {
+					body: text.slice(0, text.lastIndexOf("\n\n")),
+					summary: "",
+					last: true,
+				}
+			: null;
+	};
+	assert.ok(violations(eager).some((v) => v.includes("too short")));
+	// Draws a block for a held label.
+	const boxed = (text, streaming) => {
+		const got = splitSpokenSummary(text, { streaming });
+		return got?.held ? { ...got, held: undefined } : got;
+	};
+	assert.ok(violations(boxed).length > 0);
+});
+
+const facts = {
+	streaming: false,
+	voiceHere: true,
+	answerOwed: false,
+	entry: undefined,
+	playingThis: false,
+	requested: false,
+	muted: false,
+	paused: false,
+	busy: false,
+};
+const summaryEntry = {
+	sessionId: "s",
+	source: "summary",
+	truncated: false,
+	interrupted: false,
+	muted: false,
+	at: 1,
+};
+const view = (patch) => spokenBlockView({ ...facts, ...patch });
+const shape = (tone, control, disabled = false) => ({
+	tone,
+	control,
+	disabled,
+});
+
 test("block state: voice off, or not spoken here, is a record with no control", () => {
-	const base = {
-		streaming: false,
-		voiceHere: true,
-		answerOwed: false,
-		entry: undefined,
-		playingThis: false,
-		muted: false,
-	};
-	assert.deepEqual(spokenBlockView({ ...base, voiceHere: false }), {
-		tone: "static",
-		control: null,
-	});
-	assert.deepEqual(spokenBlockView(base), { tone: "static", control: null });
-	const entry = {
-		sessionId: "s",
-		source: "summary",
-		truncated: false,
-		interrupted: false,
-		muted: false,
-		at: 1,
-	};
+	assert.deepEqual(view({ voiceHere: false }), shape("static", null));
+	assert.deepEqual(view({}), shape("static", null));
 	// Voice off wins even over a record: no voice to replay with.
-	assert.deepEqual(spokenBlockView({ ...base, voiceHere: false, entry }), {
-		tone: "static",
-		control: null,
-	});
+	assert.deepEqual(
+		view({ voiceHere: false, entry: summaryEntry }),
+		shape("static", null),
+	);
 });
 
 test("block state: each spoken state and the control it offers", () => {
-	const entry = {
-		sessionId: "s",
-		source: "summary",
-		truncated: false,
-		interrupted: false,
-		muted: false,
-		at: 1,
-	};
-	const base = {
-		streaming: false,
-		voiceHere: true,
-		answerOwed: false,
-		entry,
-		playingThis: false,
-		muted: false,
-	};
-	const view = (patch) => spokenBlockView({ ...base, ...patch });
-	assert.deepEqual(view({}), { tone: "spoken", control: "replay" });
-	assert.deepEqual(view({ playingThis: true }), {
-		tone: "speaking",
-		control: null,
-	});
-	assert.deepEqual(view({ playingThis: true, muted: true }), {
-		tone: "muted",
-		control: "play",
-	});
-	assert.deepEqual(view({ entry: { ...entry, muted: true } }), {
-		tone: "muted",
-		control: "play",
-	});
-	assert.deepEqual(view({ entry: { ...entry, interrupted: true } }), {
-		tone: "stopped",
-		control: "replay",
-	});
-	assert.deepEqual(view({ entry: { ...entry, truncated: true } }), {
-		tone: "cut",
-		control: "replay",
-	});
+	const entry = summaryEntry;
+	const spoken = (patch) => view({ entry, ...patch });
+	assert.deepEqual(spoken({}), shape("spoken", "replay"));
+	assert.deepEqual(
+		spoken({ entry: { ...entry, interrupted: true } }),
+		shape("stopped", "replay"),
+	);
+	assert.deepEqual(
+		spoken({ entry: { ...entry, truncated: true } }),
+		shape("cut", "replay"),
+	);
+	// Never heard (spoken while muted): "Play", even with the speaker back on.
+	assert.deepEqual(
+		spoken({ entry: { ...entry, muted: true } }),
+		shape("muted", "play"),
+	);
 	// Spoken from the reply, not the summary: the block claims nothing.
-	assert.deepEqual(view({ entry: { ...entry, source: "reply" } }), {
-		tone: "static",
-		control: null,
+	assert.deepEqual(
+		spoken({ entry: { ...entry, source: "reply" } }),
+		shape("static", null),
+	);
+});
+
+test("block state: asked or playing is 'Speaking', never 'Spoken aloud'; Replay waits, mounted", () => {
+	const entry = summaryEntry;
+	// U2: the record exists from the request; the label does not claim the audio.
+	assert.deepEqual(
+		view({ entry, requested: true, busy: true }),
+		shape("speaking", "replay", true),
+	);
+	assert.deepEqual(
+		view({ entry, playingThis: true, busy: true }),
+		shape("speaking", "replay", true),
+	);
+	// Muted while it plays: nothing is heard, and Play is the word - also waiting.
+	assert.deepEqual(
+		view({ entry, playingThis: true, busy: true, muted: true }),
+		shape("muted", "play", true),
+	);
+	// Asked, and the server has not yet said what it speaks: still "Speaking".
+	assert.deepEqual(
+		view({ requested: true, busy: true }),
+		shape("speaking", "replay", true),
+	);
+	// A request for a message this window has no record of, once refused, is plain.
+	assert.deepEqual(view({ requested: false }), shape("static", null));
+	// A streaming paragraph that already has a record is the record's state.
+	assert.deepEqual(
+		view({ streaming: true, entry, requested: true, busy: true }),
+		shape("speaking", "replay", true),
+	);
+});
+
+test("block state: ONE replay rule - not the holder or paused: none; busy: waits; muted: Play", () => {
+	const entry = summaryEntry;
+	assert.deepEqual(view({ entry, paused: true }), shape("spoken", null));
+	assert.deepEqual(
+		view({ entry, busy: true }),
+		shape("spoken", "replay", true),
+	);
+	assert.deepEqual(view({ entry, muted: true }), shape("spoken", "play"));
+	assert.deepEqual(
+		view({ entry, muted: true, busy: true }),
+		shape("spoken", "play", true),
+	);
+	// The rule itself, which the strip, History and the footnote read.
+	const offer = (patch) =>
+		replayOffer({
+			voiceHere: true,
+			paused: false,
+			busy: false,
+			muted: false,
+			...patch,
+		});
+	assert.deepEqual(offer({}), { word: "replay", disabled: false });
+	assert.equal(offer({ voiceHere: false }), null);
+	assert.equal(offer({ paused: true }), null);
+	assert.deepEqual(offer({ busy: true }), { word: "replay", disabled: true });
+	assert.deepEqual(offer({ muted: true }), { word: "play", disabled: false });
+});
+
+test("replay facts: busy is audio moving, a request in flight, or this conversation's owed answer", () => {
+	const state = {
+		active: { session_id: "s", enabled_at: 1 },
+		rig: { rig: "ready", clients: 1 },
+		activity: null,
+		speakRequest: null,
+		exchange: null,
+	};
+	const read = (patch, id = "s") => replayFactsOf({ ...state, ...patch }, id);
+	assert.deepEqual(read({}), {
+		voiceHere: true,
+		paused: false,
+		muted: false,
+		busy: false,
 	});
+	assert.equal(read({ activity: "speaking" }).busy, true);
+	assert.equal(read({ activity: "hearing" }).busy, true);
+	assert.equal(
+		read({ speakRequest: { sessionId: "s", messageId: "m", at: 1 } }).busy,
+		true,
+	);
+	assert.equal(
+		read({ exchange: { kind: "working", sessionId: "s" } }).busy,
+		true,
+	);
+	// Another conversation's owed answer is not this one's.
+	assert.equal(
+		read({ exchange: { kind: "working", sessionId: "t" } }).busy,
+		false,
+	);
+	assert.equal(read({}, "t").voiceHere, false);
+	assert.equal(replayFactsOf(state, undefined).voiceHere, false);
+	assert.equal(read({ rig: { rig: "ready", paused: true } }).paused, true);
+	assert.equal(read({ rig: { rig: "ready", muted: true } }).muted, true);
 });
 
 test("block state: streaming says 'to be spoken' only when an answer is owed", () => {
-	const base = {
-		streaming: true,
-		voiceHere: true,
-		answerOwed: true,
-		entry: undefined,
-		playingThis: false,
-		muted: false,
-	};
-	assert.deepEqual(spokenBlockView(base), { tone: "upcoming", control: null });
-	assert.deepEqual(spokenBlockView({ ...base, answerOwed: false }), {
-		tone: "static",
-		control: null,
-	});
+	const base = { streaming: true, answerOwed: true };
+	assert.deepEqual(view(base), shape("upcoming", null));
+	assert.deepEqual(view({ ...base, answerOwed: false }), shape("static", null));
 });
 
 test("the fallback footnote: only a cut reply, only with voice on", () => {

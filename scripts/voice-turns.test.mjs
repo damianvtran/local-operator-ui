@@ -2921,7 +2921,7 @@ test("§8: the cut flag is read when present and tolerated when absent", async (
 	);
 	assert.match(
 		source,
-		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*fullText: spoken\.full_text,\s*truncated: spokenTruncated\(spoken\),[\s\S]*?source: spokenSourceOf\(spoken\),[\s\S]*?at: Date\.now\(\),?\s*\}\)/,
+		/setLastSpoken\(\{\s*sessionId,\s*text: spoken\.text,\s*fullText: spoken\.full_text,\s*truncated: spokenTruncated\(spoken\),[\s\S]*?source: spokenSourceOf\(spoken\),[\s\S]*?at: restore\.at,?\s*\}\)/,
 	);
 	/*
 	 * THE DECISION MOVED INTO `voiceEventEffects` (QA round 4), so the scan names

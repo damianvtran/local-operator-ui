@@ -130,7 +130,7 @@ export type VoiceStoryRow =
 /** How many rows the history panel keeps; "last 5" is its stated bound. */
 export const VOICE_STORY_LIMIT = 5;
 
-type VoiceStoreState = {
+export type VoiceStoreState = {
 	/** The slot as the server last stated it, or `undefined` before any read. */
 	active: DesktopVoiceActive | undefined;
 	/** Main's rig status, or `undefined` outside Electron (browser development). */
@@ -164,6 +164,15 @@ type VoiceStoreState = {
 	 * twice; the transcript settles it, the way the notification drawer's does.
 	 */
 	reveal: { sessionId: string; messageId: string; nonce: number } | null;
+	/**
+	 * A message this window has asked the rig to speak and has not yet heard start
+	 * (voice.text out, or the rig's answer in but no `playback.started` yet). The
+	 * block says "Speaking" from the press, not "Spoken aloud" from a record that
+	 * the audio may never back; Replay is unavailable while one is open, so a
+	 * second press cannot restart the take. Cleared by the playback events, a
+	 * refusal, a slot move, a rig that is gone, or the controller's own timeout.
+	 */
+	speakRequest: { sessionId: string; messageId: string; at: number } | null;
 	/**
 	 * The last take this window relayed, so the strip can say "You said …" while
 	 * the answer is being worked out. The take's text is the rig's transcript of
@@ -228,6 +237,16 @@ type VoiceStoreActions = {
 	) => void;
 	setActivity: (activity: VoiceActivity | null) => void;
 	setLastSpoken: (spoken: SpokenInput) => void;
+	/** Open or close the in-flight speak request; see `speakRequest`. */
+	setSpeakRequest: (
+		request: { sessionId: string; messageId: string; at: number } | null,
+	) => void;
+	/**
+	 * Undo a `setLastSpoken` the rig then refused (`{spoken:false}`): the strip's
+	 * words and the message's record go back to what they were, so a refusal
+	 * claims nothing. Does nothing when a newer take has already replaced it.
+	 */
+	restoreSpoken: (restore: SpokenRestore) => void;
 	/** Ask the transcript to show one message; see `reveal`. */
 	requestReveal: (sessionId: string, messageId: string) => void;
 	settleReveal: (nonce: number) => void;
@@ -277,6 +296,15 @@ type SpokenInput = {
 	 */
 	replay?: boolean;
 	at: number;
+};
+
+/** What `restoreSpoken` puts back: the state a refused speak overwrote. */
+export type SpokenRestore = {
+	messageId: string;
+	/** The `at` the refused write carried: only that write is undone. */
+	at: number;
+	lastSpoken: VoiceStoreState["lastSpoken"];
+	entry: VoiceSpokenEntry | undefined;
 };
 
 /** Oldest rows fall off the front, so the panel's "last 5" is the whole bound. */
@@ -341,6 +369,7 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 		lastSpoken: null,
 		spoken: {},
 		reveal: null,
+		speakRequest: null,
 		lastTake: null,
 		lastRefused: null,
 		playbackStartedAt: null,
@@ -368,6 +397,10 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			set({
 				active,
 				...(lost ? { exchange: null } : {}),
+				// A "Full reply in chat" press for a conversation that no longer holds
+				// the voice would sit here until that conversation is opened, then
+				// scroll it unprompted; and a speak request for the old slot is moot.
+				...(moved ? { reveal: null, speakRequest: null } : {}),
 				/*
 				 * A TRANSIENT WORD DOES NOT SURVIVE A MOVE: "Interrupted at 0:24"
 				 * belongs to the session that lost the slot, and the new holder's strip
@@ -396,6 +429,11 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 				rig,
 				activity:
 					rig.rig === "ready" && (rig.clients ?? 0) > 0 ? state.activity : null,
+				// The same condition: a rig that cannot play has no start to wait for.
+				speakRequest:
+					rig.rig === "ready" && (rig.clients ?? 0) > 0
+						? state.speakRequest
+						: null,
 				/*
 				 * THE PAGE-CONNECT WINDOW (design D2 / U8) opens on the ready
 				 * transition AND again whenever a connected page drops while the rig
@@ -447,14 +485,30 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 					? state.story
 					: completeStoryRow(state.story, input),
 			})),
+		setSpeakRequest: (speakRequest) => set({ speakRequest }),
+		restoreSpoken: (restore) =>
+			set((state) => {
+				// A newer speak (or a take that replaced the words) owns the record now.
+				if (state.lastSpoken?.at !== restore.at) return {};
+				const spoken = { ...state.spoken };
+				if (restore.entry) spoken[restore.messageId] = restore.entry;
+				else delete spoken[restore.messageId];
+				return { lastSpoken: restore.lastSpoken, spoken };
+			}),
 		requestReveal: (sessionId, messageId) =>
-			set((state) => ({
-				reveal: {
-					sessionId,
-					messageId,
-					nonce: (state.reveal?.nonce ?? 0) + 1,
-				},
-			})),
+			set((state) =>
+				// Only the conversation that holds the voice has a History to ask from;
+				// a request for any other is dropped rather than left to fire later.
+				state.active?.session_id !== sessionId
+					? {}
+					: {
+							reveal: {
+								sessionId,
+								messageId,
+								nonce: (state.reveal?.nonce ?? 0) + 1,
+							},
+						},
+			),
 		settleReveal: (nonce) =>
 			set((state) => (state.reveal?.nonce === nonce ? { reveal: null } : {})),
 		setDroppedTake: (droppedTakeAt) => set({ droppedTakeAt }),
@@ -489,6 +543,9 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 			})),
 		notePlayback: (kind, sessionId, at) => {
 			const state = get();
+			// Any playback event settles the wait for one: it started, or it ended or
+			// was cut without ever being counted. (`set` below merges with this.)
+			if (state.speakRequest) set({ speakRequest: null });
 			if (kind === "started") {
 				set({ playbackStartedAt: at });
 				return;

@@ -71,11 +71,12 @@ import {
 	openSpeechSettings,
 	openVoiceSession,
 	pauseQwenVoice,
-	replaySpoken,
+	pressReplay,
 	resumeQwenVoice,
 	setQwenMuted,
 	startQwenRig,
 } from "./qwen-voice-controller";
+import { useReplayOffer } from "./spoken-summary-block";
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
 import {
 	type VoiceExchangeError,
@@ -178,9 +179,10 @@ export type VoiceComposerView =
 			cut: boolean;
 			/**
 			 * The message the strip's Replay would say again: the last one this window
-			 * spoke, offered only at rest and until the next take starts. Absent while
-			 * the rig is busy, because a second take over a playing one is a barge-in
-			 * nobody asked for.
+			 * spoke, until the next take starts. Whether it can be pressed is
+			 * `replayOffer`'s one rule (unavailable while the rig is busy, absent
+			 * while paused), not this view's: the button stays mounted while a take
+			 * plays so a keyboard press keeps its focus.
 			 */
 			replay?: string;
 	  };
@@ -433,6 +435,7 @@ export function composerVoiceView(
 				caption: null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "speaking":
 			/*
@@ -448,6 +451,7 @@ export function composerVoiceView(
 					caption: { kind: "silenced" },
 					action: null,
 					cut,
+					replay,
 				};
 			return {
 				kind: "here",
@@ -455,6 +459,7 @@ export function composerVoiceView(
 				caption: spoken ? { kind: "said", text: spoken.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "working":
 			/*
@@ -479,6 +484,7 @@ export function composerVoiceView(
 				caption: take ? { kind: "heard", text: take.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "unheard":
 			if (connecting)
@@ -798,6 +804,67 @@ export function storyTime(at: number): string {
 	return formatTime(date, { hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * A summary row's way to the full reply and Replay. Both are offered only for a
+ * row of the conversation that holds the voice (the story outlives a slot move):
+ * Replay for another one is refused by the controller, and a reveal for a
+ * transcript that is not on screen would sit in the store and scroll it unprompted
+ * later. Another conversation's row keeps the summary and loses the controls.
+ */
+const SummaryRowControls: FC<{ sessionId: string; messageId: string }> = ({
+	sessionId,
+	messageId,
+}) => {
+	const replay = useReplayOffer(sessionId);
+	const holder = useVoiceStore((s) => s.active?.session_id === sessionId);
+	if (!holder) return null;
+	return (
+		<span className="mt-1 flex items-center gap-1 text-meta">
+			<Button
+				type="button"
+				variant="link"
+				size="sm"
+				data-voice-story-link=""
+				onClick={() =>
+					useVoiceStore.getState().requestReveal(sessionId, messageId)
+				}
+				className="h-6 px-0 text-meta"
+			>
+				{t("ui.chat.voice.full_reply_link")}
+			</Button>
+			{replay && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					data-voice-story-replay=""
+					aria-label={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					title={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					aria-disabled={replay.disabled || undefined}
+					onClick={() => {
+						if (!replay.disabled) void pressReplay(sessionId, messageId);
+					}}
+					className="size-6 shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
+				>
+					{replay.word === "play" ? (
+						<Play aria-hidden="true" />
+					) : (
+						<RotateCcw aria-hidden="true" />
+					)}
+				</Button>
+			)}
+		</span>
+	);
+};
+
 const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 	useI18nLocale();
 	if (row.kind === "interrupted") {
@@ -896,36 +963,10 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 					</span>
 				)}
 				{summarySpoken && row.messageId && (
-					<span className="mt-1 flex items-center gap-1 text-meta">
-						<Button
-							type="button"
-							variant="link"
-							size="sm"
-							data-voice-story-link=""
-							onClick={() =>
-								useVoiceStore
-									.getState()
-									.requestReveal(row.sessionId, row.messageId ?? "")
-							}
-							className="h-6 px-0 text-meta"
-						>
-							{t("ui.chat.voice.full_reply_link")}
-						</Button>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							data-voice-story-replay=""
-							aria-label={t("ui.chat.voice.replay")}
-							title={t("ui.chat.voice.replay")}
-							onClick={() =>
-								void replaySpoken(row.sessionId, row.messageId ?? "")
-							}
-							className="size-6 shrink-0 text-ink-muted"
-						>
-							<RotateCcw aria-hidden="true" />
-						</Button>
-					</span>
+					<SummaryRowControls
+						sessionId={row.sessionId}
+						messageId={row.messageId}
+					/>
 				)}
 				{/*
 				 * WHAT WAS CUT IS THE AUDIO, NOT THE ROW (spec §3): the row shows the whole
@@ -984,6 +1025,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const clearTick = useVoiceStore((s) => s.clearTick);
 	const pendingControl = useVoiceStore((s) => s.pending);
 	const muted = useVoiceStore((s) => s.rig?.muted === true);
+	const replay = useReplayOffer(sessionId);
 	/*
 	 * THE COMPOSER MOUNTS IN DOCUMENTS WITH NO PROVIDER (the mini view, the
 	 * agents composer): `useQueryClient` throws there, so the optional seam is
@@ -1392,21 +1434,41 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					<span className="min-w-0 flex-1" />
 				)}
 				{failureAction}
-				{view.replay && (
+				{/*
+				 * AT THE NARROW DOCK THE CUT CHIP OWNS THE ROOM (design D3, measured at
+				 * 393px with this button hidden = the #2065 row: chip 76px, with it 36px,
+				 * "Cut ..."). A cut is exactly when the reply/summary block or the footnote
+				 * under the message carries its own Replay, and the chip points at it.
+				 */}
+				{view.replay && replay && !(isSmallView && view.cut) && (
 					<Button
 						type="button"
 						variant="ghost"
 						size="icon"
 						data-voice-action="replay"
-						aria-label={t("ui.chat.voice.replay")}
-						title={t("ui.chat.voice.replay")}
+						aria-label={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						title={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						// Unavailable keeps its place and focus; a press does nothing.
+						aria-disabled={replay.disabled || undefined}
 						onClick={() => {
-							if (sessionId && view.replay)
-								void replaySpoken(sessionId, view.replay);
+							if (sessionId && view.replay && !replay.disabled)
+								void pressReplay(sessionId, view.replay);
 						}}
-						className="shrink-0 text-ink-muted"
+						className="shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
 					>
-						<RotateCcw aria-hidden="true" />
+						{replay.word === "play" ? (
+							<Play aria-hidden="true" />
+						) : (
+							<RotateCcw aria-hidden="true" />
+						)}
 					</Button>
 				)}
 				{pauseable && (

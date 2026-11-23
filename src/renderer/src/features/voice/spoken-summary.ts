@@ -29,12 +29,22 @@
  * rig says come from the server; this module only decides what to DRAW, and
  * `body` (everything else) is the reply without the paragraph.
  *
+ * WHERE IT IS NOT BYTE-FOR-BYTE THE SERVER'S: the only caller passes the reply
+ * after `parseReplies` trimmed it, so a leading newline (which the server
+ * skips before the label) never reaches this function, and a reply that starts
+ * with a four-space-indented `Spoken:` is a marker here once trimmed but is not
+ * to the server. A differential run of 6000 generated replies agreed on every
+ * other shape.
+ *
  * STREAMING: the paragraph is written last, so a half-written reply ends in it.
  * With `streaming` the block is drawn the moment a paragraph starts with the
- * label, and a final paragraph that is only the first letters of the label
- * (`Spo`) is held back so the raw label never flashes; with it off, a marker
- * with nothing after it yields null (the server falls back to the whole reply
- * for an empty one, so there is nothing to draw).
+ * whole label (its colon and closing marks included). A final paragraph that is
+ * the start of a label from `spoke` on (five letters; any form the rule above
+ * accepts) is held back from the prose, with no block, so the raw label never
+ * flashes; shorter starts (`S`, `Spo`) are ordinary words ("Spotify", "Sport")
+ * and stay prose. With it off, a marker with nothing after it yields null (the
+ * server falls back to the whole reply for an empty one, so there is nothing to
+ * draw).
  */
 
 /** Fences masked out of the scan; both forms the server hides. */
@@ -47,10 +57,22 @@ const PARAGRAPH_BREAK = /\n[ \t\r]*\n(?:[ \t\r]*\n)*/g;
  * drop its closing marker. Four spaces would be an indented code block.
  */
 const LABEL = /^ {0,3}(\*\*|__|\*|_)?spoken(?:\1)?[ \t]*:(?:\1)?[ \t]*/i;
-/** What a label looks like before its colon has arrived, for the streaming hold. */
-const LABEL_FORMS = ["spoken:", "**spoken:**", "__spoken:__"];
-/** The shortest label prefix worth holding back; one letter is just prose. */
-const HOLD_MIN_CHARS = 2;
+/**
+ * Every written form of the label `LABEL` accepts, for the streaming hold: bare,
+ * and each emphasis wrapping the whole label or only the word.
+ */
+const LABEL_FORMS = ["", "**", "__", "*", "_"].flatMap((mark) => [
+	`${mark}spoken:${mark}`,
+	`${mark}spoken${mark}:`,
+]);
+/**
+ * The fewest letters of the word a label prefix must have to be held back. Below
+ * it an ordinary paragraph ("Spot the difference", "Sport...") would flash an
+ * empty block or vanish for a delta; at five (`spoke`) only a few real words
+ * remain, and the raw label flashing for one delta is the accepted cost.
+ */
+const HOLD_MIN_LETTERS = 5;
+const EMPHASIS_LEAD = /^[*_]+/;
 const MASK = "\ue002";
 const CRLF = /\r\n?/g;
 const LEADING_SPACES = /^ {0,3}/;
@@ -66,6 +88,11 @@ export type SpokenSplit = {
 	 * streams this is the paragraph still being written.
 	 */
 	last: boolean;
+	/**
+	 * Streaming only: the last paragraph may be the start of the label, so it is
+	 * hidden from the prose, but the label is not whole yet and no block is drawn.
+	 */
+	held?: true;
 };
 
 type Paragraph = { start: number; stop: number };
@@ -84,7 +111,7 @@ function paragraphsOf(masked: string): Paragraph[] {
 /** True when `text` (trimmed on the left) is the start of a label, not yet whole. */
 function isLabelPrefix(text: string): boolean {
 	const lead = text.replace(LEADING_SPACES, "").toLowerCase();
-	if (lead.length < HOLD_MIN_CHARS) return false;
+	if (lead.replace(EMPHASIS_LEAD, "").length < HOLD_MIN_LETTERS) return false;
 	return LABEL_FORMS.some((form) => form.startsWith(lead) && lead !== form);
 }
 
@@ -117,6 +144,7 @@ export function splitSpokenSummary(
 			body: normalised.slice(0, tail.start).trimEnd(),
 			summary: "",
 			last: true,
+			held: true,
 		};
 	}
 

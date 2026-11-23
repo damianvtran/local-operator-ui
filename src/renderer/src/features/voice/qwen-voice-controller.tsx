@@ -57,6 +57,7 @@ import type {
 	QwenVoiceStatus,
 } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceText } from "../../../../shared/desktop-control-contract";
+import { replayFactsOf, replayOffer } from "./spoken-summary-model";
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceSwitchSync } from "./use-voice-switch";
 import { playReplyEndTone } from "./voice-earcons";
@@ -939,6 +940,26 @@ async function speakSource(
 		// The announcement's on-screen half: the approval card is the only answer.
 		showCardToast(sessionId, t("ui.chat.voice.approval_waiting"));
 	}
+	/*
+	 * THE REQUEST IS OPEN FROM HERE, so the message's block says "Speaking" and its
+	 * Replay waits, instead of claiming "Spoken aloud" from the record written
+	 * below. Every way out of this function that is not the rig's own playback
+	 * closes it.
+	 */
+	const request =
+		source.kind === "message"
+			? { sessionId, messageId: source.messageId, at: Date.now() }
+			: null;
+	const closeRequest = () => {
+		const current = useVoiceStore.getState().speakRequest;
+		if (
+			request &&
+			current?.at === request.at &&
+			current.sessionId === sessionId
+		)
+			useVoiceStore.getState().setSpeakRequest(null);
+	};
+	useVoiceStore.getState().setSpeakRequest(request);
 	let spoken: DesktopVoiceText;
 	try {
 		spoken = await desktopResult<DesktopVoiceText>({
@@ -951,10 +972,14 @@ async function speakSource(
 		console.warn(
 			`[voice] nothing to speak: ${error instanceof Error ? error.message : String(error)}`,
 		);
+		closeRequest();
 		return;
 	}
 	// The slot moved while the text was out: the old session is not spoken.
-	if (useVoiceStore.getState().active?.session_id !== sessionId) return;
+	if (useVoiceStore.getState().active?.session_id !== sessionId) {
+		closeRequest();
+		return;
+	}
 	const kind = source.kind === "gate" ? "gate" : "reply";
 	rememberSpoken(spoken.text);
 	/*
@@ -963,6 +988,21 @@ async function speakSource(
 	 * that adds the field lands in parallel, so the missing case is the normal
 	 * one until it ships.
 	 */
+	/*
+	 * WRITTEN BEFORE THE RIG ANSWERS, AND UNDONE IF IT REFUSES: the record has to
+	 * exist when `playback.started` arrives (`voiceEventEffects` admits a start
+	 * only for a speak this window just issued, and the ended/interrupted marks
+	 * need the message), which can beat the answer to this call. A refusal then
+	 * puts back exactly what this write replaced, so it claims nothing.
+	 */
+	const before = useVoiceStore.getState();
+	const restore = {
+		messageId: source.kind === "message" ? source.messageId : "",
+		at: Date.now(),
+		lastSpoken: before.lastSpoken,
+		entry:
+			source.kind === "message" ? before.spoken[source.messageId] : undefined,
+	};
 	useVoiceStore.getState().setLastSpoken({
 		sessionId,
 		text: spoken.text,
@@ -973,11 +1013,29 @@ async function speakSource(
 		source: spokenSourceOf(spoken),
 		muted: useVoiceStore.getState().rig?.muted === true,
 		replay: options.replay === true,
-		at: Date.now(),
+		at: restore.at,
 	});
 	const answer = await bridge()?.speak({ text: spoken.text, kind });
-	if (answer && !answer.spoken)
+	if (answer && !answer.spoken) {
 		console.warn(`[voice] the rig did not speak: ${answer.reason ?? ""}`);
+		if (restore.messageId) useVoiceStore.getState().restoreSpoken(restore);
+		closeRequest();
+		return;
+	}
+	if (!request) return;
+	// No bridge (browser development): nothing will ever start.
+	if (!answer) {
+		closeRequest();
+		return;
+	}
+	/*
+	 * Accepted: the audio starts on `playback.started`, which settles the request.
+	 * A muted rig may play nothing observable, and a start that never comes must
+	 * not leave "Speaking" up for good: the bound is the one `voiceEventEffects`
+	 * already allows a start after a speak (measured there, not invented here).
+	 */
+	if (useVoiceStore.getState().rig?.muted === true) closeRequest();
+	else setTimeout(closeRequest, PLAYBACK_START_WINDOW_MS);
 }
 
 /**
@@ -995,6 +1053,24 @@ export async function replaySpoken(
 		{ kind: "message", messageId },
 		{ replay: true },
 	);
+}
+
+/**
+ * THE PRESS OF EVERY REPLAY (block, strip, History, footnote): a muted speaker is
+ * unmuted first, because the person asked to hear it now (the strip's "Play"
+ * word says so), then the message is said again. One door so the four cannot
+ * drift in what pressing means. A press while unavailable (busy, not the holder,
+ * paused) does nothing and claims nothing; the controls draw it `aria-disabled`.
+ */
+export async function pressReplay(
+	sessionId: string,
+	messageId: string,
+): Promise<void> {
+	const state = useVoiceStore.getState();
+	const offer = replayOffer(replayFactsOf(state, sessionId));
+	if (!offer || offer.disabled) return;
+	if (state.rig?.muted === true) await setQwenMuted(false);
+	await replaySpoken(sessionId, messageId);
 }
 
 /**

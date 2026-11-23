@@ -86,8 +86,8 @@
 	"ui.chat.voice.summary_stopped": "Озвучено · прервано",
 	"ui.chat.voice.summary_muted": "Не озвучено (без звука)",
 	"ui.chat.voice.summary_cut": "Озвучено · только начало",
-	"ui.chat.voice.summary_static": "Устное резюме",
-	"ui.chat.voice.replay": "Повторить",
+	"ui.chat.voice.summary_static": "Сводка для озвучивания",
+	"ui.chat.voice.replay": "Повторить озвучивание",
 	"ui.chat.voice.play": "Воспроизвести",
 	"ui.chat.voice.full_reply_link": "Полный ответ в чате ↑"
 }

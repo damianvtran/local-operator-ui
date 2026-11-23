@@ -11,7 +11,12 @@
  * THE BLOCK CLAIMS ONLY WHAT HAPPENED. It exists only when the message has the
  * paragraph (never invented), reads "Spoken summary" with no control when voice
  * is off or this window did not speak the message, and "Spoken aloud" with
- * Replay only for a message this window spoke from the summary.
+ * Replay only for a message this window spoke from the summary and whose audio
+ * the rig has not refused: from the request until playback starts it reads
+ * "Speaking", and a refused speak puts the record back (`speakSource`). The
+ * label is one polite live region, so a screen reader hears the same sequence
+ * the eye sees; Replay stays mounted (`aria-disabled`) while a take plays so a
+ * keyboard press does not lose its focus.
  *
  * Tokens only: `bg-sunken`, `border-hairline`, `text-ink`/`text-ink-dim`, no
  * accent and no stripe - it is a record, not an alert.
@@ -22,10 +27,12 @@ import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Play, RotateCcw, Volume2, VolumeX } from "lucide-react";
-import type { FC } from "react";
-import { replaySpoken, setQwenMuted } from "./qwen-voice-controller";
+import { type FC, useMemo } from "react";
+import { pressReplay } from "./qwen-voice-controller";
 import {
 	type SpokenBlockTone,
+	replayFactsOf,
+	replayOffer,
 	replyCutNote,
 	spokenBlockView,
 } from "./spoken-summary-model";
@@ -53,20 +60,68 @@ function useSpokenFacts(sessionId: string | undefined, messageId: string) {
 			s.lastSpoken?.messageId === messageId &&
 			s.lastSpoken.sessionId === sessionId,
 	);
+	const requested = useVoiceStore(
+		(s) =>
+			s.speakRequest?.messageId === messageId &&
+			s.speakRequest.sessionId === sessionId,
+	);
 	const muted = useVoiceStore((s) => s.rig?.muted === true);
+	const paused = useVoiceStore((s) => s.rig?.paused === true);
+	const busy = useVoiceStore((s) => replayFactsOf(s, sessionId).busy);
 	const answerOwed = useVoiceStore(
 		(s) => s.exchange?.kind === "working" && s.exchange.sessionId === sessionId,
 	);
-	return { voiceHere, entry, playingThis, muted, answerOwed };
+	return {
+		voiceHere,
+		entry,
+		playingThis,
+		requested,
+		muted,
+		paused,
+		busy,
+		answerOwed,
+	};
 }
 
-/** The quiet text button both the block and the footnote carry. */
+/**
+ * What Replay is for one conversation right now - the ONE rule
+ * (`replayOffer`) as a hook, for the History rows and the strip, which sit
+ * outside the block. `null`: not offered.
+ */
+export function useReplayOffer(
+	sessionId: string | undefined,
+): { word: "replay" | "play"; disabled: boolean } | null {
+	// A string key so the selector returns a primitive, stable between renders.
+	const key = useVoiceStore((s) => {
+		const offer = replayOffer(replayFactsOf(s, sessionId));
+		return offer ? `${offer.word}:${offer.disabled}` : "";
+	});
+	return useMemo(
+		() =>
+			key === ""
+				? null
+				: {
+						word: key.startsWith("play") ? "play" : "replay",
+						disabled: key.endsWith("true"),
+					},
+		[key],
+	);
+}
+
+/**
+ * The quiet text button the block and the footnote carry. Unavailable is
+ * `aria-disabled`, not `disabled`: it keeps its place in the tab order and the
+ * focus the press gave it, and a press does nothing. `className` places it: the
+ * block pushes it to the trailing edge, the footnote leaves it beside its note.
+ */
 const ReplayButton: FC<{
 	onPress: () => void;
 	word: WithoutParams;
 	icon: "replay" | "play";
 	isSmallView: boolean;
-}> = ({ onPress, word, icon, isSmallView }) => (
+	disabled?: boolean;
+	className?: string;
+}> = ({ onPress, word, icon, isSmallView, disabled = false, className }) => (
 	<Button
 		type="button"
 		variant="ghost"
@@ -74,8 +129,12 @@ const ReplayButton: FC<{
 		data-spoken-control={icon}
 		aria-label={t(word)}
 		title={t(word)}
-		onClick={onPress}
-		className="ml-auto h-6 shrink-0 gap-1 px-1.5 text-meta text-ink-muted"
+		aria-disabled={disabled || undefined}
+		onClick={disabled ? undefined : onPress}
+		className={cn(
+			"h-6 shrink-0 gap-1 px-1.5 text-meta text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50",
+			className,
+		)}
 	>
 		{icon === "replay" ? (
 			<RotateCcw aria-hidden="true" />
@@ -106,8 +165,8 @@ export const SpokenSummaryBlock: FC<SpokenSummaryBlockProps> = ({
 	useI18nLocale();
 	const facts = useSpokenFacts(sessionId, messageId);
 	const view = spokenBlockView({ ...facts, streaming });
-	const replay = () => {
-		if (sessionId) void replaySpoken(sessionId, messageId);
+	const press = () => {
+		if (sessionId) void pressReplay(sessionId, messageId);
 	};
 	return (
 		<section
@@ -121,24 +180,22 @@ export const SpokenSummaryBlock: FC<SpokenSummaryBlockProps> = ({
 				) : (
 					<Volume2 aria-hidden="true" className="size-3 shrink-0" />
 				)}
-				<span className="min-w-0 truncate">{t(LABEL[view.tone])}</span>
-				{view.control === "replay" && (
+				{/* The label is the block's one live region (`<output>`, this file's
+				    spelling of role=status): To be spoken, Speaking, Spoken aloud. */}
+				<output className="min-w-0 truncate">{t(LABEL[view.tone])}</output>
+				{view.control && (
 					<ReplayButton
-						onPress={replay}
-						word="ui.chat.voice.replay"
-						icon="replay"
+						onPress={press}
+						word={
+							view.control === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay"
+						}
+						icon={view.control}
 						isSmallView={isSmallView}
-					/>
-				)}
-				{view.control === "play" && (
-					<ReplayButton
-						onPress={() => {
-							// Unmute first: Play is the person asking to hear it now.
-							void setQwenMuted(false).then(replay);
-						}}
-						word="ui.chat.voice.play"
-						icon="play"
-						isSmallView={isSmallView}
+						disabled={view.disabled}
+						// Logical, so the trailing edge is the left in a right-to-left locale.
+						className="ms-auto"
 					/>
 				)}
 			</div>
@@ -164,6 +221,7 @@ export const SpokenReplyNote: FC<{
 }> = ({ sessionId, messageId, isSmallView = false }) => {
 	useI18nLocale();
 	const { entry, voiceHere } = useSpokenFacts(sessionId, messageId);
+	const offer = useReplayOffer(sessionId);
 	if (!replyCutNote(entry, voiceHere)) return null;
 	return (
 		<p
@@ -174,14 +232,22 @@ export const SpokenReplyNote: FC<{
 			<span className="min-w-0 truncate">
 				{t("ui.chat.voice.spoken_part_note")}
 			</span>
-			<ReplayButton
-				onPress={() => {
-					if (sessionId) void replaySpoken(sessionId, messageId);
-				}}
-				word="ui.chat.voice.replay"
-				icon="replay"
-				isSmallView={isSmallView}
-			/>
+			{offer && (
+				// Beside its note, not at the far edge: it belongs to the line.
+				<ReplayButton
+					onPress={() => {
+						if (sessionId) void pressReplay(sessionId, messageId);
+					}}
+					word={
+						offer.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay"
+					}
+					icon={offer.word}
+					isSmallView={isSmallView}
+					disabled={offer.disabled}
+				/>
+			)}
 		</p>
 	);
 };

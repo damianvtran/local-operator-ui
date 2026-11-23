@@ -93,11 +93,31 @@ const FALLBACK_FULL = [
 	"Nothing else changes: the rest of the session runs as before, and the notes stay in the transcript for the next person to read.",
 ].join("\n");
 
-const record = (frame: Frame): TranscriptRecord => {
+/* The reply of frame 16: a fenced JSON block between the prose and the summary. */
+const CODE_REPLY = [
+	"The hook config is one JSON object per event:",
+	"",
+	"```json",
+	"{",
+	'  "hooks": {',
+	'    "SessionStart": [',
+	'      { "command": "reload-memory --quiet" }',
+	"    ],",
+	'    "PreToolUse": [',
+	'      { "matcher": "shell", "command": "deny-risky" }',
+	"    ]",
+	"  }",
+	"}",
+	"```",
+	"",
+	"Put it in the project settings file and restart the session.",
+].join("\n");
+
+const record = (frame: Frame, code = false): TranscriptRecord => {
 	const text =
 		frame === "fallback"
 			? REPLY
-			: `${REPLY}\n\nSpoken: ${frame === "cut" ? SUMMARY_LONG : frame === "upcoming" ? SUMMARY.split(" ").slice(0, 14).join(" ") : SUMMARY}`;
+			: `${code ? CODE_REPLY : REPLY}\n\nSpoken: ${frame === "cut" ? SUMMARY_LONG : frame === "upcoming" ? SUMMARY.split(" ").slice(0, 14).join(" ") : SUMMARY}`;
 	return {
 		kind: "assistant",
 		id: MESSAGE,
@@ -163,10 +183,12 @@ function Scene({
 	width,
 	frame,
 	history,
+	code = false,
 }: {
 	width: number;
 	frame: Frame;
 	history: boolean;
+	code?: boolean;
 }) {
 	const [ready, setReady] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -194,6 +216,7 @@ function Scene({
 			active: undefined,
 			exchange: null,
 			activity: null,
+			speakRequest: null,
 		});
 		seed(frame);
 		setReady(true);
@@ -205,6 +228,7 @@ function Scene({
 				rig: undefined,
 				exchange: null,
 				activity: null,
+				speakRequest: null,
 				story: [],
 				spoken: {},
 				lastSpoken: null,
@@ -222,7 +246,7 @@ function Scene({
 				>
 					{ready && (
 						<CanonicalTranscript
-							transcript={transcriptOf([record(frame)])}
+							transcript={transcriptOf([record(frame, code)])}
 							frontend={null}
 							gate={null}
 							waiting={false}
@@ -305,7 +329,15 @@ export const Upcoming: Story = {
 };
 export const Speaking: Story = {
 	render: () => <Scene width={900} frame="speaking" history={false} />,
-	play: ({ canvasElement }) => expectBlock(canvasElement, "speaking", false),
+	// Replay stays drawn (so a press keeps its focus) but waits, aria-disabled.
+	play: async ({ canvasElement }) => {
+		await expectBlock(canvasElement, "speaking", true);
+		await expect(
+			canvasElement
+				.querySelector('[data-spoken-control="replay"]')
+				?.getAttribute("aria-disabled"),
+		).toBe("true");
+	},
 };
 export const Spoken: Story = {
 	render: () => <Scene width={900} frame="spoken" history={false} />,
@@ -350,6 +382,12 @@ export const CutHistoryOpen: Story = {
 export const StaticVoiceOff: Story = {
 	render: () => <Scene width={900} frame="static" history={false} />,
 	play: ({ canvasElement }) => expectBlock(canvasElement, "static", false),
+};
+
+/** Frame 16: the block under a reply that ends in a code block. */
+export const SpokenAfterCodeBlock: Story = {
+	render: () => <Scene width={900} frame="spoken" history={false} code />,
+	play: ({ canvasElement }) => expectBlock(canvasElement, "spoken", true),
 };
 
 export const NarrowUpcoming: Story = {
