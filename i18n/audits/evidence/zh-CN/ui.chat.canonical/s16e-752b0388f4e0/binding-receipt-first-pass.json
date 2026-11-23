@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "instance": "s16e-zhcn-a1",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "s16e-zhcn-a1",
+  "session": "f9df9ab87b40",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session model as reported by the harness for this run; no fallback, no role or model pin applied"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (zh-CN), audited as the translator's 12-key draft (sha256 121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "zh-CN": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "S16e-zhCN-01",
+   "severity": "MINOR",
+   "axis": "fit/punctuation at the composition boundary",
+   "key": "ui.chat.canonical.image_gen.cancel.checking (composed after ui.chat.canonical.image_gen.cancel.running)",
+   "current": "rendered as: 已请求停止。提供商没有取消接口；生成仍会继续，若产出音频则会计费。<U+0020>正在确认结算。",
+   "problem": "image-gen-card.tsx:341 (runningStopSentence) joins the two keys with a hard-coded ' ', which puts a half-width space between a 。 and the next Chinese sentence. The values themselves are correct; the defect is in the callsite. Shipped precedent decided this the other way: ui.chat.sidebar.mark_all_read.scope_joined is '{chats} {tokenless}' in en and '{chats}{tokenless}' in zh-CN.",
+   "suggested": "Key the joiner like scope_joined (en ' ', zh-CN '') or join without a space after a full-width terminator. No change to the zh-CN wording requested.",
+   "owner": "implementer (callsite), not the translator"
+  },
+  {
+   "id": "S16e-zhCN-02",
+   "severity": "NIT",
+   "axis": "idiom",
+   "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+   "current": "音频生成当前繁忙。稍后重试。",
+   "problem": "The thing that is busy is a service; the shipped phrasing carries that head noun (中心繁忙，…). Understandable as written, and 稍后重试 matches shipped house style.",
+   "suggested": "音频生成服务当前繁忙。稍后重试。 (optional; the current value is not wrong)",
+   "owner": "translator, optional"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/zh-CN/receipt.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/zh-CN/receipt.json",
+  "transcribed_from_sha256": "797e14fb8e468bfbc3be59eb298dc651cb5eac7d5d09f33b98e2113f6b165d9b",
+  "instance_origin": "integrator-normalised from the auditor's own run label 's16e-zhCN-a1': ledger-rules.mjs isPlaceholderInstance requires [a-z0-9_-], which the label's uppercase locale tag violates",
+  "integrated_target_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

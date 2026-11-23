@@ -31,9 +31,13 @@
  *   no `partialize`; a digest is stable across restarts where a `blob:` URL is
  *   not (see `image-actions.ts` on why a blob-keyed document is a dead tab).
  *
- * Pure and dependency-free so both the transcript scanner (a node-bundled
- * module) and the canvas components can import it.
+ * Pure so both the transcript scanner (a node-bundled module) and the canvas
+ * components can import it. Its one import is the message module, by relative
+ * specifier so a node bundle needs no renderer alias: `t()` for the
+ * reader-facing names and cues, `translateRaw` for the save-file name.
  */
+
+import { t, translateRaw } from "../../../../../i18n/messages";
 
 /** The scheme-ish prefix of an artifact document's `id`/`path`. */
 export const ARTIFACT_PATH_PREFIX = "artifact:";
@@ -101,16 +105,32 @@ export function fallbackArtifactName(
 	kind: ArtifactIdentityKind,
 	digest: string,
 ): string {
-	switch (kind) {
-		case "video":
-			return `Video ${digest.slice(0, 8)}`;
-		case "image":
-			return `Image ${digest.slice(0, 8)}`;
-		case "audio":
-			return `Sound ${digest.slice(0, 8)}`;
-		default:
-			return `File ${digest.slice(0, 8)}`;
-	}
+	return fallbackNameWith(false, kind, digest);
+}
+
+/**
+ * The one renderer of a nameless artifact's name, with `raw` choosing the
+ * translator so the displayed title (`t`, with the RTL bidi isolates that keep
+ * the digest head in its own order inside Urdu copy) and the save-file stem
+ * (`translateRaw`, see `artifactFileName`) can never drift to different keys.
+ */
+function fallbackNameWith(
+	raw: boolean,
+	kind: ArtifactIdentityKind,
+	digest: string,
+): string {
+	// The digest head stays a placeholder: `artifactTooltip` finds it in the
+	// title to avoid printing it twice, whatever the language puts around it.
+	const params = { digest: digest.slice(0, 8) };
+	const key =
+		kind === "video"
+			? "ui.canvas.artifact.fallback_name.video"
+			: kind === "image"
+				? "ui.canvas.artifact.fallback_name.image"
+				: kind === "audio"
+					? "ui.canvas.artifact.fallback_name.audio"
+					: "ui.canvas.artifact.fallback_name.file";
+	return raw ? translateRaw(key, params) : t(key, params);
 }
 
 /**
@@ -166,8 +186,13 @@ export function artifactFileName(artifact: {
 	// The fallback name already ends in the digest head, so only a producer's
 	// bare label needs the suffix to stay unique (`Hero-412b2a3d.png`); appending
 	// it to the fallback proposed `Video 9277c383-9277c383.mp4` (UX U1 / QA Q3).
+	// `translateRaw`, NOT `t`: this string leaves the UI as DATA - it becomes
+	// the name of a file on the user's disk - and in an RTL locale `t()` wraps
+	// the digest head in U+2068/U+2069 isolates, which would be saved into the
+	// file name invisibly (`تصویر ⁨9277c383⁩.png`, code review R1). The file
+	// manager applies its own bidi algorithm to the bare name.
 	if (!given)
-		return `${fallbackArtifactName(artifact.kind, artifact.digest)}.${extension}`;
+		return `${fallbackNameWith(true, artifact.kind, artifact.digest)}.${extension}`;
 	return `${given}-${artifact.digest.slice(0, 8)}.${extension}`;
 }
 
@@ -182,12 +207,15 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
 export function artifactCue(kind: ArtifactIdentityKind): string {
-	if (kind === "file") return "File kept in this session";
+	if (kind === "file") return t("ui.canvas.artifact.cue.file");
 	// "Generated sound" rather than "Generated audio": the cue shares the word
 	// the row's own fallback name and the Sounds section use (`artifactCue` is
-	// read by the tooltip alone, but one kind should read one way).
-	if (kind === "audio") return "Generated sound, kept in this session";
-	return `Generated ${kind}, kept in this session`;
+	// read by the tooltip alone, but one kind should read one way). One whole
+	// sentence per kind, not `Generated ${kind}`: the kind's noun inflects the
+	// adjective in most target languages.
+	if (kind === "audio") return t("ui.canvas.artifact.cue.audio");
+	if (kind === "video") return t("ui.canvas.artifact.cue.video");
+	return t("ui.canvas.artifact.cue.image");
 }
 
 /**

@@ -1,0 +1,37 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"model_note": "Session primary anthropic/claude-sonnet-5-5 ran the mechanical checks; the harness switched to fallback anthropic/claude-opus-5-5 (provider timeout) before the linguistic judgement and this receipt were written. Both disclosed.",
+	"instance": "4d89394118a5",
+	"date": "2026-11-15",
+	"locale": "hi",
+	"independence": "Independent lopdev i18n-auditor (session 3f74daef0a22, task ui-chat-delta-audit-hi); neither the translator nor the first-round auditor. No MT or translation service used.",
+	"repo": "damianvtran/local-operator-ui",
+	"head": "934572308bcfb5bbb46f358b88a6131cbaffeade",
+	"references": {
+		"glossary": "damianvtran/local-operator@56662d28 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@56662d28 i18n/style-guides/hi.md",
+		"shipped_terms": "src/i18n/catalogues/hi/ui.chat.sidebar.json at 934572308b (row.unarchive_label, row_menu.unarchive, search.include_archived); ui.settings.configuration (खोज फ़ील्ड)"
+	},
+	"scope": "Remediation delta 7cdf6c27b4..934572308b (one value: ui.chat.dialogs.archive_message) re-audited in full; receipt covers the programme's 3 added keys (archive_title_named, archive_title_unnamed, archive_message) of the committed namespace. Pre-existing keys out of scope.",
+	"namespace": "ui.chat.dialogs",
+	"status": "passed",
+	"sha256": {
+		"hi": "ddb57ea3d71e9aaa93211f5e7e2bdef77a781d567f8ce123736490129b199827",
+		"en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+	},
+	"first_round_verification": [
+		{ "finding": "MINOR search field not named", "result": "fixed: 'चैट सूची के ऊपर दिए खोज फ़ील्ड में खोजें' names the field; 'खोज फ़ील्ड' matches shipped ui.settings.configuration" },
+		{ "finding": "MINOR 'undo' no object", "result": "fixed: 'तक इसे पूर्ववत कर सकते हैं'" }
+	],
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.chat.dialogs.archive_message",
+			"current": "चैट सूची के ऊपर दिए खोज फ़ील्ड में खोजें",
+			"note": "'ऊपर दिए' is a clipped participle; standard written product Hindi prefers 'ऊपर दिए गए'. Not wrong, optional polish.",
+			"suggested": "चैट सूची के ऊपर दिए गए खोज फ़ील्ड में खोजें"
+		}
+	]
+}

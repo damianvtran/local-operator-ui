@@ -45,7 +45,7 @@ const bundle = await build({
 });
 const {
 	DesktopControlError,
-	MCP_SETTINGS_ACTION_LABEL,
+	mcpSettingsActionLabel,
 	mcpConfigActions,
 	mcpFailure,
 	mcpFailureActions,
@@ -471,7 +471,7 @@ test("no surface prints the caught message as copy", () => {
 		"src/renderer/src/features/chat/components/run-details/run-detail-mcp.tsx",
 		"utf8",
 	);
-	assert.match(panel, /MCP_SETTINGS_ACTION_LABEL/);
+	assert.match(panel, /mcpSettingsActionLabel\(\)/);
 	assert.match(panel, /mcpServerSettingsRoute\(row\.name\)/);
 });
 

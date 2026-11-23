@@ -29,6 +29,8 @@
 	"ui.chat.sidebar.pins.drag_title": "Drag to reorder · Esc cancels",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {Could not pin “{title}”.} unpin {Could not unpin “{title}”.} other {Could not update “{title}”.}}",
 	"ui.chat.sidebar.row.archived_suffix": ", archived",
+	"ui.chat.sidebar.row.archive_label": "Archive “{title}”",
+	"ui.chat.sidebar.row.unarchive_label": "Unarchive “{title}”",
 	"ui.chat.sidebar.row.in_conversation": "in conversation",
 	"ui.chat.sidebar.row.matched_in_conversation": ", matched in conversation",
 	"ui.chat.sidebar.row.not_sent": "Not sent yet",

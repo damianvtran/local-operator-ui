@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
-import {assertNoAutoplay,safeCancel,signalCleanup} from './native-contracts.mjs';
+import {assertNoAutoplay,safeCancel,signalCleanup,recordRowSelector} from './native-contracts.mjs';
 const idle={players:[{status:'idle'}],paused:true,ownerId:null,status:'idle',time:0,src:null};
 assertNoAutoplay(idle);
 for(const delta of [{players:[]},{players:[{status:'playing'}]},{paused:false},{ownerId:'sound:other'},{status:'playing'},{time:1},{src:'blob:autoplay'},{paused:undefined}]){
@@ -30,4 +30,11 @@ for(const name of ['SIGTERM','SIGINT']){
 // The normal finally must drain without assigning a signal exit status.
 const emitter=new EventEmitter();let interrupts=0;
 const normal=signalCleanup(async()=>{},()=>interrupts++,emitter);await normal.stop();normal.dispose();assert.equal(interrupts,0);
-console.log('PASS native contracts: idle engine, Keep/Escape/focus/counter refusals, awaited idempotent SIGTERM/SIGINT cleanup');
+// Regression (run 43468507828): the collapsed bar shares the first hidden row's
+// data-record-id, so the row selector must demand the row-only attribute and refuse the bar.
+const rowSel=recordRowSelector('tool:r0');
+assert.ok(rowSel.startsWith('[data-record-id="tool:r0"]'));
+assert.ok(rowSel.includes('[data-record-kind]'));
+assert.ok(rowSel.includes(':not([data-turn-summary])'));
+assert.ok(!/\[data-record-id=[^\]]*\]$/.test(rowSel));
+console.log('PASS native contracts: row selector excludes the collapsed bar; idle engine, Keep/Escape/focus/counter refusals, awaited idempotent SIGTERM/SIGINT cleanup');

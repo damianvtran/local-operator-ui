@@ -35,7 +35,10 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { Input } from "@shared/components/ui/input";
-import { SearchableSelect } from "@shared/components/ui/searchable-select";
+import {
+	type SearchableOption,
+	SearchableSelect,
+} from "@shared/components/ui/searchable-select";
 import {
 	Select,
 	SelectContent,
@@ -52,7 +55,7 @@ import {
 	TableRow,
 } from "@shared/components/ui/table";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -68,6 +71,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { configSeedPrompt } from "../config-run/seed-prompt";
 import { type FieldTarget, refusalCopy } from "../utils/backend-copy";
 import {
 	INHERIT,
@@ -327,8 +331,10 @@ function captionCell(
 function readingCell(facts: { value: string; layer: string | null }) {
 	return (
 		<>
+			{/* An agent name or model selector: its own direction (round 1, D1). */}
 			<span
-				className="block truncate text-body-sm text-ink"
+				dir="auto"
+				className={`block truncate text-body-sm text-ink ${USER_TEXT_ALIGN}`}
 				title={facts.value}
 			>
 				{facts.value}
@@ -584,27 +590,27 @@ export function TeamDetail({
 		 * likely first failure here.
 		 */
 		if (creating && !name.trim()) {
-			setError("Give the team a name.");
+			setError(t("ui.agents.teams.create.error_name_required"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && /[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && (teams ?? []).some((row) => row.name === name.trim())) {
 			setError(
-				`A team called “${name.trim()}” already exists. Open it to change it, or choose another name.`,
+				t("ui.agents.teams.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && !draft.instructions.trim()) {
-			setError("Give the team instructions.");
+			setError(t("ui.agents.teams.create.error_instructions_required"));
 			setErrorField("instructions");
 			teamInstructionsRef.current?.focus();
 			return;
@@ -686,7 +692,7 @@ export function TeamDetail({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The team could not be saved.",
+					: t("ui.agents.teams.edit.error_generic"),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -729,7 +735,9 @@ export function TeamDetail({
 	// the count follows it; otherwise it is the saved team's.
 	const shownMembers = draft.members.length ? draft.members : team?.members;
 
-	const displayName = team ? teamDisplayName(team) : "New team";
+	const displayName = team
+		? teamDisplayName(team)
+		: t("ui.agents.teams.create.title_new");
 	const includesTeam = draft.members.some((member) => member.kind === "team");
 
 	return (
@@ -746,9 +754,11 @@ export function TeamDetail({
 							ref={headingRef}
 							tabIndex={-1}
 							// A long name truncates rather than wrapping under the actions; the
-							// full name stays reachable as the tooltip.
+							// full name stays reachable as the tooltip. `dir="auto"` and the
+							// document-keyed alignment: see the agent pane's heading.
+							dir="auto"
 							title={displayName}
-							className="truncate text-title focus:outline-none"
+							className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
 						>
 							{/*
 							 * The heading reads the team the way every other human-read
@@ -768,7 +778,9 @@ export function TeamDetail({
 						{team ? (
 							<p className="text-body-sm text-ink-muted">
 								{memberCountLabel(shownMembers)}
-								{includesTeam ? " · Includes a team" : ""}
+								{includesTeam ? (
+									<> {t("ui.agents.teams.includes_team")}</>
+								) : null}
 							</p>
 						) : null}
 					</div>
@@ -782,7 +794,7 @@ export function TeamDetail({
 					 *
 					 * THE TRAILING GHOST BUTTON IS PULLED OUT BY ITS OWN PADDING (design
 					 * review round 1 D1). A ghost button has no edge, so its box was flush
-					 * with the column but its LABEL ended 12 px inside it; `-mr-3` (the
+					 * with the column but its LABEL ended 12 px inside it; `-me-3` (the
 					 * `md` button's `px-3`) puts the label's last glyph on the column edge
 					 * that the box and the count are on. It moves into the 24 px scroller
 					 * gutter, where nothing is clipped (the hover ground is the only thing
@@ -794,7 +806,7 @@ export function TeamDetail({
 							className={cn(
 								"flex shrink-0 items-center gap-2",
 								TITLE_LINE_HEIGHT,
-								askEnabled && "-mr-3",
+								askEnabled && "-me-3",
 							)}
 						>
 							<Button
@@ -822,7 +834,11 @@ export function TeamDetail({
 							{askEnabled ? (
 								<Button
 									variant="ghost"
-									onClick={() => onAskAgent(`Change the team ${team.name}: `)}
+									onClick={() =>
+										onAskAgent(
+											configSeedPrompt({ kind: "team", name: team.name }),
+										)
+									}
 								>
 									{t("ui.agents.detail.action.ask_change")}
 								</Button>
@@ -909,6 +925,9 @@ export function TeamDetail({
 								<Input
 									ref={teamNameRef}
 									id="team-name"
+									// The operator's own text: direction from its content, not
+									// the locale (same reason as `EditSection` in agent-detail).
+									dir={userTextDir(name)}
 									data-testid="team-name-input"
 									value={name}
 									required
@@ -1055,10 +1074,10 @@ export function TeamDetail({
 													)}
 													busyLabel={t("ui.agents.teams.field.loading_agents")}
 													options={[
-														...managerOptions(agents, teams).filter((option) =>
-															member.kind === "team"
-																? option.group === "Teams"
-																: option.group === "Agents",
+														...memberOptions(
+															agents,
+															teams,
+															member.kind === "team" ? "team" : "agent",
 														),
 													]}
 													selected={
@@ -1069,7 +1088,10 @@ export function TeamDetail({
 													onSelect={(option) =>
 														updateMember(index, {
 															role: option.id,
-															kind: option.group === "Teams" ? "team" : "agent",
+															// The list was already narrowed to this member's kind
+															// (`memberOptions`), so the pick is of that kind; the
+															// translated group label is never read back.
+															kind: member.kind === "team" ? "team" : "agent",
 														})
 													}
 													onCustomSubmit={(text) =>
@@ -1368,6 +1390,7 @@ export function TeamDetail({
 							/>
 							<Input
 								id="team-description"
+								dir={userTextDir(draft.description)}
 								value={draft.description}
 								onChange={(event) =>
 									setDraft((current) => ({
@@ -1396,6 +1419,7 @@ export function TeamDetail({
 							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
+								dir={userTextDir(draft.instructions)}
 								aria-label={t("ui.agents.teams.action.collaboration_aria")}
 								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
@@ -1412,6 +1436,7 @@ export function TeamDetail({
 						<Section title={t("ui.agents.teams.section.project_brief")}>
 							<Textarea
 								aria-label={t("ui.agents.teams.action.project_brief_aria")}
+								dir={userTextDir(draft.project)}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.project}
@@ -1485,6 +1510,8 @@ export function TeamDetail({
 														LINK_HIT_AREA,
 													)}
 													onClick={() => onOpenAgent(draft.manager)}
+													// The manager's agent name (round 1, D1).
+													dir="auto"
 												>
 													{draft.manager}
 												</Button>
@@ -1546,7 +1573,10 @@ export function TeamDetail({
 										>
 											<TableCell className="px-0 py-2 text-ink">
 												<div className="flex min-w-0 items-center gap-2">
-													<span className="min-w-0 truncate">
+													<span
+														dir="auto"
+														className={`min-w-0 truncate ${USER_TEXT_ALIGN}`}
+													>
 														{member.role}
 													</span>
 													{!memberResolution(member, agents, teams) ? (
@@ -1560,10 +1590,14 @@ export function TeamDetail({
 												</div>
 											</TableCell>
 											<TableCell className="px-2 py-2 text-ink-dim text-meta">
-												{member.kind === "team" ? "Team" : "Agent"}
+												{/* Catalogue words, not literals: the scanner does not read a
+												 * string expression, so these two printed English in fr and ur. */}
+												{member.kind === "team"
+													? t("ui.agents.teams.kind.team")
+													: t("ui.agents.teams.kind.agent")}
 											</TableCell>
 											{/* Right-aligned so every count shares an x; the glyph is kept. */}
-											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
+											<TableCell className="px-0 py-2 text-end text-ink-muted tabular-nums">
 												{`×${memberCountOf(member)}`}
 											</TableCell>
 										</TableRow>
@@ -1705,7 +1739,8 @@ export function TeamDetail({
 													<TableCell className="px-0 py-2">
 														{/* D13: the full role is readable even when it clips. */}
 														<span
-															className="block truncate text-body-sm text-ink"
+															dir="auto"
+															className={`block truncate text-body-sm text-ink ${USER_TEXT_ALIGN}`}
 															title={memberReading.role}
 														>
 															{memberReading.role}
@@ -1777,23 +1812,41 @@ export function TeamDetail({
 	);
 }
 
-/** Agents and teams on this machine, grouped, as `SearchableOption`s. */
-function managerOptions(
+/**
+ * Agents and teams on this machine, grouped, as `SearchableOption`s.
+ *
+ * `group` is DISPLAY copy (the list's section heading) and is translated, so
+ * nothing may branch on it: a member row used to filter on `group === "Teams"`,
+ * which would have emptied every member picker the moment the heading was
+ * localized. `kind` is the machine fact; `memberOptions` filters on it.
+ */
+export function managerOptions(
 	agents: readonly ReusableProfile[] | undefined,
 	teams: readonly ReusableTeam[] | undefined,
-) {
+): (SearchableOption & { kind: "agent" | "team" })[] {
 	return [
 		...(agents ?? []).map((agent) => ({
 			id: agent.name,
 			name: agent.name,
 			description: agent.description,
-			group: "Agents",
+			group: t("ui.agents.teams.group.agents"),
+			kind: "agent" as const,
 		})),
 		...(teams ?? []).map((row) => ({
 			id: row.name,
 			name: row.name,
 			description: row.description,
-			group: "Teams",
+			group: t("ui.agents.teams.group.teams"),
+			kind: "team" as const,
 		})),
 	];
+}
+
+/** The options a member row of `kind` may pick from (see `managerOptions`). */
+export function memberOptions(
+	agents: readonly ReusableProfile[] | undefined,
+	teams: readonly ReusableTeam[] | undefined,
+	kind: "agent" | "team",
+) {
+	return managerOptions(agents, teams).filter((option) => option.kind === kind);
 }

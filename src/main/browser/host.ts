@@ -15,7 +15,7 @@ import type {
 } from "../../shared/browser-tab-action";
 import { parseInternalUrl } from "../../shared/internal-pages";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
-import { requesterOf } from "./actions/context";
+import { requesterOf, sessionIdOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
@@ -50,6 +50,8 @@ import { redactToken, surfaceToken } from "./registry";
 import type { PersistedTab } from "./session-store";
 import { permittedScheme } from "./settle";
 import { TabAudioTracker } from "./tab-audio";
+import type { UserAttentionEntry } from "./user-attention";
+import { ACCESS_RESULT_TTL_MS } from "./vendor/driver/access-queue";
 import { safeHttpUrl } from "./vendor/driver/origin-policy";
 
 const DUPLICATABLE_WEB_URL = /^https?:\/\//i;
@@ -479,6 +481,9 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
 	 * means none: the projection then carries null. */
 	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
+	/** Every wait an agent tab has on a person, across ALL tabs
+	 * (`user-attention.ts`). Absent means none: the projection carries `[]`. */
+	waitingOnUser?: () => UserAttentionEntry[];
 	/** The active tab's camera/microphone prompt (or macOS notice), from
 	 * `media-permissions.ts`. Absent means none: the projection carries null. */
 	mediaPermission?: (tabId: number) => MediaPermissionView | null;
@@ -559,6 +564,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly waitingOnUser: BrowserHostOptions["waitingOnUser"];
 	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
 	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
@@ -610,6 +616,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
+		this.waitingOnUser = options.waitingOnUser;
 		this.passkeyCustody = options.passkeyCustody;
 		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
@@ -883,14 +890,24 @@ export class BrowserHost implements BrowserActionContext {
 			case "record_stop":
 				return recordingActions.recordStop(this, params, requestId);
 			case "request_access":
-				return this.approvals.requestAccess(
-					params.url,
+				return this.withOpenedTab(
+					this.approvals.requestAccess(
+						params.url,
+						requesterOf(params, requestId),
+						"async",
+						requestId,
+						// Optional opt-out for a caller that wants the grant without the page
+						// opening (unused by lop today); anything but an explicit `false`
+						// keeps the default.
+						{ openOnApproval: params.open_on_approval !== false },
+					),
 					requesterOf(params, requestId),
-					"async",
-					requestId,
 				);
 			case "await_access":
-				return this.awaitAccess(params, requestId);
+				return this.withOpenedTab(
+					await this.awaitAccess(params, requestId),
+					requesterOf(params, requestId),
+				);
 			case "cancel_access":
 				return this.approvals.cancelAccess(
 					params.url,
@@ -942,6 +959,35 @@ export class BrowserHost implements BrowserActionContext {
 				return current;
 			await new Promise((resolve) => setTimeout(resolve, 300));
 		}
+	}
+
+	/**
+	 * Add `opened_tab: true` to an `allowed` access answer when the operator's
+	 * Allow opened the page for this requester and that tab is still waiting.
+	 *
+	 * Also to a `pending` answer that opens on approval: a re-request after the
+	 * `once` grant lapsed, while the operator's signed-in page is still open. A
+	 * re-approval brings that same tab back (`openApprovedRequest`), so the session
+	 * can tell the operator they need not sign in again. Not on an opted-out
+	 * request, whose Allow opens (and brings back) nothing.
+	 *
+	 * Additive and handle-free on purpose: the session learns that a page is open
+	 * for the operator (so it can say "sign in there, then reply" instead of
+	 * opening a second tab), but no capability crosses until its own `open` picks
+	 * the tab up through admission. An older session ignores the key.
+	 */
+	private withOpenedTab(
+		result: Record<string, unknown>,
+		requester: string,
+	): Record<string, unknown> {
+		if (
+			(result.state === "allowed" ||
+				(result.state === "pending" && result.opens_on_approval === true)) &&
+			typeof result.origin === "string" &&
+			this.registry.approvalPickupTab(requester, result.origin, Date.now())
+		)
+			return { ...result, opened_tab: true };
+		return result;
 	}
 
 	/** Bounded by the wire's own budget for this method, for the case where a
@@ -1209,6 +1255,11 @@ export class BrowserHost implements BrowserActionContext {
 				// one) would then be published to the UI.
 				requesterSessionId: sessionRequesterOf(entry.requester),
 			})),
+			// WHAT AN AGENT TAB IS WAITING ON A PERSON FOR, across every tab: a custody
+			// hold or a held popup (`user-attention.ts`). The sidebar draws these as
+			// notification rows and the Browser badge counts them; nothing moves the
+			// user's view until they click one (operator report 2026-11-15).
+			waitingOnUser: this.waitingOnUser?.() ?? [],
 			// Which sites an agent may act on as the user RIGHT NOW (design 9.3's
 			// honesty requirement). Shipped in the same projection as the strip rather
 			// than behind a second channel: the answer is only useful next to the tabs
@@ -2241,6 +2292,12 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
+	/** `BrowserActionContext.prepareAgent`: the action-side hand-over (the approval
+	 * pickup) runs the same preparation `handOver` below does. */
+	prepareAgent(record: TabRecord): void {
+		this.pageControls.prepareAgent(record);
+	}
+
 	/** Hand a user tab to a session, minting the capability. The RENDERER never
 	 * sees the nonce: it travels to the session through `tabs`, which is what keeps
 	 * this the one authority transfer rather than an exposure (design 6.3, 11.7). */
@@ -2287,9 +2344,108 @@ export class BrowserHost implements BrowserActionContext {
 		entryId: string,
 		decision: ConsentDecision,
 	): Record<string, unknown> {
+		// Read BEFORE `respond`: answering removes the entry, and its requested URL
+		// with it. Both consent surfaces (the native approvals card and the chrome
+		// band's IPC) end here, which is why the auto-open lives here and not in
+		// either of them.
+		const entry = this.approvals
+			.pendingEntries()
+			.find((candidate) => candidate.entryId === entryId);
+		const requestedUrl = this.approvals.requestedUrl(entryId);
 		const result = this.approvals.respond(entryId, decision);
+		// Deny, an expired entry (`respond` throws) and a cancelled or superseded
+		// one (not pending, so `respond` throws) never reach this line.
+		if (result.state === "allowed" && entry && requestedUrl)
+			this.openApprovedRequest(entry.requester, entry.origin, requestedUrl);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/**
+	 * After an Allow, open the page the agent asked for in a NEW USER tab, so the
+	 * operator can sign in (or do whatever the agent asked) and the agent's next
+	 * plain `open` continues in that same tab (`actions/tabs.ts`, the approval
+	 * pickup). The operator's request this answers: "if approved, the flow
+	 * continues and the tab opens ... and get back to the agent in one go".
+	 *
+	 * Constraints, each load-bearing:
+	 * - A USER tab, not an agent tab or the requester's held tab: sign-in popups
+	 *   from an agent tab are held (`user-attention.ts`), link tabs from it never
+	 *   activate, the agent could read the page while credentials are typed, and an
+	 *   agent tab would cost a `MAX_AGENT_TABS` slot before anyone picked it up.
+	 * - A plain user navigation, NOT `admit`: a `once` grant is not spent here;
+	 *   the agent's pickup spends it, exactly once.
+	 * - Only the approved origin is ever loaded (the stored URL must be on
+	 *   `entry.origin`), and only for a `session:*` requester, since only a session
+	 *   can pick the tab up.
+	 * - Revealing it is the registry's ordinary user-tab activation. No window
+	 *   show/focus: the consent card is only shown while the browser pane is, so the
+	 *   page lands where the operator is already looking.
+	 * - It NEVER throws: an Allow that already wrote its grant must not come back to
+	 *   the card as an error. Failures are logged without the URL (it may carry
+	 *   tokens in its query).
+	 */
+	private openApprovedRequest(
+		requester: string,
+		origin: string,
+		rawUrl: string,
+	): void {
+		// The error's CODE only, never its message: Electron's `loadURL` rejection
+		// embeds the URL it was loading, which is exactly what `[URL omitted]` keeps
+		// out of the log.
+		let created: TabRecord | null = null;
+		const fail = (error: unknown) => {
+			const code =
+				error && typeof error === "object" && "code" in error
+					? String((error as { code: unknown }).code)
+					: error instanceof Error
+						? error.name
+						: "unknown";
+			// `loadURL` rejects with ERR_ABORTED when the page replaces its own first
+			// navigation (an SPA or identity-provider redirect before load). The tab
+			// is open and still marked, so this is not a failure to report; only the
+			// strip refresh `createUserTab` skipped is owed (review round 1, R3).
+			if (
+				code === "ERR_ABORTED" &&
+				created &&
+				this.registry.approvalPickupTab(requester, origin, Date.now()) ===
+					created
+			) {
+				this.onChanged();
+				return;
+			}
+			this.log(
+				`[browser] could not open the approved page on ${origin} for ${requester} [URL omitted]: ${code}`,
+			);
+		};
+		try {
+			if (!requester.startsWith("session:")) return;
+			const url = safeHttpUrl(rawUrl);
+			if (url.origin !== origin) return;
+			const now = Date.now();
+			const pickup = {
+				requester,
+				origin,
+				expiresAt: now + ACCESS_RESULT_TTL_MS,
+			};
+			// A re-approval (the `once` grant lapsed while the operator was still
+			// signing in, so the agent asked again) brings back the tab that is already
+			// waiting rather than opening a second copy of the same sign-in.
+			const existing = this.registry.approvalPickupTab(requester, origin, now);
+			if (existing) {
+				existing.approvalPickup = pickup;
+				this.registry.activate(existing.tabId);
+				return;
+			}
+			this.createUserTab(sessionIdOf(requester), url.href, (record) => {
+				// Marked synchronously at creation, before the first await, so a pickup
+				// or an `await_access` that races the page load already sees it.
+				created = record;
+				record.approvalPickup = pickup;
+			}).catch(fail);
+		} catch (error) {
+			fail(error);
+		}
 	}
 
 	/**

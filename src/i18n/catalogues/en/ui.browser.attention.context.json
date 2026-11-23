@@ -1,0 +1,80 @@
+{
+	"ui.browser.attention.heading": {
+		"role": "section heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Small label above the sidebar's list of browser notifications: things an agent's browser tab is waiting on the user to do (answer a password manager, open a sign-in window, approve site access). The user opens each when they choose.",
+		"length": "Short; sidebar width (~220px)."
+	},
+	"ui.browser.attention.passkey": {
+		"role": "notification title",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "A password manager's passkey/sign-in prompt appeared in a tab an agent is driving; the agent is paused until the user answers it. Use the locale's usual term for 'password manager'.",
+		"length": "Short; one line in a ~220px sidebar row, may truncate."
+	},
+	"ui.browser.attention.popup": {
+		"role": "notification title",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "A web page in an agent's browser tab opened a new window (any kind: sign-in, payment, sharing, a document). The window is kept hidden until the user opens it from this row. Avoid the word 'waiting': the section heading above already says it.",
+		"length": "Short; one line in a ~220px sidebar row."
+	},
+	"ui.browser.attention.site_access": {
+		"role": "notification title",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "An agent asked permission to act on a website as the user; the user approves or denies it in the browser's approvals card.",
+		"length": "Short; one line in a ~220px sidebar row."
+	},
+	"ui.browser.attention.no_site": {
+		"role": "fallback label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in place of a website address when the waiting tab has no web address yet (blank page)."
+	},
+	"ui.browser.attention.open_label": {
+		"role": "accessible name (aria-label) of a clickable notification row",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Read by screen readers. {need} is one of the notification titles; {site} a website host; {session} a conversation title. 'Open it' means clicking takes the user to that browser tab.",
+		"placeholders": {
+			"need": "notification title",
+			"site": "website host name",
+			"session": "conversation title"
+		}
+	},
+	"ui.browser.attention.open_label_paused": {
+		"role": "accessible name (aria-label) of a clickable notification row",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Read by screen readers for a password-manager prompt. The agent ({session}) cannot continue until the user answers, so say it is paused. {need} is the notification title; {site} a website host. 'Open it' means clicking takes the user to that browser tab.",
+		"placeholders": {
+			"need": "notification title",
+			"site": "website host name",
+			"session": "conversation title, or a phrase like 'An agent'"
+		}
+	},
+	"ui.browser.attention.more": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Last row of the sidebar's browser notifications when more than two are waiting; clicking opens the Browser view, which lists them all. 'Browser' is the name of the app's Browser destination in the sidebar; use the same word as that destination.",
+		"placeholders": {
+			"count": "number of further notifications (plural selector)",
+			"countText": "the same number, formatted"
+		}
+	},
+	"ui.browser.attention.announce": {
+		"role": "screen-reader announcement (polite live region)",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Read aloud once when a new notification appears in the sidebar; never shown on screen. {session} is the conversation (or 'An agent') whose browser tab needs the user; {need} is the notification title; {site} a website host.",
+		"placeholders": {
+			"need": "notification title",
+			"site": "website host name",
+			"session": "conversation title, or a phrase like 'An agent'"
+		}
+	},
+	"ui.browser.attention.announce_paused": {
+		"role": "screen-reader announcement (polite live region)",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Same as the announcement above, for a password-manager prompt: the agent cannot continue until the user answers, so say it is paused.",
+		"placeholders": {
+			"need": "notification title",
+			"site": "website host name",
+			"session": "conversation title, or a phrase like 'An agent'"
+		}
+	}
+}

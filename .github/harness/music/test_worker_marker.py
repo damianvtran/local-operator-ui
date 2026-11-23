@@ -49,6 +49,34 @@ class MarkerHelpersTest(unittest.TestCase):
         self.assertEqual(pick([msg('user', 'MUSIC_QA_TOOL gen-1'), msg('tool', 'x')]), ['gen-1'])
         self.assertEqual(pick([]), [])
 
+    def test_preface_reads_then_command_call(self):
+        # Q-1 (#1893): the native pending command makes three reads FIRST, the
+        # field shape that folded the generating card. The prompted turn emits
+        # the reads; the continuation whose tail answers THOSE ids emits the
+        # command's own call; anything else (a job follow-up) emits nothing.
+        step = self.boot['preface_step']
+        cmd = {'id': 'gen-9', 'tool': 'generate_music', 'args': {},
+               'preface': ['guide://music-generation', 'tool://generate_music', 'tool://music_status']}
+        ids = self.boot['preface_call_ids'](cmd)
+        self.assertEqual(ids, ['gen-9-read-0', 'gen-9-read-1', 'gen-9-read-2'])
+        prompt = [msg('user', 'MUSIC_QA_TOOL gen-9')]
+        self.assertEqual(step(cmd, prompt), 'preface')
+
+        def result(call_id):
+            row = msg('tool', 'ok')
+            row.tool_call_id = call_id
+            return row
+        after = prompt + [msg('assistant', '')] + [result(i) for i in ids]
+        self.assertEqual(step(cmd, after), 'tool')
+        # Only two of three reads answered: not yet.
+        self.assertIsNone(step(cmd, prompt + [msg('assistant', '')] + [result(i) for i in ids[:2]]))
+        # A later follow-up turn whose tail is a user row never qualifies.
+        self.assertIsNone(step(cmd, after + [msg('assistant', 'ok'), msg('user', 'job_result: completed')]))
+        # A command without a preface keeps the original single-step rule.
+        plain = {'id': 'gen-1', 'tool': 'generate_music', 'args': {}}
+        self.assertEqual(step(plain, [msg('user', 'MUSIC_QA_TOOL gen-1')]), 'tool')
+        self.assertIsNone(step(plain, [msg('user', 'MUSIC_QA_TOOL other')]))
+
     def test_session_state_after_prompt_keeps_marker(self):
         # R18 regression (run 42727770460): Core's _commit_system_state appended
         # a [session-state] row AFTER the status-cancel prompt; it renders as a
@@ -95,6 +123,17 @@ async def main():
     (root / 'model-command.json').write_text(json.dumps({'id': 'mod-3', 'tool': 'modify_music', 'args': {}}))
     out['answered_followup'] = await emits(req('MUSIC_QA_TOOL mod-3', 'A:done', '[session-state] jobs'))
     out['state_after_marker'] = await emits(req('A:prior', 'MUSIC_QA_TOOL mod-3', '[session-state] jobs'))
+    # Q-1 (#1893): a preface command emits Core-typed `read` calls first, then
+    # its own call once Core's `tool` rows answer those ids.
+    read = AgentTool(name='read', description='d', parameters={'type': 'object'}, execute=noop)
+    (root / 'model-command.json').write_text(json.dumps({'id': 'gen-4', 'tool': 'modify_music', 'args': {},
+                                                         'preface': ['guide://music-generation', 'tool://x']}))
+    first = req('MUSIC_QA_TOOL gen-4'); first.tools.append(read)
+    calls = [e for e in [e async for e in boundary(first)] if isinstance(e, StreamToolCallDelta)]
+    out['preface'] = [(e.id, e.name, json.loads(e.argument_delta)['path']) for e in calls]
+    rows = first.messages + [Message(role='assistant', content=[])] + [
+        Message(role='tool', tool_call_id=e.id, tool_name='read', content=[TextContent(text='ok')]) for e in calls]
+    out['after_preface'] = await emits(ChatRequest(model=first.model, tools=first.tools, messages=rows))
     print(json.dumps(out))
 asyncio.run(main())
 '''
@@ -118,7 +157,10 @@ class RealBoundaryTest(unittest.TestCase):
             out = json.loads(run.stdout.strip().splitlines()[-1])
             self.assertEqual(out, {'followup': [], 'other_id': [], 'prefix_id': [],
                                    'match': ['mod-2'], 'match_again': [],
-                                   'answered_followup': [], 'state_after_marker': ['mod-3']})
+                                   'answered_followup': [], 'state_after_marker': ['mod-3'],
+                                   'preface': [['gen-4-read-0', 'read', 'guide://music-generation'],
+                                               ['gen-4-read-1', 'read', 'tool://x']],
+                                   'after_preface': ['gen-4']})
             receipts = [json.loads(line) for f in root.glob('bootstrap-*.jsonl')
                         for line in f.read_text().splitlines()]
             skipped = [r for r in receipts if r['event'] == 'turn_without_marker']

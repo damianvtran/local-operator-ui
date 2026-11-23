@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1978 (move dialog working set)",
+  "locale": "zh-CN",
+  "namespace": "ui.mesh",
+  "pr": 1978,
+  "date": "2026-11-18",
+  "head": "dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc",
+  "instance": "b973c86b28e4-pr1978-r1-zh-CN",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (lopdev task subagent); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Auditor session b973c86b28e4 (task role, lopdev lane move-working-set, manager 35c4f00e8d73). Translator was a different session: agent coder, job eacba7a3806e, session 76c99189cb1d. Same served model family as the translator (anthropic/claude-opus-5-5), different agent and run; no fallback. No MT or translation API used.",
+    "instance": "b973c86b28e4-pr1978-r1-zh-CN"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "references": {
+    "glossary": "damianvtran/local-operator i18n/glossary.md @ origin/main d0484be33486 (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7)",
+    "style_guide": "damianvtran/local-operator i18n/style-guides/zh-CN.md @ origin/main d0484be33486 (sha256 615a126a8dbff72c52875a56aa80728f8af858764ef4974e1f74192589b830b6)",
+    "context": "src/i18n/catalogues/en/ui.mesh.context.json @ dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc"
+  },
+  "findings": [
+    {
+      "id": "ZH-1",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_warning",
+      "keys": [
+        "ui.mesh.mesh_actions.working_set_warning",
+        "ui.mesh.mesh_actions.working_set_sent_heading",
+        "ui.mesh.mesh_actions.working_set_detached",
+        "ui.mesh.mesh_actions.working_set_worktree_counts",
+        "ui.mesh.mesh_actions.working_set_dest_path",
+        "ui.mesh.mesh_actions.working_set_clone",
+        "ui.mesh.mesh_actions.working_set_clone_sized",
+        "ui.mesh.mesh_actions.working_set_kind_ignored",
+        "ui.mesh.mesh_actions.working_set_recreate_with",
+        "ui.mesh.mesh_actions.working_set_reason_lfs",
+        "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer",
+        "ui.mesh.mesh_actions.working_set_checkbox",
+        "ui.mesh.mesh_actions.working_set_warning_leave",
+        "ui.mesh.mesh_actions.working_set_warning_without",
+        "ui.mesh.mesh_actions.working_set_unknown",
+        "ui.mesh.mesh_actions.working_set_kept_heading",
+        "ui.mesh.mesh_actions.working_set_checkbox_leave",
+        "ui.mesh.mesh_actions.working_set_clone_pending"
+      ],
+      "problem": "18 keys insert ASCII spaces between Chinese and a placeholder or Latin run ('发送到 {device}：', '将发送 {count…} 个工作树', '游离 HEAD', '被 Git 忽略', '更新 Local Operator'). zh-CN.md: 'No space inserted between Chinese text and Latin/digit runs'; the existing ui.mesh values have 0 such spaces vs 109 unspaced placeholder joins (corpus-wide 138 vs 2379).",
+      "fix": "Drop the spaces: '发送到{device}：', '将发送{count, number, ::group-off}个工作树', '游离HEAD', '被Git忽略', '在该设备上更新Local Operator', '可用{command}重新创建'…"
+    },
+    {
+      "id": "ZH-2",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_loading",
+      "problem": "Single '…'; zh-CN.md requires the two-mark ellipsis '……' (ui.mesh already uses it in 10 of 11 values).",
+      "fix": "'正在检查此次移动会发送哪些工作文件……'"
+    },
+    {
+      "id": "ZH-3",
+      "severity": "MINOR",
+      "key": "ui.mesh.mesh_actions.working_set_withheld_heading",
+      "problem": "'已保留——不会发送' uses 保留, the same word as the neighbouring heading left_behind_heading '保留在原处' (and the corpus's usual sense 'kept'); the two section headings — secrets withheld vs dependencies left in place — become hard to tell apart.",
+      "fix": "'已拦截——不会发送'"
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical checks on the committed bytes at dd014c1e9d (scratch script run with the repo's @formatjs/icu-messageformat-parser): key set equals English; the base..head diff of this file is exactly the 42 added working_set_* lines (0 changed, 0 removed values, so every other value is the bytes audited by the superseded row); every audited value parses and carries the same arguments, types and ::group-off skeletons as English; plural arms present for every CLDR category of the locale and no foreign arm; NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; no leading/trailing/double spaces; no <Trans> tags in this namespace. Rendered fit NOT verified in this lane (no rendered frames)."
+    }
+  ],
+  "audited_values": {
+    "ui.mesh.mesh_actions.working_set_loading": "正在检查此次移动会发送哪些工作文件…",
+    "ui.mesh.mesh_actions.working_set_error": "无法检查此次移动会发送哪些工作文件。如果此对话有工作文件，移动会在发送任何内容之前请你先检查。",
+    "ui.mesh.mesh_actions.working_set_warning": "在对话进行中移动，会把此对话的所有工作文件发送到 {device}：下方的工作树及其未推送的提交和未提交的更改，以及临时文件和会话记忆。只有在 {device} 应该保存这些工作时才继续。",
+    "ui.mesh.mesh_actions.working_set_changed": "自你检查后，工作文件已发生变化。请查看更新后的列表并再次确认。",
+    "ui.mesh.mesh_actions.working_set_sent_heading": "{count, plural, other {将发送 {count, number, ::group-off} 个工作树}} · 共 {size}",
+    "ui.mesh.mesh_actions.working_set_detached": "游离 HEAD",
+    "ui.mesh.mesh_actions.working_set_worktree_counts": "{unpushed, plural, other {{unpushed, number, ::group-off} 个未推送的提交}} · 已暂存 {staged, number, ::group-off} · 未暂存 {unstaged, number, ::group-off} · 未跟踪 {untracked, number, ::group-off}",
+    "ui.mesh.mesh_actions.working_set_dest_path": "将放在 {path}",
+    "ui.mesh.mesh_actions.working_set_clone": "{device} 还没有这个仓库，因此将从 {url} 克隆。",
+    "ui.mesh.mesh_actions.working_set_clone_sized": "{device} 还没有这个仓库，因此将从 {url} 克隆（约 {size}）。",
+    "ui.mesh.mesh_actions.working_set_withheld_heading": "已保留——不会发送",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_path": "看起来是机密文件，因此不会发送。",
+    "ui.mesh.mesh_actions.working_set_withheld_secret_content": "包含类似机密的值，因此不会发送。",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_path": "某个未推送的提交添加了类似机密的文件，因此不会发送。",
+    "ui.mesh.mesh_actions.working_set_withheld_history_secret_content": "某个未推送的提交包含类似机密的值，因此不会发送。",
+    "ui.mesh.mesh_actions.working_set_left_behind_heading": "保留在原处",
+    "ui.mesh.mesh_actions.working_set_kind_dependency_tree": "依赖项",
+    "ui.mesh.mesh_actions.working_set_kind_build_output": "构建输出",
+    "ui.mesh.mesh_actions.working_set_kind_ignored": "被 Git 忽略",
+    "ui.mesh.mesh_actions.working_set_kind_loose_file": "工作树之外的文件",
+    "ui.mesh.mesh_actions.working_set_recreate_with": "可用 {command} 重新创建",
+    "ui.mesh.mesh_actions.working_set_reason_contended": "另一个进行中的对话正在使用此工作树，因此它保留在原处。",
+    "ui.mesh.mesh_actions.working_set_reason_outside_home": "此工作树位于主文件夹之外，因此无法放到另一台设备上。",
+    "ui.mesh.mesh_actions.working_set_reason_unmerged": "此工作树有未解决的合并冲突。请先解决，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_in_progress_operation": "这里有正在进行的合并、变基或拣选。请完成或中止它，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_submodule": "暂不支持带子模块的工作树。",
+    "ui.mesh.mesh_actions.working_set_reason_lfs": "暂不支持使用 Git LFS 的工作树。",
+    "ui.mesh.mesh_actions.working_set_reason_history_secret": "未推送的历史中包含类似机密的内容。请推送或改写该提交，或把它移出此分支，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_over_cap": "太大，无法随此次移动发送。请推送它，或在另一台设备上克隆，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_destination_conflict": "另一台设备在此路径已有不同的检出。",
+    "ui.mesh.mesh_actions.working_set_reason_unsupported_by_peer": "另一台设备暂时无法接收工作树。请在该设备上更新 Local Operator，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_unknown": "不会发送（{code}）。",
+    "ui.mesh.mesh_actions.working_set_checkbox": "我确定 {device} 应该接收这些文件",
+    "ui.mesh.mesh_actions.working_set_warning_leave": "此版本还不会移动工作文件。下方的工作树会留在原处，因此 {device} 上的对话不会有它们未推送的提交或未提交的更改。移动前请先推送或提交你需要的内容。",
+    "ui.mesh.mesh_actions.working_set_warning_without": "这些工作文件无法随此次移动发送，因此 {device} 上的对话不会有它们。你可以不带这些文件移动，或者取消并先推送或提交你的工作。",
+    "ui.mesh.mesh_actions.working_set_unknown": "无法检查工作文件，因此它们无法随此次移动发送，{device} 上的对话也不会有它们。你可以不带这些文件移动，或者取消后重试。",
+    "ui.mesh.mesh_actions.working_set_kept_heading": "{count, plural, other {{count, number, ::group-off} 个工作树留在原处}}",
+    "ui.mesh.mesh_actions.working_set_checkbox_leave": "我了解 {device} 上的对话不会有这些文件",
+    "ui.mesh.mesh_actions.working_set_clone_pending": "如果另一台设备没有此仓库，会在检查可用空间后从 {url} 克隆。",
+    "ui.mesh.mesh_actions.working_set_reason_history_unscanned": "未推送的历史太大，无法检查是否包含机密，因此不会发送。请推送这些提交，或把它们移出此分支，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_destination_cannot_clone": "另一台设备无法克隆此仓库。请先在该设备上克隆，然后再次移动。",
+    "ui.mesh.mesh_actions.working_set_reason_not_transferred": "未移动：此版本还不会传输工作树。"
+  },
+  "prior_audits": [
+    {
+      "instance": "i18n-audit-uimesh-zh-cn-59a1adac0231",
+      "covers": "every ui.mesh value other than the 42 working_set_* keys (byte-identical at this head); moved to superseded by this row"
+    }
+  ],
+  "scope": "PR #1978 round 1 (1fb3d656c3..dd014c1e9d): the 42 added ui.mesh.mesh_actions.working_set_* keys; the remaining values are unchanged bytes covered by the prior audit",
+  "binding": "Verified on the committed tree at dd014c1e9de973a72ef3e64e75cccfc2cf4e8fcc (worktree .worktrees/move-confirm-dialog): target src/i18n/catalogues/zh-CN/ui.mesh.json sha256 6936b517d387d8864398cdd34c9e3dc730d50a1a1f5c5f5f323ae7e09cb1f78d; English sha256 6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1; context sha256 bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21.",
+  "en_sha256": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1",
+  "context_sha256": "bf697eeff765fa92d20dd5aae4b584d7d527125b20bd980cd62ce4e19ef6bd21",
+  "target_sha256": "6936b517d387d8864398cdd34c9e3dc730d50a1a1f5c5f5f323ae7e09cb1f78d",
+  "sha256": {
+    "zh-CN": "6936b517d387d8864398cdd34c9e3dc730d50a1a1f5c5f5f323ae7e09cb1f78d",
+    "en": "6091174bfc2a5c7b1ecde89c69712bd6d07a07647b1cff97abb1df031f4c83a1"
+  }
+}

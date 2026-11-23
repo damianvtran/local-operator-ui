@@ -116,6 +116,17 @@ why will get the next case right where a checklist would not name it.
   band this rule forbids; a content column inside a grounded, `panel-flush`
   ancestor needs no ground of its own, and adding one there is a second tone
   step where the panel already has one.
+- **Full screen keeps the same rule with a smaller number.** With no OS
+  controls over the window, every OS and chrome mode resolves the top inset to
+  `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
+  first rows do not sit hard against the screen edge. It is still **padding
+  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
+  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
+  every panel's ground still reaches y0, and the lane and route band are hidden
+  so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
+  insets, native frames) do not change. No transition on the padding; it flips
+  in the frame the `data-chrome-fullscreen` attribute does.
+  `scripts/chrome-fullscreen-inset.test.mjs` resolves the cascade per state.
 - **Separate panels by ground value; a panel's edge may carry one `PanelEdge`
   seam, never a border.** The tone step is what separates two planes, and the
   old borders were removed three times, each time because the line started
@@ -182,9 +193,14 @@ The mechanics:
   interface-language picker writes it through `settings.edit`; the UI reads the
   resolved tag from `GET /v1/capabilities` when `features.i18n` is advertised.
   `auto` follows the backend's OS-locale resolver (subject to its override and
-  shipped-locale rules). Before negotiation, or with an older backend, the UI
-  uses `navigator.language`, then `en`. Do not add a localStorage preference or
-  use `setLocale()` as a production override; backend choices own availability.
+  shipped-locale rules). Before negotiation, the main window uses the tag the
+  backend last confirmed (a localStorage CACHE written only from a capabilities
+  answer, `src/renderer/src/shared/i18n/last-language.ts`), else
+  `navigator.language`, then `en`; with an older backend, the device. Do not add
+  a localStorage preference or use `setLocale()` as a production override;
+  backend choices own availability. A change of the backend's resolved language
+  invalidates every cached query (`refreshServerLocalizedQueries`), because the
+  backend renders much of its copy per request in that language.
 - **Add a string:** put a stable semantic `ui.<area>.<name>` key in
   `src/i18n/catalogues/en/ui.<area>.json` (for example
   `ui.settings.language.external_notice` in `ui.settings.json`), and translate it
@@ -396,8 +412,10 @@ resolution may not do, and a green head here is still perishable: a 19-35 minute
 CI wait against a 32-minute merge cadence means it is routinely superseded
 before it can be used. If you need the window, ask the
 current release-window owner to hold merges for one CI cycle - that role exists
-only while a `chore(release): claim release window` PR is open, so if no window is
-claimed, say so in the fold's own lane and take it: announce the hold where lanes
+only while a release PR is open — branch `release-next*` or `release/claim*`, or
+title `chore(release)…` (find it with the lookup in step 1 of the release
+procedure, never a `--search`), so if no
+window is claimed, say so in the fold's own lane and take it: announce the hold where lanes
 read, then fold, push and merge. What the one-at-a-time window was buying is now
 bought by the retirement itself: the churn that made a green head expire was a
 stored hash of a tree the file does not own, and it is gone.
@@ -1541,11 +1559,26 @@ an unattended launch can never answer.
 
 ### Capturing the frame
 
-Capture from inside the app — `webContents.capturePage()` or CDP — never with
-macOS `screencapture`, which works only on the frontmost window and so requires
-exactly the focus theft this section exists to remove. Storybook evidence is
-unaffected: `node scripts/capture-evidence.mjs <storybook-origin>` already drives a
-private `--headless=new` Chrome.
+Capture from inside the app — `webContents.capturePage()` or CDP — and never
+with an interactive or full-screen macOS `screencapture`, which photographs
+whatever is in front and so invites exactly the focus theft this section exists
+to remove. Storybook evidence is unaffected: `node scripts/capture-evidence.mjs
+<storybook-origin>` already drives a private `--headless=new` Chrome.
+
+**The one sanctioned window-server capture is the vibrancy path.** An in-app
+capture cannot see macOS vibrancy (the window server composites the blurred
+desktop; the page never paints it), so a frame that must show it is taken by
+`scripts/mac-proof-capture.mjs` ([`docs/mac-proof-capture.md`](docs/mac-proof-capture.md)):
+a window-only `screencapture -x -o -l <windowid>` of an `inactive` window that
+harness launched itself, in one self-contained command that launches, captures
+and reaps. `-l` names one window by its CGWindowID, so nothing is activated,
+raised or focused, and the harness refuses a run whose app reports `normal` or
+`focused=true`. **Claim pending Mac measurement**: that `-l` of a non-front
+`inactive` window carries real vibrancy with no activation or focus change has
+not yet been measured on a Mac; until it has, frames from this path say so
+(receipt method `screencapture -l (real vibrancy, pending Mac measurement)`).
+Run it as a background job or with a caller timeout of at least `--timeout` +
+60 s: a SIGKILLed harness cannot reap the rig's `lop serve`.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated
@@ -1653,6 +1686,53 @@ The rule for the class is therefore about the sweep as much as the launch:
   is another, and a matrix of THOSE is never acceptable whatever it measures,
   because the interruption is the measurement's side effect rather than its
   subject. If the question genuinely needs focus, measure it once.
+
+### A packaged bundle is never run in node mode (F2 fuses)
+
+Packaged builds flip Electron's fuses (`build.electronFuses` in `package.json`;
+the table and its reasons are in `scripts/electron-fuse-policy.mjs`): RunAsNode,
+`NODE_OPTIONS` and `--inspect` are OFF, asar integrity, only-load-from-asar and
+cookie encryption are ON. They exist so a same-uid process cannot run its own
+code inside the genuine signed app, which the runtime relies on to treat card
+answers from the app as the operator's. For a rig that means:
+
+- **`ELECTRON_RUN_AS_NODE=1 <packaged exe> …` now BOOTS THE WHOLE APP** — a
+  window, the backend, the keychain — instead of running a Node one-liner. Never
+  use node mode against a `dist/` or installed bundle. To ask a packaged bundle
+  "do you start and load your own `app.asar`/bytecode?", run it with
+  `LOCAL_OPERATOR_LOG_DIR=<scratch>/logs <exe> --lo-launch-probe
+  --user-data-dir=<scratch> --use-mock-keychain --window-mode=headless`: it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line
+  before its lock, window or backend and exits 0 (`src/main/launch-probe.ts`,
+  the release gate's `app-spawn`). The npm `electron` binary is unfused, so dev
+  and CI uses of node mode with `node_modules/.bin/electron` are unaffected.
+- **Pass `--use-mock-keychain` on every packaged launch under a scratch `HOME`.**
+  With cookie encryption on, Chromium encrypts its cookie store with a keychain
+  key, so a scratch `HOME` with no login keychain raises the "Keychain Not Found"
+  prompt class described above.
+- **`NODE_OPTIONS`, `--inspect*` and `ELECTRON_RENDERER_URL` do nothing to a
+  packaged app.** The last is now read only through `devRendererUrl`
+  (`src/main/dev-renderer-url.ts`), which ignores it when packaged; a rig that
+  wants a dev renderer runs the unpackaged app.
+- **Do not edit a built bundle's `app.asar` and expect it to run.** The integrity
+  fuse checks the archive header against the hash in `Info.plist` at launch, and
+  each file against its block hashes when that file is first read; a mismatch
+  aborts (that is the point). A tamper test must change the header or a file
+  read at start-up (`out/main/index.jsc`): a renderer asset only fails later.
+- **The launch probe must not touch the operator's real logs.** The app's log
+  directory is `~/Library/Application Support/Local Operator/logs` under the OS
+  account's home, which neither a scratch `HOME` nor `--user-data-dir` moves. A
+  probe launch writes no log files (`logFilesEnabled` in
+  `src/main/backend/log-dir.ts`), and every rig and gate that launches the probe
+  also sets `LOCAL_OPERATOR_LOG_DIR=<scratch>` so an older bundle cannot write
+  there either (native QA on PR #1948 measured five lines landing in the
+  operator's files from one probe).
+- **Tamper rows use ad-hoc re-signed copies, never a launched Developer ID
+  copy.** Launching a tampered Developer ID–signed bundle makes Gatekeeper show
+  a code-evaluation prompt on the operator's screen, even for a non-quarantined
+  copy (the `com.apple.provenance` xattr is enough). Re-sign the copy ad hoc
+  (`codesign --force --deep --sign -`) before tampering and launching it, and
+  prove the Developer ID signature row statically with `codesign --verify
+  --deep --strict`, without launching that copy.
 
 ### What already opens no window, so a rebase does not re-introduce one
 
@@ -2225,17 +2305,17 @@ that event's own payload.
 branch. A PR never touches it, and the reviewer round treats a version change
 inside a feature PR as a finding.
 
-**CI checks this**, in the `Version Bump Guard` workflow
-(`.github/workflows/version-bump-guard.yml`, `scripts/version-bump-guard.mjs`). A
+**CI checks this**, in the `version-bump-guard` job of `ci.yml` behind `CI Gate`
+(`.github/workflows/ci.yml`, `scripts/version-bump-guard.mjs`). A
 pull request whose diff changes the `version` line fails unless its title starts
 with `chore(release):`. Dependency and metadata edits to `package.json` are
 unaffected — the guard reads the version line, not the file.
 
 **On a release-bump PR that guard is the only check.** A version-only
-`package.json` diff is classified as a release bump, so every job in `ci.yml` is
-a deliberate skip and that pull request's whole PR-side evidence is
-`Version Bump Guard` plus the `Change Scope` job that decided so (see *Change
-scope*). Do not read those two green checks as a matrix: the review round on the
+`package.json` diff is classified as a release bump, so every scope-flagged job in
+`ci.yml` is a deliberate skip and that pull request's whole PR-side evidence is
+`Version Bump Guard` plus `Change Scope` behind `CI Gate` (see *Change
+scope*). Do not read those green checks as a matrix: the review round on the
 one-line diff is the rest of the assurance.
 
 It makes the violation loud; it does not make it impossible. This repository's
@@ -2282,12 +2362,15 @@ look is a rule that fails on the day someone does not.
 
 ### The merge gate (full suite)
 
-**The full desktop suite runs for a pull request EXACTLY ONCE, at the merge gate,
-and a red gate blocks the merge.** Review rounds stay cheap: nothing here runs
-the suite per push (*Targeted tests* above). The trigger is a LABEL EVENT -
+**The full desktop suite and macOS native app proofs run for a pull request
+EXACTLY ONCE, at the merge gate, and a red gate blocks the merge.** Review rounds
+stay cheap: nothing here runs the suite or the four PR native scenes per push
+(*Targeted tests* above). The trigger is a LABEL EVENT -
 `pull_request: [labeled]` in `.github/workflows/full-suite.yml` - and the check
 carrying the verdict is `Merge gate (full suite)`, reported by that workflow's
-`merge-gate` job from the `changes`, `test` and `desktop-tests-result` results.
+`merge-gate` job from the `changes`, `test`, `desktop-tests-result` and
+`native-proofs` results. Mid-review QA can also run `native-proofs` on demand via
+`gh workflow run full-suite.yml --ref <branch> -f native_proofs=true`.
 
 **The procedure.** When the code, QA, design and UX rounds are clean and the head
 is FINAL, run `pnpm merge-gate <n>` (`scripts/merge-gate.mjs`). It creates
@@ -2420,14 +2503,29 @@ recording a stop), and two sessions that both look in the same minute each see
 out-of-queue releases in one window. A pull request is observable to every session
 through the forge, so the claim PR is the lock. In order:
 
-1. **Look for the lock.** `gh pr list --search '"chore(release)" in:title'
-   --state open`. An open claim/bump PR means the window is owned: its body names
-   the owning session's pid, so send that session your PR number, merge SHA and
-   `Release:` line and let it aggregate. Do not start a second release. (Quote the
-   phrase: `gh` passes it to GitHub, which reads bare parentheses as syntax and
-   returns nothing.)
+1. **Look for the lock — list and match locally, never `--search`.**
+   ```bash
+   gh pr list --state open --limit 500 --json number,title,headRefName,createdAt \
+     --jq '.[] | select((.headRefName | startswith("release-next") or startswith("release/claim")) or (.title | startswith("chore(release)")))'
+   ```
+   ANY line of output means the window has an owner — claim or bump PR alike: its
+   body names the owning session's pid, so send that session your PR number, merge
+   SHA and `Release:` line and let it aggregate. Do not start a second release.
+   Why not a `--search`: the claim PR is a draft titled `chore(release): claim
+   release window`, and a `--search` on `chore(release)` matches it only when the
+   phrase is quoted exactly right — unquoted, GitHub reads the parentheses as
+   syntax and returns nothing, which reads as "no owner" (measured 2026-11-14:
+   `chore(release)` and `chore(release) in:title` returned nothing while claim PR
+   #1908 was open). Sessions that searched titles nearly claimed the windows #1908
+   and #1878 already held. The branch arm survives the claim→bump retitle; the
+   title arm — a plain local string match in `--jq`, where parentheses are not
+   syntax — catches release PRs pushed from other branch names (#1797
+   `release-0529`, #1649 `release/hub-skill-adoption-window`). `--limit 500`
+   because `gh pr list` stops at 30 by default and the core repo routinely has
+   more than 30 open PRs.
 2. **Take the lock by opening the claim PR** — the owner's *first* act, before
-   collecting anything (step 0 of the procedure below). It starts as one empty
+   collecting anything (step 0 of the procedure below). Its branch MUST start with
+   `release-next`. It starts as one empty
    commit titled `chore(release): claim release window`, opened as a draft PR whose
    body names the owner's session pid from `lop sessions` and carries an empty
    checklist of the window's PRs; only then is it announced with `send` to the
@@ -2472,7 +2570,8 @@ one that ships the wrong tree.
 #    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
-#    release owner's procedure* has found no open chore(release) PR.
+#    release owner's procedure* has found no open release-next*/release/claim*
+#    or chore(release) PR (list-and-match lookup, never --search).
 # In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
 # stranded after their releases. No `trap` and no `$$`: this recipe spans many
 # separate shell invocations (claim, edit, review round, merge, publish), so an

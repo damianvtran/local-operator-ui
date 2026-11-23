@@ -37,6 +37,7 @@ import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
 } from "@features/chat/transcript-display-mode";
+import type { PaletteSort } from "@features/command-palette/palette-search";
 import {
 	captureRefusal,
 	normalizeChord,
@@ -132,6 +133,40 @@ export type AskOpenVia = "menu" | "chord";
 export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
 
 /**
+ * One press of an ask card's Insert or confirmed Run… (see the state's
+ * `consoleCommandIntent`). `command` is already validated by `askCommandOf`;
+ * `submit` presses Enter after typing and is only ever set behind the card's
+ * confirmation dialog.
+ */
+export type ConsoleCommandIntent = {
+	sessionId: string;
+	command: string;
+	submit: boolean;
+	nonce: string;
+	/**
+	 * When the press filed it, on `Date.now()`'s scale. The pane refuses an
+	 * intent older than `CONSOLE_COMMAND_PICKUP_TTL_MS` (`console-command.ts`):
+	 * a press is answered right after it, or not at all (QA round 1, Q1).
+	 */
+	filedAt: number;
+	/**
+	 * The ask and question the command came from, when an ask card filed it.
+	 * Read only by the pane's submit guard, which re-checks at pickup that this
+	 * ask is still answerable and the command still runnable here.
+	 */
+	askId?: string;
+	questionId?: string;
+};
+
+/**
+ * A nonce unique within this renderer: a counter, not randomness — it only has
+ * to tell two presses apart in one process, and the intent is never persisted.
+ */
+let consoleCommandSequence = 0;
+const nextConsoleCommandNonce = (): string =>
+	`console-command:${++consoleCommandSequence}`;
+
+/**
 
  * Type definition for the UI preferences store state
  */
@@ -143,6 +178,27 @@ type UiPreferencesState = {
 	 * Whether the command palette is open
 	 */
 	isCommandPaletteOpen: boolean;
+
+	/**
+	 * The command palette's own row order: `best` (relevance, the default) or
+	 * `recent` (the conversations that moved most recently first).
+	 *
+	 * A PREFERENCE, not a query — it outlives the palette and the launch, which is
+	 * the point: a reader who wants "the last few chats I was in" wants that every
+	 * time they open it, not once. It is one setting for the whole list rather
+	 * than one per scope (`#`, `@`, a bare browse): a per-scope sort would be four
+	 * answers to one question, and the second scope a reader visits would surprise
+	 * them.
+	 *
+	 * The vocabulary is `palette-search.ts`'s (`PaletteSort`), because that module
+	 * owns what the orders MEAN; this store only remembers which one is chosen,
+	 * re-validating it on load (`sanitizePaletteSort`) like every other persisted
+	 * choice here.
+	 */
+	paletteSort: PaletteSort;
+
+	/** Choose the palette's row order (the `ctrl s` toggle, in the palette). */
+	setPaletteSort: (sort: PaletteSort) => void;
 
 	/**
 	 * The current query in the command palette
@@ -767,6 +823,49 @@ type UiPreferencesState = {
 	clearConsoleOpenIntent: (sessionId: string) => void;
 
 	/**
+	 * A SUGGESTED COMMAND waiting to be typed into a fresh terminal of one
+	 * conversation: the ask card's Insert (`submit: false`) or its confirmed
+	 * Run… (`submit: true`). `null` when there is none.
+	 *
+	 * A ONE-SHOT EVENT, NOT A PREFERENCE, for `consoleOpenIntent`'s reasons and
+	 * one more: a persisted copy would re-type — or with `submit`, RE-RUN — a
+	 * command on the next launch with no press behind it. It is excluded from
+	 * `persistedUiPreferences`, so a launch starts with it null by construction.
+	 *
+	 * IT NAMES THE CONVERSATION (the F-6 rule `consoleOpenIntent` follows): only
+	 * the pane mounted for `sessionId` answers it, so a request filed just before
+	 * a conversation switch can never be typed into another conversation.
+	 *
+	 * THE NONCE identifies ONE press. The pane clears the intent by nonce
+	 * (`clearConsoleCommandIntent`), so its clear can never wipe a second press
+	 * made while the first was being answered, and a re-run of its effect over
+	 * the same nonce is recognised and does nothing — the command is typed at
+	 * most once per press. A new press always gets a new nonce, so two presses
+	 * of the same command are two commands, each in its own fresh terminal.
+	 *
+	 * ITS LIFETIME IS SHORT AND BOUNDED THREE WAYS (QA round 1 Q1, agent review
+	 * round 1 m2): a confirmed Run must run right after its confirm, in the
+	 * context it was confirmed in, or never. (1) The pane clears it the moment
+	 * it TAKES it, before the create round trip, so a remount mid-create cannot
+	 * take the same press twice. (2) The pane refuses one older than
+	 * `CONSOLE_COMMAND_PICKUP_TTL_MS`, so a press whose pane never mounted cannot
+	 * fire on a later visit. (3) The filer drops it when the user switches to
+	 * another conversation before pickup (`ask-command-actions.ts`). And a
+	 * `submit` is re-checked against the ask at pickup by the pane's guard.
+	 */
+	consoleCommandIntent: ConsoleCommandIntent | null;
+
+	/** File a suggested command for `sessionId`'s pane (see `consoleCommandIntent`).
+	 * The caller opens the pane itself, as `requestConsoleOpen`'s callers do; this
+	 * never opens anything. A later request replaces an unanswered earlier one. */
+	requestConsoleCommand: (
+		intent: Omit<ConsoleCommandIntent, "nonce" | "filedAt">,
+	) => ConsoleCommandIntent;
+
+	/** The pane has taken the request with this nonce, and only that one. */
+	clearConsoleCommandIntent: (nonce: string) => void;
+
+	/**
 	 * How many of this conversation's console surfaces are RUNNING, as the pane
 	 * published it.
 	 *
@@ -953,31 +1052,6 @@ type UiPreferencesState = {
 
 	/** Set the overflow group's expanded state. */
 	setSidebarOverflowExpanded: (expanded: boolean) => void;
-
-	/**
-	 * Whether agent reasoning (thinking, plan and reflection turns) is shown.
-	 *
-	 * Default false per docs/branding.md § 7: reasoning is the agent talking to
-	 * itself, and rendering it at prose weight is what makes the app read as a
-	 * developer tool. When false, reasoning turns are hidden entirely — a
-	 * collapsed "Reasoning" disclosure would still be chrome on every turn,
-	 * which is the weight this preference exists to remove.
-	 */
-	showAgentReasoning: boolean;
-
-	/**
-	 * Set whether agent reasoning is shown.
-	 *
-	 * Written only by the Appearance switch in `settings-page.tsx`. That is the
-	 * preference's sole control, and for a while it did not exist: the flag, the
-	 * grouping rule that honours it and the disclosure that renders it all
-	 * shipped with nothing able to turn them on, so `AgentReasoning` returned
-	 * null unconditionally and the whole feature was dead in the product while
-	 * looking alive in the source. Keep a control reachable, or delete the rest.
-	 *
-	 * @param show - Whether reasoning turns should be visible
-	 */
-	setShowAgentReasoning: (show: boolean) => void;
 
 	/**
 	 * How the transcript draws a settled turn: `by-turn` (the shipped
@@ -1901,7 +1975,7 @@ export type RunPanelReveal = {
  * Default values for canvas and chat sidebar widths
  *
  * The chat sidebar's default is the ONE sidebar's: 260px, user-resizable
- * 220-320, and those three numbers live in
+ * 220-560, and those three numbers live in
  * `features/chat/chat-sidebar-layout.ts` so the component, the store's clamp and
  * the desktop suite all read one table rather than three copies of it. It was
  * 280 (clamped 240-360) when this was the chat route's SECOND column, beside a
@@ -2120,8 +2194,21 @@ const EMPTY_CONSOLE_UNSEEN: ConsoleUnseenMark[] = [];
  * persisted and become the bound conversation's projection, so the step lifts
  * whichever flag was true into `rightSlotLegacySeed` - the one-shot seed the
  * first bind plants - and deletes the four keys.
+ *
+ * v6 DROPS `showAgentReasoning`. Its only control, General Settings' "show agent
+ * reasoning" switch, was removed because the canonical transcript has no
+ * reasoning record kind: the switch toggled a flag that only Storybook-only legacy
+ * components read, so it changed nothing in the shipped app. Same shape as v2's
+ * `chatMeasureWidth`: without the step the stale key would be copied onto the
+ * state by zustand's merge and written back by the rest-spread on every save.
+ *
+ * v7 IS THE COMMAND PALETTE'S ROW ORDER (`paletteSort`): relevance by default, or
+ * recency, inside one list. Additive - a v6 profile orders the palette exactly as
+ * it did before (relevance), because the step seeds the default and nothing else -
+ * and the merge re-validates it on every load, so a hand-edited value cannot reach
+ * the ranking.
  */
-export const UI_PREFERENCES_VERSION = 5;
+export const UI_PREFERENCES_VERSION = 7;
 
 /**
  * The keys v2 removes from a stored blob. A list rather than a `delete
@@ -2130,6 +2217,24 @@ export const UI_PREFERENCES_VERSION = 5;
  * below does the same).
  */
 const RETIRED_IN_V2: readonly string[] = ["chatMeasureWidth"];
+
+/** The keys v6 removes from a stored blob; see `UI_PREFERENCES_VERSION`. */
+const RETIRED_IN_V6: readonly string[] = ["showAgentReasoning"];
+
+/**
+ * The palette's row order, re-validated on every load.
+ *
+ * `localStorage` is not a trusted input (hand edit, downgrade, half-written
+ * blob), and the value decides the ORDER OF EVERY ROW on a surface the user opens
+ * to navigate the app, so an unrecognised string becomes the default rather than
+ * reaching `compareMatches`'s `=== "recent"` test and silently meaning "best" by
+ * accident. The default is spelled here, once, and `DEFAULT_PALETTE_SORT` in
+ * `palette-search.ts` is the same answer: this module cannot import that one at
+ * runtime without dragging the whole ranking into every store consumer.
+ */
+export function sanitizePaletteSort(value: unknown): PaletteSort {
+	return value === "recent" ? "recent" : "best";
+}
 
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
@@ -2144,9 +2249,11 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				}),
 			isCommandPaletteOpen: false,
 			commandPaletteQuery: "",
+			/* Relevance, not recency, on a fresh install: the palette's whole promise
+			 * is that the best answer to what was typed is the first row. */
+			paletteSort: "best",
 			isSidebarCollapsed: false,
 			sidebarOverflowExpanded: false,
-			showAgentReasoning: false,
 			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 			agentAvatarSize: DEFAULT_AGENT_AVATAR_SIZE,
 			themeName: DEFAULT_THEME,
@@ -2280,6 +2387,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			askOpenIntent: null,
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
+			consoleCommandIntent: null,
 			consoleLiveSurface: null,
 			runPanelReveal: null,
 			codeReviewReveal: null,
@@ -2327,6 +2435,10 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				set({ commandPaletteQuery: query });
 			},
 
+			setPaletteSort: (sort) => {
+				set({ paletteSort: sanitizePaletteSort(sort) });
+			},
+
 			toggleSidebar: () => {
 				set((state) => ({
 					isSidebarCollapsed: !state.isSidebarCollapsed,
@@ -2339,12 +2451,6 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setSidebarCollapsed: (collapsed: boolean) => {
 				set({
 					isSidebarCollapsed: collapsed,
-				});
-			},
-
-			setShowAgentReasoning: (show: boolean) => {
-				set({
-					showAgentReasoning: show,
 				});
 			},
 
@@ -2577,6 +2683,32 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			requestConsoleOpen: (sessionId: string) => {
 				set({ consoleOpenIntent: sessionId });
+			},
+
+			requestConsoleCommand: (intent) => {
+				const filed: ConsoleCommandIntent = {
+					sessionId: intent.sessionId,
+					command: intent.command,
+					submit: intent.submit === true,
+					nonce: nextConsoleCommandNonce(),
+					filedAt: Date.now(),
+					...(intent.askId === undefined ? {} : { askId: intent.askId }),
+					...(intent.questionId === undefined
+						? {}
+						: { questionId: intent.questionId }),
+				};
+				set({ consoleCommandIntent: filed });
+				// Answered with the filed copy so the caller can arm its own lifetime
+				// bounds (the conversation-switch drop) against this press's nonce.
+				return filed;
+			},
+
+			clearConsoleCommandIntent: (nonce: string) => {
+				set((state) =>
+					state.consoleCommandIntent?.nonce === nonce
+						? { consoleCommandIntent: null }
+						: {},
+				);
 			},
 
 			clearConsoleOpenIntent: (sessionId: string) => {
@@ -3069,6 +3201,7 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
+		consoleCommandIntent: unknown;
 		consoleLiveSurface: unknown;
 		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
@@ -3090,6 +3223,7 @@ export function persistedUiPreferences<
 	| "runPanelReveal"
 	| "codeReviewReveal"
 	| "consoleOpenIntent"
+	| "consoleCommandIntent"
 	| "consoleLiveSurface"
 	| "askOpenIntent"
 	| "isAskDrawerOpen"
@@ -3107,6 +3241,9 @@ export function persistedUiPreferences<
 		runPanelReveal: _pending,
 		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
+		/* The ask card's suggested command (`consoleCommandIntent`): a restored copy
+		 * would type — or run — a command on launch with no press behind it. */
+		consoleCommandIntent: _commandIntent,
 		/*
 		 * THE LIVENESS FACT IS A RUN'S OWN READING, not a preference: a restored count
 		 * would claim a process this launch did not start. It is excluded for
@@ -3244,6 +3381,13 @@ export function mergePersistedUiPreferences(
 		 */
 		shortcutBindings: sanitizeShortcutBindings(blob.shortcutBindings),
 		/*
+		 * The palette's order is re-validated here as well as in the v7 step, because
+		 * this is the door a blob with a hand-edited `paletteSort` reaches the state
+		 * through: zustand copies every persisted key onto it and the migration only
+		 * runs for a blob whose stored version is behind.
+		 */
+		paletteSort: sanitizePaletteSort(blob.paletteSort),
+		/*
 		 * THE APPEARANCE LAYERS ARE RE-VALIDATED, never trusted, for the reason the
 		 * shortcut overrides are: each one reaches the composition engine, and a
 		 * colour from it is written into an injected `<style>`.
@@ -3329,6 +3473,8 @@ export function migrateUiPreferences(
 		blob.customAccents = sanitizeCustomAccents(blob.customAccents);
 		blob.customThemeId = sanitizeCustomThemeId(blob.customThemeId);
 	}
+	if (version < 6) for (const key of RETIRED_IN_V6) delete blob[key];
+	if (version < 7) blob.paletteSort = sanitizePaletteSort(blob.paletteSort);
 	return blob;
 }
 

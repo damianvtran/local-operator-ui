@@ -241,6 +241,7 @@ export function useDesktopCapabilities() {
 }
 
 export type DesktopFeature =
+	| "inline_ui"
 	| "session_tags"
 	/**
 	 * The closed human Radient profile/photo relay (`/v1/desktop/account/
@@ -378,6 +379,13 @@ export type DesktopFeature =
 	 */
 	| "team_bridge_thread_reads"
 	/**
+	 * The admitted body behind an inbound Team Bridge transcript card:
+	 * `sessions.bridgeCardBody`, core's entry-keyed display-store read (bridge-body
+	 * design §4). Absent (an older backend): the card keeps "Message body
+	 * unavailable." and makes no request at all.
+	 */
+	| "team_bridge_card_body"
+	/**
 	 * The owner's own agent's per-conversation wake level: the conversation
 	 * menu's "Wake your agent for" group, writing
 	 * `PUT /v1/desktop/team-bridge/conversations/{id}/agent-notify`.
@@ -397,6 +405,13 @@ export type DesktopFeature =
 	 * row (`leaveWithAgentCascade` in `team-bridge-conversation-menu-model.ts`).
 	 */
 	| "team_bridge_leave_withdraws_agent"
+	/**
+	 * RENAME a channel or group: core's `POST .../conversations/{id}/rename`
+	 * desktop route over the hub's rename. Absent: the conversation menu draws
+	 * no Rename item, because every save would be refused by a runtime that has
+	 * no route for it.
+	 */
+	| "team_bridge_conversation_rename"
 	/**
 	 * An agent's OWN published picture through core's closed endpoint relay
 	 * (local-operator #3228). Absent: agent plates keep the glyph and send no
@@ -1006,6 +1021,16 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * `projects.for_session`: the projects one conversation is linked to
+	 * (`GET /v1/desktop/sessions/{id}/projects`), read by the chat canvas's
+	 * Projects view. ITS OWN KEY for the `projects_force_done` reason: the
+	 * Projects tab is complete without it. Absent means the canvas view (and
+	 * its rail door) stay present but SAY the runtime cannot list a
+	 * conversation's projects, and no request is sent - an older daemon 404s
+	 * the route.
+	 */
+	| "projects_by_session"
+	/**
 	 * Temporary chats: a conversation the core deletes after its idle window
 	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
 	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,
@@ -1025,6 +1050,30 @@ export type DesktopFeature =
 	 * the BACKEND's age, not about the mesh's existence.
 	 */
 	| "session_transfer"
+	/**
+	 * A move that carries the session's WORKING SET (worktrees, unpushed commits,
+	 * uncommitted files, scratch, session memory) to the destination:
+	 * `POST /v1/desktop/sessions/{id}/transfer/preflight` plus the transfer body's
+	 * `confirm_working_set` / `without_working_set` (deliberately no history-secret
+	 * opt-in: v1 never sends a withheld worktree).
+	 *
+	 * ITS OWN KEY, not a version of `session_transfer` (the backend's
+	 * `server/features.py` rule, design move-working-set §11.1): the old move
+	 * dialog must keep working byte for byte against a backend without it, and the
+	 * core's transfer model is closed, so an ungated send of the new fields would be
+	 * a 422. Absent ⇒ no preflight, no checklist, no new body fields.
+	 */
+	| "session_transfer_working_set"
+	/**
+	 * The preflight's DESTINATION PROBE (core `server/features.py`, design
+	 * move-working-set §11.1a): each `working_set.worktrees[]` row carries the
+	 * destination's own `clone_check` answer plus optional `clone_detail` /
+	 * `https_rewrite` / `remedy` / `missing_tools`, and the block carries
+	 * `destination_probe`. Additive members of the same mapping, so its own key:
+	 * without it the review renders exactly what it did before (an unprobed
+	 * `pending_destination` row keeps its "cloned if missing" note).
+	 */
+	| "session_transfer_working_set_probe"
 	/**
 	 * The onboarding approval surface (`features.approvals`): the badge read
 	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
@@ -1065,6 +1114,44 @@ export type DesktopFeature =
 	 */
 	| "profile_approvals"
 	/**
+	 * PHONE PAIRING BY APPROVAL (`features.phone_pairing`, core pairing design v2
+	 * §1-§2): the `pairing` block on a `pair_phone` approvals row,
+	 * `POST /v1/desktop/approvals/{id}/pair-ack`, `approve-operation` with
+	 * `operation: "pair_phone"`, `GET`/`DELETE /v1/desktop/devices`, and the feed's
+	 * `approvals.pair_request` / `open.approvals_pair_request`.
+	 *
+	 * ITS OWN KEY, as the backend reasons: a renderer that posted a pair-ack body
+	 * to a backend without the route would get a 404, and a Paired-phones list on
+	 * such a backend would read a route that does not exist. Absent ⇒ no pairing
+	 * popup is mounted and Settings → Phone access renders exactly as before.
+	 */
+	| "phone_pairing"
+	/**
+	 * MESH PAIRING CARDS (`features.mesh_pairing`, core PR #4259):
+	 * `GET /v1/desktop/mesh/pairings`, the attested
+	 * `POST .../mesh/pairings/{side}/{invite_id}/answer`, and the feed's
+	 * `approvals.pairing_id` / `open.approvals_pairing_id`.
+	 *
+	 * ITS OWN KEY for the usual reason: a renderer that read the cards from a
+	 * backend without the route would 404. Absent ⇒ the Mesh approvals tray draws
+	 * no pairing card and pairing stays the terminal ceremony it was.
+	 */
+	| "mesh_pairing"
+	/**
+	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
+	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
+	 * → Phone access; the pairing popup still renders, it just cannot offer the
+	 * one-click setup when the computer is not ready to admit a phone.
+	 */
+	| "operator_setup"
+	/**
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963):
+	 * `GET /v1/desktop/mobile/password`, desktop-only. Absent ⇒ Settings → Phone
+	 * access renders no "Using your own tunnel?" disclosure and the op is never
+	 * sent (an older backend has no such route).
+	 */
+	| "mobile_password_read"
+	/**
 	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
 	 * a change an agent proposed to an account agent or team -
 	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
@@ -1083,6 +1170,14 @@ export type DesktopFeature =
 	 * exactly as it did before.
 	 */
 	| "aida"
+	/*
+	 * PER-SESSION VOICE (`features.voice`; `docs/design/session-voice.md`): the slot
+	 * read/control, the utterance upload, the speech download and the feed's
+	 * `voice` frame. ITS OWN KEY: absent means no toggle, no sidebar marker, no
+	 * voice push-to-talk handler and no call to any `/v1/desktop/voice` route -
+	 * the app is exactly the pre-voice one.
+	 */
+	| "voice"
 	/**
 	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
 	 * availability report a speak control asks before it offers itself.
@@ -1152,7 +1247,30 @@ export type DesktopFeature =
 	 * route, so the block must be able to ask for this one alone. Absent means the
 	 * Phone access block is not rendered and no setup op is sent.
 	 */
-	| "tunnel_setup";
+	| "tunnel_setup"
+	/**
+	 * The WIDER phone-setup remedy vocabulary (`tunnel_remedy_kinds`, local-operator
+	 * #3945): `add_credit`/`open_console` carry `remedy.url`, the `wait_*` kinds
+	 * and the `reconnecting` plan exist, and the backend reconnects on its own
+	 * after a sign-in. Its own key because everything it unlocks is presentation
+	 * on top of `tunnel_setup`: without it the block renders exactly the pre-#3945
+	 * controls, never refetches on focus and never shows the first-sign-in offer
+	 * (an older backend has no `reconnecting` state, so a focus refetch there is a
+	 * fresh upstream quote read nobody asked for).
+	 */
+	| "tunnel_remedy_kinds"
+	/**
+	 * The phone-access diagnosis (`mobile_doctor`, local-operator #3953): the
+	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
+	 * rendered and the route (404 on an older backend) is never called.
+	 */
+	| "mobile_doctor"
+	/**
+	 * Amazon Bedrock's AWS panel (`bedrock_auth`, bedrock design §7): the four
+	 * `auth.bedrock.*` ops. Absent ⇒ the provider panel offers only the generic
+	 * API-key path (`auth.key`), which every backend with a `bedrock` row serves.
+	 */
+	| "bedrock_auth";
 
 /**
  * WHY a negotiated feature surface may not be offered.
@@ -1243,6 +1361,7 @@ function streamCapabilityFlags(
 ): StreamCapabilityFlags {
 	return {
 		openFrame: desktopFeatureEnabled(capabilities, "open_frame"),
+		inlineUi: desktopFeatureEnabled(capabilities, "inline_ui"),
 		journalOrder: desktopFeatureEnabled(capabilities, "journal_order"),
 		peerJournalSource: desktopFeatureEnabled(
 			capabilities,
@@ -1253,19 +1372,31 @@ function streamCapabilityFlags(
 
 /** Canonical provider registry rows, including aliases folded into methods. */
 export function useDesktopProviders(enabled: boolean) {
-	return useQuery({
-		queryKey: desktopKeys.providers,
-		queryFn: () =>
-			desktopResult<{ providers: DesktopProvider[] }>({
-				op: "providers.list",
-			}).then((result) => result.providers),
-		enabled,
-		staleTime: 30_000,
-		// Same reasoning as `useConfig`: a `status: null` failure already spent
-		// the transport's whole deadline learning nothing, so retrying it doubles
-		// the wait to ~60s without a chance of a different answer. A failure that
-		// carries a status came from a backend that answered and is still worth
-		// one retry.
-		retry: retryDesktopQuery,
-	});
+	/*
+	 * THE PROVIDER GATE, as in `useDesktopCapabilities`: the shared composer now
+	 * reads this census (`useLocalSelection`, the send block's "use local" fix)
+	 * and mounts in documents with no `QueryClientProvider` (the mini view), where
+	 * a bare `useQuery` throws "No QueryClient set". With no provider there is no
+	 * census; every caller already reads `data: undefined` as "not read yet". In
+	 * the app `provided` is always true, so this is a no-op there.
+	 */
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers),
+			enabled: provided && enabled,
+			staleTime: 30_000,
+			// Same reasoning as `useConfig`: a `status: null` failure already spent
+			// the transport's whole deadline learning nothing, so retrying it doubles
+			// the wait to ~60s without a chance of a different answer. A failure that
+			// carries a status came from a backend that answered and is still worth
+			// one retry.
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
 }

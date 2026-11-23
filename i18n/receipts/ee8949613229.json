@@ -1,0 +1,28 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "ee8949613229",
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "sha256": {
+    "vi": "b644d628ac1c8c043cb96dff9b1bf7cf0647546f62186cfafbafa3924966c6a4",
+    "en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.trace.send.delivery.mailbox.label",
+      "note": "New (V2-1, accepted): 6 vi lexical words vs the sidecar's 3-4 word hint; assistive-tech only (deliveryLabel, never drawn) and matches the canonical bridge.delivery.inbox_only.label construction, so no change warranted."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.trace.send.delivery.mailbox.word",
+      "note": "Retained round-1 A4 (accepted): subject-first 'thức dậy chưa xác nhận' deviates from canonical's preposed 'chưa xác nhận đã gửi'; tool-row-model.ts requires amber words to name their subject where the row supplies one."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.trace.send.delivery.mailbox.word",
+      "note": "Retained round-1 A5 (accepted, no text change): 22 cells against a word gate derived from a ~20-cell English word; a rendered check at ~304-340 px remains the team's call, not performed here."
+    }
+  ]
+}

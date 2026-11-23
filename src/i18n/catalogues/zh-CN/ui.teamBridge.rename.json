@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {重命名群组……} other {重命名频道……}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {重命名群组} other {重命名频道}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {群组中的所有成员都会看到新名称。} other {频道中的所有成员都会看到新名称。频道名称使用小写字母，并用连字符代替空格。}}",
+	"ui.teamBridge.rename.name": "名称",
+	"ui.teamBridge.rename.cancel": "取消",
+	"ui.teamBridge.rename.save": "保存",
+	"ui.teamBridge.rename.saving": "正在保存……",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {已存在名为{name}的群组。请换一个名称。} other {已存在名为#{name}的频道。请换一个名称。}}",
+	"ui.teamBridge.rename.error.empty": "请输入名称。",
+	"ui.teamBridge.rename.error.too_long": "名称最多可包含{max, number}个字符。",
+	"ui.teamBridge.rename.error.characters": "名称包含无法使用的字符，例如制表符、换行符或不可见字符。",
+	"ui.teamBridge.rename.error.invalid": "无法使用此名称。请换一个名称。",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {你没有重命名此群组的权限。} other {你没有重命名此频道的权限。}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {此群组已归档，无法重命名。} other {此频道已归档，无法重命名。}}",
+	"ui.teamBridge.rename.error.failed": "新名称未保存。请重试。"
+}

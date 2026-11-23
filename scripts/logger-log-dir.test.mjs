@@ -33,7 +33,7 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { LOG_DIR_ENV, logDirOverride } = await import(
+const { LOG_DIR_ENV, logDirOverride, logFilesEnabled } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
 	).toString("base64")}`
@@ -186,5 +186,42 @@ test("the override comes from the launch snapshot, not a mutable process.env", (
 		config,
 		/export \{ launchEnv \};/,
 		"config.ts no longer re-exports the snapshot the launch facts are resolved from",
+	);
+});
+
+/**
+ * A `--lo-launch-probe` launch writes no log files (native QA, PR #1948, Q2).
+ *
+ * The logger is built while `index.ts`'s imports evaluate, before the probe can
+ * exit, and its default directory is the operator's real one; one measured probe
+ * appended five lines there. The decision is asserted in process; the logger's
+ * use of it is a source assertion because that module needs Electron.
+ */
+test("a launch-probe launch writes no log files; every other launch does", () => {
+	assert.equal(logFilesEnabled(["exe"]), true);
+	assert.equal(logFilesEnabled(["exe", "--user-data-dir=/x"]), true);
+	assert.equal(logFilesEnabled(["exe", "--lo-launch-probe"]), false);
+	assert.equal(
+		logFilesEnabled(["exe", "--user-data-dir=/x", "--lo-launch-probe"]),
+		false,
+	);
+	// The probe's own matching rule, so the two can never disagree.
+	assert.equal(logFilesEnabled(["exe", "--lo-launch-probe=1"]), true);
+	assert.equal(logFilesEnabled(["exe", "--", "--lo-launch-probe"]), true);
+
+	const logger = readFileSync(
+		join(process.cwd(), "src/main/backend/logger.ts"),
+		"utf8",
+	);
+	assert.match(logger, /const writeFiles = logFilesEnabled\(process\.argv\);/);
+	assert.match(
+		logger,
+		/if \(writeFiles && !fs\.existsSync\(this\.logPath\)\)/,
+		"a probe launch must not create the log directory",
+	);
+	assert.match(
+		logger,
+		/logger\.transports\.file\.level = writeFiles \? "debug" : false;/,
+		"a probe launch must not write the log files",
 	);
 });

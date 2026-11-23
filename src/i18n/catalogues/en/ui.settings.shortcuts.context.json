@@ -92,6 +92,12 @@
 		"length": "One shortcut row or refusal sentence; keep compact.",
 		"note": "Imperative action name used outside the settings row: Open code review"
 	},
+	"ui.settings.shortcuts.action.open_linked_projects": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open linked projects (opens the chat canvas on the projects this conversation is linked to)"
+	},
 	"ui.settings.shortcuts.action.open_console": {
 		"role": "Shortcut action tooltip",
 		"tone": "Concise imperative.",
@@ -381,6 +387,12 @@
 		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
 	},
 	"ui.settings.shortcuts.row.code_review": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.linked_projects": {
 		"role": "Shortcut settings row label",
 		"tone": "Concise destination noun.",
 		"length": "One shortcut row or refusal sentence; keep compact.",

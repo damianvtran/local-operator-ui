@@ -1,0 +1,22 @@
+{
+	"ui.canvas.projects.segment": "Projets",
+	"ui.canvas.projects.heading": "Projets liés",
+	"ui.canvas.projects.back": "Projets liés",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {Fermer les projets liés} other {Ouvrir les projets liés}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {Fermer les projets liés} other {Ouvrir les projets liés}} — {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}",
+	"ui.canvas.projects.rail_aria": "Projets liés",
+	"ui.canvas.projects.rail_aria_count": "Projets liés, {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}",
+	"ui.canvas.projects.loading": "Chargement des projets liés",
+	"ui.canvas.projects.empty_title": "Aucun projet lié",
+	"ui.canvas.projects.empty_description": "Les projets auxquels cette conversation est liée s’affichent ici. Liez-la depuis la section Sessions liées d’un projet, ou demandez à l’agent de le faire.",
+	"ui.canvas.projects.draft_title": "Pas encore de conversation",
+	"ui.canvas.projects.draft_description": "Envoyez un premier message, puis liez cette conversation à un projet pour le voir ici.",
+	"ui.canvas.projects.unavailable_title": "Projets liés indisponibles",
+	"ui.canvas.projects.unavailable_description": "Ce runtime ne peut pas lister les projets d’une conversation. Mettez à jour Local Operator pour les voir ici.",
+	"ui.canvas.projects.unreachable_title": "Impossible de joindre le runtime",
+	"ui.canvas.projects.unreachable_description": "Le runtime n’a pas répondu, les projets liés de cette conversation n’ont donc pas pu être lus.",
+	"ui.canvas.projects.unpaired_description": "Cette application n’est pas appairée au runtime, elle ne peut donc pas lire les projets liés de cette conversation.",
+	"ui.canvas.projects.error_title": "Impossible de charger les projets liés",
+	"ui.canvas.projects.try_again": "Réessayer",
+	"ui.canvas.projects.open_project": "Ouvrir {name}"
+}

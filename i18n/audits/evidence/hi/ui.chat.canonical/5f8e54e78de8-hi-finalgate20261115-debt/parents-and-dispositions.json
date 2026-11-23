@@ -1,0 +1,168 @@
+{
+  "kind": "parent receipt lineage and explicit finding disposition companion",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "parent_receipt_refs": [
+    {
+      "locale": "hi",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+      "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "hi",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+      "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "hi",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+      "sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-hi-canonical-5e4b1db4",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    }
+  ],
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/receipt.json",
+    "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+    "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "git_path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+    "same_original_author": true
+  },
+  "own_prior_record": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+    "sha256": "06bb6abf7c450d4f277163f12a7b797031ccb05f0186a858a99bffd67e45e476"
+  },
+  "prior_companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+      "sha256": "36aed18269b6051713b29cc70a83bbcb69c5c5a41c8143896aecb0db05713046"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+      "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+      "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+    }
+  ],
+  "inherited_style_glossary_bindings_verified": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "finding_dispositions": [
+    {
+      "id": "I-HI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "CONV-HI-FIT-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "HI-C1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    }
+  ],
+  "old_policy_hold_dispositions": [],
+  "zero_findings_not_inferred_from_main_delta": "Main’s current clean receipts explicitly scope3S18b keys, pre-existing keys out of scope. They do not resolve prior deferred debts; author retains them."
+}

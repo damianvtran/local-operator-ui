@@ -1,0 +1,103 @@
+{
+  "contract_files_sha256": {
+    "scripts/i18n/ledger-assemble.mjs": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "scripts/i18n/ledger-rules.mjs": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+  },
+  "writer_invoked": false,
+  "app_runtime_or_tests_invoked": false,
+  "receipts": [
+    {
+      "locale": "es",
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-es-5f8e54e78de8.json",
+      "sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-es-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 5,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "receipt_sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6"
+      },
+      "companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-es-5f8e54e78de8.json",
+        "sha256": "98edc4e2c65a36f6b15bf0870987674440e66f4cbd4a1b2710c316c506a75489"
+      },
+      "old_bytes_preserved": true,
+      "evidence_hashes_match": true,
+      "original_policy_fields": [
+        "decision",
+        "basis"
+      ],
+      "note": "Machine valid for expressly scoped evidence/convergence result; not global/native/functional approval."
+    },
+    {
+      "locale": "fr",
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-fr-5f8e54e78de8.json",
+      "sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-fr-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 4,
+          "nit": 3
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "receipt_sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799"
+      },
+      "companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-fr-5f8e54e78de8.json",
+        "sha256": "05279e4dc7905d91835b7b9544ed7f12f420c8942571d563e3812b9a1575c3f0"
+      },
+      "old_bytes_preserved": true,
+      "evidence_hashes_match": true,
+      "original_policy_fields": [
+        "decision",
+        "basis"
+      ],
+      "note": "Machine valid for expressly scoped evidence/convergence result; not global/native/functional approval."
+    },
+    {
+      "locale": "hi",
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-hi-5f8e54e78de8.json",
+      "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "receipt_sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4"
+      },
+      "companion": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+        "sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706"
+      },
+      "old_bytes_preserved": true,
+      "evidence_hashes_match": true,
+      "original_policy_fields": [
+        "decision",
+        "basis"
+      ],
+      "note": "Machine valid for expressly scoped evidence/convergence result; not global/native/functional approval."
+    }
+  ]
+}

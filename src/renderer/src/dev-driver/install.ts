@@ -34,6 +34,8 @@ import { finderThumbnailStats } from "@features/chat/components/canvas/finder-th
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
+import { sendVoiceTake } from "@features/voice/qwen-voice-controller";
+import { useVoiceStore, voicePhaseOf } from "@features/voice/voice-store";
 import { queryClient } from "@shared/api/query-client";
 import { apiConfig } from "@shared/config";
 import {
@@ -41,8 +43,10 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
+import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { Query } from "@tanstack/react-query";
+import type { QwenVoiceStatus } from "../../../shared/desktop-contract";
 import {
 	armModelAuthorityObserver,
 	readModelAuthorityObserver,
@@ -875,6 +879,127 @@ export function installDevDriver(): string[] {
 		},
 
 		/**
+		 * Wait for a selector to appear (or, with `gone: true`, to disappear) - the
+		 * readiness half of `press`, without the click.
+		 *
+		 * WHY (S2, mac proof capture). The S1 step runner has no CDP, so "the
+		 * conversation painted" or "the wizard is gone" can only be learned from
+		 * inside the page. A frame is taken only after the `waitFor` before it
+		 * resolved, so a capture cannot photograph a loader under a scene's name.
+		 * Settles CSS transitions before answering for `setTheme`'s reason.
+		 */
+		waitFor: async (payload) => {
+			const request =
+				typeof payload === "string"
+					? { selector: payload }
+					: (payload as {
+							selector: unknown;
+							gone?: unknown;
+							timeoutMs?: unknown;
+						});
+			const selector = requireString(request?.selector, "waitFor selector");
+			const gone = request?.gone === true;
+			const timeoutMs =
+				typeof request?.timeoutMs === "number" ? request.timeoutMs : 10_000;
+			const started = Date.now();
+			for (;;) {
+				const present = document.querySelector(selector) !== null;
+				if (present !== gone) break;
+				if (Date.now() - started > timeoutMs) {
+					throw new Error(
+						gone
+							? `${selector} is still present after ${timeoutMs}ms`
+							: `nothing matches ${selector} after ${timeoutMs}ms of waiting`,
+					);
+				}
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			return {
+				selector,
+				gone,
+				waitedMs: Date.now() - started,
+				settleTimedOut: settled.timedOut,
+			};
+		},
+
+		/**
+		 * Open (or close) the canvas on the ACTIVE conversation, on one of its own
+		 * views - exactly the store writes the canvas door makes
+		 * (`panel-rail-actions.ts`: `setViewMode` BEFORE `setCanvasOpen`, so the
+		 * first frame is the requested view).
+		 *
+		 * WHY (S2, mac proof capture). The header row that does this is two presses
+		 * through a locale-dependent menu, which is brittle for a stepped run. Unlike
+		 * `openCanvasDocument` this stages NO draft: it is about the conversation
+		 * `--open-session` opened, so with no active conversation it refuses rather
+		 * than photographing a canvas that belongs to nothing.
+		 */
+		openCanvas: async (payload) => {
+			const request = (payload ?? {}) as { view?: unknown; open?: unknown };
+			const open = request.open !== false;
+			const view = request.view ?? "files";
+			if (open && view !== "files" && view !== "documents") {
+				throw new Error(
+					`openCanvas view must be "files" or "documents" (got ${JSON.stringify(view)})`,
+				);
+			}
+			const sessions = useCanonicalSessionsStore.getState();
+			const conversationId = panelIdentityFor(
+				sessions.activeDraftKey,
+				sessions.activeSessionId,
+			);
+			// Closing needs no conversation (the default view may have none);
+			// opening does, because the view mode is stored per conversation.
+			if (open && !conversationId) {
+				throw new Error("openCanvas needs an active conversation");
+			}
+			if (open && conversationId) {
+				useCanvasStore
+					.getState()
+					.setViewMode(conversationId, view as "files" | "documents");
+			}
+			useUiPreferencesStore.getState().setCanvasOpen(open);
+			await nextFrame();
+			const settled = await settleCssTransitions();
+			return {
+				conversationId,
+				open: useUiPreferencesStore.getState().isCanvasOpen,
+				view: open ? view : null,
+				settleTimedOut: settled.timedOut,
+			};
+		},
+
+		/**
+		 * Do what the first-run wizard's own "Skip for now" does
+		 * (`onboarding-modal.tsx` `finish` -> `completeModalOnboarding`), whether or
+		 * not the wizard has opened yet: it opens only once the provider census
+		 * answers, which can be after this step runs, and a completed store is what
+		 * `decideFirstTimeUser` reads to keep it closed (the same state the CDP rigs'
+		 * pre-paint seed writes).
+		 *
+		 * WHY. The CDP rigs seed `onboarding-storage` in localStorage before the
+		 * first paint; the S1 runner has no such channel, and an isolated daemon has
+		 * no provider, so the wizard would cover every frame. The button has no
+		 * stable selector (its label is localised), so the store action is the honest
+		 * equivalent of the press. It completes SETUP, not an approval: no provider,
+		 * credential or consent is touched. It does not navigate (`finish` does): the
+		 * route belongs to the scene.
+		 */
+		skipOnboarding: async () => {
+			const wasVisible = Boolean(
+				document.querySelector("[data-onboarding-modal]"),
+			);
+			useOnboardingStore.getState().completeModalOnboarding();
+			await nextFrame();
+			return {
+				wasVisible,
+				complete: useOnboardingStore.getState().isModalComplete,
+			};
+		},
+
+		/**
 		 * Put a local file in the canvas, on the pane this app is showing.
 		 *
 		 * WHY THIS VERB HAS TO EXIST. Every other verb drives something the app puts
@@ -1026,6 +1151,111 @@ export function installDevDriver(): string[] {
 			});
 			await nextFrame();
 			return { count };
+		},
+
+		/**
+		 * One spoken take, as TEXT - what the Qwen rig hands over after Parakeet,
+		 * for a run with no microphone. It goes through `sendVoiceTake`, the SAME
+		 * path a rig take takes (echo guard, `/voice/utterance`, the V14 binding),
+		 * so the turn it starts is answered by the real speak trigger.
+		 *
+		 * IT NEVER ANSWERS A GATE, and cannot: the only request it makes is
+		 * `voice.utterance`, whose route admits words as a prompt or a steer and
+		 * refuses them at a pending card (409 `approval_pending`, V13). The card
+		 * stays on screen for the operator.
+		 *
+		 * Answers `{ok: false, code: "voice_not_enabled"}` when no session holds
+		 * the slot rather than picking one: a scene turns voice on first, through
+		 * the toggle, as a person would.
+		 */
+		/**
+		 * STAGE THE VOICE HEADER'S INPUTS for a frame, with no models loaded:
+		 * main's rig status, this window's exchange, and the card hint, written
+		 * into the renderer's voice store exactly as the controller writes them.
+		 * The slot is NOT staged - a scene turns voice on through the toggle and
+		 * the real route - so the header renders for a session that really holds
+		 * it. Evidence that uses this verb discloses the staged rig status.
+		 *
+		 * WHAT IT MAY NEVER BECOME: a way to answer a gate or to make the rig
+		 * speak. It writes display state only, in this window, and main's next
+		 * real `voice.qwen.status` replaces the staged rig.
+		 */
+		stageVoice: async (payload) => {
+			const request = (payload ?? {}) as {
+				rig?: unknown;
+				exchange?: unknown;
+				cardPending?: unknown;
+				subagentsRunning?: unknown;
+			};
+			const voice = useVoiceStore.getState();
+			const sessionId = voice.active?.session_id ?? null;
+			if (request.rig !== undefined) {
+				const rig = request.rig as QwenVoiceStatus | null;
+				if (
+					!rig ||
+					!["stopped", "starting", "ready", "error"].includes(rig.rig)
+				)
+					throw new Error(
+						`stageVoice rig must be a voice.qwen.status (got ${JSON.stringify(request.rig)})`,
+					);
+				voice.setRig(rig);
+			}
+			if (request.exchange !== undefined) {
+				const exchange = request.exchange;
+				if (exchange === null) voice.setExchange(null, null);
+				else if (exchange === "working")
+					voice.setExchange("working", sessionId);
+				else if (exchange === "not_sent")
+					voice.setExchange("error", sessionId, "not_sent");
+				else
+					throw new Error(
+						`stageVoice exchange must be working, not_sent or null (got ${JSON.stringify(exchange)})`,
+					);
+			}
+			if (request.cardPending !== undefined) {
+				if (!sessionId)
+					throw new Error("stageVoice cardPending needs the slot held");
+				voice.setCardPending(sessionId, request.cardPending === true);
+			}
+			/*
+			 * The slot row's running-subagent count, so a frame can show the voice
+			 * mark beside the subagent mark on one sidebar row (design round 1, D8).
+			 * The mock provider cannot run a subagent, so this is the one input
+			 * that is staged on the row itself; the next real list read replaces it.
+			 */
+			if (request.subagentsRunning !== undefined) {
+				const count = request.subagentsRunning;
+				if (!sessionId)
+					throw new Error("stageVoice subagentsRunning needs the slot held");
+				if (typeof count !== "number" || !Number.isInteger(count) || count < 0)
+					throw new Error(
+						`stageVoice subagentsRunning must be a non-negative integer (got ${JSON.stringify(count)})`,
+					);
+				const sessions = useCanonicalSessionsStore.getState();
+				const row = sessions.sessions.find(
+					(candidate) => candidate.session_id === sessionId,
+				);
+				if (!row)
+					throw new Error(`stageVoice: no sidebar row for ${sessionId}`);
+				sessions.upsertSession({ ...row, subagents_running: count });
+			}
+			await nextFrame();
+			return {
+				sessionId,
+				phase: voicePhaseOf(useVoiceStore.getState(), sessionId ?? undefined),
+			};
+		},
+
+		voiceTake: async (payload) => {
+			const text = requireString(
+				typeof payload === "string"
+					? payload
+					: (payload as { text?: unknown } | null)?.text,
+				"voiceTake text",
+			);
+			const outcome = await sendVoiceTake(text);
+			await nextFrame();
+			return outcome;
 		},
 	});
 }

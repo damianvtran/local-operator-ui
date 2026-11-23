@@ -619,9 +619,17 @@ test("the recording hint line names the irreversible action (UX U3)", () => {
 });
 
 test("one send glyph for the primary slot, and one spinner for a send-recording wait (design D1, D3)", () => {
-	assert.doesNotMatch(ROW_SOURCE, /<ArrowUp\b/);
+	assert.doesNotMatch(ROW_SOURCE, /<Send\b/);
+	assert.equal(
+		ROW_SOURCE.match(/<ArrowUp aria-hidden="true" strokeWidth=\{2\.25\} \/>/g)
+			?.length,
+		2,
+	);
 	const sendRec = block("send-recording");
-	assert.match(sendRec, /<Send aria-hidden="true" \/>/);
+	assert.match(
+		sendRec,
+		/<ArrowUp aria-hidden="true" strokeWidth=\{2\.25\} \/>/,
+	);
 	assert.doesNotMatch(sendRec, /<Spinner/);
 	assert.match(block("spinner"), /<Spinner/);
 	// B's name stays the control's own, busy, until the submit starts (D2/U4).
@@ -639,9 +647,17 @@ test("FAILURE PATH: the only call that submits a dictated message sits behind th
 	const window_ = ROW_SOURCE.slice(at - 900, at + 100);
 	assert.match(window_, /dictatedSendCheck\(/);
 	assert.match(window_, /intact \? runSubmitRef\.current\(true\)/);
-	// Every failure arm of the transcription ends the step instead of submitting.
+	/*
+	 * Every failure arm of the transcription ends the step instead of submitting.
+	 *
+	 * THE SLICE IS THE TAKE'S BODY, and bug 2 renamed it: `handleSendAudio` now
+	 * wraps `transcribeTake`, which is the function the bytes travel through (an
+	 * `onstop` delivered after an unmount calls it directly). The pin is the same
+	 * property over the same code - one take, no submit inside it, every failure
+	 * arm ending the step - and it moved with the name rather than being loosened.
+	 */
 	const send = ROW_SOURCE.slice(
-		ROW_SOURCE.indexOf("const handleSendAudio = useCallback"),
+		ROW_SOURCE.indexOf("const transcribeTake = useCallback"),
 		ROW_SOURCE.indexOf("const retryDictation"),
 	);
 	assert.ok(
@@ -666,7 +682,6 @@ test("the held box and its reservation are gone from the tree", () => {
 		ROW_SOURCE,
 		/interruptSlotDrawn|useInterruptSlotHold|data-interrupt-slot/,
 	);
-	assert.match(ROW_SOURCE, /const controlsThirdBox = isRecording;/);
 });
 
 test("Q1/R2-1/D9/D14: the press opens the recording lane at its final height; the words are in its label row, not in the controls row or a row of their own", () => {
@@ -700,7 +715,7 @@ test("Q1/R2-1/D9/D14: the press opens the recording lane at its final height; th
 	assert.ok(ROW_SOURCE.indexOf("preparingLabel=") < cluster);
 	assert.match(
 		ROW_SOURCE,
-		/className="ms-auto flex order-3 shrink-0 items-center gap-1"/,
+		/className="ms-auto flex shrink-0 items-center gap-1"/,
 	);
 });
 

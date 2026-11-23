@@ -634,15 +634,18 @@ export const STORIES = [
 		},
 	],
 	/*
-	 * These three DECLARE their content height rather than the 900 the harness
+	 * These two DECLARE their content height rather than the 900 the harness
 	 * defaults to, and the reason is a trap that cost real pixels: since the
 	 * transcript became its own `overflow-auto` container, the document reports
 	 * the VIEWPORT height, so `max(documentElement.scrollHeight, declared)`
 	 * returns the declared 900 and the capture clips the conversation mid-line -
 	 * `conversation-reasoning-open` lost 2,427px including two of the three open
 	 * reasoning panels it exists to evidence. The heights are the ones these
-	 * surfaces were committed with (1308 / 1409 / 3327), so the frames keep the
-	 * full transcript and a re-capture is a fair comparison again.
+	 * surfaces were committed with (1409 / 3327), so the frames keep the
+	 * full transcript and a re-capture is a fair comparison again. `conversation`
+	 * carries the 1409 its removed `conversation-with-reasoning` twin was captured
+	 * at: with the `showAgentReasoning` preference gone it renders that twin's
+	 * rows (reasoning shown, closed), not the 1308 reasoning-hidden list.
 	 */
 	/*
 	 * THE PROVIDER SIGN-IN, PROVIDERS PAGE, ONBOARDING AND DISCOVERABILITY SET.
@@ -912,8 +915,15 @@ export const STORIES = [
 	["chat-message-input--secret-ask-refused", 1280, 620],
 	["chat-message-input--secret-ask-multi", 1280, 620],
 	["chat-message-input--blocking-secret-gate", 1280, 620],
-	["chat-trace--conversation", 1280, 1308],
-	["chat-trace--conversation-with-reasoning", 1280, 1409],
+	/*
+	 * The jump-to-latest control's two label states. Registered so the sweep
+	 * photographs them at the shipped window's chat width: the control is one
+	 * disc above the composer, and its claim is which words it carries when
+	 * output arrived under a scrolled-up reader.
+	 */
+	["chat-scroll-to-bottom--idle", 900, 620],
+	["chat-scroll-to-bottom--new-activity", 900, 620],
+	["chat-trace--conversation", 1280, 1409],
 	["chat-trace--conversation-reasoning-open", 1280, 3327],
 	["chat-trace--question-callout", 1280, 900],
 	["chat-trace--trace-states", 1280, 900],
@@ -6395,6 +6405,27 @@ export const STORIES = [
 			},
 		},
 	]),
+	/*
+	 * THE BROWSER'S WAITS AS SIDEBAR NOTIFICATION ROWS (operator report
+	 * 2026-11-15, "the browser is stealing the view"): a passkey hold, a held
+	 * sign-in popup and an approval listed under the destinations instead of
+	 * switching views, and the fold past three. Waits for the rows themselves.
+	 */
+	...[
+		["browser-waits", 3],
+		["browser-waits-folded", 3],
+	].map(([state, rows]) => [
+		`shell-sidebar-attention-badges--${state}`,
+		1024,
+		900,
+		{
+			expect: {
+				pollMs: 8000,
+				expression: `document.querySelectorAll('[data-browser-attention-row]').length === ${rows}`,
+				message: `the sidebar lists ${rows} browser notification rows`,
+			},
+		},
+	]),
 	["shell-app-shell--agents", 1280, 800],
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
@@ -6549,29 +6580,32 @@ export const STORIES = [
 	 * run trigger's two dot inks, the browser badge at one and at the cap, the
 	 * console blip in both inks, the files dot, each item lit, and the draft route
 	 * where all six doors are present too (the always-visible rail, D1). The frames
-	 * are small on purpose (the rail is 44px wide) and 220 tall, the six-door
-	 * rail's height; the shell arms above carry the geometry.
+	 * are small on purpose (the rail is 44px wide) and 256 tall, the seven-door
+	 * rail's height (220 until the linked-projects door, 2026-11-15); the shell
+	 * arms above carry the geometry.
 	 */
-	["navigation-panel-rail--idle", 132, 220],
-	["navigation-panel-rail--run-attention", 132, 220],
-	["navigation-panel-rail--run-activity", 132, 220],
-	["navigation-panel-rail--browser-one", 132, 220],
-	["navigation-panel-rail--browser-at-cap", 132, 220],
-	["navigation-panel-rail--console-blip", 132, 220],
-	["navigation-panel-rail--console-blip-resting", 132, 220],
-	["navigation-panel-rail--canvas-files", 132, 220],
-	["navigation-panel-rail--run-open", 132, 220],
-	["navigation-panel-rail--browser-open", 132, 220],
-	["navigation-panel-rail--console-open", 132, 220],
-	["navigation-panel-rail--canvas-open", 132, 220],
-	["navigation-panel-rail--draft-route", 132, 220],
+	["navigation-panel-rail--idle", 132, 256],
+	["navigation-panel-rail--run-attention", 132, 256],
+	["navigation-panel-rail--run-activity", 132, 256],
+	["navigation-panel-rail--browser-one", 132, 256],
+	["navigation-panel-rail--browser-at-cap", 132, 256],
+	["navigation-panel-rail--console-blip", 132, 256],
+	["navigation-panel-rail--console-blip-resting", 132, 256],
+	["navigation-panel-rail--canvas-files", 132, 256],
+	["navigation-panel-rail--projects-linked", 132, 256],
+	["navigation-panel-rail--projects-open", 132, 256],
+	["navigation-panel-rail--run-open", 132, 256],
+	["navigation-panel-rail--browser-open", 132, 256],
+	["navigation-panel-rail--console-open", 132, 256],
+	["navigation-panel-rail--canvas-open", 132, 256],
+	["navigation-panel-rail--draft-route", 132, 256],
 	/* ROUND 1, design D2/D4 and the three frames design listed as missing: the
 	   focused LIT item (ring and bar together), the capped badge on the LIT item,
 	   and the console blip with its own pane open. The non-brand-palette proof (sage
 	   and iceberg) is these same stories captured with `--themes`. */
-	["navigation-panel-rail--browser-open-focused", 132, 220],
-	["navigation-panel-rail--browser-open-at-cap", 132, 220],
-	["navigation-panel-rail--console-open-blip", 132, 220],
+	["navigation-panel-rail--browser-open-focused", 132, 256],
+	["navigation-panel-rail--browser-open-at-cap", 132, 256],
+	["navigation-panel-rail--console-open-blip", 132, 256],
 	/*
 	 * THE BOUND CHORD IN THE TOOLTIP (#928), the pair: the console ships
 	 * `primary+j` and its tooltip prints it in both registers, while an action
@@ -6589,7 +6623,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--console-chord-tooltip",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="console"]',
 			hoverSettleMs: 500,
@@ -6612,7 +6646,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--browser-no-chord",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="browser"]',
 			hoverSettleMs: 500,
@@ -12608,9 +12642,9 @@ export const STORIES = [
 	["code-review-pane--narrow-could-not-refresh", 320, 600],
 	["code-review-pane--row-hover", 640, 390],
 	["code-review-pane--row-focus", 640, 390],
-	["navigation-panel-rail--code-item", 132, 220],
-	["navigation-panel-rail--code-attention", 132, 220],
-	["navigation-panel-rail--code-open", 132, 220],
+	["navigation-panel-rail--code-item", 132, 256],
+	["navigation-panel-rail--code-attention", 132, 256],
+	["navigation-panel-rail--code-open", 132, 256],
 	["chat-composer-status-row--code-requests-chip", 1000, 760],
 	["chat-composer-status-row--code-requests-chip-showing", 1000, 300],
 	/*
@@ -14088,10 +14122,15 @@ const main = async () => {
 	 *     file, and no per-story catch - so a throw anywhere ends the run with the
 	 *     wiped tree left on disk;
 	 *   - `shell-app-shell--settings-appearance` (STORIES row 366 of 612) sets
-	 *     `documentElement.dataset.capturePending` and clears it only when the
-	 *     settings page renders the Appearance switch, which the offline page never
-	 *     does, so the readiness probe throws at its 60s bound and the sweep ENDS
-	 *     there. The repository's own measurement of that state is in
+	 *     `documentElement.dataset.capturePending` and clears it only once the
+	 *     settings page renders the Appearance section container
+	 *     (`[data-tour-tag="settings-appearance-section"]`) and the story has
+	 *     scrolled it to the top of the viewport. On the measured date it
+	 *     anchored instead on the section's switch, which the offline page never
+	 *     rendered, so the readiness probe threw at its 60s bound and the sweep
+	 *     ENDED there; the anchor is the section now (PR #1983), but a stub that
+	 *     never mounts the section still strands the shutter the same way. The
+	 *     repository's own measurement of that state is in
 	 *     `docs/evidence/manifest.json` under `keycapsCapture.blocked`:
 	 *     `{"drawn":false,"counted":88,"pending":true}`.
 	 *

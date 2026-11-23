@@ -1,0 +1,93 @@
+{
+	"instance": "4c7fc23dabe6-dictation-retake-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-22",
+	"scope": [
+		"ui.common.actions",
+		"ui.chat.composer",
+		"ui.common.errors"
+	],
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "4c7fc23dabe6",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header); no provider fallback occurred this run.",
+		"independent_from_translator_session": true,
+		"independence_note": "Audit run as a lopdev task (read-only) session; authored and edited no catalogue value. The translator was the lopdev coder agent. Read the en values and en .context.json sidecars and the vi values from the committed bytes at 8ed6c2f23b; no translation or MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/dictation-retake-discard",
+	"head": "8ed6c2f23b",
+	"references": {
+		"glossary": "damianvtran/local-operator@fcf58eb19 i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+		"style_guide": "damianvtran/local-operator@fcf58eb19 i18n/style-guides/vi.md sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51",
+		"shipped_terms": "src/i18n/catalogues/vi/*.json at 8ed6c2f23b: «Loại bỏ» for discarding a message/partial file (ui.teamBridge.holds.*, ui.browser…); «Bỏ» for unsaved-changes/new-agent discard; «bản ghi âm» for a recording (send_recording, cancel_recording); «Thử lại» for Retry; sibling prefixes «Đọc chính tả thất bại:» (ui.chat.composer) and «Không thể chuyển giọng nói thành văn bản:» (ui.common.errors)."
+	},
+	"scope_note": "Keys audited in full: ui.common.actions.discard; ui.chat.composer.dictation_failed_too_long_take_kept; ui.common.errors.dictation_refused_take_kept and _clipped. Checked: idiom, glossary/style guide (bạn/bare imperative, terse, sentence case, NFC), {reason} placeholder byte-identical to en in both errors keys, clipped arm joins with a space and no full stop after {reason} as the context requires, no Cc/Cf (bidi/control) chars, no ASCII '...', no Retry wording in the too-long/refused copy, consistency with dictation_failed_transient_take_kept and dictation_unknown{,_clipped}, and the Discard term against «Loại bỏ» used for discarding items elsewhere (Retry/Discard pair «Thử lại»/«Loại bỏ» fits one-line beside each other).",
+	"namespaces": {
+		"ui.common.actions": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.common.actions.discard"
+			],
+			"sha256": {
+				"en": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+				"vi": "09df6296362522c34094cf23d1ce1cf8afcd55d6107c4ec04cb708c0030801ca"
+			},
+			"context_sha256": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e",
+			"en_path": "src/i18n/catalogues/en/ui.common.actions.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.common.actions.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.dictation_failed_too_long_take_kept"
+			],
+			"sha256": {
+				"en": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+				"vi": "978c89da1d93b7e0300b011b4da0e356acb7155abdc0c2c9251f75c2b36a40c1"
+			},
+			"context_sha256": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": [
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"keys": [
+						"ui.chat.composer.dictation_failed_too_long_take_kept"
+					],
+					"current": "Hãy loại bỏ nó và ghi âm một bản ngắn hơn.",
+					"problem": "Pronoun «nó» for an inanimate recording reads slightly casual next to the terse, noun-led sibling rows (…«Bản ghi âm của bạn được giữ lại…»). Meaning is correct and unambiguous; recorded, not churned.",
+					"suggested": "Hãy loại bỏ bản ghi âm này và ghi âm một bản ngắn hơn.",
+					"disposition": "optional; no change required to pass"
+				}
+			]
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"keys": [
+				"ui.common.errors.dictation_refused_take_kept",
+				"ui.common.errors.dictation_refused_take_kept_clipped"
+			],
+			"sha256": {
+				"en": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+				"vi": "2f6b4bc213e212f6502c41a4218adc9d6c436f686c0d4e91c48d3415563c1cf5"
+			},
+			"context_sha256": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2",
+			"en_path": "src/i18n/catalogues/en/ui.common.errors.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.common.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+			"findings": []
+		}
+	}
+}

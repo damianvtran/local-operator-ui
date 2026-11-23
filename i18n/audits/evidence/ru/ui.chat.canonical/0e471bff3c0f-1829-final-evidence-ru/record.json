@@ -1,0 +1,1722 @@
+{
+  "schema": 1,
+  "kind": "new-independent-final-bounded-evidence-supplement-and-prescribed-receipt",
+  "not_a_ledger_receipt": false,
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "0e471bff3c0f-1829-final-evidence-ru",
+  "session": "0e471bff3c0f",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "0e471bff3c0f",
+    "model": "openai/gpt-6.1-sol",
+    "selection": "parent; inherited, no override",
+    "fallback": null,
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a"
+  },
+  "issued_at": "2026-11-12T23:50:59.700035+00:00",
+  "date": "2026-11-12",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "ru": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e"
+  },
+  "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+  },
+  "policy_authority": {
+    "source": "User FINAL POLICY DISPOSITION in resumed turn; no remote comment text silently inferred",
+    "owner_as_named_by_user": "3ef6295a5545",
+    "accepted_scope": "Captured 23-key evidence accepted; actual-locale CLDR valid; no fresh all490/native capture required. Urdu code-bidi MINOR deferred to design thread, no new minor fix round.",
+    "readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    "readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+    },
+    "design_citations": [
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "remote_comment_read": false,
+        "authority": "user-supplied citation only"
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "remote_comment_read": false,
+        "authority": "user-supplied citation only"
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213",
+        "remote_comment_read": false,
+        "authority": "user-supplied citation only"
+      }
+    ]
+  },
+  "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+  "counts_scope": {
+    "new_catalogue_semantic_audit": false,
+    "retained_prior_linguistic_pairs": 45,
+    "retained_pr_keys": 23,
+    "retained_incoming_main_keys": 467,
+    "evidence_keys_reviewed": 23,
+    "visible_element_keys": 22,
+    "nav_accessible_name_keys": 1,
+    "new_all490_semantics_claim": false
+  },
+  "original_evidence": {
+    "own_prior_receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-ru.json",
+      "sha256": "db3943a7bce723e5990fb9179f57398881898bb0877e21d644de6220684f2798"
+    },
+    "own_prior_report": {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-second-convergence-report.md",
+      "sha256": "c6066ead0b9c7c1db4ffdcc5b68238f3a5e8e24d74866de12298dd34e37e2cca"
+    },
+    "primary_original_withhold": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ru-blocked-report.json",
+      "sha256": "3e89210dab27f1615f7f21e7ca927977c187a2eb7d2afa867316180d8967ac94"
+    },
+    "primary_withhold_policy_gaps_inspected": [
+      {
+        "id": "POLICY-EVIDENCE-1",
+        "severity": "BLOCKER",
+        "kind": "certification-evidence-gap; NOT a catalogue-string blocker",
+        "policy": "docs/I18N.md:218-224, especially 221-224; 260-271; registered auditor width/RTL review requirements",
+        "current": "Actual parent PR receipts expressly say source-only and rendered/RTL fit unproven; incoming receipts also disclaim rendered UI fit. No applicable pseudo-localization/rendered-fit artifact was supplied or verified for these full-diff controls. This lane is expressly forbidden from launching a browser/native/app to obtain one.",
+        "required": "Provide reviewable, hash/provenance-bound pseudo-localization and rendered-fit evidence for the full-diff controls, including narrow-width long labels; for Urdu include RTL punctuation, diff/numeric-range runs and $0. Have this independent auditor assess that bounded evidence before any passing receipt.",
+        "reason": "Exact byte provenance and a substantively checked source-only subset are supportable, but the inspected policy does not make a machine-accepted passed receipt a waiver for applicable unproven rendered/RTL fit. I will not promote that narrower result into policy-complete namespace certification.",
+        "bounded_route": [
+          "Keep the frozen catalogue/index unchanged and retain all parent receipt bytes and minor/nit dispositions.",
+          "An authorized capture lane supplies hash-bound narrow/full pager states, loading/error/retry/back and line continuation at the relevant narrow viewport, plus applicable pseudo-localization evidence; existing evidence may be reused only with exact source/context/renderer applicability proof.",
+          "For Urdu include real RTL runs with Latin diff, the numeric range and $0; do not alter storage order or insert bidi controls to compensate.",
+          "Review those artifacts and only the affected evidence delta; do not expand this into a fresh audit of unchanged catalogue wording and do not relax the policy.",
+          "If the evidence is satisfactory, issue a new honest current-hash receipt through the auditor, preserving findings; the exclusive coder can apply it via the prescribed writer."
+        ]
+      }
+    ],
+    "preservation": "All originals remain byte-for-byte unchanged. The new scoped disposition is not a retroactive flip of original withholds or receipts."
+  },
+  "parent_receipts": [
+    {
+      "commit": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-ru-r2.json",
+      "receipt_sha256": "e27c5b959f365dbe17b83951b1796f34dea84fff9f13db05f98d50f97539c63e",
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+      "context_parent_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "hash_matches_ledger": true,
+      "index_bytes_identical": true,
+      "applicability": "23 PR-owned current source/target/context blocks exactly match this parent; no whole-current-file hash equivalence claimed."
+    },
+    {
+      "commit": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "receipt": "i18n/receipts/c7b72ef216da-ru-chat-canonical-r2.json",
+      "receipt_sha256": "aba2071cd968d577d97bb45a72c1c28fcefc2a5a94f861c24363bb13faaed383",
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+      "context_parent_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "hash_matches_ledger": true,
+      "index_bytes_identical": true,
+      "applicability": "23 PR-owned current source/target/context blocks exactly match this parent; no whole-current-file hash equivalence claimed."
+    },
+    {
+      "commit": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "receipt": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
+      "receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+      "context_parent_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "hash_matches_ledger": true,
+      "index_bytes_identical": true,
+      "applicability": "All 467 retained main source/target/context blocks exactly match this parent; 23 PR keys added without modifying them."
+    }
+  ],
+  "historical_parent_evidence": [
+    {
+      "receipt": "i18n/receipts/f48b342c2596.json",
+      "receipt_sha256": "8c5a3165f9cf695135e0664bf3a13238a470cee604537b0ff0d3ec115037d9f2",
+      "snapshot_source_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "snapshot_target_sha256": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/l1verb-ru-r1a.json",
+      "receipt_sha256": "51ce95b7dd92385c13b1dc558c9a6cecedbf618e679efa31eb95ccc1498ea670",
+      "snapshot_source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+      "snapshot_target_sha256": "2641d1ea3798163f3466324c2214dca0fac4915ca28c3e98a404881ff2fbc967",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/l1verb-ru-r1b.json",
+      "receipt_sha256": "8ac85ebff5f1fbdb21324cc45d22ec182ebc04c71b97a4b86e32b6d16626467f",
+      "snapshot_source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+      "snapshot_target_sha256": "2641d1ea3798163f3466324c2214dca0fac4915ca28c3e98a404881ff2fbc967",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/l1verb-ru-r2.json",
+      "receipt_sha256": "8ab2aaa7290883557a87a538239f4287a985367fe764dcac2d2db60f3c1daa23",
+      "snapshot_source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+      "snapshot_target_sha256": "75ec2986a0248f8b36bb4e34b091f83da911e45ba731551457d58a837da95e64",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/e8fd410766e5.json",
+      "receipt_sha256": "4df70a4dc704641a03838ef552e365fc3948208d25efaf9b0c3e7274cad39000",
+      "snapshot_source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+      "snapshot_target_sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/db260f728ba9.json",
+      "receipt_sha256": "dd6ab68f2f29d6d671656fe0a6e08296682e6681d3af10f33e9233bd4911ef48",
+      "snapshot_source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+      "snapshot_target_sha256": "4fd63ae8ce587ca23cd188cb99e514bd44eac954a04ce40d2ae4dfd840eb5231",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/9f927eaac669-s16f-r3-ru.json",
+      "receipt_sha256": "3d28f9cb02155fd090eecae2291759b7bcef865450e72e631d1bfaa9429b00ac",
+      "snapshot_source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+      "snapshot_target_sha256": "be3f1256ee3930a40f102c6ed4ce9db4aa93191f9f1f6bb5d09d031ea1608e2f",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    },
+    {
+      "receipt": "i18n/receipts/15686088b7ce-ru.json",
+      "receipt_sha256": "f5e5bfd99fdce322ee147650a0b72ea9474a16c696562d89f250bf985966f6d7",
+      "snapshot_source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+      "snapshot_target_sha256": "b64272223f0b60c89403698036ddde9b89551b8edfe79711c8b74a18d74052ea",
+      "ledger_hash_verified": true,
+      "index_bytes_identical": true,
+      "disposition": "Original superseded IDs and dispositions preserved verbatim in companion incoming-parent-history-check.json and unchanged index receipts; not silently closed or newly counted as fresh convergence findings."
+    }
+  ],
+  "original_source_records": [
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+      "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+      "scope_note": "Original source record inspected; retained-copy ancestry, not a fresh audit."
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+      "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+      "scope_note": "French records referenced for completeness, no French audit by this assigned lane."
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+      "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+      "scope_note": "Original source record inspected; retained-copy ancestry, not a fresh audit."
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+      "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+      "scope_note": "French records referenced for completeness, no French audit by this assigned lane."
+    }
+  ],
+  "earliest_retained_copy_basis": {
+    "commit": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+    "source_parent_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "context_parent_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "checks": {
+      "en": {
+        "exact_23_raw_members": true,
+        "earliest_file_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e"
+      },
+      "ru": {
+        "exact_23_raw_members": true,
+        "earliest_file_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97"
+      },
+      "ur": {
+        "exact_23_raw_members": true,
+        "earliest_file_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+      },
+      "vi": {
+        "exact_23_raw_members": true,
+        "earliest_file_sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b"
+      },
+      "zh-CN": {
+        "exact_23_raw_members": true,
+        "earliest_file_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b"
+      }
+    },
+    "French_delta": "Outside this assigned ru/ur/vi/zh-CN lane; no French current-wording signoff."
+  },
+  "provenance": {
+    "own_independent_proof": {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-provenance-check.json",
+      "sha256": "84cab412b8db995f790e32eafdf8999b7a76b1732950cc5060c4dfdfbbec59c4"
+    },
+    "coder_map": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/convergence-provenance-map.json",
+      "sha256": "c98003c8e1d98699885e8ab51308634d21e9cf59ce01de6d7925d29e7bb20720"
+    },
+    "current_raw_index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d",
+    "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+    "source_file_checks": [
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-block.tsx",
+        "expected_sha256": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "actual_index_sha256": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-history.tsx",
+        "expected_sha256": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "actual_index_sha256": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-history-model.ts",
+        "expected_sha256": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "actual_index_sha256": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-ink.ts",
+        "expected_sha256": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "actual_index_sha256": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+        "expected_sha256": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "actual_index_sha256": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/styles/index.css",
+        "expected_sha256": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "actual_index_sha256": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "matches": true
+      },
+      {
+        "path": "src/renderer/src/styles/themes.generated.css",
+        "expected_sha256": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "actual_index_sha256": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/keys.gen.ts",
+        "expected_sha256": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "actual_index_sha256": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/messages.ts",
+        "expected_sha256": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "actual_index_sha256": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/locale.ts",
+        "expected_sha256": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "actual_index_sha256": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "expected_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "actual_index_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "expected_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "actual_index_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+        "expected_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "actual_index_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "expected_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "actual_index_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "expected_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "actual_index_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+        "expected_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "actual_index_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "expected_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "actual_index_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "expected_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "actual_index_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "matches": true
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "expected_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "actual_index_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "matches": true
+      }
+    ],
+    "union_limit": "Not a strict parent union: four obsolete main removals remain removed. Hindi incoming sound.player_failed exception outside this assigned target set, not freshly audited here."
+  },
+  "captured_evidence": {
+    "final_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5"
+    },
+    "source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34"
+    },
+    "coverage_plan": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+      "not_execution_evidence": true
+    },
+    "captures": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+      "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d"
+    },
+    "accepted_readback": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    "frame_count": 150,
+    "all_frame_hashes_verified": true,
+    "frame_hash_checks": [
+      {
+        "file": "es-clipped-360.png",
+        "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9",
+        "matches": true
+      },
+      {
+        "file": "es-clipped-focused-360.png",
+        "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51",
+        "matches": true
+      },
+      {
+        "file": "es-clipped-footer-360.png",
+        "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9",
+        "matches": true
+      },
+      {
+        "file": "es-empty-360.png",
+        "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8",
+        "matches": true
+      },
+      {
+        "file": "es-error-360.png",
+        "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423",
+        "matches": true
+      },
+      {
+        "file": "es-evicted-360.png",
+        "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f",
+        "matches": true
+      },
+      {
+        "file": "es-inline-360.png",
+        "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe",
+        "matches": true
+      },
+      {
+        "file": "es-loading-360.png",
+        "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017",
+        "matches": true
+      },
+      {
+        "file": "es-not_found-360.png",
+        "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729",
+        "matches": true
+      },
+      {
+        "file": "es-not_recorded-360.png",
+        "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e",
+        "matches": true
+      },
+      {
+        "file": "es-offer-360.png",
+        "sha256": "f3152103e761fad3dd7ff78bf4205380685acbbf749c7ae6966ba5dc12cef5bb",
+        "matches": true
+      },
+      {
+        "file": "es-offer-focused-360.png",
+        "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb",
+        "matches": true
+      },
+      {
+        "file": "es-offer-footer-360.png",
+        "sha256": "f3152103e761fad3dd7ff78bf4205380685acbbf749c7ae6966ba5dc12cef5bb",
+        "matches": true
+      },
+      {
+        "file": "es-oversized-360.png",
+        "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee",
+        "matches": true
+      },
+      {
+        "file": "es-page-360.png",
+        "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c",
+        "matches": true
+      },
+      {
+        "file": "es-split-360.png",
+        "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8",
+        "matches": true
+      },
+      {
+        "file": "es-split-next-360.png",
+        "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b",
+        "matches": true
+      },
+      {
+        "file": "es-unavailable-360.png",
+        "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80",
+        "matches": true
+      },
+      {
+        "file": "es-withheld-360.png",
+        "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7",
+        "matches": true
+      },
+      {
+        "file": "fr-clipped-360.png",
+        "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465",
+        "matches": true
+      },
+      {
+        "file": "fr-clipped-focused-360.png",
+        "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41",
+        "matches": true
+      },
+      {
+        "file": "fr-clipped-footer-360.png",
+        "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465",
+        "matches": true
+      },
+      {
+        "file": "fr-empty-360.png",
+        "sha256": "939114b0a7e6887ca76580e46e67124907374e76b193b322e5f86a7df58e0659",
+        "matches": true
+      },
+      {
+        "file": "fr-error-360.png",
+        "sha256": "92032a05151e31b8e143c32049e6cd3907503caa6be43aa3a7f903c10067c7b3",
+        "matches": true
+      },
+      {
+        "file": "fr-evicted-360.png",
+        "sha256": "5ac2ed0027bc5da9b98caae44fef2a37da96ca45f3ce988d2c56b91b32749f47",
+        "matches": true
+      },
+      {
+        "file": "fr-inline-360.png",
+        "sha256": "b42fdf5718ffc401ef1a410a8aecde1a09146a90eaa65c09c36fdc7683632446",
+        "matches": true
+      },
+      {
+        "file": "fr-loading-360.png",
+        "sha256": "0e464f9a542deaed43ea416f049688927b366dc773517537c8871984eb7b9f6f",
+        "matches": true
+      },
+      {
+        "file": "fr-not_found-360.png",
+        "sha256": "a4278dc5efb89568610ede89c0e5519d1eff551b1276fb8460c1d4ac0ff01891",
+        "matches": true
+      },
+      {
+        "file": "fr-not_recorded-360.png",
+        "sha256": "362e737908b91d2f0c086d9e13a652ea18bbe93937bb01f90c10b457325cc220",
+        "matches": true
+      },
+      {
+        "file": "fr-offer-360.png",
+        "sha256": "edd4ce321bea5b67108cc9a8e68844ed20304e4e80ca5ac8bb705e6e0d00ff78",
+        "matches": true
+      },
+      {
+        "file": "fr-offer-focused-360.png",
+        "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35",
+        "matches": true
+      },
+      {
+        "file": "fr-offer-footer-360.png",
+        "sha256": "edd4ce321bea5b67108cc9a8e68844ed20304e4e80ca5ac8bb705e6e0d00ff78",
+        "matches": true
+      },
+      {
+        "file": "fr-oversized-360.png",
+        "sha256": "8ba845abbb69c14e8b5d085234590c17ed7e0026db2d6dc4b0f5ee2231676c42",
+        "matches": true
+      },
+      {
+        "file": "fr-page-360.png",
+        "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f",
+        "matches": true
+      },
+      {
+        "file": "fr-split-360.png",
+        "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1",
+        "matches": true
+      },
+      {
+        "file": "fr-split-next-360.png",
+        "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f",
+        "matches": true
+      },
+      {
+        "file": "fr-unavailable-360.png",
+        "sha256": "4d2659418092b079b761c553e8fb52f8b42511ffe2075d551f8736f154ffaa22",
+        "matches": true
+      },
+      {
+        "file": "fr-withheld-360.png",
+        "sha256": "b337672861d3a5abb51c6352bff9de903153443ea0fce96f6d5939a81d3b91f6",
+        "matches": true
+      },
+      {
+        "file": "hi-clipped-360.png",
+        "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449",
+        "matches": true
+      },
+      {
+        "file": "hi-clipped-focused-360.png",
+        "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28",
+        "matches": true
+      },
+      {
+        "file": "hi-clipped-footer-360.png",
+        "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449",
+        "matches": true
+      },
+      {
+        "file": "hi-empty-360.png",
+        "sha256": "3b16f956024eb065504638fdb84afd2653e59d1a8a223fe3947905c64d33fbe8",
+        "matches": true
+      },
+      {
+        "file": "hi-error-360.png",
+        "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9",
+        "matches": true
+      },
+      {
+        "file": "hi-evicted-360.png",
+        "sha256": "43f74e1732f022214914c2184618d0478882614d72212df2a5595a546f86c9a7",
+        "matches": true
+      },
+      {
+        "file": "hi-inline-360.png",
+        "sha256": "8087783e71bd5e19b81c24ac4a4e90264327ea0d80bdabb52f6f66dd84895c6a",
+        "matches": true
+      },
+      {
+        "file": "hi-loading-360.png",
+        "sha256": "ed06efd6a4aced1874faa1232721b07782315581914c9d0a6a9d977b7ef780c2",
+        "matches": true
+      },
+      {
+        "file": "hi-not_found-360.png",
+        "sha256": "fefbaa4dee10a8e14fbcdc576bf4f30d26f1e8004c88a560ad83fc287639c915",
+        "matches": true
+      },
+      {
+        "file": "hi-not_recorded-360.png",
+        "sha256": "8c47317a8fa90b45fca77cba09c728885e98224105c60b86091a6bd8d5adb1ce",
+        "matches": true
+      },
+      {
+        "file": "hi-offer-360.png",
+        "sha256": "4f798589256cdab44094e0f6ec77849c67b1a584d7f1cc3880f3cbca38de3a1b",
+        "matches": true
+      },
+      {
+        "file": "hi-offer-focused-360.png",
+        "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2",
+        "matches": true
+      },
+      {
+        "file": "hi-offer-footer-360.png",
+        "sha256": "4f798589256cdab44094e0f6ec77849c67b1a584d7f1cc3880f3cbca38de3a1b",
+        "matches": true
+      },
+      {
+        "file": "hi-oversized-360.png",
+        "sha256": "58e6beb164275d56ffd551a4737d54d91ed88e198b80dff1e67668e4b4e75211",
+        "matches": true
+      },
+      {
+        "file": "hi-page-360.png",
+        "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e",
+        "matches": true
+      },
+      {
+        "file": "hi-split-360.png",
+        "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e",
+        "matches": true
+      },
+      {
+        "file": "hi-split-next-360.png",
+        "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54",
+        "matches": true
+      },
+      {
+        "file": "hi-unavailable-360.png",
+        "sha256": "55fcf16e184b46b3b8a8e6808a4116d3b80bb0797b7bb180293b627e6a9a629f",
+        "matches": true
+      },
+      {
+        "file": "hi-withheld-360.png",
+        "sha256": "c059ef389028624975356305b8a5baf3f4f55986ef0e9fa649577c115221b666",
+        "matches": true
+      },
+      {
+        "file": "pseudo-clipped-360.png",
+        "sha256": "ff5fcf803b2bc0d04ed34f2db74808e35f8f1e212326c45856ecf25136c77592",
+        "matches": true
+      },
+      {
+        "file": "pseudo-clipped-focused-360.png",
+        "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e",
+        "matches": true
+      },
+      {
+        "file": "pseudo-empty-360.png",
+        "sha256": "e6bad680b6eb798eb8f8302de35bb57bf1823330267fb4e6efe611a37d608b49",
+        "matches": true
+      },
+      {
+        "file": "pseudo-error-360.png",
+        "sha256": "b482a86301fc0f55512a4ebdca4eeeda802ec1baac8df2fa789ebe6c0e2b7887",
+        "matches": true
+      },
+      {
+        "file": "pseudo-evicted-360.png",
+        "sha256": "1a04482cd9b4b56031e651002a5e7336a1cb0db3c20647ff1e462fe7e079deb6",
+        "matches": true
+      },
+      {
+        "file": "pseudo-inline-360.png",
+        "sha256": "7dc1db708bc9e88c2fde08fc8b3b346191c2a526b8c7556e45638c45fbf98a80",
+        "matches": true
+      },
+      {
+        "file": "pseudo-loading-360.png",
+        "sha256": "a73dcb086b3f263b30b9d05ccb408028d4ce29353bc0e66ab67158a3e8106ace",
+        "matches": true
+      },
+      {
+        "file": "pseudo-not_found-360.png",
+        "sha256": "41c3b77eb544bf8bb9f89effd65473d216fb08e1165bacb2fe3204c1c56d00e2",
+        "matches": true
+      },
+      {
+        "file": "pseudo-not_recorded-360.png",
+        "sha256": "c55b842aa46a91597cf15ab295a53a55274aa4b899126341fc0fbe50461d6f24",
+        "matches": true
+      },
+      {
+        "file": "pseudo-offer-360.png",
+        "sha256": "e5fc7619cc8a6c144c55dff3a7d2550f64d48c469151a8902daad60c28e3f895",
+        "matches": true
+      },
+      {
+        "file": "pseudo-offer-focused-360.png",
+        "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01",
+        "matches": true
+      },
+      {
+        "file": "pseudo-oversized-360.png",
+        "sha256": "511aa0489a1145df34b3f9d285ce14009ef1331d27f05808c804615c7284a8fb",
+        "matches": true
+      },
+      {
+        "file": "pseudo-page-360.png",
+        "sha256": "502c24519a6e14f545d57a2268ec5cfd41d345e8603cb7ec3deadc5d227af5de",
+        "matches": true
+      },
+      {
+        "file": "pseudo-split-360.png",
+        "sha256": "37bfda381ba95724d4ded53a7172bef43063a17e9093d5fb02695849a0dddf14",
+        "matches": true
+      },
+      {
+        "file": "pseudo-split-next-360.png",
+        "sha256": "2fdf7ac85244825639d01ff4648eedb67cecec7856252f2d6ffe289f7775fbbb",
+        "matches": true
+      },
+      {
+        "file": "pseudo-unavailable-360.png",
+        "sha256": "e68dbc5bb71386de15698edda13044fc3759e4991c34a9e7a0cb02dbc0e6d123",
+        "matches": true
+      },
+      {
+        "file": "pseudo-withheld-360.png",
+        "sha256": "77c58a0abfe8c29b36f11724ed0aa7c9f60192c9bfc6e8adc0591f4666625248",
+        "matches": true
+      },
+      {
+        "file": "ru-clipped-360.png",
+        "sha256": "5abb3a1f28e4495e00a853c23439c9f6cabd40b88dd9e63d970ce108cf99e23f",
+        "matches": true
+      },
+      {
+        "file": "ru-clipped-focused-360.png",
+        "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f",
+        "matches": true
+      },
+      {
+        "file": "ru-clipped-footer-360.png",
+        "sha256": "a8d6a4aa6ecacb368a0b930c48e54a8b859a6ace3820a45be68a49f3e0ed8f3b",
+        "matches": true
+      },
+      {
+        "file": "ru-empty-360.png",
+        "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b",
+        "matches": true
+      },
+      {
+        "file": "ru-error-360.png",
+        "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5",
+        "matches": true
+      },
+      {
+        "file": "ru-evicted-360.png",
+        "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3",
+        "matches": true
+      },
+      {
+        "file": "ru-inline-360.png",
+        "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8",
+        "matches": true
+      },
+      {
+        "file": "ru-loading-360.png",
+        "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b",
+        "matches": true
+      },
+      {
+        "file": "ru-not_found-360.png",
+        "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3",
+        "matches": true
+      },
+      {
+        "file": "ru-not_recorded-360.png",
+        "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e",
+        "matches": true
+      },
+      {
+        "file": "ru-offer-360.png",
+        "sha256": "d8620a161963d6912041af88b801f1beb83a8dc065a3a7b7111adbb54fa35532",
+        "matches": true
+      },
+      {
+        "file": "ru-offer-focused-360.png",
+        "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647",
+        "matches": true
+      },
+      {
+        "file": "ru-offer-footer-360.png",
+        "sha256": "d8620a161963d6912041af88b801f1beb83a8dc065a3a7b7111adbb54fa35532",
+        "matches": true
+      },
+      {
+        "file": "ru-oversized-360.png",
+        "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7",
+        "matches": true
+      },
+      {
+        "file": "ru-page-360.png",
+        "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465",
+        "matches": true
+      },
+      {
+        "file": "ru-split-360.png",
+        "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7",
+        "matches": true
+      },
+      {
+        "file": "ru-split-next-360.png",
+        "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e",
+        "matches": true
+      },
+      {
+        "file": "ru-unavailable-360.png",
+        "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5",
+        "matches": true
+      },
+      {
+        "file": "ru-withheld-360.png",
+        "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9",
+        "matches": true
+      },
+      {
+        "file": "ur-clipped-360.png",
+        "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa",
+        "matches": true
+      },
+      {
+        "file": "ur-clipped-focused-360.png",
+        "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f",
+        "matches": true
+      },
+      {
+        "file": "ur-clipped-footer-360.png",
+        "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa",
+        "matches": true
+      },
+      {
+        "file": "ur-empty-360.png",
+        "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0",
+        "matches": true
+      },
+      {
+        "file": "ur-error-360.png",
+        "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac",
+        "matches": true
+      },
+      {
+        "file": "ur-evicted-360.png",
+        "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843",
+        "matches": true
+      },
+      {
+        "file": "ur-inline-360.png",
+        "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a",
+        "matches": true
+      },
+      {
+        "file": "ur-loading-360.png",
+        "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1",
+        "matches": true
+      },
+      {
+        "file": "ur-not_found-360.png",
+        "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917",
+        "matches": true
+      },
+      {
+        "file": "ur-not_recorded-360.png",
+        "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f",
+        "matches": true
+      },
+      {
+        "file": "ur-offer-360.png",
+        "sha256": "d4c6dd9bdd71872976ae7a83984e0672472c3097064d00ac8593ddc6f92af9e2",
+        "matches": true
+      },
+      {
+        "file": "ur-offer-focused-360.png",
+        "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff",
+        "matches": true
+      },
+      {
+        "file": "ur-offer-footer-360.png",
+        "sha256": "d4c6dd9bdd71872976ae7a83984e0672472c3097064d00ac8593ddc6f92af9e2",
+        "matches": true
+      },
+      {
+        "file": "ur-oversized-360.png",
+        "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5",
+        "matches": true
+      },
+      {
+        "file": "ur-page-360.png",
+        "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece",
+        "matches": true
+      },
+      {
+        "file": "ur-split-360.png",
+        "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79",
+        "matches": true
+      },
+      {
+        "file": "ur-split-next-360.png",
+        "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2",
+        "matches": true
+      },
+      {
+        "file": "ur-unavailable-360.png",
+        "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f",
+        "matches": true
+      },
+      {
+        "file": "ur-withheld-360.png",
+        "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a",
+        "matches": true
+      },
+      {
+        "file": "vi-clipped-360.png",
+        "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d",
+        "matches": true
+      },
+      {
+        "file": "vi-clipped-focused-360.png",
+        "sha256": "f3fc873ee82fb01b8964fa5540d7446684f59b6b72e1289b66501c056e4dbb02",
+        "matches": true
+      },
+      {
+        "file": "vi-clipped-footer-360.png",
+        "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d",
+        "matches": true
+      },
+      {
+        "file": "vi-empty-360.png",
+        "sha256": "22279e539da4a006bd8958911d5ecff0e5097d0305b5591be5daa6a7ae8f9a4e",
+        "matches": true
+      },
+      {
+        "file": "vi-error-360.png",
+        "sha256": "5c10a927dab7881b92be01d4f5ccf67a06569718bdc6d2c56067a4b581ed3219",
+        "matches": true
+      },
+      {
+        "file": "vi-evicted-360.png",
+        "sha256": "a8fa4ec68bd22ef0d6c3e78cde59cd093164edfea7096f1e335fbb30a2bd24a3",
+        "matches": true
+      },
+      {
+        "file": "vi-inline-360.png",
+        "sha256": "ef4467c3bbfe60e7ae6a3718c8ccd63868761650c61228d0ff8560b90a3949b0",
+        "matches": true
+      },
+      {
+        "file": "vi-loading-360.png",
+        "sha256": "00eb53ec771e635c047972ac812beb3545fd3db7d112b4433e1e4dbadda2d2ae",
+        "matches": true
+      },
+      {
+        "file": "vi-not_found-360.png",
+        "sha256": "90f3d0cabcb84285fef7c80f14d4c8fbe87317eb72c763c779be42359d0bf0e1",
+        "matches": true
+      },
+      {
+        "file": "vi-not_recorded-360.png",
+        "sha256": "1040a3eee07f457e6a69e86c5772a966b9d0e9f674a3c1699c69236b20c392e5",
+        "matches": true
+      },
+      {
+        "file": "vi-offer-360.png",
+        "sha256": "ef66aa72ab0c510a3fde7b376836a4ad94f0b05cbca0edbcd5bd953b9c3f0540",
+        "matches": true
+      },
+      {
+        "file": "vi-offer-focused-360.png",
+        "sha256": "37ec797afe639504f077ad2599700fe1f1dbd8ec2b982fe84eb6934992086f91",
+        "matches": true
+      },
+      {
+        "file": "vi-offer-footer-360.png",
+        "sha256": "ef66aa72ab0c510a3fde7b376836a4ad94f0b05cbca0edbcd5bd953b9c3f0540",
+        "matches": true
+      },
+      {
+        "file": "vi-oversized-360.png",
+        "sha256": "5258a87dc160a7bc55adfb755ca26b7cc022c8f78179fb0a6502369a0c88783b",
+        "matches": true
+      },
+      {
+        "file": "vi-page-360.png",
+        "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911",
+        "matches": true
+      },
+      {
+        "file": "vi-split-360.png",
+        "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764",
+        "matches": true
+      },
+      {
+        "file": "vi-split-next-360.png",
+        "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a",
+        "matches": true
+      },
+      {
+        "file": "vi-unavailable-360.png",
+        "sha256": "01ebd463a0d00a4ab787b76d86b80b3fadbe21213f6c5591ef585e35ca8b776f",
+        "matches": true
+      },
+      {
+        "file": "vi-withheld-360.png",
+        "sha256": "4faf91ef346b56a3e059324a8a2762894afbfbc5425610e5ba4ead8b204ee619",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-clipped-360.png",
+        "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-clipped-focused-360.png",
+        "sha256": "f84f5d3bc0325850895cc138de8a2dd1cd0136fc3441be7227179c56b76c952e",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-clipped-footer-360.png",
+        "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-empty-360.png",
+        "sha256": "d9079020f3b5ac8d7a5a63cc57a40c44eb8b7ba2a1886d6ba369d273e10c9135",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-error-360.png",
+        "sha256": "4a4205aa1cea89b0f303033f42b19ef5a5a3f66d41c99c0ad2203eee1c6cae9f",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-evicted-360.png",
+        "sha256": "cff9145fa694ac07c4c579633e4eea8fe5892d523e577461114790f4cec0e6b5",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-inline-360.png",
+        "sha256": "7b217da54bc6cdab3e1b77601ec2359b8fd772a0a0855b0e356accfc932e9013",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-loading-360.png",
+        "sha256": "f2742e099c64368ba131257c84ddab755d0314c7fef1f8009580bb9d48ebfdb6",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-not_found-360.png",
+        "sha256": "83e140e4010b0985a8f0b4a33cc40f67cc521e7729d63882cf6ececf1fcc2ca9",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-not_recorded-360.png",
+        "sha256": "c36667d90775bbe311b859d79fd21a9e86845bca3194a96c969b17c4c7137327",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-offer-360.png",
+        "sha256": "9d837035f230a498579d75bfed0806b6b5217ded870e677442e44b234d1ea505",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-offer-focused-360.png",
+        "sha256": "afedb010b7e15205205ed733e62ff0bee03dc350542df710212781afcd9e0046",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-offer-footer-360.png",
+        "sha256": "9d837035f230a498579d75bfed0806b6b5217ded870e677442e44b234d1ea505",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-oversized-360.png",
+        "sha256": "b11679310dcdc9e2957b16f70c9a9c0d90cc992c60b523d8510f3553eb595f6a",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-page-360.png",
+        "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-split-360.png",
+        "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-split-next-360.png",
+        "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-unavailable-360.png",
+        "sha256": "919f7be3bec41ae9a5b991a172e7e1f214f350aa9f5e55371f0a0a6b2fcfe641",
+        "matches": true
+      },
+      {
+        "file": "zh-CN-withheld-360.png",
+        "sha256": "d88bf93e470f36455a3f9f2dc22772775fa7add69e741ae8fe62883d0314d8ad",
+        "matches": true
+      }
+    ],
+    "personally_viewed": [
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-contact.jpg",
+        "sha256": "44f08de3b9cfa8f6053984fd205121067ac86874bce2d2b09896a19baf0e581c"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-contact.jpg",
+        "sha256": "4e9d098114699d52f6ff98034d9fb5a94a9591ee03605a2d16029c62d4106256"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-offer-focused-360.png",
+        "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-focused-360.png",
+        "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-offer-focused-360.png",
+        "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-clipped-focused-360.png",
+        "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e"
+      }
+    ],
+    "personal_total_across_assigned_and_pseudo": 17,
+    "not_personally_viewed_as_originals": "No claim of opening all150 originals. Contacts are reduced views; exact whole-key visibility relies also on the accepted hashed readback.",
+    "coverage_by_key": [
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.back",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-empty-360.png",
+            "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-loading-360.png",
+            "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-unavailable-360.png",
+            "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-withheld-360.png",
+            "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-oversized-360.png",
+            "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-evicted-360.png",
+            "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_recorded-360.png",
+            "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_found-360.png",
+            "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-inline-360.png",
+            "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+        "evidence_class": "visible_legacy_fixture_focused_final",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-focused-360.png",
+            "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.clipped_row",
+        "evidence_class": "visible_legacy_fixture",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-360.png",
+            "sha256": "5abb3a1f28e4495e00a853c23439c9f6cabd40b88dd9e63d970ce108cf99e23f"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.continued",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.continues",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.empty",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-empty-360.png",
+            "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.error",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-evicted-360.png",
+            "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.first",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.inline",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-inline-360.png",
+            "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.last",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.loading",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-loading-360.png",
+            "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.nav",
+        "evidence_class": "accessible_name_only",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.next",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.not_found",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_found-360.png",
+            "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_recorded-360.png",
+            "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.oversized",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-oversized-360.png",
+            "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.prev",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.range",
+        "evidence_class": "visible_with_urdu_order_anomaly",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.retry",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-unavailable-360.png",
+            "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.view",
+        "evidence_class": "visible_focused_final",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-offer-focused-360.png",
+            "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      },
+      {
+        "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+        "evidence_class": "visible",
+        "frames": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-withheld-360.png",
+            "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9"
+          }
+        ],
+        "reliance": "accepted primary readback mapping; actual hashes independently checked; personal image list separate"
+      }
+    ],
+    "nav_AX_records_read": [
+      {
+        "state": "loading",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "oversized",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "evicted",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "not_recorded",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "inline",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "split",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "unavailable",
+        "navigation_name": "Страницы полного diff"
+      },
+      {
+        "state": "split-next",
+        "navigation_name": "Страницы полного diff"
+      }
+    ],
+    "focused_observation": "Personally viewed actual assigned offer=598 and aggregate clipped=1 focused frames; both previously-offscreen gaps close in final150, not because of earlier duplicate footer names.",
+    "pixel_limit": "Observed bounded fixture wrapping/visibility only; no measured DOM geometry, font fallback or universal no-overflow claim."
+  },
+  "pseudo": {
+    "observed": "Personally viewed pseudo contact plus focused offer/clipped; expanded labels wrap in these bounded captures.",
+    "relied_on_mechanism": {
+      "frames": 17,
+      "synthetic": true,
+      "source_manifest": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/pseudo-manifest.json",
+      "source_manifest_sha256": "ebdfdac06fbea1f9a0956ea6a4a9d52ce9860eb7ca23e95fdab6c14f492efca3",
+      "observed": "Pseudo contact and targeted split-next crop show expanded accented labels wrapping across nav/body lines without obvious cutoff in captured regions.",
+      "mechanism": "server.mjs 25-33 derives 23 English-only ICU AST messages, expands literal nodes by ~35% and accents vowels; validates AST shape. main.tsx 48-49 registerCatalogue(en,pseudo.messages) and setLocale(en); no real locale strings are modified.",
+      "not_claimed": "Not shipped pseudo-locale support, not an actual RTL pseudo run, not an activated production pseudo setting, not full-app coverage; focused supplemental pixels expose those keys but do not prove all plural branches or action outcomes. No pseudo/qps/en-XA production support was found in targeted src/i18n search. Existing production registration seam is used by the synthetic harness only.",
+      "original_frames": 15,
+      "focused_additional_frames": 2
+    },
+    "limit": "Synthetic expanded English registered under en, 15 original +2 focused, not production pseudo-locale or RTL pseudo."
+  },
+  "functional_coverage": {
+    "First_Last_Previous_Back_Retry_completed_outcomes": "UNPROVEN",
+    "all23_interactions_PASS": false,
+    "all_CLDR_count_variants_in_component": "UNPROVEN",
+    "positive_count_claims": "Only supplied offer598 and aggregate clipped1 pixels plus shown range states. Prior IntlMessageFormat-only samples remain package evidence, not an all-action or render-path variant proof.",
+    "retained_formatter_record": {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/format-samples-results.json",
+      "sha256": "b7bbab14e8a921b04a681235077e64daa3bfbcdebfbd1945f8da2d75c42fe26d"
+    },
+    "compatibility": "19 capture source hashes match index including messages.ts/pager/model/catalogues; this establishes capture applicability, not completed actions or all count-path coverage."
+  },
+  "findings": [
+    {
+      "id": "CV2-RU-1",
+      "parent_ids": [
+        "I-RU-1",
+        "RU-1"
+      ],
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "current": "Назад к превью",
+      "proposed": "Назад к предпросмотру",
+      "reason": "The short preview is called предпросмотр elsewhere in ru catalogues, whereas this retained label uses превью for the same UI role.",
+      "disposition": "retained parent non-gating follow-up; not fixed by convergence",
+      "origin": "PR-parent current receipts 567a24a88e45-chat-canonical-ru-r2 and c7b72ef216da-ru-chat-canonical-r2",
+      "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "line": 247
+    },
+    {
+      "id": "CV2-RU-2",
+      "parent_ids": [
+        "I-RU-2"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "current": "Назад",
+      "proposed": "Предыдущая",
+      "reason": "The pager shows Назад beside Назад к превью, so a page-specific label distinguishes previous-page navigation from returning to the preview.",
+      "disposition": "retained parent non-gating follow-up; parent also suggests Следующая for next if adopting page adjectives",
+      "origin": "PR-parent current receipt 567a24a88e45-chat-canonical-ru-r2",
+      "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "line": 264
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "count_scope": "Deduplicated retained parent observations plus user-deferred D11 component-surface MINOR for Urdu; not all historical catalogue findings newly rejudged. Original IDs/aliases/dispositions retained.",
+  "zh_omission_erratum": null,
+  "RTL": {
+    "locale_direction": "LTR",
+    "global_RTL_certification": false
+  },
+  "limitations": [
+    "No new capture/browser/native/runtime/build/install/test operations or source/index/ledger writes.",
+    "No new 490-key semantics or human-native-speaker approval.",
+    "No measured DOM geometry/font-fallback/global RTL/native certification.",
+    "No completed action matrix or all count variants claimed.",
+    "This is bounded convergence/captured-element approval, not blanket product release or closure of deeper historical findings."
+  ],
+  "assembler": {
+    "lawfully_consumable_for_this_scope": true,
+    "reason": "User policy disposition accepts bounded evidence; my independent positive disposition and explicit non-gating findings fit the actual frozen UI receipt contract. The writer must retain this exact scope and companion evidence; machine validity is not global approval.",
+    "frozen_contract_bytes_checked": [
+      {
+        "path": "scripts/i18n/ledger-assemble.mjs",
+        "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+        "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+        "index_equals_frozen_bytes": true
+      },
+      {
+        "path": "scripts/i18n/ledger-rules.mjs",
+        "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+        "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+        "index_equals_frozen_bytes": true
+      }
+    ],
+    "invoked": false,
+    "suggested_scope": "PR1829 retained23 + captured22/navAX + exact467 main ancestry; bounded evidence only, no all490/native/action-matrix approval",
+    "note_under_280": "Independent final bounded evidence supplement; retained23/captured22+navAX/exact467 ancestry. Parent findings and D11 ur deferral retained; no all490/native/action-matrix approval.",
+    "record_retention_path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json"
+  },
+  "namespace_verdict": "clean-with-findings — terminal bounded convergence/captured-element disposition",
+  "overall_verdict": "clean-with-findings within explicit bounded scope only",
+  "preserved_original_hashes": {
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/check-convergence.py": "35dec628ac311e8333ed71f4da00f6fcf828b009d4e2ba40cb0b7b9b0e53b23a",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-provenance-check.json": "84cab412b8db995f790e32eafdf8999b7a76b1732950cc5060c4dfdfbbec59c4",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-parent-receipt-check.json": "b67232f263c1753d981da2dca6daddfb8a567fc863ecc1f7094e91762d8b752b",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-integrity.mjs": "6a5548cfd9dd7e89eae6c97a252bec3fcb5dbf59c6c5ec6da7a62967d9a852b6",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-integrity-results.json": "775b402dc8046054531d946bf4917dd9f89c1ef37f5f23c09e0131001272cb70",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/incoming-parent-history-check.json": "41c44802688884c6565e313ce3926a4f5f96e96089eba702052da91e337dc863",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/seam-keys-read.json": "7bc8ca954922723e27e5af5fe1a574db8a2b1a977ab17b2c4416fc5d3cb3a5c4",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/validate-parent-receipts.mjs": "d7f56c6c652ca6a4e50e17dc1e9a3e8460359122977711574af59b30bf316d84",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/parent-receipt-contract-results.json": "0d696bce78d21a5350e257df7c4e1fc5f3e9f4c2a09bfd086f28141669f340a3",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/ledger-parent-retention-check.json": "e687eb947021779999cddd5acf369f4220140bd439133f0debb3323775453568",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/linguistic-keys-read.json": "3fd85968222639ac51c8da9396726eb8dbac9090069a98f70078574ea91a90c9",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/coder-map-cross-check.json": "e6de02a6a2ccbd173fd55dbe83741c867d73e44cd41703f147701d2dd7698110",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/convergence-policy-decision.json": "3d696e8fc20eee616bcd423bc6c02725abc43fbb6234781de7ed17f65a01f116",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/format-samples.mjs": "7d7bbd93c80d02f3f79a369e34aa7c131606d31c58c4978ae47687fa76b16007",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/format-samples-results.json": "b7bbab14e8a921b04a681235077e64daa3bfbcdebfbd1945f8da2d75c42fe26d",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/ru-preview-glossary-evidence.json": "27e74c61fbf64f8e4c6a05b73d48532d63c5b0efa24ba1c43f64e2742806af49",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/scoped-findings.json": "e5226a26917e72dd664acf0525988ba3c795ef3784b690d046dd270c22c6f6c7",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-manual-adjudications.json": "36d171e79d70e12d1f59db6cddeb3880ecd370064820166ce2857f3d7ddf4f76",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/overflow-screening.json": "6156747b719758139628409ac50da8e38faad42cf5562c9b23c51650c8ad1b52",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/assigned-patch-boundary-check.json": "d16e0ec81765166f5a0dbd966c880060086255f71bb8469db1a62f3798f98e9b",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/frozen-end-state.json": "23fb0cb2fbcacececb83c7f1f6e7b09c43c7f357fa95f43bc99bd8da0eb80859",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-ru.json": "db3943a7bce723e5990fb9179f57398881898bb0877e21d644de6220684f2798",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-ur.json": "f29efce614d4a5e6aa6e75f84e779abc71e358be6c60b85fb2ec1a821041e966",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-vi.json": "de2c0c43cb55329c546b125ccc83d496614ea333079ee27a39f5adba089024f1",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-zh-cn.json": "8ad7670a42af698bf6d8773099eb3bfb50bef0f0935f356ff282318b813c2368",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/current-receipt-contract-results.json": "dff036c3b6e3256ef9c648e8bcea8f6f3dc166ca87380d86eb6b9e244a4fdd44",
+    "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-second-convergence-report.md": "c6066ead0b9c7c1db4ffdcc5b68238f3a5e8e24d74866de12298dd34e37e2cca"
+  }
+}

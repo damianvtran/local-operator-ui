@@ -637,10 +637,21 @@ test("the shipped composer wires the `$` seams", () => {
 	 * built, so the seam has to answer with the composed text. The mount-level
 	 * regression lives in `shared-composer.test.mjs`; this pin is the seam's
 	 * own line, where the replacement used to happen.
+	 *
+	 * READ AS THE SUBSTITUTED TEXT PLUS A COMPOSITION, because the seam now
+	 * composes over whichever text the credential step settled on and with the
+	 * block it awaited (bug 1: the `$skill` bodies ride the seam on a host that
+	 * honours it). Both halves are still the pin's claim - a seam that returned
+	 * the raw line would match neither line below.
 	 */
 	assert.match(
 		input,
-		/return composeOutgoing\(settled\.text\);/,
+		/const substituted = settled\?\.text \?\? carried\.text;/,
+		"the seam starts from the text the credential step settled on",
+	);
+	assert.match(
+		input,
+		/return composeOutgoing\(\s*substituted,/,
 		"the draft seam composes the payload instead of returning the raw line",
 	);
 	assert.match(
@@ -654,12 +665,12 @@ test("the shipped composer wires the `$` seams", () => {
 	 */
 	assert.match(
 		input,
-		/if \(planned\.length > 0 && skillReadProvided\)/,
+		/planned\.length > 0 && skillReadProvided/,
 		"the expansion gate is sessionless",
 	);
 	assert.match(
 		input,
-		/readSkillBody\(\s*skillReadClient,\s*cwd \?\? "",\s*mention\.name,/,
+		/readSkillBody\(skillReadClient, cwd \?\? "",/,
 		"and the body read travels with the composer's folder",
 	);
 	assert.match(

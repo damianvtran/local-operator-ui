@@ -119,6 +119,57 @@ test("badges include stale pending proposals, ignore terminal states, and suppor
 	assert.equal(m.proposalsFor(data, "team", "lopdev").length, 2);
 	assert.equal(m.totalPendingProposals(undefined), 0);
 });
+test("pending-approval derivation: one list behind the nav badge, tab counts and row marks", () => {
+	// The operator's case (2026-11-21): one TEAM proposal, viewed from the Agents
+	// tab. Every count the page draws must agree with the nav badge's number.
+	const data = m.profileProposalListSchema.parse({
+		proposals: [
+			proposal({ id: "t1", created_at: 10 }),
+			proposal({ id: "t2", created_at: 30, state: "stale", stale: true }),
+			proposal({ id: "a1", kind: "agent", name: "scout", created_at: 20 }),
+			proposal({ id: "s1", kind: "skill", name: "research", created_at: 5 }),
+			proposal({ id: "done", kind: "agent", name: "scout", state: "accepted" }),
+			proposal({ id: "gone", kind: "skill", name: "x", state: "superseded" }),
+		],
+		// Core's per-record map disagrees on purpose: the page must not read it.
+		counts: { team: { lopdev: 9 } },
+	});
+	const ids = m.pendingProposals(data).map((p) => p.id);
+	assert.deepEqual(
+		ids,
+		["t2", "a1", "t1", "s1"],
+		"newest first, stale kept, terminal dropped",
+	);
+	const byKind = m.pendingProposalCountsByKind(data);
+	assert.deepEqual(byKind, { agent: 1, team: 2, skill: 1 });
+	assert.equal(
+		byKind.agent + byKind.team + byKind.skill,
+		m.totalPendingProposals(data),
+		"tab counts sum to the nav badge",
+	);
+	const teams = m.pendingProposalsByRecord(data, "team");
+	assert.deepEqual([...teams.keys()], ["lopdev"]);
+	assert.deepEqual(
+		teams.get("lopdev").map((p) => p.id),
+		["t2", "t1"],
+		"a row opens its newest proposal",
+	);
+	assert.equal(
+		m.pendingProposalsByRecord(data, "agent").get("scout").length,
+		1,
+	);
+	assert.equal(m.pendingProposalsByRecord(data, "skill").has("x"), false);
+	assert.equal(m.pendingProposalsByRecord(data, "agent").has("lopdev"), false);
+	// No data (capability off, or not read yet) is zero everywhere, never a throw.
+	assert.deepEqual(m.pendingProposals(undefined), []);
+	assert.deepEqual(m.pendingProposalCountsByKind(undefined), {
+		agent: 0,
+		team: 0,
+		skill: 0,
+	});
+	assert.equal(m.pendingProposalsByRecord(undefined, "team").size, 0);
+	assert.equal(m.isAwaitingDecision(proposal({ state: "expired" })), false);
+});
 test("Edit-then-accept sends only changed proposal fields, parses list and JSON without losing false/null", () => {
 	const changes = [
 		{ field: "instructions", format: "text", after_text: "old" },
@@ -217,4 +268,34 @@ test("proposed-new rows: pending/stale creates for unknown names only, one per n
 		["crew"],
 	);
 	assert.deepEqual(m.proposedNewProfiles(undefined, "agent", []), []);
+});
+test("proposedNewProfiles: a skill create the library lacks is new; one it lists is not (PR #2026 R2/U1)", () => {
+	// The Skills pane renders the review panel instead of SkillDetail's load
+	// error exactly when this returns the selected name.
+	const skill = (over) => ({
+		id: "pp_2222222222222222",
+		kind: "skill",
+		name: "research-brief",
+		operation: "create",
+		fields: [],
+		state: "pending",
+		stale: false,
+		origin: { trust: "agent" },
+		...over,
+	});
+	const list = {
+		proposals: [
+			skill({}),
+			skill({ id: "pp_3333333333333333", name: "installed" }),
+			skill({ id: "pp_4444444444444444", name: "edit", operation: "update" }),
+			skill({ id: "pp_5555555555555555", name: "agentish", kind: "agent" }),
+		],
+		counts: {},
+	};
+	assert.deepEqual(
+		m
+			.proposedNewProfiles(list, "skill", ["installed", "edit"])
+			.map((p) => p.name),
+		["research-brief"],
+	);
 });

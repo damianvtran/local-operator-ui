@@ -1,0 +1,47 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "b3ffd3070656",
+  "locale": "vi",
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "task": "prA-au-vi",
+  "translator": {"session_label": "prA-tr-vi", "model": "openai/gpt-6.1-sol"},
+  "independent_from_translator_session": true,
+  "actual_model_source": "harness system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s18d",
+  "english_commit": "f430d4fd43fbf0cbc0b15e9b5595dc080e8b7c13",
+  "scope": "5 new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) + context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value audited in place, file untouched); all other keys byte-identical to HEAD",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "target": "9220878f614d0e40ff702f72764713900ad465d57b6c9e6183cc9ce6ffa07185",
+        "source": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "findings": [
+        {"id": "VI-N1", "severity": "NIT", "key": "ui.agents.detail.tools.error_grammar",
+         "current": "Tên công cụ chỉ gồm chữ cái, chữ số, dấu chấm, dấu gạch dưới, dấu gạch nối hoặc dấu hai chấm.",
+         "problem": "93 chars vs en 63 under a narrow input; the repeated 'dấu' adds length without meaning. Context allows wrapping, so not an overflow defect.",
+         "suggestion": "Tên công cụ chỉ gồm chữ cái, chữ số, dấu chấm, gạch dưới, gạch nối hoặc hai chấm. (81 chars; same shape as ui.projects.project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces)"},
+        {"id": "VI-N2", "severity": "NIT", "key": "ui.agents.detail.ask_change_prefill",
+         "current": "Thay đổi tác nhân “{name}”: ",
+         "problem": "Bare 'Thay đổi' can be read as a noun heading ('Changes to agent X:') rather than a request to the assistant; acceptable per style guide (plain verbs), only marginally less clear.",
+         "suggestion": "Hãy thay đổi tác nhân “{name}”: (optional)"}
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "target": "07e5467f6aeea9ae5f58d6375550c68db228031e43eaf999e54f022dcd0a3e8e",
+        "source": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "findings": []
+    }
+  },
+  "context_widened_keys": {
+    "ui.agents.detail.create.error_instructions_required": "Hãy nhập chỉ dẫn cho tác nhân. — reads correctly on create and edit; no finding",
+    "ui.hub.teams.kind.specialist": "Chuyên gia — noun, fits meta line; vi/ui.hub.teams.json sha256 3913d6c7c8527c8b841b8cbd0ec1c24b3e6315ae3b2728793a2a152f643d6bcd unchanged vs HEAD; no finding"
+  },
+  "audit_notes_not_execution_log": "Commands run: git diff --stat/diff on both vi files; check-coverage.mjs (exit 0, one summary line, no vi-specific line); context-parity.mjs (exit 0); python JSON parse + key-set/HEAD comparison + NFC check; shasum -a 256. No rendering, no native-speaker review."
+}

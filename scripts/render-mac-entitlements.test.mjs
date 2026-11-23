@@ -75,7 +75,9 @@ test("rendering adds the group and changes nothing else", () => {
 	// before the closing dict rather than a rewrite.
 	for (const key of [
 		"com.apple.security.cs.allow-jit",
-		"com.apple.security.cs.disable-library-validation",
+		// Not disable-library-validation any more: F2 removed it from the MAIN
+		// plist (the inherit plist keeps it for the python seed).
+		"com.apple.security.cs.allow-unsigned-executable-memory",
 		"com.apple.security.device.camera",
 		"com.apple.security.network.server",
 	]) {

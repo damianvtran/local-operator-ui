@@ -146,6 +146,22 @@ async function sourceFiles(dir) {
 	return out;
 }
 
+/*
+ * RETAINED ORPHANS (docs/I18N.md, "Retained orphan keys"). The composer's old
+ * five-second refusal hint was replaced by the persistent send-block line
+ * (`SendBlockedLine`, `ui.recovery.composer.*`), so these two keys lost their
+ * last reference. They are translated, receipt-bound values in eight locales:
+ * deleting them is itself an audited change (every locale's ledger receipt
+ * re-binds), so they are kept until an audited removal round rather than
+ * dropped unaudited. The list is exact, not a pattern: each entry must still
+ * exist AND still be unreferenced, so a key re-wired or removed fails the stale
+ * entry, and any OTHER orphan still fails the assertion below.
+ */
+const RETAINED_ORPHANS = [
+	"ui.chat.composer_notes.hint.choose_model",
+	"ui.chat.composer_notes.hint.connect_provider",
+];
+
 test("the S3 namespaces are populated, resolve through t(), and every key is referenced", async () => {
 	assert.ok(mine.length >= 400, `expected the S3 keys, found ${mine.length}`);
 	useMarkerLocale();
@@ -164,7 +180,16 @@ test("the S3 namespaces are populated, resolve through t(), and every key is ref
 		const parent = key.slice(0, key.lastIndexOf("."));
 		return !corpus.includes(`${parent}.\${`) && !corpus.includes(`"${parent}.`);
 	});
-	assert.deepEqual(orphans, [], "keys no source references");
+	for (const key of RETAINED_ORPHANS)
+		assert.ok(
+			orphans.includes(key),
+			`stale retained orphan ${key}: it is referenced again or gone - drop it from RETAINED_ORPHANS`,
+		);
+	assert.deepEqual(
+		orphans.filter((key) => !RETAINED_ORPHANS.includes(key)),
+		[],
+		"keys no source references",
+	);
 });
 
 test("producers return catalogue copy under a marker locale, and none of the English they used to", () => {

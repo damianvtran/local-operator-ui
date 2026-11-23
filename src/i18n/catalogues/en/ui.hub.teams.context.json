@@ -55,8 +55,8 @@
 		"tone": "plain, one word"
 	},
 	"ui.hub.teams.kind.specialist": {
-		"note": "A roster slot whose kind is `specialist` on the wire. Sits beside kind.role in the same column, so keep the two comparable in length. Narrow cell.",
-		"role": "roster slot kind label",
+		"note": "A roster slot whose kind is `specialist` on the wire. Sits beside kind.role in the same column, so keep the two comparable in length. Narrow cell. Also reused as one fact in the agent detail pane's dot-separated meta line, where it is read as a noun beside the source and class facts.",
+		"role": "kind label: roster slot, and the agent detail pane's meta line (`Built-in · Specialist`)",
 		"tone": "plain, one word"
 	},
 	"ui.hub.teams.manager": {
@@ -134,46 +134,46 @@
 		"role": "failure lead for the org teams roster",
 		"tone": "plain, factual"
 	},
-	"ui.hub.teams.public.aria": [
-		"accessible name and hidden heading for the public library",
-		"plain, names the collection",
-		"One name used twice: the region's aria-label and the section's sr-only h2. The h2 keeps the heading outline; the label keeps the landmark."
-	],
-	"ui.hub.teams.public.catalogue_unreadable": [
-		"fallback sentence inside a danger alert",
-		"calm, specific about the cause",
-		"Base sentence handed to the shared public-hub error mapper, which appends the transport detail. 'Public team catalogue' is this surface's name for the read."
-	],
-	"ui.hub.teams.public.empty": [
-		"empty-state sentence",
-		"plain, factual",
-		"The public hub carries no teams yet. Says what is missing without a call to action: this surface cannot publish."
-	],
-	"ui.hub.teams.public.intro": [
-		"introductory paragraph under the heading",
-		"plain, explanatory",
-		"Explains who publishes these teams, that reading needs no sign-in, and what Pulling does. Three sentences; capped at max-w-3xl and wraps freely."
-	],
-	"ui.hub.teams.public.load_failed": [
-		"alert title",
-		"calm, specific",
-		"The public team read failed as a whole. The explanation and the retry sit beneath it."
-	],
-	"ui.hub.teams.public.match_line": [
-		"status line above the grid while a search is active",
-		"plain, factual",
-		"{visible} and {total} are counts on this page and its load; {total} takes an ICU plural. {query} is the operator's typed text, escaped and quoted, never translated."
-	],
-	"ui.hub.teams.public.open_settings": [
-		"button label",
-		"plain, action",
-		"Opens Settings where the Radient credential is entered. The sentence beside it explains why."
-	],
-	"ui.hub.teams.public.published_by": [
-		"prefix before the author's name",
-		"plain, quiet",
-		"A trailing space is supplied by the caller before the name span; do not bake punctuation into this message that the layout cannot move."
-	],
+	"ui.hub.teams.public.aria": {
+		"role": "accessible name and hidden heading for the public library",
+		"tone": "plain, names the collection",
+		"note": "One name used twice: the region's aria-label and the section's sr-only h2. The h2 keeps the heading outline; the label keeps the landmark."
+	},
+	"ui.hub.teams.public.catalogue_unreadable": {
+		"role": "fallback sentence inside a danger alert",
+		"tone": "calm, specific about the cause",
+		"note": "Base sentence handed to the shared public-hub error mapper, which appends the transport detail. 'Public team catalogue' is this surface's name for the read."
+	},
+	"ui.hub.teams.public.empty": {
+		"role": "empty-state sentence",
+		"tone": "plain, factual",
+		"note": "The public hub carries no teams yet. Says what is missing without a call to action: this surface cannot publish."
+	},
+	"ui.hub.teams.public.intro": {
+		"role": "introductory paragraph under the heading",
+		"tone": "plain, explanatory",
+		"note": "Explains who publishes these teams, that reading needs no sign-in, and what Pulling does. Three sentences; capped at max-w-3xl and wraps freely."
+	},
+	"ui.hub.teams.public.load_failed": {
+		"role": "alert title",
+		"tone": "calm, specific",
+		"note": "The public team read failed as a whole. The explanation and the retry sit beneath it."
+	},
+	"ui.hub.teams.public.match_line": {
+		"role": "status line above the grid while a search is active",
+		"tone": "plain, factual",
+		"note": "{visible} and {total} are counts on this page and its load; {total} takes an ICU plural. {query} is the operator's typed text, escaped and quoted, never translated."
+	},
+	"ui.hub.teams.public.open_settings": {
+		"role": "button label",
+		"tone": "plain, action",
+		"note": "Opens Settings where the Radient credential is entered. The sentence beside it explains why."
+	},
+	"ui.hub.teams.public.published_by": {
+		"role": "prefix before the author's name",
+		"tone": "plain, quiet",
+		"note": "A trailing space is supplied by the caller before the name span; do not bake punctuation into this message that the layout cannot move."
+	},
 	"ui.hub.teams.public.pull_failed": {
 		"note": "The public roster's fallback when a pull failed with nothing more specific to say. Rendered under the row's Pull control, beside the control that produced it.",
 		"role": "fallback pull-failure sentence",
@@ -184,31 +184,31 @@
 		"role": "pull-failure sentence, no credential",
 		"tone": "plain, gives the next step"
 	},
-	"ui.hub.teams.public.search_aria": [
-		"accessible name for the teams search field",
-		"plain",
-		"Stable name for the search input; the placeholder beside it is a hint, not a second name."
-	],
+	"ui.hub.teams.public.search_aria": {
+		"role": "accessible name for the teams search field",
+		"tone": "plain",
+		"note": "Stable name for the search input; the placeholder beside it is a hint, not a second name."
+	},
 	"ui.hub.teams.public.search_miss": {
 		"note": "{query} is what the operator typed, in quotes in English. The sentence is about the teams loaded on THIS page, not the whole hub. A locale may swap the quote pair.",
 		"role": "empty search result in the public teams list",
 		"tone": "plain"
 	},
-	"ui.hub.teams.public.search_placeholder": [
-		"placeholder in the teams search field",
-		"plain",
-		"Placeholder text in the search box above the public teams grid. Fits beside the search icon in an h-8 field."
-	],
-	"ui.hub.teams.public.search_scope": [
-		"inline qualifier after the match line",
-		"plain, quiet",
-		"Leading middle dot and space are part of the message: it is appended to the match sentence as a dim aside. Says search only covers the teams already loaded on this page."
-	],
-	"ui.hub.teams.public.sign_in_hint": [
-		"inline sentence beside the sign-in button",
-		"plain, explains why",
-		"Pulling a team needs a Radient credential on this machine. Radient is a product name and stays English."
-	],
+	"ui.hub.teams.public.search_placeholder": {
+		"role": "placeholder in the teams search field",
+		"tone": "plain",
+		"note": "Placeholder text in the search box above the public teams grid. Fits beside the search icon in an h-8 field."
+	},
+	"ui.hub.teams.public.search_scope": {
+		"role": "inline qualifier after the match line",
+		"tone": "plain, quiet",
+		"note": "Leading middle dot and space are part of the message: it is appended to the match sentence as a dim aside. Says search only covers the teams already loaded on this page."
+	},
+	"ui.hub.teams.public.sign_in_hint": {
+		"role": "inline sentence beside the sign-in button",
+		"tone": "plain, explains why",
+		"note": "Pulling a team needs a Radient credential on this machine. Radient is a product name and stays English."
+	},
 	"ui.hub.teams.public.trying": {
 		"note": "Replaces 'Try again' on the failed-read alert while the refetch runs; the button is disabled and aria-busy. U+2026.",
 		"role": "button label while the retry is in flight",
@@ -237,7 +237,7 @@
 	"ui.hub.teams.recency.created": {
 		"role": "Recency segment when only the team's creation date is usable",
 		"tone": "Quiet, lowercase fragment, sibling of recency.updated.",
-		"length_hint": "Same single truncated line as recency.updated.",
+		"length": "Same single truncated line as recency.updated.",
 		"placeholders": {
 			"when": "The same localized relative phrase as recency.updated carries."
 		},
@@ -246,7 +246,7 @@
 	"ui.hub.teams.recency.updated": {
 		"role": "Recency segment in an organization team row's provenance line",
 		"tone": "Quiet, lowercase fragment; it follows the project and author segments after a dot.",
-		"length_hint": "Two words plus the age in English. The row's provenance line is a single truncated line, so keep the surrounding words short.",
+		"length": "Two words plus the age in English. The row's provenance line is a single truncated line, so keep the surrounding words short.",
 		"placeholders": {
 			"when": "The localized relative phrase produced by the hub's shared age messages (ui.hub.comments.age.*), for example '2 days ago' or 'just now'. It already contains its own 'ago'; translate only the verb around it."
 		},
@@ -255,7 +255,7 @@
 	"ui.hub.teams.unnamed_team": {
 		"role": "fallback name for a team whose roster row could not be resolved when a pull from the hub fails",
 		"tone": "plain, factual, lowercase",
-		"length_hint": "Two words in English.",
+		"length": "Two words in English.",
 		"placeholders": {},
 		"note": "It is substituted for the team's NAME inside ui.hub.teams.pull_failed (\"{name}\" could not be pulled.), so it must read as a noun phrase that a quoted name slot can hold - not a sentence, and lowercase like a name fragment rather than a sentence start. The sibling ui.hub.teams.org.that_organization does the same job for an organization."
 	}

@@ -1,0 +1,93 @@
+{
+  "kind": "pure frozen deriveReceiptAudit only; no writer/checker",
+  "results": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-ru-receipt.json",
+      "locale": "ru",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-debt-013810-ru",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "b5ef4ec3ad119e95fbd8ca236dcbd606af540d3ac3eec2269512abefea7bbe1f",
+        "receipt_sha256": "044611ccad271eb035916af1c78fa333052a5aa1b6817b29caeea2650eb83a51"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-ur-receipt.json",
+      "locale": "ur",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-debt-013810-ur",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 3,
+          "nit": 4
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "896a86c7db417e881756f2437b8f0f159b52405dbe2563feab456fae036bf903",
+        "receipt_sha256": "0bda54cc2e2cd078037afb985df2ec2c080d459fcd03c6e9eeb7bb9e7b7887f8"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-vi-receipt.json",
+      "locale": "vi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-debt-013810-vi",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "17192d9d959ed5fc5d9f6216b860c68441d21298bc909aff442956d54ec7e503",
+        "receipt_sha256": "1f62e4c70ef1f54a7a1e1fa4165c905d8e1e5ebb5f7d76e720d7c76eb969acea"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-zh-CN-receipt.json",
+      "locale": "zh-CN",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-finalgate20261115-debt-013810-zh-cn",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 3,
+          "nit": 2
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "ed4ba8b8a1e0b800ca7c6a856b96f582c684e52a33019e2b26aa4011d44756b8",
+        "receipt_sha256": "bf6b74f06e1375e1d70ab50dcaed8b3a7371d825f19e711823d3de348d542314"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    }
+  ]
+}

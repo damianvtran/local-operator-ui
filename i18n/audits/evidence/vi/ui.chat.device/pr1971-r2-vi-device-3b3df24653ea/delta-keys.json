@@ -1,0 +1,15 @@
+{
+	"namespace": "ui.chat.device",
+	"locale": "vi",
+	"english": {
+		"ui.chat.device.footer.move_deletes_copy": "A move deletes this device's copy when it commits."
+	},
+	"target": {
+		"ui.chat.device.footer.move_deletes_copy": "Thao tác chuyển sẽ xóa bản sao trên thiết bị này khi hoàn tất."
+	},
+	"counts": {
+		"keys": 1,
+		"target_keys": 26,
+		"english_keys": 26
+	}
+}

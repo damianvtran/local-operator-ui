@@ -48,7 +48,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
+			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -79,6 +79,8 @@ const {
 	ApprovalEscapeControls,
 	APPROVAL_ESCAPE_COPY,
 	approvalPolicyLine,
+	approvalEscapeHandleState,
+	policyAfterSave,
 	QuestionDock,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -519,4 +521,128 @@ test("the approvals picker's default scope describes followers, not an unchanged
 		"the saved-default sentence carries both the follower claim and this session's exception",
 	);
 	assert.doesNotMatch(picker, /This session is unchanged\./);
+});
+
+/*
+ * D9 (onboarding friction, 2026-11): 41 external users pressed "Set auto for all
+ * sessions" and 10 rage-clicked it. The confirmation lived only in the status
+ * line under the handles, which the dock's give-way-first secondary region
+ * clipped, and the handle kept offering the same press. The pressed control
+ * itself now carries the in-flight word and the result.
+ */
+test("the pressed handle says it is working, then says what now holds", () => {
+	assert.equal(
+		approvalEscapeHandleState("all", "all", { kind: "idle" }),
+		"pending",
+	);
+	assert.equal(
+		approvalEscapeHandleState("session", "all", { kind: "idle" }),
+		"idle",
+	);
+	assert.equal(
+		approvalEscapeHandleState("all", null, { kind: "default-saved" }),
+		"done",
+	);
+	// "All sessions" moved this one too, so the session press would do nothing.
+	assert.equal(
+		approvalEscapeHandleState("session", null, { kind: "default-saved" }),
+		"done",
+	);
+	assert.equal(
+		approvalEscapeHandleState("session", null, { kind: "session-saved" }),
+		"done",
+	);
+	assert.equal(
+		approvalEscapeHandleState("all", null, { kind: "session-saved" }),
+		"idle",
+	);
+	// Default saved, session refused: the session handle stays a live press.
+	const partial = { kind: "default-saved-session-failed", detail: "x" };
+	assert.equal(approvalEscapeHandleState("all", null, partial), "done");
+	assert.equal(approvalEscapeHandleState("session", null, partial), "idle");
+	// A refusal leaves both pressable.
+	const refused = { kind: "refused", detail: "x" };
+	assert.equal(approvalEscapeHandleState("all", null, refused), "idle");
+
+	const pending = renderControls({ busy: true, pending: "all" });
+	assert.match(
+		buttonOpeningTag(pending, "Setting auto…"),
+		/data-approval-escape-all/,
+	);
+	assert.match(pending, /Set auto for this session/);
+
+	/*
+	 * D1: the in-flight handle's label IS the status, so it is refused by
+	 * aria-disabled at body ink, never the disabled palette (2.30:1).
+	 */
+	const pendingTag = buttonOpeningTag(pending, "Setting auto…");
+	assert.match(pendingTag, /aria-disabled="true"/);
+	assert.match(pendingTag, /aria-busy="true"/);
+	assert.doesNotMatch(pendingTag, / disabled(?:=""|\s|>)/);
+	assert.match(pendingTag, /cursor-progress text-ink-muted/);
+
+	const done = renderControls({ status: { kind: "default-saved" } });
+	/*
+	 * D4: the all-handle names what the press changed - the DEFAULT, which
+	 * conversations with their own choice do not follow.
+	 */
+	assert.doesNotMatch(done, /Auto is on for all sessions/);
+	const allTag = buttonOpeningTag(done, "Auto is now the default");
+	assert.match(allTag, /data-state="done"/);
+	assert.match(allTag, / disabled(?:=""|\s|>)/);
+	assert.match(allTag, /disabled:text-success/);
+	assert.match(
+		buttonOpeningTag(done, "Auto is on for this session"),
+		/data-state="done"/,
+	);
+	assert.doesNotMatch(done, />Set auto for all sessions</);
+	// U5: the receipt points at the press that actually answers the request.
+	assert.match(
+		done,
+		/data-approval-escape-next=""[^>]*> Approve or deny the request to continue\./,
+	);
+	assert.doesNotMatch(
+		renderControls({ status: { kind: "refused", detail: "x" } }),
+		/Approve or deny/,
+	);
+});
+
+test("D4: the policy line states what the press saved, not the gate's pre-press mode", () => {
+	const gate = { mode: "ask", provenance: "global", globalMode: "ask" };
+	assert.deepEqual(policyAfterSave({ kind: "idle" }, gate), gate);
+	assert.deepEqual(
+		policyAfterSave({ kind: "refused", detail: "x" }, gate),
+		gate,
+	);
+	const allLine = approvalPolicyLine(
+		policyAfterSave({ kind: "default-saved" }, gate),
+	);
+	assert.doesNotMatch(allLine, /Ask/);
+	assert.match(allLine, /Auto/);
+	assert.equal(policyAfterSave({ kind: "session-saved" }, gate).mode, "auto");
+	assert.equal(
+		policyAfterSave({ kind: "session-saved" }, gate).provenance,
+		"session",
+	);
+	// Session part refused: only the default is known to have moved.
+	assert.deepEqual(
+		policyAfterSave(
+			{ kind: "default-saved-session-failed", detail: "x" },
+			gate,
+		),
+		{ ...gate, globalMode: "auto" },
+	);
+});
+
+test("N3/N4: a saved state ends when the mode moves back, and the reveal scrolls only its own region", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/trace/approval-escape.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/if \(approvalMode === undefined \|\| approvalMode === "auto"\) return;/,
+	);
+	assert.doesNotMatch(source, /scrollIntoView\?\.\(/);
+	assert.match(source, /revealInOwnScroller\(line\)/);
 });

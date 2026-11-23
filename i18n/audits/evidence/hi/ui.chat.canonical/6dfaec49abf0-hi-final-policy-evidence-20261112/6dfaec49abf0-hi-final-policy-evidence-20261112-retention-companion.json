@@ -1,0 +1,381 @@
+{
+  "document_type": "supplemental-retention-and-frozen-assembler-compatibility-companion",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-12T23:49:25.654813+00:00",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "6dfaec49abf0",
+    "model": "openai/gpt-6.1-sol",
+    "model_selection": "parent",
+    "model_override": false,
+    "fallback": null,
+    "fallback_note": "No fallback performed by this auditor; inherited actual served model. Coordinator-only fallback authorization is not claimed as an auditor authorization. No model/profile/default/tool changes made.",
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+    "independence": "Same original independent auditor instance/session; no translation work, coordinator-authored verdict or verdict copying. Primary evidence was read only as expressly authorized for this evidence disposition; independent decision retained."
+  },
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+  "immutable_record": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json",
+    "sha256": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251",
+    "proposed_tracked_copy": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json"
+  },
+  "immutable_receipt": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json",
+    "sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+    "status": "passed",
+    "result": "clean-with-findings",
+    "sha256_binding": {
+      "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "hi": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+    },
+    "findings_counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+    }
+  },
+  "additional_references": {
+    "coverage_routing_plan": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+      "not_execution_evidence": true,
+      "hash_verified": true,
+      "interpretation": "Fixture routing plan only, not evidence that actions passed."
+    },
+    "own_independent_provenance": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json",
+      "sha256": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff",
+      "basis": "Original independent all-key raw-block proof retained, not recomputed or rewritten."
+    },
+    "coder_provenance_map": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/convergence-provenance-map.json",
+      "sha256": "c98003c8e1d98699885e8ab51308634d21e9cf59ce01de6d7925d29e7bb20720",
+      "basis": "Cross-checked against independent derivation in original audit; reference only, not adopted coder verdict."
+    }
+  },
+  "existing_evidence_reference_groups": {
+    "r2_fr2_second_audit_fr_delta_main_receipts": [
+      {
+        "locale": "hi",
+        "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+        "sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+        "hash_matches_row": true,
+        "index_exact_parent": true,
+        "source_hash_matches_parent": true,
+        "target_hash_matches_parent": true,
+        "findings": [
+          {
+            "id": "I-HI-1",
+            "severity": "minor",
+            "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+            "codepath": "diff-history-model.ts:473",
+            "message": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+            "fix": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+            "disposition": "deferred — non-gating",
+            "origin": "r2"
+          }
+        ],
+        "scope": null,
+        "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+        "receipt_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+        "applies_to_current_selected_keys": 23,
+        "whole_file_current_hash_binding": false,
+        "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+      },
+      {
+        "locale": "hi",
+        "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/receipts/c7b72ef216da-hi-chat-canonical-r2.json",
+        "sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+        "hash_matches_row": true,
+        "index_exact_parent": true,
+        "source_hash_matches_parent": true,
+        "target_hash_matches_parent": true,
+        "findings": [
+          {
+            "id": "HI-1",
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+            "disposition": "deferred — non-gating minor, no remediation cycle",
+            "evidence": "'इसे सुरक्षित रूप से छिपाया नहीं जा सका' makes the diff itself ('इसे') the thing that could not be hidden, which reads as a possible leak; context says redaction = removing secrets, tone reassuring",
+            "proposed": {
+              "ui.chat.canonical.tool_row.diff.full.withheld": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी"
+            }
+          }
+        ],
+        "scope": null,
+        "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+        "receipt_context_sha256": null,
+        "applies_to_current_selected_keys": 23,
+        "whole_file_current_hash_binding": false,
+        "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+      },
+      {
+        "locale": "hi",
+        "ref": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+        "path": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+        "sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
+        "hash_matches_row": true,
+        "index_exact_parent": true,
+        "source_hash_matches_parent": true,
+        "target_hash_matches_parent": true,
+        "findings": [],
+        "scope": "Round-4 delta audit at cbb8782a: the 3 values this commit changed (media.sound_label, sound.player_failed, supplement.sound_fallback_label) plus all 6 image_gen state keys that carry the sibling compound साउंड इफ़ेक्ट, read in full to judge that the noun is now consistent. The other 464 values are byte-identical to 8180eff1 (verified: 464/467 identical, 3 differing, 3 differing raw lines, key order unchanged) and are retained on that proof, not re-read. Key sets equal English (467/467).",
+        "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "parent_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+        "receipt_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+        "applies_to_current_selected_keys": 467,
+        "whole_file_current_hash_binding": false,
+        "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+      }
+    ],
+    "source_records_browser_manifest_source_readback": {
+      "accepted_readback_json": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+        "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+        "read": true
+      },
+      "accepted_readback_markdown": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+        "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+        "read": true
+      },
+      "final_frame_manifest": {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+        "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+        "entries": 150,
+        "assigned_locale_png_hashes_independently_verified": 57
+      },
+      "browser_source_identity": {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+        "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+        "all_19_source_files_match_current_index": true
+      },
+      "captures": {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+        "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d",
+        "rows": 92,
+        "error_rows": 14,
+        "successful_rows": 78,
+        "summary": {
+          "es": {
+            "rows": 2,
+            "successful": 2,
+            "successful_states": [
+              "oversized",
+              "split-next"
+            ]
+          },
+          "fr": {
+            "rows": 2,
+            "successful": 2,
+            "successful_states": [
+              "split",
+              "split-next"
+            ]
+          },
+          "hi": {
+            "rows": 12,
+            "successful": 7,
+            "successful_states": [
+              "unavailable",
+              "oversized",
+              "evicted",
+              "clipped",
+              "split",
+              "not_found",
+              "split-next"
+            ]
+          },
+          "ru": {
+            "rows": 17,
+            "successful": 8,
+            "successful_states": [
+              "loading",
+              "oversized",
+              "evicted",
+              "not_recorded",
+              "inline",
+              "split",
+              "unavailable",
+              "split-next"
+            ]
+          },
+          "ur": {
+            "rows": 15,
+            "successful": 15,
+            "successful_states": [
+              "offer",
+              "loading",
+              "error",
+              "empty",
+              "unavailable",
+              "withheld",
+              "oversized",
+              "evicted",
+              "not_recorded",
+              "not_found",
+              "inline",
+              "clipped",
+              "split",
+              "page",
+              "split-next"
+            ]
+          },
+          "vi": {
+            "rows": 15,
+            "successful": 15,
+            "successful_states": [
+              "offer",
+              "loading",
+              "error",
+              "empty",
+              "unavailable",
+              "withheld",
+              "oversized",
+              "evicted",
+              "not_recorded",
+              "not_found",
+              "inline",
+              "clipped",
+              "split",
+              "page",
+              "split-next"
+            ]
+          },
+          "zh-CN": {
+            "rows": 15,
+            "successful": 15,
+            "successful_states": [
+              "offer",
+              "loading",
+              "error",
+              "empty",
+              "unavailable",
+              "withheld",
+              "oversized",
+              "evicted",
+              "not_recorded",
+              "not_found",
+              "inline",
+              "clipped",
+              "split",
+              "page",
+              "split-next"
+            ]
+          },
+          "synthetic-pseudo": {
+            "rows": 14,
+            "successful": 14,
+            "successful_states": [
+              "offer",
+              "page",
+              "split",
+              "clipped",
+              "loading",
+              "error",
+              "empty",
+              "unavailable",
+              "withheld",
+              "oversized",
+              "evicted",
+              "not_recorded",
+              "not_found",
+              "inline"
+            ]
+          }
+        },
+        "interpretation": "AX snapshots, many truncated to 24/30 lines, not DOM geometry. Historical element-not-found rows cannot invalidate replacement final nonblank PNGs; successful snapshots do not prove footer content beyond their returned lines."
+      },
+      "retained_source_records": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "git_ref": "index",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+          "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "git_ref": "index",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+          "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "git_ref": "index",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+          "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "git_ref": "index",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+          "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+        }
+      ],
+      "primary_clarification": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/convergence-primary-es-fr-hi-policy-clarification.md",
+        "sha256": "34ff12fdeac39fa25f1eabcd34fb0b461c74d4dd8ebf20a3a65448eb37c47a1b",
+        "use": "Read for evidence/policy delta, not adopted as this auditor verdict."
+      },
+      "primary_reviewed_scope": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/reviewed-key-scope.json",
+        "sha256": "e99e0d24c6b1833470fb73676bb689532f641fc0d130cc78e3faf68bc330eb7d",
+        "use": "Historical scope evidence only; its 49-key count is not mine."
+      }
+    },
+    "own_originals": {
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-report.json": "b2e6edb53c39736e887a812ae4af71e918fde4c69aa768ed7ca0fcc0c717d28e",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-fr-report.json": "58d79d209926a2047cd94f04de77ffe42d320acef3dadce0eb946da94d72d280",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-hi-report.json": "65797fe4c4b4f98f71902d244f6f9533bdade5b93691e63795ce3fd95b6cef06",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-convergence-second.json": "ff9756c7f00fe7c3529e5a6501d6b30abd590929111a0beaf4e2e334f10d465f",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-summary.md": "9f33a464b216d684f7e7fccbc60533b23044d18a67b666520806779da34a168b",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-policy-clarification.md": "8f775f452788ce894c09d6a71f1f1b932534a5ec8ebf9adf3e4638794896a30a",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-icu-proof.json": "21d8718cc516fabfae07a9d13c001987dbec705a16e68456883865f59b3fdb4b",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/final-readback-verification.json": "ce8503f17ab93a1234bf249ce34ffab923f5b3a30750b33db6f14263e251b320"
+    }
+  },
+  "frozen_contract": {
+    "tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+    "assembler_path": "scripts/i18n/ledger-assemble.mjs",
+    "assembler_blob": "115248c9f56f2279e43f9c4f76c2d108259a9eb8",
+    "assembler_sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "assembler_index_equals_supplied_tree": true,
+    "rules_path": "scripts/i18n/ledger-rules.mjs",
+    "rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "actual_rules_equal_staged_bytes": true,
+    "pure_derivation_previously_completed_for_this_receipt": true,
+    "assembler_compatibility": "Compatible with frozen identity/hash/result derivation and receipt copying. Read-only inspection only: assembler not invoked, no dry-run flag claimed. Existing-row immutable evidence checks and namespace status derivation remain mandatory at application time."
+  },
+  "writer_handoff_not_executed": {
+    "canonical_evidence_root": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112",
+    "copy_record_byte_for_byte": true,
+    "copy_companions_and_referenced_evidence_with_hashes": true,
+    "retain_all_historical_artifacts": true,
+    "assembler_inputs": {
+      "locale": "hi",
+      "file": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "auditor-instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+      "auditor-model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json",
+      "scope": "23 retained PR keys plus accepted captured-element evidence; exact 467-key main ancestry retained; no fresh 490-key semantics, all-interactions, native or global release approval.",
+      "note": "Bounded 23-key carry-forward/captured-element disposition; 467 main keys retained. Evidence: i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json",
+      "repo": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata"
+    },
+    "note_characters": 193,
+    "scope_enforcement_limit": "Machine validity and an audited row do not broaden the explicit policy-approved scope or establish global approval.",
+    "no_assembler_or_ledger_index_writes_performed": true
+  }
+}

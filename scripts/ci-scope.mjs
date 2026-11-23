@@ -379,6 +379,9 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/canonical/turn-segments.ts",
 	"src/renderer/src/features/chat/components/skill-invocation.ts",
 	"src/renderer/src/features/chat/components/slash-token.ts",
+	// Inbound Bridge card facts (sender, conversation, admitted body); transcript-reducer
+	// imports it, so an edit here regrows the fixture.
+	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
@@ -509,10 +512,9 @@ export const FLAGS = [
  * also the order the summary prints). Every flag here must be one of `FLAGS`
  * and the job's `if:` must read each of them (asserted A1).
  *
- * `version-bump-guard` is deliberately absent: it is a job of its own workflow
- * (`version-bump-guard.yml`), gated on the EVENT rather than on a scope flag,
- * so that a PR cannot influence whether the guard that reads its own version
- * line runs. It is not part of this workflow's job set.
+ * `version-bump-guard` is in `UNGATED_JOBS` below rather than here: it is gated
+ * on the EVENT (`pull_request`) rather than on a scope flag, so that a PR
+ * cannot influence whether the guard that reads its own version line runs.
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
@@ -527,6 +529,10 @@ export const JOB_FLAGS = {
 	guards: ["unit"],
 	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
+	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
+	// so the required `Bytecode Build Check` keeps a literal name (ci.yml); it
+	// runs on exactly the same flag.
+	"bytecode-build-macos": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
@@ -554,6 +560,10 @@ export const UNGATED_JOBS = {
 		"event condition here would collaterally skip the whole workflow on a push " +
 		"to `main` (D7). The event-conditional behaviour lives inside this module, " +
 		"which returns every flag true for anything that is not a `pull_request`.",
+	"version-bump-guard":
+		"PR-only event guard (`if: github.event_name == 'pull_request'`), node " +
+		"builtins only (~15s): a PR must never influence whether the guard reading " +
+		"its own version line runs, and `CI Gate` fails closed if it skips on a PR.",
 	"ci-gate":
 		"always runs: it is the ONE stable check name a ruleset requires, and it " +
 		"reads every other job's result, so a scope flag here would let a skipped " +
@@ -632,7 +642,7 @@ export const JOB_COMMANDS = {
 		// assertions CANNOT stop running: a suite that leaves the job list and is
 		// not noticed is the "guard nothing runs" defect this change is about.
 		"node scripts/test-validate-release.mjs",
-		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
+		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
 		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
@@ -658,6 +668,11 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"bytecode-build-macos":
+		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
+		"what this job adds is an artifact for another machine - built on a macOS " +
+		"arm64 runner, hash-manifested and uploaded for native QA - not a check a " +
+		"developer's second `pnpm build` would tell them anything new about.",
 	"qa-bundle":
 		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
 		"the run. That is an artifact for another machine, not a check: a local " +

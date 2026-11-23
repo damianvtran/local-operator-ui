@@ -27,6 +27,10 @@
  *     old id behind reads as context for a string nothing renders);
  *  4. no ALLOWANCE key names a key the catalogue lacks — a phantom that
  *     pre-allows a future key (see below).
+ *  5. every sidecar, in EVERY locale, uses only the exact field set core's
+ *     reader accepts (`CONTEXT_FIELDS`: role, tone, note, width, length as
+ *     strings; maxCells as an integer; placeholders as a flat string map) and
+ *     every entry is an object — see `checkContextSchema`.
  * It does NOT judge the QUALITY of a context note — "is this boilerplate" is not
  * a machine question — but COVERAGE is.
  *
@@ -100,6 +104,104 @@ export function namespaceGap(ns, cataloguesDir = CATALOGUES) {
 	// The sidecar's own keys travel with the gap so callers never re-read the
 	// file: re-reading it was how a namespace with NO sidecar crashed the guard.
 	return { uncovered, orphaned, hasSidecar, contextKeys, catalogueKeys };
+}
+
+/**
+ * THE EXACT SIDECAR SCHEMA. Core's audited `read_public_copy` reader is the only
+ * way translator agents see context, and it validates the WHOLE file: one
+ * unknown field, wrong type or non-object entry and the file is refused, so the
+ * translator gets no context at all for every key in it. Core's schema constant
+ * OWNS this set; this is the writer-side mirror the operator asked every repo to
+ * carry (ask a-82fb, 2026-11-17), so drift fails here at authoring time instead
+ * of in a translator's run. Change it only together with core's constant.
+ *
+ * Every field is optional. `maxCells` is an integer and never a boolean (JSON
+ * `true` is not a width). `placeholders` is a FLAT name -> description map of
+ * strings; `{}` is allowed. Each entry must itself be an object.
+ */
+export const CONTEXT_FIELDS = Object.freeze({
+	role: "a string",
+	tone: "a string",
+	note: "a string",
+	width: "a string",
+	length: "a string",
+	maxCells: "an integer",
+	placeholders: "a flat string map",
+});
+
+function fieldOk(field, value) {
+	switch (CONTEXT_FIELDS[field]) {
+		case "a string":
+			return typeof value === "string";
+		case "an integer":
+			return typeof value === "number" && Number.isInteger(value);
+		case "a flat string map":
+			return (
+				value !== null &&
+				typeof value === "object" &&
+				!Array.isArray(value) &&
+				Object.values(value).every((v) => typeof v === "string")
+			);
+		default:
+			return false;
+	}
+}
+
+/**
+ * Schema violations in one parsed sidecar. Each line names file, key and field
+ * — NEVER the value: context notes are copy, and a guard's log is not where a
+ * reviewer should read (or a CI log should carry) them.
+ */
+export function sidecarSchemaViolations(label, data) {
+	const out = [];
+	if (data === null || typeof data !== "object" || Array.isArray(data))
+		return [`${label}: file is not a JSON object`];
+	for (const [key, entry] of Object.entries(data)) {
+		if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+			const kind =
+				entry === null ? "null" : Array.isArray(entry) ? "list" : typeof entry;
+			out.push(`${label}: ${key}: entry is a ${kind}, not an object`);
+			continue;
+		}
+		for (const [field, value] of Object.entries(entry)) {
+			if (!Object.hasOwn(CONTEXT_FIELDS, field))
+				out.push(`${label}: ${key}: unknown field "${field}"`);
+			else if (!fieldOk(field, value))
+				out.push(
+					`${label}: ${key}: field "${field}" must be ${CONTEXT_FIELDS[field]}`,
+				);
+		}
+	}
+	return out;
+}
+
+/**
+ * Schema violations across EVERY locale's sidecars (English is what translators
+ * read today; target-locale sidecars go through the same reader).
+ */
+export function checkContextSchema(cataloguesDir = CATALOGUES) {
+	const out = [];
+	for (const locale of readdirSync(cataloguesDir).sort()) {
+		let names;
+		try {
+			names = readdirSync(join(cataloguesDir, locale));
+		} catch {
+			continue;
+		}
+		for (const name of names.sort()) {
+			if (!name.endsWith(".context.json")) continue;
+			const label = `${locale}/${name}`;
+			let data;
+			try {
+				data = readJson(join(cataloguesDir, locale, name));
+			} catch {
+				out.push(`${label}: not valid JSON`);
+				continue;
+			}
+			out.push(...sidecarSchemaViolations(label, data));
+		}
+	}
+	return out;
 }
 
 function loadAllowance(path = ALLOWANCE) {
@@ -230,6 +332,7 @@ export function main(argv, options = {}) {
 
 	const { newGaps, missingSidecar, orphans, phantoms, stale, allowance } =
 		checkAllowance(options);
+	const schema = checkContextSchema(options.cataloguesDir);
 	const allowed = Object.values(allowance.namespaces ?? {}).reduce(
 		(sum, entry) => sum + entry.keys.length,
 		0,
@@ -243,7 +346,8 @@ export function main(argv, options = {}) {
 		newGaps.length === 0 &&
 		missingSidecar.length === 0 &&
 		orphans.length === 0 &&
-		phantoms.length === 0
+		phantoms.length === 0 &&
+		schema.length === 0
 	) {
 		process.stdout.write(
 			`context-parity: ok — every English key is covered, apart from ${allowed} allowed gap(s) in ` +
@@ -273,6 +377,12 @@ export function main(argv, options = {}) {
 	for (const line of orphans) {
 		process.stderr.write(
 			`context-parity: context names no catalogue key — ${line}\n`,
+		);
+	}
+	if (schema.length > 0) {
+		process.stderr.write(
+			`context-parity: ${schema.length} sidecar schema violation(s) — core's reader refuses the whole file, so translators get no context for it. Allowed fields: ${Object.keys(CONTEXT_FIELDS).join(", ")}:\n` +
+				`${schema.map((line) => `  ${line}`).join("\n")}\n`,
 		);
 	}
 	if (phantoms.length > 0) {

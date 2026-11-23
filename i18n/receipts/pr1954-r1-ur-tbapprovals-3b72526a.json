@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1954",
+  "locale": "ur",
+  "namespace": "ui.teamBridge.approvals",
+  "pr": 1954,
+  "date": "2026-11-17",
+  "head": "e9f13e7fd1aa0d678da3a8123add3e3c5dc108e9",
+  "instance": "pr1954-r1-ur-tbapprovals-3b72526a",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent i18n auditor (team radientdev, copy-reviewer role); not the translator (translator coder job 7e72069d48db (manager session 2c6111e02b16, '#1954 translations'), anthropic/claude-opus-5-5, no fallback)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session ae8a9a614afb, a copy-reviewer task instance distinct from the translator coder job 7e72069d48db. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and the locale style guide, and shipped catalogue precedent; no MT used. Auditor-authored fix lines are listed as findings with before/after.",
+    "instance": "pr1954-r1-ur-tbapprovals-3b72526a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (74); ICU parse OK in intl-messageformat; argument names/types equal English per key; every plural arm set equals the locale's CLDR cardinal categories (Intl.PluralRules), =0 arm of results_title kept; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no em/en dashes; copy_scan.py 0 findings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Naming rule: teammate (person) and agent stay distinct words in intro, unknown_sender and the result/refusal lines; Team Bridge, Touch ID, Mac and Local Operator untranslated. Approve/Deny/Approved/Denied match the shipped chat approval card (ui.chat.approval.option.*) and ui.mesh approvals renderings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Pre-existing, out of scope: the teammate word follows ui.teamBridgeTrial, while the shipped ui.teamBridge namespace uses a 'team member' phrase. That split predates this PR; a glossary row for 'teammate' would settle it. Not gating."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.approvals.expires",
+      "status": "fixed",
+      "before": "میعاد: {time}",
+      "after": "میعاد ختم: {time}",
+      "note": "'میعاد' alone means term/validity period, so 'میعاد: 17 نومبر' does not say the request expires then. Shipped ur copy always uses 'میعاد ختم' for expiry (ui.chat.ask_queue.expiry.in, ui.browser.approval_queue_model.*). Fixed by the auditor; locale-only."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.approvals.notice.foreign_help",
+      "note": "Translator flag (no Cancel label): correct. Measured on this Mac: LocalAuthenticationUI.framework Localizable.loctable has SHEET_AUTH_CANCEL for fr/es/zh_CN/ru/vi/hi but no ur localisation (AppKit ships no ur.lproj), so the system prompt is never in Urdu and an Urdu button name would not match. 'Touch ID پرامپٹ کو منسوخ کر دیں' gives the right action. Accepted."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.approvals.deny_locked",
+      "note": "Translator flag: 'انکار بھیجیں' (send denial) is natural; 'انکار' is the shipped ur noun for a denial in approvals copy (ui.browser.browser_consent_request.*). Accepted."
+    }
+  ],
+  "scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys, ad12070c2c..e9f13e7fd1 plus auditor fixes",
+  "binding": "Verified on the working tree at e9f13e7fd1 plus this audit's locale-only fixes: target src/i18n/catalogues/ur/ui.teamBridge.approvals.json sha256 aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f; English sha256 ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9; context sha256 0e0677e1d9d5ff912b71738aedd808e3b0f58b4fe196f6cb0f778b5d49a5a23a.",
+  "en_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+  "context_sha256": "0e0677e1d9d5ff912b71738aedd808e3b0f58b4fe196f6cb0f778b5d49a5a23a",
+  "target_sha256": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+  "sha256": {
+    "ur": "aa94aa9e75383a90b5e6439ae530f3a04963f404dbe2e6466e31eda34588c53f",
+    "en": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9"
+  }
+}

@@ -181,8 +181,19 @@ const DRAWABLE_BODY = /const rightSlotPaneDrawable = \([\s\S]*?\n\};\n/;
 /* The asks drawer's content measure and the scroller it hangs inside (design review
  * round 1, D1). The wrappers are read by shape rather than by position: the measure
  * must be a CHILD of the scroller that keeps the pane's width, or the scrollbar
- * ends up inside the constrained column and narrows it whenever the queue grows. */
-const DRAWER_SCROLLER = /"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"/;
+ * ends up inside the constrained column and narrows it whenever the queue grows.
+ *
+ * THE SCROLLER IS FOUND BY ITS LIST MARKER (`data-lo-ask-list`, the box `listRef`
+ * arms in `ask-drawer.tsx`) and read for the work it must do, never for the padding
+ * that work happens to carry. Its padding is deliberately NOT pinned: the drawer has
+ * no bottom padding because a scroller clips at its PADDING box and each card's
+ * `sticky bottom-0` action row stops at that same edge, so bottom padding is a strip
+ * the band cannot paint - question text scrolls visibly under the bar (`ask-drawer.tsx`,
+ * the class string's own note there). This pin read `py-2` until that change and went
+ * red on a surface that was correct; the spacing is `pt-2` today and will change for
+ * reasons this test cannot judge, so the pin names the overflow contract and stops. */
+const DRAWER_SCROLLER =
+	/data-lo-ask-list="[\s\S]*?"min-h-0 flex-1 flex-col overflow-y-auto[^"]*"/;
 const DRAWER_MEASURE = /className=\{cn\("w-full max-w-\[720px\]"\)\}/;
 const DRAWABLE_ASK =
 	/if \(pane === "ask"\) \{\s*return \(\s*state\.askDrawerScope === "fleet" \|\|\s*\(state\.rightSlotRoute\.mounted && state\.rightSlotRoute\.session\)\s*\);\s*\}/;
@@ -416,7 +427,7 @@ test("the asks drawer's content stops at one measure, inside a full-width scroll
 	const scroller = DRAWER_SCROLLER.exec(source);
 	assert.ok(
 		scroller,
-		"the drawer's scroller lost the class this test reads; without it the pane has no column that owns the overflow",
+		"the drawer's scroller lost the class this test reads; without it the pane has no column that owns the overflow (the pin is the `data-lo-ask-list` box's own class string: `min-h-0 flex-1 flex-col overflow-y-auto`)",
 	);
 	const measure = DRAWER_MEASURE.exec(source);
 	assert.ok(

@@ -31,6 +31,9 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-glyphs";',
 			'export * from "./src/renderer/src/features/chat/components/trace/bridge-row-model";',
 			'export { requestDesktopMedia } from "./src/main/desktop-media";',
+			// The i18n store from inside the bundle, so a registered catalogue
+			// reaches the summaries' own translation calls (i18n slice C3).
+			'export * as i18n from "./src/renderer/src/shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -46,6 +49,7 @@ const bundle = await build({
 	alias: { "@shared": "./src/renderer/src/shared" },
 });
 const {
+	i18n,
 	bridgeRow,
 	bridgeRowView,
 	bridgeLabelFromDetails,
@@ -78,6 +82,7 @@ const {
 	isBareToolName,
 	formatSettledDuration,
 	isDiffBodyTool,
+	isArchiveOnlyDiffRow,
 	isDiffBodyRow,
 	isFailedResult,
 	isPartialDelivery,
@@ -238,17 +243,41 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * an edit is visible in the suite, NOT as a claim that a design note asked for
 	 * them.
 	 */
-	assert.deepEqual(SEND_DELIVERY_WORD, {
+	/*
+	 * The maps hold catalogue KEYS since S17a (`ui.chat.trace.send.delivery.*`),
+	 * so a live language switch repaints them; the English is pinned here through
+	 * the accessors the row actually renders with, byte for byte as before.
+	 */
+	const STATES = ["mailbox", "unconfirmed", "failed", "delivered"];
+	const through = (fn) =>
+		Object.fromEntries(
+			STATES.map((s) => [s, fn(s, "send")]).filter(
+				([, v]) => v !== null && v !== undefined,
+			),
+		);
+	for (const map of [
+		SEND_DELIVERY_WORD,
+		SEND_DELIVERY_LABEL,
+		SEND_DELIVERY_TITLE,
+		SEND_DELIVERY_NOTE,
+	])
+		for (const key of Object.values(map))
+			assert.match(key, /^ui\.chat\.trace\.send\.delivery\./);
+	const WORD = through(deliveryWord);
+	const LABEL = through(deliveryLabel);
+	const TITLE = through(deliveryTitle);
+	const NOTE = through(deliveryNote);
+	assert.deepEqual(WORD, {
 		mailbox: "wake unconfirmed",
 		unconfirmed: "delivery unconfirmed",
 		failed: "not delivered",
 	});
-	assert.deepEqual(SEND_DELIVERY_LABEL, {
+	assert.deepEqual(LABEL, {
 		mailbox: "delivered, wake unconfirmed",
 		unconfirmed:
 			"delivery unconfirmed — it may still arrive, so check before resending",
 	});
-	assert.deepEqual(SEND_DELIVERY_TITLE, {
+	assert.deepEqual(TITLE, {
 		mailbox:
 			"In their mailbox. The wake got no answer, so they will read it on their next turn.",
 		unconfirmed:
@@ -264,22 +293,27 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	assert.equal(SEND_DELIVERY_LABEL.delivered, undefined);
 	// Every word is distinct with the colour off, which is what makes the pair
 	// readable to a reader who cannot see the amber/red step.
-	assert.equal(
-		new Set(Object.values(SEND_DELIVERY_WORD)).size,
-		Object.keys(SEND_DELIVERY_WORD).length,
-	);
+	assert.equal(new Set(Object.values(WORD)).size, Object.keys(WORD).length);
 	/*
 	 * The expansion's own sentences (UX round 1, U1/U4): one per state that did not
 	 * plainly succeed, and NONE for `delivered` - a success says nothing, and its
 	 * expansion is the row it always was.
 	 */
-	assert.deepEqual(Object.keys(SEND_DELIVERY_NOTE).sort(), [
+	assert.deepEqual(Object.keys(NOTE).sort(), [
 		"failed",
 		"mailbox",
 		"unconfirmed",
 	]);
+	assert.deepEqual(NOTE, {
+		mailbox:
+			"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
+		unconfirmed:
+			"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
+		failed:
+			"Nothing was delivered. Fix the cause named below, or retry the send.",
+	});
 	assert.equal(SEND_DELIVERY_NOTE.delivered, undefined);
-	for (const note of Object.values(SEND_DELIVERY_NOTE)) {
+	for (const note of Object.values(NOTE)) {
 		assert.match(note, /\.$/);
 		// No agent API in a sentence a PERSON reads (U4): the check the reader can
 		// run lives in the model-facing result text, not here.
@@ -300,8 +334,8 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * sentence, so the copy can still be rewritten without the pointer drifting
 	 * back.
 	 */
-	assert.doesNotMatch(SEND_DELIVERY_NOTE.failed, /cause above/i);
-	assert.match(SEND_DELIVERY_NOTE.failed, /cause named below/i);
+	assert.doesNotMatch(NOTE.failed, /cause above/i);
+	assert.match(NOTE.failed, /cause named below/i);
 
 	/*
 	 * Which outcome each state earns, and the COUNT rule that follows from it: the
@@ -1123,7 +1157,7 @@ const rowsBundle = await build({
 	stdin: {
 		contents: [
 			'export { agentTurnHeads, buildRows, GAP, isTraceLike, ledgerName, paintsSomething, slotCarriesTurnHead, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
-			'export { collapsePlan } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { collapsePlan, isTraceFoldable } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { foldRuns, receiptFoldUnits } from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 			'export { isInternalReceipt } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
 			'export { isQuietTurnCall } from "./src/renderer/src/features/chat/canonical/turn-segments";',
@@ -1170,6 +1204,7 @@ const {
 	GAP,
 	isInternalReceipt,
 	isQuietTurnCall,
+	isTraceFoldable,
 	isTraceLike,
 	ledgerName,
 	paintsSomething,
@@ -1900,7 +1935,10 @@ test("the transcript no longer renders a Writing row", () => {
  */
 const WIDTH_CAP_DECLARATION = /max-width\s*:\s*([^;}]+)/g;
 const CH_UNIT = /[\d.]+ch\b/g;
-const CELL_CAP_RULES = /\.lo-markdown th,\s*\.lo-markdown td\s*\{[^}]*\}/g;
+// Keep the exclusion on both cells: inline UI gets its own styling, and
+// `:where()` excludes it without increasing the markdown rule's specificity.
+const CELL_CAP_RULES =
+	/(?:^|(?<=[{}]))\s*\.lo-markdown th:where\(:not\(\[data-lo-inline-ui\] \*\)\),\s*\.lo-markdown td:where\(:not\(\[data-lo-inline-ui\] \*\)\)\s*\{[^}]*\}/g;
 const CELL_CAP_VALUE = /max-width\s*:\s*64ch/;
 const CELL_CAP_WORD_BREAK = /word-break\s*:\s*normal/;
 const CELL_CAP_OVERFLOW_WRAP = /overflow-wrap\s*:\s*break-word/;
@@ -2523,6 +2561,39 @@ test("a FAILED write keeps its arguments even when a diff came with it", () => {
 		isDiffBodyRow({ toolName: "write", diff: null, isError: false }),
 		false,
 	);
+	// Archive-only rows (full-diff archive): the first/only row was too long
+	// for the inline budget, so no row is inline but `diff_full` names the
+	// archive. They must reach the diff well; rows WITHOUT a descriptor keep the
+	// rule above exactly, and a failed call never qualifies.
+	const archived = { state: "archived", rows: 3 };
+	for (const diff of [null, []])
+		assert.equal(
+			isArchiveOnlyDiffRow({
+				toolName: "edit",
+				diff,
+				isError: false,
+				diffFull: archived,
+			}),
+			true,
+		);
+	assert.equal(
+		isArchiveOnlyDiffRow({
+			toolName: "write",
+			diff: null,
+			isError: false,
+			diffFull: { state: "withheld" },
+		}),
+		true,
+		"a non-archived descriptor still paints its truthful notice",
+	);
+	for (const row of [
+		{ toolName: "write", diff: null, isError: false, diffFull: null },
+		{ toolName: "write", diff: null, isError: false },
+		{ toolName: "write", diff: null, isError: true, diffFull: archived },
+		{ toolName: "bash", diff: null, isError: false, diffFull: archived },
+		{ toolName: "write", diff: ["+a"], isError: false, diffFull: archived },
+	])
+		assert.equal(isArchiveOnlyDiffRow(row), false, JSON.stringify(row));
 });
 
 test("the stand-in line skips the harness wiring a result opens with", () => {
@@ -2647,6 +2718,8 @@ const detailBundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/components/trace/tool-detail-model";',
 			'export * from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+			// The same i18n instance the models see, for the locale-switch case.
+			'export { clearRegisteredCatalogues, registerCatalogue, setLocale } from "@shared/i18n";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -2677,6 +2750,7 @@ const {
 	wakeIsCatchup,
 	wakePromptBody,
 	wakeReceiptHeadline,
+	...detailI18n
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(detailBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -2847,6 +2921,44 @@ test("a capped section says how much of itself is not shown", () => {
 	assert.equal(detailOverflowLabel(1), "… 1 more line");
 	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 	assert.equal(detailOverflowLabel(0), "… 0 more lines");
+});
+
+test("a subtree past the walk's depth cap says so, in the reader's words", () => {
+	// Nine levels: deeper than `MAX_DEPTH` (8), so the walk prints the marker
+	// in place of the leaves rather than recursing.
+	let deep = { leaf: "x" };
+	for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+	const values = argumentLines({ deep }).map((line) => line.value);
+	assert.ok(values.includes("… deeper values not shown"), values.join("|"));
+	assert.equal(values.includes("x"), false);
+});
+
+/*
+ * Both markers are read through `t()` per call (a module constant would be
+ * frozen in the locale active at import), and the count takes the locale's
+ * plural arms: French CLDR puts 0 in `one`, English does not.
+ */
+test("the detail pane's overflow markers follow the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.more_lines":
+			"{count, plural, one {⟦fr⟧ # ligne} other {⟦fr⟧ # lignes}}",
+		"ui.chat.canonical.tool_row.detail.deeper_values": "⟦fr⟧ deeper",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailOverflowLabel(0), "⟦fr⟧ 0 ligne");
+		assert.equal(detailOverflowLabel(3), "⟦fr⟧ 3 lignes");
+		let deep = { leaf: "x" };
+		for (let i = 0; i < 9; i += 1) deep = { nested: deep };
+		assert.ok(
+			argumentLines({ deep }).some((line) => line.value === "⟦fr⟧ deeper"),
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailOverflowLabel(3), "… 3 more lines");
 });
 
 test("a sub-pixel overhang is not a line below the fold", () => {
@@ -3330,9 +3442,19 @@ test("a wake receipt is the headline, and its prompt is the part behind the enve
  */
 const workingLineBundle = await build({
 	stdin: {
-		contents:
-			'export { deriveWorkingLine, ADMITTED_SEND_ACTIVITY, STARTING_SESSION_ACTIVITY, COMPACTING_ACTIVITY, sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";\n' +
+		contents: [
+			'import { deriveWorkingLine as rawDeriveWorkingLine, ADMITTED_SEND_ACTIVITY as ADMITTED_RUNG, STARTING_SESSION_ACTIVITY as STARTING_RUNG, COMPACTING_ACTIVITY as COMPACTING_RUNG } from "./src/renderer/src/features/chat/canonical/working-line-model";',
+			'import { english, englishState } from "./scripts/working-line-english";',
+			// The ladder answers a rung plus arguments now; this suite pins its
+			// ENGLISH, so it reads the state and the three rungs through the shipped
+			// resolver (see the shim's note). Every literal below is unchanged.
+			"export const deriveWorkingLine = (...args) => englishState(rawDeriveWorkingLine(...args));",
+			"export const ADMITTED_SEND_ACTIVITY = english(ADMITTED_RUNG);",
+			"export const STARTING_SESSION_ACTIVITY = english(STARTING_RUNG);",
+			"export const COMPACTING_ACTIVITY = english(COMPACTING_RUNG);",
+			'export { sendUnsettledForSession, ownerAnswered, turnStopped, stoppedAfterAdmission, workingLineClaimed, workingLineInputFor } from "./src/renderer/src/features/chat/canonical/working-line-model";',
 			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -5836,14 +5958,18 @@ test("bridge: peer_inbox, unconfirmed and awaiting acceptance are partial, never
 	);
 	assert.match(deliveryTitle("unconfirmed", "bridge"), /conversation/);
 	assert.ok(deliveryLabel("inbox_only", "bridge"));
-	// `send`'s frozen copy is untouched by the accessors.
-	assert.equal(deliveryWord("mailbox", "send"), SEND_DELIVERY_WORD.mailbox);
+	// `send`'s frozen copy is untouched by the bridge branches: the accessors
+	// still resolve `send`'s own keys (S17a: the maps hold keys, not words).
+	assert.equal(deliveryWord("mailbox", "send"), "wake unconfirmed");
 	assert.equal(
 		deliveryNote("unconfirmed", "send"),
-		SEND_DELIVERY_NOTE.unconfirmed,
+		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
 	);
-	assert.equal(deliveryTitle("unconfirmed"), SEND_DELIVERY_TITLE.unconfirmed);
-	assert.equal(deliveryLabel("mailbox"), SEND_DELIVERY_LABEL.mailbox);
+	assert.equal(
+		deliveryTitle("unconfirmed"),
+		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	);
+	assert.equal(deliveryLabel("mailbox"), "delivered, wake unconfirmed");
 	// The reducer's state follows the absent-vs-stated rule for bridge too.
 	assert.equal(
 		preferDeliveryState(undefined, "inbox_only", "bridge"),
@@ -6485,8 +6611,8 @@ const foldOptions = () => ({
 	nameOf: (row) => ledgerName(row.record),
 	failedOf: () => false,
 	durationOf: () => 0.1,
-	isFoldable: (row) =>
-		row.record.kind === "tool" && !isQuietTurnCall(row.record),
+	// The transcript's own predicate, so these slots fold what the pane folds.
+	isFoldable: (row) => isTraceFoldable(row.record),
 	isReceipt: (row) => isInternalReceipt(row.record),
 	receiptSummaryOf: (rows) => receiptFoldUnits(rows),
 });
@@ -6872,5 +6998,73 @@ test("a pure locale switch repaints a collapsed fold's live clause: the row grou
 		source,
 		/\}, \[visible, paneIsLive, paneGap, recordIndex, locale\]\);/,
 		"rowGroups is keyed on the locale",
+	);
+});
+
+/*
+ * The empty-container marker is the UI's own (the producer's `(empty)` stream
+ * bodies never reach `resultLines`), so it is keyed and read per call.
+ */
+test("the detail pane's empty-result marker follows the active locale", () => {
+	const i18n = detailI18n;
+	i18n.registerCatalogue("fr", {
+		"ui.chat.canonical.tool_row.detail.empty": "(⟦fr⟧ vide)",
+	});
+	i18n.setLocale("fr");
+	try {
+		assert.equal(detailText(resultLines("{}")), "(⟦fr⟧ vide)");
+		assert.equal(detailText(resultLines('{"a": {}}')), "(⟦fr⟧ vide)");
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(detailText(resultLines("{}")), "(empty)");
+});
+
+test("C3: painted argument-summary words are keyed, and stay bidi-free for the copy path", () => {
+	i18n.registerCatalogue("ur", {
+		"ui.chat.trace.send.mode.now": "ابھی",
+		"ui.chat.trace.address.pid": "پی آئی ڈی {pid}",
+		"ui.chat.trace.sessions.peek.last": "آخری {count, number, ::group-off}",
+	});
+	i18n.setLocale("ur");
+	try {
+		const send = summaryFromArgs("send", {
+			pid: 48213,
+			now: true,
+			message: "x",
+		});
+		assert.equal(send, "ابھی · پی آئی ڈی 48213 · x");
+		// `translateRaw`: the same text is the copied transcript's, so no
+		// U+2066-2069 isolate may ride into the clipboard.
+		assert.doesNotMatch(send, /[\u2066-\u2069]/);
+		assert.equal(
+			summaryFromArgs("sessions", { op: "peek", pid: 7, steps: 12 }),
+			"پی آئی ڈی 7 · آخری 12",
+		);
+	} finally {
+		i18n.setLocale("en");
+		i18n.clearRegisteredCatalogues();
+	}
+	assert.equal(
+		summaryFromArgs("sessions", {
+			op: "peek",
+			session: "abc",
+			query: "err",
+			steps: 6,
+		}),
+		"abc · search err · 6 around",
+	);
+	assert.equal(
+		summaryFromArgs("sessions", {
+			op: "peek",
+			session: "abc",
+			before_id: "s9",
+		}),
+		"abc · before s9",
+	);
+	assert.equal(
+		summaryFromArgs("sessions", { op: "peek", session: "abc", digest: true }),
+		"abc · digest",
 	);
 });

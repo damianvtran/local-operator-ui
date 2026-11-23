@@ -201,8 +201,16 @@ test("the unit symbols stay ASCII in every locale (documented exception)", () =>
 		assert.equal(mod.formatContextTokens(1_200_000), "1,2m");
 		assert.equal(mod.formatWindow(1_500_000), "1,5M");
 		assert.equal(mod.formatTokens(2_000), "2k");
-		assert.equal(mod.formatDuration(3725), "1h 2m");
 	});
+});
+
+test("durations are no longer an ASCII exception: CLDR narrow units (i18n C3)", () => {
+	// `formatDuration` left the kept-English list when it moved onto the shared
+	// localized helper; English is byte-identical, French takes `min`.
+	withLocale("en", () => assert.equal(mod.formatDuration(3725), "1h 2m"));
+	withLocale("en", () => assert.equal(mod.formatDuration(10_800), "3h 0m"));
+	withLocale("fr", () => assert.equal(mod.formatDuration(3725), "1h 2min"));
+	withLocale("fr", () => assert.equal(mod.formatDuration(90_000), "1j 1h"));
 });
 
 test("file sizes follow #1861's localised helper (number AND unit label)", () => {

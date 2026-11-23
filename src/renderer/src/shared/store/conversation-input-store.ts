@@ -7,6 +7,7 @@
 
 import { create } from "zustand";
 import { type PersistStorage, persist } from "zustand/middleware";
+import { writeWithQuotaFallback } from "./quota-safe-storage";
 
 /**
  * Represents a reply to a message
@@ -634,6 +635,11 @@ type ConversationInputStoreState = {
 	 * and the quotes that went with it. `record: false` is the plain retire for a
 	 * send that never echoes (a slash command, a gate answer): nothing is left in
 	 * flight because nothing can fail back into the box.
+	 *
+	 * The write also ANNOUNCES an already-empty row: a row that no longer holds the
+	 * text has had it taken by this send's own echo, and a composer remounted around
+	 * that clear needs the revision to learn the box it seeded from the row is now
+	 * empty (see the action's own note).
 	 */
 	beginInFlight: (
 		conversationId: string,
@@ -812,6 +818,22 @@ type PersistedDraftRows = {
 
 const DRAFT_PERSIST_KEY = "conversation-input-store";
 
+/**
+ * Step 3 of the quota fallback for drafts: keep only rows that still hold
+ * typed text. An empty row persists nothing a reload needs.
+ */
+const keepRowsWithText = (value: PersistedDraftValue): PersistedDraftValue => ({
+	...value,
+	state: {
+		...value.state,
+		inputByConversation: Object.fromEntries(
+			Object.entries(value.state.inputByConversation).filter(
+				([, row]) => (row.currentInput ?? "").trim().length > 0,
+			),
+		),
+	},
+});
+
 /** The `{ state, version }` envelope `persist` hands to storage, and reads back. */
 type PersistedDraftValue = { state: PersistedDraftRows; version?: number };
 
@@ -871,7 +893,21 @@ const writePendingDraft = (): void => {
 	const storage = resolveLocalStorage();
 	if (!storage) return;
 	try {
-		storage.setItem(key, JSON.stringify(value));
+		/*
+		 * A refused write degrades rather than stops (`quota-safe-storage.ts`):
+		 * inline images are dropped from the DISK copy, then rows with no text,
+		 * so the typed draft keeps surviving a reload; the store in memory is
+		 * never touched. Before this, one over-quota row stopped every later
+		 * write of every draft for the session.
+		 */
+		const outcome = writeWithQuotaFallback(
+			storage,
+			key,
+			value,
+			keepRowsWithText,
+		);
+		if (outcome === "skipped")
+			throw new DOMException("quota", "QuotaExceededError");
 	} catch (error) {
 		/*
 		 * THE FLAG IS THE STREAK, NOT THE PROCESS (agent review round 1, R1-4). It is
@@ -1300,6 +1336,23 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 				const chipIds = new Set(payload.attachments.map((chip) => chip.id));
 				const replyIds = new Set(payload.replies.map((reply) => reply.id));
 				const textLeaves = row.currentInput === payload.text;
+				/*
+				 * AN ALREADY-EMPTY ROW IS STILL A BOX WRITE (agent review round 2's F1,
+				 * measured on the built app): a mounted composer that was REMOUNTED while
+				 * this send was landing seeds its box from the row's text - then the echo's
+				 * own clear empties the row and bumps the revision in the same commit, and
+				 * the mount read swallows that bump (`use-message-input`'s first read is
+				 * not an adoption). The acceptance-time clear then found nothing left to
+				 * take, returned silently, and the box kept words the app had already sent
+				 * - Enter over them posted a second copy. So the write announces the box
+				 * whenever the row holds nothing of the user's any more, not only when THIS
+				 * call takes the text out: the revision is the only channel that reaches a
+				 * mounted box, and "the sent text is gone" is exactly what it has to say.
+				 *
+				 * The `textLeaves` arm keeps its own limit: a row holding something ELSE is
+				 * newer typed text, and that is never wiped by a send that is already over.
+				 */
+				const announcesBox = textLeaves || row.currentInput === "";
 				set({
 					inputByConversation: {
 						...get().inputByConversation,
@@ -1313,7 +1366,7 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							 * echo's paint (see `onEchoPainted`), and this is what reaches a composer
 							 * that was remounted under the press, where nothing else would.
 							 */
-							textRevision: textLeaves
+							textRevision: announcesBox
 								? (row.textRevision ?? 0) + 1
 								: row.textRevision,
 							attachments: (row.attachments ?? []).filter(

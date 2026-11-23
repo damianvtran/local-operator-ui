@@ -1,4 +1,8 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { CommunityHome } from "@features/community/community-home";
+import { CommunityJoinDialog } from "@features/community/community-join-dialog";
+import { COMMUNITY_WELCOME_CHANNEL } from "@features/community/community-model";
+import { CommunityNoPlanEntry } from "@features/community/community-no-plan";
 import { TEAM_BRIDGE_ENABLED_SETTING_KEY } from "@features/settings/promoted-setting-sections";
 import {
 	type DesktopFeatureState,
@@ -11,9 +15,11 @@ import {
 } from "@shared/api/local-operator/team-bridge-api";
 import { TEAM_TRIAL_START_ENABLED } from "@shared/api/local-operator/team-trial-activation";
 import { InlineErrorBoundary } from "@shared/components/common/inline-error-boundary";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Spinner } from "@shared/components/common/spinner";
 import { useLeftSidebarHosted } from "@shared/components/navigation/left-sidebar-host";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
+import { Alert } from "@shared/components/ui/alert";
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
@@ -41,6 +47,7 @@ import {
 	Clock,
 	CloudOff,
 	Hash,
+	Inbox,
 	MailPlus,
 	MessagesSquare,
 	Pencil,
@@ -56,6 +63,7 @@ import {
 	useId,
 	useLayoutEffect,
 	useMemo,
+	useReducer,
 	useRef,
 	useState,
 } from "react";
@@ -70,6 +78,7 @@ import type {
 	TeamBridgeMemberInput,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
+	TeamBridgeSenderKind,
 } from "../../../../shared/team-bridge-contract";
 import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import { rowCurrent } from "../chat/components/chat-sidebar";
@@ -88,6 +97,11 @@ import {
 import { TeamBridgeMentionProvider } from "./mentions";
 import { clearStagedMentions, stagedMentions } from "./mentions/mention-outbox";
 import { TeamBridgeAddMembersView } from "./team-bridge-add-members";
+import {
+	type TeamBridgeAlertActions,
+	TeamBridgeAlertActionsContext,
+} from "./team-bridge-alert-card";
+import { TeamBridgeRequests } from "./team-bridge-approvals";
 import {
 	TeamBridgeArchiveDialog,
 	TeamBridgeArchivedBanner,
@@ -110,6 +124,7 @@ import {
 	TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
 	TEAM_BRIDGE_PAGE_SIZE,
 } from "./team-bridge-channel-cache";
+import { useTeamBridgeCommunities } from "./team-bridge-communities";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import {
 	TeamBridgeComposer,
@@ -140,6 +155,7 @@ import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { draftTargetKey } from "./team-bridge-drafts";
 import type { TeamBridgeDraft } from "./team-bridge-drafts";
 import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
+import { useVisibleHeldCount } from "./team-bridge-held-hide-preference";
 import { TeamBridgeInvitations } from "./team-bridge-invitations";
 import {
 	pendingAgentInvitations,
@@ -157,16 +173,20 @@ import {
 import {
 	type ChiefLabels,
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeCommunity,
+	type TeamBridgeCommunityId,
 	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
 	type TeamBridgeRecipient,
 	type TeamBridgeScope,
 	type TeamBridgeTarget,
 	archivedChannelRows,
+	asTeamBridgeCommunityId,
 	asTeamBridgeTenantId,
 	builtinTopicKey,
 	canArchiveConversation,
 	canManageArchivedConversation,
+	canRenameConversation,
 	chiefsOfStaff,
 	composeChiefLabel,
 	conversationMemberCount,
@@ -196,9 +216,12 @@ import {
 	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
+	teamBridgeRateLimit,
+	teamBridgeSenderHasProfile,
 	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
+import { TEAM_BRIDGE_REQUESTS_VIEW_PARAM } from "./team-bridge-nav";
 import {
 	looseDirectsFor,
 	orgGroupHeadingId,
@@ -228,6 +251,7 @@ import {
 	cancelTeamBridgePrefetch,
 	prefetchTeamBridgeConversationNow,
 	prefetchTeamBridgeConversations,
+	prefetchTeamBridgeLanding,
 	teamBridgePrefetchCandidates,
 } from "./team-bridge-prefetch";
 import {
@@ -247,6 +271,20 @@ import {
 import { useHeldRailScroll } from "./team-bridge-rail-scroll";
 import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
+	TeamBridgeRenameDialog,
+	type TeamBridgeRenameFailure,
+	renameFailure,
+} from "./team-bridge-rename-dialog";
+import { TeamBridgeResponderDialog } from "./team-bridge-responder-dialog";
+
+/*
+ * Org-level app administration lives in the Radient console (RFC §10 item 2:
+ * "user-console /dashboard/integrations"), so the desktop's "Manage apps"
+ * entry is a link-out, offered only with the hub's `can_manage_integrations`.
+ */
+const TEAM_INTEGRATIONS_CONSOLE_URL =
+	"https://console.radienthq.com/dashboard/integrations";
+import {
 	TeamBridgeEarlyColumn,
 	TeamBridgeRouteColumn,
 } from "./team-bridge-route-column";
@@ -260,10 +298,17 @@ import {
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
 import {
+	browserSessionStorage,
+	openingDefaultHeld,
+	openingOrganizationCount,
 	readScopePreference,
+	readSessionScope,
+	resolveDefaultSelection,
 	resolveOpeningScope,
+	shouldRecordSessionScope,
 	snapshotForScope,
 	writeScopePreference,
+	writeSessionScope,
 } from "./team-bridge-scope-preference";
 import { uploadStagedImages } from "./team-bridge-staged-upload";
 import type { StagedUploadFailure } from "./team-bridge-staged-upload";
@@ -313,6 +358,7 @@ import {
 	useLoadMoreArchivedTeamBridgeConversations,
 	useMarkTeamBridgeRead,
 	useRemoveTeamBridgeMember,
+	useRenameTeamBridgeConversation,
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeAgentNotify,
 	useSetTeamBridgeNotify,
@@ -325,8 +371,13 @@ import {
 	useUnarchiveTeamBridgeConversation,
 	useWithdrawTeamBridgeAgent,
 } from "./use-team-bridge";
+import {
+	approvalsUnsupported,
+	useApprovalRequests,
+} from "./use-team-bridge-approvals";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 import { type FileSend, filesCapability } from "./use-team-bridge-files";
+import { useHeldMessages } from "./use-team-bridge-holds";
 
 /**
  * Why a send was refused, in the terms the person can act on (UX round 1, U2).
@@ -497,6 +548,26 @@ const TeamBridgeGateLoading: FC = () => {
 	);
 };
 
+/**
+ * The page is usable but its last status read was throttled (incident
+ * 2026-11-17): the conversations already loaded stay, and this one line says
+ * why nothing new is arriving and that the page is retrying on its own. The
+ * same neutral band as the trial note; no button, because the retry is
+ * already scheduled and pressing again is what a throttle punishes.
+ */
+export const TeamBridgeRateLimitNote: FC = () => {
+	useI18nLocale();
+	return (
+		<output className="block px-4 pt-2" data-team-bridge-rate-limited="note">
+			<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
+				<p className="min-w-0 max-w-prose text-body-sm text-ink">
+					{t("ui.teamBridge.rate_limited.reason")}
+				</p>
+			</Alert>
+		</output>
+	);
+};
+
 /** The localized forms shared by every chief label and storage decision. */
 const chiefLabelCopy = (): ChiefLabels => ({
 	named: (agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
@@ -574,6 +645,12 @@ export const TeamBridgeEligibilityPanel: FC<{
 			title: "ui.teamBridge.plan.unavailable_title",
 			reason: "ui.teamBridge.plan.unavailable_reason",
 		},
+		// Only before anything has loaded: a throttle over a loaded page is the
+		// quiet `TeamBridgeRateLimitNote` instead, and the read retries itself.
+		rate_limited: {
+			title: "ui.teamBridge.rate_limited.title", // i18n: ignore catalogue key for t(); the gate's key pattern is lower-case only
+			reason: "ui.teamBridge.rate_limited.reason",
+		},
 	} as const satisfies Record<
 		TeamBridgeEligibility,
 		{ title: string; reason: string }
@@ -586,21 +663,49 @@ export const TeamBridgeEligibilityPanel: FC<{
 			<div className="max-w-lg text-center">
 				{/* The one glyph on the panel: Team Bridge is a people surface, and the
 				    mark gives the centred block an anchor without a control. */}
-				<Users
-					size={20}
-					aria-hidden="true"
-					className="mx-auto mb-3 text-ink-dim"
-				/>
+				{reason === "rate_limited" ? (
+					/* The read is scheduled and this panel can sit unchanged for up to
+					   the edge's 300 s block plus jitter, so the loading panel's spinner
+					   takes the mark's place: "still working", not "failed" (design
+					   round 1, D1). In the mark's slot, not beside the reason, so a
+					   two-line reason does not push it off-centre. Unlabelled: the
+					   reason line already says "Retrying automatically". */
+					<div
+						className="mb-3 flex justify-center"
+						data-team-bridge-rate-limited="gate"
+					>
+						<Spinner size="sm" />
+					</div>
+				) : (
+					<Users
+						size={20}
+						aria-hidden="true"
+						className="mx-auto mb-3 text-ink-dim"
+					/>
+				)}
 				<h1 className="text-balance text-[16px] font-medium text-ink">
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					{reason !== "off" && reason !== "off_local" && (
-						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-							{t("ui.teamBridge.plan.body")}
-						</p>
-					)}
-					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
+					{/* The product description is for someone deciding whether to turn
+					    Team Bridge on. "Off" readers already chose, and a throttled
+					    reader already uses it: under "Slowing down requests" the pitch
+					    reads as an upsell, so the reason sits under the heading
+					    (copy round 1, C2). */}
+					{reason !== "off" &&
+						reason !== "off_local" &&
+						reason !== "rate_limited" && (
+							<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+								{t("ui.teamBridge.plan.body")}
+							</p>
+						)}
+					<p
+						className={cn(
+							"text-[12px] leading-snug text-ink-dim",
+							// With the pitch gone, the reason sits right under the heading.
+							reason !== "rate_limited" && "mt-4",
+						)}
+					>
 						{t(copy[reason].reason)}
 					</p>
 					{action === "settings" && (
@@ -677,6 +782,23 @@ type OwnedDraft = {
 export type TeamBridgePageViewProps = {
 	/** Human-only audit never enters member targets, drafts or the agent lane. */
 	ownerAudit?: OwnerAuditSlot;
+	/**
+	 * Approval requests (local-operator #4099). Absent when the daemon predates
+	 * the routes (they 404) or the account is unresolved: then the rail entry is
+	 * not drawn at all. `waiting` is the decidable count; `panel` is the wired
+	 * Requests view, passed in so this props-only view never starts a query.
+	 */
+	/* `held`: how much of `waiting` is held messages, so the badge's
+	   accessible name stops calling them all "requests" (UX U1). */
+	requests?: { waiting: number; held?: number; panel: ReactNode };
+	/**
+	 * Set while the address asks for the Requests view (`?view=requests`, the
+	 * nav row's landing while it counts requests - UX review U1). The container
+	 * latches it until the reader leaves Requests (QA Q6) and also seeds it as
+	 * `initialQuickView`; this flag covers a view already mounted when the
+	 * request arrives, opening Requests once the slot exists.
+	 */
+	requestsViewRequested?: boolean;
 	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
 	draftJournal?: OwnedDraft;
 	isDraftCurrent?: () => boolean;
@@ -843,6 +965,22 @@ export type TeamBridgePageViewProps = {
 	onArchive?: (conversation: TeamBridgeConversation) => void;
 	onUnarchive?: (conversation: TeamBridgeConversation) => void;
 	onDelete?: (conversation: TeamBridgeConversation) => Promise<unknown>;
+	/**
+	 * RENAME a channel or group. Resolves when the server accepted the name and
+	 * rejects with its refusal: the dialog stays open on the promise so a taken
+	 * name (or lost authority) is explained where it was typed. The rail is
+	 * already updated optimistically by the container's mutation.
+	 */
+	onRename?: (
+		conversation: TeamBridgeConversation,
+		name: string,
+	) => Promise<unknown>;
+	/**
+	 * The `team_bridge_conversation_rename` capability answer. Anything but
+	 * `enabled` hides the menu item: a runtime without the route would refuse
+	 * every save. Defaults to `unknown` (fail closed) like its siblings.
+	 */
+	renameCapabilityState?: DesktopFeatureState;
 	unarchiveFailed?: boolean;
 	/** The Archived channels view's read (loaded the first time it is opened). */
 	archivedState?: "loading" | "error" | "ready";
@@ -873,7 +1011,10 @@ export type TeamBridgePageViewProps = {
 	onViewMemory?: (
 		view: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => void;
-	initialDialog?: { kind: "archive" | "delete"; conversationId: string };
+	initialDialog?: {
+		kind: "archive" | "delete" | "rename" | "responder";
+		conversationId: string;
+	};
 	/**
 	 * The `team_bridge_threads` capability answer, computed by the container from
 	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
@@ -1019,10 +1160,22 @@ export type TeamBridgePageViewProps = {
 	 */
 	onChooseOrganization?: (scope: TeamBridgeScope) => void;
 	onRetryMemberships?: () => void;
+	/**
+	 * Joined communities and the community flag, for the switcher's separate
+	 * Communities group (Amendment A). Never merged into `organizations`.
+	 */
+	communities?: readonly TeamBridgeCommunity[];
+	communitiesEnabled?: boolean;
+	/** Select a joined community (renders the community home instead). */
+	onCommunityChange?: (communityId: TeamBridgeCommunityId) => void;
+	/** "Browse communities…"; omitted, the row is not drawn. */
+	onBrowseCommunities?: () => void;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	ownerAudit,
+	requests,
+	requestsViewRequested = false,
 	renderThreadPane,
 	threadLink,
 	onCloseThread,
@@ -1068,6 +1221,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onArchive,
 	onUnarchive,
 	onDelete,
+	onRename,
+	renameCapabilityState = "unknown",
 	unarchiveFailed = false,
 	archivedState = "ready",
 	archivedConversations = [],
@@ -1120,6 +1275,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onScopeChange,
 	onChooseOrganization,
 	onRetryMemberships,
+	communities,
+	communitiesEnabled,
+	onCommunityChange,
+	onBrowseCommunities,
 }) => {
 	useI18nLocale();
 	/* Whether the rail is drawn in the shell's column; see the thread takeover. */
@@ -1130,7 +1289,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	/* The confirm dialogs name the conversation they were opened for, not "the
 	   selected one": the selection can change under an open dialog. */
 	const [dialog, setDialog] = useState<{
-		kind: "archive" | "delete";
+		kind: "archive" | "delete" | "rename" | "responder";
 		conversationId: string;
 	} | null>(initialDialog ?? null);
 	const [membersOpen, setMembersOpen] = useState(initialMembersOpen);
@@ -1155,6 +1314,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 
 	const [deleting, setDeleting] = useState(false);
+	/* The rename dialog's refusal, cleared on every open so a refusal from one
+	   rename never shows under the next. `renaming` belongs to the REQUEST, not
+	   to an open: reopening while a save is in flight keeps Save disabled. */
+	const [renaming, setRenaming] = useState(false);
+	/*
+	 * Which open of the rename dialog is on screen (review round 1, R3/U3).
+	 * Bumped on every open and every close; a save captures it, and its outcome
+	 * acts on the dialog only if that same open is still showing. Otherwise a
+	 * late success would close a newer dialog and a late refusal would annotate
+	 * it; a refusal for a dialog that is gone is announced with a toast instead,
+	 * because the rail has just silently flipped back.
+	 */
+	const renameOpen = useRef(0);
+	const [renameFailed, setRenameFailed] =
+		useState<TeamBridgeRenameFailure | null>(null);
 	const [deleteFailed, setDeleteFailed] = useState<"error" | "gone" | null>(
 		null,
 	);
@@ -1470,19 +1644,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const labelFor = (
 		participant: {
 			account_id: string;
-			kind: "human" | "agent";
+			kind: TeamBridgeSenderKind;
 			display_label: string;
 		},
 		tenantId: string,
 	) => participantLabel(participant, rosterFor(tenantId), chiefLabels, self);
+	/* A profile (photo, card, DM) belongs to a person or an agent only: an app
+	   or unknown sender kind resolves to none, whatever its id. */
 	const profileFor = (sender: TeamBridgeMessage["sender"], tenantId: string) =>
-		rosterFor(tenantId).find(
-			(member) => member.account_id === sender.account_id,
-		);
+		teamBridgeSenderHasProfile(sender)
+			? rosterFor(tenantId).find(
+					(member) => member.account_id === sender.account_id,
+				)
+			: undefined;
 	const messageTarget = (
 		sender: TeamBridgeMessage["sender"],
 		tenantId: string,
 	) => {
+		// Only a person or an agent has a DM to open: an integration app (or a
+		// sender kind this build does not know) is never a directory member, and
+		// must not resolve to one even if an id happened to match.
+		if (!teamBridgeSenderHasProfile(sender)) return null;
 		const member = profileFor(sender, tenantId);
 		if (
 			!identityKnown ||
@@ -1626,7 +1808,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	 * (review round 4, R4-02).
 	 */
 	const openQuickView = (
-		next: "drafts" | "scheduled" | "invitations" | "archived",
+		next: "drafts" | "scheduled" | "invitations" | "archived" | "requests",
 	) => {
 		if (threadSelection) {
 			setThreadSelection(null);
@@ -1636,6 +1818,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		ownerAudit?.clear();
 		setQuickView(next);
 	};
+	/*
+	 * `?view=requests` opens Requests once the slot exists (the requests read
+	 * may still be in flight on a cold open). The container owns clearing the
+	 * parameter (QA Q6: consuming it here lost it on the next mount). Kept in a ref so the effect runs on the two facts that matter, not on
+	 * every render's new `openQuickView` closure.
+	 */
+	const openQuickViewRef = useRef(openQuickView);
+	openQuickViewRef.current = openQuickView;
+	const requestsSlotReady = Boolean(requests);
+	useEffect(() => {
+		if (!requestsViewRequested || !requestsSlotReady) return;
+		openQuickViewRef.current("requests");
+	}, [requestsViewRequested, requestsSlotReady]);
 	/*
 	 * THE PANEL BELONGS TO THE ROOM IT WAS OPENED FOR (review round 1, R1). The
 	 * panel is keyed by conversation, so a selection change while it is open
@@ -2770,6 +2965,26 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		selfAccountId
 			? rosterFor(tenantId).find((row) => row.account_id === selfAccountId)
 			: undefined;
+	/*
+	 * The hub reports that a claim is waiting, not which local ask it belongs
+	 * to. Only wire "Responders", using the conversation menu's own rule for
+	 * the "Alert responder" item so the card never offers what the menu would not.
+	 */
+	const alertActions: TeamBridgeAlertActions = {
+		onResponders:
+			shown &&
+			!readOnly &&
+			shown.kind === "channel" &&
+			shown.status === "open" &&
+			shown.members.some(
+				(row) =>
+					row.kind === "agent" &&
+					row.account_id === selfAccountId &&
+					row.state === "active",
+			)
+				? () => setDialog({ kind: "responder", conversationId: shown.id })
+				: undefined,
+	};
 	const menuFor = (conversation: TeamBridgeConversation) => {
 		const selectedRow = isSelectedConversation(conversation);
 		const notifyWrite =
@@ -2791,9 +3006,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					readOnly,
 					agentNotifyEnabled: agentNotify !== undefined,
 					archivable: canArchiveConversation(conversation),
+					renamable:
+						renameCapabilityState === "enabled" &&
+						canRenameConversation(conversation),
 					wiring: {
 						viewMembers: true,
 						addMembers: Boolean(onAddMembers),
+						manageApps: true,
+						responder: true,
+						rename: Boolean(onRename),
 						join: Boolean(onMenuJoin ?? (selectedRow && onJoin)),
 						notify: Boolean(notifyWrite),
 						agentNotify: Boolean(onAgentNotifyChange) && selectedRow,
@@ -2825,6 +3046,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				}
 				setMemberActionFailed(false);
 				setMembersOpen(true);
+			},
+			onManageApps: () => openConsolePage(TEAM_INTEGRATIONS_CONSOLE_URL),
+			onResponder: () =>
+				setDialog({ kind: "responder", conversationId: conversation.id }),
+			onRename: () => {
+				renameOpen.current += 1;
+				setRenameFailed(null);
+				setDialog({ kind: "rename", conversationId: conversation.id });
 			},
 			onJoin: () => {
 				if (onMenuJoin) onMenuJoin(conversation);
@@ -2951,6 +3180,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					organizationsFailed={organizationsFailed}
 					unreadRefreshing={refreshingUnread}
 					onRetry={onRetryMemberships}
+					communities={communities}
+					communitiesEnabled={communitiesEnabled}
+					onCommunityChange={onCommunityChange}
+					onBrowseCommunities={onBrowseCommunities}
 				/>
 				{/*
 				 * STALE-WHILE-REVALIDATE, VISIBLY (tb-instant-open). Cached rows stay
@@ -3038,6 +3271,44 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<Clock size={16} aria-hidden="true" />
 					{t("ui.teamBridge.schedule.list")}
 				</button>
+				{requests && (
+					<button
+						type="button"
+						aria-current={quickView === "requests" ? "page" : undefined}
+						onClick={() => openQuickView("requests")}
+						className={cn(
+							"flex h-8 items-center gap-2 rounded-md px-2 text-[14px]",
+							/* Visibly current while open, like Archived (design D8): the
+							   rail must not keep a conversation highlighted while the
+							   main region shows Approvals. */
+							quickView === "requests"
+								? rowCurrent
+								: "text-ink-muted hover:bg-row-hover hover:text-ink",
+						)}
+					>
+						<Inbox size={16} aria-hidden="true" />
+						<span className="min-w-0 flex-1 truncate text-start">
+							{t("ui.teamBridge.approvals.title")}
+						</span>
+						{requests.waiting > 0 && (
+							/* A request is a teammate's agent waiting on this person:
+							   an attention count, so the shared accent badge. */
+							<AttentionBadge
+								count={requests.waiting}
+								className="shrink-0"
+								aria-label={
+									(requests.held ?? 0) > 0
+										? t("ui.teamBridge.holds.waiting_total", {
+												count: requests.waiting,
+											})
+										: t("ui.teamBridge.approvals.waiting", {
+												count: requests.waiting,
+											})
+								}
+							/>
+						)}
+					</button>
+				)}
 				{invitationsEntry.current && (
 					<button
 						type="button"
@@ -3654,6 +3925,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				)}
 				{ownerAudit?.active ? (
 					ownerAudit.panel
+				) : quickView === "requests" && requests ? (
+					requests.panel
 				) : quickView === "invitations" ? (
 					<TeamBridgeInvitations
 						invitations={invitations}
@@ -4245,100 +4518,104 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											: t("ui.teamBridge.thread.empty")}
 									</p>
 								) : (
-									<TeamBridgeMessageList
-										messages={merged.messages}
-										unreadAfterSeq={unreadAfterSeq}
-										events={events}
-										presentationOf={(message) => {
-											const local = merged.localOf(message);
-											/* A CONFIRMED row the page has not carried yet is drawn from
-											   the send response; it is the server's, so it keeps full ink
-											   and its real seq - only an unconfirmed row is "local". */
-											const unconfirmed =
-												local !== undefined &&
-												(local.status !== "sent" ||
-													local.serverRow === undefined);
-											return {
-												key: merged.keyOf(message),
-												local: unconfirmed,
-												delivery:
-													local && unconfirmed
-														? {
-																status:
-																	local.status === "failed"
-																		? "failed"
-																		: "pending",
-																/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
-															   attempt: the hub dedupes a request that landed with
-															   its answer lost. EDIT puts the words back in the box
-															   and drops the row, which is the other thing a reader
-															   wants to do with a message that did not go. */
-																onRetry:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				usePendingSends
-																					.getState()
-																					.patch(local.localId, {
-																						status: "pending",
-																						autoRetried: local.autoRetried,
-																					});
-																				void deliverOptimistic(local);
-																			}
-																		: undefined,
-																onEdit:
-																	local.status === "failed" && isDraftCurrent()
-																		? () => {
-																				useConversationInputStore
-																					.getState()
-																					.returnPayload(composerKey, {
-																						text: local.body,
-																						attachments: [],
-																						replies: [],
-																					});
-																				usePendingSends
-																					.getState()
-																					.remove(local.localId);
-																			}
-																		: undefined,
-															}
-														: undefined,
-											};
-										}}
-										profileFor={(sender) =>
-											profileFor(sender, shown?.tenant_id ?? "")
-										}
-										canMessagePerson={(sender) =>
-											messageTarget(sender, shown?.tenant_id ?? "") !== null
-										}
-										onMessagePerson={
-											identityKnown
-												? (sender) =>
-														messagePerson(sender, shown?.tenant_id ?? "")
-												: undefined
-										}
-										arrivalKey={timelineArrivalKey}
-										highlightId={highlightMessageId}
-										/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
-										   turns on the virtualized path (see `TeamBridgeMessageList`): only
-										   the visible rows plus overscan mount, and the list asks for an
-										   older page when the reader nears the top. */
-										scrollRootRef={timeline.rootRef}
-										isPinned={timeline.isPinned}
-										hasOlder={olderPaging?.hasOlder ?? false}
-										loadingOlder={olderPaging?.loadingOlder ?? false}
-										onLoadOlder={olderPaging?.onLoadOlder}
-										tenantId={shown?.tenant_id}
-										accountId={selfAccountId}
-										labelFor={(sender) =>
-											labelFor(sender, shown?.tenant_id ?? "")
-										}
-										reactionContext={reactionContext}
-										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
-										   reply button and the "N replies" summary are both rendered from this
-										   prop, and a visible Reply that opens nothing is the dead end the
-										   fail-closed rule forbids. */
-										onReply={threadsAvailable ? openThreadFor : undefined}
-									/>
+									<TeamBridgeAlertActionsContext.Provider value={alertActions}>
+										<TeamBridgeMessageList
+											messages={merged.messages}
+											unreadAfterSeq={unreadAfterSeq}
+											events={events}
+											presentationOf={(message) => {
+												const local = merged.localOf(message);
+												/* A CONFIRMED row the page has not carried yet is drawn from
+												   the send response; it is the server's, so it keeps full ink
+												   and its real seq - only an unconfirmed row is "local". */
+												const unconfirmed =
+													local !== undefined &&
+													(local.status !== "sent" ||
+														local.serverRow === undefined);
+												return {
+													key: merged.keyOf(message),
+													local: unconfirmed,
+													delivery:
+														local && unconfirmed
+															? {
+																	status:
+																		local.status === "failed"
+																			? "failed"
+																			: "pending",
+																	/* RETRY IS THE ROW'S OWN KEY, re-sent as the same
+																   attempt: the hub dedupes a request that landed with
+																   its answer lost. EDIT puts the words back in the box
+																   and drops the row, which is the other thing a reader
+																   wants to do with a message that did not go. */
+																	onRetry:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					usePendingSends
+																						.getState()
+																						.patch(local.localId, {
+																							status: "pending",
+																							autoRetried: local.autoRetried,
+																						});
+																					void deliverOptimistic(local);
+																				}
+																			: undefined,
+																	onEdit:
+																		local.status === "failed" &&
+																		isDraftCurrent()
+																			? () => {
+																					useConversationInputStore
+																						.getState()
+																						.returnPayload(composerKey, {
+																							text: local.body,
+																							attachments: [],
+																							replies: [],
+																						});
+																					usePendingSends
+																						.getState()
+																						.remove(local.localId);
+																				}
+																			: undefined,
+																}
+															: undefined,
+												};
+											}}
+											profileFor={(sender) =>
+												profileFor(sender, shown?.tenant_id ?? "")
+											}
+											canMessagePerson={(sender) =>
+												messageTarget(sender, shown?.tenant_id ?? "") !== null
+											}
+											onMessagePerson={
+												identityKnown
+													? (sender) =>
+															messagePerson(sender, shown?.tenant_id ?? "")
+													: undefined
+											}
+											arrivalKey={timelineArrivalKey}
+											highlightId={highlightMessageId}
+											/* THE WINDOWED STRIP. Passing the timeline's own scroll root is what
+											   turns on the virtualized path (see `TeamBridgeMessageList`): only
+											   the visible rows plus overscan mount, and the list asks for an
+											   older page when the reader nears the top. */
+											scrollRootRef={timeline.rootRef}
+											isPinned={timeline.isPinned}
+											hasOlder={olderPaging?.hasOlder ?? false}
+											loadingOlder={olderPaging?.loadingOlder ?? false}
+											onLoadOlder={olderPaging?.onLoadOlder}
+											tenantId={shown?.tenant_id}
+											accountId={selfAccountId}
+											labelFor={(sender) =>
+												labelFor(sender, shown?.tenant_id ?? "")
+											}
+											reactionContext={reactionContext}
+											/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+											   reply button and the "N replies" summary are both rendered from this
+											   prop, and a visible Reply that opens nothing is the dead end the
+											   fail-closed rule forbids. */
+											onReply={threadsAvailable ? openThreadFor : undefined}
+										/>
+									</TeamBridgeAlertActionsContext.Provider>
 								)}
 							</div>
 						</ScrollArea>
@@ -4825,6 +5102,57 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					? selectable.find((row) => row.id === dialog.conversationId)
 					: undefined;
 				if (!dialog || !subject) return null;
+				if (dialog.kind === "responder") {
+					/* Read-only in this build (see the dialog's header): it writes
+					   nothing, so it needs no pending/failure state here. */
+					const agentName =
+						selfPersonFor(subject.tenant_id)?.agent?.name?.trim() ||
+						t("ui.teamBridge.sender.unknown_agent");
+					return (
+						<TeamBridgeResponderDialog
+							open
+							channelName={subject.name?.trim() ?? ""}
+							agentName={agentName}
+							onClose={() => setDialog(null)}
+						/>
+					);
+				}
+				if (dialog.kind === "rename") {
+					const kind = subject.kind === "group" ? "group" : "channel";
+					return (
+						<TeamBridgeRenameDialog
+							open
+							kind={kind}
+							currentName={subject.name?.trim() ?? ""}
+							pending={renaming}
+							error={renameFailed}
+							onClose={() => {
+								renameOpen.current += 1;
+								setDialog(null);
+							}}
+							onSave={(next) => {
+								if (!onRename || renaming) return;
+								const sentFrom = renameOpen.current;
+								setRenaming(true);
+								setRenameFailed(null);
+								onRename(subject, next).then(
+									() => {
+										setRenaming(false);
+										if (renameOpen.current === sentFrom) setDialog(null);
+									},
+									(failure: unknown) => {
+										setRenaming(false);
+										if (renameOpen.current === sentFrom) {
+											setRenameFailed(renameFailure(failure, next));
+										} else {
+											showErrorToast(t("ui.teamBridge.rename.error.failed"));
+										}
+									},
+								);
+							}}
+						/>
+					);
+				}
 				const name = archiveChannelName(subject);
 				/* Only a selection ON the removed channel has to move: archiving a
 				   channel from another row's menu leaves the reader where they are. */
@@ -5064,6 +5392,21 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * falls back silently like any other remembered target.
 	 */
 	const clickCarry = useRef<ClickCarry | null>(null);
+	/* The nav badge's `?view=requests` landing, carried across the same owner
+	   remount (QA Q6); see `requestsViewParam` below. A view preference only. */
+	const requestsLandingCarry = useRef(false);
+	/* A landing belongs to the account it was asked under (R3-02): a switch
+	   from one account to another, or a sign-out, ends it so B's first view
+	   does not open on Requests. The cold open's `undefined` -> account
+	   resolution is NOT a switch - that is the remount the latch exists to
+	   survive (QA Q6). Render-time like the latch itself, so the reset lands
+	   before the next owner reads it. */
+	const landingAccount = useRef(account.accountId);
+	if (landingAccount.current !== account.accountId) {
+		if (landingAccount.current !== undefined)
+			requestsLandingCarry.current = false;
+		landingAccount.current = account.accountId;
+	}
 	// Remount immediately at the real auth transition, before stale TB status can
 	// render. Retain only original-owner data; never carry an A callback into B.
 	return (
@@ -5074,6 +5417,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			receipts={receipts.current}
 			messageLinkCarry={messageLink}
 			clickCarry={clickCarry}
+			requestsLandingCarry={requestsLandingCarry}
 		/>
 	);
 };
@@ -5134,12 +5478,20 @@ const TeamBridgeOwnedPage: FC<{
 	accountId?: string;
 	messageLinkCarry: { current: TeamBridgeMessageLink | null };
 	clickCarry: { current: ClickCarry | null };
+	requestsLandingCarry: { current: boolean };
 	drafts: Map<string, OwnedDraft>;
 	receipts: Map<
 		string,
 		Map<string, { id: string; tenantId: string | undefined }>
 	>;
-}> = ({ accountId, drafts, receipts, messageLinkCarry, clickCarry }) => {
+}> = ({
+	accountId,
+	drafts,
+	receipts,
+	messageLinkCarry,
+	clickCarry,
+	requestsLandingCarry,
+}) => {
 	/* The feature's one cache reader: the opening snapshot below is read from it, and
 	   the writes that patch cached pages run through it. */
 	const client = useQueryClient();
@@ -5236,12 +5588,29 @@ const TeamBridgeOwnedPage: FC<{
 					readScopePreference(storage, accountId))
 			: undefined;
 	}, [accountId]);
+	/*
+	 * WHERE THE READER IS IN THIS APP SESSION (RFC v2.4 Amendment A). The stored
+	 * values above outlive a restart, and Amendment A wants a restart to reopen on
+	 * the pending invitation or default private org instead; this one lives in
+	 * `sessionStorage`, so it keeps the reader's scope across leaving and
+	 * re-entering Team Bridge and is gone after a restart. It seeds the first
+	 * paint ahead of the durable value for the same no-correction reason.
+	 */
+	const sessionScope = useMemo(() => {
+		const storage = browserSessionStorage();
+		return storage && accountId
+			? readSessionScope(storage, accountId)
+			: undefined;
+	}, [accountId]);
 	/* A click a previous owner consumed (see `clickCarry`) opens like the click. */
 	const carriedClick = useRef(requestedAny ? null : clickCarry.current).current;
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
-			: (carriedClick?.scope ?? storedScope ?? TEAM_BRIDGE_ALL_SCOPE),
+			: (carriedClick?.scope ??
+				sessionScope ??
+				storedScope ??
+				TEAM_BRIDGE_ALL_SCOPE),
 	);
 	/*
 	 * WHERE THE READER WAS IN THIS SCOPE (the operator's "it always defaults back
@@ -5342,11 +5711,14 @@ const TeamBridgeOwnedPage: FC<{
 			? "signed_out"
 			: auth.unavailable
 				? "update_required"
-				: auth.error || status.isError || capabilities.isError
-					? "unavailable"
-					: capabilities.data && !ownerGuard
-						? "update_required"
-						: null);
+				: status.isError && teamBridgeRateLimit(null, status.error)
+					? // A throttled status read is "slowing down", never "unavailable".
+						"rate_limited"
+					: auth.error || status.isError || capabilities.isError
+						? "unavailable"
+						: capabilities.data && !ownerGuard
+							? "update_required"
+							: null);
 	const gatePending =
 		eligibility === null &&
 		(!accountId || status.isPending || capabilities.isPending);
@@ -5396,6 +5768,48 @@ const TeamBridgeOwnedPage: FC<{
 	 */
 	const unreadView = useTeamBridgeUnreadView(selfAccountId);
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
+	// The joined communities (flag-gated list read; empty with the flag off).
+	const communityList = useTeamBridgeCommunities();
+	/*
+	 * THE COMMUNITY SCOPE (Amendment A). A community is selected in the same
+	 * switcher as a private org but is its own page (`CommunityHome`): nothing of
+	 * the private view, its caches or its drafts renders under a community title.
+	 * Session state only - never written to the durable scope preference, so a
+	 * restart reapplies the opening rule (default private org first; a community
+	 * only when there is no private org). `landing` names the channel a fresh join
+	 * opens (#welcome-and-rules, RFC §5.2).
+	 */
+	const [communityScope, setCommunityScope] = useState<{
+		id: TeamBridgeCommunityId;
+		landing: string | null;
+	} | null>(null);
+	const [joinOpen, setJoinOpen] = useState(false);
+	/*
+	 * Set when the join dialog is a RE-ACCEPTANCE by a member of this community
+	 * (the composer's "Review and accept", review round 1 M2 / design D2): the
+	 * dialog targets that community, and success keeps the reader where they
+	 * are instead of landing on #welcome-and-rules like a fresh join.
+	 */
+	const [reacceptFor, setReacceptFor] = useState<TeamBridgeCommunityId | null>(
+		null,
+	);
+	const joinTarget =
+		communityList.featured[0]?.id ??
+		communityList.communities[0]?.communityId ??
+		null;
+	const openCommunity = (communityId: TeamBridgeCommunityId) =>
+		setCommunityScope({ id: communityId, landing: null });
+	/*
+	 * "Browse communities…": with one featured community at launch, browsing is
+	 * joining it; a joined one simply opens. A community directory is a later
+	 * lane - this keeps the entry honest rather than opening an empty catalogue.
+	 */
+	const browseCommunities = () => {
+		const joined = communityList.communities[0];
+		if (joined && communityList.featured.length === 0)
+			openCommunity(joined.communityId);
+		else if (joinTarget) setJoinOpen(true);
+	};
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
 		accountId,
 	});
@@ -5416,6 +5830,75 @@ const TeamBridgeOwnedPage: FC<{
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
 	/*
+	 * THE ONE WAY A COMMUNITY IS A LAUNCH DEFAULT (`resolveDefaultSelection` rule
+	 * 7): no private Team org at all (the plan-required gate) and a joined
+	 * community. Once per mount, so choosing the empty private side afterwards
+	 * is not overridden. The decision is the shared rule's, not a re-derivation
+	 * (review round 1, m1): its rule 1 - a pending private invitation opens the
+	 * invited org even with a community joined (D22) - must win here too.
+	 */
+	const communityAutoOpened = useRef(false);
+	useEffect(() => {
+		if (!communityList.enabled || communityAutoOpened.current) return;
+		if (eligibility !== "plan_required") return;
+		const selection = resolveDefaultSelection({
+			organizations,
+			communities: communityList.communities,
+		});
+		if (selection?.kind !== "community") return;
+		communityAutoOpened.current = true;
+		setCommunityScope({ id: selection.communityId, landing: null });
+	}, [
+		communityList.enabled,
+		communityList.communities,
+		eligibility,
+		organizations,
+	]);
+	/*
+	 * The account's DEFAULT private org (Amendment A rule 2): the Radient home
+	 * tenant, which `GET /v1/me/memberships` marks `is_home`. Only an active row
+	 * counts, and `resolveOpeningScope` further requires it to be one of this
+	 * page's organizations, so a plan-less personal home tenant changes nothing.
+	 */
+	const defaultTenantId = useMemo(
+		() =>
+			memberships.memberships.find(
+				(membership) => membership.is_home && membership.status === "active",
+			)?.tenant_id ?? null,
+		[memberships.memberships],
+	);
+	/*
+	 * THE OPENING WAITS FOR THE DEFAULT ORG (review round 1, M1/m2; the rule and
+	 * its exemptions are on `openingDefaultHeld`). Held, the page shows its gate
+	 * loading state rather than the seed scope's title, snapshot rows or restored
+	 * conversation: the seed is yesterday's durable pick, which the default org
+	 * outranks on a restart, so painting it would be a wrong-org flash.
+	 * `memberships.isPending` is also true while the query is disabled behind the
+	 * status gate, so the snapshot cannot paint a multi-org seed before then.
+	 */
+	const openingOrganizations = openingOrganizationCount(
+		organizations,
+		openingRows,
+	);
+	/*
+	 * HOLD ONLY WHAT MEMBERSHIPS CAN STILL ANSWER (review round 2, M3). The hold
+	 * ends when memberships settle, and that query is enabled by `readsEnabled`
+	 * alone. Once the verdict is in and refuses reads (plan_required, rate_limited,
+	 * unavailable, ...), memberships never load, so a hold there would replace the
+	 * eligibility panel with an endless gate spinner. While the verdict is still
+	 * pending (`gatePending`) the hold stays, because that is exactly when a
+	 * multi-org seed could otherwise paint; it lifts with the verdict either way.
+	 */
+	const openingHeld =
+		(gatePending || readsEnabled) &&
+		openingDefaultHeld({
+			organizationCount: openingOrganizations,
+			membershipsSettled: !memberships.isPending || memberships.isError,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			session: sessionScope,
+		});
+	/*
 	 * THE SCOPE IS DECIDED BEFORE THE LIST IS READ (tb-instant-open).
 	 *
 	 * The organization set comes from the status payload this container already
@@ -5430,19 +5913,47 @@ const TeamBridgeOwnedPage: FC<{
 	 * rows cannot be known before the organizations are) and it removes the request
 	 * that would have been discarded.
 	 */
-	const scopeSettled =
-		resolveOpeningScope({
-			organizations,
-			stored: storedScope,
-			requestedTenant,
-			chosen: scopeChosen.current,
-			current: scope,
-			snapshotRows: openingRows,
-		}) === scope;
-	// `organizationsPending` is the same rule one step earlier: the answer that
-	// decides the scope is still in flight, so a read now would be a read this
-	// page is about to replace.
-	const scopeDecided = scopeSettled && !organizationsPending;
+	const openingScope = resolveOpeningScope({
+		organizations,
+		stored: storedScope,
+		session: sessionScope,
+		defaultTenantId,
+		requestedTenant,
+		chosen: scopeChosen.current,
+		current: scope,
+		snapshotRows: openingRows,
+		defaultPending: openingHeld,
+	});
+	const scopeSettled = openingScope === scope;
+	// `organizationsPending` and `openingHeld` are the same rule one step
+	// earlier: the answer that decides the scope is still in flight, so a read
+	// now would be a read this page is about to replace.
+	const scopeDecided = scopeSettled && !organizationsPending && !openingHeld;
+	/*
+	 * THE OPENING ENDS THE FIRST TIME THE SCOPE IS DECIDED (QA round 1, Q1/Q2 on
+	 * ui#1970). Until then the scope state is only a seed, and the render-time
+	 * correction further down may still replace it before anything paints; after
+	 * it, scope moves belong to the reader (switcher) and the adoption effect.
+	 * A deep link or carried click decided at mount, so it starts settled. Only
+	 * a decision made with reads enabled counts: before the account and its
+	 * verdict are known, "decided" is the trivial answer of a page that knows no
+	 * organizations, and latching on it would retire the correction for good.
+	 *
+	 * STATE, NOT A REF (review round 4, R4-1). The renderer runs under
+	 * StrictMode, which renders an update twice and starts the second pass from
+	 * COMMITTED state: it drops the first pass's render-phase `setScope`/
+	 * `setTarget` but would keep a ref written during render, so the second pass
+	 * saw "settled" with the seed scope still in state, skipped the correction and
+	 * painted the seed (Q1 again). A render-phase `setState` (React's "storing
+	 * information from previous renders" pattern) is discarded with its pass, so
+	 * every pass recomputes the latch from the same committed inputs. The latch
+	 * still reads as settled in the very pass that decides it, as the ref did.
+	 */
+	const [openingSettled, setOpeningSettled] = useState(scopeChosen.current);
+	const openingDecidedNow = scopeDecided && readsEnabled;
+	if (openingDecidedNow && !openingSettled) setOpeningSettled(true);
+	const openingUnsettled =
+		!(openingSettled || openingDecidedNow) && !scopeChosen.current;
 	const list = useTeamBridgeConversations(
 		scope,
 		readsEnabled && scopeDecided,
@@ -5590,6 +6101,30 @@ const TeamBridgeOwnedPage: FC<{
 		requestedAny ? null : (restoreOnOpen?.target ?? null),
 	);
 	/*
+	 * THE LANDING THIS OPEN ALREADY KNOWS, WITH ITS ORGANIZATION (first-open
+	 * latency, bridge-instant-load). Captured once, at mount: the `?tenant=` the
+	 * click carried is cleared from the URL a render later, and only the target
+	 * the page OPENED on is worth a parallel read. A remembered conversation
+	 * carries its tenant only when the record was written by a build that stores
+	 * it; an older record yields `null` here and the open behaves as before.
+	 */
+	/* A ref, not a mount constant: when the opening scope corrects away from
+	   the seed, the landing it knows is the DECIDED scope's (QA Q2, below). */
+	const knownLanding = useRef<{ id: string; tenantId: string } | null>(
+		requestedConversation && requestedTenant
+			? { id: requestedConversation, tenantId: requestedTenant }
+			: !requestedAny &&
+					restoreOnOpen?.target.type === "conversation" &&
+					restoreOnOpen.tenantId
+				? { id: restoreOnOpen.target.id, tenantId: restoreOnOpen.tenantId }
+				: null,
+	);
+	/* Set while the opening dropped the seed's restore and owes the decided
+	   scope's own one (see the render-time opening correction). State, not a
+	   ref, for the same StrictMode reason as `openingSettled` (R4-1): a ref
+	   cleared by a discarded render pass lost the decided scope's restore. */
+	const [openingRestoreDeferred, setOpeningRestoreDeferred] = useState(false);
+	/*
 	 * The scopes whose remembered view has already been offered this mount. The
 	 * landing effect restores a scope's record ONCE - on the first landing after
 	 * the page opens or the switcher moves to it - and lands on the default ever
@@ -5640,6 +6175,70 @@ const TeamBridgeOwnedPage: FC<{
 	});
 
 	clearOwnerAudit.current = () => ownerAudit?.clear();
+	/*
+	 * Approval requests: one read shared with the nav badge (same query key),
+	 * gated like the other reads. A daemon without the routes answers 404 and the
+	 * slot stays absent, so an older backend shows no Requests entry at all.
+	 */
+	const approvalRequests = useApprovalRequests(readsEnabled);
+	// Releasable held messages share the Approvals slot's count (B4b).
+	const heldMessages = useHeldMessages(readsEnabled);
+	const visibleHeld = useVisibleHeldCount(heldMessages.data);
+	/*
+	 * A failed read that is NOT a 404 still draws the entry (QA Q2): requests
+	 * may exist that could not be read, and the panel says so with Retry. Only
+	 * "this daemon has no approvals routes" hides it.
+	 */
+	/*
+	 * STICKY ONCE A READ HAS FAILED (QA Q2, round 2). `isError` alone is not
+	 * stable: TanStack Query v5 resets a no-data query to `pending` with
+	 * `error: null` the moment it refetches, so a slot drawn on `isError`
+	 * vanished on every poll or retry - and with Requests open it unmounted and
+	 * remounted the panel, whose mount refetched, in a loop. The last SETTLED
+	 * error is kept instead; a later success replaces it with data.
+	 */
+	const lastRequestsError = useRef<unknown>(null);
+	if (approvalRequests.isError)
+		lastRequestsError.current = approvalRequests.error;
+	else if (approvalRequests.data) lastRequestsError.current = null;
+	const requestsSlot =
+		readsEnabled &&
+		(approvalRequests.data ||
+			(lastRequestsError.current !== null &&
+				!approvalsUnsupported(lastRequestsError.current)))
+			? {
+					waiting: (approvalRequests.data?.pending_count ?? 0) + visibleHeld,
+					held: visibleHeld,
+					panel: <TeamBridgeRequests />,
+				}
+			: undefined;
+	/*
+	 * THE BADGE'S LANDING SURVIVES A REMOUNT (QA Q6, round 2). On a cold open
+	 * both this owner (keyed by the auth token) and the view (keyed by account,
+	 * scope and target) mount more than once while those resolve; consuming
+	 * `?view=requests` on the first mount lost it on the next. The request is
+	 * therefore latched in `requestsLandingCarry`, which lives ABOVE the owner
+	 * remount like the notification carries, and is handed to EVERY view mount
+	 * as its initial quick view. The address parameter is cleared at once (so a
+	 * refetch or a back navigation cannot pull the reader back); the latch ends
+	 * only when the view reports that the reader has left Requests.
+	 */
+	const requestsViewParam =
+		searchParams.get(TEAM_BRIDGE_REQUESTS_VIEW_PARAM) === "requests";
+	if (requestsViewParam) requestsLandingCarry.current = true;
+	const [, endRequestsLanding] = useReducer((n: number) => n + 1, 0);
+	useEffect(() => {
+		if (!requestsViewParam) return;
+		setSearchParams(
+			(current) => {
+				const next = new URLSearchParams(current);
+				next.delete(TEAM_BRIDGE_REQUESTS_VIEW_PARAM);
+				return next;
+			},
+			{ replace: true },
+		);
+	}, [requestsViewParam, setSearchParams]);
+	const requestsViewRequested = requestsLandingCarry.current;
 
 	useEffect(() => {
 		if (!(requestedConversation || requestedRowType) || !requestedTenant)
@@ -5683,7 +6282,12 @@ const TeamBridgeOwnedPage: FC<{
 		 */
 		const clickedScope = asTeamBridgeTenantId(requestedTenant);
 		const storage = browserDraftStorage();
-		const remembered = { target: clicked, thread: clickedThread };
+		const remembered = {
+			target: clicked,
+			// The click names its organization; see `TeamBridgeViewMemory.tenantId`.
+			tenantId: requestedConversation ? requestedTenant : null,
+			thread: clickedThread,
+		};
 		if (viewMemory.current.scope === clickedScope)
 			viewMemory.current.view = remembered;
 		/* No account yet, or storage refused the write (R4): carry it in memory. */
@@ -5765,18 +6369,60 @@ const TeamBridgeOwnedPage: FC<{
 	// options array, so the equality check keeps this to the one transition.
 	// Before that list exists, the watcher's snapshot stands in - and the list
 	// supersedes it the moment it answers (tb-instant-open).
+	//
+	// THE OPENING ITSELF IS NOT DECIDED HERE: a passive effect runs after paint,
+	// so correcting the seed from here painted it first (QA round 1, Q1 on
+	// ui#1970). The render-time correction below the archived state owns every
+	// move until `openingSettled`; this effect then finds `next === scope` and
+	// keeps only the later adoptions (an organization list that changes after the
+	// opening, the snapshot superseded by the list).
 	useEffect(() => {
-		setScope((current) =>
-			resolveOpeningScope({
-				organizations,
-				stored: storedScope,
-				requestedTenant,
-				chosen: scopeChosen.current,
-				current,
-				snapshotRows: openingRows,
-			}),
-		);
-	}, [organizations, openingRows, storedScope, requestedTenant]);
+		if (openingHeld) return;
+		const next = resolveOpeningScope({
+			organizations,
+			stored: storedScope,
+			session: sessionScope,
+			defaultTenantId,
+			requestedTenant,
+			chosen: scopeChosen.current,
+			current: scope,
+			snapshotRows: openingRows,
+			defaultPending: openingHeld,
+		});
+		if (next === scope) return;
+		setScope(next);
+	}, [
+		organizations,
+		openingRows,
+		storedScope,
+		sessionScope,
+		defaultTenantId,
+		requestedTenant,
+		openingHeld,
+		scope,
+	]);
+
+	/*
+	 * Record the scope the reader is IN, once it is decided, for this app session
+	 * (`writeSessionScope`). Every route - a switcher pick, a union row's org
+	 * switch, a deep link, the opening rule's own answer - lands here, so leaving
+	 * Team Bridge and coming back reopens exactly where the reader was. Writing
+	 * before `scopeDecided` would record an interim seed the list never read,
+	 * and a fallback taken because memberships failed is not recorded either
+	 * (`shouldRecordSessionScope`): the default org must still be able to win
+	 * later in this app session.
+	 */
+	const recordSessionScope = shouldRecordSessionScope({
+		organizationCount: openingOrganizations,
+		membershipsFailed: memberships.isError,
+		requestedTenant,
+		chosen: scopeChosen.current,
+	});
+	useEffect(() => {
+		if (!scopeDecided || !recordSessionScope || !accountId) return;
+		const storage = browserSessionStorage();
+		if (storage) writeSessionScope(storage, accountId, scope);
+	}, [scope, scopeDecided, recordSessionScope, accountId]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -5791,6 +6437,10 @@ const TeamBridgeOwnedPage: FC<{
 	// on its own last conversation. The default is only for a scope with no
 	// record; a record that no longer resolves is caught by the validation below.
 	useEffect(() => {
+		// Held, the rows on hand are the SEED's (the watcher snapshot narrowed to
+		// it): landing now would select - and so read and mark read - a
+		// conversation of a scope the default org may yet replace (QA Q2).
+		if (openingHeld) return;
 		if (
 			!ownerAudit?.active &&
 			target === null &&
@@ -5823,7 +6473,14 @@ const TeamBridgeOwnedPage: FC<{
 			);
 			if (first) setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, organizations, target, ownerAudit?.active, scope]);
+	}, [
+		visibleConversations,
+		organizations,
+		target,
+		ownerAudit?.active,
+		scope,
+		openingHeld,
+	]);
 	useEffect(() => {
 		if (target !== null) pendingLanding.current = null;
 	}, [target]);
@@ -5839,6 +6496,71 @@ const TeamBridgeOwnedPage: FC<{
 	const [archivedOpened, setArchivedOpened] = useState(
 		() => restoreOnOpen?.quickView === "archived",
 	);
+	/*
+	 * THE OPENING SCOPE IS DECIDED BEFORE ANYTHING PAINTS (QA round 1, Q1/Q2 on
+	 * ui#1970).
+	 *
+	 * `scope` starts as a SEED - this app session's scope, else yesterday's pick,
+	 * else the union - because the inputs that decide it (status tenants,
+	 * memberships and their `is_home`) come from hooks this state precedes. The
+	 * correction used to be a passive effect, which runs after paint, so the seed
+	 * painted for a frame or more: when the shell had already cached memberships
+	 * (no hold at all), and in the commit where a hold lifted. React's
+	 * render-phase update is the synchronous form: a `setState` on this component
+	 * during its own render discards that render and re-runs it before commit, so
+	 * the seed never reaches the DOM - whether the inputs were cached at mount or
+	 * arrive later and lift the hold.
+	 *
+	 * The seed's restored view goes with it. The mount restored the seed scope's
+	 * remembered conversation into `target` (so a one-org open paints it in its
+	 * first frame), and a selection is not inert: its history read answers and the
+	 * mark-read effect advances its cursor, clearing unread the reader never saw
+	 * (Q2). So with several organizations - where the seed can be another org's -
+	 * nothing is restored while held, and a move drops the seed's restore. The
+	 * DECIDED scope's own record - the only one that belongs to it - is restored
+	 * in the same render pass that decides it, not left to the landing effect:
+	 * that effect needs rows, and a held list has none, which would lose the
+	 * remembered conversation's parallel history read (first-open latency) and
+	 * its first-frame paint. With one organization every record belongs to it,
+	 * so a move (e.g. union to that org) keeps the mount's restore.
+	 *
+	 * Every update is conditional on the value differing, so the re-run converges
+	 * (React refuses an unconditional render-phase update as a loop).
+	 */
+	const openingMoving =
+		openingUnsettled && !openingHeld && openingScope !== scope;
+	if (openingUnsettled && (openingHeld || openingMoving)) {
+		if (openingOrganizations > 1) {
+			restoredScopes.current.clear();
+			pendingLanding.current = null;
+			restoredTarget.current = null;
+			knownLanding.current = null;
+			if (!openingRestoreDeferred) setOpeningRestoreDeferred(true);
+			if (target !== null) setTarget(null);
+			if (threadLink !== null) setThreadLink(null);
+			if (archivedOpened) setArchivedOpened(false);
+		}
+		if (openingMoving) setScope(openingScope);
+	} else if (!openingHeld && openingRestoreDeferred) {
+		// `scope` is the opening's answer now (this may be the very render that
+		// settles it, hence outside the unsettled branch), and `viewMemory` was
+		// re-read for it at the top of this render: restore exactly what the
+		// mount would have, had it known the answer.
+		setOpeningRestoreDeferred(false);
+		restoredScopes.current.add(scope);
+		const view = viewMemory.current.view;
+		if (view) {
+			restoredTarget.current = view.target;
+			knownLanding.current =
+				view.target.type === "conversation" && view.tenantId
+					? { id: view.target.id, tenantId: view.tenantId }
+					: null;
+			setTarget(view.target);
+			if (TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD)
+				setThreadLink(rememberedThread(view));
+			if (view.quickView === "archived") setArchivedOpened(true);
+		}
+	}
 	const selectionOutsideLive =
 		list.isSuccess &&
 		target?.type === "conversation" &&
@@ -5920,10 +6642,34 @@ const TeamBridgeOwnedPage: FC<{
 	const rememberView = (
 		patch: Partial<TeamBridgeViewMemory> & { target: TeamBridgeTarget },
 	) => {
+		// The reader left Requests: the badge's landing (QA Q6) has done its job.
+		if (patch.quickView !== "requests" && requestsLandingCarry.current) {
+			requestsLandingCarry.current = false;
+			endRequestsLanding();
+		}
 		if (!accountId) return;
 		const storage = browserDraftStorage();
+		const remembered = patch.target;
 		const view: TeamBridgeViewMemory = {
-			target: patch.target,
+			target: remembered,
+			/* The conversation's organization, so the next cold open can start its
+			   history alongside the list (`prefetchTeamBridgeLanding`). Read from
+			   the rows the reader is choosing among - never inferred from scope.
+			   The view reports on mount, before a cold list has answered: the
+			   record's own tenant for the SAME conversation is kept then, or that
+			   first report would erase the hint the next open needs. */
+			tenantId:
+				patch.tenantId ??
+				(remembered.type === "conversation"
+					? (selectableConversations(visibleConversations, archivedRows).find(
+							(row) => row.id === remembered.id,
+						)?.tenant_id ??
+						(viewMemory.current.scope === scope &&
+						viewMemory.current.view?.target.type === "conversation" &&
+						viewMemory.current.view.target.id === remembered.id
+							? (viewMemory.current.view.tenantId ?? null)
+							: null))
+					: null),
 			thread: patch.thread ?? null,
 			quickView: patch.quickView ?? null,
 			scroll: patch.scroll ?? null,
@@ -5947,6 +6693,94 @@ const TeamBridgeOwnedPage: FC<{
 		selectableConversations(visibleConversations, archivedRows),
 		selfAccountId,
 	);
+	/*
+	 * BACKFILL THE TENANT once the list confirms the remembered conversation. A
+	 * record written before the tenant was stored (or reported before a cold list
+	 * answered) gains it here, so the NEXT cold open can read in parallel even if
+	 * the reader never changes conversation, scrolls or leaves through a path that
+	 * reports. One write, only when the stored tenant differs from the confirmed
+	 * row's; never a new target, so nothing about the restore itself changes.
+	 */
+	useEffect(() => {
+		const memory = viewMemory.current;
+		const view = memory.view;
+		if (
+			!accountId ||
+			!selected ||
+			memory.scope !== scope ||
+			view?.target.type !== "conversation" ||
+			view.target.id !== selected.id ||
+			view.tenantId === selected.tenant_id
+		)
+			return;
+		const next = { ...view, tenantId: selected.tenant_id };
+		memory.view = next;
+		const storage = browserDraftStorage();
+		if (storage)
+			writeViewMemory(storage, accountId, scope, next, currentScope.current);
+	}, [accountId, selected, scope]);
+	/*
+	 * FIRST OPEN: READ THE LANDING CONVERSATION ALONGSIDE THE LIST. Without this,
+	 * the timeline's read below waits for `selected`, which waits for the list, so
+	 * a cold open paid both round trips in series (331.6 ms vs the 300 ms bar in
+	 * the instant-load bench, ui#1889 QA r4). Here the one conversation the open
+	 * is known to land on starts its first page as soon as reads are allowed:
+	 *
+	 * the conversation this page opened on (deep link, notification click,
+	 * remembered view), with the tenant the click or the record named, or the
+	 * tenant of that row in the shell watcher's cached list.
+	 *
+	 * NOT the default row of a cached list when there is no target: the landing
+	 * effect already sets `target` from that same snapshot in its first flush,
+	 * `selected` resolves from the snapshot row, and the timeline's own read
+	 * starts while the list is held - with or without this effect (ui#1895 R1;
+	 * measured 277.7 ms before vs 280.0 ms with a branch for it). The guard test
+	 * in `team-bridge-first-open.test.mjs` keeps that path parallel.
+	 *
+	 * Constraints, each tested in `team-bridge-first-open.test.mjs`:
+	 * - Display is unchanged: this fills the timeline's own cache entry and
+	 *   nothing more. The pane shows a conversation only once `selected` resolves
+	 *   from the authoritative rows, so a conversation the reader was removed from
+	 *   or that was deleted is never shown and the fallback landing still runs.
+	 * - Same fence: `readsEnabled` (the eligibility gate) and the account-keyed,
+	 *   owner-fenced query; the once-per-open marker is keyed by account, and a
+	 *   read started for one account lands under that account's key only.
+	 * - At most one extra read per open, and none when the entry is already warm
+	 *   or being read (`prefetchTeamBridgeLanding` checks the cache).
+	 * - Skipped once `selected` resolves or the list has answered: from then on
+	 *   the timeline's own read is not waiting on anything.
+	 */
+	const landingPrefetched = useRef<string | null>(null);
+	useEffect(() => {
+		if (
+			!readsEnabled ||
+			!accountId ||
+			selected !== null ||
+			list.data !== undefined ||
+			landingPrefetched.current === accountId
+		)
+			return;
+		let row: Pick<TeamBridgeConversation, "id" | "tenant_id"> | undefined;
+		if (target?.type === "conversation") {
+			const cached = openingSnapshot.find((entry) => entry.id === target.id);
+			// A cached row that is only a preview has no history to read.
+			if (cached && isPreviewConversation(cached)) return;
+			const landing = knownLanding.current;
+			const tenantId =
+				landing?.id === target.id ? landing.tenantId : cached?.tenant_id;
+			if (tenantId) row = { id: target.id, tenant_id: tenantId };
+		}
+		if (row && prefetchTeamBridgeLanding(client, accountId, row))
+			landingPrefetched.current = accountId;
+	}, [
+		readsEnabled,
+		accountId,
+		selected,
+		list.data,
+		target,
+		openingSnapshot,
+		client,
+	]);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	// Every thread read and write names the SELECTED conversation's tenant, not
 	// the rail scope, so a merged-view row can never be read under another org.
@@ -6002,6 +6836,7 @@ const TeamBridgeOwnedPage: FC<{
 		accountId,
 	);
 	const archive = useArchiveTeamBridgeConversation();
+	const rename = useRenameTeamBridgeConversation();
 	const unarchive = useUnarchiveTeamBridgeConversation();
 	const deleteConversation = useDeleteTeamBridgeConversation();
 
@@ -6392,12 +7227,16 @@ const TeamBridgeOwnedPage: FC<{
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
 		if (!isCurrentOwner() || selected === null || newest === undefined) return;
+		// A cursor write is a claim the reader SAW this conversation. Before the
+		// scope is decided the selection may be a seed's, which the default org is
+		// about to replace (QA Q2); the re-run on `scopeDecided` catches up.
+		if (!scopeDecided) return;
 		// An archived channel carries no unread and is read-only: advancing its cursor
 		// is a write the server has no reason to accept.
 		if (selected.status === "archived") return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
-	}, [selected?.id, newest]);
+	}, [selected?.id, newest, scopeDecided]);
 
 	/*
 	 * LAND ON THE CLICKED MESSAGE, NEVER ON A STALE PAGE. The watcher wrote the
@@ -6610,10 +7449,80 @@ const TeamBridgeOwnedPage: FC<{
 		createHandoff.current?.key === draftKey
 			? createHandoff.current.viewKey
 			: draftKey;
+	const communityJoin = communityList.enabled ? (
+		<CommunityJoinDialog
+			communityId={reacceptFor ?? joinTarget}
+			reaccept={reacceptFor !== null}
+			open={joinOpen}
+			onClose={() => {
+				setJoinOpen(false);
+				setReacceptFor(null);
+			}}
+			selfName={selfName ?? null}
+			onJoined={(communityId) => {
+				setJoinOpen(false);
+				if (reacceptFor) {
+					// The join invalidated bootstrap; the home re-reads it and opens
+					// the composer again in the channel the reader is in.
+					setReacceptFor(null);
+					return;
+				}
+				setCommunityScope({
+					id: asTeamBridgeCommunityId(communityId),
+					landing: COMMUNITY_WELCOME_CHANNEL,
+				});
+			}}
+		/>
+	) : null;
+	/*
+	 * A COMMUNITY IN VIEW replaces the private page, behind the flag. Turning the
+	 * flag off mid-session drops back to the private page (the scope is ignored).
+	 * Keyed by account and community so a switch is a remount (no stale paint).
+	 */
+	if (communityList.enabled && communityScope)
+		return (
+			<>
+				<CommunityHome
+					key={`${accountId ?? ""}:${communityScope.id}`}
+					communityId={communityScope.id}
+					initialChannelName={communityScope.landing}
+					onReviewGuidelines={() => {
+						setReacceptFor(communityScope.id);
+						setJoinOpen(true);
+					}}
+					switcher={
+						<TeamBridgeOrgSwitcher
+							organizations={organizations}
+							scope={scope}
+							onScopeChange={(next) => {
+								setCommunityScope(null);
+								chooseOrganization(next);
+							}}
+							totalUnread={unread.data ? unreadView.total : 0}
+							membershipsLoading={organizationsPending}
+							organizationsFailed={organizationsFailed}
+							communities={communityList.communities}
+							communitiesEnabled
+							selectedCommunityId={communityScope.id}
+							onCommunityChange={openCommunity}
+							onBrowseCommunities={
+								joinTarget || communityList.communities.length > 0
+									? browseCommunities
+									: undefined
+							}
+						/>
+					}
+				/>
+				{communityJoin}
+			</>
+		);
 	return (
 		<>
+			{communityJoin}
 			<TeamBridgePageView
 				ownerAudit={ownerAudit}
+				requests={requestsSlot}
+				requestsViewRequested={requestsViewRequested}
 				key={viewKey}
 				draftJournal={draftJournal}
 				isDraftCurrent={isCurrentOwner}
@@ -6638,16 +7547,22 @@ const TeamBridgeOwnedPage: FC<{
 					capabilities.data,
 					"team_bridge_agent_notify",
 				)}
+				renameCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_conversation_rename",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				/* The remembered quick view and reading position apply only to the
 				   target they were recorded on: a view mounted for any other target
 				   opens as before (timeline at the newest message). */
 				initialQuickView={
-					rememberedTargetKey !== null &&
-					target !== null &&
-					rememberedTargetKey === draftTargetKey(target)
-						? (viewMemory.current.view?.quickView ?? null)
-						: null
+					requestsViewRequested
+						? "requests"
+						: rememberedTargetKey !== null &&
+								target !== null &&
+								rememberedTargetKey === draftTargetKey(target)
+							? (viewMemory.current.view?.quickView ?? null)
+							: null
 				}
 				initialScroll={rememberedScroll(viewMemory.current.view, target)}
 				onViewMemory={rememberView}
@@ -6704,6 +7619,17 @@ const TeamBridgeOwnedPage: FC<{
 				)}
 				onJoin={() => {
 					if (isCurrentOwner()) join.mutate(undefined);
+				}}
+				onRename={(conversation, name) => {
+					if (!isCurrentOwner())
+						return Promise.reject(
+							new Error("Team Bridge write authority changed"),
+						);
+					return rename.mutateAsync({
+						conversationId: conversation.id,
+						tenantId: conversation.tenant_id,
+						name,
+					});
 				}}
 				onArchive={(conversation) => {
 					if (!isCurrentOwner()) return;
@@ -6986,6 +7912,16 @@ const TeamBridgeOwnedPage: FC<{
 					/* A union row calls `changeScope` then this in one handler: the
 					   reader's pick wins over the scope's remembered landing. */
 					if (next) restoredScopes.current.add(scope);
+					/* The reader's own pick ends the badge's landing (R3-01). The
+					   target change remounts the view (it is keyed by target)
+					   before the old view can report leaving Requests, so the
+					   `rememberView` exit never fires and the next view would
+					   reopen on Requests. The cold landing reaches its conversation
+					   through the default-landing effect, not here, so Q6 holds. */
+					if (requestsLandingCarry.current) {
+						requestsLandingCarry.current = false;
+						endRequestsLanding();
+					}
 					setThreadLink(null);
 					setChannelFormOpen(false);
 					// A members-open intent belongs to the row it was asked for only.
@@ -7032,12 +7968,23 @@ const TeamBridgeOwnedPage: FC<{
 					void directory.refetch();
 				}}
 				eligibility={eligibility}
-				gatePending={gatePending && !cachedPaint}
+				gatePending={
+					(gatePending && !cachedPaint) ||
+					openingHeld ||
+					/* Belt and braces for Q1: an unsettled opening whose scope is not
+					   yet the answer must not paint. The render-time correction makes
+					   this unreachable today; it keeps a future path honest. */
+					(openingUnsettled && !scopeSettled)
+				}
 				readOnly={readOnly}
 				readOnlyExplained={trialNote.paused}
 				notice={
 					<>
 						{trialNote.note}
+						{eligibility === null &&
+							teamBridgeRateLimit(status.data, status.error) && (
+								<TeamBridgeRateLimitNote />
+							)}
 						<TeamBridgeDefaultOnBanner status={status.data} />
 					</>
 				}
@@ -7046,6 +7993,20 @@ const TeamBridgeOwnedPage: FC<{
 						<TeamBridgeTrialEndedPanel
 							tenantId={trialEnded.tenantId}
 							endedAt={trialEnded.endedAt}
+						/>
+					) : communityList.enabled ? (
+						/* D1 (RFC §5.1): the trial card beside the free community, dark
+						   behind the community flag; off, the shipped trial panel stays. */
+						<CommunityNoPlanEntry
+							communityAccess={communityList.access}
+							selfName={selfName}
+							onRetryCommunity={communityList.retry}
+							planPanel={<TeamBridgeEligibilityPanel reason="plan_required" />}
+							onJoin={() => setJoinOpen(true)}
+							onOpen={() => {
+								const joined = communityList.communities[0];
+								if (joined) openCommunity(joined.communityId);
+							}}
 						/>
 					) : (
 						<TeamBridgeTrialEmpty
@@ -7062,6 +8023,15 @@ const TeamBridgeOwnedPage: FC<{
 				onRetryMemberships={() => {
 					void memberships.refetch();
 				}}
+				communities={communityList.communities}
+				communitiesEnabled={communityList.enabled}
+				onCommunityChange={communityList.enabled ? openCommunity : undefined}
+				onBrowseCommunities={
+					communityList.enabled &&
+					(joinTarget || communityList.communities.length > 0)
+						? browseCommunities
+						: undefined
+				}
 			/>
 			<TeamBridgeCreateDialog
 				open={channelFormOpen}
@@ -7096,6 +8066,9 @@ export function profileMessageTarget(
 	readOnly: boolean,
 	mergedView = true,
 ): TeamBridgeTarget | null {
+	// An app or unknown kind has no person/chief target; "person" would be the
+	// wrong fallback (it would open a DM with whoever owns that id).
+	if (!teamBridgeSenderHasProfile(sender)) return null;
 	const next: TeamBridgeTarget = {
 		type: sender.kind === "agent" ? "chief" : "person",
 		accountId: sender.account_id,

@@ -595,8 +595,9 @@ test("a blob already at the current version is passed through untouched", () => 
  * would leave a v0 blob's key behind), and it reaches the live store through a
  * real rehydrate rather than only through the pure function.
  */
-test("the persist version is 5, adding the appearance layers after the v4 Files preferences", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 5);
+test("the persist version is 7, the palette's row order after the v6 retirement", () => {
+	/* Each step moves this number; the cells below pin what each one does. */
+	assert.equal(UI_PREFERENCES_VERSION, 7);
 });
 
 test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
@@ -621,6 +622,8 @@ test("a v1 blob loses only the retired chatMeasureWidth (#895)", () => {
 		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
 		customAccents: [],
 		customThemeId: null,
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 });
 
@@ -640,6 +643,8 @@ test("a v1 blob is passed through untouched, apart from the v3 handover", () => 
 		accent: { dark: { kind: "theme" }, light: { kind: "theme" } },
 		customAccents: [],
 		customThemeId: null,
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 	/*
 	 * AND A v1 BLOB THAT CARRIED A SLOT FLAG IS THE ORDINARY #894 UPGRADE: the step
@@ -702,6 +707,59 @@ test("a stored v1 blob with a customised measure rehydrates to a store without i
 		"the rewritten blob must not carry it forward",
 	);
 	assert.equal(written.state.rightSlotWidth, 640);
+	memory.delete("ui-preferences-storage");
+});
+
+/*
+ * v6: General Settings' "show agent reasoning" switch was removed (it changed
+ * nothing in the shipped app: the canonical transcript has no reasoning record
+ * kind), and with it the `showAgentReasoning` field. These pin that the store no
+ * longer exposes the field or its setter, that a stored v5 blob loses the stale
+ * key through a real rehydrate, and that the persisted projection cannot write it
+ * back.
+ */
+test("the store no longer exposes showAgentReasoning or its setter (v6)", () => {
+	const state = useUiPreferencesStore.getState();
+	assert.equal("showAgentReasoning" in state, false);
+	assert.equal("setShowAgentReasoning" in state, false);
+	assert.equal("showAgentReasoning" in persistedUiPreferences(state), false);
+});
+
+test("a v5 blob loses only the retired showAgentReasoning (v6)", () => {
+	const blob = {
+		showAgentReasoning: true,
+		themeName: "dracula",
+		contrast: { dark: 0, light: 0 },
+	};
+	const migrated = migrateUiPreferences({ ...blob }, 5);
+	assert.equal("showAgentReasoning" in migrated, false);
+	assert.deepEqual(migrated, {
+		themeName: "dracula",
+		contrast: { dark: 0, light: 0 },
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
+	});
+});
+
+test("a stored v5 blob with showAgentReasoning rehydrates without it, rewritten at the current version (v6)", async () => {
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: { showAgentReasoning: true, themeName: "dracula" },
+			version: 5,
+		}),
+	);
+	await useUiPreferencesStore.persist.rehydrate();
+	const state = useUiPreferencesStore.getState();
+	assert.equal(
+		"showAgentReasoning" in state,
+		false,
+		"the stale key must not survive zustand's default merge",
+	);
+	assert.equal(state.themeName, "dracula", "the rest of the blob is kept");
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal(written.version, UI_PREFERENCES_VERSION);
+	assert.equal("showAgentReasoning" in written.state, false);
 	memory.delete("ui-preferences-storage");
 });
 

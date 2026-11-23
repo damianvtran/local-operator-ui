@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, PR #1928 (fresh auditor)",
+  "locale": "es",
+  "namespace": "ui.agentMessages.settings",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "5e278359128c56de4faf43398a8b2b2055eb446d",
+  "instance": "pr1928-r2-es-agentmessages-settings-d393e1b5",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team radientdev, task role); not the translators (coder jobs 610e98de331a and 4611f0d5274e (manager session 2c6111e02b16) re-drafted the changed/new keys; coder job abe41ec364b7 drafted the unchanged keys; all anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 619fdcf93ce8, a fresh task-agent instance: not the round-1 auditor (job c5c73f8c6c4b, session 5bbe5f24d420) and not any translator (coder jobs abe41ec364b7, 610e98de331a, 4611f0d5274e). Same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar and the shipped ui.teamBridge.delivery.* corpus; no MT used. This audit reviews the round-1 auditor's own fix lines (b083a717ea: vi not_delivered; screening term in es/fr/ru/hi/ur/zh-CN) as the separation step. Disclosure: this auditor's own fix lines (5e27835912, screening.help) are auditor-authored and still need a separate review by a different auditor.",
+    "instance": "pr1928-r2-es-agentmessages-settings-d393e1b5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "id": "I4",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "English says incoming messages are 'held instead' - the contrast that marks the block/internal-error case as NOT falling back. The translation dropped 'instead'.",
+      "fix": "Si, en cambio, el proveedor bloquea la solicitud o falla con un error interno, los mensajes entrantes quedan retenidos, así que …",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.title",
+      "note": "Screening term 'análisis' matches shipped held_screening/pending/info_held; title/help/unavailable consistent (round-1 auditor fix b083a717ea reviewed and accepted)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.route_provider",
+      "note": "route_provider/route_radient parallel, {provider} intact, Radient untranslated; automatic keeps {model} as one unit; register matches the corpus."
+    }
+  ],
+  "audited_values": {
+    "ui.agentMessages.settings.screening.title": "Modelo de análisis",
+    "ui.agentMessages.settings.screening.help": "Opcional. Elige el modelo que esta máquina prueba primero al analizar los mensajes de agente entrantes. Si no se puede acceder a ese modelo, no está disponible en tu cuenta o se queda sin cuota o sin crédito, el análisis pasa al modelo predeterminado de esta máquina y a sus alternativas, así que Team Bridge sigue funcionando. Si, en cambio, el proveedor bloquea la solicitud o falla con un error interno, los mensajes entrantes quedan retenidos, así que elige un modelo que tu cuenta tenga permitido usar.",
+    "ui.agentMessages.settings.screening.unavailable": "Esta versión de Local Operator no permite elegir el modelo de análisis. El análisis sigue usando el modelo predeterminado de esta máquina y sus alternativas.",
+    "ui.agentMessages.settings.screening.automatic": "Automático, empezando por {model}",
+    "ui.agentMessages.settings.screening.route_provider": "con tu cuenta de {provider}",
+    "ui.agentMessages.settings.screening.route_radient": "con tu cuenta de Radient"
+  },
+  "binding": "Verified at 5e278359128c: target src/i18n/catalogues/es/ui.agentMessages.settings.json sha256 69a20d57cbec2ce64333691eca02fd9f9556ae79273fd6bdb7f86b8b4f4d356b; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf; context sha256 709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569. Key set equals English; ICU placeholders identical to English.",
+  "scope": "PR #1928 round 2: ui.agentMessages.settings.screening.{title,help,unavailable,automatic,route_provider,route_radient}",
+  "en_sha256": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf",
+  "context_sha256": "709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569",
+  "target_sha256": "69a20d57cbec2ce64333691eca02fd9f9556ae79273fd6bdb7f86b8b4f4d356b",
+  "sha256": {
+    "es": "69a20d57cbec2ce64333691eca02fd9f9556ae79273fd6bdb7f86b8b4f4d356b",
+    "en": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf"
+  }
+}

@@ -100,6 +100,7 @@ import {
 } from "@features/chat/canonical/transcript-reducer";
 import { isTemporaryDeleted } from "@features/chat/chat-temporary";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
+import { admitProjectedDiffBindings } from "@features/chat/components/trace/diff-history-model";
 import { openTrace } from "@features/chat/open-trace";
 import {
 	frontendNamesModel,
@@ -123,6 +124,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
+import type { PaintedScroll } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { forgetWatchedRun } from "@shared/store/turn-collapse-watched";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -476,6 +478,40 @@ export type CanonicalSessionView = {
 	 * only an authoritative reconcile makes them not-cached.
 	 */
 	stale: boolean;
+	/**
+	 * Where the reader was in the painted conversation when this window last
+	 * showed it, or null when the paint carried no place (a cold mount, or the
+	 * tail, which is the scroller's own default).
+	 *
+	 * Read ONCE by the pane's mount to put a scrolled-up reader back where they
+	 * left; a return that was pinned stays pinned and nothing is written.
+	 */
+	paintScroll: PaintedScroll | null;
+	/**
+	 * A turn was running when this window last showed the conversation.
+	 *
+	 * A CLAIM carried by the paint, not the owner's state: the in-flight rows are
+	 * dropped on write, so a seeded transcript reads as settled, and the pane
+	 * otherwise paints idle chrome over a running session for the whole
+	 * revalidate (UX review, 2026-11-12: no working line, no stop affordance).
+	 * It is presentation only - it never reaches the send mode, the interrupt
+	 * path or `frontend` - and the snapshot clears it in the same commit that
+	 * replaces the rows.
+	 */
+	paintBusy: boolean;
+	/**
+	 * Whether the paint this pane seeded from is the WHOLE conversation, or null
+	 * when no cached paint seeded it.
+	 *
+	 * The layout's own fact (`paint-top-anchor.ts`): a cached fragment that is
+	 * shorter than the pane must be bottom-aligned, because the taller page that
+	 * replaces it would move every row by the pane's leftover height. It rides
+	 * beside `stale` rather than replacing it - a fresh mount is not stale and a
+	 * complete paint is stale without being a fragment - and the snapshot clears
+	 * it in the same commit that withdraws `stale`, because from then on the rows
+	 * are the owner's and completeness is not a claim the cache can make.
+	 */
+	paintComplete: boolean | null;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -1509,6 +1545,66 @@ function turnRunning(state: {
 }
 
 /**
+ * Whether the paint should CLAIM a turn was running.
+ *
+ * WHY IT IS NOT `turnRunning` ABOVE (UX blocker U6 / QA Q2, #1883 round 1). That
+ * predicate answers the LABEL HOLD's question, and its first term is "no
+ * terminal event has been seen since" - which is FALSE the instant a turn
+ * STARTS: `TERMINAL_EVENTS` includes `turn_start`, `agent_start`,
+ * `provider_start` and `steering_delivered`. So `busy: turnRunning(...)` wrote
+ * `false` for every turn this pane watched begin, and a cached return painted
+ * idle chrome over a running session - a CDP breakpoint at the write read
+ * `busy:false` while the UI showed the working line, and a turn started in the
+ * mounted pane then left painted no working line for the whole revalidate
+ * (3/3; it only worked when the leaving pane had seen the turn through a
+ * SNAPSHOT, which clears `terminal`).
+ *
+ * WHAT IT ASKS INSTEAD is the signal the pane's working line is drawn from,
+ * `chat-page.tsx`'s `turnAlive`: `frontend.streaming`, with the held reading
+ * across a receipt gap (the same pair `turnRunning` reads last), plus the app's
+ * own admitted send, which is the working line's `starting` arm and exists
+ * before any owner frame does. A terminal event does NOT end it - the owner's
+ * own statement does (a frontend update or the snapshot, both of which carry
+ * `streaming`), which is exactly how a turn that finished while the reader was
+ * away loses the line in the commit that replaces the rows. A failure ends it,
+ * as it does everywhere else in this file.
+ */
+export function paintTurnBusy(
+	state: {
+		/*
+		 * `terminal` is deliberately NOT part of this type (U6): the label hold's
+		 * latch is set by a turn's START, so reading it here is the defect. Leaving
+		 * it out makes re-adding that term a compile error rather than a regression
+		 * only a rendered frame would catch.
+		 */
+		failure: unknown;
+		frontend: { streaming: boolean } | null;
+		heldFrontend: { streaming: boolean } | null;
+		/*
+		 * THE CLAIM THIS MOUNT WAS SEEDED WITH (`view.paintBusy`), which the snapshot
+		 * withdraws in the commit that replaces its rows (agent review round 2, C7).
+		 * Without this term a mount seeded from a cached paint has NOTHING to carry
+		 * forward: its `frontend`/`heldFrontend` are null until the snapshot lands
+		 * (one measured trace puts that wait at a median of ~1.3 s), so a reader who
+		 * leaves again inside that window wrote `busy:false` over a running turn —
+		 * and the third return painted idle chrome over it. Only a SEEDED claim reaches here as
+		 * `true`; the snapshot sets the field `false`, so a withdrawn claim cannot
+		 * outlive its answer.
+		 */
+		paintBusy: boolean;
+	},
+	/** Whether an admitted send has no answer yet; see `pendingSendForView`. */
+	sendPending: boolean,
+): boolean {
+	if (state.failure) return false;
+	if ((state.frontend ?? state.heldFrontend)?.streaming === true) return true;
+	// A seeded claim the snapshot has not yet withdrawn. `failure` above already
+	// refuted it: a failure is the owner's statement that the turn ended.
+	if (state.paintBusy === true) return true;
+	return sendPending;
+}
+
+/**
  * Whether a call's label is still OWED, which is the question the hold asks.
  *
  * TWO TERMS, and the second is round 2's M3: (a) a call no page has named whose
@@ -2295,6 +2391,14 @@ function paintSeed(sessionId: string): {
 	stale: boolean;
 	owedLabels: ReadonlySet<string>;
 	markLabels: ReadonlySet<string>;
+	scroll: PaintedScroll | null;
+	busy: boolean;
+	/**
+	 * The paint's `complete`; null when this window has no entry (the view seeds
+	 * the same null, so `hasEntry` is false and the anchor rule has no fragment
+	 * to place).
+	 */
+	complete: boolean | null;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -2303,6 +2407,9 @@ function paintSeed(sessionId: string): {
 			stale: false,
 			owedLabels: NO_LABELS_PENDING,
 			markLabels: NO_LABELS_MARKED,
+			scroll: null,
+			busy: false,
+			complete: null,
 		};
 	}
 	return {
@@ -2317,6 +2424,16 @@ function paintSeed(sessionId: string): {
 		// Same argument one state over: rows cannot say whether a column owes the
 		// mark or may fall back to the call's OUTPUT.
 		markLabels: cached.markLabels,
+		// Where the reader was, so a return to a scrolled-up conversation does not
+		// re-anchor at the tail (QA measured 0 of 12 returns keeping their place).
+		scroll: cached.scroll,
+		// A turn was running when this window last showed the conversation. A
+		// claim, corrected by the snapshot in the commit that replaces the rows.
+		busy: cached.busy,
+		// And whether those rows are all of it: the column bottom-aligns a
+		// fragment for as long as this pane is stale, so the return does not jump
+		// when the page lands.
+		complete: cached.complete,
 	};
 }
 
@@ -2421,6 +2538,24 @@ function markPageBorn(
 const isJournalOrderCorrection = (frame: DesktopSessionFrame): boolean =>
 	frame.type === "event" && frame.payload?.type === "journal_order_ready";
 
+/**
+ * Door 1 of the diff-binding admission (`diff-history-model.ts`): a page THIS
+ * view asked for with `open_frame=1` (which carries `diff_bindings=1`, see
+ * `desktop-contract.ts`) is the core's projection, so its binding rows are
+ * admitted - re-validated against the session the view REQUESTED, never the
+ * row's own claim. A page asked for without the open frame is raw and admits
+ * nothing. Returns the page so it can sit in a promise chain.
+ */
+function admitPageDiffBindings(
+	page: DesktopHistoryPage,
+	requestedSessionId: string | null | undefined,
+	projected: boolean,
+): DesktopHistoryPage {
+	if (projected && requestedSessionId)
+		admitProjectedDiffBindings(page.entries ?? [], requestedSessionId);
+	return page;
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2488,6 +2623,7 @@ export function useCanonicalSessionStream(
 		 * `runs`. Every read AFTER that picks the flag up, so nothing stays stuck.
 		 */
 		openFrame?: boolean;
+		inlineUi?: boolean;
 		journalOrder?: boolean;
 		/**
 		 * THE COMPLETE PEER-SOURCE CAPABILITY (`features.peer_journal_source`),
@@ -2507,11 +2643,19 @@ export function useCanonicalSessionStream(
 	} = {},
 ): CanonicalSessionHandle {
 	const openFrame = options.openFrame === true;
+	const inlineUi = options.inlineUi === true;
 	const journalOrder = options.journalOrder === true;
 	const journalOrderRef = useRef(journalOrder);
 	journalOrderRef.current = journalOrder;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
+	/**
+	 * The session a live subscription declared `open_frame=1&diff_bindings=1`
+	 * for, or `null` when it did not. The snapshot frame's binding rows are
+	 * admitted against THIS view's id - never the row's own `session_id`
+	 * claim - and only when the frame was projected (see `admitPageDiffBindings`).
+	 */
+	const streamBindingScopeRef = useRef<string | null>(null);
 	const peerJournalSource = options.peerJournalSource === true;
 	const peerJournalSourceRef = useRef(peerJournalSource);
 	peerJournalSourceRef.current = peerJournalSource;
@@ -2671,6 +2815,11 @@ export function useCanonicalSessionStream(
 			// A cached paint is a real memory of a real transcript, but it is not the
 			// owner's current state — so it says so until the snapshot lands.
 			stale: seed?.stale ?? false,
+			// The reader's place and the turn's liveness travel with the paint; both are
+			// consumed once and both are corrected by the snapshot.
+			paintScroll: seed?.scroll ?? null,
+			paintBusy: seed?.busy ?? false,
+			paintComplete: seed ? seed.complete : null,
 			missing: false,
 			loadingOlder: false,
 			olderFailed: false,
@@ -3704,6 +3853,7 @@ export function useCanonicalSessionStream(
 				try {
 					page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						inlineUi: true,
 						sessionId,
 						...(beforeId ? { beforeId } : {}),
 						// Never past the walk's own bound: the route clamps at 500 anyway,
@@ -3723,6 +3873,7 @@ export function useCanonicalSessionStream(
 								}
 							: {}),
 					});
+					admitPageDiffBindings(page, sessionId, openFrameRef.current);
 				} catch {
 					// A cleared view has nothing left to read for: without this the
 					// nothing-painted branch below would take the emptied pane for a pane
@@ -4921,6 +5072,11 @@ export function useCanonicalSessionStream(
 								// runs on the open path's critical task, and the 400-row page is
 								// where per-row cost would show.
 								performance.mark("lop:open:history:start");
+								admitPageDiffBindings(
+									snapshot.history,
+									streamBindingScopeRef.current,
+									streamBindingScopeRef.current !== null,
+								);
 								transcript = applyHistoryPage(transcript, snapshot.history, {
 									authoritative: true,
 									orderRead: dispatched,
@@ -5017,6 +5173,15 @@ export function useCanonicalSessionStream(
 								// never sees a reconciled transcript labelled as last-saved or
 								// the reverse.
 								stale: false,
+								// And the paint's claim about a running turn goes with it: the
+								// snapshot's own `frontend.streaming` is the authority from this
+								// commit on, so a flag the owner's answer did not keep cannot
+								// outlive the answer.
+								paintBusy: false,
+								paintScroll: null,
+								// The snapshot is the authority for coverage too: the page defined the
+								// cursor and `hasMore`, so the cache's own guess stops here.
+								paintComplete: null,
 								frontend: {
 									...snapshot.frontend.snapshot,
 									/*
@@ -5760,12 +5925,18 @@ export function useCanonicalSessionStream(
 			 * connection for the same conversation from stamping a newer trace with an
 			 * older request.
 			 */
+			// The scope this subscription's snapshot frames are projected for: the
+			// open frame (and so `diff_bindings=1`) is decided HERE, per subscribe.
+			streamBindingScopeRef.current = openFrameRef.current
+				? (sessionId ?? null)
+				: null;
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
 					epoch: reconnectRef.current.epoch,
 					afterSeq: reconnectRef.current.afterSeq,
 					openFrame: openFrameRef.current,
+					inlineUi,
 					...(journalOrderRef.current
 						? {
 								journalOrder,
@@ -6342,6 +6513,9 @@ export function useCanonicalSessionStream(
 		 * change already performs, never a second one.
 		 */
 		isSession,
+		// An initial legacy-shaped subscription cannot acquire overlays simply
+		// because the capability poll finished; reopen with the fresh declaration.
+		inlineUi,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
@@ -6489,6 +6663,15 @@ export function useCanonicalSessionStream(
 				? current.transcript
 				: (seed?.transcript ?? EMPTY_TRANSCRIPT),
 			stale: sameSession ? current.stale : seed !== null,
+			// The paint's place and its liveness follow the same rule as `stale`: they
+			// describe the rows, so a same-session remount keeps what it has (the
+			// place is spent by then - `null` keeps it from being restored twice),
+			// and a genuine change takes the new paint's.
+			paintScroll: sameSession ? null : (seed?.scroll ?? null),
+			paintBusy: sameSession ? current.paintBusy : seed?.busy === true,
+			paintComplete: sameSession
+				? current.paintComplete
+				: (seed?.complete ?? null),
 			missing: sameSession ? current.missing : false,
 			// WHY it is missing travels with `missing` (review R1-3): the hook stays
 			// mounted across a switch, so a kept flag would paint the temporary
@@ -6540,6 +6723,21 @@ export function useCanonicalSessionStream(
 		 */
 	}, [sessionId, isSession]);
 
+	/*
+	 * The identity this pane addresses, read through a ref so the PAINT'S CLEANUP
+	 * depends on the conversation alone (agent review round 2, C8).
+	 *
+	 * A fresh draft's identity moves `draftKey` -> the created session's id while
+	 * `sessionId` - the stream id - stays the same, so an `identity` dependency
+	 * fired this cleanup MID-SESSION: it wrote a paint for a conversation the
+	 * reader was still looking at, and dropped this mount's `inFlight` label reads
+	 * with it. The registry entry a send paints is keyed by the identity of the
+	 * moment, so the cleanup must read the CURRENT one; a ref is how it sees the
+	 * render that was last committed, not the one that created this closure (the
+	 * rule `viewRef` above already follows).
+	 */
+	const identityRef = useRef(identity);
+	identityRef.current = identity;
 	/*
 	 * Cache this conversation's paint on the way out.
 	 *
@@ -6599,6 +6797,47 @@ export function useCanonicalSessionStream(
 					 * is withheld. `writePaint` intersects it with the rows that survive.
 					 */
 					replayBorn: new Set(replayBornIds.current),
+					/*
+					 * AND THE TURN'S LIVENESS AT THIS INSTANT, read from the same ref as the
+					 * rows. The in-flight rows themselves are dropped by `writePaint` (a
+					 * cached streaming row can never advance), so without this bit every
+					 * cached transcript reads as settled and a return paints idle chrome
+					 * over a running turn until the snapshot lands (UX review, 2026-11-12).
+					 *
+					 * `paintTurnBusy`, NOT `turnRunning`: the latter is false for any turn
+					 * whose `turn_start` this pane saw (U6/Q2). The pending-send half is
+					 * read here rather than in the predicate so the registry stays the one
+					 * source of what this pane was still waiting on.
+					 *
+					 * AND THE SEEDED CLAIM IS THE PREDICATE'S THIRD TERM (agent review
+					 * round 2, C7): a mount seeded from a cached paint has no live reading
+					 * until the snapshot lands, so a reader who leaves AGAIN inside that
+					 * window would otherwise write `busy:false` over the working line their
+					 * own frame was painting. The term lives in the pure function so a test
+					 * can assert the rule itself; the snapshot's commit is what withdraws
+					 * it (`view.paintBusy: false`).
+					 */
+					busy: paintTurnBusy(
+						viewRef.current,
+						pendingSendForView(identityRef.current) !== null,
+					),
+					/*
+					 * AND THE PAINT'S COVERAGE WHEN ITS SNAPSHOT NEVER LANDED (agent review
+					 * round 1, F1 / QA Q1). A pane still `stale` here is painting the rows
+					 * this cache seeded, and their transcript carries no paging cursor - so
+					 * re-deriving `complete` from it demotes a short conversation the last
+					 * visit had proved whole. The next return then bottom-aligns it and the
+					 * page that lands moves every row UP (measured 253.1 px on a one-turn
+					 * session, 4/4). `writePaint` takes the seed's answer instead; once the
+					 * snapshot lands it withdraws the field (`paintComplete: null`) and the
+					 * derivation is the authority again, exactly as for a live pane.
+					 *
+					 * Read from the same ref as the rows, so it is the claim the last
+					 * committed frame was painting.
+					 */
+					complete: viewRef.current.stale
+						? (viewRef.current.paintComplete ?? undefined)
+						: undefined,
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
@@ -6625,6 +6864,10 @@ export function useCanonicalSessionStream(
 				labelGapRef.current.inFlight.delete(id);
 			inFlightOwned.current.clear();
 		};
+		/*
+		 * `sessionId` ALONE: a draft learning its own id is the same conversation
+		 * (C8 above), and `identity` is read through the ref for exactly that reason.
+		 */
 	}, [sessionId]);
 
 	/*
@@ -7132,6 +7375,7 @@ export function useCanonicalSessionStream(
 					const generation = viewRef.current.transcript.journalGeneration;
 					const page = await desktopResult<DesktopHistoryPage>({
 						op: "sessions.history",
+						...(kind === "payload" ? { inlineUi: true } : {}),
 						sessionId: requested,
 						limit: 100,
 						journalOrder: true,
@@ -7150,6 +7394,7 @@ export function useCanonicalSessionStream(
 					Extract<DesktopSessionFrame, { type: "snapshot" }>
 				>({
 					op: "sessions.get",
+					inlineUi: true,
 					sessionId: requested,
 					journalOrder: true,
 					orderIds,
@@ -7282,13 +7527,16 @@ export function useCanonicalSessionStream(
 		// page instead of one for the transcript they are looking at.
 		const outcome = await loader.load(`${requested}#${epoch}`, {
 			getTranscript: () => viewRef.current.transcript,
-			readPage: (beforeId) =>
-				desktopResult<DesktopHistoryPage>({
+			readPage: (beforeId) => {
+				// Read once: the page is judged under the flag it was ASKED with.
+				const projected = openFrameRef.current;
+				return desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					beforeId,
 					limit: 100,
-					openFrame: openFrameRef.current,
+					openFrame: projected,
 					...(journalOrderRef.current
 						? {
 								journalOrder: true,
@@ -7300,7 +7548,8 @@ export function useCanonicalSessionStream(
 								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
-				}),
+				}).then((page) => admitPageDiffBindings(page, requested, projected));
+			},
 			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
 				commitView((current) => {
@@ -7377,6 +7626,7 @@ export function useCanonicalSessionStream(
 			try {
 				const page = await desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
+					inlineUi: true,
 					sessionId: requested,
 					limit: 100,
 					openFrame: openFrameRef.current,
@@ -7392,6 +7642,7 @@ export function useCanonicalSessionStream(
 							}
 						: {}),
 				});
+				admitPageDiffBindings(page, requested, openFrameRef.current);
 				if (
 					sessionRef.current !== requested ||
 					currentOrderRevision(viewRef.current.transcript) !== sourceRevision

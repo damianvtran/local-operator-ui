@@ -179,10 +179,10 @@ const HOSTS = {
 	"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx": 4,
 	// the shared `Unread` pill (channels, groups, people, chiefs of staff)
 	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx": 1,
-	// all-organizations total unread, per-organization unread
-	"src/renderer/src/features/team-bridge/team-bridge-org-switcher.tsx": 2,
-	// pending invitations
-	"src/renderer/src/features/team-bridge/team-bridge-page.tsx": 1,
+	// all-organizations total unread, per-organization unread, per-community unread
+	"src/renderer/src/features/team-bridge/team-bridge-org-switcher.tsx": 3,
+	// Approvals requests waiting on the reader, pending invitations
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx": 2,
 };
 
 for (const [path, sites] of Object.entries(HOSTS)) {

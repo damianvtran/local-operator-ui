@@ -1,0 +1,71 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "model_fallback": null,
+  "instance": "f08010cd574b-ntdd-r1b-fr",
+  "date": "2026-11-13",
+  "locale": "fr",
+  "independence": "Independent of the translator (lopdev coder job 74cb13500e78, anthropic/claude-opus-5-5, same model: disclosed). Lopdev reviewer session f08010cd574b; read nothing from the translator's session or scratchpad; audit from this session's own reading.",
+  "translator": {
+    "agent": "lopdev coder",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "74cb13500e78",
+    "keys": "the 4 ui.notifications.drawer.{view_details,view_details_for,back,open_in_notifications} keys added by UI #1907"
+  },
+  "references": {
+    "glossary": "damianvtran/local-operator@8aeb9f3cd538 i18n/glossary.md",
+    "glossary_sha256": "a576d5a4b2718ba79a70a42600e3b6233ea28d716b1e2d996a208ac8dd7fabdb",
+    "style_guide": "damianvtran/local-operator@8aeb9f3cd538 i18n/style-guides/fr.md",
+    "style_guide_sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+    "context_sha256": "90139d6dd2107c72c84f32bb2bae4696116ac080c4cbf3f082b389e02240adaa",
+    "previous_receipt": "i18n/receipts/766adb539e6a.json"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1907,
+  "head": "0b2d3aa2bf517d64e8c69723dbae2abb7d581afb + remediation copy fixes (ledger-r1b.patch)",
+  "base": "5013566d21ace51619ae24e7fda3aee8aaa2677f",
+  "scope": "Audit of the FINAL values of the 4 keys PR #1907 adds to ui.notifications (drawer.view_details, view_details_for, back, open_in_notifications), read against en value + en .context.json, glossary and locale style guide; includes the round-1 remediation copy fixes. The other 130 values are byte-identical to the base file audited by the previous receipt; its open findings are carried forward.",
+  "namespaces": {
+    "ui.notifications": {
+      "status": "passed",
+      "sha256": {
+        "en": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+        "fr": "0f23caf378fccfa8cfca7f1d071e524454f7ba5e3922f66d2dbd4e442a4ccfd1"
+      },
+      "findings": [
+        {
+          "id": "FR-UI-1",
+          "severity": "MINOR",
+          "key": "ui.notifications.nav.unread",
+          "current_text": "Notifications, {count, plural, one {{countText} non lue} many {{countText} de non-lues} other {{countText} non lues}}",
+          "proposed_text": "Notifications, {count, plural, one {{countText} non lue} many {{countText} de notifications non lues} other {{countText} non lues}}",
+          "note": "Carried forward unchanged from receipt i18n/receipts/766adb539e6a.json (auditor 766adb539e6a): value byte-identical at 0b2d3aa2b, finding still open. Original reason: The many branch produces “1000000 de non-lues”: a stilted substantivized participle; name the omitted noun after de while retaining the numeric selector and countText.",
+          "disposition": "carried forward; deferred (pre-existing, out of scope for PR #1907)"
+        },
+        {
+          "id": "FR-UI-2",
+          "severity": "MINOR",
+          "key": "ui.notifications.time.now",
+          "current_text": "à l’instant",
+          "proposed_text": "à l’instant",
+          "note": "Carried forward unchanged from receipt i18n/receipts/766adb539e6a.json (auditor 766adb539e6a): value byte-identical at 0b2d3aa2b, finding still open. Original reason: Keep the idiomatic wording pending a rendered narrow-column check: now is 3 code points versus à l’instant at 11; static expansion is a width risk, not demonstrated clipping.",
+          "disposition": "carried forward; deferred (pre-existing, out of scope for PR #1907)"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "mechanical": "Key parity with en (134 keys); {title} placeholder preserved byte-exactly in view_details_for; no ICU plural/select in new keys; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) in any value; NFC; fr U+202F before ':'; zh-CN full-width '：'; existing 130 values unchanged vs base.",
+    "gates": "generate --check, check-duplicates, check-strings, context-parity, check-added-strings (vs 5013566d2), check-coverage: all ok at 0b2d3aa2b; ledger-check: only the 7 stale ui.notifications rows."
+  },
+  "limitations": [
+    "No rendered fit or Urdu native-shaping proof; linguistic/ICU delta audit only, not visual sign-off. The back/open-in-Notifications row uses flex-wrap, so a long pair wraps rather than truncating."
+  ],
+  "final_values": {
+    "ui.notifications.drawer.view_details": "Voir les détails",
+    "ui.notifications.drawer.view_details_for": "Voir les détails : {title}",
+    "ui.notifications.drawer.back": "Retour aux mises à jour",
+    "ui.notifications.drawer.open_in_notifications": "Ouvrir dans les notifications"
+  },
+  "supersedes_unlanded": "f08010cd574b-ntdd-fr (ledger-r1.patch, never committed)"
+}

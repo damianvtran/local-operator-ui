@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "auditor": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "agent": "reviewer (lopdev i18n auditor, session f2e66f37f9c0; not the PR coder or the translator of these 16 keys)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, fix and verdict in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no provider fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (f2e66f37f9c0) from the PR coder and from whoever translated the 16 keys. The verdict was rebuilt from the English source, the en context sidecar, the render sites in dictated-send.ts, sibling keys in the shipped catalogue, origin/main i18n/glossary.md and the locale style guide; the commit message was not used as evidence of translation quality.",
+ "instance": "f2e66f37f9c0-composer-dictated-fr",
+ "session": "f2e66f37f9c0",
+ "locale": "fr",
+ "namespace": "ui.chat.composer",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (catalogue edits by this audit are uncommitted on top)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "audit_kind": "delta audit of 16 added keys; the other 73 keys are byte-identical to the previously audited row",
+ "scope": "ui.chat.composer: the 16 ui.chat.composer.dictated_away.* keys",
+ "delta_keys_audited": [
+  "ui.chat.composer.dictated_away.not_sent",
+  "ui.chat.composer.dictated_away.not_sent_body",
+  "ui.chat.composer.dictated_away.transcription_failed",
+  "ui.chat.composer.dictated_away.transcription_failed_body",
+  "ui.chat.composer.dictated_away.reason_edited",
+  "ui.chat.composer.dictated_away.reason_command",
+  "ui.chat.composer.dictated_away.reason_gate",
+  "ui.chat.composer.dictated_away.reason_secret",
+  "ui.chat.composer.dictated_away.reason_no_model",
+  "ui.chat.composer.dictated_away.reason_unavailable",
+  "ui.chat.composer.dictated_away.reason_not_ready",
+  "ui.chat.composer.dictated_away.open_chat",
+  "ui.chat.composer.dictated_away.draft_label",
+  "ui.chat.composer.dictated_away.untitled_chat",
+  "ui.chat.composer.dictated_away.origin_gone",
+  "ui.chat.composer.dictated_away.origin_gone_body"
+ ],
+ "sha256": {
+  "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6",
+  "fr": "40d5ca368e658016aee58f29107bd648e5918ab74d30ab71fedaae113bde4c78",
+  "context": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6"
+ },
+ "reference_sha256": {
+  "glossary (origin/main:i18n/glossary.md)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (origin/main:i18n/style-guides/fr.md)": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+ },
+ "findings": [
+  {
+   "id": "FR-DA-1",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.not_sent",
+   "summary": "Typography: the translator used U+00A0 inside « » and a plain space before ':'. The fr guide requires U+202F inside « … » and before : ; ! ? in prose, and the sibling keys in this namespace (dictation_failed_transient, secret_fill_*) already use U+202F before ':'. Same defect in not_sent_body, transcription_failed, origin_gone, origin_gone_body (plain space before ':' or U+00A0 in the guillemets).",
+   "before": "Pas envoyé à « {title} » : {reason}. …  (U+00A0 inside « », plain space before ':')",
+   "after": "Non envoyé à « {title} » : {reason}. …",
+   "resolution": "fixed by auditor in this change (keys: not_sent, not_sent_body, transcription_failed, origin_gone, origin_gone_body)"
+  },
+  {
+   "id": "FR-DA-2",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.not_sent / not_sent_body / origin_gone / origin_gone_body",
+   "summary": "'Pas envoyé' is colloquial negation. The shipped fr refusal copy for the same 'not sent / not done' state uses the 'Non …' status form ('Non envoyée : …' in ui.teamBridge.approvals.result.*, 'Non placé dans le champ secret : …' in ui.chat.composer.secret_fill_*). Subject is the dictated text/message, so masculine 'Non envoyé'. Meaning unchanged: still states a non-send, never a send.",
+   "before": "Pas envoyé",
+   "after": "Non envoyé",
+   "resolution": "fixed by auditor in this change"
+  },
+  {
+   "id": "FR-DA-3",
+   "severity": "minor",
+   "key": "ui.chat.composer.dictated_away.reason_secret",
+   "summary": "'un identifiant secret' misreads: singular 'identifiant' is a login name in French, and 'secret' does not turn it into a credential. The core glossary renders credentials as 'identifiants' (55 shipped uses, e.g. credentials_list). Plural, glossary term, no added qualifier; the clause still follows 'Non envoyé : …' as a lower-case clause.",
+   "before": "les mots ressemblent à un identifiant secret",
+   "after": "les mots ressemblent à des identifiants",
+   "resolution": "fixed by auditor in this change"
+  }
+ ],
+ "verified": [
+  "key set equal en (89 = 73 carried + 16 added); all 16 new keys carry exactly the English placeholders ({title} and/or {reason}) once, never inflected; no ICU plural/select in the delta; no bidi/zero-width characters, no edge or double spaces; NFC; U+202F count verified after the fix",
+  "NEVER claims a send: not_sent / not_sent_body / origin_gone* start 'Non envoyé' and say the text is 'dans le brouillon de cette conversation' (not_sent*) or 'perdu' (origin_gone*); transcription_failed* says the recording was not kept and asks to re-record. None says envoyé without 'Non'. origin_gone promises nothing, as the en context requires",
+  "reason_* are lower-case clauses with no final punctuation, usable after 'Non envoyé… : ' in not_sent and not_sent_body; reason_unavailable names no cause (en context: must not claim a cause) - 'n’a pas pu recevoir de message'",
+  "term consistency with shipped fr: conversation (glossary: conversation temporaire; 600 shipped), 'Ouvrir la conversation' = ui.schedules.*.open_conversation / ui.library.composer.open_chat, 'Nouvelle conversation' = ui.chat.header.new_chat, 'Conversation sans titre' = ui.chat.canonical.untitled, dictée/transcription/brouillon as shipped, vous register, ’ apostrophes, ' — ' dash with spaces",
+  "observation, not a finding: open_chat (22 cells), draft_label (21) and untitled_chat (23) exceed the en context maxCells of 14/18/18, but each is byte-identical to the shipped fr label for the same en string, the render site is a web toast action/label (dictated-send.ts) where wrapping is not a truncation risk, and the fr guide's width rule accepts 15-25% growth over shorter wording that would name the concept differently",
+  "carried 73 keys byte-identical to the last audited row: the ledger target_sha256 for fr ui.chat.composer (audit 68a3f14dde44-tc-fr) equals the sha256 of HEAD~1's blob, and parsed HEAD~1 vs this tree differs only by the 16 added keys; en changes none",
+  "render sites read: dictated-send.ts dictatedRefusalSentence (not_sent, origin_gone, transcription_failed with {title}; reason via reasonText) and dictatedRefusalBody (the *_body keys under a truncated title line), titleForOrigin (draft_label / untitled_chat), toast action label (open_chat)"
+ ]
+}

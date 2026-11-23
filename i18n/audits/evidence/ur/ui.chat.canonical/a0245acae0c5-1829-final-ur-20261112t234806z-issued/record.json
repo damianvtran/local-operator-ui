@@ -1,0 +1,965 @@
+{
+  "schema": 1,
+  "kind": "immutable-new-scoped-supplemental-evidence-disposition",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-12T23:50:32.522544+00:00",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "a0245acae0c5",
+    "model": "openai/gpt-6.1-sol",
+    "launch_selection": "parent, inherited; no override",
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+    "fallback": "No in-session fallback observed; no coordinator-only fallback authorization claimed",
+    "independence": "Separate auditor instance from translator/coder. No current mirror auditor output read. Same session lineage as original a024 review and bounded readback."
+  },
+  "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+  "original_auditor_session": "a0245acae0c5",
+  "prior_records_unchanged": true,
+  "prior_blocked_report": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ur-blocked-report.json",
+    "sha256": "7813d43a8ef748f1ffdf78ff1436c7f0a6e7b9a4403d1d17337d2766e53d8a8a",
+    "verdict_remains": "Historical blocked verdict under evidence then available; not rewritten"
+  },
+  "policy_authority": {
+    "basis": "Direct user FINAL POLICY DISPOSITION in this resumed conversation; authoritative scope interpretation, not an independently fetched remote comment or a claim of altered policy files.",
+    "policy_owner_session_as_supplied": "3ef6295a5545",
+    "accepted_evidence": {
+      "json": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+        "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+      },
+      "markdown": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+        "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+      },
+      "final_manifest_sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5"
+    },
+    "interpretation": "The captured exact23-key evidence is accepted for this scoped convergence disposition. Actual-locale CLDR categories are valid; literal preservation of English selectors is not the rule. The French/Spanish selector hold is inapplicable; four unrelated keys remain outside this23. No translate-many removal or catalogue edits. Urdu code-bidi MINOR is deferred to the design thread, not a new correction round. No fresh native/all490 pixel demand applies to this bounded scope.",
+    "citations_as_supplied_not_fetched": [
+      {
+        "role": "design thread",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "remote_body_read_this_turn": false
+      },
+      {
+        "role": "design thread",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "remote_body_read_this_turn": false
+      },
+      {
+        "role": "Aida authority citation supplied by user",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213",
+        "remote_body_read_this_turn": false
+      }
+    ],
+    "not_a_fake_verdict_command": "The independent decision below follows original source/target review, exact current byte ancestry, personally viewed bounded image evidence retained in the accepted readback, current artifact hash checks, and explicitly limited policy scope. It is not a claim that unobserved runtime work passed."
+  },
+  "independent_decision": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "why": "Original independent substantive convergence review found no blocking/major language defect; current23 PR members remain exact against HEAD and21bb, all467 other members remain exact incoming main, and accepted source-bound captured23 evidence supplies the specific rendered/pseudo/RTL evidence missing before. Direct-user authoritative scope interpretation accepts this bounded evidence, with the explicit limitations and deferred issues retained. No additional unmet clause is identified for that accepted scope.",
+    "not_claimed": "Not global translation completion or all23 interaction/runtime approval; no old verdict altered."
+  },
+  "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+  "key_counts": {
+    "convergence_PR_keys": 23,
+    "visible_key_elements_per_locale": 22,
+    "nav_accessible_name_key": 1,
+    "new_semantic_keys_read_this_resumption": 0,
+    "original_substantive_keys_read_by_this_auditor": 31,
+    "original_key_list": [
+      "ui.chat.canonical.fold.images_aria",
+      "ui.chat.canonical.fold.more_images",
+      "ui.chat.canonical.image_gen.batch_summary",
+      "ui.chat.canonical.lightbox.filmstrip_aria",
+      "ui.chat.canonical.media.image_label",
+      "ui.chat.canonical.media.sound_label",
+      "ui.chat.canonical.sound.batch.latest_update",
+      "ui.chat.canonical.sound.cost.estimated_zero",
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.withheld"
+    ],
+    "current_namespace_key_count": 490,
+    "inherited_main_members_exact": 467,
+    "mechanical_and_provenance_only_keys_in_original_review": 490,
+    "not490_fresh_semantics": true
+  },
+  "hashes": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "ur": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+    "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+  },
+  "paths": {
+    "source": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "context": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.context.json"
+  },
+  "ancestry": {
+    "current_keys": 490,
+    "PR_keys_exact_HEAD_and_21bb": 23,
+    "incoming_main_exact_other_members": 467,
+    "four_obsolete_keys_absent": true,
+    "shared_conflict_resolution": "not a strict parent union",
+    "earliest_PR_commit": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+    "comparison": "raw-member bytes; terminal comma excluded, no JSON reserialization"
+  },
+  "context_ancestry": "23 key contexts match21bb; other contexts incoming main, unchanged; original exact raw-value-slice proof retained",
+  "frozen_identity": {
+    "tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+    "HEAD": "1bfbe9b42df53a231311ab1731501af2de640810",
+    "MERGE_HEAD": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+    "raw_index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d"
+  },
+  "primary_evidence": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "kind": "This auditor accepted bounded evidence readback; actual pixels personally viewed in the preceding bounded turn, not freshly rendered now"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "kind": "This auditor readback narrative and exact23 mapping"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "kind": "150 image entries, every current artifact re-hash-checked"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "kind": "Capture source identity, all19 source hashes match frozen index"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+      "kind": "Routing plan only, not geometry or executed observations"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-independent-provenance.json",
+      "sha256": "5dc88629e7163a62b95edaebda77d0e23f0a702ad3479253cc441b802d91df4b",
+      "kind": "This auditor original independent raw-member provenance; earlier broad mechanical scope, not fresh490 semantics"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/convergence-provenance-map.json",
+      "sha256": "c98003c8e1d98699885e8ab51308634d21e9cf59ce01de6d7925d29e7bb20720",
+      "kind": "Coder map provided as reference; substantive byte ancestry was independently checked, not accepted on trust"
+    }
+  ],
+  "accepted_23key_mapping": [
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-empty-360.png",
+            "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-loading-360.png",
+            "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-unavailable-360.png",
+            "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-withheld-360.png",
+            "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-oversized-360.png",
+            "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-evicted-360.png",
+            "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_recorded-360.png",
+            "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_found-360.png",
+            "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-inline-360.png",
+            "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "loading",
+          "error",
+          "empty",
+          "unavailable",
+          "withheld",
+          "oversized",
+          "evicted",
+          "not_recorded",
+          "not_found",
+          "inline",
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Button label visible; click-to-preview outcome NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "evidence_class": "visible_legacy_fixture_focused_final",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-clipped-focused-360.png",
+            "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "clipped"
+        ]
+      },
+      "interpretation": "Late focused image actually exposes the aggregate clipped notice with count 1 and bottom range; legacy synthetic clipped_rows fixture, not current-backend truncation proof."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "evidence_class": "visible_legacy_fixture",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-clipped-360.png",
+            "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "clipped"
+        ]
+      },
+      "interpretation": "Annotation visible on the first mixed-code row; synthetic clipped_rows=[3], not evidence current backend truncates"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continued",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split-next"
+        ]
+      },
+      "interpretation": "Continuation annotation near end of split-next body; not a new row"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continues",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "split-next"
+        ]
+      },
+      "interpretation": "Continues annotation at split page end (also subsequent continuation page)"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.empty",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-empty-360.png",
+            "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "empty"
+        ]
+      },
+      "interpretation": "Empty notice and Back label fit the captured box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.error",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "error"
+        ]
+      },
+      "interpretation": "Error status visible; Retry label visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-evicted-360.png",
+            "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "evicted"
+        ]
+      },
+      "interpretation": "Notice wraps inside box; no observed clipping"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.first",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "First disabled on initial page, enabled on split-next where visible; First click result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.inline",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-inline-360.png",
+            "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "inline"
+        ]
+      },
+      "interpretation": "Notice visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.last",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Last label visible; Last click/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-loading-360.png",
+            "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "loading"
+        ]
+      },
+      "interpretation": "Loading status visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.nav",
+      "evidence_class": "accessible_name_only",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Not a visible label; successful AX snapshots name navigation in all seven actual locales; no screen-reader speech claimed"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.next",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Next label visible, split-next changed cursor body/focus is evidence of next-state only; no full navigation suite"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_found",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_found-360.png",
+            "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "not_found"
+        ]
+      },
+      "interpretation": "404 notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_recorded-360.png",
+            "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "not_recorded"
+        ]
+      },
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.oversized",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-oversized-360.png",
+            "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "oversized"
+        ]
+      },
+      "interpretation": "Notice text wraps inside box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Previous disabled at beginning and enabled on split-next; Previous action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.range",
+      "evidence_class": "visible_with_urdu_order_anomaly",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Initial logical arguments first=1 last=198 total=598; Urdu pixels show the 198–1 run, not a missing number; split pages show 1–1 of 2"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "error"
+        ]
+      },
+      "interpretation": "Retry label visible without observed cutoff; retry action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-unavailable-360.png",
+            "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "unavailable"
+        ]
+      },
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "evidence_class": "visible_focused_final",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-offer-focused-360.png",
+            "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "offer"
+        ]
+      },
+      "interpretation": "Late focused image actually exposes View full diff control and count 598, within visible box; activation/click-result NOT recorded."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "evidence_class": "visible",
+      "frames": {
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-withheld-360.png",
+            "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "ur": [
+          "withheld"
+        ]
+      },
+      "interpretation": "Notice visible; no wording re-audit or disposition change"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "parent": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "parent_label": "HEAD",
+      "instance": "567a24a88e45-chat-canonical-ur-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "receipt_path": "i18n/receipts/567a24a88e45-chat-canonical-ur-r2.json",
+      "receipt_sha256": "c4dcdb3d25588590dbb377ec31069b3d59538f48f76ecedbe179c40ed747ee3e",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings_as_recorded": [
+        {
+          "id": "I-UR-1",
+          "severity": "minor",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "codepath": "diff-history-model.ts:473",
+          "message": "\"اسے محفوظ طریقے سے چھپایا نہیں جا سکا\" says the diff could not be hidden, the same object error as I-HI-1.",
+          "fix": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں",
+          "disposition": "deferred — non-gating",
+          "origin": "r2"
+        }
+      ],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    },
+    {
+      "parent": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "parent_label": "HEAD",
+      "instance": "c7b72ef216da-ur-chat-canonical-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "receipt_path": "i18n/receipts/c7b72ef216da-ur-chat-canonical-r2.json",
+      "receipt_sha256": "d9b8f3039ebd222389635620350ea4d17ea28c1cac9f5a3c68cb1d6f7a616dc3",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings_as_recorded": [
+        {
+          "id": "UR-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "disposition": "deferred — non-gating minor, no remediation cycle",
+          "evidence": "'اسے محفوظ طریقے سے چھپایا نہیں جا سکا' makes the diff itself ('اسے') the object that could not be hidden; same ambiguity as HI-1",
+          "proposed": {
+            "ui.chat.canonical.tool_row.diff.full.withheld": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں"
+          }
+        }
+      ],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    },
+    {
+      "parent": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "parent_label": "MERGE_HEAD",
+      "instance": "1d764576d0aa-s16f-au3-ur",
+      "model": "deepseek/deepseek-flash",
+      "receipt_path": "i18n/receipts/1d764576d0aa-s16f-au3-ur.json",
+      "receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings_as_recorded": [
+        {
+          "id": "NIT-1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+          "problem": "src/i18n/bidi.ts isolates a sigil only when it opens a Latin word, so `$` + digit is not isolated. Measured with GNU FriBidi 1.0.16: the `$` resolves to the paragraph (RTL) level 1 while `0` sits at level 2, so the pair is drawn `0$`; reading the RTL line still yields `$0`, which is why the value reads correctly. UAX#9 W5 (ET adjacent to EN joins the number run) says a conformant engine - Chromium/ICU, i.e. the Electron surface - should draw `$0`. The two authorities disagree and the Electron surface was NOT exercised in this pass, so the painted result is unproven.",
+          "suggestion": "No copy change. Do not reorder the value or insert an LRM (the ur style guide forbids manual bidi controls and storage must stay logical). If a rendered capture shows `0$`, the fix belongs in isolateSigils (accept a digit after the sigil) with a regression test, i.e. a renderer ticket.",
+          "disposition": "recorded as information for rendered fit; does not gate this catalogue and does not affect the verdict"
+        }
+      ],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    }
+  ],
+  "source_records": [
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+      "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+      "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+      "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+      "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    }
+  ],
+  "glossary_style_applicability": {
+    "glossary": {
+      "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+      "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "same_bytes": true
+    },
+    "style_guide": {
+      "path": "/home/ec2-user/local-operator/i18n/style-guides/ur.md",
+      "original_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+      "current_sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c",
+      "same_bytes": true
+    }
+  },
+  "findings": [
+    {
+      "ids": [
+        "I-UR-1",
+        "UR-1"
+      ],
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "line": 269,
+      "current": "مکمل diff روک لیا گیا — اسے محفوظ طریقے سے چھپایا نہیں جا سکا",
+      "proposed": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں",
+      "reason": "The current pronoun says the diff could not be hidden, whereas the source/context mean its sensitive information could not safely be removed.",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false
+    },
+    {
+      "ids": [
+        "NIT-1"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "line": 488,
+      "current": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+      "proposed": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+      "reason": "Retain the parent’s rendered-check concern for the Latin currency run $0: bidi.ts only isolates a sigil opening a Latin letter, but no Chromium/Electron observation here establishes that $0 actually paints incorrectly.",
+      "disposition": "Retained informational NIT, not a reproduced rendering defect; no copy change or manual bidi controls; request an RTL capture.",
+      "introduced_by_convergence": false
+    },
+    {
+      "id": "A024-UR-BIDI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.continued",
+      "related_keys": [
+        "ui.chat.canonical.tool_row.diff.full.continues",
+        "ui.chat.canonical.tool_row.diff.full.range"
+      ],
+      "category": "rendered code-body bidi / deferred design issue, not a translation-wording defect",
+      "current": "(پچھلے صفحے سے جاری)",
+      "current_code_surface": "Approved Urdu page/split fixture paints some + and - markers on the physical right and reorders mixed Urdu filename/Latin code punctuation. Plain block spans inherit RTL without a separate code direction boundary.",
+      "proposed": "(پچھلے صفحے سے جاری)",
+      "proposed_action": "No catalogue change. Preserve logical text and no manual bidi controls; handle code-body direction/isolation in the deferred design thread if pursued. Verify integrated direction before asserting a native/full-app regression.",
+      "reason": "Personally viewed Urdu fixture pixels and immediate component ancestry support inherited-direction weakness, but do not establish a full-app regression; user final disposition explicitly accepts it as deferred MINOR. Natural RTL range 198–1 alone is not a translation defect.",
+      "disposition": "Deferred MINOR under direct-user final policy disposition; design thread citations supplied above, bodies not fetched; no new minor-fix round.",
+      "origin": "This auditor’s accepted bounded evidence readback plus direct-user disposition; A024-local ID, not an invented remote design finding ID",
+      "introduced_by_convergence": "Not established; no attribution to new catalogue wording",
+      "evidence": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+          "section": "urdu_direction"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+          "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "limitations": {
+    "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+    "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+    "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+    "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+    "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+    "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+    "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+    "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+    "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+  },
+  "planned_new_receipt_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+  "assembler_disposition": {
+    "consumable_for_scope": true,
+    "conditions": "Only this accepted scoped convergence; retain receipt + this supplement + authority/readback/provenance references and explicit ledger scope. The exclusive coder may use the prescribed assembler. This session does not invoke it. Never claim global approval, release, independent second auditor, native runtime or completed interactions. Preserve old superseded/history bytes.",
+    "receipt_for_application": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+    "auditor_instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+    "note": "Accepted23-key capture + exact467-main ancestry; current hashes; retained findings and deferred Urdu bidi. New scoped supplement, not fresh490/native/runtime approval."
+  },
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "session": "a0245acae0c5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "ur": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2"
+  },
+  "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "writer_contract": {
+    "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+    "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "rules_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+    "rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "inspected_ranges": "ledger-assemble 130-220,220-352,352-409; ledger-rules deriveReceiptAudit516-618",
+    "actual_behavior": "derives current English/target hashes and severity counts from receipt; validates identity/model/result and existing history; archives stale row; copies immutable receipt under i18n/receipts/<instance>.json; retains supplied scope/note. It does not itself copy all canonical evidence companions.",
+    "not_invoked": true,
+    "dry_run": "No dry-run invoked or invented",
+    "companion_retention": "Exclusive coder/authorized owner must preserve these immutable companions under canonical evidence path (or tracked mapped equivalent) and keep the same scope/note; this auditor performs no repository writer/copy action."
+  },
+  "canonical_record_destination": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json",
+  "prior_same_turn_candidate_preserved": {
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ur-supplement-20261112T234806Z.json",
+      "sha256": "c2c7a0987d5ff0c0c8b28b0ee5cba31eda7b2c81c788a1a5e18ab286c1e7ac9b"
+    },
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-final-ur-receipt-20261112T234806Z.json",
+      "sha256": "1c7535811ff248e653154adaa778bfb5c260eba7c33cd6f7aa884a5ca87c09f1"
+    },
+    "note": "Metadata-completeness finalization only; same verdict/counts. Consume only the issued receipt named by this record, never count candidate and issued as separate independent audits."
+  }
+}

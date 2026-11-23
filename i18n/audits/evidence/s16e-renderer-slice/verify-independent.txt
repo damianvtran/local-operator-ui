@@ -1,0 +1,99 @@
+# independent post-integration verification — S16e binding (second independent pass)
+# heads: audited=bd8e90542506e8bec4a98862b868095409b28329 integrated=67ea14a7b5ef621b6f7216c74795749a927fac84 (frozen for this binding)
+# retained-key digest recipe, reproduced here: sha256 over 'key<TAB>value<LF>' for every key of the
+#   pre-integration mapping, sorted by key, values taken from the parsed JSON.
+# en catalogue sha256 = b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17
+# en context   sha256 = ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7
+# git diff bd8e90542506e8bec4a98862b868095409b28329..67ea14a7b5ef621b6f7216c74795749a927fac84 -- src/i18n/catalogues/en/ -> 0 lines
+
+## fr
+   draft_sha256          a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62
+   integrated_whole_file 67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac
+   pre_integration_file  99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6
+   retained_digest       0bf2c838356d822f5d9ed9ef4af4e158a36813ad72d9ac7f7f23ebadfe219d88   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## es
+   draft_sha256          b9290ae76d05774eeca47b3bea438ac6df0be03c7907efaa3cb93a5d6082a50c
+   integrated_whole_file 6975073712a4a3400b0d04d67a82ef7b16ce0fafd78b319a2a8023099a0ca2ab
+   pre_integration_file  547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272
+   retained_digest       ec06218d0029329975b46106cf7483d19404c9d7335f678b0abbb7525edbe668   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## ru
+   draft_sha256          ccc4674d071cc725e48f54c2becd2ac38eaa9004dbcdde8890ecaeedcf9c6060
+   integrated_whole_file 29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df
+   pre_integration_file  fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1
+   retained_digest       75912cd549507c97fcd138ef24078d1f1f2a4a14fa7a9c44f8013a0ce3fb82a7   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## vi
+   draft_sha256          c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9
+   integrated_whole_file 1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf
+   pre_integration_file  a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750
+   retained_digest       039fa10470d3fdcc0ba52bcf53d46c0b501cf5245e862dbf6aba38d254c8c47b   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## zh-CN
+   draft_sha256          121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688
+   integrated_whole_file 752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4
+   pre_integration_file  35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c
+   retained_digest       1e202b34d5e7b9cc253c51e7271e7ec2309dfd74dd6532afb3062ea1137090b8   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## hi
+   draft_sha256          41e9e50f80fb89f3d39a822b1fb95461f3d8b4cd9ece1b3ed899c1fec39a9831
+   integrated_whole_file 64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f
+   pre_integration_file  5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b
+   retained_digest       ff6b411475705fd631977c7758580f40110aeaba25089a132b14111eb3257b28   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+
+## ur
+   draft_sha256          e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051
+   integrated_whole_file d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd
+   pre_integration_file  fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7
+   retained_digest       af7668134800a1afcf0e559fe08c70de6cfb065da1e0d6705d6aab6b47d44873   before==after: True
+   PASS draft_12_byte_equal
+   PASS no_retained_value_changed
+   PASS no_key_removed
+   PASS exactly_12_keys_added
+   PASS retained_digest_equal_before_after
+   PASS key_count_after_479
+   PASS integrated_bytes_differ_from_audited
+

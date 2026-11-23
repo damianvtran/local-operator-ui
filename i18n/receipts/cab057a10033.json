@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "requested_model": "anthropic/claude-sonnet-5-5",
+  "fallback": false,
+  "instance": "cab057a10033",
+  "session": "ee139b2531cd",
+  "independent_from_translator_session": true,
+  "locale": "zh-CN",
+  "date": "2026-11-15",
+  "commit": "7cdf6c27b4c41bbcf08f6f3eb7966bdf3b9fbd69",
+  "status": "passed",
+  "blocker_major_count": 0,
+  "scope": "9 new keys: ui.chat header_identity.band_{recent,all}_{agents,teams}; ui.chat.dialogs archive_title_named/unnamed/message; ui.chat.sidebar row.archive_label/unarchive_label",
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "83fc6d45897c9faee1e0b7e55e378d1b77140330a59e94dcbe73b0582fbc27ac",
+        "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.header_identity.band_recent_agents",
+          "current": "最近的智能体",
+          "suggested": "最近使用的智能体",
+          "problem": "最近的X can read as 'nearest X'; shipped ui.chat.directory.menu.recent uses 最近使用的目录. Same for band_recent_teams."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.header_identity.band_recent_teams",
+          "current": "最近的团队",
+          "suggested": "最近使用的团队",
+          "problem": "as band_recent_agents; keep parallel with 全部团队 and shipped 最近使用的目录."
+        }
+      ]
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "95a434c54c33e986afd612a0fe682844aca8f231bd062a6efce604e034e7e01f",
+        "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.dialogs.archive_message",
+          "current": "它会从你的列表中移除。",
+          "suggested": "它将不再显示在你的列表中。",
+          "problem": "移除 reads close to deletion in a reversible-archive confirmation; source says 'leaves your lists'; shipped archived_hint uses 不会显示在对话列表中."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.dialogs.archive_message",
+          "current": "请在对话列表上方搜索，勾选“…”",
+          "suggested": "请使用对话列表上方的搜索框，勾选“…”",
+          "problem": "bare 搜索 with no object; name the search field so the path to the checkbox is explicit."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.dialogs.archive_message",
+          "current": "再取消归档。",
+          "suggested": "再点击“取消归档”。",
+          "problem": "Source names the control; quoting it marks it as the button label. Verb already identical to unarchive_label/row_menu.unarchive, so optional."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "sha256": {
+        "zh-CN": "e011fe27048d926f44153912fa3a4a4cfd4df81d4ff44ea162d0b98c2784fee5",
+        "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+      },
+      "findings": []
+    }
+  }
+}

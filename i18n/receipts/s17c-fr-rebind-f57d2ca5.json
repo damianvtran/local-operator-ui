@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "fr",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-13",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-fr-rebind-f57d2ca5",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated none of these keys, ran no part of the S17c draft audit and integrated nothing; in this session I re-verified the merged bytes, the parent prefix, the 36 values against English and the sidecar, and the render sites in the source, from scratch.",
+    "instance": "s17c-fr-rebind-f57d2ca5"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.wake.cadence_finished",
+      "note": "Visible text 27 -> 36 chars (+33%, excluding the {duration} token) on the row's shrink-0 cadence span, which by construction never clips, so the width comes out of the truncating due label beside it; flagged for a rendered check at the pane's 320px floor, no byte change required unless the frame clips."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.wake.every",
+      "note": "6 -> 13 chars (+117%) on the same shrink-0 interval span, and this key is what every monitor row and every unbounded wake row renders as its interval (run-detail-model.ts:1997-2001), so the reach is wider than wake.cadence_finished; no shorter accurate French phrasing found ('toutes les {duration}' is longer), so this is a rendered-check flag rather than a rewording."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.monitor.last_check",
+      "note": "11 -> 22 chars (+100%) on the monitor row's min-w-0 shrink-[3] truncate span, which yields third in the row's recorded feed order (health tail, then last check, then due); it truncates with the whole text in title, so a clip costs the instant not the app, but at 320px 'dernière vérification 9:25 AM EDT' gives way sooner than English; 'vérifié {when}' (13 chars) is the fallback if the frame clips."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.mcp.control.reconnect",
+      "note": "Glossary drift on one English term: 'Reconnect' is 'Reconnecter' here and 'Rétablir la connexion' in the pre-existing ui.settings.integrations.integration_model.reconnect for the same server row; this diff is consistent with itself (run panel and dialog both 'Reconnecter'), the drift is pre-existing and out of scope, so alignment direction is the owner's call and it does not gate this PR."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp.control.grant",
+      "note": "20 -> 27 chars (+35%) on a button the sidecar budgets as 'three words; compact button'; 'Autoriser l’accès' (18) is the shorter option if the dialog footer or the run-panel row clips, otherwise it can stay."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567: (1) the merged file's first 109 key/value pairs equal the parent ec00119944d's pairs value-by-value and in the same order, and the merged text equals the parent text line-for-line except that the parent's final pair gained the comma ICU/JSON requires (single-line delta at parent line 109, closing brace at 110); (2) the 36 new pairs equal the audited draft fr.v2.json's 36 pairs value-by-value in the same order; (3) the merged key set equals the English 145-key set both ways and in the same order, and equals the sidecar's key set; (4) all 145 keys parse with the repo's @formatjs/icu-messageformat-parser 3.5.21, ICU argument-name sets are identical per key, the two new keys carrying an English exact =1 arm keep it, and every French plural category is one of one/many/other (CLDR fr); (5) format: TAB indent throughout, one trailing newline, no BOM, no CRLF, NFC, no literal backslash-u escapes, French narrow no-break-space typography (U+202F) before ? : and around guillemets matching the parent. Not verified: a rendered frame (width findings are flags, not measurements) and runtime formatting through the app's locale bundle.",
+  "scope": "ui.chat.run_details for fr: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "f57d2ca510789836219bcad7d40beb7561ee8032888ce11875b7ed5fd4f421f0",
+  "sha256": {
+    "fr": "f57d2ca510789836219bcad7d40beb7561ee8032888ce11875b7ed5fd4f421f0",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "ca4aaafc720d4c3b5a2cd79b316f98b16713cc214874a416a9578c6848a7ff52"
+}

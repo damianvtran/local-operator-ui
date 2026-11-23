@@ -1,0 +1,352 @@
+{
+  "document_type": "same-round-inherited-s18a-debt-reconciliation",
+  "auditor": "translation-auditor",
+  "session": "6dfaec49abf0",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-11-15T01:37:08.323270+00:00",
+  "scope": "Existing parent findings reconciliation only; no new semantic audit, render or source change",
+  "snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+  "snapshot_english_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+  "current": {
+    "head": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "merge_head": "e6122214503b9fc52841e119c060eabb7650391b",
+    "tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+    "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9",
+    "index_paths": 14129,
+    "english_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+    "context_sha256": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+  },
+  "s18a_receipts": {
+    "es": {
+      "path": "i18n/receipts/4b865abbfc0e.json",
+      "sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "4b865abbfc0e",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "sha256": {
+          "es": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": [
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+            "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+            "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+            "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+            "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+            "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.temporary_deleted.back",
+            "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+          }
+        ]
+      }
+    },
+    "fr": {
+      "path": "i18n/receipts/0eddeb61023f.json",
+      "sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "0eddeb61023f",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "sha256": {
+          "fr": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": []
+      }
+    },
+    "hi": {
+      "path": "i18n/receipts/2d5628992cf1.json",
+      "sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+      "receipt": {
+        "auditor": "i18n-auditor",
+        "model": "deepseek/deepseek-flash",
+        "instance": "2d5628992cf1",
+        "status": "passed",
+        "namespace": "ui.chat.canonical",
+        "sha256": {
+          "hi": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+          "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+        },
+        "findings": [
+          {
+            "severity": "MINOR",
+            "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+            "note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+          },
+          {
+            "severity": "NIT",
+            "key": "ui.chat.canonical.temporary_deleted.back",
+            "note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ."
+          }
+        ],
+        "scope": {
+          "keys_read": 16,
+          "set_A_1874": 4,
+          "set_B_1884": 12,
+          "merge_commit": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+          "note": "delta audit of the 16 landed keys; 467 pre-existing keys carried, not re-derived"
+        },
+        "severity_counts": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "verdict": "PASS",
+        "date": "2026-11-13"
+      }
+    }
+  },
+  "snapshot_unchanged_finding_key_applicability": {
+    "es": [
+      {
+        "ordinal": 1,
+        "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+        "snapshot_value": "Id duplicado",
+        "current_value": "Id duplicado",
+        "unchanged": true,
+        "finding": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+          "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+        }
+      },
+      {
+        "ordinal": 2,
+        "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+        "snapshot_value": "Bloqueo por política",
+        "current_value": "Bloqueo por política",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+          "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+        }
+      },
+      {
+        "ordinal": 3,
+        "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+        "snapshot_value": "Herramienta desconocida",
+        "current_value": "Herramienta desconocida",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+          "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+        }
+      },
+      {
+        "ordinal": 4,
+        "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+        "snapshot_value": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+        "current_value": "La generación de audio está saturada ahora mismo. Espera un momento y vuelve a intentarlo.",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+          "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+        }
+      },
+      {
+        "ordinal": 5,
+        "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+        "snapshot_value": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+        "current_value": "{material, select, video {Se detuvo el lote de vídeos.} voiceover {Se detuvo el lote de locuciones.} sound_effect {Se detuvo el lote de efectos de sonido.} other {Se detuvo el lote de imágenes.}}",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+          "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+        }
+      },
+      {
+        "ordinal": 6,
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "snapshot_value": "Volver a los chats",
+        "current_value": "Volver a los chats",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+        }
+      },
+      {
+        "ordinal": 7,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "snapshot_value": "Audio saturado",
+        "current_value": "Audio saturado",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+        }
+      }
+    ],
+    "fr": [],
+    "hi": [
+      {
+        "ordinal": 1,
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "snapshot_value": "ऑडियो दर सीमा",
+        "current_value": "ऑडियो दर सीमा",
+        "unchanged": true,
+        "finding": {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+        }
+      },
+      {
+        "ordinal": 2,
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "snapshot_value": "चैट पर वापस जाएँ",
+        "current_value": "चैट पर वापस जाएँ",
+        "unchanged": true,
+        "finding": {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ."
+        }
+      }
+    ]
+  },
+  "frozen_pure_parent_derivations": [
+    {
+      "locale": "es",
+      "agent": "i18n-auditor",
+      "instance": "4b865abbfc0e",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 6
+      },
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+      "receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+      "matched_superseded_row": true
+    },
+    {
+      "locale": "fr",
+      "agent": "i18n-auditor",
+      "instance": "0eddeb61023f",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+      "receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+      "matched_superseded_row": true
+    },
+    {
+      "locale": "hi",
+      "agent": "i18n-auditor",
+      "instance": "2d5628992cf1",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+      "receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+      "matched_superseded_row": true
+    }
+  ],
+  "prior_seam_proof": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+    "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b",
+    "size_bytes": 669523
+  },
+  "historical_candidate_manifest": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-rebinding-manifest.json",
+    "sha256": "e00798326c7bb8b951ed62b033765cd5f3ba25b30324f799627e654732933166",
+    "disposition": "Preserved unchanged as historical candidate; only newly named FINAL manifest receipts may be applied."
+  },
+  "author_policy": "Preserve explicit existing parent severities even when proposed=current/no translation edit is requested. Those notes are accepted NIT exceptions/fit risks, not newly invented findings; do not silently relabel them INFO. Retain exact parent wording. Dedupe only the clearly same HI temporary_deleted.back debt with HI-C1.",
+  "same_original_independent_author_lineage": true,
+  "zero_new_semantic_keys": true,
+  "old_own_hashes_before": {
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/audit-convergence.py": "20d04b9874654954a14a191524efde7ff054c22aa017e5572aa74fa258d50ad1",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/check-convergence.mjs": "9fae25cfab4605fc516c6c71a7de9d4f1e2d2c30ba482bb17cdae827e0ae6113",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-icu-proof.json": "21d8718cc516fabfae07a9d13c001987dbec705a16e68456883865f59b3fdb4b",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/icu-check.log": "5078ccc96d8b2df97bb7b593d22e2fcea7af16a7e7c61c7bcf52176045da9ae0",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/issue-convergence-reports.py": "8348c8abf49fa91b1c37fbaeaed4f58df4873137b7655853dccb26ba3f0d7230",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-report.json": "b2e6edb53c39736e887a812ae4af71e918fde4c69aa768ed7ca0fcc0c717d28e",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-fr-report.json": "58d79d209926a2047cd94f04de77ffe42d320acef3dadce0eb946da94d72d280",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-hi-report.json": "65797fe4c4b4f98f71902d244f6f9533bdade5b93691e63795ce3fd95b6cef06",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-convergence-second.json": "ff9756c7f00fe7c3529e5a6501d6b30abd590929111a0beaf4e2e334f10d465f",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-summary.md": "9f33a464b216d684f7e7fccbc60533b23044d18a67b666520806779da34a168b",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/final-readback-verification.json": "ce8503f17ab93a1234bf249ce34ffab923f5b3a30750b33db6f14263e251b320",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-policy-clarification.md": "8f775f452788ce894c09d6a71f1f1b932534a5ec8ebf9adf3e4638794896a30a",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-supplement.json": "62b4b8b5ecaf8cd08ddba818328e5983e8bb39b48890651836dd78648bb5d13e",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-receipt.json": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-supplement.json": "03c37b8a7aecc78fb2dbff50326f04dd3633120c650c44dc168c531efe0651bc",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-receipt.json": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json": "dc88ad10a87fe627f7cbbc641aa1b409b3d4bb57146f219f06d719477174925a",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json": "c686b2d996870e32d5f9e6568779b724d77ca28e041e9c611e23513067b216a8",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json": "ba520402bca53480146c1c0bf0cee565fb570f528978c7619656e270fbe834a4",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-receipt.json": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-record.json": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-receipt.json": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-record.json": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-receipt.json": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-rebinding-manifest.json": "aff41423415ebf2df84564c2d6b8b8763699201733b8be794b059e3434be188d",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-finalgate20261115-record.json": "804f2c3241847efd4b1fccf6050a88ce11d87d02e28b33666b93375b3e553dab",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-finalgate20261115-receipt.json": "fd47868c9ee81faa5792d04c2755f6702b96d2025547283ba73c94d7e99c74a5",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-finalgate20261115-record.json": "46aa20e4b877a72c3870fb8274812c394c9098ed4f405b3970de14f76baecaef",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-finalgate20261115-receipt.json": "da20f3b37975a9965949a9096df4cf297f4ddddc0d1ae74885e353f3520c64fc",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-finalgate20261115-record.json": "62be85515d06ef92c468433c6aedc3ae88d3c85dbd095ea53308fccc24919ff0",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-finalgate20261115-receipt.json": "73fa1ad5dd36f265f8dd729ada50b401a0f51c1e288736781bedb85015435616",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-rebinding-manifest.json": "e00798326c7bb8b951ed62b033765cd5f3ba25b30324f799627e654732933166"
+  }
+}

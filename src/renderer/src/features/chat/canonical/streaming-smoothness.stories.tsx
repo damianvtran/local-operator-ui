@@ -601,6 +601,15 @@ function Frame({
 		for (const animation of capture.animations) animation.currentTime = time;
 		const sample = {
 			cssTimeMs: time,
+			incomingInk: [...capture.payload.querySelectorAll(".lo-stream-ink")].map(
+				(span) => span.textContent,
+			),
+			transform: window.getComputedStyle(
+				((capture.animations[0]?.effect as KeyframeEffect | null)
+					?.target as HTMLElement) ?? capture.payload,
+			).transform,
+			previousText: capture.payload.querySelector("[data-lo-streaming] p")
+				?.firstChild?.textContent,
 			shellHeight: capture.shell.getBoundingClientRect().height,
 			payloadHeight: capture.payload.getBoundingClientRect().height,
 			opacity: window.getComputedStyle(
@@ -638,7 +647,7 @@ function Frame({
 			),
 		);
 	};
-	const freezeMotion = (kind: "tool" | "answer" | "turn") => {
+	const freezeMotion = (kind: "tool" | "answer" | "turn" | "stream") => {
 		pausedCleanup.current?.();
 		const region = regionRef.current;
 		if (!region) return;
@@ -663,10 +672,15 @@ function Frame({
 		}) as typeof window.setTimeout;
 		flushSync(() =>
 			setRecords((current) =>
-				kind === "turn"
+				kind === "turn" || kind === "stream"
 					? current.map((record) =>
 							record.id === "motion-answer" && record.kind === "assistant"
-								? { ...record, streaming: false, complete: true }
+								? kind === "stream"
+									? {
+											...record,
+											text: `${record.text} Only the **new words** fade in.`,
+										}
+									: { ...record, streaming: false, complete: true }
 								: record,
 						)
 					: [
@@ -685,7 +699,7 @@ function Frame({
 			kind === "turn"
 				? region.querySelector<HTMLElement>("[data-turn-summary]")
 				: region.querySelector<HTMLElement>(
-						`[data-record-id="${kind === "tool" ? "motion-arrival" : "motion-settled-answer"}"]`,
+						`[data-record-id="${kind === "tool" ? "motion-arrival" : kind === "stream" ? "motion-answer" : "motion-settled-answer"}"]`,
 					);
 		const entry = row?.closest<HTMLElement>("[data-lo-entry-key]");
 		const shell = entry?.querySelector<HTMLElement>(
@@ -711,13 +725,16 @@ function Frame({
 			);
 			return;
 		}
+		// Make the synthetic target visible without driving a real session.
+		if (kind === "stream" || kind === "tool")
+			region.scrollTop = region.scrollHeight;
 		animations.push(...shell.getAnimations({ subtree: true }));
 		for (const animation of animations) animation.pause();
 		motionCapture.current = {
 			animations,
 			shell,
 			payload,
-			times: kind === "turn" ? [0, 90, 180] : [0, 120, 240],
+			times: kind === "turn" ? [0, 90, 180] : [0, 40, 120],
 			samples: [],
 		};
 		pausedCleanup.current = () => {
@@ -902,7 +919,12 @@ function Frame({
 	urlCapture.current = (params) => {
 		const capture = params.get("motionCapture");
 		const flow = params.get("flow");
-		if (capture === "tool" || capture === "answer" || capture === "turn") {
+		if (
+			capture === "tool" ||
+			capture === "answer" ||
+			capture === "turn" ||
+			capture === "stream"
+		) {
 			freezeMotion(capture);
 			for (const index of [0, 1, 2]) sampleMotion(index);
 			sampleMotion(Number(params.get("cssSample") ?? 0));
@@ -994,6 +1016,9 @@ function Frame({
 				</button>
 				<button type="button" onClick={() => freezeMotion("tool")}>
 					Freeze live tool arrival
+				</button>
+				<button type="button" onClick={() => freezeMotion("stream")}>
+					Freeze live Markdown suffix
 				</button>
 				<button type="button" onClick={() => freezeMotion("answer")}>
 					Freeze settled answer control
@@ -1149,7 +1174,10 @@ function Frame({
 							awaitingHydration={false}
 							onReconnect={() => {}}
 							workingLine={{
-								activity: "Working on the synthetic fixture",
+								activity: {
+									kind: "text",
+									text: "Working on the synthetic fixture",
+								},
 								phase: "thinking",
 								clock: false,
 							}}

@@ -1,0 +1,402 @@
+{
+	"ui.phone_pairing.popup.title": {
+		"role": "non-modal card title",
+		"tone": "plain, factual",
+		"note": "Appears on any screen when a phone asks to be paired with this computer. Fixed wording: do not name the phone here (the name is chosen by whoever asked)."
+	},
+	"ui.phone_pairing.popup.title_settled": {
+		"role": "non-modal card title",
+		"tone": "plain, neutral",
+		"note": "Replaces the 'wants to pair' title once the request is settled (paired, denied, closed after three wrong codes, or expired), so the title does not contradict the outcome below it. Do not name the phone."
+	},
+	"ui.phone_pairing.popup.grant": {
+		"role": "consent sentence",
+		"tone": "plain, exact",
+		"note": "States what approving grants, in the spec's words: the phone can approve anything the user's agents ask permission for on this computer (the same as clicking Approve on this screen) and receive this computer's notifications; computers that join this computer's network later will trust the phone too."
+	},
+	"ui.phone_pairing.popup.name_label": {
+		"role": "definition label",
+		"tone": "short",
+		"note": "Label before the device name the phone sent. 'it' is the phone; stresses that the phone chose this name, so it may not be trustworthy."
+	},
+	"ui.phone_pairing.popup.show_full_name": {
+		"role": "text button",
+		"tone": "short",
+		"note": "Expands a long phone name that was shortened."
+	},
+	"ui.phone_pairing.popup.hide_full_name": {
+		"role": "text button",
+		"tone": "short",
+		"note": "Collapses the expanded phone name again."
+	},
+	"ui.phone_pairing.popup.attested": {
+		"role": "definition line",
+		"tone": "plain",
+		"note": "Same as attested_as when the email is not known."
+	},
+	"ui.phone_pairing.popup.expires_in": {
+		"role": "countdown",
+		"tone": "short",
+		"note": "{time} is a m:ss countdown such as 4:32."
+	},
+	"ui.phone_pairing.popup.code_label": {
+		"role": "label",
+		"tone": "short",
+		"note": "Label above the six-digit code the user compares with the phone."
+	},
+	"ui.phone_pairing.popup.code_aria": {
+		"role": "screen-reader label",
+		"tone": "plain",
+		"note": "{digits} is the code read digit by digit, e.g. '4 8 2 9 1 3'."
+	},
+	"ui.phone_pairing.popup.compare": {
+		"role": "instruction",
+		"tone": "plain",
+		"note": "Tells the user to compare the code with the one on the phone."
+	},
+	"ui.phone_pairing.popup.anti_phishing": {
+		"role": "warning",
+		"tone": "plain, calm",
+		"note": "Anti-phishing advice: approve only a pairing you started yourself."
+	},
+	"ui.phone_pairing.popup.approve_confirm": {
+		"role": "primary button",
+		"tone": "imperative",
+		"note": "Pressed only after comparing the codes on both screens. Keep the em dash or an equivalent separator."
+	},
+	"ui.phone_pairing.popup.approve": {
+		"role": "primary button",
+		"tone": "imperative",
+		"note": "Approves the pairing after the user typed the phone's code."
+	},
+	"ui.phone_pairing.popup.deny": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Refuses the pairing request."
+	},
+	"ui.phone_pairing.popup.denying": {
+		"role": "button label while busy",
+		"tone": "short, in progress",
+		"note": "Replaces 'Deny' on the button while the denial is being recorded. Keep it one or two words with the ellipsis."
+	},
+	"ui.phone_pairing.popup.type_code_label": {
+		"role": "input label",
+		"tone": "plain",
+		"note": "Label for the field where the user types the six digits shown on the phone."
+	},
+	"ui.phone_pairing.popup.type_code_hint": {
+		"role": "help text",
+		"tone": "plain",
+		"note": "Explains why this computer does not show the code here: typing it proves the request came from that phone."
+	},
+	"ui.phone_pairing.popup.wrong_code": {
+		"role": "error",
+		"tone": "plain",
+		"note": "Shown after a wrong code; {count} is how many tries remain (1 or 2). Keep the ICU plural arms."
+	},
+	"ui.phone_pairing.popup.invalid_code": {
+		"role": "error",
+		"tone": "plain",
+		"note": "The input was not six digits; no try was used."
+	},
+	"ui.phone_pairing.popup.signing": {
+		"role": "status",
+		"tone": "plain",
+		"note": "The operating system is showing a confirmation prompt (Touch ID or password); it may be hidden behind the app window. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.popup.admin_prompt": {
+		"role": "status",
+		"tone": "plain",
+		"note": "The operating system is asking for the computer's login password to add the phone; the prompt may be hidden behind the app window. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.popup.failed": {
+		"role": "status",
+		"tone": "plain",
+		"note": "The user cancelled the operating system prompt; the request is still open and can be tried again."
+	},
+	"ui.phone_pairing.popup.try_again": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Retries the confirmation prompt."
+	},
+	"ui.phone_pairing.popup.paired": {
+		"role": "success message",
+		"tone": "plain, warm",
+		"note": "The phone is now paired."
+	},
+	"ui.phone_pairing.popup.manage_where": {
+		"role": "pointer under the success line",
+		"tone": "reassuring, plain",
+		"note": "After a phone is paired: where to undo it. 'Settings → Radient account → Paired phones' is the navigation path (Settings, its 'Radient account' sidebar entry - ui.settings.navigation.settings_sidebar.radient_account - and the 'Paired phones' list on that page); use the same names those screens use in this language and keep the arrows."
+	},
+	"ui.phone_pairing.popup.denied": {
+		"role": "result message",
+		"tone": "plain",
+		"note": "The user denied the request."
+	},
+	"ui.phone_pairing.popup.strikes": {
+		"role": "result message",
+		"tone": "plain",
+		"note": "Three wrong codes closed the request."
+	},
+	"ui.phone_pairing.popup.expired": {
+		"role": "result message",
+		"tone": "plain",
+		"note": "The request's time ran out."
+	},
+	"ui.phone_pairing.popup.changed": {
+		"role": "error",
+		"tone": "plain",
+		"note": "The request on the computer changed after it was shown."
+	},
+	"ui.phone_pairing.popup.error": {
+		"role": "error",
+		"tone": "plain",
+		"note": "Generic failure while recording the decision."
+	},
+	"ui.phone_pairing.popup.done": {
+		"role": "button",
+		"tone": "short",
+		"note": "Closes the card after success."
+	},
+	"ui.phone_pairing.popup.close": {
+		"role": "button",
+		"tone": "short",
+		"note": "Closes the card after a final result."
+	},
+	"ui.phone_pairing.popup.unavailable": {
+		"role": "status",
+		"tone": "plain",
+		"note": "This computer cannot approve phones until 'phone approvals' are turned on."
+	},
+	"ui.phone_pairing.popup.unavailable_where": {
+		"role": "help text",
+		"tone": "plain",
+		"note": "Names where to turn it on. 'Settings → Phone access' are UI names; '/mobile approvals on' is a command typed in the terminal app and must stay untranslated."
+	},
+	"ui.phone_pairing.setup.title": {
+		"role": "section title",
+		"tone": "plain",
+		"note": "Setting that lets paired phones approve requests on this computer."
+	},
+	"ui.phone_pairing.setup.body": {
+		"role": "help text",
+		"tone": "plain",
+		"note": "The operating system asks for the computer's password one time. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.setup.turn_on": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Turns on phone approvals; opens an operating-system password prompt."
+	},
+	"ui.phone_pairing.setup.finish": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Shown when an earlier attempt did not finish (for example the prompt was cancelled)."
+	},
+	"ui.phone_pairing.setup.finish_reason": {
+		"role": "explanatory line above a button",
+		"tone": "plain, non-blaming",
+		"note": "Shown with the 'Finish setup' button when the person cancelled the computer's password prompt during setup, so setup is only partly done."
+	},
+	"ui.phone_pairing.setup.working": {
+		"role": "status",
+		"tone": "plain",
+		"note": "Waiting for the user to answer the operating-system password prompt. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.setup.on": {
+		"role": "success message",
+		"tone": "plain",
+		"note": "Phone approvals are on; each newly paired phone still triggers one password prompt. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.setup.error": {
+		"role": "error",
+		"tone": "plain",
+		"note": "Generic failure turning on phone approvals."
+	},
+	"ui.phone_pairing.phones.title": {
+		"role": "section title",
+		"tone": "short",
+		"note": "Settings list of phones paired with this computer."
+	},
+	"ui.phone_pairing.phones.subtitle": {
+		"role": "section help",
+		"tone": "plain",
+		"note": "What a paired phone can do."
+	},
+	"ui.phone_pairing.phones.empty": {
+		"role": "empty state",
+		"tone": "plain",
+		"note": "No phones are paired yet."
+	},
+	"ui.phone_pairing.phones.paired_at": {
+		"role": "row detail",
+		"tone": "short",
+		"note": "{date} is a formatted date."
+	},
+	"ui.phone_pairing.phones.last_seen": {
+		"role": "row detail",
+		"tone": "short",
+		"note": "{date} is a formatted date."
+	},
+	"ui.phone_pairing.phones.unconfirmed": {
+		"role": "row status",
+		"tone": "plain",
+		"note": "The phone's pairing did not finish."
+	},
+	"ui.phone_pairing.phones.removing": {
+		"role": "row status",
+		"tone": "plain",
+		"note": "Removal is half done: the phone can no longer approve, and one step still needs the computer's password. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.phones.finish_removing": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Completes a half-done removal (opens a password prompt)."
+	},
+	"ui.phone_pairing.phones.remove": {
+		"role": "button",
+		"tone": "imperative",
+		"note": "Removes a paired phone."
+	},
+	"ui.phone_pairing.phones.remove_aria": {
+		"role": "screen-reader label",
+		"tone": "imperative",
+		"note": "{name} is the phone's name."
+	},
+	"ui.phone_pairing.phones.dialog_title": {
+		"role": "dialog title",
+		"tone": "plain",
+		"note": "Confirmation before removing a phone."
+	},
+	"ui.phone_pairing.phones.dialog_body": {
+		"role": "dialog body",
+		"tone": "plain, exact",
+		"note": "What removing does and does not do: the phone loses approvals and notifications, but its Radient sign-in still lets it open chats until the user signs out on the phone."
+	},
+	"ui.phone_pairing.phones.dialog_again": {
+		"role": "dialog body",
+		"tone": "plain",
+		"note": "The phone can request pairing again later."
+	},
+	"ui.phone_pairing.phones.dialog_gesture": {
+		"role": "dialog body",
+		"tone": "plain",
+		"note": "An operating-system password prompt follows. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
+	},
+	"ui.phone_pairing.phones.cancel": {
+		"role": "button",
+		"tone": "short",
+		"note": "Closes the dialog without removing."
+	},
+	"ui.phone_pairing.phones.still_removing": {
+		"role": "status",
+		"tone": "plain",
+		"note": "The password prompt was cancelled; the removal is half done."
+	},
+	"ui.phone_pairing.phones.not_found": {
+		"role": "error",
+		"tone": "plain",
+		"note": "The phone was already removed or is unknown."
+	},
+	"ui.phone_pairing.phones.error": {
+		"role": "error",
+		"tone": "plain",
+		"note": "Generic removal failure."
+	},
+	"ui.phone_pairing.phones.load_error": {
+		"role": "error",
+		"tone": "plain",
+		"note": "The list could not be loaded."
+	},
+	"ui.phone_pairing.phones.retry": {
+		"role": "button",
+		"tone": "short",
+		"note": "Reloads the list."
+	},
+	"ui.phone_pairing.platform.ios": {
+		"role": "platform name",
+		"tone": "short",
+		"note": "The phone said it runs iOS."
+	},
+	"ui.phone_pairing.platform.android": {
+		"role": "platform name",
+		"tone": "short",
+		"note": "Android phone."
+	},
+	"ui.phone_pairing.platform.web": {
+		"role": "platform name",
+		"tone": "short",
+		"note": "The phone uses the web app in a browser."
+	},
+	"ui.phone_pairing.platform.unknown": {
+		"role": "platform name",
+		"tone": "short",
+		"note": "Fallback when the platform is unknown."
+	},
+	"ui.phone_pairing.popup.platform_label": {
+		"role": "definition label",
+		"tone": "short",
+		"note": "Label before the phone's platform (iPhone, Android, web browser), as the phone reported it."
+	},
+	"ui.phone_pairing.password.disclosure": {
+		"role": "collapsed disclosure label",
+		"tone": "short question",
+		"note": "Settings → Phone access. Opens the section for people who reach this computer from their phone through a tunnel they run themselves, not through their Radient account. Most people never open it."
+	},
+	"ui.phone_pairing.password.body": {
+		"role": "explanation inside the disclosure",
+		"tone": "plain",
+		"note": "Why the phone password exists: with a self-run tunnel the phone signs in with this computer's phone password, not the Radient account."
+	},
+	"ui.phone_pairing.password.read": {
+		"role": "button",
+		"tone": "short, imperative",
+		"note": "Reads this computer's phone password only when pressed. 'Phone password' is the password the phone types to sign in to this computer; keep the same term as the other password keys."
+	},
+	"ui.phone_pairing.password.label": {
+		"role": "field label",
+		"tone": "short",
+		"note": "Label above the phone password once it has been read."
+	},
+	"ui.phone_pairing.password.masked_aria": {
+		"role": "screen-reader label",
+		"tone": "short",
+		"note": "Accessible name of the masked password (shown as dots) before the person presses Show."
+	},
+	"ui.phone_pairing.password.show": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Unmasks the phone password on screen."
+	},
+	"ui.phone_pairing.password.hide": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Masks the phone password again."
+	},
+	"ui.phone_pairing.password.copy": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Copies the phone password to the clipboard."
+	},
+	"ui.phone_pairing.password.copied": {
+		"role": "button label after success",
+		"tone": "one word",
+		"note": "Briefly replaces 'Copy' after the password was copied."
+	},
+	"ui.phone_pairing.password.copy_failed": {
+		"role": "inline error",
+		"tone": "plain",
+		"note": "The clipboard refused the copy; the person can still reveal the password and copy it by hand."
+	},
+	"ui.phone_pairing.password.unset": {
+		"role": "status line",
+		"tone": "plain, factual",
+		"note": "This computer has no phone password, so there is nothing to show."
+	},
+	"ui.phone_pairing.password.error": {
+		"role": "inline error",
+		"tone": "plain",
+		"note": "Reading the phone password failed for another reason; nothing changed and the person can try again."
+	}
+}

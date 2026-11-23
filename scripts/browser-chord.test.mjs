@@ -235,6 +235,55 @@ test("R1 actual earlier zoom door and later chrome handler share guarded ownersh
 	}
 });
 
+test("layout snapshots distinguish visible empty/start chrome from a presented page", () => {
+	const snapshots = [];
+	const registry = new TabRegistry(
+		() => {
+			throw new Error("empty/start canvas must not allocate a page");
+		},
+		() => {},
+		() => {},
+		(snapshot) => snapshots.push(snapshot),
+	);
+	const rect = { x: 0, y: 0, width: 400, height: 300 };
+	registry.setContentRect(rect);
+	assert.equal(snapshots.at(-1).activeTabId, null);
+	assert.equal(snapshots.at(-1).presented, false);
+	assert.equal(snapshots.at(-1).chromeVisible, true);
+	const first = snapshots.at(-1);
+	registry.setViewVisible(false, true);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		true,
+		"own/start DOM retains browser chrome",
+	);
+	assert.equal(snapshots.at(-1).presented, false);
+	registry.setViewVisible(false, false);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		false,
+		"dialog/menu suppresses chrome",
+	);
+	registry.setViewVisible(false, true);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		true,
+		"closing dialog restores own page",
+	);
+	registry.setContentRect(null);
+	assert.equal(
+		snapshots.at(-1).chromeVisible,
+		false,
+		"route teardown suppresses chrome",
+	);
+	assert.equal(snapshots.at(-1).contentRect, null);
+	assert.equal(
+		first.chromeVisible,
+		true,
+		"later passes cannot mutate old snapshots",
+	);
+});
+
 test("RT-only visibility uses actual registry setters, not absence of an active page", () => {
 	const registry = new TabRegistry(() => {
 		throw new Error("No native view may be created by this source control");

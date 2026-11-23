@@ -23,5 +23,10 @@
 	"ui.chat.attachments.open_title": "Nhấp để mở {name}",
 	"ui.chat.attachments.not_viewable": "Không xem được tệp: {name}",
 	"ui.chat.attachments.owner_unreachable": "không lấy được từ thiết bị đang giữ nó.",
-	"ui.chat.attachments.retry_fetch": "Thử lại"
+	"ui.chat.attachments.retry_fetch": "Thử lại",
+	"ui.chat.attachments.not_viewable_detail": "Không xem được {name} (tệp có thể chưa đầy đủ, đã bị xóa hoặc di chuyển)",
+	"ui.chat.attachments.not_viewable_too_large": "{name} quá lớn để xem trước",
+	"ui.chat.attachments.broken_moved": "Không hiển thị được {name}. Tệp có thể đã được di chuyển, đổi tên hoặc xóa.",
+	"ui.chat.attachments.broken_unavailable": "Không hiển thị được {name}. Ứng dụng này không truy cập được bản sao đã lưu.",
+	"ui.chat.attachments.broken_media_unavailable": "Không phát được {name}. Ứng dụng này không truy cập được bản sao đã lưu."
 }

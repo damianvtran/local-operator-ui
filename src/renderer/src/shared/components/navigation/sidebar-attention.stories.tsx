@@ -48,6 +48,18 @@ type Counts = {
 	browser: number;
 	mesh: number;
 	teamBridge: number;
+	/**
+	 * Team Bridge approval requests waiting. Non-zero TAKES OVER the row's one
+	 * badge from the unread total (approvals decision (a), design D1).
+	 */
+	teamBridgeRequests?: number;
+	/**
+	 * Releasable held messages (B4b). Non-zero advertises
+	 * `team_bridge_hold_release` and joins the requests in the one badge.
+	 */
+	teamBridgeHolds?: number;
+	/** Draw a passkey hold and a held popup beside the approvals. */
+	waits?: boolean;
 };
 
 const ok = (result: unknown): DesktopResponse => ({
@@ -76,6 +88,7 @@ const route =
 						team_bridge: 1,
 						team_bridge_conversations: 1,
 						team_bridge_conversation_owner_guard: 1,
+						...(counts.teamBridgeHolds ? { team_bridge_hold_release: 1 } : {}),
 					},
 				});
 			case "aida.status":
@@ -143,6 +156,35 @@ const route =
 						},
 					],
 				});
+			case "team_bridge.requests.list":
+				return ok({
+					tenant_id: "tnt_story",
+					items: [],
+					pending_count: counts.teamBridgeRequests ?? 0,
+					next_cursor: null,
+					has_more: false,
+				});
+			case "team_bridge.holds.list":
+				return ok({
+					enabled: true,
+					key_protection: "hardware",
+					items: Array.from(
+						{ length: counts.teamBridgeHolds ?? 0 },
+						(_, index) => ({
+							message_id: `bcmsg_story${index}`,
+							conversation_id: "bcv_storyconv",
+							seq: index + 1,
+							held_at: "2026-11-17T09:00:00Z",
+							kind: "owner_decision",
+							hold_code: "model_hold",
+							releasable: true,
+							can_deliver: true,
+							can_discard: true,
+							deliver_until: "2026-11-24T09:00:00Z",
+							decision: null,
+						}),
+					),
+				});
 			case "sidebar_layout.get":
 				return ok({ layout: null });
 			default:
@@ -181,8 +223,36 @@ const aidaRows = (count: number) =>
 			]
 		: [];
 
-const browserState = (count: number) => ({
-	tabs: [],
+/**
+ * Agent tabs waiting on the user (operator report 2026-11-15, "the browser is
+ * stealing the view"): a passkey custody hold and a held popup, drawn as
+ * sidebar notification rows beside the approvals instead of switching views.
+ */
+const WAITING_TABS = [
+	{
+		tabId: 101,
+		url: "https://login.microsoft.com/consumers/fido/get",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: AIDA_ID,
+	},
+	{
+		tabId: 102,
+		url: "https://accounts.example.com/authorize",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: null,
+	},
+];
+
+const browserState = (count: number, waits = false) => ({
+	tabs: waits ? WAITING_TABS : [],
+	waitingOnUser: waits
+		? [
+				{ kind: "passkey" as const, tabId: 101, at: 1 },
+				{ kind: "popup" as const, tabId: 102, at: 2 },
+			]
+		: [],
 	activeTabId: null,
 	url: "",
 	title: "",
@@ -213,7 +283,7 @@ const Scene: FC<{
 		/* Installed before the rail mounts, so its first reads find the bridge;
 		   SPREAD over the preview's mock so later stories keep their api. */
 		const host = window as unknown as { api: Record<string, unknown> };
-		const state = browserState(counts.browser);
+		const state = browserState(counts.browser, counts.waits);
 		host.api = {
 			...host.api,
 			desktop: { request: route(counts) },
@@ -275,10 +345,65 @@ export const Counts: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen={false} />,
 };
 
+/** The browser's waits as sidebar notification rows: a password manager hold
+    in Aida's conversation and a held popup on an unowned tab, each one 32px
+    line; the one approval is the third wait, so it folds into "1 more in
+    Browser" (two rows at most, design review D1). The badge counts all three. */
+export const BrowserWaits: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 1, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
+};
+
+/** Past two waits the rest fold into one "more in Browser" row (here 4). */
+export const BrowserWaitsFolded: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 4, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
+};
+
 /** More opened: the hidden rows draw their own counts beneath it, and More
     itself draws none - its sum summarises what is HIDDEN (design D2). */
 export const MoreOpen: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen />,
+};
+
+/**
+ * The Team Bridge row once approval requests wait (design D1): the badge
+ * counts the 2 requests instead of the 3 unread, and the row's accessible name
+ * says "2 requests waiting". Compare `MoreOpen`, the same rail before.
+ */
+export const MoreOpenRequestsWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeRequests: 2 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
+};
+
+/**
+ * Held messages only (B4b, UX U1): 12 releasable holds and no requests. The
+ * badge counts the holds and the row's accessible name says "12 items
+ * waiting", never "requests".
+ */
+export const MoreOpenHeldWaiting: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, teamBridgeHolds: 12 }}
+			collapsed={false}
+			moreOpen
+		/>
+	),
 };
 
 /** The cap: two- and three-digit counts read `99+`, never clipped. */

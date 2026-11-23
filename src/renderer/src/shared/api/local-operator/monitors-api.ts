@@ -1,20 +1,27 @@
 /**
  * Local Operator API - the monitor surface's desktop client.
  *
- * One operation against the machine-wide monitor routes, through the
- * authenticated desktop contract rather than a bare `fetch`: cancelling a
- * standing watch is a write the desktop plane gates behind its bearer and
- * same-origin check, exactly as the wakes family beside it is. It is the same
- * question the run pane's own section asks with a press, so it reads as the
- * wakes client's sibling.
+ * The machine-wide monitor routes, through the authenticated desktop contract
+ * rather than a bare `fetch`: cancelling a standing watch is a write the desktop
+ * plane gates behind its bearer and same-origin check, exactly as the wakes
+ * family beside it is, and the listing sits behind the same bearer.
  *
- * The READ is deliberately not here. The pane's section and the composer's chip
- * render the SESSION's own canonical field (`frontend.monitors`, through
- * `run-detail-model.ts`'s `deriveMonitors`), and the design's §12 row states the
- * desktop contract as "the `monitors` field + command routes" - so a listing op
- * would have no reader, and the arm op arrives with the form that uses it.
+ * TWO READERS, TWO SOURCES, on purpose. The run pane's section and the
+ * composer's chip render the SESSION's own canonical field (`frontend.monitors`,
+ * through `run-detail-model.ts`'s `deriveMonitors`): they are about one open
+ * conversation and that field is pushed. The Schedules page asks a different
+ * question - every standing watch on this machine, including sessions nobody has
+ * open - which only the monitor index answers, so it reads `list()` (#1898; the
+ * TUI band and the phone's Schedules view read the same route). Both feed the
+ * same deriver, so the rows cannot disagree. The arm op arrives with the form
+ * that uses it.
  */
-import type { DesktopMonitorWriteReceipt } from "../../../../../shared/desktop-contract";
+import type {
+	DesktopMonitorEntry,
+	DesktopMonitorListingRow,
+	DesktopMonitorWriteReceipt,
+	DesktopMonitorsListResponse,
+} from "../../../../../shared/desktop-contract";
 import { desktopResult } from "./desktop-api";
 
 /**
@@ -22,9 +29,37 @@ import { desktopResult } from "./desktop-api";
  * family: the receipt type is the contract's (it describes the wire), and a
  * second definition here is how the pane and the wire would come to disagree.
  */
-export type { DesktopMonitorWriteReceipt };
+export type {
+	DesktopMonitorEntry,
+	DesktopMonitorListingRow,
+	DesktopMonitorWriteReceipt,
+	DesktopMonitorsListResponse,
+};
+
+/**
+ * The listing's one cache entry, here in the shared layer rather than beside
+ * the Schedules page's hook: the run pane's cancel (`use-monitor-controls.ts`)
+ * invalidates it too, so a watch cancelled from a conversation leaves the page,
+ * and a key both features import cannot live in either without one feature
+ * importing the other.
+ */
+export const MONITORS_LIST_KEY = ["desktop", "monitors", "list"] as const;
 
 export const MonitorsApi = {
+	/**
+	 * Every conversation on this machine that has monitors, with its watches.
+	 *
+	 * Dormant rows are included (the route's default, stated rather than relied
+	 * on): a stopped conversation's watches are PARKED, not gone, and the page
+	 * says so rather than dropping the row - the wake client's own rule.
+	 */
+	async list(): Promise<DesktopMonitorsListResponse> {
+		return desktopResult<DesktopMonitorsListResponse>({
+			op: "monitors.list",
+			includeDormant: true,
+		});
+	},
+
 	/**
 	 * Cancel one monitor, leaving the conversation in place.
 	 *

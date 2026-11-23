@@ -842,6 +842,24 @@ export type PendingAskQuestion = {
 	recommended_all?: number[] | null;
 	secret?: boolean;
 	persist?: boolean;
+	/**
+	 * A one-line shell command the agent suggests the user run (core's
+	 * `AskQuestion.command`): stripped, 1..500 characters, no Unicode Cc/Cf/Zl/Zp.
+	 * ADDITIVE and OPTIONAL: absent on older backends and on bridge rows (core
+	 * drops it there, so another team's agent cannot hand the operator a command).
+	 * NEVER read directly: `askCommandOf` (`features/chat/ask-command.ts`)
+	 * re-applies the core rule and answers `null` for a forged or malformed value,
+	 * so no action is ever drawn for a row the core would have refused.
+	 */
+	command?: string;
+	/**
+	 * WHERE `command` is meant to run: `"agent"` (the device the agent works on,
+	 * core's default, stamped whenever `command` is present) or `"user"` (the
+	 * user's own computer - the one showing this UI). Any other value, or its
+	 * absence beside a command, is read as UNKNOWN and fails closed: the card
+	 * offers Insert only, never Run (`askCommandRunnable`).
+	 */
+	command_target?: "agent" | "user";
 	[key: string]: unknown;
 };
 /**
@@ -1921,6 +1939,8 @@ export type DesktopHistoryEntry = {
 	ts_source?: "entry" | "unstated" | "served";
 };
 export type DesktopHistoryPage = {
+	/** Optional inline-ui-v1 overlay; validate against each folded row's prose. */
+	inline_ui?: unknown;
 	/** Opaque equality domain; never publication seq or a sortable UUID. */
 	journal_generation?: string;
 	journal_order_state?: "ready" | "building" | "unavailable" | "unsupported";
@@ -2245,6 +2265,21 @@ export type DesktopSessionFrame =
 	| Receipt<"aside_delta", { aside_id: string; delta: string }>
 	| { session_id: CanonicalSessionId; type: "heartbeat" | "gap" };
 
+/** The `team_bridge_authorize` frame's payload, as the daemon publishes it
+ * (local-operator #4099). The renderer parses it at the feed boundary
+ * (`parseAuthorizeFrame`) rather than trusting this shape. */
+export type TeamBridgeAuthorizeFramePayload = {
+	authorize_id: string;
+	client_ref: string | null;
+	state: "prompting" | "signed" | "dismissed" | "refused";
+	items: Array<{
+		message_id: string;
+		word: "approve" | "deny";
+		sender: string | null;
+		excerpt: string | null;
+	}>;
+};
+
 /**
  * The machine-wide feed's frame family (`GET /v1/desktop/events`).
  *
@@ -2301,6 +2336,19 @@ export type DesktopFeedFrame =
 				 * Absent on older cores: unknown status is never an unread mark. */
 				attention_status?: Record<string, { code: string; revision: number }>;
 				approvals_pending?: boolean | null;
+				/**
+				 * The one live phone-pairing approval id from the same read
+				 * (`features.phone_pairing`), so a window that connects mid-request can
+				 * raise the pairing card without waiting for a change frame. Null when
+				 * none is live or the read failed; absent on older cores.
+				 */
+				approvals_pair_request?: string | null;
+				/**
+				 * The oldest open MESH pairing card's id (`inviter:<id>` / `joiner:<id>`,
+				 * `features.mesh_pairing`), so the rail badge lights for a pairing on the
+				 * first frame. Null when none is open; absent on older cores.
+				 */
+				approvals_pairing_id?: string | null;
 				/** Null means the inbox store was unreadable, not verified empty. */
 				notifications?: {
 					revision: number;
@@ -2427,7 +2475,22 @@ export type DesktopFeedFrame =
 			epoch: string;
 			seq: number;
 			type: "approvals";
-			payload: { pending: boolean };
+			/**
+			 * `pair_request`: the live `pair_phone` approval id, or null
+			 * (`features.phone_pairing`). Published when EITHER level changes, so a
+			 * pairing withdrawn or decided elsewhere arrives as a frame. Absent on
+			 * older cores, which never file a pairing card.
+			 */
+			payload: {
+				pending: boolean;
+				pair_request?: string | null;
+				/**
+				 * The oldest open mesh pairing card's id, or null
+				 * (`features.mesh_pairing`); core ORs open cards into `pending` too.
+				 * Absent on older cores.
+				 */
+				pairing_id?: string | null;
+			};
 	  }
 	/**
 	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was
@@ -2468,6 +2531,21 @@ export type DesktopFeedFrame =
 			 */
 			payload: { changed_keys: string[]; language: string };
 	  }
+	/**
+	 * The machine-wide voice slot moved (`docs/design/session-voice.md`, V3): a LEVEL
+	 * like `catalogue`, published on every slot change, carrying the whole new value
+	 * rather than a revision because the value is tiny and every window needs it to
+	 * draw the toggle and the sidebar marker. No `session_id`: the slot is not one
+	 * conversation's fact, it is which conversation holds it.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "voice";
+			payload: {
+				active: { session_id: string; enabled_at: number } | null;
+			};
+	  }
 	| {
 			epoch: string;
 			seq: number;
@@ -2485,6 +2563,20 @@ export type DesktopFeedFrame =
 			payload: { agent_id: string; sha256: string | null };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	/**
+	 * A Team Bridge batch Touch ID prompt moved (local-operator #4099, security
+	 * S-6). Machine-wide and live-only: the OS sheet cannot say what it is for and
+	 * any local bearer holder can ask the daemon to raise it, so the daemon
+	 * publishes what each prompt would sign - whoever started it - and the
+	 * desktop shows it. `sender`/`excerpt` are resolved by the daemon from the
+	 * local ask card, `null` for an item with no local ask; never a body.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "team_bridge_authorize";
+			payload: TeamBridgeAuthorizeFramePayload;
+	  }
 	/**
 	 * ONE SESSION's settings-intent slot moved (`features.settings_intents`).
 	 *

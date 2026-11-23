@@ -40,6 +40,7 @@ export type ActionId =
 	| "panel.ask"
 	| "panel.browser"
 	| "panel.code"
+	| "panel.projects"
 	| "composer.send_steer"
 	| "composer.send_queue"
 	| "composer.send_both";
@@ -170,6 +171,27 @@ export const KEYMAP_ACTIONS: readonly KeymapAction[] = [
 		id: "panel.code",
 		get label() {
 			return t("ui.settings.shortcuts.action.open_code_review");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.panels");
+		},
+		defaultChord: null,
+		scope: "app",
+	},
+	/*
+	 * THE SEVENTH DOOR, appended (round-1 U2 of the canvas projects view): the
+	 * linked-projects rail item opens the canvas on its Projects view, and every
+	 * sibling door has an action here, so this one does too. UNBOUND, on the
+	 * rule above: four of the six siblings ship unbound, and the mnemonic
+	 * chords are taken - `primary+p` and `primary+shift+p` are the palette's
+	 * (RESERVED_CHORDS below) - so any other default would be an invented one,
+	 * a chord taken away from some other tool. Appended LAST among the panel doors because the order is the
+	 * sanitizer's tie-break and the settings list's order; no door above it moves.
+	 */
+	{
+		id: "panel.projects",
+		get label() {
+			return t("ui.settings.shortcuts.action.open_linked_projects");
 		},
 		get category() {
 			return t("ui.settings.shortcuts.category.panels");

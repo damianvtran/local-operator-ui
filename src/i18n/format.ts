@@ -13,7 +13,7 @@
  * backend's resolved language once it answers, the device before that) and
  * caches formatter instances per (locale, options).
  *
- * SCOPE, SAID OUT LOUD. `formatRelativeTime`, `formatDuration` and
+ * SCOPE, SAID OUT LOUD. `formatRelativeTime` and
  * `formatBytes` have no call sites yet (file sizes go through
  * `formatByteQuantity`, see below), and that is the plan rather than an
  * oversight: the remaining hand-rolled format sites in the product have
@@ -26,8 +26,8 @@
  *
  * `formatDuration` and `formatBytes` mirror the core's implementations
  * (`local_operator/i18n/format.py::format_duration` / `format_bytes`)
- * deliberately: same zero-omission and decimal rules (duration unit letters
- * stay ASCII; byte symbols follow the locale, see the FILE-SIZE UNITS note),
+ * deliberately: same zero-omission and decimal rules (duration units and
+ * byte symbols follow the locale, see the DURATIONS and FILE-SIZE UNITS notes),
  * localised digits via
  * `formatNumber`. When a locale wave reviews widths, one algorithm review
  * covers both runtimes.
@@ -38,7 +38,9 @@
  * through the layer).
  */
 
+import type { MessageKey } from "./keys.gen";
 import { currentLocale } from "./locale";
+import { translate } from "./messages";
 
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 const numberFormats = new Map<string, Intl.NumberFormat>();
@@ -162,36 +164,301 @@ export function formatRelativeTime(
 }
 
 /**
- * A compact duration: `3725` -> `"1h 2m 5s"` (digits localised).
+ * A money amount: `5.09` -> `"$5.09"` (fr `"5,09 $US"`, hi `"US$5.09"`).
+ *
+ * WHY CURRENCY AND NOT A NUMBER WITH A SIGN GLUED ON. The amounts this app prints
+ * are the remote-compute HOLD and CHARGE the server reports, both in USD - and a
+ * symbol concatenated in JSX puts the symbol in the wrong place, keeps a `.` decimal
+ * separator in every locale, and formats digits in the wrong script. `Intl` under
+ * the resolved locale is the only one of those that is true everywhere.
+ *
+ * WHY THE AMOUNT IS PASSED IN RATHER THAN DERIVED: the rates are the deployment's
+ * own configuration and the API publishes none (capacity carries no pricing today),
+ * so nothing in this layer may compute what a run costs - it prints what the server
+ * stated. A caller with no stated amount prints nothing, never `$0.00`.
+ */
+export function formatUsd(amount: number, locale?: string): string {
+	return numberFormatFor(locale ?? currentLocale(), {
+		style: "currency",
+		currency: "USD",
+	}).format(amount);
+}
+
+/**
+ * DURATIONS: ONE LAYER, FOUR SHAPES (i18n slice C3).
+ *
+ * Before this slice the product spelled durations in five places — this
+ * module's `formatDuration`, the tool row's running and settled clocks, the
+ * session strip's active time, the run-detail child clock and the wake
+ * cadence — each gluing ASCII `s / m / h / d` to a number, so a French or
+ * Urdu interface read `1h5m`. They now all build their strings here.
+ *
+ * WHERE THE UNIT WORDS COME FROM. `Intl.NumberFormat` with `style: "unit"` and
+ * `unitDisplay: "narrow"` (CLDR's narrow unit patterns), not catalogue keys:
+ * CLDR already decides per language whether the unit is a letter, a word or a
+ * symbol, and where the space goes (fr `5min`, ru `5 мин`, zh-CN `5分钟`,
+ * ur `5 منٹ`). Measured on Node 24 / ICU 78.3, ENGLISH narrow output is
+ * exactly the product's existing ASCII spelling — `5ms`, `5s`, `5m`, `5h`,
+ * `5d`, `5w`, no space — so every English string the tests pin stays
+ * byte-identical with no English special case for single units.
+ *
+ * COMPOUND VALUES (`1h 5m`, `1m5s`). Non-English locales go through
+ * `Intl.DurationFormat` (narrow), which owns the locale's joiner and unit
+ * agreement (ur `1 گھنٹہ اور 5 منٹ`, zh-CN `1小时5分钟`); it ships in the
+ * renderer's Chromium (Electron 45) and the Node test runtime, and a runtime
+ * without it falls back to joining the narrow pieces with the locale's
+ * `unit`-type list. ENGLISH joins its own pieces instead: the compact shape
+ * (`1m5s`, the TUI-parity clocks bounded at six cells) has no space at all,
+ * which no CLDR pattern spells, and the spaced shape (`1h 2m 5s`) is what
+ * `DurationFormat`'s English narrow output is anyway, so joining keeps both
+ * byte-identical without depending on that coincidence.
+ *
+ * The two sentinel shapes that are not a number and a unit — `<0.1s` (too fast
+ * to measure) and `100d+` (the width cap) — are keyed `ui.common.time.duration.*`
+ * messages whose placeholder is the Intl-formatted quantity, so the translator
+ * places the comparison mark and CLDR still spells the unit.
+ *
+ * Every function resolves the locale at CALL time (never at module load), so a
+ * live language switch re-spells the next render.
+ */
+export type DurationUnit =
+	| "week"
+	| "day"
+	| "hour"
+	| "minute"
+	| "second"
+	| "millisecond";
+
+/** One term of a compound duration: an amount (integral unless alone) and its unit. */
+export type DurationPart = readonly [amount: number, unit: DurationUnit];
+
+/**
+ * `Intl.DurationFormat`'s shape, declared locally: the renderer's TS lib is
+ * ES2020 and the constructor is ES2025, so it is feature-detected at runtime
+ * rather than typed through a project-wide lib bump (same precedent as the
+ * es2021.intl reference at the top of this file).
+ */
+type DurationFormatLike = { format(duration: Record<string, number>): string };
+type DurationFormatCtor = new (
+	locale: string,
+	options: { style: "narrow" },
+) => DurationFormatLike;
+
+const DURATION_FIELD: Readonly<Record<DurationUnit, string>> = {
+	week: "weeks",
+	day: "days",
+	hour: "hours",
+	minute: "minutes",
+	second: "seconds",
+	millisecond: "milliseconds",
+};
+
+const durationFormats = new Map<string, DurationFormatLike | null>();
+
+function durationFormatFor(locale: string): DurationFormatLike | null {
+	let format = durationFormats.get(locale);
+	if (format === undefined) {
+		const Ctor = (Intl as unknown as { DurationFormat?: DurationFormatCtor })
+			.DurationFormat;
+		format = null;
+		if (Ctor !== undefined) {
+			try {
+				format = new Ctor(locale, { style: "narrow" });
+			} catch {
+				format = null;
+			}
+		}
+		durationFormats.set(locale, format);
+	}
+	return format;
+}
+
+/**
+ * One amount in one unit, CLDR-narrow: `5s`, `1.5s`, `5min` (fr), `5 с` (ru).
+ *
+ * `fractionDigits` is FIXED (minimum = maximum), so `2.0s` stays `2.0s`. The
+ * caller rounds first if it needs a particular rounding: Intl rounds the
+ * decimal value half-expand, which differs from `toFixed`'s binary rounding
+ * (9.95 is `10.0` in Intl and `9.9` via `toFixed`, measured).
+ */
+export function formatDurationUnit(
+	amount: number,
+	unit: DurationUnit,
+	fractionDigits = 0,
+	locale?: string,
+): string {
+	return formatNumber(
+		amount,
+		{
+			style: "unit",
+			unit,
+			unitDisplay: "narrow",
+			minimumFractionDigits: fractionDigits,
+			maximumFractionDigits: fractionDigits,
+		},
+		locale ?? currentLocale(),
+	);
+}
+
+/**
+ * A compound duration from its terms, largest first. `compact` is the
+ * no-space English shape (`1m5s`) the bounded clocks use; it changes nothing
+ * outside English, where the locale's own duration pattern decides.
+ */
+export function formatDurationParts(
+	parts: readonly DurationPart[],
+	options: { compact?: boolean } = {},
+	locale?: string,
+): string {
+	const tag = locale ?? currentLocale();
+	if (parts.length === 0) return formatDurationUnit(0, "second", 0, tag);
+	if (parts.length === 1) {
+		const [amount, unit] = parts[0];
+		return formatDurationUnit(amount, unit, 0, tag);
+	}
+	const pieces = parts.map(([amount, unit]) =>
+		formatDurationUnit(amount, unit, 0, tag),
+	);
+	if (isEnglish(tag)) return pieces.join(options.compact ? "" : " ");
+	const format = durationFormatFor(tag);
+	if (format !== null) {
+		const value: Record<string, number> = {};
+		for (const [amount, unit] of parts) value[DURATION_FIELD[unit]] = amount;
+		try {
+			return format.format(value);
+		} catch {
+			// A value DurationFormat refuses (a non-integer term) falls through.
+		}
+	}
+	let list = unitLists.get(tag);
+	if (list === undefined) {
+		list = new Intl.ListFormat(tag, { type: "unit", style: "narrow" });
+		unitLists.set(tag, list);
+	}
+	return list.format(pieces);
+}
+
+const unitLists = new Map<string, Intl.ListFormat>();
+
+/**
+ * Every non-zero term, spaced: `3725` -> `"1h 2m 5s"` (en).
  *
  * Mirrors `local_operator/i18n/format.py::format_duration`: zero units are
- * omitted, zero and negative durations render `"0s"`, the unit letters stay
- * ASCII, and the digits format like every other number.
+ * omitted, and zero and negative durations render the locale's `0s`.
  */
 export function formatDuration(seconds: number, locale?: string): string {
 	const tag = locale ?? currentLocale();
 	const total = Math.trunc(seconds);
 	if (!Number.isFinite(total) || total <= 0) {
-		return `${formatNumber(0, { maximumFractionDigits: 0 }, tag)}s`;
+		return formatDurationUnit(0, "second", 0, tag);
 	}
-	const units: ReadonlyArray<readonly [number, string]> = [
-		[86_400, "d"],
-		[3_600, "h"],
-		[60, "m"],
-		[1, "s"],
+	const units: ReadonlyArray<readonly [number, DurationUnit]> = [
+		[86_400, "day"],
+		[3_600, "hour"],
+		[60, "minute"],
+		[1, "second"],
 	];
-	const parts: string[] = [];
+	const parts: DurationPart[] = [];
 	let remaining = total;
-	for (const [size, suffix] of units) {
+	for (const [size, unit] of units) {
 		const amount = Math.floor(remaining / size);
 		remaining -= amount * size;
-		if (amount > 0) {
-			parts.push(
-				`${formatNumber(amount, { maximumFractionDigits: 0 }, tag)}${suffix}`,
-			);
-		}
+		if (amount > 0) parts.push([amount, unit]);
 	}
-	return parts.join(" ");
+	return formatDurationParts(parts, {}, tag);
+}
+
+/** The width cap of `formatCompactDuration`, in days. */
+const COMPACT_DAY_CAP = 99;
+
+/**
+ * Integer seconds as AT MOST two terms, compact: `9s`, `41m1s`, `1h2m`,
+ * `4d5h`, and `100d+` from a hundred days (en).
+ *
+ * The TUI's `tool_card.py::format_duration`, ported once for the four
+ * desktop clocks that used to carry their own copies (tool row, session
+ * strip, run-detail child clock). Bounded at six cells in English over the
+ * whole domain — the property those sites' docblocks rely on — by dropping
+ * the smaller term once it stops carrying information and by capping days.
+ * Other locales are as wide as CLDR spells them; truncation, not this
+ * function, was never the answer (a clipped duration is unreadable).
+ * Negative, non-finite and sub-second inputs render `0s`.
+ */
+export function formatCompactDuration(
+	seconds: number,
+	locale?: string,
+): string {
+	const tag = locale ?? currentLocale();
+	const total = Math.floor(
+		Number.isFinite(seconds) && seconds > 0 ? seconds : 0,
+	);
+	const pair = (
+		big: number,
+		bigUnit: DurationUnit,
+		small: number,
+		smallUnit: DurationUnit,
+	): string =>
+		formatDurationParts(
+			small === 0
+				? [[big, bigUnit]]
+				: [
+						[big, bigUnit],
+						[small, smallUnit],
+					],
+			{ compact: true },
+			tag,
+		);
+	if (total < 60) return formatDurationUnit(total, "second", 0, tag);
+	if (total < 3600) {
+		return pair(Math.floor(total / 60), "minute", total % 60, "second");
+	}
+	if (total < 86_400) {
+		return pair(
+			Math.floor(total / 3600),
+			"hour",
+			Math.floor((total % 3600) / 60),
+			"minute",
+		);
+	}
+	const days = Math.floor(total / 86_400);
+	if (days > COMPACT_DAY_CAP) {
+		return translate(
+			"ui.common.time.duration.over_cap" satisfies MessageKey,
+			{ duration: formatDurationUnit(COMPACT_DAY_CAP + 1, "day", 0, tag) },
+			tag,
+		);
+	}
+	return pair(days, "day", Math.floor((total % 86_400) / 3600), "hour");
+}
+
+/**
+ * A SETTLED call's duration: `<0.1s`, `1.5s` (one decimal under ten seconds),
+ * `42s`, then `formatCompactDuration` from a minute.
+ *
+ * The tool row's `_outcome_runs` (tool_card.py:2376-2396). The tenth is rounded
+ * with `toFixed` BEFORE Intl sees it, so the digit is the one the TUI's
+ * `f"{x:.1f}"` and the previous `toFixed` port printed (see
+ * `formatDurationUnit` on why Intl's own rounding differs at 9.95).
+ */
+export function formatSettledDuration(
+	seconds: number,
+	locale?: string,
+): string {
+	const tag = locale ?? currentLocale();
+	const elapsed = Math.max(0, seconds);
+	if (elapsed < 0.05) {
+		return translate(
+			"ui.common.time.duration.under_minimum" satisfies MessageKey,
+			{ duration: formatDurationUnit(0.1, "second", 1, tag) },
+			tag,
+		);
+	}
+	if (elapsed < 10) {
+		return formatDurationUnit(Number(elapsed.toFixed(1)), "second", 1, tag);
+	}
+	if (elapsed < 60)
+		return formatDurationUnit(Math.round(elapsed), "second", 0, tag);
+	return formatCompactDuration(elapsed, tag);
 }
 
 /**

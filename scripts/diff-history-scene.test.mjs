@@ -1,0 +1,1232 @@
+/**
+ * The `diff-history` driver scene, the parts runnable without Electron.
+ *
+ *     node --test scripts/diff-history-scene.test.mjs
+ *
+ * The scene itself boots the built app against a live daemon, so CI cannot run
+ * it. This pins what can be checked without one: its argument refusal, that it
+ * is opt-in by name only, that it drives the app through the existing verbs
+ * and nothing else, and that a fixture with no pageable diff FAILS instead of
+ * passing vacuously. It cannot see a frame or a press; that is the scene's job.
+ */
+
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import {
+	CHILD_SCOPE,
+	COLLAPSED_FOLD,
+	HANDSHAKE_MS,
+	PARENT_SCOPE,
+	WORK_READ,
+	awaitHandshake,
+	diffHistorySceneRefusal,
+	headerOpened,
+	pagerReady,
+	parseDiffExpect,
+	parseRange,
+	rangeMoved,
+	rowRootOf,
+	sceneDiffHistory,
+	workRead,
+} from "./diff-history-scene.mjs";
+
+const ok = { backend: "http://127.0.0.1:1", backendRecords: "/r.json" };
+
+test("diff-history refuses a run that could not prove anything", () => {
+	assert.match(
+		diffHistorySceneRefusal({ ...ok, backend: null, session: "fc00000000a1" }),
+		/needs --backend/,
+	);
+	assert.match(
+		diffHistorySceneRefusal({
+			...ok,
+			backendRecords: null,
+			session: "fc00000000a1",
+		}),
+		/needs --backend-records/,
+	);
+	for (const session of [
+		null,
+		"sess-parent",
+		"FC00000000A1",
+		"fc00000000a",
+		"../x",
+	])
+		assert.match(
+			diffHistorySceneRefusal({ ...ok, session }),
+			/12 lowercase hex/,
+		);
+	assert.equal(
+		diffHistorySceneRefusal({ ...ok, session: "fc00000000a1" }),
+		null,
+	);
+});
+
+test("diff-history is registered, guarded, and opt-in by name only", () => {
+	const driver = readFileSync("scripts/renderer-driver.mjs", "utf8");
+	const cliScenes = /--scene <([^>]+)>/.exec(driver)?.[1].split("|") ?? [];
+	assert.ok(cliScenes.includes("diff-history"));
+	assert.match(
+		driver,
+		/SCENE === "diff-history"\)\n\t+await sceneDiffHistory\(/,
+	);
+	assert.match(
+		driver,
+		/if \(SCENE === "diff-history"\) \{\n\t+const refusal = diffHistorySceneRefusal\(/,
+	);
+	assert.match(driver, /const SCENE = argValue\("--scene", "states"\);/);
+});
+
+test("the connection probe picks lsof's absolute path per platform", () => {
+	const driver = readFileSync("scripts/renderer-driver.mjs", "utf8");
+	// Linux installs lsof at /usr/bin; macOS keeps /usr/sbin. Both absolute,
+	// and the args that scope the probe to one pid are unchanged.
+	assert.match(
+		driver,
+		/spawn\(\n\t+process\.platform === "linux" \? "\/usr\/bin\/lsof" : "\/usr\/sbin\/lsof",\n\t+\["-a", "-p", String\(pid\), "-i", "-n", "-P"\],/,
+	);
+	assert.doesNotMatch(driver, /spawn\(\n\t+"\/usr\/sbin\/lsof",/);
+});
+
+test("the range label parses, grouped or not", () => {
+	assert.deepEqual(parseRange("Rows 201–263 of 263"), {
+		first: 201,
+		last: 263,
+		total: 263,
+	});
+	assert.deepEqual(parseRange("Rows 1–200 of 1,234"), {
+		first: 1,
+		last: 200,
+		total: 1234,
+	});
+	assert.equal(parseRange(""), null);
+});
+
+test("a fixture with no View full diff control FAILS, records its frame, through existing verbs only", async () => {
+	const verbs = [];
+	const checks = [];
+	const frames = [];
+	const notes = [];
+	const evaluated = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				return { open: false, viewFull: 0 };
+			},
+		},
+		verb: async (_cdp, name, payload) => {
+			verbs.push([name, payload]);
+			return name === "queries"
+				? [
+						{ key: '["ok"]', status: "success", hasData: true },
+						{ key: '["diff"]', status: "error", hasData: false },
+					]
+				: { ok: true };
+		},
+		capture: async (_cdp, name) => frames.push(name),
+		check: (label, passed) => checks.push([label, passed]),
+		note: (label, detail) => notes.push([label, detail]),
+		waitForCondition: async () => ({ ok: false, last: null }),
+		factsOf: async () => ({ windowMode: "headless" }),
+		session: "fc00000000a1",
+		sleep: async () => {},
+	});
+	assert.deepEqual(
+		verbs.map(([name]) => name),
+		["hello", "navigate", "queries"],
+	);
+	assert.deepEqual(verbs[1], ["navigate", "/chat/fc00000000a1"]);
+	assert.ok(
+		checks.length > 0 && checks.every(([, passed]) => passed === false),
+	);
+	// The failure leaves evidence: the collapsed starting frame and the failure
+	// frame, and no pager step ran.
+	assert.deepEqual(frames, [
+		"diff-history-open-initial",
+		"diff-history-no-offer",
+	]);
+	const queryNote = notes.find(([l]) => l === "diff-history no-offer queries");
+	assert.deepEqual(JSON.parse(queryNote[1]), {
+		count: 2,
+		notSuccess: [{ key: '["diff"]', status: "error", hasData: false }],
+	});
+	assert.ok(notes.some(([l]) => l === "diff-history no-offer dom"));
+	// Read-only: no input values, markup dumps or DOM writes in what it evaluates.
+	for (const expr of evaluated)
+		assert.doesNotMatch(
+			expr,
+			/\.value\b|innerHTML|outerHTML|setAttribute|\.click\(|dispatchEvent|\.remove\(|localStorage|cookie/,
+		);
+});
+
+test("a collapsed outer turn summary, then its inner work fold and Edited row, are opened by press before View full diff is awaited", async () => {
+	// A tiny model of the native transcript: the collapsed "3 actions" bar is the
+	// OUTER TurnSummary; opening it reveals an inner TraceFold that is still
+	// closed, so the global collapsed-fold count does NOT drop after the outer
+	// press. Inside the fold: a Wrote row and an Edited row holding the control.
+	const turn = {
+		kind: "turn",
+		root: '[data-lo-canonical-transcript] [data-turn-summary][data-record-id="t1"]',
+		header: "button[aria-expanded]",
+		selector:
+			'[data-lo-canonical-transcript] [data-turn-summary][data-record-id="t1"] button[aria-expanded="false"]',
+	};
+	const fold = {
+		kind: "fold",
+		root: '[data-lo-canonical-transcript] [data-fold-ids="r1 r\\:2"]',
+		header: "button[aria-expanded]:has([data-fold-summary])",
+		selector:
+			'[data-lo-canonical-transcript] [data-fold-ids="r1 r\\:2"] button[aria-expanded="false"]:has([data-fold-summary])',
+	};
+	const edited =
+		'[data-lo-canonical-transcript] [data-record-id="r\\:2"] button[aria-expanded="false"]:has([data-trace-verb])';
+	const wrote =
+		'[data-lo-canonical-transcript] [data-record-id="r1"] button[aria-expanded="false"]:has([data-trace-verb])';
+	// The View full wait is scoped to the opened Edited row (row-targeted walk).
+	const viewFullWait = `Boolean(document.querySelector(${JSON.stringify(`${rowRootOf(edited)} [data-diff-view-full]`)}))`;
+	const ui = { turnOpen: false, foldOpen: false, editedOpen: false };
+	const events = [];
+	const frames = [];
+	const checks = [];
+	const collapsedSeen = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				if (expr === WORK_READ) {
+					// Closed outer: one collapsed fold elsewhere stays; open outer: the
+					// revealed inner fold is closed too, so the count is unchanged.
+					const collapsedFolds = ui.foldOpen ? 0 : 1;
+					collapsedSeen.push(collapsedFolds);
+					const disclosures = [];
+					if (!ui.turnOpen) disclosures.push(turn);
+					else if (!ui.foldOpen) disclosures.push(fold);
+					return {
+						transcript: true,
+						viewFull: ui.editedOpen ? 1 : 0,
+						folds: 1,
+						collapsedFolds,
+						disclosures,
+						ambiguous: 0,
+						tools:
+							ui.foldOpen && !ui.editedOpen
+								? [
+										{ verb: "Edited", selector: edited },
+										{ verb: "Wrote", selector: wrote },
+									]
+								: [],
+					};
+				}
+				// The D6 layout wait: a settled, non-empty box.
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				return { open: false, viewFull: ui.editedOpen ? 1 : 0 };
+			},
+		},
+		verb: async (_cdp, name, payload) => {
+			events.push(["verb", name, payload?.selector ?? payload]);
+			if (name === "press" && payload.selector === turn.selector)
+				ui.turnOpen = true;
+			if (name === "press" && payload.selector === fold.selector)
+				ui.foldOpen = ui.turnOpen; // a hidden inner fold takes no press
+			if (name === "press" && payload.selector === edited) ui.editedOpen = true;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async (_cdp, name) => frames.push(name),
+		check: (label, passed) => checks.push([label, passed]),
+		note: () => {},
+		// Settles answer from the model; the pager never opens, so the run ends
+		// early on "full diff opens" FAIL, after the preview frame.
+		waitForCondition: async (_cdp, expr) => {
+			events.push(["wait", expr]);
+			if (
+				expr ===
+				'Boolean(document.querySelector("[data-lo-canonical-transcript]"))'
+			)
+				return { ok: true };
+			if (expr === headerOpened(turn)) return { ok: ui.turnOpen };
+			if (expr === headerOpened(fold)) return { ok: ui.foldOpen };
+			if (expr.includes('aria-expanded=\\"true\\"'))
+				return { ok: ui.editedOpen };
+			if (expr === viewFullWait) return { ok: ui.editedOpen };
+			return { ok: false, last: null };
+		},
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		sleep: async () => {},
+	});
+	const presses = events
+		.filter(([k, n]) => k === "verb" && n === "press")
+		.map(([, , s]) => s);
+	// Outer bar first, then the fold it revealed, then the Edited row (red and
+	// green) rather than Wrote; each exactly once, since the control appeared.
+	assert.deepEqual(presses.slice(0, 3), [turn.selector, fold.selector, edited]);
+	assert.ok(!presses.includes(wrote));
+	assert.ok(!presses.includes(COLLAPSED_FOLD));
+	// The outer press worked although the global count did not move...
+	assert.deepEqual(collapsedSeen.slice(0, 2), [1, 1]);
+	// ...because progress is each pressed header's OWN state, in press order.
+	const waits = events.filter(([k]) => k === "wait").map(([, e]) => e);
+	const turnWait = waits.indexOf(headerOpened(turn));
+	const foldWait = waits.indexOf(headerOpened(fold));
+	assert.ok(turnWait >= 0 && foldWait > turnWait);
+	assert.ok(!waits.some((e) => e.includes(".length <")));
+	assert.match(headerOpened(turn), /closest\(.*\) === r/);
+	assert.ok(headerOpened(turn).includes(JSON.stringify(turn.root)));
+	assert.ok(
+		checks.some(([l, p]) => l === "open: turn summary 1 opens" && p) &&
+			checks.some(([l, p]) => l === "open: work fold 2 opens" && p),
+	);
+	// Every press selector opens a CLOSED control inside the transcript.
+	for (const s of presses) {
+		if (s.endsWith("[data-diff-view-full]")) continue;
+		assert.match(
+			s,
+			/^\[data-lo-canonical-transcript\] .*aria-expanded="false"/,
+		);
+	}
+	const firstViewFullWait = events.findIndex(
+		([k, e]) => k === "wait" && e === viewFullWait,
+	);
+	const lastDisclosure = events.findIndex(
+		([k, n, s]) => k === "verb" && n === "press" && s === edited,
+	);
+	assert.ok(lastDisclosure >= 0 && lastDisclosure < firstViewFullWait);
+	assert.equal(frames[0], "diff-history-open-initial");
+	assert.ok(frames.includes("diff-history-preview"));
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "the seeded session offers a View full diff control" && p,
+		),
+	);
+});
+
+test("an already-open fold is never pressed, no rows means no presses, and an ambiguous header fails closed", async () => {
+	const presses = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) =>
+				expr === WORK_READ
+					? {
+							transcript: true,
+							viewFull: 0,
+							folds: 1,
+							collapsedFolds: 0,
+							tools: [],
+						}
+					: { open: false, viewFull: 0 },
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "press") presses.push(payload);
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: () => {},
+		note: () => {},
+		waitForCondition: async () => ({ ok: false, last: null }),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		sleep: async () => {},
+	});
+	assert.deepEqual(presses, []);
+	// A collapsed header that cannot be addressed uniquely is never guessed at:
+	// no press, and a recorded FAIL naming the read.
+	const checks = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) =>
+				expr === WORK_READ
+					? {
+							transcript: true,
+							viewFull: 0,
+							folds: 2,
+							collapsedFolds: 2,
+							disclosures: [],
+							ambiguous: 1,
+							tools: [],
+						}
+					: { open: false, viewFull: 0 },
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "press") presses.push(payload);
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: (label, passed) => checks.push([label, passed]),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok: expr.startsWith(
+				'Boolean(document.querySelector("[data-lo-canonical-transcript]"))',
+			),
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		sleep: async () => {},
+	});
+	assert.deepEqual(presses, []);
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "open: every collapsed work header is uniquely addressable" &&
+				p === false,
+		),
+	);
+});
+
+test("the work read is scoped, read-only and only addresses closed Edited/Wrote rows", () => {
+	assert.match(
+		COLLAPSED_FOLD,
+		/^\[data-lo-canonical-transcript\] \[data-fold-ids\] button\[aria-expanded="false"\]:has\(\[data-fold-summary\]\)$/,
+	);
+	assert.match(WORK_READ, /verb !== "Edited" && verb !== "Wrote"/);
+	// Outer TurnSummary headers are offered before TraceFolds, each only as its
+	// root's own header, uniquely addressed by the root's stable stamp.
+	assert.ok(
+		WORK_READ.indexOf('offer("turn"') >= 0 &&
+			WORK_READ.indexOf('offer("turn"') < WORK_READ.indexOf('offer("fold"'),
+	);
+	assert.match(WORK_READ, /x\.closest\(owner\) === el/);
+	assert.match(WORK_READ, /"data-record-id" : "data-run-ids"/);
+	assert.match(
+		WORK_READ,
+		/querySelectorAll\(rootSel\)\.length === 1 && document\.querySelector\(selector\) === b/,
+	);
+	assert.match(WORK_READ, /document\.querySelector\(selector\) === button/);
+	assert.doesNotMatch(
+		WORK_READ,
+		/\.value\b|innerHTML|outerHTML|setAttribute|\.click\(|dispatchEvent|\.remove\(|localStorage|cookie/,
+	);
+});
+
+test("child, live, handshake and ground-truth arguments are validated before boot", () => {
+	const base = { ...ok, session: "fc00000000d1" };
+	assert.match(
+		diffHistorySceneRefusal({ ...base, child: "29ACA806B290" }),
+		/--child needs the subagent's job id/,
+	);
+	assert.match(
+		diffHistorySceneRefusal({ ...base, liveSession: "484e3ac8ab64" }),
+		/--live-session needs --handshake/,
+	);
+	assert.match(
+		diffHistorySceneRefusal({
+			...base,
+			liveSession: "fc00000000d1",
+			handshake: true,
+		}),
+		/must differ from --session/,
+	);
+	assert.match(
+		diffHistorySceneRefusal({
+			...base,
+			liveSession: "484e3ac8",
+			handshake: true,
+		}),
+		/--live-session needs <12 lowercase hex>/,
+	);
+	assert.match(diffHistorySceneRefusal({ ...base, expect: "{" }), /not JSON/);
+	assert.match(
+		diffHistorySceneRefusal({ ...base, expect: '{"edits":{"total":505}}' }),
+		/unknown key/,
+	);
+	assert.match(
+		diffHistorySceneRefusal({ ...base, expect: '{"edit":{"total":0}}' }),
+		/positive integer/,
+	);
+	assert.equal(
+		diffHistorySceneRefusal({
+			...base,
+			child: "29aca806b290",
+			liveSession: "484e3ac8ab64",
+			handshake: true,
+			expect:
+				'{"edit":{"total":505,"last":" c_line_256 = 256"},"write":{"total":261},"oversized":true}',
+		}),
+		null,
+	);
+	assert.deepEqual(
+		parseDiffExpect(
+			'{"edit":{"total":505,"last":" c_line_256 = 256"},"oversized":true}',
+		).value,
+		{ edit: { total: 505, last: " c_line_256 = 256" }, oversized: true },
+	);
+	assert.deepEqual(parseDiffExpect(null), { value: null });
+	const driver = readFileSync("scripts/renderer-driver.mjs", "utf8");
+	assert.match(
+		driver,
+		/child: DIFF_CHILD,\n\t+liveSession: DIFF_LIVE_SESSION,\n\t+handshake: DIFF_HANDSHAKE,\n\t+expect: DIFF_EXPECT,/,
+	);
+	assert.match(driver, /outDir: FRAMES,/);
+});
+
+test("a handshake step writes ready first, is bounded, and refuses a stale go", async () => {
+	assert.equal(HANDSHAKE_MS, 120_000);
+	const run = async ({ goAfterPolls, stale = false, ms = 5_000 }) => {
+		const writes = [];
+		const checks = [];
+		let clock = 0;
+		let polls = 0;
+		const result = await awaitHandshake({
+			step: "error-stop",
+			outDir: "/out",
+			ms,
+			files: {
+				write: async (path) => writes.push(path),
+				exists: async () => {
+					if (stale) return true;
+					polls += 1;
+					return goAfterPolls !== null && polls > goAfterPolls + 1;
+				},
+			},
+			sleep: async (step) => {
+				clock += step;
+			},
+			now: () => clock,
+			check: (label, passed) => checks.push([label, passed]),
+			note: () => {},
+		});
+		return { result, writes, checks, clock, polls };
+	};
+	const answered = await run({ goAfterPolls: 2 });
+	assert.equal(answered.result, true);
+	assert.deepEqual(answered.writes, ["/out/ready-error-stop"]);
+	assert.ok(answered.checks.every(([, passed]) => passed));
+	const silent = await run({ goAfterPolls: null });
+	assert.equal(silent.result, false);
+	assert.ok(silent.clock >= 5_000 && silent.clock <= 5_500, `${silent.clock}`);
+	assert.deepEqual(silent.checks, [
+		["handshake error-stop: QA answered within 5000ms", false],
+	]);
+	const stale = await run({ goAfterPolls: 0, stale: true });
+	assert.equal(stale.result, false);
+	assert.deepEqual(stale.writes, [], "ready is never written over a stale go");
+	assert.match(stale.checks[0][0], /no stale go file/);
+});
+
+test("the pager oracle never accepts Loading: open means a set range on a settled pager", async () => {
+	const root = '[data-lo-canonical-transcript] [data-record-id="r1"]';
+	for (const expr of [
+		pagerReady(root),
+		rangeMoved(root, "Rows 1–198 of 505"),
+	]) {
+		assert.match(expr, /getAttribute\("aria-busy"\) !== "true"/);
+		assert.match(expr, /\[data-diff-history-range\]/);
+		assert.doesNotMatch(expr, /data-diff-history-status/);
+	}
+	assert.match(rangeMoved(root, "x"), /r !== "" && r !== "x"/);
+	// A pager stuck in "Loading full diff…" (range never set): no page is read or photographed.
+	const frames = [];
+	const checks = [];
+	const tool = `${root} button[aria-expanded="false"]:has([data-trace-verb])`;
+	let opened = false;
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				if (expr === WORK_READ)
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: opened ? [] : [{ verb: "Edited", selector: tool }],
+					};
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				return {
+					open: true,
+					range: "",
+					status: "Loading full diff…",
+					busy: "true",
+				};
+			},
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "press" && payload.selector === tool) opened = true;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async (_cdp, name) => frames.push(name),
+		check: (label, passed) => checks.push([label, passed]),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok: !expr.includes("aria-busy"),
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		sleep: async () => {},
+	});
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "parent-edit: full diff opens with its range set and not busy" &&
+				!p,
+		),
+	);
+	assert.ok(!frames.some((f) => f.includes("page-")), JSON.stringify(frames));
+});
+
+test("--child opens the Run panel, then the subagent's row, then reads only the child reader", async () => {
+	const presses = [];
+	const evaluated = [];
+	let paneDrawn = false;
+	const checks = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				if (expr.includes("const pane = document.querySelector("))
+					return {
+						drawn: paneDrawn,
+						pressed: paneDrawn,
+						reader: false,
+						requested: false,
+					};
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr === workRead(CHILD_SCOPE))
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: [],
+					};
+				return { open: false };
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "navigate") paneDrawn = false;
+			if (name === "press") {
+				presses.push(payload.selector);
+				if (payload.selector === "[data-run-panel-trigger]")
+					paneDrawn = !paneDrawn;
+			}
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: (label, passed) => checks.push([label, passed]),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok:
+				(expr.includes("const pane = document.querySelector(") && paneDrawn) ||
+				expr.includes("data-run-panel-row") ||
+				expr ===
+					`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))` ||
+				expr ===
+					`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000d1",
+		child: "29aca806b290",
+		sleep: async () => {},
+	});
+	// Twice: the walk, then the route round-trip re-opens the same reader
+	// (QA round 7, Q7-2: "found again" now runs in --child too).
+	assert.deepEqual(presses, [
+		"[data-run-panel-trigger]",
+		'[data-run-panel-row="29aca806b290"] button',
+		"[data-run-panel-trigger]",
+		'[data-run-panel-row="29aca806b290"] button',
+	]);
+	// Reachable and fail-closed: with no paged first call it is a FAIL, not absent.
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "child: re-navigated: the same call's row is found again" && !p,
+		),
+		"the child walk records the found-again check",
+	);
+	assert.ok(evaluated.includes(workRead(CHILD_SCOPE)));
+	assert.ok(
+		!evaluated.includes(WORK_READ),
+		"the parent transcript's rows are never read in child mode",
+	);
+	// With no Edited row in the reader the scene FAILS, it does not pass vacuously.
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "child: the reader's Edited row offers View full diff" && !p,
+		),
+	);
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "child-write: at least one archived Wrote row was paged" && !p,
+		),
+	);
+});
+
+// ---- PR #1829 agent review round 9, design round 3, QA round 6 -------------
+
+/*
+ * Namespace access, so a symbol missing on an older scene fails ITS test
+ * rather than the whole file's import.
+ */
+const S = await import("./diff-history-scene.mjs");
+
+/**
+ * A parent run against a model app: one Edited row, a single-page pager whose
+ * reading is `pager` (override per test), a press that always hit-tests.
+ * `renavigatedRow` false = the row is gone after the route round-trip.
+ */
+async function parentRun({
+	pager = {},
+	geometry = null,
+	renavigatedRow = true,
+	handshake = false,
+} = {}) {
+	const edited =
+		'[data-lo-canonical-transcript] [data-record-id="e1"] button[aria-expanded="false"]:has([data-trace-verb])';
+	let navigations = 0;
+	let opened = false;
+	const evaluated = [];
+	const checks = [];
+	const order = [];
+	const reading = {
+		open: true,
+		range: "Rows 1–10 of 10",
+		status: "",
+		busy: "false",
+		buttons: [{ text: "Back to preview", disabled: null }],
+		signs: { added: 2, removed: 1, addedBadSign: 0, removedBadSign: 0 },
+		zeroBoxes: 0,
+		nav: { x: 0, y: 100, w: 600, h: 30 },
+		head: { x: 0, y: 130, w: 600, h: 17 },
+		scroller: { top: 100, scrollTop: -900, min: -5000 },
+		viewport: { w: 1380, h: 900 },
+		lastRow: { index: "9", text: "+x" },
+		...pager,
+	};
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				order.push(["eval", expr]);
+				if (expr === WORK_READ) {
+					const gone = navigations >= 3 && !renavigatedRow;
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools:
+							gone || (opened && navigations < 3)
+								? []
+								: [{ verb: "Edited", selector: edited }],
+					};
+				}
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr.includes("lastIndex")) return geometry;
+				if (expr.startsWith("(async () => {")) return { found: true, ok: true };
+				return reading;
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			order.push(["verb", name, payload?.selector ?? payload]);
+			if (name === "navigate") navigations += 1;
+			if (name === "press" && payload.selector === edited) opened = true;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async (_cdp, name) => order.push(["capture", name]),
+		check: (label, passed, detail, summary) =>
+			checks.push({ label, passed, detail, summary }),
+		note: () => {},
+		waitForCondition: async () => ({ ok: true, last: null }),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		handshake,
+		outDir: "/nonexistent",
+		files: { exists: async () => false, write: async () => {} },
+		sleep: async () => {},
+		now: (() => {
+			let t = 0;
+			return () => {
+				t += 1_000;
+				return t;
+			};
+		})(),
+		handshakeMs: 1,
+	});
+	const verdict = (label) => checks.find((c) => c.label === label);
+	return { checks, verdict, evaluated, order, edited };
+}
+
+test("R9: a re-navigated row that cannot be re-found is a recorded FAIL, not a skip", async () => {
+	const missing = await parentRun({ renavigatedRow: false });
+	assert.equal(
+		missing.verdict("re-navigated: the same call's row is found again")?.passed,
+		false,
+	);
+	const found = await parentRun();
+	assert.equal(
+		found.verdict("re-navigated: the same call's row is found again")?.passed,
+		true,
+	);
+	assert.equal(
+		found.verdict("re-navigated: the same call pages the same first page")
+			?.passed,
+		true,
+	);
+});
+
+test("R9: --handshake with a one-page call FAILS its error steps instead of skipping them", async () => {
+	const run = await parentRun({ handshake: true });
+	assert.equal(
+		run.verdict("parent-edit: handshake error steps need a multi-page call")
+			?.passed,
+		false,
+	);
+	const plain = await parentRun();
+	assert.equal(
+		plain.verdict("parent-edit: handshake error steps need a multi-page call"),
+		undefined,
+	);
+});
+
+test("R9: --diff-expect write/oversized are refused without --child", () => {
+	const base = { ...ok, session: "fc00000000a1" };
+	for (const expect of [
+		'{"write":{"total":3}}',
+		'{"oversized":true}',
+		'{"oversized":false}',
+	]) {
+		assert.match(
+			diffHistorySceneRefusal({ ...base, expect }),
+			/need --child/,
+			expect,
+		);
+		assert.equal(
+			diffHistorySceneRefusal({ ...base, child: "29aca806b290", expect }),
+			null,
+		);
+	}
+	assert.equal(
+		diffHistorySceneRefusal({ ...base, expect: '{"edit":{"total":3}}' }),
+		null,
+	);
+});
+
+test("D1: the scene FAILS when a box between the bar and the scroller is a scroll container, and says whether it scrolled", async () => {
+	const at = (top) => ({ top, bottom: top + 18, left: 0, right: 600 });
+	const geometry = (scrollBoxes) => ({
+		vh: 900,
+		scroller: true,
+		scrollBoxes,
+		foot: null,
+		nav: at(100),
+		last: at(500),
+		lastIndex: "9",
+		point: { x: 300, y: 400 },
+	});
+	const label =
+		"parent-edit: nothing between the bar and the transcript scroller is a scroll container (D1)";
+	const bad = await parentRun({
+		geometry: geometry([{ tag: "div", x: "hidden", y: "hidden" }]),
+	});
+	assert.equal(bad.verdict(label)?.passed, false);
+	const good = await parentRun({ geometry: geometry([]) });
+	assert.equal(good.verdict(label)?.passed, true);
+	// No wheel was needed here, and the check says so.
+	const scrolled = good.verdict(
+		"parent-edit: the first page's last row scrolls into view inside the page",
+	);
+	assert.match(scrolled.summary, /"scrolled":false/);
+	// The geometry read walks computed overflow, not class names.
+	const read = good.evaluated.find((e) => e.includes("lastIndex"));
+	assert.match(read, /getComputedStyle\(el\)/);
+	assert.match(read, /"hidden" \|\| v === "auto" \|\| v === "scroll"/);
+});
+
+test("U6: a page whose first row is not under the bar FAILS; one directly under it passes", async () => {
+	const label =
+		"parent-edit-page-first: the page's first row sits directly under the pinned bar (U6)";
+	const tail = await parentRun({
+		pager: { head: { x: 0, y: -1383, w: 600, h: 17 } },
+	});
+	assert.equal(tail.verdict(label)?.passed, false);
+	const under = await parentRun();
+	assert.equal(under.verdict(label)?.passed, true);
+	// At the transcript's very end a short page cannot be lifted: below the bar
+	// and on screen is enough there, and only there.
+	const end = await parentRun({
+		pager: {
+			head: { x: 0, y: 400, w: 600, h: 17 },
+			scroller: { top: 100, scrollTop: 0, min: -300 },
+		},
+	});
+	assert.equal(end.verdict(label)?.passed, true);
+	const midway = await parentRun({
+		pager: { head: { x: 0, y: 400, w: 600, h: 17 } },
+	});
+	assert.equal(midway.verdict(label)?.passed, false);
+});
+
+test("D6: every press first clears its target of fixed chrome; every frame waits for paint", async () => {
+	const run = await parentRun();
+	const presses = run.order.filter(([k, n]) => k === "verb" && n === "press");
+	assert.ok(presses.length >= 3);
+	for (const [, , selector] of presses) {
+		const at = run.order.findIndex(
+			(e) => e[0] === "verb" && e[1] === "press" && e[2] === selector,
+		);
+		const cleared = run.order.findIndex(
+			(e) => e[0] === "eval" && e[1] === S.clearForPress(selector),
+		);
+		assert.ok(
+			cleared >= 0 && cleared < at,
+			`cleared before pressing ${selector}`,
+		);
+	}
+	const captures = run.order
+		.map((e, i) => [e, i])
+		.filter(([e]) => e[0] === "capture");
+	assert.ok(captures.length > 0);
+	for (const [[, name], i] of captures)
+		assert.deepEqual(
+			run.order[i - 1],
+			["eval", S.PAINT_SETTLED],
+			`${name} is captured only after paint settles`,
+		);
+});
+
+test("D6: clearForPress scrolls a target hidden under chrome until its centre hit-tests to it", async () => {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(
+		'<!doctype html><div id="s" style="overflow-y:auto"><button id="b">View full diff</button></div><div id="band">Read-only</div>',
+		{ runScripts: "outside-only", pretendToBeVisual: true },
+	);
+	const w = dom.window;
+	const scroller = w.document.getElementById("s");
+	const button = w.document.getElementById("b");
+	const band = w.document.getElementById("band");
+	Object.defineProperty(scroller, "scrollHeight", { value: 5000 });
+	Object.defineProperty(scroller, "clientHeight", { value: 718 });
+	let scrollTop = 0;
+	Object.defineProperty(scroller, "scrollTop", {
+		get: () => scrollTop,
+		set: (v) => {
+			scrollTop = v;
+		},
+	});
+	// The viewport ends at 818 for the transcript; the reader's foot band
+	// (and anything else fixed) owns the pixels below it.
+	scroller.getBoundingClientRect = () => ({
+		top: 100,
+		height: 718,
+		bottom: 818,
+		left: 0,
+		right: 600,
+		width: 600,
+	});
+	button.getBoundingClientRect = () => {
+		const top = 835 - scrollTop;
+		return {
+			top,
+			height: 16,
+			bottom: top + 16,
+			left: 10,
+			right: 200,
+			width: 190,
+		};
+	};
+	w.document.elementFromPoint = (_x, y) =>
+		y >= 100 && y < 818 ? button : band;
+	const before = await w.eval(S.clearForPress("#b"));
+	assert.equal(before.found, true);
+	assert.equal(before.ok, true, JSON.stringify(before));
+	assert.equal(before.scrolled, true);
+	assert.ok(scrollTop > 0);
+	// A target that already hit-tests is never moved.
+	const moved = scrollTop;
+	const again = await w.eval(S.clearForPress("#b"));
+	assert.equal(again.scrolled, false);
+	assert.equal(scrollTop, moved);
+	w.close();
+});
+
+test("child mode reads the CHILD transcript for its no-offer diagnostic", async () => {
+	const evaluated = [];
+	let paneDrawn = false;
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				if (expr.includes("const pane = document.querySelector("))
+					return {
+						drawn: paneDrawn,
+						pressed: paneDrawn,
+						reader: false,
+						requested: false,
+					};
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr === workRead(CHILD_SCOPE))
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: [],
+					};
+				return { open: false };
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "navigate") paneDrawn = false;
+			if (name === "press" && payload.selector === "[data-run-panel-trigger]")
+				paneDrawn = !paneDrawn;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: () => {},
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok:
+				(expr.includes("const pane = document.querySelector(") && paneDrawn) ||
+				expr.includes("data-run-panel-row") ||
+				expr.endsWith('[data-lo-canonical-transcript]"))'),
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000d1",
+		child: "29aca806b290",
+		sleep: async () => {},
+	});
+	assert.equal(typeof S.noOfferRead, "function");
+	assert.ok(evaluated.includes(S.noOfferRead(CHILD_SCOPE)));
+	assert.ok(!evaluated.includes(S.NO_OFFER_READ));
+});
+
+/** Model the real toggle plus the conversation's remembered pane on return. */
+async function rememberedChildRun({
+	restored = "reader",
+	missing = false,
+} = {}) {
+	const row = `${CHILD_SCOPE} [data-record-id="e1"]`;
+	const edited = `${row} button[aria-expanded="false"]:has([data-trace-verb])`;
+	const trigger = "[data-run-panel-trigger]";
+	const rosterRow = '[data-run-panel-row="29aca806b290"] button';
+	const rootCrumb =
+		"[data-run-panel-pane] > div:first-child nav > button:first-child";
+	let pane = "closed";
+	let navigations = 0;
+	const presses = [];
+	const checks = [];
+	const returned = () => navigations >= 3;
+	const hasRow = () => pane === "reader" && !(returned() && missing);
+	const panel = () => ({
+		drawn: pane !== "closed",
+		pressed: pane !== "closed",
+		reader: pane === "reader" || pane === "other-reader",
+		requested: hasRow(),
+		roster: pane === "roster",
+		root: pane === "reader" || pane === "other-reader",
+	});
+	const reading = {
+		open: true,
+		range: "Rows 1–10 of 10",
+		status: "",
+		busy: "false",
+		buttons: [{ text: "Back to preview", disabled: null }],
+		signs: { added: 2, removed: 1, addedBadSign: 0, removedBadSign: 0 },
+		zeroBoxes: 0,
+		nav: { x: 0, y: 100, w: 600, h: 30 },
+		head: { x: 0, y: 130, w: 600, h: 17 },
+		scroller: { top: 100, scrollTop: -900, min: -5000 },
+		viewport: { w: 1380, h: 900 },
+		lastRow: { index: "9", text: "+x" },
+	};
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				if (expr.includes("const pane = document.querySelector("))
+					return panel();
+				if (expr === workRead(CHILD_SCOPE))
+					return {
+						transcript: pane === "reader",
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: hasRow() ? [{ verb: "Edited", selector: edited }] : [],
+					};
+				if (
+					expr.startsWith("Boolean(document.querySelector(") &&
+					expr.includes("data-diff-view-full")
+				)
+					return hasRow();
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr.includes("lastIndex")) return null;
+				if (expr.startsWith("(async () => {")) return { found: true, ok: true };
+				return reading;
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "navigate") {
+				navigations += 1;
+				if (returned()) pane = restored;
+			}
+			if (name === "press") {
+				presses.push(payload.selector);
+				if (payload.selector === trigger)
+					pane = pane === "closed" ? "roster" : "closed";
+				if (payload.selector === rootCrumb && pane !== "closed")
+					pane = "roster";
+				if (payload.selector === rosterRow && pane === "roster")
+					pane = "reader";
+			}
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: (label, passed) => checks.push({ label, passed }),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok: expr.includes("const pane = document.querySelector(")
+				? panel().drawn
+				: expr.includes("data-run-panel-row")
+					? pane === "roster"
+					: expr ===
+							`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`
+						? pane === "reader"
+						: true,
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000d1",
+		child: "29aca806b290",
+		sleep: async () => {},
+	});
+	return {
+		presses,
+		trigger,
+		rosterRow,
+		rootCrumb,
+		found: checks.find(
+			(c) =>
+				c.label === "child: re-navigated: the same call's row is found again",
+		)?.passed,
+		compared: checks.find(
+			(c) =>
+				c.label ===
+				"child: re-navigated: the same call pages the same first page",
+		)?.passed,
+	};
+}
+
+test("F2: a remembered open child reader is reused, never blindly toggled closed", async () => {
+	const run = await rememberedChildRun();
+	assert.equal(
+		run.found,
+		true,
+		"the route round-trip finds the same call again",
+	);
+	assert.equal(
+		run.compared,
+		true,
+		"the refound call pages the same first page",
+	);
+	assert.equal(
+		run.presses.filter((s) => s === run.trigger).length,
+		1,
+		"only the initially closed panel is toggled",
+	);
+	assert.equal(
+		run.presses.filter((s) => s === run.rosterRow).length,
+		1,
+		"the restored requested reader is reused",
+	);
+});
+
+test("F2: closed, restored-roster and other-reader panes reach the child via normal controls", async () => {
+	for (const restored of ["closed", "roster", "other-reader"]) {
+		const run = await rememberedChildRun({ restored });
+		assert.equal(run.found, true, `${restored}: route refound succeeds`);
+		assert.equal(run.compared, true, `${restored}: the same page is compared`);
+		assert.equal(
+			run.presses.filter((s) => s === run.trigger).length,
+			restored === "closed" ? 2 : 1,
+			`${restored}: toggle only a closed pane`,
+		);
+		assert.equal(
+			run.presses.filter((s) => s === run.rosterRow).length,
+			2,
+			`${restored}: choose the child from the roster`,
+		);
+		assert.equal(
+			run.presses.filter((s) => s === run.rootCrumb).length,
+			restored === "other-reader" ? 1 : 0,
+			`${restored}: the root breadcrumb reaches the roster`,
+		);
+	}
+});
+
+test("F2: a genuine refound call miss remains an explicit FAIL", async () => {
+	const run = await rememberedChildRun({ missing: true });
+	assert.equal(run.found, false);
+	assert.equal(
+		run.compared,
+		undefined,
+		"a missing call cannot silently pass the page comparison",
+	);
+});
+
+test("F2: pane inspection uses painted DOM and the requested call, not remembered state", async () => {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(
+		`<!doctype html><body>
+		<button data-run-panel-trigger aria-pressed="true"></button>
+		<section data-run-panel-pane>
+			<div><nav><button>Subagents</button><span><button aria-current="page">Child</button></span></nav></div>
+			<div data-lo-canonical-transcript><div data-record-id="e1"></div></div>
+		</section>
+	</body>`,
+		{ runScripts: "outside-only" },
+	);
+	try {
+		const { document, HTMLElement } = dom.window;
+		HTMLElement.prototype.getBoundingClientRect = function () {
+			return { width: this.hidden ? 0 : 500, height: this.hidden ? 0 : 100 };
+		};
+		const row = `${CHILD_SCOPE} [data-record-id="e1"]`;
+		const read = () =>
+			JSON.parse(JSON.stringify(dom.window.eval(S.runPanelRead(row))));
+		assert.deepEqual(read(), {
+			drawn: true,
+			pressed: true,
+			reader: true,
+			requested: true,
+			root: true,
+		});
+		document.querySelector('[data-record-id="e1"]').hidden = true;
+		assert.equal(
+			read().requested,
+			false,
+			"a non-painted record cannot identify a reusable reader",
+		);
+		document.querySelector("[data-lo-canonical-transcript]").remove();
+		assert.equal(
+			read().reader,
+			false,
+			"a pane need not be showing a child reader",
+		);
+		document.querySelector("[data-run-panel-pane]").remove();
+		const opening = read();
+		assert.equal(opening.drawn, false);
+		assert.equal(
+			opening.pressed,
+			true,
+			"a pressed trigger is distinct from the pane's paint",
+		);
+	} finally {
+		dom.window.close();
+	}
+});

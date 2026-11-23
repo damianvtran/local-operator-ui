@@ -99,7 +99,10 @@ for (const [key, value] of Object.entries({
  * refetch forever and the process never exits.
  */
 Object.defineProperty(window.document, "visibilityState", { value: "hidden" });
-Object.defineProperty(window.document, "hidden", { value: true });
+Object.defineProperty(window.document, "hidden", {
+	configurable: true,
+	value: true,
+});
 
 /*
  * `window.matchMedia`, which jsdom does not implement at all.
@@ -255,6 +258,7 @@ const answer = (request) => {
 			features: { commands: 1, session_credential: 1 },
 		};
 	if (request.op === "commands.list") return { commands: commandRows };
+	if (request.op === "providers.list") return { providers: [] };
 	if (request.op === "sessions.credential") {
 		/*
 		 * THE RUNTIME'S OWN SHAPE, which is two envelopes deep and not one
@@ -527,6 +531,9 @@ async function mount({
 	 * what a populated pane has.
 	 */
 	messages = [{ id: "m", role: "system", timestamp: new Date(0) }],
+	noProvider = false,
+	noModel = false,
+	serverOffline = false,
 	keepWorld = false,
 	remount = false,
 	/*
@@ -648,6 +655,9 @@ async function mount({
 		conversationId,
 		sessionStatus,
 		unavailable,
+		noProvider,
+		noModel,
+		serverOffline,
 		secretAnswer,
 		secretAsk,
 		currentJobId,
@@ -768,6 +778,178 @@ const key = async (frame, keys) => {
 const type = async (frame, text) => {
 	for (const char of text) await key(frame, { key: char, text: char });
 };
+
+// Mount the shipped composer and use its real key/argument handlers. Only the
+// layout/intersection clock and backing canvas are simulated (jsdom has none).
+function horizonClock(t) {
+	t.after(async () => {
+		await act(async () => root?.unmount());
+		root = undefined;
+	});
+	const set = (target, key, value) => {
+		const initial = Object.getOwnPropertyDescriptor(target, key);
+		Object.defineProperty(target, key, { configurable: true, value });
+		t.after(() => {
+			if (initial) Object.defineProperty(target, key, initial);
+			else Reflect.deleteProperty(target, key);
+		});
+	};
+	const intersects = new Map();
+	const frames = new Map();
+	let id = 0;
+	let paints = 0;
+	set(window.document, "hidden", false);
+	set(window, "ResizeObserver", globalThis.ResizeObserver);
+	set(
+		window,
+		"IntersectionObserver",
+		class {
+			constructor(notify) {
+				this.notify = notify;
+			}
+			observe(target) {
+				this.target = target;
+				intersects.set(target, this.notify);
+			}
+			disconnect() {
+				intersects.delete(this.target);
+			}
+		},
+	);
+	set(window, "requestAnimationFrame", (run) => {
+		frames.set(++id, run);
+		return id;
+	});
+	set(window, "cancelAnimationFrame", (id) => frames.delete(id));
+	const proto = window.HTMLCanvasElement.prototype;
+	set(proto, "clientWidth", 900);
+	set(proto, "clientHeight", 240);
+	t.mock.method(proto, "getContext", () => ({
+		clearRect() {
+			paints++;
+		},
+		setTransform() {},
+		beginPath() {},
+		moveTo() {},
+		arc() {},
+		fill() {},
+	}));
+	return {
+		scene: () => window.document.querySelector(".new-chat-horizon__scene"),
+		paints: () => paints,
+		frames,
+		intersect(target, isIntersecting = true) {
+			const notify = intersects.get(target);
+			assert.ok(notify, "the rendered canvas has a motion controller");
+			notify([{ isIntersecting }]);
+		},
+		renderAt(now) {
+			assert.equal(frames.size, 1);
+			const [[current, run]] = frames;
+			frames.delete(current);
+			run(now);
+		},
+	};
+}
+
+for (const pressure of [false, true]) {
+	test(`the same draft stays settled after the slash argument picker (${pressure ? "pressure fallback" : "normal arrival"})`, async (t) => {
+		const clock = horizonClock(t);
+		const model = {
+			name: "model",
+			description: "Switch model; /model default saves it for new sessions",
+			destination: "session.model",
+			aliases: [],
+			arguments: "optional",
+			echo: false,
+			consumes_prompt: false,
+			execution: "owner",
+		};
+		const commands = [...COMMANDS, model];
+		const frame = await mount({
+			messages: [],
+			commands,
+			conversationId: "draft-horizon",
+		});
+		const initial = clock.scene();
+		assert.ok(initial);
+		clock.intersect(initial);
+		const now = window.performance.now();
+		if (pressure) {
+			for (const interval of [16, 49, 82, 115, 148])
+				clock.renderAt(now + interval);
+		} else clock.renderAt(now + 5000);
+		assert.equal(clock.frames.size, 0);
+		assert.equal(initial.dataset.loHorizonMotion, "still");
+
+		await act(async () => frame.textarea().focus());
+		await type(frame, "/model ");
+		const visibleScene = () =>
+			clock.scene()?.closest(".hidden") ? null : clock.scene();
+		assert.ok(!visibleScene(), "the argument roster owns the splash area");
+		const before = clock.paints();
+		const hidden = clock.scene();
+		if (hidden) {
+			assert.ok(hidden.closest("[data-lo-horizon-suppressed]"));
+			clock.intersect(hidden, false);
+		}
+		assert.equal(clock.paints(), before);
+		assert.equal(clock.frames.size, 0);
+		await key(frame, { key: "Escape" });
+		await settle();
+		const restored = visibleScene();
+		assert.ok(restored, "Escape gives the splash area back");
+		clock.intersect(restored);
+		assert.equal(clock.frames.size, 0, "dismissing the picker must not replay");
+		assert.ok(restored === initial, "the draft keeps its canvas owner");
+		assert.ok(!restored.closest("[data-lo-horizon-suppressed]"));
+		const move = new window.Event("pointermove");
+		Object.assign(move, { pointerType: "mouse", clientX: 600, clientY: 200 });
+		const paper = restored.closest("[data-lo-composer-splash]");
+		paper.getBoundingClientRect = () => ({
+			left: 0,
+			top: 0,
+			width: 900,
+			height: 400,
+		});
+		paper.dispatchEvent(move);
+		assert.equal(
+			clock.frames.size,
+			pressure ? 0 : 1,
+			"only the pressure fallback stays locked",
+		);
+
+		await mount({
+			messages: [],
+			commands,
+			conversationId: "draft-horizon-next",
+			keepWorld: true,
+		});
+		const fresh = clock.scene();
+		assert.ok(fresh);
+		assert.ok(fresh !== initial);
+		clock.intersect(fresh);
+		assert.equal(
+			clock.frames.size,
+			1,
+			"a different draft gets its own arrival",
+		);
+	});
+}
+
+for (const block of ["noModel", "serverOffline", "noProvider"]) {
+	test(`the mounted composer keeps blocked ${block} horizons quiet`, async (t) => {
+		const clock = horizonClock(t);
+		await mount({ messages: [], [block]: true });
+		const scene = clock.scene();
+		assert.ok(scene, "blocked empty panes still render the settled decoration");
+		clock.intersect(scene);
+		assert.equal(scene.dataset.loHorizonMotion, "still");
+		assert.equal(scene.hasAttribute("data-quiet"), block === "noProvider");
+		assert.equal(clock.frames.size, 0);
+		assert.ok(clock.paints() > 0);
+	});
+}
 
 /**
  * A paste, through the composer's own `onPaste` branch.
@@ -4177,6 +4359,104 @@ test("the layer reports the drop at the commit that removes the control it was s
 	);
 	layerRoot.unmount();
 	host.remove();
+});
+
+/*
+ * THE CHIP'S BOX IS max(MARKER RECT, CHIP MIN-CONTENT) (S18b design round 1, D1).
+ *
+ * The box is the raw marker's rect - English, never translated - while the chip's contents
+ * translate: at the 19-char marker the count token measures 62.25px in en but 95.20 in fr/es and
+ * 92.57 in ru, and the label (`min-w-0 truncate`) absorbs the deficit, collapsing to 0px, so
+ * the pill lost its `#1`. WHAT THIS ROW CAN AND CANNOT SEE: jsdom has no layout, so it pins the
+ * one input the browser needs (the layer hands the chip `min-width: min-content` beside the
+ * marker's `width`) rather than the pixels; the pixels were measured in a real browser on the
+ * same flex row (`label.clientWidth` 0 -> 14 in fr/es/ru, en unchanged at 157.33, see the S18b
+ * remediation comment) and the model below restates that arithmetic from the design review's
+ * measured numbers so a change to the pair cannot pass silently.
+ *
+ * THE fr/es/ru NUMBERS BELOW ARE THE UNABBREVIATED WORDS (design round 2, D5). Those words were
+ * replaced by `car.` / `симв.` so the shipped face fits the marker and the floor does not bite;
+ * the fr/es/ru figures are kept as the worst case the floor exists for (a translation that
+ * outgrows the marker), and `scripts/i18n/approval-paydown-copy.test.mjs` pins the shipped copy's
+ * length.
+ */
+test("the composer chip's box never drops below its own content, so a translated count cannot collapse the label", async () => {
+	const host = window.document.createElement("div");
+	window.document.body.appendChild(host);
+	const mirror = window.document.createElement("div");
+	const field = window.document.createElement("textarea");
+	const run = window.document.createElement("span");
+	run.setAttribute("data-credential-run", "1");
+	run.textContent = "[Credential #1, 19 chars]";
+	mirror.appendChild(run);
+	host.append(mirror, field);
+	stubRect(mirror, { left: 0, top: 0, width: 400, height: 200 });
+	stubRect(field, { left: 0, top: 0, width: 400, height: 100 });
+	stubRect(run, { left: 10, top: 80, width: 157.33, height: 17 });
+
+	const layerRoot = createRoot(host);
+	await act(async () => {
+		layerRoot.render(
+			h(CredentialChipLayer, {
+				text: "deploy with [Credential #1, 19 chars]",
+				payloads: new Map([
+					[
+						1,
+						{
+							index: 1,
+							key: "LOP_SECRET_4CE3Y48G",
+							value: "v",
+							marker: "[Credential #1, 19 chars]",
+						},
+					],
+				]),
+				mirrorRef: { current: mirror },
+				fieldRef: { current: field },
+				onClear: () => {},
+				onControlUnmounted: () => {},
+			}),
+		);
+	});
+	const chip = host.querySelector("[data-credential-chips] > *");
+	assert.ok(chip, "the layer draws the chip");
+	assert.equal(
+		chip.style.width,
+		"157.33px",
+		"the box is still the marker's own rect",
+	);
+	assert.equal(
+		chip.style.minWidth,
+		"min-content",
+		"and the content's floor sits beside it, so a longer translation grows the box instead of collapsing the label",
+	);
+	layerRoot.unmount();
+	host.remove();
+
+	// The row's arithmetic at the 1024 rung, from the design review's measurements (px):
+	// padding 24 less the control's -4 bearing, key 12 + control 16 + three 6px gaps, label `#1`
+	// 15.01 and the locale's count token.
+	const FIXED = 24 - 4 + 12 + 16 + 18;
+	const LABEL = 15.01;
+	const MARKER = 157.33;
+	const COUNT = { en: 62.25, fr: 95.2, es: 95.2, ru: 92.57 };
+	const box = (count, minContent) =>
+		minContent ? Math.max(MARKER, FIXED + LABEL + count) : MARKER;
+	const labelWidth = (count, boxWidth) =>
+		Math.min(LABEL, Math.max(0, boxWidth - FIXED - count));
+	for (const [locale, count] of Object.entries(COUNT)) {
+		assert.ok(
+			labelWidth(count, box(count, true)) > 0,
+			`${locale}: the label keeps a non-zero width`,
+		);
+		if (locale !== "en") {
+			assert.equal(
+				labelWidth(count, box(count, false)),
+				0,
+				`${locale}: the marker-only box is the defect (label collapses)`,
+			);
+		}
+	}
+	assert.equal(box(COUNT.en, true), MARKER, "English geometry is unchanged");
 });
 
 /* Hoisted like this file's other regexes (code review round 4, R4-8): the floor's own literal. */

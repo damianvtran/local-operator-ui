@@ -1,0 +1,156 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "agent": "translation-auditor (lopdev reviewer-role session 044be7ae2c78, i18n-audit-hi-ru-ur-vi; not the PR coder / translator of 7040c2b761)",
+ "model": "anthropic/claude-sonnet-5-5",
+ "model_provenance": "Every catalogue read, finding and in-place fix in this receipt ran on anthropic/claude-sonnet-5-5 (session header); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Separate session (044be7ae2c78) from the PR coder, who wrote and translated 7040c2b761 (its commit message says the 16 keys were translated by that session). The translator's work was audited as claims to check, rebuilt from the English source, the en context, the render sites in the PR diff, sibling shipped keys, the core glossary and the locale style guide.",
+ "instance": "044be7ae2c78-dictated-ur",
+ "session": "044be7ae2c78",
+ "locale": "ur",
+ "branch": "fix/send-instant-and-dictated-send-session",
+ "head": "7040c2b761 (+ uncommitted catalogue edits by this audit)",
+ "pr": "damianvtran/local-operator-ui (send-instant-dictated worktree; PR number not assigned at audit time)",
+ "date": "2026-11-17",
+ "status": "passed",
+ "scope": "ui.chat.composer: delta audit of the 16 new ui.chat.composer.dictated_away.* keys for ur (7040c2b761). The 73 carried keys are unchanged: the en and ur blobs at HEAD~1 hash to the ledger row's last audited source_sha256 (a90cc99706b0…) and target_sha256, and a key-by-key comparison of parsed values shows 0 changed, 0 removed, 16 added (en also gains a trailing comma after secret_closure_notice).",
+ "inputs_sha256": {
+  "en_context (ui.chat.composer.context.json)": "455aa178b828ac259813f6b3435f38852412743aa0f3de108036a35a2557aeb6",
+  "glossary (local-operator/i18n/glossary.md @ origin/main b2312e9f97)": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+  "style guide (local-operator/i18n/style-guides/ur.md @ origin/main b2312e9f97)": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+ },
+ "verified": [
+  "key set equals en (89 keys); every ICU argument identical to en: {title}/{reason} appear exactly where en has them, no plural/select arms exist in these keys; no bidi/zero-width/BOM characters; no edge or double spaces; NFC",
+  "the toast/notice wording never claims a send happened: not_sent/not_sent_body say the dictation was NOT sent ('नहीं भेजा गया' / 'Не отправлено' / 'نہیں بھیجا گیا' / 'Chưa gửi'), and say the text sits in that chat's draft; origin_gone(+_body) and transcription_failed(+_body) never promise a draft, only that the text/recording is gone, as the render-site comment in the PR requires",
+  "reason clauses are lower-case clauses that follow a colon and complete the sentence; reason_unavailable names no cause",
+  "terms: glossary credentials/model/session rendering kept; chat/open chat/new chat/untitled chat match shipped strings (ui.library.composer.open_chat, ui.shell.sidebar_navigation.new_chat, ui.chat.canonical.untitled)",
+  "carried ui.chat.composer keys unchanged; en differs from the audited blob only by the 16 added keys (+ the trailing comma after secret_closure_notice)",
+  "RTL: no manual bidi controls (RLM/LRM/FSI/PDI/ALM) in any key; {title} placeholder sits inside the “ ” pair and the sentence keeps the Urdu full stop ۔; Latin digits not involved"
+ ],
+ "namespaces": {
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_read": 89,
+   "delta_keys_audited": [
+    "ui.chat.composer.dictated_away.not_sent",
+    "ui.chat.composer.dictated_away.not_sent_body",
+    "ui.chat.composer.dictated_away.transcription_failed",
+    "ui.chat.composer.dictated_away.transcription_failed_body",
+    "ui.chat.composer.dictated_away.reason_edited",
+    "ui.chat.composer.dictated_away.reason_command",
+    "ui.chat.composer.dictated_away.reason_gate",
+    "ui.chat.composer.dictated_away.reason_secret",
+    "ui.chat.composer.dictated_away.reason_no_model",
+    "ui.chat.composer.dictated_away.reason_unavailable",
+    "ui.chat.composer.dictated_away.reason_not_ready",
+    "ui.chat.composer.dictated_away.open_chat",
+    "ui.chat.composer.dictated_away.draft_label",
+    "ui.chat.composer.dictated_away.untitled_chat",
+    "ui.chat.composer.dictated_away.origin_gone",
+    "ui.chat.composer.dictated_away.origin_gone_body"
+   ],
+   "sha256": {
+    "ur": "68a46cd9d1c975f1e304d83760496e9fe38bc34ec07c7de7d617f6b8c52d5aa7",
+    "en": "8f6ad5094234ec5368a86da0b1864ae94debba3fa355ea1920d20956425991e6"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.composer.json",
+    "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+   },
+   "findings": [
+    {
+     "id": "UR-1",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.not_sent",
+     "summary": "Quote marks: the ur guide fixes quotes as “ ” and says not to use other marks; the three keys carrying {title} (not_sent, transcription_failed, origin_gone) used « » (the only « » in the composer namespace; shipped ur composer/hub copy uses “ ”). Replaced with “{title}” in all three.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "«{title}» کو نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اُس چیٹ کے ڈرافٹ میں محفوظ ہے۔",
+     "after": "“{title}” کو نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اس چیٹ کے مسودے میں محفوظ ہے۔"
+    },
+    {
+     "id": "UR-2",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.not_sent",
+     "summary": "'ڈرافٹ' for draft: shipped ur renders draft as مسودہ in the same area (ui.chat.attachment_refusal 'اس مسودے میں', ui.agents descriptions), so the composer now said two words for one concept. Changed to مسودہ/مسودے in not_sent, not_sent_body and reason_edited.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "«{title}» کو نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اُس چیٹ کے ڈرافٹ میں محفوظ ہے۔",
+     "after": "“{title}” کو نہیں بھیجا گیا: {reason}۔ آپ کا لکھوایا ہوا متن اس چیٹ کے مسودے میں محفوظ ہے۔"
+    },
+    {
+     "id": "UR-3",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_secret",
+     "summary": "'کسی اِسناد جیسے' is ungrammatical: کسی is singular, اسناد is the plural of سند (and the shipped plural-form term for credential: 'ہب نے جو اسناد مسترد کیں'). Now 'اسناد جیسے', matching the shipped use.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "یہ الفاظ کسی اِسناد جیسے لگتے ہیں",
+     "after": "یہ الفاظ اسناد جیسے لگتے ہیں"
+    },
+    {
+     "id": "UR-4",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_gate",
+     "summary": "Gender slip: 'یہ چیٹ انتظار کر رہا ہے' is masculine, but چیٹ is feminine in shipped ur ('نئی چیٹ', 'یہ چیٹ ابھی کھل رہی ہے'). Now 'وہ چیٹ ... کر رہی ہے'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "یہ الفاظ اُس سوال کا جواب دیتے جس کا یہ چیٹ انتظار کر رہا ہے",
+     "after": "یہ الفاظ اس سوال کا جواب دیتے جس کا وہ چیٹ انتظار کر رہی ہے"
+    },
+    {
+     "id": "UR-5",
+     "severity": "minor",
+     "key": "ui.chat.composer.dictated_away.reason_unavailable",
+     "summary": "'اِس چیٹ نے پیغام نہیں لیا' = 'this chat did not take the message', which reads as a refusal by the chat; the English says it COULD NOT take one and the context says it must not claim a cause. Now 'وہ چیٹ پیغام قبول نہیں کر سکی'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "اِس چیٹ نے پیغام نہیں لیا",
+     "after": "وہ چیٹ پیغام قبول نہیں کر سکی"
+    },
+    {
+     "id": "UR-6",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_command",
+     "summary": "'بطور کمانڈ چل جاتے' uses the چل جانا ('pass') idiom, which can read 'would pass as a command'; shipped ur says چلانا for running a command ('کمانڈ نہیں چلائی جا سکتی'). Now 'کمانڈ کے طور پر چلائے جاتے'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "یہ الفاظ بطور کمانڈ چل جاتے",
+     "after": "یہ الفاظ کمانڈ کے طور پر چلائے جاتے"
+    },
+    {
+     "id": "UR-7",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.untitled_chat",
+     "summary": "'بے عنوان چیٹ' vs shipped 'بلا عنوان چیٹ' (10 shipped uses incl. ui.chat.canonical.untitled, the same concept; 1 'بے عنوان', this one). Aligned.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "بے عنوان چیٹ",
+     "after": "بلا عنوان چیٹ"
+    },
+    {
+     "id": "UR-8",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.not_sent",
+     "summary": "Orthography: 12 forms with a kasra/damma on the demonstratives (اُس, اِس, اِسناد) in this change only; the namespace had none before and shipped ur has ~985 plain 'اس'. Removed the diacritics so the strings match the rest of the catalogue.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)"
+    },
+    {
+     "id": "UR-9",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_not_ready",
+     "summary": "'یہ چیٹ' (this chat) in reason_gate/reason_not_ready/origin_gone where the English and the situation say 'that chat' (the reader is elsewhere). Changed to 'وہ چیٹ'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "یہ چیٹ ابھی کھل رہی ہے",
+     "after": "وہ چیٹ ابھی کھل رہی ہے"
+    },
+    {
+     "id": "UR-10",
+     "severity": "nit",
+     "key": "ui.chat.composer.dictated_away.reason_no_model",
+     "summary": "Missing copula: 'منتخب نہیں' ends a clause with no ہے while the siblings (reason_not_ready) keep it. Now 'منتخب نہیں ہے'.",
+     "resolution": "fixed by auditor in this round (catalogue edited in place)",
+     "before": "اِس چیٹ میں جواب دینے کے لیے کوئی ماڈل منتخب نہیں",
+     "after": "اس چیٹ میں جواب دینے کے لیے کوئی ماڈل منتخب نہیں ہے"
+    }
+   ]
+  }
+ }
+}

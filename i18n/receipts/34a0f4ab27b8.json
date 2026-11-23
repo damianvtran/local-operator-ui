@@ -1,0 +1,44 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "34a0f4ab27b8",
+  "session": "ccb8a3d583c2",
+  "actual_model_source": "session system prompt (Model: anthropic/claude-opus-5-5); no fallback used",
+  "independent_from_translator_session": true,
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "audit_date": "2026-11-14",
+  "audit_kind": "delta re-audit (deletion-only)",
+  "pr": "damianvtran/local-operator-ui#1894",
+  "head": "1f30a830066dfba98430041f94229ea970e664aa",
+  "prior_audited_commit": "829e718b0c",
+  "supersedes_instance": "748d70d8c8ab",
+  "key_count": 30,
+  "sha256": {
+    "zh-CN": "a4ba458b6f5dc72f381208becaa2a7c0c9557e0f57ce6b699428bf47f13bb1fe",
+    "en": "b003c7cf4c997695be967826591bcc02f2895536c0c116e23d1533a403b2a1f8",
+    "en_context": "fc41cac8be0e4ead7e17a8716f4e06c61bacca57daba19134cac5842502f6172"
+  },
+  "paths": {
+    "zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.trace.json",
+    "en": "src/i18n/catalogues/en/ui.chat.trace.json",
+    "en_context": "src/i18n/catalogues/en/ui.chat.trace.context.json"
+  },
+  "hash_source": "git show HEAD:<path> (equal to working tree)",
+  "scope": "ui.chat.trace zh-CN: delta 829e718b0c..HEAD deletes exactly ui.chat.trace.detail.{error,interrupted,output} (en, zh-CN, en context: 3 blocks); 30 surviving keys byte-identical values, re-read for the delta only (already audited under 748d70d8c8ab). Deleted keys unreferenced at HEAD; call site uses ui.chat.canonical.tool_row.detail_section.* (present, non-English, ledger-fresh audited).",
+  "checks": [
+    "key-set delta = exactly 3 deletions, no value change (parsed JSON + textual diff, 0 additions)",
+    "git grep 'trace.detail' at HEAD outside catalogues: 0 hits",
+    "detail_section.{interrupted,error,output} present in ui.chat.canonical for locale; ledger row hashes match HEAD",
+    "ICU placeholder set {count} parity; plural categories per CLDR present",
+    "no Latin leak in non-Latin locales / no value identical to English",
+    "no bidi control chars (U+200E/F, U+202A-E, U+2066-9, U+061C)",
+    "glossary/style-guide changes in ~/local-operator origin/main since 2026-11-12 touch no trace vocabulary",
+    "check-duplicates ok; context-parity ok; ledger-check fails only on the 21 ui.chat.trace staleness findings"
+  ],
+  "findings": [],
+  "not_checked": [
+    "native/rendered fit (catalogue-only audit)",
+    "re-litigation of values already audited under the superseded instance"
+  ]
+}

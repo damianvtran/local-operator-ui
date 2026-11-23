@@ -1,0 +1,57 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "1c86c986d440",
+ "status": "passed",
+ "locale": "hi",
+ "scope": "9 keys added a31ce7e9ea..7cdf6c27b4",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "sha256": {
+    "hi": "66b6e5ba8fb2f50c6ba986fffaf6eef6114e17cc33ad75e53f006f789473aba4",
+    "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+   },
+   "findings": [
+    {
+     "severity": "INFO",
+     "key": "ui.chat.header_identity.band_recent_agents",
+     "note": "4 band headings clean; हालिया/सभी/एजेंट/टीमें match glossary and shipped usage"
+    }
+   ]
+  },
+  "ui.chat.dialogs": {
+   "status": "passed",
+   "sha256": {
+    "hi": "7e12a914369351a225ebf586f2708d3cbc45441a782894a3d6a4e79ebd3c87a6",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "'चैट सूची के ऊपर खोजें' is elliptical (no 'search field'); suggest 'चैट सूची के ऊपर खोज फ़ील्ड में खोजें'. 'पूर्ववत कर सकते हैं' lacks object; suggest 'इसे पूर्ववत कर सकते हैं'."
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "plural arms one/other are identical (# सेकंड); correct since सेकंड is invariant in Hindi and matches shipped ui.common.updates.wait.seconds; no change needed."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "status": "passed",
+   "sha256": {
+    "hi": "1d3f0031423002a2befcd0ada50c44c8b9d46503a037f3ea5d6e37f2c43240ca",
+    "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+   },
+   "findings": [
+    {
+     "severity": "INFO",
+     "key": "ui.chat.sidebar.row.archive_label",
+     "note": "संग्रहित करें / बहाल करें identical to shipped row_menu, dialogs.archive_action, header keys"
+    }
+   ]
+  }
+ }
+}

@@ -660,5 +660,51 @@
 		"length": "Two short sentences",
 		"placeholders": {},
 		"note": "Explains what the switch shares (only the fact that you are typing) and states that the draft text is never shared. Quote the indicator wording with the locale's usual quotation marks."
+	},
+	"ui.agentMessages.settings.screening.title": {
+		"role": "settings row heading",
+		"tone": "sentence case, plain",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Names the optional preference for which AI model screens incoming Team Bridge agent messages first on this machine. Use the same term the CLI settings row uses for 'Screening model'."
+	},
+	"ui.agentMessages.settings.screening.help": {
+		"role": "helper text under a settings dropdown",
+		"tone": "plain, honest, second person",
+		"length": "Four short sentences",
+		"placeholders": {},
+		"note": "Must make clear the choice is optional and only sets which model this machine tries first. Two outcomes, both stated plainly and matching the runtime exactly: a model that can't be reached, isn't offered on the user's account, or is out of quota or credit falls back to the machine's default model and fallbacks so Team Bridge keeps working; but if the provider blocks the request or fails with an internal error, incoming messages are held, so the user should pick a model their account is allowed to use. Keep 'blocks the request' distinct from an outage or a timeout: those fall back, they do not hold. Do not promise that a pick can never hold a message, do not name HTTP codes or internals, and do not imply the user must pick a model. 'Held' is the same word the Team Bridge delivery lines use for a held message."
+	},
+	"ui.agentMessages.settings.screening.automatic": {
+		"role": "dropdown option label (the default)",
+		"tone": "plain",
+		"length": "A few words plus the model id",
+		"placeholders": {
+			"model": "a machine model identifier such as anthropic/claude-sonnet-5-5; shown verbatim, never translated"
+		},
+		"note": "The default choice: the tested order, which starts with the named model. Keep it short; it is the trigger text when selected. The renderer sets {model} in a monospace font, so keep the placeholder as one unit and do not wrap it in quotes."
+	},
+	"ui.agentMessages.settings.screening.unavailable": {
+		"role": "inline notice in place of the dropdown",
+		"tone": "plain, reassuring",
+		"length": "Two short sentences",
+		"placeholders": {},
+		"note": "Shown in place of the dropdown when the local runtime offers no screening models to choose from. Says this version offers no choice (which answers the help text above it), then that screening still works on the machine's default model and fallbacks; nothing is broken."
+	},
+	"ui.agentMessages.settings.screening.route_provider": {
+		"role": "muted suffix after a model id in a dropdown option",
+		"tone": "plain, lowercase start",
+		"length": "3-4 words",
+		"placeholders": {
+			"provider": "a provider brand name such as Anthropic or OpenAI; never translated"
+		},
+		"note": "Says the model runs on the user's OWN account with that provider (their key or sign-in), as opposed to through Radient. Distinguishes two otherwise identical-looking model ids. Starts lowercase because it follows the id on the same line."
+	},
+	"ui.agentMessages.settings.screening.route_radient": {
+		"role": "muted suffix after a model id in a dropdown option",
+		"tone": "plain, lowercase start",
+		"length": "3-4 words",
+		"placeholders": {},
+		"note": "Says the model runs through the user's Radient account (their Radient balance), as opposed to their own provider account; worded in parallel with the provider route so the two lines read as a choice of account. 'Radient' is a brand name; never translate it. Starts lowercase because it follows the id on the same line."
 	}
 }

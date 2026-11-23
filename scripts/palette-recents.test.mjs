@@ -58,7 +58,7 @@ memory.set(
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { parseConversationRecents, pushConversationRecent, CONVERSATION_RECENTS_LIMIT, UI_PREFERENCES_VERSION, useUiPreferencesStore as store, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { parseConversationRecents, pushConversationRecent, CONVERSATION_RECENTS_LIMIT, UI_PREFERENCES_VERSION, useUiPreferencesStore as store, persistedUiPreferences, sanitizePaletteSort } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { chatRecentsOfRow, visitedConversationId } from "./src/renderer/src/features/command-palette/use-conversation-recents";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -83,6 +83,7 @@ const {
 	parseConversationRecents,
 	persistedUiPreferences,
 	pushConversationRecent,
+	sanitizePaletteSort,
 	store,
 	UI_PREFERENCES_VERSION,
 	visitedConversationId,
@@ -391,4 +392,52 @@ test("a non-array persisted ring cannot throw in the store's own writer", () => 
 	const { rememberConversation } = store.getState();
 	assert.doesNotThrow(() => rememberConversation("s1"));
 	assert.deepEqual(store.getState().conversationRecents, ["s1"]);
+});
+
+/* ------------------------------------------------------------------ *
+ * The palette's row order (v7)
+ * ------------------------------------------------------------------ */
+
+test("the palette's order is a persisted preference, defaulting to relevance", () => {
+	// The blob this file boots from predates the key, so the default is what a real
+	// upgrade sees before the v7 step has ever run for it.
+	assert.equal(store.getState().paletteSort, "best");
+	store.getState().setPaletteSort("recent");
+	assert.equal(store.getState().paletteSort, "recent");
+	const written = JSON.parse(memory.get("ui-preferences-storage"));
+	assert.equal(written.state.paletteSort, "recent");
+	// A value the store does not know is the default, not a third order.
+	store.getState().setPaletteSort("sideways");
+	assert.equal(store.getState().paletteSort, "best");
+	assert.equal(sanitizePaletteSort(undefined), "best");
+	assert.equal(sanitizePaletteSort("recent"), "recent");
+	assert.equal(sanitizePaletteSort({ sort: "recent" }), "best");
+});
+
+test("a v6 blob without the key migrates to the default, and a hand-edited v7 blob cannot pick a third order", async () => {
+	assert.equal(UI_PREFERENCES_VERSION, 7);
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: { conversationRecents: ["kept"], themeName: "dracula" },
+			version: 6,
+		}),
+	);
+	await store.persist.rehydrate();
+	assert.equal(store.getState().paletteSort, "best");
+	assert.deepEqual(store.getState().conversationRecents, ["kept"]);
+	assert.equal(
+		JSON.parse(memory.get("ui-preferences-storage")).version,
+		UI_PREFERENCES_VERSION,
+	);
+
+	memory.set(
+		"ui-preferences-storage",
+		JSON.stringify({
+			state: { paletteSort: "by-vibes", conversationRecents: [] },
+			version: 7,
+		}),
+	);
+	await store.persist.rehydrate();
+	assert.equal(store.getState().paletteSort, "best");
 });

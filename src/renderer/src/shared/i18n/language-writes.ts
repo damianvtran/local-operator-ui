@@ -24,7 +24,7 @@
  */
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
-import type { QueryClient } from "@tanstack/react-query";
+import type { Query, QueryClient } from "@tanstack/react-query";
 
 /** How long a frame may still be ours after our own write resolved. */
 const OWN_WRITE_HOLD_MS = 5_000;
@@ -50,4 +50,43 @@ export function withinLocalLanguageWrite(now = Date.now()): boolean {
 export function renegotiateLanguage(queryClient: QueryClient): void {
 	markLocalLanguageWrite();
 	void queryClient.invalidateQueries({ queryKey: desktopKeys.capabilities });
+}
+
+/**
+ * Refetch the server's copy after the backend's RESOLVED language changed.
+ *
+ * WHY (fr census, row 1). The backend renders a lot of the copy the UI shows
+ * per request, in the language it resolved at that moment: voice availability
+ * (`GET /v1/tts/paths`), import-source details, sound names, setting labels,
+ * command descriptions, error sentences. The renderer caches those answers, and
+ * a language switch used to refresh only capabilities and settings - so the
+ * voice and import sections stayed English after switching to French until a
+ * reload, while every word around them had switched.
+ *
+ * WHY EVERY QUERY, NOT A LIST. Which answers carry server-rendered prose is a
+ * property of the BACKEND's code, which grows; a hand-kept allow-list here
+ * would be stale the day a route gained a localized sentence, and the failure
+ * is silent (old-language text, no error). A language switch is a rare,
+ * deliberate act, and `invalidateQueries` only REFETCHES what is mounted right
+ * now - everything else is marked stale and refetches when next shown - so the
+ * blanket costs one refetch of the visible screen, which is what a reload cost
+ * the user before, minus losing their place. Capabilities is skipped only
+ * because its answer is what triggered this, so it is already fresh.
+ *
+ * Copy a component keeps in its OWN state rather than in the query cache (the
+ * import section's source list) cannot be reached from here; such a reader
+ * reloads on `useI18nLocale()` instead.
+ */
+export function refreshServerLocalizedQueries(queryClient: QueryClient): void {
+	void queryClient.invalidateQueries({
+		predicate: (query: Query) => !isCapabilitiesQuery(query.queryKey),
+	});
+}
+
+function isCapabilitiesQuery(key: readonly unknown[]): boolean {
+	const capabilities = desktopKeys.capabilities;
+	return (
+		key.length === capabilities.length &&
+		capabilities.every((part, index) => key[index] === part)
+	);
 }

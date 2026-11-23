@@ -40,7 +40,7 @@ const bundlePath = new URL("._job-controls.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => undefined));
 const {
-	JOB_CANCEL_NOT_FOUND_COPY,
+	jobCancelNotFoundCopy,
 	VIDEO_JOB_TYPE,
 	jobRowCanCancel,
 	retryJobWrite,
@@ -105,7 +105,7 @@ test("the refusal fallback is the frozen not_found phrase, em dash and all", () 
 	// `_CANCEL_PHRASES`); a surface may quote it, never paraphrase it. This
 	// pins the quote character-for-character.
 	assert.equal(
-		JOB_CANCEL_NOT_FOUND_COPY,
+		jobCancelNotFoundCopy(),
 		"not cancelled — the provider no longer knows the job",
 	);
 });

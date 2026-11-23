@@ -25,3 +25,37 @@ export function imageLabel(position: number, count: number): string {
 export function soundLabel(position: number, count: number): string {
 	return t("ui.chat.canonical.media.sound_label", { position, count });
 }
+
+/**
+ * The positional name of a picture the READER attached when it travelled with
+ * no file name: "Attached image" / "Attached image 2".
+ *
+ * THE NOUN IS THE EXISTING KEY `ui.canvas.files.attachmentImage`, the one the
+ * canvas Attachments section already names the same nameless picture with, so
+ * the transcript and the canvas cannot disagree and no new key is added. The
+ * English value is byte-identical to the literal this replaced.
+ *
+ * THE NUMBER IS CONCATENATED, NOT A SECOND MESSAGE, and that is a judgement
+ * rather than a proof: the noun is a free-standing phrase, and a trailing Latin
+ * numeral after it ("Image jointe 2", "Imagen adjunta 2", "منسلک تصویر 2") is how
+ * every one of the eight locales numbers a named item. It lays out correctly
+ * under the RTL locale too: a number is a weak-direction run, so after the
+ * Urdu noun it sits on the visual left, i.e. AFTER the noun in reading order -
+ * the sibling `image_label` messages place their numeral the same way. One
+ * caveat: zh-CN's `image_label` spells its ordinal "第2张图片" (before the
+ * noun), so "附件图片 2" is the idiomatic bare form, not the sibling's shape.
+ * Compose per locale (a message with a count) the day a locale needs it.
+ *
+ * Same render-time rule as above: call from a render path that subscribes
+ * through `useI18nLocale()`.
+ */
+export function attachedImageLabel(
+	name: string | null | undefined,
+	index: number,
+	count: number,
+): string {
+	/* `??`, not `||`: the rule this replaced kept an empty wire name as given. */
+	if (name != null) return name;
+	const noun = t("ui.canvas.files.attachmentImage");
+	return count === 1 ? noun : `${noun} ${index + 1}`;
+}

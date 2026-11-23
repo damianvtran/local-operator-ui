@@ -1,0 +1,66 @@
+{
+  "auditor": "copy-reviewer-54e42e56d7d0",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "54e42e56d7d0-es-format1",
+  "date": "2026-11-21",
+  "status": "passed",
+  "namespace": "ui.teamBridge.holdsBatch",
+  "locale": "es",
+  "audit_kind": "mechanical-format-retention",
+  "source_commit": "a03a1f019cb3f2e73ad04e7d6910f9d23fb224d9",
+  "previous_target_commit": "178dbe97fc7dada7fddb38765a250909078b71eb",
+  "target_commit": "1ba852e96707c3f4a9d365b6c53f56943c5761e3",
+  "paths": {
+    "en": "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.json",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.context.json",
+    "es": "src/i18n/catalogues/es/ui.teamBridge.holdsBatch.json"
+  },
+  "sha256": {
+    "en": "f5a107049b5bcfa7ebd5d9c7cd844c28fa2a0806d362529ef6947a140b5a3613",
+    "context": "5df115fd88f555e96ebf66026b4e009491cb72a7f2831cc4f6a682e0cce6ad9e",
+    "es": "0c1ba4658a3c1d3ce3fce2dafc3e2d0fb5d68678d901615aa7115bd9cd322d58"
+  },
+  "retained_semantic_audit": {
+    "receipt": "i18n/receipts/54e42e56d7d0-es.json",
+    "receipt_sha256": "b964784c4a8d0d8783e367acae2e571cdc3e3a9dd93ef981d44495346a74bc0c",
+    "model": "anthropic/claude-opus-5-5",
+    "values_inspected_in_prior_audit": 9,
+    "findings": []
+  },
+  "provenance": {
+    "actual_served_model": "anthropic/claude-opus-5-5",
+    "independent": true,
+    "translator_sessions": [
+      "a1cd2bb201be",
+      "ae48c615726e"
+    ],
+    "translator_model": "openai/gpt-6.1-sol"
+  },
+  "verification": {
+    "method": "git show old:path and new:path; json.loads equality verifies exact parsed keys and all message values; worktree bytes equal new commit. English/context byte-equal to a03a1f01, old and new.",
+    "comparison": {
+      "locale": "es",
+      "path": "src/i18n/catalogues/es/ui.teamBridge.holdsBatch.json",
+      "keysets_equal": true,
+      "all_values_equal": true,
+      "values": 9,
+      "old_sha256": "70dc2d0cda304dcc9580185a34cc0fed1c055ddfc1bdcf80c524926df0aafa5b",
+      "new_sha256": "0c1ba4658a3c1d3ce3fce2dafc3e2d0fb5d68678d901615aa7115bd9cd322d58",
+      "worktree_matches_new": true
+    },
+    "source_context_byte_equal": {
+      "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.json": true,
+      "src/i18n/catalogues/en/ui.teamBridge.holdsBatch.context.json": true
+    },
+    "total_locales": 7,
+    "total_values_compared": 63,
+    "new_semantic_audit_values": 0,
+    "result": "All 63 parsed values and keysets identical. Retain completed semantic audit; only raw target-file hashes change."
+  },
+  "findings": [],
+  "limitations": [
+    "Source-copy/semantic audit only; no rendered fit, font, clipping, pseudo-localization or runtime RTL claim.",
+    "One independent audit instance per locale; does not substitute for any required additional high-visibility audit."
+  ],
+  "verdict": "APPROVED — TERMINAL (mechanical formatting only; semantic approval retained)"
+}

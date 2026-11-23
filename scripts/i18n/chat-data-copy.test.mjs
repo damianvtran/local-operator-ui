@@ -313,7 +313,7 @@ test("the bulk mark-read label carries its count and follows the locale", () => 
 	useEnglish();
 	const unread = (id) => ({
 		id,
-		session_id: id,
+		session_id: id.padStart(12, "0"),
 		active: true,
 		attention: { unseen: true, completion_token: `t-${id}` },
 		status: { code: "complete" },
@@ -343,7 +343,7 @@ test("the bulk control's tooltip and accessible-name suffix are catalogue copy i
 	useEnglish();
 	const row = (id, { active = true, token = `t-${id}` } = {}) => ({
 		id,
-		session_id: id,
+		session_id: id.padStart(12, "0"),
 		active,
 		attention: { unseen: true, completion_token: token },
 		status: { code: "complete" },

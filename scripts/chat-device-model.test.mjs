@@ -238,10 +238,15 @@ test("the plan's destination is the row's device ID, and the address is what get
 	const header = code(
 		"src/renderer/src/features/chat/device/chat-header-device.tsx",
 	);
-	const pick = header.slice(
-		header.indexOf("const pair = movePair({"),
-		header.indexOf("setAsk({"),
+	// The end marker is searched FROM the pick's start: the working-set reopen path
+	// has its own earlier `setAsk({`, and a whole-file search sliced '' silently.
+	const pickStart = header.indexOf("const pair = movePair({");
+	const pickEnd = header.indexOf("setAsk({", pickStart);
+	assert.ok(
+		pickStart !== -1 && pickEnd > pickStart,
+		`the move pick's source moved: movePair at ${pickStart}, its setAsk at ${pickEnd}`,
 	);
+	const pick = header.slice(pickStart, pickEnd);
 	assert.match(
 		pick,
 		/destination:\s*\{\s*deviceId:\s*row\.deviceId,\s*name:\s*row\.name\s*\}/,
@@ -256,9 +261,11 @@ test("the plan's destination is the row's device ID, and the address is what get
 		header.indexOf("onChoose={(plan) => {"),
 		header.indexOf("</>", header.indexOf("onChoose={(plan) => {")),
 	);
+	// Whitespace-tolerant and open after `plan.keep`: the working-set path appends the
+	// consent argument; what this pins is only the address in first position.
 	assert.match(
 		choose,
-		/onPick\(plan\.to === "local" \? null : plan\.to, plan\.keep\)/,
+		/onPick\(\s*plan\.to === "local" \? null : plan\.to,\s*plan\.keep\s*[,)]/,
 	);
 	/*
 	 * AND THE RECEIVER RESOLVES BY THE SAME KEY: the slot looks the id up in a model
@@ -279,7 +286,8 @@ test("the plan's destination is the row's device ID, and the address is what get
 	);
 	assert.match(slot, /const to = deviceId \?\? "local";/);
 	/* The address on the wire is that same value, and the draft keeps the id, not the name. */
-	assert.match(slot, /\{ sessionId, to, keep \}/);
+	// Open after `keep` for the same reason: the working-set consent is spread in after it.
+	assert.match(slot, /\{\s*sessionId,\s*to,\s*keep\s*[,}]/);
 	assert.match(slot, /setDraftPeer\(draftKey, row \? row\.deviceId : null\)/);
 });
 
@@ -680,9 +688,11 @@ test("a move narrows eligibility, and the ineligible row stays readable and expl
 	assert.equal(gradient.why, "did not answer the last read");
 	// The reason carries reachability, so the fact line does not say it twice.
 	assert.equal(gradient.facts.includes("unreachable"), false);
-	// The consequence is pinned, and it is the default move's own.
+	// The consequence is pinned, and it is the default move's own - and it now names
+	// its subject, so it cannot be read onto a row above it that moves nothing
+	// (design round 1, D1).
 	assert.equal(model.footer, t("ui.chat.device.footer.move_deletes_copy"));
-	assert.match(model.footer, /copy on this device is deleted/);
+	assert.match(model.footer, /^A move deletes this device's copy/u);
 });
 
 test("a backend that cannot move keeps the fact and loses every offer, with its own reason", () => {
@@ -1434,5 +1444,64 @@ test("the picker is re-worded when the language changes under it", () => {
 		deps,
 		/\blocale\b/,
 		`the devicePickerModel dependency list omits the locale its copy resolves from: ${deps}`,
+	);
+});
+
+/*
+ * Q-2'S WIRING, AS SOURCE PATTERNS. Hoisted rather than inlined because each one is a
+ * name for a fact - the sheet is fed from the pane, not from the row - and a reader of
+ * the test below should not have to parse a regex to see it.
+ */
+const SHEET_DIRECTORY_FROM_THE_PANE =
+	/remoteSheetDirectory\(\{\s*paneCwd,\s*rowCwd: row\?\.cwd,?\s*\}\)/;
+const SHEET_DIRECTORY_FROM_THE_ROW_ALONE = /row\?\.cwd \?\? ""/;
+const PANE_DIRECTORY_IS_ONE_VALUE =
+	/const chipCwd = draftKey \? cwd : live\.cwd;/;
+const PANE_DIRECTORY_TO_THE_SLOT = /paneCwd=\{chipCwd\}/;
+const PANE_DIRECTORY_TO_THE_CHIP = /cwd=\{chipCwd\}/;
+
+test("the Radient sheet is handed the pane's painted directory, not the row's cwd", () => {
+	/*
+	 * Q-2'S CALL SITE, WHICH IS WHERE Q-2 WAS (review round 2, MINOR-1). The value
+	 * itself is pinned as a model rule in `scripts/remote-compute-model.test.mjs`;
+	 * what that cannot see is whether this slot hands the resolver its PANE value at
+	 * all. It did not: the mount was `row?.cwd ?? ""`, the canonical row's own cwd -
+	 * written only by this app's `createSession` - so a conversation another client of
+	 * the daemon created showed the chip's path and the sheet's "no directory yet" a
+	 * few pixels apart. Revert `remoteSheetDirectory({ paneCwd, rowCwd: row?.cwd })`
+	 * to `row?.cwd ?? ""` and this test goes red, which is the whole of its job.
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		SHEET_DIRECTORY_FROM_THE_PANE,
+		"the sheet's directory is resolved from the pane's value, with the row as its fallback",
+	);
+	assert.doesNotMatch(
+		slot,
+		SHEET_DIRECTORY_FROM_THE_ROW_ALONE,
+		"the sheet's directory fell back to the row's cwd alone, which is Q-2",
+	);
+	/*
+	 * AND THE PANE VALUE IS THE CHIP'S, not a second derivation of it: the page hoists
+	 * one expression and feeds both surfaces from it, so the two cannot drift.
+	 */
+	const page = code("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		page,
+		PANE_DIRECTORY_IS_ONE_VALUE,
+		"the pane's directory is one value",
+	);
+	assert.match(
+		page,
+		PANE_DIRECTORY_TO_THE_SLOT,
+		"the device slot is handed it",
+	);
+	assert.match(
+		page,
+		PANE_DIRECTORY_TO_THE_CHIP,
+		"and so is the chip beside it",
 	);
 });

@@ -1,0 +1,215 @@
+{
+  "audit_id_prefix": "s16e-au2",
+  "slice": "S16e-renderer",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "head": "bd8e90542506e8bec4a98862b868095409b28329",
+  "locales": {
+    "fr": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 0,
+        "nits": 2
+      },
+      "findings": [
+        {
+          "id": "FR-2-01",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "current": "Débit audio limité",
+          "problem": "A third construction on the rate-limit concept. The shipped fr corpus writes it as «limite de débit» (9 values, e.g. ui.chat.error_block.rate_limit.before) and «{host} limité en débit» (ui.code_review.host.cooling). Noun-first «Débit audio limité» reads first as an audio-bitrate cap in a card whose subject is audio. Not misleading — the sentence below («La génération audio est très sollicitée en ce moment.») names the condition — and the class stays distinct from the other five.",
+          "suggest": "«Audio limité en débit» (21 cells, keeps the corpus construction and its own word «débit»), or keep as is and let the sentence below disambiguate."
+        },
+        {
+          "id": "FR-2-02",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.settlement.pending + ui.chat.canonical.image_gen.cancel.checking",
+          "current": "Règlement en attente — … / Vérification du règlement.",
+          "problem": "«règlement» has 0 occurrences in the shipped fr catalogue (467 keys) and no glossary row, so it is a new programme term introduced silently; it is also the homonym of «règlement» = rules, which is the weaker reading of «Vérification du règlement.» in isolation. The corpus states the same pending-charge fact with «frais finaux non confirmés» (ui.chat.canonical.sound.cost.estimated_zero). Both keys use «règlement» consistently, so nothing collides inside the slice.",
+          "suggest": "Either record settlement → «règlement» as a glossary row (then both keys stand), or align to the corpus family: «Frais finaux en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués.» / «Vérification des frais.»"
+        }
+      ],
+      "info": [
+        "«Arrêt demandé.» / «Arrêtée avant l’appel au fournisseur» keep the stop-is-a-request reading: no value claims the generation was cancelled.",
+        "cancel.running is near-verbatim from the shipped ui.chat.canonical.sound.stop.warning, which is the right call: the same billing fact must not get two wordings.",
+        "Typography verified by codepoint scan: U+202F before «;» in both semicolon values, U+2019 apostrophes, no U+00A0, spaced em dash in settlement.pending."
+      ]
+    },
+    "es": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 0,
+        "nits": 0
+      },
+      "findings": [],
+      "info": [
+        "error_class.gate_failed «Bloqueo por política» names the reason where English names the mechanism. Accepted: no es catalogue renders «gate» as a noun, «bloqueo» is the shipped word for blocking (ui.agentMessages.settings.allowlist.cue_deny), and it stays distinct from «Denegado».",
+        "error_class.audio_rate_limited «Audio saturado» agrees with the sentence rendered under it («está saturada ahora mismo»); «Límite de audio» would import the cap-on-audio reading the translator wanted to avoid.",
+        "cancel.checking «Comprobando el cobro final.» uses the gerund status form the corpus uses, and matches settlement.pending's own «Cobro final pendiente»; both name the final charge, which is the fact the note exists to state.",
+        "Promise audit: «no se te cobrará» is flat (not a maybe); running keeps «se cobrará si produce audio» conditional and «Detención solicitada» as a request; pending states no amount and no zero."
+      ]
+    },
+    "ru": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 0,
+        "nits": 0
+      },
+      "findings": [],
+      "info": [
+        "state.cancelled_batch: all four branches keep «Набор» (m, nom) as head noun with the material in the genitive, so «остановлен» agrees in every branch; the noun phrases are byte-identical to the shipped state.done_batch / state.failed_batch values, which is what makes the line sit in the same family.",
+        "«Проверка не пройдена» (gate_failed) checked against ui.code_review.attention.checks («проверки не проходят»): the senses are compatible (a check did not pass), so this is not a polysemy defect.",
+        "«Лимит аудио» sits on 18 shipped «лимит» values (e.g. «исчерпали лимит запросов»), so «лимит» is the locale's word for a rate limit; a bare noun as a class label collides with nothing.",
+        "«Расчёт» (settlement) and «итоговая плата» (final charge) have no shipped precedent in this namespace but are standard billing Russian, pair cleanly with the shipped «плата не взималась» / «плата не подтверждена», and are used consistently in both keys that need them: a glossary gap to record, not a translator violation.",
+        "endpoint stays Latin and undeclined, exactly as in the shipped sound.stop.warning. No NBSP/typographic-space defects; no space before «;»; spaced em dash in settlement.pending."
+      ]
+    },
+    "vi": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 2,
+        "nits": 1
+      },
+      "findings": [
+        {
+          "id": "VI-2-01",
+          "sev": "MINOR",
+          "key": "ui.chat.canonical.image_gen.cancel.checking + ui.chat.canonical.image_gen.settlement.pending",
+          "current": "Đang xác nhận khoản phí. / Đang chờ quyết toán — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.",
+          "problem": "One English concept (settlement) carries two words inside one slice: «xác nhận khoản phí» (confirming the charge) in cancel.checking and «quyết toán» in settlement.pending. «quyết toán» has 0 occurrences in the shipped vi catalogue — it is accounting-finalisation register, which sits oddly in a consumer status line, and a reader must reconcile it with the sibling key one line above that says «khoản phí».",
+          "suggest": "One family, using the shipped «khoản phí cuối cùng» (ui.chat.canonical.sound.cost.estimated_zero): cancel.checking → «Đang kiểm tra khoản phí.»; settlement.pending → «Khoản phí cuối cùng đang chờ xác nhận — sẽ hiện ra khi nhà cung cấp báo cáo.»"
+        },
+        {
+          "id": "VI-2-02",
+          "sev": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+          "current": "Tạo âm thanh đang bận. Hãy thử lại sau giây lát.",
+          "problem": "The subject of «đang bận» is a bare verb phrase («Tạo âm thanh»), which invites an imperative parse. Shipped vi always puts a noun in that slot: 7 shipped «đang bận» values, e.g. «Tác nhân đang bận» (send_failure.busy, composer.placeholder.busy), «Trung tâm đang bận» (publication.pull.busy), «Trạng thái đã đọc đang bận». This is the one line in the slice that reads translated rather than native.",
+          "suggest": "«Trình tạo âm thanh đang bận. Hãy thử lại sau giây lát.» (noun subject, same two sentences, no wait time, no promised success)."
+        },
+        {
+          "id": "VI-2-03",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+          "current": "Bị cổng chặn",
+          "problem": "«cổng» alone is also this UI's word for a network port (ui.chat.pickers.destination_pickers.ports «Cổng», info_model.control_port «Cổng điều khiển»), and the approval-gate noun is the qualified «cổng phê duyệt». A bare «cổng» therefore leaves the reader to infer which gate; the class is still distinct from «Bị từ chối» and the gate's own reason sits below.",
+          "suggest": "«Bị chính sách chặn» (blocked by policy, mirroring the es label's clarity; «chính sách» ships in 8 vi values) or «Bị cổng kiểm tra chặn»."
+        }
+      ],
+      "info": [
+        "state.cancelled_batch keeps the shipped batch noun «Loạt» and the shipped material nouns («video», «lời thuyết minh», «hiệu ứng âm thanh», «hình ảnh») — byte-identical to the shipped done/failed batch values.",
+        "«Giới hạn tần suất âm thanh» follows the shipped rate-limit phrase (6 values, e.g. error_block.rate_limit.before), so no terminology finding; at 26 cells it is the widest label in the slice but the sidecar sets no maxCells and the label wraps in a block, it does not truncate.",
+        "error_class.duplicate_id «Trùng id» keeps the source's lowercase token; shipped vi prose uses lowercase «id» in 4 values, so no change is owed.",
+        "All values are NFC; no combining-mark sequences. No «!», no Title Case, «bạn» not repeated per the guide."
+      ]
+    },
+    "zh-CN": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 1,
+        "nits": 0
+      },
+      "findings": [
+        {
+          "id": "ZH-2-01",
+          "sev": "MINOR",
+          "key": "composition of ui.chat.canonical.image_gen.cancel.running + …cancel.checking (callsite, not a draft value)",
+          "current": "… 若产出音频则会计费。 正在确认结算。  (the two values joined by one ASCII space)",
+          "problem": "Independently verified at src/renderer/src/features/chat/canonical/image-gen-card.tsx:341, where runningStopSentence composes `${running} ${t(...cancel.checking)}` with a hard-coded ASCII space. In zh-CN both values end in the full-width 。 so the joined line carries a half-width space between two Chinese sentences, which is visibly off in Chinese typography and repeats in every stop-with-settlement state. The two VALUES themselves are correct; nothing in the zh-CN draft needs rewording. The programme already solved this shape once: ui.chat.sidebar.mark_all_read.scope_joined is \"{chats} {tokenless}\" in en and \"{chats}{tokenless}\" in zh-CN.",
+          "suggest": "Key the joiner rather than hard-coding a space (en \" \", zh-CN \"\"), mirroring scope_joined, and pass it through the same t() binding so a language switch repaints it. Not a draft change and not in this audit's edit scope; recorded because it is user-visible."
+        }
+      ],
+      "info": [
+        "error.audio_rate_limited 「音频生成当前繁忙。稍后重试。」 is accepted: two sentences, no promised success, no wait time, and 稍后重试 matches shipped house style. The shipped corpus prefers a head noun (「中心繁忙」) and a service-subject variant (「音频生成服务当前繁忙。」) would read slightly better; polish only, recorded not raised.",
+        "error_class.audio_rate_limited 「音频速率限制」 matches the shipped rate-limit term (速率限制, 11 shipped values); labels carry no 。 while all prose does, per the zh-CN guide.",
+        "cancel.running keeps 已请求停止 (request, not cancellation) and 若产出音频则会计费 (conditional charge); cancel.queued keeps 不会计费 flat; settlement.pending states 结算尚未完成 with no amount and no zero.",
+        "Full-width punctuation only (，；。——), no half-width mark after Chinese, no space between Chinese and the Latin run in 重复ID."
+      ]
+    },
+    "hi": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 1,
+        "nits": 1
+      },
+      "findings": [
+        {
+          "id": "HI-2-01",
+          "sev": "MINOR",
+          "key": "ui.chat.canonical.image_gen.cancel.checking",
+          "current": "शुल्क की पुष्टि जाँची जा रही है।",
+          "problem": "Pleonastic double passive: the object of «जाँची जा रही है» is «पुष्टि», so the line says the confirmation is being examined rather than the charge being confirmed. The shipped construction this borrows from takes a report as its object (ui.chat.pickers.usage_view.checking_for_an_updated_usage_report), so the pattern does not carry over to पुष्टि. The key's contract is a three-word neutral status sentence; this runs to eight words.",
+          "suggest": "«शुल्क की पुष्टि की जा रही है।» (confirmation of the charge is underway; keeps पुष्टि and the charge noun)."
+        },
+        {
+          "id": "HI-2-02",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "current": "ऑडियो दर सीमा",
+          "problem": "A bare noun compound names the constraint where the other five labels name the state or failure (अस्वीकृत, गेट विफल, अज्ञात टूल, अमान्य आर्ग्युमेंट, डुप्लिकेट id). It is grammatical as a label and the sentence below carries the meaning, but the shipped hi corpus only hyphenates this noun (दर-सीमा / दर-सीमाएँ) or uses it inside a clause (दर सीमा लगी है).",
+          "suggest": "«ऑडियो दर-सीमा» (hyphenated noun, matching the shipped form) if the noun label is kept; a participle form would read as a state but has no shipped precedent to anchor it."
+        }
+      ],
+      "info": [
+        "cancel.running is near-verbatim from the shipped ui.chat.canonical.sound.stop.warning, including «कोई endpoint नहीं है» — endpoint Latin is the shipped form, not an English leak.",
+        "The ASCII «;» is hi house style (176 shipped values use it), so the clause separator in cancel.queued/cancel.running is correct, not a half-width full stop.",
+        "गेट has shipped precedent (ui.chat.pickers.destination_pickers…gates: «स्वीकृति और प्रश्न गेट»), so गेट विफल is a transliterated loan with an anchor; «अस्वीकृत» matches the shipped mesh-approval label.",
+        "Promise audit: «कोई शुल्क नहीं लगेगा» is flat; «रोकने का अनुरोध किया गया» is a request; «शुल्क की पुष्टि लंबित» states no amount and no zero."
+      ]
+    },
+    "ur": {
+      "verdict": "passed",
+      "counts": {
+        "blockers": 0,
+        "majors": 0,
+        "minors": 0,
+        "nits": 3
+      },
+      "findings": [
+        {
+          "id": "UR-2-01",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+          "current": "مکرر id",
+          "problem": "The only lowercase Latin id in ur prose in this slice. Shipped ur writes the token as ID in prose (25 values: «ایجنٹ ID», «سیشن ID»); every lowercase id in the shipped catalogue is an ICU {id} placeholder, i.e. machine syntax. English is lowercase «Duplicate id», so mirroring it is defensible, but it introduces a second token form in a locale that has one.",
+          "suggest": "«مکرر ID» — keeps the English word order and adopts the locale's prose token form."
+        },
+        {
+          "id": "UR-2-02",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "current": "آڈیو کی شرح محدود",
+          "problem": "A second construction on the product's rate-limit concept: the settled noun is «شرح کی حد» (11 shipped values across error_block.rate_limit.*, code_review.host.cooling, usage_reset.chip_label), while this label uses the adjective form «شرح محدود» («audio's rate [is] limited»). Meaning is intact and the class is distinct, so this is a consistency call, not an error.",
+          "suggest": "«آڈیو پر شرح کی حد» (keeps the shipped noun, avoids the double possessive the translator rejected); «آڈیو کی شرح محدود» is acceptable if the wave prefers the state form and records it."
+        },
+        {
+          "id": "UR-2-03",
+          "sev": "NIT",
+          "key": "ui.chat.canonical.image_gen.cancel.running",
+          "current": "… آڈیو بننے پر چارج لگے گا۔",
+          "problem": "One surface family, two nouns for the charged amount: the shipped ui.chat.canonical.sound.stop.warning renders this identical English clause with «لاگت لگے گی», while this draft uses «چارج». The draft is the better word (it matches shipped «کوئی چارج نہیں» and «حتمی چارج»), so no change is owed to the draft — the drift is on the shipped side.",
+          "suggest": "No change to this draft. Harmonise the shipped sound.stop.warning (لاگت → چارج) in a later wave and record charge vs cost as a glossary pair so the next wave cannot re-litigate it."
+        }
+      ],
+      "info": [
+        "RTL/bidi verified: no manual bidi control characters (no RLM/LRM/FSI/PDI/LRE/RLE) in any value — the render layer owns isolation; Latin islands (endpoint, id) keep logical order between Urdu words; no Hindi danda, no Arabic-Indic digits; Urdu ، ؛ ۔ and spaced em dash used throughout.",
+        "state.cancelled_batch keeps the shipped collection noun «مجموعہ» and the shipped material nouns («ویڈیوز», «وائس اوورز», «صوتی اثرات», «تصاویر») — identical to the shipped done/failed batch values.",
+        " گیٹ has shipped precedent (ui.chat.pickers.goal.placeholder «تمام گیٹس کامیاب ہونے پر»), so گیٹ ناکام is anchored; «مسترد» matches the shipped mesh-approval label.",
+        "cancel.queued uses «کال کیے جانے سے پہلے» where the sibling stop_hint_queued uses «درخواست بھیجے جانے سے پہلے»; both are shipped vocabulary («فراہم کنندہ کال»), so this is optional harmonisation only.",
+        "Promise audit: «کوئی چارج نہیں لیا جائے گا» is flat; «روکنے کی درخواست دی گئی» is a request; «تصفیہ زیر التوا» states no amount and no zero."
+      ]
+    }
+  }
+}

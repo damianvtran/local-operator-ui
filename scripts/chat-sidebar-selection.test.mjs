@@ -339,7 +339,17 @@ const merged = (file, expression, stubs) => {
 	 * expressions, and the held state is the one where every predicate this helper merges for
 	 * is live.
 	 */
-	const withDefaults = { menuOpen: true, pinned: true, ...stubs };
+	/*
+	 * `USER_CONTENT_CLASS` is the analytics region mark the row boxes carry
+	 * (`autocapture-privacy.ts`): a constant, not a predicate, so it is bound to
+	 * its real value. It paints nothing; PostHog reads it.
+	 */
+	const withDefaults = {
+		menuOpen: true,
+		pinned: true,
+		USER_CONTENT_CLASS: "ph-sensitive ph-mask",
+		...stubs,
+	};
 	const names = Object.keys(withDefaults);
 	// biome-ignore lint/security/noGlobalEval: the evaluated text is this repository's own source, read two assertions above, and the sandbox is a `new Function` over stub predicates.
 	const call = new Function("cn", ...names, `return cn(${expression});`);
@@ -1404,6 +1414,8 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const SKILLS_LIBRARY =
 	"src/renderer/src/features/agents/components/skills-library.tsx";
+const PENDING_APPROVALS =
+	"src/renderer/src/features/agents/components/pending-approvals.tsx";
 const PROPOSED_NEW =
 	"src/renderer/src/features/agents/components/proposed-new-profiles.tsx";
 const CANVAS_SECTION =
@@ -1422,6 +1434,8 @@ const HUB_LINK_MARK =
 	"src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
 const PROJECT_TIMELINE =
 	"src/renderer/src/features/projects/components/project-timeline.tsx";
+const CANVAS_PROJECTS_VIEWER =
+	"src/renderer/src/features/chat/components/canvas/canvas-projects-viewer.tsx";
 
 /*
  * The regex metacharacters an anchor may carry, and the literal spaces that stand
@@ -1626,8 +1640,41 @@ const ROW_STATE_GROUNDS = [
 		 */
 		what: "the Team Bridge page's Archived channels entry",
 		rowFile: TEAM_BRIDGE_PAGE,
-		expression: () => expressionBefore(TEAM_BRIDGE_PAGE, "? rowCurrent"),
+		/* Scoped to the entry's own `aria-current`, not the file's first
+		   `? rowCurrent`: the Approvals entry (ui#1954, design D8) is a second
+		   painter in this file and sits above it, so the first-occurrence anchor
+		   landed on Approvals, whose expression is not current under this row's
+		   `quickView: "archived"` stub. */
+		expression: () =>
+			expressionAfterWithin(
+				TEAM_BRIDGE_PAGE,
+				'aria-current={quickView === "archived"',
+				"className={cn(",
+			),
 		stubs: { quickView: "archived", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
+	},
+	{
+		/*
+		 * The Team Bridge page's Approvals entry (ui#1954, design D8): visibly
+		 * current while Requests is open, in the same `<aside>` as the rail rows,
+		 * so it is asserted on the same `surface` ground as the Archived entry.
+		 */
+		what: "the Team Bridge page's Approvals entry",
+		rowFile: TEAM_BRIDGE_PAGE,
+		expression: () =>
+			expressionAfterWithin(
+				TEAM_BRIDGE_PAGE,
+				'aria-current={quickView === "requests"',
+				"className={cn(",
+			),
+		stubs: { quickView: "requests", rowCurrent },
 		ground: () =>
 			literalClassAt(
 				TEAM_BRIDGE_PAGE,
@@ -1705,6 +1752,22 @@ const ROW_STATE_GROUNDS = [
 		stubs: { proposal: { name: "agent" }, selected: "agent", rowCurrent },
 		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
 		groundFile: AGENTS_PAGE,
+	},
+	{
+		// The list, not the surrounding sunken panel or the roster aside,
+		// supplies the ground for the approval rows.
+		what: "the Agents pending approvals summary row",
+		rowFile: PENDING_APPROVALS,
+		expression: () =>
+			expressionAfter(PENDING_APPROVALS, "aria-current={current"),
+		stubs: { current: true, rowCurrent },
+		ground: () =>
+			literalClassAt(
+				PENDING_APPROVALS,
+				'data-testid="pending-approvals-list"',
+				"after",
+			),
+		groundFile: PENDING_APPROVALS,
 	},
 	{
 		/* The retained FileRowItem module still names/paints rowCurrent, so the
@@ -2692,6 +2755,17 @@ const PLATES_INSIDE_ROW_STATES = [
 		ground: "bg-surface",
 		edge: false,
 		fact: "border-ink-muted",
+	},
+	{
+		/* The canvas Projects tab's linked-project row meta chips (target or
+		   completed date, estimate, milestones) are `sunken` plates inside the
+		   row's `hover:bg-row-hover` state, so they wear the control edge rather
+		   than relying on a fill that can match the hover rung. */
+		what: "the canvas projects list row's meta chip",
+		file: CANVAS_PROJECTS_VIEWER,
+		element: "span",
+		ground: "bg-sunken",
+		edge: true,
 	},
 ];
 

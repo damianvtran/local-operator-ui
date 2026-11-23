@@ -1,0 +1,22 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "e330a68e823e",
+  "status": "passed",
+  "namespace": "ui.chat.dialogs",
+  "sha256": {
+    "zh-CN": "7be3ed92a0be762d10ba0f3464ab22b3ea125253d848eabe9cb02e4da1a99c2a",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+  },
+  "findings": [],
+  "scope": "Remediation archive_message; receipt covers three programme-added archive keys; pre-existing keys not linguistically re-audited.",
+  "model_provenance": {
+    "initial_model": "anthropic/claude-sonnet-5-5",
+    "fallback_switches": [
+      "anthropic/claude-opus-5-5",
+      "openai/gpt-6.1-sol"
+    ],
+    "reason": "provider failure: timeout",
+    "actual_served_model_at_verdict": "openai/gpt-6.1-sol"
+  }
+}

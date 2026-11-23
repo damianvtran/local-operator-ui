@@ -1,0 +1,122 @@
+{
+	"ui.teamBridge.rename.menu": {
+		"role": "menu item in a conversation's \"…\" menu",
+		"tone": "plain, action",
+		"length": "Short; one menu line beside an icon.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown."
+		},
+		"note": "Opens a small dialog to change the conversation's name. The ellipsis says a dialog follows; keep it (use the locale's ellipsis character). Only offered to the channel or group's administrator."
+	},
+	"ui.teamBridge.rename.title": {
+		"role": "dialog title",
+		"tone": "plain",
+		"length": "Short; one line.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown."
+		},
+		"note": "Title of the rename dialog. Same verb as the menu item, without the ellipsis."
+	},
+	"ui.teamBridge.rename.description": {
+		"role": "dialog description under the title",
+		"tone": "plain, informative",
+		"length": "One or two short sentences.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown."
+		},
+		"note": "Says the change is visible to every member. The channel arm also states the naming rule the field applies as you type: lower case, spaces become hyphens (\"QA team\" becomes \"qa-team\")."
+	},
+	"ui.teamBridge.rename.name": {
+		"role": "text field label",
+		"tone": "plain, noun",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Label of the single name field."
+	},
+	"ui.teamBridge.rename.cancel": {
+		"role": "button",
+		"tone": "plain",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Closes the dialog without saving. Use the locale's usual Cancel."
+	},
+	"ui.teamBridge.rename.save": {
+		"role": "primary button",
+		"tone": "plain",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Saves the new name. Use the locale's usual Save."
+	},
+	"ui.teamBridge.rename.saving": {
+		"role": "primary button label while the request is in flight",
+		"tone": "plain",
+		"length": "One word plus ellipsis; must fit the Save button.",
+		"placeholders": {},
+		"note": "Replaces Save while the server answers."
+	},
+	"ui.teamBridge.rename.error.taken": {
+		"role": "inline error under the name field",
+		"tone": "plain, helpful",
+		"length": "One sentence plus a short instruction.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown.",
+			"name": "the name already in use, exactly as stored; never translated. The channel arm prefixes it with # like the sidebar does."
+		},
+		"note": "Another channel or group in this organization already has the name the person typed. Name it so they know which one."
+	},
+	"ui.teamBridge.rename.error.empty": {
+		"role": "inline error under the name field",
+		"tone": "plain, instruction",
+		"length": "Two or three words.",
+		"placeholders": {},
+		"note": "The name is blank (only spaces)."
+	},
+	"ui.teamBridge.rename.error.too_long": {
+		"role": "inline error under the name field",
+		"tone": "plain, factual",
+		"length": "One sentence.",
+		"placeholders": {
+			"max": "the maximum number of characters, a number (64)"
+		},
+		"note": "The name is longer than the server allows. Characters here means visible characters (code points), not bytes."
+	},
+	"ui.teamBridge.rename.error.characters": {
+		"role": "inline error under the name field",
+		"tone": "plain, helpful",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "The server refused a character in the name: a control character (tab, line break), an invisible character, or a space other than the ordinary space."
+	},
+	"ui.teamBridge.rename.error.invalid": {
+		"role": "inline error under the name field",
+		"tone": "plain, helpful",
+		"length": "One sentence plus a short suggestion.",
+		"placeholders": {},
+		"note": "The server rejected the name for another reason."
+	},
+	"ui.teamBridge.rename.error.forbidden": {
+		"role": "inline error in the dialog",
+		"tone": "plain, factual",
+		"length": "One sentence.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown."
+		},
+		"note": "The server refused because the person is no longer an administrator of this conversation."
+	},
+	"ui.teamBridge.rename.error.archived": {
+		"role": "inline error in the dialog",
+		"tone": "plain, factual",
+		"length": "One sentence.",
+		"placeholders": {
+			"kind": "`channel` or `group`; selects the arm. Never translated or shown."
+		},
+		"note": "Someone archived the conversation while the dialog was open; archived conversations cannot be renamed."
+	},
+	"ui.teamBridge.rename.error.failed": {
+		"role": "inline error in the dialog",
+		"tone": "plain, reassuring",
+		"length": "One sentence plus Try again.",
+		"placeholders": {},
+		"note": "Any other failure (network, server error). The old name is still in place."
+	}
+}

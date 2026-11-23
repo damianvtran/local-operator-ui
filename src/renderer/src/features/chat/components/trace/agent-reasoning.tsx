@@ -2,15 +2,21 @@
  * Internal reasoning — the fifth and least prominent tier of § 7.
  *
  * "This is the agent talking to itself, and showing it at prose weight is
- * the single biggest reason the app reads as technical." Reasoning is hidden
- * by default at the preference level: with `showAgentReasoning` off (the
- * default) this renders nothing at all — not even a collapsed disclosure,
- * which would still be chrome on every turn. With the preference on, the
- * content sits behind the quiet disclosure, closed by default.
+ * the single biggest reason the app reads as technical." So the content sits
+ * behind a quiet disclosure, closed by default.
+ *
+ * A `showAgentReasoning` preference used to hide this row entirely (default
+ * off). It was removed with its Settings switch, which changed nothing in the
+ * shipped app: the canonical transcript has no reasoning record kind, and this
+ * component's callers (`message-item`, `message-paper`) are reachable only
+ * from Storybook. Rendering the disclosure there keeps the reasoning stories
+ * meaningful; a canonical reasoning row would need its own design pass.
  *
  * Covers all three reasoning carriers: the `thinking` field, and `plan` /
  * `reflection` turns. The label is call-site chosen so a reflection turn can
- * read "Reasoning" while a thinking field on an answer reads "Thinking".
+ * read "Reasoning" while a thinking field on an answer reads "Thinking" — but
+ * the default is a CATALOGUE KEY, not a word: a caller that passes no label used
+ * to paint English `Reasoning` in every language (S18d).
  *
  * The row sits on the trace column's rail like every other row: chevron,
  * then the identity slot, then the label. The identity slot is empty because
@@ -21,8 +27,9 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -41,7 +48,7 @@ const REASONING_BODY_STYLE: MarkdownStyleProps = {
 };
 
 export type AgentReasoningProps = {
-	/** Trigger label shown when the preference allows reasoning. */
+	/** Trigger label of the disclosure. */
 	label?: string;
 	/** The reasoning text. Empty or absent renders nothing. */
 	content?: string;
@@ -62,17 +69,24 @@ export type AgentReasoningProps = {
 };
 
 export const AgentReasoning = ({
-	label = "Reasoning",
+	label,
 	content,
 	durationS = null,
 }: AgentReasoningProps) => {
-	const showAgentReasoning = useUiPreferencesStore(
-		(state) => state.showAgentReasoning,
-	);
-
-	if (!showAgentReasoning || !content) {
+	/*
+	 * The row subscribes to the active locale rather than reading it once: the
+	 * language picker repaints the transcript in place, and this label is one of
+	 * the few strings on the rail whose words come from a table.
+	 */
+	useI18nLocale();
+	if (!content) {
 		return null;
 	}
+
+	// The default label is looked up at RENDER, never captured in the signature:
+	// a default parameter is evaluated once per call but from a literal, which is
+	// exactly the English-everywhere defect S18d removed.
+	const shownLabel = label ?? t("ui.chat.trace.reasoning.label");
 
 	return (
 		<Disclosure
@@ -92,8 +106,11 @@ export const AgentReasoning = ({
 						 */}
 						<span className="text-ink-dim text-body-sm">
 							{durationS !== null
-								? `${label} for ${formatDuration(durationS)}`
-								: label}
+								? t("ui.chat.trace.reasoning.with_duration", {
+										label: shownLabel,
+										duration: formatDuration(durationS),
+									})
+								: shownLabel}
 						</span>
 					</span>
 				</span>

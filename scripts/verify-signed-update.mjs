@@ -1,6 +1,10 @@
 #!/usr/bin/env node
-/** Main-process Node inspector only: no renderer/page CDP, browser engine,
- * altered fuses, app-update.yml patches, re-signing, or quarantine bypass.
+/** Main-process Node inspector on the INCUMBENT only: no renderer/page CDP,
+ * browser engine, altered fuses, app-update.yml patches, re-signing, or
+ * quarantine bypass. The swapped candidate is never inspected: F2 turns its
+ * `EnableNodeCliInspectArguments` fuse off, so it is asked through its own
+ * `--lo-launch-probe` line and observed through its backend's health instead
+ * (native QA, PR #1948, Q1).
  * A missing native capability is BLOCKED, never a surrogate PASS.
  *
  * WHAT THIS CAN AND CANNOT DO, because a gate that overstates its own scope is
@@ -35,6 +39,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	rmSync,
 	statSync,
 	writeFileSync,
 } from "node:fs";
@@ -43,6 +48,16 @@ import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	incumbentInspectorCapability,
+	incumbentInspectorRefusal,
+} from "./incumbent-fuse-gate.mjs";
+import {
+	incumbentReleaseRefusalMessage,
+	resolveIncumbentMetadata,
+	resolveIncumbentRelease,
+} from "./incumbent-release.mjs";
 import {
 	finalContainerChecks,
 	finalMetadataChecks,
@@ -50,10 +65,16 @@ import {
 } from "./python-artifact-layout.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 import {
+	LAUNCH_PROBE_FLAG,
+	SPAWN_PROBE_TIMEOUT_MS,
+	attestationEpochCheck,
 	bundledBytecodeCheck,
 	bundledPythonCheck,
+	electronFusesCheck,
+	partitionCandidateChecks,
 	profileAuthorizationCheck,
 	readEmbeddedProfileEntitlements,
+	relaunchProbeVerdict,
 	runChecks,
 	spawnRunner,
 } from "./verify-macos-artifacts.mjs";
@@ -133,6 +154,63 @@ async function until(work, timeout = 60_000) {
 		await delay(250);
 	}
 	throw new Error("Timed out waiting for owned update operation");
+}
+/** An owned child has ended, by exit code or by signal. */
+const ended = (child) => child.exitCode !== null || child.signalCode !== null;
+/**
+ * The F2 rows that must be visible on every run, as their own matrix lines.
+ *
+ * They are computed inside the container checks, which now run BEFORE the GUI
+ * session check: on a hosted runner (no GUI) the run used to exit BLOCKED before
+ * ever reaching them, so a candidate with the wrong fuse wire or no attestation
+ * epoch was never reported by this lane at all (native QA, PR #1948, Q1).
+ */
+const F2_ROW_IDS = ["app-electron-fuses", "app-attestation-epoch"];
+/**
+ * Ask the swapped candidate "do you start, and which version are you?" through
+ * its own `--lo-launch-probe` line (see `relaunchProbeVerdict` for why this is
+ * not `--inspect`). Scratch profile and log directory, so the probe leaves
+ * nothing in the support tree whose sentinel this run hashes. Never throws:
+ * every outcome is a result the verdict judges.
+ */
+async function relaunchProbe(executable, label) {
+	const profile = mkdtempSync(join(tmpdir(), `signed-update-${label}-`));
+	const args = [
+		LAUNCH_PROBE_FLAG,
+		`--user-data-dir=${profile}`,
+		MOCK_KEYCHAIN_SWITCH,
+		"--window-mode=headless",
+	];
+	let result;
+	try {
+		const { stdout, stderr } = await execute(executable, args, {
+			env: withTelemetryOff(
+				safeEnv({
+					LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+					LOCAL_OPERATOR_LOG_DIR: join(profile, "logs"),
+				}),
+			),
+			timeout: SPAWN_PROBE_TIMEOUT_MS,
+			maxBuffer: 8 * 1024 * 1024,
+		});
+		result = { status: 0, signal: null, timedOut: false, stdout, stderr };
+	} catch (error) {
+		result = {
+			status: typeof error.code === "number" ? error.code : null,
+			signal: error.signal ?? null,
+			// execFile kills a child that outlives `timeout` and marks it `killed`.
+			timedOut: error.killed === true,
+			stdout: error.stdout ?? "",
+			stderr: error.stderr ?? error.message,
+		};
+	} finally {
+		rmSync(profile, { recursive: true, force: true });
+	}
+	appendFileSync(
+		join(evidence, "commands.log"),
+		`${executable} ${JSON.stringify(args)}\n${result.stdout}${result.stderr}\nstatus=${result.status} signal=${result.signal} timedOut=${result.timedOut}\n`,
+	);
+	return result;
 }
 async function inspectorAt(port) {
 	let target;
@@ -353,13 +431,6 @@ try {
 		blocked(
 			"Signing/API credentials reached the test VM. The exact-update job must have no secrets.",
 		);
-	try {
-		await command("/bin/launchctl", ["print", `gui/${process.getuid()}`]);
-	} catch {
-		blocked(
-			"The hosted runner lacks a native GUI launchd session; Squirrel/native relaunch cannot be validated here",
-		);
-	}
 	const support = join(
 		homedir(),
 		"Library",
@@ -370,13 +441,6 @@ try {
 		blocked(
 			"Runner home is not pristine; refusing to overwrite pre-existing application state",
 		);
-	const scratch = mkdtempSync(join(tmpdir(), "signed-update-"));
-	mkdirSync(support, { recursive: true });
-	const sentinel = join(support, "synthetic-user-data.txt");
-	writeFileSync(sentinel, "signed-update synthetic user data\n");
-	const dataHash = createHash("sha256")
-		.update(readFileSync(sentinel))
-		.digest("hex");
 	const artifacts = readdirSync(candidateDir)
 		.filter((name) => /\.(zip|dmg)$/.test(name))
 		.map((name) => join(candidateDir, name));
@@ -415,48 +479,84 @@ try {
 					// executable in the bundle rather than its launcher alone — the
 					// artifact this harness exists to vet carried the group on eight.
 					...profileAuthorizationCheck(app, { run: spawnRunner, profile }),
+					// F2: the candidate must carry the hardened fuse wire and the
+					// attestation epoch, or the update path would ship an app whose
+					// card answers can never be verified (or, worse, one that can be
+					// driven in node mode). Both are the candidate's own failures.
+					electronFusesCheck(app),
+					attestationEpochCheck(app),
 					bundledPythonCheck(app, { expectArch: arch }),
 					bundledBytecodeCheck(app),
 					privatePythonSeedCheck(app, { expectArch: arch }),
 				];
 			},
 		});
+		// The F2 rows first, each as its own matrix line, so a fuse or epoch
+		// failure is named before the assembly assertion folds it into one FAIL.
+		for (const id of F2_ROW_IDS)
+			for (const row of results.filter((row) => row.id === id))
+				record(
+					`Candidate ${id} (${basename(path)})`,
+					row.passed ? "PASS" : "FAIL",
+					row.output,
+				);
 		// What the build assembled must be right: those failures are the candidate's.
-		const assembly = results.filter((row) => !SIGNATURE_CHECK_IDS.has(row.id));
+		const { assembly, brokenSignatures } = partitionCandidateChecks(
+			results,
+			SIGNATURE_CHECK_IDS,
+		);
 		assert.ok(
 			assembly.every((row) => row.passed),
 			JSON.stringify(assembly),
 		);
 		// Whether it is signed is the host's capability question, not the candidate's.
-		await blockedUnsignedCandidate(
-			path,
-			results.filter((row) => SIGNATURE_CHECK_IDS.has(row.id) && !row.passed),
-		);
+		// Only a candidate with a failing signature row is BLOCKED: a signed one must
+		// fall through to the update swap, which is the whole point of this harness
+		// (QA Q3 on #1948 - the unguarded call stopped every run here with "()").
+		if (brokenSignatures.length > 0)
+			await blockedUnsignedCandidate(path, brokenSignatures);
 	}
 	record(
 		"Delivered candidate ZIP/DMG",
 		"PASS",
 		"Every architecture verified after extraction/copy-out; exact metadata hashes and sizes match",
 	);
-	const release = await (
-		await fetch(
-			`https://api.github.com/repos/damianvtran/local-operator-ui/releases/tags/${tag}`,
-		)
-	).json();
-	const releaseMetadata = release.assets?.find(
-		(asset) => asset.name === "latest-mac.yml",
-	);
-	if (!releaseMetadata)
-		blocked("The exact incumbent release has no published macOS metadata");
-	const metadataPath = join(scratch, "incumbent.yml");
-	await download(releaseMetadata.browser_download_url, metadataPath);
-	const oldMetadata = load(readFileSync(metadataPath, "utf8"));
-	const oldEntry = oldMetadata.files.find((file) =>
-		file.url.endsWith(`-${process.arch}.zip`),
-	);
-	const oldAsset = release.assets.find((asset) => asset.name === oldEntry?.url);
-	if (!oldAsset)
-		blocked("The exact incumbent release has no native-architecture ZIP");
+	/*
+	 * The GUI-session check comes AFTER the candidate's own artifact checks: those
+	 * need no GUI, and a hosted runner (which has none) used to exit BLOCKED here
+	 * before the fuse and attestation-epoch rows ever ran (native QA, PR #1948,
+	 * Q1). Only the swap and the relaunch need the session.
+	 */
+	try {
+		await command("/bin/launchctl", ["print", `gui/${process.getuid()}`]);
+	} catch {
+		blocked(
+			"The hosted runner lacks a native GUI launchd session; Squirrel/native relaunch cannot be validated here",
+		);
+	}
+	const scratch = mkdtempSync(join(tmpdir(), "signed-update-"));
+	mkdirSync(support, { recursive: true });
+	const sentinel = join(support, "synthetic-user-data.txt");
+	writeFileSync(sentinel, "signed-update synthetic user data\n");
+	const dataHash = createHash("sha256")
+		.update(readFileSync(sentinel))
+		.digest("hex");
+	const incumbentRelease = await resolveIncumbentRelease({
+		repo: "damianvtran/local-operator-ui",
+		tag,
+	});
+	if (!incumbentRelease.ok)
+		blocked(incumbentReleaseRefusalMessage(incumbentRelease));
+	const { release, metadataAsset } = incumbentRelease;
+	const incumbentZip = await resolveIncumbentMetadata({
+		tag,
+		arch: process.arch,
+		release,
+		metadataAsset,
+		parseMetadata: load,
+	});
+	if (!incumbentZip.ok) blocked(incumbentReleaseRefusalMessage(incumbentZip));
+	const { entry: oldEntry, zipAsset: oldAsset } = incumbentZip;
 	const oldZip = join(scratch, "incumbent.zip");
 	await download(oldAsset.browser_download_url, oldZip);
 	const oldBytes = readFileSync(oldZip);
@@ -471,6 +571,12 @@ try {
 	const app = join(install, "Local Operator.app");
 	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
 	await command("/usr/sbin/spctl", ["-a", "-t", "exec", "-vvv", app]);
+	// Classify the publisher-verified incumbent before running any of its code.
+	// Even a framework read failure means the harness cannot establish control,
+	// not that the candidate failed. The probe returns a path-free state.
+	const inspectorCapability = incumbentInspectorCapability(app);
+	if (!inspectorCapability.supported)
+		blocked(incumbentInspectorRefusal(tag, inspectorCapability));
 	const executable = join(app, "Contents", "MacOS", "Local Operator");
 	const legacyPython = join(
 		app,
@@ -614,79 +720,73 @@ try {
 		"PASS",
 		"Incumbent updater installed exact candidate; stale running/new -E/-I consumers fail closed; candidate remains signed",
 	);
-	const candidate = startOwned(
-		executable,
-		[`--inspect=127.0.0.1:${port}`],
-		"candidate",
-		safeEnv({ LOCAL_OPERATOR_UI_WINDOW_MODE: "headless" }),
-	);
-	inspector = await inspectorAt(port);
-	await until(async () => {
-		const path = join(
-			support,
-			"managed-python",
-			"packaged",
-			"selected-environment.json",
+	/*
+	 * The candidate is relaunched WITHOUT `--inspect`: its fuse turns that switch
+	 * off, so an inspector wait could only time out (native QA, PR #1948, Q1).
+	 * Each launch is preceded by the app's own `--lo-launch-probe`, which must
+	 * name the candidate's version (and not the incumbent's), and is then booted
+	 * for real and observed through its backend's health. It is stopped with
+	 * SIGTERM, which Electron turns into a normal `app.quit()` on macOS, so the
+	 * quit path (before-quit / will-quit, backend shutdown) is the one a user's
+	 * quit takes. Every failure here is a FAIL, never BLOCKED: the incumbent
+	 * already proved this host can run the app.
+	 */
+	const launchAndCheck = async (label) => {
+		const verdict = relaunchProbeVerdict(
+			await relaunchProbe(executable, `${label}-probe`),
+			{
+				candidateVersion: candidateMetadata.version,
+				incumbentVersion: capability.version,
+			},
 		);
-		return existsSync(path) && JSON.parse(readFileSync(path, "utf8"));
-	}, 600_000);
-	await until(async () => {
-		try {
-			return (
-				await fetch("http://127.0.0.1:1111/health", {
-					signal: AbortSignal.timeout(1_000),
-				})
-			).ok;
-		} catch {
-			return false;
-		}
-	}, 120_000);
-	assert.equal(
-		createHash("sha256").update(readFileSync(sentinel)).digest("hex"),
-		dataHash,
-	);
-	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
-	await inspector.evaluate(
-		"setTimeout(()=>process.mainModule.require('electron').app.quit(),100);true",
-	);
-	inspector.close();
-	inspector = null;
-	await until(() => candidate.exitCode !== null);
-	const second = startOwned(
-		executable,
-		[`--inspect=127.0.0.1:${port}`],
-		"second-launch",
-		safeEnv({ LOCAL_OPERATOR_UI_WINDOW_MODE: "headless" }),
-	);
-	inspector = await inspectorAt(port);
-	assert.equal(
-		await inspector.evaluate(
-			"process.mainModule.require('electron').app.getVersion()",
-		),
-		candidateMetadata.version,
-	);
-	await until(async () => {
-		try {
-			return (
-				await fetch("http://127.0.0.1:1111/health", {
-					signal: AbortSignal.timeout(1_000),
-				})
-			).ok;
-		} catch {
-			return false;
-		}
-	}, 120_000);
-	assert.equal(
-		createHash("sha256").update(readFileSync(sentinel)).digest("hex"),
-		dataHash,
-	);
-	await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
-	await inspector.evaluate(
-		"setTimeout(()=>process.mainModule.require('electron').app.quit(),100);true",
-	);
-	inspector.close();
-	inspector = null;
-	await until(() => second.exitCode !== null);
+		record(
+			`Candidate ${label} launch probe`,
+			verdict.passed ? "PASS" : "FAIL",
+			verdict.detail,
+		);
+		if (!verdict.passed)
+			throw new Error(`Candidate ${label} launch probe: ${verdict.detail}`);
+		const child = startOwned(
+			executable,
+			[],
+			label,
+			safeEnv({ LOCAL_OPERATOR_UI_WINDOW_MODE: "headless" }),
+		);
+		if (label === "candidate")
+			await until(async () => {
+				const path = join(
+					support,
+					"managed-python",
+					"packaged",
+					"selected-environment.json",
+				);
+				return existsSync(path) && JSON.parse(readFileSync(path, "utf8"));
+			}, 600_000);
+		await until(async () => {
+			if (ended(child))
+				throw new Error(
+					`Candidate ${label} exited (${child.exitCode ?? child.signalCode}) before its backend was healthy`,
+				);
+			try {
+				return (
+					await fetch("http://127.0.0.1:1111/health", {
+						signal: AbortSignal.timeout(1_000),
+					})
+				).ok;
+			} catch {
+				return false;
+			}
+		}, 120_000);
+		assert.equal(
+			createHash("sha256").update(readFileSync(sentinel)).digest("hex"),
+			dataHash,
+		);
+		await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
+		child.kill("SIGTERM");
+		await until(() => ended(child));
+	};
+	await launchAndCheck("candidate");
+	await launchAndCheck("second-launch");
 	record(
 		"Candidate first and second launch",
 		"PASS",

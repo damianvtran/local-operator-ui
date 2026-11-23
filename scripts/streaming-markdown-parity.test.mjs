@@ -81,6 +81,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { MarkdownRenderer, StreamingMarkdown } from "./src/renderer/src/features/chat/components/markdown-renderer";
+			export { ProjectMarkdown } from "./src/renderer/src/features/projects/project-markdown";
+			export { TeamBridgeMarkdown } from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
 			export { createBlockScanner, scanMarkdownBlocks, trimmedEndLength } from "./src/renderer/src/features/chat/utils/markdown-blocks";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -121,6 +123,8 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	MarkdownRenderer,
 	StreamingMarkdown,
+	ProjectMarkdown,
+	TeamBridgeMarkdown,
 	createBlockScanner,
 	scanMarkdownBlocks,
 	trimmedEndLength,
@@ -321,6 +325,11 @@ const CORPUS = [
 			"",
 			"Done.",
 		].join("\n"),
+	},
+	{
+		name: "blank-separated-html-table",
+		payload: ["one", "two", "After the table"],
+		text: "<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>\n\nAfter the table.\n",
 	},
 	{
 		name: "open-tail",
@@ -608,6 +617,234 @@ test("the settled paint is byte-identical to a fresh whole-message render", asyn
 		await act(async () => root.unmount());
 		await act(async () => refRoot.unmount());
 	} finally {
+		dom.restore();
+	}
+});
+
+/* Table HTML passes through BOTH production renderers, including every prefix.
+ * Code and math remain opaque to the HTML parser; active markup never mounts.
+ */
+test("safe table HTML renders through streaming and settled production pipelines", async () => {
+	const dom = mountDom();
+	const root = createRoot(dom.window.document.getElementById("root"));
+	const container = dom.window.document.getElementById("root");
+	try {
+		const sources = [
+			"| Notes |\n| --- |\n| first<br/>second <strong>bold</strong> `<br>` [docs](https://example.com) |",
+			"<table><tr><th>Notes</th></tr><tr><td>first<br/>second <strong>bold</strong></td></tr></table>",
+			"> <table>\n>\n> <tr><td>first<br/>second <strong>bold</strong></td></tr>\n>\n> </table>",
+			"- <table>\n\n  <tr><td>first<br/>second <strong>bold</strong></td></tr>\n\n  </table>",
+		];
+		for (const content of sources) {
+			for (const prefix of prefixes(content, 3)) {
+				await act(async () =>
+					root.render(createElement(StreamingMarkdown, { content: prefix })),
+				);
+				assert.equal(
+					container.querySelectorAll("script,img,iframe,svg").length,
+					0,
+				);
+			}
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content })),
+				);
+				assert.equal(container.querySelectorAll("table").length, 1);
+				assert.equal(container.querySelectorAll("td br").length, 1);
+				assert.equal(container.querySelector("td strong").textContent, "bold");
+				assert.equal(
+					container.querySelectorAll(".lo-md-table-scroll").length,
+					1,
+				);
+			}
+		}
+		// All eight hoisted plugin combinations carry the same transform.
+		for (const math of [false, true]) {
+			for (const linkify of [false, true]) {
+				for (const credentialCitations of [false, true]) {
+					const content = `| Notes |\n| --- |\n| first<br/>second ${math ? "$x^2$" : "plain"} \`<br>\` <a href="file:///tmp/table-html.pdf">report</a> |`;
+					await act(async () =>
+						root.render(
+							createElement(MarkdownRenderer, {
+								content,
+								linkify,
+								credentialCitations,
+							}),
+						),
+					);
+					assert.equal(container.querySelectorAll("td br").length, 1);
+					assert.equal(container.querySelector("td code").textContent, "<br>");
+					assert.equal(
+						container.querySelector("td a").getAttribute("data-lo-target"),
+						"/tmp/table-html.pdf",
+					);
+					assert.equal(
+						container.querySelectorAll(".katex").length,
+						math ? 1 : 0,
+					);
+				}
+			}
+		}
+		const malicious =
+			'| Notes |\n| --- |\n| <img src=x onerror="alert(1)"><script>alert(2)</script><strong onclick="alert(3)">safe</strong> |';
+		for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+			await act(async () =>
+				root.render(createElement(component, { content: malicious })),
+			);
+			assert.equal(
+				container.querySelectorAll("script,img,[onclick],[onerror]").length,
+				0,
+			);
+			assert.equal(container.querySelector("strong").textContent, "safe");
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
+test("blank-separated HTML tables stay coherent through streaming prefixes and safe boundaries", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const content =
+		"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+	try {
+		for (const prefix of prefixes(content, 3)) {
+			await act(async () =>
+				root.render(createElement(StreamingMarkdown, { content: prefix })),
+			);
+			if (prefix.includes("</td>"))
+				assert.equal(container.querySelector("td")?.textContent, "one");
+		}
+		for (const source of [
+			content,
+			`${content}\n\nAfter the table.\n`,
+			`${content}\n\n\`\`\`html\n<table><td>literal</td></table>\n\`\`\`\n`,
+		]) {
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content: source })),
+				);
+				assert.deepEqual(
+					[...container.querySelectorAll("td")].map((cell) => cell.textContent),
+					["one", "two"],
+				);
+				if (source.includes("After"))
+					assert.ok(container.textContent.includes("After the table."));
+				if (source.includes("literal"))
+					assert.equal(
+						container.querySelector("pre code").textContent.trim(),
+						"<table><td>literal</td></table>",
+					);
+			}
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
+test("table-start ownership respects fence, code, list and quote boundaries", () => {
+	for (const [source, kind] of [
+		["Intro\n<table>\n", "html-table"],
+		["# Heading\n<table>\n", "html-table"],
+		["Intro\n\n<table>\n", "html-table"],
+		["```html\n<table>\n", "other"],
+		["    literal\n    <table>\n", "indented-code"],
+		["- item\n  <table>\n", "list"],
+		["> quote\n> <table>\n", "other"],
+		["Intro\n    <table>\n", "other"],
+		["Intro\n<tabletop>\n", "other"],
+	]) {
+		const scanner = createBlockScanner();
+		for (const prefix of prefixes(source, 1))
+			scanMarkdownBlocks(scanner, prefix);
+		assert.equal(scanner.kind, kind, source);
+	}
+});
+
+test("HTML tables interrupting prose and headings retain streaming ownership", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const table =
+		"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+	try {
+		for (const before of ["Intro", "# Heading"]) {
+			const content = `${before}\n${table}\n\nAfter the table.\n`;
+			const incremental = createBlockScanner();
+			for (const prefix of prefixes(content, 1)) {
+				scanMarkdownBlocks(incremental, prefix);
+				const whole = createBlockScanner();
+				scanMarkdownBlocks(whole, prefix);
+				assert.deepEqual(incremental.blocks, whole.blocks);
+				assert.equal(incremental.blockStart, whole.blockStart);
+				await act(async () =>
+					root.render(createElement(StreamingMarkdown, { content: prefix })),
+				);
+				const completedCells = [...prefix.matchAll(/<td>(.*?)<\/td>/g)].map(
+					(match) => match[1],
+				);
+				if (prefix.endsWith("</tr>") || prefix === content)
+					assert.deepEqual(
+						[...container.querySelectorAll("td")].map(
+							(cell) => cell.textContent,
+						),
+						completedCells,
+						`${before} @${prefix.length}`,
+					);
+			}
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content })),
+				);
+				assert.deepEqual(
+					[...container.querySelectorAll("td")].map((cell) => cell.textContent),
+					["one", "two"],
+				);
+				assert.ok(
+					container.textContent.includes(
+						before.startsWith("# ") ? before.slice(2) : before,
+					),
+				);
+				assert.ok(container.textContent.includes("After the table."));
+				if (before.startsWith("#"))
+					assert.equal(container.querySelector("h1")?.textContent, "Heading");
+			}
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
+test("project and Team Bridge tables share the safe markup transform", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	try {
+		for (const component of [ProjectMarkdown, TeamBridgeMarkdown]) {
+			await act(async () =>
+				root.render(
+					createElement(
+						component,
+						null,
+						'| Notes |\n| --- |\n| first<br>second <strong>bold</strong><img src=x onerror="alert(1)"><a href="javascript:alert(2)">inert</a> |',
+					),
+				),
+			);
+			assert.equal(container.querySelectorAll("td br").length, 1);
+			assert.equal(container.querySelector("td strong").textContent, "bold");
+			assert.equal(
+				container.querySelectorAll(
+					'img,script,[onerror],a[href^="javascript:"]',
+				).length,
+				0,
+			);
+		}
+	} finally {
+		await act(async () => root.unmount());
 		dom.restore();
 	}
 });

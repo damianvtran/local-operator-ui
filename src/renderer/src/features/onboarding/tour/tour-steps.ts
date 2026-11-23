@@ -1,6 +1,6 @@
 import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
-import type { Step, StepOptions, Tour } from "shepherd.js";
+import Shepherd, { type Step, type StepOptions, type Tour } from "shepherd.js";
 import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
 
 /**
@@ -318,6 +318,200 @@ export const syncStepSevenShapeOnShow = (event: { step?: Step }): void => {
 };
 
 /**
+ * Steps that only make sense together, in tour order.
+ *
+ * WHY GROUPS (QA round 1, Q5). Each run below is one place in the app: its first
+ * step navigates there (or opens the surface), and the rest narrate what is on
+ * it. Skipped one at a time, a missing navigation target left the narration
+ * running on the wrong page - "Here, you can view, create, and manage all your
+ * scheduled tasks" read over the chat page, because `navigate-schedules` was
+ * skipped and `schedules-overview` (no target of its own) was not. So when any
+ * step of a group is skipped, the rest of the group in the direction of travel
+ * is skipped with it, without waiting for each of their targets in turn.
+ */
+export const TOUR_STEP_GROUPS: readonly (readonly string[])[] = [
+	[
+		"canvas-open-button",
+		"canvas-feature",
+		"canvas-documents-view",
+		"canvas-files-view",
+		"canvas-variables-view",
+	],
+	[
+		"agent-options",
+		"click-view-settings-from-chat",
+		"view-agent-settings",
+		"select-provider",
+		"select-model",
+		"modify-security-prompt",
+		"modify-agent-prompt",
+	],
+	["create-new-agent", "agent-naming-guidelines"],
+	[
+		"navigate-agent-hub",
+		"agent-hub-view",
+		"download-agent",
+		"upload-agent-hub",
+		"upload-agent-hub-dialog",
+	],
+	[
+		"navigate-schedules",
+		"schedules-overview",
+		"create-schedule",
+		"create-schedule-dialog",
+	],
+	[
+		"navigate-settings",
+		"general-settings",
+		"appearance-settings",
+		"radient-account-settings",
+		"application-updates-settings",
+	],
+];
+
+/**
+ * How long a step waits for its target before it is skipped.
+ *
+ * The hops before most steps click, then call `next()` after a FIXED 500 ms
+ * (canvas open, the agent options menu, route changes); on a slow machine - the
+ * Windows population the D5 data came from - the target can paint after that
+ * (UX round 1, U7). Four hops' worth is a bound on how long the tour may sit
+ * with no panel, not a measured render time: there is no render-time
+ * distribution for these targets, so it is set well above the 500 ms the hops
+ * already assume, and a target that is genuinely gone costs this once per
+ * group rather than once per step (`TOUR_STEP_GROUPS`).
+ */
+export const TOUR_TARGET_WAIT_MS = 2_000;
+const TOUR_TARGET_POLL_MS = 100;
+
+/*
+ * The index of the step each tour last DISPLAYED, which is how a skip knows its
+ * direction: Shepherd decides direction in `show(key, forward)` and passes it
+ * only to its own `showOn` skip, so a skip decided later, after the wait, has to
+ * recover it.
+ */
+const lastShownIndex = new WeakMap<Tour, number>();
+/* Tours this guard ended because skipping ran past the last step. */
+const endedBySkipping = new WeakSet<Tour>();
+
+/**
+ * Whether this tour's latest end came from skips running past its last step
+ * rather than from the user finishing or closing it; reading it clears it, so a
+ * later run of the same tour instance is judged on its own end. The hook reads
+ * it so such an end does NOT mark the tour done (review round 1, R3): the user
+ * never saw those steps, and a tour marked done is never offered again.
+ */
+export const consumeTourEndedBySkipping = (tour: Tour): boolean =>
+	endedBySkipping.delete(tour);
+
+/**
+ * Steps whose spotlight is not on screen are SKIPPED, never shown unattached.
+ *
+ * WHY (PostHog D5: Shepherd's "The element for this Shepherd step was not
+ * found" in ~15 sessions). The tour used to point at three targets the app no
+ * longer renders - `agent-list-panel`, `agent-list-item-button-0` and
+ * `settings-integrations-section`, left behind when the agents list moved off
+ * the chat page and integrations left Settings - and Shepherd answers a missing
+ * target with a console error and a centred panel whose arrow points at
+ * nothing; the select-agent step's Next then clicked nothing. Those steps are
+ * removed above. This guard is the rule for the next one.
+ *
+ * HOW. Each attached step's `beforeShowPromise` waits up to
+ * `TOUR_TARGET_WAIT_MS` for its selector (Shepherd's own `showOn` is checked
+ * synchronously at show time, which skipped a target that painted 100 ms after
+ * the hop's fixed wait - U7). A target that appears shows the step as normal.
+ * One that does not is reported as `onboarding_tour_step{outcome:
+ * "skipped_missing_target"}` and the tour moves past it and the rest of its
+ * group (`TOUR_STEP_GROUPS`) in the direction of travel. The skipped step's
+ * promise never settles, so Shepherd never draws it. Skipping past the LAST
+ * step cancels the tour instead of completing it, flagged so the hook does not
+ * mark the tour done (R3); skipping before the first returns to it.
+ *
+ * Step 7 is exempt: its palette anchor is opened BY the tour a moment before
+ * and its own handler already re-shapes the step when the palette is absent
+ * (`syncStepSevenShapeOnShow`).
+ */
+export const guardTourTargets = (
+	steps: StepOptions[],
+	present: (selector: string) => boolean = (selector) =>
+		typeof document !== "undefined" &&
+		document.querySelector(selector) !== null,
+	/* The reporter is injected (the hook passes the analytics call) so this
+	   module stays free of the telemetry config, which only a renderer loads. */
+	onSkipped?: (stepId: string) => void,
+	options: { waitMs?: number } = {},
+): StepOptions[] => {
+	const waitMs = options.waitMs ?? TOUR_TARGET_WAIT_MS;
+	const ids = steps.map((step) => step.id ?? "");
+	const groupOf = new Map<string, readonly string[]>();
+	for (const group of TOUR_STEP_GROUPS)
+		for (const id of group) groupOf.set(id, group);
+
+	/* The step to go to when `id` is skipped travelling `forward`: past the end
+	   of its group (or its start, going back). */
+	const skipTarget = (id: string, forward: boolean): number => {
+		const index = ids.indexOf(id);
+		const members = (groupOf.get(id) ?? [id])
+			.map((member) => ids.indexOf(member))
+			.filter((at) => at >= 0);
+		return forward
+			? Math.max(index, ...members) + 1
+			: Math.min(index, ...members) - 1;
+	};
+
+	const skip = (tour: Tour, id: string, forward: boolean) => {
+		onSkipped?.(id);
+		const target = skipTarget(id, forward);
+		if (target >= ids.length) {
+			endedBySkipping.add(tour);
+			tour.cancel();
+			return;
+		}
+		tour.show(Math.max(0, target), target >= 0 ? forward : true);
+	};
+
+	return steps.map((step) => {
+		const element = step.attachTo?.element;
+		const guarded = typeof element === "string" && step.id !== STEP_SEVEN_ID;
+		const previous = step.beforeShowPromise;
+		return {
+			...step,
+			beforeShowPromise: () => {
+				const tour = Shepherd.activeTour;
+				const self = tour?.getCurrentStep();
+				const index = self ? (tour?.steps.indexOf(self) ?? -1) : -1;
+				const before = previous ? Promise.resolve(previous()) : null;
+				if (!tour || !guarded) {
+					if (tour && index >= 0) lastShownIndex.set(tour, index);
+					return before ?? Promise.resolve();
+				}
+				const forward = index >= (lastShownIndex.get(tour) ?? -1);
+				return new Promise<void>((resolve) => {
+					const deadline = Date.now() + waitMs;
+					const poll = () => {
+						// The user moved on or closed the tour during the wait: the
+						// step is no longer ours to show or to skip.
+						if (Shepherd.activeTour !== tour || tour.getCurrentStep() !== self)
+							return;
+						if (present(element as string)) {
+							lastShownIndex.set(tour, index);
+							void (before ?? Promise.resolve()).then(() => resolve());
+							return;
+						}
+						if (Date.now() >= deadline) {
+							skip(tour, step.id ?? "unknown", forward);
+							return;
+						}
+						setTimeout(poll, TOUR_TARGET_POLL_MS);
+					};
+					poll();
+				});
+			},
+		};
+	});
+};
+
+/**
  * Step 7, in the shape this window can hold.
  *
  * Above the breakpoint the panel is pinned to the palette's right edge, so the
@@ -380,7 +574,30 @@ const commandPaletteStep = (): StepOptions => {
  * The copy and body structure live in `./tour-copy`; this module owns the
  * mechanics — spotlights, navigation, and the action each step's buttons run.
  */
-export const createTourSteps = (): StepOptions[] => [
+export const createTourSteps = (
+	onSkipped?: (stepId: string) => void,
+	options: { targetWaitMs?: number; onShown?: (stepId: string) => void } = {},
+): StepOptions[] => {
+	const steps = guardTourTargets(buildTourSteps(), undefined, onSkipped, {
+		waitMs: options.targetWaitMs,
+	});
+	const { onShown } = options;
+	if (!onShown) return steps;
+	return steps.map((step) => ({
+		...step,
+		// The tour-level show event precedes beforeShowPromise: it is useful for
+		// shaping a step but doesn't mean the guard let Shepherd draw it.
+		when: {
+			...step.when,
+			show(this: Step) {
+				step.when?.show?.call(this);
+				onShown(this.id);
+			},
+		},
+	}));
+};
+
+const buildTourSteps = (): StepOptions[] => [
 	{
 		id: "welcome",
 		title: tourLabel("ui.onboarding.tour.welcome.title"),
@@ -391,66 +608,6 @@ export const createTourSteps = (): StepOptions[] => [
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "agent-list",
-		attachTo: {
-			element: '[data-tour-tag="agent-list-panel"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.agent_list.title"),
-		text: renderTourBody(TOUR_BODIES.agent_list),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "select-agent",
-		// Targets the first AgentListItemButton within the AgentsList using the new data-tour-tag
-		attachTo: {
-			element: '[data-tour-tag="agent-list-item-button-0"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.select_agent.title"),
-		text: renderTourBody(TOUR_BODIES.select_agent),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					const button = document.querySelector(
-						'[data-tour-tag="agent-list-item-button-0"]',
-					);
-					if (button) {
-						(button as HTMLButtonElement).click();
-					}
-					// Wait for the navigation to complete before clicking the next button
-					setTimeout(() => {
-						this.next();
-					}, 500);
 				},
 			},
 		],
@@ -953,19 +1110,9 @@ export const createTourSteps = (): StepOptions[] => [
 				text: tourLabel("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
-					// We are on the main page (agent list/chat). Need to go to agent settings page.
-					// This assumes an agent is selected and we can navigate to its settings.
-					// Attempt to click the first agent to ensure context, then options, then settings.
-					const agentButton = document.querySelector(
-						'[data-tour-tag="agent-list-item-button-0"]',
-					);
-					if (agentButton) {
-						// Check if we are already on the chat page for this agent, if not, click it.
-						// This logic might need refinement based on actual app state management.
-						// For now, we assume clicking it is safe or sets the context.
-						(agentButton as HTMLButtonElement).click();
-					}
-
+					// Back to the agent settings step: open the agent options menu. (This
+					// used to click `agent-list-item-button-0` first, a target the app no
+					// longer renders - PostHog D5.)
 					setTimeout(() => {
 						const agentOptionsButton = document.querySelector(
 							'button[data-tour-tag="agent-options-button"]',
@@ -1505,31 +1652,6 @@ export const createTourSteps = (): StepOptions[] => [
 		},
 		title: tourLabel("ui.onboarding.tour.radient_account_settings.title"),
 		text: renderTourBody(TOUR_BODIES.radient_account_settings),
-		buttons: [
-			{
-				text: tourLabel("ui.onboarding.tour.action.back"),
-				classes: "shepherd-button-secondary",
-				action: function () {
-					this.back();
-				},
-			},
-			{
-				text: tourLabel("ui.onboarding.tour.action.next"),
-				classes: "shepherd-button-primary",
-				action: function () {
-					this.next();
-				},
-			},
-		],
-	},
-	{
-		id: "integrations-settings",
-		attachTo: {
-			element: '[data-tour-tag="settings-integrations-section"]',
-			on: attachSide("right"),
-		},
-		title: tourLabel("ui.onboarding.tour.integrations_settings.title"),
-		text: renderTourBody(TOUR_BODIES.integrations_settings),
 		buttons: [
 			{
 				text: tourLabel("ui.onboarding.tour.action.back"),

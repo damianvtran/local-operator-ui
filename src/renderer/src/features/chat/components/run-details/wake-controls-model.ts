@@ -135,7 +135,9 @@ export const wakeRefusalSentence = (error: unknown): string | null => {
 		typeof error === "object" && error !== null
 			? (error as { code?: unknown }).code
 			: null;
-	return code === "wake_not_found" ? "This wake is already gone." : null;
+	return code === "wake_not_found"
+		? t("ui.chat.run_controls.wake.already_gone")
+		: null;
 };
 
 export const WAKE_CONTROL_MODES = ["managed", "confirm", "one-click"] as const;
@@ -226,7 +228,9 @@ export const managedWakeNote = (name: string): string =>
  * prompt head, which is what "this" points at.
  */
 export const wakeConfirmTitle = (named: boolean, name: string): string =>
-	named ? `Cancel ${name}'s check-in?` : "Cancel this wake?";
+	named
+		? t("ui.chat.run_controls.wake_confirm.title_named", { name })
+		: t("ui.chat.run_controls.wake_confirm.title");
 
 export const wakeConfirmSentence = ({
 	named,
@@ -238,14 +242,25 @@ export const wakeConfirmSentence = ({
 	/** The wake's prompt head; empty for a message-less schedule. */
 	head: string;
 }): string => {
-	const subject = head ? `“${head}”` : "This wake";
+	/*
+	 * A select rather than a "This wake" fragment spliced into a sentence: each
+	 * branch is a whole sentence, so a translator can agree the verb and the
+	 * quotation marks with the subject instead of inheriting English word order.
+	 */
+	const subject = head ? "head" : "other";
 	return named
-		? `${subject} will not fire again, and nothing re-creates it. ${name}'s own cadence is unaffected.`
-		: `${subject} will not fire again, and nothing re-creates it. The conversation stays.`;
+		? t("ui.chat.run_controls.wake_confirm.message_named", {
+				subject,
+				head,
+				name,
+			})
+		: t("ui.chat.run_controls.wake_confirm.message", { subject, head });
 };
 
 export const wakeConfirmActionLabel = (named: boolean): string =>
-	named ? "Cancel check-in" : "Cancel wake";
+	named
+		? t("ui.chat.run_controls.wake_confirm.action_named")
+		: t("ui.chat.run_controls.wake_confirm.action");
 
 /** What a cancel answered: applied, or the sentence to render where it was asked. */
 export type WakeCancelOutcome = { ok: true } | { ok: false; detail: string };

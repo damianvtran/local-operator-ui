@@ -67,6 +67,7 @@ import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { Spinner } from "@shared/components/common/spinner";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
@@ -87,15 +88,16 @@ import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
 import {
-	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	type IdentityAgentConstraint,
 	identityAgentConstraint,
+	identityAgentNotSettableReason,
 	identityAgentSettable,
 	identityMenuShowsList,
 } from "./chat-header-identity-menu-model";
 import {
 	effectiveIdentityPublished,
 	headerIdentityAgentFlagged,
+	headerRosterRowText,
 	hostPublishRecord,
 	isColdFrame,
 	resolveHeaderIdentity,
@@ -142,6 +144,12 @@ type HeaderEntityRow = {
 	name?: string;
 	kind?: string;
 	description?: string;
+	/**
+	 * Where the profile came from (`builtin` / `installed` / `custom`). The
+	 * description resolver reads it: only a pristine shipped seed's sentence is
+	 * swapped for the catalogue's translation (`agentDescriptionText`).
+	 */
+	source?: string | null;
 	/** A team's free-text display name, when the row carries one. */
 	label?: string;
 	/**
@@ -272,6 +280,11 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	markSwap,
 }) => {
 	/*
+	 * Read as a VALUE: the blocked rows' reason resolves through `t()` inside the
+	 * `options` memo, whose other inputs do not change with the language.
+	 */
+	const locale = useI18nLocale();
+	/*
 	 * A CLOSED SEAT LISTS NOTHING (the runtime's strict rule): no row can be
 	 * picked, so the roster is not fetched for a panel that will not show it.
 	 */
@@ -378,6 +391,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * reason: the roster is the same roster, and the reader who needs one needs it
 	 * on both surfaces.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - the blocked rows' reason resolves through `t()` at call time, so a language change must recompute the options or the reason keeps the previous language
 	const options = useMemo<PickerOption[]>(
 		() =>
 			items.map((row) => {
@@ -401,6 +415,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						delegate: row.delegate,
 						teamOwnsSeat: constraint.closed !== undefined,
 					});
+				/* Localized description and kind tag (fr census, row 3): the same
+				 * resolvers the composer's `/agent` rows use - see the helper. */
+				const text = headerRosterRowText(row, kind);
 				return {
 					value: row.value,
 					/*
@@ -422,13 +439,13 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * than discovered after the composer fills.
 					 */
 					description: blocked
-						? IDENTITY_AGENT_NOT_SETTABLE_REASON
+						? identityAgentNotSettableReason()
 						: shown !== row.value
-							? row.description
-								? `${row.value} · ${row.description}`
+							? text.description
+								? `${row.value} · ${text.description}`
 								: row.value
-							: row.description,
-					meta: row.kind,
+							: text.description,
+					meta: text.meta,
 					current: row.value === menuValue(current),
 					/* While a switch is in flight every row is inert: a second switch would
 					 * be a second command against a session already answering one. A row the
@@ -444,7 +461,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					blocked,
 				};
 			}),
-		[items, current, busy, constraint],
+		[items, current, busy, constraint, locale],
 	);
 
 	/*
@@ -458,7 +475,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	/*
 	 * THE CHIP'S ACCESSIBLE NAME, one WHOLE sentence per state (design D6's
 	 * clause split, kept): the role and the visible label lead, then either the
-	 * action or the runtime's closure reason. Each state is its own catalogue
+	 * action or the caption explaining why the seat is closed. Each state is its own catalogue
 	 * message rather than a sentence assembled from translated fragments - the
 	 * role noun, its article and the word order are the locale's, and "Switch
 	 * agent" cannot be built from "Agent" in every language. `label` is the
@@ -550,7 +567,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						closedReason !== null
 							? /*
 								 * The closed chip's tooltip: the label leads (which profile this
-								 * is about), then the runtime's own closure sentence - the SAME
+								 * is about), then the localized closure sentence - the SAME
 								 * string the panel states, as the flagged chip does for its rule.
 								 */
 								`${label} — ${closedReason}`
@@ -764,6 +781,9 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	hostKey = null,
 	frameEpoch,
 }) => {
+	/* Read as a VALUE for the `constraint` memo below: its caption resolves
+	 * through `t()` and nothing else in its inputs changes with the language. */
+	const locale = useI18nLocale();
 	const rawTeam = activeTeam || boundTeam || null;
 	/*
 	 * THE CAPABILITY RECORD (cold frames). A frame that carries the field proves
@@ -867,6 +887,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	 * landing) rebuilt all 150 options and re-rendered every mounted row, the
 	 * stability the panel was built around lost to one object identity.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - the caption resolves through `t()` at call time, and in the non-strict case (`view.seat` null) no other input changes with the language
 	const constraint = useMemo(
 		() =>
 			identityAgentConstraint({
@@ -874,7 +895,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				manager: view.teamManager,
 				closure: view.seat,
 			}),
-		[view.teamLabel, view.teamManager, view.seat],
+		[view.teamLabel, view.teamManager, view.seat, locale],
 	);
 	/*
 	 * One open menu at a time, by hand: two independent Radix roots cannot see
@@ -947,8 +968,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				kind,
 				name,
 				kind === "team"
-					? "Could not switch the team"
-					: "Could not switch the agent",
+					? t("ui.chat.header_identity.switch_team_failed")
+					: t("ui.chat.header_identity.switch_agent_failed"),
 			);
 			/*
 			 * The stream is the success path: the label repaints from the new

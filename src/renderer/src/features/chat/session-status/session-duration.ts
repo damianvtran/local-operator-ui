@@ -27,10 +27,7 @@
  * number appears to get smaller as it grows.
  */
 
-/** Seconds in the units this splits on, named so the arithmetic reads. */
-const MINUTE = 60;
-const HOUR = 3600;
-const DAY = 86_400;
+import { formatCompactDuration } from "@shared/i18n";
 
 /**
  * `9s` / `41m1s` / `1h2m` / `4d5h`, bounded at six cells.
@@ -42,26 +39,10 @@ const DAY = 86_400;
  * and this decides how to spell one that did.
  */
 export function formatDuration(seconds: number): string {
-	const total = Math.trunc(
-		Number.isFinite(seconds) && seconds > 0 ? seconds : 0,
-	);
-	if (total < MINUTE) return `${total}s`;
-	if (total < HOUR) {
-		const minutes = Math.trunc(total / MINUTE);
-		const secs = total % MINUTE;
-		return secs ? `${minutes}m${secs}s` : `${minutes}m`;
-	}
-	if (total < DAY) {
-		const hours = Math.trunc(total / HOUR);
-		const minutes = Math.trunc((total % HOUR) / MINUTE);
-		return minutes ? `${hours}h${minutes}m` : `${hours}h`;
-	}
-	const days = Math.trunc(total / DAY);
-	// The cap, so the width is bounded BY CONSTRUCTION rather than by how large
-	// anyone expected the input to get.
-	if (days > 99) return "100d+";
-	const hours = Math.trunc((total % DAY) / HOUR);
-	return hours ? `${days}d${hours}h` : `${days}d`;
+	// The algorithm (two terms, the `100d+` cap) and the localized unit words
+	// live in ONE shared helper now; the tool row's clock and the run-detail
+	// child clock read the same function, so the three cannot drift.
+	return formatCompactDuration(seconds);
 }
 
 /** What the strip needs to render the reading, or `null` for "render none". */

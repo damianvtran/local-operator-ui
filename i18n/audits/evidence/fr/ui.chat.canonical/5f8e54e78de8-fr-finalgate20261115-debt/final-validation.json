@@ -1,0 +1,128 @@
+{
+  "kind": "same-round amended-final debt reconciliation pure derivation",
+  "date": "2026-11-15T01:37:28.239Z",
+  "S18a_parents": [
+    {
+      "locale": "es",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "4b865abbfc0e",
+        "model": "deepseek/deepseek-flash",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 6
+        },
+        "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+        "target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+        "receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d"
+      }
+    },
+    {
+      "locale": "fr",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "0eddeb61023f",
+        "model": "deepseek/deepseek-flash",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+        "target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
+        "receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8"
+      }
+    },
+    {
+      "locale": "hi",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "2d5628992cf1",
+        "model": "deepseek/deepseek-flash",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+        "target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+        "receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe"
+      }
+    }
+  ],
+  "new_receipts": [
+    {
+      "locale": "es",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-es-finalgate20261115-debt",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 6,
+          "nit": 8
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "6da85f1e33e98cef4c9da20e3296461db204e3242f78920ac9a55ea2cdb04db3",
+        "receipt_sha256": "6dd07989c34facc1ace7f817ccade297167f96da06b680d5121e15662c2a22e2"
+      }
+    },
+    {
+      "locale": "fr",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-fr-finalgate20261115-debt",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 4,
+          "nit": 3
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "282351444e6470f58b94e00b4dc69c1e2dadf3d543c48b250365855e512cb830",
+        "receipt_sha256": "8bcf23472ecd1b806346848b9022a727bebb3e81a2a4055e68c8231914241edd"
+      }
+    },
+    {
+      "locale": "hi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-hi-finalgate20261115-debt",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 3,
+          "nit": 1
+        },
+        "source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+        "target_sha256": "3cfbea811e2a3911d31f4c50903a4e32da7929abbf8f45084b9ec92fa04e04c6",
+        "receipt_sha256": "6c60f198fb11a685e2f1c2c195ab0e4401e8f8d408337d4ed07c433557707317"
+      }
+    }
+  ],
+  "old_preservation": {
+    "checked_files": 58,
+    "all_hashes_unchanged": true
+  },
+  "contract_sha256": {
+    "docs/I18N.md": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+    "scripts/i18n/ledger-assemble.mjs": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "scripts/i18n/ledger-rules.mjs": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+  },
+  "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9",
+  "new_semantic_keys": 0,
+  "writer_or_checker_invoked": false
+}

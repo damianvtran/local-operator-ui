@@ -762,6 +762,81 @@ test("permissions: deny by default, grant only what the app's own documents use"
 		assert.equal(ask(permission), false, permission);
 });
 
+test("the voice page's rule: audio only, main frame only, the Gateway's exact origin", () => {
+	const origin = "http://127.0.0.1:3101";
+	const ask = (permission, extra = {}) =>
+		guards.voicePagePermissionVerdict(
+			{
+				permission,
+				requestingUrl: `${origin}/?desktop=orb&autoHideSeconds=0`,
+				isMainFrame: true,
+				...extra,
+			},
+			origin,
+		);
+	// The page's own ask: audio, from the gateway, in the main frame.
+	assert.equal(ask("media", { mediaTypes: ["audio"] }), true);
+	assert.equal(ask("media", { mediaType: "audio" }), true);
+	for (const mediaTypes of [["video"], ["audio", "video"], []])
+		assert.equal(ask("media", { mediaTypes }), false, String(mediaTypes));
+	assert.equal(ask("media", { mediaType: "video" }), false);
+	assert.equal(
+		ask("media", { mediaType: "unknown" }),
+		false,
+		"device enumeration is not ours to grant",
+	);
+	// ONE permission: the page is third-party code, not one of our documents.
+	for (const permission of [
+		"clipboard-sanitized-write",
+		"fullscreen",
+		"geolocation",
+		"notifications",
+		"openExternal",
+		"",
+	])
+		assert.equal(ask(permission), false, permission);
+	assert.equal(
+		ask("media", { mediaTypes: ["audio"], isMainFrame: false }),
+		false,
+		"a sub-frame hears nothing",
+	);
+	// The origin, exactly: another port, another host spelling, another scheme,
+	// or an origin smuggled into the userinfo\/suffix.
+	for (const requestingUrl of [
+		"http://127.0.0.1:3102/",
+		"http://localhost:3101/",
+		"https://127.0.0.1:3101/",
+		"http://127.0.0.1:3101.evil.test/",
+		"http://evil.test/",
+	])
+		assert.equal(
+			ask("media", { mediaTypes: ["audio"], requestingUrl }),
+			false,
+			requestingUrl,
+		);
+	// A document ON that origin is the page, however its path is spelled.
+	assert.equal(
+		ask("media", {
+			mediaTypes: ["audio"],
+			requestingUrl: `${origin}/anything`,
+		}),
+		true,
+	);
+	// A malformed gateway origin admits nothing at all.
+	assert.equal(
+		guards.voicePagePermissionVerdict(
+			{
+				permission: "media",
+				mediaTypes: ["audio"],
+				isMainFrame: true,
+				requestingUrl: `${origin}/`,
+			},
+			"not a URL",
+		),
+		false,
+	);
+});
+
 test("permissions: a sub-frame or a foreign document gets nothing, even the allowed ones", () => {
 	assert.equal(
 		ask("media", { mediaTypes: ["audio"], isMainFrame: false }),
@@ -1069,14 +1144,28 @@ test("the main process installs every guard, before the first load", () => {
 		MAIN_GUARD,
 		"index.ts must call guardNavigation(mainWindow.webContents…",
 	);
+	/*
+	 * The first-load pins are PATTERNS on the call, not one literal argument:
+	 * the F2 hardening (da9f5a8318) routed the dev URL through
+	 * `devRendererUrl(app.isPackaged)` so a packaged app ignores
+	 * ELECTRON_RENDERER_URL, and the old exact `loadURL(process.env.…)` pin then
+	 * found nothing (-1) and read as the guard coming after the load. Either
+	 * branch can be the first load the window makes — `loadURL` in dev,
+	 * `loadFile` packaged — so the guard must precede both, whatever they load.
+	 */
+	const FIRST_LOADS = {
+		loadURL: /mainWindow\.loadURL\(/,
+		loadFile: /mainWindow\.loadFile\(/,
+	};
 	const guardAt = src.search(MAIN_GUARD);
-	const loadAt = src.indexOf(
-		"mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)",
-	);
-	assert.ok(
-		guardAt > 0 && loadAt > guardAt,
-		"the guard must precede the first load",
-	);
+	for (const [name, pattern] of Object.entries(FIRST_LOADS)) {
+		const loadAt = src.search(pattern);
+		assert.ok(loadAt > 0, `index.ts must call mainWindow.${name}(`);
+		assert.ok(
+			guardAt > 0 && loadAt > guardAt,
+			`the guard must precede the first load (mainWindow.${name})`,
+		);
+	}
 	assert.ok(
 		src.indexOf("setWindowOpenHandler") === -1,
 		"the popup policy is guardWindowOpen's; a second handler here would be a second answer",
@@ -1098,8 +1187,13 @@ test("shell.openExternal is reached only through the vetted door in the main win
 	const uses = [...src.matchAll(/shell\.openExternal\(([^)]*)\)/g)].map(
 		(m) => m[1],
 	);
-	// The vetted door itself, and the fixed "local-operator.com" menu item.
-	assert.deepEqual(uses.sort(), ['"https://local-operator.com"', "url"].sort());
+	// The vetted door itself, the fixed "local-operator.com" menu item, and the
+	// macOS microphone pane - a fixed constant with no input, so it is main's
+	// own path rather than the renderer's door (plan §4).
+	assert.deepEqual(
+		uses.sort(),
+		['"https://local-operator.com"', "MICROPHONE_SETTINGS_URL", "url"].sort(),
+	);
 	assert.match(
 		src,
 		/ipcMain\.handle\("open-external", async \(_, url\) => openExternalVetted\(url\)\);/,

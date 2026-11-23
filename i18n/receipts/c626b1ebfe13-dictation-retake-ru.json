@@ -1,0 +1,83 @@
+{
+	"instance": "c626b1ebfe13-dictation-retake-ru",
+	"locale": "ru",
+	"audit_date": "2026-11-22",
+	"round": 2,
+	"scope": [
+		"ui.common.actions",
+		"ui.chat.composer",
+		"ui.common.errors"
+	],
+	"auditor": {
+		"agent": "task",
+		"session": "acd9eeca0be2",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header 'Model: anthropic/claude-sonnet-5-5'); no provider fallback occurred this run.",
+		"independent_from_translator_session": true,
+		"independence_note": "Round-2 audit run as a read-only lopdev task session; authored and edited no catalogue value, ledger or sidecar. Not the translator and not the round-1 auditor. Read en values and en .context.json sidecars and the ru values from the bytes on disk at 42e9224aaa; no translation or MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/dictation-retake-discard",
+	"head": "42e9224aaa",
+	"references": {
+		"glossary": "damianvtran/local-operator@fcf58eb19 i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (no entry for discard/retry/recording)",
+		"style_guide": "damianvtran/local-operator@fcf58eb19 i18n/style-guides/ru.md sha256 f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+		"shipped_terms": "src/i18n/catalogues/ru/*.json at 42e9224aaa: «Удалить» for discarding the user's own draft/partial file (ui.chat.sidebar.drafts.discard_label «Удалить черновик «{title}»», ui.browser.browser_file_transfer_row.the_partial_file_was_discarded «Частичный файл удалён.»); «Отклонить» is reserved for refusing someone else's held message (ui.teamBridge.holds.*) and «Отменить/Сбросить» for unsaved edits; «Повторить» for Retry (ui.common.actions.retry); sibling imperative-«вы» prefixes «Диктовка не удалась:» in ui.chat.composer and ui.common.errors."
+	},
+	"round1_followup": "Round 1 found «Отклонить» wrong for discarding the user's own kept voice recording (it reads as refusing/rejecting a request, the sense used for held team messages). Fixed on head: control is now «Удалить», sentences say «Удалите её» / «Удалите запись». Confirmed fixed; no residual «Отклонить» in the audited keys.",
+	"scope_note": "Keys audited in full: ui.common.actions.discard; ui.chat.composer.dictation_failed_too_long_take_kept; ui.common.errors.dictation_refused_take_kept and _clipped. Checked: idiom and register (вы, imperative, terse, sentence case, no Пожалуйста/!); «Удалить» consistent with sibling ru discard-of-own-item keys and a natural Retry/Discard pair «Повторить»/«Удалить» (infinitive action labels, one line each); control label recognisable in sentences (control «Удалить» ↔ «Удалите»); agreement in «запись слишком длинная для отправки. Удалите её и запишите более короткую» (запись fem. sg.: её, длинная, короткую acc.); «Удалите запись или сообщите о проблеме, приложив журнал приложения» mirrors dictation_unknown wording exactly except the verb; {reason} byte-identical to en in both errors keys; non-clipped arm keeps «.» after {reason}, clipped arm joins with a space and no full stop as the sidecar requires; no Retry/«попробуйте снова» wording in the too-long/refused copy per sidecar; no Cc/Cf (bidi/control) chars and all three ru files NFC; no ASCII '...'; too-long sentence is 95 chars, well inside maxCells 150.",
+	"namespaces": {
+		"ui.common.actions": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.common.actions.discard"
+			],
+			"sha256": {
+				"en": "d910e1d3092d2fc23d2ed947a270c50661a741748eb0ee8b8a52fbeb9d69fe94",
+				"ru": "28233b351818e173c82c8430645ee4dd0124510c4e7e8f0f91754070ad7b8bfa"
+			},
+			"context_sha256": "160677a5ff2698056996c30d4989ae55e21e94bc9d825c3fefec95204ecb076e",
+			"en_path": "src/i18n/catalogues/en/ui.common.actions.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.common.actions.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.dictation_failed_too_long_take_kept"
+			],
+			"sha256": {
+				"en": "1b7ae350eeb1213cb05c7bede623a02a5b2a196d31539883fa703a89c5aa6961",
+				"ru": "776c7cd1c680d08974054c555e1d512dee10aaf72615d803e534d775cf6d80bc"
+			},
+			"context_sha256": "95a584c0930b531ee64a84cfe999dcd06e7806c899e8fa9cfa131209d2a7a0f1",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": []
+		},
+		"ui.common.errors": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 2,
+			"keys": [
+				"ui.common.errors.dictation_refused_take_kept",
+				"ui.common.errors.dictation_refused_take_kept_clipped"
+			],
+			"sha256": {
+				"en": "02a7b76b1fe59fd0daaf8aea83e21387365e4de4a5295842e45b8f5e2cc74507",
+				"ru": "7a51858ea568ae7693c12dbee19d1984ff4c0625c9b15844e39000487c2570dd"
+			},
+			"context_sha256": "c9ccd63da3a4206c4c03e0aec5d7a68d5969b8b8f7a00773ccff545f962674c2",
+			"en_path": "src/i18n/catalogues/en/ui.common.errors.json",
+			"ru_path": "src/i18n/catalogues/ru/ui.common.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+			"findings": []
+		}
+	}
+}

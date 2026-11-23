@@ -1,3 +1,4 @@
+import { BackendStartupGate } from "@shared/components/common/backend-startup-panel";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
 import { Suspense, lazy, useEffect, useRef } from "react";
@@ -25,6 +26,7 @@ import {
 } from "@features/chat/new-chat-shortcut";
 import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
+import { useQueuedAskAttention } from "@features/chat/use-queued-ask-attention";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { useConversationRecents } from "@features/command-palette/use-conversation-recents";
@@ -43,6 +45,7 @@ import { ConnectProviderDialog } from "@features/providers/connect-provider-dial
 import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { useSyncRecordingClaims } from "@features/settings/components/keyboard-shortcuts-section";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { TeamBridgeAuthorizeNotices } from "@features/team-bridge/team-bridge-approval-notice";
 import { TEAM_BRIDGE_PATH } from "@features/team-bridge/team-bridge-nav";
 import { TeamBridgeEarlyColumn } from "@features/team-bridge/team-bridge-route-column";
 import { useTeamBridgeNotificationOpen } from "@features/team-bridge/use-team-bridge-notification-open";
@@ -57,8 +60,8 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import {
-	CustodyHandoffs,
 	type CustodyViewSnapshot,
+	shellCustodyHandoffs,
 } from "@shared/browser-passkey-custody-handoff";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
@@ -68,6 +71,8 @@ import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
+import { PhonePairingHost } from "@features/phone-pairing/pairing-popup";
+import { QwenVoiceController } from "@features/voice/qwen-voice-controller";
 import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -463,6 +468,14 @@ const App: FC = () => {
 	 */
 	useConsoleAttention();
 
+	/*
+	 * The window's claim about conversations holding an open queued ask, pushed to
+	 * app-main so the dock/tray badge counts a queued ask once instead of as a
+	 * blocking question (`shared/app-attention-queued-asks.ts`). Mounted here, once,
+	 * because it speaks for the whole window rather than for a row.
+	 */
+	useQueuedAskAttention();
+
 	// A notification click names a canonical conversation; opening it is the
 	// whole effect. Any pending gate stays pending until an explicit in-app
 	// answer, so a stray click can never approve anything.
@@ -706,20 +719,23 @@ const App: FC = () => {
 	/*
 	 * A password manager's prompt came up in an agent-driven tab and the agent is
 	 * paused there until the user answers it and returns the tab
-	 * (`main/browser/extensions/passkey-custody.ts`). Main has already made that
-	 * tab the browser's active one and asked `window-raise.ts` for the window;
-	 * this half lands the user where the prompt is — the agent's conversation
-	 * with its browser pane open, or the browser route for a tab no conversation
-	 * owns — and, when the hold ends, gives them back the view they were in IF
-	 * they are still where the handoff put them (review U1/D3). The rule and its
-	 * tests live in `browser-passkey-custody-handoff.ts`.
+	 * (`main/browser/extensions/passkey-custody.ts`).
 	 *
-	 * The route is read through a ref so the listeners are not re-registered on
+	 * NOTHING HERE MOVES THE VIEW WHEN A HOLD BEGINS (operator report 2026-11-15,
+	 * "the browser is stealing the view"). This effect used to navigate to the
+	 * hold's conversation or the browser route the moment main pushed an attention
+	 * event; the hold is now a sidebar notification row (`browser-user-attention.ts`)
+	 * and the user goes over when they choose. Only the GIVE-BACK lives here: when
+	 * a hold the user opened FROM ITS ROW ends, their previous view comes back if
+	 * they are still where that click put them (review U1/D3). The row's click is
+	 * what records the handoff in `shellCustodyHandoffs`, so a hold nobody opened
+	 * has nothing to give back.
+	 *
+	 * The route is read through a ref so the listener is not re-registered on
 	 * every navigation (the store reads use `getState()` for the same reason).
 	 */
 	const pathnameRef = useRef(pathname);
 	pathnameRef.current = pathname;
-	const custodyHandoffs = useRef(new CustodyHandoffs()).current;
 	useEffect(() => {
 		const currentView = (): CustodyViewSnapshot => {
 			const sessions = useCanonicalSessionsStore.getState();
@@ -730,24 +746,7 @@ const App: FC = () => {
 				browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
 			};
 		};
-		const offAttention = window.api?.browser?.onPasskeyCustodyAttention?.(
-			(payload) => {
-				const target = consentClickTarget(
-					payload.requesterSessionId,
-					useCanonicalSessionsStore.getState().sessions,
-				);
-				const handoff = custodyHandoffs.begin(payload, target, currentView());
-				// The same hold again: the user was already brought to it once.
-				if (!handoff) return;
-				if (target.kind === "browser") {
-					navigate("/browser");
-					return;
-				}
-				setActiveSession(target.sessionId);
-				setBrowserPaneOpen(true);
-				navigate("/chat");
-			},
-		);
+		const custodyHandoffs = shellCustodyHandoffs;
 		const offEnded = window.api?.browser?.onPasskeyCustodyEnded?.((payload) => {
 			const plan = custodyHandoffs.end(payload, currentView());
 			if (!plan) return;
@@ -762,10 +761,9 @@ const App: FC = () => {
 			if (plan.navigate) navigate(plan.navigate);
 		});
 		return () => {
-			offAttention?.();
 			offEnded?.();
 		};
-	}, [custodyHandoffs, navigate, setActiveSession, setBrowserPaneOpen]);
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
@@ -824,6 +822,12 @@ const App: FC = () => {
 
 	return (
 		<OnboardingProvider>
+			{/*
+			 * SESSION VOICE'S CONTROLLER, at the root rather than in the chat page, so
+			 * an exchange survives navigation: words sent from one route are answered
+			 * aloud on any other. It renders nothing (`features/voice`).
+			 */}
+			<QwenVoiceController />
 			{/*
 			 * `relative` is load-bearing, not decoration.
 			 *
@@ -1024,6 +1028,14 @@ const App: FC = () => {
 					<UpdateNotification />
 
 					{/*
+					 * A phone asking to pair must be answerable from ANY route (pairing
+					 * design v2 §4.2, decision 5): mounted here, above the router outlet,
+					 * not inside the Mesh tray. Non-modal and focus-neutral; renders
+					 * nothing, and reads nothing, without `features.phone_pairing`.
+					 */}
+					<PhonePairingHost />
+
+					{/*
 					 * A `navigator.credentials.get()` matching several passkeys has to be
 					 * answerable from ANY route: the request arrives without the user's
 					 * action, it expires in a minute, and the previous version rendered its
@@ -1122,6 +1134,9 @@ const App: FC = () => {
 								{routeHasOwnChromeRow ? null : (
 									<div data-chrome-route-band="" />
 								)}
+								{/* This app's own server starting or failed to start, on
+								    routes the chat status strip does not cover. */}
+								<BackendStartupGate />
 								<Suspense
 									fallback={
 										<>
@@ -1206,6 +1221,15 @@ const App: FC = () => {
 						}
 					/>
 				</div>
+				{/* What a Team Bridge Touch ID prompt is confirming (local-operator
+				    #4099, S-6). App-wide rather than on the Team Bridge page: any
+				    local process can raise the prompt, so the person must see what
+				    it is for - and that it was not started here - wherever they
+				    are. Renders nothing while no prompt is up; a backend without
+				    the frame never publishes one. Mounted unconditionally (security
+				    S-5): the authorize route is gated by a different flag than the
+				    Team Bridge page, and an idle host costs nothing. */}
+				<TeamBridgeAuthorizeNotices />
 			</div>
 		</OnboardingProvider>
 	);

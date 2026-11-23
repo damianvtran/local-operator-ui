@@ -1,0 +1,49 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "317405401b1f",
+  "locale": "hi",
+  "status": "passed",
+  "scope": "prA s18d: 5 new keys (edit.error_generic, tools.error_grammar, tools.error_duplicate, ask_change_prefill, install.error_generic) + context-widened create.error_instructions_required and ui.hub.teams.kind.specialist (value only, file unchanged)",
+  "english_source_commit": "f430d4fd43fbf0cbc0b15e9b5595dc080e8b7c13",
+  "translator_session_label": "prA-tr-hi",
+  "independent_from_translator_session": true,
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "target": "ca6c8d3d5037b89745e7a0a99b264ca32d6a6b576dac6f01186686b84e3ab5cf",
+        "source": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "context_sha256": "0db35f5de90c7c19c359fa33e6c596b5652bdfa7d6f21bdd1399ef16adf556e9",
+      "findings": [
+        {
+          "id": "HI-1",
+          "severity": "MINOR",
+          "key": "ui.agents.detail.tools.error_grammar",
+          "current": "टूल के नाम में अक्षर, अंक, बिंदु (.), अंडरस्कोर (_), हाइफ़न (-) या कोलन (:) हो सकते हैं।",
+          "problem": "'X हो सकते हैं' (may contain X) is permissive; the English states the exhaustive rule and the context note forbids softening. The restriction is only implied by the error state.",
+          "suggestion": "टूल के नाम में सिर्फ़ अक्षर, अंक, बिंदु (.), अंडरस्कोर (_), हाइफ़न (-) या कोलन (:) हो सकते हैं।"
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "target": "4f574e80a09d9d233808b25cf79d8a919f51427074b20139ab30d536b36189fc",
+        "source": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "context_sha256": "250562e403e1a04fc2e2d1c131647c2fe45ccb2d9c3f363dcfe20da48ae2f52b",
+      "findings": [
+        {
+          "id": "HI-2",
+          "severity": "NIT",
+          "key": "ui.agents.detail.install.error_generic",
+          "current": "एजेंट इंस्टॉल नहीं हो सका।",
+          "problem": "Intransitive form; its twins use the passive 'बनाया/सहेजा नहीं जा सका'. Correct and natural, only a parallelism nit.",
+          "suggestion": "एजेंट इंस्टॉल नहीं किया जा सका। (optional)"
+        }
+      ]
+    }
+  }
+}

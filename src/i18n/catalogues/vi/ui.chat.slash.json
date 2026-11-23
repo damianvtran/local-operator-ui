@@ -1,5 +1,7 @@
 {
 	"ui.chat.slash.arg.credential_api_key": "khóa API",
+	"ui.chat.slash.arg.kind_role": "vai trò",
+	"ui.chat.slash.arg.kind_specialist": "chuyên gia",
 	"ui.chat.slash.arg.mcp_detail.reauthorize": "đã kết nối — sẽ xác thực lại",
 	"ui.chat.slash.arg.mcp_detail.reuse": "đã kết nối — sẽ dùng lại",
 	"ui.chat.slash.arg.mcp_detail.stored": "thông tin xác thực đã lưu",

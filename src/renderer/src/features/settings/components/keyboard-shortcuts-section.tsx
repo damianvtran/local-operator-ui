@@ -88,6 +88,8 @@ const rowLabel = (action: KeymapAction): string => {
 			return t("ui.settings.shortcuts.row.browser");
 		case "panel.code":
 			return t("ui.settings.shortcuts.row.code_review");
+		case "panel.projects":
+			return t("ui.settings.shortcuts.row.linked_projects");
 		case "composer.send_steer":
 			return t("ui.settings.shortcuts.action.send_steer");
 		case "composer.send_queue":

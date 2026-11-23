@@ -36,6 +36,8 @@
 	"ui.chat.sidebar.pins.pin_label": "“{title}” پن کریں",
 	"ui.chat.sidebar.pins.unpin_label": "“{title}” کی پن ہٹائیں",
 	"ui.chat.sidebar.row.archived_suffix": "، آرکائیو شدہ",
+	"ui.chat.sidebar.row.archive_label": "“{title}” کو آرکائیو کریں",
+	"ui.chat.sidebar.row.unarchive_label": "“{title}” کو آرکائیو سے بحال کریں",
 	"ui.chat.sidebar.row.in_conversation": "گفتگو میں",
 	"ui.chat.sidebar.row.matched_in_conversation": "، گفتگو میں ملا",
 	"ui.chat.sidebar.row.not_sent": "ابھی نہیں بھیجا گیا",

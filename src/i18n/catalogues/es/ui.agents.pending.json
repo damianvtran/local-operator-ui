@@ -1,0 +1,17 @@
+{
+	"ui.agents.pending.heading": "Pendiente de tu aprobación",
+	"ui.agents.pending.count_aria": "{count, plural, one {# cambio pendiente de tu aprobación} many {# de cambios pendientes de tu aprobación} other {# cambios pendientes de tu aprobación}}",
+	"ui.agents.pending.kind.agent": "Agente",
+	"ui.agents.pending.kind.team": "Equipo",
+	"ui.agents.pending.kind.skill": "Habilidad",
+	"ui.agents.pending.operation.create": "Creación propuesta",
+	"ui.agents.pending.operation.update": "Cambio propuesto",
+	"ui.agents.pending.stale": "Desactualizado",
+	"ui.agents.pending.skill_needs_update": "Actualiza Local Operator para revisar aquí los cambios en las habilidades.",
+	"ui.agents.pending.review": "Revisar",
+	"ui.agents.pending.review_aria": "{kind, select, agent {Revisar el cambio propuesto para el agente {name}} team {Revisar el cambio propuesto para el equipo {name}} other {Revisar el cambio propuesto para la habilidad {name}}}",
+	"ui.agents.pending.review_create_aria": "{kind, select, agent {Revisar la creación propuesta del agente {name}} team {Revisar la creación propuesta del equipo {name}} other {Revisar la creación propuesta de la habilidad {name}}}",
+	"ui.agents.pending.show_all": "Mostrar todos ({count})",
+	"ui.agents.pending.show_fewer": "Mostrar menos",
+	"ui.agents.pending.tab_title": "{tab} · {waiting}"
+}

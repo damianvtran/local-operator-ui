@@ -147,7 +147,7 @@
 	"ui.agents.detail.meta.delegates": {
 		"role": "Fact in the agent detail's dot-separated meta line",
 		"tone": "Plain single word or short phrase, no verb.",
-		"length_hint": "One word in English, about 9 characters. It sits between the source label and 'Specialist' on one wrapped line of body-small type; a phrase longer than one word may push the line to two rows.",
+		"length": "One word in English, about 9 characters. It sits between the source label and 'Specialist' on one wrapped line of body-small type; a phrase longer than one word may push the line to two rows.",
 		"note": "It states a capability as a fact ('this agent delegates'), not as an instruction; the editable switch elsewhere uses ui.agents.detail.delegate.label, which is a different sentence. Do not translate this as a verb."
 	},
 	"ui.agents.detail.no_description": {
@@ -173,13 +173,13 @@
 	"ui.agents.detail.read.show_all": {
 		"role": "Link-style expander under prose that the line clamp is cutting",
 		"tone": "Plain, terse action; sentence case.",
-		"length_hint": "About 8 characters in English. The link renders at body-small size in a 48x17.4 px box measured at native; keep it to one short word or two, and keep it the exact antonym of show_less.",
+		"length": "About 8 characters in English. The link renders at body-small size in a 48x17.4 px box measured at native; keep it to one short word or two, and keep it the exact antonym of show_less.",
 		"note": "Toggles the same block between clamped and fully expanded. It appears only when the text actually overflows, so the two labels are read as a pair."
 	},
 	"ui.agents.detail.read.show_less": {
 		"role": "The same expander once the prose is expanded",
 		"tone": "Plain, terse action; sentence case.",
-		"length_hint": "About 9 characters in English; same 48 px-tall link box as show_all.",
+		"length": "About 9 characters in English; same 48 px-tall link box as show_all.",
 		"note": "Antonym of show_all; a language whose shorter form reads better may reorder the pair only if both stay clearly opposed."
 	},
 	"ui.agents.detail.section.delegation": {
@@ -261,7 +261,7 @@
 	"ui.agents.detail.tools.remove_aria": {
 		"role": "Accessible name of the per-tool remove button in the agent's tool list",
 		"tone": "Short imperative naming the tool",
-		"length_hint": "Two words plus a tool name",
+		"length": "Two words plus a tool name",
 		"note": "The tool name is an identifier shown to the user as the tool's own name; keep it as-is.",
 		"placeholders": {
 			"tool": "Tool identifier (for example a tool slug); do not translate."
@@ -270,91 +270,188 @@
 	"ui.agents.detail.tools.add_label": {
 		"role": "Field label above the free-text tool-name input",
 		"tone": "Short imperative",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Labels the input that adds one tool to the agent's allow-list."
 	},
 	"ui.agents.detail.field.when_to_use": {
 		"role": "Field label for the agent's one-sentence description",
 		"tone": "Plain noun clause, sentence case",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "The description is what a model reads to decide whether to pick the agent; the label speaks to the person editing it."
 	},
 	"ui.agents.detail.field.when_to_use_hint": {
 		"role": "Helper sentence under the description field",
 		"tone": "Plain explanatory sentence ending in a period",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "'The model' is the language model that routes work to agents, not a product name."
 	},
 	"ui.agents.detail.field.instructions_hint": {
 		"role": "Helper sentence under the instructions field",
 		"tone": "Plain explanatory sentences ending in periods",
-		"length_hint": "Two short sentences",
+		"length": "Two short sentences",
 		"note": "Explains that the instructions text is everything the agent is given. British spelling 'behaviour' is the source's own."
 	},
 	"ui.agents.detail.section.delegation_hint": {
 		"role": "Description line under the Delegation and effort section heading",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Subagents are the agents a delegating agent can hand work to; an effort tier is the lo/med/hi routing word."
 	},
 	"ui.agents.detail.field.effort_loading": {
 		"role": "Busy/status text while the effort-tier picker loads its options",
 		"tone": "Short progressive phrase, no ellipsis",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Announced by assistive technology while the list is being fetched."
 	},
 	"ui.agents.detail.field.effort_helper": {
 		"role": "Helper sentence under the effort-tier picker",
 		"tone": "Plain explanatory sentence",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "'Backend' is the local server process; tiers are configured there."
 	},
 	"ui.agents.detail.field.effort_inherit_hint": {
 		"role": "Option description for the 'inherit' effort tier",
 		"tone": "Short imperative phrase, no period",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Describes the inherit option: the conversation's own reasoning effort applies."
 	},
 	"ui.agents.detail.field.effort_configured_hint": {
 		"role": "Option description for a concrete effort tier in the create form",
 		"tone": "Short noun phrase, no period",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Tells the person the tier name comes from their own Settings."
 	},
 	"ui.agents.detail.field.how_it_works": {
 		"role": "Field label for the agent's kind (role versus specialist)",
 		"tone": "Plain phrase, sentence case",
-		"length_hint": "Five words",
+		"length": "Five words",
 		"note": "Labels the choice between an agent you chat with and one other agents call on."
 	},
 	"ui.agents.detail.empty.description": {
 		"role": "Empty-state text where an agent has no description",
 		"tone": "Plain statement plus a nudge, sentence case",
-		"length_hint": "One sentence",
+		"length": "One sentence",
 		"note": "Shown in read mode in place of the description block."
 	},
 	"ui.agents.detail.empty.instructions": {
 		"role": "Empty-state text where an agent has no instructions",
 		"tone": "Plain statement, sentence case",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "Shown in read mode in place of the instructions block."
 	},
 	"ui.agents.detail.action.create_copy": {
 		"role": "Primary button label when creating an editable copy of a built-in agent",
 		"tone": "Short imperative",
-		"length_hint": "Three words",
+		"length": "Three words",
 		"note": "The agent being copied is built-in and cannot be edited in place."
 	},
 	"ui.agents.detail.action.creating": {
 		"role": "Pending label of the create button while the write is in flight",
 		"tone": "Progressive verb with ellipsis",
-		"length_hint": "One word",
+		"length": "One word",
 		"note": "Replaces the create button's label until the write settles."
 	},
 	"ui.agents.detail.action.discard_new_agent": {
 		"role": "Confirmation hint on the create form's discard control",
 		"tone": "Short question",
-		"length_hint": "Four words",
+		"length": "Four words",
 		"note": "Asks before throwing away a not-yet-created agent."
+	},
+	"ui.agents.detail.create.description_duplicate": {
+		"role": "description under the heading of the form that duplicates an existing agent as a new one",
+		"tone": "two plain sentences, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "Reassures the operator that the copy is independent of the source agent: edits to it never touch the original. 'Agent' is the product's word for a configured assistant.",
+		"placeholders": {
+			"name": "the display name of the agent being copied; keep verbatim, do not translate"
+		}
+	},
+	"ui.agents.detail.create.description_new": {
+		"role": "description under the heading of the form that creates a new agent from scratch",
+		"tone": "two plain sentences, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "Says where the new agent's instructions can be reused (agent commands, subagents, teams) and that a chat does not share them: each chat keeps its own state.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_generic": {
+		"role": "fallback error shown on the agent create/duplicate form when the refusal carries no message of its own",
+		"tone": "one plain sentence, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "A refusal from the backend normally replaces it with the backend's own sentence; this is what the form says when there is none. Do not promise a retry or blame the operator.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_instructions_required": {
+		"role": "validation error on the agent create form and on the edit-existing-agent form when the instructions field is empty",
+		"tone": "imperative, sentence case, full stop",
+		"length": "Four to six words.",
+		"note": "Shown under the field and announced through the form's alert: it must say what is missing, not that something went wrong. 'Instructions' is the product's name for the saved prompt of an agent. One sentence serves BOTH forms (create refuses at submit, edit refuses before it sends a save that the backend would silently ignore), so it must read correctly on either.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_grammar": {
+		"role": "validation error on the agent create form when the typed name contains a space, a slash or a backslash",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "The rule is the storage path's, not a style preference: the name becomes a directory name. Name the same two character classes if the language can, without turning them into a regex.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_required": {
+		"role": "validation error on the agent create form when the name field is empty",
+		"tone": "imperative, sentence case, full stop",
+		"length": "Four to six words.",
+		"note": "First validation of the form; focus moves to the name field as it is shown.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.error_name_taken": {
+		"role": "validation error on the agent create form when the typed name is already in use",
+		"tone": "plain statement plus a suggested next step, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "The name is quoted with the source's typographic quotes, which the target language may replace with its own convention. The second sentence offers both outcomes the operator has: pick another name, or open the existing agent and rename that one.",
+		"placeholders": {
+			"name": "the name the operator typed, verbatim, never translated"
+		}
+	},
+	"ui.agents.detail.create.title_duplicate": {
+		"role": "heading of the form that duplicates an existing agent as a new one",
+		"tone": "short noun phrase, sentence case, no full stop",
+		"length": "Four to six words.",
+		"note": "Sits above `description_duplicate`, which names the source agent. The copy is a create that starts filled in, not a mode of the editor.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.create.title_new": {
+		"role": "heading of the form that creates a new agent from scratch",
+		"tone": "short noun phrase, sentence case, no full stop",
+		"length": "Two words in English.",
+		"note": "Sits above `description_new`. 'Agent' is the product's word for a configured assistant.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.edit.error_generic": {
+		"role": "fallback error shown on the edit-existing-agent form when a failed save carries no message of its own",
+		"tone": "one plain sentence, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "Edit-form twin of `create.error_generic` (same shape, 'saved' instead of 'created'). A refusal from the backend normally replaces it with the backend's own sentence; this is only what the form says when there is none. Do not promise a retry or blame the operator.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.tools.error_grammar": {
+		"role": "inline validation error under the tool-name input when the typed name has characters a tool name cannot hold",
+		"tone": "plain statement of the rule, sentence case, full stop",
+		"length": "One sentence; wraps under a narrow input.",
+		"note": "The list is of characters, in this order: letters, digits, dot, underscore, dash (hyphen), colon. Keep all six and keep them recognisable as characters; it is the rule the operator must satisfy, so do not soften it to 'invalid name'.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.tools.error_duplicate": {
+		"role": "inline validation error under the tool-name input when the typed tool is already in the agent's list",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "Four to six words.",
+		"note": "Says the tool is already there, not that the operator did something wrong. 'Tool' is the product's word for a capability the agent may call.",
+		"placeholders": {}
+	},
+	"ui.agents.detail.ask_change_prefill": {
+		"role": "text pre-filled into the chat composer when the operator presses 'Ask to change' on an agent, for them to finish typing",
+		"tone": "imperative request to the assistant, sentence case, ends with a colon and a trailing space",
+		"length": "Short opening clause; the operator's own words follow it.",
+		"note": "This is the START of a sentence the operator completes: it must end where the operator's request begins, keep the colon (or the language's equivalent) and keep ONE trailing space so the cursor lands ready to type (for a language that writes no space before its next word, end after the colon). The agent name is an identifier the assistant must be able to match: never translate or transliterate it.",
+		"placeholders": {
+			"name": "the agent's name, verbatim, never translated"
+		}
 	}
 }

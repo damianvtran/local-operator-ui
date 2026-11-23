@@ -1,5 +1,8 @@
 {
 	"ui.chat.dialogs.archive_action": "Архивировать",
+	"ui.chat.dialogs.archive_title_named": "Архивировать «{title}»?",
+	"ui.chat.dialogs.archive_title_unnamed": "Архивировать этот разговор?",
+	"ui.chat.dialogs.archive_message": "Разговор исчезнет из списков. Отменить можно в течение {seconds, plural, one {# секунды} few {# секунд} many {# секунд} other {# секунды}}; после этого найдите его через поиск над списком чатов, включите параметр «{include_archived}» и нажмите «Восстановить».",
 	"ui.chat.dialogs.cancel": "Отмена",
 	"ui.chat.dialogs.delete_action": "Удалить",
 	"ui.chat.dialogs.delete_title": "Удалить этот разговор?",

@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent translation audit, round 2 (delta), PR #1973",
+ "locale": "ur",
+ "namespace": "ui.community",
+ "pr": 1973,
+ "date": "2026-11-18",
+ "head": "72da4b833910bfe97fdaf9e4198faf24b94e5a8a",
+ "instance": "pr1973-r2-ur-community-8dd3f205",
+ "auditor": {
+  "agent": "reviewer",
+  "role": "independent i18n auditor (reviewer role); did not translate, author, suggest or apply these strings",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Reviewer session ef5cbe7f8a91, a fresh reviewer task for PR #1973 round 2; not the translator (coder job e584f309bede, session 1e4dc439a105), not the round-1 auditor whose suggestions these values are (session 9bf5768d1c00), and not the implementer who applied them. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+  "instance": "pr1973-r2-ur-community-8dd3f205"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "audited_values": {
+  "ui.community.role.moderator": "ماڈریٹر",
+  "ui.community.join.disclosure.body": "پیغامات، تصاویر اور ایجنٹ پوسٹس پہلے ایک خودکار ماڈریٹر چیک کرتا ہے۔ اگر کچھ مسترد ہو جائے تو وہ نہ پوسٹ ہوتا ہے نہ محفوظ کیا جاتا ہے، اور انتباہ صرف آپ کو نظر آتا ہے۔",
+  "ui.community.join.preview.pending_note": "آپ کی Radient پروفائل کا عہدہ اور تعارف ماڈریشن سے گزرنے کے بعد ظاہر ہوتے ہیں، عام طور پر چند سیکنڈ میں۔ تب تک اراکین آپ کا نام اور ڈیفالٹ اوتار دیکھتے ہیں۔",
+  "ui.community.composer.audience.all_staff_post": "تمام کمیونٹی اراکین کو نظر آتا ہے · یہاں اسٹاف اور ماڈریٹرز پوسٹ کرتے ہیں",
+  "ui.community.composer.locked": "یہاں صرف اسٹاف اور ماڈریٹرز پوسٹ کرتے ہیں۔ #general میں سلام کہیں",
+  "ui.community.outcome.unavailable.body": "ماڈریشن ابھی دستیاب نہیں ہے۔ کچھ بھی پوسٹ نہیں ہوا۔ یہ آپ کے اکاؤنٹ پر کوئی پابندی نہیں ہے۔"
+ },
+ "prior_round": {
+  "instance": "pr1973-r1-ur-community-e7fdb36a",
+  "head": "aeecfe4aa9446031abf56959ce723c38aa3a37f0",
+  "rebased_head": "65b1ee0be4e97d49729e77b64a078d4257356e3d",
+  "findings_applied": [
+   "N4-ur"
+  ],
+  "note": "Keys not listed in audited_values are byte-identical to the round-1 audited bytes (aeecfe4a == 65b1ee0b for this file). Every audited value equals the round-1 suggestion verbatim; where two round-1 findings touched one key, the value composes both.",
+  "receipt": "i18n/receipts/pr1973-r1-ur-community-e7fdb36a.json"
+ },
+ "scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 6 changed ui.community values (round-1 findings N4-ur applied); rest of the file byte-identical to the round-1 audited bytes.",
+ "binding": "Verified on the committed tree at 72da4b833910bfe97fdaf9e4198faf24b94e5a8a (worktree .worktrees/community-ui): target src/i18n/catalogues/ur/ui.community.json sha256 7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684; English sha256 1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7; context sha256 8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219.",
+ "en_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+ "context_sha256": "8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219",
+ "target_sha256": "7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684",
+ "sha256": {
+  "ur": "7c12500eafac9a2316e2c13a8678fae551b088b2f6420fd66f567b17f2c89684",
+  "en": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7"
+ }
+}

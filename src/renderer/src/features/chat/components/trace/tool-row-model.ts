@@ -13,7 +13,15 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
-import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
+import {
+	type MessageKey,
+	type WithoutParams,
+	formatByteQuantity,
+	formatCompactDuration,
+	formatSettledDuration as formatSharedSettledDuration,
+	t,
+	translateRaw,
+} from "@shared/i18n";
 import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
@@ -170,16 +178,33 @@ function scalarText(value: unknown): string {
  * an explicit `wake: false` is quiet.
  */
 function sendMode(args: Record<string, unknown>): string {
-	if (args.now) return "now";
-	return args.wake === false ? "quiet" : "wake";
+	if (args.now) return summaryWord("ui.chat.trace.send.mode.now");
+	return args.wake === false
+		? summaryWord("ui.chat.trace.send.mode.quiet")
+		: summaryWord("ui.chat.trace.send.mode.wake");
+}
+
+/**
+ * A word or phrase of a painted argument summary, localized.
+ *
+ * `translateRaw`, not `t()`: `summaryFromArgs` is ALSO the copied-transcript
+ * text (`transcript-copy.ts`), and `t()`'s RTL bidi isolates would ride into
+ * the clipboard. The row that paints the summary isolates its own text.
+ */
+function summaryWord(
+	key: MessageKey,
+	params: Record<string, unknown> = {},
+): string {
+	return translateRaw(key, params);
 }
 
 /** The addressed peer, mirroring `peer_send_target_label`'s precedence. */
 function sendTarget(args: Record<string, unknown>): string {
 	const pid = args.pid;
-	if (typeof pid === "number" && Number.isFinite(pid)) return `pid ${pid}`;
+	if (typeof pid === "number" && Number.isFinite(pid))
+		return summaryWord("ui.chat.trace.address.pid", { pid: String(pid) });
 	const session = String(args.session ?? "").trim();
-	if (session) return `session ${session}`;
+	if (session) return summaryWord("ui.chat.trace.address.session", { session });
 	// `?` rather than blank: the call will fail, but the row is painted first,
 	// and an empty slot reads as though the next field were the target.
 	return (
@@ -525,11 +550,11 @@ export function preferProgressDetails(
  * or it carries its own (`delivery unconfirmed`).
  */
 export const SEND_DELIVERY_WORD: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "wake unconfirmed",
-	unconfirmed: "delivery unconfirmed",
-	failed: "not delivered",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.word",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.word",
+	failed: "ui.chat.trace.send.delivery.failed.word",
 };
 
 /**
@@ -545,12 +570,10 @@ export const SEND_DELIVERY_WORD: Readonly<
  * is the whole statement, and a hover would only repeat it.
  */
 export const SEND_DELIVERY_TITLE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
-	unconfirmed:
-		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.title",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.title",
 };
 
 /**
@@ -575,14 +598,11 @@ export const SEND_DELIVERY_TITLE: Readonly<
  * of a delivered send is the row it always was.
  */
 export const SEND_DELIVERY_NOTE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
-	unconfirmed:
-		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
-	failed:
-		"Nothing was delivered. Fix the cause named below, or retry the send.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.note",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.note",
+	failed: "ui.chat.trace.send.delivery.failed.note",
 };
 
 /**
@@ -598,11 +618,10 @@ export const SEND_DELIVERY_NOTE: Readonly<
  * would be a string nothing renders (agent review round 1, residue).
  */
 export const SEND_DELIVERY_LABEL: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "delivered, wake unconfirmed",
-	unconfirmed:
-		"delivery unconfirmed — it may still arrive, so check before resending",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.label",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.label",
 };
 
 /**
@@ -623,10 +642,11 @@ export function isPartialDelivery(
 /*
  * THE KEYED DELIVERY COPY, per surface (word / hover / spoken / expansion note).
  *
- * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy and stay as
- * they are (their suites pin them). Team Bridge's states are new copy, so they
- * go through `t()` - and through a FUNCTION, resolved at render, because a
- * module-load constant would freeze the language the module first loaded in.
+ * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy, held as
+ * catalogue KEYS (`ui.chat.trace.send.delivery.*`) whose English is the frozen
+ * wording byte for byte (their suites pin it through these accessors). Every
+ * state goes through `t()` - and through a FUNCTION, resolved at render, because
+ * a module-load constant would freeze the language the module first loaded in.
  * `bridge` also rewords `unconfirmed`: its hedge is about a conversation post
  * whose confirmation was lost, not about a peer's wake or transcript, so
  * `send`'s sentences would tell the reader to check the wrong thing.
@@ -634,6 +654,13 @@ export function isPartialDelivery(
  * Each function falls back to the `send` map for every other state, so the
  * render sites read ONE accessor per surface.
  */
+/**
+ * Resolve one `SEND_DELIVERY_*` entry through the catalogue at call time, or
+ * `null` for a state the map has no entry for (a delivered send says nothing).
+ */
+const resolveSendCopy = (key: WithoutParams | undefined): string | null =>
+	key ? t(key) : null;
+
 const isBridge = (toolName: string) =>
 	toolName.trim().toLowerCase() === "bridge";
 
@@ -651,7 +678,7 @@ export function deliveryWord(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word");
-	return SEND_DELIVERY_WORD[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_WORD[state]);
 }
 
 /**
@@ -695,7 +722,7 @@ export function deliveryTitle(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title");
-	return SEND_DELIVERY_TITLE[state];
+	return resolveSendCopy(SEND_DELIVERY_TITLE[state]) ?? undefined;
 }
 
 /** What assistive tech hears in place of the (then `aria-hidden`) word. */
@@ -712,7 +739,7 @@ export function deliveryLabel(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label");
-	return SEND_DELIVERY_LABEL[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_LABEL[state]);
 }
 
 /** The wrapping sentence the expansion prints for a state. */
@@ -729,7 +756,7 @@ export function deliveryNote(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note");
-	return SEND_DELIVERY_NOTE[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_NOTE[state]);
 }
 
 /**
@@ -771,7 +798,9 @@ export function deliveryRowOutcome(
 export function deliverySettledVerb(
 	state: SendDeliveryState | null | undefined,
 ): string | null {
-	return state === "failed" ? "Attempted" : null;
+	return state === "failed"
+		? t("ui.chat.trace.send.delivery.failed.verb")
+		: null;
 }
 
 /**
@@ -823,7 +852,8 @@ export function isFailedResult(
  */
 function sessionsAddress(args: Record<string, unknown>): string {
 	const pid = numberFrom(args.pid);
-	if (pid !== null && Number.isInteger(pid)) return `pid ${pid}`;
+	if (pid !== null && Number.isInteger(pid))
+		return summaryWord("ui.chat.trace.address.pid", { pid: String(pid) });
 	return scalarText(args.session) || scalarText(args.target) || "?";
 }
 
@@ -846,20 +876,27 @@ function sessionsPeekWindow(args: Record<string, unknown>): string {
 	if (query) {
 		const steps = numberFrom(args.steps);
 		return steps !== null && Number.isInteger(steps) && steps >= 0
-			? `search ${query} · ${steps} around`
-			: `search ${query}`;
+			? summaryWord("ui.chat.trace.sessions.peek.search_around", {
+					query,
+					count: steps,
+				})
+			: summaryWord("ui.chat.trace.sessions.peek.search", { query });
 	}
 	const steps = numberFrom(args.steps);
 	if (steps !== null && Number.isInteger(steps) && steps >= 0)
-		return `last ${steps}`;
+		return summaryWord("ui.chat.trace.sessions.peek.last", { count: steps });
 	const head = numberFrom(args.head);
 	if (head !== null && Number.isInteger(head) && head >= 0)
-		return `first ${head}`;
-	if (args.digest === true) return "digest";
+		return summaryWord("ui.chat.trace.sessions.peek.first", { count: head });
+	if (args.digest === true)
+		return summaryWord("ui.chat.trace.sessions.peek.digest");
 	const before = scalarText(args.before_id);
-	if (before) return `before ${before}`;
+	if (before)
+		return summaryWord("ui.chat.trace.sessions.peek.before", { id: before });
 	const around = scalarText(args.around_id);
-	return around ? `around ${around}` : "";
+	return around
+		? summaryWord("ui.chat.trace.sessions.peek.around", { id: around })
+		: "";
 }
 
 /**
@@ -1122,22 +1159,9 @@ export function outputFallbackLine(
  * settled row past a minute. Widest strings: `59m59s`, `23h59m`, `99d23h`.
  */
 export function formatDuration(seconds: number): string {
-	const total = Math.max(0, Math.floor(seconds));
-	if (total < 60) return `${total}s`;
-	if (total < 3600) {
-		const m = Math.floor(total / 60);
-		const s = total % 60;
-		return s === 0 ? `${m}m` : `${m}m${s}s`;
-	}
-	if (total < 86400) {
-		const h = Math.floor(total / 3600);
-		const m = Math.floor((total % 3600) / 60);
-		return m === 0 ? `${h}h` : `${h}h${m}m`;
-	}
-	const d = Math.floor(total / 86400);
-	if (d > 99) return "100d+";
-	const h = Math.floor((total % 86400) / 3600);
-	return h === 0 ? `${d}d` : `${d}d${h}h`;
+	// The shared localized helper (`src/i18n/format.ts`); this name stays so
+	// the row's many importers keep one specifier.
+	return formatCompactDuration(seconds);
 }
 
 /**
@@ -1153,16 +1177,11 @@ export function formatDuration(seconds: number): string {
  */
 export function formatSettledDuration(seconds: number | null): string {
 	if (seconds === null) return "";
-	const elapsed = Math.max(0, seconds);
-	// `<0.1s`, never `0.0s` (`tool_card.py:2615-2623`). Printing `0.0s` for a
+	// `<0.1s`, never `0.0s` (`tool_card.py:2615-2623`): printing `0.0s` for a
 	// call that genuinely returned at once reprints the exact string the old
-	// fabricated-duration bug produced, so a reader cannot tell a real sub-50 ms
-	// call from a row whose duration was lost. The TUI's own reasoning for the
-	// spelling: "reads as too fast to measure".
-	if (elapsed < 0.05) return "<0.1s";
-	if (elapsed < 10) return `${elapsed.toFixed(1)}s`;
-	if (elapsed < 60) return `${Math.round(elapsed)}s`;
-	return formatDuration(elapsed);
+	// fabricated-duration bug produced. The ladder (and that sentinel, now a
+	// keyed message) lives in the shared localized helper.
+	return formatSharedSettledDuration(seconds);
 }
 
 /**
@@ -2081,6 +2100,37 @@ export function isDiffBodyRow<
 	},
 >(row: T): row is T & { diff: readonly string[] } {
 	return isDiffBodyTool(row.toolName) && row.diff !== null && !row.isError;
+}
+
+/**
+ * A successful `write`/`edit` whose inline preview holds NO rows but whose
+ * core archived the full diff (`details.diff_full` present).
+ *
+ * Why this exists beside `isDiffBodyRow`: the inline preview is byte-bounded
+ * too, so when the FIRST (or only) row of a diff is longer than the preview's
+ * budget the core cannot keep any row inline — `details.diff` is absent or
+ * empty — yet the archive (larger ceiling, rows continued across pages) holds
+ * the whole change. Without this the row fell through to the arguments body
+ * and the reader never saw the offer, or saw a "legacy" reason that was false.
+ *
+ * Any descriptor state counts, not only `archived`: an `oversized` /
+ * `withheld` / `unavailable` descriptor on an empty preview must still paint
+ * its own truthful notice in the diff well. A row with NO descriptor keeps the
+ * exact `isDiffBodyRow` semantics (null diff -> arguments body).
+ */
+export function isArchiveOnlyDiffRow(row: {
+	toolName: string;
+	diff: readonly string[] | null;
+	isError: boolean;
+	diffFull?: unknown;
+}): boolean {
+	return (
+		isDiffBodyTool(row.toolName) &&
+		!row.isError &&
+		(row.diff === null || row.diff.length === 0) &&
+		row.diffFull !== null &&
+		row.diffFull !== undefined
+	);
 }
 
 /**

@@ -24,7 +24,12 @@
  */
 
 import { AgentMark } from "@shared/agent-avatar/agent-mark";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+	isServerUpdatingError,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import type {
 	ReusableProfile,
 	ReusableTeam,
@@ -55,7 +60,7 @@ import {
 } from "@shared/components/ui/select";
 import { Switch } from "@shared/components/ui/switch";
 import { Textarea } from "@shared/components/ui/textarea";
-import { t } from "@shared/i18n";
+import { USER_TEXT_ALIGN, t, translateRaw, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -71,6 +76,10 @@ import {
 	useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+} from "../../../../../shared/desktop-contract";
 import {
 	type ActionClass,
 	BUILTIN_SWITCH_DISCLOSURE,
@@ -115,6 +124,52 @@ type Draft = {
 };
 
 const TOOL_TOKEN = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * The sentence a failed write hands to `refusalCopy`, in the interface language.
+ *
+ * WHY NOT `caught.message`. When the backend is unreachable main answers with
+ * its own transport sentence (`DESKTOP_MACHINE_DETAIL.transportFailed`, English
+ * by construction: it is a machine vocabulary shared with main, not catalogue
+ * copy), and handing that string on put English on the save alert, the install
+ * alert and the install toast in EVERY language (QA round 1, Q1).
+ *
+ * THREE ARMS, in this order (0 being the server-updating sentence, below):
+ *  1. The transport failure itself is worded by
+ *     `ui.common.errors.desktop_transport_failed`, the key the sibling read-state
+ *     pane (`missing-definition-error.tsx`) already uses for the same refusal.
+ *     NOT `userFacingMessage`'s own sentence for that code ("The Local Operator
+ *     server did not answer this request."): that key is deliberately worded
+ *     differently (see its context note) and using it would change the English a
+ *     user already reads on this pane.
+ *  2. Every other desktop error goes through `userFacingMessage`: the pairing and
+ *     server-updating refusals become their translated sentences, an authored
+ *     backend refusal (name taken, grammar, instructions...) comes back verbatim
+ *     so `refusalCopy` still recognises and routes it, and a value that is not an
+ *     authored message becomes `fallback` instead of a stack-trace fragment.
+ */
+export function writeFailureSentence(
+	caught: unknown,
+	fallback: string,
+): string {
+	/*
+	 * SERVER UPDATING FIRST (UI #1952 review, R2-m1). Inside main's update window
+	 * a transport failure carries the `detail.updating` hint, and the transport
+	 * arm below matched it first, so an update read as "the server did not
+	 * answer". `userFacingMessage` already orders updating before everything else;
+	 * this keeps the pane's own arm from overtaking it.
+	 */
+	if (isServerUpdatingError(caught)) return userFacingMessage(caught, fallback);
+	if (
+		caught instanceof DesktopControlError &&
+		(caught.code === DESKTOP_REFUSAL_CODE.transportFailed ||
+			(!caught.code &&
+				caught.message === DESKTOP_MACHINE_DETAIL.transportFailed))
+	) {
+		return t("ui.common.errors.desktop_transport_failed");
+	}
+	return userFacingMessage(caught, fallback);
+}
 
 /*
  * The summary portrait's box: 80px, and borderless - `AgentAvatar` carries a
@@ -202,7 +257,8 @@ export function AgentMeta({ profile }: { profile: ReusableProfile }) {
 		sourceLabel(profile.source),
 		classOf(profile) === "proactive" ? CLASS_LABEL.proactive : null,
 		profile.delegate ? t("ui.agents.detail.meta.delegates") : null,
-		profile.kind === "specialist" ? "Specialist" : null,
+		// One word, one key: the roster's kind label for the same wire value.
+		profile.kind === "specialist" ? t("ui.hub.teams.kind.specialist") : null,
 	].filter(Boolean);
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -466,13 +522,11 @@ function ToolsEditor({
 		const token = entry.trim();
 		if (!token) return;
 		if (!TOOL_TOKEN.test(token)) {
-			setEntryError(
-				"Tool names are letters, digits, dot, underscore, dash or colon.",
-			);
+			setEntryError(t("ui.agents.detail.tools.error_grammar"));
 			return;
 		}
 		if (tools?.includes(token)) {
-			setEntryError("That tool is already listed.");
+			setEntryError(t("ui.agents.detail.tools.error_duplicate"));
 			return;
 		}
 		setEntryError(null);
@@ -525,14 +579,21 @@ function ToolsEditor({
 						</p>
 					)}
 					<div className="flex items-end gap-2">
-						<div className="min-w-0 flex-1">
+						{/* `space-y-1`, the create form's field rhythm: flush against the
+						 * input, Urdu's descenders in the label and error ran under the
+						 * input's border and focus ring (ur frames, this fix's round). */}
+						<div className="min-w-0 flex-1 space-y-1">
 							<FieldLabel
 								label={t("ui.agents.detail.tools.add_label")}
 								htmlFor={inputId}
 								error={entryError ?? error}
 							/>
+							{/* A tool name is typed Latin text whatever the interface
+							 * language: `userTextDir` keeps "bad name!" from rendering as
+							 * "!bad name" under an RTL locale (see `EditSection`). */}
 							<Input
 								id={inputId}
+								dir={userTextDir(entry)}
 								value={entry}
 								inputSize="md"
 								placeholder={t("ui.agents.detail.tools.placeholder")}
@@ -798,7 +859,7 @@ export function AgentDetail({
 			typeof changed.instructions === "string" &&
 			!changed.instructions.trim()
 		) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			return;
 		}
@@ -828,9 +889,7 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be saved.",
+				writeFailureSentence(caught, t("ui.agents.detail.edit.error_generic")),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -909,9 +968,10 @@ export function AgentDetail({
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be installed.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.install.error_generic"),
+				),
 			);
 			setError(copy.message);
 			showErrorToast(copy.message);
@@ -968,8 +1028,14 @@ export function AgentDetail({
 								ref={headingRef}
 								tabIndex={-1}
 								// A long name truncates instead of wrapping under the actions.
+								// `dir="auto"`: the name is the operator's text, so an English
+								// one keeps its first letters under ur instead of losing them
+								// to the ellipsis; the alignment is keyed to the DOCUMENT's direction,
+								// not the name's (see `agents-sidebar.tsx`), so a short name keeps
+								// the locale's start edge in both directions.
+								dir="auto"
 								title={displayedName}
-								className="truncate text-title focus:outline-none"
+								className={`truncate text-title focus:outline-none ${USER_TEXT_ALIGN}`}
 							>
 								{displayedName}
 							</h2>
@@ -994,7 +1060,7 @@ export function AgentDetail({
 					 *
 					 * THE TRAILING GLYPH SITS ON THE COLUMN EDGE (design review round 1 D1):
 					 * the last control is the ghost "More actions" icon button, 32 px wide
-					 * around a 16 px glyph, so `-mr-2` (the 8 px of box on each side of the
+					 * around a 16 px glyph, so `-me-2` (the 8 px of box on each side of the
 					 * glyph) moves the glyph's edge onto the column edge into the 24 px
 					 * gutter, where only its hover ground reaches.
 					 */}
@@ -1044,7 +1110,17 @@ export function AgentDetail({
 								<Button
 									variant="ghost"
 									onClick={() =>
-										onAskAgent(`Change the agent ${profile.name}: `)
+										onAskAgent(
+											// `translateRaw`, NOT `t`: this text is pre-filled into the chat
+											// composer and SENT to the assistant, so it is data. In an RTL
+											// catalogue (ur) `t` wraps the Latin agent name in U+2068/2069
+											// (src/i18n/bidi.ts), and those invisible controls would travel
+											// in the message and could stop the assistant matching the
+											// agent by name. English and every LTR locale are unchanged.
+											translateRaw("ui.agents.detail.ask_change_prefill", {
+												name: profile.name,
+											}),
+										)
 									}
 								>
 									{t("ui.agents.detail.action.ask_change")}
@@ -1064,7 +1140,7 @@ export function AgentDetail({
 										variant="ghost"
 										size="icon"
 										aria-label={t("ui.agents.detail.action.more_actions")}
-										className="-mr-2"
+										className="-me-2"
 									>
 										<MoreHorizontal aria-hidden="true" />
 									</Button>
@@ -1362,6 +1438,8 @@ export function AgentDetail({
 												// back so the list's pitch stays the one it had.
 												className={cn("-my-0.5", LINK_HIT_AREA)}
 												onClick={() => onOpenTeam(team.name)}
+												// The operator's team name: its own direction (round 1, D1).
+												dir="auto"
 											>
 												{team.name}
 											</Button>
@@ -1462,12 +1540,22 @@ export function EditSection({
 	fieldRef?: Ref<HTMLTextAreaElement>;
 }) {
 	const id = useId();
+	/*
+	 * `userTextDir` (`dir="auto"` once non-empty) ON EVERY FIELD HERE: the value
+	 * is the operator's own text
+	 * (instructions, a description), and its script is independent of the
+	 * interface language. Inheriting an RTL locale's direction moved an English
+	 * prompt's sentence punctuation to the wrong end (".You implement..." in ur,
+	 * design review on UI #1952); the first strong character decides instead,
+	 * and an Urdu value still reads right-to-left in an English interface.
+	 */
 	return (
 		<Section title={title} description={description}>
 			<FieldLabel label={label} htmlFor={id} error={error} />
 			{rows ? (
 				<Textarea
 					id={id}
+					dir={userTextDir(value)}
 					ref={fieldRef}
 					value={value}
 					rows={rows}
@@ -1479,6 +1567,7 @@ export function EditSection({
 			) : (
 				<Input
 					id={id}
+					dir={userTextDir(value)}
 					value={value}
 					aria-invalid={Boolean(error)}
 					onChange={(event) => onChange(event.target.value)}
@@ -1575,7 +1664,7 @@ export function AgentCreate({
 		event?.preventDefault();
 		if (pending) return;
 		if (!name.trim()) {
-			setError("Give the agent a name.");
+			setError(t("ui.agents.detail.create.error_name_required"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
@@ -1590,21 +1679,21 @@ export function AgentCreate({
 		 * failure on this form, and the only one with no field marked (Q3/U4/D5).
 		 */
 		if (/[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.detail.create.error_name_grammar"));
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (takenNames.includes(name.trim())) {
 			setError(
-				`An agent called “${name.trim()}” already exists. Choose another name, or open the existing one to change it.`,
+				t("ui.agents.detail.create.error_name_taken", { name: name.trim() }),
 			);
 			setErrorField("name");
 			nameRef.current?.focus();
 			return;
 		}
 		if (!draft.instructions.trim()) {
-			setError("Give the agent instructions.");
+			setError(t("ui.agents.detail.create.error_instructions_required"));
 			setErrorField("instructions");
 			instructionsRef.current?.focus();
 			return;
@@ -1641,9 +1730,10 @@ export function AgentCreate({
 			onSaved(result.name);
 		} catch (caught) {
 			const copy = refusalCopy(
-				caught instanceof Error
-					? caught.message
-					: "The agent could not be created.",
+				writeFailureSentence(
+					caught,
+					t("ui.agents.detail.create.error_generic"),
+				),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -1652,7 +1742,13 @@ export function AgentCreate({
 		}
 	};
 
-	const title = initial ? "Duplicate as a new agent" : "New agent";
+	/*
+	 * The heading is a catalogue message now (S18d): it was the last English on
+	 * this form in every language, sitting directly above translated copy.
+	 */
+	const title = initial
+		? t("ui.agents.detail.create.title_duplicate")
+		: t("ui.agents.detail.create.title_new");
 
 	return (
 		<div className="space-y-8">
@@ -1660,8 +1756,10 @@ export function AgentCreate({
 				<h2 className="text-title">{title}</h2>
 				<p className="text-body-sm text-ink-muted">
 					{initial
-						? `A copy of ${initial.name}. It is a separate agent: changing it does not change the original.`
-						: "Reusable instructions shared by agent commands, subagents and teams. Chats stay separate."}
+						? t("ui.agents.detail.create.description_duplicate", {
+								name: initial.name,
+							})
+						: t("ui.agents.detail.create.description_new")}
 				</p>
 			</header>
 			{error && !errorField ? (
@@ -1700,6 +1798,7 @@ export function AgentCreate({
 							/>
 							<Input
 								id="agent-create-name"
+								dir={userTextDir(name)}
 								ref={nameRef}
 								value={name}
 								required

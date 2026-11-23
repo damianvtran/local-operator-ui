@@ -1,7 +1,7 @@
 import { AttentionBadge } from "@shared/components/ui/attention-badge";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { ChevronRight } from "lucide-react";
+import { Blocks, ChevronRight } from "lucide-react";
 import { formatDate, formatTime } from "../../../../i18n/format";
 import type {
 	TeamBridgeDirectoryMember,
@@ -210,6 +210,35 @@ function Facepile({
 		<span aria-hidden="true" className="flex shrink-0 -space-x-1.5">
 			{participants.map((participant, index) => {
 				const kind = participant.kind ?? "human";
+				const key = `${index}:${participant.accountId ?? participant.label}`;
+				/* An APP replier (an integration answering in its own thread) is
+				   never a directory member: no lookup, no photo, and no initial -
+				   an initial on this plate would read as a person.
+				   GLYPH IN THE VISIBLE CRESCENT (design round 1, D2). Earlier
+				   plates paint on top, and the 6px overlap plus the 2px ring hide
+				   the left 8px of every plate after the first. A centred 11px
+				   `Blocks` lost ~32% there - its left column of squares, the part
+				   that makes it read as blocks. After the first plate the glyph is
+				   10px and pinned 2px from the right edge (x 8-18 of 20), which
+				   keeps the whole mark in the uncovered crescent and inside the
+				   circle; the first plate is never covered, so it stays centred. */
+				if (kind === "integration") {
+					const covered = index > 0;
+					return (
+						<span
+							key={key}
+							data-thread-face="app"
+							className={cn(
+								"inline-flex size-5 shrink-0 items-center bg-media-surface text-ink-muted",
+								covered ? "justify-end pr-0.5" : "justify-center",
+								"relative rounded-full ring-2 ring-[var(--thread-row-ring)]",
+								PLATE_LAYER[index],
+							)}
+						>
+							<Blocks size={covered ? 10 : 11} />
+						</span>
+					);
+				}
 				const resolved =
 					(participant.accountId &&
 						profileFor?.({
@@ -242,7 +271,6 @@ function Facepile({
 					"relative rounded-full text-[10px] ring-2 ring-[var(--thread-row-ring)]",
 					PLATE_LAYER[index],
 				);
-				const key = `${index}:${participant.accountId ?? participant.label}`;
 				return member ? (
 					<TeamBridgeAvatar
 						key={key}

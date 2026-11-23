@@ -596,10 +596,7 @@ const { load } = createRequire(builderRequire.resolve("app-builder-lib"))(
 	"js-yaml",
 );
 const workflow = load(
-	readFileSync(
-		new URL("../.github/workflows/version-bump-guard.yml", import.meta.url),
-		"utf8",
-	),
+	readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
 );
 const guardStep = workflow.jobs["version-bump-guard"].steps.find((step) =>
 	step.name?.includes("Reject a version bump"),
@@ -660,7 +657,10 @@ test("the workflow refuses a run in which the guard printed no verdict", () => {
 	// wrong reason and would prove nothing about this refusal.
 	const run = runGuardStep({ guardScript: "" });
 	assert.equal(run.status, 1);
-	assert.match(run.stdout, /::error title=Version bump guard produced no verdict::/);
+	assert.match(
+		run.stdout,
+		/::error title=Version bump guard produced no verdict::/,
+	);
 });
 
 test("the workflow passes a verdict through, and keeps the guard's own exit status", () => {
@@ -692,7 +692,7 @@ test("a guard that dies with a non-zero status is passed through, not re-read as
 	// success path is the refusal - on a failure path the status already fails the
 	// job, and the step adds no second verdict of its own.
 	const run = runGuardStep({
-		guardScript: `process.exit(2);\n`,
+		guardScript: "process.exit(2);\n",
 	});
 	assert.equal(run.status, 2);
 	assert.doesNotMatch(run.stdout, /produced no verdict/);

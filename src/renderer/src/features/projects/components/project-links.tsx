@@ -66,8 +66,14 @@ type ProjectLinksProps = {
 	 * and its doors stay about the act. `attachments` is the strip's own list
 	 * (pasted images as data URLs), carried through the seam into the body's
 	 * image half and kept as the payload identity the draft row compares.
+	 *
+	 * OPTIONAL, and absence removes the whole quick-send family: the strip AND
+	 * each row's message button (which exists only to aim the strip). The chat
+	 * canvas's embedded detail omits it - the operator is already in a
+	 * conversation with its own composer, so a second composer for "message a
+	 * linked session" would be a duplicate door (operator, 2026-11-15).
 	 */
-	onQuickSend: (
+	onQuickSend?: (
 		sessionId: string,
 		text: string,
 		mode: "prompt" | "steer",
@@ -239,7 +245,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 									</span>
 								)}
 								<Badge variant={meta.variant}>{meta.label}</Badge>
-								{clickable && (
+								{clickable && onQuickSend && (
 									<Button
 										variant="ghost"
 										size="icon-sm"
@@ -286,7 +292,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 			 * their own state, and the section header still offers New session and Link
 			 * session, which is what a reader in that state needs.
 			 */}
-			{links.some((link) => link.exists) && (
+			{onQuickSend && links.some((link) => link.exists) && (
 				<ProjectQuickSend
 					links={links}
 					target={resolvedTarget}

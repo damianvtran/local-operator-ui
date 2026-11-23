@@ -188,7 +188,7 @@ const rendererFeatureFiles = (dir = "src/renderer/src", out = []) => {
 const DEFERRED_PANELS = {
 	"src/renderer/src/features/browser/components/browser-url-bar.tsx":
 		"floats over the page, not over app-painted content: a different backdrop class, not this row's floor",
-	"src/renderer/src/features/chat/components/mermaid-diagram.tsx":
+	"src/renderer/src/features/chat/components/diagram-viewer.tsx":
 		"the diagram controls, over the rendered diagram in the canvas pane",
 	"src/renderer/src/features/chat/components/run-details/job-cancel-popover.tsx":
 		"the job-cancel confirmation card",
@@ -198,8 +198,6 @@ const DEFERRED_PANELS = {
 		"the message actions toolbar over a Bridge row",
 	"src/renderer/src/shared/components/common/find-replace-widget.tsx":
 		"the find bar floating inside the editor",
-	"src/renderer/src/features/chat/components/attachments-preview.tsx":
-		"the composer tile's dwell preview, a 300px surface that marking blind changes with no browser run in this cycle to look at it",
 	"src/renderer/src/features/chat/components/canvas/inline-edit.tsx":
 		"the canvas inline-edit popover over the CodeMirror surface: the same unverified-pixels reason",
 	"src/renderer/src/features/team-bridge/attachments/inline-image-tile.tsx":
@@ -231,6 +229,8 @@ const DEFERRED_PANELS = {
 		"the `:` emoji suggestions over the Bridge composer: they floated on Tailwind's `shadow-lg` until 2026-11-06 (agent review round 1, R3) and took the one shadow, which is what makes them visible here - waiting on the same rendered look at the translucent ground",
 	"src/renderer/src/features/console/components/console-pane.tsx":
 		"the console's cleanup notice over the terminal: it carried `shadow-md` and a `border-control` until 2026-11-06, and its backdrop is terminal output rather than a column the app painted, so the floor's premise would need checking as well as looking",
+	"src/renderer/src/features/phone-pairing/pairing-popup.tsx":
+		"the phone-pairing card moved from `bg-surface` to `bg-elevated` in design round 3 (D1) so its tonal Close/Deny buttons keep a visible hover fill; it holds Approve/Deny controls whose hover ramp the translucent glass ground has not been rendered against, so it stays opaque until a design round looks at it on glass",
 };
 
 /* The module-level class-constant resolver lives in `jsx-class-constants.mjs`, shared

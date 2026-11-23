@@ -85,7 +85,8 @@ import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCallback, useId, useRef, useState } from "react";
+import { Check } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 
@@ -130,6 +131,43 @@ export const approvalPolicyLine = ({
 			return null;
 	}
 };
+
+/**
+ * The policy the card states once a press has SAVED something (design round 1,
+ * D4): the mode/provenance pair the outcome established, over the gate's own.
+ *
+ * WHY. `approvalMode`/`approvalProvenance` come from the pending gate
+ * (`question-dock.tsx`, `gate.approval_mode`), which describes the policy when
+ * the request was RAISED; nothing in this tree re-reads it after a press, so the
+ * frames kept "Approvals: Ask — global default." above "✓ Auto is now the
+ * default". The press's own outcome is the fresher fact: a session save makes
+ * this session auto by its own choice; a default save moves the global mode
+ * (and, when both landed, the session too). A refusal changes nothing.
+ */
+export function policyAfterSave(
+	status: ApprovalEscapeStatus,
+	gate: {
+		mode?: ApprovalEscapeMode;
+		provenance?: ApprovalEscapeProvenance;
+		globalMode?: ApprovalEscapeMode;
+	},
+): {
+	mode?: ApprovalEscapeMode;
+	provenance?: ApprovalEscapeProvenance;
+	globalMode?: ApprovalEscapeMode;
+} {
+	switch (status.kind) {
+		case "session-saved":
+			return { ...gate, mode: "auto", provenance: "session" };
+		case "default-saved":
+			return { mode: "auto", provenance: "session", globalMode: "auto" };
+		case "default-saved-session-failed":
+			// The session part did not apply: only the default is known to have moved.
+			return { ...gate, globalMode: "auto" };
+		default:
+			return gate;
+	}
+}
 
 /** What a press left on the card. `idle` is the reserved, empty slot. */
 export type ApprovalEscapeStatus =
@@ -336,6 +374,46 @@ export const ApprovalLatchedNote = ({ className }: { className?: string }) => {
 const ESCAPE_LINK =
 	"inline-flex min-h-11 items-center rounded-sm text-meta text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:no-underline";
 
+/*
+ * A handle whose state already holds: success ink, no underline, and the
+ * not-allowed cursor dropped - the press is not refused, it is finished. The
+ * `disabled:` variants of ESCAPE_LINK would otherwise paint it as unavailable.
+ */
+const DONE_HANDLE =
+	"disabled:cursor-default disabled:text-success hover:no-underline";
+
+/*
+ * The handle whose press is in flight (design round 1, D1): its label IS the
+ * press's status, so it keeps muted body ink instead of the disabled palette
+ * (measured 2.30:1), and is refused by `aria-disabled` and the press guard.
+ */
+const PENDING_HANDLE = "cursor-progress text-ink-muted hover:no-underline";
+
+/**
+ * Bring `element` into view inside its OWN nearest scrolling ancestor only
+ * (agent review round 1, N4). `scrollIntoView({block:"nearest"})` also scrolls
+ * every outer ancestor, which moved the transcript under the reader when the
+ * dock's secondary region was already in view of it.
+ */
+export function revealInOwnScroller(element: HTMLElement): void {
+	let scroller = element.parentElement;
+	while (scroller) {
+		const { overflowY } = getComputedStyle(scroller);
+		if (
+			(overflowY === "auto" || overflowY === "scroll") &&
+			scroller.scrollHeight > scroller.clientHeight
+		)
+			break;
+		scroller = scroller.parentElement;
+	}
+	if (!scroller) return;
+	const box = element.getBoundingClientRect();
+	const frame = scroller.getBoundingClientRect();
+	if (box.bottom > frame.bottom)
+		scroller.scrollTop += box.bottom - frame.bottom;
+	else if (box.top < frame.top) scroller.scrollTop -= frame.top - box.top;
+}
+
 const statusText = (status: ApprovalEscapeStatus): string => {
 	switch (status.kind) {
 		case "session-saved":
@@ -356,8 +434,63 @@ const statusText = (status: ApprovalEscapeStatus): string => {
  * so stories and the focused test can render every state (including a refusal)
  * without a backend.
  */
+/**
+ * What each handle reads as, given the press in flight and the last outcome.
+ *
+ * WHY THE HANDLE ITSELF CHANGES (D9, onboarding-friction 2026-11): PostHog
+ * recorded 41 external users pressing "Set auto for all sessions" and 10 of
+ * them rage-clicking it. The confirmation existed, but only in the status
+ * `<output>` BELOW the handles, and on the dock these handles live in
+ * `AskSecondary`, the region that gives way first (`shrink-[999]`): at the
+ * dock's usual heights the status line sat under the fold of that region, so
+ * the press changed nothing the user could see and the handle still offered
+ * the same press. The control that was pressed is the one place the reader is
+ * guaranteed to be looking, so it now carries the in-flight word and the
+ * result; the status line keeps the full sentence (and is scrolled into view).
+ *
+ * Pure, so the focused test pins every arm without a DOM.
+ */
+export function approvalEscapeHandleState(
+	which: ApprovalEscapeTarget,
+	pending: ApprovalEscapeTarget | null,
+	status: ApprovalEscapeStatus,
+): "idle" | "pending" | "done" {
+	if (pending === which) return "pending";
+	/*
+	 * "All sessions" covers this session too: once the default AND the live
+	 * gate moved, both handles describe a state that already holds, so neither
+	 * offers a press that would do nothing. A default-only save did not move the
+	 * session, so the session handle stays pressable there.
+	 */
+	if (status.kind === "default-saved") return "done";
+	if (status.kind === "session-saved" && which === "session") return "done";
+	if (status.kind === "default-saved-session-failed" && which === "all")
+		return "done";
+	return "idle";
+}
+
+const handleLabel = (
+	which: ApprovalEscapeTarget,
+	state: "idle" | "pending" | "done",
+): string => {
+	if (state === "pending") return t("ui.recovery.approval.setting_auto");
+	if (state === "done")
+		return which === "all"
+			? /*
+				 * What the all-sessions press actually changed (design round 1, D4): the
+				 * DEFAULT, which sessions with their own choice do not follow - "Auto is
+				 * on for all sessions" said more than the sentence under it.
+				 */
+				t("ui.recovery.approval.default_done")
+			: t("ui.recovery.approval.session_done");
+	return which === "all"
+		? APPROVAL_ESCAPE_COPY.setAll()
+		: APPROVAL_ESCAPE_COPY.setSession();
+};
+
 export const ApprovalEscapeControls = ({
 	busy = false,
+	pending = null,
 	status = { kind: "idle" },
 	policyLine = null,
 	onSetSession,
@@ -376,6 +509,12 @@ export const ApprovalEscapeControls = ({
 	 * rare and a hidden question is not.
 	 */
 	compactIdle?: boolean;
+	/**
+	 * Which handle's press is in flight, so THAT handle says so (D9). `busy`
+	 * alone disabled both handles with no word changing, which on a fast round
+	 * trip read as a press that did nothing.
+	 */
+	pending?: ApprovalEscapeTarget | null;
 	/** The effective-mode line; absent on a backend that does not carry it. */
 	policyLine?: string | null;
 	onSetSession: () => void;
@@ -384,6 +523,20 @@ export const ApprovalEscapeControls = ({
 }) => {
 	useI18nLocale();
 	const statusId = useId();
+	const statusRef = useRef<HTMLOutputElement>(null);
+	/*
+	 * A RESULT IS BROUGHT INTO VIEW. The dock's secondary region scrolls under a
+	 * fade when it is squeezed, and the status line is its last row - exactly the
+	 * row that was clipped when users rage-clicked (D9). `nearest` moves nothing
+	 * when the line is already visible. Guarded because jsdom has no layout.
+	 */
+	useEffect(() => {
+		if (status.kind === "idle") return;
+		const line = statusRef.current;
+		if (line) revealInOwnScroller(line);
+	}, [status]);
+	const sessionState = approvalEscapeHandleState("session", pending, status);
+	const allState = approvalEscapeHandleState("all", pending, status);
 	return (
 		<div
 			className={cn("flex flex-col gap-1", className)}
@@ -398,22 +551,48 @@ export const ApprovalEscapeControls = ({
 				<button
 					type="button"
 					data-approval-escape-session=""
-					disabled={busy}
+					data-state={sessionState}
+					disabled={
+						sessionState === "done" || (busy && sessionState !== "pending")
+					}
+					aria-disabled={sessionState === "pending" || undefined}
+					aria-busy={sessionState === "pending" || undefined}
 					aria-describedby={statusId}
-					onClick={onSetSession}
-					className={ESCAPE_LINK}
+					onClick={() => {
+						if (!busy) onSetSession();
+					}}
+					className={cn(
+						ESCAPE_LINK,
+						sessionState === "done" && DONE_HANDLE,
+						sessionState === "pending" && PENDING_HANDLE,
+					)}
 				>
-					{APPROVAL_ESCAPE_COPY.setSession()}
+					{sessionState === "done" ? (
+						<Check aria-hidden="true" className="me-1 size-3.5 shrink-0" />
+					) : null}
+					{handleLabel("session", sessionState)}
 				</button>
 				<button
 					type="button"
 					data-approval-escape-all=""
-					disabled={busy}
+					data-state={allState}
+					disabled={allState === "done" || (busy && allState !== "pending")}
+					aria-disabled={allState === "pending" || undefined}
+					aria-busy={allState === "pending" || undefined}
 					aria-describedby={statusId}
-					onClick={onSetAll}
-					className={ESCAPE_LINK}
+					onClick={() => {
+						if (!busy) onSetAll();
+					}}
+					className={cn(
+						ESCAPE_LINK,
+						allState === "done" && DONE_HANDLE,
+						allState === "pending" && PENDING_HANDLE,
+					)}
 				>
-					{APPROVAL_ESCAPE_COPY.setAll()}
+					{allState === "done" ? (
+						<Check aria-hidden="true" className="me-1 size-3.5 shrink-0" />
+					) : null}
+					{handleLabel("all", allState)}
 				</button>
 			</div>
 			{/*
@@ -424,6 +603,7 @@ export const ApprovalEscapeControls = ({
 			 * once without stealing focus.
 			 */}
 			<output
+				ref={statusRef}
 				id={statusId}
 				data-approval-escape-status=""
 				className={cn(
@@ -436,6 +616,20 @@ export const ApprovalEscapeControls = ({
 				)}
 			>
 				{statusText(status)}
+				{/*
+				 * THE NEXT STEP, NAMED (UX round 1, U5): every D9 replay ended with the
+				 * user finding Approve 4-14 s after the receipt landed. Setting auto
+				 * does not answer the request in front of them, so the line says what
+				 * does, in full ink so it reads as the instruction.
+				 */}
+				{status.kind === "session-saved" ||
+				status.kind === "default-saved" ||
+				status.kind === "default-saved-session-failed" ? (
+					<span data-approval-escape-next="" className="text-ink">
+						{" "}
+						{t("ui.recovery.approval.answer_hint")}
+					</span>
+				) : null}
 			</output>
 		</div>
 	);
@@ -476,6 +670,21 @@ export const ApprovalEscape = ({
 	 * policy calls, and the second could land after the first's confirmation.
 	 */
 	const inFlight = useRef(false);
+	/*
+	 * A SAVED STATE ENDS WHEN THE MODE MOVES AWAY FROM AUTO (agent review round 1,
+	 * N3). "done" otherwise lasted the component's lifetime, so a mode changed back
+	 * while the dock stayed mounted left a disabled handle saying "Auto is on".
+	 * Keyed on the reported mode CHANGING, so the save itself - which lands before
+	 * the snapshot reports "auto" - is not undone by the stale "ask" it replaced.
+	 */
+	useEffect(() => {
+		if (approvalMode === undefined || approvalMode === "auto") return;
+		setStatus((current) =>
+			current.kind === "session-saved" || current.kind === "default-saved"
+				? { kind: "idle" }
+				: current,
+		);
+	}, [approvalMode]);
 
 	const editDefault = useCallback(
 		(value: string) =>
@@ -526,12 +735,15 @@ export const ApprovalEscape = ({
 
 	return (
 		<ApprovalEscapeControls
-			policyLine={approvalPolicyLine({
-				mode: approvalMode,
-				provenance: approvalProvenance,
-				globalMode: approvalGlobalMode,
-			})}
+			policyLine={approvalPolicyLine(
+				policyAfterSave(status, {
+					mode: approvalMode,
+					provenance: approvalProvenance,
+					globalMode: approvalGlobalMode,
+				}),
+			)}
 			busy={target !== null}
+			pending={target}
 			status={status}
 			compactIdle={compactIdle}
 			onSetSession={() => void choose("session")}

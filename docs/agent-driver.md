@@ -321,8 +321,9 @@ The frames below came from exactly that command —
 
 ## The CI producer's case table
 
-`scripts/asks-app-regression.mjs` runs in `ci.yml`'s macOS NPX leg on every pull
-request, and it is what supplies the frames a design or UX round reads for a
+`scripts/asks-app-regression.mjs` runs in `full-suite.yml`'s `native-proofs` job
+at the merge gate (and on demand via `workflow_dispatch` with `native_proofs=true`),
+and it is what supplies the frames a design or UX round reads for a
 CHANGE (the scenes above are how a surface is photographed deliberately, by
 hand). It boots the real assembled app once per case per leg — a **candidate** leg
 built from the checkout, and a **control** leg built from a real historical revision
@@ -1025,3 +1026,55 @@ run's real log under the recipe's HOME. Execute that command unchanged with
 `HOME="$RIG/home"`; the explicit log override above uses its exact standard path. No export UI automation is added. Source and
 pure-hook tests do not replace this full-candidate native evidence; the original
 production first-open cause remains unknown until its real exception is captured.
+
+## The step runner (S1): driving the verbs without CDP
+
+`LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT=<absolute steps.json>` makes MAIN walk a
+JSON step list through the same verbs a CDP driver calls, and print one line per
+step to stdout. It exists for `scripts/mac-proof-capture.mjs`
+([`docs/mac-proof-capture.md`](mac-proof-capture.md)), which photographs a shown
+`inactive` window with the window server - the only capture that carries macOS
+vibrancy - on the operator's own desktop, where CDP is banned.
+
+**The gate** (`resolveDevDriverScript`, `src/main/dev-driver.ts`, read from the
+launch environment so a checkout `.env` cannot supply it). Honoured only when the
+driver is armed (`LOCAL_OPERATOR_UI_DEV_DRIVER=1` + an absolute frames dir), the
+window mode is `headless` or `inactive`, the script path is absolute, and the
+realpath of the profile is not the app's default userData (any of `Local
+Operator`, `local-operator-ui`, `Electron` under appData), not inside one and not
+containing one. Unset is silent; any refusal prints
+`[dev-driver-script] refused: <reason>`. Unlike the owner-audit startup scene,
+packaged builds are allowed: driving the shipped bundle is the point, and the
+isolation comes from the scratch profile rule instead.
+
+**The steps.** `{"steps": [{"verb", "payload"?, "optional"?, "timeoutMs"?}]}`,
+at most 64 steps and 64 KB. Verbs: `navigate`, `setTheme`, `press`, `state`,
+`waitFor`, `openCanvas`, `skipOnboarding`, `shutter`. A `shutter` payload is
+`{"label", "capture": "external" | "capturepage"}`; it cannot be optional (a
+frame is a claim). Main sends each step on `dev-driver-script-step` once the page
+has loaded and the renderer's verbs are installed; the preload answers on
+`dev-driver-script-result`. Both exist only in a launch whose gate passed.
+
+**The protocol** (each line prefixed `[dev-driver-script]`): `ARMED`, `ready
+verbs=<n>`, `step=<n> verb=<v> ok <json>` | `skipped (optional): <why>` |
+`error: <why>`, `SHUTTER label=<l> media=window:<CGWindowID>:0 visible=<b>
+focused=<b> ack=<frames>/<l>.ack` (the runner waits, bounded, for the harness to
+write the ack after its capture) or `SHUTTER label=<l> capture=capturepage
+path=<png> ...`, then `DONE steps=<n>` or `FAILED step=<n>`, after which the app
+quits itself.
+
+**While a script runs:** native banners are off (the notifier's `never` plan,
+`inactive` included); the run is launcher-bound like a headless one and capped at
+300 s (`DEV_DRIVER_SCRIPT_CAP_MS`), so a dead or hung harness cannot leave a
+window up; and the updater is quiet for any armed boot (S3: no start-up seal
+repair inside the bundle, no scheduled, wake or app-initiated update check -
+a manual check still works).
+
+**New verbs (S2):** `waitFor({selector, gone?, timeoutMs?})` is `press` without
+the click; `openCanvas({view: "files" | "documents"})` / `openCanvas({open:
+false})` makes the canvas door's own store writes on the active conversation;
+`skipOnboarding()` completes setup the way the wizard's "Skip for now" does,
+which the CDP rigs do with a pre-paint localStorage seed the runner cannot write.
+
+Tests: `scripts/dev-driver-script-gate.test.mjs` (gate, parser, runner, wiring
+pins), and the harness's own `scripts/mac-proof-capture.test.mjs`.

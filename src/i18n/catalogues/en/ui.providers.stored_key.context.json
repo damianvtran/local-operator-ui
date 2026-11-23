@@ -1,0 +1,32 @@
+{
+	"ui.providers.stored_key.replace": {
+		"role": "Button label",
+		"tone": "Imperative, sentence case.",
+		"length": "Two short words; English is 11 characters.",
+		"note": "Saves the pasted API key over the one already stored for this provider. Shown instead of 'Save key' when a key is already stored."
+	},
+	"ui.providers.stored_key.remove": {
+		"role": "Text button label",
+		"tone": "Imperative, sentence case.",
+		"length": "Two short words; English is 10 characters.",
+		"note": "Starts removing the stored API key for this provider; a confirmation follows."
+	},
+	"ui.providers.stored_key.remove_confirm": {
+		"role": "Inline confirmation question",
+		"tone": "Plain, neutral.",
+		"length": "One short question.",
+		"note": "Asked after 'Remove key' is pressed, before anything is deleted."
+	},
+	"ui.providers.stored_key.remove_yes": {
+		"role": "Destructive confirm button label",
+		"tone": "Imperative, one word.",
+		"length": "One word; English is 6 characters.",
+		"note": "Confirms deleting the stored key."
+	},
+	"ui.providers.stored_key.remove_failed": {
+		"role": "Inline error under the key field",
+		"tone": "Plain, neutral.",
+		"length": "One short sentence.",
+		"note": "Fallback when the daemon refused to remove the key and sent no sentence of its own."
+	}
+}

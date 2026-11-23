@@ -394,6 +394,73 @@
 		"placeholders": {},
 		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
 	},
+	"ui.teamBridge.scope.group.organizations": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the group of the person's private Team organizations in the organization switcher, shown only when a Communities group is also shown. Plural: the group lists several organizations."
+	},
+	"ui.teamBridge.scope.group.communities": {
+		"role": "dropdown menu group label",
+		"tone": "neutral",
+		"length": "1 word.",
+		"placeholders": {},
+		"note": "Heads the separate group of public communities the person has joined. A community is a public space, not one of their organizations; keep the two words clearly distinct."
+	},
+	"ui.teamBridge.scope.group.communities_joined": {
+		"role": "dropdown menu group label with a count",
+		"tone": "neutral",
+		"length": "Under 4 words plus the number.",
+		"placeholders": {
+			"count": "how many communities the person has joined (more than six when shown)"
+		},
+		"note": "Shown instead of the plain Communities label once the person has joined more than six communities and a search field appears. Keep the separator dot."
+	},
+	"ui.teamBridge.scope.invited": {
+		"role": "status badge on an organization row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "The person has a pending invitation to this private organization and has not accepted it yet. Describes the row's state, not an action."
+	},
+	"ui.teamBridge.scope.community.public": {
+		"role": "status badge on a community row",
+		"tone": "neutral",
+		"length": "1 word, badge-sized.",
+		"placeholders": {},
+		"note": "Marks a community as public (visible to every signed-in member), so it is never mistaken for a private organization. Adjective, not a verb."
+	},
+	"ui.teamBridge.scope.community.search": {
+		"role": "search field placeholder and accessible name",
+		"tone": "neutral",
+		"length": "2-3 words.",
+		"placeholders": {},
+		"note": "Filters the person's joined communities in the switcher by name."
+	},
+	"ui.teamBridge.scope.community.no_match": {
+		"role": "empty search result in a menu",
+		"tone": "neutral",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown when the community search text matches none of the joined communities."
+	},
+	"ui.teamBridge.scope.community.browse": {
+		"role": "menu item that opens the community directory",
+		"tone": "imperative",
+		"length": "2-3 words; keep the trailing ellipsis",
+		"placeholders": {},
+		"note": "Opens a directory where the person can find and join communities. The ellipsis signals that another view opens next."
+	},
+	"ui.teamBridge.scope.community.trigger": {
+		"role": "organization switcher accessible name while a community is selected",
+		"tone": "neutral, names the current scope",
+		"length": "One short clause.",
+		"placeholders": {
+			"name": "the selected community's name"
+		},
+		"note": "Screen-reader name of the switcher button when the reader is viewing a community. Same shape as ui.teamBridge.scope.trigger, but the noun is the singular of the Communities group label: a community is a public platform, never an organization, so it must not be announced as one."
+	},
 	"ui.teamBridge.preview.chip": {
 		"role": "conversation row chip",
 		"tone": "neutral, quiet",
@@ -1590,6 +1657,27 @@
 		"placeholders": {},
 		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	},
+	"ui.teamBridge.sender.app_badge": {
+		"role": "badge beside a sender name",
+		"tone": "plain, neutral",
+		"length": "One short word; a small badge beside a name.",
+		"placeholders": {},
+		"note": "Small badge shown next to the name of an integration app (for example Datadog, Grafana or incident.io) that posted a message in a Team Bridge channel, so readers can tell software from a teammate. Means a software application, not a person; use the platform's usual short word for 'app'."
+	},
+	"ui.teamBridge.sender.unknown_app": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message posted by an integration app when the app's name is missing. Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_sender": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message whose sender type this version of the app does not recognise (it may be a person, an agent or software). Must read as a placeholder, not as a name, and must not imply a person; rendered in muted italics."
+	},
 	"ui.teamBridge.reactions.add": {
 		"role": "reaction picker control or status",
 		"tone": "neutral, sentence case",
@@ -2400,7 +2488,7 @@
 		"role": "Compatibility notice above thread replies",
 		"tone": "Factual, calm",
 		"length": "Two short sentences; wraps in the thread pane",
-		"placeholders": [],
+		"placeholders": {},
 		"note": "Old server/runtime supports only ascending replies. Do not imply the loaded oldest window is newest or request consent/authorization."
 	},
 	"ui.teamBridge.delivery.refused": {
@@ -2456,6 +2544,15 @@
 			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
 		},
 		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like a request outside what this agent handles'): keep the hedge ('looked like'), never state it as a verdict."
+	},
+	"ui.teamBridge.delivery.not_delivered": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted line under a message, shown ONLY to the person who sent it, when one recipient did not get it. Deliberately says nothing about why: never mention moderation, refusal, screening, blocking or any reason, and give no advice. The recipient's owner sees a different, more specific line."
 	},
 	"ui.teamBridge.delivery.held": {
 		"role": "message delivery status line",
@@ -3251,5 +3348,19 @@
 		"length": "Two short sentences",
 		"placeholders": {},
 		"note": "Shown to the sender when the summary counts messages not reviewed within a day that the list above cannot name. Explains the outcome (arrives only if the recipient's owner releases it) and the next step. No count, no names."
+	},
+	"ui.teamBridge.rate_limited.title": {
+		"role": "eligibility panel heading when Radient is rate-limiting this network before the page has loaded",
+		"tone": "calm, factual",
+		"length": "2-5 words; name what is slowed (requests), so it cannot read as \"Team Bridge is slow\".",
+		"placeholders": {},
+		"note": "A temporary pause, not an outage or an account problem. Do not say \"unavailable\" or \"error\"."
+	},
+	"ui.teamBridge.rate_limited.reason": {
+		"role": "eligibility panel body and in-page notice band while requests are being rate-limited",
+		"tone": "calm, factual",
+		"length": "One short sentence saying Team Bridge may be slow to update, then \"Retrying automatically\".",
+		"placeholders": {},
+		"note": "The page retries on its own; there is no button. Must not tell the reader to try again."
 	}
 }

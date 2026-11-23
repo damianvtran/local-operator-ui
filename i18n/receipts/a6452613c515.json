@@ -1,0 +1,139 @@
+{
+ "schema": 1,
+ "auditor": "i18n-auditor",
+ "agent": "i18n-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "model_provenance": "All reads, renders and verdicts ran on anthropic/claude-opus-5-5 (session header of session 7d72a3b45757); no fallback occurred.",
+ "fallback": "none",
+ "independence": "Fresh i18n-auditor instance (lopdev team, session 7d72a3b45757); not the translator of these fr values nor the English author. LLM audit, not a native-speaker review. No MT service used.",
+ "instance": "a6452613c515",
+ "session": "7d72a3b45757",
+ "locale": "fr",
+ "branch": "feat/i18n-identity-footer",
+ "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+ "head_note": "fr values audited as 18 UNCOMMITTED added lines on top of HEAD (git diff: +15 ui.chat, +1 ui.chat.canonical, +2 ui.chat.slash, 0 removed); hashes are of the on-disk files at audit time.",
+ "date": "2026-11-17",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "18 keys added by the English commit (15 ui.chat.header_identity.*, ui.chat.canonical.transcript.took_duration, ui.chat.slash.arg.kind_role/kind_specialist). Core-contract sentences out of scope.",
+ "inputs_sha256": {
+  "glossary (local-operator/i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style guide (local-operator/i18n/style-guides/fr.md)": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+ },
+ "verified": [
+  "@formatjs/icu-messageformat-parser parses all 18; argument names/types identical to en (count plural+number; matches/total; label; team; duration)",
+  "Intl.PluralRules('fr') categories one/many/other; all 6 plural messages carry exactly one, many, other",
+  "rendered counts 0,1,2,3,4,5,6,11,12,21,22,25,100,101,1000,1234,1000000,2000000,1500000 and partial pairs incl. 4/150, 1/1000000, 7/1500000: agreement correct (0/1 singular; 10^6 multiples 'd’agents/d’équipes'; 1500000 other); Latin digits ungrouped",
+  "U+202F before ';' in team_led_by_manager; U+2019 apostrophes; spaced em dash; no straight quotes, no bidi controls",
+  "terminology: responsable = ui.hub.teams.manager; rôle/spécialiste = ui.hub.teams.kind.* lowercased; équipe/agent per glossary; poste for seat consistent across the 5 seat keys",
+  "no English left (agent is the glossary fr word; 2m 4s is supplied data)",
+  "needs_delegating_profile 34 chars <= 43; its_manager_label 15 vs ~14",
+  "key sets equal en for all three files; check-duplicates and context-parity exit 0"
+ ],
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "sha256": {
+    "fr": "66f39672bc79c805f583b6eb2cc4753aafb3d4d6dd755c5ed6873f74e66cd36b",
+    "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.json",
+    "context": "src/i18n/catalogues/en/ui.chat.context.json",
+    "context_sha256": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33"
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.chat.header_identity.footer_all_agents",
+     "summary": "Rendered '4 agents au total — défiler ou taper un filtre': bare 'défiler' for the reader's own scrolling is a calque (the user 'fait défiler'), 'taper un filtre' is stilted, and the infinitive departs from the guide's vous imperative.",
+     "suggestion": "{n} agents au total — faites défiler ou tapez pour filtrer (same change in one/many arms)"
+    },
+    {
+     "severity": "minor",
+     "key": "ui.chat.header_identity.footer_all_teams",
+     "summary": "Same as footer_all_agents: '4 équipes au total — défiler ou taper un filtre'.",
+     "suggestion": "{n} équipes au total — faites défiler ou tapez pour filtrer"
+    },
+    {
+     "severity": "minor",
+     "key": "ui.chat.header_identity.team_led_by_manager",
+     "summary": "Rendered 'shipping est dirigée par son responsable ; ...': the feminine participle agrees with an unstated 'équipe' while the subject is a bare user slug/name, which reads off.",
+     "suggestion": "L’équipe {team} est dirigée par son responsable ; seuls ce responsable et les profils capables de déléguer peuvent occuper ce poste."
+    },
+    {
+     "severity": "minor",
+     "key": "ui.chat.header_identity.its_manager_label",
+     "summary": "'son responsable' measures 15 chars against the sidecar's WIDTH-CRITICAL ~14; one over the hint, finding by evidence only (clip behaviour not measured).",
+     "suggestion": "le responsable (14) — or keep if the chip is measured to fit"
+    }
+   ],
+   "delta_keys_audited": [
+    "ui.chat.header_identity.footer_all_agents",
+    "ui.chat.header_identity.footer_all_teams",
+    "ui.chat.header_identity.footer_match_agents",
+    "ui.chat.header_identity.footer_match_teams",
+    "ui.chat.header_identity.footer_partial_agents",
+    "ui.chat.header_identity.footer_partial_teams",
+    "ui.chat.header_identity.no_settable_typed",
+    "ui.chat.header_identity.no_settable",
+    "ui.chat.header_identity.cannot_take_seat",
+    "ui.chat.header_identity.needs_delegating_profile",
+    "ui.chat.header_identity.team_led_by_manager",
+    "ui.chat.header_identity.agent_seat_closed_title",
+    "ui.chat.header_identity.its_manager_label",
+    "ui.chat.header_identity.switch_team_failed",
+    "ui.chat.header_identity.switch_agent_failed"
+   ]
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "result": "clean-with-findings",
+   "sha256": {
+    "fr": "3f119f8c5ff1462b98956ef1fb4859e9ef422a1d82f17469d40fbe35e73d75bb",
+    "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "context_sha256": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec"
+   },
+   "findings": [
+    {
+     "severity": "minor",
+     "key": "ui.chat.canonical.transcript.took_duration",
+     "summary": "Rendered 'a pris 2m 4s': 'prendre' for elapsed time is colloquial; 'durer' is the idiomatic verb for how long a turn lasted.",
+     "suggestion": "a duré {duration}"
+    }
+   ],
+   "delta_keys_audited": [
+    "ui.chat.canonical.transcript.took_duration"
+   ]
+  },
+  "ui.chat.slash": {
+   "namespace": "ui.chat.slash",
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "fr": "1fe392a1a7685aca8a14a9fa1b2a1e366096712dcd1d1b850e33180886f0ec88",
+    "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.slash.json",
+    "target": "src/i18n/catalogues/fr/ui.chat.slash.json",
+    "context": "src/i18n/catalogues/en/ui.chat.slash.context.json",
+    "context_sha256": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7"
+   },
+   "findings": [],
+   "delta_keys_audited": [
+    "ui.chat.slash.arg.kind_role",
+    "ui.chat.slash.arg.kind_specialist"
+   ]
+  }
+ }
+}

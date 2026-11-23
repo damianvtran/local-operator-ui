@@ -1,0 +1,51 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c41a25b31682",
+  "locale": "es",
+  "status": "passed",
+  "translator": {
+    "session_label": "prA-tr-es",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "independent_from_translator_session": true,
+  "scope": "es ui.agents.detail + ui.agents.detail.install: 5 new keys, 2 context-widened keys (create.error_instructions_required, ui.hub.teams.kind.specialist in place); other keys byte-identical to HEAD f430d4fd",
+  "namespaces": {
+    "ui.agents.detail": {
+      "status": "passed",
+      "sha256": {
+        "es": "00f8524e90b6db5614310c8b8a2f1673edfbb43f8c99a58cdef9f46675fbbc69",
+        "en": "6c57644117286a0662933b9354f9a8307a0091fe7ff0b12cb703f9505abcf5f8"
+      },
+      "findings": [
+        {
+          "id": "ES-1",
+          "severity": "MINOR",
+          "key": "ui.agents.detail.ask_change_prefill",
+          "current": "Cambia el agente “{name}”: ",
+          "problem": "'Cambiar el agente' can read as 'switch/replace the agent' in Spanish; the es catalogue already uses 'modificar' for altering an agent (create.description_duplicate: 'modificarlo no afecta al original').",
+          "suggested": "Modifica el agente “{name}”: "
+        }
+      ]
+    },
+    "ui.agents.detail.install": {
+      "status": "passed",
+      "sha256": {
+        "es": "e1016c33e4249f77736c335b1328a8898070f889b6e2a416d71e2fc7582aeffc",
+        "en": "7dd4c6301ada0b2c94a4970508a073150a8bb7f7fdc304834bdca3ca1cc81cd3"
+      },
+      "findings": []
+    }
+  },
+  "out_of_scope_checked": {
+    "ui.hub.teams.kind.specialist": {
+      "value": "Especialista",
+      "file_sha256": "c02fc66e56a5f2cf3693de7d461d68140aff63e3fa199f3a08ae991f298f1ed5",
+      "verdict": "ok"
+    }
+  },
+  "not_verified": [
+    "no rendered frame",
+    "no native-speaker review"
+  ]
+}

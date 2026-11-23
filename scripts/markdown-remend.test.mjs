@@ -223,3 +223,24 @@ test("the digits of an ordered-list marker after a blank line are held (D1)", ()
 	// A number that ends a prose line is a number.
 	assert.equal(closed("total:\n42"), "total:\n42");
 });
+
+test("a fence hint agrees with a full scan through appends, closing markers and corrections", () => {
+	const source =
+		"Lead **prose**\r\n````ts\r\nconst i = 1;\r\n```\r\nlet x = 2;\r\n````\r\nSecond\n~~~md\nx\n~~~";
+	let previous;
+	for (let end = 1; end <= source.length; end++) {
+		const next = source.slice(0, end);
+		const fence = openFenceOf(next, previous);
+		assert.deepEqual(fence, openFenceOf(next), `prefix ${end}`);
+		previous = fence ? { source: next, fence } : undefined;
+	}
+	const unfinished = "Lead\n```ts\nfirst\n``";
+	const corrected = "Lead\n~~~txt\nreplacement";
+	assert.deepEqual(
+		openFenceOf(corrected, {
+			source: unfinished,
+			fence: openFenceOf(unfinished),
+		}),
+		openFenceOf(corrected),
+	);
+});

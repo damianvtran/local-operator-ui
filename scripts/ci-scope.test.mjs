@@ -3443,12 +3443,92 @@ test("A18: CI Gate needs every job and reds only on failure or cancellation", ()
 	);
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
 	assert.ok(
-		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}",
+		),
 	);
-	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/);
+	assert.match(body, /v\.result === 'success'/);
 	assert.match(body, /process\.exit\(1\)/);
-	// The existing required check keeps its exact name.
+
+	// Execute the real CI Gate step script to prove fail-closed allowlist behaviour:
+	// - `version-bump-guard` skipped on `pull_request` MUST fail; skipped on `push` passes.
+	// - `changes` skipped or any `abandoned`/`failure`/`cancelled` result MUST fail.
+	const gateScript = body.split("<<'NODE'\n")[1].replace(/\n\s*NODE\s*$/, "");
+	const runCiGate = (needsPayload, eventName) =>
+		spawnSync(process.execPath, ["--input-type=module", "-e", gateScript], {
+			encoding: "utf8",
+			env: {
+				PATH: process.env.PATH,
+				NEEDS: JSON.stringify(needsPayload),
+				EVENT_NAME: eventName,
+			},
+		});
+	const allGreenCi = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runCiGate(allGreenCi, "pull_request").status, 0);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"push",
+		).status,
+		0,
+		"version-bump-guard legitimately skips on push to main",
+	);
+	assert.equal(
+		runCiGate(
+			{ ...allGreenCi, "version-bump-guard": { result: "skipped" } },
+			"pull_request",
+		).status,
+		1,
+		"a skipped version-bump-guard on a pull request must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, changes: { result: "skipped" } }, "pull_request")
+			.status,
+		1,
+		"a skipped changes classifier must fail CI Gate",
+	);
+	assert.equal(
+		runCiGate({ ...allGreenCi, lint: { result: "abandoned" } }, "pull_request")
+			.status,
+		1,
+		"an abandoned or unknown result must fail closed",
+	);
+
+	// Main-push concurrency coalescing: non-release `main` pushes coalesce into
+	// `'ci-main'` with `cancel-in-progress` false on `main`, while release bumps
+	// (`chore(release)`) and `workflow_dispatch` on `main` keep per-SHA records,
+	// and PR `synchronize` still cancels in-progress runs.
+	assert.match(workflow.concurrency.group, /'ci-main'/u);
+	assert.match(
+		workflow.concurrency.group,
+		/startsWith\(github\.event\.head_commit\.message,\s*'chore\(release\)'\)/u,
+	);
+	assert.match(workflow.concurrency.group, /ci-main-release-\{0\}-\{1\}/u);
+	assert.equal(
+		workflow.concurrency["cancel-in-progress"],
+		"${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}",
+	);
+	// The existing required check keeps its exact, LITERAL name and no matrix:
+	// a matrix suffixes the rendered name, and an expression name is posted raw
+	// when the job is skipped, so either shape strands the required check
+	// (native-bytecode-artifact.test.mjs guards every required name).
 	assert.equal(jobs["bytecode-build"].name, "Bytecode Build Check");
+	assert.equal(jobs["bytecode-build"].strategy, undefined);
+	// The Mac artifact twin runs on the same trigger and reds this gate (its
+	// membership in `needs` is covered by the deepEqual above).
+	const mac = jobs["bytecode-build-macos"];
+	assert.equal(mac.name, "Bytecode Build Check (macos-15)");
+	assert.equal(mac["runs-on"], "macos-15");
+	assert.equal(String(mac.if).trim(), String(jobs["bytecode-build"].if).trim());
+	assert.deepEqual(mac.needs, jobs["bytecode-build"].needs);
+	assert.ok(gate.needs.includes("bytecode-build-macos"));
+	assert.ok(
+		mac.steps.some((step) => step.uses?.startsWith("actions/upload-artifact@")),
+	);
 	// The QA bundle survived the shard's removal, under the artifact name QA reads.
 	const upload = jobs["qa-bundle"].steps.find((step) =>
 		step.uses?.startsWith("actions/upload-artifact@"),
@@ -3576,13 +3656,112 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 		"no `if:` in this file may mention a label - a skipped required check is a pass",
 	);
 
-	// The aggregate body: skipped passes, failed/cancelled reds.
+	// The aggregate body: fail-closed allowlist. On `pull_request` (or on-demand
+	// `native_proofs=true`), a skipped or failed `native-proofs` MUST fail
+	// `merge-gate` unless `needs.changes.outputs.pack` is literally `'false'`;
+	// on `push` to `main` / `schedule` (and `workflow_dispatch` with
+	// `native_proofs != true`), `native-proofs` legitimately skips.
 	assert.ok(
-		gate.steps.some((step) => step.env?.NEEDS === "${{ toJSON(needs) }}"),
+		gate.steps.some(
+			(step) =>
+				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
+				step.env?.EVENT_NAME === "${{ github.event_name }}" &&
+				step.env?.PACK_SCOPE === "${{ needs.changes.outputs.pack }}",
+		),
 	);
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
-	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/u);
+	assert.match(body, /v\.result === 'success'/u);
 	assert.match(body, /process\.exit\(1\)/u);
+
+	const mergeGateScript = body
+		.split("<<'NODE'\n")[1]
+		.replace(/\n\s*NODE\s*$/, "");
+	const runMergeGate = (
+		needsPayload,
+		{
+			eventName = "pull_request",
+			packScope = "true",
+			nativeProofsInput = "",
+		} = {},
+	) =>
+		spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", mergeGateScript],
+			{
+				encoding: "utf8",
+				env: {
+					PATH: process.env.PATH,
+					NEEDS: JSON.stringify(needsPayload),
+					EVENT_NAME: eventName,
+					PACK_SCOPE: packScope,
+					NATIVE_PROOFS_INPUT: nativeProofsInput,
+				},
+			},
+		);
+	const allGreenSuite = Object.fromEntries(
+		gate.needs.map((n) => [n, { result: "success" }]),
+	);
+	assert.equal(runMergeGate(allGreenSuite).status, 0);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "skipped" },
+		}).status,
+		1,
+		"a skipped native-proofs on pull_request when pack != 'false' must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			"native-proofs": { result: "failure" },
+		}).status,
+		1,
+		"a failed native-proofs on pull_request must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "pull_request", packScope: "false" },
+		).status,
+		0,
+		"native-proofs may skip when pack == 'false'",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "push", packScope: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on push to main",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "schedule", packScope: "true" },
+		).status,
+		0,
+		"native-proofs legitimately skips on nightly schedule",
+	);
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{
+				eventName: "workflow_dispatch",
+				packScope: "true",
+				nativeProofsInput: "true",
+			},
+		).status,
+		1,
+		"a skipped native-proofs when explicitly requested via workflow_dispatch must fail merge-gate",
+	);
+	assert.equal(
+		runMergeGate({
+			...allGreenSuite,
+			changes: { result: "skipped" },
+		}).status,
+		1,
+		"changes must never skip in full-suite.yml",
+	);
 
 	// The ritual is the only way to EXIT the `Expected` state, so it is pinned
 	// here with the workflow: both edits (remove, then add) and the label name.

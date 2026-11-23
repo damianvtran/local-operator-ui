@@ -8,18 +8,17 @@
 	"ui.notifications.nav.unread": {
 		"role": "sidebar row accessible name with a count",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "Read by screen readers when the row's badge shows a number. Count is unread updates plus unread live asks.",
+		"note": "Read by screen readers when the row's badge shows a number. Count is unread updates plus unread live asks. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"count": "Uncapped number of unread items.",
 			"countText": "The same number as plain decimal text."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.rail.aria_with_updates": {
 		"role": "right-rail asks button accessible name when the conversation also has unread updates",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "Extends the existing asks button name with the unread update count for this conversation.",
+		"note": "Extends the existing asks button name with the unread update count for this conversation. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "One accessible name; counts are never capped.",
 		"placeholders": {
 			"chord": "Empty, or the formatted keyboard chord with a leading space and parentheses.",
@@ -28,8 +27,7 @@
 			"countText": "Asks as decimal text.",
 			"updates": "Unread updates in this conversation.",
 			"updatesText": "Updates as decimal text."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.page.title": {
 		"role": "page heading",
@@ -281,12 +279,11 @@
 	"ui.notifications.row.ask_options": {
 		"role": "second line of an ask row: how many choices the question offers",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: {options, plural, one {One option} other {# options}}",
+		"note": "English source: {options, plural, one {One option} other {# options}}. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"options": "Number of options."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.row.ask_expires": {
 		"role": "second line of an ask row: time left before the ask times out",
@@ -333,7 +330,7 @@
 	"ui.notifications.row.a11y": {
 		"role": "full accessible name of a list row",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: {read, select, false {Unread. } other {}}{priority}. {title}. From {source}, {age}.{repeat, plural, =0 {} =1 {} other { # updates.}}",
+		"note": "English source: {read, select, false {Unread. } other {}}{priority}. {title}. From {source}, {age}.{repeat, plural, =0 {} =1 {} other { # updates.}}. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Screen reader sentence; no visual length limit.",
 		"placeholders": {
 			"read": "true or false; not shown.",
@@ -342,8 +339,7 @@
 			"source": "Conversation name.",
 			"age": "Compact age, already formatted.",
 			"repeat": "How many updates were folded; 0 or 1 shows nothing."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.row.more": {
 		"role": "overflow menu button accessible name",
@@ -450,12 +446,11 @@
 	"ui.notifications.select.asks_stay": {
 		"role": "note beside the selection bar and in receipts when live asks were skipped",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: {count, plural, one {1 ask stays until it's answered} other {# asks stay until they're answered}}",
+		"note": "English source: {count, plural, one {1 ask stays until it's answered} other {# asks stay until they're answered}}. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"count": "Live asks skipped."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.ask.stays": {
 		"role": "polite announcement when the user tries to dismiss a live ask",
@@ -502,13 +497,12 @@
 	"ui.notifications.detail.meta.updates_since": {
 		"role": "detail meta line for a collapsed repeat",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: {count} updates since {time}",
+		"note": "English source: {count} updates since {time}. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories and keep # and {time} exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"count": "How many times this item was updated (repeat count).",
 			"time": "Clock time of the first version, already formatted."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories and keep # and {time} exactly."
+		}
 	},
 	"ui.notifications.detail.section.waiting": {
 		"role": "detail section heading above the conversation's open asks",
@@ -621,13 +615,12 @@
 	"ui.notifications.confirm.dismiss_session": {
 		"role": "confirmation popover question",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: Dismiss {count, plural, one {# update} other {# updates}} from {source}?",
+		"note": "English source: Dismiss {count, plural, one {# update} other {# updates}} from {source}? Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"count": "Updates to dismiss.",
 			"source": "Conversation name."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.confirm.dismiss_session_ok": {
 		"role": "confirmation popover primary button",
@@ -644,12 +637,11 @@
 	"ui.notifications.toast.dismissed": {
 		"role": "toast after a dismiss, with an Undo action",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
-		"note": "English source: Dismissed {count, plural, one {# update} other {# updates}}",
+		"note": "English source: Dismissed {count, plural, one {# update} other {# updates}}. Plural: English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row.",
 		"placeholders": {
 			"count": "Updates dismissed."
-		},
-		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR categories (Russian few/many, etc.) and keep the # / count text exactly."
+		}
 	},
 	"ui.notifications.toast.marked_read": {
 		"role": "toast after mark read",
@@ -880,6 +872,30 @@
 		"role": "empty Updates tab",
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
 		"note": "English source: Nothing flagged in this conversation.",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.view_details": {
+		"role": "Tooltip on an Updates row in the conversation drawer: pressing the row opens that update's full details inside the drawer",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: View details",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.view_details_for": {
+		"role": "Screen-reader name of an Updates row in the conversation drawer; {title} is the update's title. Pressing it opens the full details inside the drawer",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: View details: {title}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.back": {
+		"role": "Back link at the top of an update's details in the conversation drawer; returns to that conversation's Updates list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Back to updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.open_in_notifications": {
+		"role": "Link at the top of an update's details in the conversation drawer; opens the Notifications page with this update selected. 'Notifications' is the page's name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Open in Notifications",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
 	}
 }

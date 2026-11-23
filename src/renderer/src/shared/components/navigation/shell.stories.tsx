@@ -684,11 +684,10 @@ export const SettingsMacChrome: Story = {
  * Appearance, scrolled into view.
  *
  * `Settings` above is a 1280x800 clip of the top of a page about 3,600px
- * tall, so it stops inside Model settings. The reasoning toggle sits at
- * roughly y=3094 and the theme grid just above it, which meant the only
- * control for a user-visible preference - and the theme picker, the largest
- * piece of visual design on the page - were both absent from the record
- * while appearing to be covered by a captured surface.
+ * tall, so it stops inside Model settings. The Appearance section - the
+ * theme picker, the largest piece of visual design on the page - sits near
+ * the bottom, so it was absent from the record while appearing to be
+ * covered by a captured surface.
  *
  * Scrolled rather than given a taller viewport: an 800px window is what the
  * app's own minimum produces, and a 3,600px frame would photograph a page no
@@ -707,12 +706,16 @@ const SettingsAtAppearance: FC = () => {
 	 * supplement. An observer fires on insertion instead, which is an event
 	 * rather than a guess about how long a stub takes.
 	 *
-	 * Anchored on the switch rather than on the section. The theme grid makes
-	 * Appearance about 4,400px tall, so centring the section put the heading
-	 * 1,858px above the viewport and the toggle 2,613px below it, and its end
-	 * put the row hard against the bottom edge with its description clipped.
-	 * Centring the control leaves the grid above it and the section boundary
-	 * below, which is the row in its context rather than the row in a corner.
+	 * Anchored on the section itself, aligned to its START. An earlier version
+	 * centred the section's reasoning switch; when that toggle was removed
+	 * (PR #1983) the selector matched nothing, the shutter never released and
+	 * manual captures stayed at the top of General settings. The section
+	 * container is the one thing the section owns for as long as it exists,
+	 * so no single control's removal can strand the story again. `start`, not
+	 * `center`: the theme grid makes Appearance thousands of pixels tall, and
+	 * centring it would land mid-grid with the heading far above the viewport;
+	 * aligning the top shows the heading, description and first gallery rows.
+	 * Pinned by scripts/settings-appearance-story-anchor.test.mjs.
 	 *
 	 * `data-capture-pending` holds the shutter until that has happened. The
 	 * rig's readiness poll gates on the loader being gone and an element count
@@ -727,9 +730,8 @@ const SettingsAtAppearance: FC = () => {
 		document.documentElement.dataset.capturePending = "1";
 		const scroll = () => {
 			const section = document.querySelector(APPEARANCE);
-			const control = section?.querySelector('button[role="switch"]');
-			if (!control) return false;
-			control.scrollIntoView({ block: "center" });
+			if (!section) return false;
+			section.scrollIntoView({ block: "start" });
 			document.documentElement.removeAttribute("data-capture-pending");
 			return true;
 		};

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1963",
+  "locale": "es",
+  "namespace": "ui.common.backend_startup",
+  "pr": 1963,
+  "date": "2026-11-17",
+  "head": "8e64b0ccd0",
+  "instance": "pr1963-r1-es-backendstartup-65a7f97cab63",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor: lopdev team `task` subagent job 65a7f97cab63 (manager session f52727670001, 'UI-2 i18n audit r1'); not the translator (lopdev coder job aceade24b830, 'UI-2 robustness + instrumentation', anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "A separate subagent instance from the translator job; same served model anthropic/claude-opus-5-5 (disclosed; per this session's harness system prompt, no fallback). Judged from the English, its context sidecar, the core glossary and the locale style guide, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "pr1963-r1-es-backendstartup-65a7f97cab63"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes (auditor script, intl ICU parser from the worktree's node_modules): key set and order equal English (19); ICU parse OK; argument names/types equal English per key ({seconds} in detail_starting and reason.timed_out only); no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; Local Operator and Windows kept Latin wherever English has them."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Terms checked against shipped precedent: Copiar diagnóstico / No se pudo copiar el diagnóstico (providers.phone), soporte, tu equipo for 'your computer' (6 shipped strings), tú address per es guide. No defects found."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.common.backend_startup.detail_starting, ui.common.backend_startup.reason.timed_out",
+      "note": "T10 (English source/context, not these target bytes): {seconds} is a plain string argument with no plural arm and the context sidecar does not say its value. Today it is always 30 (READINESS_BUDGET_MS = 30_000 in src/main/backend/backend-service.ts), for which every locale's noun form is correct; a future budget like 21/22 s would need a plural select in ru (and en). Recorded as an English-side NIT on the PR; not counted against this locale."
+    }
+  ],
+  "scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys, ccc99372ac..8e64b0ccd0 plus this audit's locale-only fixes",
+  "binding": "Target src/i18n/catalogues/es/ui.common.backend_startup.json sha256 979785644b69ce5bbef4aa433a950694208854cf0f72aaaafa24edbf12ec4978 (8e64b0ccd0 plus auditor fixes); English sha256 90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db; context sha256 6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687.",
+  "en_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+  "context_sha256": "6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687",
+  "target_sha256": "979785644b69ce5bbef4aa433a950694208854cf0f72aaaafa24edbf12ec4978",
+  "sha256": {
+    "es": "979785644b69ce5bbef4aa433a950694208854cf0f72aaaafa24edbf12ec4978",
+    "en": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db"
+  },
+  "glossary": {
+    "revision": "local-operator i18n/ (glossary.md + style-guides) at core commit 2008053b5d6a",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/es.md",
+    "style_guide_sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  }
+}

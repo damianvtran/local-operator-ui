@@ -1,5 +1,21 @@
 {
 	"ui.chat.bridgeReceipt.received": "Nhận từ {sender}",
 	"ui.chat.bridgeReceipt.unavailable": "Nội dung tin nhắn không khả dụng.",
-	"ui.chat.bridgeReceipt.provenance": "Tin nhắn bên ngoài · nội dung không đáng tin cậy"
+	"ui.chat.bridgeReceipt.provenance": "Tin nhắn bên ngoài · nội dung không đáng tin cậy",
+	"ui.chat.bridgeReceipt.loading": "Đang tải tin nhắn…",
+	"ui.chat.bridgeReceipt.pending": "Đang chờ chuyển đến tác nhân của bạn.",
+	"ui.chat.bridgeReceipt.held": "Đang được giữ lại để xem xét.",
+	"ui.chat.bridgeReceipt.held_transient": "Đang chờ sàng lọc — chưa hiển thị cho tác nhân của bạn.",
+	"ui.chat.bridgeReceipt.refused": "Bị kiểm duyệt từ chối.",
+	"ui.chat.bridgeReceipt.not_admitted": "Không được chuyển đến tác nhân này.",
+	"ui.chat.bridgeReceipt.unavailable_reason.signed_out": "Nội dung tin nhắn không khả dụng. Hãy đăng nhập Team Bridge để tải.",
+	"ui.chat.bridgeReceipt.unavailable_reason.other_account": "Nội dung tin nhắn không khả dụng. Tin nhắn này được một tài khoản Team Bridge khác nhận.",
+	"ui.chat.bridgeReceipt.unavailable_reason.not_member": "Nội dung tin nhắn không khả dụng. Bạn không còn tham gia cuộc trò chuyện này.",
+	"ui.chat.bridgeReceipt.unavailable_reason.deleted": "Tin nhắn này đã bị xóa.",
+	"ui.chat.bridgeReceipt.unavailable_reason.hub_unsupported": "Nội dung tin nhắn không khả dụng. Team Bridge không thể tải tin nhắn cũ này.",
+	"ui.chat.bridgeReceipt.unavailable_reason.offline": "Không thể kết nối Radient — đang thử lại.",
+	"ui.chat.bridgeReceipt.show_more": "Hiện thêm",
+	"ui.chat.bridgeReceipt.show_less": "Thu gọn",
+	"ui.chat.bridgeReceipt.more": "{count, plural, other {Và {count, number} tin nhắn khác}}",
+	"ui.chat.bridgeReceipt.thread_reply": "Trả lời trong luồng"
 }

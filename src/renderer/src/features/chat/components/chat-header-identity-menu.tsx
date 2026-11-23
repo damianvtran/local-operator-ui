@@ -72,6 +72,7 @@
 import { Input } from "@shared/components/ui/input";
 import { PopoverContent } from "@shared/components/ui/popover";
 import { t } from "@shared/i18n";
+import { ShortcutText } from "@shared/i18n/shortcut-text";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
@@ -190,7 +191,14 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	onClose,
 	onCloseAutoFocus,
 }) => {
-	useI18nLocale();
+	/*
+	 * Read as a VALUE, not just subscribed to: the band headings are copy that
+	 * `identityMenuBands` resolves through `t()` at call time, so a `view` memo
+	 * that did not list the locale would keep serving the previous language's
+	 * headings after the backend `language` setting changed (the re-render alone
+	 * does not recompute a memo whose inputs are unchanged).
+	 */
+	const locale = useI18nLocale();
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
 	const [hovered, setHovered] = useState<number | null>(null);
@@ -234,9 +242,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 		() => filterPickerOptions(options, query),
 		[options, query],
 	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is an input the callback reads indirectly - `identityMenuBands` resolves the band headings through `t()` at call time, so a language change must recompute the view or the headings go stale
 	const view = useMemo(
 		() => identityMenuBands({ rows: options, matches, recents, kind, query }),
-		[options, matches, recents, kind, query],
+		[options, matches, recents, kind, query, locale],
 	);
 	/*
 	 * One index space over the RENDERED rows, bands included - `picker-host`'s
@@ -552,7 +561,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					data-header-identity-constraint=""
 					className="px-2 pb-1.5 text-ink-dim text-meta"
 				>
-					{closedReason}
+					<ShortcutText text={closedReason} />
 				</p>
 			</PopoverContent>
 		);

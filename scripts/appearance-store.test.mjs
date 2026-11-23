@@ -67,8 +67,21 @@ const pick = (s) => ({
 	customThemeId: s.customThemeId,
 });
 
-test("v5 is the appearance step", () => {
-	assert.equal(UI_PREFERENCES_VERSION, 5);
+/*
+ * WHICH STEP SEEDS THE APPEARANCE LAYERS is pinned by behaviour, not by the
+ * current version number: the store moved past v5 (v6 retired
+ * showAgentReasoning), and a literal `=== 5` here broke on that unrelated bump.
+ * The exact current version is right-slot-width.test.mjs's pin; this file only
+ * needs the step boundary (a v4 blob gains the fields, a v5 blob is left alone)
+ * and that the shipped version is at or past it, so a v5 write-back is reached.
+ */
+test("v4 -> v5 is the appearance step, and the store ships at or past it", () => {
+	assert.ok(UI_PREFERENCES_VERSION >= 5, `version ${UI_PREFERENCES_VERSION}`);
+	assert.deepEqual(pick(migrateUiPreferences({}, 4)), IDENTITY);
+	const fromV5 = migrateUiPreferences({}, 5);
+	for (const key of Object.keys(IDENTITY)) {
+		assert.equal(key in fromV5, false, `${key} is not seeded past v5`);
+	}
 });
 
 test("a v4 profile migrates to the identity appearance and keeps its theme", async () => {
@@ -76,12 +89,12 @@ test("a v4 profile migrates to the identity appearance and keeps its theme", asy
 	assert.equal(s.themeName, "dracula");
 	assert.equal(s.rightSlotWidth, 700);
 	assert.deepEqual(pick(s), IDENTITY);
-	/* And it is written back at v5, so the step runs once. */
+	/* And it is written back at the current version, so the step runs once. */
 	store.getState().setContrast("dark", 0);
-	assert.equal(JSON.parse(memory.get(KEY)).version, 5);
+	assert.equal(JSON.parse(memory.get(KEY)).version, UI_PREFERENCES_VERSION);
 });
 
-test("the v5 step is idempotent over values a newer build already wrote", () => {
+test("the v5 step is idempotent over values a newer build already wrote, and the chain runs on to the newest step", () => {
 	const blob = {
 		contrast: { dark: 50, light: -100 },
 		accent: {
@@ -99,6 +112,8 @@ test("the v5 step is idempotent over values a newer build already wrote", () => 
 		},
 		customAccents: ["#FF5733"],
 		customThemeId: "custom-abc",
+		/* v7 seeds the palette's row order: relevance, the default. */
+		paletteSort: "best",
 	});
 });
 

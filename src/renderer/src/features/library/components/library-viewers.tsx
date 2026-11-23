@@ -17,6 +17,7 @@
  * instead of mounting ag-grid - an editable grid in a read-only surface would
  * offer writes the route cannot accept.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import { SoundPlayer } from "@features/chat/canonical/sound-player";
 import { probeLocalFile } from "@features/chat/components/canvas/file-freshness";
@@ -34,6 +35,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { remarkTableHtml } from "../../chat/utils/remark-table-html";
 import { isPathBacked } from "../hooks/use-library-file-watch";
 import {
 	useLibraryBytes,
@@ -675,7 +677,9 @@ const MarkdownAssetView: FC<{
 					{t("ui.library.preview.read_only_markdown")}
 				</p>
 				<div className="prose-lo max-w-none text-body text-ink">
-					<ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+					<ReactMarkdown remarkPlugins={[remarkGfm, remarkTableHtml]}>
+						{text}
+					</ReactMarkdown>
 				</div>
 			</div>
 		</div>
@@ -720,6 +724,8 @@ const TextViewer: FC<{
 			data-lo-pane-edge-cues
 			className={cn(
 				"min-h-0 w-full flex-1 overflow-auto p-4 font-mono text-mono-sm text-ink",
+				// A library file's text is user content (review round 1, Q2).
+				USER_CONTENT_CLASS,
 				asset.kind === "code"
 					? "whitespace-pre"
 					: "whitespace-pre-wrap break-words",

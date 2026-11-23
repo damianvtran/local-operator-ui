@@ -1,9 +1,13 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
+import { requestsWaitingLabel } from "./team-bridge-approvals-model";
+import { useVisibleHeldCount } from "./team-bridge-held-hide-preference";
 import { TEAM_BRIDGE_ALL_SCOPE } from "./team-bridge-model";
 import { useTeamBridgeAccount } from "./team-bridge-owner";
 import { useTeamBridgeUnreadView } from "./team-bridge-unread-sync";
 import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
+import { useApprovalRequests } from "./use-team-bridge-approvals";
+import { useHeldMessages } from "./use-team-bridge-holds";
 
 /**
  * The sidebar descriptor for the Team Bridge row.
@@ -29,6 +33,10 @@ import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
  * destination whose every call 404s is worse than no destination.
  */
 export const TEAM_BRIDGE_PATH = "/team-bridge";
+
+/** The query parameter that opens the Team Bridge page on its Requests view. */
+export const TEAM_BRIDGE_REQUESTS_VIEW_PARAM = "view";
+export const TEAM_BRIDGE_REQUESTS_PATH = `${TEAM_BRIDGE_PATH}?${new URLSearchParams({ [TEAM_BRIDGE_REQUESTS_VIEW_PARAM]: "requests" })}`;
 export const TEAM_BRIDGE_TOUR_TAG = "nav-team-bridge";
 export const TEAM_BRIDGE_BADGE_TAG = "nav-team-bridge-badge";
 
@@ -63,16 +71,51 @@ export function useTeamBridgeNavItem(
 	 * cannot claim unread that no row shows (see `team-bridge-unread-sync.ts`).
 	 */
 	const view = useTeamBridgeUnreadView(ready ? accountId : undefined);
+	/*
+	 * APPROVAL REQUESTS OUTRANK UNREAD IN THE ONE BADGE SLOT. A request is a
+	 * teammate's agent blocked on this person's answer; an unread message is
+	 * not blocked on anything. The row has one trailing badge (the sidebar's
+	 * one-fact-per-slot rule), so while any request waits the badge counts
+	 * requests and the row's name says "N requests waiting" (spec
+	 * request.badge); with none it falls back to the unread total as before.
+	 * `pending_count` is the DECIDABLE rows only, the ones a person can act on.
+	 */
+	const requests = useApprovalRequests(ready);
+	/* Held messages the owner can act on count toward the same badge: they are
+	   decided on the same Approvals panel the badge opens (B4b). */
+	const holds = useHeldMessages(ready);
+	const visibleHeld = useVisibleHeldCount(holds.data);
 	if (!enabled) return null;
+	const requestCount = ready ? (requests.data?.pending_count ?? 0) : 0;
+	const heldCount = ready ? visibleHeld : 0;
+	const waiting = requestCount + heldCount;
 	// Disabled observers can still expose cached data: unresolved auth is zero.
-	const attention = ready && unread.data ? view.total : 0;
+	const unreadTotal = ready && unread.data ? view.total : 0;
 	return {
 		icon: MessagesSquare,
 		label: t("ui.teamBridge.nav.label"),
-		path: TEAM_BRIDGE_PATH,
+		/*
+		 * The badge and the landing agree (UX review U1): while the badge counts
+		 * requests, the row opens Requests -> Waiting, not the conversations a
+		 * person would have to leave to find them. The page consumes `view` once
+		 * and clears it (`TEAM_BRIDGE_REQUESTS_VIEW_PARAM`).
+		 */
+		path: waiting > 0 ? TEAM_BRIDGE_REQUESTS_PATH : TEAM_BRIDGE_PATH,
 		tourTag: TEAM_BRIDGE_TOUR_TAG,
-		attention,
+		attention: waiting > 0 ? waiting : unreadTotal,
 		attentionTag: TEAM_BRIDGE_BADGE_TAG,
-		attentionName: (count: number) => t("ui.teamBridge.nav.unread", { count }),
+		attentionName: (count: number) => {
+			/* Requests alone keep their own wording; once holds are in the count
+			   the label names "items", since not all of them are requests. */
+			const label =
+				waiting <= 0
+					? null
+					: heldCount > 0
+						? t("ui.teamBridge.holds.waiting_total", { count })
+						: requestsWaitingLabel(count);
+			return label
+				? t("ui.teamBridge.approvals.nav_name", { label })
+				: t("ui.teamBridge.nav.unread", { count });
+		},
 	};
 }

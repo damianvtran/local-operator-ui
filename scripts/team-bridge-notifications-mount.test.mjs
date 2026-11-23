@@ -198,7 +198,20 @@ const notifyRow = (conversationId, latestSeq) => ({
 	muted: false,
 });
 
-const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
+/*
+ * `seed` writes cache entries BEFORE the first render. A test whose premise is
+ * "this conversation is already cached when the watcher first looks" must seed
+ * here, not after `mount()` returns: the watcher's background warm plans from
+ * the first conversation-list answer, and on a slow runner that answer can
+ * land inside `mount()`'s render, so a post-mount seed loses the race and the
+ * warm reads the row as cold (merge gate run 44082920112; reproduced on main
+ * by delaying `mount()`'s return by 100 ms).
+ */
+const mount = async ({
+	Extra = null,
+	url = "http://localhost/",
+	seed = null,
+} = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url,
@@ -279,6 +292,7 @@ const mount = async ({ Extra = null, url = "http://localhost/" } = {}) => {
 	client.setQueryData(["desktop", "settings"], {
 		settings: [{ key: "display.notifications", value: true }],
 	});
+	seed?.(client);
 	let enabled = true;
 	const Probe = () => {
 		api.useTeamBridgeNotifications(enabled);
@@ -360,6 +374,16 @@ const settle = () =>
 	act(async () => {
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	});
+
+/*
+ * READS THE WATCHER'S BACKGROUND WARM ALREADY MADE (bridge-instant-load). Once
+ * the conversation list answers, the watcher warms the landing conversation
+ * (and the next most likely clicks) through the shared prefetch queue, so a
+ * banner's history read is no longer the first `listMessages` call. Tests that
+ * race the banner's own read take this count after the seed settles and
+ * address the banner read relative to it.
+ */
+const warmedReads = () => fixture.calls.history.length;
 
 const resetFixture = () => {
 	fixture.identity = "acct_alice";
@@ -680,10 +704,7 @@ for (const pending of ["history"]) {
 					email: "bob@example.test",
 				},
 			];
-			let release;
-			fixture[`${pending}Gate`] = new Promise((resolve) => {
-				release = resolve;
-			});
+			let release = () => {};
 			const mounted = await mount();
 			mounted.client.setQueryData(
 				api.teamBridgeKeys.directory("tnt_race", fixture.identity),
@@ -697,6 +718,13 @@ for (const pending of ["history"]) {
 					"seed reads",
 				);
 				await settle();
+				/* The watcher's background warm of the landing conversation has
+				   landed by now (ungated); the gate below holds only the banner's
+				   own read, which is what this matrix races. */
+				const warm = warmedReads();
+				fixture[`${pending}Gate`] = new Promise((resolve) => {
+					release = resolve;
+				});
 				fixture.account = {
 					total: 1,
 					organizations: [{ ...org, unread: 1 }],
@@ -711,14 +739,14 @@ for (const pending of ["history"]) {
 					}),
 				);
 				await until(
-					() => fixture.calls[pending].length === 1,
+					() => fixture.calls[pending].length === warm + 1,
 					`pending ${pending} read`,
 				);
 				assert.equal(mounted.notifications.length, 0);
 				// The timeline's own read, ONE PAGE of it (`limit` is the paged
 				// history contract; the read used to ask for the whole conversation),
 				// and it lands in the cache entry the page renders from.
-				assert.deepEqual(fixture.calls.history[0], {
+				assert.deepEqual(fixture.calls.history[warm], {
 					id: "bcv_race",
 					tenantId: "tnt_race",
 					limit: 60,
@@ -841,10 +869,7 @@ for (const [change, expectation] of [
 				},
 			],
 		};
-		let release;
-		fixture.historyGate = new Promise((resolve) => {
-			release = resolve;
-		});
+		let release = () => {};
 		const mounted = await mount();
 		try {
 			await until(
@@ -857,6 +882,11 @@ for (const [change, expectation] of [
 				"seed",
 			);
 			await settle();
+			// Hold only the banner's own read, not the background warm's.
+			const warm = warmedReads();
+			fixture.historyGate = new Promise((resolve) => {
+				release = resolve;
+			});
 			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
 			fixture.tenants.tnt_race = {
 				total: 1,
@@ -867,7 +897,10 @@ for (const [change, expectation] of [
 					queryKey: api.teamBridgeKeys.unreadPrefix,
 				}),
 			);
-			await until(() => fixture.calls.history.length === 1, "history pending");
+			await until(
+				() => fixture.calls.history.length === warm + 1,
+				"history pending",
+			);
 			const key = api.teamBridgeKeys.statusFor(fixture.identity);
 			const before = mounted.client.getQueryData(key);
 			await act(async () => {
@@ -966,6 +999,7 @@ test("a reply candidate reads its guarded thread with the observed account and o
 			"seed reads",
 		);
 		await settle();
+		const warm = warmedReads();
 		fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
 		fixture.tenants.tnt_reply = {
 			total: 1,
@@ -994,7 +1028,9 @@ test("a reply candidate reads its guarded thread with the observed account and o
 				limit: 1,
 			},
 		]);
-		assert.deepEqual(fixture.calls.history, []);
+		// The banner path read the thread, never the timeline: only the warm's
+		// read (the conversation's landing page) precedes it.
+		assert.deepEqual(fixture.calls.history.slice(warm), []);
 		const banner = mounted.notifications[0];
 		assert.equal(banner.threadId, "bcmsg_root");
 		assert.equal(banner.seq, 2);
@@ -1288,10 +1324,7 @@ for (const { outcome, disable, firstSeed = false } of [
 				},
 			],
 		};
-		let release;
-		fixture.historyGate = new Promise((resolve) => {
-			release = resolve;
-		});
+		let release = () => {};
 		const mounted = await mount();
 		try {
 			await until(
@@ -1301,6 +1334,12 @@ for (const { outcome, disable, firstSeed = false } of [
 				"seed",
 			);
 			await settle();
+			// The background warm lands before the gate: only the banner's own
+			// read is held (see `warmedReads`).
+			const warm = warmedReads();
+			fixture.historyGate = new Promise((resolve) => {
+				release = resolve;
+			});
 			let finishMute;
 			let mutationResult;
 			if (outcome !== "none") {
@@ -1339,12 +1378,12 @@ for (const { outcome, disable, firstSeed = false } of [
 			if (outcome !== "none" || firstSeed) {
 				assert.equal(
 					fixture.calls.history.length,
-					0,
+					warm,
 					"pending policy or first observation must not start enrichment",
 				);
 			} else {
 				await until(
-					() => fixture.calls.history.length === 1,
+					() => fixture.calls.history.length === warm + 1,
 					"no-mute control is already planned",
 				);
 			}
@@ -1699,10 +1738,13 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			notifyRow("bcv_never", 1),
 		],
 	};
-	const mounted = await mount();
 	const key = api.teamBridgeKeys.messages("bcv_u", "tnt_u", "acct_alice");
-	mounted.client.setQueryData(key, {
-		messages: [message("bcmsg_1", "bcv_u", 1)],
+	// Cached before the watcher's first look (see `mount`'s `seed`).
+	const mounted = await mount({
+		seed: (client) =>
+			client.setQueryData(key, {
+				messages: [message("bcmsg_1", "bcv_u", 1)],
+			}),
 	});
 	try {
 		await until(
@@ -1710,10 +1752,13 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			"first tenant read",
 		);
 		await settle();
-		assert.equal(
-			fixture.calls.history.length,
-			0,
-			"first observation reads no history",
+		/* The first observation refreshes nothing; the only read is the
+		   watcher's background warm of the one cold conversation in the list
+		   (bcv_u is already cached, so it is not read again). */
+		assert.deepEqual(
+			fixture.calls.history.map((call) => call.id),
+			["bcv_never"],
+			"first observation: only the background warm of the cold row",
 		);
 		fixture.messages = {
 			messages: [
@@ -1745,12 +1790,14 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			"exactly the changed key, once",
 		);
 		assert.equal(mounted.notifications.length, 0, "muted: nothing bannered");
+		/* The warm's never-opened EXTRA slot is not kept fresh (ui#1917 review
+		   R3): its `latest_seq` moved 1 -> 3, but only the landing and visited
+		   conversations join the refresh set; it revalidates when opened. */
+		await settle();
 		assert.equal(
-			mounted.client.getQueryData(
-				api.teamBridgeKeys.messages("bcv_never", "tnt_u", "acct_alice"),
-			),
-			undefined,
-			"a never-visited conversation gets no history entry",
+			fixture.calls.history.filter((call) => call.id === "bcv_never").length,
+			1,
+			"the unopened warm extra is not refreshed",
 		);
 		// The cached list rows took the unread rows' counts.
 		const rows = mounted.client.getQueryData(
@@ -2431,4 +2478,308 @@ test("a person_agent banner carries the agent's own endpoint picture, the same o
 	const person = api.notificationSender(row, "person");
 	assert.deepEqual(person?.avatar, { account_id: owner, hash: ownerHash });
 	assert.equal(person?.endpoint_avatar, undefined);
+});
+
+/*
+ * THE REASON THE FIRST WATCHER WARM WAS REVERTED, NOW HANDLED (bridge-instant-
+ * load). The background warm reads the landing conversation as soon as the list
+ * answers. A message that lands while that read is still out is announced by a
+ * banner whose read JOINS the warm (same key, `fetchQuery` dedupes) and gets the
+ * page from before the message. The banner must ask once more rather than
+ * degrade to a metadata banner with no preview and no message target.
+ */
+test("a banner whose read joins a background warm that predates the message reads once more and banners the message", async () => {
+	resetFixture();
+	const org = {
+		tenant_id: "tnt_warm",
+		tenant_name: "Warm Org",
+		unread: 0,
+		eligible: true,
+	};
+	fixture.account = { total: 0, organizations: [org] };
+	fixture.conversations = {
+		conversations: [conversation("bcv_warm", "tnt_warm")],
+	};
+	fixture.messages = { messages: [message("bcmsg_1", "bcv_warm", 1)] };
+	// Answer with the page AS OF DISPATCH, as the hub does: a read that left
+	// before the message cannot carry it.
+	const original = api.TeamBridgeApi.listMessages;
+	api.TeamBridgeApi.listMessages = async (id, options) => {
+		const page = fixture.messages;
+		fixture.calls.history.push({ id, ...options });
+		if (fixture.historyGate) await fixture.historyGate;
+		return page;
+	};
+	let release;
+	fixture.historyGate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const mounted = await mount();
+	try {
+		await until(
+			() => fixture.calls.history.length === 1,
+			"the background warm is out (held)",
+		);
+		assert.equal(fixture.calls.history[0].id, "bcv_warm");
+		fixture.messages = {
+			messages: [
+				message("bcmsg_2", "bcv_warm", 2, { body: "the new one" }),
+				message("bcmsg_1", "bcv_warm", 1),
+			],
+		};
+		// The planner pairs list and unread rows on `latest_seq`: both move.
+		fixture.conversations = {
+			conversations: [
+				{ ...conversation("bcv_warm", "tnt_warm"), latest_seq: 2 },
+			],
+		};
+		fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+		fixture.tenants.tnt_warm = {
+			total: 1,
+			conversations: [
+				{ ...notifyRow("bcv_warm", 2), last_read_seq: 1, unread_count: 1 },
+			],
+		};
+		await act(async () => {
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
+			});
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await settle();
+		assert.equal(fixture.calls.history.length, 1, "the banner joined the warm");
+		await act(async () => release());
+		await until(() => mounted.notifications.length === 1, "the banner");
+		assert.equal(mounted.notifications[0].messageId, "bcmsg_2");
+		assert.equal(mounted.notifications[0].body, "the new one");
+		assert.equal(
+			fixture.calls.history.filter((call) => call.id === "bcv_warm").length,
+			2,
+			"exactly one more read: the warm, then the banner's own",
+		);
+	} finally {
+		api.TeamBridgeApi.listMessages = original;
+		release();
+		await mounted.teardown();
+	}
+});
+
+// ---------------------------------------------------------------------------
+// Reader unread identity (agent-server #455 `latest_unread_seq`), MOUNTED.
+//
+// The planner tests prove the decision; these prove the shipped hook carries
+// the field to it and that delivery announces the message the identity names.
+// When a NEWER non-eligible message (the reader's own send, a reply in a thread
+// they do not follow) sits above the eligible one, the newest message must not
+// suppress the banner (own send) or relabel it (someone else's reply).
+// ---------------------------------------------------------------------------
+
+/* Top-level, per this suite's lint rule against per-call regex allocation. */
+const BODY_OF_FIVE = /: body bcmsg_5$/;
+const ALICE_LABEL = /Alice/;
+const CY_LABEL = /Cy|reply bcmsg_r6/;
+
+const IDENTITY_ORG = {
+	tenant_id: "tnt_id",
+	tenant_name: "Identity Org",
+	unread: 0,
+	eligible: true,
+};
+
+/** One coherent hub answer: list row, tenant unread row and account total agree. */
+const identityPoll = async (
+	mounted,
+	{ latestSeq, unreadCount, latestUnreadSeq, extra = {} },
+) => {
+	fixture.conversations = {
+		conversations: [
+			{ ...conversation("bcv_id", "tnt_id"), latest_seq: latestSeq, ...extra },
+		],
+	};
+	fixture.account = {
+		total: unreadCount,
+		organizations: [{ ...IDENTITY_ORG, unread: unreadCount }],
+	};
+	fixture.tenants.tnt_id = {
+		total: unreadCount,
+		conversations: [
+			{
+				...notifyRow("bcv_id", latestSeq),
+				unread_count: unreadCount,
+				last_read_seq: 3,
+				latest_unread_seq: latestUnreadSeq,
+			},
+		],
+	};
+	if (mounted) {
+		await act(async () => {
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
+			});
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await settle();
+	}
+};
+
+const seededIdentityMount = async () => {
+	resetFixture();
+	fixture.messages = { messages: [message("bcmsg_4", "bcv_id", 4)] };
+	await identityPoll(null, {
+		latestSeq: 4,
+		unreadCount: 1,
+		latestUnreadSeq: 4,
+	});
+	const mounted = await mount();
+	await until(
+		() => fixture.calls.unread.includes("tnt_id"),
+		"the seed's tenant read",
+	);
+	await settle();
+	assert.equal(mounted.notifications.length, 0, "first answer only seeds");
+	return mounted;
+};
+
+const ownSend = (id, seq) =>
+	message(id, "bcv_id", seq, {
+		sender: { account_id: "acct_alice", kind: "human", display_label: "Alice" },
+	});
+
+test("ID1 an own send above a new eligible message banners the eligible one, and a further own send stays quiet", async () => {
+	const mounted = await seededIdentityMount();
+	try {
+		fixture.messages = {
+			messages: [
+				ownSend("bcmsg_6", 6),
+				message("bcmsg_5", "bcv_id", 5),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 6,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_sender_label: "Alice" },
+		});
+		await until(() => mounted.notifications.length === 1, "the banner for 5");
+		const [banner] = mounted.notifications;
+		assert.equal(banner.messageId, "bcmsg_5", "the eligible message, exactly");
+		// The count line is existing copy; the preview is the announced message.
+		assert.match(banner.body, BODY_OF_FIVE);
+		assert.equal(banner.seq, 5);
+		assert.doesNotMatch(JSON.stringify(banner), ALICE_LABEL);
+
+		// The reader sends again: the room moves, their unread set does not.
+		fixture.messages = {
+			messages: [ownSend("bcmsg_7", 7), ...fixture.messages.messages],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 7,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_sender_label: "Alice" },
+		});
+		await settle();
+		assert.equal(mounted.notifications.length, 1, "own send is not an event");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("ID2 an unfollowed reply above a new eligible message neither relabels nor re-raises the banner", async () => {
+	const mounted = await seededIdentityMount();
+	const root = message("bcmsg_root_u", "bcv_id", 2);
+	const cyReply = (id, seq) =>
+		message(id, "bcv_id", seq, {
+			thread_root_id: root.id,
+			sender: { account_id: "acct_cy", kind: "human", display_label: "Cy" },
+			body: `reply ${id}`,
+		});
+	try {
+		// Timeline history excludes replies, so the page holds 5 and 4 only.
+		fixture.messages = {
+			messages: [
+				message("bcmsg_5", "bcv_id", 5),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		fixture.thread = { root, replies: [cyReply("bcmsg_r6", 6)] };
+		await identityPoll(mounted, {
+			latestSeq: 6,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_thread_root_id: root.id, last_sender_label: "Cy" },
+		});
+		await until(() => mounted.notifications.length === 1, "the banner for 5");
+		const [banner] = mounted.notifications;
+		assert.equal(banner.messageId, "bcmsg_5");
+		// The count line is existing copy; the preview is the announced message.
+		assert.match(banner.body, BODY_OF_FIVE);
+		assert.doesNotMatch(JSON.stringify(banner), CY_LABEL);
+		assert.equal(
+			fixture.calls.replies.length,
+			0,
+			"the unfollowed thread is not read for a timeline message's banner",
+		);
+
+		fixture.thread = {
+			root,
+			replies: [cyReply("bcmsg_r6", 6), cyReply("bcmsg_r7", 7)],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 7,
+			unreadCount: 2,
+			latestUnreadSeq: 5,
+			extra: { last_thread_root_id: root.id, last_sender_label: "Cy" },
+		});
+		await settle();
+		assert.equal(mounted.notifications.length, 1, "unfollowed reply is quiet");
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("ID3 an account switch reseeds: the next account's existing unread is silent, its next eligible message banners", async () => {
+	const mounted = await seededIdentityMount();
+	try {
+		fixture.identity = "acct_carol";
+		// Carol already has eligible unread up to 8 when she signs in.
+		fixture.messages = {
+			messages: [
+				message("bcmsg_8", "bcv_id", 8),
+				message("bcmsg_4", "bcv_id", 4),
+			],
+		};
+		await identityPoll(null, {
+			latestSeq: 8,
+			unreadCount: 3,
+			latestUnreadSeq: 8,
+		});
+		const readsBefore = fixture.calls.unread.length;
+		await switchAccount(mounted, "acct_carol");
+		await until(
+			() => fixture.calls.unread.slice(readsBefore).includes("tnt_id"),
+			"carol's tenant read",
+		);
+		await settle();
+		assert.equal(mounted.notifications.length, 0, "carol's backlog is a seed");
+
+		fixture.messages = {
+			messages: [message("bcmsg_9", "bcv_id", 9), ...fixture.messages.messages],
+		};
+		await identityPoll(mounted, {
+			latestSeq: 9,
+			unreadCount: 4,
+			latestUnreadSeq: 9,
+		});
+		await until(() => mounted.notifications.length === 1, "carol's banner");
+		assert.equal(mounted.notifications[0].messageId, "bcmsg_9");
+		assert.equal(mounted.notifications[0].owner.accountId, "acct_carol");
+	} finally {
+		await mounted.teardown();
+	}
 });

@@ -2,7 +2,11 @@ import { aidaControlFailureCopy } from "@features/aida/aida-control";
 import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
 import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
 import { useAidaWorking } from "@features/aida/use-aida-working";
-import { useAppWideApprovals } from "@features/browser/hooks/use-app-wide-approvals";
+import {
+	BrowserAttentionAnnouncer,
+	BrowserAttentionRows,
+} from "@features/browser/components/browser-attention-rows";
+import { useBrowserAttention } from "@features/browser/hooks/use-browser-attention";
 /*
  * THE MIDPOINT RULE IS IMPORTED, not re-derived (design § 5): the pinned chat
  * reorder's `pinDragSlot` is the shipped answer to "which slot is the pointer
@@ -36,9 +40,11 @@ import {
 	useMeshApprovals,
 	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
+import { useMeshPairingBadgeCount } from "@features/mesh/mesh-pairings";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { useNotificationsCount } from "@features/notifications/notifications-api";
 import { badgeCountOf } from "@features/notifications/notifications-model";
+import { PhoneAccessOfferIcon } from "@features/providers/phone-access-offer";
 import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
@@ -412,9 +418,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * per-conversation badge can: is an agent anywhere in this app blocked on me?
 	 * The count is the projection's own live set, unattributed requests included -
 	 * see `useAppWideApprovals` for why that one deliberately disagrees with the
-	 * chat header's count.
+	 * chat header's count. Since 2026-11-15 it also counts the passkey holds and
+	 * held popups that used to pull the user into the browser ("the browser is
+	 * stealing the view"): those are now the notification rows drawn below the
+	 * destinations, and this badge is how a collapsed rail learns of them.
 	 */
-	const browserApprovals = useAppWideApprovals();
+	const browserApprovals = useBrowserAttention().count;
 	/*
 	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
 	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
@@ -455,7 +464,24 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		meshMembership === "member" && meshApprovalsEnabled,
 		{ poll: true },
 	);
-	const meshWaiting = waitingApprovalCount(meshApprovals.data ?? []);
+	/*
+	 * OPEN MESH PAIRINGS LIGHT THE SAME BADGE (`features.mesh_pairing`). The feed
+	 * names the oldest open card (`approvals.pairing_id`), so the badge moves at
+	 * feed latency - the "nobody saw it" failure the cards exist to fix. Until the
+	 * feed has spoken (every launch and reload: a new subscriber is not told what
+	 * is already open - QA round 1, Q1) the list is read ONCE and its rows count;
+	 * only the feed's "none open" skips the read. The read polls on the cards' own
+	 * short cadence while any is open, shared with the tab through one query key.
+	 * Only LIVE cards count (design D4). NOT gated on membership: a device joining
+	 * its FIRST network is in no mesh, and it is exactly the device whose person
+	 * must find the card.
+	 */
+	const pairingCount = useMeshPairingBadgeCount(
+		desktopFeatureState(capabilities.data, "mesh_pairing") === "enabled",
+	);
+	const pairingOpen = pairingCount > 0;
+	const meshWaiting =
+		waitingApprovalCount(meshApprovals.data ?? []) + pairingCount;
 	const proposalsEnabled = desktopFeatureEnabled(
 		capabilities.data,
 		"profile_proposals",
@@ -756,7 +782,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * 2026-10-03: a spent approval is a record, not a prompt). Zero draws nothing,
 	 * so a mesh at rest renders the row exactly as it shipped.
 	 */
-	if (meshMembership === "member") {
+	if (meshMembership === "member" || pairingOpen) {
 		destinationItems.set("mesh", {
 			icon: Network,
 			label: t("ui.shell.sidebar_navigation.mesh"),
@@ -2407,7 +2433,15 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{/*
+					 * The phone access offer's collapsed form (UX review U1): the docked
+					 * foot's card has no room here, so an icon opens the same card in a
+					 * popover. Draws nothing unless the offer would show in the foot.
+					 */}
+					<PhoneAccessOfferIcon />
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
 					 * (design consult §3.1): the icon, the gear, the avatar - the strip's
@@ -2504,7 +2538,17 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 			</div>
+
+			{/*
+			 * THE BROWSER'S NOTIFICATIONS (operator report 2026-11-15): what agent tabs
+			 * are waiting on the user for, opened when the user chooses rather than
+			 * forced on them. Renders nothing without a row, so the 16px tier below
+			 * is untouched in the ordinary case (`browser-attention-rows.tsx`).
+			 */}
+			<BrowserAttentionRows />
 
 			{/*
 			 * THE BODY: the one chat list, one scroll region.

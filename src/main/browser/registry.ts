@@ -51,6 +51,8 @@ export interface LayoutSnapshot {
 	activeTabId: number | null;
 	/** The active tab's own presentation bit after this pass. */
 	presented: boolean;
+	/** Browser chrome may be visible over an empty/start canvas without a page. */
+	chromeVisible: boolean;
 	contentRect: ContentRect | null;
 	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
 	 * with the same values" without diffing objects. */
@@ -155,6 +157,32 @@ export interface TabRecord {
 	/** A close that could not complete is a retryable obligation, never proof
 	 * the view is gone. */
 	cleanupPending?: boolean;
+	/**
+	 * Set on a USER tab the host opened because the operator approved a site an
+	 * agent asked for (`BrowserHost.respondToConsent`), and null everywhere else.
+	 *
+	 * WHY IT EXISTS: before this, Allow wrote a grant and nothing navigated, so an
+	 * agent that asked the operator to "approve and sign in" left them with no page
+	 * to sign in on. The host now opens the approved page in a tab the OPERATOR owns
+	 * (so the agent cannot read credentials being typed, and opener popups such as
+	 * an MSAL sign-in are not held as an agent tab's), and this marker is what lets
+	 * the requesting session's next plain `open url=<same origin>` take that tab
+	 * over where it stands instead of opening a second one (`actions/tabs.ts`).
+	 *
+	 * It is a PICKUP RIGHT, not a capability: the tab has no nonce while it is set,
+	 * the session sees only a redacted handle, and the pickup still runs ordinary
+	 * admission. In memory only (never persisted, like `nonce`), bounded by
+	 * `expiresAt` (the access-result TTL), and cleared on pickup or hand-over.
+	 */
+	approvalPickup?: ApprovalPickup | null;
+}
+
+/** See `TabRecord.approvalPickup`. `requester` is the full `session:<id>`
+ * identity that raised the request; `origin` is the exact origin approved. */
+export interface ApprovalPickup {
+	requester: string;
+	origin: string;
+	expiresAt: number;
 }
 
 /** A snapshot ref as this host stores it: the vendored `SnapshotRef` plus where
@@ -361,6 +389,12 @@ export class TabRegistry {
 			view: DriveableView,
 			presented: boolean,
 		) => void = () => {},
+		// Runs at the top of every layout pass, with the NEW state already set but
+		// before any view is hidden or detached. The live composite bridge
+		// (`composite-bridge.ts`) subscribes to the page's frames here so the
+		// compositor has a sink before presentation is withdrawn; an observer that
+		// ran after `onPresentation` would subscribe to an already-detached view.
+		private readonly onBeforeLayout: () => void = () => {},
 	) {}
 
 	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
@@ -430,6 +464,7 @@ export class TabRegistry {
 			presented: false,
 			refs: {},
 			allocationId: options.allocationId ?? "",
+			approvalPickup: null,
 		};
 		this.tabs.set(tabId, record);
 		// Internal pages are shown only for commits main armed (internal-pages.ts).
@@ -452,7 +487,10 @@ export class TabRegistry {
 	 * agent-owned count past the cap, after which the next `open` was refused with
 	 * "already driving 8 agent tabs" for tabs the user had handed over — the cap
 	 * reported by `status` and the cap enforced on `open` disagreeing (N3). */
-	private assertAgentCapacity(): void {
+	// Public so the approval pickup in `actions/tabs.ts` can refuse at the cap
+	// BEFORE it runs admission: a `once` grant spent and then refused by the
+	// hand-over's own cap check would be a grant the operator gave for nothing.
+	assertAgentCapacity(): void {
 		if (this.agentTabCount() < MAX_AGENT_TABS) return;
 		throw new BrowserHostError(
 			"tab_limit",
@@ -497,6 +535,38 @@ export class TabRegistry {
 
 	list(): TabRecord[] {
 		return [...this.tabs.values()].sort((a, b) => a.tabId - b.tabId);
+	}
+
+	/**
+	 * The live tab the host opened for `requester`'s approved request on `origin`,
+	 * or null. One predicate for the three readers (the re-approval reuse, the
+	 * `opened_tab` flag on `request_access`/`await_access`, and the `open` pickup)
+	 * so they cannot disagree about whether a tab is waiting.
+	 *
+	 * Only a tab that is STILL THE USER'S counts: once the operator hands it to
+	 * anyone (`handOver` clears the marker too) or it is gone, the pickup right is
+	 * spent. The marker's TTL is checked here rather than swept, because a stale
+	 * marker is inert once nothing reads it as live.
+	 */
+	approvalPickupTab(
+		requester: string,
+		origin: string,
+		now: number,
+	): TabRecord | null {
+		for (const record of this.list()) {
+			const pickup = record.approvalPickup;
+			if (
+				pickup &&
+				pickup.requester === requester &&
+				pickup.origin === origin &&
+				now < pickup.expiresAt &&
+				record.owner === "user" &&
+				record.handedTo === null &&
+				!record.view.webContents.isDestroyed()
+			)
+				return record;
+		}
+		return null;
 	}
 
 	/**
@@ -686,6 +756,10 @@ export class TabRegistry {
 		// handed on stays an agent's tab in the row it writes (round 1, m-2 — the
 		// capture keys on this, not on `handedTo`).
 		if (record.handedFrom === null) record.handedFrom = record.owner;
+		// Any hand-over spends an approval pickup: the tab now belongs to whichever
+		// session it went to, and a later `open` by the original requester must not
+		// find it as "waiting for you".
+		record.approvalPickup = null;
 		record.owner = "agent";
 		// `sessionId` moves to the session that now drives the tab; `homeSessionId` does
 		// NOT, and deliberately: a hand-over changes who may drive a tab, not the
@@ -854,6 +928,14 @@ export class TabRegistry {
 		return this.contentRect !== null && !this.visible && !this.ownStateContent;
 	}
 
+	/** A copy of the renderer-reported content rect, or null (route torn down). */
+	get presentationContentRect(): ContentRect | null {
+		const rect = this.contentRect;
+		return rect
+			? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+			: null;
+	}
+
 	activate(tabId: number): void {
 		if (!this.tabs.has(tabId)) return;
 		this.activeTabId = tabId;
@@ -862,6 +944,11 @@ export class TabRegistry {
 	}
 
 	private applyLayout(): void {
+		try {
+			this.onBeforeLayout();
+		} catch {
+			// Same rule as `onLayout`: an observer must never interrupt page layout.
+		}
 		const active =
 			this.activeTabId === null ? null : this.tabs.get(this.activeTabId);
 		for (const record of this.tabs.values()) {
@@ -879,6 +966,7 @@ export class TabRegistry {
 			this.onLayout({
 				activeTabId: this.activeTabId,
 				presented: active?.presented === true,
+				chromeVisible: this.chromeVisible,
 				contentRect: rect
 					? {
 							x: rect.x,

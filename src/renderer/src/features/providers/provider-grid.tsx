@@ -65,6 +65,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Search, X } from "lucide-react";
 import type { FC, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { voiceKeys } from "../voice/use-voice-status";
 import {
 	FEATURED_PROVIDER_IDS,
 	GROUP_HEADINGS,
@@ -485,6 +486,8 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 			await queryClient.invalidateQueries({
 				queryKey: desktopKeys.providers,
 			});
+			// A removed credential changes whether a speech provider is ready.
+			void queryClient.invalidateQueries({ queryKey: voiceKeys.status });
 			onConnected?.();
 		} catch (error) {
 			showErrorToast(
@@ -565,6 +568,16 @@ export const ProviderGrid: FC<ProviderGridProps> = ({
 					onChangeModel={onChangeModel}
 					context={context}
 					readiness={readiness}
+					/*
+					 * The hosted way out of a local-model panel (D1): one press opens the
+					 * Radient row in place, which is the setup-free path. Only offered
+					 * when that row is in this census and is not the panel itself.
+					 */
+					onUseHosted={
+						provider.local && rows.some((row) => row.id === "radient")
+							? () => setSelectedId("radient")
+							: undefined
+					}
 				/>
 			</div>
 		) : null;

@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1954",
+  "locale": "es",
+  "namespace": "ui.teamBridge.approvals",
+  "pr": 1954,
+  "date": "2026-11-17",
+  "head": "e9f13e7fd1aa0d678da3a8123add3e3c5dc108e9",
+  "instance": "pr1954-r1-es-tbapprovals-f1b52917",
+  "auditor": {
+    "agent": "copy-reviewer",
+    "role": "independent i18n auditor (team radientdev, copy-reviewer role); not the translator (translator coder job 7e72069d48db (manager session 2c6111e02b16, '#1954 translations'), anthropic/claude-opus-5-5, no fallback)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session ae8a9a614afb, a copy-reviewer task instance distinct from the translator coder job 7e72069d48db. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judged from the English, its context sidecar, the core glossary and the locale style guide, and shipped catalogue precedent; no MT used. Auditor-authored fix lines are listed as findings with before/after.",
+    "instance": "pr1954-r1-es-tbapprovals-f1b52917"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes: key set and order equal English (74); ICU parse OK in intl-messageformat; argument names/types equal English per key; every plural arm set equals the locale's CLDR cardinal categories (Intl.PluralRules), =0 arm of results_title kept; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no em/en dashes; copy_scan.py 0 findings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Naming rule: teammate (person) and agent stay distinct words in intro, unknown_sender and the result/refusal lines; Team Bridge, Touch ID, Mac and Local Operator untranslated. Approve/Deny/Approved/Denied match the shipped chat approval card (ui.chat.approval.option.*) and ui.mesh approvals renderings."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Pre-existing, out of scope: the teammate word follows ui.teamBridgeTrial, while the shipped ui.teamBridge namespace uses a 'team member' phrase. That split predates this PR; a glossary row for 'teammate' would settle it. Not gating."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.approvals.waiting",
+      "note": "Translator flag (many arms): es many = exact multiples of 10^6 only, per the es style guide ('# de sesiones'). Adjective-only arms ('de seleccionadas', 'de decididas') match shipped es precedent (e.g. 'de completadas', 'de fallidas'); unreachable here (batch cap 50). Accepted."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.approvals.notice.foreign_help",
+      "note": "Cancel button name 'Cancelar' equals macOS LocalAuthenticationUI SHEET_AUTH_CANCEL for es (measured from the system Localizable.loctable on this Mac)."
+    }
+  ],
+  "scope": "PR #1954 round 1: all 74 ui.teamBridge.approvals keys, ad12070c2c..e9f13e7fd1 plus auditor fixes",
+  "binding": "Verified on the working tree at e9f13e7fd1 plus this audit's locale-only fixes: target src/i18n/catalogues/es/ui.teamBridge.approvals.json sha256 76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850; English sha256 ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9; context sha256 0e0677e1d9d5ff912b71738aedd808e3b0f58b4fe196f6cb0f778b5d49a5a23a.",
+  "en_sha256": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9",
+  "context_sha256": "0e0677e1d9d5ff912b71738aedd808e3b0f58b4fe196f6cb0f778b5d49a5a23a",
+  "target_sha256": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+  "sha256": {
+    "es": "76fbf37d7cb153c0adf9db5a3164b656d64b83654e0e4977cc6739e266a26850",
+    "en": "ee5122c17f427cf859822cbc49d793ded3b4fae5a21f37524f9b803e9e060be9"
+  }
+}

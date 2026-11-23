@@ -40,6 +40,7 @@ import { PanelRail } from "@shared/components/navigation/panel-rail";
 import { InPanelRailHost } from "@shared/components/navigation/panel-rail-host";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
@@ -62,6 +63,7 @@ import {
 	type AskDrawerCloseOptions,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
+	type ConsoleCommandIntent,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
@@ -88,9 +90,19 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	linkedProjectTotal,
+	useProjectReadsTurnRefresh,
+	useSessionProjects,
+} from "../../projects/hooks/use-projects-queries";
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
+import {
+	askCommandStillRunnable,
+	fileAskCommand,
+	readAskAgentPlacement,
+} from "../ask-command-actions";
 import type {
 	AskAnswerAttempt,
 	AskDismissReason,
@@ -224,6 +236,16 @@ type ChatContentProps = {
 	 */
 	deviceNotice?: React.ReactNode;
 	/**
+	 * Remote runs this conversation started, above the transcript.
+	 *
+	 * A THIRD SLOT BESIDE `deviceNotice` rather than part of it, because they report
+	 * different requests: the notice is the outcome of a move, this is a run that keeps
+	 * spending after the picker that started it closed. Both are composed from their own
+	 * store keyed by this pane, so a surface never has to ask the other one what
+	 * happened.
+	 */
+	remoteRuns?: React.ReactNode;
+	/**
 	 * The composer's hold during a move (§2.4), composed by the page from the same
 	 * store as `deviceNotice`: the notice says what the move is doing under the
 	 * header, the hold says it in the one place a user is about to type.
@@ -304,12 +326,34 @@ type ChatContentProps = {
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
 		/**
+		 * See `MessageInputProps.onSendMessage`: the per-call options of a send
+		 * that is not the user's press in this pane (`originBound`). The SEVENTH
+		 * argument, so the delivery mode below must follow it.
+		 */
+		options?: { originBound?: boolean },
+		/**
 		 * See `MessageInputProps.onSendMessage`: which delivery mode the press
 		 * selected (`null` for plain Enter). Forwarded verbatim to the page's
 		 * `send`, which resolves it against the settings default.
 		 */
 		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
+	/**
+	 * Whether the page that owns `onSendMessage` APPLIES the seam it is handed
+	 * (`MessageInputProps.admissionSeamHonoured`). True only for the chat pane,
+	 * whose `send` forwards the seam to `admitChatDraft` and composes an aside's
+	 * text through it; every other `ChatContent` caller leaves it false and keeps
+	 * the composer's pre-seam behaviour.
+	 */
+	admissionSeamHonoured?: boolean;
+	/**
+	 * Whether the page that owns `onSendMessage` honours the SEVENTH argument's
+	 * `originBound` (`MessageInputProps.dictatedAwayDelivery`). True only for the
+	 * chat pane, whose `send` can post to a conversation that is not the one on
+	 * screen; every other caller leaves it false and keeps the composer's
+	 * mount-bound dictation byte for byte.
+	 */
+	dictatedAwayDelivery?: boolean;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
 	agentData?: AgentDetails | null;
@@ -390,7 +434,10 @@ type ChatContentProps = {
 		asks?: SessionAskFrame | null;
 		/** Catalogue source locality; absence is not proof of local serving. */
 		servingLocality?: "local" | "remote";
-		onCommand?: (invocation: SlashCommandInvocation) => void;
+		onCommand?: (
+			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
+		) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -414,7 +461,10 @@ type ChatContentProps = {
 		 * unless the backend advertises the capability — which is what leaves the two
 		 * readings inert with today's copy on a backend that cannot honour a pick.
 		 */
-		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		onOpenDraftPicker?: (
+			destination: DraftPickerDestination,
+			anchor?: HTMLElement,
+		) => void;
 		/**
 		 * Where a draft's resolution IS, while it has no reading yet; see
 		 * `SessionStatusStripProps["draftResolution"]`.
@@ -941,6 +991,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceSlot,
 		draftTargetSlot,
 		deviceNotice,
+		remoteRuns,
 		deviceHold,
 		renameSessionId,
 		renameSlotReserved,
@@ -961,6 +1012,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		scrollToBottom,
 		rawInfoContent,
 		onSendMessage,
+		admissionSeamHonoured = false,
+		dictatedAwayDelivery = false,
 		currentJobId,
 		onCancelJob,
 		onComposerInput,
@@ -1092,6 +1145,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * connected that this app cannot name a model for (UX round 5, U21).
 		 */
 		const { needsProvider, needsModel } = useProviderStatus();
+		/*
+		 * The composer's third "cannot send" fact (D4): the background service is
+		 * not answering. A passive read of the query `ChatStatusStrip` polls; see
+		 * `useServerOffline` for why it is one boolean and not the snapshot.
+		 */
+		const serverOffline = useServerOffline();
 		const archiveEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"session_archive",
@@ -1103,6 +1162,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const temporaryEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"temporary_chats",
+		);
+		/*
+		 * THE RAIL'S LINKED-PROJECTS TOTAL: the same query (same key) the canvas's
+		 * Projects view reads, so the door's number and the list cannot disagree
+		 * and react-query serves both from one request. Gated like the view:
+		 * an older backend, or a draft, is 0 and sends nothing.
+		 */
+		const projectsBySession = desktopFeatureEnabled(
+			capabilities.data,
+			"projects_by_session",
+		);
+		const linkedProjects = useSessionProjects(sessionId, projectsBySession);
+		const linkedProjectCount = linkedProjectTotal(
+			projectsBySession,
+			linkedProjects.data,
+		);
+		/* The turn-end refresh lives beside the read it keeps current (R1-3). */
+		useProjectReadsTurnRefresh(
+			turnTerminal,
+			projectsBySession && Boolean(sessionId),
 		);
 		/*
 		 * WHETHER THE OWNER QUEUES AN ADOPT PRESSED MID-TURN (`aside_adopt_queue`,
@@ -1822,6 +1901,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				? (canonical?.view.frontend ?? null)
 				: canonical.asks;
 		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
+		/*
+		 * THE CONSOLE'S SUBMIT GUARD for a suggested command's confirmed Run (QA
+		 * round 1, Q1): the console pane beside this conversation asks it at
+		 * pickup, and it answers from THIS conversation's ask view as it is at that
+		 * moment — read through a ref so the guard stays one stable function and
+		 * still sees the newest frame. The pane is scoped to this same
+		 * `sessionId`, so this view is the one its intent's ask belongs to.
+		 */
+		const sessionAsksViewRef = useRef(sessionAsksView);
+		sessionAsksViewRef.current = sessionAsksView;
+		const allowCommandSubmit = useCallback(
+			(intent: ConsoleCommandIntent) =>
+				intent.sessionId === sessionId &&
+				askCommandStillRunnable({
+					rows: sessionAsksViewRef.current.rows,
+					intent,
+					placement: readAskAgentPlacement(sessionId),
+				}),
+			[sessionId],
+		);
 		/*
 		 * THE ROW'S OWN WIDTH, which the canvas's mode, the ask sheet's geometry and the
 		 * open policy's `covers-conversation` fact are all decided from (§I).
@@ -2727,6 +2826,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * restore.
 						 */}
 						<ChatHeader
+							canvasConversationId={conversationId}
 							agentName={agentName}
 							agentAvatar={
 								avatarAgentId
@@ -2914,6 +3014,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * transcript - not over the window's chrome, which belongs to the app.
 						 */}
 						{deviceNotice}
+						{/* The runs this pane bought: a fact that changes on its own, so it sits
+						 * where the transcript begins rather than inside it. */}
+						{remoteRuns}
 						{/*
 						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
 						 *
@@ -3135,6 +3238,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												temporaryEnabled &&
 												canonical.view.temporaryDeleted === true
 											}
+											/*
+											 * The cached paint's own THREE facts, beside the rows it seeded: where
+											 * the reader was, whether a turn was running when this window
+											 * last showed the conversation, and whether those rows were all of it.
+											 * All are claims the snapshot corrects; all are one-shot reads of the
+											 * paint, not live state (`use-canonical-session` clears them in the
+											 * snapshot's commit).
+											 */
+											restoredScroll={canonical.view.paintScroll}
+											paintRunning={canonical.view.paintBusy}
+											/*
+											 * And the one the LAYOUT reads: a cached fragment shorter than the pane
+											 * must not top-anchor, or the page that lands moves every row.
+											 */
+											paintComplete={canonical.view.paintComplete}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
@@ -3336,10 +3454,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<MessageInput
 								ref={messageInputRef}
 								onSendMessage={onSendMessage}
+								admissionSeamHonoured={admissionSeamHonoured}
+								dictatedAwayDelivery={dictatedAwayDelivery}
 								onComposerInput={onComposerInput}
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								serverOffline={serverOffline}
 								deviceHold={deviceHold}
 								/*
 								 * A TEMPORARY DRAFT SAYS SO IN THE BOX (design round 1, D1): the
@@ -3895,6 +4016,18 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}
 								onDraftChange={canonical?.onAskDraftChange}
+								/*
+								 * THE SUGGESTED COMMAND lands in THIS conversation's terminal: the
+								 * drawer is the conversation's own, so the intent names `sessionId`
+								 * and the console pane that opens beside it answers it. Absent
+								 * without a conversation (nothing to type into).
+								 */
+								onCommand={
+									sessionId
+										? (request) => fileAskCommand({ sessionId, ...request })
+										: undefined
+								}
+								commandPlacementOf={() => readAskAgentPlacement(sessionId)}
 							/>
 						</PaneSlot>
 					</>
@@ -4099,6 +4232,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<ConsolePane
 								sessionId={sessionId ?? null}
 								onClose={() => setConsolePaneOpen(false)}
+								allowCommandSubmit={allowCommandSubmit}
 							/>
 						</PaneSlot>
 					</>
@@ -4191,6 +4325,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
 						codeAttention={codeAttentionCause}
+						canvasConversationId={conversationId}
+						linkedProjectCount={linkedProjectCount}
 					/>
 				</InPanelRailHost>
 			</div>

@@ -134,7 +134,7 @@
 		"note": "Sits inside a small floating button next to a down arrow; keep it short.",
 		"placeholders": {},
 		"role": "text beside the arrow on the jump-to-latest button when new messages arrived while scrolled up",
-		"tone": "two-word label, sentence case, no trailing period"
+		"tone": "three-word label, sentence case, no trailing period"
 	},
 	"ui.chat.page_chrome.status_strip.connection": {
 		"length": "",

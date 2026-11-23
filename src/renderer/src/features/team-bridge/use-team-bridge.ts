@@ -83,9 +83,13 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeScope,
 	agentNotifyLevel,
+	holdReadyThroughThrottle,
 	isNotAMemberRefusal,
 	ownActiveAgent,
+	teamBridgeRateLimit,
+	teamBridgeStatusRefetchInterval,
 	withAppendedPage,
+	withConversationName,
 	withConversationStatus,
 	withNotificationPreference,
 	withOwnAgentNotify,
@@ -528,7 +532,14 @@ function ownedStatusRead(client: QueryClient, accountId?: string) {
 		const status = await TeamBridgeApi.status("surface_open");
 		if (status.state === "ready" && status.account_id !== accountId)
 			throw new Error("Team Bridge status owner changed");
-		return status;
+		// A throttled read keeps the READY answer this account already has (see
+		// `holdReadyThroughThrottle`), so the page keeps its conversations.
+		return holdReadyThroughThrottle(
+			client.getQueryData<AgentMessagesStatus>(
+				teamBridgeKeys.statusFor(accountId),
+			),
+			status,
+		);
 	});
 }
 
@@ -694,7 +705,19 @@ export function useTeamBridgeStatus(
 		enabled: enabled && Boolean(accountId),
 		staleTime: 60_000,
 		refetchOnWindowFocus: true,
-		retry: 1,
+		/*
+		 * A THROTTLE RETRIES ON ITS OWN, AFTER ITS WAIT (incident 2026-11-17).
+		 * Rate-limited (in the answer or as the read's own 429), the read comes
+		 * back after the named wait plus jitter — the "retrying" state the page
+		 * shows is true — and is never retried at once: an immediate retry is
+		 * exactly what kept the edge's per-address block alive. Anything else
+		 * keeps the one quick retry and no interval.
+		 */
+		// Stable per answer: a fresh random value per call restarted the timer
+		// on every render and postponed the retry (review round 1, M1).
+		refetchInterval: (query) => teamBridgeStatusRefetchInterval(query.state),
+		retry: (failures, error) =>
+			teamBridgeRateLimit(null, error) === null && failures < 1,
 	});
 }
 
@@ -1986,6 +2009,98 @@ export function useArchiveTeamBridgeConversation(): UseMutationResult<
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
 	return useMutation(archiveMutationOptions(client, owner.isCurrent));
+}
+
+/** What one rename names: the row (as the lifecycle writes do) and the name. */
+export type TeamBridgeRenameMutationVariables =
+	TeamBridgeLifecycleMutationVariables & { name: string };
+
+/**
+ * Rename a channel or group, optimistically.
+ *
+ * WHY OPTIMISTIC. The rail row and the header both read the name from the
+ * cached conversation pages (there is no separate single-conversation query),
+ * so writing the new name into every page this account owns updates both at
+ * once, the way archive removes a row at once. A refusal restores the exact
+ * snapshots taken first. The server answers with the CANONICAL name (its
+ * sanitiser trims and collapses spaces), so `onSuccess` settles every page to
+ * that name rather than the typed one, and `onSettled` re-reads the truth.
+ *
+ * The dialog stays open on the promise (`mutateAsync`) so a refusal such as
+ * `conversation_name_taken` can be explained where the name was typed; the
+ * rollback is what keeps the rail from showing a name the server refused.
+ *
+ * OTHER MEMBERS pick the new name up from their own next conversation-list
+ * read (stale after 15 s, refetched on focus and by the unread sync); the
+ * name is a field of the served conversation, so nothing here broadcasts it.
+ */
+export function renameMutationOptions(
+	client: QueryClient,
+	isCurrent?: () => boolean,
+): UseMutationOptions<
+	unknown,
+	Error,
+	TeamBridgeRenameMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const { accountId, epoch } = observedRadientAuthority(client);
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = ownedConversationPages(accountId);
+	return {
+		mutationKey: [...teamBridgeKeys.all, "rename", accountId, epoch],
+		mutationFn: ({ conversationId, tenantId, name }) => {
+			check();
+			return TeamBridgeApi.rename(conversationId, name, tenantId, accountId);
+		},
+		onMutate: async ({ conversationId, tenantId, name }) => {
+			check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationName(page, conversationId, name, tenantId),
+			);
+			return { snapshots };
+		},
+		onSuccess: (data, { conversationId, tenantId }) => {
+			if (!current()) return;
+			const served = (data as { name?: unknown } | null)?.name;
+			if (typeof served !== "string" || served === "") return;
+			client.setQueriesData<TeamBridgeConversationList>(owned, (page) =>
+				page === undefined
+					? page
+					: withConversationName(page, conversationId, served, tenantId),
+			);
+		},
+		onError: (_error, _variables, context) => {
+			if (!current()) return;
+			for (const [key, data] of context?.snapshots ?? []) {
+				client.setQueryData(key, data);
+			}
+		},
+		onSettled: async () => {
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+		},
+	};
+}
+
+export function useRenameTeamBridgeConversation(): UseMutationResult<
+	unknown,
+	Error,
+	TeamBridgeRenameMutationVariables,
+	TeamBridgeLifecycleMutationContext
+> {
+	const client = useQueryClient();
+	const owner = useBridgeOwner();
+	return useMutation(renameMutationOptions(client, owner.isCurrent));
 }
 
 /**

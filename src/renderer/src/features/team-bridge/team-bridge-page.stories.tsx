@@ -56,6 +56,7 @@ import agentPortrait from "../../assets/images/storybook-avatar-portrait.jpg";
 import profileImage from "../../assets/radient-icon-1024x1024.png";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
+import { TeamBridgeRequestsView } from "./team-bridge-approvals";
 import { draftStorageKey, draftTargetKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -70,7 +71,10 @@ import {
 	OwnerAuditSectionHeader,
 	type OwnerAuditSlot,
 } from "./team-bridge-owner-audit";
-import { TeamBridgePageView } from "./team-bridge-page";
+import {
+	TeamBridgePageView,
+	TeamBridgeRateLimitNote,
+} from "./team-bridge-page";
 import { RailGroupHeader } from "./team-bridge-rail";
 import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
@@ -698,6 +702,53 @@ export const InvitationWaiting: Story = {
 			},
 			group,
 		],
+	},
+};
+
+/*
+ * THE REQUESTS RAIL ENTRY (Team Bridge approvals, design review D1). With
+ * requests waiting the entry carries the shared accent badge; with none it is
+ * a quiet row. `RequestsOpen` is the entry selected, with its panel.
+ */
+const requestsPanel = (
+	<TeamBridgeRequestsView
+		listState="ready"
+		rows={[
+			{
+				message_id: "bcmsg_1",
+				thread_id: "bth_1",
+				created_at: "2026-11-17T14:05:00Z",
+				excerpt:
+					"Priya's agent asks: may it deploy the staging build of the billing service?",
+				request: { state: "pending", expires_at: "2026-11-17T15:05:00Z" },
+				sender: {
+					account_id: "acct_priya",
+					endpoint_id: null,
+					name: "Priya Raman",
+					email: "priya@example.com",
+				},
+				ask: { session_id: "s_cos", ask_id: "ask_1", status: "open" },
+				decidable: true,
+				unsent_decision: null,
+			},
+		]}
+		flow={{ phase: "idle" }}
+		onDecide={() => {}}
+		history={{ state: "ready", rows: [] }}
+	/>
+);
+export const RequestsWaiting: Story = {
+	args: { requests: { waiting: 3, panel: requestsPanel } },
+};
+export const RequestsNoneWaiting: Story = {
+	args: { requests: { waiting: 0, panel: requestsPanel } },
+};
+export const RequestsOpen: Story = {
+	args: {
+		/* The panel lists one decidable row, so the badge counts one (design
+		   D11): a frame whose count disagrees with its list misleads the reader. */
+		requests: { waiting: 1, panel: requestsPanel },
+		initialQuickView: "requests",
 	},
 };
 
@@ -1421,6 +1472,38 @@ export const InShellEligibilityGate: Story = {
 			<TeamBridgePageView {...args} />
 		</InTheShell>
 	),
+};
+
+/**
+ * A real outage (or, before 2026-11-17, ANY throttle): the hard unavailable
+ * gate. Kept beside the rate-limited frames so the two can be compared.
+ */
+export const InShellUnavailableGate: Story = {
+	...InShellEligibilityGate,
+	args: { eligibility: "unavailable" },
+};
+
+/**
+ * RATE LIMITED, NOTHING LOADED YET (incident 2026-11-17). The first status
+ * read was throttled by the edge's per-address rule: the soft "Slowing down"
+ * panel, which retries on its own, instead of "Team Bridge is unavailable".
+ */
+export const RateLimitedBeforeLoad: Story = {
+	args: { eligibility: "rate_limited" },
+	render: (args) => (
+		<InTheShell>
+			<TeamBridgePageView {...args} />
+		</InTheShell>
+	),
+};
+
+/**
+ * RATE LIMITED OVER A LOADED PAGE. The runtime kept the READY answer, so the
+ * conversations stay; the notice band says nothing new is arriving and that
+ * the page is retrying by itself.
+ */
+export const RateLimitedWithConversations: Story = {
+	args: { notice: <TeamBridgeRateLimitNote /> },
 };
 
 /**

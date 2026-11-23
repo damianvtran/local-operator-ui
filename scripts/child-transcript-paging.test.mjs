@@ -25,14 +25,42 @@ import { build } from "esbuild";
 const reactStandIn = `const R = () => globalThis.__reactRuntime;
 export const useState = (...a) => R().useState(...a);
 export const useEffect = (...a) => R().useEffect(...a);
+export const useLayoutEffect = (...a) => R().useLayoutEffect(...a);
 export const useRef = (...a) => R().useRef(...a);
 export const useCallback = (...a) => R().useCallback(...a);
-export default { useState, useEffect, useRef, useCallback };`;
+export default { useState, useEffect, useLayoutEffect, useRef, useCallback };`;
+
+/*
+ * `useChildTranscript` verifies raw archive bindings through the REAL
+ * `fetchDiffPage` in diff-history.tsx. That import also links the pager's
+ * layout-effect export, even though these tests mount only the reader hook.
+ * Keep that import boundary intact: replacing the pager/helper with a dummy
+ * would hide child containment/error-classification regressions. This is the
+ * existing btw-aside.test.mjs transport mock's production-shaped error, not an
+ * empty subclass: instanceof + status distinguish a 404 from a retryable error,
+ * and code/cause/retry/detail must survive unchanged for future reader cases.
+ */
+const transportStandIn = `
+export class DesktopControlError extends Error {
+	constructor(status, message, cause, code, retryAfterMs, detail) {
+		super(message);
+		this.name = "DesktopControlError";
+		this.status = status;
+		this.cause = cause;
+		this.code = code;
+		this.retryAfterMs = retryAfterMs;
+		this.detail = detail;
+	}
+}
+export const desktopResult = (request) => globalThis.__childRequest(request);`;
 
 const bundle = await build({
 	stdin: {
 		contents: `
 			export { useChildTranscript } from "./src/renderer/src/features/chat/components/run-details/use-child-transcript";
+			export { fetchDiffPage } from "./src/renderer/src/features/chat/components/trace/diff-history";
+			export { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+			export { useEffect, useLayoutEffect } from "react";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -54,8 +82,7 @@ const bundle = await build({
 					namespace: "child-fixture",
 				}));
 				builder.onLoad({ filter: /.*/, namespace: "child-fixture" }, () => ({
-					contents:
-						"export const desktopResult = (request) => globalThis.__childRequest(request);",
+					contents: transportStandIn,
 					loader: "js",
 				}));
 				builder.onResolve({ filter: /^react$/ }, () => ({
@@ -70,22 +97,37 @@ const bundle = await build({
 		},
 	],
 });
-const { useChildTranscript } = await import(
+const {
+	useChildTranscript,
+	fetchDiffPage,
+	DesktopControlError,
+	useEffect,
+	useLayoutEffect,
+} = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
-/** One cell per hook call, a setter that re-renders, dep-gated effects. */
+/**
+ * One cell per hook call, a setter that re-renders, dep-gated commit effects.
+ * Layout effects flush before passive effects regardless of registration order;
+ * cleanup belongs to the effect's commit phase, not to rendering. This extends
+ * the existing cell-store fixture rather than making useLayoutEffect a no-op
+ * or aliasing it to useEffect (which would silently reverse commit ordering).
+ */
 function makeRuntime() {
 	const cells = [];
 	let cursor = 0;
 	let effects = [];
+	let layoutEffects = [];
 	const runtime = { render: () => null };
 	const rerender = () => {
 		cursor = 0;
 		effects = [];
+		layoutEffects = [];
 		const out = runtime.render();
-		const flushed = effects;
+		const flushed = [...layoutEffects, ...effects];
 		effects = [];
+		layoutEffects = [];
 		for (const fn of flushed) fn?.();
 		return out;
 	};
@@ -100,6 +142,24 @@ function makeRuntime() {
 		next !== undefined &&
 		was.length === next.length &&
 		was.every((value, index) => Object.is(value, next[index]));
+	const effect = (phase, fn, deps) => {
+		const cell = slot();
+		if (unchanged(cell.deps, deps)) return;
+		cell.deps = deps;
+		cell.phase = phase;
+		(phase === "layout" ? layoutEffects : effects).push(() => {
+			cell.cleanup?.();
+			cell.cleanup = fn();
+		});
+	};
+	runtime.unmount = () => {
+		for (const phase of ["layout", "passive"]) {
+			for (const cell of cells) {
+				if (cell.phase === phase) cell.cleanup?.();
+			}
+		}
+		cells.length = 0;
+	};
 	globalThis.__reactRuntime = {
 		useState: (init) => {
 			const cell = slot();
@@ -128,18 +188,111 @@ function makeRuntime() {
 			}
 			return cell.fn;
 		},
-		useEffect: (fn, deps) => {
-			const cell = slot();
-			if (unchanged(cell.deps, deps)) return;
-			cell.cleanup?.();
-			cell.deps = deps;
-			effects.push(() => {
-				cell.cleanup = fn();
-			});
-		},
+		useEffect: (fn, deps) => effect("passive", fn, deps),
+		useLayoutEffect: (fn, deps) => effect("layout", fn, deps),
 	};
 	return runtime;
 }
+
+test("the transport stand-in preserves the production error shape", () => {
+	const cause = new Error("connection reset");
+	const detail = { retry_after_ms: 250 };
+	const error = new DesktopControlError(
+		null,
+		"transport failed",
+		cause,
+		"runtime_busy",
+		250,
+		detail,
+	);
+	assert.ok(error instanceof Error);
+	assert.ok(error instanceof DesktopControlError);
+	assert.equal(error.name, "DesktopControlError");
+	assert.equal(error.message, "transport failed");
+	assert.equal(error.status, null);
+	assert.equal(error.cause, cause);
+	assert.equal(error.code, "runtime_busy");
+	assert.equal(error.retryAfterMs, 250);
+	assert.equal(error.detail, detail);
+});
+
+test("the real child diff lookup distinguishes typed 404 from other failures", async () => {
+	const scope = { sessionId: "aaaaaaaaaaaa", childId: "child-a" };
+	const cursor = { start: 7, offset: 3 };
+	const requests = [];
+	let failure = new DesktopControlError(
+		404,
+		"absent",
+		undefined,
+		"diff_not_found",
+	);
+	globalThis.__childRequest = async (request) => {
+		requests.push(request);
+		throw failure;
+	};
+	assert.equal(await fetchDiffPage(scope, "call-a", cursor), "not_found");
+	assert.deepEqual(requests[0], {
+		op: "subagents.diff",
+		sessionId: scope.sessionId,
+		childId: scope.childId,
+		callId: "call-a",
+		start: 7,
+		offset: 3,
+		limit: 200,
+	});
+	for (const error of [
+		new DesktopControlError(503, "busy", undefined, "runtime_busy"),
+		new DesktopControlError(403, "forbidden", undefined, "forbidden"),
+		Object.assign(new Error("not a transport error"), {
+			status: 404,
+			code: "diff_not_found",
+		}),
+	]) {
+		failure = error;
+		await assert.rejects(fetchDiffPage(scope, "call-a", cursor), (caught) => {
+			assert.equal(caught, error, "only a typed 404 becomes a notice");
+			return true;
+		});
+	}
+});
+
+test("layout effects commit before passive effects, gate deps and clean up", () => {
+	const runtime = makeRuntime();
+	const calls = [];
+	let version = 1;
+	runtime.render = () => {
+		const current = version;
+		calls.push(`render:${current}`);
+		// Register passive FIRST: an alias/no-op layout mock must fail this test.
+		useEffect(() => {
+			calls.push(`passive:${current}`);
+			return () => calls.push(`clean-passive:${current}`);
+		}, [current]);
+		useLayoutEffect(() => {
+			calls.push(`layout:${current}`);
+			return () => calls.push(`clean-layout:${current}`);
+		}, [current]);
+	};
+	runtime.rerender();
+	assert.deepEqual(calls.splice(0), ["render:1", "layout:1", "passive:1"]);
+	runtime.rerender();
+	assert.deepEqual(
+		calls.splice(0),
+		["render:1"],
+		"unchanged deps do not rearm",
+	);
+	version = 2;
+	runtime.rerender();
+	assert.deepEqual(calls.splice(0), [
+		"render:2",
+		"clean-layout:1",
+		"layout:2",
+		"clean-passive:1",
+		"passive:2",
+	]);
+	runtime.unmount();
+	assert.deepEqual(calls, ["clean-layout:2", "clean-passive:2"]);
+});
 
 const SESSION = "aaaaaaaaaaaa";
 const TOTAL = 350;

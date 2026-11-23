@@ -120,6 +120,15 @@ export const agentMessagesStatusSchema = z
 		update_required: z.boolean(),
 		local: z.object({
 			enabled: z.boolean(),
+			/*
+			 * Whether THIS machine holds the committed owner for the endpoint
+			 * (runtime status contract, D1): false with an active hub endpoint is
+			 * "on elsewhere, not on this device". The Screening model row is gated
+			 * on it (#1928 round 1, S-2): the preference only steers this
+			 * machine's screening. Optional and lenient so an older runtime that
+			 * omits it still parses; absent reads as "not proven enrolled".
+			 */
+			enrolled: z.boolean().optional().catch(undefined),
 			onboarding: z.string(),
 			session: z.string(),
 		}),
@@ -206,6 +215,35 @@ export type AgentMessagesSettingsPut = {
 	label?: string;
 };
 
+/**
+ * The Screening model block the runtime adds to the settings read and write
+ * answers (local-operator #3632). `models` is the vetted list, each `value`
+ * spelled exactly as a write accepts it, because the renderer cannot import the
+ * Python table and a hardcoded copy would offer choices the chain ignores.
+ * `preferred` is null for "no choice", which is Automatic: the tested order.
+ *
+ * Read leniently, like `share_typing`: absent on an older runtime (the control
+ * is then not offered), and a malformed block reads as absent so it can never
+ * break the settings read. A malformed model row is dropped, not fatal.
+ */
+const screeningModelSchema = z.object({
+	value: z.string().min(1).max(192),
+	provider: z.string().max(64).optional(),
+	model_id: z.string().max(128).optional(),
+});
+export const agentMessagesScreeningSchema = z.object({
+	preferred: z.string().min(1).max(192).nullable().catch(null),
+	models: z.array(z.unknown()).transform((rows) =>
+		rows.flatMap((row) => {
+			const parsed = screeningModelSchema.safeParse(row);
+			return parsed.success ? [parsed.data] : [];
+		}),
+	),
+});
+export type AgentMessagesScreening = z.infer<
+	typeof agentMessagesScreeningSchema
+>;
+
 const consentRecordSchema = z
 	.object({
 		version: z.string().min(1),
@@ -261,6 +299,7 @@ export const agentMessagesSettingsResultSchema = z
 		// then the switch is not offered); a malformed value reads as absent so it
 		// can never break the settings read.
 		share_typing: z.boolean().optional().catch(undefined),
+		screening: agentMessagesScreeningSchema.optional().catch(undefined),
 	})
 	.passthrough();
 export type AgentMessagesSettingsResult = z.infer<

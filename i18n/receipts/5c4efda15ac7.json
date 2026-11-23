@@ -1,0 +1,57 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "5c4efda15ac7",
+  "locale": "hi",
+  "round": 2,
+  "status": "passed",
+  "audit_date": "2026-11-17",
+  "actual_model_source": "session system prompt (Model: anthropic/claude-opus-5-5); no fallback observed",
+  "independent_from_translator_session": true,
+  "translator_session_label": "prB1-tr-hi",
+  "previous_receipt": {
+    "path": "audit-hi-r1.json",
+    "sha256": "8e3edc70be080d27be724b8206f1603a21bfb4538371879049c675f9183150c4",
+    "status": "changes_requested"
+  },
+  "round1_dispositions": {
+    "HI-1": "fixed — open_in_canvas/too_large_note/too_large_title now use कैनवस (hi corpus: कैनवस 29, Latin Canvas 3, all pre-existing out-of-scope keys)",
+    "HI-2": "fixed — =1 arms added to running_tools, composing, queued alongside one/other; rendered 0,1,2,5 with intl-messageformat",
+    "HI-3": "fixed — queued ends with है in all arms",
+    "HI-4": "fixed — “खोलें” quoted in too_large_title",
+    "HI-5": "fixed — 'इस ऐप के लिए उपलब्ध नहीं है' in broken_unavailable and broken_media_unavailable"
+  },
+  "scope": "24 new keys added by 88d2ad3b7d in final uncommitted worktree bytes; all other keys unchanged vs 6e4ab9403c (diff-stat 25+/1-, only comma line changed)",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "hi": "9aa447da1f1d7188a15d7deb811d9f6a03975cde88be2d200d2b509227bd04bf",
+        "en": "dca993aa47b9c7c6287aadf423a750f0c923ff062eaf817f229d6b292a451be5"
+      },
+      "context_sha256": "a67abe26c757c3a5b514136d61d2223b4a17521b7b5ede4f815a7771b3a4b420",
+      "findings": [
+        {
+          "id": "HI-I1",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+          "note": "Pre-existing Latin 'Canvas' outside this audit's scope (also ui.chat.composer.tip.canvas, ui.common.file_actions.show_in_canvas); non-gating, recommend a follow-up sweep to कैनवस."
+        }
+      ]
+    },
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "hi": "8c936eeb18d43d51c83070dde4e080bf1c0b07327f06147f74ac16a075531dbd",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "context_sha256": "d10bc98fc6f0b3337dff3b08f06798d87eb1cdd3fa15c4a85e4fcedf05559c3f",
+      "findings": []
+    }
+  },
+  "not_verified": [
+    "no rendered frame of the app",
+    "no native-speaker review",
+    "terminal cell width estimated by grapheme count only"
+  ]
+}

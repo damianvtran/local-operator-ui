@@ -1,0 +1,49 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "190fe64b9fbc-phonepair-r2-ur",
+	"date": "2026-11-14",
+	"locale": "ur",
+	"independence": "Independent lopdev translation-auditor session 190fe64b9fbc (round-2 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the round-1 auditor (cf304a0ef14b). Configured model anthropic/claude-opus-5-5, the same family as the translator host: disclosed; served model not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/ur.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/ur/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/ur/ui.providers.json (ui.providers.phone.heading, .consent tunnel term), ui.settings.json (ui.settings.page.title)",
+		"spec": "lop-specs/mobile-pairing-design-v2.md §4.1 (grant sentence, Show phone password)",
+		"round1": "cf304a0ef14b replacements-r1.json and i18n/receipts/cf304a0ef14b-phonepair-r1-*.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "33e589a2d522de161298bd0be7b38bd82637d6a0",
+	"scope": "Round 2 delta re-audit of ui.phone_pairing: every key whose bytes changed in this locale in 41fd2166..33e589a2 (29 keys: the 24 English-driven new/changed keys incl. 12 password.*, plus 5 round-1 minor replacements applied verbatim), read against en, en .context.json, glossary, style guide and core relay.pairing/operator.pairing. The other 51 keys are byte-identical to the bytes round-1 audit cf304a0ef14b passed at 2f1f580e3 (verified by diff); carried, not re-read. Checked: ICU select arms mac/windows/other on all 7 select keys (parsed + formatted), placeholders, password.* claims, Settings path names, quoted button names, typography, widths.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+		"ur": "7dcc97cd1e3bd17dcb99cc771c37105a72f0c9c436ea29963f129e47e7cfb47f"
+	},
+	"context_sha256": "2e8c8b1004f666fb24a653bc86ae743d34bca5b18a0a37644b1750a4abbfe906",
+	"findings": [
+		{
+			"id": "UR-4",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.popup.denying",
+			"issue": "20 chars vs 'مسترد کریں' (10); follows the established ur busy-label pattern (بند کیا جا رہا ہے…) and the action row is flex-wrap. No change required.",
+			"proposed": null
+		},
+		{
+			"id": "UR-5",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.popup.manage_where",
+			"issue": "Path uses → like ui.phone_pairing.popup.unavailable_where and the UI ur precedent (core uses ←); consistent within the UI, no manual bidi controls (scanned). No change requested.",
+			"proposed": null
+		}
+	],
+	"resolved": [
+		{
+			"ref": "cf304a0ef14b UR-1, UR-2",
+			"verified": "approvals plural منظوریاں and “ ” quotes applied verbatim in 5 keys."
+		}
+	]
+}

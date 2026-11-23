@@ -1,0 +1,132 @@
+{
+	"ui.chat.ask_command.copy": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "button in the suggested-command row that copies the command to the clipboard",
+		"tone": "one verb"
+	},
+	"ui.chat.ask_command.dialog_caution": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "caution line in the run dialog asking the user to read the agent's command before running it",
+		"tone": "two short sentences, direct, not alarmist; \"this one\" is the single command shown above it"
+	},
+	"ui.chat.ask_command.dialog_closed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "note in the run dialog when the ask closed while the dialog was open; the confirm button is disabled",
+		"tone": "one sentence"
+	},
+	"ui.chat.ask_command.dialog_confirm": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "confirm button of the run dialog; types the command and presses Enter in a new terminal",
+		"tone": "short verb phrase"
+	},
+	"ui.chat.ask_command.dialog_device_local": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "dialog line saying where the command will run: a new terminal tab on this computer, starting in the user's home folder",
+		"tone": "one sentence"
+	},
+	"ui.chat.ask_command.dialog_device_remote": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {
+			"device": "the display name of the other computer; never translated"
+		},
+		"role": "dialog line when the agent works on another device: the command runs here on this computer, not on that device",
+		"tone": "one sentence; the dash may be replaced by the locale's natural clause break"
+	},
+	"ui.chat.ask_command.dialog_device_remote_unnamed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "same as dialog_device_remote when the other device has no known name",
+		"tone": "one sentence"
+	},
+	"ui.chat.ask_command.dialog_refused": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "line shown in the run dialog when the confirm was refused at the last moment (for example the agent moved to another device), saying the command cannot run from here and that nothing ran",
+		"tone": "two short sentences: why, then that nothing ran"
+	},
+	"ui.chat.ask_command.dialog_title": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "title of the confirmation dialog shown before a suggested command is typed into a terminal and run",
+		"tone": "short question"
+	},
+	"ui.chat.ask_command.insert": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "button that types the suggested command into a new terminal tab without running it (opens the terminal with the command typed in)",
+		"tone": "short verb phrase naming the destination (the terminal); must stay short (dense button)"
+	},
+	"ui.chat.ask_command.insert_hint": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "tooltip and accessible description of the Open in terminal button; it may be shown from a list of every conversation, so it never says which conversation",
+		"tone": "short phrase, no trailing period"
+	},
+	"ui.chat.ask_command.label": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "accessible name of the row under an ask's question that shows a shell command the agent suggests",
+		"tone": "short noun phrase, sentence case"
+	},
+	"ui.chat.ask_command.notice_elsewhere": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {
+			"device": "the display name of the other computer, e.g. 'Damian’s MacBook'; never translated"
+		},
+		"role": "line under a suggested command when the agent works on another device, so the command can only be inserted, not run, on this computer",
+		"tone": "two short sentences, plain and calm"
+	},
+	"ui.chat.ask_command.notice_elsewhere_unnamed": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "same as notice_elsewhere when the other device has no known name",
+		"tone": "two short sentences"
+	},
+	"ui.chat.ask_command.notice_target_unknown": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "line under a suggested command when the agent's request does not say which computer the command is for, so it offers Copy and Open in terminal but not Run",
+		"tone": "one sentence, full stop"
+	},
+	"ui.chat.ask_command.notice_unplaced": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "line under a suggested command when the app cannot tell which computer the agent works on, so it offers Copy and Open in terminal but not Run",
+		"tone": "one sentence, full stop"
+	},
+	"ui.chat.ask_command.run": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "button that opens a confirmation before running the suggested command; the ellipsis signals a dialog follows",
+		"tone": "one verb plus ellipsis"
+	},
+	"ui.chat.ask_command.run_hint": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "tooltip and accessible description of the Run… button: types the command into a new terminal and presses Enter, only after a confirmation dialog",
+		"tone": "short phrase, no trailing period"
+	}
+}

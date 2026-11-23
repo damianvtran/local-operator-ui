@@ -424,7 +424,7 @@ export const AgentDetailsPage: React.FC = () => {
 								onClick={handleDownload}
 								disabled={downloadMutation.isPending}
 								aria-label={t("ui.hub.detail.download_aria")}
-								className="ml-1"
+								className="ms-1"
 							>
 								<Download />
 								<CountDisplay>
@@ -447,7 +447,7 @@ export const AgentDetailsPage: React.FC = () => {
 									onClick={() => setIsDelistDialogOpen(true)}
 									disabled={delistMutation.isPending}
 									aria-label={t("ui.hub.detail.delist_aria")}
-									className="ml-1 text-danger hover:bg-danger-wash hover:text-danger"
+									className="ms-1 text-danger hover:bg-danger-wash hover:text-danger"
 								>
 									<Trash2 />
 								</Button>

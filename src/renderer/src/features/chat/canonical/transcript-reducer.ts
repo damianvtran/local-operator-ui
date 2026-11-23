@@ -2,6 +2,11 @@ import {
 	type BridgeReceipt,
 	bridgeReceiptOf,
 } from "../components/trace/bridge-receipt-model";
+import {
+	type InlineUiOverlay,
+	inlineUiForRow,
+	readInlineUi,
+} from "./inline-ui-parts";
 
 /**
  * Canonical transcript reducer.
@@ -44,6 +49,13 @@ import {
 	preferBridgeFacts,
 	preferBridgeLabel,
 } from "../components/trace/bridge-row-model";
+import {
+	DIFF_BINDING_CUSTOM_TYPE,
+	type DiffFullDescriptor,
+	isAdmittedDiffBinding,
+	parseDiffBinding,
+	preferDiffFull,
+} from "../components/trace/diff-history-model";
 import {
 	type HubReceipt,
 	type PeerSender,
@@ -289,6 +301,8 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			text: string;
+			/** View-only placement, verified against this exact text. */
+			inlineUi?: InlineUiOverlay;
 			/** Still receiving deltas; the view shows the text without a cursor. */
 			streaming: boolean;
 			/**
@@ -565,6 +579,25 @@ type TranscriptPayloadRecord =
 			 * flips the key between present and absent.
 			 */
 			diffTruncatedRows?: number;
+			/**
+			 * The full archived diff's descriptor (`details.diff_full`), parsed by
+			 * `preferDiffFull`; null when there is none (complete preview, or a
+			 * call recorded before the archive existed). It names the artifact
+			 * only to the core: the renderer pages it by call id, so replaying a
+			 * stored transcript reaches the same immutable rows without the
+			 * artifact ever riding the transcript. Optional for the same
+			 * hand-built-fixture reason as `diffTruncatedRows`.
+			 */
+			diffFull?: DiffFullDescriptor | null;
+			/**
+			 * Built ONLY from a host diff binding (`tool_call_diff_binding_v1`,
+			 * see `diff-history-model.ts`): proof the host CAPTURED this nested
+			 * write/edit's full diff, never the executor's completion. The row
+			 * paints as a quiet receipt (no success/failure outcome, no counts) whose
+			 * body is the full-diff pager. A live record for the same call is never
+			 * replaced by one; it only gains the descriptor. Absent = false.
+			 */
+			captureOnly?: boolean;
 			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
@@ -3218,6 +3251,98 @@ function pageRowIsOlderThanLiveRow(
 	return stamp.seq > witness.seq;
 }
 
+/**
+ * The one logical record a nested call's diff binding contributes, keyed by
+ * the NESTED call id (`tool:<call_id>`) so the live end event, a replayed page
+ * and a later upsert all land on the same record - one row, one focus key.
+ *
+ * Executor status stays the executor's: when a record already exists for the
+ * call (the live nested end event, or a durable row), it is kept as it is and
+ * only GAINS the descriptor if it had none. A record that exists only because
+ * of the binding claims nothing beyond the capture (`captureOnly`): no output,
+ * no error, no duration, zero counts - a metadata row cannot state `+N/-N`,
+ * and the descriptor's row total is not an added/removed count.
+ */
+function bindingRecord(
+	entry: DesktopHistoryPage["entries"][number],
+	ts: number,
+	previous: TranscriptRecord | undefined,
+): TranscriptRecord | null {
+	const payload = entry.payload;
+	if (!isAdmittedDiffBinding(payload)) return null;
+	const details = (payload as { details?: { session_id?: unknown } }).details;
+	// Admission already checked the view's id; re-parse under the id admission
+	// accepted so the reducer reads the same validated fields, not raw ones.
+	const binding = parseDiffBinding(
+		payload,
+		typeof details?.session_id === "string" ? details.session_id : null,
+	);
+	if (!binding) return null;
+	if (previous?.kind === "tool" && previous.toolCallId === binding.callId) {
+		if (!previous.captureOnly) {
+			return previous.diffFull
+				? previous
+				: { ...previous, diffFull: binding.descriptor };
+		}
+		if (
+			previous.diffFull &&
+			sameDescriptor(previous.diffFull, binding.descriptor)
+		)
+			return previous;
+	}
+	return {
+		kind: "tool",
+		id: `tool:${binding.callId}`,
+		ts,
+		toolCallId: binding.callId,
+		toolName: binding.tool,
+		intent: null,
+		args: null,
+		phase: "done",
+		argumentBytes: 0,
+		notRunReason: null,
+		notRunKind: null,
+		neverSent: false,
+		output: null,
+		isError: false,
+		durationS: null,
+		startedAt: null,
+		endedAt: null,
+		images: EMPTY_IMAGES,
+		added: 0,
+		removed: 0,
+		diff: null,
+		diffTruncatedRows: 0,
+		diffFull: binding.descriptor,
+		captureOnly: true,
+		stopped: false,
+	};
+}
+
+function sameDescriptor(a: DiffFullDescriptor, b: DiffFullDescriptor): boolean {
+	return (
+		a.state === b.state &&
+		(a.state !== "archived" || (b.state === "archived" && a.rows === b.rows))
+	);
+}
+
+/**
+ * The record key an entry upserts under when it is not its own entry id: a
+ * tool row's (or a diff binding's NESTED) call id. One lookup for both history
+ * merges, so a binding replayed on a later page finds the record it made.
+ */
+function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
+	const payload = entry.payload as Record<string, unknown> | undefined;
+	if (
+		entry.type === "custom" &&
+		payload?.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	) {
+		const details = payload.details as Record<string, unknown> | undefined;
+		return `tool:${typeof details?.call_id === "string" ? details.call_id : ""}`; // i18n: ignore internal record-index key; never rendered
+	}
+	return `tool:${String(payload?.tool_call_id ?? "")}`; // i18n: ignore internal record-index key; never rendered
+}
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -3234,6 +3359,7 @@ function durableRecord(
 	 *   idempotent.
 	 */
 	previous?: TranscriptRecord,
+	inlineUiEnvelope?: unknown,
 ): TranscriptRecord | null {
 	const payload = entry.payload ?? {};
 	const ts = Math.round((entry.ts ?? 0) * 1000);
@@ -3347,11 +3473,26 @@ function durableRecord(
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		return supplementRecordFromDetails(ts, details, previous);
 	}
+	/*
+	 * A NESTED WRITE/EDIT DIFF BINDING. Painted only when one of the two
+	 * admission doors in `diff-history-model.ts` marked THIS payload object
+	 * (a projected parent page, or a raw child candidate the scoped GET
+	 * confirmed); an unadmitted lookalike - an agent printing the same JSON into
+	 * a raw transcript - is dropped, never painted as a stand-in.
+	 */
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	)
+		return bindingRecord(entry, ts, previous);
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
 		const customType = String(payload.custom_type ?? "");
 		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
+		// A binding in the MESSAGE envelope is no door the core serves one
+		// through; never let the generic custom arm paint its JSON as text.
+		if (customType === DIFF_BINDING_CUSTOM_TYPE) return null;
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		// The receipts come before the generic branch, which would paint
 		// `details.text` — the model-facing envelope for both of them.
@@ -3526,7 +3667,7 @@ function durableRecord(
 				: {}),
 			...(customType === "team_bridge_message"
 				? {
-						bridgeReceipt: bridgeReceiptOf(details),
+						bridgeReceipt: bridgeReceiptOf(details, text),
 					}
 				: {}),
 			attribution:
@@ -3640,10 +3781,15 @@ function durableRecord(
 			? (payload.tool_calls as Record<string, unknown>[])
 			: [];
 		const text = messageText(payload);
+		const inlineUi = readInlineUi(
+			inlineUiForRow(inlineUiEnvelope, entry.id),
+			text,
+			previous?.kind === "assistant" ? previous.inlineUi : undefined,
+		);
 		// An assistant row that only carried tool calls has no prose to show;
 		// its tool rows are painted from the paired `tool` results. It still
 		// occupies its id so a live echo of it coalesces instead of duplicating.
-		if (!text && toolCalls.length > 0) {
+		if (!text && !inlineUi && toolCalls.length > 0) {
 			return {
 				kind: "assistant",
 				id: entry.id,
@@ -3661,6 +3807,7 @@ function durableRecord(
 			id: entry.id,
 			ts,
 			text,
+			...(inlineUi ? { inlineUi } : {}),
 			complete: true,
 			streaming: false,
 			/* The final-response fact, read from the journal row's own payload. */
@@ -3783,6 +3930,10 @@ function durableRecord(
 			diffTruncatedRows: preferDiffTruncatedRows(
 				providerPayload.details,
 				previous?.kind === "tool" ? (previous.diffTruncatedRows ?? 0) : 0,
+			),
+			diffFull: preferDiffFull(
+				providerPayload.details,
+				previous?.kind === "tool" ? (previous.diffFull ?? null) : null,
 			),
 			// A durable row is the authoritative record of how the call ended - and
 			// when the runtime's own classifier says the end was an INTERRUPT
@@ -4446,11 +4597,11 @@ export function applyPeerSourcePayload(
 		for (const entry of entries) {
 			if (typeof entry.id !== "string" || entry.id === "") continue;
 			if (acceptanceSuperseded(entry.id)) continue;
-			const toolKey = `tool:${String(entry.payload?.tool_call_id ?? "")}`;
+			const toolKey = entryCallKey(entry);
 			const position = index.get(entry.id) ?? index.get(toolKey);
 			const current = position === undefined ? undefined : records[position];
 			if (!current) continue;
-			let record = durableRecord(entry, current);
+			let record = durableRecord(entry, current, page.inline_ui);
 			if (!record) continue;
 			/*
 			 * The continuation stamp is the ROW's, not the read's (the rule
@@ -4703,12 +4854,9 @@ export function applyHistoryPage(
 		// a supplement row's version/rank merge see the version it supersedes.
 		const previous =
 			state.records[state.index.get(entry.id) ?? -1] ??
-			state.records[
-				state.index.get(`tool:${String(entry.payload?.tool_call_id ?? "")}`) ??
-					-1
-			] ??
+			state.records[state.index.get(entryCallKey(entry)) ?? -1] ??
 			previousRecordForSupplement(state, entry);
-		let record = durableRecord(entry, previous);
+		let record = durableRecord(entry, previous, page.inline_ui);
 		// A continuation page may contain only the immutable queued original, not
 		// its later prune. Keep the already correlated applied overlay rather than
 		// rolling a signed completion back to a proposal on that partial read.
@@ -5423,6 +5571,15 @@ export function applyEvent(
 			let next = state;
 			for (const record of state.records) {
 				if (record.kind === "assistant" && record.streaming) {
+					// If message_end never arrived, only the agent-end's exact row
+					// projection can seal a provisional widget. A tombstone or a
+					// missing/mismatched projection leaves the same prose-only row.
+					const { inlineUi: priorInlineUi, ...base } = record;
+					const inlineUi = readInlineUi(
+						inlineUiForRow(event.inline_ui, record.id),
+						record.text,
+						priorInlineUi,
+					);
 					/*
 					 * The settle stamp rides the same sweep that clears `streaming`: a
 					 * record the turn end settles (an aborted stream is the one this arm
@@ -5430,7 +5587,8 @@ export function applyEvent(
 					 * the span composition reads as `settledAt ?? ts`.
 					 */
 					next = upsert(next, {
-						...record,
+						...base,
+						...(inlineUi ? { inlineUi } : {}),
 						streaming: false,
 						settledAt: now,
 						/*
@@ -5637,6 +5795,10 @@ export function applyEvent(
 				return state;
 			}
 			const position = state.index.get(messageId);
+			const overlay =
+				message.role === "assistant"
+					? inlineUiForRow(event.inline_ui, messageId)
+					: undefined;
 			const delta = String(event.delta ?? "");
 			// The event's OWN text is the whole text this case may use. The
 			// producer assembles `message.content` once, at the END of the call, for
@@ -5666,14 +5828,19 @@ export function applyEvent(
 				 * shape the old branch was written against, and it stays correct for
 				 * any producer that sends one.
 				 */
-				if (!body && !delta) return state;
+				const text = body + delta;
+				const attested = readInlineUi(overlay, text, undefined, options.seed);
+				const inlineUi = attested?.widgets.length ? attested : undefined;
+				if (!text && !inlineUi) return state;
 				return upsert(state, {
 					kind: "assistant",
 					id: messageId,
 					ts: now,
-					text: body ? body + delta : delta,
+					text,
+					...(inlineUi ? { inlineUi } : {}),
 					streaming: true,
-					truncated: body === "" ? "prefix" : undefined,
+					truncated:
+						!body && !(options.seed && attested) ? "prefix" : undefined,
 					...(incoming ? { frame: incoming } : {}),
 					stopReason: null,
 					error: false,
@@ -5753,6 +5920,27 @@ export function applyEvent(
 			// branches below stamp it.
 			const nextFrame = advancedFrame(current.frame, incoming);
 			if (options.seed === true && !body) {
+				// For a marked message the reconnect update carries all projected
+				// prose as delta. A validated sidecar whose basis equals that delta
+				// is proof of a full snapshot, not a chunk. Never replace a prefix
+				// we already saw with a divergent or shorter snapshot.
+				const seedIsCurrent = !incoming || nextFrame === incoming;
+				const seededInlineUi = seedIsCurrent
+					? readInlineUi(overlay, delta, current.inlineUi, true)
+					: undefined;
+				if (seededInlineUi && delta.startsWith(current.text)) {
+					return upsert(state, {
+						...current,
+						text: delta,
+						// Empty is wire provenance, not a figure or a way to erase an
+						// already painted valid figure on an overlapping seed.
+						inlineUi: seededInlineUi.widgets.length
+							? seededInlineUi
+							: current.inlineUi && { ...current.inlineUi, text: delta },
+						truncated: undefined,
+						...(nextFrame ? { frame: nextFrame } : {}),
+					});
+				}
 				/*
 				 * A SEEDED DELTA-ONLY frame, against a row already on screen.
 				 *
@@ -5785,11 +5973,17 @@ export function applyEvent(
 				 * is a running snapshot of the whole message, so the append path below is
 				 * exactly right for it and is left to handle it — seeded or live alike.
 				 */
-				if (!current.text && !delta) return state;
+				const text = current.text || delta;
+				const inlineUi = seedIsCurrent
+					? readInlineUi(overlay, text, current.inlineUi)
+					: current.inlineUi;
+				if (!text && !inlineUi) return state;
+				const { inlineUi: _previousOverlay, ...base } = current;
 				streamDiagnostics.seededDeltaWithheld += current.text ? 1 : 0;
 				return upsert(state, {
-					...current,
-					text: current.text || delta,
+					...base,
+					text,
+					...(inlineUi ? { inlineUi } : {}),
 					// The seed states the row as of the snapshot, so the snapshot's
 					// own cursor is the position this text belongs to — advanced,
 					// never regressed (see `advancedFrame`).
@@ -5818,14 +6012,25 @@ export function applyEvent(
 			let next: string;
 			if (body) {
 				next = body + delta;
-				if (next.length <= current.text.length) return state;
+				if (
+					next.length < current.text.length ||
+					(next.length === current.text.length &&
+						(!overlay || next !== current.text))
+				)
+					return state;
 			} else {
-				if (!delta) return state;
 				next = current.text + delta;
 			}
+			const inlineUi = readInlineUi(overlay, next, current.inlineUi);
+			// A widget can complete without a prose delta. Still require the
+			// exact basis and the normal cursor/order checks above.
+			if (next === current.text && (!inlineUi || inlineUi === current.inlineUi))
+				return state;
+			const { inlineUi: _previousOverlay, ...base } = current;
 			return upsert(state, {
-				...current,
+				...base,
 				text: next,
+				...(inlineUi ? { inlineUi } : {}),
 				// The frame that carried this text IS the row's new position: a later
 				// re-delivery of the same frame (or an interleave from the
 				// predecessor stream) is refused by the gate above rather than
@@ -5941,6 +6146,11 @@ export function applyEvent(
 			 */
 			const previous =
 				position === undefined ? undefined : state.records[position];
+			const inlineUi = readInlineUi(
+				inlineUiForRow(event.inline_ui, messageId),
+				text,
+				previous?.kind === "assistant" ? previous.inlineUi : undefined,
+			);
 			/*
 			 * THE SAME COMPLETION MARK THE DURABLE READ GIVES THE SAME FACT.
 			 *
@@ -5965,7 +6175,10 @@ export function applyEvent(
 				id: messageId,
 				ts: position === undefined ? now : state.records[position].ts,
 				text,
-				...(text || toolCalls.length === 0 ? { complete: true } : {}),
+				...(inlineUi ? { inlineUi } : {}),
+				...(text || inlineUi || toolCalls.length === 0
+					? { complete: true }
+					: {}),
 				streaming: false,
 				/**
 				 * THE FINAL-RESPONSE FACT, recorded at the one moment the frame states it
@@ -6090,6 +6303,9 @@ export function applyEvent(
 				}),
 				has_more: state.hasMore,
 				cursor_missing: false,
+				// Catch-up is another history producer; the same row validator must
+				// see its overlay on both the merge and replacement paths.
+				inline_ui: event.inline_ui,
 				...(acceptedDomain ? { journal_generation: familyGeneration } : {}),
 			};
 			// `reset` is the producer stating that this replay REPLACES the viewport
@@ -6301,6 +6517,7 @@ export function applyEvent(
 				// already settled, so this cannot blank one.
 				diff: null,
 				diffTruncatedRows: 0,
+				diffFull: null,
 				stopped: false,
 				notRunReason: notRun,
 				// The kind rides the verdict and nothing else: no verdict, no class.
@@ -6455,6 +6672,7 @@ export function applyEvent(
 				diff: current?.kind === "tool" ? current.diff : null,
 				diffTruncatedRows:
 					current?.kind === "tool" ? (current.diffTruncatedRows ?? 0) : 0,
+				diffFull: current?.kind === "tool" ? (current.diffFull ?? null) : null,
 				// The live progress payload survives a replayed/reviving start: the
 				// update frames are self-replacing, but a replay between two of them
 				// must not blank what the row already showed (the same rule the diff
@@ -6533,6 +6751,7 @@ export function applyEvent(
 							removed: 0,
 							diff: null,
 							diffTruncatedRows: 0,
+							diffFull: null,
 							stopped: false,
 						};
 			// The row is settled, so this is also the last chance to LEARN the call's
@@ -6731,6 +6950,7 @@ export function applyEvent(
 					result.details,
 					base.diffTruncatedRows ?? 0,
 				),
+				diffFull: preferDiffFull(result.details, base.diffFull ?? null),
 				// It reported an end, so whatever happened it was not interrupted —
 				// UNLESS THE USER STOPPED IT (UX round 2, U7), or the WIRE's own fault
 				// marker says the end was an interrupt (`interruptedFault`). The leading

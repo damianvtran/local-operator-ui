@@ -1,3 +1,4 @@
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -93,7 +94,16 @@ export const SidebarTemporaryGroup: FC<{
 									})
 								: t(holdLabelKey(label.code));
 						return (
-							<li key={row.session_id} data-temporary-row={row.session_id}>
+							/*
+							 * The row is user content: its button's nested title and its
+							 * `title` attribute both carry the chat's name (review round 1,
+							 * M1). The click stays countable through `data-chat-row`.
+							 */
+							<li
+								key={row.session_id}
+								data-temporary-row={row.session_id}
+								className={USER_CONTENT_CLASS}
+							>
 								<button
 									type="button"
 									data-chat-row

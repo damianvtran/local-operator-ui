@@ -92,5 +92,11 @@
 	"ui.agentMessages.settings.action.turn_on_again": "دوبارہ فعال کریں",
 	"ui.agentMessages.settings.consent.via_default_on": "ڈیفالٹ طور پر فعال",
 	"ui.agentMessages.settings.share_typing.label": "میرے ٹائپ کرنے کی اطلاع دکھائیں",
-	"ui.agentMessages.settings.share_typing.description": "آپ کی Team Bridge گفتگو میں شامل لوگ آپ کے لکھتے وقت ایک مختصر “ٹائپ کر رہے ہیں” لائن دیکھتے ہیں۔ آپ جو لکھتے ہیں وہ کبھی شیئر نہیں ہوتا۔"
+	"ui.agentMessages.settings.share_typing.description": "آپ کی Team Bridge گفتگو میں شامل لوگ آپ کے لکھتے وقت ایک مختصر “ٹائپ کر رہے ہیں” لائن دیکھتے ہیں۔ آپ جو لکھتے ہیں وہ کبھی شیئر نہیں ہوتا۔",
+	"ui.agentMessages.settings.screening.title": "جانچ ماڈل",
+	"ui.agentMessages.settings.screening.help": "اختیاری۔ آنے والے ایجنٹ پیغامات کی جانچ کرتے وقت یہ مشین سب سے پہلے کون سا ماڈل آزمائے، یہ چنتا ہے۔ اگر اس ماڈل تک رسائی نہ ہو سکے، وہ آپ کے اکاؤنٹ پر دستیاب نہ ہو، یا اس کا کوٹہ یا کریڈٹ ختم ہو جائے تو جانچ اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلی جاتی ہے، اس لیے Team Bridge کام کرتا رہتا ہے۔ اگر فراہم کنندہ درخواست بلاک کر دے یا کسی اندرونی خرابی سے ناکام ہو جائے تو اس کے بجائے آنے والے پیغامات روک کر رکھے جاتے ہیں، اس لیے ایسا ماڈل چنیں جسے استعمال کرنے کی آپ کے اکاؤنٹ کو اجازت ہو۔",
+	"ui.agentMessages.settings.screening.automatic": "خودکار، {model} سے شروع",
+	"ui.agentMessages.settings.screening.unavailable": "Local Operator کے اس ورژن میں جانچ ماڈل چننے کا اختیار نہیں ہے۔ جانچ اب بھی اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلتی ہے۔",
+	"ui.agentMessages.settings.screening.route_provider": "آپ کے {provider} اکاؤنٹ سے",
+	"ui.agentMessages.settings.screening.route_radient": "آپ کے Radient اکاؤنٹ سے"
 }

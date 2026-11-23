@@ -65,5 +65,18 @@
 	"ui.agents.detail.empty.instructions": "Aucune instruction pour l’instant.",
 	"ui.agents.detail.action.create_copy": "Créer la copie",
 	"ui.agents.detail.action.creating": "Création…",
-	"ui.agents.detail.action.discard_new_agent": "Abandonner ce nouvel agent ?"
+	"ui.agents.detail.action.discard_new_agent": "Abandonner ce nouvel agent ?",
+	"ui.agents.detail.create.description_duplicate": "Une copie de {name}. C’est un agent distinct : le modifier ne change pas l’original.",
+	"ui.agents.detail.create.description_new": "Instructions réutilisables, partagées par les commandes d’agent, les sous-agents et les équipes. Les conversations restent séparées.",
+	"ui.agents.detail.create.error_generic": "Impossible de créer l’agent.",
+	"ui.agents.detail.create.error_instructions_required": "Donnez des instructions à l’agent.",
+	"ui.agents.detail.create.error_name_grammar": "Les noms ne peuvent contenir ni espaces ni barres obliques.",
+	"ui.agents.detail.create.error_name_required": "Donnez un nom à l’agent.",
+	"ui.agents.detail.create.error_name_taken": "Un agent nommé « {name} » existe déjà. Choisissez un autre nom, ou ouvrez l’existant pour le modifier.",
+	"ui.agents.detail.create.title_duplicate": "Dupliquer en nouvel agent",
+	"ui.agents.detail.create.title_new": "Nouvel agent",
+	"ui.agents.detail.edit.error_generic": "Impossible d’enregistrer l’agent.",
+	"ui.agents.detail.tools.error_grammar": "Les noms d’outils peuvent contenir des lettres, des chiffres, un point, un tiret bas, un trait d’union ou deux-points.",
+	"ui.agents.detail.tools.error_duplicate": "Cet outil est déjà répertorié.",
+	"ui.agents.detail.ask_change_prefill": "Modifiez l’agent « {name} » : "
 }

@@ -69,7 +69,10 @@ test("the shipped window callback cannot interrupt multi-tab teardown after wind
 	const source = readFileSync("src/main/browser/index.ts", "utf8");
 	const registryStart = source.indexOf("const registry = new TabRegistry(");
 	const start = source.indexOf("\t\t\t(view, presented) => {", registryStart);
-	const end = source.indexOf("\n\t\t);", start);
+	// The callback's own closing brace, not the constructor's: the live composite
+	// added a later argument (`onBeforeLayout`) after this one.
+	const close = "\n\t\t\t},";
+	const end = source.indexOf(close, start) + close.length;
 	assert.ok(
 		registryStart >= 0 && start > registryStart && end > start,
 		"native presentation binding exists",

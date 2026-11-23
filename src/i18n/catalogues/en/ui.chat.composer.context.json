@@ -462,6 +462,12 @@
 		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
 		"maxCells": 150
 	},
+	"ui.chat.composer.dictation_failed_too_long_take_kept": {
+		"role": "dictation failure row beside a Discard control, no Retry",
+		"tone": "failure sentence that states the size limit plainly, then names the one action",
+		"note": "The recording is over the app's upload limit, so sending the same bytes again cannot work and there is no Retry beside this row. Say the recording is too long to send and that the reader should discard it and record a shorter one. Do not say 'try again'; do not promise the take can be sent. The control beside it is ui.common.actions.discard.",
+		"maxCells": 150
+	},
 	"ui.chat.composer.secret_closure_notice": {
 		"role": "notice rendered above the message box while a secret ask holds the composer paused",
 		"tone": "calm explanatory sentence, sentence case, one em dash before the consequence",
@@ -509,5 +515,85 @@
 		"length": "",
 		"note": "Shown on the send control while the agent works and the box holds text: sending reaches the running turn using the configured default mode, and the Esc key (the only route to Stop while text is typed) stops it. Keep the key names Enter and Esc exactly as written. maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {}
+	},
+	"ui.chat.composer.dictated_away.not_sent": {
+		"role": "composer notice: a dictated send refused in a chat the reader is looking at",
+		"tone": "plain sentence; names the chat, the one reason, and says where the text is",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.not_sent_body": {
+		"role": "toast body for the same refusal, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name the line above carries",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.transcription_failed": {
+		"role": "composer notice: the dictation could not be transcribed after the reader left",
+		"tone": "plain sentence; says the recording is gone and asks for a new one",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.transcription_failed_body": {
+		"role": "toast body for the same failure, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.reason_edited": {
+		"role": "reason clause inside the refusal sentence: the draft changed during transcription",
+		"tone": "lower-case clause that follows a colon; completes the sentence",
+		"maxCells": 80
+	},
+	"ui.chat.composer.dictated_away.reason_command": {
+		"role": "reason clause: the words would have run as a slash command",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 45
+	},
+	"ui.chat.composer.dictated_away.reason_gate": {
+		"role": "reason clause: the words would have answered a pending approval gate",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 70
+	},
+	"ui.chat.composer.dictated_away.reason_secret": {
+		"role": "reason clause: the words look like a credential",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 40
+	},
+	"ui.chat.composer.dictated_away.reason_no_model": {
+		"role": "reason clause: that chat has no model selected",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 55
+	},
+	"ui.chat.composer.dictated_away.reason_unavailable": {
+		"role": "reason clause: the chat could not take the message for any other reason",
+		"tone": "lower-case clause that follows a colon; must not claim a cause",
+		"maxCells": 50
+	},
+	"ui.chat.composer.dictated_away.reason_not_ready": {
+		"role": "reason clause: the chat is still opening or reconnecting",
+		"tone": "lower-case clause that follows a colon",
+		"maxCells": 40
+	},
+	"ui.chat.composer.dictated_away.origin_gone": {
+		"role": "composer notice: a dictated send refused because the chat it belonged to no longer exists",
+		"tone": "plain sentence; names the chat and states that the text is lost, promising nothing",
+		"maxCells": 130
+	},
+	"ui.chat.composer.dictated_away.origin_gone_body": {
+		"role": "toast body for the same refusal, under the chat's own truncated name line",
+		"tone": "plain sentence; does not repeat the chat name",
+		"maxCells": 110
+	},
+	"ui.chat.composer.dictated_away.open_chat": {
+		"role": "toast action that opens the chat the refused dictation belonged to",
+		"tone": "short imperative action",
+		"maxCells": 14
+	},
+	"ui.chat.composer.dictated_away.draft_label": {
+		"role": "name used for a new chat that has no title yet",
+		"tone": "plain noun phrase",
+		"maxCells": 18
+	},
+	"ui.chat.composer.dictated_away.untitled_chat": {
+		"role": "name used for a live conversation that has no title",
+		"tone": "plain noun phrase",
+		"maxCells": 18
 	}
 }

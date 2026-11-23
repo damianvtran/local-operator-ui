@@ -1,0 +1,139 @@
+{
+  "kind": "issued scoped audit artifacts only; do not apply same-session candidates as extra auditors",
+  "session": "a0245acae0c5",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-11-12T23:51:22.534593+00:00",
+  "namespace": "ui.chat.canonical",
+  "only_receipts_for_application": {
+    "ru": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-receipt-20261112T234806Z.json",
+      "sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+      "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json",
+        "sha256": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d",
+        "canonical_destination": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json"
+      }
+    },
+    "ur": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+      "sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e",
+      "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json",
+        "sha256": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764",
+        "canonical_destination": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json"
+      }
+    },
+    "vi": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json",
+      "sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+      "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+        "sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+        "canonical_destination": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json"
+      }
+    },
+    "zh-CN": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json",
+      "sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+      "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      },
+      "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+        "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+        "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json"
+      }
+    }
+  },
+  "companions": {
+    "derivation": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba"
+    },
+    "accepted_readback": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+    },
+    "source_primary_refs": [
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+        "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+        "kind": "This auditor accepted bounded evidence readback; actual pixels personally viewed in the preceding bounded turn, not freshly rendered now"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+        "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+        "kind": "This auditor readback narrative and exact23 mapping"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+        "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+        "kind": "150 image entries, every current artifact re-hash-checked"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+        "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+        "kind": "Capture source identity, all19 source hashes match frozen index"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+        "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+        "kind": "Routing plan only, not geometry or executed observations"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-independent-provenance.json",
+        "sha256": "5dc88629e7163a62b95edaebda77d0e23f0a702ad3479253cc441b802d91df4b",
+        "kind": "This auditor original independent raw-member provenance; earlier broad mechanical scope, not fresh490 semantics"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/convergence-provenance-map.json",
+        "sha256": "c98003c8e1d98699885e8ab51308634d21e9cf59ce01de6d7925d29e7bb20720",
+        "kind": "Coder map provided as reference; substantive byte ancestry was independently checked, not accepted on trust"
+      }
+    ]
+  },
+  "current_source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+  "current_context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+  "same_original_auditor_lineage": true,
+  "no_assembler_invoked": true,
+  "all_old_own_artifacts_unchanged": true,
+  "elapsed_seconds": 408.244581
+}

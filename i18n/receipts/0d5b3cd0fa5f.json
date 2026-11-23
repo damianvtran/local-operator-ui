@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "batch": "identity-footer",
+  "pr": null,
+  "head": "fdf96a7e2e986f4ccef207fa28ee7da7a98ee1f6",
+  "base": "origin/main",
+  "locale": "ur",
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "session": "8fce03b1400d",
+  "instance": "0d5b3cd0fa5f",
+  "date": "2026-11-17",
+  "status": "changes_requested",
+  "independence": "Independent audit: I did not translate these strings and read no translator report; verdict formed from the en values, en context sidecars, consuming code, ur neighbours, glossary and ur style guide. No catalogue edited, no MT service used.",
+  "actual_model_source": "Session system prompt names anthropic/claude-opus-5-5 as the served model; no fallback observed during this run.",
+  "llm_audit_not_native_review": true,
+  "source_dir": "src/i18n/catalogues/en",
+  "target_dir": "src/i18n/catalogues/ur",
+  "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+  "method": "Scope = 18 keys added by origin/main..HEAD in en ui.chat(15)/canonical(1)/slash(2); ur working-tree diff verified as exactly 18 added lines, 0 removed. @formatjs parser argument/option parity for all 18 (PARITY); Intl.PluralRules('ur') = one,other, both present in all 6 plurals; rendered 17 counts x4 and 9 (matches,total) pairs x2; non-plural rendered with Latin/Urdu {label}/{team}; fribidi --rtl visual-order check with runtime FSI isolates; no manual bidi controls; widths by codepoint.",
+  "keys_audited": 18,
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "changes_requested",
+      "keys_audited": 15,
+      "sha256": {
+        "en": "6beb33844483d49194b95a142d138f2e6f46062ffe575f72575dba9ca777ae3a",
+        "ur": "6ffeafa831f9a8b72b955201c1da23ddcbcfc5c2299f65c4601880918c6271eb"
+      },
+      "context_sha256": "6d5689ad63e462ba13be05fc16e9d45d2e60aa2d592b9cba0feb8ab456753d33",
+      "findings": [
+        {
+          "id": "UR-ID-1",
+          "severity": "MAJOR",
+          "key": "ui.chat.header_identity.footer_match_agents",
+          "current": "{count} ایجنٹ کا میل ہے / {count} ایجنٹوں کا میل ہے",
+          "proposed": "one {{count} ایجنٹ مماثل ہے} other {{count} ایجنٹ مماثل ہیں}",
+          "reason": "Rendered '12 ایجنٹوں کا میل ہے' / '1 ایجنٹ کا میل ہے' reads 'there is a union/harmony of 12 agents', not '12 agents match'; میل is also a homograph of مَیل (dirt) and میل (mile). Neighbours say میل کھاتا / مماثل ہیں / ملتا."
+        },
+        {
+          "id": "UR-ID-2",
+          "severity": "MAJOR",
+          "key": "ui.chat.header_identity.footer_match_teams",
+          "current": "{count} ٹیم کا میل ہے / {count} ٹیموں کا میل ہے",
+          "proposed": "one {{count} ٹیم مماثل ہے} other {{count} ٹیمیں مماثل ہیں}",
+          "reason": "Twin of UR-ID-1: rendered '12 ٹیموں کا میل ہے' is not native for '12 teams match'."
+        },
+        {
+          "id": "UR-ID-3",
+          "severity": "MAJOR",
+          "key": "ui.chat.header_identity.footer_partial_agents",
+          "current": "{total} ایجنٹوں میں سے {matches} کا میل ہے",
+          "proposed": "one {{total} ایجنٹ میں سے {matches} مماثل} other {{total} ایجنٹوں میں سے {matches} مماثل}",
+          "reason": "Rendered '150 ایجنٹوں میں سے 4 کا میل ہے' = 'of 150 agents, 4's union is'; broken sense. Copula-free مماثل keeps the total-driven arm and avoids verb agreement with {matches}."
+        },
+        {
+          "id": "UR-ID-4",
+          "severity": "MAJOR",
+          "key": "ui.chat.header_identity.footer_partial_teams",
+          "current": "{total} ٹیموں میں سے {matches} کا میل ہے",
+          "proposed": "one {{total} ٹیم میں سے {matches} مماثل} other {{total} ٹیموں میں سے {matches} مماثل}",
+          "reason": "Twin of UR-ID-3: rendered '150 ٹیموں میں سے 4 کا میل ہے'."
+        },
+        {
+          "id": "UR-ID-5",
+          "severity": "MINOR",
+          "key": "ui.chat.header_identity.footer_all_agents",
+          "current": "… — اسکرول کریں یا تلاش لکھیں",
+          "proposed": "… — اسکرول کریں یا فلٹر کے لیے ٹائپ کریں",
+          "reason": "'تلاش لکھیں' ('write search') is a compressed calque of 'type to filter'; the catalogue says ٹائپ کریں and فلٹر elsewhere (ui.canvas.files.*, ui.chat.asks.filter_label). Apply to footer_all_teams too.",
+          "related_keys": [
+            "ui.chat.header_identity.footer_all_teams"
+          ]
+        },
+        {
+          "id": "UR-ID-7",
+          "severity": "NIT",
+          "key": "ui.chat.header_identity.needs_delegating_profile",
+          "current": "کام تفویض کرنے والی پروفائل درکار ہے۔",
+          "proposed": "(keep)",
+          "reason": "پروفائل is feminine in all 4 new strings (consistent within scope) but the shipped ur catalogue mixes genders (نیا پروفائل, کوئی پروفائل نہیں ملا vs مجوزہ نئی پروفائل). No change required here.",
+          "related_keys": [
+            "ui.chat.header_identity.no_settable",
+            "ui.chat.header_identity.no_settable_typed",
+            "ui.chat.header_identity.team_led_by_manager"
+          ]
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
+        "ur": "b15195042f7ab25b7370c22c6935bb59366eac3aa5804da7ee76b5f47e755c54"
+      },
+      "context_sha256": "883ff56261f5b79b63322d3a34f914ce2459a5ff4280336089c183ae7e4273ec",
+      "findings": [
+        {
+          "id": "UR-ID-6",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "current": "{duration} لگے",
+          "proposed": "(keep)",
+          "reason": "Plural لگے is right for '2m 4s'; a bare '1s' would idiomatically take لگا, but {duration} is a preformatted string so no arm can select it. Acceptable."
+        },
+        {
+          "id": "UR-ID-OOS",
+          "severity": "INFO",
+          "key": "ui.chat.canonical.transcript.took_duration",
+          "reason": "Out of scope, pre-existing on origin/main: canonical-transcript.tsx:539 hard-codes the English lead 'Turn condensed' and joins clauses with Latin ', ' and '.', so the ur spoken/copied sentence still contains English. Not a catalogue defect; not counted."
+        }
+      ]
+    },
+    "ui.chat.slash": {
+      "namespace": "ui.chat.slash",
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "07ce26b0ac3f051f1fe3704f4d13f0e6cfd9bd1d4482fed6615a39ff1daf8710",
+        "ur": "071aacb8287a83ecd0f57b8c39ddb2d57f9efdb88a644a6aaf29cf8611f82387"
+      },
+      "context_sha256": "9806ae2b7ebeb26b021e654ebd651ba44d54cb5a92e69f018fae92ae79581ae7",
+      "findings": []
+    }
+  }
+}

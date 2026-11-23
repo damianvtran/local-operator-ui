@@ -680,6 +680,30 @@ test("r2: a rate limit keeps retrying; other failures keep the three-retry bound
 	assert.equal(cache.historyReadRetryDelay(0, rateLimited(5)), 5000);
 });
 
+/* ui#1895 QA Q1: an owner-fence refusal with nobody reading is final, so an
+   A→B→A return never joins its 1/2/4 s backoff chain; a watched read keeps the
+   shipped bound (a same-account authority change can succeed on retry). */
+test("an owner-fence refusal is retried only while somebody reads", () => {
+	for (const message of [
+		"Team Bridge read owner changed",
+		"Team Bridge read authority changed",
+		"Account authority changed",
+		"Account authority unresolved",
+	]) {
+		const fence = new Error(message);
+		assert.equal(cache.isBridgeReadFenceError(fence), true, message);
+		assert.equal(cache.historyReadShouldRetry(0, fence, false, false), false);
+		assert.equal(cache.historyReadShouldRetry(0, fence, false, true), true);
+		assert.equal(cache.historyReadShouldRetry(3, fence, false, true), false);
+	}
+	// Any other failure keeps its bound whether or not anyone reads.
+	assert.equal(cache.isBridgeReadFenceError(new Error("x")), false);
+	assert.equal(
+		cache.historyReadShouldRetry(0, new Error("x"), false, false),
+		true,
+	);
+});
+
 /*
  * The incident replayed through React Query itself, with the clock mocked: four
  * 429s (the log's run) and then an answer. The shipped policy ends in `error`

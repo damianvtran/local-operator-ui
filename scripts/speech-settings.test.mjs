@@ -226,6 +226,32 @@ const resolutionFor = (scenario) => {
 	};
 };
 
+/**
+ * The voice half of the daemon, for the cases about the one speech provider.
+ * Off by default, so every case above sees the capabilities it always saw:
+ * `on` adds `features.voice`, `status` is what `voice.status` says about the
+ * provider (`provider`, `providers`), `edits` records each `settings.edit`, and
+ * `editReply` scripts a refusal. A write is what the next status read says.
+ */
+const voice = {
+	on: false,
+	/** `features.voice`: 2 is the speech route's level (the backend's own). */
+	level: 2,
+	status: {},
+	edits: [],
+	editReply: null,
+	gets: 0,
+	/** A promise the status read waits on, so a case can look at the loading frame. */
+	hold: null,
+};
+const READY = { ready: true, reason: null };
+const NO_KEY = { ready: false, reason: "No ElevenLabs API key is stored." };
+const TOO_LOW = {
+	ready: false,
+	reason:
+		"Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
+};
+
 /** Every op the group issues, answered the way the daemon answers it. */
 const installBridge = (scenario, asked) => {
 	globalThis.window.api.desktop.request = async (request) => {
@@ -247,8 +273,22 @@ const installBridge = (scenario, asked) => {
 						// `tts` is the gate this surface sits behind; the `older` scenario
 						// withholds it, which is what a daemon predating voicing does.
 						...(scenario === "older" ? {} : { tts: 1 }),
+						...(voice.on ? { voice: voice.level } : {}),
 					},
 				});
+			case "voice.status":
+				voice.gets += 1;
+				if (voice.hold) await voice.hold;
+				return ok({
+					active: null,
+					settings: { max_spoken_chars: 800 },
+					...voice.status,
+				});
+			case "settings.edit":
+				voice.edits.push(request);
+				if (voice.editReply) return voice.editReply;
+				voice.status = { ...voice.status, provider: request.value };
+				return ok({});
 			case "settings.list":
 				return ok(registry);
 			case "credentials.list":
@@ -331,7 +371,7 @@ const installBridge = (scenario, asked) => {
  * handler presents as a five-minute hang with no summary rather than as a red
  * test. The cache is cleared from a `finally` for the same reason.
  */
-const mount = async (t, scenario) => {
+const mount = async (t, scenario, props = {}) => {
 	const mounted = {};
 	t.after(async () => {
 		await act(async () => {
@@ -367,7 +407,7 @@ const mount = async (t, scenario) => {
 			createElement(
 				QueryClientProvider,
 				{ client: mounted.client },
-				createElement(SpeechSection, {}),
+				createElement(SpeechSection, props),
 			),
 		);
 	});
@@ -847,4 +887,484 @@ test("the serving rung's name carries the stronger ink, and the others the muted
 			other.classList.contains("text-ink-muted"),
 		"which rung would serve is a text-weight step, not only the word `not` in the faintest ink (design review round 1, D4)",
 	);
+});
+
+/* -------------------------------------------------------------------------- */
+/* THE ONE SPEECH PROVIDER, and the hands-free switch, in the Speech section    */
+/* -------------------------------------------------------------------------- */
+
+const providerBox = (container) =>
+	container.querySelector("[data-speech-provider]");
+const radio = (container, value) =>
+	container.querySelector(`input[type="radio"][value="${value}"]`);
+const optionText = (container, value) =>
+	container.querySelector(`[data-speech-provider-option="${value}"]`)
+		?.textContent ?? "";
+
+/** Voice-on fixtures, restored after the case so no other case sees them. */
+const withVoice = async (t, status, run) => {
+	voice.on = true;
+	voice.status = status;
+	voice.edits = [];
+	voice.editReply = null;
+	voice.gets = 0;
+	voice.hold = null;
+	t.after(() => {
+		voice.on = false;
+		voice.level = 2;
+		voice.hold = null;
+		voice.status = {};
+		voice.editReply = null;
+		globalThis.window.api.desktop.qwenVoice = undefined;
+	});
+	return run();
+};
+
+test("PROVIDER: two choices, Radient cloud and My ElevenLabs key, neither chosen until the person picks", async (t) => {
+	await withVoice(
+		t,
+		{ provider: null, providers: { radient: READY, elevenlabs: NO_KEY } },
+		async () => {
+			const { container } = await mount(t, "radient-pass");
+			assert.ok(providerBox(container), "the choice is in the Speech section");
+			const radios = [
+				...providerBox(container).querySelectorAll('input[type="radio"]'),
+			];
+			assert.deepEqual(
+				radios.map((r) => r.value),
+				["radient", "elevenlabs"],
+			);
+			assert.deepEqual(
+				radios.map((r) => r.checked),
+				[false, false],
+			);
+			assert.match(optionText(container, "radient"), /Radient cloud/);
+			assert.match(
+				optionText(container, "radient"),
+				/billed to your Radient credit/i,
+			);
+			assert.match(optionText(container, "elevenlabs"), /My ElevenLabs key/);
+			assert.match(
+				providerBox(container).textContent,
+				/No provider chosen yet/,
+			);
+			assert.doesNotMatch(
+				providerBox(container).textContent,
+				/Local|OpenAI|Groq/,
+			);
+		},
+	);
+});
+
+test("PROVIDER: the chosen provider is the one voice.status names", async (t) => {
+	await withVoice(
+		t,
+		{
+			provider: "elevenlabs",
+			providers: { radient: READY, elevenlabs: READY },
+		},
+		async () => {
+			const { container } = await mount(t, "radient-pass");
+			assert.equal(radio(container, "elevenlabs").checked, true);
+			assert.equal(radio(container, "radient").checked, false);
+			assert.doesNotMatch(
+				providerBox(container).textContent,
+				/No provider chosen yet/,
+			);
+		},
+	);
+});
+
+test("PROVIDER: a stored value this app does not know (an old engine word) shows as none chosen and crashes nothing", async (t) => {
+	for (const provider of ["byok", "local", "openai", 7]) {
+		await withVoice(
+			t,
+			{ provider, providers: { radient: READY, elevenlabs: READY } },
+			async () => {
+				const { container } = await mount(t, "radient-pass");
+				assert.deepEqual(
+					[...providerBox(container).querySelectorAll("input")].map(
+						(r) => r.checked,
+					),
+					[false, false],
+					String(provider),
+				);
+			},
+		);
+	}
+});
+
+test("PROVIDER: each choice says Ready, or the backend's own sentence with a way to set it up", async (t) => {
+	const opened = [];
+	await withVoice(
+		t,
+		{
+			provider: "radient",
+			providers: { radient: TOO_LOW, elevenlabs: NO_KEY },
+		},
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: (provider) => opened.push(provider),
+			});
+			assert.match(
+				optionText(container, "radient"),
+				/Your Radient credit balance is too low for speech\. Add credits in the Radient Console to continue\./,
+			);
+			assert.match(
+				optionText(container, "elevenlabs"),
+				/No ElevenLabs API key is stored\./,
+			);
+			assert.doesNotMatch(optionText(container, "radient"), /Ready/);
+			const setups = [
+				...container.querySelectorAll("[data-speech-provider-setup]"),
+			];
+			assert.deepEqual(
+				setups.map((b) => b.getAttribute("data-speech-provider-setup")),
+				["radient", "elevenlabs"],
+			);
+			assert.match(setups[1].textContent, /Set up in Providers/);
+			await act(async () => setups[1].click());
+			assert.deepEqual(
+				opened,
+				["elevenlabs"],
+				"the link names the provider it is about",
+			);
+		},
+	);
+	await withVoice(
+		t,
+		{ provider: "radient", providers: { radient: READY, elevenlabs: READY } },
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: () => {},
+			});
+			assert.match(optionText(container, "radient"), /Ready/);
+			assert.match(optionText(container, "elevenlabs"), /Ready/);
+			assert.equal(
+				container.querySelectorAll("[data-speech-provider-setup]").length,
+				0,
+				"nothing to set up",
+			);
+		},
+	);
+});
+
+test("PROVIDER: an older backend that sends no readiness shows no verdict and no link, and still lets the person choose", async (t) => {
+	await withVoice(t, {}, async () => {
+		const { container } = await mount(t, "radient-pass", {
+			onOpenProviders: () => {},
+		});
+		assert.equal(
+			container.querySelectorAll("[data-speech-provider-status]").length,
+			0,
+		);
+		assert.equal(
+			container.querySelectorAll("[data-speech-provider-setup]").length,
+			0,
+		);
+		// Unknown readiness is not "not ready": nothing is disabled, as before.
+		assert.equal(radio(container, "radient").disabled, false);
+		assert.equal(radio(container, "elevenlabs").disabled, false);
+	});
+	await withVoice(t, { provider: "elevenlabs" }, async () => {
+		const { container } = await mount(t, "radient-pass");
+		assert.equal(radio(container, "elevenlabs").checked, true);
+		assert.equal(radio(container, "radient").disabled, false);
+		assert.equal(radio(container, "elevenlabs").disabled, false);
+	});
+});
+
+const settle = async () => {
+	for (let turn = 0; turn < 3; turn += 1)
+		await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+};
+
+/** The text of the elements a radio's `aria-describedby` points at. */
+const describedBy = (container, value) =>
+	(radio(container, value).getAttribute("aria-describedby") ?? "")
+		.split(" ")
+		.filter(Boolean)
+		.map((id) => container.querySelector(`[id="${id}"]`)?.textContent ?? "")
+		.join(" ");
+
+test("PROVIDER: a provider that is not ready cannot be chosen, and says why", async (t) => {
+	const opened = [];
+	await withVoice(
+		t,
+		{ provider: null, providers: { radient: READY, elevenlabs: NO_KEY } },
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: (provider) => opened.push(provider),
+			});
+			// The real disabled state, so assistive technology reports it.
+			assert.equal(radio(container, "elevenlabs").disabled, true);
+			assert.equal(radio(container, "radient").disabled, false);
+			// Its reason is linked to it, not only printed near it.
+			assert.match(
+				describedBy(container, "elevenlabs"),
+				/No ElevenLabs API key is stored\./,
+			);
+			assert.match(describedBy(container, "radient"), /Ready/);
+			await act(async () => radio(container, "elevenlabs").click());
+			await settle();
+			assert.deepEqual(voice.edits, [], "nothing is written for it");
+			assert.equal(radio(container, "elevenlabs").checked, false);
+			// The way to fix it is still a live control.
+			const setup = container.querySelector(
+				'[data-speech-provider-setup="elevenlabs"]',
+			);
+			assert.ok(setup);
+			assert.equal(setup.disabled, false);
+			await act(async () => setup.click());
+			assert.deepEqual(opened, ["elevenlabs"]);
+		},
+	);
+});
+
+test("PROVIDER: Radient cloud is disabled the same way when Radient is not ready", async (t) => {
+	await withVoice(
+		t,
+		{
+			provider: null,
+			providers: {
+				radient: { ready: false, reason: "Not signed in to Radient." },
+				elevenlabs: READY,
+			},
+		},
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: () => {},
+			});
+			assert.equal(radio(container, "radient").disabled, true);
+			assert.equal(radio(container, "elevenlabs").disabled, false);
+			assert.match(
+				describedBy(container, "radient"),
+				/Not signed in to Radient\./,
+			);
+			await act(async () => radio(container, "radient").click());
+			await settle();
+			assert.deepEqual(voice.edits, []);
+			assert.ok(
+				container.querySelector('[data-speech-provider-setup="radient"]'),
+			);
+		},
+	);
+});
+
+test("PROVIDER: a chosen provider that has become not ready stays chosen, shows why, and the other can be picked", async (t) => {
+	await withVoice(
+		t,
+		{
+			provider: "elevenlabs",
+			providers: { radient: READY, elevenlabs: NO_KEY },
+		},
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: () => {},
+			});
+			// The stored value is not touched and is not hidden.
+			assert.equal(radio(container, "elevenlabs").checked, true);
+			assert.deepEqual(voice.edits, []);
+			assert.match(
+				optionText(container, "elevenlabs"),
+				/No ElevenLabs API key is stored\./,
+			);
+			assert.ok(
+				container.querySelector('[data-speech-provider-setup="elevenlabs"]'),
+			);
+			assert.equal(radio(container, "radient").disabled, false);
+			await act(async () => radio(container, "radient").click());
+			await settle();
+			assert.deepEqual(voice.edits, [
+				{ op: "settings.edit", key: "speech.provider", value: "radient" },
+			]);
+			assert.equal(radio(container, "radient").checked, true);
+		},
+	);
+});
+
+test("PROVIDER: with neither ready both are disabled, none is chosen, and the line says to set one up in Providers", async (t) => {
+	await withVoice(
+		t,
+		{ provider: null, providers: { radient: TOO_LOW, elevenlabs: NO_KEY } },
+		async () => {
+			const { container } = await mount(t, "radient-pass", {
+				onOpenProviders: () => {},
+			});
+			assert.deepEqual(
+				[...providerBox(container).querySelectorAll("input")].map((r) => [
+					r.checked,
+					r.disabled,
+				]),
+				[
+					[false, true],
+					[false, true],
+				],
+			);
+			const text = providerBox(container).textContent;
+			assert.match(
+				text,
+				/Neither provider is ready yet\. Set one up in Providers/,
+			);
+			assert.doesNotMatch(text, /No provider chosen yet/);
+		},
+	);
+});
+
+test("PROVIDER: while the status is still loading both are disabled and nothing claims to be Ready", async (t) => {
+	let release = () => {};
+	await withVoice(
+		t,
+		{ provider: null, providers: { radient: READY, elevenlabs: READY } },
+		async () => {
+			voice.hold = new Promise((resolve) => {
+				release = resolve;
+			});
+			const { container } = await mount(t, "radient-pass");
+			assert.ok(providerBox(container), "the choice is there while it loads");
+			assert.deepEqual(
+				[...providerBox(container).querySelectorAll("input")].map(
+					(r) => r.disabled,
+				),
+				[true, true],
+			);
+			const text = providerBox(container).textContent;
+			assert.doesNotMatch(text, /Ready/);
+			assert.doesNotMatch(text, /No provider chosen yet/);
+			assert.equal(
+				container.querySelectorAll("[data-speech-provider-status]").length,
+				0,
+			);
+			release();
+			await settle();
+			assert.deepEqual(
+				[...providerBox(container).querySelectorAll("input")].map(
+					(r) => r.disabled,
+				),
+				[false, false],
+			);
+			assert.match(providerBox(container).textContent, /Ready/);
+		},
+	);
+	release();
+});
+
+test("PROVIDER: choosing writes speech.provider through settings.edit, and the radio follows the read", async (t) => {
+	await withVoice(
+		t,
+		{ provider: null, providers: { radient: READY, elevenlabs: READY } },
+		async () => {
+			const { container } = await mount(t, "radient-pass");
+			const gets = voice.gets;
+			await act(async () => radio(container, "elevenlabs").click());
+			for (let turn = 0; turn < 3; turn += 1)
+				await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+			assert.deepEqual(voice.edits, [
+				{ op: "settings.edit", key: "speech.provider", value: "elevenlabs" },
+			]);
+			assert.ok(
+				voice.gets > gets,
+				"the status is re-read so main learns the choice",
+			);
+			assert.equal(radio(container, "elevenlabs").checked, true);
+			assert.equal(radio(container, "radient").checked, false);
+			// Picking the one already chosen writes nothing.
+			await act(async () => radio(container, "elevenlabs").click());
+			assert.equal(voice.edits.length, 1);
+		},
+	);
+});
+
+test("PROVIDER: a refused write shows the daemon's sentence and leaves the old choice", async (t) => {
+	await withVoice(
+		t,
+		{ provider: "radient", providers: { radient: READY, elevenlabs: READY } },
+		async () => {
+			voice.editReply = {
+				status: 422,
+				body: {
+					detail: {
+						code: "invalid_setting",
+						message: "Not a speech provider.",
+					},
+				},
+			};
+			const { container } = await mount(t, "radient-pass");
+			await act(async () => radio(container, "elevenlabs").click());
+			for (let turn = 0; turn < 3; turn += 1)
+				await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+			assert.match(
+				providerBox(container).textContent,
+				/Not a speech provider\./,
+			);
+			assert.equal(radio(container, "radient").checked, true);
+			assert.equal(radio(container, "elevenlabs").checked, false);
+		},
+	);
+});
+
+test("PROVIDER: it is asked and shown with the hands-free switch OFF, and a backend without voice shows no choice", async (t) => {
+	await withVoice(t, { provider: null }, async () => {
+		const { container } = await mount(t, "radient-pass");
+		assert.ok(providerBox(container));
+		assert.equal(voice.gets >= 1, true);
+	});
+	voice.on = false;
+	const { container } = await mount(t, "radient-pass");
+	// `ok`, not `equal(…, null)`: a failing equal would print a whole jsdom element.
+	assert.ok(providerBox(container) === null, "no features.voice, no choice");
+});
+
+test("PROVIDER: a backend on features.voice 1 has no speech route, so it shows no choice", async (t) => {
+	await withVoice(t, { provider: null }, async () => {
+		voice.level = 1;
+		const { container } = await mount(t, "radient-pass");
+		assert.ok(providerBox(container) === null, "voice 1 is not enough");
+		assert.equal(voice.gets, 0, "and voice.status is not asked");
+	});
+});
+
+test("SWITCH: the hands-free voice switch lives in the Speech section, with its own words", async (t) => {
+	await withVoice(t, { provider: null }, async () => {
+		globalThis.window.api.desktop.qwenVoice = {
+			getEnabled: async () => false,
+			setEnabled: async (on) => on,
+			onEnabled: () => () => {},
+		};
+		const { container } = await mount(t, "radient-pass");
+		assert.match(container.textContent, /Session voice/);
+		assert.match(
+			container.textContent,
+			/Lets you talk to a conversation hands-free/,
+		);
+		const toggle = container.querySelector('[role="switch"]');
+		assert.ok(toggle, "the switch itself is in the section");
+	});
+});
+
+test("SWITCH: it is also there when the section could not load, so voice can still be turned off", async (t) => {
+	await withVoice(t, { provider: null }, async () => {
+		globalThis.window.api.desktop.qwenVoice = {
+			getEnabled: async () => true,
+			setEnabled: async (on) => on,
+			onEnabled: () => () => {},
+		};
+		const { container } = await mount(t, "older");
+		assert.match(container.textContent, /Session voice/);
+	});
+});
+
+test("SWITCH: the Appearance section no longer carries the switch or an engine row", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.equal(page.includes("<VoiceSwitchSetting"), false);
+	assert.equal(page.includes("VoiceEngineSetting"), false);
+	const section = readFileSync(
+		"src/renderer/src/features/settings/components/speech-section.tsx",
+		"utf8",
+	);
+	assert.ok(section.includes("<VoiceSwitchSetting"));
+	assert.ok(section.includes("<SpeechProviderSetting"));
 });

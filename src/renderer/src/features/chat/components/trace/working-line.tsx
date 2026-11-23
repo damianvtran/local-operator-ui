@@ -51,8 +51,11 @@
  */
 
 import { useMediaQuery } from "@shared/hooks/use-media-query";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef, useState } from "react";
+import { workingActivityText } from "../../canonical/working-line-copy";
+import type { WorkingActivity } from "../../canonical/working-line-model";
 import { formatDuration } from "./tool-row-model";
 
 /**
@@ -76,10 +79,12 @@ const CLOCK_MS = 1000;
 
 export type WorkingLineProps = {
 	/**
-	 * What the agent is doing, in the user's terms and without an ellipsis:
-	 * "thinking", "responding", the model's intent, or `running 3 tools`.
+	 * What the agent is doing, as a rung plus its arguments rather than a sentence
+	 * (see `WorkingActivity`): the words are resolved here, at render, so a live
+	 * language switch repaints the line. In the user's terms and without an
+	 * ellipsis: `thinking`, `responding`, the model's intent, or `running 3 tools`.
 	 */
-	activity: string;
+	activity: WorkingActivity;
 	/**
 	 * The phase this activity belongs to. The clock restarts when THIS changes
 	 * and not when `activity` alone does — see (2) above. A batch of calls is
@@ -120,6 +125,9 @@ export const WorkingLine = ({
 	clock,
 	className,
 }: WorkingLineProps) => {
+	// Subscribes this line to the active language; `workingActivityText` reads it
+	// through `t()` at call time.
+	useI18nLocale();
 	const [frame, setFrame] = useState(0);
 	/*
 	 * Seeded from the phase's own start when the caller knows it, so the FIRST
@@ -285,7 +293,7 @@ export const WorkingLine = ({
 			<span
 				className={cn("min-w-0 truncate font-mono text-ink-dim text-mono-sm")}
 			>
-				{activity}
+				{workingActivityText(activity)}
 			</span>
 			<span
 				aria-hidden={true}

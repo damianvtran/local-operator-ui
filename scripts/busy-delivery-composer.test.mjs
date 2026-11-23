@@ -320,7 +320,9 @@ test("a bound chord press hands its mode to the page's send", async () => {
 	const claimed = await press({ key: "Enter", metaKey: true });
 	assert.equal(claimed, true, "the chord press submits");
 	assert.equal(sent.length, 1, "one send handed to the page");
-	const [, , , , , , delivery] = sent[0];
+	// `delivery` is the EIGHTH argument: the seventh is the page's `options`
+	// (`originBound`), which a keyboard press never sets.
+	const [, , , , , , , delivery] = sent[0];
 	assert.equal(delivery, "queue", "the press's delivery travels on the send");
 	useUiPreferencesStore.setState({ shortcutBindings: {} });
 });
@@ -331,7 +333,9 @@ test("plain Enter hands the default (null) to the page's send", async () => {
 	await type("hello");
 	await press({ key: "Enter" });
 	assert.equal(sent.length, 1);
-	const [, , , , , , delivery] = sent[0];
+	// `delivery` is the EIGHTH argument: the seventh is the page's `options`
+	// (`originBound`), which a keyboard press never sets.
+	const [, , , , , , , delivery] = sent[0];
 	assert.equal(delivery, null, "plain Enter means the page's default mode");
 });
 

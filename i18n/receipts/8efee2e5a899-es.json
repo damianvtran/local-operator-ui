@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "session": "631f55d3d551",
+  "instance": "8efee2e5a899-es",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "independence": "Independent auditor; did not author or modify any translations.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "631f55d3d551",
+    "instance": "8efee2e5a899-es",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "independence": "Independent auditor; did not author or modify any translations.",
+    "model_source": "Session system prompt header: Model: anthropic/claude-opus-5-5; no model-switch notice during the audit.",
+    "independent_from_translator_session": true
+  },
+  "locale": "es",
+  "date": "2026-11-15",
+  "head": "76a8ed3406 + uncommitted es catalogue edits",
+  "branch": "feat/i18n-s18d-english-source",
+  "pr": "damianvtran/local-operator-ui#1922",
+  "scope": "Fresh audit of exactly 10 new es keys (2 ui.chat.trace, 1 ui.chat.attachments, 7 ui.agents.detail); existing values are terminology context only. Placeholders byte-identical to en; no ICU plural/select in any key; no English left; tuteo consistent.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "severity": "minor",
+        "key": "ui.agents.detail.create.error_name_taken",
+        "message": "\"…abre el existente para cambiárselo.\" diverges from the same-condition backend sentence ui.agents.refusals.name_taken (\"…para cambiarlo.\"), so the form and refusal word one error two ways; clitic \"se…lo\" also reads loosely (may parse as \"change it for yourself\"). Suggest \"…abre el existente para cambiarle el nombre.\" (and align the refusal key in a follow-up)."
+      },
+      {
+        "severity": "minor",
+        "key": "ui.chat.attachments.not_viewable_too_large",
+        "message": "\"{name} es demasiado grande para mostrar una vista previa\" is 56 chars vs 30 EN on a card line that truncates; existing es copy says \"demasiado grande para la vista previa\" (ui.chat.canonical.supplement.withheld.reason_too_large, ui.common.errors.file_too_large). Suggest \"{name} es demasiado grande para la vista previa\" (47)."
+      }
+    ],
+    "nit": []
+  },
+  "namespaces": {
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+        "es": "de5d041e337a95bf7e069a01062c1534cc48302b7a0457b3e2a11876055890e3"
+      },
+      "context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.trace.reasoning.label",
+        "ui.chat.trace.reasoning.with_duration"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.chat.attachments": {
+      "namespace": "ui.chat.attachments",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+        "es": "20d36b211a7f169ff0e1fe3ca996d0ab03421a3b3415c439cd67b075d0299009"
+      },
+      "context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+      "keys_read": 1,
+      "reviewed_keys": [
+        "ui.chat.attachments.not_viewable_too_large"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.chat.attachments.not_viewable_too_large",
+            "message": "\"{name} es demasiado grande para mostrar una vista previa\" is 56 chars vs 30 EN on a card line that truncates; existing es copy says \"demasiado grande para la vista previa\" (ui.chat.canonical.supplement.withheld.reason_too_large, ui.common.errors.file_too_large). Suggest \"{name} es demasiado grande para la vista previa\" (47)."
+          }
+        ],
+        "nit": []
+      }
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+        "es": "09888f089a505ba0d310e909cdbed70b4a918647aaf6fd2125530d3d183018c0"
+      },
+      "context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+      "keys_read": 7,
+      "reviewed_keys": [
+        "ui.agents.detail.create.title_new",
+        "ui.agents.detail.create.title_duplicate",
+        "ui.agents.detail.create.error_name_required",
+        "ui.agents.detail.create.error_name_grammar",
+        "ui.agents.detail.create.error_name_taken",
+        "ui.agents.detail.create.error_instructions_required",
+        "ui.agents.detail.create.error_generic"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.agents.detail.create.error_name_taken",
+            "message": "\"…abre el existente para cambiárselo.\" diverges from the same-condition backend sentence ui.agents.refusals.name_taken (\"…para cambiarlo.\"), so the form and refusal word one error two ways; clitic \"se…lo\" also reads loosely (may parse as \"change it for yourself\"). Suggest \"…abre el existente para cambiarle el nombre.\" (and align the refusal key in a follow-up)."
+          }
+        ],
+        "nit": []
+      }
+    }
+  }
+}

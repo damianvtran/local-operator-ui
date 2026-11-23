@@ -62,6 +62,8 @@ test("the ids are stable and unique, in registry order", () => {
 			"panel.ask",
 			"panel.browser",
 			"panel.code",
+			/* Appended (canvas-projects round-1 U2): the seventh rail door. */
+			"panel.projects",
 			"composer.send_steer",
 			"composer.send_queue",
 			"composer.send_both",
@@ -114,7 +116,13 @@ test("every default parses, is unique, and is not reserved", () => {
 test("the shipped defaults are the decided ones", () => {
 	assert.equal(effectiveChord("panel.console", undefined), "primary+j");
 	assert.equal(effectiveChord("panel.canvas", undefined), "primary+shift+c");
-	for (const id of ["panel.run", "panel.ask", "panel.browser", "panel.code"]) {
+	for (const id of [
+		"panel.run",
+		"panel.ask",
+		"panel.browser",
+		"panel.code",
+		"panel.projects",
+	]) {
 		assert.equal(effectiveChord(id, undefined), null, `${id} ships unbound`);
 	}
 	/*

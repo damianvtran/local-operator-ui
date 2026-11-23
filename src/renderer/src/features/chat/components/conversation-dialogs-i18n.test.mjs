@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
+import { withAbsentLocale } from "../../../../../../scripts/i18n/absent-locale.mjs";
 
 const ISOLATED_DEPENDENCY =
 	/^@shared\/(components\/common\/confirmation-modal|store\/canonical-sessions-store)$/;
@@ -74,15 +75,52 @@ test("confirmation source preserves English heading, buttons and consequence cop
 	assert.ok(archive.includes("It leaves your lists. You can undo for"));
 });
 
-test("dialog controls resolve registered copy and retain per-key English fallback", () => {
+/* WHY TWO LOCALES. This test used to select `fr`, register only two keys and
+ * assert `>Delete<` to prove the per-key English fallback. That premise expired
+ * when the shipped fr catalogue gained `ui.chat.dialogs.delete_action`
+ * ("Supprimer"): fr now localizes the control, which is correct (fr must show
+ * no English). So the two halves are split:
+ *   1. registered copy + the SHIPPED fr bundle resolve to localized values
+ *      (registered keys win over the bundle; unregistered keys come from
+ *      `catalogues/fr/ui.chat.dialogs.json`, pinned literally below);
+ *   2. the per-key English fallback is driven with ABSENT_LOCALE, a tag no
+ *      catalogue can ship, so it cannot expire when a tranche lands. Only the
+ *      title is registered there, so the delete control must still come from
+ *      the English source through the real runtime lookup (no mocking). */
+test("dialog controls resolve registered copy and the shipped localized bundle", () => {
 	ui.registerCatalogue("fr", {
 		"ui.chat.dialogs.delete_title": "Delete title test",
 		"ui.chat.dialogs.cancel": "Cancel test",
 	});
 	ui.setLocale("fr");
-	assert.ok(ui.deletion().includes("Delete title test"));
-	assert.ok(ui.deletion().includes(">Delete<"));
-	assert.ok(ui.archive().includes(">Cancel test<"));
+	const deletion = ui.deletion();
+	assert.ok(deletion.includes("Delete title test"), "registered title wins");
+	assert.ok(
+		deletion.includes(">Supprimer<"),
+		"unregistered control resolves to the shipped fr bundle",
+	);
+	assert.ok(!deletion.includes(">Delete<"), "no English control under fr");
+	assert.ok(ui.archive().includes(">Cancel test<"), "registered cancel wins");
+	assert.ok(ui.archive().includes(">Archiver<"), "shipped fr archive control");
 	ui.clearRegisteredCatalogues();
 	ui.setLocale("en");
+});
+
+test("a locale missing a dialog key falls back to English per key", () => {
+	const restore = withAbsentLocale(ui, {
+		"ui.chat.dialogs.delete_title": "Delete title test",
+	});
+	try {
+		const deletion = ui.deletion();
+		assert.ok(deletion.includes("Delete title test"), "registered key wins");
+		assert.ok(deletion.includes(">Delete<"), "absent key -> English source");
+		assert.ok(deletion.includes(">Cancel<"), "absent key -> English source");
+		assert.ok(
+			ui.archive().includes(">Archive<"),
+			"absent key -> English source",
+		);
+	} finally {
+		ui.clearRegisteredCatalogues();
+		restore();
+	}
 });

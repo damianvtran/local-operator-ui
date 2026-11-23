@@ -123,8 +123,11 @@ const bundle = await build({
  export function AuthPrincipal(){const auth=useRadientUserQuery();const nav=useTeamBridgeNavItem(true);return React.createElement(React.Fragment,null,React.createElement('output',{'data-auth-principal':auth.user?.account?.id??'unresolved'},auth.user?.account?.id??'unresolved'),React.createElement('output',{'data-nav-attention':true},String(nav?.attention??0)));}
  export {recorded as toasts} from 'sonner';
  export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
+ import {useTeamBridgeNotifications} from './src/renderer/src/features/team-bridge/use-team-bridge-notifications';
+ export function ShellWatcher(){useTeamBridgeNotifications(true);return null;}
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
+ export {resetTeamBridgePrefetch} from './src/renderer/src/features/team-bridge/team-bridge-prefetch';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
@@ -378,6 +381,12 @@ function deferred() {
  *                 `?tenant=&conversation=` one, and a cold open omits both.
  *   tenants     - the hub's own tenant list. Two orgs by default; ONE is the
  *                 single-organization cold open the scope decision is about.
+ *   memberships - the `GET /v1/me/memberships` rows (empty by default), e.g.
+ *                 one marked `is_home` to model the default private org
+ *                 (RFC v2.4 Amendment A).
+ *   membershipsGate - holds that read open, so a test can observe the page
+ *                 while the hub tenants are known and the default org is not
+ *                 (agent review round 1, M1 on ui#1970).
  *   surfaceState- the hub's surface class, so an ineligible account can be
  *                 modelled (`A` is plan_required).
  *   seed        - runs after the shipped client is cleared and BEFORE the first
@@ -386,6 +395,9 @@ function deferred() {
  *   waitReady   - false when the scenario holds the gate open on purpose.
  *   statusGate  - replaces the fixture's own null status gate, so a caller can
  *                 hold the eligibility verdict open from before the first render.
+ *   statusState - the runtime's `state` ("ready" by default); with
+ *   statusError   `statusError` ({ code }) it models a refused verdict such as
+ *                 `unavailable` or a throttled `rate_limited` one.
  *   sendMentions- advertises `team_bridge_send_mentions`, so the composer's
  *                 @-mentions are serialised onto the wire (off by default).
  *   attachments - advertises the hub's image capability and answers the
@@ -395,6 +407,12 @@ function deferred() {
  *                 request shapes predate it. `fixture.mediaGate` holds the
  *                 upload open; `fixture.uploadStarts` counts
  *                 uploads begun and `fixture.uploads` each one answered.
+ *   watcher     - also mounts the shell's notification watcher
+ *                 (`useTeamBridgeNotifications`) beside the route, with the
+ *                 preload `teamBridge` bridge the shell has (banners land in
+ *                 `fixture.banners`). It owns the background warm of the
+ *                 landing conversation. Off by default: no other suite expects
+ *                 the watcher's reads.
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -404,13 +422,24 @@ async function mount({
 	lifecycle = null,
 	path = null,
 	tenants = null,
+	memberships = [],
+	membershipsGate = null,
 	surfaceState = "D",
 	seed = null,
 	waitReady = true,
 	statusGate = null,
+	statusState = "ready",
+	statusError = null,
 	sendMentions = false,
 	attachments = false,
 	hostedRail = false,
+	watcher = false,
+	// Render the tree inside <React.StrictMode>, as the app's own renderer root
+	// does (src/renderer/src/main.tsx). StrictMode renders every update twice
+	// from committed state, which exposes state kept in refs written during
+	// render (ui#1970 review round 4, R4-1). Off by default so no other suite's
+	// frame counts move.
+	strict = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -421,12 +450,20 @@ async function mount({
 		"a previous fixture still owns a pending lane",
 	);
 	localStorage.clear();
+	// Each mount is a fresh app launch. Team Bridge keeps the reader's scope for
+	// the app session in `sessionStorage` (RFC v2.4 Amendment A), so leaving it
+	// set would carry one test's scope into the next test's "launch". A
+	// leave-and-return inside one test does not come through here, so it still
+	// sees the session scope, as the app does.
+	dom.window.sessionStorage.clear();
 	const laneStart = laneAttempts.length;
 	const fixture = {
 		account: "acct_a",
 		tenant: "org_shared",
 		surfaceState,
 		tenants,
+		memberships,
+		membershipsGate,
 		refuse: true,
 		calls: [],
 		messages: new Map(),
@@ -442,10 +479,14 @@ async function mount({
 		ownerGuard: 1,
 		authGate: null,
 		statusGate,
+		statusState,
+		statusError,
 		listGate: null,
 		historyGate: null,
 		// Holds the account unread read so a test can observe the refreshing state.
 		unreadGate: null,
+		// `(request, owner) => answer` for `team_bridge.unread`, or null.
+		unreadFor: null,
 		refuseHistory: new Set(),
 		/* ARCHIVE SCENARIO (review round 1, U1). `lifecycle` rows, when set, REPLACE the
 		   single group the other suites use: the live list answers the open ones and
@@ -456,6 +497,8 @@ async function mount({
 		lifecycle,
 		historyByConversation: new Map(),
 		notAMember: new Set(),
+		// Conversation ids whose history the hub rate-limits (429 `rate_limited`).
+		rateLimited: new Set(),
 		lifecycleCalls: [],
 		deleteFailure: null,
 		lifecycleFailure: null,
@@ -474,6 +517,7 @@ async function mount({
 		createReceipts: [],
 		away: false,
 		listFor: null,
+		banners: [],
 	};
 	window.api = {
 		...(attachments
@@ -483,6 +527,19 @@ async function mount({
 				}
 			: {}),
 		desktop: {
+			...(watcher
+				? {
+						teamBridge: {
+							setAuthority: async () => undefined,
+							notify: async (request) => {
+								fixture.banners.push(request);
+								return { shown: true };
+							},
+							onOpen: () => () => undefined,
+							pendingOpen: async () => null,
+						},
+					}
+				: {}),
 			...(attachments
 				? {
 						media: async (request) => {
@@ -539,6 +596,11 @@ async function mount({
 					case "radient.request":
 						if (request.control.operation === "account" && fixture.authGate)
 							await fixture.authGate.promise;
+						if (
+							request.control.operation === "memberships.list" &&
+							fixture.membershipsGate
+						)
+							await fixture.membershipsGate.promise;
 						return reply({
 							data: {
 								result:
@@ -551,14 +613,14 @@ async function mount({
 												},
 												identity: {},
 											}
-										: { memberships: [] },
+										: { memberships: fixture.memberships },
 							},
 						});
 					case "team_bridge.status":
 						if (fixture.statusGate) await fixture.statusGate.promise;
 						return reply({
 							capability: 1,
-							state: "ready",
+							state: fixture.statusState,
 							read_only: fixture.readOnly,
 							account_id: owner,
 							tenant_id: tenant,
@@ -593,7 +655,7 @@ async function mount({
 								],
 							},
 							consent: null,
-							error: null,
+							error: fixture.statusError,
 						});
 					case "team_bridge.conversations.list":
 						if (fixture.listGate) await fixture.listGate.promise;
@@ -665,6 +727,11 @@ async function mount({
 						});
 					case "team_bridge.unread":
 						if (fixture.unreadGate) await fixture.unreadGate.promise;
+						/* Per-test unread (account aggregate and per-tenant rows), so the
+						   watcher's `latest_seq` refresh can be driven; absent, the
+						   org-less default below. */
+						if (fixture.unreadFor)
+							return reply(fixture.unreadFor(request, owner));
 						return reply({
 							total: owner === "acct_a" ? 7 : 2,
 							organizations: [],
@@ -698,6 +765,13 @@ async function mount({
 							before_seq: request.before_seq ?? null,
 							limit,
 						});
+						if (fixture.rateLimited.has(request.conversation_id))
+							return {
+								status: 429,
+								body: {
+									detail: { code: "rate_limited", retry_after_seconds: 5 },
+								},
+							};
 						if (fixture.notAMember.has(request.conversation_id))
 							return {
 								status: 403,
@@ -797,6 +871,16 @@ async function mount({
 					   the shape `connectivity-banner-notice.test.mjs` stubs. */
 					case "config.get":
 						return reply({ values: { hosting: "local" } });
+					/* APPROVALS (ui#1954). A suite installs `fixture.approvals` (keyed by
+					   op) to answer the requests routes; without it these fall to the
+					   catch-all exactly as before, so no other suite's shapes move. */
+					case "team_bridge.requests.list":
+					case "team_bridge.decisions.list":
+					case "team_bridge.requests.authorize":
+					case "team_bridge.requests.decide":
+						if (fixture.approvals?.[request.op])
+							return fixture.approvals[request.op](request);
+						return reply({});
 					default:
 						return reply({});
 				}
@@ -805,7 +889,16 @@ async function mount({
 	};
 	const host = document.createElement("div");
 	document.body.append(host);
-	const root = createRoot(host);
+	const reactRoot = createRoot(host);
+	const root = strict
+		? {
+				render: (element) =>
+					reactRoot.render(
+						React.createElement(React.StrictMode, null, element),
+					),
+				unmount: () => reactRoot.unmount(),
+			}
+		: reactRoot;
 	const client = ui.queryClient;
 	client.clear();
 	seed?.({ client, ui, fixture });
@@ -855,6 +948,13 @@ async function mount({
 												'[data-conversation-id][aria-current="page"]',
 											)
 											?.getAttribute("data-conversation-id") ?? null,
+									/* The switcher's title in this commit (ui#1970 QA Q1): a
+									   commit is what paints, so a scope that reaches one here is
+									   a scope the reader saw, however briefly. */
+									scopeTitle:
+										host
+											.querySelector('button[aria-label^="Organization: "]')
+											?.getAttribute("aria-label") ?? null,
 									nav: host.querySelector("[data-nav-attention]")?.textContent,
 									text: host.textContent,
 									draft: host.querySelector("textarea")?.value ?? "",
@@ -865,6 +965,7 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
+							watcher ? React.createElement(ui.ShellWatcher) : null,
 							fixture.away
 								? null
 								: hostedRail

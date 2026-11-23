@@ -73,6 +73,46 @@ export const NoOwnAgent: Story = {
 		),
 	},
 };
+/*
+ * RENAME (operator 2026-11-20). With the daemon's
+ * `team_bridge_conversation_rename` capability an administrator gets
+ * "Rename channel…" right after "Add members…"; a group says "Rename group…".
+ * Without the capability (every story above) the item is not drawn.
+ */
+export const HeaderChannelWithRename: Story = {
+	args: {
+		sections: menuSectionsFor(menuConversation(), { rename: true }),
+		handlers: { ...meta.args.handlers, onRename: () => {} },
+	},
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				screen.getByRole("menuitem", { name: "Rename channel…" }),
+			).toBeTruthy(),
+		);
+	},
+};
+export const HeaderGroupWithRename: Story = {
+	args: {
+		sections: menuSectionsFor(
+			menuConversation({
+				kind: "group",
+				visibility: "private",
+				name: "launch crew",
+			}),
+			{ rename: true },
+		),
+		handlers: { ...meta.args.handlers, onRename: () => {} },
+	},
+};
+/* A plain member with the capability: still no Rename (no `can_administer`). */
+export const HeaderChannelRenameNotAdmin: Story = {
+	args: {
+		sections: menuSectionsFor(menuConversation({ can_administer: false }), {
+			rename: true,
+		}),
+	},
+};
 /** #general: Leave disabled with its reason; Remove Aida is a withdraw. */
 export const HeaderGeneral: Story = {
 	args: { sections: menuSectionsFor(menuGeneral) },

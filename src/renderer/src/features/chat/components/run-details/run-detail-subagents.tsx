@@ -114,6 +114,7 @@ export const SubagentRowView = ({
 	const body = (
 		<SubagentRowBody
 			row={row}
+			kind="subagent"
 			detail={<DetailLine row={row} />}
 			trailing={trailing}
 		/>
@@ -247,7 +248,11 @@ export const RunDetailSubagents = ({
 					)}
 				>
 					{tallyFitsInline(paneWidth)
-						? subagentTally(details.subagents, tallyBudget(paneWidth))
+						? subagentTally(
+								details.subagents,
+								tallyBudget(paneWidth),
+								"subagent",
+							)
 						: null}
 				</span>
 			</div>
@@ -281,7 +286,7 @@ export const RunDetailSubagents = ({
 					onClick={onToggleExpanded}
 					data-run-panel-disclosure={expanded ? "expanded" : "collapsed"}
 				>
-					{`Show ${hidden} more`}
+					{t("ui.chat.run_details.subagents.show_more", { count: hidden })}
 				</Button>
 			)}
 		</section>

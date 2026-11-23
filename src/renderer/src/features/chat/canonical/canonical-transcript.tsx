@@ -42,6 +42,7 @@
  * Scroll paging inherits that rule rather than restating it — a reader
  * following the tail neither loads a page nor has their offset corrected.
  */
+import { USER_CONTENT_CLASS } from "@shared/analytics/autocapture-privacy";
 
 import {
 	FlagLine,
@@ -53,6 +54,7 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import { useProviderStatus } from "@features/providers/use-provider-status";
 import type { AvatarMark } from "@shared/agent-avatar/avatar-presence";
 import {
 	desktopFeatureEnabled,
@@ -62,15 +64,29 @@ import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { usePassiveDesktopFeature } from "@shared/hooks/display-density";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { type WithoutParams, formatDateTime, t } from "@shared/i18n";
+import { useServerOffline } from "@shared/hooks/use-connectivity-status";
+import {
+	type WithoutParams,
+	formatDateTime,
+	formatList,
+	t,
+} from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import {
 	busySendModes,
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { paintMissReason, readPaint } from "@shared/store/paint-cache";
+import {
+	PINNED_SCROLL,
+	type PaintedScroll,
+	writePaintScroll,
+} from "@shared/store/paint-cache";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -129,8 +145,14 @@ import { MessageAvatar } from "../components/message-item/message-avatar";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
 import { ReplyPreview } from "../components/reply-preview";
+import {
+	UndeliveredLineView,
+	undeliveredSentence,
+	useSendRecoveryAction,
+} from "../components/send-recovery-action";
 import { skillBlockNames } from "../components/skill-invocation";
 import { DiffBlock, TraceLine } from "../components/trace";
+import { BridgeCardBodySection } from "../components/trace/bridge-card-body";
 import { bridgeReceiptOf } from "../components/trace/bridge-receipt-model";
 import {
 	type BridgeLabelResolver,
@@ -159,6 +181,7 @@ import {
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
+	isArchiveOnlyDiffRow,
 	isBareToolName,
 	isDiffBodyRow,
 	isFailedResult,
@@ -174,7 +197,18 @@ import {
 	MISSING_SESSION_NOTICE_ID,
 	missingSessionNotice,
 } from "../missing-session-notice";
-import { openTrace } from "../open-trace";
+import {
+	type PanePaintTrace,
+	createPanePaintTrace,
+	openTrace,
+	tracePanePaint,
+} from "../open-trace";
+import {
+	type FailureCause,
+	keepsSendAgain,
+	recoveryForFailure,
+	sendBlockFor,
+} from "../send-recovery";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -183,7 +217,7 @@ import {
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
-import { parseReplies } from "../utils/reply-utils";
+import { parseReplies, splitReplyPrefix } from "../utils/reply-utils";
 import { type BusyWaitState, busyWaitLabels } from "./busy-wait";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
@@ -206,9 +240,10 @@ import {
 	isImageGenTool,
 	isSoundGenTool,
 } from "./image-gen-card-model";
+import { InlineUiHost } from "./inline-ui-host";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
-import { imageLabel, soundLabel } from "./media-label";
+import { attachedImageLabel, imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import {
@@ -227,6 +262,7 @@ import {
 	OlderHistorySlotReserve,
 } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
+import { paintKeepsTopAnchor } from "./paint-top-anchor";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -325,6 +361,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	isTraceFoldable,
 	olderRowsThanWindow,
 	paintedRows,
 	runIsCondensed,
@@ -340,6 +377,10 @@ import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import {
+	STALE_INDICATOR_DELAY_MS,
+	useStaleIndicatorHold,
+} from "./use-stale-indicator-hold";
 import {
 	type TranscriptMountAdapter,
 	transcriptDomWindowEnabled,
@@ -486,7 +527,9 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * ("At least N actions - earlier rows of this turn are not loaded").
 	 */
 	const minimum = (stated: string) =>
-		segment.facts.partial ? `at least ${stated}` : stated;
+		segment.facts.partial
+			? t("ui.chat.canonical.condense.at_least", { stated })
+			: stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -511,7 +554,14 @@ function condenseSentence(segment: SegmentPlan): string {
 		if (spanS !== null) parts.push(formatDuration(spanS));
 	} else {
 		if (segment.facts.durationS !== null) {
-			parts.push(`took ${formatDuration(segment.facts.durationS)}`);
+			/* Keyed as one clause with the duration slot, like its sibling
+			 * `worked_for`: the word order is the language's. This sentence is the
+			 * bar's settle announcement and its "Copy" text (never painted). */
+			parts.push(
+				t("ui.chat.canonical.transcript.took_duration", {
+					duration: formatDuration(segment.facts.durationS),
+				}),
+			);
 		}
 		if (segment.facts.actions > 0) {
 			parts.push(
@@ -528,8 +578,18 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
-	const lead = segment.label ?? "Turn condensed";
-	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
+	const lead = segment.label ?? t("ui.chat.canonical.condense.turn_condensed");
+	// The frame is keyed too: where the colon sits (French spaces it) and the
+	// closing stop are the language's, not this file's. So is the separator
+	// between the clauses (code review R2): `formatList` is CLDR's narrow list,
+	// `"a, b"` in English exactly as the hard-coded ", " was, `、` in zh-CN and
+	// `، ` in Urdu - no catalogue key, so no translation round.
+	return parts.length === 0
+		? t("ui.chat.canonical.condense.sentence_bare", { lead })
+		: t("ui.chat.canonical.condense.sentence", {
+				lead,
+				parts: formatList(parts),
+			});
 }
 
 /**
@@ -817,6 +877,49 @@ export type CanonicalTranscriptProps = {
 	 */
 	stale?: boolean;
 	/**
+	 * How long the cached paint stands before `stale` says so, in ms.
+	 *
+	 * The policy lives in `use-stale-indicator-hold.ts` with the measurement that
+	 * chose it; this prop exists because the hold is a policy and a caller can
+	 * honestly have a different one (a zero states the signal at once, which is
+	 * also how the rendered-markup tests reach the post-threshold state without a
+	 * clock). Omitted is the shipped hold.
+	 */
+	staleIndicatorDelayMs?: number;
+	/**
+	 * A turn was running when this paint was stored (the cache's `busy`).
+	 *
+	 * Seeds the working line for the revalidate window, so a return to a running
+	 * session does not paint idle chrome for as long as the page takes. It is
+	 * presentation ONLY: the snapshot withdraws it, and it never reaches the
+	 * composer's send mode or the interrupt path.
+	 */
+	paintRunning?: boolean;
+	/**
+	 * Where the reader was when this paint was stored (the cache's `scroll`).
+	 *
+	 * Applied ONCE, in the mount's layout phase, so the first frame of a return is
+	 * already the reader's own place rather than the bottom. Absent, pinned or a
+	 * row this transcript no longer holds all end at the tail - the scroller's
+	 * default - so a miss costs the reader nothing.
+	 */
+	restoredScroll?: PaintedScroll | null;
+	/**
+	 * Whether the cached paint behind these rows is the WHOLE conversation - the
+	 * cache entry's `complete` - or absent when no paint seeded this pane.
+	 *
+	 * WHY THE COLUMN READS IT (P2 of the session-switch plan). `mb-auto` is this
+	 * column's top anchor, and it is right for a conversation that fits and wrong
+	 * for a cached FRAGMENT: when the taller page lands the column overflows, the
+	 * margin resolves to zero, and every row drops to the bottom in one frame
+	 * (measured: first visible row +200.6 px, last row +212.6 px, 26/26 and 16/16
+	 * runs at 500/700 KB tool results). So the anchor is dropped while such a
+	 * fragment is stale, and only then; the rule and its truth table live in
+	 * `paint-top-anchor.ts`. Absent or null is "no cache entry" - a live pane, or
+	 * a caller that set `stale` itself - which keeps today's layout.
+	 */
+	paintComplete?: boolean | null;
+	/**
 	 * True when this conversation is owned by another device (the catalogue's
 	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
 	 * of the loading indicator: for a peer's conversation every wait this pane
@@ -944,6 +1047,69 @@ export type CanonicalTranscriptProps = {
 	onStartNewChat?: () => void;
 };
 
+/**
+ * §F3's line under a message that did not go out, with the fix its cause earns.
+ *
+ * THE FIX IS NEW (D3, onboarding friction 2026-11): 62 external users pressed
+ * "Send again" here, and for three causes a resend cannot work - nothing
+ * connected, no model chosen, the background service not answering - the row
+ * offered only that press. `recoveryForFailure` names the fix from the code and
+ * sentence the store kept, with the composer's LIVE verdict as the tie-breaker
+ * (a row that failed while the service was down is fixed by reconnecting). A
+ * configuration fix REPLACES "Send again" (the resend would fail identically
+ * until it is applied); a reconnect sits BESIDE it.
+ *
+ * A component of its own so the two reads it needs (provider census, server
+ * health) mount only for the one row that is undelivered, never for every
+ * user row in the transcript.
+ */
+export const UndeliveredLine: FC<{ undelivered: UndeliveredTurn }> = ({
+	undelivered,
+}) => {
+	useI18nLocale();
+	const { needsProvider, needsModel, isKnown } = useProviderStatus();
+	const serverOffline = useServerOffline();
+	const block = sendBlockFor({
+		noProvider: needsProvider,
+		noModel: needsModel,
+		serverOffline,
+	});
+	const recovery = recoveryForFailure({
+		code: undelivered.code,
+		message: undelivered.message,
+		cause: undelivered.cause,
+		block,
+		/*
+		 * U2: a configuration cause retires once the live verdict is READ and
+		 * clear. Offline outranks it inside `sendBlockFor`, so a read taken while
+		 * the service is down never counts as "fixed".
+		 */
+		verdictKnown: isKnown && !serverOffline,
+	});
+	const fix = useSendRecoveryAction();
+	return (
+		<UndeliveredLineView
+			sentence={undeliveredSentence({
+				message: undelivered.message,
+				recovery,
+				block,
+				/*
+				 * Q2: the row's Reconnect states its result here, as the composer's
+				 * does; only a reconnect's outcome belongs to this row.
+				 */
+				outcome: recovery === "reconnect" ? fix.outcome : null,
+			})}
+			recovery={recovery}
+			offerSendAgain={undelivered.retry !== false && keepsSendAgain(recovery)}
+			retryDisabled={undelivered.retryDisabled}
+			busy={fix.busy}
+			onFix={fix.run}
+			onSendAgain={undelivered.onSendAgain}
+			onEdit={undelivered.onEdit}
+		/>
+	);
+};
+
 // ---------------------------------------------------------------- rows
 
 /**
@@ -984,6 +1150,18 @@ export type UndeliveredTurn = {
 	 * so every pre-U4 caller keeps the button as it was.
 	 */
 	retryDisabled?: boolean;
+	/**
+	 * The machine code the store kept for this failure (`draft.errorCode`), so
+	 * the row can name the fix its cause earns (`recoveryForFailure`, D3).
+	 * Absent for a claim nothing classified.
+	 */
+	code?: string;
+	/**
+	 * The configuration cause the store classified this failure by
+	 * (`draft.errorCause`, agent review round 1 R1), so the row can name its fix
+	 * although its sentence is this app's own rather than the backend's.
+	 */
+	cause?: FailureCause;
 	onSendAgain: () => void;
 	onEdit: () => void;
 };
@@ -1035,9 +1213,7 @@ const userImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string =>
-	image.name ??
-	(count === 1 ? "Attached image" : `Attached image ${index + 1}`);
+): string => attachedImageLabel(image.name, index, count);
 
 /**
  * The tool row's rule, which differs from the user row's in the NOUN only: an
@@ -1864,57 +2040,7 @@ const UserRow = memo(function UserRow({
 				 * (`scripts/renderer-driver.mjs`'s `connection-drop` scene reads it), the
 				 * same structural-marker rule the row's own archive press follows.
 				 */}
-				{undelivered !== null && (
-					<div
-						data-undelivered
-						className={cn(
-							"flex w-full items-center justify-end gap-3 text-danger text-meta",
-						)}
-					>
-						<span className={cn("flex items-center gap-1")}>
-							<CircleAlert
-								aria-hidden="true"
-								className={cn("size-3.5 shrink-0")}
-							/>
-							{undelivered.message ??
-								t("ui.chat.canonical.transcript.not_delivered")}
-						</span>
-						{undelivered.retry !== false && (
-							<button
-								type="button"
-								/*
-								 * DIMMED, NOT GONE, while the composer holds this payload (UX round
-								 * 1, U4): the row keeps its statement and both controls, and the
-								 * box's own Send is the live affordance for this message until the
-								 * text changes. `aria-disabled` rather than `disabled` - see the
-								 * `UndeliveredTurn.retryDisabled` note.
-								 */
-								aria-disabled={undelivered.retryDisabled || undefined}
-								className={cn(
-									undelivered.retryDisabled
-										? "text-ink-muted"
-										: "cursor-pointer underline",
-								)}
-								onClick={(event) => {
-									if (undelivered.retryDisabled) {
-										event.preventDefault();
-										return;
-									}
-									undelivered.onSendAgain();
-								}}
-							>
-								{t("ui.chat.canonical.transcript.send_again")}
-							</button>
-						)}
-						<button
-							type="button"
-							className={cn("cursor-pointer underline")}
-							onClick={undelivered.onEdit}
-						>
-							{t("ui.chat.canonical.transcript.edit")}
-						</button>
-					</div>
-				)}
+				{undelivered !== null && <UndeliveredLine undelivered={undelivered} />}
 			</div>
 		</MessageContainer>
 	);
@@ -1923,6 +2049,8 @@ const UserRow = memo(function UserRow({
 const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
+	revealOnMount,
+	animateStream,
 	closesTurn,
 	answerRail,
 	foot = null,
@@ -1931,6 +2059,8 @@ const AssistantRow = memo(function AssistantRow({
 }: {
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
+	revealOnMount: boolean;
+	animateStream: boolean;
 	closesTurn: boolean;
 	/**
 	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
@@ -1981,6 +2111,17 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	const inserts = useMemo(() => {
+		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
+		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
+		// do not paint in this Markdown container; neither changes the stored text.
+		const { prefix, rest } = splitReplyPrefix(record.text);
+		const start = prefix.length + rest.length - rest.trimStart().length;
+		return record.inlineUi.widgets.map(({ offset, value }) => ({
+			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			node: <InlineUiHost value={value} />,
+		}));
+	}, [record.inlineUi, record.text, remainingContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2112,9 +2253,13 @@ const AssistantRow = memo(function AssistantRow({
 				 * the same component at the same key - so the settle moves no node;
 				 * what settles is exactly what the full parse makes of the same string.
 				 */}
-				{record.streaming ? (
+				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
 						content={remainingContent}
+						// A joined stream or a receipt gap cannot certify that its text
+						// is a new suffix. It and the authoritative settle both paint now.
+						animateInk={animateStream && !record.truncated}
+						revealOnMount={revealOnMount}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 					/>
@@ -2123,18 +2268,12 @@ const AssistantRow = memo(function AssistantRow({
 						content={remainingContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
-						/*
-						 * Linkification is the settled row's, and the streaming half is
-						 * deliberately not handed this prop: `StreamingMarkdown` linkifies a
-						 * block the moment it CLOSES (`ParsedBlock`'s own note: a closed
-						 * block's source can never change again, so a path inside it is a
-						 * finished path), while the open block is parsed but never linked or
-						 * scanned — so `/Users/x/opoint-renewal-2026-09-1` cannot become a
-						 * link to a path that does not exist. That is the same hazard the
-						 * old `linkify={!record.streaming}` line refused, now enforced per
-						 * block instead of per row.
-						 */
-						linkify
+						// A figure can already own focus and a horizontal scroll position
+						// before completion. Once it exists, the one authoritative parse
+						// owns its slot through end and durable refresh; no DOM handoff.
+						streaming={record.streaming}
+						linkify={!record.streaming}
+						inserts={inserts}
 						// A new message's identity for the link evidence's one re-check,
 						// so a report worded exactly like an earlier message still
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
@@ -2814,14 +2953,29 @@ const ToolRow = memo(function ToolRow({
 					className={cn(
 						"whitespace-pre font-mono",
 						interruptedNotRun ? "text-ink" : "text-danger",
+						// The reason a call did not run quotes the call (review round 1, Q2).
+						USER_CONTENT_CLASS,
 					)}
 				>
 					{record.notRunReason}
 				</pre>
 			</div>
 		</div>
-	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} truncatedRows={record.diffTruncatedRows} />
+	) : isDiffBodyRow(record) || isArchiveOnlyDiffRow(record) ? (
+		<DiffBlock
+			// `?? []`: an archive-only row (see `isArchiveOnlyDiffRow`) has no
+			// inline rows at all; the well then carries only the archive's offer
+			// or its descriptor notice.
+			diff={record.diff ?? []}
+			truncatedRows={record.diffTruncatedRows}
+			// The row's own scope (parent, or the child reader's) decides which
+			// route pages the archive — the same seam media rows resolve through.
+			history={{
+				scope,
+				callId: record.toolCallId,
+				descriptor: record.diffFull ?? null,
+			}}
+		/>
 	) : bridge && !running ? (
 		<BridgeDetail
 			record={record}
@@ -2964,15 +3118,22 @@ const ToolRow = memo(function ToolRow({
 							isInterruptedFault(record.notRunKind)
 							? "interrupted"
 							: "not-run"
-						: running
-							? "running"
-							: partial
-								? "partial"
-								: record.isError
-									? "error"
-									: record.stopped
-										? "interrupted"
-										: "success"
+						: record.captureOnly
+							? /* A row built only from the host's diff binding proves the
+							     CAPTURE, not the executor's completion: it is a quiet
+							     receipt (no success or failure claim, no announcement),
+							     and its body is the full-diff pager. A live record for the
+							     same call never carries the flag (`bindingRecord`). */
+								"receipt"
+							: running
+								? "running"
+								: partial
+									? "partial"
+									: record.isError
+										? "error"
+										: record.stopped
+											? "interrupted"
+											: "success"
 				}
 				deliveryState={record.delivery}
 				settledVerb={bridge?.failedVerb ?? null}
@@ -3232,6 +3393,23 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 }) {
 	useI18nLocale();
 	const receipt = record.bridgeReceipt ?? bridgeReceiptOf({});
+	/*
+	 * THE BODY READ'S GATE. Core advertises `team_bridge_card_body` when its
+	 * entry-keyed display-store read exists; without it the pane keeps today's
+	 * sentence and asks nothing. The read is answered by THIS machine's daemon
+	 * for a session it hosts, so a child transcript (the parent route refuses
+	 * child ids) and a conversation hosted on another device (its journal and
+	 * display store live there) keep the old sentence too, rather than rendering
+	 * a refusal as if it were the message's state.
+	 */
+	const bodyCapable = usePassiveDesktopFeature("team_bridge_card_body");
+	const sessionId = scope && !scope.childId ? scope.sessionId : null;
+	const remote = useCanonicalSessionsStore((state) =>
+		sessionId
+			? remoteOwnedId(state.sessions, state.placementFacts, sessionId)
+			: false,
+	);
+	const bodyEnabled = bodyCapable && sessionId !== null && !remote;
 	const sender = receipt.sender.name || t("ui.teamBridge.page.title");
 	const received = t("ui.chat.bridgeReceipt.received", { sender });
 	const target =
@@ -3243,6 +3421,13 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 			})
 		: "";
 	const summary = [received, target, attachments].filter(Boolean).join(" · ");
+	/*
+	 * The open pane's headline says WHERE the message sits as well as who sent
+	 * it: a reply inside a thread reads differently from a top-level post, and the
+	 * body below it is otherwise context-free. The collapsed row keeps its
+	 * shorter summary.
+	 */
+	const thread = receipt.thread ? t("ui.chat.bridgeReceipt.thread_reply") : "";
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3255,9 +3440,17 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 					<BridgeDetailPane
 						isError={false}
 						view={{
-							headline: [received, target].filter(Boolean).join(" · "),
+							headline: [received, target, thread].filter(Boolean).join(" · "),
 							body: null,
-							outcome: t("ui.chat.bridgeReceipt.unavailable"),
+							/*
+							 * When the read is offered, the body section below owns the
+							 * outcome sentence. When it is not (older backend, child or
+							 * remote transcript), today's sentence stays in this slot, above
+							 * the provenance line, so that pane is unchanged (review R3).
+							 */
+							outcome: bodyEnabled
+								? null
+								: t("ui.chat.bridgeReceipt.unavailable"),
 							internals: [],
 							raw: record.text,
 						}}
@@ -3278,6 +3471,17 @@ const BridgeIncomingRow = memo(function BridgeIncomingRow({
 								</time>
 							) : null}
 						</div>
+						{/*
+						 * Under the provenance line on purpose: the label is what frames
+						 * the text that follows as someone else's untrusted words.
+						 */}
+						{bodyEnabled ? (
+							<BridgeCardBodySection
+								sessionId={sessionId}
+								entryId={record.id}
+								enabled
+							/>
+						) : null}
 					</BridgeDetailPane>
 				}
 			/>
@@ -3751,6 +3955,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	row,
 	sessionCwd,
 	enter = false,
+	animateStream = false,
 	isSmallView,
 	scope,
 	capable,
@@ -3785,6 +3990,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	approvalEpoch = null,
 }: {
 	row: Row;
+	animateStream?: boolean;
 	/**
 	 * The conversation's owner epoch, as a PRIMITIVE (these rows are memoised over
 	 * frontend frames, so the frame itself is not a prop). It is the identity a
@@ -3955,6 +4161,8 @@ const TranscriptRow = memo(function TranscriptRow({
 				<AssistantRow
 					record={record}
 					isSmallView={isSmallView}
+					revealOnMount={enter}
+					animateStream={animateStream}
 					closesTurn={row.closesTurn}
 					answerRail={answerRail}
 					foot={foot}
@@ -4123,6 +4331,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * node and the animation plays exactly once.
 					 */
 					entered.current &&
+						record.kind !== "assistant" &&
 						(record.kind === "user"
 							? "lo-transcript-arrival-rise"
 							: "lo-transcript-arrival"),
@@ -4172,8 +4381,33 @@ const OPEN_TRACE_MS = 60_000;
  * changes the answer, and a refusal without it is a dead end. The search
  * jump's copy carries the same tail.
  */
-const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+function checkpointJumpMissCopy(): string {
+	// A function, not a constant: read per refusal so it speaks the locale
+	// active now, not the one active when this module loaded.
+	return t("ui.chat.canonical.checkpoint_jump.miss");
+}
+
+/**
+ * The reader's place in a reversed scroller, as the paint cache stores it.
+ *
+ * Mirrors `use-scroll-paging.ts`'s `sampleAnchor` rule - the first row whose
+ * bottom is still below the scrollport's top is the row the reader is looking
+ * at, including one scrolled halfway off - and states it in the cache's terms
+ * (`PaintedScroll`) rather than the paging hook's. `Math.abs(scrollTop) <= 1` is
+ * the tail: this scroller's origin is the bottom, so a pinned reader is at 0.
+ */
+function measuredScroll(region: HTMLElement): PaintedScroll {
+	if (Math.abs(region.scrollTop) <= 1) return PINNED_SCROLL;
+	const top = region.getBoundingClientRect().top;
+	for (const row of region.querySelectorAll<HTMLElement>("[data-record-id]")) {
+		const rect = row.getBoundingClientRect();
+		if (rect.bottom <= top) continue;
+		const id = row.dataset.recordId;
+		if (!id) continue;
+		return { pinned: false, id, offsetPx: Math.round(rect.top - top) };
+	}
+	return PINNED_SCROLL;
+}
 
 /**
  * A fold group as the aggregation pass hands it on: the partition's own
@@ -4257,6 +4491,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	hydrationProven = true,
 	historyReadPending = false,
 	stale = false,
+	staleIndicatorDelayMs = STALE_INDICATOR_DELAY_MS,
+	paintRunning = false,
+	restoredScroll = null,
+	paintComplete = null,
 	remote = false,
 	missing = false,
 	missingTemporary = false,
@@ -4375,6 +4613,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
+		feedReady: boolean;
 	} | null>(null);
 	/*
 	 * The attachment scope: the caller's when it supplied one (the child
@@ -4834,7 +5073,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
-					waiting,
+					/*
+					 * THE CACHED PAINT'S CLAIM IS AN INPUT, not a second derivation: a return to
+					 * a session that was running when the reader left must not paint idle chrome
+					 * for the length of the revalidate (UX review, 2026-11-12, U2). The rows
+					 * cannot say it - the in-flight ones are dropped on write - so the cache
+					 * carries the one bit, and the snapshot withdraws it by clearing
+					 * `paintRunning` in the commit that replaces the rows.
+					 */
+					waiting: waiting || paintRunning,
 					// The pass is the transcript's own fact, read here rather than
 					// latched in this view: one source for the rung and the composer's
 					// hint (see `transcript-reducer`'s `compacting`).
@@ -4862,6 +5109,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					// rung's number and the sentence cannot disagree about whether
 					// the pane can vouch for a duration.
 					idleDisputed: idleDisputed === true,
+					/*
+					 * AND THE CACHED CLAIM WEARS NO CLOCK (design round 1, D1). The paint's
+					 * `busy` bit says a turn was running, not when it started, so a number
+					 * counted from this mount would be an invented age - `thinking 0s`
+					 * ticking up, then jumping to the snapshot's true age. The label stands
+					 * and only the number is withheld, the disputed idle's shape.
+					 */
+					clockWithheld: paintRunning && stale,
 					gate,
 					// The rung yields to a TERMINAL statement and not to a reconnect
 					// (operator incident, 2026-10-07): a receipt gap drops the
@@ -4880,7 +5135,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						status,
 						failure,
 						missing,
-						stale,
+						/*
+						 * A stale pane is terminal because it has not painted the run above it.
+						 * The paint cache's `busy` flag is the exception that proves it: the
+						 * cache DID paint that run's last durable rows and says a turn was in
+						 * flight, so the line is the honest claim for the revalidate window and
+						 * the snapshot withdraws it if the turn has ended. Without it a return
+						 * to a running session reads as idle (UX review, 2026-11-12, U2).
+						 */
+						stale: stale && !paintRunning,
 					}),
 					records: shownRecords,
 				}),
@@ -4914,6 +5177,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
+			paintRunning,
 			shownRecords,
 		],
 	);
@@ -4939,6 +5203,22 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
 	const paneGap = status !== "live";
+	const motionFeedReady = !paneGap && !awaitingHydration;
+
+	/*
+	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
+	 *
+	 * The rows are already readable when the indicator would appear, so the
+	 * common return - snapshot inside the measured distribution - paints no
+	 * loader at all, and a slow page still says what the view is. The remote
+	 * variant is never held: for a peer's conversation whose history is unproven
+	 * the wait IS the sync, and the pane has nothing readable to hold it for.
+	 * See `use-stale-indicator-hold.ts` for the measurement behind the delay.
+	 */
+	const showStaleCaption = useStaleIndicatorHold(
+		stale,
+		remote && !hydrationProven ? 0 : staleIndicatorDelayMs,
+	);
 
 	/*
 	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
@@ -5123,8 +5403,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
-			isFoldable: (row) =>
-				row.record.kind === "tool" && !isQuietTurnCall(row.record),
+			/*
+			 * `isTraceFoldable` keeps a detached music job OUT of the action fold,
+			 * so its generating card is never hidden behind a closed group (Q-1 on
+			 * #1800); see the predicate for the full rule.
+			 */
+			isFoldable: (row) => isTraceFoldable(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
 			/*
 			 * The unit grammar lives in the model (`receiptFoldUnits`): each internal
@@ -5355,6 +5639,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	};
 	const holdPlaceholder = transcriptPaneHoldsPlaceholder(paneView);
 	const collapsed = transcriptPaneCollapses(paneView);
+	/*
+	 * The column's top anchor, for THIS pane: the ordinary layout unless the rows
+	 * are a stale cached fragment (see `paint-top-anchor.ts`).
+	 */
+	const topAnchor = paintKeepsTopAnchor({
+		stale,
+		complete: paintComplete === true,
+		hasEntry: paintComplete !== null && paintComplete !== undefined,
+	});
 
 	/*
 	 * The END of the click-to-visible trace: the first commit that paints a
@@ -5405,6 +5698,76 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		}
 		performance.clearMarks("lop:open:requested");
 	}, [visible.length, sessionId]);
+
+	/*
+	 * THE PAINT FIELDS of the open trace (`paint=`, see `open-trace.ts`): what this
+	 * mount's FIRST committed rows were, and whether they filled the pane.
+	 *
+	 * WHY THIS IS KEYED ON THE TRACE'S TARGET AND NOT ON `sessionId`: the rows a
+	 * seeded paint shows exist while `frontend` is still null, which is exactly
+	 * the window `routed` and `content` above are blind to - they pass
+	 * `frontend?.session_id`, so a cached paint left no mark at all. The trace's
+	 * own target is the id the click named AND the id the paint cache is addressed
+	 * by (`paintSeed` is `readPaint`), so the two agree by construction.
+	 *
+	 * WHY THE CACHE IS READ AT THE PANE'S OWN COMMIT rather than handed down: the
+	 * pane is the only surface that knows when its rows first COMMITTED, and the
+	 * entry it reads was written when that conversation was last left.
+	 *
+	 * THE OLD PANE'S WRITE DOES NOT PRECEDE THIS READ (agent review round 1, R1-4).
+	 * `writePaint` runs from a `useEffect` cleanup ("Cache this conversation's paint
+	 * on the way out", `use-canonical-session.ts`), and in React 18 a deleted
+	 * subtree's passive cleanups run AFTER the new tree's layout effects - so the
+	 * pane being left writes after this reads. The claim that survives, and is the
+	 * one this needs, is narrower: the TARGET's own entry was written when that
+	 * conversation was last left, and no other writer of that key runs between that
+	 * write and this read.
+	 *
+	 * ONE `Map` read is the cost, and it makes the claim checkable against the thing
+	 * it describes: an entry present is a seed, an absent one is no seed.
+	 *
+	 * WHAT IS MEASURED, AND THE ONCE-PER-MOUNT RULE, LIVE IN `tracePanePaint`
+	 * (`open-trace.ts`): they decide what a pane may say, and a source regex cannot
+	 * tell a pane that mounted BEFORE the click from one that mounted FOR it (agent
+	 * review round 1, R1-1/R1-2). In particular `fills` is the content column's own
+	 * box against the scroller's inner box - `open-trace.ts` carries why
+	 * `scrollHeight` cannot be the test there.
+	 */
+	const paintTrace = useRef<PanePaintTrace | null>(null);
+	// React keeps the first initialiser's value; the null check keeps the latch from
+	// being rebuilt on every streaming render.
+	if (paintTrace.current === null) paintTrace.current = createPanePaintTrace();
+	useLayoutEffect(() => {
+		const trace = paintTrace.current;
+		if (trace === null) return;
+		tracePanePaint(trace, {
+			activeSessionId: () => openTrace.activeSessionId(),
+			currentToken: () => openTrace.currentToken(),
+			notePaint: (target, token, stamp) =>
+				openTrace.notePaint(target, token, stamp),
+			readPaint,
+			missReason: paintMissReason,
+			visibleRows: visible.length,
+			boxes: () => {
+				const content = contentRef.current;
+				const scroller = containerRef.current;
+				if (!content || !scroller) return null;
+				let paddingTop = 0;
+				let paddingBottom = 0;
+				if (typeof getComputedStyle === "function") {
+					const style = getComputedStyle(scroller);
+					paddingTop = Number.parseFloat(style.paddingTop);
+					paddingBottom = Number.parseFloat(style.paddingBottom);
+				}
+				return {
+					contentHeight: content.getBoundingClientRect().height,
+					scrollerClientHeight: scroller.clientHeight,
+					paddingTop,
+					paddingBottom,
+				};
+			},
+		});
+	}, [containerRef, visible.length]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
@@ -5523,6 +5886,84 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		// reader furthest. `visible.length` changes on both growth paths.
 		rowCount: visible.length,
 	});
+	/*
+	 * THE READER COMES BACK WHERE THEY LEFT (operator report, 2026-11-12: "when i
+	 * switch between team bridge and session ... it has some sort of loading
+	 * mechanism to load conversation"; QA measured the other half - 0 of 12
+	 * scrolled returns kept their place, because the panel unmounts on the route
+	 * change and this scroller's only resting place is the tail).
+	 *
+	 * A LAYOUT effect so the FIRST painted frame of the return is already the
+	 * reader's place rather than a bottom-anchored frame that the next one
+	 * corrects. The write is acknowledged to the paging hook for the reason the
+	 * pressed-bar correction's is: this scroller's listeners would otherwise read
+	 * it as the reader travelling older-ward and arm a page demand from it.
+	 *
+	 * A row that is not mounted (the render window is the newest 60) widens the
+	 * window to its own distance and re-runs; a row the transcript no longer
+	 * holds - the reconcile dropped it, or the paint is older than the page - is
+	 * a missing anchor, and the tail is the honest fallback rather than a guess
+	 * at the nearest neighbour.
+	 */
+	const restorePending = useRef<PaintedScroll | null>(restoredScroll);
+	useLayoutEffect(() => {
+		const anchor = restorePending.current;
+		if (!anchor || anchor.pinned) return;
+		const region = containerRef.current;
+		if (!region) return;
+		const row = [
+			...region.querySelectorAll<HTMLElement>("[data-record-id]"),
+		].find((element) => element.dataset.recordId === anchor.id);
+		if (!row) {
+			const index = rowsRef.current.findIndex(
+				(entry) => entry.record.id === anchor.id,
+			);
+			if (index === -1) {
+				restorePending.current = null;
+				return;
+			}
+			const distance = rowsRef.current.length - index;
+			if (distance > alignSize) {
+				setWindowSize(distance);
+				return;
+			}
+			restorePending.current = null;
+			return;
+		}
+		const before = region.scrollTop;
+		scrollRegionToTop(region, row, "reversed", anchor.offsetPx);
+		acknowledgeOwnWrite(before, region.scrollTop);
+		restorePending.current = null;
+	}, [acknowledgeOwnWrite, alignSize, containerRef]);
+	/*
+	 * REMEMBER THE READER'S PLACE ON THE WAY OUT.
+	 *
+	 * A LAYOUT cleanup, for two measured reasons: it is the last moment this
+	 * scroller is still in the document (React removes the deleted node after its
+	 * layout destroys run), and it runs BEFORE the session hook's passive cleanup
+	 * writes the paint - `writePaintScroll` hands it the place, and `writePaint`
+	 * carries the value forward for exactly that ordering (including a session's
+	 * first leave, where no paint entry exists yet).
+	 */
+	useLayoutEffect(() => {
+		if (!conversationId) return;
+		return () => {
+			const region = containerRef.current;
+			/*
+			 * A SKIPPED MEASUREMENT RECORDS THE TAIL (agent review C4). Returning
+			 * here left whatever the PREVIOUS visit wrote standing, so a cleanup that
+			 * could not measure (a detached node, a zero-height pane) restored a place
+			 * from two visits ago. The reader is at no measured place, and the tail is
+			 * the honest one; recording it also tells `writePaint` that this visit's
+			 * answer is known rather than absent.
+			 */
+			if (!region?.isConnected || region.clientHeight === 0) {
+				writePaintScroll(conversationId, PINNED_SCROLL);
+				return;
+			}
+			writePaintScroll(conversationId, measuredScroll(region));
+		};
+	}, [conversationId, containerRef]);
 	/*
 	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
 	 *
@@ -5665,7 +6106,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * refusal speaks, so that is the argument rather than a second loop.
 	 */
 	const jumpToCheckpoint = useCallback(
-		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		(id: string) => void jumpTo(id, checkpointJumpMissCopy()),
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(
@@ -6976,6 +7417,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
+			feedReady: motionFeedReady,
 		};
 		slotExtents.current.clear();
 		previousSlotPlan.current = {
@@ -7008,15 +7450,29 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			),
 		};
 	}
-	const known = arrivalLedger.current.ids;
+	const ledger = arrivalLedger.current;
+	const known = ledger.ids;
 	let lastKnown = -1;
 	rows.forEach((row, index) => {
 		if (known.has(row.record.id)) lastKnown = index;
 	});
 	const arriving = new Set(
-		paneIsLive ? rows.slice(lastKnown + 1).map((row) => row.record.id) : [],
+		paneIsLive
+			? rows
+					.slice(lastKnown + 1)
+					.filter(
+						({ record }) =>
+							!record.sourcePrecedes &&
+							((motionFeedReady && ledger.feedReady) ||
+								(record.kind === "user" && record.local)),
+					)
+					.map(({ record }) => record.id)
+			: [],
 	);
 	useLayoutEffect(() => {
+		// A reconnect may deliver its catch-up tail in the same commit as
+		// `status: live`. Seed that commit before allowing another arrival.
+		ledger.feedReady = motionFeedReady;
 		for (const row of rows) known.add(row.record.id);
 		viewState.current.store.prune(
 			new Set(rawRecords.current.map((record) => record.id)),
@@ -7070,7 +7526,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					approvalEpoch={frontend?.epoch ?? null}
 					key={row.record.id}
 					row={index === 0 ? atTraceTier(row) : row}
-					enter={arriving.has(row.record.id) && row.record.kind !== "assistant"}
+					enter={arriving.has(row.record.id)}
+					animateStream={
+						row.record.kind === "assistant" &&
+						row.record.streaming &&
+						motionFeedReady
+					}
 					isSmallView={isSmallView}
 					scope={mediaScope}
 					capable={attachmentsCapable}
@@ -7201,9 +7662,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 										approvalEpoch={frontend?.epoch ?? null}
 										key={row.record.id}
 										row={index === 0 ? atTraceTier(row) : row}
-										enter={
-											arriving.has(row.record.id) &&
-											row.record.kind !== "assistant"
+										enter={arriving.has(row.record.id)}
+										animateStream={
+											row.record.kind === "assistant" &&
+											row.record.streaming &&
+											motionFeedReady
 										}
 										isSmallView={isSmallView}
 										scope={mediaScope}
@@ -7243,9 +7706,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				approvalEpoch={frontend?.epoch ?? null}
 				key={group.row.record.id}
 				row={group.row}
-				enter={
-					arriving.has(group.row.record.id) &&
-					group.row.record.kind !== "assistant"
+				enter={arriving.has(group.row.record.id)}
+				animateStream={
+					group.row.record.kind === "assistant" &&
+					group.row.record.streaming &&
+					motionFeedReady
 				}
 				isSmallView={isSmallView}
 				scope={mediaScope}
@@ -7825,13 +8290,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * `scrollable`-conditioned `justify-end`, which would need a threshold to
 						 * tune and could oscillate around the fill point.
 						 *
+						 * AND IT IS WITHDRAWN WHILE THE ROWS ARE A STALE CACHED FRAGMENT
+						 * (`topAnchor`, from `paint-top-anchor.ts`). "Only while it fits" is the
+						 * defect on that path: a cached suffix often fits the pane, and the page
+						 * that replaces it usually does not, so the margin would resolve to zero
+						 * at the moment the page lands and every row would jump by the leftover
+						 * height. Bottom-packing the fragment from its first frame is the same
+						 * layout the page will leave behind, so the landing moves nothing.
+						 *
 						 * The empty state is untouched by it: a collapsed pane is `h-0` (see
 						 * `collapsed` above), so there is no free space for a margin to absorb
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
 						 */
-						className={cn("relative mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn(
+							"relative flex flex-col",
+							topAnchor && "mb-auto",
+							CHAT_MEASURE,
+						)}
 					>
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
@@ -8267,7 +8744,22 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 									"min-h-[1lh] font-mono text-mono-sm",
 								)}
 							>
-								{stale ? (
+								{working && !internalLiveLeaf ? (
+									/*
+									 * THE WORKING LINE WINS THE SLOT (UX review, 2026-11-12, U4).
+									 * Both claims are true while a cached paint of a running turn
+									 * revalidates, and the run is the one that matters: "the agent is
+									 * working" outranks "this view is being checked", and the
+									 * snapshot withdraws the working line if the turn has ended. The
+									 * slot is the same box either way, so the order costs no layout.
+									 */
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
+									/>
+								) : stale && showStaleCaption ? (
 									/*
 									 * The cached paint's revalidation, as the shared loading
 									 * indicator (operator 2026-11-11: the faint `ink-dim`
@@ -8279,6 +8771,13 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 									 * probe name the switch-latency rig and the tests read.
 									 * "Remote" behind the same proof gate as the cold slot and
 									 * the older slot, so the three never disagree.
+									 *
+									 * HELD FOR A MOMENT FIRST (operator report, 2026-11-12):
+									 * with the rows already readable, the indicator used to
+									 * flash on every switch to a conversation this window
+									 * already had - it read as a load that was not happening.
+									 * `showStaleCaption` is the hold; if the snapshot lands
+									 * first, this never renders at all.
 									 */
 									<div data-lo-stale-caption={true}>
 										<ConversationLoadingIndicator
@@ -8287,17 +8786,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 											}
 										/>
 									</div>
-								) : (
-									working &&
-									!internalLiveLeaf && (
-										<WorkingLine
-											activity={working.activity}
-											phase={working.phase}
-											startedAt={working.startedAt}
-											clock={working.clock}
-										/>
-									)
-								)}
+								) : null}
 							</div>
 						)}
 

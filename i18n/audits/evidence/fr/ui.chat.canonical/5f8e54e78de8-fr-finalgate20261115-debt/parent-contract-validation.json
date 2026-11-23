@@ -1,0 +1,205 @@
+{
+  "kind": "pure in-memory parent receipt derivation",
+  "app_runtime_or_tests": false,
+  "ledger_writer_or_checker": false,
+  "results": [
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+      "locale": "es",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 5,
+          "nit": 2
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+        "receipt_sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+      "locale": "es",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 2
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+        "receipt_sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-es-canonical-8769431b.json",
+      "locale": "es",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "s18b-es-canonical-8769431b",
+        "model": "anthropic/claude-opus-5-5",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+        "target_sha256": "59adc6ae654af21ffcab0662d2ff88ac27eb90100f1b2571d8aeba48ff5a9bde",
+        "receipt_sha256": "12b3973838298d61523cc7b416e5602f21d2038daf92223c266e3b8706edec5a"
+      },
+      "parent_context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+      "locale": "fr",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 4,
+          "nit": 3
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+        "receipt_sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+      "locale": "fr",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+        "receipt_sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
+      "locale": "fr",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "s18b-fr-canonical-da7ee1dc",
+        "model": "anthropic/claude-opus-5-5",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+        "target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+        "receipt_sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6"
+      },
+      "parent_context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+      "locale": "hi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+        "receipt_sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+      "locale": "hi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+        "receipt_sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+      },
+      "parent_context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "declared_context_matches": true
+    },
+    {
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+      "locale": "hi",
+      "derived": {
+        "agent": "i18n-auditor",
+        "instance": "s18b-hi-canonical-5e4b1db4",
+        "model": "anthropic/claude-opus-5-5",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+        "target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+        "receipt_sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00"
+      },
+      "parent_context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+      "declared_context_matches": true
+    }
+  ]
+}

@@ -22,8 +22,11 @@ CORE_PYTHON = configured_launcher('LOCAL_OPERATOR_CORE_PYTHON')
 UI_ROOT = Path(os.environ['MUSIC_UI_WORKTREE']).resolve()
 import shutil
 from owned_cleanup import OwnedProcesses, cleanup_all, cancel_listener, run_signalled
-from command_sequencing import assert_previous_consumed, own_emission, receipts_tail
+from command_sequencing import assert_previous_consumed, own_emission, receipts as worker_receipts, receipts_tail
 FFMPEG = Path(shutil.which('ffmpeg') or '/missing-ffmpeg')
+# Q-1 (#1893): what a real agent reads before generate_music. Internal URLs, so
+# they resolve in any Core with no fixture files (see sitecustomize.preface_step).
+PENDING_PREFACE = ['guide://music-generation', 'tool://generate_music', 'tool://music_status']
 
 async def main():
     import httpx
@@ -160,11 +163,13 @@ async def main():
             async def settled():
                 r=await client.get(target);fe=r.json().get('result',{}).get('payload',{}).get('frontend',{}).get('snapshot',{})
                 return {'epoch':fe.get('epoch')} if not fe.get('streaming') and not fe.get('pending_gate') and not fe.get('queued_steering') else None
-            async def command(tool,args):
+            # `preface`: read-type calls the scripted model makes before `tool`
+            # in the same turn (sitecustomize.py's preface_step, Q-1 on #1893).
+            async def command(tool,args,preface=None):
                 await until(settled)
                 assert_previous_consumed(ROOT)
                 cid='music-qa-'+uuid.uuid4().hex
-                (ROOT/'model-command.json').write_text(json.dumps({'id':cid,'tool':tool,'args':args}))
+                (ROOT/'model-command.json').write_text(json.dumps({'id':cid,'tool':tool,'args':args,**({'preface':preface} if preface else {})}))
                 try:
                     r=await client.post(target+'/messages',json={'request_id':str(uuid.uuid4()),'text':'MUSIC_QA_TOOL '+cid});record('prompt_'+tool,{'status':r.status_code,'body':r.json()});assert r.status_code==200
                     if tool in gated:await approve(tool)
@@ -210,10 +215,10 @@ async def main():
             async def newest_except(exclude):
                 values=read_records(str(directory))
                 return next((v for k,v in values.items() if k not in exclude),None)
-            async def generate_case(label,args,controls):
+            async def generate_case(label,args,controls,preface=None):
                 before=set(read_records(str(directory)))
                 with upstream.lock:upstream.controls.update(controls)
-                await command('generate_music',args)
+                await command('generate_music',args,preface)
                 async def fresh():return await newest_except(before)
                 current=await until(fresh)
                 return current
@@ -285,10 +290,20 @@ async def main():
                             handled.add(ctl['id']);reply={'id':ctl['id']}
                             try:
                                 if ctl['action']=='start_pending':
-                                    current=await generate_case('native-pending',{'prompt':'Native owned pending','duration_ms':3000,'variations':1},{'failed':False,'partial':False,'complete':False})
+                                    # Q-1 shape: three reads precede the music call in
+                                    # one turn, so the UI must keep the generating card
+                                    # out of their action fold (consumer asserts it
+                                    # visible with no expand press).
+                                    current=await generate_case('native-pending',{'prompt':'Native owned pending','duration_ms':3000,'variations':1},{'failed':False,'partial':False,'complete':False},
+                                                                PENDING_PREFACE)
                                     async def native_tracks():
                                         v=read_records(str(directory)).get(current['job']);return v if v and v.get('tracks') else None
                                     reply['job']= (await until(native_tracks))['job'];reply['cancel_before']=upstream.cancel_count;reply['producing_call_id']=json.loads((ROOT/'model-command.json').read_text())['id']
+                                    # The worker's own receipt that the reads really ran first;
+                                    # without it the consumer's no-expand check proves nothing.
+                                    pre=[e for e in worker_receipts(ROOT) if e.get('event')=='preface_emitted' and e.get('call_id')==reply['producing_call_id']]
+                                    if len(pre)!=1 or len(pre[0].get('reads') or ())!=len(PENDING_PREFACE):raise RuntimeError('Pending music call was not preceded by its scripted reads')
+                                    reply['preface_reads']=pre[0]['reads']
                                 elif ctl['action']=='inspect_cancel':
                                     if ctl.get('job')!=native_job:raise RuntimeError('Wrong pending job cancellation witness')
                                     reply.update(job=native_job,cancel_delta=upstream.cancel_count-reply_cancel_before)

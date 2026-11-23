@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1963",
+  "locale": "ru",
+  "namespace": "ui.common.backend_startup",
+  "pr": 1963,
+  "date": "2026-11-17",
+  "head": "8e64b0ccd0",
+  "instance": "pr1963-r1-ru-backendstartup-65a7f97cab63",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor: lopdev team `task` subagent job 65a7f97cab63 (manager session f52727670001, 'UI-2 i18n audit r1'); not the translator (lopdev coder job aceade24b830, 'UI-2 robustness + instrumentation', anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "A separate subagent instance from the translator job; same served model anthropic/claude-opus-5-5 (disclosed; per this session's harness system prompt, no fallback). Judged from the English, its context sidecar, the core glossary and the locale style guide, and shipped catalogue precedent; no MT used. Auditor-authored fixes are listed as findings with before/after.",
+    "instance": "pr1963-r1-ru-backendstartup-65a7f97cab63"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Mechanical pass on the audited bytes (auditor script, intl ICU parser from the worktree's node_modules): key set and order equal English (19); ICU parse OK; argument names/types equal English per key ({seconds} in detail_starting and reason.timed_out only); no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C); no ASCII '...'; Local Operator and Windows kept Latin wherever English has them."
+    },
+    {
+      "severity": "INFO",
+      "key": "*",
+      "note": "Terms checked: Перезапустить сервер (update_notification.restart_the_server), поддержку (error_boundary), компьютер; 30 секунд is the correct many-form for the only value shipped today."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.common.backend_startup.detail_starting, ui.common.backend_startup.reason.timed_out",
+      "note": "T10 (English source/context, not these target bytes): {seconds} is a plain string argument with no plural arm and the context sidecar does not say its value. Today it is always 30 (READINESS_BUDGET_MS = 30_000 in src/main/backend/backend-service.ts), for which every locale's noun form is correct; a future budget like 21/22 s would need a plural select in ru (and en). Recorded as an English-side NIT on the PR; not counted against this locale."
+    },
+    {
+      "id": "T7",
+      "severity": "NIT",
+      "key": "ui.common.backend_startup.action.copy_diagnostics",
+      "status": "fixed",
+      "before": "Скопировать диагностику",
+      "after": "Копировать диагностику",
+      "note": "The identical English label 'Copy diagnostics' already ships as ui.providers.phone.action.copy_diagnostics = Копировать диагностику; ru action labels use Копировать in 35 strings vs Скопировать in 11. One term, one rendering. Fixed by the auditor."
+    }
+  ],
+  "scope": "PR #1963 round 1: all 19 ui.common.backend_startup keys, ccc99372ac..8e64b0ccd0 plus this audit's locale-only fixes",
+  "binding": "Target src/i18n/catalogues/ru/ui.common.backend_startup.json sha256 d4dda62046f674113c38892ea06386b038abde5145cbff20d064d9b889b0dc3f (8e64b0ccd0 plus auditor fixes); English sha256 90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db; context sha256 6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687.",
+  "en_sha256": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db",
+  "context_sha256": "6fa8dac08e7514327fee70f1011da04555f0056455779fb88e62289c42516687",
+  "target_sha256": "d4dda62046f674113c38892ea06386b038abde5145cbff20d064d9b889b0dc3f",
+  "sha256": {
+    "ru": "d4dda62046f674113c38892ea06386b038abde5145cbff20d064d9b889b0dc3f",
+    "en": "90f9320471f38fea71552ede50d9acfd22f062a68c2cb925c8550d22fb5492db"
+  },
+  "glossary": {
+    "revision": "local-operator i18n/ (glossary.md + style-guides) at core commit 2008053b5d6a",
+    "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "i18n/style-guides/ru.md",
+    "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  }
+}

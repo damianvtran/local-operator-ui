@@ -21,10 +21,12 @@
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	type DesktopMonitorWriteReceipt,
+	MONITORS_LIST_KEY,
 	MonitorsApi,
 } from "@shared/api/local-operator/monitors-api";
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
-import { useMutation } from "@tanstack/react-query";
+import { t } from "@shared/i18n";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
 	type MonitorCancelOutcome,
@@ -48,6 +50,7 @@ export const useMonitorControls = ({
 }: {
 	sessionId?: string | null;
 }): MonitorControls => {
+	const queryClient = useQueryClient();
 	const cancel = useMutation<DesktopMonitorWriteReceipt, Error, string>({
 		mutationFn: (monitorId) => {
 			/*
@@ -58,7 +61,7 @@ export const useMonitorControls = ({
 			 */
 			if (!sessionId)
 				return Promise.reject(
-					new Error("There is no conversation to cancel a monitor on."),
+					new Error(t("ui.chat.run_controls.monitor.no_conversation")),
 				);
 			return MonitorsApi.cancel(sessionId, monitorId);
 		},
@@ -74,7 +77,10 @@ export const useMonitorControls = ({
 				} catch (error) {
 					return {
 						ok: false,
-						detail: userFacingMessage(error, "Could not cancel the monitor."),
+						detail: userFacingMessage(
+							error,
+							t("ui.chat.run_controls.monitor.cancel_failed"),
+						),
 					};
 				} finally {
 					/*
@@ -90,9 +96,16 @@ export const useMonitorControls = ({
 					 * canonical push happened to arrive.
 					 */
 					if (sessionId) resyncCanonicalSession(sessionId);
+					/*
+					 * The Schedules page's machine-wide listing holds the same watch
+					 * (#1898), and nothing pushes the monitor index: without this a
+					 * watch cancelled here would sit on that page until its poll.
+					 * Invalidating a key nobody has mounted is a no-op.
+					 */
+					void queryClient.invalidateQueries({ queryKey: MONITORS_LIST_KEY });
 				}
 			},
-			[mutateAsync, sessionId],
+			[mutateAsync, sessionId, queryClient],
 		),
 	};
 };

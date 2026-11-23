@@ -1,0 +1,10 @@
+{
+	"ui.schedules.monitors.blind_health": "इसके नतीजों की तुलना नहीं हो पा रही, इसलिए बदलावों की सूचना नहीं दी जा रही",
+	"ui.schedules.monitors.could_not_load_monitors": "मॉनिटर लोड नहीं हो सके।",
+	"ui.schedules.monitors.could_not_read_monitors": "इस मशीन के मॉनिटर पढ़े नहीं जा सके, इसलिए यह सूची अधूरी हो सकती है।",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, one {{total_display} मॉनिटर} other {{total_display} मॉनिटर}} · {attention, plural, one {{attention_display} पर ध्यान देना ज़रूरी} other {{attention_display} पर ध्यान देना ज़रूरी}}",
+	"ui.schedules.monitors.expired_state": "समाप्त",
+	"ui.schedules.monitors.list_truncated": "मॉनिटर वाली {shown, number, ::group-off} दिखाई गईं, कुल {total, plural, one {{total, number, ::group-off} बातचीत} other {{total, number, ::group-off} बातचीतें}}।",
+	"ui.schedules.monitors.parked_clause": "रुकी हुई — इसके मॉनिटर जाँच नहीं कर रहे",
+	"ui.schedules.monitors.parked_state": "रुका हुआ"
+}

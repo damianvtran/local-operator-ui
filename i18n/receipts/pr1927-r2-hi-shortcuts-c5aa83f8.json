@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 2 ui.settings.shortcuts key(s) PR #1927's round-1 remediation (800efc93a0) added",
+  "locale": "hi",
+  "namespace": "ui.settings.shortcuts",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "800efc93a0437b6e90c270bf893dccd484c13ee3",
+  "instance": "pr1927-r2-hi-shortcuts-c5aa83f8",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r2); not the translator (coder lane that authored 800efc93a0)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session eceb68d92561: a different session and agent from the translator (coder lane, remediation commit 800efc93a0); same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1927-r2-hi-shortcuts-c5aa83f8"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified on the branch at 800efc93a043 plus this commit's catalogue fixes: target src/i18n/catalogues/hi/ui.settings.shortcuts.json (sha256 ed52dd04f998a3f515079815e5620d419019c5d2f85553ee6242c51e386a0e5f); English src/i18n/catalogues/en/ui.settings.shortcuts.json (sha256 aefaec3b71d40425cd8f89eee647dfc4807efb44ae6724f3bb0eb8868ab8e942); context sidecar sha256 adcc2cb0cfde6cfa60738c6064b598aecf402fe195376d282d2c9353f6c1ca35. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/hi.md (sha256 82292dc8d13f). Audited keys: ui.settings.shortcuts.action.open_linked_projects, ui.settings.shortcuts.row.linked_projects (other keys in the file unchanged since their earlier audits). Checks (python): key set equals English; no ICU arguments in source or target; values NFC; no Cf characters. Consistency: runtime term matches the locale's ui.canvas.projects round-1 strings and style guide; pairing verb matches the locale's existing *_unpaired strings; header-menu/shortcut rows match sibling open_/close_/row. phrasing and the locale's 'linked projects' heading. Not done: rendered fit frames (no browser tool in this lane). Values: open_linked_projects = \"जुड़े प्रोजेक्ट खोलें\" (21/20 chars) | linked_projects = \"जुड़े प्रोजेक्ट\" (15/15 chars)",
+  "scope": "ui.settings.shortcuts for hi: 2 PR #1927 round-2 keys",
+  "revisions": {
+    "head": "800efc93a0437b6e90c270bf893dccd484c13ee3"
+  },
+  "en_sha256": "aefaec3b71d40425cd8f89eee647dfc4807efb44ae6724f3bb0eb8868ab8e942",
+  "context_sha256": "adcc2cb0cfde6cfa60738c6064b598aecf402fe195376d282d2c9353f6c1ca35",
+  "target_sha256": "ed52dd04f998a3f515079815e5620d419019c5d2f85553ee6242c51e386a0e5f",
+  "sha256": {
+    "hi": "ed52dd04f998a3f515079815e5620d419019c5d2f85553ee6242c51e386a0e5f",
+    "en": "aefaec3b71d40425cd8f89eee647dfc4807efb44ae6724f3bb0eb8868ab8e942"
+  }
+}

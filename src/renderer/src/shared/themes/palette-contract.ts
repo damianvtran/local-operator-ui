@@ -691,8 +691,20 @@ export type ThemePalette = {
 	 * second category was painted the colour that everywhere else means "here is a
 	 * fact" (`mermaid-diagram.tsx` says so in its own comment). This is the hue
 	 * that was missing. It is spent at exactly two sites — the picker's miniature
-	 * and mermaid's categorical fills — and the may-not list below is what keeps
-	 * it from growing into a second control accent.
+	 * and the diagram renderers' categorical fills (Pele's solid `--pele-series-2`,
+	 * see `pele-theme.ts`, and mermaid's wash cycle when the `diagramEngine` flag
+	 * selects Mermaid) — and the may-not list below is what keeps it from growing
+	 * into a second control accent.
+	 *
+	 * Pele is the default diagram renderer and it does not spend the `fillType0..7`
+	 * wash ramp. Its actor legend and its pie and series colours map to the six
+	 * solid roles (`accent`, `accentAlt`, `warning`, `danger`, `info`, `success`,
+	 * through `--pele-series-1..8`; that order keeps the first four slots at least
+	 * ΔE00 10.08 apart in all 59 themes, including the seven where `accent`
+	 * equals `info` or `success`), and a journey's SECTION fills are not themed
+	 * as a ramp: Pele has no section-fill variable, so every section header takes
+	 * the one `--pele-surface-alt` fill (`sunken`). Only Mermaid, selected through
+	 * the flag, still paints sections from the wash ramp.
 	 *
 	 * ## Where the value comes from: the token the port dropped
 	 *
@@ -798,7 +810,9 @@ export type ThemePalette = {
 	 *
 	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
 	 * `bg-accent-alt` bar beside the `bg-accent` one), mermaid's categorical fills
-	 * (`accentAltWash` at index 1 of the wash cycle), and the settled trace row's
+	 * when the flag selects Mermaid (`accentAltWash` at index 1 of the wash
+	 * cycle), Pele's categorical series
+	 * (`accentAlt` at `--pele-series-2` and `--pele-series-8`), and the settled trace row's
 	 * IDENTITY ink — `tool-row.tsx`'s `CATEGORY_INK.meta`, the name and glyph of a
 	 * `task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake` row in the shared name column.
 	 * The sibling legibility spec's identity sites — an agent/entity glyph, a
@@ -854,9 +868,9 @@ export type ThemePalette = {
 	 *   and `surface`. That row exists for `accentWash` because a chip is a real
 	 *   component triple; the alt chip is asserted for the same reason.
 	 *
-	 * It is NOT a selection or hover ground, and it is not `accentAlt`'s only
-	 * consumer: mermaid's ramp is the one that ships today. Like its solid
-	 * sibling, it is decorative — a state role that took it would be the defect
+	 * It is NOT a selection or hover ground. Its one consumer is mermaid's wash
+	 * ramp, which ships behind the `diagramEngine` flag now that Pele is the
+	 * default and has no wash role. Like its solid sibling, it is decorative — a state role that took it would be the defect
 	 * the pair exists to avoid.
 	 */
 	accentAltWash: string;

@@ -41,6 +41,10 @@
  * The line the sidebar renders from this is the cheapest honest answer.
  */
 
+import {
+	applyAuthorizeFrame,
+	clearAuthorizeNotices,
+} from "@features/team-bridge/team-bridge-approvals-model";
 import { applyAgentAvatarFrame } from "@shared/agent-avatar/agent-avatar";
 import {
 	desktopFeatureEnabled,
@@ -129,6 +133,14 @@ export type DesktopFeedConnection = {
 	 */
 	codeRequestsRevision: { sessionId: string; revision: number } | null;
 	/**
+	 * The voice slot as the last `voice` frame stated it (`docs/design/
+	 * session-voice.md`), or `undefined` before the first one - which is also what
+	 * a backend without `features.voice` gives forever. `null` is a real value:
+	 * voice is off everywhere. Exposed rather than acted on, like the revisions
+	 * above: the voice controller owns what the slot means.
+	 */
+	voiceActive: { session_id: string; enabled_at: number } | null | undefined;
+	/**
 	 * The last `config` frame, or null before the first one - which is also the
 	 * answer an older backend gives forever, so a consumer guards on null and a
 	 * frame that never arrives changes nothing.
@@ -163,6 +175,9 @@ export type DesktopFeedConnection = {
  * frame rides the subscriptions that already exist - the app-level locale sync
  * and the rail's keeper/list are always mounted - and a consumer reads it
  * through `useSyncExternalStore`, which opens nothing and has a server snapshot.
+ * Its other kind of consumer wants the EDGE and no value at all: the dock/tray
+ * claim's owner (`use-queued-ask-attention.ts`) subscribes imperatively and
+ * re-reads the asks index, rendering nothing.
  *
  * ONE RECORD PER FRAME, NOT PER SUBSCRIBER. Each existing subscription receives
  * the same frame, so publication is deduplicated on the frame's identity
@@ -214,6 +229,61 @@ export const notificationsFrameRecord = {
 	serverSnapshot: (): NotificationsFrame | null => null,
 };
 
+/**
+ * One `session_status` transition, as the transport saw it.
+ *
+ * WHY THIS IS A RECORD AND NOT A FIELD ON `useDesktopFeed`'s ANSWER. Its reader
+ * (`use-queued-ask-attention.ts`, mounted in the app shell) acts on the edge
+ * itself - invalidate one query - and needs no render of its own; a field would
+ * paint that shell once per status frame, for a fact it only forwards. Module
+ * scope also opens no second IPC subscription: every mounted `useDesktopFeed()`
+ * publishes the same frame and the key collapses the deliveries.
+ */
+export type SessionStatusTransition = {
+	/** `${epoch}:${seq}` - the frame's identity, unique across restarts. */
+	key: string;
+	sessionId: string;
+	/** The backend's derived code AFTER this frame. */
+	code: string;
+};
+
+let latestSessionStatusTransition: SessionStatusTransition | null = null;
+const sessionStatusTransitionListeners = new Set<
+	(transition: SessionStatusTransition) => void
+>();
+
+function publishSessionStatusTransition(
+	frame: Extract<DesktopFeedFrame, { type: "session_status" }>,
+): void {
+	const key = `${frame.epoch}:${frame.seq}`;
+	if (latestSessionStatusTransition?.key === key) return;
+	latestSessionStatusTransition = {
+		key,
+		sessionId: frame.session_id,
+		code: frame.payload.code,
+	};
+	const transition = latestSessionStatusTransition;
+	for (const listener of sessionStatusTransitionListeners) listener(transition);
+}
+
+/**
+ * The record of `session_status` transitions, subscribed IMPERATIVELY.
+ *
+ * Imperatively rather than through `useSyncExternalStore` because its only
+ * reader wants the edge, not a value: it invalidates a query inside the
+ * listener and renders nothing.
+ */
+export const sessionStatusTransitions = {
+	subscribe(
+		listener: (transition: SessionStatusTransition) => void,
+	): () => void {
+		sessionStatusTransitionListeners.add(listener);
+		return () => {
+			sessionStatusTransitionListeners.delete(listener);
+		};
+	},
+};
+
 export function useDesktopFeed(): DesktopFeedConnection {
 	const capabilities = useDesktopCapabilities();
 	/*
@@ -244,6 +314,9 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		sessionId: string;
 		revision: number;
 	} | null>(null);
+	const [voiceActive, setVoiceActive] = useState<
+		{ session_id: string; enabled_at: number } | null | undefined
+	>(undefined);
 	const [configChange, setConfigChange] = useState<{
 		changedKeys: string[];
 		language: string;
@@ -289,6 +362,12 @@ export function useDesktopFeed(): DesktopFeedConnection {
 			 * outage never leaves a lock the record cannot vouch for.
 			 */
 			if (!nextConnected) hostPublishRecord.reset();
+			/*
+			 * The prompt notice is live-only: a frame lost in the outage could be the
+			 * one that closes it, so a dropped feed clears every standing notice
+			 * rather than leave one up for a prompt that has already ended.
+			 */
+			if (!nextConnected) clearAuthorizeNotices();
 			wasConnected.current = nextConnected;
 			setReported(true);
 			setConnected(nextConnected);
@@ -335,6 +414,14 @@ export function useDesktopFeed(): DesktopFeedConnection {
 					frame.epoch,
 					statusFrameCounts(frame.payload),
 				);
+				/*
+				 * THE DOCK'S CLAIM IS DERIVED FROM A 10 s POLL THAT IS PAUSED WHILE THE
+				 * WINDOW IS HIDDEN, so the frame is also published to the record that
+				 * lets the claim's owner re-read the index on the edge
+				 * (`use-queued-ask-attention.ts`). Published AFTER the store write so a
+				 * listener reading the store sees it applied.
+				 */
+				publishSessionStatusTransition(frame);
 				/*
 				 * THE OTHER ALWAYS-PUBLISHED EDGE of a turn that started or finished:
 				 * the derived pair moved, and the row's bin/label read a clock this
@@ -422,11 +509,24 @@ export function useDesktopFeed(): DesktopFeedConnection {
 				return;
 			}
 			/*
+			 * A Team Bridge Touch ID prompt moved (local-operator #4099, S-6).
+			 * Applied to the approvals module's notice store, keyed by `epoch:seq`
+			 * so the one delivery per mounted feed hook lands once.
+			 */
+			if (frame.type === "team_bridge_authorize") {
+				applyAuthorizeFrame(frame.payload, `${frame.epoch}:${frame.seq}`);
+				return;
+			}
+			/*
 			 * A `config.yml` change, exposed the same way the revisions above are:
 			 * the transport says WHAT moved; the language's own writer (locale-sync)
 			 * decides what to invalidate and whether the change is worth announcing
 			 * (slice B1).
 			 */
+			if (frame.type === "voice") {
+				setVoiceActive(frame.payload.active ?? null);
+				return;
+			}
 			if (frame.type === "config") {
 				setConfigChange({
 					changedKeys: frame.payload.changed_keys,
@@ -458,6 +558,7 @@ export function useDesktopFeed(): DesktopFeedConnection {
 		authoringReconnectRevision,
 		codeRequestsRevision,
 		configChange,
+		voiceActive,
 	};
 }
 

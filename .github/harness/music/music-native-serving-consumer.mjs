@@ -3,7 +3,7 @@
 import {mkdirSync,readFileSync,writeFileSync,existsSync,symlinkSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {assertNoAutoplay,safeCancel,signalCleanup} from './native-contracts.mjs';
+import {assertNoAutoplay,safeCancel,signalCleanup,recordRowSelector} from './native-contracts.mjs';
 process.env.GIT_CONFIG_SYSTEM='/dev/null';
 process.env.GIT_TERMINAL_PROMPT='0';
 const root=process.env.MUSIC_QA_ROOT;
@@ -63,7 +63,19 @@ try{
  const populated=await facts();if(!populated.results||populated.tracks.length<2)throw Error('Actual serving results not rendered; no hand-authored row fallback');
  const mountedPlayers=await cdp.evaluate(`(()=>{return [...document.querySelectorAll('[data-music-track] [data-sound-player]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}).length})()`);demand('Real mounted visible music players required before engine assertion',mountedPlayers>0);
  note('mounted_engine_no_autoplay',assertNoAutoplay(await d.verb(cdp,'soundsFacts')));
- const pending=await control('start_pending');note('pending_control',pending);await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
+ const pending=await control('start_pending');note('pending_control',pending);
+ // Q-1 (#1893, post-release QA on v0.55.0): the producing turn makes three reads
+ // BEFORE generate_music (preflight PENDING_PREFACE, worker receipt checked in
+ // pending.preface_reads), which is the shape that folded the card into a closed
+ // "3 files · 1 generate_music" action group. Nothing in the transcript has been
+ // pressed yet: the card, its waveform and its Cancel must already be on screen.
+ // The read rows' own visibility is evidence only (how the fold rendered them).
+ demand('Pending music call must be preceded by its scripted reads',pending.preface_reads?.length===3);
+ const unexpandedCard=()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};const c=document.querySelector(${JSON.stringify('[data-music-generating='+JSON.stringify(pending.job)+']')});const reads=${JSON.stringify(pending.preface_reads.map(id=>[id,recordRowSelector('tool:'+id)]))}.map(([id,sel])=>{const row=document.querySelector(sel);return {id,mounted:!!row,visible:box(row)}});return {card:box(c),state:c?.getAttribute('data-music-state')||null,motif:box(c?.querySelector('[data-music-motif]')),cancel:box(c?.querySelector(${JSON.stringify('[data-music-cancel='+JSON.stringify(pending.job)+']')})),record:c?.closest('[data-record-id]')?.getAttribute('data-record-id')||null,closed_folds:document.querySelectorAll('button[aria-expanded="false"]').length,reads}})()`);
+ const generatingCard=await observed('generating_card_visible_unexpanded',unexpandedCard,x=>x.card&&x.motif&&x.cancel&&['queued','generating'].includes(x.state),15000);
+ demand('Generating card must belong to the producing music call',generatingCard.record?.includes(pending.producing_call_id));
+ await reveal('music-generating-unexpanded','[data-music-generating='+JSON.stringify(pending.job)+']');await frame('music-generating-unexpanded');
+ await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  const motionFirst=await motionFacts(pending.job);await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts(pending.job);await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
  demand('Real pending motif must honor reduced motion and keep geometry',motionFirst.reduce&&motionSettled.reduce&&motionSettled.animation==='none'&&motionFirst.width>0&&motionFirst.height>0&&motionFirst.width===motionSettled.width&&motionFirst.height===motionSettled.height);
@@ -113,6 +125,11 @@ try{
   throw e;
  }finally{note('late_result_timeline',{expected_card:lateOutcome,track,first_seen:lateFirst,samples:lateTimeline});}
  await reveal('music-late-result',pendingCard);await frame('music-late-result');
+ // Q-1, finished half: the receipt (the producing call's settled card and the
+ // late track) is visible with STILL no transcript expand press - the first
+ // expandProducingTurn() call is below this line.
+ await observed('finished_receipt_visible_unexpanded',async()=>{const x=await lateProbe();const card=await unexpandedCard();return {track:x.track,card:x.card,card_visible:card.card,record:card.record}},x=>x.track&&x.card===lateOutcome&&x.card_visible&&x.record?.includes(pending.producing_call_id),10000);
+ await frame('music-finished-unexpanded');
  // 230bede pins a detached music call OUT of its turn's "N actions" bar
  // (ownsDetachedMusicJob/groupSplitterOf), so no summary lists it: the producing call
  // is the record row owning the pending job's inline card — an observed id, never a
@@ -123,7 +140,23 @@ try{
  // call and the next user row (data-record-kind is the row's own record kind).
  const turnOwners=`(()=>{const anchor=document.querySelector(${JSON.stringify('[data-record-id='+JSON.stringify(producingRecord)+']')});if(!anchor)return [];const all=[...document.querySelectorAll('[data-record-id]')];const users=all.filter(e=>e.getAttribute('data-record-kind')==='user');const start=users.filter(u=>u.compareDocumentPosition(anchor)&Node.DOCUMENT_POSITION_FOLLOWING).pop();const end=users.find(u=>anchor.compareDocumentPosition(u)&Node.DOCUMENT_POSITION_FOLLOWING);return all.filter(e=>(!start||start.compareDocumentPosition(e)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!end||e.compareDocumentPosition(end)&Node.DOCUMENT_POSITION_FOLLOWING));})()`;
  // Expand only a fold of the producing turn that is actually folded.
- const expandProducingTurn=async()=>{for(let i=0;i<8;i++){const sel=await cdp.evaluate(`(()=>{const b=${turnOwners}.filter(e=>e.matches('[data-turn-summary]')).map(e=>e.querySelector('button[aria-expanded="false"]')).find(Boolean);return b?'[data-turn-summary][data-record-id='+JSON.stringify(b.closest('[data-turn-summary]').getAttribute('data-record-id'))+'] button[aria-expanded]':null;})()`);if(!sel)return;await d.verb(cdp,'press',{selector:sel});await pause(200);}throw Error('Required actual native condition absent: producing_turn_expanded');};
+ // The turn summary can now hold NESTED disclosures (the "N actions" turn fold plus
+ // the preface reads' trace fold inside it), so the press must target the exact
+ // collapsed button found - a selector rebuilt from the summary's record id resolves
+ // to the summary's FIRST disclosure (the outer turn toggle) and just flips it open
+ // and shut (run 43436505730). The found button is tagged with a one-shot marker,
+ // pressed by that marker, and the DOM is re-queried each pass so every collapsed
+ // fold of the turn is opened; it throws only if one is still collapsed at the end.
+ const collapsedInTurn=`(()=>${turnOwners}.filter(e=>e.matches('[data-turn-summary]')).flatMap(e=>[...e.querySelectorAll('button[aria-expanded="false"]')]))()`;
+ const expandProducingTurn=async()=>{for(let i=0;i<8;i++){const sel=await cdp.evaluate(`(()=>{document.querySelectorAll('[data-lop-expand-target]').forEach(e=>e.removeAttribute('data-lop-expand-target'));const b=${collapsedInTurn}[0];if(!b)return null;const tag='x'+${JSON.stringify(String(Date.now()))}+'-'+${i};b.setAttribute('data-lop-expand-target',tag);return 'button[data-lop-expand-target='+JSON.stringify(tag)+']';})()`);if(!sel)return;await d.verb(cdp,'press',{selector:sel});await pause(200);}
+  const left=await cdp.evaluate(`${collapsedInTurn}.length`);if(left===0)return;note('producing_turn_expanded_timeout',{collapsed_left:left});throw Error('Required actual native condition absent: producing_turn_expanded');};
+ // R3: before the first expand press, prove the preface reads really are folded -
+ // the producing turn shows a collapsed disclosure and no read row is visible. An old
+ // build that rendered the reads outside the group would otherwise still pass the
+ // unexpanded-card checks above.
+ // Rows are matched by recordRowSelector, never a bare data-record-id: the collapsed
+ // bar carries the first hidden row's id (see native-contracts.mjs).
+ await observed('preface_reads_folded_unexpanded',()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};return {collapsed:${collapsedInTurn}.length,reads:${JSON.stringify(pending.preface_reads.map(id=>[id,recordRowSelector('tool:'+id)]))}.map(([id,sel])=>({id,visible:box(document.querySelector(sel))}))}})()`),x=>x.collapsed>0&&x.reads.length===3&&x.reads.every(r=>!r.visible),5000);
  await expandProducingTurn();
  const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
  const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';

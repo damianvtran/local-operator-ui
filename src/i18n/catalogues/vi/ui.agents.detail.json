@@ -65,5 +65,18 @@
 	"ui.agents.detail.empty.instructions": "Chưa có chỉ dẫn.",
 	"ui.agents.detail.action.create_copy": "Tạo bản sao",
 	"ui.agents.detail.action.creating": "Đang tạo…",
-	"ui.agents.detail.action.discard_new_agent": "Bỏ tác nhân mới này?"
+	"ui.agents.detail.action.discard_new_agent": "Bỏ tác nhân mới này?",
+	"ui.agents.detail.create.description_duplicate": "Bản sao của {name}. Đây là một tác nhân riêng biệt: thay đổi nó không ảnh hưởng đến bản gốc.",
+	"ui.agents.detail.create.description_new": "Chỉ dẫn có thể tái sử dụng, dùng chung cho lệnh của tác nhân, tác nhân con và nhóm. Các cuộc trò chuyện vẫn tách biệt.",
+	"ui.agents.detail.create.error_generic": "Không thể tạo tác nhân.",
+	"ui.agents.detail.create.error_instructions_required": "Hãy nhập chỉ dẫn cho tác nhân.",
+	"ui.agents.detail.create.error_name_grammar": "Tên không được chứa dấu cách hoặc dấu gạch chéo.",
+	"ui.agents.detail.create.error_name_required": "Hãy đặt tên cho tác nhân.",
+	"ui.agents.detail.create.error_name_taken": "Đã có tác nhân tên “{name}”. Hãy chọn tên khác, hoặc mở tác nhân hiện có để đổi tên.",
+	"ui.agents.detail.create.title_duplicate": "Nhân bản thành tác nhân mới",
+	"ui.agents.detail.create.title_new": "Tác nhân mới",
+	"ui.agents.detail.edit.error_generic": "Không thể lưu tác nhân.",
+	"ui.agents.detail.tools.error_grammar": "Tên công cụ chỉ gồm chữ cái, chữ số, dấu chấm, dấu gạch dưới, dấu gạch nối hoặc dấu hai chấm.",
+	"ui.agents.detail.tools.error_duplicate": "Công cụ này đã có trong danh sách.",
+	"ui.agents.detail.ask_change_prefill": "Thay đổi tác nhân “{name}”: "
 }

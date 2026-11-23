@@ -47,6 +47,14 @@ const STORY =
 	"src/renderer/src/features/chat/canonical/markdown-tables.stories.tsx";
 const CAPTURE = "scripts/capture-evidence.mjs";
 
+// Pin the whole selector, not just the element name. The exclusion keeps
+// embedded UI out of markdown styling; :where() leaves specificity unchanged.
+const OUTSIDE_INLINE_UI = ":where(:not([data-lo-inline-ui] *))";
+const MARKDOWN_TABLE = `.lo-markdown table${OUTSIDE_INLINE_UI}`;
+const MARKDOWN_TH = `.lo-markdown th${OUTSIDE_INLINE_UI}`;
+const MARKDOWN_TD = `.lo-markdown td${OUTSIDE_INLINE_UI}`;
+const SCROLL_TABLE = ".lo-md-table-scroll > table";
+
 const read = (path) => readFileSync(path, "utf8");
 
 /*
@@ -54,7 +62,9 @@ const read = (path) => readFileSync(path, "utf8");
  * `lint/performance/useTopLevelRegex` (see `lint:scripts`), so a literal built
  * inside a test would fail `pnpm lint:scripts` even though it runs once.
  */
-const TRAILING_BRACE = / \{$/;
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
+const CSS_BLOCK = /(?:^|(?<=[{}]))([^{}]+)\{([^{}]*)\}/g;
+const CSS_SPACE = /\s+/g;
 const TS_FILE = /\.tsx?$/;
 const WRAPPER_EXPORT = /export const MarkdownTable/;
 const WRAPPER_CLASS = /className="lo-md-table-scroll"/;
@@ -89,79 +99,26 @@ const USER_TURN_RENDER =
 	/render: \(\) => <Frame records=\{\[user\("u1", OPERATOR_SHAPE\)\]\} \/>/;
 
 /*
- * All rule bodies in `css` whose flattened selector is `selector`.
- *
- * All, because the fix adds a SECOND `.lo-markdown th, .lo-markdown td` rule
- * on purpose - the base rule stays exactly as it was, and the override is a
- * separate, later block so the diff reads as what it is. Matching only the
- * first occurrence would assert the unfixed rule and pass on a reverted tree
- * (or fail on an unchanged one); which body carries the declarations is the
- * question, not where the selector first appears.
- *
- * The blank-text check is load-bearing, not tidy: selectors also appear inside
- * COMMENTS ("`.lo-markdown code` applied..."), and without it the scan dragged
- * from such a mention to the next rule's opening brace - and on the last
- * mention in the file there was no brace left, so `from` went to -1 and the
- * loop pushed bodies forever (V8 OOM, found by running it). A selector's own
- * brace follows it directly; anything else is a mention.
+ * Read all matching leaf rules in source order: the cell box and the width
+ * override deliberately share a selector. Strip comments before scanning so
+ * prose never counts as a rule or declaration. Compare the full selector list
+ * and whole declarations: a prefixed selector could change specificity, and
+ * `margin: 0.75rem 0` must not satisfy the wrapper's `margin: 0` check.
  */
-const ruleBodies = (css, selector) => {
-	const flat = css.replace(/\s+/g, " ");
-	// Callers may pass the selector bare or with the rule's opening brace;
-	// the trailing brace is stripped so one scanner serves both.
-	const wanted = selector.replace(/\s+/g, " ").replace(TRAILING_BRACE, "");
-	const bodies = [];
-	let from = 0;
-	for (;;) {
-		const start = flat.indexOf(wanted, from);
-		if (start === -1) return bodies;
-		const open = flat.indexOf("{", start + wanted.length);
-		if (open === -1) return bodies;
-		if (flat.slice(start + wanted.length, open).trim() !== "") {
-			from = start + wanted.length;
-			continue;
-		}
-		const close = flat.indexOf("}", open);
-		if (close === -1) return bodies;
-		bodies.push(flat.slice(open + 1, close));
-		from = open;
-	}
-};
+const rulesFor = (css, selector) =>
+	[...css.replace(CSS_COMMENT, "").matchAll(CSS_BLOCK)].filter(
+		([, head]) => head.trim().replace(CSS_SPACE, " ") === selector,
+	);
 
 const someRule = (css, selector, ...declarations) => {
-	const bodies = ruleBodies(css, selector);
-	assert.notEqual(
-		bodies.length,
-		0,
-		`markdown.css: no rule for \`${selector}\``,
-	);
-	return bodies.some((body) =>
-		declarations.every((declaration) => body.includes(declaration)),
-	);
-};
-
-/*
- * The source offset of the FIRST real rule whose selector is `selector`.
- *
- * A MENTION IS NOT A RULE, and a bare `indexOf` cannot tell them apart: the
- * file names both selectors inside comments (the wrapper rule's own comment
- * says "the table's old ones", the cell rule's says "`.lo-markdown code`"),
- * so the scan repeats `ruleBodies`' test - selector immediately followed by
- * its own brace - rather than trusting the first textual hit. Without this the
- * NIT-2 order assertion below could pin the position of a comment.
- */
-const ruleStart = (css, selector) => {
-	const flat = css.replace(/\s+/g, " ");
-	const wanted = selector.replace(/\s+/g, " ");
-	let from = 0;
-	for (;;) {
-		const at = flat.indexOf(wanted, from);
-		if (at === -1) return -1;
-		const open = flat.indexOf("{", at + wanted.length);
-		if (open === -1) return -1;
-		if (flat.slice(at + wanted.length, open).trim() === "") return at;
-		from = at + wanted.length;
-	}
+	const rules = rulesFor(css, selector);
+	assert.notEqual(rules.length, 0, `markdown.css: no rule for \`${selector}\``);
+	return rules.some(([, , body]) => {
+		const values = body
+			.split(";")
+			.map((value) => value.trim().replace(CSS_SPACE, " "));
+		return declarations.every((declaration) => values.includes(declaration));
+	});
 };
 
 test("I1: the cell rules make a table cell's min-content its longest word", () => {
@@ -174,7 +131,7 @@ test("I1: the cell rules make a table cell's min-content its longest word", () =
 	assert.ok(
 		someRule(
 			css,
-			".lo-markdown th, .lo-markdown td",
+			`${MARKDOWN_TH}, ${MARKDOWN_TD}`,
 			"word-break: normal",
 			"overflow-wrap: break-word",
 			"max-width: 64ch",
@@ -190,7 +147,7 @@ test("I1: the cell rules make a table cell's min-content its longest word", () =
 	assert.ok(
 		someRule(
 			css,
-			".lo-markdown td code, .lo-markdown th code",
+			`${MARKDOWN_TD} code, ${MARKDOWN_TH} code`,
 			"word-break: normal",
 			"overflow-wrap: inherit",
 		),
@@ -198,7 +155,7 @@ test("I1: the cell rules make a table cell's min-content its longest word", () =
 	);
 	// The root keeps prose's behaviour: the fix is FOR TABLES ONLY.
 	assert.ok(
-		someRule(css, ".lo-markdown {", "word-break: break-word"),
+		someRule(css, ".lo-markdown", "word-break: break-word"),
 		"the `.lo-markdown` root must keep `word-break: break-word` (prose unchanged)",
 	);
 });
@@ -208,7 +165,7 @@ test("I1: the wrapper rule contains, scrolls and carries the margin", () => {
 	assert.ok(
 		someRule(
 			css,
-			".lo-md-table-scroll {",
+			".lo-md-table-scroll",
 			"overflow-x: auto",
 			"max-width: 100%",
 			"overscroll-behavior-x: contain",
@@ -217,22 +174,23 @@ test("I1: the wrapper rule contains, scrolls and carries the margin", () => {
 		"the wrapper must scroll, contain overscroll, and take the table's margin",
 	);
 	assert.ok(
-		someRule(css, ".lo-md-table-scroll > table {", "margin: 0"),
+		someRule(css, SCROLL_TABLE, "margin: 0"),
 		"the table inside the wrapper must drop its own margin (the wrapper carries it)",
 	);
 	/*
 	 * NIT-2 (agent review round 1): the child rule TIES `.lo-markdown table` on
-	 * specificity - both are one class plus one type, (0,1,1) - and wins only by
+	 * specificity: both are one class plus one type, (0,1,1), because the
+	 * markdown exclusion is wrapped in :where(). The wrapper wins only by
 	 * SOURCE ORDER. Nothing pinned that order, so a reorder inside this
 	 * stylesheet would silently restore the table's `0.75rem 0` margin inside
 	 * the scroll box (putting the bar's space back around the table it was
 	 * moved off) and every other assertion here would still pass. Pin the
 	 * sequence itself, on the rules rather than on their text.
 	 */
-	const childAt = ruleStart(css, ".lo-md-table-scroll > table");
-	const baseAt = ruleStart(css, ".lo-markdown table");
-	assert.ok(childAt !== -1, "no `.lo-md-table-scroll > table` rule found");
-	assert.ok(baseAt !== -1, "no `.lo-markdown table` rule found");
+	const childAt = rulesFor(css, SCROLL_TABLE)[0]?.index;
+	const baseAt = rulesFor(css, MARKDOWN_TABLE)[0]?.index;
+	assert.notEqual(childAt, undefined, `no \`${SCROLL_TABLE}\` rule found`);
+	assert.notEqual(baseAt, undefined, `no \`${MARKDOWN_TABLE}\` rule found`);
 	assert.ok(
 		childAt > baseAt,
 		"`.lo-md-table-scroll > table` must come AFTER `.lo-markdown table` in source order - the two tie on specificity, so order is the only thing making `margin: 0` win",
@@ -243,7 +201,7 @@ test("I1: the wrapper rule contains, scrolls and carries the margin", () => {
 	 * pricing away, so it is pinned explicitly.
 	 */
 	assert.ok(
-		someRule(css, ".lo-markdown table {", "width: 100%", "table-layout: auto"),
+		someRule(css, MARKDOWN_TABLE, "width: 100%", "table-layout: auto"),
 		"the table keeps `width: 100%` and an explicit `table-layout: auto`",
 	);
 });

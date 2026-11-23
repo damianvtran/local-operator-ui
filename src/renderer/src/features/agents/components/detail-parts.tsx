@@ -225,8 +225,16 @@ export function ReadBlock({
 
 	return (
 		<div className={cn(breakLongTokens && "min-w-0")}>
+			{/*
+			 * `dir="auto"`: the block shows the operator's OWN text (an agent's or
+			 * team's instructions, a skill body), whose script need not match the
+			 * interface language. Inheriting an RTL locale's direction put an English
+			 * prompt's full stop at its start (".You implement..." in ur, design
+			 * review on UI #1952); the first strong character decides instead.
+			 */}
 			<div
 				ref={ref}
+				dir="auto"
 				data-break-long-tokens={breakLongTokens ? "true" : undefined}
 				data-read-markdown={markdown ? "true" : undefined}
 				className={cn(
@@ -705,10 +713,12 @@ export function PaneError({
 	meaning,
 	onRetry,
 	retrying = false,
-	retryLabel = "Retry",
-	retryingLabel = "Retrying…",
+	// Defaults are evaluated per render, so they follow the locale; a pane with
+	// its own words still passes them.
+	retryLabel = t("ui.common.actions.retry"),
+	retryingLabel = t("ui.agents.detail.read_state.retrying"),
 }: {
-	/** The Retry button's words; defaults are the English the older panes print. */
+	/** The Retry button's words; defaults are the shared Retry / Retrying… keys. */
 	retryLabel?: string;
 	retryingLabel?: string;
 	title: string;
@@ -742,12 +752,22 @@ export function FieldLabel({
 	error?: string | null;
 }) {
 	return (
+		/*
+		 * THE LABEL KEEPS ITS LINE; THE ERROR WRAPS. A translated refusal can run
+		 * to two lines (the tool-name grammar rule is 92 characters in ur against
+		 * 63 in en), and as two equal flex items the label lost the width
+		 * contest and broke ("Ajouter un / outil", design review D1 on UI #1952).
+		 * Labels are a few words; the error is the part that may grow.
+		 */
 		<div className="flex items-baseline justify-between gap-2">
-			<label htmlFor={htmlFor} className="text-body-sm text-ink-muted">
+			<label
+				htmlFor={htmlFor}
+				className="shrink-0 whitespace-nowrap text-body-sm text-ink-muted"
+			>
 				{label}
 			</label>
 			{error ? (
-				<span className="text-meta text-danger" role="alert">
+				<span className="min-w-0 text-meta text-danger" role="alert">
 					{error}
 				</span>
 			) : null}

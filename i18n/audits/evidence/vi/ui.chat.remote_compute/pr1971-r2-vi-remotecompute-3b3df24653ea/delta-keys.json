@@ -1,0 +1,33 @@
+{
+	"namespace": "ui.chat.remote_compute",
+	"locale": "vi",
+	"english": {
+		"ui.chat.remote_compute.row.network_remedy": "Create a network with `lop network init`, or join one with `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "This run will use Cloud run.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "What kind of run",
+		"ui.chat.remote_compute.store.accepted_without_run": "The server accepted the run but did not return it.",
+		"ui.chat.remote_compute.store.refused": "The server refused this request and did not say why.",
+		"ui.chat.remote_compute.store.transport": "The request did not reach the server. Try again.",
+		"ui.chat.remote_compute.card.binding": "Recorded against {network}. Not enforced in this version.",
+		"ui.chat.remote_compute.card.binding_none": "No network recorded. Not enforced in this version."
+	},
+	"target": {
+		"ui.chat.remote_compute.row.network_remedy": "Tạo bằng `lop network init`, hoặc tham gia bằng `lop network join '<token>'`.",
+		"ui.chat.remote_compute.sheet.network.not_enforced": "Không được áp dụng trong phiên bản này.",
+		"ui.chat.remote_compute.sheet.network.recorded": "Được ghi vào {network}. Không được áp dụng trong phiên bản này.",
+		"ui.chat.remote_compute.sheet.tier.cloud_run.selected": "Lần chạy này sẽ dùng chế độ Chạy trên đám mây.",
+		"ui.chat.remote_compute.sheet.tier.group_label": "Loại lần chạy",
+		"ui.chat.remote_compute.store.accepted_without_run": "Máy chủ đã nhận lần chạy nhưng không trả về.",
+		"ui.chat.remote_compute.store.refused": "Máy chủ đã từ chối yêu cầu này và không nêu lý do.",
+		"ui.chat.remote_compute.store.transport": "Yêu cầu không đến được máy chủ. Hãy thử lại.",
+		"ui.chat.remote_compute.card.binding": "Được ghi vào {network}. Không được áp dụng trong phiên bản này.",
+		"ui.chat.remote_compute.card.binding_none": "Không ghi mạng nào. Không được áp dụng trong phiên bản này."
+	},
+	"counts": {
+		"keys": 10,
+		"target_keys": 83,
+		"english_keys": 83
+	}
+}

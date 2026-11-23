@@ -13,6 +13,8 @@ import { after, test } from "node:test";
 import { PYTHON_VERSION } from "./bundled-runtime-layout.mjs";
 import { MACH_O_CPUTYPE, MACH_O_FILETYPE } from "./prune-python-seed.mjs";
 import {
+	LAUNCH_PROBE_FLAG,
+	LAUNCH_PROBE_MARKER,
 	ROSETTA_EXEC_REFUSAL,
 	hostArchitecture,
 	isGitHubHostedRunner,
@@ -376,7 +378,9 @@ test("a bundle with no readable component at all fails rather than passing vacuo
  * injected and records every command, so "no spawn" is observed, not assumed.
  */
 
-const EXEC_CHECK_IDS = ["app-spawn", "app-bytecode-loadable"];
+// One exec check since F2: the launch probe (`app-spawn`) replaced both node-mode
+// checks, so the launcher is exec'd ONCE per bundle.
+const EXEC_CHECK_IDS = ["app-spawn"];
 
 /** An app whose launcher and seed interpreter are thin Mach-O of `cpuType`. */
 function makeExecApp(cpuType) {
@@ -405,12 +409,17 @@ function makeExecApp(cpuType) {
 /** A runner that records each command and answers like a healthy child. */
 function recordingRunner() {
 	const calls = [];
-	const run = (command) => {
+	const run = (command, args = []) => {
 		calls.push(command);
 		return {
 			status: 0,
 			signal: null,
-			stdout: `Python ${PYTHON_VERSION}\n`,
+			// The launch probe's line for the launcher, the interpreter's version
+			// answer for the seed: each exec check gets its own healthy answer.
+			stdout:
+				args[0] === LAUNCH_PROBE_FLAG
+					? `${LAUNCH_PROBE_MARKER} {"ok":true,"packaged":true,"electron":"45.1.0","arch":"arm64"}\n`
+					: `Python ${PYTHON_VERSION}\n`,
 			stderr: "",
 		};
 	};
@@ -473,7 +482,7 @@ test("a GitHub-hosted runner still runs the translated exec checks", () => {
 		);
 		assert.ok(results.every((result) => result.passed));
 		assert.equal(seed.passed, true);
-		assert.equal(calls.filter((command) => command === executable).length, 2);
+		assert.equal(calls.filter((command) => command === executable).length, 1);
 		assert.ok(calls.includes(python));
 	}
 });
@@ -485,7 +494,7 @@ test("LOCAL_OPERATOR_ALLOW_ROSETTA_EXEC=1 opts a local run in", () => {
 	);
 	assert.ok(results.every((result) => result.passed));
 	assert.equal(seed.passed, true);
-	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.equal(calls.filter((command) => command === executable).length, 1);
 	assert.ok(calls.includes(python));
 });
 
@@ -496,7 +505,7 @@ test("a native child runs locally without any opt-in", () => {
 	);
 	assert.ok(results.every((result) => result.passed));
 	assert.equal(seed.passed, true);
-	assert.equal(calls.filter((command) => command === executable).length, 2);
+	assert.equal(calls.filter((command) => command === executable).length, 1);
 	assert.ok(calls.includes(python));
 });
 

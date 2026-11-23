@@ -219,3 +219,39 @@ test("a store that refuses writes costs only the memory", () => {
 	);
 	assert.doesNotThrow(() => memory.writeLastScope(storage, "acct-1", "org_a"));
 });
+
+test("a conversation target's tenant round-trips; older and malformed records read without it", () => {
+	/* The tenant lets a cold open start the conversation's history alongside the
+	   list (`prefetchTeamBridgeLanding`). It is only kept for a conversation
+	   target, only when it is a plausible id, and its absence is the old shape. */
+	const storage = fakeStorage();
+	const target = { type: "conversation", id: "c1" };
+	memory.writeViewMemory(storage, "acct-1", "all", {
+		target,
+		tenantId: "org_a",
+	});
+	assert.equal(
+		memory.readViewMemory(storage, "acct-1", "all").tenantId,
+		"org_a",
+	);
+	memory.writeViewMemory(storage, "acct-1", "all", { target });
+	assert.equal(
+		"tenantId" in memory.readViewMemory(storage, "acct-1", "all"),
+		false,
+		"a record without a tenant (an older build's) reads without one",
+	);
+	memory.writeViewMemory(storage, "acct-1", "all", { target, tenantId: 42 });
+	assert.equal(
+		memory.readViewMemory(storage, "acct-1", "all").tenantId,
+		undefined,
+	);
+	memory.writeViewMemory(storage, "acct-1", "all", {
+		target: { type: "person", accountId: "p1" },
+		tenantId: "org_a",
+	});
+	assert.equal(
+		memory.readViewMemory(storage, "acct-1", "all").tenantId,
+		undefined,
+		"a person target carries no conversation tenant",
+	);
+});

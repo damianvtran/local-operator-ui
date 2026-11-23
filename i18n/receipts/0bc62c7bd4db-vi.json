@@ -1,0 +1,150 @@
+{
+	"schema": 1,
+	"agent": "i18n-auditor",
+	"session": "4ed686eb5671",
+	"instance": "0bc62c7bd4db-vi",
+	"model": "anthropic/claude-opus-5-5",
+	"requested_model": "anthropic/claude-opus-5-5",
+	"fallback": false,
+	"independence": "Independent auditor; did not author or modify any translations.",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "4ed686eb5671",
+		"instance": "0bc62c7bd4db-vi",
+		"model": "anthropic/claude-opus-5-5",
+		"requested_model": "anthropic/claude-opus-5-5",
+		"fallback": false,
+		"independence": "Independent auditor; did not author or modify any translations.",
+		"model_source": "Session system prompt (Model: anthropic/claude-opus-5-5); no fallback notice in this session.",
+		"independent_from_translator_session": true
+	},
+	"locale": "vi",
+	"date": "2026-11-15",
+	"head": "76a8ed3406 + uncommitted vi catalogue edits",
+	"branch": "feat/i18n-s18d-english-source",
+	"scope": "Fresh audit of exactly the 10 new S18d vi strings (2 ui.chat.trace, 1 ui.chat.attachments, 7 ui.agents.detail); existing catalogue values used as terminology context only, not re-audited.",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": [
+			{
+				"severity": "nit",
+				"key": "ui.chat.trace.reasoning.with_duration",
+				"message": "'{label} trong {duration}' reads well with the default label ('Suy luận trong 12s'). Latent only: the existing vi ui.chat.message_controls.thinking_label is progressive 'Đang suy nghĩ', so if a caller ever passes it WITH a duration the row would read 'Đang suy nghĩ trong 12s' (still thinking, for 12s). No current caller passes durationS (grep of <AgentReasoning call sites). No change needed to this key."
+			},
+			{
+				"severity": "nit",
+				"key": "ui.agents.detail.create.error_name_grammar",
+				"message": "'dấu gạch chéo' is the generic word and matches the English 'slashes'; the check is /[\\\\/\\s]/ so backslash is also refused. Optional: 'Tên không được chứa dấu cách hoặc dấu gạch chéo (xuôi hay ngược).' Taste only; current text is correct."
+			}
+		]
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 2
+	},
+	"namespaces": {
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+				"vi": "928278c4d487f792ac4df992e63a59e3647be0953d3a283cb67fa16d5dd30b96"
+			},
+			"context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+			"keys_read": 2,
+			"reviewed_keys": [
+				"ui.chat.trace.reasoning.label",
+				"ui.chat.trace.reasoning.with_duration"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"severity": "nit",
+						"key": "ui.chat.trace.reasoning.with_duration",
+						"message": "'{label} trong {duration}' reads well with the default label ('Suy luận trong 12s'). Latent only: the existing vi ui.chat.message_controls.thinking_label is progressive 'Đang suy nghĩ', so if a caller ever passes it WITH a duration the row would read 'Đang suy nghĩ trong 12s' (still thinking, for 12s). No current caller passes durationS (grep of <AgentReasoning call sites). No change needed to this key."
+					}
+				]
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			}
+		},
+		"ui.chat.attachments": {
+			"namespace": "ui.chat.attachments",
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+				"vi": "dd9e761bc2b7dc57afd8696e4553cf2b64c64a81b690ce35bc3e2a7fafa87fae"
+			},
+			"context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+			"keys_read": 1,
+			"reviewed_keys": [
+				"ui.chat.attachments.not_viewable_too_large"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": []
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 0
+			}
+		},
+		"ui.agents.detail": {
+			"namespace": "ui.agents.detail",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"sha256": {
+				"en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+				"vi": "1d58899ece727f055c5da73bbc794a1701056e8aad6bd164f0f5dcb17961e3cc"
+			},
+			"context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+			"keys_read": 7,
+			"reviewed_keys": [
+				"ui.agents.detail.create.error_generic",
+				"ui.agents.detail.create.error_instructions_required",
+				"ui.agents.detail.create.error_name_grammar",
+				"ui.agents.detail.create.error_name_required",
+				"ui.agents.detail.create.error_name_taken",
+				"ui.agents.detail.create.title_duplicate",
+				"ui.agents.detail.create.title_new"
+			],
+			"findings": {
+				"blocker": [],
+				"major": [],
+				"minor": [],
+				"nit": [
+					{
+						"severity": "nit",
+						"key": "ui.agents.detail.create.error_name_grammar",
+						"message": "'dấu gạch chéo' is the generic word and matches the English 'slashes'; the check is /[\\\\/\\s]/ so backslash is also refused. Optional: 'Tên không được chứa dấu cách hoặc dấu gạch chéo (xuôi hay ngược).' Taste only; current text is correct."
+					}
+				]
+			},
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			}
+		}
+	}
+}

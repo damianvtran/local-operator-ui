@@ -198,7 +198,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			<button
 				type="button"
 				onClick={() => navigate(`/agent-hub/${agent.id}`)}
-				className="flex min-h-0 flex-1 cursor-pointer flex-col gap-2 p-4 text-left"
+				className="flex min-h-0 flex-1 cursor-pointer flex-col gap-2 p-4 text-start"
 				aria-label={t("ui.hub.card.view_details", { name: displayName })}
 			>
 				<h3 className="truncate font-medium text-heading text-ink">
@@ -390,7 +390,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						</>
 					)}
 					<Tooltip content={t("ui.hub.card.downloads_tooltip")}>
-						<span className="ml-1 inline-flex items-center gap-1 pr-1 text-ink-dim">
+						<span className="ms-1 inline-flex items-center gap-1 pe-1 text-ink-dim">
 							<Download aria-hidden="true" className="size-3.5" />
 							<span className="inline-flex h-4 min-w-6 items-center font-mono text-mono-sm">
 								{isDownloading ? (
@@ -402,11 +402,11 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 						</span>
 					</Tooltip>
 				</div>
-				{/* `ml-auto` rather than `justify-between`: it holds the action at the
-				    right edge on the wrapped line too, where a lone flex item would
+				{/* `ms-auto` rather than `justify-between`: it holds the action at the
+				    end edge on the wrapped line too, where a lone flex item would
 				    otherwise sit at the start. */}
 				{showActions && onDownload && (
-					<div className="ml-auto flex shrink-0 items-center">
+					<div className="ms-auto flex shrink-0 items-center">
 						<Button
 							variant="secondary"
 							size="sm"

@@ -1,0 +1,65 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "dbb5dc1b3c45",
+ "status": "passed",
+ "locale": "fr",
+ "commit": "7cdf6c27b4",
+ "scope": "9 keys added a31ce7e9ea..7cdf6c27b4 (header_identity.band_*, dialogs.archive_title_named/unnamed/message, sidebar.row.archive_label/unarchive_label)",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "sha256": {
+    "fr": "29a0bf5bf8c17df0d36ba9bdf0af97f7edce6e50e84bb2d48762ca7d7c692f35",
+    "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+   },
+   "keys_audited": 4,
+   "findings": []
+  },
+  "ui.chat.dialogs": {
+   "status": "passed",
+   "sha256": {
+    "fr": "a68d525856f24eec84752e06c72d26f4848f22772b8c9a7ca877526fe0b60e00",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+   },
+   "keys_audited": 3,
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "namespace": "ui.chat.dialogs",
+     "note": "'Elle disparaît de vos listes' reads stronger than 'leaves your lists' and differs from shipped make_temporary_deleted 'Elle quitte vos conversations'; suggest 'Elle quitte vos listes.' (or 'Elle est retirée de vos listes.')"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.chat.dialogs.archive_message",
+     "namespace": "ui.chat.dialogs",
+     "note": "'cliquez sur Désarchiver' names a control unquoted; « Désarchiver » would mark it as a button label. Optional; verb is correct and matches unarchive_label/row_menu.unarchive."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "status": "passed",
+   "sha256": {
+    "fr": "4e2493326bcdf53807e053f47cf45969d17bb2b603a49694bedb7c87d190aadf",
+    "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+   },
+   "keys_audited": 2,
+   "findings": []
+  }
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.dialogs.archive_message",
+   "namespace": "ui.chat.dialogs",
+   "note": "'Elle disparaît de vos listes' reads stronger than 'leaves your lists' and differs from shipped make_temporary_deleted 'Elle quitte vos conversations'; suggest 'Elle quitte vos listes.' (or 'Elle est retirée de vos listes.')"
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.dialogs.archive_message",
+   "namespace": "ui.chat.dialogs",
+   "note": "'cliquez sur Désarchiver' names a control unquoted; « Désarchiver » would mark it as a button label. Optional; verb is correct and matches unarchive_label/row_menu.unarchive."
+  }
+ ]
+}

@@ -386,6 +386,22 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/submit-skill-latency-after.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"the send-latency rig's AFTER tree: boots a BUILT app headless on a scratch profile with a proxy in front of the daemon to time Enter-to-bubble and Enter-to-POST, so the notification kill switch must ride the launch env like every app rig",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
+		"scripts/submit-skill-latency-baseline.mjs",
+		"spawn",
+		2,
+		/\{\s*env:\s*appEnv\s*,/,
+		"the send-latency rig's BEFORE tree: the same headless build-and-drive against a baseline worktree, so the notification kill switch must ride the launch env like every app rig",
+		/const appEnv = withTelemetryOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-challenge-proof.mjs",
 		"spawn",
 		1,

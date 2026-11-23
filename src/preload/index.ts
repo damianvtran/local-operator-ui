@@ -12,10 +12,15 @@ import type {
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import {
+	APP_ATTENTION_QUEUED_ASKS_CHANNEL,
+	APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+} from "../shared/app-attention-queued-asks";
 import type {
 	AttachmentUploadResult,
 	AttachmentUploadSource,
 } from "../shared/attachment-upload";
+import { BACKEND_RESTART_CHANNEL } from "../shared/backend-startup";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -43,6 +48,11 @@ import {
 	type ExternalOpenOutcome,
 	type ExternalOpenRefusedPayload,
 	type FileActionOutcome,
+	type QwenByokMessage,
+	type QwenVoiceEvent,
+	type QwenVoiceResult,
+	type QwenVoiceStatus,
+	type QwenVoiceTake,
 } from "../shared/desktop-contract";
 import type { DesktopFeedFrame } from "../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
@@ -254,6 +264,81 @@ const api = {
 				};
 			},
 		},
+		/*
+		 * THE QWEN VOICE RIG (`src/main/voice/qwen-voice.ts`). Every value crosses as
+		 * data; main validates it, and `speak` is honoured only for a text main
+		 * relayed itself (`QwenVoiceBridge` in the contract).
+		 */
+		qwenVoice: {
+			getEnabled: (): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.get"),
+			setEnabled: (on: boolean): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.enabled.set", on === true),
+			onEnabled: (listener: (enabled: boolean) => void) => {
+				const handler = (_event: unknown, enabled: boolean) =>
+					listener(enabled === true);
+				ipcRenderer.on("voice.qwen.enabled", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.enabled", handler);
+				};
+			},
+			onTake: (listener: (take: QwenVoiceTake) => void) => {
+				const handler = (_event: unknown, take: QwenVoiceTake) =>
+					listener(take);
+				ipcRenderer.on("voice.qwen.take", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.take", handler);
+				};
+			},
+			result: (result: QwenVoiceResult): Promise<boolean> =>
+				ipcRenderer.invoke("voice.qwen.result", result),
+			speak: (input: {
+				text: string;
+				kind: "reply" | "gate";
+			}): Promise<{ spoken: boolean; reason?: string }> =>
+				ipcRenderer.invoke("voice.qwen.speak", input),
+			start: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.start"),
+			getStatus: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.status.get"),
+			openMicrophoneSettings: (): Promise<void> =>
+				ipcRenderer.invoke("voice.qwen.open-mic-settings"),
+			/*
+			 * THE STRIP'S TWO CONTROLS. Both answer the new status, which is what
+			 * the strip paints; mute is coerced here as well as in main because this
+			 * object is the boundary a renderer value crosses.
+			 */
+			pause: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.pause"),
+			resume: (): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.resume"),
+			setMuted: (muted: boolean): Promise<QwenVoiceStatus> =>
+				ipcRenderer.invoke("voice.qwen.mute", muted === true),
+			onStatus: (listener: (status: QwenVoiceStatus) => void) => {
+				const handler = (_event: unknown, status: QwenVoiceStatus) =>
+					listener(status);
+				ipcRenderer.on("voice.qwen.status", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.status", handler);
+				};
+			},
+			onEvent: (listener: (event: QwenVoiceEvent) => void) => {
+				const handler = (_event: unknown, event: QwenVoiceEvent) =>
+					listener(event);
+				ipcRenderer.on("voice.qwen.event", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.event", handler);
+				};
+			},
+			onByok: (listener: (message: QwenByokMessage) => void) => {
+				const handler = (_event: unknown, message: QwenByokMessage) =>
+					listener(message);
+				ipcRenderer.on("voice.qwen.byok", handler);
+				return () => {
+					ipcRenderer.removeListener("voice.qwen.byok", handler);
+				};
+			},
+		},
 		onOpenConversation: (
 			callback: (sessionId: string | null, surface?: string) => void,
 		) => {
@@ -288,7 +373,12 @@ const api = {
 		},
 		stream: {
 			subscribe: (
-				args: { sessionId: string; epoch?: string; afterSeq?: number },
+				args: {
+					sessionId: string;
+					epoch?: string;
+					afterSeq?: number;
+					inlineUi?: boolean;
+				},
 				// The contract's own type rather than a fourth transcription of the
 				// frame: a local copy is where a new field (here `status`, which
 				// carries a 404) gets dropped silently between main and the renderer.
@@ -375,6 +465,29 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/*
+	 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK (`shared/app-attention-queued-asks.ts`).
+	 *
+	 * The window is the only reader of the queued-ask index, and the feed frame for a
+	 * conversation carries no ask count, so the dock/tray projection can only know
+	 * this if the window says it. `report` is a claim, sent on change; `onResync` is
+	 * main asking for it again after a reset it could not let the window see.
+	 */
+	appAttention: {
+		reportQueuedAskSessions: (ids: readonly string[]): void => {
+			ipcRenderer.send(APP_ATTENTION_QUEUED_ASKS_CHANNEL, [...ids]);
+		},
+		onQueuedAskSessionsResync: (callback: () => void): (() => void) => {
+			const handler = () => callback();
+			ipcRenderer.on(APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL, handler);
+			return () => {
+				ipcRenderer.removeListener(
+					APP_ATTENTION_QUEUED_ASKS_RESYNC_CHANNEL,
+					handler,
+				);
+			};
+		},
+	},
 	/**
 	 * The window chrome: the synchronous facts the shell lays out from, the report
 	 * the renderer sends back on every theme change, and the state main pushes.
@@ -623,6 +736,13 @@ const api = {
 			ipcRenderer.invoke(BACKEND_STATUS_CHANNEL),
 		reconnect: (): Promise<DaemonStatusSnapshot> =>
 			ipcRenderer.invoke(BACKEND_RECONNECT_CHANNEL),
+		/*
+		 * The start-up panel's Restart: stop this app's own server and start it
+		 * again. Distinct from `reconnect`, which only re-discovers - a server
+		 * that failed to start is not one waiting to be found.
+		 */
+		restart: (): Promise<DaemonStatusSnapshot> =>
+			ipcRenderer.invoke(BACKEND_RESTART_CHANNEL),
 		onStatusChange: (callback: (snapshot: DaemonStatusSnapshot) => void) => {
 			const handler = (_event: unknown, snapshot: DaemonStatusSnapshot) =>
 				callback(snapshot);
@@ -1256,42 +1376,14 @@ const api = {
 			trusted: boolean,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
-		onPasskeyCustodyAttention: (
-			callback: (payload: {
-				tabId: number;
-				at: number;
-				requesterSessionId: string | null;
-			}) => void,
-		): (() => void) => {
-			const handler = (
-				_event: unknown,
-				payload: {
-					tabId?: unknown;
-					at?: unknown;
-					requesterSessionId?: unknown;
-				},
-			) => {
-				if (typeof payload?.tabId !== "number") return;
-				if (typeof payload.at !== "number") return;
-				callback({
-					tabId: payload.tabId,
-					at: payload.at,
-					requesterSessionId:
-						typeof payload.requesterSessionId === "string"
-							? payload.requesterSessionId
-							: null,
-				});
-			};
-			ipcRenderer.on("browser-passkey-custody-attention", handler);
-			return () => {
-				ipcRenderer.removeListener(
-					"browser-passkey-custody-attention",
-					handler,
-				);
-			};
-		},
+		/** A sidebar notification row's click: bring the tab an agent is waiting
+		 * on the user in forward, with its held popups (`user-attention.ts`). The
+		 * ONLY path that does; `false` when the tab is gone. */
+		openUserAttention: (tabId: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-open-user-attention", tabId),
 		/** The hold `{tabId, at}` ended: the renderer may give the user back the
-		 * view it saved when that hold began (`passkey-custody-handoff.ts`). */
+		 * view it saved when they opened that hold from its notification
+		 * (`passkey-custody-handoff.ts`). */
 		onPasskeyCustodyEnded: (
 			callback: (payload: { tabId: number; at: number }) => void,
 		): (() => void) => {
@@ -1334,6 +1426,45 @@ const api = {
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */
 		retry: (): Promise<unknown> => ipcRenderer.invoke("browser-retry"),
+		/** Live composite of an overlay-suppressed page (main's
+		 * `composite-bridge.ts`): a full BGRA frame, drawn then ACKed so main sends
+		 * the next. Display-only; never persisted or forwarded. */
+		onCompositeFrame: (
+			callback: (frame: {
+				generation: number;
+				tabId: number;
+				webContentsId: number;
+				documentEpoch: number;
+				frameSeq: number;
+				width: number;
+				height: number;
+				pixels: Uint8Array;
+			}) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, frame: unknown) =>
+				callback(frame as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-frame", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-frame", handler);
+			};
+		},
+		/** The composite's generation ended: drop what is drawn. */
+		onCompositeClear: (
+			callback: (clear: { generation: number; reason: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, clear: unknown) =>
+				callback(clear as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-clear", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-clear", handler);
+			};
+		},
+		ackCompositeFrame: (ack: {
+			generation: number;
+			frameSeq: number;
+		}): Promise<boolean> => ipcRenderer.invoke("browser-composite-ack", ack),
+		setCompositeConsumer: (ready: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-composite-consumer", ready),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);
@@ -1438,9 +1569,18 @@ const api = {
 		/** The pane switched to another surface. Never resizes either of them. */
 		selectSurface: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-select-surface", surface),
-		/** Human typing. Never persisted, never logged, never readable back. */
-		input: (surface: string, text: string): Promise<unknown> =>
-			ipcRenderer.invoke("console-input", surface, text),
+		/** Human typing. Never persisted, never logged, never readable back.
+		 * `paste` asks main to bracket the text when the shell enabled bracketed
+		 * paste (the ask card's suggested command arrives as a paste). The two-
+		 * argument call is unchanged on the wire: no options, no third argument. */
+		input: (
+			surface: string,
+			text: string,
+			options?: { paste?: boolean },
+		): Promise<unknown> =>
+			options === undefined
+				? ipcRenderer.invoke("console-input", surface, text)
+				: ipcRenderer.invoke("console-input", surface, text, options),
 		keys: (surface: string, keys: string[]): Promise<unknown> =>
 			ipcRenderer.invoke("console-keys", surface, keys),
 		/** The pane's own measurements. Main decides the grid from them. */

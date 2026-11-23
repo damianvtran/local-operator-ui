@@ -1,0 +1,17 @@
+{
+	"ui.teamBridge.rename.menu": "{kind, select, group {Cambiar nombre del grupo…} other {Cambiar nombre del canal…}}",
+	"ui.teamBridge.rename.title": "{kind, select, group {Cambiar nombre del grupo} other {Cambiar nombre del canal}}",
+	"ui.teamBridge.rename.description": "{kind, select, group {Todos los miembros del grupo verán el nuevo nombre.} other {Todos los miembros del canal verán el nuevo nombre. Los nombres de canal van en minúsculas y con guiones en lugar de espacios.}}",
+	"ui.teamBridge.rename.name": "Nombre",
+	"ui.teamBridge.rename.cancel": "Cancelar",
+	"ui.teamBridge.rename.save": "Guardar",
+	"ui.teamBridge.rename.saving": "Guardando…",
+	"ui.teamBridge.rename.error.taken": "{kind, select, group {Ya existe un grupo llamado {name}. Elige otro nombre.} other {Ya existe un canal llamado #{name}. Elige otro nombre.}}",
+	"ui.teamBridge.rename.error.empty": "Escribe un nombre.",
+	"ui.teamBridge.rename.error.too_long": "Los nombres pueden tener hasta {max, number} caracteres.",
+	"ui.teamBridge.rename.error.characters": "El nombre contiene un carácter que no se puede usar, como una tabulación, un salto de línea o un carácter invisible.",
+	"ui.teamBridge.rename.error.invalid": "Ese nombre no se puede usar. Prueba con otro.",
+	"ui.teamBridge.rename.error.forbidden": "{kind, select, group {No tienes permiso para cambiar el nombre de este grupo.} other {No tienes permiso para cambiar el nombre de este canal.}}",
+	"ui.teamBridge.rename.error.archived": "{kind, select, group {Este grupo se archivó, así que ya no se le puede cambiar el nombre.} other {Este canal se archivó, así que ya no se le puede cambiar el nombre.}}",
+	"ui.teamBridge.rename.error.failed": "No se guardó el nuevo nombre. Inténtalo de nuevo."
+}

@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n";
 import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
 
 /**
@@ -25,7 +26,9 @@ import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
  */
 
 /**
- * The archive confirmation's body, and the only place it is written.
+ * The archive confirmation's body, and the only place it is asked for. Its WORDS
+ * are catalogue copy (`ui.chat.dialogs.archive_message`, with the translator
+ * context beside it); this function owns the FACTS interpolated into it.
  *
  * SHAPE: the CONSEQUENCE first, then the way back (design round 1, D1; UX round 1,
  * U3 and its NIT). The first draft led with a clause that contradicted its own
@@ -55,25 +58,87 @@ import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
  * bare "restore it". Two rendered lines is the target (design round 2, D11), which
  * is why it is a list of three short acts rather than a clause that explains them.
  *
- * `\u201cInclude archived\u201d` in curly quotes is the control's own label, spelled
- * exactly as the search block draws it, so the sentence sends the reader to a thing
- * they can find by the name they were given.
+ * "Include archived" in curly quotes is the control's own label, handed in from the
+ * same catalogue key the search block draws, so the sentence sends the reader to a
+ * thing they can find by the name they were given.
  */
-export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists. You can undo for ${ARCHIVE_UNDO_TOAST_MS / 1000} seconds; after that, search above your chats, turn on \u201cInclude archived\u201d, then Unarchive it.`;
+export function archiveConfirmMessage(): string {
+	// RESOLVED PER CALL (not a module constant) so a backend language change is
+	// picked up: the dialog subscribes with `useI18nLocale()` and asks again on
+	// every render. The seconds are still `ARCHIVE_UNDO_TOAST_MS / 1000`, passed as
+	// a number so each language applies its own plural rule to the noun.
+	// `include_archived` is the SEARCH CHECKBOX'S OWN catalogue string, resolved
+	// here, so the name this sentence sends the reader to cannot drift from the
+	// label they will find - in any language - which is the property the English
+	// literal gave by being typed twice.
+	return t("ui.chat.dialogs.archive_message", {
+		seconds: ARCHIVE_UNDO_TOAST_MS / 1000,
+		include_archived: t("ui.chat.sidebar.search.include_archived"),
+	});
+}
 
 /**
- * What the question names when nobody can say which conversation it is: the store
- * holds no row for it and the asking surface carried no title. A question that put
- * nothing inside curly quotes would read as a bug, and this reads as the act.
+ * Private-use code point standing in for the conversation's name while the title
+ * sentence is resolved, so the sentence can be cut into "what comes before the
+ * name", "the name" and "what comes after" without knowing the language's word
+ * order. U+E000 never appears in catalogue copy and is not a bidi control, so
+ * `t()`'s RTL argument isolation (which only wraps Latin-led code-like values)
+ * leaves it alone.
  */
-export const ARCHIVE_CONFIRM_UNNAMED = "this conversation";
+const TITLE_SLOT = "\uE000";
+
+/** The archive question, cut around the conversation's name. */
+export type ArchiveConfirmTitleParts = {
+	/** Fixed text before the name (the verb and the opening quote in English). */
+	before: string;
+	/** The name, or null when nobody can say which conversation it is. */
+	name: string | null;
+	/** Fixed text after the name (the closing quote and question mark in English). */
+	after: string;
+};
 
 /**
- * The verb the question opens with. The NAME is the caller's and it ellipsises;
- * this half and the question mark never give, because "Archive…" is not a question
- * and "…?" is not an act (`archiveOfferedName`'s R2-3 rule, applied to the title).
+ * The dialog's question as three parts, so ONLY the name can ellipsise.
+ *
+ * WHY NOT ONE STRING. The title row keeps the verb and the question mark rigid and
+ * lets the NAME alone truncate (design round 1, D2: a question that truncated as a
+ * whole would end on "Archive..." - not a question; the quotes sit outside the cut
+ * too). That layout needs the three pieces separately, but concatenating a verb
+ * and a quote around the name fixes English word order and quote marks. So the
+ * sentence is ONE catalogue message per case - `archive_title_named` carries a
+ * `{title}` slot wherever the language wants the name - and it is cut at the slot
+ * here, after translation. English reads `Archive “` + name + `”?`; a language that
+ * puts the name first simply has an empty `before`.
+ *
+ * `title` null is the unnamed case (the store holds no row and the asking surface
+ * carried no title): its own whole sentence, never a named one with a blank, so a
+ * pair of empty quotes cannot appear in any language.
+ *
+ * A translated message that lost its `{title}` slot (a catalogue defect that the
+ * parity gate should have stopped) degrades to the whole sentence with no name,
+ * not to a crash or to a half-sentence.
  */
-export const ARCHIVE_CONFIRM_VERB = "Archive";
+export function archiveConfirmTitleParts(
+	title: string | null,
+): ArchiveConfirmTitleParts {
+	if (title === null) {
+		return {
+			before: t("ui.chat.dialogs.archive_title_unnamed"),
+			name: null,
+			after: "",
+		};
+	}
+	const sentence = t("ui.chat.dialogs.archive_title_named", {
+		title: TITLE_SLOT,
+	});
+	const at = sentence.indexOf(TITLE_SLOT);
+	if (at < 0) return { before: sentence, name: null, after: "" };
+	return {
+		before: sentence.slice(0, at),
+		name: title,
+		after: sentence.slice(at + TITLE_SLOT.length),
+	};
+}
 
 /**
  * The row box a confirmed archive should hand the caret on from, or null.

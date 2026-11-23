@@ -334,12 +334,16 @@ export const showSuccessToast = (
 /**
  * Show a warning toast
  *
- * @param message - The warning message to display
+ * @param message - The warning message to display, or a node when the sentence
+ * needs a shape a string cannot carry (the dictated-send refusal names the chat
+ * on its own truncated line above the sentence; see `dictated-send.ts`). A
+ * node is only ever used where the copy is already keyed and translated - this
+ * widens the CHANNEL, not the policy: every caller still passes copy from `t()`.
  * @param options - Sonner toast options (ExternalToast)
  * @returns The toast ID
  */
 export const showWarningToast = (
-	message: string,
+	message: ReactNode,
 	options?: ExternalToast,
 ): string | number => {
 	return toast.warning(message, options);

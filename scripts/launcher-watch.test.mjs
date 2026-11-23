@@ -304,10 +304,12 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	// bare handler outside it is asserted absent below. S3's visible probe takes
 	// the SAME lifetime contract (it is a visible run nobody is watching, capped
 	// at 120 s), so that gate names `addressOverlayGate.visible` too — the pin
-	// follows the condition rather than being loosened to "some if".
+	// follows the condition rather than being loosened to "some if". The S1
+	// dev-driver step runner (mac proof capture) is the same kind of run - a
+	// visible `inactive` window nobody is at, capped at 300 s - and joins it.
 	const loopAt = index.indexOf("for (const signal of");
 	const gateAt = index.indexOf(
-		'if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {',
+		'if ( windowLaunch.mode === "headless" || addressOverlayGate.visible || devDriverScript.honoured ) {',
 	);
 	assert.ok(
 		gateAt !== -1 && loopAt > gateAt,
@@ -332,7 +334,7 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	// `index.ts` and no unit can boot a visible window to observe it.
 	wired(
 		"the visible launcher watch",
-		/boundedVisibleProbe: addressOverlayGate\.visible,/,
+		/boundedVisibleProbe: addressOverlayGate\.visible \|\| devDriverScript\.honoured,/,
 	);
 	wired(
 		"the visible cap",
@@ -369,10 +371,12 @@ test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
 	const index = codeText(join(process.cwd(), "src", "main", "index.ts"));
 	// A non-headless gate, not a bare registration — and S3's visible probe is
 	// excluded as well: it already registers the direct handlers above, so this
-	// one would re-raise TERM into the handler that just took it.
+	// one would re-raise TERM into the handler that just took it. The S1 step
+	// runner (mac proof capture) takes the same lifetime contract, so it is
+	// excluded for the same reason.
 	assert.match(
 		index,
-		/if \(windowLaunch\.mode !== "headless" && !addressOverlayGate\.visible\) \{/,
+		/if \( windowLaunch\.mode !== "headless" && !addressOverlayGate\.visible && !devDriverScript\.honoured \) \{/,
 		"the quit-gated TERM handler must sit behind the non-headless, non-visible gate",
 	);
 	// ...whose handler is the quit-state shape, not a second headless exit:
@@ -386,17 +390,42 @@ test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
 	// Quitting: the reopen record is completed and the exit is deterministic.
 	assert.match(index, /scheduleReopenAtQuitTerminal\(\); app\.exit\(0\);/);
 	assert.match(index, /process\.on\("SIGTERM", onSigtermDuringQuit\);/);
-	// Exactly one literal SIGTERM registration, and SIGINT keeps its single
-	// owner — the headless loop above — because nothing else may take a person's
-	// Ctrl-C.
+	// Exactly one literal SIGTERM registration.
 	assert.equal(
 		index.split('process.on("SIGTERM"').length - 1,
 		1,
 		"expected exactly one literal SIGTERM registration (the quit-gated handler)",
 	);
+	/*
+	 * SIGINT: ONE listener outside the headless loop, and it must HAND THE
+	 * SIGNAL BACK (added 2026-10-18, QA round 1 Q-3). `kill -TERM` was measured
+	 * taking the Electron group down in 2 s while the detached 5.69 GB s2s group
+	 * survived with its record - the same is true of a Ctrl-C in the dev
+	 * terminal, which is the trial's own stop gesture. So the listener stops the
+	 * rig, removes itself and re-raises; a person's Ctrl-C still means exactly
+	 * what it did. What this forbids is unchanged: anything that takes the exit
+	 * into its own hands, or a second owner. A first draft of this pin demanded
+	 * ZERO literal SIGINT registrations; that letter protected the meaning, and
+	 * the meaning is what the three assertions below keep.
+	 */
 	assert.equal(
 		index.split('process.on("SIGINT"').length - 1,
-		0,
-		"SIGINT must stay inside the headless loop, registered by its own variable",
+		1,
+		"one handing-back SIGINT listener outside the headless loop",
+	);
+	const sigintBody = index.slice(
+		index.indexOf("const onSigint"),
+		index.lastIndexOf('process.on("SIGINT"'),
+	);
+	assert.match(sigintBody, /stopVoiceOnTerminatingSignal\("SIGINT"\)/);
+	assert.match(
+		sigintBody,
+		/process\.removeListener\("SIGINT", onSigint\); process\.kill\(process\.pid, "SIGINT"\);/,
+		"it must hand the signal back, not own it",
+	);
+	assert.doesNotMatch(
+		sigintBody,
+		/app\.exit\(|process\.exit\(/,
+		"a handler that exits on its own is what this forbids",
 	);
 });

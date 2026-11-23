@@ -1,0 +1,72 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent translation audit, round 2 (delta), PR #1973",
+ "locale": "fr",
+ "namespace": "ui.community",
+ "pr": 1973,
+ "date": "2026-11-18",
+ "head": "72da4b833910bfe97fdaf9e4198faf24b94e5a8a",
+ "instance": "pr1973-r2-fr-community-db929001",
+ "auditor": {
+  "agent": "reviewer",
+  "role": "independent i18n auditor (reviewer role); did not translate, author, suggest or apply these strings",
+  "model": "anthropic/claude-opus-5-5",
+  "independence": "Reviewer session ef5cbe7f8a91, a fresh reviewer task for PR #1973 round 2; not the translator (coder job e584f309bede, session 1e4dc439a105), not the round-1 auditor whose suggestions these values are (session 9bf5768d1c00), and not the implementer who applied them. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+  "instance": "pr1973-r2-fr-community-db929001"
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "status": "passed",
+ "result": "clean",
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "audited_values": {
+  "ui.community.public": "Publique",
+  "ui.community.noplan.trial.body": "Un Team Bridge privé pour votre organisation : canaux, messages privés et vos agents qui travaillent ensemble.",
+  "ui.community.noplan.trial.resume_hint": "Votre paiement est encore ouvert dans Radient Console. Reprenez-le là-bas ; aucun second paiement n’est lancé.",
+  "ui.community.join.disclosure.body": "Les messages, les images et les publications d’agents sont d’abord vérifiés par un modérateur automatique. Si un contenu est refusé, il n’est ni publié ni conservé, et l’avertissement n’est visible que par vous.",
+  "ui.community.join.next_hint": "Ensuite : aperçu de votre profil communautaire",
+  "ui.community.join.preview.not_shown": "Non affichés : e-mail, organisations. Modifiez votre profil dans Radient Console.",
+  "ui.community.join.error.rate_limited": "Trop de tentatives d’adhésion. Réessayez dans {seconds, plural, one {# seconde} many {# de secondes} other {# secondes}}.",
+  "ui.community.channel.offline": "Vous êtes hors ligne. Les messages se chargeront à la reconnexion ; rien de ce que vous tapez n’est envoyé d’ici là.",
+  "ui.community.message.delete_confirm": "Supprimer ce message ? Cette action est irréversible.",
+  "ui.community.message.reaction_label": "{emoji} : {count, plural, one {# réaction} many {# de réactions} other {# réactions}}",
+  "ui.community.message.replies": "{count, plural, one {# réponse} many {# de réponses} other {# réponses}}",
+  "ui.community.message.images": "{count, plural, one {# image} many {# d’images} other {# images}}",
+  "ui.community.outcome.refused.reason": "Motif : {category}. Rien n’a été partagé ni conservé.",
+  "ui.community.outcome.limit.retry": "Réessayez dans {seconds, plural, one {# seconde} many {# de secondes} other {# secondes}}. Votre brouillon est conservé ici tant que vous restez dans ce canal.",
+  "ui.community.outcome.cancelled": "Annulé. Rien n’a été publié ; votre brouillon est conservé.",
+  "ui.community.outcome.expired": "La vérification a pris trop de temps, rien n’a donc été publié. Votre brouillon est conservé ; réessayez.",
+  "ui.community.outcome.offline": "Vous êtes hors ligne. Rien n’a été envoyé ; votre brouillon est conservé.",
+  "ui.community.outcome.error": "Un problème est survenu et rien n’a été publié. Votre brouillon est conservé ; réessayez.",
+  "ui.community.browse.members": "{count, plural, one {# membre} many {# de membres} other {# membres}}",
+  "ui.community.browse.count": "{count, plural, one {# canal} many {# de canaux} other {# canaux}}"
+ },
+ "prior_round": {
+  "instance": "pr1973-r1-fr-community-736b5bf1",
+  "head": "aeecfe4aa9446031abf56959ce723c38aa3a37f0",
+  "rebased_head": "65b1ee0be4e97d49729e77b64a078d4257356e3d",
+  "findings_applied": [
+   "M1-fr",
+   "M4-fr",
+   "N1-fr",
+   "N3-fr"
+  ],
+  "note": "Keys not listed in audited_values are byte-identical to the round-1 audited bytes (aeecfe4a == 65b1ee0b for this file). Every audited value equals the round-1 suggestion verbatim; where two round-1 findings touched one key, the value composes both.",
+  "receipt": "i18n/receipts/pr1973-r1-fr-community-736b5bf1.json"
+ },
+ "scope": "PR #1973 round 2 delta (65b1ee0b..72da4b83): 20 changed ui.community values (round-1 findings M1-fr, M4-fr, N1-fr, N3-fr applied); rest of the file byte-identical to the round-1 audited bytes. Plus the fr-scoped identical-value exemption fr:ui.community.message.agent_badge in scripts/i18n/locale-parity.test.mjs (glossary agent = agent; mirrors fr:ui.teamBridge.profile.agent_badge).",
+ "binding": "Verified on the committed tree at 72da4b833910bfe97fdaf9e4198faf24b94e5a8a (worktree .worktrees/community-ui): target src/i18n/catalogues/fr/ui.community.json sha256 2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5; English sha256 1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7; context sha256 8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219.",
+ "en_sha256": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7",
+ "context_sha256": "8573f915548c463f547f89d929020aa301ef30778898db3b8d37709390f42219",
+ "target_sha256": "2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5",
+ "sha256": {
+  "fr": "2d88f958333367902fbbbe31a364097b7b49fdf74918268c580da3eede079cf5",
+  "en": "1fe96e7e52077aed70cc76c2c1a1e64cc2786463b2e0a904b2028a89a58fe0e7"
+ }
+}

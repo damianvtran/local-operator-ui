@@ -50,7 +50,7 @@ async function importBundle(result, label) {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, jobCancelNotFoundCopy } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -106,7 +106,7 @@ const {
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	desktopResult,
 	refusalDetail,
-	JOB_CANCEL_NOT_FOUND_COPY,
+	jobCancelNotFoundCopy,
 	// Aliased: the session-variables bundle binds the plain names too. Both
 	// bundles now resolve before the first registration, so this alias keeps two
 	// namespaces from colliding rather than dodging a TDZ window.
@@ -182,6 +182,22 @@ before(async () => {
 			authorization: req.headers.authorization,
 			body: Buffer.concat(chunks).toString(),
 		});
+		if (req.url === "/v1/desktop/attention/seen") {
+			// An older backend is still entitled to refuse the newly admitted ID.
+			res.writeHead(422, { "Content-Type": "application/json" });
+			res.end(
+				JSON.stringify({
+					detail: [
+						{
+							loc: ["body", "items", 1, "session_id"],
+							msg: "String should match pattern '^[a-f0-9]{12}$'",
+							input: "abcdef0123456789abcdef0123456789",
+						},
+					],
+				}),
+			);
+			return;
+		}
 		if (req.url === "/v1/settings/redirect") {
 			res.writeHead(302, { Location: `${url}/stolen` });
 			res.end();
@@ -303,6 +319,76 @@ after(async () => {
 	await new Promise((resolve, reject) =>
 		server.close((error) => (error ? reject(error) : resolve())),
 	);
+});
+
+test("bulk receipt validation reports the local or backend field without echoing inputs", async () => {
+	const completionToken = "00000000-0000-4000-8000-000000000001";
+	const sessionId = "abcdef0123456789abcdef0123456789";
+	const request = {
+		op: "attention.seen",
+		items: [
+			{ sessionId: "0123456789ab", completionToken },
+			{ sessionId, completionToken },
+		],
+	};
+	const priorWindow = globalThis.window;
+	globalThis.window = {
+		api: { desktop: { request: (input) => requestDesktop(input, url, token) } },
+	};
+	try {
+		const priorRequests = seen.length;
+		await assert.rejects(
+			() =>
+				desktopResult({
+					...request,
+					items: [
+						request.items[0],
+						{ sessionId: "../private-path", completionToken },
+					],
+				}),
+			{
+				status: 422,
+				message:
+					"body.items[1].sessionId: String should match pattern '^(?:[a-f0-9]{12}|[a-f0-9]{32})$'",
+			},
+		);
+		const foreign = await requestDesktopOutcome(
+			{
+				...request,
+				items: [{ ...request.items[0], privateField: "not-for-IPC" }],
+			},
+			url,
+			token,
+		);
+		assert.deepEqual(foreign, {
+			answered: false,
+			response: {
+				status: 422,
+				body: {
+					detail: [
+						{
+							loc: ["body", "items", 0],
+							msg: "Extra fields are not permitted",
+						},
+					],
+				},
+			},
+		});
+		assert.equal(
+			seen.length,
+			priorRequests,
+			"invalid local bodies must not go out over HTTP",
+		);
+		await assert.rejects(() => desktopResult(request), {
+			status: 422,
+			message:
+				"body.items[1].session_id: String should match pattern '^[a-f0-9]{12}$'",
+		});
+		assert.equal(seen.length, priorRequests + 1);
+		assert.equal(JSON.parse(seen.at(-1).body).items[1].session_id, sessionId);
+	} finally {
+		globalThis.window = priorWindow;
+	}
 });
 
 test("real HTTP receives only allowlisted route and main-owned bearer", async () => {
@@ -452,7 +538,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		 */
 		const unknown = await rejection("aaaaaaaaaaaa");
 		assert.equal(unknown.code, "jobs_not_found", "the machine code survives");
-		assert.equal(refusalDetail(unknown), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(unknown), jobCancelNotFoundCopy());
 
 		const settled = await rejection("job-settled");
 		assert.equal(
@@ -461,7 +547,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		);
 
 		const bare = await rejection("job-bare");
-		assert.equal(refusalDetail(bare), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(bare), jobCancelNotFoundCopy());
 	} finally {
 		globalThis.window = priorWindow;
 	}
@@ -517,6 +603,12 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			{ request_id: requestId, cwd: "~", peer: "d_bbox1111" },
 		],
 		[{ op: "sessions.get", sessionId }, `/${sessionId}`, "GET", undefined],
+		[
+			{ op: "sessions.get", sessionId, inlineUi: true },
+			`/${sessionId}?inline_ui=1`,
+			"GET",
+			undefined,
+		],
 		/*
 		 * THE OPEN-FRAME FLAG, AT THE ONE HOP THAT BUILDS THE QUERY (agent review
 		 * round 1, F6). With `open_frame=1` the backend counts `limit` in PAINTABLE
@@ -539,8 +631,9 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 100,
 				beforeId: "entry-1",
 				openFrame: true,
+				inlineUi: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1`,
+			`/${sessionId}/history?inline_ui=1&limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
 			undefined,
 		],
@@ -571,6 +664,24 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			`/${sessionId}/messages`,
 			"POST",
 			{ request_id: requestId, text: "hello", images: [], mode: "steer" },
+		],
+		[
+			{
+				op: "sessions.message",
+				sessionId,
+				requestId,
+				text: "hello",
+				inlineUi: true,
+			},
+			`/${sessionId}/messages`,
+			"POST",
+			{
+				request_id: requestId,
+				text: "hello",
+				images: [],
+				mode: "prompt",
+				inline_ui: true,
+			},
 		],
 		[
 			{
@@ -626,6 +737,37 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 25,
 			},
 			`/${sessionId}/children/${childId}/transcript?limit=25&before_id=entry-abc`,
+			"GET",
+			undefined,
+		],
+		/*
+		 * Full-diff pages (parent and contained child): the CALL id and the row
+		 * window, nothing else — no digest ever reaches the wire.
+		 */
+		[
+			{
+				op: "sessions.diff",
+				sessionId,
+				callId: "toolu_01AbC",
+				start: 0,
+				limit: 200,
+			},
+			`/${sessionId}/tool-calls/toolu_01AbC/diff?start=0&offset=0&limit=200`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "subagents.diff",
+				sessionId,
+				childId,
+				callId: "call_9",
+				start: 417,
+				// A continuation cursor: the server-issued offset is echoed as-is.
+				offset: 12_000,
+				limit: 200,
+			},
+			`/${sessionId}/children/${childId}/tool-calls/call_9/diff?start=417&offset=12000&limit=200`,
 			"GET",
 			undefined,
 		],
@@ -743,6 +885,52 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			beforeId: "e".repeat(129),
 		},
 		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
+		// Full-diff pages: no path-shaped call id, the 200-row cap, and no digest.
+		{ op: "sessions.diff", sessionId, callId: "../x", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "a/b", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0, limit: 201 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: -1, limit: 1 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0.5, limit: 1 },
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: -1,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: 1.5,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: "3",
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			limit: 1,
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.diff",
+			sessionId,
+			childId: "../config",
+			callId: "c",
+			start: 0,
+			limit: 1,
+		},
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
 	assert.equal(seen.length, count);
@@ -2179,13 +2367,18 @@ test("byte budgets are per operation, and message ops get the backend's real hea
 		"sessions.command",
 		"sessions.fork",
 		"legacy.agent.systemPrompt.update",
+		"legacy.agent.editFile",
 		"config.update",
 	])
 		assert.ok(
 			MAX_DESKTOP_REQUEST_BYTES >= desktopRequestByteBudget(op),
 			`the streamed read bound must cover ${op}`,
 		);
-	assert.equal(MAX_DESKTOP_REQUEST_BYTES, 1100000);
+	// The inline edit's buffer-sized body is now the widest tier.
+	assert.equal(
+		MAX_DESKTOP_REQUEST_BYTES,
+		desktopRequestByteBudget("legacy.agent.editFile"),
+	);
 	// The proxy weighs the ENVELOPE, which is wider than any body budget.
 	assert.ok(MAX_DESKTOP_ENVELOPE_BYTES > MAX_DESKTOP_REQUEST_BYTES);
 	assert.equal(
@@ -2245,6 +2438,87 @@ test("a message just under the budget is sent and just over is refused before an
 		seen.length,
 		count + 1,
 		"the refused body must never reach HTTP",
+	);
+});
+
+test("the inline edit reaches its chat route with the main-owned bearer, a buffer-sized budget and a model-sized deadline", async () => {
+	// The canvas editor's inline edit used to be a renderer fetch with no bearer;
+	// it must now leave from main like every other control, with the body the
+	// backend's `AgentEditFileRequest` reads arriving byte-for-byte.
+	const agentId = "11111111-2222-4333-8444-555555555555";
+	const editRequest = {
+		hosting: "openai",
+		model: "gpt-synthetic",
+		file_path: "notes/draft.md",
+		file_content: "# Title\n\nsome text\n",
+		edit_prompt: "make the title louder",
+		selection: "# Title",
+		attachments: ["data:image/png;base64,iVBORw0KGgo="],
+	};
+	const response = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		token,
+	);
+	assert.equal(response.status, 200);
+	const last = seen.at(-1);
+	assert.equal(last.path, `/v1/chat/agents/${agentId}/edit`);
+	assert.equal(last.method, "POST");
+	assert.equal(last.authorization, `Bearer ${token}`);
+	// Key ORDER is the schema's, not the caller's; the object is the same.
+	assert.deepEqual(JSON.parse(last.body), editRequest);
+	assert.ok(!JSON.stringify(response).includes(token));
+
+	// Unpaired: refused before any HTTP, like every other gated op.
+	const count = seen.length;
+	const unpaired = await requestDesktop(
+		{ op: "legacy.agent.editFile", agentId, request: editRequest },
+		url,
+		null,
+	);
+	assert.equal(unpaired.status, 503);
+	assert.equal(unpaired.body.detail.code, DESKTOP_REFUSAL_CODE.noCredential);
+	assert.equal(seen.length, count);
+
+	// BUDGET: derived from the app's own ceilings (see INLINE_EDIT_BYTE_BUDGET):
+	// a buffer and a whole-buffer selection at MAX_FILE_READ_BYTES (64 MiB), one
+	// MAX_ATTACHMENT_UPLOAD_BYTES (32 MiB) attachment as base64, 64 KiB envelope.
+	// Asserted against the named ceilings, so moving either fails here.
+	const { MAX_FILE_READ_BYTES, MAX_ATTACHMENT_UPLOAD_BYTES } =
+		await importBundle(
+			await build({
+				stdin: {
+					contents:
+						'export { MAX_FILE_READ_BYTES } from "./src/shared/desktop-contract"; export { MAX_ATTACHMENT_UPLOAD_BYTES } from "./src/shared/attachment-upload";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			}),
+			"desktop-contract.test.ceilings-bundle.mjs",
+		);
+	assert.equal(
+		desktopRequestByteBudget("legacy.agent.editFile"),
+		2 * MAX_FILE_READ_BYTES +
+			Math.ceil((MAX_ATTACHMENT_UPLOAD_BYTES * 4) / 3) +
+			64 * 1024,
+	);
+	// Far above both tiers it would otherwise have fallen into.
+	assert.ok(
+		desktopRequestByteBudget("legacy.agent.editFile") >
+			desktopRequestByteBudget("sessions.message"),
+	);
+
+	// DEADLINE: the route may make three sequential model calls, so the 20 s
+	// control budget is wrong; main's undici gives up on headers at 300 s by
+	// default, so the deadline sits just inside that to end on its own 504.
+	assert.equal(desktopRequestDeadlineMs("legacy.agent.editFile"), 295000);
+	assert.ok(desktopRequestDeadlineMs("legacy.agent.editFile") < 300000);
+	assert.ok(
+		desktopRequestDeadlineMs("legacy.agent.editFile") >
+			3 * desktopRequestDeadlineMs("config.get"),
 	);
 });
 
@@ -3481,11 +3755,17 @@ test("the stream-subscribe IPC forwards the complete peer-source declaration, an
 			journalOrder: true,
 			orderIds: ["a"],
 			peerJournalSource: true,
+			inlineUi: true,
 		}),
 		{ streamId: "stream-1" },
 	);
 	assert.equal(seen[0].peerJournalSource, true);
 	assert.equal(seen[0].journalOrder, true);
+	assert.equal(seen[0].inlineUi, true);
+	assert.throws(
+		() => subscribe(event, { sessionId: "aaaaaaaaaaaa", inlineUi: "1" }),
+		/Invalid stream subscription/,
+	);
 	assert.throws(
 		() =>
 			subscribe(event, { sessionId: "aaaaaaaaaaaa", peerJournalSource: "1" }),
@@ -3824,6 +4104,81 @@ test("team_bridge archive: the list takes a closed status and delete is a DELETE
 		}).success,
 		false,
 		"delete is not a lifecycle action",
+	);
+});
+
+test("team_bridge rename: POST .../rename with the owner receipt in the body beside the name and an empty query", () => {
+	/*
+	 * Unlike the bodyless lifecycle/delete ops (receipt in the query via
+	 * conversationOwnerQuery), rename carries a body, so the daemon's
+	 * ConversationRenameIn (local-operator #4368) reads tenant_id and
+	 * expected_account_id from the BODY and refuses 422 if either appears in the
+	 * query. A query receipt would therefore fail every guarded rename; this pins
+	 * the placement so a later "make it match archive" edit cannot regress it.
+	 */
+	const route = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "  launch-crew ",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		}),
+	);
+	assert.equal(route.method, "POST");
+	assert.equal(
+		route.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+		"no query string: the daemon refuses a query receipt on rename",
+	);
+	assert.equal(route.path.includes("?"), false);
+	assert.deepEqual(
+		route.body,
+		{
+			name: "launch-crew",
+			tenant_id: "tnt_2",
+			expected_account_id: "acc_a",
+		},
+		"name trimmed at the boundary; receipt in the body",
+	);
+	const bare = jobsCancelEndpoint(
+		desktopRequestSchema.parse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+		}),
+	);
+	assert.equal(
+		bare.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/rename",
+	);
+	assert.deepEqual(
+		bare.body,
+		{ name: "x" },
+		"no receipt keys when none was captured",
+	);
+	const parse = (name) =>
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name,
+		}).success;
+	assert.equal(parse("   "), false, "blank after trim is refused");
+	assert.equal(
+		parse("🚀".repeat(64)),
+		true,
+		"64 code points (128 UTF-16 units)",
+	);
+	assert.equal(parse("🚀".repeat(65)), false, "65 code points");
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "team_bridge.conversations.rename",
+			conversation_id: "bcv_abc12345",
+			name: "x",
+			topic: "y",
+		}).success,
+		false,
+		"strict: no other field rides along",
 	);
 });
 
@@ -4224,4 +4579,146 @@ test("a usage reset names an account and carries a client-minted UUID", () => {
 		}).success,
 		false,
 	);
+});
+
+/*
+ * Amazon Bedrock's AWS panel ops (bedrock design §7 routes 3-6): each reaches
+ * exactly its route with the backend's snake_case body, and the bounds that
+ * keep a Region out of a hostname and a profile name inside its `[profile …]`
+ * line refuse before any HTTP happens.
+ */
+test("bedrock AWS panel ops reach their routes and refuse malformed connections", async () => {
+	const accessKeyId = ["AKIA", "SYNTHETIC", "0000000"].join("");
+	for (const [request, path, method, body] of [
+		[{ op: "auth.bedrock.context" }, "/v1/auth/providers/bedrock/aws", "GET"],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "profile",
+					profile: "acme.dev",
+					region: "us-west-2",
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "profile", profile: "acme.dev", region: "us-west-2" },
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: {
+					method: "access_key",
+					region: "eu-central-1",
+					access_key_id: accessKeyId,
+					secret_access_key: "synthetic-secret",
+					session_token: null,
+				},
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{
+				method: "access_key",
+				region: "eu-central-1",
+				access_key_id: accessKeyId,
+				secret_access_key: "synthetic-secret",
+				session_token: null,
+			},
+		],
+		[
+			{
+				op: "auth.bedrock.connect",
+				connection: { method: "ambient", region: null },
+			},
+			"/v1/auth/providers/bedrock/connection",
+			"PUT",
+			{ method: "ambient", region: null },
+		],
+		[
+			{ op: "auth.bedrock.ssoLogin", profile: "acme-dev-sso" },
+			"/v1/auth/providers/bedrock/sso-login",
+			"POST",
+			{ profile: "acme-dev-sso" },
+		],
+		[
+			{ op: "auth.bedrock.check", credentialId: 12 },
+			"/v1/auth/providers/bedrock/check",
+			"POST",
+			{ credential_id: 12 },
+		],
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 200, request.op);
+		const last = seen.at(-1);
+		assert.equal(last.path, path);
+		assert.equal(last.method, method);
+		if (body) assert.deepEqual(JSON.parse(last.body), body);
+	}
+
+	const count = seen.length;
+	for (const request of [
+		// A Region that would rewrite the hostname.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "api_key",
+				region: "evil.example/",
+				api_key: "secret",
+			},
+		},
+		// A profile name escaping its config section.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "profile",
+				profile: "dev]\n[x",
+				region: "us-east-1",
+			},
+		},
+		// Unknown method, and an extra key on a strict arm.
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "imds", region: "us-east-1" },
+		},
+		{
+			op: "auth.bedrock.connect",
+			connection: { method: "ambient", region: null, api_key: "secret" },
+		},
+		// Access key pair missing its secret.
+		{
+			op: "auth.bedrock.connect",
+			connection: {
+				method: "access_key",
+				region: "us-east-1",
+				access_key_id: accessKeyId,
+				session_token: null,
+			},
+		},
+		{ op: "auth.bedrock.ssoLogin", profile: "" },
+		{ op: "auth.bedrock.check", credentialId: 0 },
+	]) {
+		const response = await requestDesktop(request, url, token);
+		assert.equal(response.status, 422, JSON.stringify(request));
+		assert.ok(!JSON.stringify(response).includes("secret"));
+	}
+	assert.equal(seen.length, count);
+});
+
+/*
+ * Review round 1, R4: Bedrock's connect and check wait on AWS twice - a
+ * credential resolve capped at 15 s (`CREDENTIAL_TIMEOUT_S`) and a probe whose
+ * 15 s httpx timeout bounds each of its four phases - so the daemon's bounded
+ * worst case is 75 s before it stores the row. The transport must wait longer
+ * than that, or it reports a deadline for a connect the backend then saves.
+ */
+test("bedrock connect and check wait longer than the daemon's bounded worst case", () => {
+	const daemonWorstCaseMs = (15 + 4 * 15) * 1000;
+	for (const op of ["auth.bedrock.connect", "auth.bedrock.check"]) {
+		assert.ok(
+			desktopRequestDeadlineMs(op) > daemonWorstCaseMs,
+			`${op}: ${desktopRequestDeadlineMs(op)} ms`,
+		);
+	}
+	// The context read and the SSO start answer without waiting on AWS.
+	assert.equal(desktopRequestDeadlineMs("auth.bedrock.context"), 20000);
 });

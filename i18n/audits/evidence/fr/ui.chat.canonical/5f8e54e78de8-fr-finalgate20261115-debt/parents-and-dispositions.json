@@ -1,0 +1,196 @@
+{
+  "kind": "parent receipt lineage and explicit finding disposition companion",
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "parent_receipt_refs": [
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+      "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+      "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    {
+      "locale": "fr",
+      "ref": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
+      "sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "s18b-fr-canonical-da7ee1dc",
+      "result": "clean",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff"
+    }
+  ],
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/receipt.json",
+    "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+    "git_ref": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "git_path": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+    "same_original_author": true
+  },
+  "own_prior_record": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/record.json",
+    "sha256": "f7b257c79b22c630d6e928ebc41c1f74821497efb34b3df77ec16084cc9d7939"
+  },
+  "prior_companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/parents-and-findings.json",
+      "sha256": "cf865f5f1800003f2c8f4536907db3f29bbe998c48a9e312737ae7d258fd2746"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+      "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+      "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+    }
+  ],
+  "inherited_style_glossary_bindings_verified": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "finding_dispositions": [
+    {
+      "id": "I-FR-2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "disposition": "deferred — retained; non-gating",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "I-FR-3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "disposition": "deferred — non-gating; no rendered fit proven",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "M1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "disposition": "retained, non-gating; no new remediation authorization",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "N1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "disposition": "retained, non-gating; no new remediation authorization",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "CONV-FR-MANY-VIEW",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "CONV-FR-MANY-CLIPPED",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    },
+    {
+      "id": "CONV-FR-FIT-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "disposition": "Rendered check required; source risk, not observed clipping",
+      "decision": "retained unchanged wording/debt; no fresh finding or new remediation round"
+    }
+  ],
+  "old_policy_hold_dispositions": [],
+  "zero_findings_not_inferred_from_main_delta": "Main’s current clean receipts explicitly scope3S18b keys, pre-existing keys out of scope. They do not resolve prior deferred debts; author retains them."
+}

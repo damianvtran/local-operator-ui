@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "9a5e70bf915d",
+  "session": "62a945cf2f78",
+  "actual_model_source": "Session started on anthropic/claude-sonnet-5-5 (mechanical checks ran there); the harness switched mid-run to anthropic/claude-opus-5-5 as a temporary fallback after a provider timeout. The linguistic verdict and this receipt were produced on anthropic/claude-opus-5-5.",
+  "model_fallback": {
+    "primary": "anthropic/claude-sonnet-5-5",
+    "served": "anthropic/claude-opus-5-5",
+    "reason": "provider failure: timeout"
+  },
+  "independent_from_translator_session": true,
+  "mode": "remediation round delta audit (ui-chat-delta-audit-es)",
+  "status": "passed",
+  "locale": "es",
+  "namespace": "ui.chat.dialogs",
+  "head_sha": "934572308bcfb5bbb46f358b88a6131cbaffeade",
+  "scope": "7cdf6c27b4..934572308b ui.chat.dialogs.archive_message; receipt covers committed namespace (programme keys archive_title_named, archive_title_unnamed, archive_message)",
+  "sha256": {
+    "es": "28c20c2f7a98794e2dbb2de4296659271c9332f637a56abdf9907cae58658236",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+  },
+  "prior_findings_verified": [
+    {
+      "was": "MAJOR",
+      "key": "ui.chat.dialogs.archive_message",
+      "issue": "'busca sobre tus conversaciones' lost 'above the chat list'",
+      "result": "fixed: 'usa la búsqueda que hay encima de tus conversaciones' is unambiguously spatial"
+    },
+    {
+      "was": "MINOR",
+      "key": "ui.chat.dialogs.archive_message",
+      "issue": "'Sale de tus listas' colloquial",
+      "result": "fixed: 'Desaparece de tus listas'"
+    }
+  ],
+  "findings": [
+    {
+      "id": "ES-D1",
+      "severity": "MINOR",
+      "key": "ui.chat.dialogs.archive_message",
+      "current": "usa la búsqueda que hay encima de tus conversaciones",
+      "problem": "The shipped es sidebar calls this list 'chats' (header.search 'Buscar chats y agentes', search.no_match 'Nada en tus chats…'), so 'conversaciones' gives the same list a second name. The meaning is intact.",
+      "suggested": "usa la búsqueda que hay encima de tus chats"
+    }
+  ],
+  "method": "static reading of git objects at 934572308b: en catalogue + context sidecar, es catalogue, es neighbours in ui.chat.sidebar; es style guide and glossary from local-operator@56662d28. No MT/translation service used."
+}

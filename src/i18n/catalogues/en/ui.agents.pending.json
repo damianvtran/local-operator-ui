@@ -1,0 +1,17 @@
+{
+	"ui.agents.pending.heading": "Waiting for your approval",
+	"ui.agents.pending.count_aria": "{count, plural, one {# change waiting for your approval} other {# changes waiting for your approval}}",
+	"ui.agents.pending.kind.agent": "Agent",
+	"ui.agents.pending.kind.team": "Team",
+	"ui.agents.pending.kind.skill": "Skill",
+	"ui.agents.pending.operation.create": "Proposed new",
+	"ui.agents.pending.operation.update": "Proposed change",
+	"ui.agents.pending.stale": "Out of date",
+	"ui.agents.pending.skill_needs_update": "Update Local Operator to review skill changes here.",
+	"ui.agents.pending.review": "Review",
+	"ui.agents.pending.review_aria": "{kind, select, agent {Review the proposed change to agent {name}} team {Review the proposed change to team {name}} other {Review the proposed change to skill {name}}}",
+	"ui.agents.pending.review_create_aria": "{kind, select, agent {Review the proposed new agent {name}} team {Review the proposed new team {name}} other {Review the proposed new skill {name}}}",
+	"ui.agents.pending.show_all": "Show all {count}",
+	"ui.agents.pending.show_fewer": "Show fewer",
+	"ui.agents.pending.tab_title": "{tab} · {waiting}"
+}

@@ -43,6 +43,13 @@ the parent-verified JobsCancelRtl/Urdu confirmation presentation with source and
 catalogue compatibility, not full-App locale activation or the old blank canonical
 RTL frame. Independent QA/design must judge those retained dimensions separately.
 
+The native `start_pending` turn reads three internal URLs (`PENDING_PREFACE`)
+before `generate_music`, the field shape behind Q-1 on #1893 (the generating card
+folded into a "3 files · 1 generate_music" action group). The consumer asserts
+the generating card (motif + Cancel) and later the finished receipt visible with
+no transcript expand press, and frames both (`music-generating-unexpanded`,
+`music-finished-unexpanded`).
+
 ## Bounds, identity and isolation
 
 - Core source is pinned to `57d2fb95862a523f603cd999512056da9064a23a` (Core PR #3780 final head, music

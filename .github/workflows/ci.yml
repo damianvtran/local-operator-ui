@@ -48,76 +48,41 @@ on:
         required: false
         default: 'off'
 
-# Cancellation exists for SUPERSEDED COMMITS, not for "any event".
+# Cancellation exists for SUPERSEDED PR COMMITS; `main` coalesces instead.
 #
-# `cancel-in-progress` is here so that a force-push or a follow-up commit does
-# not leave a runner working on a head nobody is waiting for. That is a
-# statement about the COMMIT, so it is keyed on the events that produce a new
-# commit: `push` (only `main` reaches this workflow's push list) and
-# `pull_request`/`synchronize`. Everything else that can start a run on an
-# already-running ref - `opened`, `reopened`, `workflow_dispatch` - cannot
-# cancel an IN-PROGRESS run. (A newly queued run still evicts a PENDING run in
-# the same group whatever `cancel-in-progress` says; that is a queue slot, not
-# a running suite, and it is a property of grouping rather than of this flag.)
+# `cancel-in-progress` is keyed on `pull_request` `synchronize` ONLY, so a
+# force-push or follow-up commit on a pull request cancels an in-progress run
+# on a head nobody is waiting for, while `opened`, `reopened`,
+# `workflow_dispatch` and `push` to `main` never kill a running suite.
 #
-# CHANGE THESE TWO LINES TOGETHER. The `push` arm below is safe only because
-# `github.sha` in the group gives every `main` commit its own group; with a
-# shared `main` group it would CANCEL the run already building, which is worse
-# than the eviction it replaced. Reverting only `group:` restores eviction;
-# reverting only `cancel-in-progress:` restores cancellation on `opened` and
-# `reopened`. The group fixes eviction, the event condition fixes non-head
-# cancellation, and neither is a substitute for the other.
+# NON-RELEASE `main` PUSHES COALESCE INTO `'ci-main'` (one running + newest
+# pending, matching `full-suite.yml`), rather than giving every merge commit
+# its own per-SHA group. Measured on 2026-10-19..11-18, giving each `main`
+# merge its own `github.sha` group started N parallel job sets across a shared
+# runner pool (40 standard / 5 macOS slots account-wide), turning bursts of
+# merges into multi-minute queues for active PRs even though every merged PR
+# already ran `ci.yml` and `full-suite.yml` on its head. With `cancel-in-progress`
+# false on `main`, the run already building finishes undisturbed and any burst
+# while it runs collapses to the newest `main` tip waiting behind it.
 #
-# A non-head event that arrives during a run queues a SECOND full run of the
-# same head, which executes after the first finishes. That duplicate is
-# expected, not a bug: do not widen the event condition to suppress it.
+# RELEASE COMMITS (`chore(release)...`) AND `workflow_dispatch` ON `main` KEEP
+# THEIR OWN PER-SHA GROUP (`ci-main-release-<event>-<sha>`): a release bump is
+# the tagged commit `publish.yml` ships, so its record must never be evicted
+# from the pending slot by a later merge, and an explicit dispatch on `main`
+# must run the exact SHA asked for rather than coalesce into the push slot.
 #
-# MEASURED ON 2026-10-20, because this block was blamed for the wrong thing
-# and the wrong fix was nearly landed twice. Three `Desktop Tests` runs on the
-# `feat/i18n-envelope-render` head concluded `cancelled` (39489336612,
-# 39489768296, 39491353371) and were read as "concurrency kills every long
-# run". Two of them were superseded by a genuinely newer head (20:10:53 by
-# 39489768296, 20:22:03 by 39491353371) - the designed behaviour. The third
-# never was: that run was re-attempted three times and EVERY attempt's job
-# carries the annotation
-#
-#   The job has exceeded the maximum execution time of 50m0s
-#
-# (20:38:18->21:33:18, 21:35:07->22:30:07, 22:30:32->23:25:33 - 55:00, 55:00,
-# 55:01 against a 50-minute ceiling). The JOB TIMEOUT fired three times; the
-# extra five minutes each time are the runner's cancellation grace, not queue
-# time. Read the closest job annotation before diagnosing a `cancelled`
-# conclusion as a concurrency event: `cancelled` is ALSO how GitHub reports a
-# job that exceeded `timeout-minutes`.
-#
-# What that means for the next reader: if `Desktop Tests` fails to finish, the
-# question is "does the suite fit its ceiling", not "who cancelled it". Do not
-# raise the ceiling to make a cancellation go away, and do not delete this
-# concurrency block to make a long run survive - neither changes what passes.
-#
-# `github.sha` for `main`: a push to `main` is the CI record for that merge
-# commit, and it must never be evicted. A shared per-ref group permits one run
-# in progress and ONE pending one; a third cancels the pending one. Measured
-# here on 2026-10-20: five `push`-to-`main` runs were cancelled with ZERO jobs
-# ever created (39478148883, 39484455334, 39485359664, 39497368882,
-# 39510898400), each one's cancellation instant equal to the next `main` run's
-# creation instant - five merged commits with no CI record in one afternoon.
-# Giving every `main` commit its own group removes the eviction entirely.
-#
-# THE COST, stated so it is not rediscovered as a latency bug: `main` runs are
-# no longer serialized, so N merges now start N full job sets at once. The
-# trade is deliberate - the alternative is losing a merge's CI record - and the
-# saturation figures at the top of this file (26-28 runs in flight, 53-118 jobs
-# queued, median pending age 25.8 minutes) are the reason to answer a latency
-# complaint with sharding or a queue, never by re-sharing this group.
-#
-# The group key is identical to the one the backend repository carries in its
-# own `ci.yml` (6f8cae2e35). The event narrowing has no backend counterpart:
-# that file still runs `cancel-in-progress: true`, so `opened` and `reopened`
-# do cancel there. "Aligning with the backend" must not erase the second half.
+# MEASURED ON 2026-10-20: if a job reports `cancelled` without a superseding
+# `synchronize` push, read the closest job annotation before blaming this block:
+# GitHub also reports a job that exceeded `timeout-minutes` as `cancelled`
+# (e.g. runs 39489336612, 39489768296, 39491353371 hit the 50m0s ceiling).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'shared' }}
-  cancel-in-progress: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'synchronize') }}
+  group: >-
+    ${{ github.ref == 'refs/heads/main'
+    && ((github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'chore(release)'))
+        && format('ci-main-release-{0}-{1}', github.event_name, github.sha)
+        || 'ci-main')
+    || format('{0}-{1}-shared', github.workflow, github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 jobs:
   # Classifies this diff and exposes one flag per job, so a pull request that
@@ -235,6 +200,78 @@ jobs:
             node scripts/ci-scope.mjs --all --root "$GITHUB_WORKSPACE" \
               --github-output "$GITHUB_OUTPUT" --summary "$GITHUB_STEP_SUMMARY"
           fi
+
+  # Rejects a `package.json` version bump outside a `chore(release):` pull
+  # request (and rejects a `chore(release):` PR whose diff does NOT bump the
+  # version). Folded from the standalone `version-bump-guard.yml` workflow into
+  # `ci.yml` behind `CI Gate` (matching core `ci.yml`), so:
+  #  1. one fewer workflow/runner spin-up fires on every PR push, and
+  #  2. a red guard now fails `CI Gate`, making an unauthorized bump
+  #     mechanically fatal under branch protection rather than advisory.
+  #
+  # Gated on the EVENT (`pull_request`) rather than on a `changes` scope flag:
+  # a PR must never influence whether the guard that reads its own version line
+  # runs, and on a version-only release PR where every scope flag is `false`,
+  # this job and `changes` are the exact checks that run. `CI Gate` accepts
+  # `skipped` for this job ONLY when `github.event_name != 'pull_request'`.
+  version-bump-guard:
+    name: Version Bump Guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Generous against the ~15-30 s this takes. It exists so a wedged step cannot
+    # hold a runner for the 360-minute default.
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Two commits is all the diff below needs, but the checkout is the
+          # `refs/pull/N/merge` commit, so HEAD^1 (the base side) and HEAD^2
+          # (the PR side) must both be present. `fetch-tags` stays off on
+          # purpose — the tag list comes from `git ls-remote`, and tags this
+          # shallow are unreachable anyway (see scripts/version-bump-guard.mjs).
+          fetch-depth: 2
+
+      # No `pnpm install`: the guard imports node builtins only, so this job is
+      # a checkout and one node process. A guard that needs a dependency
+      # install is a guard that goes red for reasons unrelated to versions.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Reject a version bump outside a release PR
+        env:
+          # Read through the environment rather than interpolated into the
+          # script: a PR title is attacker-controlled text, and inlining it
+          # directly would let a crafted title inject shell.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # The verdict IS the output: every path that decides anything prints at
+          # least one line, and the guard exits on the verdict. So an exit of 0 with
+          # NOTHING printed is not a pass - it is the shape a guard that never ran
+          # takes, which is exactly what reaching the script through a symlinked
+          # directory used to produce (`scripts/entry-point.mjs` fixes that at the
+          # source: nothing was printed and the status was 0, so this job went green
+          # having checked nothing). The status is captured rather than left to
+          # `set -e` because the two facts have to be told apart: a refusal prints
+          # its reason, a silence does not.
+          #
+          # `|| status=$?` and not `verdict="$(...)"` followed by `status=$?` on the
+          # next line: this step's shell is `bash -e {0}` (no `defaults.run.shell`
+          # anywhere in this directory), so a bare substitution that FAILS aborts the
+          # step AT that line and the annotation below - the refusal's own reason,
+          # which is the product of this job - never prints. `-e` does not fire on a
+          # command in a `||` list, so the code is recorded and the reason survives.
+          set -uo pipefail
+          status=0
+          verdict="$(node scripts/version-bump-guard.mjs)" || status=$?
+          printf '%s\n' "$verdict"
+          if [ "$status" -eq 0 ] && [ -z "$verdict" ]; then
+            echo "::error title=Version bump guard produced no verdict::the guard exited 0 without printing one, so this pull request was never checked for a version bump. Refusing to pass a diff no guard read."
+            exit 1
+          fi
+          exit "$status"
 
   lint:
     name: Lint
@@ -493,7 +530,7 @@ jobs:
       - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
-          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs
           # The per-architecture contract, over EVERY workflow that packages macOS
           # rather than over the one that was fixed first. `publish.yml` was fixed
           # for the v0.30.10 brick and `signed-update-candidate.yml` was not, so its
@@ -911,6 +948,191 @@ jobs:
           fi
           echo 'Main bundle compiled to V8 bytecode.'
 
+  # The Mac arm64 native bytecode artifact native QA downloads, built by its own
+  # job rather than as a matrix leg of `bytecode-build`. V8 cached data cannot
+  # cross CPU architectures, so the Linux gate's `.jsc` is useless on a Mac and a
+  # second native build is necessary; macos-15 is GitHub's arm64 image. This adds
+  # hosted CI cost, NOT another local build or packaging pass.
+  #
+  # WHY TWO JOBS, NOT A MATRIX. The branch ruleset requires a check NAMED exactly
+  # `Bytecode Build Check`, and required status checks are keyed by the job's
+  # display name, not its id. Every way of carrying that name through a matrix
+  # fails:
+  #   - a literal `name:` under a matrix gains a suffix
+  #     (`Bytecode Build Check (ubuntu-latest)`), so the required name never
+  #     reports and merge is refused ("Required status check "Bytecode Build
+  #     Check" is expected");
+  #   - an expression `name:` renders correctly while the job RUNS, but a job
+  #     skipped by its `if:` posts ONE check under the raw, unevaluated string -
+  #     main commit 92984394 shows a check literally named
+  #     `NPX Sanity Check (${{ matrix.os }})` - and the `changes` classifier
+  #     skips this job routinely, so the required check would go missing on
+  #     every such PR.
+  # So `bytecode-build` keeps its literal required name and no matrix, and this
+  # job carries the Mac-only build heap, runtime record, staging and upload.
+  # scripts/native-bytecode-artifact.test.mjs pins both shapes. It shares the
+  # gate's `needs`/`if:` and is listed in `ci-gate.needs`, so a red Mac build
+  # reds CI Gate without being a required check of its own.
+  bytecode-build-macos:
+    name: Bytecode Build Check (macos-15)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.bytecode != 'false'
+    runs-on: macos-15
+    timeout-minutes: 20
+    # Renderer bindings are inlined by Vite: runtime env cannot repair an
+    # artifact pointing at the operator's backend. Port 9 is deliberately inert;
+    # a consumer must own an isolated fixture there before exercising API flows.
+    env:
+      VITE_LOCAL_OPERATOR_API_URL: http://127.0.0.1:9
+      VITE_DISABLE_BACKEND_MANAGER: 'true'
+      VITE_RADIENT_SERVER_BASE_URL: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_HOST: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_KEY: ci-bytecode-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The reusable Mac artifact compiles the exact immutable source head
+          # requested by native QA, not the PR merge commit the Linux gate builds.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
+      - name: Build main with V8 bytecode
+        env:
+          # Run 43319106365 hit Node's ~2 GiB heap limit while bundling the
+          # renderer. Match publish's 4 GiB old-space budget on the 7 GB Mac
+          # runner, leaving headroom for native allocations and the OS. This is
+          # CI build-only: scoped to this step so Node flags never leak into the
+          # later Electron runtime probe or the shipped app.
+          NODE_OPTIONS: --max-old-space-size=4096
+          VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
+          VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
+          VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
+          VITE_MICROSOFT_TENANT_ID: ci-bytecode-check
+        run: pnpm build
+
+      # A green build is not enough. If the bytecode plugin were dropped from
+      # `electron.vite.config.js`, `pnpm build` would emit plain JS, pass, and
+      # verify nothing - the shape of absence this repository treats as worse
+      # than no gate. The `.jsc` is the artifact this job exists to produce.
+      - name: Assert the main bundle really is bytecode
+        run: |
+          if [ ! -f out/main/index.jsc ]; then
+            echo 'out/main/index.jsc is missing: the main bundle was not compiled to V8 bytecode, so this check verified nothing.'
+            ls -l out/main || true
+            exit 1
+          fi
+          echo 'Main bundle compiled to V8 bytecode.'
+
+      # Reuse this leg's production output, never the NO_BYTECODE QA bundle.
+      # Only compiled UI assets + public package metadata leave the runner:
+      # no dependency tree, seeds, source checkout, profile or environment files.
+      - name: Record native bytecode runtime
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: |
+          node_modules/.bin/electron -e '
+            const fs = require("node:fs");
+            if (process.platform !== "darwin" || process.arch !== "arm64") throw new Error("Expected darwin arm64");
+            const pin = require("./package.json").optionalDependencies.electron;
+            if (process.versions.electron !== pin) throw new Error("Electron pin mismatch");
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/bytecode-runtime.json", JSON.stringify({
+              platform: process.platform, arch: process.arch, versions: process.versions,
+              cachedDataVersionTag: require("node:v8").cachedDataVersionTag()
+            }));
+          '
+
+      - name: Stage native bytecode artifact and hash manifest
+        env:
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const runtime = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/bytecode-runtime.json'));
+          const checkout = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          const sourceHead = process.env.SOURCE_HEAD;
+          if (sourceHead !== checkout) throw new Error('Source head is not the checked-out artifact source');
+          for (const file of ['main/index.jsc', 'main/index.js', 'preload/index.js', 'renderer/index.html', 'preload/browser-approvals-overlay.js', 'renderer/browser-approvals-overlay.html']) {
+            if (!existsSync('out/' + file)) throw new Error('Missing compiled surface: ' + file);
+          }
+          const files = [];
+          function inventory(dir) {
+            for (const name of readdirSync(dir).sort()) {
+              const path = dir + '/' + name;
+              const stat = lstatSync(path);
+              if (stat.isSymbolicLink() || name.startsWith('.env')) throw new Error('Unsafe artifact entry: ' + path);
+              if (stat.isDirectory()) inventory(path);
+              else if (stat.isFile()) {
+                const bytes = readFileSync(path);
+                files.push({ path, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+              } else throw new Error('Non-file artifact entry: ' + path);
+            }
+          }
+          inventory('out');
+          const pkg = readFileSync('package.json');
+          files.push({ path: 'package.json', size: pkg.length, sha256: createHash('sha256').update(pkg).digest('hex') });
+          const destination = process.env.RUNNER_TEMP + '/ui-native-bytecode';
+          mkdirSync(destination);
+          cpSync('out', destination + '/out', { recursive: true });
+          writeFileSync(destination + '/package.json', pkg);
+          writeFileSync(destination + '/manifest.json', JSON.stringify({
+            schemaVersion: 1, sourceHead, checkout, runtime,
+            repository: process.env.GITHUB_REPOSITORY, workflow: process.env.GITHUB_WORKFLOW,
+            runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            compiledBindings: Object.fromEntries([
+              'VITE_LOCAL_OPERATOR_API_URL', 'VITE_DISABLE_BACKEND_MANAGER',
+              'VITE_RADIENT_SERVER_BASE_URL', 'VITE_PUBLIC_POSTHOG_HOST', 'VITE_PUBLIC_POSTHOG_KEY'
+            ].map(key => [key, process.env[key]])),
+            // Main's backend config also reads runtime env. The consumer must
+            // preserve these bindings and isolate HOME/config; this is not a
+            // self-contained executable or proof that backend discovery is safe.
+            requiredRuntimeBindings: {
+              VITE_LOCAL_OPERATOR_API_URL: process.env.VITE_LOCAL_OPERATOR_API_URL,
+              VITE_DISABLE_BACKEND_MANAGER: 'true'
+            },
+            build: 'pnpm build', configuration: 'ci-bytecode-check placeholders; no signing or repository secrets',
+            // Matching provenance is a prerequisite, not proof of native behavior.
+            requires: 'Exact Electron/platform/arch; compatible V8 cached data; separately supplied dependencies; disposable profile; native smoke test',
+            files
+          }, null, 2) + '\n');
+          NODE
+
+      - name: Upload native bytecode bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-native-bytecode-darwin-arm64-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ui-native-bytecode/
+          if-no-files-found: error
+          retention-days: 1
+
   # THE TRACKED EVIDENCE STRUCTURE - the half of the evidence gate a fresh
   # checkout can still answer.
   #
@@ -1154,8 +1376,6 @@ jobs:
         # exactly the ambiguity that let the broken artifact ship.
         run: |
           npm pack
-          # Seal this canonical build before any native scene can touch outputs.
-          node scripts/model-uncertainty-native.mjs --write-build-receipt "$RUNNER_TEMP/model-case-build.json"
 
       # Inspects the tarball only, so it is platform-independent and stays on
       # both legs even though only macOS launches the app.
@@ -1285,235 +1505,24 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      # This is the real production app already compiled by npm pack, not a
-      # Storybook surrogate. macOS already owns Electron launch in this job;
-      # Linux's documented sandbox limitation is not waived for screenshots.
-      # 15 minutes, up from 8, because the case table ships three cases and each
-      # case boots the app TWICE (control + candidate): six boots and ONE control
-      # renderer build (the candidate renderer arrives prebuilt from the job's
-      # "Build and pack" step), plus the capture sequences. The run that proved
-      # the producer works end to end spent its first 60 s on the control boot's
-      # build and its last minute on the candidate's, and an 8-minute ceiling left
-      # no room for the frames. Bounded deliberately: a timeout must stay a FAIL,
-      # so this is a ceiling that fits the work rather than a wait, and the script's
-      # own per-boot timeouts (150 s each) are what stop a hung app.
-      - name: Exercise assembled asks and capture regression frames
-        id: asks_regression
-        # The producer this step runs is now a CASE TABLE (scripts/asks-app-regression.mjs):
-        # the asks scenario is its first entry and two further cases ride the same
-        # step, each with its own candidate and derived-control leg. The file name and
-        # the artifact names below keep their historical spelling on purpose - QA
-        # howtos and review threads resolve against those paths. Adding a case is a
-        # table entry, not a workflow change.
-        if: runner.os == 'macOS' && github.event_name == 'pull_request'
-        timeout-minutes: 15
-        env:
-          VITE_LOCAL_OPERATOR_API_URL: 'http://127.0.0.1:8080'
-          VITE_DISABLE_BACKEND_MANAGER: 'true'
-          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
-          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
-          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
-          VITE_GOOGLE_CLIENT_ID: ci-fixture.apps.googleusercontent.com
-          VITE_GOOGLE_CLIENT_SECRET: 'ci-fixture-unused'
-          VITE_MICROSOFT_CLIENT_ID: '00000000-0000-4000-8000-000000000001'
-          VITE_MICROSOFT_TENANT_ID: '00000000-0000-4000-8000-000000000002'
-          QA_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          # THE CONTROL IS THE BASE THIS CANDIDATE WAS BUILT FROM, resolved here
-          # rather than pinned to a historical commit. A pinned revision stops
-          # being able to satisfy the control leg's byte-identity requirement as
-          # soon as `main` moves - its `src/main` is then older than the merged
-          # head's - and the producer dies with `control reuse mismatch src/main`
-          # before it renders anything (measured on run 38916579072). This
-          # checkout is GitHub's MERGE ref, so `HEAD^1` is main as of THIS run,
-          # which is the baseline the change must be judged against.
-          #
-          # The depth-2 fetch brings that parent and its tree in; a depth-1
-          # checkout carries neither. `origin/main` is not consulted: on a fork
-          # PR the remote's `main` is the FORK's, which is why the parent of the
-          # merge ref is the honest source here.
-          git fetch --no-tags --depth=2 origin "$(git rev-parse HEAD)" || true
-          CONTROL="$(git rev-parse HEAD^1 2>/dev/null)" || true
-          if [ -z "$CONTROL" ]; then
-            echo '::error::the asks regression control could not be derived: this checkout has no parent commit, so the base this candidate was built from is unknown. Refusing rather than booting an arbitrary control.'
-            exit 1
-          fi
-          git cat-file -e "$CONTROL^{commit}" || git fetch --no-tags --depth=1 origin "$CONTROL"
-          echo "asks regression control (merge base of this PR): $CONTROL"
-          ASKS_CONTROL_OVERRIDE="$CONTROL" node scripts/asks-app-regression.mjs
-
-      # THE POSITIVE FOREGROUND PROOF FOR `notifications.read`, AND THE ONLY
-      # SHOWN WINDOW IN THIS REPOSITORY. A read means "a human saw this", so the
-      # main process refuses it unless the real window is focused; every other
-      # scene launches headless and therefore proves only the refusal. This step
-      # is the other half: a genuinely shown window on this EPHEMERAL
-      # GitHub-HOSTED macOS runner's own desktop (never a self-hosted runner,
-      # never the operator's machine - `resolvedWindowMode` and the scene both
-      # refuse anything else), a trusted input on a real row, main's real guard
-      # letting it through, and the PINNED core backend's SQLite showing exactly
-      # the tested revision read while an unrelated row and a revision raced
-      # behind the click stay unread. A runner with no interactive desktop FAILS
-      # here rather than falling back to headless, because a headless "success"
-      # would be a false positive.
-      #
-      # The backend is the pinned core revision, installed from its own extra and
-      # run on loopback under a throwaway HOME/config with a synthetic bearer.
-      # Nothing here talks to a provider or an operator account.
-      - name: Prove the positive foreground notification read on a shown window
-        id: notifications_native
-        if: runner.os == 'macOS' && github.event_name == 'pull_request'
-        timeout-minutes: 12
-        env:
-          LOCAL_OPERATOR_UI_NATIVE_SCENE: notifications
-          LOCAL_OPERATOR_CORE_REF: 1df606c6caf73a4087e1c2ef562f88ee8d9fa000
-          VITE_DISABLE_BACKEND_MANAGER: 'true'
-          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
-          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
-        run: |
-          set -euo pipefail
-          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
-          python3 -m venv "$CORE_VENV"
-          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
-          "$CORE_VENV/bin/pip" install --quiet \
-            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
-          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
-          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
-          node scripts/notifications-app-scene.mjs
-
-      # Opt-in model case reuses this job's canonical app/Electron. It never
-      # expands the default asks fixture/matrix or downloads a local runtime.
-      - name: Prove model uncertainty against owned published core
-        id: model_uncertainty_native
-        if: runner.os == 'macOS' && github.event_name == 'pull_request'
-        timeout-minutes: 12
-        env:
-          LOCAL_OPERATOR_CORE_REF: a8c96c2ac1d71b776f40ed68ae5a2322bbe3c1ed
-          MODEL_CASE_EXPECTED_HEAD: ${{ github.sha }}
-          VITE_DISABLE_BACKEND_MANAGER: 'true'
-          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
-          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
-        run: |
-          set -euo pipefail
-          test "$(git ls-remote https://github.com/damianvtran/local-operator.git refs/tags/v0.94.15 | cut -f1)" = "$LOCAL_OPERATOR_CORE_REF"
-          CORE_VENV="$RUNNER_TEMP/notifications-core-venv"
-          # Reuse only after the preceding owned scene has reaped its workers.
-          CORE_VENV="$CORE_VENV" python3 - <<'PY'
-          import os, subprocess
-          root = os.environ['CORE_VENV']
-          rows = subprocess.check_output(['ps', '-axo', 'pid=,command='], text=True)
-          assert not any(root + '/bin/' in row for row in rows.splitlines()), 'prior core environment still in use'
-          PY
-          mkdir -p "$RUNNER_TEMP/model-core-wheel"
-          "$CORE_VENV/bin/pip" download --quiet --only-binary=:all: --no-deps --dest "$RUNNER_TEMP/model-core-wheel" local-operator==0.94.15
-          CORE_WHEEL="$RUNNER_TEMP/model-core-wheel/local_operator-0.94.15-py3-none-macosx_11_0_universal2.whl"
-          CORE_WHEEL="$CORE_WHEEL" python3 - <<'PY'
-          import hashlib, os
-          from pathlib import Path
-          assert hashlib.sha256(Path(os.environ['CORE_WHEEL']).read_bytes()).hexdigest() == '17b4fccdeb78fa0f14ab03aacb246de2acec34beb00264956497891de6e9d58b'
-          PY
-          "$CORE_VENV/bin/pip" install --quiet --upgrade "$CORE_WHEEL"
-          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
-          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
-          ASKS_APP_ROOT="$PWD" \
-          ASKS_OUTPUT="$PWD/artifacts/model-uncertainty" \
-          MODEL_CASE_BUILD_RECEIPT="$RUNNER_TEMP/model-case-build.json" \
-          node scripts/asks-app-regression.mjs --case model-uncertainty --leg candidate
-          # An accidentally exiting helper must not make a zero status look like
-          # joined cleanup; require both receipts and post-cleanup acceptance.
-          node --input-type=module -e 'import { verifyModelExitArtifacts } from "./scripts/model-uncertainty-native.mjs"; verifyModelExitArtifacts("artifacts/model-uncertainty");'
-
-      - name: Upload real model uncertainty evidence
-        if: ${{ always() && steps.model_uncertainty_native.conclusion != 'skipped' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-uncertainty-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/model-uncertainty/
-          if-no-files-found: error
-          retention-days: 7
-
-      # Headless deliberately hides the Dock tile. This proves the real native
-      # getBadge() API through main CDP, NOT Dock pixels; renderer frames are
-      # uploaded separately alongside hidden/unfocused window facts. Never reuse
-      # or widen the notifications lane's shown-window exception for this scene.
-      - name: Prove native app-icon badge API readback without showing a window
-        id: app_icon_badge_native
-        if: runner.os == 'macOS' && github.event_name == 'pull_request'
-        timeout-minutes: 12
-        env:
-          # Merged core PR #3320, including approval baseline remediation.
-          # The scene verifies the installed commit against this merged pin.
-          LOCAL_OPERATOR_CORE_REF: 3a001653fa1f08d434ca7582ca68581c792369d7
-          VITE_DISABLE_BACKEND_MANAGER: 'true'
-          LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
-          LOCAL_OPERATOR_UI_TELEMETRY: 'off'
-          LOCAL_OPERATOR_NO_NOTIFICATIONS: '1'
-        run: |
-          set -euo pipefail
-          CORE_VENV="$RUNNER_TEMP/app-icon-badge-core-venv"
-          python3 -m venv "$CORE_VENV"
-          "$CORE_VENV/bin/pip" install --quiet --upgrade pip
-          "$CORE_VENV/bin/pip" install --quiet \
-            "local-operator[server] @ git+https://github.com/damianvtran/local-operator@${LOCAL_OPERATOR_CORE_REF}"
-          # Cross-check this build hash against native-scene.json, not a source ref.
-          shasum -a 256 out/main/index.js
-          LOCAL_OPERATOR_CORE_BIN="$CORE_VENV/bin/local-operator" \
-          LOCAL_OPERATOR_CORE_PYTHON="$CORE_VENV/bin/python" \
-          node scripts/app-icon-badge-scene.mjs
-
-      - name: Upload native app-icon badge API and renderer evidence
-        if: ${{ always() && (steps.app_icon_badge_native.outcome == 'success' || steps.app_icon_badge_native.outcome == 'failure') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-icon-badge-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/app-icon-badge-native/
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload notifications native foreground evidence
-        if: ${{ always() && steps.notifications_native.conclusion != 'skipped' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: notifications-native-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/notifications-native/
-          if-no-files-found: error
-          retention-days: 7
-
-      # A run that completed must have produced frames, or this step fails red.
-      # The step above being SKIPPED (an earlier gate went red) is not a missing
-      # artifact, and reporting it as one buries the real failure under a second,
-      # misleading one - which is what the outcome guard and the sibling below
-      # separate. Partial evidence from a failed run is still uploaded, quietly.
-      - name: Upload assembled asks frames and measurements
-        if: ${{ always() && steps.asks_regression.conclusion == 'success' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: asks-app-regression-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/asks-app/
-          if-no-files-found: error
-          retention-days: 7
-
-      - name: Upload partial asks frames from a failed run
-        if: ${{ always() && steps.asks_regression.conclusion == 'failure' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: asks-app-regression-partial-${{ github.event.pull_request.number }}-${{ github.run_id }}
-          path: artifacts/asks-app/
-          if-no-files-found: ignore
-          retention-days: 7
-
   # ONE stable check name to require, whatever the job set becomes. Requiring
   # individual jobs makes every rename or removal a ruleset edit that strands
   # in-flight pull requests on a check that will never report; requiring this
   # aggregate does not. `always()` because a failed dependency must still
   # produce a RED gate rather than a skipped (and, to a ruleset, passing-ish)
-  # one. A deliberately SKIPPED job is a pass: the classifier decided this diff
-  # cannot affect it. `failure` and `cancelled` are not - a timeout reports as
-  # `cancelled`. `Bytecode Build Check` stays required under its own name until
-  # the ruleset moves to this gate.
+  # one. A deliberately SKIPPED scope-flagged job is a pass: the classifier
+  # decided this diff cannot affect it. `version-bump-guard` has no scope flag
+  # and may be `skipped` ONLY outside `pull_request` (`push` / `workflow_dispatch`);
+  # `changes` is never gated and may never skip. Anything else (`failure`,
+  # `cancelled`, `abandoned`, empty) fails closed. `Bytecode Build Check` stays
+  # required under its own name until the ruleset moves to this gate; its Mac
+  # artifact twin, `bytecode-build-macos`, is not required and is gated only
+  # here, like every other listed job.
   ci-gate:
     name: CI Gate
     needs:
       - changes
+      - version-bump-guard
       - lint
       - condense-parity
       - locale-activation
@@ -1523,6 +1532,7 @@ jobs:
       - guards
       - qa-bundle
       - bytecode-build
+      - bytecode-build-macos
       - evidence
       - audit
       - npx-sanity-check
@@ -1533,10 +1543,20 @@ jobs:
       - name: Fail on any failed or cancelled job
         env:
           NEEDS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           node --input-type=module <<'NODE'
           const needs = JSON.parse(process.env.NEEDS);
-          const bad = Object.entries(needs).filter(([, v]) => v.result !== 'success' && v.result !== 'skipped');
+          const eventName = process.env.EVENT_NAME;
+          const bad = Object.entries(needs).filter(([job, v]) => {
+            if (v.result === 'success') return false;
+            if (v.result === 'skipped') {
+              if (job === 'changes') return true;
+              if (job === 'version-bump-guard') return eventName === 'pull_request';
+              return false;
+            }
+            return true;
+          });
           for (const [job, v] of Object.entries(needs)) console.log(`${job}: ${v.result}`);
           if (bad.length) {
             console.log(`::error title=CI Gate::${bad.map(([job, v]) => `${job}=${v.result}`).join(', ')}`);

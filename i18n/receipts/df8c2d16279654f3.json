@@ -1,0 +1,21 @@
+{
+  "record_kind": "REPLACEMENT",
+  "date": "2026-11-22",
+  "locale": "ur",
+  "namespace": "ui.agents.pending",
+  "head": "6a4faefba284c84bb88a09e17295d9f0b71db041",
+  "auditor": {"agent": "reviewer", "session": "a733fbf103c2", "instance": "df8c2d16279654f3", "model": "openai/gpt-6.2-sol", "fallback_from": "anthropic/claude-opus-5-5", "independent": true},
+  "translation_provenance": {"source": "manager brief", "original_model": "anthropic/claude-opus-5-5", "remediation_fallback_model": "openai/gpt-6.1-sol", "per_key_attribution": "unknown"},
+  "source_path": "src/i18n/catalogues/en/ui.agents.pending.json",
+  "source_sha256": "fe74ee816f0d800c4411df1dbb2fb412b7583818d823bf094433a20a5c3f093f",
+  "context_path": "src/i18n/catalogues/en/ui.agents.pending.context.json",
+  "context_sha256": "980c743dee0a8582cf3f572891388375e798f68a4fd827d4b97746a84b265f63",
+  "target_path": "src/i18n/catalogues/ur/ui.agents.pending.json",
+  "target_sha256": "3aa35ab097d3b7adb0fdb2ee69f7bcfa2849b54eebaf18086db0aa4dec3f035a",
+  "authority": {"repo": "damianvtran/local-operator", "revision": "b42471d3935cb7e95d64428af27c32626665f4c0", "glossary": "i18n/glossary.md", "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8", "style": "i18n/style-guides/ur.md", "style_sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"},
+  "status": "passed",
+  "findings": [],
+  "observations": ["Reviewed all 15 values against English, context and live call sites. آپ and منظوری use the expected register and approval term. The singular kind labels are the glossary/tab forms; making something new and changing something existing are clearly distinguished. پرانی is the stale marker, and the update note keeps Local Operator and uses Urdu sentence punctuation.", "Both accessible names include جائزہ لیں and preserve the name while distinguishing kinds and operations. سب دکھائیں/کم دکھائیں match the two list actions. No manual bidi controls occur in catalogue values; this does not establish rendered RTL behavior."],
+  "execution": {"method": "Node source-only assertions with the repository's FormatJS ICU parser and IntlMessageFormat", "actual": "ur: 15 values/context keys, 16 ICU formatting cases, no manual bidi controls — PASS", "verified": "CLDR one/other and singular/plural count clauses, both distinct three-arm review selects including label-in-name and name retention, show_all and tab_title arguments"},
+  "limits": "Prior evidence unavailable per brief; newly audited from current bytes, not reconstructed. No rendered fit, native/manual QA or release approval claimed."
+}

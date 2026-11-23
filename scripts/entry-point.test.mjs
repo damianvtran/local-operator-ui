@@ -401,6 +401,18 @@ function cases(root) {
 			stderr: /GH_TOKEN is required to resolve the tag/,
 		},
 		{
+			// The workflow passes an empty directory argument after a failed download.
+			// Pin the typed refusal so skipping the guarded CLI cannot look green.
+			script: "signed-update-verdict.mjs",
+			args: [""],
+			cwd: plain,
+			env: { GITHUB_EVENT_NAME: "workflow_dispatch", GITHUB_RUN_ID: "12345" },
+			status: 1,
+			stdout:
+				/^Signed update proof: BLOCKED \(workflow_dispatch, run 12345\) — NO_PROOF_ARTIFACT:/,
+			stderr: /^$/,
+		},
+		{
 			script: "release-state.mjs",
 			args: ["open"],
 			cwd: plain,
@@ -1089,8 +1101,6 @@ function workflowInvokedScripts() {
  * asserted below to be exactly that, so this list cannot become a place to hide.
  */
 const NO_ENTRY_POINT_COMPARISON = {
-	"browser-focus-stability-proof.mjs":
-		"`focus-stability-diagnostic.yml`; runs unconditionally at import and requires --out; no entry-point comparison (native mode separately fenced to explicitly armed disposable CI)",
 	"check-edit-diffs.mjs":
 		"`pnpm check-edit-diffs`; runs at import, and exits on its own result",
 	"npx-smoke-test.mjs": "`ci.yml`'s npx smoke test; runs at import",

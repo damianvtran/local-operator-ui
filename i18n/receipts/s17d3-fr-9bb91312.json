@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S17d-3 job-cancel keys (scope: ui.chat.run_controls.job.cancel_failed, ui.chat.run_controls.job.not_found; pre-existing keys out of scope)",
+  "locale": "fr",
+  "namespace": "ui.chat.run_controls",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s17d3-job-cancel)",
+  "date": "2026-11-14",
+  "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e",
+  "instance": "s17d3-fr-9bb91312",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session d35a086d2ac3, a different session, agent and model from the translator. Read-only in the worktree (git show / git diff / git grep / python3 hashing only); my only writes are these receipts in my own scratchpad. Judgement derived here from the English source, the sidecar and the shipped fr corpus; no MT or translation service used.",
+    "instance": "s17d3-fr-9bb91312"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 1e3b4a920165: the target file is the committed blob (git show 1e3b4a920165c787f2532d14735d9f4e81d8625e:<path>, sha256 d6a2072ffc5bae474b43e58646837a9883b3dc1141b27a51b6a6f3e5e9f55428); vs the merged base a114b6d102 the file gains exactly 2 lines (+2/-0) and they are the two in-scope keys, so no pre-existing key changed. 14 keys, same order as English, no duplicates (object_pairs scan), TAB indent, one trailing newline, no BOM/CR/\\u escapes, both values NFC, no Cf (format/bidi) code points, no ICU braces (English has no placeholders; none introduced), neither value byte-identical to English. Rendering path read: job-controls-model.ts:80 jobCancelNotFoundCopy() = t(not_found) as the whole refusal sentence; :151 cancel_failed as userFacingMessage fallback. cancel_failed 'Impossible d’annuler la tâche.' mirrors the shipped sibling run_controls.monitor.cancel_failed 'Impossible d’annuler la surveillance.' and keeps tâche = job (run_details.jobs 'Tâches', run_details.job_cancel.title 'Annuler cette tâche ?', run_controls.job.no_conversation). not_found 'non annulée — le fournisseur ne connaît plus la tâche': négation correcte, 'annulée' agrees with the feminine tâche (implicit subject), fournisseur = provider as in run_details.job_cancel.body ('demande au fournisseur d’arrêter'). Em dash: acceptable, not a finding — the fr corpus already uses ' — ' as a clause joiner in the same panel (run_details.reader.read_only_footer, run_details.mcp.cold_label) and the sidecar asks to keep 'not cancelled — <reason>'. Lowercase opening mirrors the frozen English fragment, which the sidecar permits. Typographic apostrophe ’ as in the corpus. Length 1.20x / 1.02x of English.",
+  "scope": "ui.chat.run_controls for fr: the 2 S17d-3 keys (job.cancel_failed, job.not_found) at branch head 1e3b4a920165, read against English and the sidecar",
+  "revisions": {
+    "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e"
+  },
+  "en_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+  "context_sha256": "3ad6c356fe463c1462a446f7a6d7ac0b1d7a61169b69f2354d8cf6ea12865a9e",
+  "target_sha256": "d6a2072ffc5bae474b43e58646837a9883b3dc1141b27a51b6a6f3e5e9f55428",
+  "sha256": {
+    "fr": "d6a2072ffc5bae474b43e58646837a9883b3dc1141b27a51b6a6f3e5e9f55428",
+    "en": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421"
+  }
+}

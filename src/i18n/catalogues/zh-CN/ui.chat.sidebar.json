@@ -29,6 +29,8 @@
 	"ui.chat.sidebar.pins.drag_title": "拖动排序 · Esc取消",
 	"ui.chat.sidebar.pins.failure": "{action, select, pin {无法置顶“{title}”。} unpin {无法取消置顶“{title}”。} other {无法更新“{title}”。}}",
 	"ui.chat.sidebar.row.archived_suffix": "，已归档",
+	"ui.chat.sidebar.row.archive_label": "归档“{title}”",
+	"ui.chat.sidebar.row.unarchive_label": "取消归档“{title}”",
 	"ui.chat.sidebar.row.in_conversation": "对话内匹配",
 	"ui.chat.sidebar.row.matched_in_conversation": "，对话内容匹配",
 	"ui.chat.sidebar.row.not_sent": "尚未发送",

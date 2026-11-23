@@ -42,6 +42,30 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.teamBridge.alerts.more_labels",
+		// `+{count, number}`: the alert card's label-overflow chip, one sign and a
+		// locale-formatted number, no words. The number is localized by ICU; the
+		// `+` is the same in every shipped locale. Audited in local-operator-ui
+		// #2027 round 1 (receipts i18n/receipts/82b84532d1e1-alerts-r1-*.json).
+		"language-neutral format string: a plus sign and a localized number, no words",
+	],
+	[
+		"fr:ui.teamBridge.alerts.test_badge",
+		"French noun: « Test » is the normal spelling for a test alert badge (audited in #2027 round 1).",
+	],
+	[
+		"ui.phone_pairing.platform.ios",
+		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
+		"fr:ui.phone_pairing.popup.code_label",
+		"French cognate « Code », the label above the pairing card's six digits; the French word, not an English fallback (local-operator-ui #1912, for the i18n auditor's confirmation).",
+	],
+	[
+		"ui.phone_pairing.platform.android",
+		"Product name (Google's Android), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
 		"fr:ui.settings.notifications.section.title",
 		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
 	],
@@ -128,10 +152,6 @@ const IDENTICAL_OK = new Map([
 		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
 	],
 	[
-		"fr:ui.browser.extensions.blocked_notifications",
-		"French cognate « Notifications » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
-	],
-	[
 		"fr:ui.browser.extensions.details_source",
 		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
 	],
@@ -189,6 +209,10 @@ const IDENTICAL_OK = new Map([
 		"Spanish standard unit copy is {size, number} bytes; independently audited by f93eb129057e (S3 receipt). Exact locale/key only, not an English fallback.",
 	],
 	[
+		"es:ui.teamBridge.sender.app_badge",
+		"Spanish UI loanword: the sender badge is « App », same spelling as English; independently audited by bcc4b8aad6ff (receipt i18n/receipts/bcc4b8aad6ff-pr1969-r1-es.json). Exact locale/key only, not an English fallback.",
+	],
+	[
 		"fr:ui.chat.thread_search.role.agent",
 		"French cognate: the role name for an agent turn is « Agent », same spelling; scoped to fr so other locales still translate it",
 	],
@@ -239,6 +263,14 @@ const IDENTICAL_OK = new Map([
 		"French glossary term for agent is « agent » — same spelling as English; scoped to fr so other locales still translate it",
 	],
 	[
+		"fr:ui.agents.pending.kind.agent",
+		"French glossary term for agent is « Agent » — the kind word on an Agents-page pending-approval row, same spelling as English; scoped to fr so other locales still translate it (local-operator-ui #2026)",
+	],
+	[
+		"fr:ui.community.message.agent_badge",
+		"French glossary term for agent is « Agent » — the community badge mirrors fr:ui.teamBridge.profile.agent_badge (exempted above); scoped to fr so other locales still translate it",
+	],
+	[
 		"fr:ui.teamBridge.invitations.title",
 		"Shared UI term: the French noun is spelled identically (« Invitations »); scoped to fr so other locales still translate it",
 	],
@@ -249,6 +281,14 @@ const IDENTICAL_OK = new Map([
 		// note requires every locale to keep it identical, so a differing value
 		// would be invented punctuation rather than a translation.
 		"language-neutral counter: only '×' and a placeholder, no words",
+	],
+	[
+		"ui.agents.pending.tab_title",
+		// `{tab} · {waiting}`: an Agents-page tab's tooltip, two placeholders (each
+		// already translated) and the middle dot the catalogue uses as a list
+		// separator elsewhere. Keyed so a locale MAY reorder or swap the separator
+		// (local-operator-ui #2026, R6/Q1), but no word in it needs translating.
+		"language-neutral layout: two placeholders and a middle dot, no words",
 	],
 	[
 		"ui.notifications.filter.chip",
@@ -366,6 +406,16 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.mesh.mesh_approvals.profile_scope_global",
 		"French scope adjective: « global » is the normal masculine label for account-wide scope; this audited label is a cognate, not an English stub.",
+	],
+	[
+		"ui.mesh.pairing.sheet.share_item",
+		// `{label} ({key})`: the pairing sheet's share item, two placeholders and
+		// parentheses, no words. It is ONE message so a locale owns its brackets
+		// (zh-CN uses full-width （）), which is why a locale MAY differ; where the
+		// locale's punctuation matches English, identical is the correct
+		// translation. Audited in local-operator-ui #1984 round 4 (receipts
+		// i18n/receipts/pr1984-r4-*-uimesh-aead7d1d.json).
+		"language-neutral format string: only placeholders and parentheses, no words",
 	],
 	[
 		"ui.settings.model.system_prompt.instructions",
@@ -532,6 +582,29 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.providers.provider_grid.row_action",
 		"Language-neutral: {action} and {brand} with a colon.",
+	],
+	/*
+	 * AWS product names in the bedrock connect panel (PR #1987), GLOBAL on
+	 * purpose: the English context sidecars require each of these keys to keep
+	 * AWS's own term verbatim in EVERY language ("Keep AWS product names ...
+	 * untranslated"; "SSO stays as the acronym"; "'AWS SSO' is the AWS product
+	 * term; keep it"), and the remediation-round audit confirmed the 5 tab_* and
+	 * 7 kind_* labels are byte-identical to local-operator PR #4270's TUI
+	 * wire.login.bedrock in all seven locales. A locale-scoped row would leave
+	 * the other six free to ship an untranslated badge, which is the stub this
+	 * guard exists to catch; the brand claim is the same in every locale.
+	 */
+	[
+		"ui.providers.bedrock.kind_login",
+		"AWS brand label, not UI copy: the kind badge names AWS's own sign-in method ('AWS login'), which the key's context sidecar requires untranslated in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.kind_sso",
+		"AWS acronym, not UI copy: the kind badge names the profile type by AWS's own initialism ('SSO'), which the key's context sidecar requires kept as the acronym in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method badge; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
+	],
+	[
+		"ui.providers.bedrock.tab_sso",
+		"AWS product term, not UI copy: the segmented-control tab is labelled with AWS's own name for the IAM Identity Center sign-in ('AWS SSO'), which the key's context sidecar requires kept in every locale. Kept verbatim for cross-surface parity with the TUI's bedrock method name; audited in PR #1987 remediation round (receipts 350ecfa493e1-pr1987-bedrock-*, 0 blocker/major in all seven locales).",
 	],
 	[
 		"ui.schedules.scheduled_task_dialog.value1_message",
@@ -955,6 +1028,14 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.teamBridge.nav.label",
 		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.approvals.nav_name",
+		"Product name (Team Bridge) plus the inserted, already-translated {label}; the only other character is the list comma. ur and zh-CN use their own comma and differ, the rest are identical by design (ui#1954 i18n audit round 1).",
+	],
+	[
+		"ui.teamBridge.approvals.result.item",
+		"Placeholders and middle-dot separators only ({sender} · {word} · {outcome}); every part is inserted already translated, so no locale has prose to change (ui#1954 i18n audit round 1).",
 	],
 	[
 		"ui.teamBridge.chief.label",
@@ -1509,6 +1590,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.agents.teams.section.description",
 		"French noun « description » has the same spelling; section heading",
 	],
+	[
+		"fr:ui.agents.teams.group.agents",
+		"French plural of « agent » is « agents »; picker group heading paired with « Équipes », matching the shipped fr ui.agents.pages.tab.agents and ui.agents.navigation.sidebar.title",
+	],
 	// The Skills tab's read-only details (#1443). Each row below is scoped to ONE
 	// locale and cites the shipped, audited value it matches, so none of them
 	// silences a stub in another language.
@@ -1865,6 +1950,219 @@ const IDENTICAL_OK = new Map([
 	[
 		"ur:ui.common.time.weekday_at",
 		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
+	],
+	// Run panel MCP failure sentence (S17c, PR #1897): the lead/reason joiner.
+	[
+		"es:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.tool_row.detail_section.error",
+		"Spanish 'Error' is the same word as English; the S18b audit (s18b-es-canonical-8769431b) checked it against shipped neighbours (ui.chat.error_block.heading 'Detalle del error'). Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.code_block.default_header",
+		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
+	],
+	[
+		"ui.chat.remote_compute.row.name",
+		"The provider's own product name, Radient, printed verbatim in every locale: the row says which service the rented capacity comes from, and a translated brand would name a service that does not exist (local-operator-ui #1971).",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.prompt.label",
+		"The es style guide keeps `prompt` in English (its kept-English list, alongside endpoint and script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.prompt.label",
+		"The fr style guide keeps `prompt` in English (its kept-English list, alongside script), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.prompt.label",
+		"The vi style guide keeps `prompt` in English (its kept-English list, alongside script and deploy), and the shipped corpus uses it that way; the label over the run's prompt summary. Audited with the #1971 catalogues. Scoped to Vietnamese only.",
+	],
+	[
+		"es:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no es guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no fr guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to French only.",
+	],
+	[
+		"vi:ui.chat.remote_compute.sheet.tier.dedicated.spot.title",
+		"The cheaper interruptible option's own name, Spot, kept as the product's term: no vi guide entry settles a rendering, and a per-locale invention would split one product concept across the tier list. Scoped to Vietnamese only.",
+	],
+	[
+		"es:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.canvas.artifact.fallback_name.image",
+		"French « Image » has the same spelling as English (a common noun), followed by the untranslatable digest; not skipped copy; independently audited in W2 B3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.chat.canonical.segment.group.mixed",
+		"French « Messages » has the same spelling as English (plural common noun), not skipped copy; independently audited in W2 B3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.canvas.artifact.fallback_name.video",
+		"Vietnamese « Video » is the standard loanword for a video file (same spelling as English), followed by the untranslatable digest; not skipped copy; independently audited in W2 B3 (38831ad85d10). Scoped to Vietnamese only.",
+	],
+	[
+		"vi:ui.chat.canonical.condense.sentence",
+		"Pure joiner `{lead}: {parts}.` for the screen-reader sentence of a condensed turn (never painted); this locale uses the same colon and full stop as English, so there is no lexical English; independently audited in W2 B3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.canonical.condense.sentence_bare",
+		"Pure joiner `{lead}.` that only adds sentence-final punctuation to an already translated lead (never painted); this locale's full stop is the same as English; independently audited in W2 B3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (a9ee8572dff0). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.trace.address.session",
+		"French « session » has the same spelling as English (a common noun, cf. « ouvrir une session »), not skipped copy; independently audited in W2 C3 round 2 (16655c1d1913). Scoped to French only.",
+	],
+	[
+		"fr:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (16655c1d1913). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (6c6609d4af4d). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (2c6807f03acd). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (13b8374041bd). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (13b8374041bd). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.tally.unrecognised",
+		"Pure ICU joiner `{count, number} {word}` for a run state the UI does not recognise: the word is the raw state passed through and the number is locale-formatted, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.chip.busiest",
+		"Pure joiner `, {clause}` appending the busiest-run clause to the chip; the clause is itself a translated message and this locale uses the same comma separator as English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (38831ad85d10). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.trace.address.pid",
+		"technical identifier: « pid » is a token (as ui.chat.pickers.info_model.pid); only the number is formatted; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.common.time.duration.under_minimum",
+		"Pure symbol wrapper `<{duration}`: the duration is formatted by Intl in this locale and « < » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.common.time.duration.over_cap",
+		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
 	],
 ]);
 

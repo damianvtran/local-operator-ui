@@ -121,6 +121,11 @@ const bundled = await build({
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { memberRowAction } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
+			export { canRenameConversation } from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { renameFailure, normalizedRenameName, TeamBridgeRenameDialog } from "./src/renderer/src/features/team-bridge/team-bridge-rename-dialog";
+			// The SAME sonner instance the page's toast manager writes to, so a
+			// test can read which toasts were raised without mounting a Toaster.
+			export { toast } from "sonner";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-conversation-menu.mjs",
@@ -1122,4 +1127,402 @@ test("the partial-leave line states the true state and offers the retry", async 
 	);
 	await act(async () => [...line.querySelectorAll("button")][0].click());
 	assert.equal(retried, 1);
+});
+
+// ---------------------------------------------------------------- rename
+
+/*
+ * RENAME (operator 2026-11-20: "There doesn't seem to be a way to rename a
+ * channel in team bridge"). Offered exactly where archive's authority holds
+ * (`can_administer`, open, not built-in), widened to groups, never a DM, and
+ * only with the daemon's `team_bridge_conversation_rename` capability.
+ */
+const renameInput = (c) => ({
+	renamable: view.canRenameConversation(c),
+	wiring: { ...FULL, rename: true },
+});
+
+test("rename: right after Add members for an administrator, worded per kind", () => {
+	const c = conversation();
+	assert.deepEqual(
+		sections(c, renameInput(c))[0].map((i) => i.id),
+		["view_members", "add_members", "rename"],
+	);
+	assert.equal(item(c, "rename"), undefined, "no item without the input");
+	const group = conversation({ kind: "group", visibility: "private" });
+	const groupItem = sections(group, renameInput(group))
+		.flat()
+		.find((row) => row.id === "rename");
+	assert.deepEqual(groupItem, { id: "rename", kind: "group" });
+});
+
+test("rename gating: hidden for a non-admin, a DM, a built-in, an archived room, read-only, or no capability", () => {
+	const cases = {
+		"non-admin": conversation({ can_administer: false }),
+		dm: conversation({ kind: "dm", name: undefined }),
+		builtin: conversation({ name: "general", builtin: "general" }),
+		archived: conversation({ status: "archived" }),
+	};
+	for (const [label, c] of Object.entries(cases)) {
+		assert.equal(view.canRenameConversation(c), false, label);
+		assert.ok(!ids(c, renameInput(c)).includes("rename"), label);
+	}
+	const c = conversation();
+	assert.ok(
+		!ids(c, { ...renameInput(c), readOnly: true }).includes("rename"),
+		"read-only bridge",
+	);
+	// The capability is folded into `renamable` by the page; absent, no item.
+	assert.ok(
+		!ids(c, { ...renameInput(c), renamable: false }).includes("rename"),
+		"capability absent",
+	);
+	// Built-in defended in the model too, even if a caller passed renamable.
+	const general = cases.builtin;
+	assert.ok(
+		!ids(general, {
+			renamable: true,
+			wiring: { ...FULL, rename: true },
+		}).includes("rename"),
+	);
+});
+
+test("renameFailure maps the hub's refusals; normalisation matches create", () => {
+	const err = (status, code, details) =>
+		Object.assign(new Error("x"), {
+			status,
+			code,
+			detail: details ? { details } : undefined,
+		});
+	assert.deepEqual(
+		view.renameFailure(
+			err(409, "conversation_name_taken", {
+				conversation_id: "bcv_2",
+				name: "launch-2",
+			}),
+			"typed",
+		),
+		{ kind: "taken", name: "launch-2" },
+	);
+	assert.deepEqual(
+		view.renameFailure(err(409, "conversation_name_taken"), "typed"),
+		{ kind: "taken", name: "typed" },
+	);
+	assert.equal(
+		view.renameFailure(err(409, "conversation_archived"), "x").kind,
+		"archived",
+	);
+	assert.equal(
+		view.renameFailure(err(403, "forbidden"), "x").kind,
+		"forbidden",
+	);
+	assert.equal(
+		view.renameFailure(err(400, "invalid_request"), "x").kind,
+		"invalid",
+	);
+	// Each rule of the hub's rename sanitiser has its own sentence.
+	for (const [rule, kind] of [
+		["empty", "empty"],
+		["too_long", "too_long"],
+		["control_character", "characters"],
+		["invisible_character", "characters"],
+		["unsupported_space", "characters"],
+		["invalid_utf8", "characters"],
+		["something_new", "invalid"],
+	])
+		assert.equal(
+			view.renameFailure(
+				err(400, "invalid_request", { field: "name", rule }),
+				"x",
+			).kind,
+			kind,
+			rule,
+		);
+	assert.equal(view.renameFailure(err(500, "internal"), "x").kind, "failed");
+	assert.equal(view.renameFailure(new Error("ipc"), "x").kind, "failed");
+	assert.equal(view.normalizedRenameName("channel", " #QA  Team "), "qa-team");
+	assert.equal(
+		view.normalizedRenameName("group", "  Launch   crew "),
+		"Launch crew",
+	);
+});
+
+const renameField = () =>
+	document.querySelector('[role="dialog"] [data-rename-field]');
+const renameSave = () =>
+	document.querySelector('[role="dialog"] [data-rename-save]');
+const typeName = async (value) => {
+	const input = renameField();
+	const setter = Object.getOwnPropertyDescriptor(
+		dom.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, value);
+		input.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+};
+
+test("rename item: hidden without the capability, opens a prefilled dialog with it", async (t) => {
+	const c = conversation();
+	const { container, render } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, { onRename: async () => {} }),
+		),
+	);
+	const trigger = () =>
+		container.querySelector('button[aria-label="Conversation options"]');
+	await pointerOpen(trigger());
+	assert.ok(!openMenuItems().includes("rename"), "unknown capability: no item");
+	await act(async () => {
+		document.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	await render(
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				onRename: async () => {},
+				renameCapabilityState: "enabled",
+			}),
+		),
+	);
+	await pointerOpen(trigger());
+	const items = openMenuItems();
+	assert.equal(items[items.indexOf("add_members") + 1], "rename");
+	assert.match(
+		document.querySelector('[role="menu"] [data-menu-item="rename"]')
+			.textContent,
+		/Rename channel…/,
+	);
+	await clickItem("rename");
+	assert.equal(renameField().value, "launch");
+	assert.equal(renameSave().disabled, true, "unchanged name cannot be saved");
+	await typeName("   ");
+	assert.equal(renameSave().disabled, true, "empty name cannot be saved");
+	// 64 code points is the hub's bound; emoji count once, as they do there.
+	await typeName("🚀".repeat(64));
+	assert.equal(renameSave().disabled, false, "64 code points is allowed");
+	await typeName("🚀".repeat(65));
+	assert.equal(renameSave().disabled, true, "65 code points is not");
+	assert.match(
+		document.querySelector('[role="dialog"] [role="alert"]').textContent,
+		/up to 64 characters/,
+	);
+});
+
+test("rename dialog: Enter submits the normalised name; a taken name is explained inline, then success closes", async (t) => {
+	const calls = [];
+	let answer = Promise.reject(
+		Object.assign(new Error("taken"), {
+			status: 409,
+			code: "conversation_name_taken",
+			detail: { details: { conversation_id: "bcv_x", name: "launch-crew" } },
+		}),
+	);
+	answer.catch(() => {});
+	const c = conversation();
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				renameCapabilityState: "enabled",
+				onRename: (row, name) => {
+					calls.push([row.id, name]);
+					return answer;
+				},
+			}),
+		),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	await clickItem("rename");
+	await typeName("Launch Crew");
+	assert.equal(renameSave().disabled, false);
+	await act(async () => {
+		renameField().form.requestSubmit();
+	});
+	await act(async () => {});
+	assert.deepEqual(calls, [["bcv_launch", "launch-crew"]]);
+	const alert = document.querySelector('[role="dialog"] [role="alert"]');
+	assert.ok(alert, "the refusal is shown in the dialog");
+	assert.match(alert.textContent, /#launch-crew already exists/);
+	assert.equal(renameField().value, "Launch Crew", "typed text kept to edit");
+	answer = Promise.resolve({});
+	await typeName("launch-team");
+	await act(async () => renameSave().click());
+	await act(async () => {});
+	assert.deepEqual(calls.at(-1), ["bcv_launch", "launch-team"]);
+	assert.equal(document.querySelector('[role="dialog"]'), null, "closed");
+});
+
+/*
+ * REVIEW ROUND 1 (R1 = U1 = Q1, U2, R3 = U3, D2, D3, D4). The page is driven
+ * the way the container drives it: the row the dialog was opened for is
+ * re-rendered with the optimistic name while the save is in flight and with
+ * the rolled-back name after the refusal, as the mutation's cache writes do.
+ */
+const deferred = () => {
+	let resolve;
+	let reject;
+	const promise = new Promise((yes, no) => {
+		resolve = yes;
+		reject = no;
+	});
+	promise.catch(() => {});
+	return { promise, resolve, reject };
+};
+const takenError = () =>
+	Object.assign(new Error("taken"), {
+		status: 409,
+		code: "conversation_name_taken",
+		detail: { details: { conversation_id: "bcv_x", name: "launch-crew" } },
+	});
+const renameAlert = () =>
+	document.querySelector('[role="dialog"] [role="alert"]');
+const pressEscape = () =>
+	act(async () => {
+		document.activeElement.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+
+test("rename dialog: the optimistic write and the rollback keep the typed name, and an edit clears the refusal", async (t) => {
+	const pending = deferred();
+	const c = conversation();
+	const props = (row) =>
+		pageProps(row, {
+			renameCapabilityState: "enabled",
+			onRename: () => pending.promise,
+		});
+	const { container, render } = await mount(
+		t,
+		React.createElement(view.TeamBridgePageView, props(c)),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	await clickItem("rename");
+	await typeName("Launch Crew");
+	await act(async () => renameField().form.requestSubmit());
+	// The mutation's optimistic cache write renames the row under the dialog.
+	await render(
+		React.createElement(
+			view.TeamBridgePageView,
+			props(conversation({ name: "launch-crew" })),
+		),
+	);
+	assert.equal(renameField().value, "Launch Crew", "optimistic write keeps it");
+	assert.equal(renameField().readOnly, true, "read-only while saving (D4)");
+	assert.equal(renameSave().disabled, true, "no second save while pending");
+	// The refusal rolls the row back.
+	pending.reject(takenError());
+	await render(React.createElement(view.TeamBridgePageView, props(c)));
+	await act(async () => {});
+	assert.equal(renameField().value, "Launch Crew", "rollback keeps it");
+	assert.equal(renameField().readOnly, false);
+	assert.equal(renameSave().disabled, false, "Save is ready for a retry");
+	assert.match(renameAlert().textContent, /#launch-crew already exists/);
+	assert.equal(renameField().getAttribute("aria-invalid"), "true");
+	// D2: `#name` is one isolated run, so an RTL sentence cannot split it.
+	assert.equal(
+		renameAlert().querySelector("bdi[data-rename-name]").textContent,
+		"#launch-crew",
+	);
+	// U2: the first edit retires the refusal and the invalid state.
+	await typeName("Launch Crew 2");
+	assert.equal(renameAlert(), null, "the refusal clears on the first edit");
+	assert.equal(renameField().getAttribute("aria-invalid"), null);
+});
+
+test("rename dialog: archived or forbidden leaves only Cancel", async (t) => {
+	for (const [status, code] of [
+		[409, "conversation_archived"],
+		[403, "forbidden"],
+	]) {
+		const c = conversation();
+		const { container } = await mount(
+			t,
+			React.createElement(
+				view.TeamBridgePageView,
+				pageProps(c, {
+					renameCapabilityState: "enabled",
+					onRename: () => {
+						const refusal = Promise.reject(
+							Object.assign(new Error(code), { status, code }),
+						);
+						refusal.catch(() => {});
+						return refusal;
+					},
+				}),
+			),
+		);
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("rename");
+		await typeName("launch-two");
+		await act(async () => renameField().form.requestSubmit());
+		await act(async () => {});
+		assert.ok(renameAlert(), code);
+		assert.equal(renameField().disabled, true, `${code}: field disabled`);
+		assert.equal(renameSave().disabled, true, `${code}: Save disabled`);
+		await pressEscape();
+	}
+});
+
+test("rename: an outcome only acts on the dialog open that sent it; a late refusal is a toast", async (t) => {
+	const first = deferred();
+	const second = deferred();
+	const answers = [first, second];
+	const c = conversation();
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				renameCapabilityState: "enabled",
+				onRename: () => answers.shift().promise,
+			}),
+		),
+	);
+	const openRename = async () => {
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("rename");
+	};
+	const toastsBefore = view.toast.getHistory().length;
+	// Save, close while saving, reopen: the first request is still in flight.
+	await openRename();
+	await typeName("launch-one");
+	await act(async () => renameField().form.requestSubmit());
+	await pressEscape();
+	assert.equal(document.querySelector('[role="dialog"]'), null);
+	await openRename();
+	await typeName("launch-two");
+	assert.equal(
+		renameSave().disabled,
+		true,
+		"a reopen does not re-enable Save while the first save is in flight",
+	);
+	// The first request succeeds: the newer dialog stays open.
+	await act(async () => first.resolve({}));
+	assert.ok(document.querySelector('[role="dialog"]'), "newer open untouched");
+	assert.equal(renameSave().disabled, false, "free once the request settled");
+	// The second save is refused after its dialog closed: a toast, not silence,
+	// and nothing written into a later dialog.
+	await act(async () => renameField().form.requestSubmit());
+	await pressEscape();
+	await act(async () => second.reject(takenError()));
+	const raised = view.toast.getHistory().slice(toastsBefore);
+	assert.equal(raised.length, 1, "one toast for the late refusal");
+	assert.equal(raised[0].title, "The new name wasn't saved. Try again.");
+	await openRename();
+	assert.equal(renameAlert(), null, "the late refusal annotates no new dialog");
 });

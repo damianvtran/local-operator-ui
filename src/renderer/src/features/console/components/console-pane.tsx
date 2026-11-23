@@ -3,6 +3,7 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
+	type ConsoleCommandIntent,
 	isConsoleUnseen,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -26,6 +27,10 @@ import {
 } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
+import {
+	CONSOLE_COMMAND_PICKUP_TTL_MS,
+	deliverConsoleCommand,
+} from "../model/console-command";
 import {
 	type ConsoleSurface,
 	consoleOpenAction,
@@ -129,9 +134,26 @@ export interface ConsolePaneProps {
 	/** The conversation this pane is scoped to, or `null` on a draft. */
 	sessionId: string | null;
 	onClose: () => void;
+	/**
+	 * THE SUBMIT GUARD for a suggested command's confirmed Run (`submit: true`),
+	 * asked once, at PICKUP — before the terminal is made, not when Enter is
+	 * pressed (see the command effect's note). The caller answers from what it
+	 * holds NOW: that the ask the
+	 * command came from is still answerable and the command still runnable on
+	 * this computer (`chat-content.tsx`, via `askCommandStillRunnable`). A
+	 * confirm is consent to run while the request is open, not a standing order
+	 * (QA round 1, Q1). Absent means no one can vouch for it, which fails closed:
+	 * a `submit` intent is dropped with no surface created. Insert (`submit:
+	 * false`) is never guarded — typing without Enter runs nothing.
+	 */
+	allowCommandSubmit?: (intent: ConsoleCommandIntent) => boolean;
 }
 
-export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
+export const ConsolePane: FC<ConsolePaneProps> = ({
+	sessionId,
+	onClose,
+	allowCommandSubmit,
+}) => {
 	/*
 	 * THE DRAFT STATE CLOSES ON ESCAPE, like its siblings (UX round 1, U2): the Run
 	 * details and Code review notices a draft's doors open close on an unclaimed
@@ -155,6 +177,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const openIntent = useUiPreferencesStore((state) => state.consoleOpenIntent);
 	const clearOpenIntent = useUiPreferencesStore(
 		(state) => state.clearConsoleOpenIntent,
+	);
+	/* The ask card's suggested command, waiting for THIS conversation's pane (see
+	 * the store's `consoleCommandIntent`, and the effect that answers it below). */
+	const commandIntent = useUiPreferencesStore(
+		(state) => state.consoleCommandIntent,
+	);
+	const clearCommandIntent = useUiPreferencesStore(
+		(state) => state.clearConsoleCommandIntent,
 	);
 	/**
 	 * A ONE-SHOT request for the terminal to take the caret, handed to the mirror and
@@ -907,6 +937,111 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		endCreate,
 	]);
 
+	/*
+	 * THE ASK CARD'S SUGGESTED COMMAND, ANSWERED (Insert / Run…).
+	 *
+	 * ONLY THIS CONVERSATION'S PANE ANSWERS IT (the F-6 rule the open request
+	 * follows): the intent names its session, and this pane is remounted per
+	 * conversation, so a press filed just before a switch is never typed into the
+	 * conversation that happened to mount next.
+	 *
+	 * ALWAYS A FRESH SURFACE, never one already open. An existing terminal may be
+	 * running something (an editor, a REPL, a half-typed line) and its prompt state
+	 * is not observable without shell integration, so typing into it could append
+	 * to a line or feed a program that is not a shell. A new surface is born with
+	 * main's defaults (login shell, home folder, `reveal: "none"`) exactly as the
+	 * `+` makes one, and the lens moves to it through `showCreated` — the same
+	 * mechanism, so the user sees the terminal the command lands in.
+	 *
+	 * AT MOST ONCE PER PRESS, AND ONLY RIGHT AFTER IT (QA round 1 Q1, agent review
+	 * round 1 m2). The store copy is cleared by nonce the moment this pane TAKES
+	 * it, before the create round trip: it used to be cleared only once the create
+	 * answered, so a pane that unmounted and remounted inside that window took the
+	 * same press again — a second surface and, with `submit`, a second run. The
+	 * loading mask that clear used to hold is now `creating` (the create count
+	 * this pane's own `beginCreate` raises), which is local state. `takenCommand`
+	 * still makes a re-run of the effect over the same nonce a no-op.
+	 *
+	 * A STALE PRESS IS DROPPED, NOT DEFERRED: an intent older than
+	 * `CONSOLE_COMMAND_PICKUP_TTL_MS` is cleared and nothing is made. Without the
+	 * bound a confirmed Run whose pane never mounted (the user switched away
+	 * first) waited in the store and ran on the next visit — after the ask had
+	 * closed (QA's `stale-after-return` repro). The filer also drops it on a
+	 * conversation switch; this bound covers every path that one does not see.
+	 *
+	 * A SUBMIT IS RE-CHECKED HERE, AT PICKUP (`allowCommandSubmit`): the ask must
+	 * still be answerable and the command still runnable when this pane takes the
+	 * intent. Refused → cleared, no surface, nothing typed. There is deliberately
+	 * no second check after it: once a confirmed Run has been picked up, the
+	 * terminal is created and the command is typed and Enter pressed in that
+	 * same conversation's new terminal, even if the user switches away during
+	 * the readiness wait (up to `CONSOLE_COMMAND_READY_CAP_MS`, 3000 ms). That is
+	 * still the same conversation, the same device and the exact command the user
+	 * confirmed, so finishing it is what the confirm asked for (agent review
+	 * round 2 r2-m1, QA round 2 Q3).
+	 *
+	 * NO CHORD, NO AUTO-RUN: `submit` is only ever set by the card's confirmation
+	 * dialog (`ask-command.tsx`); this effect just honours it.
+	 */
+	const takenCommand = useRef<string | null>(null);
+	/** When each surface's mirror last saw output, on `Date.now()`'s scale. */
+	const outputAt = useRef(new Map<string, number>());
+	const commandForThisSession =
+		commandIntent !== null && commandIntent.sessionId === sessionId
+			? commandIntent
+			: null;
+	useEffect(() => {
+		if (commandForThisSession === null || sessionId === null) return;
+		if (takenCommand.current === commandForThisSession.nonce) return;
+		// Still loading is not an answer: `available` is unknown until the read lands.
+		if (session.loading) return;
+		if (!available) {
+			// Main's own "no console can exist here": the pane renders that state.
+			clearCommandIntent(commandForThisSession.nonce);
+			return;
+		}
+		const intent = commandForThisSession;
+		takenCommand.current = intent.nonce;
+		// Taken: from here the press is this mount's alone (see the note above).
+		clearCommandIntent(intent.nonce);
+		if (Date.now() - intent.filedAt > CONSOLE_COMMAND_PICKUP_TTL_MS) return;
+		if (intent.submit && !(allowCommandSubmit?.(intent) ?? false)) return;
+		const from = stored;
+		beginCreate();
+		void session
+			.createSurface()
+			.then((created) => {
+				if (created === null) return;
+				setAwaitingSurface(true);
+				setShowCreated({ id: created, from });
+				const api = window.api?.console;
+				if (!api) return;
+				void deliverConsoleCommand(api, {
+					surface: created,
+					command: intent.command,
+					submit: intent.submit,
+					lastOutputAt: () => outputAt.current.get(created) ?? null,
+				}).catch(() => {
+					// A surface that died before the write has nothing to type into; the
+					// pane's listing shows its ended state, which is the honest answer.
+				});
+			})
+			.finally(() => {
+				endCreate();
+			});
+	}, [
+		commandForThisSession,
+		sessionId,
+		session.loading,
+		session.createSurface,
+		available,
+		stored,
+		beginCreate,
+		endCreate,
+		clearCommandIntent,
+		allowCommandSubmit,
+	]);
+
 	if (sessionId === null) {
 		return (
 			<div
@@ -988,6 +1123,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			(session.loading ||
 				creating ||
 				unansweredForThisSession ||
+				commandForThisSession !== null ||
 				awaitingSurface) &&
 			surfaces.length === 0
 		)
@@ -1163,6 +1299,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							session.reportContent(surface.surface, report)
 						}
 						onExit={() => session.refresh()}
+						/* The suggested-command readiness signal (`console-command.ts`). */
+						onActivity={() => outputAt.current.set(surface.surface, Date.now())}
 					/>
 					{/* The marker sits AFTER the mirror, where a live prompt would be, and it
 					    is chrome rather than bytes: see `ConsoleHistoryEnd`. */}

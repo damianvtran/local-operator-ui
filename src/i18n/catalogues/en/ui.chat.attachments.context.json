@@ -94,7 +94,7 @@
 	"ui.chat.attachments.open_named": {
 		"role": "Accessible name of a picture tile that opens the picture",
 		"tone": "Imperative plus a name",
-		"length_hint": "One word plus a name",
+		"length": "One word plus a name",
 		"note": "Imperative plus the file's display name.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -103,7 +103,7 @@
 	"ui.chat.attachments.expand_aria": {
 		"role": "Accessible name of a pasted or attached picture's expand control",
 		"tone": "Imperative plus a name",
-		"length_hint": "One word plus a name",
+		"length": "One word plus a name",
 		"note": "Imperative plus the file's display name.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -112,7 +112,7 @@
 	"ui.chat.attachments.expand_title": {
 		"role": "Tooltip of a pasted or attached picture's expand control",
 		"tone": "Imperative plus a name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "Pointer-oriented sentence.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -121,7 +121,7 @@
 	"ui.chat.attachments.open_title": {
 		"role": "Tooltip of a file or video attachment's open control",
 		"tone": "Imperative plus a name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "Pointer-oriented sentence.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -130,7 +130,7 @@
 	"ui.chat.attachments.not_viewable": {
 		"role": "Tooltip of an attachment card the app cannot show",
 		"tone": "Statement, colon, name",
-		"length_hint": "Three words plus a name",
+		"length": "Three words plus a name",
 		"note": "The name follows a colon.",
 		"placeholders": {
 			"name": "File display name; do not translate."
@@ -145,5 +145,50 @@
 		"role": "button",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Retries fetching an image, video or sound from the device that holds it."
+	},
+	"ui.chat.attachments.not_viewable_detail": {
+		"role": "warning line on an attachment card for a media file (audio or video) that could not be shown",
+		"tone": "plain statement, lowercase parenthetical, no trailing punctuation",
+		"length": "One sentence with a short parenthetical; truncates with an ellipsis on a narrow card.",
+		"note": "The file name opens the sentence, so a language that cannot start with a name may reorder it. The parenthetical lists the three likely causes: the file was not fully written, was deleted, or was moved.",
+		"placeholders": {
+			"name": "the attachment's file name (last path segment), never translated"
+		}
+	},
+	"ui.chat.attachments.not_viewable_too_large": {
+		"role": "warning line on an attachment card for a file that is over the preview size cap, where the file itself is fine",
+		"tone": "plain statement, no trailing punctuation",
+		"length": "One short sentence; truncates with an ellipsis on a narrow card.",
+		"note": "Says WHY there is no preview: the file is not broken, it is too big to show, and the card offers the operating system instead. Distinct from `not_viewable_detail`, whose three guessed causes (incomplete, deleted, moved) would be false here. The file name opens the sentence, so a language that cannot start with a name may reorder it.",
+		"placeholders": {
+			"name": "the attachment's file name (last path segment), never translated"
+		}
+	},
+	"ui.chat.attachments.broken_moved": {
+		"role": "whole-sentence receipt in place of an attachment (picture or file) the app could not read from disk",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "Says what happened, what it probably means, and nothing the app cannot know. The three causes are guesses about a file path, so keep 'may have been'. The name opens the sentence; a language that cannot start with a name may reorder it. The same message is the visible text, the tooltip and the accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
+	"ui.chat.attachments.broken_unavailable": {
+		"role": "whole-sentence receipt in place of a picture whose stored copy did not arrive",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "States the fact (the read failed) and stops; it deliberately names no cause, because 'never stored' and 'pruned' cannot be told apart. 'this reader' is this app on this device. The name opens the sentence; a language that cannot start with a name may reorder it. Same message for the visible text, tooltip and accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
+	},
+	"ui.chat.attachments.broken_media_unavailable": {
+		"role": "whole-sentence receipt in place of a video or audio clip whose stored copy did not arrive or could not be decoded",
+		"tone": "plain statement, sentence case, full stops",
+		"length": "One sentence; it is the card's whole text, the tooltip and the accessible name, and truncates with an ellipsis on a narrow card.",
+		"note": "The same fact as `broken_unavailable` with the verb of a player ('played') instead of a picture's ('displayed'); keep the two sentences parallel. Same message for the visible text, tooltip and accessible name.",
+		"placeholders": {
+			"name": "the attachment's file name, shown verbatim and never translated; the code wraps it in a directional isolate"
+		}
 	}
 }

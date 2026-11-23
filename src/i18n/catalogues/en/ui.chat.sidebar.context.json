@@ -226,6 +226,24 @@
 		"note": "Follows the row's title inside the accessible name, after an aria-hidden archive glyph. The comma is part of the message because list punctuation differs by locale; the visible tooltip states the same fact.",
 		"placeholders": {}
 	},
+	"ui.chat.sidebar.row.archive_label": {
+		"role": "accessible name and tooltip of the archive control on a conversation row, and of the archive control in a conversation header",
+		"tone": "verb plus the title in typographic quotes, no trailing punctuation",
+		"length": "One word plus the title.",
+		"note": "The action, never the state: pressing archives the conversation. The same string is the accessible name and the tooltip. Whole sentence on purpose: place the title and its quotes wherever the language needs them, and use the locale's own quotation marks. Keep the verb consistent with ui.chat.sidebar.row_menu.archive and ui.chat.dialogs.archive_action.",
+		"placeholders": {
+			"title": "the conversation's own title; user data, never translate or alter it"
+		}
+	},
+	"ui.chat.sidebar.row.unarchive_label": {
+		"role": "accessible name and tooltip of the restore control on an archived conversation row, and of the restore button next to the Archived badge in a conversation header",
+		"tone": "verb plus the title in typographic quotes, no trailing punctuation",
+		"length": "One word plus the title.",
+		"note": "The archived-state face of the same control: pressing restores the conversation to the lists. Keep the verb consistent with ui.chat.sidebar.row_menu.unarchive and with the word 'Unarchive' in ui.chat.dialogs.archive_message, which names this very control.",
+		"placeholders": {
+			"title": "the conversation's own title; user data, never translate or alter it"
+		}
+	},
 	"ui.chat.sidebar.row.in_conversation": {
 		"role": "visible qualifier marking a row that matched inside a conversation",
 		"tone": "prepositional phrase, lower case, no trailing punctuation",
@@ -468,7 +486,7 @@
 	"ui.chat.sidebar.row.open_draft": {
 		"role": "Accessible name of a draft row's open button",
 		"tone": "Imperative plus a name",
-		"length_hint": "Two words plus a name",
+		"length": "Two words plus a name",
 		"note": "Names the draft by its own label (an agent or team name, or the draft's first words).",
 		"placeholders": {
 			"label": "The draft row's display label; do not translate."
@@ -477,7 +495,7 @@
 	"ui.chat.sidebar.entity.more_in": {
 		"role": "Accessible name and tooltip of an entity group's show-more control",
 		"tone": "Sentence fragment joined by 'in'",
-		"length_hint": "Label plus a name",
+		"length": "Label plus a name",
 		"note": "The label is the already-localised show-more sentence the list helper builds; the name is the group (an agent or team).",
 		"placeholders": {
 			"label": "The show-more sentence (for example 'Show 15 more chats'); interpolate as-is.",
@@ -487,7 +505,7 @@
 	"ui.chat.sidebar.search.count_tooltip": {
 		"role": "Tooltip of the match-count badge on a sidebar group while a search is active",
 		"tone": "Plain statement, sentence case, no final period",
-		"length_hint": "One clause",
+		"length": "One clause",
 		"note": "One claim: how many chats match, with 'at least' and a stop note when the answer was clipped.",
 		"placeholders": {
 			"clipped": "'yes' when the result list was cut off, otherwise 'no'; a select selector, never translate.",

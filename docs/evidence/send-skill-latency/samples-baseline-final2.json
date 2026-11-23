@@ -1,0 +1,1471 @@
+{
+  "label": "baseline-final2",
+  "head": "ccc99372ac60c86963f4384541207c393d1e81d4",
+  "proxyPort": 11879,
+  "backendPort": 9746,
+  "rig": {
+    "out": "/Users/bentran/.local-operator/sessions/70f274a59d6e/scratchpad/baseline",
+    "budgetSeconds": 1500,
+    "skillDelayMs": 200
+  },
+  "skills": [
+    "skill-one",
+    "skill-two",
+    "skill-three"
+  ],
+  "arms": [
+    {
+      "id": "control-delay-200",
+      "skills": 3,
+      "cold": true,
+      "delayMs": 200,
+      "requested": 4,
+      "attempts": 4,
+      "valid": 4,
+      "samples": [
+        {
+          "arm": "control-delay-200",
+          "index": 0,
+          "nonce": "n3eb04a3f369f",
+          "keydownWall": 1794941086478,
+          "bubbleWall": 1794941090454,
+          "postWall": 1794941090421,
+          "keydownToBubble": 3976,
+          "keydownToPost": 3943,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 13,
+              "daemonMs": 1521,
+              "totalMs": 1521
+            },
+            {
+              "inMs": 1537,
+              "daemonMs": 1426,
+              "totalMs": 1426
+            },
+            {
+              "inMs": 2965,
+              "daemonMs": 964,
+              "totalMs": 966
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 1,
+          "nonce": "nb195e2309e99",
+          "keydownWall": 1794941093247,
+          "bubbleWall": 1794941095824,
+          "postWall": 1794941095789,
+          "keydownToBubble": 2577,
+          "keydownToPost": 2542,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 6,
+              "daemonMs": 870,
+              "totalMs": 871
+            },
+            {
+              "inMs": 879,
+              "daemonMs": 826,
+              "totalMs": 826
+            },
+            {
+              "inMs": 1707,
+              "daemonMs": 828,
+              "totalMs": 829
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 2,
+          "nonce": "nea6bef21bbf9",
+          "keydownWall": 1794941098326,
+          "bubbleWall": 1794941102474,
+          "postWall": 1794941102463,
+          "keydownToBubble": 4148,
+          "keydownToPost": 4137,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 6,
+              "daemonMs": 1360,
+              "totalMs": 1361
+            },
+            {
+              "inMs": 1368,
+              "daemonMs": 1276,
+              "totalMs": 1277
+            },
+            {
+              "inMs": 2646,
+              "daemonMs": 1488,
+              "totalMs": 1489
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "control-delay-200",
+          "index": 3,
+          "nonce": "n4616c9b199fa",
+          "keydownWall": 1794941105214,
+          "bubbleWall": 1794941109237,
+          "postWall": 1794941109221,
+          "keydownToBubble": 4023,
+          "keydownToPost": 4007,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": 1583,
+              "totalMs": 1583
+            },
+            {
+              "inMs": 1591,
+              "daemonMs": 1366,
+              "totalMs": 1366
+            },
+            {
+              "inMs": 2959,
+              "daemonMs": 1046,
+              "totalMs": 1046
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 4,
+        "p50": 3976,
+        "p95": 4148,
+        "max": 4148,
+        "min": 2577
+      },
+      "post": {
+        "n": 4,
+        "p50": 3943,
+        "p95": 4137,
+        "max": 4137,
+        "min": 2542
+      },
+      "daemonScan": {
+        "n": 12,
+        "p50": 1276,
+        "p95": 1583,
+        "max": 1583,
+        "min": 826
+      },
+      "readsPerPress": {
+        "n": 4,
+        "p50": 3,
+        "p95": 3,
+        "max": 3,
+        "min": 3
+      }
+    },
+    {
+      "id": "plain",
+      "skills": 0,
+      "cold": false,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 11,
+      "samples": [
+        {
+          "arm": "plain",
+          "index": 0,
+          "nonce": "nd6354342f4ac",
+          "keydownWall": 1794941123607,
+          "bubbleWall": 1794941123694,
+          "postWall": 1794941123618,
+          "keydownToBubble": 87,
+          "keydownToPost": 11,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 1,
+          "nonce": "nc839a05dedc9",
+          "keydownWall": 1794941137298,
+          "bubbleWall": 1794941137320,
+          "postWall": 1794941137305,
+          "keydownToBubble": 22,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 2,
+          "nonce": "n7b800d7a172c",
+          "keydownWall": 1794941145851,
+          "bubbleWall": 1794941145887,
+          "postWall": 1794941145864,
+          "keydownToBubble": 36,
+          "keydownToPost": 13,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 3,
+          "nonce": "nca8c5ae6f5f1",
+          "keydownWall": 1794941153630,
+          "bubbleWall": 1794941153661,
+          "postWall": 1794941153640,
+          "keydownToBubble": 31,
+          "keydownToPost": 10,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 4,
+          "nonce": "n5e81804d2261",
+          "keydownWall": 1794941160273,
+          "bubbleWall": 1794941160303,
+          "postWall": 1794941160283,
+          "keydownToBubble": 30,
+          "keydownToPost": 10,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 5,
+          "nonce": "n95990ab11639",
+          "keydownWall": 1794941168484,
+          "bubbleWall": 1794941168529,
+          "postWall": 1794941168497,
+          "keydownToBubble": 45,
+          "keydownToPost": 13,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 6,
+          "nonce": "n7304a95b72e8",
+          "keydownWall": 1794941179380,
+          "bubbleWall": 1794941179420,
+          "postWall": 1794941179399,
+          "keydownToBubble": 40,
+          "keydownToPost": 19,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 7,
+          "nonce": "nf76caf07bc5e",
+          "keydownWall": 1794941191837,
+          "bubbleWall": 1794941191894,
+          "postWall": 1794941191853,
+          "keydownToBubble": 57,
+          "keydownToPost": 16,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 8,
+          "nonce": "nac48acd15de6",
+          "keydownWall": 1794941203420,
+          "bubbleWall": 1794941203484,
+          "postWall": 1794941203457,
+          "keydownToBubble": 64,
+          "keydownToPost": 37,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 9,
+          "nonce": "n46be0bea61c4",
+          "keydownWall": 1794941215662,
+          "bubbleWall": 1794941215707,
+          "postWall": 1794941215680,
+          "keydownToBubble": 45,
+          "keydownToPost": 18,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "plain",
+          "index": 10,
+          "nonce": "n4b6ad53f5533",
+          "keydownWall": 1794941223526,
+          "bubbleWall": 1794941223555,
+          "postWall": 1794941223535,
+          "keydownToBubble": 29,
+          "keydownToPost": 9,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 11,
+        "p50": 40,
+        "p95": 87,
+        "max": 87,
+        "min": 22
+      },
+      "post": {
+        "n": 11,
+        "p50": 13,
+        "p95": 37,
+        "max": 37,
+        "min": 7
+      },
+      "daemonScan": null,
+      "readsPerPress": {
+        "n": 11,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "min": 0
+      }
+    },
+    {
+      "id": "one-skill-cold",
+      "skills": 1,
+      "cold": true,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 11,
+      "samples": [
+        {
+          "arm": "one-skill-cold",
+          "index": 0,
+          "nonce": "n043ef9bde708",
+          "keydownWall": 1794941120949,
+          "bubbleWall": 1794941122462,
+          "postWall": 1794941122404,
+          "keydownToBubble": 1513,
+          "keydownToPost": 1455,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": 1449,
+              "totalMs": 1449
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 1,
+          "nonce": "n33a323604155",
+          "keydownWall": 1794941136043,
+          "bubbleWall": 1794941136590,
+          "postWall": 1794941136575,
+          "keydownToBubble": 547,
+          "keydownToPost": 532,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 527,
+              "totalMs": 527
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 2,
+          "nonce": "n06cd0c354b3a",
+          "keydownWall": 1794941144796,
+          "bubbleWall": 1794941145288,
+          "postWall": 1794941145270,
+          "keydownToBubble": 492,
+          "keydownToPost": 474,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 10,
+              "daemonMs": 462,
+              "totalMs": 462
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 3,
+          "nonce": "n997fd60767b7",
+          "keydownWall": 1794941152451,
+          "bubbleWall": 1794941152954,
+          "postWall": 1794941152932,
+          "keydownToBubble": 503,
+          "keydownToPost": 481,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": 474,
+              "totalMs": 474
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 4,
+          "nonce": "nd3c3b0be8c84",
+          "keydownWall": 1794941159227,
+          "bubbleWall": 1794941159629,
+          "postWall": 1794941159605,
+          "keydownToBubble": 402,
+          "keydownToPost": 378,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 374,
+              "totalMs": 375
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 5,
+          "nonce": "ne6dfdfe8e308",
+          "keydownWall": 1794941167245,
+          "bubbleWall": 1794941167915,
+          "postWall": 1794941167881,
+          "keydownToBubble": 670,
+          "keydownToPost": 636,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 22,
+              "daemonMs": 602,
+              "totalMs": 604
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 6,
+          "nonce": "nf5621fa06950",
+          "keydownWall": 1794941177887,
+          "bubbleWall": 1794941178696,
+          "postWall": 1794941178668,
+          "keydownToBubble": 809,
+          "keydownToPost": 781,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 775,
+              "totalMs": 776
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 7,
+          "nonce": "n3af5b1426f30",
+          "keydownWall": 1794941189666,
+          "bubbleWall": 1794941191069,
+          "postWall": 1794941191035,
+          "keydownToBubble": 1403,
+          "keydownToPost": 1369,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 20,
+              "daemonMs": 1346,
+              "totalMs": 1346
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 8,
+          "nonce": "n2901e21dac83",
+          "keydownWall": 1794941201042,
+          "bubbleWall": 1794941202551,
+          "postWall": 1794941202519,
+          "keydownToBubble": 1509,
+          "keydownToPost": 1477,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 1472,
+              "totalMs": 1472
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 9,
+          "nonce": "n6dfbdd89a881",
+          "keydownWall": 1794941213914,
+          "bubbleWall": 1794941214858,
+          "postWall": 1794941214794,
+          "keydownToBubble": 944,
+          "keydownToPost": 880,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 17,
+              "daemonMs": 852,
+              "totalMs": 852
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "one-skill-cold",
+          "index": 10,
+          "nonce": "nc24f51fca4f3",
+          "keydownWall": 1794941222480,
+          "bubbleWall": 1794941222937,
+          "postWall": 1794941222911,
+          "keydownToBubble": 457,
+          "keydownToPost": 431,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 1,
+          "readScans": [
+            {
+              "inMs": 4,
+              "daemonMs": 425,
+              "totalMs": 425
+            }
+          ],
+          "payloadSkills": [
+            "skill-one"
+          ],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 11,
+        "p50": 670,
+        "p95": 1513,
+        "max": 1513,
+        "min": 402
+      },
+      "post": {
+        "n": 11,
+        "p50": 636,
+        "p95": 1477,
+        "max": 1477,
+        "min": 378
+      },
+      "daemonScan": {
+        "n": 11,
+        "p50": 602,
+        "p95": 1472,
+        "max": 1472,
+        "min": 374
+      },
+      "readsPerPress": {
+        "n": 11,
+        "p50": 1,
+        "p95": 1,
+        "max": 1,
+        "min": 1
+      }
+    },
+    {
+      "id": "three-skills-cold",
+      "skills": 3,
+      "cold": true,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 11,
+      "samples": [
+        {
+          "arm": "three-skills-cold",
+          "index": 0,
+          "nonce": "n03f9ea75411e",
+          "keydownWall": 1794941112940,
+          "bubbleWall": 1794941116202,
+          "postWall": 1794941116125,
+          "keydownToBubble": 3262,
+          "keydownToPost": 3185,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 11,
+              "daemonMs": 1148,
+              "totalMs": 1148
+            },
+            {
+              "inMs": 1161,
+              "daemonMs": 874,
+              "totalMs": 876
+            },
+            {
+              "inMs": 2042,
+              "daemonMs": 1139,
+              "totalMs": 1140
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 1,
+          "nonce": "nf4b542124b6c",
+          "keydownWall": 1794941128119,
+          "bubbleWall": 1794941130736,
+          "postWall": 1794941130715,
+          "keydownToBubble": 2617,
+          "keydownToPost": 2596,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 1378,
+              "totalMs": 1378
+            },
+            {
+              "inMs": 1382,
+              "daemonMs": 682,
+              "totalMs": 682
+            },
+            {
+              "inMs": 2066,
+              "daemonMs": 528,
+              "totalMs": 529
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 2,
+          "nonce": "n221535650286",
+          "keydownWall": 1794941140065,
+          "bubbleWall": 1794941142197,
+          "postWall": 1794941142178,
+          "keydownToBubble": 2132,
+          "keydownToPost": 2113,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 11,
+              "daemonMs": 715,
+              "totalMs": 716
+            },
+            {
+              "inMs": 728,
+              "daemonMs": 966,
+              "totalMs": 966
+            },
+            {
+              "inMs": 1696,
+              "daemonMs": 415,
+              "totalMs": 416
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 3,
+          "nonce": "n66c55ec5d59a",
+          "keydownWall": 1794941148182,
+          "bubbleWall": 1794941150014,
+          "postWall": 1794941149996,
+          "keydownToBubble": 1832,
+          "keydownToPost": 1814,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 621,
+              "totalMs": 622
+            },
+            {
+              "inMs": 626,
+              "daemonMs": 445,
+              "totalMs": 445
+            },
+            {
+              "inMs": 1072,
+              "daemonMs": 740,
+              "totalMs": 740
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 4,
+          "nonce": "ncc670644113a",
+          "keydownWall": 1794941155367,
+          "bubbleWall": 1794941156589,
+          "postWall": 1794941156567,
+          "keydownToBubble": 1222,
+          "keydownToPost": 1200,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 5,
+              "daemonMs": 434,
+              "totalMs": 435
+            },
+            {
+              "inMs": 441,
+              "daemonMs": 370,
+              "totalMs": 370
+            },
+            {
+              "inMs": 812,
+              "daemonMs": 385,
+              "totalMs": 386
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 5,
+          "nonce": "n33e708bd7be1",
+          "keydownWall": 1794941162272,
+          "bubbleWall": 1794941163561,
+          "postWall": 1794941163527,
+          "keydownToBubble": 1289,
+          "keydownToPost": 1255,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 392,
+              "totalMs": 393
+            },
+            {
+              "inMs": 396,
+              "daemonMs": 410,
+              "totalMs": 410
+            },
+            {
+              "inMs": 808,
+              "daemonMs": 442,
+              "totalMs": 442
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 6,
+          "nonce": "nc81567208881",
+          "keydownWall": 1794941171316,
+          "bubbleWall": 1794941173813,
+          "postWall": 1794941173714,
+          "keydownToBubble": 2497,
+          "keydownToPost": 2398,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 815,
+              "totalMs": 816
+            },
+            {
+              "inMs": 834,
+              "daemonMs": 732,
+              "totalMs": 732
+            },
+            {
+              "inMs": 1567,
+              "daemonMs": 829,
+              "totalMs": 829
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 7,
+          "nonce": "nfa37199c071c",
+          "keydownWall": 1794941182281,
+          "bubbleWall": 1794941185112,
+          "postWall": 1794941185081,
+          "keydownToBubble": 2831,
+          "keydownToPost": 2800,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 1053,
+              "totalMs": 1053
+            },
+            {
+              "inMs": 1056,
+              "daemonMs": 661,
+              "totalMs": 662
+            },
+            {
+              "inMs": 1723,
+              "daemonMs": 1074,
+              "totalMs": 1074
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 8,
+          "nonce": "ncf5fecd6d083",
+          "keydownWall": 1794941195077,
+          "bubbleWall": 1794941196967,
+          "postWall": 1794941196932,
+          "keydownToBubble": 1890,
+          "keydownToPost": 1855,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 715,
+              "totalMs": 715
+            },
+            {
+              "inMs": 721,
+              "daemonMs": 552,
+              "totalMs": 552
+            },
+            {
+              "inMs": 1275,
+              "daemonMs": 576,
+              "totalMs": 576
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 9,
+          "nonce": "n7c79eb20a351",
+          "keydownWall": 1794941206797,
+          "bubbleWall": 1794941210458,
+          "postWall": 1794941210427,
+          "keydownToBubble": 3661,
+          "keydownToPost": 3630,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 3,
+              "daemonMs": 924,
+              "totalMs": 925
+            },
+            {
+              "inMs": 929,
+              "daemonMs": 1432,
+              "totalMs": 1432
+            },
+            {
+              "inMs": 2363,
+              "daemonMs": 1264,
+              "totalMs": 1264
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-cold",
+          "index": 10,
+          "nonce": "n58faa229a2bc",
+          "keydownWall": 1794941218155,
+          "bubbleWall": 1794941219802,
+          "postWall": 1794941219777,
+          "keydownToBubble": 1647,
+          "keydownToPost": 1622,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 3,
+          "readScans": [
+            {
+              "inMs": 2,
+              "daemonMs": 406,
+              "totalMs": 406
+            },
+            {
+              "inMs": 410,
+              "daemonMs": 404,
+              "totalMs": 404
+            },
+            {
+              "inMs": 816,
+              "daemonMs": 804,
+              "totalMs": 804
+            }
+          ],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 11,
+        "p50": 2132,
+        "p95": 3661,
+        "max": 3661,
+        "min": 1222
+      },
+      "post": {
+        "n": 11,
+        "p50": 2113,
+        "p95": 3630,
+        "max": 3630,
+        "min": 1200
+      },
+      "daemonScan": {
+        "n": 33,
+        "p50": 715,
+        "p95": 1378,
+        "max": 1432,
+        "min": 370
+      },
+      "readsPerPress": {
+        "n": 11,
+        "p50": 3,
+        "p95": 3,
+        "max": 3,
+        "min": 3
+      }
+    },
+    {
+      "id": "three-skills-warm",
+      "skills": 3,
+      "cold": false,
+      "delayMs": 0,
+      "requested": 11,
+      "attempts": 11,
+      "valid": 11,
+      "samples": [
+        {
+          "arm": "three-skills-warm",
+          "index": 0,
+          "nonce": "n3036d38c537b",
+          "keydownWall": 1794941116995,
+          "bubbleWall": 1794941117020,
+          "postWall": 1794941117006,
+          "keydownToBubble": 25,
+          "keydownToPost": 11,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 1,
+          "nonce": "nafe9dd8b0eb5",
+          "keydownWall": 1794941131442,
+          "bubbleWall": 1794941131487,
+          "postWall": 1794941131469,
+          "keydownToBubble": 45,
+          "keydownToPost": 27,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 2,
+          "nonce": "n00ae77b5189a",
+          "keydownWall": 1794941142815,
+          "bubbleWall": 1794941142837,
+          "postWall": 1794941142822,
+          "keydownToBubble": 22,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 3,
+          "nonce": "n04290ba0025d",
+          "keydownWall": 1794941150620,
+          "bubbleWall": 1794941150643,
+          "postWall": 1794941150627,
+          "keydownToBubble": 23,
+          "keydownToPost": 7,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 4,
+          "nonce": "n93ec0a54954f",
+          "keydownWall": 1794941157175,
+          "bubbleWall": 1794941157203,
+          "postWall": 1794941157184,
+          "keydownToBubble": 28,
+          "keydownToPost": 9,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 5,
+          "nonce": "n9c6edc5044fa",
+          "keydownWall": 1794941164303,
+          "bubbleWall": 1794941164336,
+          "postWall": 1794941164313,
+          "keydownToBubble": 33,
+          "keydownToPost": 10,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 6,
+          "nonce": "n2ae3b92b7e46",
+          "keydownWall": 1794941174735,
+          "bubbleWall": 1794941174827,
+          "postWall": 1794941174790,
+          "keydownToBubble": 92,
+          "keydownToPost": 55,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 7,
+          "nonce": "na396cc14a071",
+          "keydownWall": 1794941186156,
+          "bubbleWall": 1794941186246,
+          "postWall": 1794941186170,
+          "keydownToBubble": 90,
+          "keydownToPost": 14,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 8,
+          "nonce": "n54a80d9721da",
+          "keydownWall": 1794941197693,
+          "bubbleWall": 1794941197803,
+          "postWall": 1794941197704,
+          "keydownToBubble": 110,
+          "keydownToPost": 11,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 9,
+          "nonce": "n80a3debe29f0",
+          "keydownWall": 1794941211488,
+          "bubbleWall": 1794941211525,
+          "postWall": 1794941211503,
+          "keydownToBubble": 37,
+          "keydownToPost": 15,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        },
+        {
+          "arm": "three-skills-warm",
+          "index": 10,
+          "nonce": "naf59d1d56148",
+          "keydownWall": 1794941220409,
+          "bubbleWall": 1794941220460,
+          "postWall": 1794941220419,
+          "keydownToBubble": 51,
+          "keydownToPost": 10,
+          "cleared": true,
+          "clearedLeftover": false,
+          "skillReads": 0,
+          "readScans": [],
+          "payloadSkills": [
+            "skill-one",
+            "skill-two",
+            "skill-three"
+          ],
+          "typed": true,
+          "invalid": null
+        }
+      ],
+      "bubble": {
+        "n": 11,
+        "p50": 37,
+        "p95": 110,
+        "max": 110,
+        "min": 22
+      },
+      "post": {
+        "n": 11,
+        "p50": 11,
+        "p95": 55,
+        "max": 55,
+        "min": 7
+      },
+      "daemonScan": null,
+      "readsPerPress": {
+        "n": 11,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "min": 0
+      }
+    }
+  ],
+  "notes": [],
+  "loadavg_start": [
+    21.75,
+    22.89,
+    19.49
+  ],
+  "capabilities.session_catalogue": 3,
+  "capabilities.session_catalogue_ok": true,
+  "capabilities.desktop_available": true,
+  "sessionId": "a832ed06d915",
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":1}",
+  "location": "file:///Users/bentran/workspace/repos/local-operator-ui/.worktrees/send-baseline/out/renderer/index.html#/chat/a832ed06d915",
+  "proxy_saw_app_traffic": true,
+  "loadavg_end": [
+    13.62,
+    19.6,
+    18.72
+  ],
+  "invalid": 0,
+  "control_delta_ms": 3936,
+  "control_expected_ms": 600,
+  "control_passes": true
+}
