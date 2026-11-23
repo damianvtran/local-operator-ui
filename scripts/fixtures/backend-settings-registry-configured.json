@@ -31,12 +31,6 @@
 			"description": "Theme and the terminal features the TUI is allowed to use."
 		},
 		{
-			"name": "notification_sound",
-			"title": "Notification sound",
-			"scope": "live",
-			"description": "The sound played with a desktop notification. It plays only when a banner is shown, at most once every 1.5 seconds on this computer. Try one with `lop sound preview <id>`."
-		},
-		{
 			"name": "composer",
 			"title": "Message sending",
 			"scope": "live",
@@ -67,18 +61,6 @@
 			"description": "Session cleanup for the conversations you started and the workstreams in your sidebar. Off by default; nothing here runs until you switch it on."
 		},
 		{
-			"name": "session_compression",
-			"title": "Transcript compression",
-			"scope": "new launch",
-			"description": "History is kept in full; old transcripts are stored compressed and read back automatically. Off: every transcript stays as a plain file."
-		},
-		{
-			"name": "session_scratchpad",
-			"title": "Scratchpad",
-			"scope": "live",
-			"description": "What one session's own scratch area may hold. The cap is checked on every write and applies immediately."
-		},
-		{
 			"name": "session_delegated",
 			"title": "Delegated work",
 			"scope": "new launch",
@@ -95,12 +77,6 @@
 			"title": "Smart hints",
 			"scope": "new sessions",
 			"description": "Advisory skills, guides and MCP servers a decision model may suggest per message. Off keeps the prompt unchanged."
-		},
-		{
-			"name": "radient_saver",
-			"title": "Radient Saver (beta)",
-			"scope": "live",
-			"description": "Shortens the conversation history your agent re-sends on every turn. Saver never sends your AI provider's credentials to Radient. Changes apply from the next turn."
 		},
 		{
 			"name": "supplements",
@@ -155,12 +131,6 @@
 			"title": "Tools",
 			"scope": "live",
 			"description": "How the built-in tools execute."
-		},
-		{
-			"name": "guardrails",
-			"title": "Guardrails",
-			"scope": "live",
-			"description": "Checks that run before a tool call and can refuse dangerous ones."
 		},
 		{
 			"name": "hooks",
@@ -223,34 +193,16 @@
 			"description": "The roll that follows a local update: after `lop update` moves this device to a newer build, every other active member is asked to move to the same build — one at a time, each waiting for that member to go idle, never forced. A member that has not granted this device `update` is skipped, by name, with the remedy. Takes effect at once: the next update uses the new setting, and a roll already running stops before its next member — an install already begun finishes."
 		},
 		{
-			"name": "remote_compute",
-			"title": "Remote compute",
-			"scope": "live",
-			"description": "Preview: run agent work on Radient-hosted compute, bound to one of your mesh networks."
-		},
-		{
 			"name": "aida",
 			"title": "Aida",
 			"scope": "live",
 			"description": "Your chief of staff: her display name, and the proactive cadence — when she checks in, how much she may escalate, and the pause switch. The name applies everywhere at once; edits are read at her next action, and /aida pause|resume act immediately."
 		},
 		{
-			"name": "librarian",
-			"title": "Librarian",
-			"scope": "live",
-			"description": "The Librarian keeps the global Library organised: her display name, the daily pass, and the pause switch. The Library is long-term and shared by every conversation."
-		},
-		{
 			"name": "hub",
 			"title": "Agent Hub",
 			"scope": "live",
 			"description": "Keep agents and teams you pulled from the Agent Hub current: whether updates are merged in automatically, how often the hub is checked, and which model resolves a conflict. Your edits and deletions are merged, never overwritten."
-		},
-		{
-			"name": "hub_org",
-			"title": "Organization Agent Hub",
-			"scope": "live",
-			"description": "Your organization shares agents, teams and skills through its private Agent Hub. Choose whether new ones are added to this machine automatically."
 		},
 		{
 			"name": "agents",
@@ -329,15 +281,14 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "memory.capture",
 			"section": "memory",
 			"label": "Compaction capture",
 			"kind": "bool",
-			"help": "Capture decisions, goals and progress after committed compactions; context-full also reuses its existing summary. Explicit stores remain the guaranteed route for goals and decisions.",
+			"help": "Capture safe locators after committed compactions; context-full also reuses its existing summary. Explicit stores remain the guaranteed route for goals and decisions.",
 			"value": true,
 			"default": true,
 			"is_default": true,
@@ -353,32 +304,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "memory.capture.locators",
-			"section": "memory",
-			"label": "Capture locator context",
-			"kind": "bool",
-			"help": "Also keep paths, URLs and ids, but only as context attached to a captured decision, goal or progress note in the same section; never as facts of their own. Off by default. Turning this off leaves existing facts untouched.",
-			"value": false,
-			"default": false,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": "memory.capture",
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "memory.suggest",
@@ -401,8 +327,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.memory.enabled",
@@ -425,8 +350,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.memory.scopes",
@@ -449,8 +373,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.memory.exclude_devices",
@@ -473,8 +396,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hosting",
@@ -497,8 +419,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["llm", "ai", "engine", "vendor"]
+			"unit": ""
 		},
 		{
 			"key": "model_name",
@@ -521,8 +442,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["llm", "ai", "engine"]
+			"unit": ""
 		},
 		{
 			"key": "model_effort",
@@ -586,8 +506,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["thinking", "thinking budget"]
+			"unit": ""
 		},
 		{
 			"key": "providers.openai.use_max_context_window",
@@ -610,8 +529,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openai.api",
@@ -645,15 +563,14 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.anthropic.cache_ttl_1h_min_context_tokens",
 			"section": "providers",
 			"label": "Anthropic 1h cache above (tokens)",
 			"kind": "int",
-			"help": "Context size from which Anthropic API-key requests use the 1-hour prompt-cache TTL (2x write cost, survives idle gaps over 5 minutes). On a Claude subscription not drawing on extra usage, the main conversation always uses 1 hour, and a subagent switches to 1 hour after one of its calls runs 4 minutes or longer. 0 turns all of these off; only the subagent size setting still applies.",
+			"help": "Context size from which Anthropic requests use the 1-hour prompt-cache TTL (2x write cost, survives idle gaps over 5 minutes). 0 disables.",
 			"value": 150000,
 			"default": 150000,
 			"is_default": true,
@@ -669,32 +586,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "providers.anthropic.subagent_cache_ttl_1h_min_context_tokens",
-			"section": "providers",
-			"label": "Anthropic subagent 1h cache",
-			"kind": "int",
-			"help": "Context size (tokens) from which subagent requests use the 1-hour prompt-cache TTL. 0 adds no size rule, since 1 hour by size alone measured more expensive for subagents at every size. Separately, on a Claude subscription a subagent switches to 1 hour after a call that runs 4 minutes or longer; 0 in the main 1-hour setting turns that off.",
-			"value": 0,
-			"default": 0,
-			"is_default": true,
-			"minimum": 0,
-			"maximum": 10000000,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.provider_affinity",
@@ -717,8 +609,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.sort",
@@ -762,8 +653,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.order",
@@ -786,8 +676,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.only",
@@ -810,8 +699,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.ignore",
@@ -834,8 +722,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.allow_fallbacks",
@@ -869,8 +756,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.require_parameters",
@@ -904,8 +790,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.data_collection",
@@ -944,8 +829,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["privacy", "tracking", "training"]
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.zdr",
@@ -979,8 +863,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.enforce_distillable_text",
@@ -1014,8 +897,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.quantizations",
@@ -1051,8 +933,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.max_price",
@@ -1075,8 +956,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.preferred_min_throughput",
@@ -1099,8 +979,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.preferred_max_latency",
@@ -1123,8 +1002,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openrouter.retire_below_tps",
@@ -1147,8 +1025,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.enabled",
@@ -1182,8 +1059,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.maxRetries",
@@ -1206,8 +1082,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.baseDelayMs",
@@ -1230,8 +1105,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.connectivityMaxRetries",
@@ -1254,8 +1128,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.connectivityBackoffCapMs",
@@ -1278,8 +1151,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.modelFallback",
@@ -1313,8 +1185,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.usageAwareFallback",
@@ -1348,8 +1219,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.accountSelectionPolicy",
@@ -1388,8 +1258,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.usageAwareAccountPick",
@@ -1423,8 +1292,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.usageReservePercent",
@@ -1447,8 +1315,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.fallbackChains",
@@ -1473,8 +1340,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "retry.pinnedFallback",
@@ -1508,8 +1374,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tui.theme",
@@ -1803,8 +1668,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["color scheme", "colour scheme", "dark mode", "light mode"]
+			"unit": ""
 		},
 		{
 			"key": "display.shimmer",
@@ -1838,8 +1702,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.narration",
@@ -1873,8 +1736,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.reasoning",
@@ -1908,8 +1770,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.rail",
@@ -1943,8 +1804,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.comfortable_rows",
@@ -1978,8 +1838,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.nerd_icons",
@@ -2018,8 +1877,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.heading_markers",
@@ -2053,8 +1911,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.terminal_title",
@@ -2088,8 +1945,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.images",
@@ -2123,8 +1979,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.notifications",
@@ -2158,8 +2013,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.notification_session_name",
@@ -2193,8 +2047,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.time_format",
@@ -2228,147 +2081,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "notifications.sound.enabled",
-			"section": "notification_sound",
-			"label": "Play a sound",
-			"kind": "bool",
-			"help": "Plays with each desktop notification. Off keeps banners silent wherever Local Operator controls their sound.",
-			"value": true,
-			"default": true,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "play the selected sound"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "banners stay silent"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["chime", "audio", "mute"]
-		},
-		{
-			"key": "notifications.sound.id",
-			"section": "notification_sound",
-			"label": "Sound",
-			"kind": "enum",
-			"help": "A built-in sound, one of yours (add them with `lop sound add`), or `system` to keep your terminal's or system's own sound. Hearing two sounds? Run `lop sound doctor`.",
-			"value": "soft-pulse",
-			"default": "soft-pulse",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": "soft-pulse",
-					"label": "soft-pulse",
-					"description": "Soft pulse"
-				},
-				{
-					"value": "two-note-chime",
-					"label": "two-note-chime",
-					"description": "Two-note chime"
-				},
-				{
-					"value": "felt-marimba",
-					"label": "felt-marimba",
-					"description": "Felt marimba"
-				},
-				{
-					"value": "hum-swell",
-					"label": "hum-swell",
-					"description": "Hum swell"
-				},
-				{
-					"value": "task-complete",
-					"label": "task-complete",
-					"description": "Task complete"
-				},
-				{
-					"value": "signal-handshake",
-					"label": "signal-handshake",
-					"description": "Signal handshake"
-				},
-				{
-					"value": "tape-warble",
-					"label": "tape-warble",
-					"description": "Tape warble"
-				},
-				{
-					"value": "bubble-chord",
-					"label": "bubble-chord",
-					"description": "Bubble chord"
-				},
-				{
-					"value": "airy-whistle",
-					"label": "airy-whistle",
-					"description": "Airy whistle"
-				},
-				{
-					"value": "bubble-pulse",
-					"label": "bubble-pulse",
-					"description": "Bubble pulse"
-				},
-				{
-					"value": "system",
-					"label": "system",
-					"description": "terminal or system default; Local Operator plays nothing"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": "notifications.sound.enabled",
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["ringtone", "tone", "alert"]
-		},
-		{
-			"key": "notifications.sound.volume",
-			"section": "notification_sound",
-			"label": "Volume",
-			"kind": "int",
-			"help": "0–100; default 70. 0 is silent. Sets this sound only; your system volume still applies.",
-			"value": 70,
-			"default": 70,
-			"is_default": true,
-			"minimum": 0,
-			"maximum": 100,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": "notifications.sound.enabled",
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "percent",
-			"synonyms": ["loudness", "quiet"]
+			"unit": ""
 		},
 		{
 			"key": "language",
@@ -2404,11 +2117,6 @@
 					"description": ""
 				},
 				{
-					"value": "zh-CN",
-					"label": "zh-CN",
-					"description": ""
-				},
-				{
 					"value": "ru",
 					"label": "ru",
 					"description": ""
@@ -2417,11 +2125,6 @@
 					"value": "vi",
 					"label": "vi",
 					"description": ""
-				},
-				{
-					"value": "ur",
-					"label": "ur",
-					"description": "Terminal: best effort; requires bidi and Arabic shaping."
 				},
 				{
 					"value": "hi",
@@ -2437,8 +2140,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["locale", "i18n", "translation"]
+			"unit": ""
 		},
 		{
 			"key": "display.dock",
@@ -2477,8 +2179,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.hide_cross_session",
@@ -2512,8 +2213,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.turn_answer_rail",
@@ -2547,8 +2247,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.band",
@@ -2582,8 +2281,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.chevron",
@@ -2617,8 +2315,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.model",
@@ -2652,8 +2349,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.cwd",
@@ -2687,8 +2383,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.context",
@@ -2722,8 +2417,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.rate",
@@ -2757,8 +2451,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.cost",
@@ -2792,8 +2485,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "display.composer.duration",
@@ -2827,56 +2519,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "display.composer.command",
-			"section": "appearance",
-			"label": "Band: status command",
-			"kind": "text",
-			"help": "Runs on a timer; first output line shows on the band.",
-			"value": "",
-			"default": "",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": true,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "~/bin/my-status.sh",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["statusline", "plugin", "quota", "usage"]
-		},
-		{
-			"key": "display.composer.command_interval",
-			"section": "appearance",
-			"label": "Band: command interval",
-			"kind": "int",
-			"help": "Seconds between status command runs (5-3600).",
-			"value": 30,
-			"default": 30,
-			"is_default": true,
-			"minimum": 5,
-			"maximum": 3600,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "seconds",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tui.sidebar_visible",
@@ -2910,8 +2553,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tui.sidebar_position",
@@ -2945,8 +2587,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tui.sidebar_show_subagents",
@@ -2980,8 +2621,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "delivery.busy_default",
@@ -3020,8 +2660,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "keymap.new_session",
@@ -3044,15 +2683,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "app",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "keymap.resume",
@@ -3075,15 +2706,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "app",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "keymap.quick_send",
@@ -3106,15 +2729,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "desktop",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "keymap.push_to_talk",
@@ -3138,46 +2753,7 @@
 			"read_only": false,
 			"hotkey_scope": "desktop",
 			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			],
 			"clearable": true
-		},
-		{
-			"key": "keymap.start_recording",
-			"section": "keymap",
-			"label": "Start recording",
-			"kind": "hotkey",
-			"help": "Starts speech-to-text recording in the desktop window.",
-			"value": "primary+shift+s",
-			"default": "primary+shift+s",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "desktop",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
 		},
 		{
 			"key": "keymap.send_steer",
@@ -3200,15 +2776,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "composer",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "keymap.send_queue",
@@ -3231,15 +2799,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "composer",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "keymap.send_both",
@@ -3262,15 +2822,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "composer",
-			"unit": "",
-			"synonyms": [
-				"keyboard",
-				"shortcut",
-				"keybinding",
-				"bind",
-				"chord",
-				"hotkey"
-			]
+			"unit": ""
 		},
 		{
 			"key": "tool_approval_mode",
@@ -3304,8 +2856,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "auto_save_conversation",
@@ -3339,32 +2890,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "session.scratchpad.max_bytes",
-			"section": "session_scratchpad",
-			"label": "Scratchpad size cap (bytes)",
-			"kind": "int",
-			"help": "Bytes a session's scratchpad may hold: 16 MiB to 8 GiB. Default 256 MiB.",
-			"value": 268435456,
-			"default": 268435456,
-			"is_default": true,
-			"minimum": 16777216,
-			"maximum": 8589934592,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "bytes",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "runtime.background_on_resume",
@@ -3398,8 +2924,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "runtime.keep_alive_seconds",
@@ -3422,8 +2947,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "runtime.keep_alive_max",
@@ -3446,8 +2970,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.enabled",
@@ -3481,8 +3004,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["retention", "purge", "delete", "prune"]
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_sessions",
@@ -3505,8 +3027,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["retention", "delete", "purge", "prune"]
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_inactive_days",
@@ -3529,8 +3050,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["retention", "expiry", "age", "purge"]
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.max_total_bytes",
@@ -3553,8 +3073,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["retention", "disk", "purge"]
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.remove_empty",
@@ -3588,67 +3107,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["delete", "purge", "prune"]
-		},
-		{
-			"key": "session.compression.enabled",
-			"section": "session_compression",
-			"label": "Compress old transcripts",
-			"kind": "bool",
-			"help": "Off: transcripts stay plain; compressed sessions stay readable. On: old transcripts compress at launch.",
-			"value": true,
-			"default": true,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "compress transcripts older than the age below"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "leave every transcript as it is"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "session.compression.after_days",
-			"section": "session_compression",
-			"label": "↳ compress after (days)",
-			"kind": "int",
-			"help": "Needs compression on. Days idle before a transcript is compressed; 1 to 3650. Default 30.",
-			"value": 30,
-			"default": 30,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 3650,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": "session.compression.enabled",
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "days",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.delegated.enabled",
@@ -3682,8 +3141,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["retention", "delete", "purge"]
+			"unit": ""
 		},
 		{
 			"key": "session.cleanup.delegated.max_age_hours",
@@ -3706,8 +3164,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "hours",
-			"synonyms": ["retention", "expiry", "purge"]
+			"unit": "hours"
 		},
 		{
 			"key": "runtime.unattended_gate_timeout",
@@ -3730,8 +3187,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.max_running",
@@ -3754,8 +3210,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.slim_child_knowledge",
@@ -3789,8 +3244,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.max_team_depth",
@@ -3813,8 +3267,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.model_choice",
@@ -3848,8 +3301,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.lo",
@@ -3872,8 +3324,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.med",
@@ -3896,8 +3347,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "subagents.models.hi",
@@ -3920,8 +3370,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.auto",
@@ -3955,8 +3404,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.vendor",
@@ -4000,8 +3448,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.model",
@@ -4024,43 +3471,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "radient.saver.mode",
-			"section": "radient_saver",
-			"label": "Radient Saver (beta)",
-			"kind": "enum",
-			"help": "Beta. Sends Radient the history ready to be shortened; Radient keeps none of it. Saver never sends your AI provider's credentials to Radient. Saver charges only your Radient credits, priced on the tokens it removes, never your provider account; it needs a Radient sign-in with credit. Your provider still bills what it receives on its own terms. LOP_RADIENT_SAVER overrides this setting.",
-			"value": "off",
-			"default": "off",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": "off",
-					"label": "off",
-					"description": "never sends history to Radient (the default)"
-				},
-				{
-					"value": "opt_in",
-					"label": "opt in",
-					"description": "available, but off until a session turns it on"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["privacy", "cloud", "sharing"]
+			"unit": ""
 		},
 		{
 			"key": "classification.timeoutMs",
@@ -4083,8 +3494,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.waitMs",
@@ -4107,8 +3517,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.maxStateChars",
@@ -4131,8 +3540,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.maxCandidates",
@@ -4155,8 +3563,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.maxRecommendations",
@@ -4179,8 +3586,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.defaultIntervalS",
@@ -4203,8 +3609,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.maxMonitors",
@@ -4227,8 +3632,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.runTimeoutMs",
@@ -4251,8 +3655,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.snapshotMaxChars",
@@ -4275,8 +3678,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.maxDeltaLines",
@@ -4299,8 +3701,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.deltaMaxChars",
@@ -4323,8 +3724,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.classifyMaxChars",
@@ -4347,8 +3747,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.maxConsecutiveFailures",
@@ -4371,8 +3770,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.maxDeliveriesPerHour",
@@ -4395,8 +3793,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "monitor.normalizeTimestamps",
@@ -4430,8 +3827,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.enabled",
@@ -4465,8 +3861,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.files",
@@ -4500,8 +3895,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.graphics",
@@ -4535,8 +3929,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.model",
@@ -4559,8 +3952,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.maxTurns",
@@ -4583,8 +3975,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.maxOutputTokens",
@@ -4607,8 +3998,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.timeoutS",
@@ -4631,8 +4021,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.maxCostUsd",
@@ -4655,8 +4044,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.maxFeatured",
@@ -4679,8 +4067,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "supplements.denyPrefixes",
@@ -4703,8 +4090,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "fork.mode",
@@ -4738,8 +4124,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "fork.cmux_placement",
@@ -4773,8 +4158,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.enabled",
@@ -4808,8 +4192,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.strategy",
@@ -4853,8 +4236,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.threshold_percent",
@@ -4877,8 +4259,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.threshold_tokens",
@@ -4901,8 +4282,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.keep_recent_tokens",
@@ -4925,8 +4305,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.auto_continue",
@@ -4960,8 +4339,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.mid_turn_enabled",
@@ -4995,43 +4373,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "compaction.resume_replay",
-			"section": "compaction",
-			"label": "Resume replay",
-			"kind": "enum",
-			"help": "What a resumed session replays after a compaction. Card is far smaller, but earlier operator turns no longer survive verbatim, and switching back to full does not restore them.",
-			"value": "full",
-			"default": "full",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": "full",
-					"label": "full",
-					"description": "summary, every preserved user turn and the kept window"
-				},
-				{
-					"value": "card",
-					"label": "card",
-					"description": "summary, a short resume card and a recent tail; earlier turns not verbatim"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.wire_bytes_budget",
@@ -5054,8 +4396,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "compaction.wire_bytes_trigger",
@@ -5078,8 +4419,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.enabled",
@@ -5113,8 +4453,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.strategy",
@@ -5148,8 +4487,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.providers",
@@ -5182,8 +4520,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.excluded_providers",
@@ -5216,8 +4553,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.timeout_seconds",
@@ -5240,8 +4576,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.searxng_endpoint",
@@ -5264,8 +4599,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.deepseek_evidence",
@@ -5288,8 +4622,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_search.read_enabled",
@@ -5312,8 +4645,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.enabled",
@@ -5347,8 +4679,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.timeout_seconds",
@@ -5371,8 +4702,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_bytes",
@@ -5395,8 +4725,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_redirects",
@@ -5419,8 +4748,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.cache_ttl_seconds",
@@ -5443,8 +4771,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.allow_private",
@@ -5478,8 +4805,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.render_backend",
@@ -5513,8 +4839,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.enrich",
@@ -5548,8 +4873,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.max_attempts",
@@ -5572,8 +4896,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "web_fetch.blocked_retry",
@@ -5607,8 +4930,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hooks.native",
@@ -5631,8 +4953,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hooks.forward_claude",
@@ -5655,8 +4976,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hooks.forward_codex",
@@ -5679,8 +4999,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.shell",
@@ -5703,104 +5022,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "guardrails.enabled",
-			"section": "guardrails",
-			"label": "Guardrail rules",
-			"kind": "bool",
-			"help": "Applies your guardrail rule files to tool calls before they run. The built-in dangerous-delete check stays on either way.",
-			"value": true,
-			"default": true,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "guardrails.critical_override",
-			"section": "guardrails",
-			"label": "Review critical deletions",
-			"kind": "bool",
-			"help": "Off by default. On sends critical deletions (state dir, config, secrets, home) to the safety check instead of refusing them. Only honoured when set from this machine's settings, never from a file edit.",
-			"value": false,
-			"default": false,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "guardrails.judge_timeout_s",
-			"section": "guardrails",
-			"label": "Safety check timeout (s)",
-			"kind": "float",
-			"help": "How long the safety check may take before the call is blocked. A check that cannot answer always blocks.",
-			"value": 20,
-			"default": 20,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 120,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "guardrails.rules_dir",
-			"section": "guardrails",
-			"label": "Rules folder",
-			"kind": "text",
-			"help": "An extra folder of guardrail rule files (*.md), loaded in addition to the rules folder in the config directory.",
-			"value": "",
-			"default": "",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": true,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "send.journal_unconfirmed",
@@ -5823,8 +5045,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tools.search_interception.enabled",
@@ -5847,8 +5068,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tools.search_interception.block",
@@ -5871,8 +5091,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tools.search_interception.rg_excludes",
@@ -5895,8 +5114,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "tools.defer",
@@ -5919,8 +5137,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.memory.enabled",
@@ -5954,8 +5171,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.memory.mode",
@@ -5989,8 +5205,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.memory.limit_mb",
@@ -6013,8 +5228,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.memory.soft_fraction",
@@ -6037,8 +5251,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.query_budget.enabled",
@@ -6072,8 +5285,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.query_budget.stop",
@@ -6107,8 +5319,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "bash.query_budget.seconds",
@@ -6131,8 +5342,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "shell_environment.mode",
@@ -6166,8 +5376,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "shell_environment.inherit",
@@ -6190,8 +5399,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "shell_environment.exclude",
@@ -6214,8 +5422,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.lmstudio.base_url",
@@ -6238,8 +5445,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.lmstudio.models",
@@ -6262,8 +5468,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.ollama.base_url",
@@ -6286,8 +5491,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.ollama.models",
@@ -6310,8 +5514,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.vllm.base_url",
@@ -6334,8 +5537,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.vllm.models",
@@ -6358,8 +5560,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.llamacpp.base_url",
@@ -6382,8 +5583,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.llamacpp.models",
@@ -6406,8 +5606,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openai-compatible.base_url",
@@ -6430,8 +5629,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "providers.openai-compatible.models",
@@ -6454,8 +5652,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "conversation_length",
@@ -6478,8 +5675,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "detail_length",
@@ -6502,8 +5698,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "max_learnings_history",
@@ -6526,8 +5721,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "classification.notice",
@@ -6550,8 +5744,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "console.max_live",
@@ -6574,8 +5767,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "console.max_owner",
@@ -6598,8 +5790,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "console.user_reserved",
@@ -6622,8 +5813,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "desktop.launch_command",
@@ -6646,8 +5836,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "static.roots",
@@ -6670,8 +5859,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.listen_address",
@@ -6694,8 +5882,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.port",
@@ -6718,8 +5905,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.advertise_hosts",
@@ -6742,8 +5928,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.audit.max_bytes",
@@ -6766,8 +5951,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.audit.generations",
@@ -6790,8 +5974,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.audit.max_age_days",
@@ -6814,8 +5997,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.rollout_on_update",
@@ -6849,8 +6031,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.max_handshakes",
@@ -6873,8 +6054,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.sync.debounce_s",
@@ -6897,8 +6077,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.sync.tick_s",
@@ -6921,8 +6100,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "network.credentials.grant_ttl_s",
@@ -6945,8 +6123,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["auth", "expiry"]
+			"unit": ""
 		},
 		{
 			"key": "network.credentials.github.repositories",
@@ -6969,15 +6146,14 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["auth", "access", "permissions", "scopes"]
+			"unit": ""
 		},
 		{
 			"key": "hub.auto_update.agents",
 			"section": "hub",
-			"label": "Auto-update agent/skill links",
+			"label": "Auto-update agents",
 			"kind": "bool",
-			"help": "Off pauses updates for all agent/skill links; on subscribes new ones.",
+			"help": "Merge hub updates into pulled agents automatically.",
 			"value": true,
 			"default": true,
 			"is_default": true,
@@ -6988,12 +6164,12 @@
 				{
 					"value": true,
 					"label": "on",
-					"description": "subscribe new agent and skill links"
+					"description": "merge hub updates automatically"
 				},
 				{
 					"value": false,
 					"label": "off",
-					"description": "pause updates for all agent and skill links"
+					"description": "only tell me; I apply them"
 				}
 			],
 			"empty_unsets": false,
@@ -7004,8 +6180,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hub.auto_update.teams",
@@ -7039,8 +6214,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "hub.check_interval_min",
@@ -7048,8 +6222,8 @@
 			"label": "Check interval (minutes)",
 			"kind": "int",
 			"help": "Minutes between hub update checks (both modes).",
-			"value": 15,
-			"default": 15,
+			"value": 60,
+			"default": 60,
 			"is_default": true,
 			"minimum": 5,
 			"maximum": 1440,
@@ -7063,43 +6237,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "hub.org.auto_enrol",
-			"section": "hub_org",
-			"label": "Add new organization items",
-			"kind": "bool",
-			"help": "Pull new organization agents, teams and skills and keep them subscribed.",
-			"value": true,
-			"default": true,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "add new items automatically"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "only when I run lop hub org pull"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "agents.auto_update.seeds",
@@ -7133,8 +6271,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.enabled",
@@ -7168,8 +6305,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.name",
@@ -7192,8 +6328,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.cadence.at",
@@ -7216,8 +6351,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.cadence.interval_hours",
@@ -7240,8 +6374,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.cadence.paused",
@@ -7275,8 +6408,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.cadence.max_extra_per_day",
@@ -7299,8 +6431,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.cadence.min_gap_minutes",
@@ -7323,8 +6454,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "aida.onboarding.nudge_days",
@@ -7347,174 +6477,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.enabled",
-			"section": "librarian",
-			"label": "Librarian enabled",
-			"kind": "bool",
-			"help": "Read at boot and by /v1/desktop/librarian; a disabled install never creates her session.",
-			"value": true,
-			"default": true,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "enabled"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "disabled"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.name",
-			"section": "librarian",
-			"label": "Display name",
-			"kind": "text",
-			"help": "The name her pinned conversation and every receipt use.",
-			"value": "Librarian",
-			"default": "Librarian",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "Librarian",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.cadence.at",
-			"section": "librarian",
-			"label": "Daily pass time",
-			"kind": "text",
-			"help": "Local wall-clock HH:MM. An invalid value falls back to 03:30 at the next arm.",
-			"value": "03:30",
-			"default": "03:30",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "03:30",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.cadence.paused",
-			"section": "librarian",
-			"label": "Daily pass paused",
-			"kind": "bool",
-			"help": "Pausing removes her scheduled rows; resuming re-arms the next pass. The desktop and /librarian write the same key.",
-			"value": false,
-			"default": false,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "paused"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "running"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.cadence.max_extra_per_day",
-			"section": "librarian",
-			"label": "Extra passes / day",
-			"kind": "int",
-			"help": "How many extra passes she may request per day. 0 disables extra passes.",
-			"value": 1,
-			"default": 1,
-			"is_default": true,
-			"minimum": 0,
-			"maximum": 12,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "librarian.cadence.min_gap_minutes",
-			"section": "librarian",
-			"label": "Minimum gap (minutes)",
-			"kind": "int",
-			"help": "Minimum spacing between her passes; closer requests are refused.",
-			"value": 720,
-			"default": 720,
-			"is_default": true,
-			"minimum": 0,
-			"maximum": 1440,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "projects.stale_after_hours",
@@ -7537,8 +6500,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "wakes.triggers.enabled",
@@ -7572,8 +6534,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "wakes.triggers.max_per_day",
@@ -7596,8 +6557,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "wakes.triggers.min_gap_minutes",
@@ -7620,8 +6580,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "wakes.triggers.project_staleness.enabled",
@@ -7655,8 +6614,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "proactive.patience.default_ms",
@@ -7679,8 +6637,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "proactive.patience.backoff",
@@ -7703,8 +6660,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "proactive.patience.max_attempts",
@@ -7727,8 +6683,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "proactive.patience.episode_ttl_ms",
@@ -7751,8 +6706,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "proactive.patience.max_pending",
@@ -7775,8 +6729,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.gender",
@@ -7815,8 +6768,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["tts", "audio"]
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.tone",
@@ -7865,8 +6817,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["tts", "audio"]
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.expressiveness",
@@ -7905,8 +6856,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.pace",
@@ -7929,8 +6879,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.language",
@@ -7953,8 +6902,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["tts", "audio", "locale"]
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.accent",
@@ -7977,8 +6925,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "speech.voice.instructions",
@@ -8001,53 +6948,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["tts", "audio"]
-		},
-		{
-			"key": "speech.transcription.cleanup",
-			"section": "speech",
-			"label": "Transcription cleanup",
-			"kind": "enum",
-			"help": "How dictation strips filler words and non-speech cues. auto uses the provider's native cleanup where available and the conservative client rules elsewhere; provider and client each use only one of the two mechanisms; off keeps the verbatim transcript. A per-request `cleanup` field still wins.",
-			"value": "auto",
-			"default": "auto",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": "auto",
-					"label": "auto",
-					"description": "Native, else client rules."
-				},
-				{
-					"value": "provider",
-					"label": "provider",
-					"description": "Native only where offered."
-				},
-				{
-					"value": "client",
-					"label": "client",
-					"description": "Client rules; request raw copy."
-				},
-				{
-					"value": "off",
-					"label": "off",
-					"description": "Verbatim; no filler or cue removal."
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": ["stt", "speech to text", "voice", "audio"]
+			"unit": ""
 		},
 		{
 			"key": "team_bridge.enabled",
@@ -8070,8 +6971,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "team_bridge.session",
@@ -8079,126 +6979,6 @@
 			"label": "CoS session",
 			"kind": "text",
 			"help": "Session that may be woken for new messages; empty = badge only.",
-			"value": "",
-			"default": "",
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "team_bridge.screening.budget_per_hour",
-			"section": "team_bridge",
-			"label": "Screening ceiling per hour",
-			"kind": "int",
-			"help": "Rolling-hour ceiling on screening for the whole account, shared by every session and machine on it. Applies immediately, no restart.",
-			"value": 400,
-			"default": 400,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 100000,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "screenings",
-			"synonyms": []
-		},
-		{
-			"key": "team_bridge.screening.unaddressed_budget_per_hour",
-			"section": "team_bridge",
-			"label": "Unaddressed ceiling per hour",
-			"kind": "int",
-			"help": "Carved out of the account ceiling, never added to it: everything except a person addressing your agent may use at most this much. The rest is kept for people.",
-			"value": 350,
-			"default": 350,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 100000,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "screenings",
-			"synonyms": []
-		},
-		{
-			"key": "team_bridge.screening.ambient_budget_per_hour",
-			"section": "team_bridge",
-			"label": "Chatter ceiling per hour",
-			"kind": "int",
-			"help": "Carved out of the unaddressed ceiling, never added to the account ceiling: agent chatter in shared rooms may use at most this much of the hour.",
-			"value": 300,
-			"default": 300,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 100000,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "screenings",
-			"synonyms": []
-		},
-		{
-			"key": "team_bridge.screening.sender_budget_per_hour",
-			"section": "team_bridge",
-			"label": "Per-sender ceiling per hour",
-			"kind": "int",
-			"help": "One sender's share of the account ceiling; half of it by default. A sender can never exceed the account ceiling itself.",
-			"value": 200,
-			"default": 200,
-			"is_default": true,
-			"minimum": 1,
-			"maximum": 100000,
-			"members": [],
-			"choices": [],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "screenings",
-			"synonyms": []
-		},
-		{
-			"key": "team_bridge.screening.model",
-			"section": "team_bridge",
-			"label": "Screening model",
-			"kind": "text",
-			"help": "Which model screens incoming agent messages first. Empty uses the tested order, the safest default. A choice only moves that model to the front: if it is unavailable or out of quota, this machine's own model and fallbacks still screen, so a preference never blocks messages.",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -8214,8 +6994,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		},
 		{
 			"key": "asks.lapsed_visible_for",
@@ -8259,43 +7038,7 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
-		},
-		{
-			"key": "remote_compute.enabled",
-			"section": "remote_compute",
-			"label": "Remote compute",
-			"kind": "bool",
-			"help": "Preview: sends work to Radient compute, bound to one mesh network.",
-			"value": false,
-			"default": false,
-			"is_default": true,
-			"minimum": null,
-			"maximum": null,
-			"members": [],
-			"choices": [
-				{
-					"value": true,
-					"label": "on",
-					"description": "remote runs allowed"
-				},
-				{
-					"value": false,
-					"label": "off",
-					"description": "local only"
-				}
-			],
-			"empty_unsets": false,
-			"redacted": false,
-			"warning": "",
-			"placeholder": "",
-			"gated_by": null,
-			"state_note": "",
-			"read_only": false,
-			"hotkey_scope": "",
-			"unit": "",
-			"synonyms": []
+			"unit": ""
 		}
 	]
 }
