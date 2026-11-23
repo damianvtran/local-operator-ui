@@ -256,6 +256,6 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "پاس کی کی اس درخواست کی میعاد ختم ہو گئی",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "پاس کی کی یہ درخواست منسوخ ہو گئی",
 	"ui.browser.browser_url_bar.reload_shortcut": "دوبارہ لوڈ کریں ({shortcut})",
-	"ui.browser.approvals_card.native_passkey_notice": "اس ٹیب نے پاس کی مانگی ہے۔ یہ اطلاع بند کرنے سے درخواست منسوخ نہیں ہوگی۔",
-	"ui.browser.approvals_card.dismiss_passkey_notice": "پاس کی کی اطلاع بند کریں"
+	"ui.browser.approvals_card.native_passkey_notice": "اس سائٹ نے پاس کی مانگی ہے۔ یہ نوٹس ہٹانے سے درخواست منسوخ نہیں ہوگی۔",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "پاس کی نوٹس ہٹائیں"
 }

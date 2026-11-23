@@ -256,6 +256,6 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Срок этого запроса ключа доступа истёк",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Этот запрос ключа доступа отменён",
 	"ui.browser.browser_url_bar.reload_shortcut": "Перезагрузить ({shortcut})",
-	"ui.browser.approvals_card.native_passkey_notice": "Эта вкладка запросила ключ доступа. Если закрыть уведомление, запрос не отменится.",
-	"ui.browser.approvals_card.dismiss_passkey_notice": "Закрыть уведомление о ключе доступа"
+	"ui.browser.approvals_card.native_passkey_notice": "Этот сайт запросил ключ доступа. Если скрыть это уведомление, запрос не отменится.",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "Скрыть уведомление о ключе доступа"
 }

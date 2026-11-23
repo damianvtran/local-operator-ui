@@ -256,6 +256,6 @@
 	"ui.browser.browser_tab_strip.close_conversation_tabs": "Fermer les {count, plural, one {{count, number, ::group-off} onglet} many {{count, number, ::group-off} d’onglets} other {{count, number, ::group-off} onglets}} de cette conversation",
 	"ui.browser.browser_file_transfer_row.attached_verb": "{count, plural, one {a été joint à} many {ont été joints à} other {ont été joints à}}",
 	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, one {{count, number, ::group-off} de plus} many {{count, number, ::group-off} de plus} other {{count, number, ::group-off} de plus}}",
-	"ui.browser.approvals_card.native_passkey_notice": "Ce site demande une clé d’accès. Fermer cet avis n’annule pas la demande.",
-	"ui.browser.approvals_card.dismiss_passkey_notice": "Fermer l’avis de clé d’accès"
+	"ui.browser.approvals_card.native_passkey_notice": "Ce site a demandé une clé d’accès. Masquer cet avis n’annulera pas la demande.",
+	"ui.browser.approvals_card.dismiss_passkey_notice": "Masquer l’avis de clé d’accès"
 }

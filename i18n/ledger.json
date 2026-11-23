@@ -1503,33 +1503,16 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "280f949126f502ad23bb22f79c60e343719911bb324e5f12252b37b851a32b80",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "949573a5b3324d578ba7967727e009ee3b3c66c586184d7238f187485a612fb6",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "c2ec65bc018c-pk1868-r2-es",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-es.json",
-					"receipt_sha256": "43967a5cb42ff34b01f19abb9c401635c1c94fe5d96556ea79214f35da73f69b",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -1827,6 +1810,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-es.json",
 							"receipt_sha256": "833da7caa6fc2962df7c30ec4957b546ab0fa7eed82f86490df3b4f78a723a4e",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "280f949126f502ad23bb22f79c60e343719911bb324e5f12252b37b851a32b80",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c2ec65bc018c-pk1868-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-es.json",
+							"receipt_sha256": "43967a5cb42ff34b01f19abb9c401635c1c94fe5d96556ea79214f35da73f69b",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -15565,33 +15571,16 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "cb1031802424e377015c5f712b293b7ca9efcd9667ef9dc0e80ee6cc28ef82a2",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "82967c56173a9cbbe50845f1457a538448b0759314c3bc390fbeae17eed81eda",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean-with-findings",
-					"instance": "c2ec65bc018c-pk1868-r2-fr",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-fr.json",
-					"receipt_sha256": "362d4a1cb92e5b66ab1a9eeb88de9204b1ec98550fffc5e24b4b7b859ddba6f2",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -15889,6 +15878,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-fr.json",
 							"receipt_sha256": "4372e3c53c1eaaa3d56fae2355366a477553ea26c0713c05d2bdb0651488c972",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "cb1031802424e377015c5f712b293b7ca9efcd9667ef9dc0e80ee6cc28ef82a2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c2ec65bc018c-pk1868-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-fr.json",
+							"receipt_sha256": "362d4a1cb92e5b66ab1a9eeb88de9204b1ec98550fffc5e24b4b7b859ddba6f2",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -30251,33 +30263,16 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "4b141053c9a9261ef4ae625b69b9f7eaa6b3e57a6461d1c4d5c5be0f351c7396",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "e62592154b47d7c2bdf79c83debc30efbf84540c8db26f78ee068b5b346b1590",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-19); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "c2ec65bc018c-pk1868-r2-hi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-hi.json",
-					"receipt_sha256": "04be1b3e7b2f8080265825336c15ce15cb8bd3cc075a07bb8ad6422721eabb78",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -30575,6 +30570,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-hi.json",
 							"receipt_sha256": "35e73b26307ba450af8ed6db8b5031358b2c3b33e136e3246da763456081e5bd",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "4b141053c9a9261ef4ae625b69b9f7eaa6b3e57a6461d1c4d5c5be0f351c7396",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c2ec65bc018c-pk1868-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-hi.json",
+							"receipt_sha256": "04be1b3e7b2f8080265825336c15ce15cb8bd3cc075a07bb8ad6422721eabb78",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -44494,33 +44512,16 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "3ecc38f38dcaff0ab995144f74f88080ba61b5431293c0661a3c0206227cb416",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "bba2d3c745048f358e72f3743d34a8e6ceeceb1ccd84a6b93657f5babcdd19fe",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / deepseek/deepseek-flash / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean-with-findings",
-					"instance": "c2ec65bc018c-pk1868-r2-ru",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ru.json",
-					"receipt_sha256": "0d0e72e7823f3e397faacfc407aa02560b2e20501b90fee7d45ec516d01ca284",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -44817,6 +44818,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ru.json",
 							"receipt_sha256": "485014ff77a2ec0502bddfb4697028f68907cddc06d69e83f254b182cae26ee7",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "3ecc38f38dcaff0ab995144f74f88080ba61b5431293c0661a3c0206227cb416",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c2ec65bc018c-pk1868-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ru.json",
+							"receipt_sha256": "0d0e72e7823f3e397faacfc407aa02560b2e20501b90fee7d45ec516d01ca284",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -58602,33 +58626,16 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "16011cfbec6d47aacc55b580521787526448cb2977177b54ea679b3e678fa68d",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "1c1899a53a750e15f7ced72b519ec99c2fe959256e1709817d9de836eb43b441",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-19); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "c2ec65bc018c-pk1868-r2-ur",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ur.json",
-					"receipt_sha256": "d8f33a236d741367ca8b3b6f58f47d335ace589cb5306da85fdf786d28b07f21",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -58949,6 +58956,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ur.json",
 							"receipt_sha256": "c6ce0ea19da2f5199cb12e50b0c5c03b419fed76af4f228d1c576ee52a31449f",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "16011cfbec6d47aacc55b580521787526448cb2977177b54ea679b3e678fa68d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c2ec65bc018c-pk1868-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ur.json",
+							"receipt_sha256": "d8f33a236d741367ca8b3b6f58f47d335ace589cb5306da85fdf786d28b07f21",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -72805,33 +72835,16 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "fe1bc7b257c0efd2ad8dc3fb522ac2af6156688b03edc68890de6cbf9107ff4f",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "1ac85a28372d9897d35b260adefc6c46b686269dacda9aae977ad6a61ec7fb08",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "c2ec65bc018c-pk1868-r2-vi",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-vi.json",
-					"receipt_sha256": "747650aa34d85a18e411580142f6e881985ef99c6fed32527f4a2989a4c8581f",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -73129,6 +73142,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-vi.json",
 							"receipt_sha256": "6879942c6677521c2aeb33d79376d4fa8acd96a3ca892bb52824bc020a312334",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "fe1bc7b257c0efd2ad8dc3fb522ac2af6156688b03edc68890de6cbf9107ff4f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c2ec65bc018c-pk1868-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-vi.json",
+							"receipt_sha256": "747650aa34d85a18e411580142f6e881985ef99c6fed32527f4a2989a4c8581f",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -87655,33 +87691,16 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
-			"target_sha256": "f6755b48fd9efc4f6ece83b995f33f067263047df8dbbae845826eae64e259c2",
+			"source_sha256": "985df47acf59cbf905b84c2f21dc37a76c5aa1c47a7c658fe26b95d70b8d7de1",
+			"target_sha256": "c02206424237bd5cb6c91681aa0ca6f55d86ed039ee7f258f5562be268fdc51b",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (i18n-translator / openai/gpt-6.1-sol / 2026-10-18); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row). Earlier row note: Six new browser_url_bar.address_* keys were authored by the implementing coder job 0f978ef067ae (deepseek/deepseek-flash) on 2026-10-20; all carried keys are byte-identical to the previously audited translation."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Row restarted for PR #1964 (lopdev coder, session 66a6c05928af): 8 browser_passkey_custody.* keys removed, approvals_card.native_passkey_notice and approvals_card.dismiss_passkey_notice added; every other key byte-identical to the superseded audited bytes."
 			},
-			"auditors": [
-				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "c2ec65bc018c-pk1868-r2-zh-cn",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-zh-cn.json",
-					"receipt_sha256": "e9b2930da51ed62a1d54dd65e441f8dca8303c7dcf94fa8284e3a58ebc847744",
-					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
-				}
-			],
-			"status": "audited",
+			"auditors": [],
+			"status": "pending",
 			"superseded": [
 				{
 					"source_sha256": "106e8aff158ee6957bdccf93bbae53e62a0724afdc406e8faa5743ced980d276",
@@ -88003,6 +88022,29 @@
 							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-zh-cn.json",
 							"receipt_sha256": "0b5c31284c12aeb3823d35922ad5146d3520138e667990f4ff8b9d15579684a2",
 							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+					"target_sha256": "f6755b48fd9efc4f6ece83b995f33f067263047df8dbbae845826eae64e259c2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c2ec65bc018c-pk1868-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-zh-cn.json",
+							"receipt_sha256": "e9b2930da51ed62a1d54dd65e441f8dca8303c7dcf94fa8284e3a58ebc847744",
+							"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
