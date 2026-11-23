@@ -15,6 +15,16 @@
 	);
 }
 
+/* Full app glass already supplies the conversation backing. Lay the same
+   ellipse over it as a tint, not as a second ground; sidebar-only glass
+   deliberately keeps the solid conversation's paper above. */
+html[data-glass~="canvas"] [data-lo-composer-splash]:has(.new-chat-horizon) {
+	--horizon-paper: light-dark(
+		color-mix(in oklab, var(--lo-sunken) 22%, transparent),
+		color-mix(in oklab, var(--lo-media-surface) 24%, transparent)
+	);
+}
+
 .new-chat-horizon {
 	position: relative;
 	/* Keep the existing 32px mark slot: the extra ink borrows from the blank

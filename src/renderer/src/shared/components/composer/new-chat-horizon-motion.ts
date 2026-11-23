@@ -1,6 +1,10 @@
 const TAU = 2 * Math.PI;
 const ARRIVAL_MS = 4500;
 const STEER_MS = 620;
+const PAINT_PERIOD = 1000 / 60;
+const RAF_LEEWAY_MS = 1; // 60/120 Hz timestamps jitter around the paint deadline.
+const LATE_FRAME_MS = 28;
+const LATE_FRAME_STREAK = 4;
 const MAX_DPR = 1.5;
 const LIGHT_LEVELS = 8;
 const MARK_Y = 150; // Matches the canvas's CSS offset from the fixed mark slot.
@@ -64,6 +68,40 @@ function etch(): Grain[] {
 
 const GRAINS = etch();
 
+const AXIAL_STEPS = 1024;
+const AXIAL_STRIDE = 7;
+let axialTable: Float32Array | undefined;
+
+function axialProfile() {
+	// Axial shaping depends only on the wrapped position, not on pose, grain,
+	// or sheet width. Interpolate the smooth terms from one shared 28 KiB table;
+	// keep the twist, depth, recess and quantization in projected coordinates.
+	const table = new Float32Array((AXIAL_STEPS + 1) * AXIAL_STRIDE);
+	for (let i = 0; i <= AXIAL_STEPS; i++) {
+		const u = i / AXIAL_STEPS;
+		const axis = u - 0.5;
+		const flank = feather(Math.abs(axis) / 0.16);
+		const taper = feather(u / 0.25) * feather((1 - u) / 0.26);
+		const open = feather(u / 0.145) * feather((1 - u) / 0.17);
+		const side = feather((axis + 0.24) / 0.53);
+		const offset = i * AXIAL_STRIDE;
+		table[offset] = TAU * (2.76 * axis + 0.031 * Math.sin(TAU * axis));
+		table[offset + 1] = flank;
+		table[offset + 2] = taper;
+		// Asymmetric lobes borrow headroom above the mark, not from the copy.
+		table[offset + 3] = (91 - 20 * side + 10 * Math.sin(TAU * u)) * taper;
+		table[offset + 4] = -flank * (44 - 27 * side);
+		table[offset + 5] = open ** 1.75 * (0.88 + 0.12 * (1 - side));
+		table[offset + 6] = feather((0.31 - Math.abs(axis)) / 0.17);
+	}
+	return table;
+}
+
+function axialAt(table: Float32Array, offset: number, fraction: number) {
+	const left = table[offset];
+	return left + (table[offset + AXIAL_STRIDE] - left) * fraction;
+}
+
 // Sample the helix at each grain's NEW axial position as it streams right.
 // Roll changes projected depth and width as well as height. All three would
 // stay identical under an affine move of an already-rendered flat texture.
@@ -82,48 +120,60 @@ export function projectHelix(
 	const position = point.u + pose.advance * point.speed;
 	const u = position - Math.floor(position);
 	const axis = u - 0.5;
-	const flank = feather(Math.abs(axis) / 0.16);
-	const taper = feather(u / 0.25) * feather((1 - u) / 0.26);
-	const open = feather(u / 0.145) * feather((1 - u) / 0.17);
+	axialTable ??= axialProfile();
+	const table = axialTable;
+	const sample = u * AXIAL_STEPS;
+	const index = Math.floor(sample);
+	const offset = index * AXIAL_STRIDE;
+	const fraction = sample - index;
+	const flank = axialAt(table, offset + 1, fraction);
+	const taper = axialAt(table, offset + 2, fraction);
 	const squeeze = Math.min(1, width / 680);
 	const phase =
-		TAU * (2.76 * axis + 0.031 * Math.sin(TAU * axis)) +
+		axialAt(table, offset, fraction) +
 		point.phase +
 		pose.roll * (0.12 + 0.88 * flank);
 	const depth = Math.cos(phase);
-	const side = feather((axis + 0.24) / 0.53);
-	// Unequal lobes borrow headroom above the glyph, not space from the
-	// welcome line. At rest the two centerlines intersect at the mark.
-	const envelope = (91 - 20 * side + 10 * Math.sin(TAU * u)) * taper;
+	const envelope = axialAt(table, offset + 3, fraction);
 	// Collapse axial foreshortening at the crossing so both centerlines, not
 	// just the mean of the two strands, actually meet the stationary glyph.
 	const x = width * (0.5 + axis * 0.96) + depth * 9 * taper * squeeze * flank;
 	const y =
 		MARK_Y +
 		squeeze *
-			(-flank * (44 - 27 * side) +
+			(axialAt(table, offset + 4, fraction) +
 				Math.sin(phase) * envelope * point.spread +
 				point.grain * (0.33 + 0.67 * taper) +
 				pose.lift * flank * taper);
 	// The engraving survives on bare paper: the crossing passes through a
 	// soft elliptical gap rather than painting a hard plate behind the mark.
-	const recess = feather(
-		(Math.hypot((x - width / 2) / 21, (y - MARK_Y) / 23) - 0.92) / 0.36,
-	);
-	const lower = feather((y - MARK_Y - 24) / 21);
-	const copySpace = 1 - lower * feather((0.31 - Math.abs(axis)) / 0.17);
+	const dx = (x - width / 2) / 21;
+	let recess = 1;
+	// The vast majority of the sheet is outside the recess. Only the narrow
+	// transition needs a square root; the interior and exterior already clip.
+	if (Math.abs(dx) < 1.28) {
+		const dy = (y - MARK_Y) / 23;
+		const r2 = dx * dx + dy * dy;
+		if (r2 < 1.28 ** 2) {
+			recess = r2 <= 0.92 ** 2 ? 0 : feather((Math.sqrt(r2) - 0.92) / 0.36);
+		}
+	}
+	const copySpace =
+		y <= MARK_Y + 24
+			? 1
+			: 1 -
+				feather((y - MARK_Y - 24) / 21) * axialAt(table, offset + 6, fraction);
 	const breakup = 0.9 + 0.1 * Math.cos(43 * u + point.phase * 1.3) ** 2;
 	const front = (depth + 1) / 2;
 	target.x = x;
 	target.y = y;
 	target.alpha =
-		open ** 1.75 *
+		axialAt(table, offset + 5, fraction) *
 		recess *
 		copySpace ** 2 *
 		breakup *
 		point.weight *
-		(0.59 + 0.41 * front) *
-		(0.88 + 0.12 * (1 - side));
+		(0.59 + 0.41 * front);
 	target.radius = point.size * (0.72 + 0.28 * front) * (0.8 + 0.2 * squeeze);
 	target.near = depth > -0.1;
 }
@@ -150,12 +200,17 @@ export function trackNewChatHorizon(
 	let pose = arriving ? arrival(0) : REST;
 	let arrivalStarted: number | undefined;
 	let steerStarted: number | undefined;
+	let nextPaintAt: number | undefined;
+	let previousTick: number | undefined;
+	let lateFrames = 0;
+	let budgetLimited = false;
 	let pointer: { roll: number; lift: number } = { roll: 0, lift: 0 };
 	let from = pointer;
 	let toward = pointer;
 	let bounds: DOMRect | undefined;
 	let near: string;
 	let far: string;
+	let light = false;
 	const batches = Array.from(
 		{ length: 2 * LIGHT_LEVELS },
 		() => [] as number[],
@@ -190,7 +245,12 @@ export function trackNewChatHorizon(
 			const batch = batches[i];
 			if (!batch.length) continue;
 			ctx.fillStyle = i < LIGHT_LEVELS ? far : near;
-			ctx.globalAlpha = ((1 + (i % LIGHT_LEVELS)) / LIGHT_LEVELS) * 0.92;
+			const level = 1 + (i % LIGHT_LEVELS);
+			const opacity = (level / LIGHT_LEVELS) * 0.92;
+			// Lift only light paper's midtones: the finest grains still fade
+			// at the same point and the brightest ink never exceeds dark's peak.
+			ctx.globalAlpha =
+				light && level > 1 && level < LIGHT_LEVELS ? opacity * 1.12 : opacity;
 			ctx.beginPath();
 			for (let j = 0; j < batch.length; j += 3) {
 				const x = batch[j];
@@ -208,6 +268,7 @@ export function trackNewChatHorizon(
 		const style = view.getComputedStyle(canvas);
 		near = style.color;
 		far = style.outlineColor;
+		light = style.colorScheme === "light";
 		paint();
 	};
 	const resize = () => {
@@ -226,6 +287,7 @@ export function trackNewChatHorizon(
 	};
 	const canMove = () =>
 		!quiet &&
+		!budgetLimited &&
 		!reduced.matches &&
 		!forced.matches &&
 		!doc.hidden &&
@@ -233,14 +295,52 @@ export function trackNewChatHorizon(
 	const stop = () => {
 		if (frame !== undefined) view.cancelAnimationFrame(frame);
 		frame = undefined;
-		arrivalStarted = steerStarted = undefined;
+		arrivalStarted = steerStarted = nextPaintAt = previousTick = undefined;
+		lateFrames = 0;
 		canvas.dataset.loHorizonMotion = "still";
+	};
+	const settle = () => {
+		arriving = false;
+		stop();
+		pose = REST;
+		from = pointer = toward = { roll: 0, lift: 0 };
+		bounds = undefined;
 	};
 	const tick = (now: number) => {
 		frame = undefined;
 		if (!canMove()) {
 			stop();
 			return;
+		}
+		// A dropped frame can be ordinary input or a resize; don't react to
+		// one. A sustained ~30 Hz renderer should keep its time for the
+		// composer. Settle once and don't retry until the next splash mount.
+		lateFrames =
+			previousTick !== undefined && now - previousTick > LATE_FRAME_MS
+				? lateFrames + 1
+				: 0;
+		previousTick = now;
+		if (lateFrames === LATE_FRAME_STREAK) {
+			budgetLimited = true;
+			settle();
+			paint();
+			return;
+		}
+		// Keep one time-based motion on 60/120/144 Hz displays without
+		// repainting at the display refresh rate or accumulating drift.
+		// An endpoint gets its own exact paint even between deadlines.
+		const endOfMotion =
+			(arrivalStarted === undefined || now - arrivalStarted >= ARRIVAL_MS) &&
+			(steerStarted === undefined || now - steerStarted >= STEER_MS);
+		if (!endOfMotion) {
+			nextPaintAt ??= now;
+			const eligibleAt = now + RAF_LEEWAY_MS;
+			if (eligibleAt < nextPaintAt) {
+				frame = view.requestAnimationFrame(tick);
+				return;
+			}
+			const passed = Math.floor((eligibleAt - nextPaintAt) / PAINT_PERIOD);
+			nextPaintAt += (1 + passed) * PAINT_PERIOD;
 		}
 		let base = REST;
 		if (arrivalStarted !== undefined) {
@@ -305,11 +405,7 @@ export function trackNewChatHorizon(
 	const suspend = () => {
 		// A hidden or interrupted arrival never restarts by itself. On return
 		// the paper already holds its full settled impression.
-		arriving = false;
-		stop();
-		pose = REST;
-		from = pointer = toward = { roll: 0, lift: 0 };
-		bounds = undefined;
+		settle();
 		if (forced.matches && width && height) ctx.clearRect(0, 0, width, height);
 		resize();
 		paint();

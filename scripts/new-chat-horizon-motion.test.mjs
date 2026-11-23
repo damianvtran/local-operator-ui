@@ -48,12 +48,14 @@ function fixture({
 	let now = 0;
 	let dots = [];
 	let fills = [];
+	let paints = 0;
 	let rectReads = 0;
 	let colorReads = 0;
 	let palette = { color: "near ink", outlineColor: "far ink" };
 	const box = { left: 10, top: 50, width: 1280, height: 400 };
 	const ctx = {
 		clearRect() {
+			paints++;
 			dots = [];
 			fills = [];
 		},
@@ -146,6 +148,7 @@ function fixture({
 		observers,
 		dots: () => dots,
 		fills: () => fills,
+		paints: () => paints,
 		state: () => canvas.dataset.loHorizonMotion,
 		reads: () => [rectReads, colorReads],
 		pointer(type, clientX, clientY, pointerType = "mouse") {
@@ -180,6 +183,92 @@ function fixture({
 		},
 	};
 }
+
+// Direct (noninterpolated) projection at the pinned tuned control. This
+// oracle deliberately does not use the renderer's axial profile or clips.
+function exactProjection(point, pose, width) {
+	const unit = (n) => Math.min(1, Math.max(0, n));
+	const feather = (n) => unit(n) ** 2 * (3 - 2 * unit(n));
+	const tau = Math.PI * 2;
+	const position = point.u + pose.advance * point.speed;
+	const u = position - Math.floor(position);
+	const axis = u - 0.5;
+	const flank = feather(Math.abs(axis) / 0.16);
+	const taper = feather(u / 0.25) * feather((1 - u) / 0.26);
+	const open = feather(u / 0.145) * feather((1 - u) / 0.17);
+	const squeeze = Math.min(1, width / 680);
+	const phase =
+		tau * (2.76 * axis + 0.031 * Math.sin(tau * axis)) +
+		point.phase +
+		pose.roll * (0.12 + 0.88 * flank);
+	const depth = Math.cos(phase);
+	const side = feather((axis + 0.24) / 0.53);
+	const x = width * (0.5 + axis * 0.96) + depth * 9 * taper * squeeze * flank;
+	const y =
+		150 +
+		squeeze *
+			(-flank * (44 - 27 * side) +
+				Math.sin(phase) *
+					(91 - 20 * side + 10 * Math.sin(tau * u)) *
+					taper *
+					point.spread +
+				point.grain * (0.33 + 0.67 * taper) +
+				pose.lift * flank * taper);
+	const recess = feather(
+		(Math.hypot((x - width / 2) / 21, (y - 150) / 23) - 0.92) / 0.36,
+	);
+	const copySpace =
+		1 - feather((y - 174) / 21) * feather((0.31 - Math.abs(axis)) / 0.17);
+	const breakup = 0.9 + 0.1 * Math.cos(43 * u + point.phase * 1.3) ** 2;
+	const front = (depth + 1) / 2;
+	return {
+		x,
+		y,
+		alpha:
+			open ** 1.75 *
+			recess *
+			copySpace ** 2 *
+			breakup *
+			point.weight *
+			(0.59 + 0.41 * front) *
+			(0.88 + 0.12 * (1 - side)),
+		radius: point.size * (0.72 + 0.28 * front) * (0.8 + 0.2 * squeeze),
+		near: depth > -0.1,
+	};
+}
+
+test("axial interpolation stays subpixel and inside one negligible slice of an ink step", () => {
+	let seed = 0x93b1;
+	const sample = () => {
+		seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+		return seed / 0x100000000;
+	};
+	for (let i = 0; i < 12_000; i++) {
+		const point = {
+			u: sample(),
+			phase: 6.28 * sample() - 3.14,
+			spread: 0.64 + 0.52 * sample(),
+			grain: 16 * sample() - 8,
+			weight: 0.3 + 0.7 * sample(),
+			size: 0.46 + 1.16 * sample(),
+			speed: 0.87 + 0.26 * sample(),
+		};
+		const pose = {
+			advance: 0.14 * sample(),
+			roll: -2.17 + 2.49 * sample(),
+			lift: 20 * sample() - 10,
+		};
+		const width = [180, 390, 680, 900][i % 4];
+		const exact = exactProjection(point, pose, width);
+		const actual = {};
+		projectHelix(point, pose, width, actual);
+		assert.ok(Math.abs(exact.x - actual.x) < 0.01);
+		assert.ok(Math.abs(exact.y - actual.y) < 0.01);
+		assert.ok(Math.abs(exact.radius - actual.radius) < 0.0001);
+		assert.ok(Math.abs(exact.alpha - actual.alpha) < 0.001);
+		assert.equal(exact.near, actual.near);
+	}
+});
 
 function pointAt(u, phase, pose) {
 	const point = { u, phase, spread: 1, grain: 0, weight: 1, size: 1, speed: 1 };
@@ -260,6 +349,76 @@ test("paints a complete bounded canvas on layout, plays once and seeks repeatabl
 	h.stop();
 });
 
+test("60, 120 and 144 Hz displays all paint about 60 times a second", () => {
+	for (const hz of [60, 120, 144]) {
+		const h = fixture();
+		h.intersect(true);
+		const before = h.paints();
+		const callbacks = (4500 / 1000) * hz;
+		for (let i = 1; i < callbacks; i++) {
+			// Small deterministic timestamp jitter must not halve actual 60 Hz.
+			h.flush((i * 1000) / hz + (i % 2 === 0 ? -0.35 : 0.35));
+		}
+		h.flush(4500);
+		const painted = h.paints() - before;
+		assert.ok(Math.abs(painted - 270) <= 2, `${hz} Hz painted ${painted}`);
+		assert.equal(h.frames.size, 0);
+		h.stop();
+	}
+});
+
+test("the exact rest pose is painted even before the next paint deadline", () => {
+	const h = fixture();
+	const still = fixture({ quiet: true });
+	h.intersect(true);
+	h.flush(4485);
+	const before = h.paints();
+	h.flush(4490);
+	assert.equal(h.paints(), before);
+	h.flush(4500);
+	assert.equal(h.paints(), before + 1);
+	assert.deepEqual(h.dots(), still.dots());
+	assert.equal(h.frames.size, 0);
+	h.stop();
+	still.stop();
+});
+
+test("sustained late frames settle once and stop decorative work for the mounted splash", () => {
+	const h = fixture();
+	const still = fixture({ quiet: true });
+	h.intersect(true);
+	for (const now of [17, 50, 83, 116, 133]) h.flush(now);
+	assert.equal(h.state(), "running", "an isolated delay streak recovers");
+	h.pointer("pointermove", 1290, 450);
+	for (const now of [166, 199, 232]) h.flush(now);
+	const before = h.paints();
+	h.flush(265);
+	assert.equal(h.paints(), before + 1);
+	assert.deepEqual(
+		h.dots(),
+		still.dots(),
+		"the degraded pose is the exact unsteered rest pose",
+	);
+	assert.equal(h.state(), "still");
+	h.pointer("pointermove", 10, 50);
+	h.pointer("pointerleave");
+	h.preview();
+	assert.equal(h.frames.size, 0);
+	assert.equal(h.paints(), before + 1);
+	h.visibility(true);
+	h.visibility(false);
+	h.motion.set(true);
+	h.motion.set(false);
+	assert.equal(
+		h.frames.size,
+		0,
+		"environment changes do not re-arm the degraded scene",
+	);
+	assert.deepEqual(h.dots(), still.dots());
+	h.stop();
+	still.stop();
+});
+
 test("shipping configuration ignores preview seeks and replays", () => {
 	const h = fixture({ preview: false });
 	h.intersect(true);
@@ -304,6 +463,26 @@ test("mouse input eases to a clamped pose, repaints theme/resize, and rests afte
 	h.resize(400);
 	assert.equal(h.canvas.width, 600);
 	assert.ok(h.dots().every(({ x }) => x < 400));
+	assert.equal(h.frames.size, 0);
+	h.stop();
+});
+
+test("light paper lifts only mid-ink levels and never changes grain geometry", () => {
+	const h = fixture({ quiet: true });
+	const dark = h.dots();
+	h.theme({ color: "near ink", outlineColor: "far ink", colorScheme: "light" });
+	const light = h.dots();
+	assert.ok(dark.some(({ opacity }) => opacity > 0.115 && opacity < 0.92));
+	assert.deepEqual(
+		light,
+		dark.map((dot) => ({
+			...dot,
+			opacity:
+				dot.opacity > 0.115 && dot.opacity < 0.92
+					? dot.opacity * 1.12
+					: dot.opacity,
+		})),
+	);
 	assert.equal(h.frames.size, 0);
 	h.stop();
 });
