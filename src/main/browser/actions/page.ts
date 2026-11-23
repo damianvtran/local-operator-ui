@@ -94,16 +94,12 @@ export async function read(
 	const code = `(${READ_FUNCTION})(${JSON.stringify(selector)})`;
 	let text: unknown;
 	try {
-		text = await deadline(
-			ctx.registry.guardRead(record, () =>
-				record.view.webContents.executeJavaScriptInIsolatedWorld(
-					ISOLATED_WORLD_ID,
-					[{ code }],
-				),
-			),
-			SCRIPTING_DEADLINE_MS,
-			`read(${selector})`,
-		);
+		const read = (): Promise<unknown> =>
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
+			);
+		text = await deadline(read(), SCRIPTING_DEADLINE_MS, `read(${selector})`);
 	} catch (error) {
 		// A syntax error in a selector reaches us as the isolated world's rejection;
 		// it is the caller's input, not a host fault.
@@ -251,11 +247,9 @@ export async function copy(
 	let answer: unknown;
 	try {
 		answer = await deadline(
-			ctx.registry.guardRead(record, () =>
-				record.view.webContents.executeJavaScriptInIsolatedWorld(
-					ISOLATED_WORLD_ID,
-					[{ code }],
-				),
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
 			),
 			SCRIPTING_DEADLINE_MS,
 			`copy(${selector})`,

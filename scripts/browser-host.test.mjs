@@ -2217,10 +2217,17 @@ test("hand-over and revoke settle only departing chooser generations", (t) => {
 		log: () => {},
 	});
 	t.after(() => chooser.dispose());
+	const forgotten = [];
 	registry.ownerChanged = replay(changed[1], {
 		engagement: { clear: () => {} },
 		webauthn: chooser,
 		nativePasskeyNotice: notices,
+		// A pending passkey request belonged to the authority that was answering
+		// it, so a hand-over or revoke drops that tab's request and nothing else
+		// (`extensions/auth-request.ts`).
+		authRequests: {
+			forget: (webContentsId, why) => forgotten.push([webContentsId, why]),
+		},
 		mustReloadOnOwnerChange: (owner) => owner === "agent",
 	});
 	const arrive = (requestId, record = tab, onAnswer = () => {}) => {
@@ -5864,6 +5871,9 @@ test("a hung page ends as the typed nav_timeout inside the published budget", as
 	contents.loadURL = () => new Promise(() => {});
 	const ctx = {
 		cdp: { send: async () => ({}), subscribe: () => () => {} },
+		// The one navigation choke point asks the registry whether a passkey
+		// request would be destroyed by this navigation; no request here.
+		registry: { assertNoConflictingAuthRequest: () => {} },
 		log: () => {},
 	};
 	const started = Date.now();

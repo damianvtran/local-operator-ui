@@ -26,7 +26,6 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/main/browser/user-attention";',
-			'export { PasskeyCustody } from "./src/main/browser/extensions/passkey-custody";',
 			'export { effectivePresentation } from "./src/main/browser/popups";',
 			'export * from "./src/renderer/src/shared/browser-user-attention";',
 			'export { CustodyHandoffs } from "./src/renderer/src/shared/browser-passkey-custody-handoff";',
@@ -47,7 +46,6 @@ const {
 	attentionArrivals,
 	CustodyHandoffs,
 	HeldPopups,
-	PasskeyCustody,
 	browserAttentionRows,
 	consentClickTarget,
 	createCustodyAttention,
@@ -87,45 +85,22 @@ function rig({ active = 7, tabs = [1, 7] } = {}) {
 
 // ---- main: the passkey custody hold ----------------------------------------
 
-test("passkey hold arrival: the tab is NOT activated and nothing is raised; the projection is re-published", () => {
+test("a passkey request arrival: the tab is NOT activated and nothing is raised; the projection is re-published", () => {
 	const { attention, calls, state } = rig();
-	const custody = new PasskeyCustody({
-		now: () => 500,
-		log: () => {},
-		onBegin: (view) => attention.onBegin(view),
-		onEnd: (view) => attention.onEnd(view),
-	});
-	assert.equal(
-		custody.admit({
-			webContentsId: 10,
-			tabId: 1,
-			url: PROMPT,
-			isInstalled: () => true,
-			frame: GONE,
-		}),
-		true,
-		"the agent is still locked out and the prompt admitted",
-	);
+	// A pending request is RECORDED and projected; it never arrives as a view
+	// steal (operator requirement, 2026-11-23). The old passkey WAITING row and
+	// the "paused on this tab" copy are gone with the tab lock
+	// (`extensions/auth-request.ts`), so this module is driven by the request view
+	// and nothing else.
+	attention.onBegin({ tabId: 1, at: 500 });
 	assert.deepEqual(
 		calls,
 		[["clearNotice", 1], ["changed"]],
 		"a stale notice band is cleared (R1) and the projection refreshed — nothing else",
 	);
 	assert.equal(state.active, 7, "the user's browser tab did not move");
-	assert.deepEqual(
-		custody.views(),
-		[
-			{
-				tabId: 1,
-				at: 500,
-				providerId: ONEPASSWORD,
-				kind: "quiet",
-				dismissed: false,
-			},
-		],
-		"the hold is listed; a quiet one is filtered out of the WAITING rows by the host",
-	);
-	assert.equal(custody.isHeld(10), true, "and the agent keeps waiting");
+	// A PASSIVE autofill card is not a request: nothing records it, so nothing can
+	// reach this module for it (see `scripts/auth-request.test.mjs`).
 });
 
 test("passkey hold: the row's click activates the tab; the hold ending gives the user's tab back", () => {

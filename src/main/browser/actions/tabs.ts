@@ -238,6 +238,13 @@ export async function close(
 	const handle = stringParam(params, "tab");
 	if (handle) {
 		const record = ctx.registry.requireSurface(handle);
+		// Same rule as the handle-less branch below, and the reason it is checked
+		// here too: `requireSurface` deliberately does NOT refuse a tab with a live
+		// passkey request, because the agent keeps working in it.
+		ctx.registry.assertNoConflictingAuthRequest(
+			record.view.webContents.id,
+			"close",
+		);
 		const closed = surfaceToken(record) ?? handle;
 		ctx.approvals.forgetDocument(closed);
 		ctx.registry.destroy(record.tabId);
@@ -264,9 +271,14 @@ export async function close(
 	const [record] = tabs;
 	if (!record)
 		throw new BrowserHostError("tab_closed", "no browser tab is open");
-	// The sole tab may be one the user is answering a password manager prompt in;
-	// closing it mid-answer is agent input like any other (review Q3).
-	ctx.registry.assertNotInCustody(record);
+	// A live passkey request does NOT lock the tab: closing it is the one action
+	// that would destroy the request the person is answering, so that — and only
+	// that — is refused (review Q3, retyped per the operator requirement of
+	// 2026-11-23).
+	ctx.registry.assertNoConflictingAuthRequest(
+		record.view.webContents.id,
+		"close",
+	);
 	const closed = surfaceToken(record) ?? "";
 	ctx.registry.destroy(record.tabId);
 	ctx.onChanged();

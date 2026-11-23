@@ -288,6 +288,12 @@ export async function navigateView(
 	approved: (candidate: URL) => boolean,
 	timeoutMs = 30_000,
 ): Promise<{ url: string; title: string }> {
+	// The ONE agent navigation choke point (`open` on a handed-over tab and
+	// `goto` both come through here). A live passkey request is a
+	// document-scoped promise in the document this would replace, so replacing it
+	// is the interfering action: refused, typed, and only for the tab that hosts
+	// the request. Read-and-input actions never reach this check.
+	ctx.registry.assertNoConflictingAuthRequest(view.webContents.id, "navigate");
 	const contents = view.webContents;
 	return withOriginGate(ctx, view, requester, approved, async () => {
 		const settled = settle(contents, timeoutMs);

@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
-import { custodyRefusal } from "./extensions/passkey-custody";
+import type { ConflictingAction } from "./extensions/auth-request";
 import {
 	displayTitleFor,
 	displayUrlFor,
@@ -371,15 +371,27 @@ export class TabRegistry {
 		private readonly onBeforeLayout: () => void = () => {},
 	) {}
 
-	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
-	 * after construction. Null refuses nothing. */
-	private custody: {
-		isHeld(webContentsId: number): boolean;
-		epoch(webContentsId: number): number;
+	/** Pending passkey requests (`extensions/auth-request.ts`), installed by the
+	 * host after construction. Null refuses nothing. */
+	private authRequests: {
+		conflict(webContentsId: number, action: ConflictingAction): Error | null;
 	} | null = null;
 
-	setCustodyGate(gate: TabRegistry["custody"]): void {
-		this.custody = gate;
+	setAuthRequestGate(gate: TabRegistry["authRequests"]): void {
+		this.authRequests = gate;
+	}
+
+	/**
+	 * Refuse only the actions that would cancel a passkey request pending in this
+	 * tab (`extensions/auth-request.ts`). Everything else proceeds: the tab is
+	 * still the agent's while a person answers a prompt in it.
+	 */
+	assertNoConflictingAuthRequest(
+		webContentsId: number,
+		action: ConflictingAction,
+	): void {
+		const conflict = this.authRequests?.conflict(webContentsId, action);
+		if (conflict) throw conflict;
 	}
 
 	/**
@@ -389,17 +401,7 @@ export class TabRegistry {
 	 * a held tab at the start; this closes the window between that check and the
 	 * answer, which is the one `cdp.ts` closes for CDP commands.
 	 */
-	async guardRead<T>(record: TabRecord, run: () => Promise<T>): Promise<T> {
-		const id = record.view.webContents.id;
-		const epoch = this.custody?.epoch(id) ?? 0;
-		const result = await run();
-		if (
-			this.custody &&
-			(this.custody.isHeld(id) || this.custody.epoch(id) !== epoch)
-		)
-			throw custodyRefusal();
-		return result;
-	}
+	// ---- pending passkey requests (extensions/auth-request.ts) ---------------
 
 	// ---- creation, addressing, listing ---------------------------------------
 
@@ -638,23 +640,14 @@ export class TabRegistry {
 				{ reason: "internal_page" },
 			);
 		}
-		// A password manager's passkey prompt is up in this tab and only the user
-		// may see or answer it. Refused here, before any action does anything, and
-		// again per command in `cdp.ts` for any path that does not come through here.
-		this.assertNotInCustody(record);
+		// NOTHING IS REFUSED HERE FOR A PASSKEY PROMPT (operator requirement,
+		// 2026-11-23): the reported bug was an agent tab that stopped serving its
+		// agent because a password manager's prompt — often its PASSIVE autofill card
+		// — was on screen. The prompt document itself is still not an agent target
+		// (`actions/frames.ts` `assertNotExtensionFrame`), and the three actions that
+		// would DESTROY a live request are refused where they are dispatched
+		// (`actions/tabs.ts` close, `actions/page.ts` navigation, `cdp.ts`).
 		return record;
-	}
-
-	/**
-	 * Refuse an agent path on a tab the user holds for a password manager prompt
-	 * (`extensions/passkey-custody.ts`), with the one custody refusal every agent
-	 * path answers. `requireSurface` calls it; a path that reaches a record
-	 * WITHOUT a handle (handle-less `close`, review Q3) must call it itself.
-	 */
-	assertNotInCustody(record: TabRecord): void {
-		if (this.custody?.isHeld(record.view.webContents.id)) {
-			throw custodyRefusal();
-		}
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */

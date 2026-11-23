@@ -42,16 +42,20 @@ export interface PasskeyNoticeView {
 }
 
 /**
- * A tab's passkey custody, when it has one
- * (`main/browser/extensions/passkey-custody.ts`): a password manager's prompt
- * is up in an agent-driven tab a person engaged, and the agent is paused on
- * that tab until the prompt closes. `at` identifies the hold, so a dismissal
- * of an earlier hold's notice cannot touch a later one.
+ * A pending authentication request, when a tab has one
+ * (`main/browser/extensions/auth-request.ts`): a password manager's or the
+ * platform's passkey prompt is live in an agent-driven tab a person engaged.
+ * The tab is NOT held: `requestId` identifies THIS request, so a dismissal of an
+ * earlier request's notice cannot touch a later one, and only the actions that
+ * would destroy the request are refused (`close`, `navigate`, driving the
+ * provider's own prompt document).
  */
-export interface PasskeyCustodyView {
+export interface PendingAuthRequestView {
+	requestId: string;
 	tabId: number;
+	/** When the request began (host clock): the notice's identity. */
 	at: number;
-	/** The Chrome Web Store id of the prompt's extension. Not shown: the notice
-	 * names no provider, so the copy never claims which manager is asking. */
-	providerId: string;
+	kind: "ceremony";
+	/** Presentation only: the person closed the notice. */
+	dismissed: boolean;
 }

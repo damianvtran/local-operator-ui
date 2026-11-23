@@ -42,6 +42,7 @@ import {
 	focusBrowserChordTarget,
 	presentPopupWindow,
 } from "../window-raise";
+import { discardRecordingForAuthPrompt } from "./actions/recording";
 import {
 	createRecordingEncoderService,
 	disposeAllRecordingEncoders,
@@ -73,11 +74,12 @@ import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
 import { extensionIdOfUrl, extensionsAdapter } from "./extensions/adapter";
+import { AuthRequests, passkeyPromptProvider } from "./extensions/auth-request";
 import webStorePreload from "./extensions/chrome-web-store/chrome-web-store.preload.js?asset";
 import { installExtensionDialogs } from "./extensions/dialogs";
 import { ExtensionManager } from "./extensions/manager";
-import { passkeyPromptProvider } from "./extensions/passkey-custody";
 import {
+	isExtensionDocumentUrl,
 	mustReloadOnOwnerChange,
 	refusesExtensionSubframe,
 } from "./extensions/subframe-policy";
@@ -934,6 +936,59 @@ async function initializeBrowserHost(
 		};
 		const engagement = new TabEngagement();
 		const nativePasskeyNotice = new NativePasskeyNotice();
+		/*
+		 * PENDING PASSKEY REQUESTS (`extensions/auth-request.ts` has the why and the
+		 * full model). Two sources, one projection:
+		 *
+		 *   - a provider DOCUMENT a person's own engagement let into an agent tab
+		 *     (`will-frame-navigate` below), which is a request only when the document
+		 *     is one only a ceremony uses or the tab's own signal corroborates it;
+		 *   - a NATIVE request this tab's document started (Electron's own chooser,
+		 *     which is how Apple platform passkeys arrive).
+		 *
+		 * Neither holds the tab. The only refusals are the three actions that would
+		 * destroy the request (`close`, `navigate`, and driving the provider's own
+		 * prompt document), and a passive autofill card is not a request at all: it is
+		 * never recorded, never projected and never refuses anything.
+		 */
+		let authSweepTimer: ReturnType<typeof setInterval> | null = null;
+		const syncAuthSweep = (): void => {
+			if (authRequests.hasRequests()) {
+				authSweepTimer ??= setInterval(() => authRequests.sweepAll(), 1_000);
+				return;
+			}
+			if (authSweepTimer) clearInterval(authSweepTimer);
+			authSweepTimer = null;
+		};
+		rollback.add(() => {
+			if (authSweepTimer) clearInterval(authSweepTimer);
+			authSweepTimer = null;
+		});
+		const authRequests = new AuthRequests({
+			log,
+			onBegin: () => {
+				syncAuthSweep();
+				notifyChanged();
+			},
+			onChange: () => notifyChanged(),
+			onEnd: () => {
+				syncAuthSweep();
+				notifyChanged();
+			},
+			// The committed frame tree of the view still holds an extension document.
+			// A view that is gone holds nothing.
+			hasProviderFrame: (webContentsId) => {
+				const record = registry.byWebContentsId(webContentsId);
+				const contents = record?.view.webContents as unknown as
+					| Electron.WebContents
+					| undefined;
+				if (!contents || contents.isDestroyed()) return false;
+				const frame = contents.mainFrame;
+				return frame.framesInSubtree.some(
+					(child) => child !== frame && isExtensionDocumentUrl(child.url),
+				);
+			},
+		});
 		const webauthn = new WebauthnChooser({
 			notify: (request, frame) => {
 				// A window torn down while a chooser was open is the ordinary race: the
@@ -973,6 +1028,23 @@ async function initializeBrowserHost(
 					)
 				)
 					syncPasskeyNotice();
+				/*
+				 * A native request on an AGENT tab is a ceremony: the person must
+				 * answer a system sheet that only this document's promise is waiting
+				 * for, so `close` and `navigate` on that tab are the two actions that
+				 * must not happen. Apple platform passkeys arrive exactly here. The tab
+				 * keeps serving everything else.
+				 */
+				if (authSource?.owner === "agent" && request.tabId !== null) {
+					const record = registry.get(request.tabId);
+					if (record && !record.view.webContents.isDestroyed()) {
+						authRequests.beginNative({
+							webContentsId: record.view.webContents.id,
+							tabId: record.tabId,
+							requestId: request.requestId,
+						});
+					}
+				}
 			},
 			/*
 			 * AND THE OTHER DIRECTION: every settle is pushed, not only every arrival.
@@ -986,6 +1058,8 @@ async function initializeBrowserHost(
 			 */
 			onSettled: (requestId, outcome) => {
 				if (nativePasskeyNotice.settled(requestId)) syncPasskeyNotice();
+				// The request is over: the tab's `close`/`navigate` work again.
+				if (authRequests.settleByRequestId(requestId)) syncPasskeyNotice();
 				if (options.window.isDestroyed()) return;
 				options.window.webContents.send("browser-webauthn-settled", {
 					requestId,
@@ -1181,6 +1255,16 @@ async function initializeBrowserHost(
 						// The card is informational: close it without answering the chooser.
 						onNoticeDismiss: ({ tabId, at }) => {
 							if (nativePasskeyNotice.dismiss(tabId, at)) syncPasskeyNotice();
+							// The same slot also carries a provider-document ceremony
+							// (`extensions/auth-request.ts`). Dismissal is presentation only: it
+							// never settles, reloads or cancels the request it describes.
+							const pending = authRequests.viewForTab(tabId);
+							if (
+								pending &&
+								pending.at === at &&
+								authRequests.dismiss(tabId, pending.requestId)
+							)
+								syncPasskeyNotice();
 						},
 						log,
 						respond: (entryId, decision) => {
@@ -1286,8 +1370,16 @@ async function initializeBrowserHost(
 			// A presentation failure must not escape the chooser's notify callback:
 			// that would turn a cosmetic failure into a cancelled WebAuthn request.
 			try {
+				const active = registryForDownloads?.activeTab ?? null;
+				// One card, two sources, and the provider's wins for the tab the person
+				// is looking at: a provider-document ceremony is the more specific
+				// statement. A passive autofill card never reaches this function —
+				// nothing is recorded for it (`extensions/auth-request.ts`).
+				const pending = active ? authRequests.viewForTab(active.tabId) : null;
 				approvalsOverlay?.setNotice(
-					nativePasskeyNotice.viewFor(registryForDownloads?.activeTab ?? null),
+					pending && !pending.dismissed
+						? { tabId: pending.tabId, at: pending.at }
+						: nativePasskeyNotice.viewFor(active),
 				);
 			} catch (error) {
 				log(`[browser] passkey notice presentation failed: ${String(error)}`);
@@ -1327,9 +1419,9 @@ async function initializeBrowserHost(
 				// tabs too, and Electron cannot scope them per webContents. What CAN
 				// be refused is an extension's own UI frame (a password manager's
 				// inline menu is a chrome-extension:// subframe) inside a tab an
-				// agent owns, so CDP can neither drive nor read it (design §4.4).
-				// Re-evaluated per navigation; a hand-over reloads a tab holding
-				// one (registry.ownerChanged below). Rule: subframe-policy.ts.
+				// agent owns (design §4.4). Re-evaluated per navigation; a hand-over
+				// reloads a tab holding one (registry.ownerChanged below). Rule:
+				// subframe-policy.ts — with ONE exception, decided here.
 				view.webContents.on("will-frame-navigate", (event) => {
 					if (
 						!refusesExtensionSubframe({
@@ -1339,13 +1431,62 @@ async function initializeBrowserHost(
 						})
 					)
 						return;
+					/*
+					 * THE DELIBERATE HUMAN ROUTE, restored (review R5 BLOCKER). A real
+					 * 1Password passkey sign-in starts in the page and shows its prompt in
+					 * this subframe; refusing it outright told the person to open a
+					 * human-owned tab, so a request could not complete where it started.
+					 *
+					 * It is admitted only when EVERY lock holds:
+					 *   - the document is one of the measured prompt documents of a known
+					 *     provider (`passkeyPromptProvider`), never the autofill menu;
+					 *   - that provider is installed, enabled and loaded (`isActive`);
+					 *   - a person has engaged THIS tab with a trusted click from app
+					 *     chrome (`tab-engagement.ts`), which CDP cannot imitate;
+					 *   - the frame is a SUBframe: a provider document as a tab's own
+					 *     document is still refused (it is vault UI, `extension_page`).
+					 * Before that engagement nothing is admitted, so the agent can neither
+					 * read nor drive provider UI it did not cause to exist.
+					 *
+					 * A passive autofill card passes the same locks and is STILL a
+					 * non-event: `admit` records nothing for the generic host document
+					 * that is not corroborated, so it raises no notice, no WAITING row and
+					 * no refusal — the reported bug.
+					 */
+					if (
+						!event.isMainFrame &&
+						passkeyPromptProvider(event.url) &&
+						authRequests.admit({
+							webContentsId: view.webContents.id,
+							tabId,
+							url: event.url,
+							// The person's own engagement of THIS tab: the lock on the
+							// ambiguous document, checked inside `admit` so nothing loads
+							// without it.
+							engaged: engagement.has(tabId),
+							isInstalled: (id) => extensions.isActive(id),
+							// Tracked so a request cannot end while this frame is still on
+							// its way to committing (review R3).
+							frame: (event as { frame?: Electron.WebFrameMain | null }).frame,
+							// The tab's own passkey signal makes the generic host document
+							// a real ceremony rather than its passive card.
+							corroborated: passkeyNotices.viewFor(tabId) !== null,
+						})
+					) {
+						// A clip would outlive the prompt: the one capture artefact that
+						// would still carry it after the fact (`.actions/recording.ts`).
+						// Screenshots and reads continue — the tab is the agent's.
+						discardRecordingForAuthPrompt(view.webContents.id);
+						return;
+					}
 					event.preventDefault();
-					// 1Password uses the same document for passive autofill and a
-					// ceremony. Even after human engagement, never admit ambiguous
-					// vault UI on a surface the agent can drive or capture.
 					if (passkeyPromptProvider(event.url))
 						log(
-							`[browser] tab ${tabId}: refused password-manager UI; use a human-owned tab`,
+							`[browser] tab ${tabId}: refused a password-manager prompt frame (${
+								engagement.has(tabId)
+									? "its extension is not installed and loaded"
+									: "no person has engaged this tab"
+							}); the agent keeps working`,
 						);
 				});
 				return view as unknown as DriveableView;
@@ -1385,6 +1526,16 @@ async function initializeBrowserHost(
 			// still-attached page (composite-bridge.ts, "SUBSCRIBE BEFORE DETACH").
 			() => compositeBridge?.sync(),
 		);
+		/*
+		 * THE TWO ENFORCEMENT POINTS, installed together because they must agree:
+		 * `registry` refuses the actions that would destroy a pending request
+		 * (`close`, `navigate`, the provider's own prompt document) and `cdp` refuses
+		 * the document-replacing commands that would reach the page another way.
+		 * Neither refuses anything else, and neither one holds a tab.
+		 */
+		registry.setAuthRequestGate(authRequests);
+		cdp.setAuthRequestGate(authRequests);
+
 		/*
 		 * The live picture of an overlay-suppressed page (composite-bridge.ts). Only
 		 * the ACTIVE tab, only while an APP OVERLAY is the reason it is hidden —
@@ -1586,6 +1737,14 @@ async function initializeBrowserHost(
 			// Engagement belongs to the old authority. Don't clear newer engagement
 			// if an epoch listener has already made another transition.
 			if (isCurrent()) engagement.clear(record.tabId);
+			// A pending request belonged to the authority that was answering it. The
+			// new owner starts from nothing, so no stale projection and no refusal
+			// outlives the hand-over (auth-request.ts item 5).
+			if (isCurrent())
+				authRequests.forget(
+					record.view.webContents.id,
+					"the tab changed hands",
+				);
 			// Settlement also removes that request's notice via onSettled. A bulk
 			// clear here could hide new requests opened by epoch or settle callbacks.
 			webauthn.cancelForTab(record.tabId, departedDocumentEpoch);
@@ -1642,6 +1801,9 @@ async function initializeBrowserHost(
 		function releaseTab(tabId: number, webContentsId: number): void {
 			webauthn.cancelForTab(tabId);
 			if (nativePasskeyNotice.clearTab(tabId)) syncPasskeyNotice();
+			// A closed tab has no request: the projection and the sweeper go with it,
+			// so a stale notice cannot outlive the tab it described.
+			authRequests.forget(webContentsId);
 			engagement.clear(tabId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
@@ -1809,6 +1971,10 @@ async function initializeBrowserHost(
 									: "platform",
 						},
 			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
+			// A live passkey request on the tab: the chrome suppresses the page
+			// shim's "could not complete" band while a real prompt is on screen, and
+			// a passive autofill card never appears here at all.
+			pendingAuthRequest: (tabId) => authRequests.viewForTab(tabId),
 			nativeAuth: nativePasskeyNotice,
 			waitingOnUser: () => heldPopups.entries(),
 			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),

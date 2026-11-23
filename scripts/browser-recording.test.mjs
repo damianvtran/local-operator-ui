@@ -3399,14 +3399,14 @@ test("m-a: main accepts a configured answer only for the size and encoder it ask
 // ---- passkey custody: a hold DISCARDS every recording (PR #1868 R1/R2) -------
 //
 // WHY. Chromium's default recorder (`Page.startScreenRecording`) encodes the
-// composited surface with no CDP event custody could filter, so a password
-// manager's prompt shown under custody would be in the clip `record_stop` hands
-// the agent after the user returns the tab. `discardRecordingForCustody` runs
-// synchronously when the hold begins; these cases pin that no recorded byte is
+// composited surface with no CDP event that could be filtered, so a password
+// manager's prompt on screen would be in the clip `record_stop` hands
+// the agent after the fact. `discardRecordingForAuthPrompt` runs
+// synchronously when the prompt frame loads; these cases pin that no recorded byte is
 // ever delivered: not by a later stop, not by a stop already in flight, not by a
 // start already in flight, and not through the high-quality engine.
 
-test("custody discards a standard recording: tombstone, recorder stopped, stream closed unread, nothing written", async () => {
+test("a prompt frame discards a standard recording: tombstone, recorder stopped, stream closed unread, nothing written", async () => {
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
 	const { start, stop, commands, tabs } = fixture({
@@ -3415,7 +3415,7 @@ test("custody discards a standard recording: tombstone, recorder stopped, stream
 	});
 	await start({ path });
 	const before = commands.length;
-	mod.discardRecordingForCustody(tabs.get("tab").id);
+	mod.discardRecordingForAuthPrompt(tabs.get("tab").id);
 	await new Promise((done) => setTimeout(done, 20));
 	const teardown = commands.slice(before).map((call) => call.method);
 	assert.ok(teardown.includes("Page.stopScreenRecording"), "recorder stopped");
@@ -3428,16 +3428,16 @@ test("custody discards a standard recording: tombstone, recorder stopped, stream
 	assert.deepEqual(partFiles(dir), [], "no part left behind");
 });
 
-test("custody tombstone names the cause and the caller's next step", async () => {
+test("the discard tombstone names the cause and the caller's next step", async () => {
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
 	const { start, stop, tabs } = fixture({ path });
 	await start({ path });
-	mod.discardRecordingForCustody(tabs.get("tab").id);
+	mod.discardRecordingForAuthPrompt(tabs.get("tab").id);
 	const error = await stop().catch((caught) => caught);
 	assert.equal(error.data?.reason, "record_aborted");
-	assert.equal(error.data?.detail, "passkey_custody");
-	assert.match(error.message, /password manager prompt/);
+	assert.equal(error.data?.detail, "passkey_prompt");
+	assert.match(error.message, /password manager/);
 	assert.doesNotMatch(error.message, /DevTools/, "not the detach sentence");
 });
 
@@ -3465,7 +3465,7 @@ test("a stop already reading the stream when custody begins publishes nothing", 
 	await start({ path });
 	const stopping = stop();
 	while (!releaseRead) await new Promise((done) => setTimeout(done, 2));
-	mod.discardRecordingForCustody(tabs.get("tab").id);
+	mod.discardRecordingForAuthPrompt(tabs.get("tab").id);
 	releaseRead();
 	await rejectsReason(stopping, "internal", "record_aborted");
 	assert.equal(existsSync(path), false, "the in-flight stop published nothing");
@@ -3479,7 +3479,7 @@ test("a stop already reading the stream when custody begins publishes nothing", 
 	assert.ok(commands.some((call) => call.method === "IO.close"));
 });
 
-test("a standard start in flight when custody begins is stopped and answers the custody refusal", async () => {
+test("a standard start in flight when a prompt frame loads is stopped and answers the typed discard", async () => {
 	const dir = scratchDir();
 	const path = join(dir, "clip.mp4");
 	let answerStart;
@@ -3488,15 +3488,11 @@ test("a standard start in flight when custody begins is stopped and answers the 
 		path,
 		handler: (call) => {
 			if (call.method === "Page.startScreenRecording") {
-				// Chromium starts the recorder; the pool then drops the answer under
-				// custody, which is what the rejection stands for here.
+				// Chromium's answer is held across the discard: the pool no longer
+				// drops answers, so the start itself has to notice the cancellation
+				// (`entry.cancelled`) and stop the recorder it just began.
 				return new Promise((_done, fail) => {
-					answerStart = () =>
-						fail(
-							new mod.BrowserHostError("owner_refused", "held", {
-								reason: "passkey_custody",
-							}),
-						);
+					answerStart = () => fail(new Error("recorder started"));
 				});
 			}
 			return base(call);
@@ -3504,9 +3500,14 @@ test("a standard start in flight when custody begins is stopped and answers the 
 	});
 	const starting = start({ path });
 	while (!answerStart) await new Promise((done) => setTimeout(done, 2));
-	mod.discardRecordingForCustody(tabs.get("tab").id);
+	mod.discardRecordingForAuthPrompt(tabs.get("tab").id);
 	answerStart();
-	await rejectsReason(starting, "owner_refused", "passkey_custody");
+	await assert.rejects(starting, (error) => {
+		assert.equal(error.code, "owner_refused");
+		assert.equal(error.data?.reason, "record_aborted");
+		assert.equal(error.data?.detail, "passkey_prompt");
+		return true;
+	});
 	const methods = commands.map((call) => call.method);
 	assert.ok(
 		methods.includes("Page.stopScreenRecording"),
@@ -3522,7 +3523,7 @@ test("custody discards a high-quality recording with the tombstone, not a captur
 	h.frame(0);
 	await new Promise((done) => setTimeout(done, 20));
 	const before = h.commands.length;
-	mod.discardRecordingForCustody(h.id);
+	mod.discardRecordingForAuthPrompt(h.id);
 	await new Promise((done) => setTimeout(done, 40));
 	const teardown = h.commands.slice(before).map((call) => call.method);
 	assert.ok(teardown.includes("Page.stopScreencast"), "screencast stopped");
@@ -3537,6 +3538,6 @@ test("custody discards a high-quality recording with the tombstone, not a captur
 	);
 	const error = await h.stop().catch((caught) => caught);
 	assert.equal(error.data?.reason, "record_aborted");
-	assert.equal(error.data?.detail, "passkey_custody");
+	assert.equal(error.data?.detail, "passkey_prompt");
 	assert.equal(existsSync(h.path), false, "no clip published");
 });
