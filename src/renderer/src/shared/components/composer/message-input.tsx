@@ -1240,7 +1240,10 @@ export type MessageInputProps = {
 		asks?: SessionAskFrame | null;
 		/** Trusted catalogue source, not credential-owner metadata or mesh membership. */
 		servingLocality?: "local" | "remote";
-		onCommand?: (invocation: SlashCommandInvocation) => void;
+		onCommand?: (
+			invocation: SlashCommandInvocation,
+			anchor?: HTMLElement,
+		) => void;
 		/** The rungs `/effort` accepts; see `SessionStatusStripProps`. */
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
@@ -1266,7 +1269,10 @@ export type MessageInputProps = {
 		 * the two readings inert with their existing copy on a backend that cannot
 		 * honour a pick. See `SessionStatusStripProps["onOpenDraftPicker"]`.
 		 */
-		onOpenDraftPicker?: (destination: DraftPickerDestination) => void;
+		onOpenDraftPicker?: (
+			destination: DraftPickerDestination,
+			anchor?: HTMLElement,
+		) => void;
 		/**
 		 * Where a draft's resolution IS, while it has no reading yet; see
 		 * `SessionStatusStripProps["draftResolution"]`.

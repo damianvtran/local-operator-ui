@@ -1793,6 +1793,7 @@ function SessionPanel({
 		openDraftPicker,
 		note: slashNote,
 	} = useSlashDispatch({
+		paneIdentity: identity,
 		sessionId,
 		canonical,
 		rebind,
@@ -1848,10 +1849,20 @@ function SessionPanel({
 			draftPickable && draftIdentity && preview.data
 				? {
 						target: draftTarget,
-						select: (selection) =>
-							useCanonicalSessionsStore
-								.getState()
-								.setDraftModel(draftIdentity, selection),
+						select: (selection, condition) => {
+							const store = useCanonicalSessionsStore.getState();
+							const current = store.drafts[draftIdentity];
+							// The snapshot model and store entry share an immutable value.
+							// Read/compare/write in one turn, including the default (null).
+							if (
+								!current ||
+								current.sessionId ||
+								(condition && (current.model ?? null) !== condition.previous)
+							)
+								return false;
+							store.setDraftModel(draftIdentity, selection);
+							return true;
+						},
 					}
 				: undefined,
 		/*
@@ -4983,8 +4994,10 @@ function SessionPanel({
 						 * unconsumed outcome has to be surfaced here rather than dropped into a
 						 * `void` (round 1, U2).
 						 */
-						onCommand: (invocation: SlashCommandInvocation) =>
-							void stableDispatchFromControl(invocation),
+						onCommand: (
+							invocation: SlashCommandInvocation,
+							anchor?: HTMLElement,
+						) => void stableDispatchFromControl(invocation, anchor),
 						/*
 						 * The SAME query `EffortPicker` renders from, by the
 						 * same key, so React Query serves both from one cache

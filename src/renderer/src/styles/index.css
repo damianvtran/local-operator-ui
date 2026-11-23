@@ -2056,6 +2056,14 @@ html .Mui-focusVisible {
 	outline-color: var(--color-accent);
 	outline-offset: 2px;
 }
+/* Single-line fields keep the shared keyboard ring, but use neutral text ink
+ * rather than an action accent. The effort ladder takes the place of its
+ * search field as the picker's keyboard target. Native inputs, MUI and other
+ * controls keep their existing focus treatment; forced colors can remap it. */
+html [data-lo-input]:focus-visible,
+html [data-quick-picker="effort"] [role="listbox"]:focus-visible {
+	outline-color: var(--color-ink-muted);
+}
 html :focus-visible:not([data-lo-floating]),
 html .Mui-focusVisible:not([data-lo-floating]) {
 	box-shadow: none !important;

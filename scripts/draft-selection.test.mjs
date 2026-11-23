@@ -880,25 +880,25 @@ test("each picker routes a draft's pick through one resolver, and never through 
 		picker.indexOf("const pick = useCallback"),
 		picker.indexOf("return { pick, busy, result, selection, target, refuse }"),
 	);
-	assert.ok(resolve.indexOf("await queryClient.fetchQuery") > 0);
+	const preview = resolve.indexOf(
+		"const resolved = await queryClient.fetchQuery",
+	);
+	const select = resolve.search(/draft\.select\(\s*chosen,/);
 	assert.ok(
-		resolve.indexOf("await queryClient.fetchQuery") <
-			resolve.indexOf("draft.select(chosen)"),
-		"the selection is recorded only after the preview answered",
+		preview > 0 && select > preview,
+		"the selection is recorded only after the candidate preview answered (not just the carry probe)",
 	);
 	assert.match(resolve, /refused: /);
 	/*
 	 * Review round 1, R2 and R6.
 	 *
-	 * R2: a confirmed pick has to be REMEMBERED, because `draft.target` is the
-	 * snapshot the dialog opened on and the pane's own value moves underneath it -
-	 * without this the header and the #x2713 keep naming the pre-pick model while the
-	 * strip and the result strip show the pick, which is the self-contradiction the
-	 * session's picker fixed for its lagging owner frame (QA Q2). The remembered
-	 * selection is also what the dialog's own preview is keyed on, so the ladder an
-	 * effort pick offers is the current model's.
+	 * A confirmed pick is remembered until the pane publishes its own model.
+	 * The later overlap tests drive this distinction; this assertion also pins
+	 * the receipt coming only after the owner preview and pane accepted it.
 	 */
-	assert.match(resolve, /setPicked\(chosen\)/);
+	assert.ok(
+		resolve.indexOf("setPicked({ base: seed, selection: chosen })") > select,
+	);
 	assert.match(
 		picker,
 		/draftPreviewQuery\(\s*draftPick\.target \?\? NO_DRAFT_TARGET,\s*draftPick\.carriesFast,?\s*\)/,
@@ -1034,9 +1034,8 @@ test("each picker routes a draft's pick through one resolver, and never through 
 		);
 	}
 	assert.ok(
-		resolve.indexOf("reading.applied") > 0 &&
-			resolve.indexOf("reading.applied") <
-				resolve.indexOf("draft.select(chosen)"),
+		resolve.indexOf("reading.applied") > preview &&
+			resolve.indexOf("reading.applied") < select,
 		"a resolution that does not show the pick applied must be refused BEFORE it is recorded",
 	);
 	/*
@@ -1834,6 +1833,7 @@ const pickerDependencies = {
 			data: activePicker.preview(query.queryKey),
 			isLoading: false,
 			isError: false,
+			isPlaceholderData: activePicker.previewPending,
 		};
 	},
 };
@@ -1967,6 +1967,100 @@ function pickerHarness({
 	};
 	return instance;
 }
+
+// Two independently mounted adapters are allowed to overlap in the scrimless
+// composer. The pane records the absolute model and rejects a stale relative rung.
+for (const modelFirst of [true, false]) {
+	test(`overlapping draft selections keep the new model (${modelFirst ? "model" : "effort"} receipt first)`, async () => {
+		const original = {
+			provider: "anthropic",
+			model_id: "original",
+			reasoning_effort: null,
+		};
+		const next = {
+			provider: "openai",
+			model_id: "new",
+			reasoning_effort: null,
+		};
+		let selected = original;
+		const record = [];
+		const select = (candidate, condition) => {
+			if (condition && selected !== condition.previous) return false;
+			selected = candidate;
+			record.push(candidate);
+			return true;
+		};
+		const model = pickerHarness({ initial: original });
+		const effort = pickerHarness({ initial: original });
+		const deferred = (picker) => {
+			let release;
+			const pending = new Promise((resolve) => {
+				release = resolve;
+			});
+			const fetch = picker.client.fetchQuery;
+			picker.client.fetchQuery = async (query) => {
+				await pending;
+				return fetch(query);
+			};
+			picker.draft.select = select;
+			return release;
+		};
+		const finishModel = deferred(model);
+		const finishEffort = deferred(effort);
+		const modelPick = model
+			.hook()
+			.pick(next, { describe: () => "Changed model" });
+		effort.render().onPick("high");
+		if (modelFirst) {
+			finishModel();
+			await modelPick;
+			finishEffort();
+		} else {
+			finishEffort();
+			await new Promise(setImmediate);
+			finishModel();
+			await modelPick;
+		}
+		await new Promise(setImmediate);
+		assert.equal(selected, next);
+		assert.deepEqual(
+			record.map(({ model_id, reasoning_effort }) => [
+				model_id,
+				reasoning_effort,
+			]),
+			modelFirst
+				? [["new", null]]
+				: [
+						["original", "high"],
+						["new", null],
+					],
+		);
+		assert.equal(
+			effort.render().result?.tone,
+			modelFirst ? "error" : "success",
+		);
+		// Once the pane publishes the new selection, the same open adapter can apply
+		// a valid choice to it without repeating the obsolete model.
+		effort.draft = {
+			...effort.draft,
+			target: { ...effort.draft.target, model: next },
+		};
+		assert.equal((await effort.pick("high")).result?.tone, "success");
+		assert.deepEqual(selected, { ...next, reasoning_effort: "high" });
+	});
+}
+
+test("a retained preview cannot offer the previous draft model's effort ladder", () => {
+	const picker = pickerHarness();
+	assert.ok(picker.render().options.length > 0);
+	picker.previewPending = true;
+	const pending = picker.render();
+	assert.equal(pending.loading, true);
+	assert.deepEqual(pending.options, []);
+	picker.previewPending = false;
+	assert.ok(picker.render().options.length > 0);
+	assert.deepEqual(picker.selections, []);
+});
 
 test("effort first on an unpicked resolved draft previews and records its default model", async () => {
 	const picker = pickerHarness();
