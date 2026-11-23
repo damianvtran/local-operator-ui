@@ -1,12 +1,18 @@
 /**
  * The Settings page's close affordances: the pinned button, and the Esc scope
- * that wraps the content column.
+ * that lives as long as the page does.
  *
  * WHY ONE COMPONENT. The button and Esc must land on the SAME action, and the
  * guards that decide whether Esc is the page's to take belong to the same box
  * the press bubbles through. Splitting them across the page's JSX would let the
  * next edit change one and not the other; `useCloseSettings` is the one action
  * and `useSettingsEscapeClose` is the one predicate.
+ *
+ * WHERE THE ESC SCOPE SITS, AND WHY NOT HERE. It is a document listener, not an
+ * `onKeyDown` on this column: the round-1 reviews measured Esc dead from the
+ * gear, a rail row and `<body>`, which are the page's normal focus states
+ * (R1/D1/U1/Q-1). The predicate is target-based, so the listener can live where
+ * focus is without weakening any owner's claim; see `settings-escape.ts`.
  *
  * WHERE THE BUTTON SITS, AND WHY IT IS ABSOLUTE. The column owns its ground
  * from y0 (`panel-top-pad`, AGENTS.md "Panels run to the window edge"), and the
@@ -40,7 +46,9 @@ export const SettingsCloseButton: FC = () => {
 				content={t(
 					"ui.settings.navigation.settings_page.close_settings_shortcut",
 				)}
-				side="bottom"
+				/* Left, not below: a panel under the glyph covered the search
+				   field's top-right corner at every width (design round 1, D4). */
+				side="left"
 				align="end"
 			>
 				<button
@@ -66,7 +74,7 @@ export const SettingsContentSurface: FC<{ children: ReactNode }> = ({
 	children,
 }) => {
 	const closeSettings = useCloseSettings();
-	const onKeyDown = useSettingsEscapeClose(closeSettings);
+	useSettingsEscapeClose(closeSettings);
 	return (
 		<div
 			data-glass-region="canvas-content"
@@ -86,7 +94,6 @@ export const SettingsContentSurface: FC<{ children: ReactNode }> = ({
 			 * close button's containing block.
 			 */
 			className="panel-top-pad relative flex min-h-0 min-w-0 flex-1 flex-col"
-			onKeyDown={onKeyDown}
 		>
 			<SettingsCloseButton />
 			{children}

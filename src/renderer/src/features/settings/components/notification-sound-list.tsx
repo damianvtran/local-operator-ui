@@ -687,8 +687,15 @@ export const NotificationSoundList = forwardRef<
 				target.click();
 		};
 		const onGroupKeyDown = (event: KeyboardEvent) => {
-			// Esc anywhere in the group stops the preview (§3.3).
+			/*
+			 * Esc anywhere in the group stops the preview (§3.3). CLAIMED, not just
+			 * acted on: the group's targets are radios, which the page's Esc
+			 * predicate does not recognise, so without `preventDefault` the same
+			 * press also closed Settings - a "first Esc closes the inner thing
+			 * only" violation measured in round 1 (R2, Q-4).
+			 */
 			if (event.key === "Escape" && preview) {
+				event.preventDefault();
 				stopPreview();
 			}
 		};

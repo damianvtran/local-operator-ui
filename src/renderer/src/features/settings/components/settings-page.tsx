@@ -60,7 +60,7 @@ import {
 	User,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FC, RefObject } from "react";
+import type { FC, ReactNode, RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
@@ -1044,6 +1044,18 @@ export const SettingsPage: FC = () => {
 	 * `RadientAccountSection` renders its own waiting state and its own failure
 	 * copy - and it still decides the two profile fields' read-only bit below.
 	 */
+	/*
+	 * THE PAGE-LEVEL STATES STILL CARRY THE WAY OUT (round 1: D2). While the
+	 * config read is out, fails, or settles empty, the page renders a state
+	 * instead of its surface - and those were the three states with no X and no
+	 * Esc, so the error case, the one where a reader most wants out, showed the
+	 * control missing and then appearing when the config arrived. The same
+	 * surface (button + Esc scope) now wraps all of them.
+	 */
+	const stateSurface = (content: ReactNode) => (
+		<SettingsContentSurface>{content}</SettingsContentSurface>
+	);
+
 	const isLoading = isConfigLoading;
 	/*
 	 * The account read's own state, from ONE classification (`accountRead` in
@@ -1089,7 +1101,7 @@ export const SettingsPage: FC = () => {
 	// hold the page on a spinner when the settings it is loading can no longer
 	// arrive. That ordering is what makes the recovery affordance reachable.
 	if (configError) {
-		return (
+		return stateSurface(
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
 				{/* `warning`, matching the providers grid: one fault must not render
 				    at two severities depending on which screen reports it, and a
@@ -1132,12 +1144,12 @@ export const SettingsPage: FC = () => {
 						)}
 					</div>
 				</Alert>
-			</div>
+			</div>,
 		);
 	}
 
 	if (isLoading) {
-		return (
+		return stateSurface(
 			/*
 			 * One live region around the whole waiting stack, so the caption IS the
 			 * announcement when it appears.
@@ -1186,12 +1198,12 @@ export const SettingsPage: FC = () => {
 						)}
 					</p>
 				)}
-			</div>
+			</div>,
 		);
 	}
 
 	if (!config) {
-		return (
+		return stateSurface(
 			<div className="flex h-full w-full items-center justify-center bg-canvas p-6">
 				{/* Settled with no error and no config: nothing classified it, so
 				    there is no status to advise on and no remedy to assert. Same
@@ -1202,7 +1214,7 @@ export const SettingsPage: FC = () => {
 						"ui.settings.navigation.settings_page.your_settings_could_not_be_loaded",
 					)}
 				</Alert>
-			</div>
+			</div>,
 		);
 	}
 
@@ -1281,7 +1293,17 @@ export const SettingsPage: FC = () => {
 					ref={contentContainerRef}
 					data-settings-content
 					data-tour-tag="settings-general-section"
-					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
+					/*
+					 * `pe-14` while the measure fills the column: below `xl` the 896px
+					 * measure runs to the scroller's edge, and the pinned Close button
+					 * (32px at a 16px inset) sat ON the content's last 8px - measured at
+					 * 900px wide, the search field's edge and the glyph both at x=860
+					 * (design round 1, D3). The extra end padding puts the text's edge
+					 * 40px left of the plate; at `xl` and above the centred measure
+					 * already clears it, and the padding returns to the scroller's own
+					 * `md:p-8`.
+					 */
+					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:pe-14 xl:pe-8"
 				>
 					{/*
 					 * One measured column, centred, rather than two.

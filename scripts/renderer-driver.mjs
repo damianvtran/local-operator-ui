@@ -32028,6 +32028,15 @@ const SETTINGS_CLOSE_READING = `(() => {
 		column: { top: columnBox.top, left: columnBox.left, right: columnBox.right, width: columnBox.width },
 		title: { top: titleBox.top, bottom: titleBox.bottom },
 		insetEnd: columnBox.right - box.right,
+		/* The search row's own edge, for the overlap question at narrow widths
+		   (design round 1, D3): the glyph must clear it. */
+		search: (() => {
+			const field = column.querySelector('[data-settings-search]');
+			const fieldBox = field ? field.getBoundingClientRect() : null;
+			return fieldBox
+				? { right: fieldBox.right, gapToGlyph: box.left - fieldBox.right }
+				: null;
+		})(),
 		centredOnTitle: Math.abs((box.top + box.height / 2) - (titleBox.top + titleBox.height / 2)) <= 2,
 		insideColumn: box.top >= columnBox.top - 0.5 && box.right <= columnBox.right + 0.5,
 		ariaLabel: button.getAttribute('aria-label'),
@@ -32157,7 +32166,30 @@ async function sceneSettingsClose(cdp) {
 		narrow?.centredOnTitle === true && narrow?.insideColumn === true,
 		`centred=${narrow?.centredOnTitle} inside=${narrow?.insideColumn}`,
 	);
+	check(
+		"at 900 CSS px the glyph clears the search field's edge",
+		(narrow?.search?.gapToGlyph ?? -1) >= 4,
+		`gap=${narrow?.search?.gapToGlyph}`,
+	);
 	await capture("settings-close-narrow-dark");
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 800,
+			height: 900,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(600);
+	const narrowest = await cdp.evaluate(SETTINGS_CLOSE_READING);
+	note("settings close button at 800 CSS px", JSON.stringify(narrowest));
+	check(
+		"at 800 CSS px (the window floor) the glyph still clears the search field",
+		narrowest?.viewport.width === 800 &&
+			(narrowest?.search?.gapToGlyph ?? -1) >= 4,
+		`gap=${narrowest?.search?.gapToGlyph}`,
+	);
+	await capture("settings-close-800-dark");
 	await cdp
 		.send("Emulation.setDeviceMetricsOverride", {
 			width: 1380,
@@ -32218,6 +32250,258 @@ async function sceneSettingsClose(cdp) {
 		);
 
 		/* ------------------------------------------------------------ */
+		/* 3b. Esc is heard where focus is: on the gear, a rail row, the   */
+		/*     body, an empty search field and a closed combobox.          */
+		/* ------------------------------------------------------------ */
+
+		const openFromGear = async () => {
+			await verb(cdp, "navigate", "/chat");
+			await waitForScene(
+				cdp,
+				`Boolean(document.querySelector('[data-tour-tag="nav-item-settings"]'))`,
+			);
+			/* A REAL mouse press: Chromium focuses a button on mousedown, which is
+			   the state the round-1 reviews measured ("opened with the gear, focus
+			   stays on the gear"). A synthetic `element.click()` does not. */
+			await clickAt(cdp, '[data-tour-tag="nav-item-settings"]');
+			return waitForScene(
+				cdp,
+				`Boolean(document.querySelector('[data-settings-close]'))`,
+			);
+		};
+		const routeNow = () => cdp.evaluate("window.location.hash");
+		const activeNow = () =>
+			cdp.evaluate(`(() => {
+				const el = document.activeElement;
+				return el
+					? {
+							tag: el.tagName,
+							label: el.getAttribute('aria-label'),
+							tourTag: el.getAttribute('data-tour-tag'),
+						}
+					: null;
+			})()`);
+
+		// (a) The headline flow: opened with the gear, so focus stayed on it.
+		await openFromGear();
+		const gearFocus = await activeNow();
+		await capture("settings-close-focus-on-gear-dark");
+		note("focus after opening with the gear", JSON.stringify(gearFocus));
+		check(
+			"opening with the gear leaves focus ON the gear",
+			gearFocus?.tourTag === "nav-item-settings",
+			JSON.stringify(gearFocus),
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"one Esc with focus on the gear closes Settings",
+			(await routeNow()) === "#/chat",
+			`route=${await routeNow()}`,
+		);
+
+		// (b) A rail row: the sidebar beside the content column.
+		await openFromGear();
+		const railReady = await cdp.evaluate(`(() => {
+			const rail = document.querySelector('[data-glass-region="page-sidebar"]');
+			const row = rail ? [...rail.querySelectorAll('button')].find((b) => (b.textContent ?? '').trim()) : null;
+			if (!row) return null;
+			row.click();
+			return (row.textContent ?? '').trim();
+		})()`);
+		await wait(300);
+		const railFocus = await activeNow();
+		await capture("settings-close-focus-on-rail-dark");
+		note("focus after a rail press", JSON.stringify({ railReady, railFocus }));
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"one Esc with focus on a section rail row closes Settings",
+			(await routeNow()) === "#/chat",
+			`route=${await routeNow()}`,
+		);
+
+		// (c) Nothing focused: the press's target is the page ground.
+		await openFromGear();
+		await cdp.evaluate(`(() => {
+			const title = document.querySelector('[data-glass-region="canvas-content"] h1');
+			title?.click();
+			document.body.focus?.();
+			return document.activeElement?.tagName ?? null;
+		})()`);
+		await wait(200);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"one Esc with the body focused closes Settings",
+			(await routeNow()) === "#/chat",
+			`route=${await routeNow()}`,
+		);
+
+		// (d) The Close button's own tooltip must not eat the first press.
+		await openFromGear();
+		await cdp.evaluate(
+			`document.querySelector('[data-settings-close]')?.focus()`,
+		);
+		await wait(700);
+		const tooltipUp = await cdp.evaluate(
+			`Boolean(document.querySelector('[role="tooltip"]'))`,
+		);
+		await capture("settings-close-tooltip-open-dark");
+		note(
+			"tooltip open on the focused Close button",
+			JSON.stringify({ tooltipUp }),
+		);
+		check(
+			"focusing the Close button opens its tooltip",
+			tooltipUp === true,
+			"no tooltip",
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"ONE Esc on the focused Close button closes Settings, tooltip and all",
+			(await routeNow()) === "#/chat",
+			`route=${await routeNow()}`,
+		);
+
+		// (e) The search owns Esc only while it has text or an open panel: an
+		//     empty field with its panel closed is the page's (round 1: U3).
+		await openFromGear();
+		await verb(cdp, "navigate", "/settings?section=general");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-settings-search]'))`,
+		);
+		const searchState = () =>
+			cdp.evaluate(`(() => {
+				const field = document.querySelector('[data-settings-search] input');
+				return {
+					focused: document.activeElement === field,
+					value: field ? field.value : null,
+					expanded: field ? field.getAttribute('aria-expanded') : null,
+					list: Boolean(document.querySelector('[role="listbox"]')),
+				};
+			})()`);
+		await cdp.evaluate(
+			`document.querySelector('[data-settings-search] input')?.focus()`,
+		);
+		await wait(250);
+		note("the search widget when focused", JSON.stringify(await searchState()));
+		// One press dismisses whatever the widget held; the field is empty, so if
+		// that press also closed the page the widget claimed a press it had no use
+		// for. If it dismissed the panel instead, the NEXT press must close.
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		const afterFirst = await routeNow();
+		if (afterFirst !== "#/chat") {
+			note("search after its own Esc", JSON.stringify(await searchState()));
+			await pressChord(cdp, {
+				key: "Escape",
+				code: "Escape",
+				virtualKeyCode: 27,
+			});
+			await wait(400);
+		}
+		check(
+			"an empty search field with no panel does not claim Esc: the page closes",
+			(await routeNow()) === "#/chat",
+			`after first=${afterFirst} now=${await routeNow()}`,
+		);
+
+		// (f) A dismissed select leaves its closed trigger focused; the next
+		//     press is the page's.
+		await openFromGear();
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-setting-key="language"] [role="combobox"]'))`,
+		);
+		await cdp.evaluate(`(() => {
+			const trigger = document.querySelector('[data-setting-key="language"] [role="combobox"]');
+			trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+			trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+			trigger.click();
+			return true;
+		})()`);
+		await wait(400);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		const afterListClose = await routeNow();
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(400);
+		check(
+			"the first Esc closes the list only; the second (trigger still focused) closes the page",
+			afterListClose.startsWith("#/settings") &&
+				(await routeNow()) === "#/chat",
+			`after list=${afterListClose} after second=${await routeNow()}`,
+		);
+
+		// (g) Focus on the way out: a destination that focuses nothing hands the
+		//     keyboard back to the gear.
+		await verb(cdp, "navigate", "/library");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-tour-tag="nav-item-settings"]'))`,
+		);
+		await clickAt(cdp, '[data-tour-tag="nav-item-settings"]');
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-settings-close]'))`,
+		);
+		await verb(cdp, "press", { selector: "[data-settings-close]" });
+		await wait(600);
+		const returnedFocus = await activeNow();
+		note(
+			"focus after closing to a route with no composer",
+			JSON.stringify({ route: await routeNow(), focus: returnedFocus }),
+		);
+		check(
+			"closing to a route that focuses nothing returns focus to the gear",
+			returnedFocus?.tourTag === "nav-item-settings",
+			JSON.stringify(returnedFocus),
+		);
+
+		/* Back to the keyboard section for the recorder steps below, with the
+		   field focused again: step 4 Tabs OUT of it. Entered from /chat, so the
+		   close below must land there. */
+		await openFromGear();
+		await verb(cdp, "navigate", "/settings?section=keyboard");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector(${JSON.stringify(RECORDER_FIELD)}))`,
+		);
+		await focusField(cdp, RECORDER_FIELD);
+		await wait(200);
+
+		/* ------------------------------------------------------------ */
 		/* 4. The next Esc, once focus has left the field, closes it.     */
 		/* ------------------------------------------------------------ */
 
@@ -32251,6 +32535,7 @@ async function sceneSettingsClose(cdp) {
 	/* 5. The gear closes while open; the RTL frame is not reachable.     */
 	/* ---------------------------------------------------------------- */
 
+	const beforeGearOpen = await cdp.evaluate("window.location.hash");
 	await verb(cdp, "press", { selector: '[data-tour-tag="nav-item-settings"]' });
 	const reopened = await waitForScene(
 		cdp,
@@ -32261,9 +32546,9 @@ async function sceneSettingsClose(cdp) {
 	await wait(500);
 	const gearClosed = await cdp.evaluate("window.location.hash");
 	check(
-		"the gear closes Settings while it is open",
-		gearClosed === "#/chat",
-		`route=${gearClosed}`,
+		"the gear closes Settings while it is open, back to where it was pressed",
+		gearClosed === beforeGearOpen,
+		`route=${gearClosed} expected=${beforeGearOpen}`,
 	);
 
 	await verb(cdp, "navigate", "/settings");

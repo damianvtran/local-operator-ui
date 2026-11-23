@@ -333,7 +333,13 @@ export const SettingsSearch = forwardRef<
 				}
 				return;
 			case "Escape":
-				event.preventDefault();
+				/*
+				 * Claim the press ONLY when there is something of this widget's to
+				 * undo. An empty field whose panel is closed is not an owner: with
+				 * `preventDefault` unconditional it claimed Escape forever, so the
+				 * keyboard reader never reached the page's own close (round 1: U3).
+				 */
+				if (query !== "" || open) event.preventDefault();
 				/*
 				 * CLEAR FIRST, CLOSE SECOND — one press does one thing.
 				 *
