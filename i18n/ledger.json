@@ -128857,8 +128857,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "9a34be3cf24afb3a5bf75132b757310a58f5871e94a98b8b8ccbbfdd203b3a6b",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "88a106766524a27a2cd489546dafb1e851f39b62d722986255d1046c449b3d7f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -128870,15 +128870,15 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "audit-i18n-fr-voice-history-full-text-r2",
+					"instance": "audit-i18n-2074-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-i18n-fr-voice-history-full-text-r2.json",
-					"receipt_sha256": "2357c81efc7b8b3d1321f0172419cdd7484b832a30c9aa10f50545c91406e980"
+					"receipt": "i18n/receipts/audit-i18n-2074-r3-fr.json",
+					"receipt_sha256": "c8ad88327d53b6634c5c07c89eea66f90b3642a4b8d44d9e846186590e4b8c08"
 				}
 			],
 			"status": "audited",
@@ -128903,6 +128903,28 @@
 							"receipt_sha256": "29aad0271fd621f015576156e3e9ce744870e16409ffb2346dc53cc04fb73bec",
 							"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 1",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "9a34be3cf24afb3a5bf75132b757310a58f5871e94a98b8b8ccbbfdd203b3a6b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean-with-findings",
+							"instance": "audit-i18n-fr-voice-history-full-text-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/audit-i18n-fr-voice-history-full-text-r2.json",
+							"receipt_sha256": "2357c81efc7b8b3d1321f0172419cdd7484b832a30c9aa10f50545c91406e980"
 						}
 					],
 					"status": "audited"
