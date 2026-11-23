@@ -44,5 +44,9 @@
 	"ui.chat.asks.proposal.summary": "Proposed change to the {kind, select, agent {agent} team {team} skill {skill} other {profile}} {name}",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} lines",
 	"ui.chat.asks.proposal.field_changed": "{label}: changed",
-	"ui.chat.asks.proposal.review": "Review changes"
+	"ui.chat.asks.proposal.review": "Review changes",
+	"ui.chat.asks.progress": "{answered, number, ::group-off} of {total, number, ::group-off} answered",
+	"ui.chat.asks.urgent_label": "Urgent",
+	"ui.chat.asks.copy_id": "Copy ask id {id}"
+
 }

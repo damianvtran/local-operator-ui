@@ -2027,6 +2027,70 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 	assert.equal(production?.getAttribute("aria-checked"), "false");
 });
 
+/*
+ * THE ID IS VISIBLE, AND ITS COPY CONTROL IS A REAL BUTTON (design spec D13/S2).
+ *
+ * The card used to draw the id as a blank span whose only content was a hover
+ * `title` - unreadable to touch and to the keyboard, uncopyable, and invisible in
+ * a screenshot - so the one string a user quotes back at the agent was the one
+ * thing on the card nobody could read. This pins the replacement: text on the
+ * card, a labelled control, and the id verbatim on the clipboard.
+ */
+test("the ask id is visible on the card and its copy control copies it", async (t) => {
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			onDraftChange: () => undefined,
+		}),
+	);
+	const row = view.container.querySelector('[data-lo-ask-row="a-7f3c"]');
+	assert.ok(row?.textContent.includes("a-7f3c"), "the id is visible text");
+	assert.equal(
+		row?.querySelector('[title="a-7f3c"]'),
+		null,
+		"no blank span carries the id only in a title",
+	);
+	const copy = row?.querySelector('button[aria-label="Copy ask id a-7f3c"]');
+	assert.ok(copy, "the id carries a labelled copy control");
+
+	const writes = [];
+	/*
+	 * `navigator` in the bundle is Node's global, not the JSDOM window's: the
+	 * component (like the shared `CopyButton`) reads the bare global, so this
+	 * stubs the global and puts the original back afterwards.
+	 */
+	const navigatorDescriptor = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"navigator",
+	);
+	Object.defineProperty(globalThis, "navigator", {
+		configurable: true,
+		value: {
+			clipboard: {
+				writeText: async (value) => {
+					writes.push(value);
+				},
+			},
+		},
+	});
+	try {
+		await act(async () => copy.click());
+		assert.deepEqual(writes, ["a-7f3c"], "the id is copied verbatim");
+		assert.ok(
+			row.textContent.includes("Copied"),
+			"the control confirms the press",
+		);
+	} finally {
+		if (navigatorDescriptor === undefined) {
+			Reflect.deleteProperty(globalThis, "navigator");
+		} else {
+			Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+		}
+	}
+});
+
 test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
 	// The recommendation is a mark of its OWN, and the selection is the draft's
 	// ground plus its drawn radio. The two must be readable at once, and the

@@ -44,5 +44,9 @@
 	"ui.chat.asks.proposal.summary": "Thay đổi được đề xuất cho {kind, select, agent {tác nhân} team {nhóm} skill {kỹ năng} other {hồ sơ}} {name}",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} dòng",
 	"ui.chat.asks.proposal.field_changed": "{label}: đã thay đổi",
-	"ui.chat.asks.proposal.review": "Xem lại thay đổi"
+	"ui.chat.asks.proposal.review": "Xem lại thay đổi",
+	"ui.chat.asks.progress": "Đã trả lời {answered}/{total}",
+	"ui.chat.asks.urgent_label": "Khẩn cấp",
+	"ui.chat.asks.copy_id": "Sao chép ID câu hỏi {id}"
+
 }

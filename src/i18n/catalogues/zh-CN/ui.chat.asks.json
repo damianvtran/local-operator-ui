@@ -44,5 +44,9 @@
 	"ui.chat.asks.proposal.summary": "对{kind, select, agent {智能体} team {团队} skill {技能} other {配置}}{name}的拟议更改",
 	"ui.chat.asks.proposal.field_lines": "{label}：+{added, number} −{removed, number}行",
 	"ui.chat.asks.proposal.field_changed": "{label}：已更改",
-	"ui.chat.asks.proposal.review": "查看更改"
+	"ui.chat.asks.proposal.review": "查看更改",
+	"ui.chat.asks.progress": "已回答 {answered}/{total}",
+	"ui.chat.asks.urgent_label": "紧急",
+	"ui.chat.asks.copy_id": "复制请求ID {id}"
+
 }
