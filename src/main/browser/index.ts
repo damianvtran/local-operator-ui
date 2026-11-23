@@ -1687,16 +1687,10 @@ async function initializeBrowserHost(
 						registry.destroy(spawned.tabId);
 				}
 			},
-			closeTab: async (token) => {
-				try {
-					const record = registry.requireSurface(token);
-					approvals.forgetDocument(token);
-					registry.destroy(record.tabId);
-				} catch {
-					// Already gone is the finished state, not a pending obligation.
-				}
-				return true;
-			},
+			closeTab: async (token) =>
+				registry.closeOwnedSurface(token, () =>
+					approvals.forgetDocument(token),
+				),
 			isLive: (token) => {
 				try {
 					registry.requireSurface(token);

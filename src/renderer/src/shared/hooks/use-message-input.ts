@@ -1350,6 +1350,19 @@ export const useMessageInput = ({
 					() => {
 						echoPainted = true;
 						clearOnce(true);
+						/*
+						 * THE SENDER IS CARRIED TO THEIR MESSAGE AT THE PAINT (operator
+						 * report, 2026-11-23). This used to be left to the transcript's
+						 * follow policy, which only follows a reader already at the tail
+						 * - so a sender scrolled up in history stayed there with their
+						 * message out of sight. Sending IS the request for the newest
+						 * row, so the composer asks for the tail here, with the echo,
+						 * rather than on receipt: by then the reader may have scrolled
+						 * again, and a scroll at settle would override that. The flight
+						 * is a no-op for a sender already at the tail, snaps under
+						 * reduced motion, and a gesture during it cancels it.
+						 */
+						scrollToBottom?.();
 					},
 					options,
 				);
@@ -1427,7 +1440,7 @@ export const useMessageInput = ({
 			// Cleared BEFORE the store write so a synchronous restore inside
 			// `onSubmit` is not immediately overwritten by this submit's own clear.
 			retireDraft();
-			// An echoed send already used the transcript's follow/anchor policy. A
+			// An echoed send already asked for the tail at its paint (above). A
 			// second scroll on receipt overrides a reader's position after that paint.
 			if (!echoPainted && scrollToBottom) {
 				// Use requestAnimationFrame to ensure DOM updates before scrolling

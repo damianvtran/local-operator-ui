@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "Delta semantic audit: ui.teamBridge.edit.error.failed only; other 9 target values retained by byte-identity proof",
+  "namespace": "ui.teamBridge.edit",
+  "locale": "ru",
+  "date": "2026-11-21",
+  "head": "f34c9adf25d77f8fb549924e7adfb6afdf5d6dc6",
+  "source_commit": "9630285e2361fe894abb9ee605c3978831f05383",
+  "instance": "d76a8497b66e-tb-edit-delta-ru",
+  "auditor": "copy-reviewer-d76a8497b66e",
+  "model": "anthropic/claude-opus-5-5",
+  "model_provenance": "Current resumed audit served anthropic/claude-opus-5-5 per harness model declaration. Previous receipt/model provenance preserved unchanged; no rewriting historical evidence.",
+  "independence": {
+    "auditor_session": "d76a8497b66e",
+    "translator_session": "8d735d413b75",
+    "translator_model_for_delta": "anthropic/claude-opus-5-5",
+    "initial_translator_model": "openai/gpt-6.1-sol",
+    "translator_provenance_source": "Delegating delta brief; not independently authenticated",
+    "authored_translation": false
+  },
+  "status": "passed",
+  "sha256": {
+    "en": "809b34e4c75dc8324be520f3cf481042f11a2fdce0a3d743c5a36efae0b6159e",
+    "ru": "dcff5d88c8b8eec6163ea3eb5a21370befa996bedaa2ab0e103bd91fc288bd8b"
+  },
+  "files": {
+    "source": "src/i18n/catalogues/en/ui.teamBridge.edit.json",
+    "context": "src/i18n/catalogues/en/ui.teamBridge.edit.context.json",
+    "target": "src/i18n/catalogues/ru/ui.teamBridge.edit.json"
+  },
+  "context_sha256": "4b334e575dc6a3ded538b23fc132885766562ecd83da8fed14fb4387349ac29f",
+  "references": {
+    "glossary": {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    }
+  },
+  "delta_keys_audited": [
+    "ui.teamBridge.edit.error.failed"
+  ],
+  "delta_key_count": 1,
+  "current_string": "Не удалось подтвердить, сохранились ли изменения. Ваш черновик остался на месте. Попробуйте ещё раз.",
+  "source_string": "We couldn’t confirm whether the changes were saved. Your draft is still here. Try again.",
+  "retained": {
+    "prior_receipt": "i18n/receipts/d76a8497b66e-tb-edit-ru.json",
+    "prior_receipt_sha256": "62e1ca2cbe1b64336e083d9560b55efddddb7649f7031b90a0d4f0d7dc937cb6",
+    "prior_head": "d793782df4782653824960b9a8d785e527e64e39",
+    "keys": [
+      "ui.teamBridge.edit.menu",
+      "ui.teamBridge.edit.title",
+      "ui.teamBridge.edit.description",
+      "ui.teamBridge.edit.topic",
+      "ui.teamBridge.edit.error.topic_too_long",
+      "ui.teamBridge.edit.error.topic_characters",
+      "ui.teamBridge.edit.error.invalid",
+      "ui.teamBridge.edit.error.forbidden",
+      "ui.teamBridge.edit.error.archived"
+    ],
+    "count": 9,
+    "proof": "Raw namespace file lines with only error.failed line removed are byte-identical to d793782df4782653824960b9a8d785e527e64e39; JSON key/value comparison also confirms only error.failed changed. Across 7 locales this retains 63 values. Prior original failed-save conclusion is superseded, not retained."
+  },
+  "semantic_assessment": "Independently read this locale’s changed error.failed value against corrected English and context. It explicitly states inability to confirm whether changes were saved, leaving both saved and unsaved outcomes possible. It retains the visible draft and retry instruction; it does not assert failure to save or promise that retry will succeed, be automatic or be atomic. Language and register are natural for the locale. Unchanged namespace content was not re-audited.",
+  "remediation": {
+    "finding": "CopyC1 MAJOR (delegating lane identifier; distinct from prior local C1 MINOR)",
+    "result": "fixed in the reviewed source and seven translated strings; unknown save outcome preserved"
+  },
+  "mechanical": {
+    "changed_text_scan": {
+      "summary": {
+        "filesScanned": 1,
+        "stringsSeen": 9,
+        "findings": 0
+      },
+      "findings": []
+    },
+    "scan_scope": "One scratch JSON with English and 7 changed target values; candidate count is scanner output, not semantic coverage",
+    "placeholder_parity": "none in English or seven changed values",
+    "bidi_controls": "no manual bidi controls in any changed value",
+    "retained_target_values": 63,
+    "corrected_source_context_pin_match": true
+  },
+  "findings": [],
+  "findings_retention": "No new findings; prior unchanged-surface approval retained.",
+  "verdict": "APPROVED — TERMINAL (no blocker/major findings)",
+  "limitations": [
+    "Source-only delta semantic audit; no rendered failure frame, layout/font-fit/native or RTL proof.",
+    "No execution of network failure, partial update, permission enforcement or draft persistence; backend behavior is not certified by translation parity.",
+    "Scanner is English-oriented; all seven changed target values were independently read."
+  ],
+  "receipt_creation": {
+    "method": "write tool: new receipt files only",
+    "fallback_reason": "evidence tool unavailable after runtime restart; both invocation and tool://evidence discovery failed with tool-not-found",
+    "authorization": "Parent explicitly authorized narrow write fallback in this resumed audit; prior receipts unchanged; prescribed ledger assembler used afterward."
+  }
+}

@@ -655,7 +655,7 @@ export class TabRegistry {
 	 *   here and the same refusal is returned, so a handle that outlives its view
 	 *   fails instead of driving something else.
 	 */
-	requireSurface(token: unknown): TabRecord {
+	private requireLiveSurface(token: unknown): TabRecord {
 		const parsed = parseSurface(token);
 		if (!parsed) {
 			throw new BrowserHostError(
@@ -680,6 +680,35 @@ export class TabRegistry {
 				{ reason: "view_destroyed" },
 			);
 		}
+		return record;
+	}
+
+	/** Terminal cleanup must distinguish a drive refusal from a gone surface,
+	 * without giving the caller a record or making the surface driveable. */
+	closeOwnedSurface(token: string, beforeClose: () => void): boolean {
+		let record: TabRecord;
+		try {
+			record = this.requireLiveSurface(token);
+			this.assertSurfaceDriveable(record);
+		} catch (error) {
+			if (error instanceof BrowserHostError) {
+				if (error.code === "tab_closed") return true;
+				if (error.code === "owner_refused") return false;
+			}
+			throw error;
+		}
+		beforeClose();
+		this.destroy(record.tabId);
+		return true;
+	}
+
+	requireSurface(token: unknown): TabRecord {
+		const record = this.requireLiveSurface(token);
+		this.assertSurfaceDriveable(record);
+		return record;
+	}
+
+	private assertSurfaceDriveable(record: TabRecord): void {
 		// The browser's own pages (lop://extensions) are management UI painted by
 		// the desktop renderer; an agent may neither read nor drive them, even on a
 		// tab it was handed. Every agent page action resolves its tab here.
@@ -704,7 +733,6 @@ export class TabRegistry {
 		// may see or answer it. Refused here, before any action does anything, and
 		// again per command in `cdp.ts` for any path that does not come through here.
 		this.assertNotInCustody(record);
-		return record;
 	}
 
 	/**
