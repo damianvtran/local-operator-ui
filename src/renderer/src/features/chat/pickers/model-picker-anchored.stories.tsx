@@ -56,6 +56,7 @@ const DIRECT_HAIKU = "anthropic/claude-haiku-4-5";
 const ROUTED_HAIKU = `openrouter/${DIRECT_HAIKU}`;
 const MODEL_DEFAULT = /default for new sessions/i;
 const SET_DEFAULT = /Set current model as default/;
+const REFRESH_MODELS = /Refresh from providers/i;
 const DEFAULT_REFUSED = /The default was not saved: unexpected settings.edit/;
 const CATALOGUE_UNAVAILABLE = "Catalogue unavailable";
 const PARTIAL_CATALOGUE = /One provider did not answer/;
@@ -76,11 +77,13 @@ const LONG_MODEL = row({
 const AnchoredFrame: FC<{
 	scrolled?: boolean;
 	acceptDefault?: boolean;
+	holdDefaultWrite?: boolean;
 	holdFirstModel?: boolean;
 	recoverCatalogue?: boolean;
 }> = ({
 	scrolled = false,
 	acceptDefault = false,
+	holdDefaultWrite = false,
 	holdFirstModel = false,
 	recoverCatalogue = false,
 }) => {
@@ -93,6 +96,8 @@ const AnchoredFrame: FC<{
 		"idle" | "pending" | "released" | "settled"
 	>("idle");
 	const releaseModel = useRef<(() => void) | null>(null);
+	const [defaultWriteHeld, setDefaultWriteHeld] = useState(false);
+	const releaseDefault = useRef<(() => void) | null>(null);
 	const failedLiveListing = useRef(false);
 	const commandsKey = desktopKeys.commandsFor(useI18nLocale());
 	const fetchingCommands = useIsFetching({ queryKey: commandsKey });
@@ -140,8 +145,17 @@ const AnchoredFrame: FC<{
 						: [],
 				current: effort,
 			});
-		if (request.op === "settings.edit" && acceptDefault)
-			return ok({ key: request.key, value: request.value });
+		if (request.op === "settings.edit") {
+			// Hold the real setting request rather than racing a mock timeout to
+			// sample the pending layout. The test releases it for either outcome.
+			if (holdDefaultWrite && request.key === "hosting") {
+				await new Promise<void>((resolve) => {
+					releaseDefault.current = resolve;
+					setDefaultWriteHeld(true);
+				});
+			}
+			if (acceptDefault) return ok({ key: request.key, value: request.value });
+		}
 		if (
 			request.op === "sessions.command" &&
 			(request.command === "model" || request.command === "effort")
@@ -229,6 +243,20 @@ const AnchoredFrame: FC<{
 			data-owner-effort={effort}
 			data-picker-writes={JSON.stringify(writes)}
 		>
+			{holdDefaultWrite && (
+				<button
+					type="button"
+					hidden
+					data-release-default-write
+					disabled={!defaultWriteHeld}
+					onClick={() => {
+						releaseDefault.current?.();
+						setDefaultWriteHeld(false);
+					}}
+				>
+					Release default write
+				</button>
+			)}
 			{holdFirstModel && (
 				<button
 					type="button"
@@ -403,16 +431,44 @@ export const AnchoredModelExactProvider: Story = {
 	},
 };
 
-const defaultGeometry = async (accept: boolean) => {
+const defaultGeometry = async (accept: boolean, untick = false) => {
 	const { chip, dialog, input } = await openFromChip("model");
 	const list = await within(dialog).findByRole("listbox");
 	await waitFor(() => expect(anchorGap(chip, dialog)).toBeCloseTo(6, 0));
 	const check = within(dialog).getByRole("checkbox", { name: MODEL_DEFAULT });
-	const label = document.querySelector(`label[for="${check.id}"]`);
-	if (!label) throw new Error("Missing model default label");
+	const scope = within(dialog).getByRole("checkbox", { name: SHOW_ALL });
+	const labelFor = (control: HTMLElement) => {
+		const label = dialog.querySelector<HTMLLabelElement>(
+			`label[for="${control.id}"]`,
+		);
+		if (!label) throw new Error(`Missing label for ${control.id}`);
+		return label;
+	};
+	const label = labelFor(check);
+	const scopeLabel = labelFor(scope);
 	const setDefault = within(dialog).getByRole("button", { name: SET_DEFAULT });
+	const refresh = within(dialog).getByRole("button", { name: REFRESH_MODELS });
 	const row = within(list).getAllByRole("option")[0];
-	const targets = [input, list, row, check, label, setDefault];
+	// A wrapped toolbar can leave room for two lines of checkbox copy and one
+	// control gap, but must not put a third (empty) line between the controls.
+	const compactCheckboxes = () => {
+		const lineHeight = Number.parseFloat(getComputedStyle(label).lineHeight);
+		expect(box(scope).top - box(check).top).toBeLessThanOrEqual(
+			2 * lineHeight + 4.5,
+		);
+	};
+	compactCheckboxes();
+	const targets = [
+		input,
+		list,
+		row,
+		check,
+		label,
+		scope,
+		scopeLabel,
+		setDefault,
+		refresh,
+	];
 	const boxes = () =>
 		targets.map((element) => [
 			box(element).x,
@@ -421,33 +477,66 @@ const defaultGeometry = async (accept: boolean) => {
 			box(element).height,
 		]);
 	const before = boxes();
+	const expectUnmoved = () => {
+		const after = boxes();
+		for (const [i, target] of before.entries()) {
+			for (const [axis, value] of target.entries())
+				expect(after[i][axis]).toBeCloseTo(value, 0);
+		}
+		compactCheckboxes();
+	};
+	expect(check).not.toBeChecked();
 	await userEvent.click(check);
-	if (accept) {
-		await waitFor(() =>
-			expect(check).toHaveAccessibleName(
-				`Default for new sessions: ${LONG_LABEL}. Picks here update it too.`,
-			),
+	const release = await waitFor(() => {
+		const button = document.querySelector<HTMLButtonElement>(
+			"[data-release-default-write]:enabled",
 		);
+		if (!button) throw new Error("Waiting for the default write to be held");
+		return button;
+	});
+	expect(check).toBeChecked();
+	expect(check).toHaveAccessibleName(
+		"Picks here also set the default for new sessions",
+	);
+	expect(setDefault).toBeDisabled();
+	expectUnmoved();
+	release.click();
+	if (accept) {
+		const saved = `Default for new sessions: ${LONG_LABEL}. Picks here update it too.`;
+		await waitFor(() => expect(check).toHaveAccessibleName(saved));
 		expect(check).toBeChecked();
+		expect(within(label).getByText(saved)).toHaveAttribute("title", saved);
 	} else {
 		await within(dialog).findByText(DEFAULT_REFUSED);
 		expect(check).not.toBeChecked();
 	}
-	const after = boxes();
-	for (const [i, target] of before.entries()) {
-		for (const [axis, value] of target.entries())
-			expect(after[i][axis]).toBeCloseTo(value, 0);
+	expectUnmoved();
+	if (untick) {
+		await userEvent.click(check);
+		expect(check).not.toBeChecked();
+		expect(check).toHaveAccessibleName(
+			"Also make this the default for new sessions",
+		);
+		expectUnmoved();
 	}
-	const hit = document.elementFromPoint(
-		before[3][0] + before[3][2] / 2,
-		before[3][1] + before[3][3] / 2,
-	);
-	expect(check.contains(hit)).toBe(true);
+	for (const target of [check, scope, setDefault, refresh]) {
+		const rect = box(target);
+		const hit = document.elementFromPoint(
+			rect.x + rect.width / 2,
+			rect.y + rect.height / 2,
+		);
+		expect(target.contains(hit)).toBe(true);
+	}
 };
 
 export const AnchoredModelDefaultRefusal: Story = {
-	render: () => <AnchoredFrame />,
+	render: () => <AnchoredFrame holdDefaultWrite />,
 	play: () => defaultGeometry(false),
+};
+
+export const AnchoredModelDefaultLongLabel: Story = {
+	render: () => <AnchoredFrame acceptDefault holdDefaultWrite />,
+	play: () => defaultGeometry(true, true),
 };
 
 const narrowViewport = {
@@ -461,14 +550,13 @@ const narrowViewport = {
 	},
 };
 export const AnchoredModelDefaultRefusalNarrow: Story = {
+	...AnchoredModelDefaultRefusal,
 	parameters: { viewport: narrowViewport },
-	render: () => <AnchoredFrame />,
-	play: () => defaultGeometry(false),
 };
 
 export const AnchoredModelDefaultLongLabelNarrow: Story = {
+	...AnchoredModelDefaultLongLabel,
 	parameters: { viewport: narrowViewport },
-	render: () => <AnchoredFrame acceptDefault />,
 	play: () => defaultGeometry(true),
 };
 
