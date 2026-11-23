@@ -5493,7 +5493,8 @@ test("the submit path cannot re-decide what a draft is", async () => {
 		"the composer exempts `whole` from the plan again, so a whole-draft command is being routed back through the message path — the path that used to re-decide it",
 	);
 	// (b) The dispatcher takes the planner's answer (a name and its args) and has
-	// no text-shape guard left to disagree with the planner.
+	// no text-shape guard left to disagree with the planner. Its only optional
+	// extra input is a DOM anchor for picker placement, not draft text.
 	const dispatcher = code(
 		await readFile(
 			"src/renderer/src/features/chat/components/slash-dispatch.ts",
@@ -5506,8 +5507,8 @@ test("the submit path cannot re-decide what a draft is", async () => {
 	);
 	assert.match(
 		dispatcher,
-		/async \(\s*invocation: SlashCommandInvocation,?\s*\): Promise<SlashDispatchOutcome>/,
-		"the dispatcher no longer takes a `SlashCommandInvocation`; handing it text lets a second whole-draft decision exist again",
+		/async \(\s*invocation: SlashCommandInvocation(?:,\s*quickPickerAnchor\?: HTMLElement)?,?\s*\): Promise<SlashDispatchOutcome>/,
+		"the dispatcher must take a `SlashCommandInvocation` and at most an optional `HTMLElement` picker anchor; handing it text lets a second whole-draft decision exist again",
 	);
 	// (c) The canonical send path never asks whether the text is a command: it is
 	// the model path, and the composer has already dealt with every command.
