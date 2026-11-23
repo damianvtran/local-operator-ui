@@ -45,6 +45,7 @@
  */
 
 import { appendFileSync, readFileSync } from "node:fs";
+import { MAIN_BUNDLE_PREFIXES, MAIN_BUNDLE_ROOT_FILES } from "./ci-scope.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
 /**
@@ -60,22 +61,40 @@ import { isEntryPoint } from "./entry-point.mjs";
  * native-scene drivers the lane itself executes.
  */
 export const NATIVE_PREFIXES = [
-	"src/main/",
+	// THE MAIN CHUNK IS NOT RE-DECLARED HERE. `scripts/ci-scope.mjs` already owns
+	// the answer to "which paths can change what ships in the main process" -
+	// `src/main/`, `src/shared/`, `src/i18n/`, `scripts/vite-plugins/` and the two
+	// tsconfigs - because the bytecode job needs exactly that set. A second copy
+	// here would drift from it, and the drift is silent: a `src/shared` change
+	// reaches the packed main process through 61 importers under `src/main`, and a
+	// diff confined to it that skipped the lane would merge with no launch proof.
+	...MAIN_BUNDLE_PREFIXES,
+	// `src/preload/` is its own bundle, and `ci-scope.mjs` omits it because the
+	// bytecode job is about the MAIN chunk. The lane is not: every renderer call
+	// into a native capability crosses the preload bridge, so a diff confined to
+	// it can change what a signed app does while no other per-PR job launches it.
 	"src/preload/",
+	// What the packaging and installation path adds on top: the entitlements,
+	// icons and afterPack/afterSign hooks electron-builder runs; the trees copied
+	// into the artifact or patched inside it; and the scripts and workflow that
+	// drive the pack, the launch and the scenes.
 	"build/",
 	"resources/",
 	"bin/",
 	"patches/",
 	"scripts/",
-	".github/workflows/",
+	// `.github/**` is the classifier's own all-flags-true override: a diff that
+	// touches the gating must not be able to narrow itself, and the lane executes
+	// the runtime action from this tree.
+	".github/",
 ];
-
 /** Exact files whose change can repackage or re-sign the app. */
 export const NATIVE_EXACT = new Set([
+	// Root files the main chunk's shape depends on, from the same classifier.
+	...MAIN_BUNDLE_ROOT_FILES,
 	"package.json",
 	"pnpm-lock.yaml",
 	"pnpm-workspace.yaml",
-	"electron.vite.config.js",
 	"electron.vite.config.mjs",
 	"electron-builder.yml",
 	"electron-builder.json",

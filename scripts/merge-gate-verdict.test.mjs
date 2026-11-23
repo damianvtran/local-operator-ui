@@ -60,14 +60,50 @@ test("a native-touching diff may NOT skip the lane on a dispatch either", () => 
 });
 
 test("main's own push and nightly runs keep skipping the lane", () => {
+	// The workflow computes `nativeSkipAllowed` for exactly these runs; the
+	// verdict no longer guesses it from the event name.
 	for (const eventName of ["push", "schedule"]) {
 		const { bad } = gateVerdict({
 			needs: suite({ "native-proofs": { result: "skipped" } }),
 			eventName,
 			nativeScope: "true",
+			nativeSkipAllowed: "true",
 		});
 		assert.deepEqual(bad, [], `${eventName} must not require the native lane`);
 	}
+});
+
+test("a dispatch of the default branch keeps its post-merge role", () => {
+	const { bad } = gateVerdict({
+		needs: suite({ "native-proofs": { result: "skipped" } }),
+		eventName: "workflow_dispatch",
+		nativeScope: "true",
+		nativeSkipAllowed: "true",
+	});
+	assert.deepEqual(bad, []);
+});
+
+test("a branch dispatch asks the scope question", () => {
+	// Round 1 found the dispatch path forcing `native=true` for every ref, which
+	// made a docs-only branch dispatch red. It now computes the diff, so a scope
+	// of `false` must pass and a scope of `true` must not.
+	const skip = { ...suite({ "native-proofs": { result: "skipped" } }) };
+	assert.deepEqual(
+		gateVerdict({
+			needs: skip,
+			eventName: "workflow_dispatch",
+			nativeScope: "false",
+		}).bad,
+		[],
+	);
+	assert.deepEqual(
+		gateVerdict({
+			needs: skip,
+			eventName: "workflow_dispatch",
+			nativeScope: "true",
+		}).bad,
+		[{ job: "native-proofs", result: "skipped" }],
+	);
 });
 
 test("unset scope is not a licence to skip", () => {

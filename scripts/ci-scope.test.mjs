@@ -40,6 +40,7 @@ import {
 	runJobs,
 } from "./ci-scope.mjs";
 import { OVERRIDE_ENV } from "./desktop-test-concurrency.mjs";
+import { gateVerdict } from "./merge-gate-verdict.mjs";
 import { discoverDesktopTests } from "./desktop-test-inventory.mjs";
 
 /*
@@ -3661,43 +3662,39 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	// `merge-gate` unless `needs.changes.outputs.pack` is literally `'false'`;
 	// on `push` to `main` / `schedule` (and `workflow_dispatch` with
 	// `native_proofs != true`), `native-proofs` legitimately skips.
+	// The verdict now lives in scripts/merge-gate-verdict.mjs, so this contract
+	// pins BOTH halves: the step still passes the event, the needs payload and the
+	// diff-derived native scope, and the step still calls the module rather than
+	// carrying its own copy of the decision.
 	assert.ok(
 		gate.steps.some(
 			(step) =>
 				step.env?.NEEDS === "${{ toJSON(needs) }}" &&
 				step.env?.EVENT_NAME === "${{ github.event_name }}" &&
-				step.env?.PACK_SCOPE === "${{ needs.changes.outputs.pack }}",
+				step.env?.NATIVE_SCOPE === "${{ needs.changes.outputs.native }}",
 		),
+		"the gate step must read the diff-derived native scope, not a pack scope",
 	);
 	const body = gate.steps.map((step) => step.run ?? "").join("\n");
-	assert.match(body, /v\.result === 'success'/u);
-	assert.match(body, /process\.exit\(1\)/u);
+	assert.match(body, /merge-gate-verdict\.mjs/u);
+	assert.match(body, /applyVerdict/u);
+	// `changes` runs `--all`, so `pack` is true for every diff; a gate that still
+	// read it for native selection would restore the queue-wide cost this change
+	// removes.
+	assert.doesNotMatch(body, /PACK_SCOPE/u);
 
-	const mergeGateScript = body
-		.split("<<'NODE'\n")[1]
-		.replace(/\n\s*NODE\s*$/, "");
 	const runMergeGate = (
 		needsPayload,
-		{
-			eventName = "pull_request",
-			packScope = "true",
-			nativeProofsInput = "",
-		} = {},
-	) =>
-		spawnSync(
-			process.execPath,
-			["--input-type=module", "-e", mergeGateScript],
-			{
-				encoding: "utf8",
-				env: {
-					PATH: process.env.PATH,
-					NEEDS: JSON.stringify(needsPayload),
-					EVENT_NAME: eventName,
-					PACK_SCOPE: packScope,
-					NATIVE_PROOFS_INPUT: nativeProofsInput,
-				},
-			},
-		);
+		{ eventName = "pull_request", nativeScope = "true", nativeSkipAllowed = "" } = {},
+	) => {
+		const { bad } = gateVerdict({
+			needs: needsPayload,
+			eventName,
+			nativeScope,
+			nativeSkipAllowed,
+		});
+		return { status: bad.length ? 1 : 0 };
+	};
 	const allGreenSuite = Object.fromEntries(
 		gate.needs.map((n) => [n, { result: "success" }]),
 	);
@@ -3708,7 +3705,7 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 			"native-proofs": { result: "skipped" },
 		}).status,
 		1,
-		"a skipped native-proofs on pull_request when pack != 'false' must fail merge-gate",
+		"a skipped native-proofs on pull_request when a native surface changed must fail merge-gate",
 	);
 	assert.equal(
 		runMergeGate({
@@ -3721,15 +3718,15 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	assert.equal(
 		runMergeGate(
 			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
-			{ eventName: "pull_request", packScope: "false" },
+			{ eventName: "pull_request", nativeScope: "false" },
 		).status,
 		0,
-		"native-proofs may skip when pack == 'false'",
+		"native-proofs may skip when the diff proved it unnecessary",
 	);
 	assert.equal(
 		runMergeGate(
 			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
-			{ eventName: "push", packScope: "true" },
+			{ eventName: "push", nativeScope: "true", nativeSkipAllowed: "true" },
 		).status,
 		0,
 		"native-proofs legitimately skips on push to main",
@@ -3737,7 +3734,7 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	assert.equal(
 		runMergeGate(
 			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
-			{ eventName: "schedule", packScope: "true" },
+			{ eventName: "schedule", nativeScope: "true", nativeSkipAllowed: "true" },
 		).status,
 		0,
 		"native-proofs legitimately skips on nightly schedule",
@@ -3745,14 +3742,21 @@ test("A18: the merge gate always runs, needs every suite job, and no `if:` is ga
 	assert.equal(
 		runMergeGate(
 			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
-			{
-				eventName: "workflow_dispatch",
-				packScope: "true",
-				nativeProofsInput: "true",
-			},
+			{ eventName: "workflow_dispatch", nativeScope: "true" },
 		).status,
 		1,
-		"a skipped native-proofs when explicitly requested via workflow_dispatch must fail merge-gate",
+		"a skipped native-proofs on a dispatch that needs it must fail merge-gate",
+	);
+	// The hole this change closes, pinned so it cannot reopen: the old rule
+	// keyed on `native_proofs` being REQUESTED, so a dispatch with the input
+	// false certified a native-touching head with no proof behind it.
+	assert.equal(
+		runMergeGate(
+			{ ...allGreenSuite, "native-proofs": { result: "skipped" } },
+			{ eventName: "workflow_dispatch", nativeScope: "false" },
+		).status,
+		0,
+		"a dispatch may skip only when the diff itself proved it unnecessary",
 	);
 	assert.equal(
 		runMergeGate({

@@ -16,11 +16,18 @@
  * it is an explicitly permitted skip; `changes` may never skip; a skipped job
  * on a pull request is bad unless the scope proved it unnecessary.
  *
- * WHAT IS NEW. `nativeScope === 'false'` — the classifier's answer that no
- * changed path can alter the packed app — is now the ONLY reason a skipped
- * `native-proofs` is acceptable on a pull request or a dispatch. On main's own
- * push/schedule runs the lane is deliberately not asked for, so a skip there
- * stays acceptable, exactly as before.
+ * WHAT IS NEW. Two reasons a skipped `native-proofs` is acceptable, and no
+ * others: `nativeScope === 'false'` — the classifier's answer that no changed
+ * path can alter the packed app — or `nativeSkipAllowed`, which the workflow
+ * computes for the runs that deliberately do not ask for the lane at all
+ * (`push`/`schedule`, and a dispatch of the default branch, which is the same
+ * post-merge role by another trigger).
+ *
+ * WHY THE FLAG RATHER THAN A SECOND EVENT CHECK HERE. Round 1 found that
+ * deciding "is this a run that needs the proof?" from `eventName` alone made a
+ * docs-only branch dispatch unconditionally red, because the dispatch path had
+ * no diff to ask about. The ref is the fact that separates "a dispatch of main"
+ * from "a dispatch of a PR head", and the workflow is where it is known.
  */
 
 /**
@@ -28,9 +35,15 @@
  * @param {Record<string, {result: string}>} input.needs  `toJSON(needs)` from the job.
  * @param {string} input.eventName                          `github.event_name`.
  * @param {string} input.nativeScope                        `needs.changes.outputs.native`: "true" | "false" | "".
+ * @param {string} [input.nativeSkipAllowed]                "true" for runs that never ask for the lane.
  * @returns {{bad: Array<{job: string, result: string}>, reasons: Record<string, string>}}
  */
-export function gateVerdict({ needs, eventName, nativeScope }) {
+export function gateVerdict({
+	needs,
+	eventName,
+	nativeScope,
+	nativeSkipAllowed,
+}) {
 	const bad = [];
 	const reasons = {};
 	for (const [job, { result }] of Object.entries(needs ?? {})) {
@@ -49,14 +62,15 @@ export function gateVerdict({ needs, eventName, nativeScope }) {
 				reasons[job] = "skip allowed: no changed path can alter the packed app";
 				continue;
 			}
-			if (eventName === "pull_request" || eventName === "workflow_dispatch") {
-				// The merge-relevant paths must carry the proof. A dispatch that
-				// asked not to run it cannot certify a head that needs it.
-				bad.push({ job, result });
+			if (nativeSkipAllowed === "true") {
+				reasons[job] =
+					"skip allowed: this run does not ask for the native lane";
 				continue;
 			}
-			reasons[job] =
-				"skip allowed: main's post-merge run does not ask for the native lane";
+			// Everything else is a gate run over a head that needs the proof: a pull
+			// request, or a dispatch of a branch. A dispatch that asked not to run it
+			// cannot certify a head the diff says needs it.
+			bad.push({ job, result });
 			continue;
 		}
 		// Every other skipped job is a scope decision inside the suite, and the

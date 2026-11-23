@@ -307,7 +307,7 @@ export const KNOWN_LIVE_ROOT_FILES = new Set([
  * the bytecode job exists to catch a packaging defect where it can hide, not to
  * pay a second full build on every pull request.
  */
-const MAIN_BUNDLE_PREFIXES = [
+export const MAIN_BUNDLE_PREFIXES = [
 	"src/main/",
 	"src/shared/",
 	"src/i18n/",
@@ -321,7 +321,7 @@ const MAIN_BUNDLE_PREFIXES = [
  * (`tsconfig.app.json`, `tsconfig.web.json`) cannot change this chunk, so they
  * are deliberately absent rather than matched by a `tsconfig*` glob.
  */
-const MAIN_BUNDLE_ROOT_FILES = new Set([
+export const MAIN_BUNDLE_ROOT_FILES = new Set([
 	"electron.vite.config.js",
 	"tsconfig.json",
 	"tsconfig.node.json",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -42,6 +42,45 @@ const BACKEND_ONLY_DIFF = [
 test("a backend-only diff does not select the native lane", () => {
 	assert.equal(requiresNativeProof(BACKEND_ONLY_DIFF), false);
 	assert.deepEqual(nativeSurfacePaths(BACKEND_ONLY_DIFF), []);
+});
+
+test("a shared-policy diff selects the lane", () => {
+	// The reviewer's counter-example: the macOS entitlement policy lives under
+	// `src/shared`, is read by `src/main/update-install.ts`, and 61 main-process
+	// files import from that tree. A diff confined to it can change what a signed
+	// app is allowed to do.
+	assert.equal(
+		requiresNativeProof(["src/shared/mac-os-entitlement-policy.ts"]),
+		true,
+	);
+});
+
+test("a runtime-action diff selects the lane", () => {
+	// The macOS job runs `./.github/actions/electron-runtime`, so the action is
+	// part of what the proof executes.
+	assert.equal(
+		requiresNativeProof([".github/actions/electron-runtime/action.yml"]),
+		true,
+	);
+});
+
+test("the workflow wires the scope to the lane, by name", () => {
+	// Renaming the step id, the output or the `if:` expression would silently put
+	// every backend PR back on a macOS runner with every test still green - the
+	// exact regression this file exists for. Pin the three links.
+	const workflow = readFileSync(
+		new URL("../.github/workflows/full-suite.yml", import.meta.url),
+		"utf8",
+	);
+	assert.match(workflow, /native: \$\{\{ steps\.native\.outputs\.native \}\}/u);
+	assert.match(workflow, /id: native\n/);
+	assert.match(workflow, /node scripts\/native-scope\.mjs/u);
+	assert.match(workflow, /needs\.changes\.outputs\.native != 'false'/u);
+	assert.doesNotMatch(
+		workflow,
+		/needs\.changes\.outputs\.pack != 'false'/u,
+		"pack is true for every diff here; gating the lane on it is the defect",
+	);
 });
 
 test("a native-touching diff still selects the lane", () => {
