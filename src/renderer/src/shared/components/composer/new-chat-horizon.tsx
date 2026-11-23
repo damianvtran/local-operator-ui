@@ -1,9 +1,16 @@
 import { BrandMark } from "@shared/components/common/brand-mark";
-import { useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 import { trackNewChatHorizon } from "./new-chat-horizon-motion";
 import "./new-chat-horizon.css";
 
-export function NewChatHorizon({
+/*
+ * MEMOIZED because its parent, the composer, re-renders on every keystroke
+ * while this splash is up, and these three booleans do not change with the
+ * text. Without it each keypress re-rendered the canvas host and the mark
+ * (measured: `NewChatHorizon` and `BrandMark` once per keystroke) during the
+ * very frames the helix is trying to paint.
+ */
+export const NewChatHorizon = memo(function NewChatHorizon({
 	quiet,
 	dimmed,
 	suppressed,
@@ -65,4 +72,4 @@ export function NewChatHorizon({
 			</span>
 		</div>
 	);
-}
+});
