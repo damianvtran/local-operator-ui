@@ -1,0 +1,132 @@
+{
+	"instance": "audit-i18n-psopt-ur",
+	"namespace": "ui.projects",
+	"locale": "ur",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.projects (6 new keys)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-ur)",
+		"session": "c78ff1e47113 (from this session's system header 'Session ID', not a registry read)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only audit session; edited no catalogue/ledger, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family possible and not verifiable, so independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"ur": "5f020ba44ff952ed8b5b7b7335d46b78c0ccd2e79505d782088dbc7c92fd75b3",
+		"en_context": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a",
+		"files": {
+			"en": "src/i18n/catalogues/en/ui.projects.json",
+			"ur": "src/i18n/catalogues/ur/ui.projects.json",
+			"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+		}
+	},
+	"references": {
+		"glossary": "local-operator@1b011ed566f9 (= origin/main at audit) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7; rows used: project -> پروجیکٹ, digits Latin in v1, ur plurals one/other; no tag/name/note/goal/summary rows",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/ur.md sha256 7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4: آپ register, respectful imperative, Urdu punctuation ۔ ، , Latin digits, no manual bidi controls (render layer applies FSI/PDI)",
+		"shipped_terms": "ur ui.projects: ٹیگ/ٹیگز; titles_are_at_most 'حرف/حروف' for characters; comma_separated_up_to_8... 'چھوٹے لاطینی حروف، ہندسے، انڈر اسکور یا ڈیش'; letters_digits_dot_underscore_or_dash_no_spaces 'حروف، ہندسے، نقطہ، انڈر اسکور یا ڈیش'; ui.canvas.goals_viewer.goals 'اہداف'; notes = 'نوٹس' (17 occurrences ur corpus, e.g. release_notes 'ریلیز نوٹس'); 'یادداشت' = memory in ui.settings.imports.*; agents.refusals.team_name_bound '1-64 حروف'"
+	},
+	"checks": [
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check, check-duplicates, check-strings, context-parity: exit 0. ledger-check exit 1 only on stale ui.projects rows (pending audits of this branch), as expected before ledger assembly"
+		},
+		{
+			"check": "key-set parity en vs ur",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "diff is additions only",
+			"result": "PASS",
+			"detail": "git diff 8b5ca519a1f..10c0c83a272: 6 '+' lines, 0 '-' lines, exactly the 6 in-scope keys"
+		},
+		{
+			"check": "placeholders/ICU/CLDR",
+			"result": "PASS",
+			"detail": "no braces in en or ur values; no plural needed: '1-24' is a fixed literal range, Urdu numeral + حروف needs no agreement (one/other only matters for variable counts)"
+		},
+		{
+			"check": "NFC / bidi controls",
+			"result": "PASS",
+			"detail": "all 6 values and whole file NFC; zero U+200B-D, U+200E/F, U+202A-E, U+2066-9, U+061C, U+FEFF (python scan)"
+		},
+		{
+			"check": "markdown in headings",
+			"result": "PASS",
+			"detail": "no '#' or markup in template_* values"
+		},
+		{
+			"check": "Urdu punctuation",
+			"result": "PASS",
+			"detail": "sentences end in ۔ ; lists use ، ; no ASCII , . ; ? and no Hindi ।"
+		},
+		{
+			"check": "ASCII-only grammar fidelity",
+			"result": "PASS",
+			"detail": "name_grammar and tag_grammar say لاطینی (Latin) letters and صرف (only), matching /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/ and /^[a-z0-9][a-z0-9_-]{0,23}$/; range kept exact as digits '1-24'"
+		},
+		{
+			"check": "RTL rendering of '1-24'",
+			"result": "PASS",
+			"detail": "fribidi --rtl on tag_grammar: levels show '1' and '24' at level 2 (AN after AL), '-' at level 1; visual LTR '24-1', i.e. read right-to-left as 1 then 24 - the conventional RTL range order; same as shipped team_name_bound '1-64'"
+		},
+		{
+			"check": "fit",
+			"result": "NOTE",
+			"detail": "no maxCells; context says one sentence that may wrap under the field. name_grammar 119 vs 88 chars, tag_grammar 91 vs 74, headings 5-9 chars: acceptable"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 2
+	},
+	"findings": [
+		{
+			"id": "M1",
+			"severity": "MINOR",
+			"key": "ui.projects.project_sheet_model.template_notes",
+			"current": "یادداشتیں",
+			"suggested": "نوٹس",
+			"reason": "Correct Urdu for notes, but the ur corpus says نوٹس for notes 17 times (release_notes, canvas notes, agentMessages), while یادداشت names agent memory in ui.settings.imports.*. In a project description an agent reads, 'یادداشتیں' can suggest memory. Shorter too."
+		},
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.tag_grammar",
+			"current": "ٹیگ کی لمبائی 1-24 حروف ہو، اور اس میں صرف چھوٹے لاطینی حروف، ہندسے، انڈر اسکور یا ڈیش ہوں۔",
+			"suggested": "ٹیگ 1 سے 24 حروف کا ہو، اور اس میں صرف چھوٹے لاطینی حروف، ہندسے، انڈر اسکور یا ڈیش ہوں۔",
+			"reason": "'1 سے 24' is the more natural Urdu range and avoids the bidi range reorder. 'لمبائی ... حروف ہو' is slightly stiff. Current text is correct and matches the shipped team_name_bound '1-64 حروف'."
+		},
+		{
+			"id": "N2",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_grammar",
+			"current": "... صرف لاطینی حروف، ہندسے، ...",
+			"suggested": "... صرف لاطینی حروف، ہندسے (0-9)، ... (or 'لاطینی حروف اور ہندسے' throughout)",
+			"reason": "Urdu keyboards type ۰-۹ digits, which the pattern rejects; 'ہندسے' alone does not exclude them. English has the same gap, so it is optional."
+		}
+	],
+	"per_key": {
+		"ui.projects.project_sheet_model.template_summary": "ok: 'خلاصہ' standard heading word, no markup",
+		"ui.projects.project_sheet_model.template_goals": "ok: 'اہداف' identical to ui.canvas.goals_viewer.goals / ui.canvas.shell.goals",
+		"ui.projects.project_sheet_model.template_notes": "M1",
+		"ui.projects.project_edit_model.name_required": "ok: 'پروجیکٹ کا نام درج کریں۔' respectful imperative, glossary project -> پروجیکٹ, no blame",
+		"ui.projects.project_edit_model.name_grammar": "ok with N2: start rule, Latin-only letters, dot/underscore/dash, 'صرف' matches the pattern; terms match letters_digits_dot_underscore_or_dash_no_spaces and are more precise",
+		"ui.projects.project_edit_model.tag_grammar": "ok with N1: exact 1-24, lowercase Latin, digits, underscore, dash; matches the comma_separated_up_to_8 hint wording"
+	},
+	"result": "clean-with-findings",
+	"status": "passed"
+}

@@ -1,0 +1,117 @@
+{
+	"instance": "audit-i18n-psopt-vi",
+	"locale": "vi",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.projects (6 new keys)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-vi)",
+		"session": "b6eeb2f98416",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5' and 'Session ID: b6eeb2f98416'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue or ledger, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family is possible and not verifiable, so independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"vi": "0317d3046c8b0df9556f7fce534c4f5bc3232cd0c9498cfc40acc41c002ae478",
+		"en_context": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9, same blob as translator rev) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7: project -> 'dự án'",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/vi.md sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51 (identical on origin/main): bạn-register dropped pronouns, terse, sentence case, no space before punctuation, Latin digits, NFC, other-only plurals",
+		"shipped_terms": "vi ui.projects: tags 'Thẻ'; key 'Khóa'; project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces 'Chữ cái, chữ số, dấu chấm, gạch dưới hoặc gạch ngang; không có khoảng trắng.'; comma_separated_... 'Dùng chữ thường, chữ số, dấu gạch dưới hoặc gạch ngang.'; 'Mục tiêu' already = Target (editors/list/sort)."
+	},
+	"checks": [
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check byte-identical; check-duplicates ok (0 dup); check-strings ok; context-parity ok. ledger-check FAILS only on stale vi/zh-CN ui.projects rows (expected: file changed, awaiting this re-audit)."
+		},
+		{
+			"check": "key-set parity en vs vi",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty; all 6 keys have context entries"
+		},
+		{
+			"check": "diff is additions only",
+			"result": "PASS",
+			"detail": "8b5ca519a1f..10c0c83a272: exactly the 6 in-scope keys added; 0 existing vi values changed; 0 removed"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "none in en or vi for the 6 keys; no { } < > ` # in values"
+		},
+		{
+			"check": "CLDR plurals",
+			"result": "PASS",
+			"detail": "vi has only 'other'; '1-24 ký tự' needs no agreement (Vietnamese nouns do not inflect)"
+		},
+		{
+			"check": "NFC / bidi / code points",
+			"result": "PASS",
+			"detail": "all 6 NFC (python unicodedata.is_normalized); no U+200E/F, U+202A-E, U+2066-9; no non-letter non-ASCII code points"
+		},
+		{
+			"check": "vi punctuation",
+			"result": "PASS",
+			"detail": "no space before ';' ',' '.'; ASCII hyphen-minus in '1-24' kept as source/context require; Latin digits"
+		},
+		{
+			"check": "grammar fidelity",
+			"result": "PASS",
+			"detail": "name: 'chữ cái không dấu' renders ASCII-only /[A-Za-z]/ (Vietnamese diacritic letters fail the regex), first char letter/digit, set . _ -; tag: 'chữ thường không dấu', digits, _ -, exact 1-24 matches {0,23}+1"
+		},
+		{
+			"check": "length (chars vi/en)",
+			"result": "NOTE",
+			"detail": "name_grammar 120/88, tag_grammar 88/74 (wrapping inline errors, may wrap per context); name_required 18/24; headings 7/7, 8/5, 7/5. Not rendered here; unmeasured."
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_grammar",
+			"current": "Tên bắt đầu bằng chữ cái không dấu hoặc chữ số; chỉ dùng chữ cái không dấu, chữ số, dấu chấm, gạch dưới hoặc gạch ngang.",
+			"suggested": "Tên phải bắt đầu bằng chữ cái không dấu hoặc chữ số và chỉ gồm chữ cái không dấu, chữ số, dấu chấm, gạch dưới hoặc gạch ngang.",
+			"reason": "Without 'phải' the first clause reads as a description ('the name starts with…') rather than the rule being enforced; 'phải … chỉ gồm' is the usual vi validation phrasing and matches tag_grammar's 'chỉ gồm'. Meaning is already correct; acceptable as is."
+		}
+	],
+	"notes_not_findings": [
+		"Source-level, not a vi defect: the field these errors sit under is labelled Key ('Khóa') while en/vi errors say name ('Tên'); vi mirrors en faithfully.",
+		"Context sidecar for name_grammar says 'keep \"1-24\" as digits' though that string has no range (copy-paste in en context).",
+		"Pre-existing hint project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces says 'Chữ cái' without 'không dấu'; the new string is the more accurate one; not in scope.",
+		"'Mục tiêu' for Goals also renders Target elsewhere in the file; harmless inside the free-text description seed."
+	],
+	"per_key": {
+		"ui.projects.project_sheet_model.template_summary": "ok: 'Tóm tắt' natural one-word heading, no markdown",
+		"ui.projects.project_sheet_model.template_goals": "ok: 'Mục tiêu' is the standard heading word for Goals",
+		"ui.projects.project_sheet_model.template_notes": "ok: 'Ghi chú' standard",
+		"ui.projects.project_edit_model.name_required": "ok: 'Đặt tên cho dự án.' idiomatic imperative, no blame, glossary 'dự án'",
+		"ui.projects.project_edit_model.name_grammar": "N1",
+		"ui.projects.project_edit_model.tag_grammar": "ok: 'Thẻ' consistent; exact 1-24; 'chữ thường không dấu' faithful to [a-z]; separator wording matches the shipped tags hint"
+	},
+	"result": "clean-with-findings",
+	"status": "passed",
+	"hash_paths": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"vi": "src/i18n/catalogues/vi/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	}
+}

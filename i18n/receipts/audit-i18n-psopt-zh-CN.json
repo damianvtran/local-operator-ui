@@ -1,0 +1,64 @@
+{
+	"instance": "audit-i18n-psopt-zh-CN",
+	"namespace": "ui.projects",
+	"locale": "zh-CN",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": ["ui.projects (6 new keys)"],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-zh-CN)",
+		"session": "4e70d334fe81 (from this session's system header 'Session ID' and its scratchpad path, not a registry read)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue, ledger or other repo file, committed and posted nothing; only this receipt was written. The translator was a separate i18n-translator session; same model family possible and not verifiable, so independence is session-level. No MT or translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3 (as briefed; local origin/main ref read at audit time was c78604c41b29, and the audited diff is 8b5ca519a1f..10c0c83a272)",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"zh-CN": "84a994e9cde4a8e1674f4f295731009034353424217bc19d6cb739d90fec254f",
+		"en/ui.projects.json": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"zh-CN/ui.projects.json": "84a994e9cde4a8e1674f4f295731009034353424217bc19d6cb739d90fec254f",
+		"en/ui.projects.context.json": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9; last touching commit e40c277b8b80) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (project -> 项目; no tag/key/name entries)",
+		"style_guide": "local-operator@origin/main (1b011ed566f9) i18n/style-guides/zh-CN.md sha256 6d9b370681d5d7fa19659240c4286a0617b303c44965b5804f4a763a2df17b52: 你, terse, 请 on validation/field prompts that carry a next step, full-width punctuation, no space between CJK and Latin/digits, Latin digits, plural other-only",
+		"shipped_terms": "zh-CN ui.projects: Key field label project_editors.key / project_form_dialog.key '标识'; tags '标签'; target '目标'; existing key hint project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces '可使用字母、数字、点、下划线或连字符，不能包含空格。'; titles_are_at_most_value1_characters '…个字符'; delete dialog '输入项目名称以确认' (名称 already used for the key-as-name)."
+	},
+	"checks": [
+		{"check": "repo validators", "result": "PASS", "detail": "node scripts/i18n/check-duplicates.mjs ok (0 duplicate keys); context-parity.mjs ok. ledger-check.mjs exit 1 with zh-CN/ui.projects stale source/target sha256 - expected: the ledger row is not yet re-assembled for this head (not a catalogue defect)."},
+		{"check": "key-set parity en vs zh-CN", "result": "PASS", "detail": "433/433, symmetric difference empty"},
+		{"check": "diff is additions only", "result": "PASS", "detail": "git diff --numstat 8b5ca519a1f..10c0c83a272 zh-CN/ui.projects.json: 6 added, 0 deleted; exactly the 6 scoped keys"},
+		{"check": "placeholders/ICU/plural", "result": "PASS", "detail": "none in en or zh-CN for the 6 keys; '1-24' is literal text, not a variable, so no CLDR plural branch is needed (zh-CN is other-only anyway)"},
+		{"check": "NFC / code points / bidi", "result": "PASS", "detail": "python: all 6 NFC; no U+200B/200E/200F/202A-202E/2066-2069/FEFF and no Cc/Cf chars; non-Han chars only '，、。' (full-width) and ASCII '1-24'"},
+		{"check": "zh-CN punctuation and spacing", "result": "PASS", "detail": "full-width ，、。; sentence-final 。 on full sentences, none on the 3 headings; no space between CJK and '1-24' per style guide"},
+		{"check": "factual fidelity to grammar", "result": "PASS", "detail": "name: ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ -> '以英文字母或数字开头，只能使用英文字母、数字、点、下划线或连字符' states ASCII (英文字母) and the exclusive set; tag: ^[a-z0-9][a-z0-9_-]{0,23}$ -> '1-24个字符…小写英文字母、数字、下划线或连字符' exact range and set. Neither en nor zh states the tag's first-char rule or the 64-char key cap; source-level omission, faithfully mirrored."},
+		{"check": "fit (cells)", "result": "PASS", "detail": "no maxCells hints; headings 4 cells each (en 5-7); name_required 14 cells, name_grammar 72, tag_grammar 64 (en 24/88/74) - all shorter than English, wrap allowed under the field"}
+	],
+	"counts": {"blocker": 0, "major": 0, "minor": 1, "nit": 0},
+	"findings": [
+		{
+			"id": "M1", "severity": "MINOR", "key": "ui.projects.project_edit_model.name_required (and name_grammar)",
+			"current": "请为项目命名。 / 名称须以英文字母或数字开头，…",
+			"suggested": "请填写项目标识。 / 标识须以英文字母或数字开头，只能使用英文字母、数字、点、下划线或连字符。",
+			"reason": "Both errors render under the field labelled '标识' (project_editors.key / project_form_dialog.key), and the sidecar says the value asks for the project KEY. desktop-contract.ts notes the main trigger is a Chinese title deriving an empty key: a zh user who has just typed a Chinese title then reads 'please name the project' under a field called 标识. Mirrors the English source ('name' vs 'Key'), so MINOR not MAJOR; if the en copy is kept, the file already uses 名称 for the key elsewhere (delete dialog) and the current text is defensible."
+		}
+	],
+	"observations": [
+		{"severity": "info", "key": "ui.projects.project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces", "note": "Pre-existing, out of scope, not gating: says '字母' where the new name_grammar correctly says '英文字母'; a later pass could align it to '可使用英文字母、…'."}
+	],
+	"per_key": {
+		"ui.projects.project_sheet_model.template_summary": "ok: '概述' is the natural overview heading for a project description; no '#' or markup, no 。",
+		"ui.projects.project_sheet_model.template_goals": "ok: '目标' is the natural Goals heading; shares the word with the Target property label but sits as a markdown heading in the description body, so no real ambiguity",
+		"ui.projects.project_sheet_model.template_notes": "ok: '备注' is standard for a Notes section",
+		"ui.projects.project_edit_model.name_required": "M1; otherwise idiomatic, correct 请 per style guide (validation sentence with a next step)",
+		"ui.projects.project_edit_model.name_grammar": "accurate to the ASCII grammar ('英文字母'); 'may use' tightened to '只能使用', which matches the exclusive regex; no 请 needed (rule statement); see M1 for the 名称/标识 term",
+		"ui.projects.project_edit_model.tag_grammar": "ok: exact 1-24 range kept as Latin digits per sidecar, lowercase ASCII, '标签' and '…个字符' consistent with the file"
+	},
+	"result": "clean-with-findings",
+	"status": "passed"
+}
