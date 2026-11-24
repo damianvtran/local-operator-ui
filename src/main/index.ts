@@ -196,6 +196,7 @@ import {
 import { createQuitState } from "./quit-state";
 import { RecordingShortcutCoordinator } from "./recording-shortcut";
 import { createRelaunchPending } from "./relaunch-pending";
+import { SessionNotificationAvatars } from "./session-notification-avatars";
 import { createUserShellPath } from "./shell-path";
 import { SupplementFrameMounts } from "./supplement-mounts";
 import {
@@ -3495,6 +3496,23 @@ app
 			},
 			log: (line) => logger.info(line, LogFileType.BACKEND),
 		});
+		/*
+		 * The bound agent's picture on a session banner (operator request
+		 * 2026-11-23). Off until core advertises
+		 * `desktop_session_notification_avatar` on the backend-ready capability
+		 * read below, so an older core is never asked for a route it lacks and
+		 * its banners keep the app icon.
+		 */
+		let sessionNotificationAvatarAvailable = false;
+		const sessionNotificationAvatars = new SessionNotificationAvatars({
+			enabled: () => sessionNotificationAvatarAvailable,
+			request: (input) => backendService.requestDesktopMedia(input, null),
+			theme: () => (nativeTheme.shouldUseDarkColors ? "dark" : "light"),
+			decode: (data) => {
+				const icon = nativeImage.createFromBuffer(Buffer.from(data));
+				return icon.isEmpty() ? undefined : icon;
+			},
+		});
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
@@ -3545,6 +3563,7 @@ app
 			// A clicked banner comes forward through this same raise policy, and its
 			// line is what tells that trigger apart from the other four.
 			reportRaise,
+			{ images: sessionNotificationAvatars },
 		);
 		/*
 		 * Team Bridge message banners. A SEPARATE owner from the notifier above: its
@@ -3629,6 +3648,8 @@ app
 			notificationAvatarAvailable = false;
 			notificationEndpointAvatarAvailable = false;
 			notificationImages.clear();
+			sessionNotificationAvatarAvailable = false;
+			sessionNotificationAvatars.clear();
 			void backendService
 				.requestDesktop({ op: "capabilities" })
 				.then((response) => {
@@ -3644,6 +3665,10 @@ app
 					notificationEndpointAvatarAvailable =
 						Number(body?.result?.features?.team_bridge_endpoint_avatar ?? 0) >=
 						1;
+					sessionNotificationAvatarAvailable =
+						Number(
+							body?.result?.features?.desktop_session_notification_avatar ?? 0,
+						) >= 1;
 					// Gated on the capability reading TRUE after any backend-ready, not on a
 					// false -> true flip: this event cleared the cache just above, so the
 					// replay only refills what it emptied, and no path runs from cache
