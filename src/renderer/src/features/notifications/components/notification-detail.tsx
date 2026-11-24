@@ -239,6 +239,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			ref={paneRef}
 			aria-label={t("ui.notifications.detail.label")}
 			data-notification-detail={item.id}
+			data-lo-pane-edge-cues={narrow ? "bottom" : ""}
 			/*
 			 * NO `overflow-x-hidden` (it used to be here): it is what turned the column's
 			 * overflow into a silent clip at the window edge instead of a visible defect.

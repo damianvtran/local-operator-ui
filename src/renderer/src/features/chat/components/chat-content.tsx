@@ -66,7 +66,6 @@ import {
 	type ConsoleCommandIntent,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
-	resolveRightSlotOccupied,
 	resolveRightSlotWidth,
 	rightSlotPaneWidth,
 	useUiPreferencesStore,
@@ -181,6 +180,7 @@ import {
 	type ChatTabValue,
 	ChatTabs,
 } from "./chat-tabs";
+import { ChatWorkspace } from "./chat-workspace";
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
@@ -202,6 +202,8 @@ import { QuestionDock } from "./trace/question-dock";
  * Props for the ChatContent component
  */
 type ChatContentProps = {
+	workspaceTabs?: ReactNode;
+	workspaceNotice?: ReactNode;
 	activeTab: "chat" | "raw";
 	onTabChange: (tab: "chat" | "raw") => void;
 	agentName: string;
@@ -991,6 +993,8 @@ const CHAT_COLUMN_MIN_PX = CHAT_PANE_MIN_PX;
 
 export const ChatContent: FC<ChatContentProps> = React.memo(
 	({
+		workspaceTabs,
+		workspaceNotice,
 		activeTab,
 		onTabChange,
 		agentName,
@@ -1850,26 +1854,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			isAskDrawerOpen && askDrawerScope === "session" && Boolean(sessionId);
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 		const requestAskOpen = useUiPreferencesStore((s) => s.requestAskOpen);
-		/*
-		 * Whether a right-slot pane occupies the window's right edge, which is what
-		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
-		 * redesign §J4).
-		 *
-		 * IT READS THE STORE'S ONE DERIVATION rather than restating the flags (#868):
-		 * the disjunction that used to live here was a second copy of
-		 * `activeRightSlotPane`, and it disagreed with the resolver exactly when a
-		 * flag outlived the route that could draw it - the header then reserved a
-		 * corner for a pane that was not on screen, and the lane and the column
-		 * followed the same stale answer. `resolveRightSlotOccupied` is the
-		 * drawable-aware sibling of the width resolver, and the two read the same
-		 * claim and the same route facts, so the header, the lane and the column
-		 * cannot disagree.
-		 *
-		 * The header is the only candidate this component renders for that corner: a
-		 * pane's own toolbar reserves it in its own row, which is why the truth of this
-		 * expression is passed as the NEGATION above.
-		 */
-		const rightSlotOccupied = useUiPreferencesStore(resolveRightSlotOccupied);
 
 		/*
 		 * THE ASKS DOOR: the entry point the sidebar's `All asks` row used to be.
@@ -2672,7 +2656,173 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				view
 			);
 
-		return (
+		const workspaceHeader = (
+			<ChatHeader
+				canvasConversationId={conversationId}
+				agentName={agentName}
+				agentAvatar={
+					avatarAgentId
+						? {
+								agentId: avatarAgentId,
+								agentName: avatarAgentName,
+								sha256: agentAvatarSha,
+								owned: agentAvatarOwned,
+							}
+						: null
+				}
+				description={description}
+				descriptionPending={descriptionPending}
+				identity={identity}
+				deviceSlot={deviceSlot}
+				draftTargetSlot={draftTargetSlot}
+				titleInWorkspaceTab={Boolean(workspaceTabs)}
+				renameSessionId={renameSessionId}
+				renameSlotReserved={renameSlotReserved}
+				/*
+				 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already
+				 * carries as its own `sessionId` prop, passed on unchanged so the header's
+				 * overflow menu copies what the pane is showing. Undefined on a draft, where
+				 * the item is simply not drawn.
+				 */
+				sessionId={sessionId}
+				onOpenOptions={onOpenOptions}
+				/* The toolbar now spans both panes and owns the native trailing reservation. */
+				reserveTrailingChrome={true}
+				/* THE PANELS' MENU DOOR: the four rail triggers moved to the panel rail
+				   (rendered below through `InPanelRailHost`), and the header's `...` menu
+				   keeps their four entries - now five, the asks row joining in #896 when
+				   its trigger left the header for the rail (the menu's own comment states
+				   why parity requires it). The browser toggle is declared here for that
+				   menu; the rail declares its own press from the same store field. */
+				onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
+				/*
+				 * THE ASKS DOOR, AS THE HEADER CARRIES IT NOW (#896): the trigger became
+				 * the rail's item (rendered below), and this prop feeds the menu's asks
+				 * row - always present, as the rail's item is (the always-visible rail,
+				 * D1: a scope whose backend offers no asks opens a drawer that says so),
+				 * a toggle onto the drawer in the scope this conversation resolves to (see
+				 * the block above). The press TOGGLES rather than only opening, so the
+				 * row is the same door in both directions - the browser row's own idiom
+				 * beside it - and its OPEN arm also writes the lane's open request
+				 * (round-1 Q1): the row cannot signal its press through focus, so the
+				 * request is what tells the drawer the open was the user's own (see the
+				 * handler below).
+				 */
+				onToggleAsks={() => {
+					/*
+					 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
+					 * OPEN is where the request is written (round-1 Q1). The row cannot
+					 * signal its press through focus — Radix hands the keyboard back
+					 * to this menu's own trigger when it closes — so `askOpenIntent`
+					 * is what tells the drawer it was pressed, exactly as a door's
+					 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
+					 * entry move). Written after the open, in the console trigger's
+					 * own order one control over: the claim is what shows the pane;
+					 * the request is what marks the open as the user's.
+					 */
+					/*
+					 * AND THE CLOSE IS THE KIND THE USER ASKED FOR (#1079,
+					 * UX round 1 U1/U2): this row is a toggle the user pressed, so
+					 * "Close asks" must mean here what it means on the rail item
+					 * and on the drawer's X - an empty slot - rather than handing
+					 * back the pane it displaced. One screen, one label, one
+					 * outcome; the request above is not a substitute for it (a
+					 * request is a statement about the OPEN, `dismissSlot` about the
+					 * SLOT).
+					 */
+					if (headerAsksOpen) {
+						setAskDrawerOpen(false, headerAsksScope, {
+							dismissSlot: true,
+						});
+						return;
+					}
+					setAskDrawerOpen(true, headerAsksScope);
+					requestAskOpen(headerAsksScope);
+				}}
+				asksScope={headerAsksScope}
+				asksOpen={headerAsksOpen}
+				archiveEnabled={archiveEnabled}
+				archived={archived}
+				onSetArchived={
+					sessionId ? (next) => archiveFromHeader(next) : undefined
+				}
+				temporaryEnabled={temporaryEnabled}
+				temporary={temporaryInfoNow}
+				temporaryDraft={
+					draftTemporary === undefined
+						? undefined
+						: {
+								on: draftTemporary && !draftPeer,
+								peerDestination: draftPeer,
+								onToggle: (on) => setDraftTemporary(agentId, on),
+							}
+				}
+				onKeepTemporary={
+					sessionId ? () => void writeTemporary(false) : undefined
+				}
+				onMakeTemporary={
+					sessionId ? () => setMakeTemporaryOpen(true) : undefined
+				}
+				deleteEnabled={deleteEnabled}
+				onRequestDelete={
+					sessionId ? () => requestSessionDelete(sessionId) : undefined
+				}
+				onOpenConsole={
+					sessionId
+						? () => {
+								/*
+								 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
+								 * separate on purpose: claiming the slot is what shows the pane,
+								 * and the request is what tells the pane this open came from the
+								 * user — so it should run a first surface if the conversation has
+								 * none and put the caret in the terminal either way (the store's
+								 * `consoleOpenIntent` states the four ways this pane opens and why
+								 * only this one means "I am about to type").
+								 *
+								 * THE REQUEST NAMES THIS CONVERSATION, because the pane is remounted
+								 * on a session switch: a request still pending when the user switched
+								 * would otherwise be answered by the next conversation's pane, which
+								 * would run a shell nobody asked for there (agent review round 1, F-6).
+								 *
+								 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
+								 * click and main's `reveal` push both claim this slot from
+								 * `app.tsx`, both already name a surface that exists, and the
+								 * reveal is not the user's gesture at all — an agent's surface
+								 * must not take the keyboard.
+								 */
+								setConsolePaneOpen(true);
+								requestConsoleOpen(sessionId);
+							}
+						: /*
+							 * ON A DRAFT THE ROW TOGGLES THE PANE AND FILES NO REQUEST (the
+							 * always-visible rail, D1, which retires design round 1's U3 rule for
+							 * the panel rows): the pane's draft state says "A console needs a
+							 * conversation", which is the answer to the press, and the request is
+							 * what spawns a console - there is no working directory to spawn one
+							 * in. The rail's console arm does the same (`togglePanelRailItem`).
+							 */
+							() => setConsolePaneOpen(!isConsolePaneOpen)
+				}
+				onOpenCodeReview={
+					/*
+					 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
+					 * the keyboard door every other pane has ("so nothing is unreachable
+					 * at 800"), and its absence here left the pane rail-only. The write
+					 * toggles, and the header's own label reads the same store field, so
+					 * the two cannot disagree - `getState` rather than a rendered value
+					 * because the press must see the CURRENT pane, exactly as the canvas
+					 * row's own write does. Always offered, as the rail's door is (D3): on a
+					 * draft or a backend without the capability the pane opens to a notice.
+					 */
+					() =>
+						setCodeReviewPaneOpen(
+							!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
+						)
+				}
+			/>
+		);
+
+		const paneRow = (
 			/*
 			 * The chat column's height chain, stated once so it cannot drift back.
 			 *
@@ -2720,7 +2870,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * must not be able to move its contents; nothing here ever needed to scroll
 				 * this row, and the scene now asserts `scrollLeft === 0` on it in every frame.
 				 */
-				className="relative flex h-full w-full flex-row overflow-clip"
+				className="relative flex min-h-0 w-full flex-1 flex-row overflow-clip"
 			>
 				{/*
 				 * THE OPEN POLICY'S LIVE REGION (design review round 1, D1), and it is
@@ -2788,11 +2938,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * canonical user bubble carries a note. Each is annotated where it
 					 * sits.
 					 *
-					 * `panel-top-pad` because the chat route is a flush panel route
-					 * (`ChatPage`'s root, design round 1, D1): this column's `canvas`
-					 * ground starts at y0 under the transparent lane, and the pad is
-					 * what moves the header below the OS controls. It is padding, not
-					 * a margin, so the ground stays continuous through the strip.
+					 * The frame starts below the titlebar and owns the canvas paint.
+					 * This column keeps only its scroll box and its semantic role.
 					 */}
 					<div
 						ref={chatContainerRef}
@@ -2802,14 +2949,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * column's inline-end edge, and it is a SCROLLBAR clearance rather than
 						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
 						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
-						 *
-						 * AN INLINE STYLE, not a conditional class, for two reasons. This
-						 * element's class attribute is a literal thumbprint two guards read
-						 * (`lane-leading.test.mjs`: a full-height column wears `panel-top-pad`
-						 * and paints `bg-canvas`, matched as one string), and moving it into a
-						 * `cn(...)` call broke both of that file's cases; and the value is a
-						 * pixel measured against the band's reach, the same class of value
-						 * `PaneSlot` sets inline for its width.
 						 *
 						 * It sits on this inner surface rather than on the column itself so the
 						 * column's own box - the width the right pane's capacity is measured
@@ -2821,7 +2960,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								? { paddingInlineEnd: CHAT_SEAM_INSET_PX }
 								: undefined
 						}
-						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
+						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*
@@ -2834,179 +2973,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * ASKS first for the archive half and writes straight through for the
 						 * restore.
 						 */}
-						<ChatHeader
-							canvasConversationId={conversationId}
-							agentName={agentName}
-							agentAvatar={
-								avatarAgentId
-									? {
-											agentId: avatarAgentId,
-											agentName: avatarAgentName,
-											sha256: agentAvatarSha,
-											owned: agentAvatarOwned,
-										}
-									: null
-							}
-							description={description}
-							descriptionPending={descriptionPending}
-							identity={identity}
-							deviceSlot={deviceSlot}
-							draftTargetSlot={draftTargetSlot}
-							renameSessionId={renameSessionId}
-							renameSlotReserved={renameSlotReserved}
-							/*
-							 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already
-							 * carries as its own `sessionId` prop, passed on unchanged so the header's
-							 * overflow menu copies what the pane is showing. Undefined on a draft, where
-							 * the item is simply not drawn.
-							 */
-							sessionId={sessionId}
-							onOpenOptions={onOpenOptions}
-							/*
-							 * EXACTLY ONE OWNER, DERIVED FROM THE STORE RATHER THAN MEASURED (chat
-							 * redesign §J4). The right slot is exclusive - `claimRightSlot` clears the
-							 * other panes when one opens - so either this header or an open pane's
-							 * toolbar reaches the panel rail's left edge, and the two are never both
-							 * true. That is the whole reason the reservation needs no measurement and
-							 * no `ResizeObserver`: this component is the only one that renders both
-							 * candidates, and the store already holds the fact. A pane's own toolbar
-							 * reserves the corner in its own row (see the toolbars' note). The width
-							 * reserved is what the OS buttons extend PAST the rail (#872), which the
-							 * spacer's utility reads from the shell.
-							 */
-							reserveTrailingChrome={!rightSlotOccupied}
-							/* THE PANELS' MENU DOOR: the four rail triggers moved to the panel rail
-							   (rendered below through `InPanelRailHost`), and the header's `...` menu
-							   keeps their four entries - now five, the asks row joining in #896 when
-							   its trigger left the header for the rail (the menu's own comment states
-							   why parity requires it). The browser toggle is declared here for that
-							   menu; the rail declares its own press from the same store field. */
-							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
-							/*
-							 * THE ASKS DOOR, AS THE HEADER CARRIES IT NOW (#896): the trigger became
-							 * the rail's item (rendered below), and this prop feeds the menu's asks
-							 * row - always present, as the rail's item is (the always-visible rail,
-							 * D1: a scope whose backend offers no asks opens a drawer that says so),
-							 * a toggle onto the drawer in the scope this conversation resolves to (see
-							 * the block above). The press TOGGLES rather than only opening, so the
-							 * row is the same door in both directions - the browser row's own idiom
-							 * beside it - and its OPEN arm also writes the lane's open request
-							 * (round-1 Q1): the row cannot signal its press through focus, so the
-							 * request is what tells the drawer the open was the user's own (see the
-							 * handler below).
-							 */
-							onToggleAsks={() => {
-								/*
-								 * THE MENU ROW IS A TOGGLE IN THIS CONVERSATION'S SCOPE, and its
-								 * OPEN is where the request is written (round-1 Q1). The row cannot
-								 * signal its press through focus — Radix hands the keyboard back
-								 * to this menu's own trigger when it closes — so `askOpenIntent`
-								 * is what tells the drawer it was pressed, exactly as a door's
-								 * focus does for the chip and the rail item (`ask-drawer.tsx`'s
-								 * entry move). Written after the open, in the console trigger's
-								 * own order one control over: the claim is what shows the pane;
-								 * the request is what marks the open as the user's.
-								 */
-								/*
-								 * AND THE CLOSE IS THE KIND THE USER ASKED FOR (#1079,
-								 * UX round 1 U1/U2): this row is a toggle the user pressed, so
-								 * "Close asks" must mean here what it means on the rail item
-								 * and on the drawer's X - an empty slot - rather than handing
-								 * back the pane it displaced. One screen, one label, one
-								 * outcome; the request above is not a substitute for it (a
-								 * request is a statement about the OPEN, `dismissSlot` about the
-								 * SLOT).
-								 */
-								if (headerAsksOpen) {
-									setAskDrawerOpen(false, headerAsksScope, {
-										dismissSlot: true,
-									});
-									return;
-								}
-								setAskDrawerOpen(true, headerAsksScope);
-								requestAskOpen(headerAsksScope);
-							}}
-							asksScope={headerAsksScope}
-							asksOpen={headerAsksOpen}
-							archiveEnabled={archiveEnabled}
-							archived={archived}
-							onSetArchived={
-								sessionId ? (next) => archiveFromHeader(next) : undefined
-							}
-							temporaryEnabled={temporaryEnabled}
-							temporary={temporaryInfoNow}
-							temporaryDraft={
-								draftTemporary === undefined
-									? undefined
-									: {
-											on: draftTemporary && !draftPeer,
-											peerDestination: draftPeer,
-											onToggle: (on) => setDraftTemporary(agentId, on),
-										}
-							}
-							onKeepTemporary={
-								sessionId ? () => void writeTemporary(false) : undefined
-							}
-							onMakeTemporary={
-								sessionId ? () => setMakeTemporaryOpen(true) : undefined
-							}
-							deleteEnabled={deleteEnabled}
-							onRequestDelete={
-								sessionId ? () => requestSessionDelete(sessionId) : undefined
-							}
-							onOpenConsole={
-								sessionId
-									? () => {
-											/*
-											 * THE ONE PLACE A USER'S OPEN IS DECLARED, and the two facts are
-											 * separate on purpose: claiming the slot is what shows the pane,
-											 * and the request is what tells the pane this open came from the
-											 * user — so it should run a first surface if the conversation has
-											 * none and put the caret in the terminal either way (the store's
-											 * `consoleOpenIntent` states the four ways this pane opens and why
-											 * only this one means "I am about to type").
-											 *
-											 * THE REQUEST NAMES THIS CONVERSATION, because the pane is remounted
-											 * on a session switch: a request still pending when the user switched
-											 * would otherwise be answered by the next conversation's pane, which
-											 * would run a shell nobody asked for there (agent review round 1, F-6).
-											 *
-											 * NEITHER IS DONE FOR THE OTHER TWO PATHS: a completion banner's
-											 * click and main's `reveal` push both claim this slot from
-											 * `app.tsx`, both already name a surface that exists, and the
-											 * reveal is not the user's gesture at all — an agent's surface
-											 * must not take the keyboard.
-											 */
-											setConsolePaneOpen(true);
-											requestConsoleOpen(sessionId);
-										}
-									: /*
-										 * ON A DRAFT THE ROW TOGGLES THE PANE AND FILES NO REQUEST (the
-										 * always-visible rail, D1, which retires design round 1's U3 rule for
-										 * the panel rows): the pane's draft state says "A console needs a
-										 * conversation", which is the answer to the press, and the request is
-										 * what spawns a console - there is no working directory to spawn one
-										 * in. The rail's console arm does the same (`togglePanelRailItem`).
-										 */
-										() => setConsolePaneOpen(!isConsolePaneOpen)
-							}
-							onOpenCodeReview={
-								/*
-								 * THE CODE REVIEW ENTRY (agent review round 1, N1): the `...` menu is
-								 * the keyboard door every other pane has ("so nothing is unreachable
-								 * at 800"), and its absence here left the pane rail-only. The write
-								 * toggles, and the header's own label reads the same store field, so
-								 * the two cannot disagree - `getState` rather than a rendered value
-								 * because the press must see the CURRENT pane, exactly as the canvas
-								 * row's own write does. Always offered, as the rail's door is (D3): on a
-								 * draft or a backend without the capability the pane opens to a notice.
-								 */
-								() =>
-									setCodeReviewPaneOpen(
-										!useUiPreferencesStore.getState().isCodeReviewPaneOpen,
-									)
-							}
-						/>
+
 						{temporaryEnabled && sessionId && (
 							<MakeTemporaryDialog
 								open={makeTemporaryOpen}
@@ -4340,6 +4307,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					/>
 				</InPanelRailHost>
 			</div>
+		);
+		return (
+			<ChatWorkspace tabs={workspaceTabs}>
+				{workspaceNotice}
+				{workspaceHeader}
+				{paneRow}
+			</ChatWorkspace>
 		);
 	},
 );

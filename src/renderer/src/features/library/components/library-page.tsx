@@ -638,7 +638,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	if (!enabled) {
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
-				<PageHeader title={t("ui.library.page.title")} icon={LibraryBig} />
+				<PageHeader variant="compact" title={t("ui.library.page.title")} />
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
 						<Spinner label={t("ui.library.page.checking")} />
@@ -789,13 +789,8 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			data-library-page=""
 			data-glass-region="canvas"
 			data-glass-split=""
-			/*
-			 * A FULL-HEIGHT PANEL: the page owns `canvas` from y0 and its columns
-			 * each pad their own content (`panel-top-pad`). `panel-flush` cancels
-			 * the shell's ordinary-content pad; `flex-1` is what gives the box the
-			 * 32px back at the bottom, which is the pair the utility's note states.
-			 */
-			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
+			/* The shell owns clearance; rail, results and preview own their grounds. */
+			className="flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * THE RAIL RUNS THE FULL PAGE HEIGHT, as the first column of a
@@ -810,7 +805,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					data-library-rail=""
 					data-glass-region="page-sidebar"
 					aria-label={t("ui.library.page.filters")}
-					className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
+					className="flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
 				>
 					{rail}
 				</aside>
@@ -818,38 +813,22 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			{!standalone && (
 				<div
 					data-glass-region="canvas-content"
-					className="panel-top-pad flex min-w-0 flex-1 flex-col"
+					className="flex min-w-0 flex-1 flex-col"
 				>
-					{/*
-					 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
-					 * A fixed `h-[136px]` held two 48px rows plus the 40px Librarian track
-					 * only by ignoring the 4px row gaps and the 24px vertical padding; when
-					 * the building line rendered, the remaining tracks overflowed the box and
-					 * painted over the results (the flex parent had already given the header
-					 * its fixed share). `min-h` keeps the reserved track from shrinking
-					 * below the spec's height while every rendered row - including the
-					 * building line - stays in flow and pushes the results down.
-					 */}
+					{/* Controls and Librarian status size the band; no title track. */}
 					<header
 						data-library-header=""
-						className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2 min-[800px]:min-h-[136px]"
+						className="flex shrink-0 flex-col gap-1 px-6 pt-4 pb-2"
 					>
-						<div className="flex h-12 min-w-0 items-center gap-2">
-							<LibraryBig
-								size={20}
-								aria-hidden="true"
-								className="text-ink-muted"
-							/>
-							<h1 className="text-title text-ink">
-								{t("ui.library.page.title")}
-							</h1>
-							<span className="ms-2 text-meta tabular-nums text-ink-dim">
+						<PageHeader variant="compact" title={t("ui.library.page.title")} />
+						<div className="flex min-h-8 min-w-0 items-center gap-2">
+							<span className="text-meta tabular-nums text-ink-dim">
 								{t("ui.library.page.loaded_count", {
 									loaded: String(rows.length),
 									total: String(total),
 								})}
 							</span>
-							<div className="ms-auto flex items-center rounded-sm border border-control">
+							<div className="ms-auto flex shrink-0 items-center rounded-sm border border-control">
 								<Button
 									variant="ghost"
 									size="icon-sm"
@@ -1017,6 +996,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							{!standalone && (
 								<section
 									data-library-results=""
+									data-lo-pane-edge-cues=""
 									aria-label={t("ui.library.page.results")}
 									aria-busy={listing.isLoading || listing.isFetching}
 									className="min-w-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-gutter:stable]"
@@ -1142,17 +1122,11 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						label={t("ui.library.page.resize_preview")}
 					/>
 					<aside
-						/*
-						 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
-						 * scroller begin below the strip. This is the aside the operator's
-						 * screenshot caught beginning 32px down. The OUTER padded box must
-						 * own the pane alpha too: marking only the inner preview made the
-						 * 32px lane opaque while the content below it was translucent.
-						 */
+						/* The dock owns the pane alpha; the inner preview only scrolls. */
 						data-library-dock=""
 						data-glass-region="pane"
 						style={{ width: dockWidth }}
-						className="panel-top-pad flex h-full shrink-0 bg-surface"
+						className="flex h-full shrink-0 bg-surface"
 						aria-label={t("ui.library.page.preview")}
 					>
 						<LibraryPreview
@@ -1173,17 +1147,10 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 			{standalone && (
 				<div
-					/*
-					 * `bg-surface` HERE, on the padded box, and not only on
-					 * `LibraryPreview`'s root: the pad is inside this wrapper, so the
-					 * preview's own ground begins at y32 and a groundless wrapper let the
-					 * page root's `canvas` show through the strip as a band (design round
-					 * 1, D2). The panel that owns the pad owns the ground, which also
-					 * grounds the spinner and `UnavailableAsset` arms.
-					 */
-					/* Standalone has the same outer alpha owner as the docked panel. */
+					/* The standalone body supplies the same pane ground for LibraryPreview,
+					 * its spinner and UnavailableAsset. */
 					data-glass-region="pane"
-					className="panel-top-pad min-w-0 flex-1 bg-surface"
+					className="min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					{selectedMissing ? (
@@ -1226,7 +1193,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						/* No inner preview exists here, so this root owns the whole pane. */
 						data-glass-region="pane"
 						style={{ width: dockWidth }}
-						className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
+						className="hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
 					>
 						<p className="max-w-60 text-center text-body-sm text-ink-dim">
 							{t("ui.library.page.select_asset")}
@@ -1256,6 +1223,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						</div>
 						<div
 							data-library-filter-sheet=""
+							data-lo-pane-edge-cues=""
 							className="min-h-0 flex-1 overflow-y-auto bg-surface"
 						>
 							{rail}

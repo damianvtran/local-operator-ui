@@ -27,6 +27,7 @@ import type {
 	CommunityMessage,
 } from "@shared/api/local-operator/community-api";
 import { communityFailure } from "@shared/api/local-operator/community-api";
+import { useWorkspaceClearance } from "@shared/components/common/workspace-frame";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -325,8 +326,8 @@ export const CommunityRequestsPane: FC = () => {
  * page's: in the app shell it is portaled into the left column the navigation
  * vacates (which owns width, ground, top pad and the back row), and outside the
  * shell (a story) it is the page's own 288px `surface` column. The reading
- * column paints `canvas` and wears `panel-top-pad` itself - the box that pads is
- * the box that paints (AGENTS.md "Panels run to the window edge").
+ * column paints `canvas`; it takes its own `panel-top-pad` only when the outlet
+ * did not already consume the native clearance.
  */
 export const CommunityHomeView: FC<{
 	rail: ReactNode;
@@ -335,44 +336,55 @@ export const CommunityHomeView: FC<{
 	composer?: ReactNode;
 	thread?: ReactNode;
 	overlay?: ReactNode;
-}> = ({ rail, header, main, composer, thread, overlay }) => (
-	<div
-		data-community-home=""
-		data-glass-split=""
-		data-glass-region="canvas"
-		className="panel-flush relative flex min-h-0 w-full flex-1 overflow-hidden bg-canvas"
-	>
-		<TeamBridgeRouteColumn
-			inline={
+}> = ({ rail, header, main, composer, thread, overlay }) => {
+	const clearanceReserved = useWorkspaceClearance();
+	return (
+		<div
+			data-community-home=""
+			data-glass-split=""
+			data-glass-region="canvas"
+			className={cn(
+				"relative flex min-h-0 w-full flex-1 overflow-hidden bg-canvas",
+				// Community replaces the private body under the same outlet, but its
+				// standalone view still owns its edge-to-edge clearance.
+				clearanceReserved ? "[--panel-top-pad:0px]" : "panel-flush",
+			)}
+		>
+			<TeamBridgeRouteColumn
+				inline={
+					<aside
+						data-glass-region="page-sidebar"
+						className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+					>
+						{rail}
+					</aside>
+				}
+			>
 				<aside
-					data-glass-region="page-sidebar"
-					className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
+					data-community-rail-host=""
+					className="flex min-h-0 flex-1 flex-col"
 				>
 					{rail}
 				</aside>
-			}
-		>
-			<aside
-				data-community-rail-host=""
-				className="flex min-h-0 flex-1 flex-col"
+			</TeamBridgeRouteColumn>
+			<main
+				data-glass-region="canvas-content"
+				className={cn(
+					"flex min-w-0 flex-1 flex-col bg-canvas",
+					!clearanceReserved && "panel-top-pad",
+				)}
 			>
-				{rail}
-			</aside>
-		</TeamBridgeRouteColumn>
-		<main
-			data-glass-region="canvas-content"
-			className="panel-top-pad flex min-w-0 flex-1 flex-col bg-canvas"
-		>
-			{header}
-			<div className="flex min-h-0 flex-1 flex-col">{main}</div>
-			{composer && <div className="shrink-0 px-4 pb-3">{composer}</div>}
-		</main>
-		{thread && (
-			<div className="panel-top-pad flex shrink-0 bg-surface">{thread}</div>
-		)}
-		{overlay}
-	</div>
-);
+				{header}
+				<div className="flex min-h-0 flex-1 flex-col">{main}</div>
+				{composer && <div className="shrink-0 px-4 pb-3">{composer}</div>}
+			</main>
+			{thread && (
+				<div className="panel-top-pad flex shrink-0 bg-surface">{thread}</div>
+			)}
+			{overlay}
+		</div>
+	);
+};
 
 /* ========================================================= the container */
 

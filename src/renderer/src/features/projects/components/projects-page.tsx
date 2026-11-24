@@ -62,7 +62,7 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { FolderKanban, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -749,8 +749,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
 				<PageHeader
+					variant="compact"
 					title={t("ui.projects.projects_page.projects")}
-					icon={FolderKanban}
 				/>
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
@@ -783,6 +783,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 */
 			<div
 				ref={detailScrollerRef}
+				data-lo-pane-edge-cues=""
 				className="flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable_both-edges]"
 			>
 				<ProjectDetailScreen projectKey={projectId} nowMs={nowMs} />
@@ -803,8 +804,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		 */
 		<div className="flex h-full min-h-0 flex-col">
 			{/*
-			 * THE VIEW SWITCHER sits under the header rather than inside it: the
-			 * switcher names the VIEW and the search cluster narrows it, two
+			 * THE VIEW SWITCHER heads the first visible row (the header is sr-only):
+			 * the switcher names the VIEW and the search cluster narrows it, two
 			 * questions one row can carry at rest. The row is also the `@container`
 			 * for U7's count shed below (the header block's content width IS the
 			 * row's width); `data-project-search-row` is the rig's handle for
@@ -812,41 +813,24 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 			 * names the count.
 			 */}
 			<div className="@container flex shrink-0 flex-col gap-8 px-6 pt-6">
+				{/*
+				 * NO HEADER ROW (the Notifications fix's shape). The visible title went
+				 * when the route stopped repeating the tab name; what was left was a
+				 * row holding only refresh and New project above the switcher row - a
+				 * lone action strip that reads as stray chrome and costs a row of body
+				 * height. Both now ride the search row's trailing end (see `trailing`
+				 * below), and the compact header keeps only its sr-only h1 (absolutely
+				 * positioned, so it is not a flex item and adds no `gap-8`).
+				 */}
 				<PageHeader
+					variant="compact"
 					title={t("ui.projects.projects_page.projects")}
-					icon={FolderKanban}
-					subtitle={t(
-						"ui.projects.projects_page.workstreams_you_and_your_agents_track_across_sessions",
-					)}
-				>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="secondary"
-							size="icon"
-							aria-label={t("ui.projects.projects_page.refresh_projects")}
-							title={t("ui.projects.projects_page.refresh_projects")}
-							disabled={list.isFetching}
-							onClick={() => void list.refetch()}
-							data-tour-tag="refresh-projects-button"
-						>
-							<RefreshCw />
-						</Button>
-						<Button
-							variant="secondary"
-							onClick={() => setCreateOpen(true)}
-							data-tour-tag="create-project-button"
-						>
-							<Plus />
-							{t("ui.projects.projects_page.new_project")}
-						</Button>
-					</div>
-				</PageHeader>
+				/>
 
 				{/*
-				 * THE VIEW SWITCHER sits under the header rather than inside it: the
-				 * header's actions are the page's commands (refresh, new), while the
-				 * switcher is a mode of the BODY — and at the app's narrowest window the
-				 * two in one row would squeeze the subtitle to a stub.
+				 * THE VIEW SWITCHER LEADS THE FIRST VISIBLE ROW: the switcher is a mode
+				 * of the BODY, and the page's commands (refresh, new) close the same
+				 * row at its trailing end now that the header carries no visible row.
 				 *
 				 * THE SEARCH CLUSTER JOINS THIS ROW (U1): the field, the Filters button,
 				 * the result count and — on the Board — the window control share the
@@ -880,31 +864,76 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							 * for a wider container than the List/Timeline's (U7's measured
 							 * fit boundaries; the control's default is the narrower one). */
 							countRevealClass={
-								view === "board" ? "@[47rem]:inline" : undefined
+								view === "board" ? "@[57rem]:inline" : undefined
 							}
 							/* The failed read closes the Filters door (R2); the field stays
 							 * enabled so the query survives the retry. */
 							disabled={list.isError}
 							searchFieldRef={searchFieldRef}
 							trailing={
-								/*
-								 * The window control is the BOARD's, so it appears only where the
-								 * board does: not in List/Timeline, and not over the store-empty
-								 * state (whose message already sends the reader to create a project
-								 * - a window over nothing has nothing to widen). It is otherwise
-								 * not data-gated, so a loading or failed read still shows the
-								 * reader's stored choice.
-								 */
-								view === "board" &&
-								!(list.isSuccess && list.data.length === 0) ? (
-									<BoardWindowSelect
-										value={boardWindow}
-										onChange={(next) => {
-											setBoardWindow(next);
-											writeBoardWindow(next);
-										}}
-									/>
-								) : null
+								<>
+									{/*
+									 * The window control is the BOARD's, so it appears only where
+									 * the board does: not in List/Timeline, and not over the
+									 * store-empty state (whose message already sends the reader to
+									 * create a project - a window over nothing has nothing to
+									 * widen). It is otherwise not data-gated, so a loading or
+									 * failed read still shows the reader's stored choice.
+									 */}
+									{view === "board" &&
+									!(list.isSuccess && list.data.length === 0) ? (
+										<BoardWindowSelect
+											value={boardWindow}
+											onChange={(next) => {
+												setBoardWindow(next);
+												writeBoardWindow(next);
+											}}
+										/>
+									) : null}
+									{/*
+									 * THE PAGE'S COMMANDS CLOSE THE SEARCH CLUSTER, not a sibling
+									 * group of the row. The cluster is one non-wrapping flex group
+									 * whose field is `min-w-0`, so at narrow widths the FIELD
+									 * shrinks and the actions stay beside it; as a separate
+									 * `flex-wrap` item they would drop to their own line first
+									 * (an item wraps at its basis, it shrinks only once alone).
+									 * `ms-auto` (never `ml-auto`) keeps them at the inline END in
+									 * RTL too; ghost at `sm`/`icon-sm` gives the Filters button's
+									 * 28px height and stays quieter than the field they follow.
+									 * Their ~152px (28 + 8 + ~104 + the cluster's 12 gap) moved
+									 * U7's count boundaries by 10rem: 37->47 (List/Timeline, the
+									 * toolbar default) and 47->57 (Board) - derived from the old
+									 * measured fits plus that width, rounded UP so the count sheds
+									 * early rather than wrapping the row.
+									 */}
+									<div
+										className="ms-auto flex shrink-0 items-center gap-2"
+										data-projects-actions=""
+									>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											aria-label={t(
+												"ui.projects.projects_page.refresh_projects",
+											)}
+											title={t("ui.projects.projects_page.refresh_projects")}
+											disabled={list.isFetching}
+											onClick={() => void list.refetch()}
+											data-tour-tag="refresh-projects-button"
+										>
+											<RefreshCw />
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => setCreateOpen(true)}
+											data-tour-tag="create-project-button"
+										>
+											<Plus />
+											{t("ui.projects.projects_page.new_project")}
+										</Button>
+									</div>
+								</>
 							}
 						/>
 					</div>

@@ -437,6 +437,21 @@ function effectivePayload(row: ConversationInputState) {
 	};
 }
 
+/** Text waiting to be adopted is still unsent, even after its delivery claim settles. */
+export function composerHasUnsentPayload(
+	row: ConversationInputState | undefined,
+) {
+	if (!row) return false;
+	const { text, attachments, replies } = effectivePayload(row);
+	return !!(
+		text ||
+		attachments.length ||
+		replies.length ||
+		row.inFlight ||
+		row.returned
+	);
+}
+
 /**
  * Whether the composer row still holds exactly the message it was given back.
  *

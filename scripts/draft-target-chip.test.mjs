@@ -627,6 +627,28 @@ test("a staged draft's header row does not wrap its chips onto the clipped line"
 	assert.doesNotMatch(path.className, SHRINK_0);
 });
 
+test("a workspace draft does not reserve a leading flex gap for its tab-owned title", () => {
+	const { row, title } = headerRow({
+		titleInWorkspaceTab: true,
+		renameSlotReserved: true,
+		description: "",
+		draftTargetSlot: React.createElement("button", {
+			"data-draft-target-chip": "team",
+		}),
+	});
+	assert.equal(title, null);
+	const slot = row.firstElementChild;
+	assert.ok(slot.classList.contains("hidden"));
+	assert.equal(slot.childElementCount, 0, "no invisible pencil reserve");
+	assert.ok(slot.nextElementSibling.hasAttribute("data-draft-target-chip"));
+	assert.ok(row.lastElementChild.hasAttribute("data-device-chip"));
+	// A flush header still owns the title and its future inline rename slot.
+	const flushSlot = headerRow({ renameSlotReserved: true }).row
+		.firstElementChild;
+	assert.ok(flushSlot.classList.contains("inline-flex"));
+	assert.ok(flushSlot.lastElementChild.classList.contains("size-5"));
+});
+
 test("negative control: without the agent/team chip the row keeps its wrap-and-clip", () => {
 	const { row, path } = headerRow({});
 	assert.match(row.className, WRAP_AND_CLIP);

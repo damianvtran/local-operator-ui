@@ -552,10 +552,10 @@ and must clear 3:1. If no, delete it rather than reaching for `hairline`.
 edge holds the right-slot doors - the four panel triggers since #872, and the asks
 drawer's door since #896 - and it stands on the sidebar's rung: `surface`.
 Its leading edge carries the same 1px `hairline` seam as the sidebar's inner
-edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it. The
-seam was added on 2026-10-30 because the step alone did not read in light
-themes; the paragraph here used to argue the absence, and what is still true of
-that argument is its measurement, which is the reason the seam exists. The
+edge (`panel-edge.tsx`, § 2's panel section) and the tone step under it, except
+in the [Shared inset chat workspace](#shared-inset-chat-workspace), where the
+rail has no seam. The seam was added on 2026-10-30 because the step alone did
+not read in light themes. The measurements below explain why. The
 ladder asserts these pairs at the 2.0 field floor, and
 `REGION_SEPARATION_FLOOR` (4.0) in `scripts/contrast-contract.mjs` is the
 stronger bar it sets for two full-height planes with no line between them.
@@ -578,29 +578,142 @@ survives a theme whose `rowSelected` sits close to `surface`. No new role:
 `check-themes` carries the pairs as the `panel rail ...` rows of
 `scripts/contrast-contract.mjs`.
 
-**The composer is an object that leaves the flow.** Its ground is `elevated` on
-`canvas` (+4.89 L\* at worst, +6.64 at the median across the 59 palettes) and it
-draws **no border at rest**: the step is what separates it, and the accent ring
-is reserved for `:focus-visible`. Where it sits over scrolled content, the
-transcript gets a 24px fade mask to `canvas` at the pane's top edge and a
-matching mask above the composer — not the shared shadow, which this section
-reserves for objects that float (menus, popovers, dialogs).
+### Composer: the Nested dock
 
-Why the step rather than an edge, recorded because the two look interchangeable:
-the five reference composers at this size get their separation from a lightness
-step, and this app's own `border-control` is the accent on the brand palette, so
-a bordered composer was the loudest thing on the screen at rest — a ring around
-an empty box, while the transcript sat at `canvas` with nothing pointing at it.
-The accent is spent on what the user acts on (the send control's fill) and on
-focus, not on the frame of an empty field.
+The composer is a dock at the foot of the chat, outside the transcript scroller,
+not a floating surface. Its context shelf and inset writing field are parts of
+one dock, not stacked cards. Menus, dropdowns and preview dialogs opened from
+it are separate surfaces and follow the floating-surface rules.
+
+- **Status above, writing below.** Keep the goal, loop and activity above the
+  dock, in that order when present. Make waiting questions and run progress
+  easy to scan without turning status into cards. The shelf shows the workspace
+  or working directory and relevant session readings; the multiline editor is
+  the main surface. Keep draft actions (including attach), selection controls
+  and Send in the editor. In tight layouts, abbreviate optional readings first;
+  keep the writing area and essential actions usable, and the full directory
+  available from its control.
+- **Keep staged files with the draft.** Show staged attachments inside the
+  editor, in a bounded list. Open full media previews in a dialog outside that
+  scroll region so they are not clipped; allow keyboard dismissal and return
+  focus to the preview trigger.
+- **Separate by tone, not a perimeter.** Use the theme's neutral or warm
+  surface roles for the shelf and writing well; preserve the nested spacing
+  and radii in [Space, radii, motion](#5-space-radii-motion). Do not draw a
+  resting border or add a frame stroke or fill on typing focus. Use the visible
+  caret in ordinary themes, focus-visible outlines on controls and a local
+  field outline in forced colours. In the [Shared inset](#shared-inset-chat-workspace),
+  keep the same geometry with less frost and specular highlight. That matte finish is
+  not a change to [Window glass](#window-glass-translucency-on-by-default-where-supported)
+  coverage or permission to add opaque backing over glass.
+- **Keep the reader's place.** Anchor the dock through drafting and sending.
+  Follow the transcript's existing scroll policy: an optimistic echo may
+  follow the latest turn if the reader was already following; its receipt must
+  not snap a reader back a second time. Keep the no-echo fallback and the
+  explicit Jump to latest action. Conditional transcript fades belong to the
+  scroller and never cover the dock, its controls or focus.
+
+Reference: [Desktop #2040](https://github.com/damianvtran/local-operator-ui/pull/2040),
+[Composer placement](../src/renderer/src/features/chat/components/composer-placement.stories.tsx)
+for status, compact layout and glass, and
+[Attachments preview](../src/renderer/src/features/chat/components/attachments-preview.stories.tsx)
+for staging, dismissal and focus return.
+
+### Shared inset for primary pages
+
+**One inner frame, not an inset window.** Use `WorkspaceFrame` at the route body
+boundary. The ordinary frame has 8px logical inline and bottom gutters and 10px
+corners, without a border, `PanelEdge`, shadow or second backing. App navigation,
+native controls and drag surfaces, the real panel rail and shell-level Fleet
+Asks are shell chrome, not children of the inset. The visible gutter replaces the shell seams where it separates the
+page from those rails, not on legacy flush joins. It continues the shell/tab
+`surface` ground (at the sidebar's own glass alpha when covered) in the exposed
+gutters and corners only. Bare native material here reads as a dark outline;
+filling behind the frame instead would double the body glass. The rails must
+read on their own grounds, even with no inspector open.
+
+**Share the boundary, not the layout.** The outlet holds the same frame through
+loading, empty, error and content. Ordinary routes spend the platform's
+clearance before the frame, and that 32px band above it is painted in the
+gutter's own role and colour (the shell/tab `surface`, at the sidebar's glass
+alpha when covered) — never left as bare window material — so the inset reads
+the same on all four sides. The band stays a window drag surface; tabs will
+later occupy it on every page, as they already do on Chat. Settings (including subsection links) and Agents
+(including saved-agent detail) explicitly match a full-height split variant:
+the secondary navigation sidebar runs full height from y0 to the bottom on
+`surface`, while the content pane sits beside it inside `<WorkspaceFrame
+variant="full-height">` with even 8px gutters on all four sides (top, bottom,
+left, right) and 10px rounded corners. Both columns clear the transparent lane
+or trailing caption band once inside their painted column, above the scroller
+(the inset content column subtracts the 8px top gutter already paid), so
+neither controls nor scrolled rows can sit under the drag target. Fullscreen
+uses the normal smaller clearance inside the same grounds. Scrollable inset
+inner areas carry `[data-lo-pane-edge-cues]` (24px scroll-driven top and bottom
+fades, zero at rest; `[data-lo-pane-edge-cues="bottom"]` where `sticky top-0`
+section headers sit at the top edge so pinned headers are never dimmed).
+Route-local actions, independent list/detail scrolling, sticky bands, narrow
+layout replacements and focus return stay with the page. Keep content cards,
+semantic boundaries and visible focus; don't wrap each column in a card.
+
+**Show the work, not a second tab label.** A redundant page identity is an
+`sr-only` h1, not an icon, display heading and introduction above the controls.
+Keep selected item names and meaningful headings, setup or safety instructions,
+empty and error text, and the actual controls. If there is no toolbar, don't
+leave an empty title row.
+
+**Share geometry, not an alpha layer.** Off stays solid. Sidebars only keeps
+its sidebar coverage and solid page/pane grounds. Full app keeps the existing
+page/pane coverage. Ordinary pages use the frame's `canvas-backing`; full-height
+split routes (Settings, Agents) paint the full-height sidebar with
+`page-sidebar` and the evenly padded content `WorkspaceFrame` itself with
+`canvas-content` so there is strictly one alpha-owning canvas layer. Library
+keeps its nested split inside the ordinary outlet frame. No new paint behind
+those regions and no opaque sticky band as a fix for double alpha.
+
+**Placement.** Agent Hub, Schedules, Projects, Library, Notifications, enabled
+Mesh and Team Bridge use the outlet frame, including full-page details.
+Settings and Agents mount `<WorkspaceFrame variant="full-height">` around their
+content column beside their full-height secondary sidebar (and wrap their
+pending/error states in the same full-height frame). Team Bridge keeps the same
+left-column portal and early Back; the conversation/thread replacement stays
+inside the right-hand frame.
+Chat mounts its body after workspace tabs and keeps `canvas-content` as the
+only body paint; its loading and route-error arms use the same boundary. The
+native Browser route mounts its body after its tab/address chrome and reports
+one rectangular viewport inset far enough to clear the rounded corners. The
+native view does not inherit CSS clipping, and the embedded Chat Browser does
+not adopt this route frame.
+
+**Evidence.** Switch routes in one window at standard and narrow sizes, including
+direct details, Back, enabled/disabled destinations and first versus settled
+frames. Read the frame and chrome rects, gutters, radius, scroll extents, sticky
+band paint and focus. Exercise light/dark, RTL, fullscreen, and Off / Sidebars
+only / Full app. Renderer geometry and screenshots are not native hit testing:
+measure Browser resize, clicks, overlays, and route-exit hide (and Console's grid
+and crop after its Chat host moves) in the actual app.
+
+**Offline integrated preview.** The source checks cover 17 live route patterns
+in pending and settled states, including the shell/adapter boundary and Browser
+bounds reporting. They are not a rendered frame or native click check. The
+previous 1380×900 Settings capture shows clipped glyphs on the trailing edge
+while the spinner is visible, not in the settled frame. Its recorded body rect
+stayed at `[268, 32, 1104, 860]` throughout that sample. The matched route now
+prevents a retained Chat portal from painting into the zero-width rail host;
+that is a source invariant, not proof that the portal caused those pixels or
+that they are gone. Recapture this transition, the complete route matrix and
+the native Browser interactions on this candidate before asking for approval.
+Do not merge or release before the operator has seen that evidence.
 
 ### Panels: one seam, edge-to-edge, fading at the top
 
 A full-height panel is a region that owns a ground at the window's edge — the app
 sidebar, the rail, the right pane slot. It is not a card, an input, a menu or a
-popover.
+popover. These rules apply to genuine edge-to-edge chrome and legacy flush surfaces. A
+route-local column inside the [Shared inset](#shared-inset-for-primary-pages)
+never draws `PanelEdge`. Only the explicit full-height split variant spends
+native clearance inside its panes rather than above the frame.
 
-- **A full-height panel draws one seam, and still no border.** The tone step is
+- **An edge-to-edge panel draws one seam, and still no border.** The tone step is
   the panel's ground against its neighbour's; the seam is one 1px `hairline` at
   75% along the edge the two share, painted by `panel-edge.tsx`. The tone step
   alone is not enough between two full-height planes: `canvas` to `surface`
@@ -621,37 +734,29 @@ popover.
   That assertion is an opaque-theme guarantee: under window glass the ground is
   a translucent `surface` composited over the desktop, which the opaque-hex
   contract does not measure.
-  - **Where it is drawn:** the shell's sidebar column along its inner edge, the
-    shell's rail host along the rail's inner edge, and each right-slot pane
-    along the edge it shares with the conversation. A panel that sits inside a
-    route rather than against the window edge (a card, an inspector inside a
-    page) has no seam: the tone step is the whole boundary there, because it is
-    one object on a page, not a column of the window.
-  - **The sidebar's seam is the shell column's edge, on every route.** It marks
-    where the app sidebar ends, so on a route whose own leading column is also
-    `surface` — the Settings nav, the Agents roster — it is the only boundary
-    between the two chrome planes, and those two keep the flat join *under* the
-    seam. The route column's own edge to its content keeps the tone step alone;
-    a seam inside a route's own layout is out of this change's scope.
+  - **Where it is drawn:** at flush joins, the shell's sidebar column and rail
+    host use their inner edge, and legacy right-slot panes use the edge they
+    share with the conversation. Where the Shared inset separates the route
+    from a shell rail, the gutter replaces that shell seam. Route-local panels
+    keep alignment and the tone step rather than drawing a decorative line.
   - **The seam is placed logically.** `start-0`/`end-0` keep it on the side
     facing the content in RTL; the class is pinned in
     `scripts/pane-slot-ground.test.mjs`, but no rendered RTL frame was taken in
     this change.
-- **Full-height panels extend through the titlebar strip; no top inset on the
+- **Edge-to-edge panels extend through the titlebar strip; no top inset on the
   panel; the scroll region clips and fades under it.** A panel that owns its
-  ground (the app sidebar, a route's leading rail, the Library filter rail, the
-  asset-details dock, the right-slot panes and canvas tabs, the panel rail,
-  Team Bridge's columns) starts at y0 and paints its own ground through the
+  ground at the window edge (the app sidebar, the shell panel rail, or a
+  legacy flush route) starts at y0 and paints its own ground through the
   traffic lights' band. Its first content row is padded by
   `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
-  content column for every route, so no route needs its own inset and none may
-  compute one.
+  content column for every route. Use that shared clearance rather than
+  computing a route-specific titlebar inset.
   - The mechanism is two utilities in `styles/index.css`, defined once:
     `panel-flush` on a route root that owns the whole window height (it cancels
     the shell's ordinary-content pad) and `panel-top-pad` on a full-height
     panel column (it pushes the column's first row below the strip while the
-    panel's ground keeps y0). A simple page that is not a panel needs neither:
-    the shell pads it once on `<main>`.
+    panel's ground keeps y0). The shell pads primary page bodies once on
+    `<main>`; their nested columns use neither utility.
   - The titlebar lane is a single transparent overlay for every route. It
     reserves no height and paints no ground; there is no route opt-in, and
     no gradient mirror of the columns. Only the drag surface and
@@ -660,9 +765,8 @@ popover.
     outside the scroller.** A scroll container's own `padding-top` clips at
     its padding box, which lets scrolled text paint through the strip; the
     panel pads, the scroller begins at y32, and the existing top fade
-    (`data-lo-sidebar-edge-cues`) stays on the scroller. A file name scrolling
-    in the Library dock disappears at the dock's content edge, not at y0. When
-    the panel's ROOT is the scroller, `panel-scroll` states the same contract
+    (`data-lo-sidebar-edge-cues`) stays on the scroller. When the panel's
+    ROOT is the scroller, `panel-scroll` states the same contract
     as a margin plus the matching height.
   - The element that wears `panel-top-pad` is the element that paints the
     panel's ground. A padded wrapper that owns no ground is the inset band this
@@ -688,13 +792,67 @@ popover.
   sidebar and panel rail still reachable - and it is the case the one drawer
   shadow is for.
 
-The Library route is the reference: a flush `bg-canvas` page root, a
-full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
-padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
-and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
-and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
-enforces that no route computes its own titlebar inset; agent-facing detail is
-in `docs/AGENTS.md`.
+Library's filter rail and asset dock are inside one Shared inset, with local
+scroll and narrow detail replacement, not at the window edge.
+`scripts/lane-leading.test.mjs` keeps the edge-to-edge clearance and the inset
+split rules distinct; `scripts/panel-top-inset.test.mjs` forbids private
+clearance calculations, and `scripts/workspace-frame.test.mjs` checks the
+route inventory and body boundary.
+
+### Shared inset chat workspace
+
+- **One inner frame, not an inset window.** Keep the chat shell's native chrome
+  edge-to-edge. Below the titlebar, the chat and docked inspector share one
+  boundary (an 8px side and bottom gutter, a 10px corner radius). Use the shell's
+  shared titlebar clearance once, not `panel-top-pad` again inside the frame.
+  Tone and spacing separate the shell, sidebar, rail and workspace: no outlining
+  border, `PanelEdge` seams, extra card/backing or shell shadow. These Chat-specific rules build on the shared primary-page inset; they
+  are not a new palette or a ban on content cards, native menus, or necessary
+  focus and forced-colors boundaries.
+- **Only tabs have a resting fill in the workspace controls.** Keep it quiet
+  and borderless. Show the conversation title once in the chrome, in its tab;
+  keep rename in the existing actions. Team/Agent/Device selectors and other
+  workspace chrome buttons rest transparent and borderless. Keep focus-visible
+  outlines, a non-colour selected cue and the existing hit areas.
+- **Use the actual OS titlebar band where integrated chrome is available.**
+  Fit the tabs between the existing native exclusion zones and leave empty
+  space draggable. Make the controls and their full hit areas no-drag. Keep
+  pinned tabs in a lane independent of regular scrolling, with scrollable
+  overflow bounded to its lane. Reorder within a lane by drag or accessible
+  move actions; crossing lanes requires explicit pin/unpin.
+- **Tab close only removes workspace membership.** Keep the conversation, its
+  draft and its runtime. Automatic cleanup is opt-in for inactive regular tabs
+  confirmed at rest. Pinned tabs never auto-close; if rest cannot be confirmed,
+  keep the tab open. This is the intended cleanup contract; end-to-end
+  verification against Core is pending.
+- **Keep the transcript edges honest and the dock matte.** Fade each transcript
+  edge only while more content can scroll past that edge. Empty or short
+  transcripts have no fade, the adjacent edge clears at its endpoint, and
+  composer, focused content and controls stay clear of the mask. Apply the
+  [Nested dock's matte treatment](#composer-the-nested-dock) without changing
+  dock geometry or the coverage of **Off**, **Sidebars only** or **Full app**.
+- **Teams and Agents are quiet launchers.** Make the avatar/name a clearly
+  actionable but unobtrusive way to launch a targeted draft. Keep history,
+  edit/manage and Hub subscription (where available) distinct. No resting row
+  fill, cards or pills. Use the same `SidebarSectionHeading` primitive,
+  typography, inset and spacing within and between sections as Today, Running
+  and the other conversation groups. Match their uppercase display on the
+  group label only, not in translation strings or on a containing section.
+  The app sidebar draws them this way on every route, not only while Chat is
+  open: no route decides the heading variant, the row fills or the built-in
+  install action's style.
+
+#### Shared inset evidence
+
+Compare rendered standard, narrow and RTL layouts: measure heading insets and
+row gaps, and check bounded overflow and titlebar control hit geometry. Use the
+[renderer driver](agent-driver.md) for frames and geometry,
+[`scripts/window-glass-cdp.test.mjs`](../scripts/window-glass-cdp.test.mjs) for
+coverage geometry, [`scripts/workspace-tabs.test.mjs`](../scripts/workspace-tabs.test.mjs)
+for tab behavior, and [`scripts/chat-sidebar-sections.test.mjs`](../scripts/chat-sidebar-sections.test.mjs)
+for sidebar structure. A hidden Electron capture proves renderer behavior, not
+native pointer delivery or dragging: check clicks and empty-space drag in the
+actual OS titlebar before claiming native coverage.
 
 ### Accent
 
@@ -837,7 +995,7 @@ the weakest pair anywhere in the system is sage at 8.4.
 | The keycap's ground (`sunken`) against every ground it can be painted on | ΔE00 2.0 (the two row roles are withdrawn from this pair: a backdrop-relative fill IS a rung of the ladder, and the cap carries no fill of its own any more) |
 | `rowHover` and `rowSelected` against `surface` | ΔE00 2.0 each (the 4.0 band is withdrawn: with the hue and the cast held at the panel's own, it is reachable on 40 of 59 — see § 2) |
 | `rowSelected`'s `L*` step off `surface`: the direction, at least `1.5 L*`, and at most `5 L*` | 1.5–5.0 `L*` |
-| The panel seam: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
+| The edge-to-edge panel seam, where drawn: `hairline` at 75% composited on its panel, against that ground and against the plane it faces | ΔE00 2.0 both sides |
 | `rowHover`'s `L*` step off `surface`: the direction, and at least `1.5 L*` | 1.5 `L*` |
 | `rowHover`'s share of `rowSelected`'s step | at least 50% (the shipped hover spent 30% of its headroom) |
 | `rowHover`'s cast against the panel's: floor and ceiling | at least `max(2.5, 0.5 × C*(surface))`, at most `max(C*(surface), 2.5)` |
@@ -916,7 +1074,7 @@ Those need a human and a screenshot.
 
 | Step | Size | Use |
 |---|---|---|
-| `text-display` | 28px | The largest text in the app. A page title, not a headline. |
+| `text-display` | 28px | The largest text in the app. A meaningful page or detail title, not a headline or a second tab label. |
 | `text-title` | 20px | Section and dialog titles |
 | `text-heading` | 16px | Group headings, card titles |
 | `text-body` | 14px | Default body |
@@ -968,7 +1126,8 @@ Margins between a component's own internals are fine; it is the **root element**
 that must be free. If every caller genuinely wants the same spacing, that is
 still a container concern, not a reason to keep it.
 
-**Radii**: 2 / 6 / 10 / 14 / 16, and nothing else.
+**Base radii**: 2 / 6 / 10 / 14 / 16. Derive a shared outer radius from an
+inset and its inner radius when the two curves must stay concentric.
 
 **Radius is assigned by what the object is, not by what looks good on it in
 isolation.**
@@ -982,16 +1141,15 @@ isolation.**
   and are read as one block — menu, popover, select panel, alert — and, at the
   same tier, the app's in-flow surfaces: a view's own frame (board, list,
   timeline, schedules) and a panel-scale card (the agent-hub card).
-- **14px, dialogs.** The one frame that leaves the flow and carries the
-  system's shadow; the radius stays with it.
+- **14px, dialogs.** A dialog uses the shared floating-surface shadow at
+  this radius.
 - **2px** is for bars too small to carry 6: the progress track, the scrollbar
   thumb, the checkbox.
-- **16px (`frame`)** is the **composer's** radius, and the composer's alone: it
-  spans its whole column and is the one object the user acts on.
-- **10px (`panel`)** is the user's message block. A bubble at the composer's
-  radius makes the user's turn read as consumer messaging, and it is the
-  composer's whole column-width shape that the 16 is for. (Cursor 3 ≈ 6, VS
-  Code/Raycast ≈ 8–12 behind their bubbles.)
+- **The [Nested dock](#composer-the-nested-dock)** uses the 14px radius on
+  the editor and derives the dock radius from it plus the inset. The dock does
+  not reuse the `frame` token or give the shelf its own corner treatment.
+- **10px (`panel`)** is the user's message block. Keep the transcript's message
+  shape quieter than the column-wide editor, the surface the user acts on.
 - **Nested radii are concentric, not repeated:** an inner radius is the outer
   radius minus the padding between them. The tabs track is 10 with 4px padding,
   so its pills are 6.
@@ -1165,10 +1323,10 @@ region nested inside one of the same kind is cleared, so the alpha is painted on
 Grounds of the same role stacked each carrying alpha COMPOUND (0.82 over 0.82 is
 0.97), which is the seam between a sidebar's nav block and its list pane.
 
-**Pages that are a column plus content** (Settings, Agents, and the Browser route) sit
-inside `<main>`, whose backing would otherwise be a second layer under the column
+**Pages that own separate regional grounds** (Settings, Agents, Library and the
+legacy Browser route) must not paint the route backing under those regions
 (measured in review: a 0.67 column over a 0.59 backing read 0.86). Such a page marks
-its root `data-glass-split`; the backing and the root then paint nothing, the column
+its root `data-glass-split`; under glass, the backing and root paint nothing, and the column
 paints the RAW alpha over the desktop (so it equals the app sidebar beside it), and only
 the content column (`canvas-content`) paints the canvas: opaque under *Sidebars only*,
 at its alpha under *Full app*.
@@ -1180,13 +1338,12 @@ a region it cannot find (a guard that skips what it cannot find measures nothing
 spread within a region, on an effective alpha that differs from the role variable, on
 the page column differing from the app sidebar beside it, on an opaque slab inside a
 glass region, and on anything not fully opaque outside the chosen coverage, and on a
-composer shell that draws any border at rest (asserted by WIDTH, because this audit
-then reads grounds and alphas only - which is how v0.34.55's glass-only edge shipped;
-operator report, 2026-10-17; a stylesheet scan holds every
-`[data-glass-region="composer"]` rule edge-free, the popup's included, though this
-rig drives no popup window). Round 2
-adds the composer (its own alpha must be the field overlay), the block veil (a project
-card's own alpha), the board's clear well, and the Browser chrome band (which must
+composer region that draws a border at rest (asserted by width: inspecting only
+alpha missed v0.34.55's glass-only edge; operator report, 2026-10-17). A stylesheet
+scan also checks the `data-glass-region="composer"` rules for border declarations;
+it does not drive the separate popup window. Round 2 adds the composer field
+alpha, the block veil (a project card's own alpha), the board's clear well, and
+the Browser chrome band (which must
 measure equal to the app sidebar). Projects cards are data-dependent: on a profile with
 no projects the test REPORTS that it could not measure them rather than passing over
 them. It does NOT cover every route (Mesh, Console and others are not audited) or any
@@ -1223,11 +1380,11 @@ seam the operator photographed; a translucent one is a field step whose text
 contrast the contract asserts (ink and inkMuted AA, inkDim 3.5 on the band). The
 chips, badges and avatars inside a block stay solid, as before.
 
-The **composer is a field**, not a pane: ink 5% over the canvas glass - and **no
-edge at rest**, the same no-edge geometry the flat build has. v0.34.55 briefly drew
-a glass-only `border-control` mix as its resting edge; reverted the same evening
-(operator report, 2026-10-17). The `:focus-visible` accent ring is its only
-boundary. A **running tool row** is the selected step's ink
+The [Nested dock's editor](#composer-the-nested-dock) is a **field**, not a
+pane. On canvas glass the writing well uses the field tint, and the shelf is
+lighter still; neither adds an opaque backing or a resting edge. The inset
+finish changes highlights, not which surfaces the selected mode covers.
+A **running tool row** is the selected step's ink
 overlay (`--lo-glass-a-row-work`, the same alpha as a selected row: both mean "this
 row is the subject"), never the `elevated` slab it wears flat; a failed row keeps
 its `danger-wash` until a danger overlay is derived (V2).
@@ -1275,7 +1432,7 @@ opaque root behind opaque descendants.
 | Column grounds (sidebar, rail, status band, canvas) | role at its derived alpha | AA ink over the worst backdrop, floors per material and scheme |
 | Text-bearing panes (canvas, ask drawer, run panel, console, code review, browser) | `pane` region: `elevated` at its floor; its visible planes are clear or bands (round 3) | text must stay legible over any desktop, and one opaque plane behind the root is glass in the one place nobody looks |
 | Text-bearing blocks (message bubbles, project/hub/node cards, detail blocks) | `data-glass-block`: `ink` at `blockVeil` over the canvas glass | the fill is the block's only boundary; a relative ink step never vanishes |
-| Composer | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the composer's own contract wins: no border at rest on or off glass, the ring is its only boundary (v0.34.55's glass-only edge was reverted; operator report 2026-10-17) |
+| Composer editor | `data-glass-region="composer"`: ink 5% (a field), no edge at rest | the [Nested dock](#composer-the-nested-dock) keeps its local focus indicators on or off glass, not a frame around the dock |
 | Chrome band (Browser tab strip and URL row) | `data-glass-region="chrome"`: `surface` at its floor, raw over the desktop | it is the sidebar's rung, so the two read as one edge |
 | Running tool row | `data-glass-state="running"`: ink at the selected step | an in-flight row is the subject; an opaque rung was a slab |
 | Chosen row inside a veiled block (ask options, `Other`) | stays `bg-sunken` (one role fill) | a chosen row is a selected SURFACE: the selected ink (0.08) over a veil (0.09-0.12) is the forbidden stack, so the fill is the only layer and the mark is the selection channel |
@@ -1306,7 +1463,7 @@ be on glass:
 | Block (a text-bearing card whose fill is its boundary) | `data-glass-block` | the derived veil (unchanged) |
 | Lane (a well that must read under veiled cards) | `data-glass-lane` | the derived scheme role at `pageAlpha * scale` (tracks the slider) |
 
-**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the `canvas` the `<main>` backing paints, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
+**An isolating band on a PAGE, not in a pane.** The rows above describe the band from inside a pane, where its role IS the pane's ground. A page that owns its ground (Notifications, Projects, Library, Settings) has no `pane` region at all: its material is the route's `canvas` ground, so the same band rule gates on the page's own `data-glass-region="canvas"` marker and the band takes the `elevated` role there too - one role step UP from the page, which is what makes it read as a band rather than as a thicker page. It is not the page's own canvas role, and the reason is measured rather than stylistic: at the band floor over the scheme's extreme, that role misses the ink floors on 17 of the theme set's 18 light palettes (all but `highContrastLight`), while `elevated` clears them on the whole fleet. The floor it takes is the one the band row derives, against every ink the band carries, so the count survives a CONTRAST PRESET here as well as on the authored palettes.
 
 **The isolating band is not see-through, and that is a decision, not an unfinished
 job.** At the shipped 80 % the desktop's share through the Notifications band is
@@ -1649,8 +1806,10 @@ Full treatment in the kit's `voice.md`. The rules that bite hardest in an app:
 - **Errors say what happened, what it means, and what to do** — in that order,
   in the user's terms. An error that only quotes an exception is unfinished.
 - **No emojis**, anywhere: UI copy, code, comments, commit messages.
-- Sentence case for everything — buttons, headings, menu items, labels. Title
-  Case is a marketing register and it makes a tool shout.
+- Write copy in sentence case — buttons, headings, menu items, labels. Title
+  Case is a marketing register and it makes a tool shout. The [Shared inset
+  group labels](#shared-inset-chat-workspace) use uppercase presentation only;
+  their translation strings are unchanged.
 
   **The one carve-out, and why it is not a precedent.** A *value chip* that
   prints a named setting beside the model's own name — the composer's reasoning

@@ -1,4 +1,5 @@
 {
+	"ui.chat.header.auto_close_inactive_tabs": "Close inactive tabs after {minutes, number} min",
 	"ui.chat.header.actions": "Conversation actions",
 	"ui.chat.header.archive_conversation": "Archive conversation",
 	"ui.chat.header.archived": "Archived",

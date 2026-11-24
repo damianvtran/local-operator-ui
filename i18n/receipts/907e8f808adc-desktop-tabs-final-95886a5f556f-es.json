@@ -1,0 +1,36 @@
+{
+  "auditor": "reviewer (lopdev)",
+  "instance": "907e8f808adc-desktop-tabs-final-95886a5f556f-es",
+  "session": "907e8f808adc",
+  "model": "openai/gpt-6.2-sol",
+  "fallback": null,
+  "date": "2026-11-22",
+  "locale": "es",
+  "namespace": "ui.chat.header",
+  "status": "passed",
+  "findings": [],
+  "source_sha256": "5b757e168af63750ceb5be996cda22aa01d7702412577bacbfebc2d416080a1c",
+  "target_sha256": "1ff6e2e3e821182c167d5c4e4f0c73cef38ea1e5bdaf37ccdcb792a74b4e724f",
+  "context_sha256": "6020837f5c9029b1a8ce0761d43775a849c438fb6c12cc17cc1ce282cdf96828",
+  "repo": "damianvtran/local-operator-ui",
+  "head": "95886a5f556f08f69b209c00dd7926b4de18fafa",
+  "previous_head": "4d5aec9a923cd5483ed96b9cfc3228e279e8a817",
+  "key": "ui.chat.header.auto_close_inactive_tabs",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.chat.header.json",
+    "target": "src/i18n/catalogues/es/ui.chat.header.json",
+    "context": "src/i18n/catalogues/en/ui.chat.header.context.json"
+  },
+  "source_label": "Close inactive tabs after {minutes, number} min",
+  "target_label": "Cerrar las pestañas inactivas tras {minutes, number} min",
+  "independence": "I authored none of the English, translations or edits. Independent final-byte retest by the original preflight reviewer, not a second independent reviewer. No MT or translation API. Model from harness header; no fallback observed.",
+  "scope": "Semantic audit of the one changed label. Full namespaces are SHA-256-bound; existing messages were verified equal to the pre-feature base, not re-audited. Menu checkbox is opt-in, default off; closes eligible tabs only after 30 minutes of confirmed inactivity, not conversations, runs, drafts or history.",
+  "references": {
+    "glossary": "damianvtran/local-operator@b42471d3935cb7e95d64428af27c32626665f4c0:i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@b42471d3935cb7e95d64428af27c32626665f4c0:i18n/style-guides/es.md",
+    "prior_preflight": "i18n/audits/evidence/desktop-inset-workspace-preflight-4d5aec9a923c-907e8f808adc.json"
+  },
+  "semantic_review": "Pass unchanged from independent preflight: infinitive Cerrar, established pestañas, idiomatic neutral Spanish; inactive scope and minute delay are explicit.",
+  "execution": "In-memory esbuild bundle of src/i18n/messages.ts, actual translate()/translateRaw(), FormatJS parsed AST, and HEAD/raw-byte/current-checkout comparisons passed: exact single-key addition versus base, namespace parity, NFC, one minutes argument of number type, no manual bidi controls, 30 in the runtime label, locale Intl.NumberFormat grouping for 12345. Generator freshness and context parity exited 0. Existing ledger still fails until refreshed (21 expected stale-binding errors); assembler was not applied to the worktree.",
+  "limits": "Source/ICU verdict only. No native, rendered fit, visual RTL or pseudo-locale execution; no PR review. The target/English/context hashes are byte bindings, not visual evidence."
+}

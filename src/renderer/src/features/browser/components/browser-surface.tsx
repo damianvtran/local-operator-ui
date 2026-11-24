@@ -31,6 +31,10 @@ import {
 	parseInternalUrl,
 } from "../../../../../shared/internal-pages";
 import {
+	measureBrowserRouteRect,
+	trackBrowserRouteRect,
+} from "../browser-route-viewport";
+import {
 	type AddressController,
 	useBrowserChords,
 } from "../hooks/use-browser-chords";
@@ -82,6 +86,7 @@ import {
 	type AddressFocusRequest,
 	BrowserUrlBar,
 } from "./browser-url-bar";
+import { BrowserRoutePending, BrowserWorkspaceBody } from "./browser-workspace";
 
 type PasskeyNoticeHostProps = Omit<
 	ComponentProps<typeof BrowserPasskeyNotice>,
@@ -688,13 +693,37 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
+	const availability = state?.availability;
+	const waitingForBrowser = availability && availability.status !== "ready";
+	const routeViewportReady =
+		isRoutePage && chrome.available && !waitingForBrowser;
+	// React 18 can replay effects without reattaching the DOM ref. The tracker
+	// must resample the attached node after the transport's replay cleanup, even
+	// if its bounds did not move. The render gate also tears it down when the
+	// ready node is replaced by the startup or retry UI, not just on route exit.
+	useLayoutEffect(() => {
+		if (!routeViewportReady) return;
+		const element = contentRef.current;
+		if (!element) return;
+		// Both the native host and overlay hit tests read the same safe box.
+		const readRect = () => measureBrowserRouteRect(element);
+		const unregisterRect = registerBrowserViewRect(readRect);
+		const stop = trackBrowserRouteRect(readRect, chrome.setContentRect);
+		return () => {
+			unregisterRect();
+			stop();
+		};
+	}, [chrome.setContentRect, routeViewportReady]);
+
 	// ---- layout: report the rectangle ---------------------------------------
 	// `useLayoutEffect` so the first report lands before the browser paints: with
 	// a passive effect the view would appear one frame after the chrome, which is
 	// a flash of the placeholder under it.
 	useLayoutEffect(() => {
+		if (isRoutePage) return;
 		const element = contentRef.current;
 		if (!element) return;
+		// Preserve the embedded Chat Browser's layout and measurement path.
 		const report = (): void => chrome.setContentRect(measure(element));
 		report();
 		// The SAME box, offered to the overlay policy: an overlay that is only
@@ -715,7 +744,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// The surface is going away: nothing knows where the view belongs now.
 			chrome.setContentRect(null);
 		};
-	}, [chrome.setContentRect]);
+	}, [chrome.setContentRect, isRoutePage]);
 
 	// A banner click names the pending request; the band is already rendering it,
 	// so the only job here is to make sure this surface is showing current state.
@@ -1042,13 +1071,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		lastRefusedSeed.current = seed ?? null;
 		raiseAddress({ origin: "chrome", seed });
 	}, [onStartPage, chrome.refusedUrl]);
-	/*
-	 * WHETHER THE OPAQUE WEBVIEW IS WHAT THE BARS SIT ABOVE. Window glass keys the
-	 * route host's paint on this: with a live page the chrome band and the native
-	 * surface cover the host, so it paints nothing and the band stays the sidebar's
-	 * raw rung; on the start page, a failure or a loading state the host keeps its
-	 * pane paint, which is the ground those surfaces were designed on.
-	 */
+	/* A live page puts the separate chrome on the sidebar's raw rung. Loading,
+	 * error and start states share the frame's elevated role instead; the
+	 * narrow area around the native viewport keeps the frame's backdrop. */
 	const glassLivePage =
 		navFailure === null && !onStartPage && state?.activeTabId != null;
 	useSuppressBrowserView(onStartPage, "browser-state", "browser-start-page");
@@ -1079,14 +1104,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
-	const availability = state?.availability;
-	if (availability && availability.status !== "ready") {
-		return (
+	if (waitingForBrowser) {
+		const status = (
 			<output
 				className="flex h-full flex-col items-center justify-center gap-3 bg-elevated p-6 text-center"
 				aria-live="polite"
 				aria-busy={availability.status !== "unavailable"}
 				data-tour-tag="browser-availability"
+				data-glass-region={isRoutePage ? "pane-leaf" : undefined}
 				data-browser-status={availability.status}
 			>
 				{availability.status === "unavailable" ? (
@@ -1126,15 +1151,28 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				)}
 			</output>
 		);
+		return isRoutePage ? (
+			<BrowserRoutePending>{status}</BrowserRoutePending>
+		) : (
+			status
+		);
 	}
 
 	if (!chrome.available) {
-		return (
-			<div className="flex h-full items-center justify-center bg-elevated p-6">
+		const status = (
+			<div
+				className="flex h-full items-center justify-center bg-elevated p-6"
+				data-glass-region={isRoutePage ? "pane-leaf" : undefined}
+			>
 				<p className="text-body text-ink-muted">
 					{t("ui.browser.browser_surface.the_browser_is_only_available_in_the")}
 				</p>
 			</div>
+		);
+		return isRoutePage ? (
+			<BrowserRoutePending>{status}</BrowserRoutePending>
+		) : (
+			status
 		);
 	}
 
@@ -1160,7 +1198,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			tabIndex={-1}
 			/*
 			 * THE ROUTE HOST IS A FULL-HEIGHT PANEL and the pane host is not. On the
-			 * route the pane's ground reaches y0 (`panel-flush` cancels the shell's
+			 * route the chrome reaches y0 (`panel-flush` cancels the shell's
 			 * ordinary-content pad). Its chrome child owns the titlebar clearance so
 			 * the reserved lane, tab track and permanent address row share one paint
 			 * owner instead of exposing the pane ground above the tab track. In the
@@ -1171,7 +1209,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			 */
 			className={
 				isRoutePage
-					? "panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
+					? "panel-flush relative flex min-h-0 flex-1 flex-col outline-none!"
 					: "relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
 			}
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
@@ -1180,6 +1218,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			   page, or its alpha would be the stack of the backing and the pane. */
 			data-glass-region="pane"
 			data-glass-split={isRoutePage ? "" : undefined}
+			data-browser-route-shell={isRoutePage ? "" : undefined}
 			data-glass-chrome-live={isRoutePage && glassLivePage ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
@@ -1509,8 +1548,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    content element — and the rectangle reported from it — narrows when the
 			    dock opens. That is the design's whole point (`spec 2`): a native view
 			    cannot be CSS-scaled or overlaid, so the dock is in flow, and the
-			    `ResizeObserver` above re-reports on the same frame. */}
-			<div className="flex min-h-0 grow" ref={attachDockRow}>
+			    the geometry tracker above re-reports the new host box. */}
+			<BrowserWorkspaceBody
+				isRoutePage={isRoutePage}
+				dockRowRef={attachDockRow}
+			>
 				{/* The content rect. The native view paints ABOVE this element, so
 				    everything below is visible only while the view is hidden — which is
 				    exactly why the treatment is a page title and one line rather than a
@@ -1778,7 +1820,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						surfaceTag={dockSurfaceTag}
 					/>
 				)}
-			</div>
+			</BrowserWorkspaceBody>
 			<BrowserApprovalsDialog
 				open={Boolean(nativeApprovalsCard?.available) && approvalsDialogOpen}
 				onClose={() => {

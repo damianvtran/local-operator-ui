@@ -280,44 +280,45 @@ test("the sidebar's column cannot scroll, and its panes contain their own overfl
 	 * scrollable layers in the panel, the two regions' shared flow class, and
 	 * the absence of the split's affordances from the DOM.
 	 */
-	assert.ok(
-		pane.includes(
-			"relative min-h-0 flex-1 space-y-4 overflow-y-auto p-1 [overflow-anchor:none] [scrollbar-gutter:stable]",
-		),
-		"the merged scroller's class list must carry the single overflow layer",
-	);
-	/*
-	 * PER-REGION SLICES, NOT WHOLE-FILE COUNTS (agent review round 1, R7). The
-	 * scroller's own tag is read for the one scrollable layer; each region's own
-	 * tag-to-class slice is read for ordinary flow and for the absence of a scroll
-	 * layer of its own; and the class whole-file scan the old count missed is kept
-	 * as an absence check. A count over the file could be satisfied by two
-	 * unrelated occurrences and could be fed by comments - this cannot.
-	 */
-	const scrollerClass = pane.match(
-		/data-sidebar-region="scroller"[\s\S]{0,400}?className="([^"]+)"/,
-	);
-	assert.ok(scrollerClass, "the scroller's own class list was not found");
+	// Attribute-to-tag fences ensure a descendant cannot lend the scroller its
+	// overflow utility. Require the same region and verify both layout branches.
+	const regionTag = (region) => {
+		const at = pane.search(
+			new RegExp(`^\\s+data-sidebar-region="${region}"\\s*$`, "m"),
+		);
+		assert.ok(at >= 0, `missing ${region} region`);
+		const end = pane.slice(at).search(/\n\s*>/);
+		assert.ok(end > 0, `missing ${region} opening-tag boundary`);
+		return pane.slice(at, at + end);
+	};
+	const scroller = regionTag("scroller");
+	assert.match(scroller, /className=\{cn\(/);
 	assert.match(
-		scrollerClass[1],
-		/(^|\s)overflow-y-auto(\s|$)/,
-		"the one scrollable layer is the merged scroller's",
+		scroller,
+		/\bmin-h-0 flex-1 overflow-y-auto p-1 \[overflow-anchor:none\] \[scrollbar-gutter:stable\]/,
 	);
-	const regionClass = 'className={cn("relative space-y-4")}';
+	// One rhythm on every route (design round 7, D1): no route-gated spacing.
+	const sharedSpacing = /\n\s*"sidebar-section-stack",\n/;
+	assert.match(scroller, sharedSpacing);
+	const scrollLayers = [
+		...pane.matchAll(
+			/^\s*(?:className="|"relative )[^"\n]*\boverflow-y-auto\b[^"\n]*"/gm,
+		),
+	];
+	// The existing view menu is portalled: its scroll cap isn't a nested
+	// sidebar layer. Don't exempt any other element or any future portal.
+	const flowLayers = scrollLayers.filter(
+		(match) =>
+			!/^\s*data-sidebar-view-panel\s*\n/.test(
+				pane.slice(match.index + match[0].length),
+			),
+	);
+	assert.equal(flowLayers.length, 1);
+	assert.ok(scroller.includes(flowLayers[0][0].trim()));
 	for (const region of ["entities", "chats"]) {
-		const marker = `data-sidebar-region="${region}"`;
-		const at = pane.indexOf(marker);
-		assert.ok(at >= 0, `${marker} is not drawn`);
-		const classAt = pane.indexOf(regionClass, at);
-		assert.ok(
-			classAt > at,
-			`the ${region} region's own class list was not found`,
-		);
-		assert.doesNotMatch(
-			pane.slice(at, classAt + regionClass.length),
-			/overflow(-y)?-(auto|scroll)/,
-			`the ${region} region must be ordinary flow inside the one scroller: no scroll layer of its own`,
-		);
+		const tag = regionTag(region);
+		assert.match(tag, /className="relative sidebar-section-stack"/);
+		assert.doesNotMatch(tag, /overflow(-y)?-(auto|scroll)/);
 	}
 	assert.doesNotMatch(
 		pane,

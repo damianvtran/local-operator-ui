@@ -6193,6 +6193,7 @@ export type MessageParams = {
 	"ui.chat.header.archive_conversation": undefined;
 	"ui.chat.header.archived": undefined;
 	"ui.chat.header.archived_hint": undefined;
+	"ui.chat.header.auto_close_inactive_tabs": { minutes: number };
 	"ui.chat.header.cancel_rename": undefined;
 	"ui.chat.header.canonical_chat": undefined;
 	"ui.chat.header.close_run_details": undefined;

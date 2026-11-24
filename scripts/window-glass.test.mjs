@@ -245,6 +245,8 @@ const VEILED_HOVER_MOUNTS = {
  * then source order. Returns the block's veil state too (the precondition).
  * `keepBranches` drops one selector of the suppression rule to build the controls.
  */
+/** The structural key every pane-path selector carries (and the veil gate lacks). */
+const PANE_PATH_KEY = '[data-glass-region="canvas-backing"]';
 const veiledHoverOutcome = (css, { keepBranches } = {}) => {
 	const suppressionRule = cssRules(css).find(
 		(rule) =>
@@ -259,10 +261,16 @@ const veiledHoverOutcome = (css, { keepBranches } = {}) => {
 	let subject = css;
 	if (keepBranches) {
 		const branches = splitSelectorList(suppressionRule.selector);
+		/*
+		 * The pane branch is told apart by the canvas backing it hangs off, not by
+		 * `main[`: since the shared inset (PR #2043) that key is
+		 * `:is(main, :where([data-workspace-frame]))[data-glass-region="canvas-backing"]`,
+		 * so a `main[` test matched no branch and the controls had nothing to drop.
+		 */
 		const keep = (branch) =>
 			keepBranches === "block"
-				? !branch.includes("main[")
-				: branch.includes("main[");
+				? !branch.includes(PANE_PATH_KEY)
+				: branch.includes(PANE_PATH_KEY);
 		const kept = branches.filter(keep);
 		if (kept.length === 0 || kept.length === branches.length)
 			throw new Error(
@@ -1218,7 +1226,7 @@ test("G-11 every region, state and well the CSS names is a marker some component
 		"the fleet-reachable selector must be gated on the veil's own gate",
 	);
 	assert.ok(
-		!hover.fleet.selector.includes("main["),
+		!hover.fleet.selector.includes(PANE_PATH_KEY),
 		"the fleet mount is a sibling of <main>: the selector that wins there cannot be the pane path",
 	);
 	/*

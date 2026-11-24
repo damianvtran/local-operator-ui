@@ -31,7 +31,6 @@ import { PageHeader } from "@shared/components/common/page-header";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { Settings } from "lucide-react";
 import { type FC, useLayoutEffect, useMemo } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
 import type { BackendSettings } from "../../../../../shared/desktop-contract";
@@ -115,15 +114,8 @@ const Frame: FC<{
 	<div className="min-h-screen bg-canvas">
 		<div className="mx-auto flex w-full flex-col gap-8">
 			<div className={cn("flex flex-col gap-8 p-8", className)}>
-				{/*
-				 * The PAGE's own header component, not a stand-in (design D6), and
-				 * the search row UNDER it rather than in its action slot: the page
-				 * mounts the field on the column's own left axis, so its edge is the
-				 * axis every section heading shares. A story that put the field back
-				 * in the header would photograph a composition the product no longer
-				 * ships.
-				 */}
-				<PageHeader title={t("ui.settings.page.title")} icon={Settings} />
+				{/* Match the page: semantic heading, then the first visible control. */}
+				<PageHeader variant="compact" title={t("ui.settings.page.title")} />
 				{children}
 			</div>
 			<div className="flex flex-col gap-3 px-8">

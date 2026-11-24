@@ -72,6 +72,10 @@ import {
 } from "../../../../shared/theme-engine/appearance.mjs";
 import { sanitizeCustomAccentNames } from "../../../../shared/theme-engine/picker.mjs";
 import {
+	type SavedWorkspaceTab,
+	sanitizeSavedWorkspaceTabs,
+} from "../../features/chat/workspace-tabs-model";
+import {
 	MEMORY_PANES,
 	type MemoryPane,
 	type RightSlotMemory,
@@ -171,6 +175,12 @@ const nextConsoleCommandNonce = (): string =>
  * Type definition for the UI preferences store state
  */
 type UiPreferencesState = {
+	/** Only session tab metadata survives a launch; never drafts or selection. */
+	workspaceTabs: SavedWorkspaceTab[];
+	workspaceAutoClose: boolean;
+	setWorkspaceAutoClose: (enabled: boolean) => void;
+	setWorkspaceTabs: (tabs: SavedWorkspaceTab[]) => void;
+
 	/** User view choices, never session inventory or search query. */
 	finderFiles: FinderPreferences;
 	setFinderFiles: (patch: Partial<FinderPreferences>) => void;
@@ -2239,6 +2249,11 @@ export function sanitizePaletteSort(value: unknown): PaletteSort {
 export const useUiPreferencesStore = create<UiPreferencesState>()(
 	persist(
 		(set, get) => ({
+			workspaceTabs: [],
+			workspaceAutoClose: false,
+			setWorkspaceAutoClose: (enabled) => set({ workspaceAutoClose: enabled }),
+			setWorkspaceTabs: (tabs) =>
+				set({ workspaceTabs: sanitizeSavedWorkspaceTabs(tabs) }),
 			finderFiles: DEFAULT_FINDER,
 			setFinderFiles: (patch) =>
 				set({
@@ -3362,6 +3377,8 @@ export function mergePersistedUiPreferences(
 	return {
 		...current,
 		...rest,
+		workspaceTabs: sanitizeSavedWorkspaceTabs(blob.workspaceTabs),
+		workspaceAutoClose: blob.workspaceAutoClose === true,
 		finderFiles: sanitizeFinderPreferences(blob.finderFiles),
 		rightSlotKey: current.rightSlotKey,
 		rightSlotMemory: memorySanitize(blob.rightSlotMemory),

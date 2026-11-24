@@ -3834,13 +3834,27 @@ app
 		// A renderer that mounts after a reconnect asks for the CURRENT state, so a
 		// healthy feed does not have to produce a transition before the sidebar can
 		// stop saying "not connected".
-		ipcMain.on("desktop-feed-watch", () => {
-			const window = mainWindow;
-			if (!window || window.isDestroyed()) return;
-			window.webContents.send("desktop-feed-state", {
-				connected: backendService.getDesktopFeedRelay().isConnected,
-			});
-		});
+		ipcMain.on(
+			"desktop-feed-watch",
+			(event, includeWorkspaceEpoch?: boolean) => {
+				const window = mainWindow;
+				if (
+					!window ||
+					window.isDestroyed() ||
+					event.sender !== window.webContents
+				)
+					return;
+				const relay = backendService.getDesktopFeedRelay();
+				// An opt-in after open or a route remount needs the current epoch,
+				// not a second SSE connection or another set of session headlines.
+				window.webContents.send("desktop-feed-state", {
+					connected: relay.isConnected,
+					...(includeWorkspaceEpoch === true
+						? { workspaceEpoch: relay.workspaceEpoch }
+						: {}),
+				} satisfies DesktopFeedState);
+			},
+		);
 
 		/**
 		 * Main's request for the window's queued-ask claim (`shared/

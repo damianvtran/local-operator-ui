@@ -64,7 +64,6 @@ import {
 } from "@shared/utils/toast-manager";
 import { useQuery } from "@tanstack/react-query";
 import {
-	Bell,
 	Check,
 	CheckCheck,
 	ChevronDown,
@@ -76,6 +75,7 @@ import {
 import {
 	type FC,
 	type KeyboardEvent,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -1941,7 +1941,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	if (!enabled) {
 		return (
 			<div className="flex h-full flex-col gap-8 p-6">
-				<PageHeader title={t("ui.notifications.page.title")} icon={Bell} />
+				<PageHeader
+					variant="compact"
+					title={t("ui.notifications.page.title")}
+				/>
 				{capabilities.isLoading ? (
 					<div className="flex justify-center py-16">
 						<Spinner label={t("ui.notifications.page.checking")} />
@@ -1971,7 +1974,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		/*
 		 * THE PAGE OWNS ITS GROUND (`data-glass-region="canvas"`), the marker the
 		 * rules for surfaces inside it hang on. It paints nothing itself - the
-		 * `main` canvas backing is the wash - so the marker's own rule (which
+		 * the shared route frame is the wash - so the marker's own rule (which
 		 * clears a page role on glass) changes nothing here; what it does is let
 		 * this page's band and segmented track be styled by their own rules
 		 * whether they render in the shell or in a harness that mounts the page
@@ -1984,69 +1987,90 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			data-glass-region="canvas"
 		>
 			<div className="flex shrink-0 flex-col gap-4 px-6 pt-6">
+				{/*
+				 * NO HEADER ROW. The visible title went when the route stopped repeating
+				 * the tab name; what was left of the header was a row holding only the
+				 * refresh button (and, while scrolled, the "N new" chip) above the
+				 * filters. A lone icon on its own line reads as stray chrome and costs a
+				 * row of list height, so both now ride the toolbar's trailing edge via
+				 * `trailing`, and the compact header keeps only its sr-only h1 (absolutely
+				 * positioned, so it is not a flex item and adds no gap). The toolbar is
+				 * therefore the first row in the inset, like the other routes.
+				 */}
 				<PageHeader
+					variant="compact"
 					title={t("ui.notifications.page.title")}
-					icon={Bell}
-					subtitle={t("ui.notifications.page.subtitle")}
-				>
-					<div className="flex flex-wrap items-center gap-2">
-						{list.newerCount > 0 && (
-							/*
-							 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
-							 * deep, rows that arrived above the viewport are not drawn (that would
-							 * move what they are reading). This chip says how many, and pressing it
-							 * is the way back - page one refetches, so the counts and the waiting
-							 * asks on it are fresh.
-							 *
-							 * IN THE HEADER, NOT IN THE LIST (design rounds 5-6, D1). As a sticky
-							 * band inside the scroll port it either covered the sticky group
-							 * header or, with the headers offset below it, the header covered a
-							 * row. Out here it takes no list height: the list's scroll port and
-							 * first row sit exactly where they do with no chip. The chevron says
-							 * "up, to the top" without new copy (D4 deferred).
-							 */
+				/>
+				<Toolbar
+					trailing={
+						<>
+							{list.newerCount > 0 && (
+								/*
+								 * BACK TO TOP (code round 5, R5-1). While the operator is scrolled
+								 * deep, rows that arrived above the viewport are not drawn (that would
+								 * move what they are reading). This chip says how many, and pressing it
+								 * is the way back - page one refetches, so the counts and the waiting
+								 * asks on it are fresh.
+								 *
+								 * IN THE TOOLBAR, NOT IN THE LIST (design rounds 5-6, D1). As a sticky
+								 * band inside the scroll port it either covered the sticky group
+								 * header or, with the headers offset below it, the header covered a
+								 * row. Out here it takes no list height: the list's scroll port and
+								 * first row sit exactly where they do with no chip. It used to sit in
+								 * the header row; that row is gone, so it shares the toolbar's
+								 * trailing group with refresh - the two are the same question ("is
+								 * this view current?") and the chip is the same 28px height as the
+								 * filter chips, so it mounts without growing the band. The chevron
+								 * says "up, to the top" without new copy (D4 deferred).
+								 */
+								<Button
+									size="sm"
+									variant="secondary"
+									data-notifications-back-to-top=""
+									onClick={() => {
+										/*
+										 * INSTANT, NOT SMOOTH (QA round 6, Q13). The reset prepends
+										 * the late rows while a smooth scroll is still travelling, and
+										 * scroll anchoring holds the viewport over them: QA measured it
+										 * stopping 112 px short, two 56 px rows. At offset 0 the
+										 * browser does not anchor, so the rows land above nothing.
+										 */
+										reelAnchor.current = null;
+										listRef.current?.scrollTo({ top: 0 });
+										setIsAtTop(true);
+										list.resetToTop();
+									}}
+								>
+									<ChevronUp aria-hidden="true" />
+									{t("ui.notifications.new_pill", {
+										count: formatNumber(list.newerCount),
+									})}
+								</Button>
+							)}
+							{/*
+							 * `icon-sm` (28px), not `icon` (32px): in the toolbar it sits
+							 * beside `size="sm"` chips, and a taller square would either
+							 * grow the band or sit off their centre line. Ghost keeps it
+							 * quieter than the filters it follows.
+							 */}
 							<Button
-								size="sm"
-								variant="secondary"
-								data-notifications-back-to-top=""
+								variant="ghost"
+								size="icon-sm"
+								data-notifications-refresh=""
+								aria-label={t("ui.notifications.page.refresh")}
+								title={t("ui.notifications.page.refresh")}
+								aria-busy={list.isFetching || undefined}
+								disabled={list.isFetching}
 								onClick={() => {
-									/*
-									 * INSTANT, NOT SMOOTH (QA round 6, Q13). The reset prepends
-									 * the late rows while a smooth scroll is still travelling, and
-									 * scroll anchoring holds the viewport over them: QA measured it
-									 * stopping 112 px short, two 56 px rows. At offset 0 the
-									 * browser does not anchor, so the rows land above nothing.
-									 */
-									reelAnchor.current = null;
-									listRef.current?.scrollTo({ top: 0 });
-									setIsAtTop(true);
-									list.resetToTop();
+									setStickyRead(new Map());
+									setSettledAskRows(new Map());
+									void list.refresh();
 								}}
 							>
-								<ChevronUp aria-hidden="true" />
-								{t("ui.notifications.new_pill", {
-									count: formatNumber(list.newerCount),
-								})}
+								<RefreshCw />
 							</Button>
-						)}
-						<Button
-							variant="ghost"
-							size="icon"
-							aria-label={t("ui.notifications.page.refresh")}
-							title={t("ui.notifications.page.refresh")}
-							aria-busy={list.isFetching || undefined}
-							disabled={list.isFetching}
-							onClick={() => {
-								setStickyRead(new Map());
-								setSettledAskRows(new Map());
-								void list.refresh();
-							}}
-						>
-							<RefreshCw />
-						</Button>
-					</div>
-				</PageHeader>
-				<Toolbar
+						</>
+					}
 					loaded={loaded}
 					bulkEnabled={bulkEnabled}
 					readState={readState}
@@ -2204,6 +2228,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								}}
 								className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pb-6 [overflow-anchor:none] [scrollbar-gutter:stable]"
 								data-notifications-list=""
+								data-lo-pane-edge-cues="bottom"
 							>
 								{groups.map((group) => (
 									<GroupBlock
@@ -2622,6 +2647,14 @@ const ConfirmDismissSession: FC<{
 /* ----------------------------------------------------------------- toolbar */
 
 type ToolbarProps = {
+	/**
+	 * View-currency controls (refresh, and the "N new" back-to-top chip while
+	 * scrolled) pinned to the band's trailing edge in BOTH modes. They lived in a
+	 * header row of their own until the visible page title was removed; a row
+	 * holding one icon is stray chrome, so the band carries them instead.
+	 * Refresh stays reachable while selecting, exactly as it was in the header.
+	 */
+	trailing?: ReactNode;
 	bulkEnabled: boolean;
 	loaded: DesktopNotificationsList | undefined;
 	readState: "unread" | "all";
@@ -2664,10 +2697,13 @@ type ToolbarProps = {
 };
 
 /**
- * The 44px band under the header. While anything is selected, the selection
- * bar REPLACES the toolbar in the same band so nothing reflows (design § 7.1).
+ * The 44px band at the top of the page (the first row in the inset since the
+ * header row went). While anything is selected, the selection bar REPLACES the
+ * toolbar in the same band so nothing reflows (design § 7.1); `trailing` closes
+ * the band in both modes.
  */
 const Toolbar: FC<ToolbarProps> = ({
+	trailing,
 	loaded,
 	bulkEnabled,
 	readState,
@@ -2697,6 +2733,21 @@ const Toolbar: FC<ToolbarProps> = ({
 	const asksStaying = asksCount;
 	const dismissableCount = selectionCount - asksCount;
 	const selecting = selectionCount > 0;
+	/*
+	 * `ms-auto`, logical rather than `ml-auto`, so the group hugs the inline END:
+	 * the right edge in LTR and the left in RTL. It matters when the band wraps -
+	 * the group can land on a line of its own, where the preceding `flex-1`
+	 * spacer no longer pushes it, and `ms-auto` keeps it at the trailing edge
+	 * instead of stranding it at the start. `shrink-0` keeps the 28px square.
+	 */
+	const trailingGroup = trailing ? (
+		<div
+			className="ms-auto flex shrink-0 items-center gap-2"
+			data-notifications-toolbar-trailing=""
+		>
+			{trailing}
+		</div>
+	) : null;
 
 	return (
 		<div
@@ -2806,6 +2857,8 @@ const Toolbar: FC<ToolbarProps> = ({
 							Esc
 						</kbd>
 					</Button>
+					{/* Before the full-width notice, so the notice stays the last line. */}
+					{trailingGroup}
 					{newItemsOutsideSelection && (
 						<p
 							className="basis-full text-meta text-ink-muted"
@@ -3064,6 +3117,7 @@ const Toolbar: FC<ToolbarProps> = ({
 						<CheckCheck />
 						{t("ui.notifications.action.mark_all_read")}
 					</Button>
+					{trailingGroup}
 				</>
 			)}
 		</div>

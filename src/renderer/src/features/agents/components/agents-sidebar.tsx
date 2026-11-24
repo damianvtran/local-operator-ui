@@ -495,7 +495,8 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 	return (
 		<div
 			data-glass-region="page-sidebar"
-			className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"
+			data-workspace-safe-content=""
+			className="flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			<SidebarHeader
 				title={t("ui.agents.navigation.sidebar.title")}
@@ -551,7 +552,10 @@ const AgentsSidebarComponent: FC<AgentsSidebarProps> = ({
 					 * `min-h-0` so the list scrolls inside the flex column instead of
 					 * pushing the pagination out of the panel.
 					 */}
-					<ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2">
+					<ul
+						data-lo-pane-edge-cues=""
+						className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
+					>
 						{combinedAgents.map((agent) => (
 							<MemoizedAgentsSidebarItem
 								key={agent.id}

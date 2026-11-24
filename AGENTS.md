@@ -33,9 +33,10 @@ This file defines project-specific operating guidelines for AI coding agents wor
 
 ## Design and branding — read before any visual change
 
-**`docs/branding.md` is the design contract.** Read it before changing any
-visual surface, and read § 7 before touching anything that renders agent
-output. The short version of the parts most often got wrong:
+**[Branding and design system](docs/branding.md) is the design contract.**
+Read it before changing any visual surface, and read § 7 before touching
+anything that renders agent output. The short version of the parts most often
+got wrong:
 
 - **Name roles, never colours.** `bg-surface`, `text-ink-muted`,
   `border-control` — never a hex, never `theme.palette.*` in ported files. If a
@@ -73,7 +74,14 @@ output. The short version of the parts most often got wrong:
 - **Agent output has a hierarchy** (§ 7): a question for the user is the most
   prominent thing on screen; internal reasoning is hidden by default. A
   completed action is one quiet line, not a card.
-- Sentence case everywhere. Monospace is machine voice only.
+- **Keep the [Nested dock](docs/branding.md#composer-the-nested-dock) out of
+  the transcript scroller.** Keep activity above it, the shelf separate from
+  the editor, and staged files inside the editor (full previews are dialogs).
+  Preserve compact access, local focus indicators and the transcript anchor.
+  Do not give the dock floating elevation or a resting/focus frame; matte
+  changes must not alter Window glass coverage.
+- Write copy in sentence case. The Shared inset's sidebar group labels use
+  uppercase presentation only. Monospace is machine voice only.
 
 ### Where colour comes from
 
@@ -94,12 +102,36 @@ about a component nobody listed is not evidence about that component.
 presets (`scripts/check-contrast-presets.mjs`), so a new row must hold on every
 palette at Soft, Gentle, Strong and High too.
 
+### Shared inset for primary pages
+
+Use one [Shared inset](docs/branding.md#shared-inset-for-primary-pages) at the route
+body boundary. The outlet keeps the frame through loading, error and content.
+Ordinary routes spend native clearance before their frame. Settings (including
+subsection links) and Agents (including saved-agent detail) opt in through their
+matched route: their frame and pane grounds paint to y0 and the bottom edge,
+with the lateral gutter intact. Each pane spends the clearance once inside its
+paint, outside its scrollport. Keep the drag lane/band above that paint and out
+of the pane's controls; do not add another pad to nested content.
+
+When the tab already names the page, keep its semantic `h1` without a visual
+title or intro track. Show the working controls first and keep meaningful state,
+selected-item titles, instructions and feedback.
+
+Share the frame, not the page layout: keep pane grounds, sticky bands, focus
+and local scroll ownership. Chat's tabs and Browser's tab/address rails stay
+outside their own body frame; the outlet never wraps those bodies again. Team
+Bridge mounts its left rail in the shell and takes the outlet frame on the
+right. Browser reports a rectangular host fully inside the rounded clip, not
+rounded native hit testing. Keep the embedded Chat Browser unchanged. Source
+checks are not rendered or native verification; the integrated preview is held
+until the operator has seen the complete candidate and its screenshots.
+
 ### Panels run to the window edge
 
-These are rules with their reason, not a checklist. A surface that understands
-why will get the next case right where a checklist would not name it.
+These rules cover genuine edge-to-edge chrome, shell rails and documented
+legacy routes, not columns inside a Shared inset.
 
-- **A panel is full-height and starts at y0, including under the invisible
+- **A full-height edge-to-edge panel starts at y0, including under the invisible
   titlebar.** The mechanism is two utilities in `styles/index.css`:
   `panel-flush` on a route root that owns the whole window height, and
   `panel-top-pad` on a full-height panel column. The lane is a single
@@ -111,6 +143,9 @@ why will get the next case right where a checklist would not name it.
   offset panel is a band. This was reported three times (the Library sidebar,
   the canvas right bar, and Team Bridge) and each time the bug was the same
   relocation — the space existed, but outside the surface that should own it.
+  An ordinary Shared inset route instead has a shell-owned boundary below the
+  lane. Only the matched full-height split routes use the inset panel contract
+  above; do not add panel padding to any other framed route.
   **The element that wears `panel-top-pad` must be the same box that paints the
   panel's ground.** A padded wrapper with no ground of its own is exactly the
   band this rule forbids; a content column inside a grounded, `panel-flush`
@@ -120,9 +155,10 @@ why will get the next case right where a checklist would not name it.
   controls over the window, every OS and chrome mode resolves the top inset to
   `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
   first rows do not sit hard against the screen edge. It is still **padding
-  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
-  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
-  every panel's ground still reaches y0, and the lane and route band are hidden
+  inside each edge-to-edge panel or above the workspace frame** — it rides
+  `--chrome-strip-h`, which `panel-top-pad`, `panel-scroll` and the shell's
+  `<main>` already read. Legacy panel grounds still reach y0, and the lane and
+  route band are hidden
   so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
   insets, native frames) do not change. No transition on the padding; it flips
   in the frame the `data-chrome-fullscreen` attribute does.
@@ -134,7 +170,8 @@ why will get the next case right where a checklist would not name it.
   of that trade surfaced: between two full-height planes the step alone (ΔE00
   2.32 in `localOperatorLight`) is a field-sized difference, so one sanctioned
   mark was added — `PanelEdge`, a positioned 1px `hairline` at 75%, defined in
-  `panel-edge.tsx` and specified in `docs/branding.md` § Panels. A new
+  `panel-edge.tsx` and specified in
+  [Panels](docs/branding.md#panels-one-seam-edge-to-edge-fading-at-the-top). A new
   `border-l`/`border-r` on a panel is still a regression by construction: the
   earlier removals were about a border in the wrong place, not about the idea
   of an edge, and a border costs the panel a pixel while a scroll container
@@ -147,6 +184,21 @@ why will get the next case right where a checklist would not name it.
   so its scrollbar occupies the gutter rather than narrowing the measure; a
   scrollbar inside the padding makes text reflow when it appears, which reads
   as a jump.
+
+### Shared inset chat workspace
+
+Follow the [Shared inset design contract](docs/branding.md#shared-inset-chat-workspace).
+Keep native chat chrome edge-to-edge; inset only the shared chat and docked
+inspector frame below it. Use the shared clearance once. Do not add panel
+seams, card backing, a border or shadow to that shell. Keep tabs in the OS
+titlebar; preserve drag exclusions, hit areas, focus and pinned-lane behavior.
+Keep Teams/Agents launchers and group headings consistent with the conversation
+list, transcript fades in the scroller, and the Nested dock matte without
+changing its geometry or glass coverage. Treat auto-cleanup as an opt-in design
+pending Core verification, not a shipped guarantee.
+
+Use the [Shared inset evidence](docs/branding.md#shared-inset-evidence) checks
+for visual changes; hidden renderer captures do not prove native clicks or drag.
 
 ### One trap worth knowing
 

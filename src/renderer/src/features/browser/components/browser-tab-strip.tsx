@@ -1093,7 +1093,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			    to within a pixel rather than exactly. */}
 			<div
 				className={cn(
-					"@container/strip flex min-h-9 items-stretch gap-0 px-2 pt-1",
+					"@container/strip flex min-h-(--browser-tab-track-min) items-stretch gap-0 px-2 pt-1",
 				)}
 				data-tour-tag="browser-tab-strip-row"
 			>

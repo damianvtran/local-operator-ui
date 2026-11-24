@@ -324,6 +324,7 @@ export const TeamBridgeArchivedChannelsView: FC<{
 	return (
 		<section
 			aria-label={t("ui.teamBridge.archive.section.archived")}
+			data-lo-pane-edge-cues=""
 			className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-5"
 		>
 			<h2 className="font-medium text-lg text-ink">

@@ -3496,7 +3496,14 @@ test("the dock's row observer is a callback ref, so a remount re-measures", () =
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
-	assert.match(surface, /ref=\{attachDockRow\}/);
+	assert.match(surface, /dockRowRef=\{attachDockRow\}/);
+	const workspaceBody = shippedSource(
+		"src/renderer/src/features/browser/components/browser-workspace.tsx",
+	);
+	assert.match(
+		workspaceBody,
+		/className="flex min-h-0 grow" ref=\{dockRowRef\}/,
+	);
 	assert.match(surface, /useApprovalsDockWidth\(\)/);
 	assert.doesNotMatch(surface, /const element = dockRowRef\.current/);
 });

@@ -25,6 +25,7 @@ import { build, transformSync } from "esbuild";
 
 const RENDERER_ARGUMENT_FUNCTION =
 	/function rendererArgumentFlags\([\s\S]*?\n\}/;
+const RAIL_WIDTH_EXPRESSION = /\bconst railWidth\s*=\s*([^;]+);/;
 const ROOT = process.cwd();
 const readSource = (path) => readFileSync(`${ROOT}/${path}`, "utf8");
 
@@ -408,71 +409,36 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 		css,
 		/\[data-chrome-mode="integrated"\]\[data-chrome-leading="true"\]/,
 	);
-	/*
-	 * THE WINDOWS/LINUX SPLIT, which is the part that looks like an oversight: the
-	 * strip is 0 on Windows because `env(titlebar-area-height)` is the height of the
-	 * WCO area, not a band above the content - applying it as a top inset would push
-	 * every page's first row 40px down, away from the buttons.
-	 */
+	// One windowed trailing WCO selector declares the caption measurement. The
+	// drag band and full-height pane content use it instead of separate heights.
+	const trailing = String.raw`\[data-chrome-mode="integrated"\]:is\(\s*\[data-chrome-platform="win"\],\s*\[data-chrome-platform="linux"\]\s*\):not\(\[data-chrome-leading="true"\], \[data-chrome-fullscreen="true"\]\)`;
 	assert.match(
 		css,
-		/\[data-chrome-mode="integrated"\]\[data-chrome-platform="win"\]:not\(\s*\[data-chrome-leading="true"\]\s*\)\s+\[data-chrome-route-band\]/,
-		"the band's block rule is gated on `platform=win` AND `leading` not being true, in the selector rather than by source order",
-	);
-	/*
-	 * AND THE BAND STANDS DOWN WHERE THE LANE STANDS UP, which is the fix for the
-	 * operator's 2026-09-26 report ("for sub-views like the settings page, the
-	 * sidebar and view doesn't go all the way to the top"). The lane is drawn on
-	 * `platform=mac` OR `leading=true`; a band that also applies there is a SECOND
-	 * inset - measured on macOS at y 62.86 against the chat header's 32.
-	 *
-	 * WHICH PINS SEPARATE THE TREES AND WHICH GUARD AN INVARIANT, said here because
-	 * round 1 (R4) measured the difference and the next reader should not have to: the
-	 * EXCLUSIVITY pins and the strip-variable pin DISCRIMINATE (each is red against the
-	 * shape this change replaced); the linux-arm, leading-arc, height and no-mac pins
-	 * GUARD INVARIANTS that hold in both trees - they are the rules a future edit could
-	 * quietly delete, not a separation between the two.
-	 *
-	 * THE EXCLUSIVITY IS IN THE SELECTORS, NOT IN THE ORDER OF THE BLOCKS, and that is
-	 * round 1's R1: with a platform-only gate on the block rule, a leading layout
-	 * matched BOTH rules and `display: none` won only by being later in the file, so
-	 * reordering the blocks re-introduced the double inset with this suite green. Both
-	 * arms now carry `:not([data-chrome-leading="true"])`, so no state matches both.
-	 */
-	assert.match(
-		css,
-		/\[data-chrome-platform="linux"\]:not\(\s*\[data-chrome-leading="true"\]\s*\)\s+\[data-chrome-route-band\]/,
-		"the band's block rule negates `leading=true` on the linux arm too, so order cannot be what keeps the two rules apart (R1)",
-	);
-	assert.doesNotMatch(
-		css,
-		/\[data-chrome-mode="integrated"\](?!\[data-chrome-(?:platform|leading))[^{}]*\[data-chrome-route-band\]\s*\{/,
-		"every band rule must be gated on a platform or on `leading`, or a bare rule re-adds the macOS double inset",
+		new RegExp(
+			`${trailing}\\s*\\{\\s*--chrome-route-band-h: env\\(titlebar-area-height, 0px\\);`,
+		),
 	);
 	assert.match(
 		css,
-		/\[data-chrome-platform="linux"\][\s\S]{0,160}\[data-chrome-route-band\]/,
-		"the linux arm must stay: without it Linux gets no drag surface and no caption clearance",
+		new RegExp(
+			`${trailing}\\s+\\[data-chrome-route-band\\]\\s*\\{\\s*display: block;\\s*height: var\\(--chrome-route-band-h\\);\\s*-webkit-app-region: drag;`,
+		),
+	);
+	assert.match(
+		css,
+		/--workspace-safe-top:\s*max\(\s*var\(--panel-top-pad, 0px\),\s*var\(--chrome-route-band-h, 0px\)\s*\);/,
 	);
 	assert.doesNotMatch(
 		css,
 		/\[data-chrome-platform="mac"\][^{}]*\[data-chrome-route-band\]/,
-		"no band rule may be gated on macOS: that is the double inset this change removed",
 	);
 	assert.match(
 		css,
 		/\[data-chrome-mode="integrated"\]\[data-chrome-leading="true"\]\s+\[data-chrome-route-band\]\s*\{\s*display:\s*none;/,
-		"where the lane is drawn the band must stand down entirely, out of the flow",
-	);
-	assert.match(
-		css,
-		/\[data-chrome-platform="win"\][^{}]*\[data-chrome-route-band\][\s\S]*?height:\s*env\(titlebar-area-height/,
-		"INVARIANT, not a separator: the band's height is the caption area the OS draws into, which is the clearance it exists for",
 	);
 	assert.doesNotMatch(
 		css,
 		/\[data-chrome-route-band\][^{}]*\{[^}]*var\(--chrome-strip-h\)/,
-		"the band must never be the strip's height again: under a lane that is 32px of nothing on every non-chat route",
 	);
 
 	/* The lane: invisible by default, shown only where the OS is drawing over us. */
@@ -711,29 +677,45 @@ test("the shell renders the lane above the columns, and exactly one of it", () =
 	);
 });
 
-test("the shell publishes the inset the panel rail leaves, and every trailing row reads it (#872)", () => {
-	/*
-	 * The Windows/Linux caption buttons are ~138px (`src/shared/window-chrome.ts`'s
-	 * trailing reservation) and the rail is 44, so the rail clears only the buttons'
-	 * trailing part. The row that ends at the rail's left edge - the chat header
-	 * with no pane, or an open pane's toolbar - still has to clear the rest, and the
-	 * shell is the one element that knows the rail's width, so it publishes the
-	 * remainder. THE FLEET ASKS DRAWER ON SETTINGS/AGENTS HAS NO RAIL beside it, so
-	 * there the remainder must be the FULL inset: the width is `0` when the chat
-	 * surface is not mounted and the subtraction is of that number.
-	 */
+test("the shell publishes the inset the panel rail leaves, and every trailing row reads it (#872)", async () => {
 	const layout = readSource(
 		"src/renderer/src/shared/components/common/chat-layout.tsx",
 	);
-	assert.match(
-		layout,
-		/const railWidth = railMounted \? PANEL_RAIL_WIDTH_PX : 0;/,
-		"no chat surface, no rail: the width is 0 and the inset is the full one",
+	const railWidth = layout.match(RAIL_WIDTH_EXPRESSION)?.[1];
+	assert.ok(railWidth, "read the shell's actual rail width calculation");
+	const { PANEL_RAIL_WIDTH_PX } = await bundleOf(
+		"./src/renderer/src/features/chat/chat-sidebar-layout",
 	);
+	assert.ok(PANEL_RAIL_WIDTH_PX > 0);
+	// Both inputs matter: Suspense can leave Chat's mounted flag set on a
+	// pending Settings/Agents route, but its Fleet drawer needs full clearance.
+	for (const [showChatRail, railMounted, expectedWidth, reason] of [
+		[true, true, PANEL_RAIL_WIDTH_PX, "mounted Chat subtracts the rail"],
+		[false, true, 0, "pending non-Chat ignores a stale mounted rail"],
+		[true, false, 0, "Chat without a mounted rail reserves the full inset"],
+	]) {
+		assert.equal(
+			runInNewContext(
+				railWidth,
+				{ showChatRail, railMounted, PANEL_RAIL_WIDTH_PX },
+				{ timeout: 1000 },
+			),
+			expectedWidth,
+			reason,
+		);
+	}
 	assert.match(
 		layout,
 		/"--chrome-inset-end-pane": `max\(0px, calc\(var\(--chrome-inset-end\) - \$\{railWidth\}px\)\)`/,
 		"the remainder is the OS inset less the rail's actual width",
+	);
+	assert.match(layout, /<FleetAskDrawer\b/);
+	assert.match(
+		readSource(
+			"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
+		),
+		/<AskDrawer\b[^>]*\bscope="fleet"/,
+		"the Fleet drawer uses the shared AskDrawer toolbar checked below",
 	);
 	for (const file of [
 		"src/renderer/src/features/chat/components/canvas/index.tsx",

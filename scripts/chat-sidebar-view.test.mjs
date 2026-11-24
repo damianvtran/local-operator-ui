@@ -77,13 +77,16 @@ const SECTION_PRESS_WIRING = /toggleSectionDisclosure\([^)]*Boolean\(query\)/;
  * reads as the finding it answers rather than as a pattern.
  */
 /** The grown heading's two channels and the one sentence behind both (U1/D1). */
-const GROWN_HINT_TITLE = /title=\{grownHint \?\? undefined\}/;
-const GROWN_HINT_DESCRIBED_BY =
-	/aria-describedby=\{grownHint \? sectionGrownHintId\(key\) : undefined\}/;
-const GROWN_HINT_PREDICATE =
-	/const grownHint = sectionIsGrown\(sectionCaps\[key\]\)/;
-const GROWN_HINT_ELEMENT =
-	/<span id=\{sectionGrownHintId\(key\)\} className="sr-only">/;
+/*
+ * THE GROWN HINT NOW RIDES ON THE SECTION FOOT ONLY (design round 7, D1). The
+ * legacy disclosure heading that also carried it (`title` + `aria-describedby`)
+ * was drawn only off Chat; the sidebar now draws the shared `sectionLabel` on
+ * every route, and the foot - the press that grew the section - is the one
+ * control left to carry the sentence.
+ */
+const GROWN_HINT_FOOT =
+	/title=\{\s*sectionIsGrown\(cap\)\s*\? `\$\{footName\} - \$\{SECTION_GROWN_HINT\}`\s*: footName\s*\}/;
+const LEGACY_HEADING_HINT = /aria-describedby=\{grownHint/;
 /**
  * The section foot's walk stamp, ANCHORED TO A LINE OF ITS OWN: the comment above
  * the attribute names `[data-chat-row]` while explaining why the foot joins the
@@ -106,8 +109,10 @@ const FOCUS_APPLIES = /target\?\.focus\(\)/;
  * source-string pin cannot see a gate that keeps its text but not its meaning - the
  * round-2 form passed this pattern while being inert in the state U2 measured.
  */
+// `true`: the Agents section has no disclosure on any route since design round
+// 7's D1, so it is always open for the field's purposes.
 const ROSTER_FIELD_WIRED =
-	/const rosterFilterShown = rosterFieldShown\(\s*isOpen\("agents", true\),\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
+	/const rosterFilterShown = rosterFieldShown\(\s*true,\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
 /** The copy contract on the hint itself (U1/D1). */
 const HINT_NAMES_GESTURE = /collapse/i;
 const HINT_NAMES_COST = /reopen/i;
@@ -796,27 +801,17 @@ test("the grown hint's id is keyed, so two sections cannot describe each other",
 	assert.match(sectionGrownHintId("agents"), HINT_ID_KEYED);
 });
 
-test("a grown heading carries the reset on both channels, from one sentence", () => {
+test("a grown section carries the reset on its foot, from one sentence", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	assert.match(
 		source,
-		GROWN_HINT_TITLE,
-		"the grown heading has no pointer channel for the reset (U1/D1)",
+		GROWN_HINT_FOOT,
+		"the grown section's foot has no pointer channel for the reset (U1/D1)",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		source,
-		GROWN_HINT_DESCRIBED_BY,
-		"the grown heading describes itself to no screen reader (U1/D1)",
-	);
-	assert.match(
-		source,
-		GROWN_HINT_PREDICATE,
-		"the hint is not read from the same map `cappedRows` slices rows with",
-	);
-	assert.match(
-		source,
-		GROWN_HINT_ELEMENT,
-		"no element carries the sentence the heading points at",
+		LEGACY_HEADING_HINT,
+		"the route-gated legacy heading is back (design round 7, D1)",
 	);
 	assert.ok(
 		!source.includes("Collapse to restore the compact list"),
@@ -2255,7 +2250,10 @@ test("the AGENTS/TEAMS region draws each entity row behind the view's own gate",
 		 * guards is the `isSectionShown` call beside it, so the anchor is the CALL
 		 * (whitespace-tolerant) rather than one spelling of its arguments.
 		 */
-		const at = source.search(new RegExp(`heading\\(\\s*"${key}"`));
+		// The shared `sectionLabel` heading since design round 7's D1.
+		const at = source.search(
+			new RegExp(`sectionLabel\\(\\s*t\\(SIDEBAR_SECTION_LABEL\\.${key}\\)`),
+		);
 		assert.ok(at > 0, `the ${key} section's heading call is gone`);
 		const window = source.slice(Math.max(0, at - 600), at);
 		assert.ok(

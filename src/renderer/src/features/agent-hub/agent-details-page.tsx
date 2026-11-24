@@ -320,7 +320,10 @@ export const AgentDetailsPage: React.FC = () => {
 	}
 
 	return (
-		<div className="m-6 flex flex-1 flex-col rounded-md bg-surface p-8">
+		<div
+			data-lo-pane-edge-cues=""
+			className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-6 sm:px-10 sm:py-8"
+		>
 			<div className="mb-6 flex items-center justify-between gap-4">
 				<div className="flex min-w-0 items-center gap-4">
 					<Button

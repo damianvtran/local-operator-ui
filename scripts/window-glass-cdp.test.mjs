@@ -111,7 +111,7 @@ const AUDIT = `(() => {
     card: 'main [data-glass-block]',
     boardWell: 'main [data-glass-well="clear"]',
     panel: 'main [data-glass-region="panel"]',
-    canvas: 'main[data-glass-region="canvas-backing"]',
+    canvas: 'main[data-glass-region="canvas-backing"], main > [data-workspace-frame-shell] > [data-workspace-frame][data-glass-region="canvas-backing"]',
   };
   const out = {};
   for (const [name, sel] of Object.entries(regions)) {
@@ -164,6 +164,19 @@ const AUDIT = `(() => {
     const bg = getComputedStyle(el).backgroundColor;
     out[name] = { pts, slabs, own, bg, borderTop: getComputedStyle(el).borderTopWidth, bgImage: getComputedStyle(el).backgroundImage, cls: String(el.className) };
   }
+  const outlet = document.querySelector('main[data-workspace-outlet]');
+  const frames = [...(outlet?.querySelectorAll('[data-workspace-frame]') ?? [])].filter((el) => el.getClientRects().length > 0);
+  const frame = frames[0];
+  const splitRoot = frame?.closest('[data-glass-split]') ?? null;
+  out.frameCount = frames.length;
+  out.frame = !frame ? null : {
+    own: alphaOf(getComputedStyle(frame).backgroundColor),
+    outletOwn: alphaOf(getComputedStyle(outlet).backgroundColor),
+    role: frame.dataset.glassRegion,
+    split: !!frame.querySelector(':scope > [data-glass-split]'),
+    splitInset: frame.hasAttribute('data-workspace-split-inset') && !!splitRoot,
+    splitRootOwn: splitRoot ? alphaOf(getComputedStyle(splitRoot).backgroundColor) : null,
+  };
   const root = getComputedStyle(document.documentElement);
   out.vars = Object.fromEntries(["--lo-glass-a-canvas", "--lo-glass-a-surface", "--lo-glass-a-elevated", "--lo-glass-a-row-hover", "--lo-glass-a-row-selected", "--lo-glass-a-row-work", "--lo-glass-a-field", "--lo-glass-a-block-veil"].map((n) => [n, root.getPropertyValue(n).trim() || null]));
   out.glass = document.documentElement.dataset.glass ?? null;
@@ -478,22 +491,36 @@ const mean = (pts) => pts.reduce((a, b) => a + b, 0) / pts.length;
  * Q1). Now a route names what it must contain and a missing region FAILS: a guard
  * that silently measures nothing is the defect.
  *
- * `content` is the page's own content column on the split pages (Settings, Agents),
- * which is what stays opaque canvas under "Sidebars only".
+ * `content` is the page's own ground on a split layout (the workspace inset,
+ * Settings, Agents); it stays opaque canvas under "Sidebars only".
  */
 const ROUTES = [
 	/* The composer must be on the chat route: a guard that reads the transcript
 	 * and skips the app's primary input would call a total audit without it. */
-	{ hash: "#/chat", must: ["sidebar", "rail", "canvas", "composer"] },
-	{ hash: "#/settings", must: ["sidebar", "pageSidebar", "content"] },
-	{ hash: "#/agents", must: ["sidebar", "pageSidebar", "content"] },
+	{
+		hash: "#/chat",
+		frameRole: "canvas-content",
+		must: ["sidebar", "rail", "content", "composer"],
+	},
+	{
+		hash: "#/settings",
+		frameRole: "canvas-content",
+		splitInset: true,
+		must: ["sidebar", "pageSidebar", "content"],
+	},
+	{
+		hash: "#/agents",
+		frameRole: "canvas-content",
+		splitInset: true,
+		must: ["sidebar", "pageSidebar", "content"],
+	},
 	/* Projects: the page column and backing. Cards need real project data, so
 	 * they are asserted by the targeted test below (a profile with an empty
 	 * board cannot measure a card, and the test says which it measured). */
 	{ hash: "#/projects", must: ["sidebar", "canvas"] },
-	/* The Browser route: the chrome band is its large ground now; the host is
-	 * clear while a live page renders, so it is not read as the ground. */
-	{ hash: "#/browser", must: ["sidebar", "chrome"] },
+	/* The separate Browser band is measured over a live page, while the inset
+	 * keeps its elevated ground around the safe edges of the native view. */
+	{ hash: "#/browser", frameRole: "pane", must: ["sidebar", "chrome"] },
 	{ hash: "#/schedules", must: ["sidebar", "panel"] },
 	{ hash: "#/agent-hub", must: ["sidebar", "panel"] },
 	/* Notifications: the page's own canvas region (it has no page-sidebar), whose
@@ -501,6 +528,53 @@ const ROUTES = [
 	 * It was absent from this list while the whole surface was opaque. */
 	{ hash: "#/notifications", must: ["sidebar", "canvas"] },
 ];
+
+/**
+ * These checks add to, rather than replace, the legacy effective-alpha grid.
+ * A perfectly translucent pane still fails if the outlet itself paints under
+ * it, or if an inset split keeps a second canvas behind its regional grounds.
+ */
+function assertFrameGround(route, audit, coverage, tag) {
+	assert.equal(audit.frameCount, 1, `${tag}: exactly one visible body frame`);
+	assert.ok(audit.frame, `${tag}: frame missing`);
+	assert.equal(
+		audit.frame.split,
+		route.split === true,
+		`${tag}: nested split inside ordinary frame`,
+	);
+	assert.equal(
+		audit.frame.splitInset,
+		route.splitInset === true,
+		`${tag}: split-route content inset beside full-height sidebar`,
+	);
+	const role = route.frameRole ?? "canvas-backing";
+	assert.equal(audit.frame.role, role, `${tag}: frame paint role`);
+	const alpha = route.split
+		? 0
+		: coverage === "full"
+			? Number(
+					audit.vars[
+						role === "pane" ? "--lo-glass-a-elevated" : "--lo-glass-a-canvas"
+					],
+				)
+			: 1;
+	assert.ok(
+		Math.abs(audit.frame.own - alpha) <= TOLERANCE,
+		`${tag}: frame's own alpha ${audit.frame.own}, expected ${alpha}`,
+	);
+	assert.equal(
+		audit.frame.outletOwn,
+		coverage === "off" ? 1 : 0,
+		`${tag}: no second outlet background beneath glass`,
+	);
+	if (route.splitInset) {
+		assert.equal(
+			audit.frame.splitRootOwn,
+			coverage === "off" ? 1 : 0,
+			`${tag}: split root stays transparent beneath glass`,
+		);
+	}
+}
 
 /**
  * The overlay regions: name -> the published variable whose alpha its OWN
@@ -577,41 +651,40 @@ for (const [themeName, label] of [
 				}
 				await wait(300);
 			};
-			/*
-			 * THE CHROME BAND CAN ONLY BE MEASURED OVER A LIVE PAGE. The host paints
-			 * its pane rung on the loading, error and start states by design, so the
-			 * band composites over it there; with a live page the host is clear and
-			 * the band must read the app sidebar's raw surface. A scratch profile has
-			 * no tabs, so the guard opens one and points it at this run's own CDP
-			 * endpoint - a local URL, not the network - through the real URL bar
-			 * (native setter plus input event, so React sees the draft; Enter commits
-			 * it the way a user's would).
-			 */
+			/* The live route chrome switches from the elevated rung to the
+			 * sidebar's raw surface. Open a new tab on this run's local CDP
+			 * endpoint through the address row so the audit sees that state. */
 			const openLivePage = async () => {
 				await go({ hash: "#/browser", must: ["sidebar"] });
-				/*
-				 * THE NON-LIVE STATE IS ONE OWNER (review round 2, F2): with no live page the
-				 * bars must paint nothing, so the route host's pane rung is the only ground.
-				 * The first gate painted the band nothing but left the utilities' opaque
-				 * roles at alpha 1.0 - a start page made of two opaque bars over a film.
-				 * Read before a page is opened; on a reused app that already has one, the
-				 * state is not observable and the read is skipped.
-				 */
-				const startBars = await cdp.ev(`(() => {
+				/* Until a page is live, the outer band and body are adjacent elevated
+				 * planes. The nested tab strip must stay clear to avoid double alpha.
+				 * A reused app may already be live, making the empty read inapplicable. */
+				const startBars = await cdp.ev(String.raw`(() => {
           if (!(document.documentElement.dataset.glass ?? "").split(" ").includes("pane")) return null;
           if (document.querySelector("[data-glass-chrome-live]")) return null;
-          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^rgba?\(([^)]+)\)$/); if (m) { const p = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return p.length > 3 ? Number(p[3]) : 1; } return 1; };
-          return [...document.querySelectorAll('[data-glass-region="chrome"]')].map((el) => alpha(getComputedStyle(el).backgroundColor));
+          const alpha = (c) => { if (!c || c === "transparent") return 0; const m = c.match(/^(?:rgba?\(|color\(srgb )([^)]*)\)$/); if (m) { const parts = m[1].split(/[,\/]\s*|\s+/).filter(Boolean); return parts.length > 3 ? Number(parts[3]) : 1; } return 1; };
+          const band = document.querySelector("[data-browser-route-chrome]");
+          const nested = [...(band?.querySelectorAll('[data-glass-region="chrome"]') ?? [])];
+          return { band: band ? alpha(getComputedStyle(band).backgroundColor) : null, nested: nested.map((el) => alpha(getComputedStyle(el).backgroundColor)), elevated: Number(getComputedStyle(document.documentElement).getPropertyValue("--lo-glass-a-elevated")) };
         })()`);
 				if (startBars !== null) {
-					assert.ok(
-						startBars.length > 0,
-						`${label}: the start page has chrome bars to measure`,
+					assert.notEqual(
+						startBars.band,
+						null,
+						`${label}: start page chrome band`,
 					);
-					for (const a of startBars)
+					assert.ok(
+						Math.abs(startBars.band - startBars.elevated) <= TOLERANCE,
+						`${label}: non-live band uses elevated alpha`,
+					);
+					assert.ok(
+						startBars.nested.length > 0,
+						`${label}: the start page has nested chrome to measure`,
+					);
+					for (const alpha of startBars.nested)
 						assert.ok(
-							a <= 0.006,
-							`${label}: a non-live chrome bar paints its own ground at ${a} - the host pane rung must be the only owner`,
+							alpha <= 0.006,
+							`${label}: nested chrome compounds the band: ${alpha}`,
 						);
 				}
 				await cdp.ev(
@@ -641,6 +714,7 @@ for (const [themeName, label] of [
 				await go(route);
 				const off = await cdp.ev(AUDIT);
 				assert.equal(off.glass, null, "no data-glass attribute while off");
+				assertFrameGround(route, off, "off", `${label}/off/${route.hash}`);
 				for (const name of route.must) {
 					assert.ok(
 						off[name],
@@ -668,6 +742,7 @@ for (const [themeName, label] of [
 						const a = await cdp.ev(AUDIT);
 						const tag = `${label}/${coverage}/${intensity}${route.hash}`;
 						assert.ok(a.glass, `${tag}: data-glass is set`);
+						assertFrameGround(route, a, coverage, tag);
 						const roleAlpha = {
 							surface: Number(a.vars["--lo-glass-a-surface"]),
 							canvas: Number(a.vars["--lo-glass-a-canvas"]),
@@ -838,20 +913,29 @@ for (const [themeName, label] of [
 			 * a draft shares with the route), and that cleared the <main> backing for the
 			 * WHOLE conversation column: alpha 0.77 became 0.00. The first guard audited the
 			 * chat with no pane open and the Browser as a route, so neither saw it. The
-			 * backing's own computed alpha is what the column's ground is, so it is read
-			 * directly: it must be the same number with the pane open as with it closed.
+			 * inset now owns the ground; its computed alpha must stay the same with
+			 * the pane open. The old <main> backing must remain clear in both cases.
 			 */
-			const BACKING = `(() => {
+			const INSET = `(() => {
         const m = document.querySelector('main[data-glass-region="canvas-backing"]');
-        if (!m) return null;
-        const c = getComputedStyle(m).backgroundColor;
-        const t = c.match(/\\/\\s*([\\d.]+)\\)$/);
-        return c === "rgba(0, 0, 0, 0)" ? 0 : t ? Number(t[1]) : 1;
+        const inset = m?.querySelector('[data-workspace-inset]');
+        if (!inset) return null;
+        const alpha = (e) => {
+          const c = getComputedStyle(e).backgroundColor;
+          const t = c.match(/\\/\\s*([\\d.]+)\\)$/);
+          return c === "rgba(0, 0, 0, 0)" ? 0 : t ? Number(t[1]) : 1;
+        };
+        return { inset: alpha(inset), backing: alpha(m) };
       })()`;
-			const closed = await cdp.ev(BACKING);
+			const closed = await cdp.ev(INSET);
 			assert.ok(
-				closed !== null && closed > 0.3,
-				`${label}: the chat backing paints a ground before any pane opens (saw ${closed})`,
+				closed && closed.inset > 0.3 && closed.inset < 1,
+				`${label}: expected live inset glass (saw ${JSON.stringify(closed)})`,
+			);
+			assert.equal(
+				closed.backing,
+				0,
+				`${label}: main cannot back the inset with another alpha`,
 			);
 			for (const [trigger, paneSel] of [
 				[
@@ -890,10 +974,15 @@ for (const [themeName, label] of [
 					opened,
 					`${label}: ${trigger} opened a pane (so the reading below is taken with it open)`,
 				);
-				const open = await cdp.ev(BACKING);
+				const open = await cdp.ev(INSET);
 				assert.ok(
-					Math.abs(open - closed) <= TOLERANCE,
-					`${label}: opening ${trigger} moved the conversation column's ground from ${closed} to ${open}`,
+					open && Math.abs(open.inset - closed.inset) <= TOLERANCE,
+					`${label}: opening ${trigger} moved the inset's ground from ${closed.inset} to ${open?.inset}`,
+				);
+				assert.equal(
+					open.backing,
+					0,
+					`${label}: main stays clear when ${trigger} opens`,
 				);
 				/*
 				 * The pane ITSELF must own a glass region and paint glass, not an opaque
