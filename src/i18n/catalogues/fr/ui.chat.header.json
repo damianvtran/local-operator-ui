@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "Rendre cette nouvelle conversation temporaire",
 	"ui.chat.header.temporary_toggle_off": "Désactiver la conversation temporaire",
 	"ui.chat.header.temporary_peer_unavailable": "Les conversations temporaires ne peuvent pas encore démarrer sur un autre appareil",
-	"ui.chat.header.temporary_ends_in": "Supprimée dans {minutes, plural, one {# min} many {# min} other {# min}}"
+	"ui.chat.header.temporary_ends_in": "Supprimée dans {minutes, plural, one {# min} many {# min} other {# min}}",
+	"ui.chat.header.pin_tab": "Épingler l’onglet",
+	"ui.chat.header.unpin_tab": "Désépingler l’onglet",
+	"ui.chat.header.close_other_tabs": "Fermer les autres onglets",
+	"ui.chat.header.close_tabs_left": "Fermer les onglets à gauche",
+	"ui.chat.header.close_tabs_right": "Fermer les onglets à droite",
+	"ui.chat.header.close_all_tabs": "Fermer tous les onglets",
+	"ui.chat.header.all_tabs": "Tous les onglets"
 }

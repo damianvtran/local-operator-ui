@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "Đặt cuộc trò chuyện mới này là tạm thời",
 	"ui.chat.header.temporary_toggle_off": "Tắt trò chuyện tạm thời",
 	"ui.chat.header.temporary_peer_unavailable": "Chưa thể bắt đầu cuộc trò chuyện tạm thời trên thiết bị khác",
-	"ui.chat.header.temporary_ends_in": "Xóa sau {minutes, plural, other {# phút}}"
+	"ui.chat.header.temporary_ends_in": "Xóa sau {minutes, plural, other {# phút}}",
+	"ui.chat.header.pin_tab": "Ghim tab",
+	"ui.chat.header.unpin_tab": "Bỏ ghim tab",
+	"ui.chat.header.close_other_tabs": "Đóng các tab khác",
+	"ui.chat.header.close_tabs_left": "Đóng các tab bên trái",
+	"ui.chat.header.close_tabs_right": "Đóng các tab bên phải",
+	"ui.chat.header.close_all_tabs": "Đóng tất cả tab",
+	"ui.chat.header.all_tabs": "Tất cả tab"
 }

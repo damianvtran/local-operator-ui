@@ -26,5 +26,12 @@
 	"ui.chat.header.temporary_toggle_on": "Hacer temporal este chat nuevo",
 	"ui.chat.header.temporary_toggle_off": "Desactivar el chat temporal",
 	"ui.chat.header.temporary_peer_unavailable": "Los chats temporales aún no pueden iniciarse en otro dispositivo",
-	"ui.chat.header.temporary_ends_in": "Se elimina en {minutes, plural, one {# min} many {# min} other {# min}}"
+	"ui.chat.header.temporary_ends_in": "Se elimina en {minutes, plural, one {# min} many {# min} other {# min}}",
+	"ui.chat.header.pin_tab": "Fijar pestaña",
+	"ui.chat.header.unpin_tab": "Desfijar pestaña",
+	"ui.chat.header.close_other_tabs": "Cerrar las demás pestañas",
+	"ui.chat.header.close_tabs_left": "Cerrar las pestañas de la izquierda",
+	"ui.chat.header.close_tabs_right": "Cerrar las pestañas de la derecha",
+	"ui.chat.header.close_all_tabs": "Cerrar todas las pestañas",
+	"ui.chat.header.all_tabs": "Todas las pestañas"
 }

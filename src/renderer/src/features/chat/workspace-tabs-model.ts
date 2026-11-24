@@ -114,6 +114,44 @@ export function workspaceNeighbor(tabs: readonly WorkspaceTab[], key: string) {
 	return at < 0 ? undefined : (ordered[at + 1] ?? ordered[at - 1]);
 }
 
+/** The bulk closes the per-tab menu offers, relative to the tab it opened on. */
+export type WorkspaceBulkClose = "others" | "left" | "right" | "all";
+
+/**
+ * Keys a bulk close removes, in displayed order.
+ *
+ * WHY PINS SURVIVE: pinning is the strip's "keep this" contract - auto-close
+ * skips pins for the same reason - and browsers' "close other tabs / to the
+ * right" spare pinned tabs too. Only the explicit per-tab "Close tab" (or an
+ * unpin) can remove a pinned tab. An empty result is the menu's cue to disable
+ * the item rather than offer a no-op. `key` may name no tab only for "all".
+ *
+ * WHY `rtl` IS AN ARGUMENT: "left" and "right" name what the user SEES. The
+ * strip renders displayed order along the inline axis, so in a right-to-left
+ * layout the visual left is the logical END. The caller reads the strip's
+ * computed direction; this stays a pure function so the rule is unit-testable.
+ */
+export function workspaceBulkCloseKeys(
+	tabs: readonly WorkspaceTab[],
+	key: string,
+	action: WorkspaceBulkClose,
+	rtl: boolean,
+): string[] {
+	const ordered = displayedWorkspaceTabs(tabs);
+	const at = ordered.findIndex((tab) => tab.key === key);
+	// "all" is also the strip-level command, which has no anchor tab.
+	if (at < 0 && action !== "all") return [];
+	const logicalBefore = (action === "left") !== rtl;
+	return ordered
+		.filter((tab, index) => {
+			if (tab.pinned) return false;
+			if (action === "all") return true;
+			if (action === "others") return index !== at;
+			return logicalBefore ? index < at : index > at;
+		})
+		.map((tab) => tab.key);
+}
+
 const SESSION_ID = /^[a-f0-9]{12}$/;
 
 export function sanitizeSavedWorkspaceTabs(

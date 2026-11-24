@@ -29,6 +29,7 @@ const {
 	saveWorkspaceTabs,
 	syncWorkspaceTabs,
 	translate,
+	workspaceBulkCloseKeys,
 	workspaceNeighbor,
 	workspaceSessionPathMatches,
 	workspaceTarget,
@@ -298,4 +299,169 @@ test("titlebar activation and actions keep one navigation owner and never trust 
 	assert.ok(hook.includes("receipt.confirmed"));
 	assert.ok(hook.includes("state.forgotten[handoff.to] !== undefined"));
 	assert.ok(!routePath.test(hook));
+});
+
+/*
+ * Bulk closes from a tab's menu (operator, 2026-11-24: "close other tabs, close
+ * tabs to the left, close tabs to the right, etc"). Fixture, displayed order:
+ * [P1 P2 | A B C D] - two pins, then four regular tabs - with B as the anchor.
+ */
+const bulkFixture = () => {
+	const make = (id, pinned = false) => ({
+		...makeWorkspaceTab({ kind: "session", id }),
+		pinned,
+	});
+	const [p1, p2, a, b, c, d] = [
+		make("00000000p001", true),
+		make("00000000p002", true),
+		make("00000000000a"),
+		make("00000000000b"),
+		make("00000000000c"),
+		make("00000000000d"),
+	];
+	// Stored order interleaves pins; the rule must follow DISPLAYED order.
+	return { tabs: [a, p1, b, c, p2, d], p1, p2, a, b, c, d };
+};
+const keysOf = (...tabs) => tabs.map((tab) => tab.key);
+
+test("bulk closes follow displayed order, spare pins, and mirror left/right in RTL", () => {
+	const { tabs, p1, p2, a, b, c, d } = bulkFixture();
+	const close = (key, action, rtl = false) =>
+		workspaceBulkCloseKeys(tabs, key, action, rtl);
+	assert.deepEqual(close(b.key, "others"), keysOf(a, c, d));
+	assert.deepEqual(close(b.key, "left"), keysOf(a));
+	assert.deepEqual(close(b.key, "right"), keysOf(c, d));
+	assert.deepEqual(close(b.key, "all"), keysOf(a, b, c, d));
+	// RTL: the strip draws displayed order right-to-left, so the visual left
+	// of B is the logical end and its visual right is the logical start.
+	assert.deepEqual(close(b.key, "left", true), keysOf(c, d));
+	assert.deepEqual(close(b.key, "right", true), keysOf(a));
+	assert.deepEqual(close(b.key, "others", true), keysOf(a, c, d));
+	// "others"/"all" from a pinned tab still never close a pin.
+	assert.deepEqual(close(p2.key, "others"), keysOf(a, b, c, d));
+	assert.deepEqual(close(p1.key, "all"), keysOf(a, b, c, d));
+	// Strip-level "Close all tabs" has no anchor tab.
+	assert.deepEqual(close("", "all"), keysOf(a, b, c, d));
+});
+
+test("a bulk close that would close nothing returns no keys, so its item disables", () => {
+	const { tabs, p1, a, d } = bulkFixture();
+	const close = (key, action, rtl = false) =>
+		workspaceBulkCloseKeys(tabs, key, action, rtl);
+	// Left of the first pin is nothing; left of the first regular tab is only pins.
+	assert.deepEqual(close(p1.key, "left"), []);
+	assert.deepEqual(close(a.key, "left"), []);
+	assert.deepEqual(close(d.key, "right"), []);
+	assert.deepEqual(close(d.key, "left", true), []);
+	const onlyPins = tabs.filter((tab) => tab.pinned);
+	for (const action of ["others", "left", "right", "all"])
+		assert.deepEqual(
+			workspaceBulkCloseKeys(onlyPins, onlyPins[0].key, action, false),
+			[],
+		);
+	// An unknown anchor closes nothing rather than guessing.
+	assert.deepEqual(close("missing", "others"), []);
+	assert.deepEqual(close("missing", "right"), []);
+});
+
+test("negative control: an order-blind, pin-blind rule fails the same expectations", () => {
+	const { tabs, b } = bulkFixture();
+	// The plausible wrong implementation: stored order, pins included, no RTL.
+	const naive = (key, action) => {
+		const at = tabs.findIndex((tab) => tab.key === key);
+		return tabs
+			.filter((_, i) => (action === "left" ? i < at : i > at))
+			.map((tab) => tab.key);
+	};
+	assert.notDeepEqual(
+		naive(b.key, "left"),
+		workspaceBulkCloseKeys(tabs, b.key, "left", false),
+	);
+	assert.notDeepEqual(
+		naive(b.key, "right"),
+		workspaceBulkCloseKeys(tabs, b.key, "right", false),
+	);
+	assert.notDeepEqual(
+		workspaceBulkCloseKeys(tabs, b.key, "left", false),
+		workspaceBulkCloseKeys(tabs, b.key, "left", true),
+	);
+});
+
+const TAB_CONTEXT_MENU =
+	/<ContextMenu key=\{key\}>\s*<ContextMenuTrigger asChild>\s*\{renderTabRow\(/;
+const KEYBOARD_OPENER_KEYS =
+	/event\.key !== "ContextMenu" && !\(event\.shiftKey && event\.key === "F10"\)/;
+const KEYBOARD_OPENER_CALL = /if \(openTabMenuFromKeyboard\(event\)\) return;/;
+const STRIP_CLOSE_ALL =
+	/data-workspace-close-all=""\s*disabled=\{closeAllKeys\.length === 0\}\s*onSelect=\{\(\) => onCloseMany\(closeAllKeys\)\}/;
+const TAB_MORE_HIDDEN =
+	/\[data-workspace-tab\]:not\(\[data-active\]\) > \[data-workspace-tab-more\] \{\s*opacity: 0;/;
+const TAB_MORE_FOCUS_REVEAL =
+	/\[data-workspace-tab\]:focus-within > \[data-workspace-tab-more\]/;
+/** The per-tab menu wiring, as a source guard over workspace-tabs.tsx. */
+const assertTabMenuWiring = (strip, hook, page) => {
+	// Right-click (and the keyboard openers) on every tab, pinned or not: the
+	// ContextMenu wraps the one row renderer both lanes use.
+	assert.match(strip, TAB_CONTEXT_MENU);
+	assert.match(strip, KEYBOARD_OPENER_KEYS);
+	assert.match(strip, KEYBOARD_OPENER_CALL);
+	// Both openers draw the SAME entries.
+	assert.equal((strip.match(/tabMenuEntries\(tab\)\.map/g) ?? []).length, 2);
+	for (const action of ["others", "left", "right", "all"])
+		assert.ok(strip.includes(`bulk("${action}"`), action);
+	assert.ok(
+		strip.includes("workspaceBulkCloseKeys(tabs, tab.key, action, rtl)"),
+	);
+	assert.ok(strip.includes("disabled: keys.length === 0"));
+	// The ellipsis lives inside the tab row, before its close button.
+	const row = strip.slice(strip.indexOf("const renderTabRow"));
+	assert.ok(
+		row.indexOf('data-workspace-tab-more=""') > 0 &&
+			row.indexOf('data-workspace-tab-more=""') <
+				row.indexOf('data-workspace-close=""'),
+	);
+	// "Close all tabs" without a right-click, in the strip-level list.
+	assert.match(strip, STRIP_CLOSE_ALL);
+	// The active tab leaves through the existing close, choosing among survivors.
+	assert.ok(hook.includes("if (active) close(active, tabs.filter(keep));"));
+	assert.ok(hook.includes("const next = workspaceNeighbor(among, tab.key);"));
+	assert.ok(page.includes("onCloseMany={workspace.closeMany}"));
+};
+
+test("every tab carries one right-click/keyboard/ellipsis menu with the bulk closes", () => {
+	assertTabMenuWiring(
+		source(`${modelPath}workspace-tabs.tsx`),
+		source(`${modelPath}use-workspace-tabs.ts`),
+		source(`${modelPath}chat-page.tsx`),
+	);
+	const css = source("styles/index.css");
+	assert.match(css, TAB_MORE_HIDDEN);
+	assert.match(css, TAB_MORE_FOCUS_REVEAL);
+});
+
+test("negative control: the wiring guard rejects a strip whose ellipsis left the tab or lost the keyboard opener", () => {
+	const strip = source(`${modelPath}workspace-tabs.tsx`);
+	const hook = source(`${modelPath}use-workspace-tabs.ts`);
+	const page = source(`${modelPath}chat-page.tsx`);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip.replace("if (openTabMenuFromKeyboard(event)) return;", ""),
+			hook,
+			page,
+		),
+	);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip.replace('bulk("right"', 'bulk("rite"'),
+			hook,
+			page,
+		),
+	);
+	assert.throws(() =>
+		assertTabMenuWiring(
+			strip,
+			hook.replace("close(active, tabs.filter(keep))", "close(active)"),
+			page,
+		),
+	);
 });
