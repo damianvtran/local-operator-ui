@@ -281,6 +281,41 @@ test("O-3 every portalled primitive marks its panel element", () => {
 const FORCED_COLORS_BLOCK =
 	/@media\s*\(\s*forced-colors:\s*active\s*\)\s*\{((?:[^{}]*\{[^{}]*\})*[^{}]*)\}/g;
 
+/**
+ * Whether a selector can match a marked panel or something inside one. A
+ * `[data-lo-floating]` that only appears inside `:not(...)` is an EXCLUSION
+ * (e.g. the shared inset's `button:not([data-lo-floating] *)`, which strips
+ * header/sidebar button chrome everywhere EXCEPT inside floating panels), so it
+ * is the opposite of targeting one. Negations are removed with their balanced
+ * parentheses before looking for the marker.
+ */
+const targetsFloating = (selector) => {
+	let rest = selector;
+	for (;;) {
+		const start = rest.indexOf(":not(");
+		if (start === -1) break;
+		let depth = 0;
+		let end = start + 4;
+		for (; end < rest.length; end++) {
+			if (rest[end] === "(") depth++;
+			else if (rest[end] === ")" && --depth === 0) break;
+		}
+		rest = rest.slice(0, start) + rest.slice(end + 1);
+	}
+	return rest.includes("[data-lo-floating]");
+};
+
+test("O-4 control: a negated marker is an exclusion, a bare one a target", () => {
+	assert.equal(targetsFloating("[data-lo-floating] .x"), true);
+	assert.equal(targetsFloating("[data-lo-floating]:not(.a)"), true);
+	assert.equal(targetsFloating("a, [data-lo-floating]"), true);
+	assert.equal(targetsFloating("button:not([data-lo-floating] *)"), false);
+	assert.equal(
+		targetsFloating(":is(a, :not(:is([data-lo-floating], b))) button"),
+		false,
+	);
+});
+
 test("O-4 no stylesheet rule paints a border on a marked panel", () => {
 	const css = read(CSS_PATH)
 		.replace(/\/\*[\s\S]*?\*\//g, "")
@@ -288,7 +323,7 @@ test("O-4 no stylesheet rule paints a border on a marked panel", () => {
 	const offenders = [];
 	for (const match of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
 		const [, selector, body] = match;
-		if (!selector.includes("[data-lo-floating]")) continue;
+		if (!targetsFloating(selector)) continue;
 		if (/(?<![\w-])border(?:-[a-z0-9-]+)?\s*:/i.test(body))
 			offenders.push(selector.trim());
 	}

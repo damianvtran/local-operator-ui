@@ -5837,9 +5837,11 @@ test("a new chat's first send changes the header once: no pencil jump, no skelet
 		"src/renderer/src/features/chat/components/chat-header.tsx",
 	);
 	// (a) The pencil's 20px box is held, aria-hidden, until the pencil mounts.
+	// Not in a workspace tab (PR #2043): rename lives in the actions menu there,
+	// so no pencil will ever mount and the box is not held.
 	assert.match(
 		header,
-		/\) : renameSlotReserved \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
+		/\) : renameSlotReserved && !titleInWorkspaceTab \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
 	);
 	assert.match(
 		page,

@@ -624,9 +624,32 @@ test("the sidebar draws those sections, and a label is not a control", () => {
 		/<button|<Button/,
 		"a section label became a control again, so pressing a heading acts",
 	);
+	/*
+	 * THE HEADING MARKUP LIVES IN `SidebarSectionHeading` since the shared inset
+	 * work (PR #2043, design round 7 D1) gave every sidebar route one section
+	 * heading. So the helper here must delegate to it WITHOUT a `disclosure` (the
+	 * component's only branch that renders a button), and the component's plain
+	 * branch must still be a bare `<h3>`: both halves together are the old
+	 * "a label is a heading, not a control" claim, read through the indirection.
+	 */
+	// The whole helper, so a `disclosure` prop (the branch that renders a
+	// button) cannot be added without failing here.
 	assert.match(
 		label,
-		/<h3/,
+		/^const sectionLabel = \(label: string, action\?: ReactNode\) => \(\s*<SidebarSectionHeading label=\{label\} action=\{action\} \/>\s*\);/,
+		"the section label helper must render the shared heading with a label and an action only; its `disclosure` branch renders a button, and pressing a heading would act again",
+	);
+	const heading = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/components/sidebar-section-heading.tsx",
+		),
+		"utf8",
+	);
+	const plainBranch = heading.slice(heading.lastIndexOf(") : ("));
+	assert.match(
+		plainBranch,
+		/^\) : \(\s*<h3 className=\{labelStyle\}>\{label\}<\/h3>\s*\)\}/,
 		"the label is a heading, which is what gives the list its structure",
 	);
 	// And the header action is a SIBLING of the label rather than nested in it.

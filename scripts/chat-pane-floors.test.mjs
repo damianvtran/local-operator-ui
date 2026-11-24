@@ -547,9 +547,21 @@ const seamSurface = () => {
 		"the chat column's inner surface has no tag close",
 	);
 	const tag = source.slice(from, close);
+	/*
+	 * The surface keeps a LITERAL class list (the seam inset is an inline style so
+	 * it never has to become a `cn(...)` call), but it no longer wears
+	 * `panel-top-pad`: since the shared inset (PR #2043) the workspace frame starts
+	 * below the titlebar and owns that clearance, and `lane-leading.test.mjs`
+	 * ("Chat tabs reuse the lane...") refuses a second pad here. The anchor is the
+	 * class list's own head instead.
+	 */
 	assert.ok(
-		tag.includes('className="panel-top-pad'),
-		"the chat column's inner surface no longer wears its literal `panel-top-pad` class list; `lane-leading.test.mjs` matches that string to keep every full-height column padded off the lane",
+		tag.includes('className="flex h-full min-h-0 grow flex-col'),
+		"the chat column's inner surface no longer wears its literal class list; the seam inset below is read off this element's opening tag",
+	);
+	assert.ok(
+		!tag.includes("panel-top-pad"),
+		"the chat column's inner surface wears `panel-top-pad` again: inside the workspace frame that is a second titlebar clearance",
 	);
 	return tag;
 };
