@@ -20,10 +20,11 @@ that run owned.
 | `settings-tabs-rtl-probe-dark` | document `dir=rtl`: the rail sits on the inline-end side and the panel mirrors (a DIRECTION probe — see limits) |
 | `settings-tabs-rtl-tooltip-dark` | at the 48px rail in RTL the tooltip opens toward the CONTENT (round 1 D4) |
 | `settings-tabs-tour-appearance-dark` | the onboarding tour's Appearance step, with its panel the one on screen |
+| `settings-tabs-rail-focus-dark` | the state a KEYBOARD rail press creates (round 3, U1): Enter on the Speech row leaves `document.activeElement` on the Speech panel, which draws no outline ring (round 4, MAJOR 1 — `outline-style: none`) |
 
 ## The scene's own output
 
-**85 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
+**89 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
 
 - `?section=appearance`: `shown=["appearance"]`, `current=["appearance"]`,
   panels `11`, rail rows `11` — the Agent messages panel is absent on this

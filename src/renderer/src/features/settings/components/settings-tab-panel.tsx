@@ -58,6 +58,17 @@ export const SettingsTabPanel: FC<SettingsTabPanelProps> = ({
 		 * Tab should stop on later.
 		 */
 		tabIndex={-1}
+		/*
+		 * NO RING ON THE REST-STOP. `tabIndex={-1}` makes this a programmatic
+		 * landing, not a control, and Chromium counts a scripted `.focus()` after
+		 * keyboard input as `:focus-visible` — so the app's 2px accent ring would
+		 * outline the whole panel, heading through its last control, with nothing
+		 * actionable in it. Same escape, for the same reason, as the
+		 * `model-providers` landing (`settings-page.tsx`): every focusable CHILD
+		 * keeps its own ring, and the rail's own `aria-current` plus the panel
+		 * that just appeared already say where the reader is.
+		 */
+		className="focus-visible:outline-none!"
 	>
 		{children}
 	</section>

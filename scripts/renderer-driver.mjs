@@ -33126,6 +33126,30 @@ async function sceneSettingsTabs(cdp) {
 		rowFocused === true && afterEnter.shown && afterEnter.onPanel,
 		JSON.stringify(afterEnter),
 	);
+	/*
+	 * The state U1 creates: the panel focused by a KEYBOARD press. No frame
+	 * showed it before this round, and the assertion it carries is the one a
+	 * frame can prove — the rest-stop draws no ring (round 4, MAJOR 1).
+	 */
+	const ring = await cdp.evaluate(`(() => {
+		const panel = document.querySelector('[data-settings-panel="speech"]');
+		if (!panel) return null;
+		const style = getComputedStyle(panel);
+		return {
+			focused: document.activeElement === panel,
+			focusVisible: panel.matches(':focus-visible'),
+			outlineStyle: style.outlineStyle,
+			outlineWidth: style.outlineWidth,
+		};
+	})()`);
+	check(
+		"the focused panel draws no outline ring",
+		/* `outline-style: none` is what suppresses a ring; `outline-width` still
+		   reports the global rule's 2px and paints nothing. */
+		ring?.focused === true && ring.outlineStyle === "none",
+		JSON.stringify(ring),
+	);
+	await capture("settings-tabs-rail-focus-dark");
 	const appearanceBox = await cdp.evaluate(`(() => {
 		const row = document.querySelector('[data-settings-tab="appearance"]');
 		if (!row) return null;

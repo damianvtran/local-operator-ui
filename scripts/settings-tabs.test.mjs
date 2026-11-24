@@ -62,6 +62,7 @@ const {
 	bindTabScrollMemory,
 	textDirectionFor,
 	keyboardActivation,
+	settlePanelFocusRequest,
 } = await import(dataUrl);
 
 const sectionForKey = (key) => (key === "model_effort" ? "general" : "backend");
@@ -635,5 +636,47 @@ test("a keyboard rail press asks for the panel, a pointer press does not", () =>
 		panel,
 		/tabIndex=\{-1\}/,
 		"the panel is a programmatic focus target",
+	);
+});
+
+test("a panel-focus request is spent on the next arrival, whatever it was", () => {
+	/*
+	 * Round 4, MINOR 1. The request is cleared on ANY arrival, not only on the
+	 * one it named: a rail press whose navigation was superseded (a search jump
+	 * landing on another tab first) must not leave a request alive for a later
+	 * arrival to satisfy — the casualty would be that search jump's own focus.
+	 */
+	assert.equal(
+		settlePanelFocusRequest(null, "speech"),
+		"none",
+		"nothing asked",
+	);
+	assert.equal(
+		settlePanelFocusRequest("speech", "speech"),
+		"focus",
+		"the named tab arrives",
+	);
+	assert.equal(
+		settlePanelFocusRequest("speech", "backend"),
+		"drop",
+		"a different tab spends the request",
+	);
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/if \(request !== "none"\) pendingPanelBoxRef\.current = null;/,
+		"the effect clears on every arrival",
+	);
+	const panel = readFileSync(
+		"src/renderer/src/features/settings/components/settings-tab-panel.tsx",
+		"utf8",
+	);
+	assert.match(
+		panel,
+		/className="focus-visible:outline-none!"/,
+		"the rest-stop draws no ring (round 4, MAJOR 1)",
 	);
 });

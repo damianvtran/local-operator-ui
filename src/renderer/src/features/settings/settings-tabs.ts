@@ -303,6 +303,22 @@ export function keyboardActivation(detail: number): boolean {
 }
 
 /**
+ * What a pending PANEL-focus request becomes when a tab arrives.
+ *
+ * `focus` when the arriving tab is the one the request named; `drop` when it is
+ * not — the request is spent on the next arrival either way, so a press whose
+ * navigation was superseded cannot be satisfied by a LATER arrival (the
+ * casualty would be a search jump's own row focus). `none` when nothing asked.
+ */
+export function settlePanelFocusRequest(
+	pending: string | null,
+	arrived: string,
+): "focus" | "drop" | "none" {
+	if (pending === null) return "none";
+	return pending === arrived ? "focus" : "drop";
+}
+
+/**
  * The tab a visit opens on: the run's last tab, read ONCE at mount.
  *
  * This is a named function rather than a call to `lastSettingsTab()` inside the

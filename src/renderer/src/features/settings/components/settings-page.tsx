@@ -120,6 +120,7 @@ import {
 	createTabScrollMemory,
 	rememberSettingsTab,
 	settingsPanelOf,
+	settlePanelFocusRequest,
 	shouldClearSearchJump,
 } from "../settings-tabs";
 import { useSettingsTab } from "../use-settings-tab";
@@ -891,9 +892,12 @@ export const SettingsPage: FC = () => {
 		if (scrollerNode) {
 			scrollerNode.scrollTop = scrollMemory.recall(activeTab) ?? 0;
 		}
-		const box = pendingPanelBoxRef.current;
-		if (box === activeTab) {
-			pendingPanelBoxRef.current = null;
+		const request = settlePanelFocusRequest(
+			pendingPanelBoxRef.current,
+			activeTab,
+		);
+		if (request !== "none") pendingPanelBoxRef.current = null;
+		if (request === "focus") {
 			/* `preventScroll`: the tab's own position was set just above, and this
 			   must not undo it. */
 			panelElement(activeTab)?.focus({ preventScroll: true });
