@@ -18983,12 +18983,50 @@ test("the disk-image refusal has its own code and the Applications remedy, not t
 	assert.match(block.message, /version 0\.63\.0/);
 	assert.equal(
 		block.remedy.text,
-		"Quit it, then open Local Operator from Applications to update.",
+		"Move it to Applications, then update from there.",
 	);
 	assert.doesNotMatch(block.remedy.text, /[Ff]ree up/);
 	assert.equal(block.remedy.url, undefined);
 	assert.ok(block.detail.includes(dmg));
 	assert.doesNotMatch(diskImageLaunchBlock(dmg).message, /version/);
+});
+
+/*
+ * The disk-image panel's move outcome (design round 1, D2-D4, D6). The panel is a
+ * component this suite does not render, so - like the reason-helper call-site test -
+ * this pins the source shapes the fixes depend on: an `exists*` decline disables the
+ * button (pressing again can never succeed), the outcome REPLACES the remedy rather
+ * than stacking a second identical paragraph under it, the outcome is reset whenever
+ * a block arrives or is dismissed, and its machine detail reaches the disclosure.
+ */
+test("the disk-image panel's move outcome replaces the remedy, disables a futile retry and is reset per refusal", () => {
+	const source = readFileSync(
+		join(
+			process.cwd(),
+			"src/renderer/src/shared/components/common/update-notification.tsx",
+		),
+		"utf8",
+	);
+	assert.ok(
+		!source.includes("moveError"),
+		"the old append-only error state is gone",
+	);
+	assert.match(
+		source,
+		/moveOutcome\?\.reason === "exists" \|\|\s*moveOutcome\?\.reason === "exists-and-running"/,
+	);
+	assert.ok(source.includes("disabled={moving || moveCannotSucceed}"));
+	assert.match(
+		source,
+		/\{moveOutcome && installBlocked\.code === "running-from-disk-image" \? \([\s\S]{0,200}moveOutcome\.message[\s\S]{0,200}\) : \([\s\S]{0,120}installBlocked\.remedy\.text/,
+		"the outcome renders in place of the remedy, not after it",
+	);
+	assert.match(source, /setInstallBlocked\(info\);\s*setMoveOutcome\(null\);/);
+	assert.match(source, /setInstallBlocked\(null\);\s*setMoveOutcome\(null\);/);
+	assert.ok(
+		source.includes("moveOutcome?.detail"),
+		"the move's detail reaches PanelDetails",
+	);
 });
 
 test("a positive but too-small free-space reading still refuses with the disk-space code", () => {

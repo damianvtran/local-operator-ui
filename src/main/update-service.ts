@@ -3965,6 +3965,15 @@ export class UpdateService {
 	 * volume (the installer DMG), else null. See `isDiskImageLaunch`: the
 	 * writability probe is `access(W_OK)` on the bundle's parent, which answers
 	 * EROFS on a read-only mount without writing anything.
+	 *
+	 * Deliberately broad: ANY non-writable bundle under /Volumes counts as "the
+	 * disk image", which includes an app run from a read-only external drive
+	 * (or one whose permissions deny this user). Telling those apart would mean
+	 * asking hdiutil/DiskArbitration about the mount, and the answer would not
+	 * change the decision: Squirrel cannot replace a bundle in a folder this
+	 * process cannot write, so refusing is still correct. Only the wording
+	 * ("disk image") and the Move to Applications offer are slightly off for
+	 * that rare case, and moving the app to Applications fixes it there too.
 	 */
 	private runningFromDiskImage(): string | null {
 		if (process.platform !== "darwin") return null;
@@ -5846,17 +5855,6 @@ export class UpdateService {
 			return true;
 		});
 
-		/**
-		 * Quit so an install that is ALREADY running can finish.
-		 *
-		 * What the panel for an in-flight install offers, and deliberately not
-		 * `quit-and-install`: the marker is already written, the install's job is
-		 * loaded and its watchdog is running, so re-entering the pre-flight would
-		 * verify the seal of a bundle Squirrel is halfway through replacing and then
-		 * write a second marker over the first. All this needs to do is get the app
-		 * out of the way of Squirrel's last validation, which asks whether any
-		 * instance of the target app is running before it swaps.
-		 */
 		/*
 		 * "Move to Applications" on the disk-image refusal panel. The decision to
 		 * move is re-derived here rather than trusted from the renderer, so a stale
@@ -5883,6 +5881,17 @@ export class UpdateService {
 			return result;
 		});
 
+		/**
+		 * Quit so an install that is ALREADY running can finish.
+		 *
+		 * What the panel for an in-flight install offers, and deliberately not
+		 * `quit-and-install`: the marker is already written, the install's job is
+		 * loaded and its watchdog is running, so re-entering the pre-flight would
+		 * verify the seal of a bundle Squirrel is halfway through replacing and then
+		 * write a second marker over the first. All this needs to do is get the app
+		 * out of the way of Squirrel's last validation, which asks whether any
+		 * instance of the target app is running before it swaps.
+		 */
 		ipcMain.handle("quit-for-update-install", () => {
 			const marker = readPendingInstallMarker(this.markerDir());
 			logger.info(

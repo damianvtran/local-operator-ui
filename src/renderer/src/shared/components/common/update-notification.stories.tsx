@@ -1024,7 +1024,7 @@ const mockUpdaterApi = () => {
 					message:
 						"Local Operator is running from the installer disk image, so the update to version 0.63.0 can't be installed here.",
 					remedy: {
-						text: "Quit it, then open Local Operator from Applications to update.",
+						text: "Move it to Applications, then update from there.",
 					},
 					detail:
 						"/Volumes/Local Operator 0.53.2-arm64/Local Operator.app is on a read-only volume (the installer disk image); the update cannot be written there.",

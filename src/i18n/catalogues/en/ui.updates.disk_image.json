@@ -1,8 +1,8 @@
 {
-	"ui.updates.disk_image.heading": "Running from the installer disk image",
+	"ui.updates.disk_image.heading": "This copy can't update itself",
 	"ui.updates.disk_image.message": "Local Operator is running from the installer disk image, so the update can't be installed here.",
 	"ui.updates.disk_image.message_version": "Local Operator is running from the installer disk image, so the update to version {version} can't be installed here.",
-	"ui.updates.disk_image.remedy": "Quit it, then open Local Operator from Applications to update.",
+	"ui.updates.disk_image.remedy": "Move it to Applications, then update from there.",
 	"ui.updates.disk_image.move_button": "Move to Applications",
 	"ui.updates.disk_image.moving": "Moving…",
 	"ui.updates.disk_image.move_exists": "Local Operator is already in Applications, so this copy wasn't moved. Quit this one, then open Local Operator from Applications.",

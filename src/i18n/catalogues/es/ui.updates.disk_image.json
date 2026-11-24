@@ -1,8 +1,8 @@
 {
-	"ui.updates.disk_image.heading": "Ejecutándose desde la imagen de disco del instalador",
+	"ui.updates.disk_image.heading": "Esta copia no puede actualizarse",
 	"ui.updates.disk_image.message": "Local Operator se está ejecutando desde la imagen de disco del instalador, así que la actualización no se puede instalar aquí.",
 	"ui.updates.disk_image.message_version": "Local Operator se está ejecutando desde la imagen de disco del instalador, así que la actualización a la versión {version} no se puede instalar aquí.",
-	"ui.updates.disk_image.remedy": "Ciérrala y abre Local Operator desde Aplicaciones para actualizar.",
+	"ui.updates.disk_image.remedy": "Muévela a Aplicaciones y actualiza desde allí.",
 	"ui.updates.disk_image.move_button": "Mover a Aplicaciones",
 	"ui.updates.disk_image.moving": "Moviendo…",
 	"ui.updates.disk_image.move_exists": "Local Operator ya está en Aplicaciones, así que esta copia no se ha movido. Cierra esta y abre Local Operator desde Aplicaciones.",

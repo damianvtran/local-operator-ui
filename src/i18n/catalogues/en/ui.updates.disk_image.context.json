@@ -3,7 +3,7 @@
 		"role": "Update refusal panel shown when the app was opened straight from the mounted installer disk image (DMG) instead of from Applications",
 		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim; Applications is the macOS folder name (use the localized Finder name where macOS localizes it).",
 		"length": "Short: a heading or button label.",
-		"note": "English source: Running from the installer disk image"
+		"note": "English source: This copy can't update itself. The message line below it says the copy is running from the installer disk image."
 	},
 	"ui.updates.disk_image.message": {
 		"role": "Update refusal panel shown when the app was opened straight from the mounted installer disk image (DMG) instead of from Applications",
@@ -21,7 +21,7 @@
 		"role": "Update refusal panel shown when the app was opened straight from the mounted installer disk image (DMG) instead of from Applications",
 		"tone": "Calm and factual, no blame and no exclamation; says what did not happen, then the one step the reader can take. Product name Local Operator stays verbatim; Applications is the macOS folder name (use the localized Finder name where macOS localizes it).",
 		"length": "One or two sentences; the panel's body column is narrow.",
-		"note": "English source: Quit it, then open Local Operator from Applications to update."
+		"note": "English source: Move it to Applications, then update from there. It sits directly above the Move to Applications button and introduces it, so it must read as the lead-in to that action."
 	},
 	"ui.updates.disk_image.move_button": {
 		"role": "Update refusal panel shown when the app was opened straight from the mounted installer disk image (DMG) instead of from Applications",

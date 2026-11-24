@@ -1705,11 +1705,23 @@ export const UpdateNotification = ({
 	/*
 	 * The disk-image refusal's one-click fix. `moving` disables the button while
 	 * Electron copies the bundle (the app relaunches from Applications on
-	 * success, so there is no success state to render); `moveError` is the
-	 * localized sentence main returned when the move was declined or failed.
+	 * success, so there is no success state to render); `moveOutcome` is what
+	 * main returned when the move was declined or failed: the localized
+	 * sentence, the reason (an `exists*` reason means pressing again can never
+	 * succeed, so the button is disabled - design D3) and the machine detail
+	 * for the details disclosure (D6). It belongs to ONE refusal: it is reset
+	 * whenever a block arrives or is dismissed (D4), so a later refusal never
+	 * opens with an old failure already showing.
 	 */
 	const [moving, setMoving] = useState(false);
-	const [moveError, setMoveError] = useState<string | null>(null);
+	const [moveOutcome, setMoveOutcome] = useState<{
+		message: string;
+		reason: string;
+		detail?: string;
+	} | null>(null);
+	const moveCannotSucceed =
+		moveOutcome?.reason === "exists" ||
+		moveOutcome?.reason === "exists-and-running";
 	const [installFailed, setInstallFailed] = useState<InstallFailedInfo | null>(
 		null,
 	);
@@ -2168,12 +2180,20 @@ export const UpdateNotification = ({
 
 	const moveToApplications = useCallback(async () => {
 		setMoving(true);
-		setMoveError(null);
+		setMoveOutcome(null);
 		try {
 			const result = await window.api.updater.moveToApplications();
-			if (!result.ok) setMoveError(result.message);
+			if (!result.ok)
+				setMoveOutcome({
+					message: result.message,
+					reason: result.reason,
+					detail: result.detail,
+				});
 		} catch {
-			setMoveError(t("ui.updates.disk_image.move_failed"));
+			setMoveOutcome({
+				message: t("ui.updates.disk_image.move_failed"),
+				reason: "failed",
+			});
 		} finally {
 			setMoving(false);
 		}
@@ -2590,6 +2610,7 @@ export const UpdateNotification = ({
 		const removeInstallBlockedListener =
 			window.api.updater.onUpdateInstallBlocked((info) => {
 				setInstallBlocked(info);
+				setMoveOutcome(null);
 				setChecking(false);
 				setUpdatingBackend(false);
 				setDownloading(false);
@@ -3440,10 +3461,18 @@ export const UpdateNotification = ({
 				<p className="mb-2 text-body text-ink-muted">
 					{installBlocked.message}
 				</p>
-				<p className="mt-2 text-body text-ink">{installBlocked.remedy.text}</p>
-				{moveError && installBlocked.code === "running-from-disk-image" && (
+				{/*
+				 * A declined move's sentence REPLACES the remedy rather than following it
+				 * (design D2): both carry the same instruction, and two identical-style
+				 * paragraphs read as body text, not as the outcome of the click.
+				 */}
+				{moveOutcome && installBlocked.code === "running-from-disk-image" ? (
 					<p role="alert" className="mt-2 text-body text-ink">
-						{moveError}
+						{moveOutcome.message}
+					</p>
+				) : (
+					<p className="mt-2 text-body text-ink">
+						{installBlocked.remedy.text}
 					</p>
 				)}
 				{installBlocked.remedy.command && (
@@ -3455,6 +3484,7 @@ export const UpdateNotification = ({
 						size="sm"
 						onClick={() => {
 							setInstallBlocked(null);
+							setMoveOutcome(null);
 							/*
 							 * A dismissal is a dismissal (review R3), for the same reason the failure
 							 * panels' own dismissals already clear their surface: this panel is the
@@ -3474,7 +3504,7 @@ export const UpdateNotification = ({
 							variant="primary"
 							size="sm"
 							onClick={() => void moveToApplications()}
-							disabled={moving}
+							disabled={moving || moveCannotSucceed}
 						>
 							{moving
 								? t("ui.updates.disk_image.moving")
@@ -3501,8 +3531,12 @@ export const UpdateNotification = ({
 						</Button>
 					)}
 				</UpdateActions>
-				{installBlocked.detail && (
-					<PanelDetails detail={installBlocked.detail} />
+				{(installBlocked.detail || moveOutcome?.detail) && (
+					<PanelDetails
+						detail={[installBlocked.detail, moveOutcome?.detail]
+							.filter(Boolean)
+							.join("\n")}
+					/>
 				)}
 			</UpdateContainer>,
 		);
