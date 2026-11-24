@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "auditor": "reviewer (lopdev)",
+  "instance": "e03508d4186e-tab-menu-f8b2bfcf081-vi",
+  "session": "e03508d4186e",
+  "model": "anthropic/claude-opus-5-5",
+  "fallback": null,
+  "date": "2026-11-24",
+  "locale": "vi",
+  "namespace": "ui.chat.header",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "source_sha256": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9",
+  "target_sha256": "75eacde42ecf2a0c7e03d66359224b18c1c3df7fe52ae90c4605a6b1f9d83573",
+  "context_sha256": "4ea960972df6f35aa0f86a5d1d0f0a50615f7e4e2ac2aa8ae494084e5f939a7b",
+  "sha256": {
+    "vi": "75eacde42ecf2a0c7e03d66359224b18c1c3df7fe52ae90c4605a6b1f9d83573",
+    "en": "c56953389e81fc8b510d850e47e0e6bd5bd2f03ec27797672dad1ae7bd90deb9"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "head": "f8b2bfcf081014023bf5f958ba6e2b898f42a90f",
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.chat.header.json",
+    "target": "src/i18n/catalogues/vi/ui.chat.header.json",
+    "context": "src/i18n/catalogues/en/ui.chat.header.context.json"
+  },
+  "values": {
+    "ui.chat.header.pin_tab": "Ghim tab",
+    "ui.chat.header.unpin_tab": "Bỏ ghim tab",
+    "ui.chat.header.close_other_tabs": "Đóng các tab khác",
+    "ui.chat.header.close_tabs_left": "Đóng các tab bên trái",
+    "ui.chat.header.close_tabs_right": "Đóng các tab bên phải",
+    "ui.chat.header.close_all_tabs": "Đóng tất cả tab",
+    "ui.chat.header.all_tabs": "Tất cả tab"
+  },
+  "translator": "coder job b2322bc8e729, anthropic/claude-opus-5-5, commit f8b2bfcf081",
+  "independence": "Auditor session e03508d4186e (lopdev reviewer role) authored none of the English, translations or catalogue edits. Same served model family as the translator (anthropic/claude-opus-5-5, from this session's harness system prompt), disclosed; no fallback observed. No MT or translation API used.",
+  "scope": "Semantic audit of the 7 ui.chat.header keys added in f8b2bfcf081 (tab context menu). Rest of the namespace is SHA-256 bound and unchanged by that commit; not re-audited.",
+  "references": {
+    "glossary": "damianvtran/local-operator@00451b630b78d5f78c4d4c99f1525e4b7d4ae328:i18n/glossary.md (sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7; no tab/pin/close entries)",
+    "style_guide": "damianvtran/local-operator@00451b630b78d5f78c4d4c99f1525e4b7d4ae328:i18n/style-guides/vi.md (sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51)"
+  },
+  "semantic_review": "Ghim/Bỏ ghim matches ui.chat.sidebar.entity.(un)pin and keep_and_pin; 'Đóng tab', 'tab khác' and 'bên phải' match ui.browser.browser_tab_strip strings; 'Tất cả tab' equals ui.browser.browser_pane.all_tabs; concise, within vi tightening guidance.",
+  "execution": "python3 over the worktree bytes at f8b2bfcf081: key set equals English; all values NFC; the 7 audited values contain no ICU arguments (English has none) and no Unicode Cf (bidi/format) characters; sha256 of English, target and context computed from disk.",
+  "limits": "Source-level verdict only. No rendered fit, native, visual RTL or pseudo-locale execution (no browser tool in this lane); no maxCells declared for these keys."
+}
