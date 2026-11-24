@@ -883,7 +883,14 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		what: "settings rail collapsed tooltip",
 		file: "src/renderer/src/features/settings/components/settings-sidebar.tsx",
-		must: '<Tooltip content={section.label} side="right">',
+		/*
+		 * The side is LOGICAL since 2026-11-24 (design round 1, D4): a physical
+		 * `right` opened into the app sidebar under RTL. The boundary this entry
+		 * guards is the tooltip's TEXT on a floored surface, not which side it
+		 * opens on — so the marker follows the declaration and the derivation is
+		 * pinned in `chat-sidebar-selection.test.mjs`.
+		 */
+		must: "<Tooltip content={section.label} side={tooltipSide}>",
 		why: "The collapsed rail keeps the existing visible name on pointer and keyboard focus; no interaction handler is changed.",
 	},
 	{
