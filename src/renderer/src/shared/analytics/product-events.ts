@@ -21,14 +21,16 @@ import type {
  * the tour - so the funnel is a query rather than a replay hunt.
  * `docs/analytics-events.md` is the catalogue a reader of the data should use.
  *
- * THE GATE. `telemetryEnabled` (`../config/telemetry.ts`) is the renderer's one
- * answer to "may this launch report": the launch's switch plus a build key,
- * fail-closed. When it is false the PostHog provider never mounts, nothing is
- * initialised, and `track` here returns without touching `posthog-js`. When it
- * is true the provider has initialised the default instance; an event fired
- * before that lands is dropped rather than queued, because a pre-init capture
- * on an uninitialised client is exactly the "client constructed when off" leak
- * the gate exists to prevent.
+ * THE GATE. Telemetry is default-off and opt-in, switchable live. The
+ * telemetry controller (`./telemetry-controller.ts`) owns the client: it
+ * `init`s posthog-js only once the launch allows it AND the user opted in, and
+ * publishes that live state through `./telemetry-state.ts`. `track` here reads
+ * `isTelemetryActive()` at capture time and also requires an initialised client
+ * (`__loaded`), so while the user is opted out, or before the controller has
+ * started the client, an event is dropped rather than queued: a capture on an
+ * uninitialised client is exactly the "client constructed when off" leak the
+ * gate exists to prevent. An opt-out stops events immediately, and whatever
+ * does pass is still reduced by the controller's `before_send` allow-list.
  *
  * NO PII, NO CONTENT. Properties are typed per event and every string property
  * is one of the closed vocabularies in `./first-run-reasons.ts`, a provider id
@@ -86,9 +88,11 @@ export type ProductEventName = keyof ProductEvents;
 /**
  * Each product event's own property names, as runtime data: the telemetry
  * controller's `before_send` allow-list (`telemetry-controller.ts`) keeps these
- * and drops everything else. Typed so a property added to `ProductEvents`
- * without being listed here (or listed without existing) fails typecheck,
- * rather than being silently stripped or silently allowed.
+ * and drops everything else. Typed so a name listed here that `ProductEvents`
+ * does not declare fails typecheck (nothing can be allowed by typo). The
+ * reverse is NOT a type error: a property added to `ProductEvents` but not
+ * listed here is silently stripped by `before_send`, which fails safe (the
+ * data is missing from PostHog, never leaked). List it here to send it.
  */
 export const PRODUCT_EVENT_PROPERTIES: {
 	readonly [N in ProductEventName]: readonly (keyof ProductEvents[N])[];

@@ -258,6 +258,13 @@ test("posthog options are the active-user minimum: no replay, autocapture or exc
 	assert.equal(o.capture_dead_clicks, false);
 	assert.equal(o.disable_surveys, true);
 	assert.equal(o.disable_external_dependency_loading, true);
+	// Q4 (round 2): no `/decide/` or remote-config request, and no stored
+	// initial person info for one to carry.
+	assert.equal(o.advanced_disable_decide, true);
+	assert.equal(o.advanced_disable_feature_flags, true);
+	assert.equal(o.advanced_disable_feature_flags_on_first_load, true);
+	assert.equal(o.save_referrer, false);
+	assert.equal(o.save_campaign_params, false);
 	// Regression (real-path, 2026-11-24): opted-out-by-default init pauses the
 	// request queue and opt-in never resumes it, so events never left.
 	assert.equal("opt_out_capturing_by_default" in o, false);
@@ -495,4 +502,11 @@ test("main and the renderer source keep the contract wired", () => {
 		/bootTelemetry\(telemetry, window\.api\?\.telemetryConsent\)/,
 	);
 	assert.doesNotMatch(renderer, /session_recording|capture_exceptions: true/);
+	// Q4 (round 2): flags are never read from PostHog, so the provider must
+	// not reach posthog-js at all.
+	const flags = readFileSync(
+		"src/renderer/src/shared/providers/feature-flags/feature-flag-provider.tsx",
+		"utf8",
+	);
+	assert.doesNotMatch(flags, /from "posthog-js/);
 });

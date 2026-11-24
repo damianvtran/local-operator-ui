@@ -165,6 +165,27 @@ export function buildPosthogOptions(input: {
 		disable_web_experiments: true,
 		disable_external_dependency_loading: true,
 		save_referrer: false,
+		save_campaign_params: false,
+		/*
+		 * NO REQUEST BUT `/e/` (review round 2, Q4; 2026-11-24). `before_send`
+		 * guards only captured EVENTS. posthog-js 1.235.6 also POSTs `/decide/`
+		 * (flags + remote config) from `init` and on every flag reload, with
+		 * `person_properties` built from `persistence.get_initial_props()` —
+		 * `$initial_current_url`/`$initial_pathname`, i.e. the `file://` path
+		 * (a username on an unpackaged install) and the `#/chat/<id>` route —
+		 * and none of that passes through `before_send`. `advanced_disable_decide`
+		 * short-circuits BOTH `_callDecideEndpoint` (posthog-featureflags.js)
+		 * and `RemoteConfigLoader.load` (remote-config.js), so neither request is
+		 * ever built; the two flag switches are belt-and-braces should a later
+		 * version split those paths. The cost is that PostHog feature flags are
+		 * never evaluated: the feature-flag provider always serves defaults
+		 * (`feature-flag-provider.tsx`), which is the dark default every flagged
+		 * surface already has. `scripts/telemetry-allowlist.test.mjs` asserts
+		 * every outgoing request, not only `/e/`.
+		 */
+		advanced_disable_decide: true,
+		advanced_disable_feature_flags: true,
+		advanced_disable_feature_flags_on_first_load: true,
 		person_profiles: "identified_only" as const,
 		before_send: [scrubCaptureResult, restrictToActiveUserSignal],
 		...(input.loaded ? { loaded: input.loaded } : {}),
