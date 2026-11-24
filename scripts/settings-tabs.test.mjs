@@ -510,8 +510,11 @@ test("every chat error-block settings link names the tab its sentence means", ()
 	const EXPECTED = {
 		provider: "providers",
 		model: "general",
-		rate_limit: "general",
-		rate_limit_all: "general",
+		/* "get Radient Pass in the [settings page]": Radient Pass is the
+		   `radient` panel's surface, and it is the only panel that offers it
+		   (QA round 3, Q1 measured general/providers false, radient true). */
+		rate_limit: "radient",
+		rate_limit_all: "radient",
 		invalid_key: "providers",
 		unavailable: "general",
 		schema: "general",
