@@ -211,7 +211,17 @@ export class SessionNotificationAvatars
 			size,
 			theme: theme === "dark" ? "dark" : "light",
 		};
-		const flight = (async () => {
+		// The entry is recorded BEFORE the request starts: a `request` that throws
+		// synchronously runs the body's `finally` (and its `pending.delete`) before
+		// an IIFE expression could return, so setting it afterwards would pin a
+		// settled flight that every later banner for this key joins - no image
+		// until the next `clear()` (round-1 review R1-4).
+		let settle!: () => void;
+		const flight = new Promise<void>((resolve) => {
+			settle = resolve;
+		});
+		this.pending.set(key, flight);
+		void (async () => {
 			try {
 				const result = await this.options.request(input);
 				// A backend restart (capability re-read) cleared the cache while this
@@ -266,9 +276,9 @@ export class SessionNotificationAvatars
 			} finally {
 				this.inFlight -= 1;
 				if (generation === this.generation) this.pending.delete(key);
+				settle();
 			}
 		})();
-		this.pending.set(key, flight);
 		return flight;
 	}
 

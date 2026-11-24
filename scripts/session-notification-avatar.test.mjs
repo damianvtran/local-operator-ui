@@ -51,7 +51,7 @@ export { TEAM_BRIDGE_IMAGE_WAIT_MS } from "./src/main/team-bridge-notifier";`,
 			export const nativeImage = { createFromBuffer() { return { isEmpty: () => true }; } };
 			export class Notification {
 				static isSupported() { return true; }
-				constructor(options) { this.options = options; globalThis.__toasts.push(options); }
+				constructor(options) { if (globalThis.__toastThrows) throw new Error("toast refused"); this.options = options; globalThis.__toasts.push(options); }
 				on(event, handler) { this.handlers ??= {}; this.handlers[event] = handler; }
 				once(event, handler) { this.on(event, handler); }
 				off(event) { if (this.handlers) delete this.handlers[event]; }
@@ -76,6 +76,7 @@ const COMPLETION = `tok_${"c".repeat(12)}`;
 beforeEach(() => {
 	globalThis.__toasts = [];
 	globalThis.__shown = [];
+	globalThis.__toastThrows = false;
 });
 
 /** A minimal PNG header at the requested square size; the validator checks
@@ -106,16 +107,35 @@ const NOT_FOUND = {
 	detail: "The avatar could not be read.",
 };
 
-/** A cache over a scripted backend; `answer` is called per request. */
+/**
+ * A cache over a scripted backend; `answer` is called per request.
+ *
+ * Each unanswered request holds a REF'd handle until it settles, as the real
+ * relay's open HTTP socket does. Without it a test that awaits `read()` while a
+ * scripted core hangs leaves only `read()`'s deliberately unref'd deadline
+ * timer on the loop, and Node 22's runner (CI) then sees an empty event loop
+ * and cancels the test and every one after it ("Promise resolution is still
+ * pending but the event loop has already resolved", Full Test Suite run
+ * 45294799133). Node 24 happened to keep running, which hid it locally.
+ * `settled()` waits for every request this cache started.
+ */
 function cache({ answer = () => bytes('"a1"'), enabled = true } = {}) {
 	const requests = [];
 	const decoded = [];
+	const inFlight = [];
 	const clock = { now: 1_000, theme: "light" };
 	const images = new m.SessionNotificationAvatars({
 		enabled: () => enabled,
 		request: async (input) => {
 			requests.push(input);
-			return answer(input, requests.length);
+			const socket = setInterval(() => {}, 1_000);
+			const answered = (async () => answer(input, requests.length))();
+			inFlight.push(answered.catch(() => undefined));
+			try {
+				return await answered;
+			} finally {
+				clearInterval(socket);
+			}
 		},
 		decode: (data) => {
 			const icon = { id: decoded.length + 1, bytes: data.byteLength };
@@ -125,7 +145,8 @@ function cache({ answer = () => bytes('"a1"'), enabled = true } = {}) {
 		theme: () => clock.theme,
 		now: () => clock.now,
 	});
-	return { images, requests, decoded, clock };
+	const settled = () => Promise.all(inFlight);
+	return { images, requests, decoded, clock, settled };
 }
 
 // ---------------------------------------------------------------- relay
@@ -357,7 +378,7 @@ test("cache: concurrent banners for one session coalesce into ONE request", asyn
 
 test("cache: a burst never exceeds two requests in flight", async () => {
 	const releases = [];
-	const { images, requests } = cache({
+	const { images, requests, settled } = cache({
 		answer: () =>
 			new Promise((resolve) => releases.push(() => resolve(NOT_FOUND))),
 	});
@@ -371,6 +392,31 @@ test("cache: a burst never exceeds two requests in flight", async () => {
 		undefined,
 	]);
 	for (const release of releases) release();
+	await settled();
+	// The lane frees once the hung requests settle: a skipped session asks now.
+	const late = images.read(ids[3], 20);
+	assert.equal(requests.length, m.SESSION_NOTIFICATION_AVATAR_CONCURRENCY + 1);
+	releases.at(-1)();
+	await late;
+	await settled();
+});
+
+test("cache: a request that throws synchronously does not pin a dead flight (R1-4)", async () => {
+	let calls = 0;
+	const images = new m.SessionNotificationAvatars({
+		enabled: () => true,
+		request: (_input) => {
+			calls += 1;
+			if (calls === 1) throw new Error("relay not ready");
+			return Promise.resolve(bytes('"after"'));
+		},
+		decode: (data) => ({ bytes: data.byteLength }),
+		theme: () => "light",
+		now: () => 1_000,
+	});
+	assert.equal(await images.read(SESSION, 250), undefined);
+	assert.ok(await images.read(SESSION, 250), "the next banner asks again");
+	assert.equal(calls, 2);
 });
 
 test("cache: a malformed PNG (wrong size) is no icon", async () => {
@@ -398,7 +444,7 @@ test("cache: capability off means no request at all", async () => {
 
 test("cache: a hanging core resolves at the deadline; the late answer warms the next banner", async () => {
 	let release;
-	const { images } = cache({
+	const { images, settled } = cache({
 		answer: () =>
 			new Promise((resolve) => {
 				release = () => resolve(bytes('"late"'));
@@ -408,6 +454,7 @@ test("cache: a hanging core resolves at the deadline; the late answer warms the 
 	assert.equal(await images.read(SESSION, 20), undefined);
 	assert.ok(Date.now() - started < 200);
 	release();
+	await settled();
 	await new Promise((resolve) => setTimeout(resolve, 5));
 	assert.ok(images.peek(SESSION));
 });
@@ -541,6 +588,22 @@ test("notifier: a source that never answers posts at the 250 ms deadline without
 	await drain();
 	assert.equal(globalThis.__toasts.length, 1, "never dropped");
 	assert.equal("icon" in globalThis.__toasts[0], false);
+});
+
+test("notifier: a post that throws after the icon wait is not an unhandled rejection (R1-1)", async () => {
+	const unhandled = [];
+	const listen = (reason) => unhandled.push(reason);
+	process.on("unhandledRejection", listen);
+	try {
+		globalThis.__toastThrows = true;
+		const { n } = notifier(source({ read: async () => ({ agent: "face" }) }));
+		n.observe(SESSION, completionFrame());
+		await drain();
+		assert.equal(globalThis.__toasts.length, 0);
+		assert.deepEqual(unhandled, []);
+	} finally {
+		process.off("unhandledRejection", listen);
+	}
 });
 
 test("notifier: a source that throws or rejects still posts the banner", async () => {

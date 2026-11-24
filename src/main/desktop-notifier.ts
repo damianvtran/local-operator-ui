@@ -1308,18 +1308,26 @@ export class DesktopNotifier {
 			);
 			return;
 		}
-		void this.withImageDeadline(images, sessionId).then((icon) =>
-			this.post(
-				sessionId,
-				title,
-				status,
-				body,
-				isSnippet,
-				isFailure,
-				surface,
-				icon,
-			),
-		);
+		void this.withImageDeadline(images, sessionId)
+			.then((icon) =>
+				this.post(
+					sessionId,
+					title,
+					status,
+					body,
+					isSnippet,
+					isFailure,
+					surface,
+					icon,
+				),
+			)
+			.catch(() => {
+				// `post` throwing (a `new Notification` or lifetime failure) used to
+				// reach `show`'s caller synchronously; on this deferred path it would be
+				// an unhandled rejection in main, which installs no handler for one. The
+				// banner is lost either way - there is no log sink in this module - so
+				// it is dropped quietly rather than surfacing as a process-level fault.
+			});
 	}
 
 	/**
