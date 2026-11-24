@@ -89,10 +89,14 @@ export function buildPosthogOptions(input: {
 }) {
 	return {
 		api_host: input.apiHost,
-		// Belt and braces: the client starts opted OUT and the controller opts it
-		// in explicitly, so a persisted state from an older build can never make
-		// it send before the controller has decided.
-		opt_out_capturing_by_default: true,
+		/*
+		 * NOT `opt_out_capturing_by_default` (measured on the real app,
+		 * 2026-11-24): with it, `init` leaves posthog-js's batched request queue
+		 * PAUSED, and `opt_in_capturing()` never un-pauses it (posthog-core.js
+		 * 1.235.6, `_start_queue_if_opted_in` runs only from `_loaded`/DOM load),
+		 * so an opted-in user's events queued forever. It is not needed either:
+		 * `init` only ever runs from `start()`, i.e. after the user opted in.
+		 */
 		persistence: "localStorage" as const,
 		autocapture: false,
 		capture_pageview: false,
@@ -122,6 +126,8 @@ export interface TelemetryClient {
 	opt_out_capturing(): void;
 	has_opted_out_capturing(): boolean;
 	reset(): void;
+	/** posthog-js internal (1.235.6); optional so a rename degrades, not throws. */
+	_start_queue_if_opted_in?: () => void;
 }
 
 export interface TelemetryController {
@@ -140,8 +146,13 @@ export function createTelemetryController(input: {
 
 	const start = () => {
 		if (!client.__loaded) client.init(input.projectKey, input.options);
-		if (client.has_opted_out_capturing())
+		if (client.has_opted_out_capturing()) {
 			client.opt_in_capturing({ captureEventName: false });
+			// A document that loaded with a persisted opt-out (an opt-out from an
+			// earlier run, opted back in from another window) has a paused queue
+			// that `opt_in_capturing` does not resume; see `buildPosthogOptions`.
+			client._start_queue_if_opted_in?.();
+		}
 		client.capture(APP_ACTIVE_EVENT);
 	};
 

@@ -137,12 +137,17 @@ function fakeClient() {
 	const calls = [];
 	const c = {
 		__loaded: false,
-		optedOut: true,
+		// Models posthog-js without `opt_out_capturing_by_default`: a fresh init is
+		// opted in; a persisted opt-out from an earlier run survives init.
+		optedOut: false,
 		calls,
 		init(key, options) {
 			calls.push(["init", key]);
 			c.__loaded = true;
 			c.options = options;
+		},
+		_start_queue_if_opted_in() {
+			calls.push(["resume_queue"]);
 		},
 		capture(name) {
 			if (!c.optedOut) calls.push(["capture", name]);
@@ -178,7 +183,6 @@ test("opt-in starts the client live, opt-out stops it, opt back in restarts", ()
 	ctl.apply(true);
 	assert.deepEqual(client.calls, [
 		["init", "phc_k"],
-		["opt_in", false],
 		["capture", "app_active"],
 	]);
 	assert.equal(liveState.isTelemetryActive(), true);
@@ -201,12 +205,30 @@ test("opt-in starts the client live, opt-out stops it, opt back in restarts", ()
 	ctl.apply(true);
 	assert.deepEqual(
 		client.calls,
-		[
-			["opt_in", false],
-			["capture", "app_active"],
-		],
-		"no second init",
+		[["opt_in", false], ["resume_queue"], ["capture", "app_active"]],
+		"no second init; the paused queue is resumed before the event",
 	);
+});
+
+test("a document loading with a persisted opt-out resumes its queue on opt-in", () => {
+	// Regression (real-path, 2026-11-24): posthog-js leaves the request queue
+	// paused when init sees an opt-out, and opt_in_capturing does not resume it.
+	const client = fakeClient();
+	client.init = (key) => {
+		client.calls.push(["init", key]);
+		client.__loaded = true;
+		client.optedOut = true; // persisted from an earlier run
+	};
+	controller
+		.createTelemetryController({ client, projectKey: "phc_k", options: {} })
+		.apply(true);
+	assert.deepEqual(client.calls, [
+		["init", "phc_k"],
+		["opt_in", false],
+		["resume_queue"],
+		["capture", "app_active"],
+	]);
+	controller.setTelemetryActive(null);
 });
 
 test("a blank build key never starts the client, whatever consent says", () => {
@@ -232,7 +254,9 @@ test("posthog options are the active-user minimum: no replay, autocapture or exc
 	assert.equal(o.capture_dead_clicks, false);
 	assert.equal(o.disable_surveys, true);
 	assert.equal(o.disable_external_dependency_loading, true);
-	assert.equal(o.opt_out_capturing_by_default, true);
+	// Regression (real-path, 2026-11-24): opted-out-by-default init pauses the
+	// request queue and opt-in never resumes it, so events never left.
+	assert.equal("opt_out_capturing_by_default" in o, false);
 	assert.equal(o.persistence, "localStorage");
 	assert.equal("session_recording" in o, false);
 	assert.equal(o.before_send.length, 2);
