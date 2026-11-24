@@ -53,7 +53,7 @@
  * OS fallback resumes on its own — no cleanup path to forget.
  */
 
-import { type BrowserWindow, Notification } from "electron";
+import { type BrowserWindow, type NativeImage, Notification } from "electron";
 import type { DesktopResponse } from "../shared/desktop-contract";
 import type {
 	DesktopFeedFrame,
@@ -64,6 +64,10 @@ import type {
 import type { ConsoleCompletionNotice } from "./console/completion";
 import { NotificationLifetime } from "./notification-lifetime";
 import { notificationSoundOptions } from "./notification-sound";
+import {
+	SESSION_NOTIFICATION_IMAGE_WAIT_MS,
+	type SessionNotificationImageSource,
+} from "./session-notification-avatars";
 import type { WindowShow } from "./window-mode";
 import { type RaiseReport, raiseWindow } from "./window-raise";
 
@@ -399,6 +403,18 @@ export class DesktopNotifier {
 		 * which is what a caller with no log sink wants and never "unordered".
 		 */
 		private readonly raiseReport?: RaiseReport,
+		/**
+		 * The agent's picture for a single-session banner (operator request
+		 * 2026-11-23), plus timer seams so tests can drive the bounded wait
+		 * without sleeping 250 ms. Omitted - or a source whose `enabled()` is
+		 * false because core lacks `desktop_session_notification_avatar` - means
+		 * every banner posts synchronously with the app icon, as it always has.
+		 */
+		private readonly avatars: {
+			images?: SessionNotificationImageSource;
+			setWaitTimer?: (callback: () => void, delay: number) => unknown;
+			clearWaitTimer?: (timer: unknown) => void;
+		} = {},
 	) {}
 
 	get canNotify(): boolean {
@@ -1263,12 +1279,129 @@ export class DesktopNotifier {
 		 */
 		surface: string | null = null,
 	): void {
+		const images = this.avatars.images;
+		/*
+		 * THE AGENT'S FACE, WHEN THERE IS ONE (operator request 2026-11-23).
+		 *
+		 * Only a banner about ONE conversation can carry that conversation's
+		 * agent: a burst digest (`sessionId === null`) names several and keeps the
+		 * app icon. Without the capability, or without a source, nothing is awaited
+		 * and the banner posts synchronously, byte-for-byte as before.
+		 *
+		 * Otherwise the post waits AT MOST `SESSION_NOTIFICATION_IMAGE_WAIT_MS` for
+		 * the composite and then posts with whatever it has - the picture, or the
+		 * app icon on a miss, 404, timeout or any failure. The banner is never
+		 * dropped and never delayed past the budget: every gate (dedupe, focus,
+		 * cross-surface claim) already ran before `show`, and nothing after the
+		 * wait re-decides delivery, so the wait changes the icon and nothing else.
+		 */
+		if (sessionId === null || !images?.enabled()) {
+			this.post(
+				sessionId,
+				title,
+				status,
+				body,
+				isSnippet,
+				isFailure,
+				surface,
+				undefined,
+			);
+			return;
+		}
+		void this.withImageDeadline(images, sessionId)
+			.then((icon) =>
+				this.post(
+					sessionId,
+					title,
+					status,
+					body,
+					isSnippet,
+					isFailure,
+					surface,
+					icon,
+				),
+			)
+			.catch(() => {
+				// `post` throwing (a `new Notification` or lifetime failure) used to
+				// reach `show`'s caller synchronously; on this deferred path it would be
+				// an unhandled rejection in main, which installs no handler for one. The
+				// banner is lost either way - there is no log sink in this module - so
+				// it is dropped quietly rather than surfacing as a process-level fault.
+			});
+	}
+
+	/**
+	 * Await one session composite for AT MOST the banner budget, the same race
+	 * `TeamBridgeNotifier.withImageDeadline` runs: a hit resolves at once, a
+	 * miss resolves at the deadline even if core never answers, and a late
+	 * composite only warms the cache for the next banner. Never rejects - a
+	 * rejection here would be a banner that never posts.
+	 */
+	private async withImageDeadline(
+		images: SessionNotificationImageSource,
+		sessionId: string,
+	): Promise<NativeImage | undefined> {
+		let reading: Promise<NativeImage | undefined>;
+		try {
+			reading = images.read(sessionId, SESSION_NOTIFICATION_IMAGE_WAIT_MS);
+		} catch {
+			return undefined;
+		}
+		const setTimer =
+			this.avatars.setWaitTimer ??
+			((callback: () => void, delay: number) => {
+				const timer = setTimeout(callback, delay);
+				timer.unref?.();
+				return timer;
+			});
+		const clearTimer =
+			this.avatars.clearWaitTimer ??
+			((timer: unknown) =>
+				clearTimeout(timer as ReturnType<typeof setTimeout>));
+		let timer: unknown;
+		try {
+			return (
+				(await Promise.race([
+					reading,
+					new Promise<undefined>((resolve) => {
+						timer = setTimer(
+							() => resolve(undefined),
+							SESSION_NOTIFICATION_IMAGE_WAIT_MS,
+						);
+					}),
+				])) ?? images.peek(sessionId)
+			);
+		} catch {
+			return undefined;
+		} finally {
+			reading.catch(() => undefined);
+			if (timer !== undefined) clearTimer(timer);
+		}
+	}
+
+	/** The one `new Notification` site; `show` above decides only the icon. */
+	private post(
+		sessionId: string | null,
+		title: string,
+		status: string,
+		body: string,
+		isSnippet: boolean,
+		isFailure: boolean,
+		surface: string | null,
+		/*
+		 * The agent composite. Electron 44 maps a macOS `icon` to the banner's
+		 * thumbnail attachment (the bundle icon stays the attribution), and to the
+		 * app-logo override on Windows - the same placement Team Bridge uses.
+		 */
+		icon: NativeImage | undefined,
+	): void {
 		const lead = (isSnippet || isFailure) && status ? `${status} — ` : "";
 		const notification = new Notification({
 			title,
 			body: `${lead}${body}`.slice(0, MAX_BODY_CHARS),
 			// The configured sound (or none); see `notification-sound.ts`.
 			...notificationSoundOptions(),
+			...(icon ? { icon } : {}),
 		});
 		/*
 		 * RETAINED AND WIRED BY THE SAME CALL (see `notification-lifetime.ts`): an

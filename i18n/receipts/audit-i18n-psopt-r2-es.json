@@ -1,0 +1,113 @@
+{
+	"instance": "audit-i18n-psopt-r2-es",
+	"locale": "es",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": [
+		"ui.projects (round 2: delta 10c0c83a272..e1cb9d658fa — name_required, name_grammar retranslated after en b3ebaf7944b 'name' -> 'key')"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-es)",
+		"session": "21a59ab0fa6d (session system header 'Session ID'; matches $LOCAL_OPERATOR_SCRATCHPAD path)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue/ledger, committed nothing, posted nothing to GitHub; only this receipt was written. Translator is a separate i18n-translator session; same model family possible and not verifiable: disclosed, so independence is session-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "10c0c83a272 (round-1 head); PR base origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-rules.mjs sha256Hex); hashes.en/hashes.es are the role keys ledger-rules.mjs scopedHash() reads",
+	"hashes": {
+		"en": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"es": "3f6e74ac95a360274df608fdfd333ecc54aa2bc3839eec24e1f728925cba2ca3",
+		"en_context": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"hash_paths": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"es": "src/i18n/catalogues/es/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (project -> proyecto; no tag/name/key entries)",
+		"style_guide": "local-operator@origin/main (1b011ed566f9; file last changed 4ee49c91543c) i18n/style-guides/es.md sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6: tu, neutral Spanish, sentence case, terse, Latin digits",
+		"shipped_terms": "es ui.projects: comma_separated_up_to_8_... 'Separadas por comas, hasta 8. Minúsculas, dígitos, guion bajo o guion.'; letters_digits_dot_underscore_or_dash_no_spaces 'Letras, dígitos, punto, guion bajo o guion; sin espacios.'; project_form_dialog.tags 'Etiquetas'. Sibling validators: ui.agents.detail.create.error_name_required 'Ponle un nombre al agente.', ui.agents.teams.create.error_name_required 'Ponle un nombre al equipo.', ui.settings.integrations...give_it_a_name 'Ponle un nombre.'"
+	},
+	"checks": [
+		{
+			"check": "key-set parity en vs es",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "delta in scope only",
+			"result": "PASS",
+			"detail": "es vs 10c0c83a272: exactly name_required and name_grammar changed; 0 added, 0 removed; other 4 round-1 keys byte-unchanged"
+		},
+		{
+			"check": "NFC / code points",
+			"result": "PASS",
+			"detail": "both NFC; non-ASCII only U+00ED, U+00F1; no bidi controls (U+200E/F, U+202A-E, U+2066-9); no double spaces"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "none in en or es"
+		},
+		{
+			"check": "key-label consistency",
+			"result": "PASS",
+			"detail": "'clave' = field labels project_form_dialog.key / project_editors.key 'Clave' and shipped a_project_with_this_key_already_exists 'Ya existe un proyecto con esta clave.'; agreement 'una clave' / 'Las claves' correct"
+		},
+		{
+			"check": "grammar fidelity",
+			"result": "PASS",
+			"detail": "start letter/digit, ASCII via 'sin tildes ni ñ', set letras/dígitos/punto/guion bajo/guion; unchanged from round 1 apart from the noun"
+		},
+		{
+			"check": "register",
+			"result": "PASS",
+			"detail": "tú imperative 'Ponle', same pattern as agent/team name_required"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check, check-duplicates.mjs, context-parity.mjs exit 0; ledger-check.mjs es/ui.projects stale-hash rows expected until assembled"
+		},
+		{
+			"check": "length (chars es/en)",
+			"result": "NOTE",
+			"detail": "name_required 28/23, name_grammar 120/87; no maxCells, wraps under field"
+		},
+		{
+			"check": "receipt parse",
+			"result": "PASS",
+			"detail": "ledger-rules.mjs deriveReceiptAudit() with on-disk hashes, locale es, namespace ui.projects: accepted"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: 'Ponle una clave al proyecto.' matches field label 'Clave'",
+		"ui.projects.project_edit_model.name_grammar": "ok: 'Las claves empiezan por…' noun swap only, rule unchanged and exact",
+		"ui.projects.project_edit_model.tag_grammar": "retained from round 1 (byte-unchanged); N1 deferred",
+		"ui.projects.project_sheet_model.template_summary": "retained from round 1 (byte-unchanged)",
+		"ui.projects.project_sheet_model.template_goals": "retained from round 1 (byte-unchanged)",
+		"ui.projects.project_sheet_model.template_notes": "retained from round 1 (byte-unchanged)"
+	},
+	"result": "clean",
+	"status": "passed",
+	"status_note": "status/result use the pair ledger-rules.mjs accepts (passed + clean).",
+	"previous_receipt": "i18n/receipts/audit-i18n-psopt-es.json sha256 e12e940e8dafffc34b32040785670513993a54ffc96878ab9b8afe2feee91e49 (byte-identical at HEAD)",
+	"round1_resolution": {
+		"N1": "deferred by manager (es ü nit); not re-raised",
+		"I1": "resolved at source: en b3ebaf7944b says 'key'; es now 'clave', matching the 'Clave' label"
+	}
+}

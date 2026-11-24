@@ -325,6 +325,15 @@ export type AskDrawerProps = {
 	 */
 	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
 	/**
+	 * Send an answer AS THE OPERATOR after main's native confirmation sheet
+	 * (`AskPanelProps.onConfirm`), addressed by ask id like the doors above.
+	 */
+	onConfirm?: (
+		askId: string,
+		answers: Record<string, string[]>,
+		revise: boolean,
+	) => void;
+	/**
 	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5), addressed by ask id for the
 	 * same reason the three doors above are. Absent where the backend does not
 	 * advertise `features.ask_dismiss`, so the panel draws no button — the gate is
@@ -391,6 +400,7 @@ export const AskDrawer = ({
 	onDecline,
 	onRevise,
 	onDismiss,
+	onConfirm,
 	answering = false,
 	outcomes,
 	drafts,
@@ -1432,6 +1442,12 @@ export const AskDrawer = ({
 								onRevise === undefined
 									? undefined
 									: (task, answers) => onRevise(task.ask_id, answers)
+							}
+							onConfirm={
+								onConfirm === undefined
+									? undefined
+									: (task, answers, revise) =>
+											onConfirm(task.ask_id, answers, revise)
 							}
 							onDismiss={
 								onDismiss === undefined

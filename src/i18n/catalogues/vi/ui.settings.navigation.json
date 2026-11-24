@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "Cài đặt máy chủ",
 	"ui.settings.navigation.settings_sidebar.application_updates": "Cập nhật ứng dụng",
 	"ui.settings.navigation.settings_sidebar.account": "Tài khoản",
-	"ui.settings.navigation.settings_page.retrying": "Đang thử lại"
+	"ui.settings.navigation.settings_page.retrying": "Đang thử lại",
+	"ui.settings.navigation.settings_page.close_settings": "Đóng cài đặt",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "Đóng (Esc)"
 }

@@ -13,10 +13,10 @@
  *    definition; the field, the tests and the frame all read it from here.
  *
  * 2. THE DESCRIPTION TEMPLATE. Create pre-seeds the description with the light
- *    section skeleton the operator asked for (Summary / Goals / Notes); it is
- *    ordinary editable text, not a separate editor mode, so deleting it is
- *    just deleting text. The constant is exported so the lane can pin its
- *    shape and the dialog cannot quietly drift from it.
+ *    section skeleton the operator asked for (Summary / Goals / Notes, in the
+ *    active locale); it is ordinary editable text, not a separate editor mode,
+ *    so deleting it is just deleting text. The builder is exported so the lane
+ *    can pin its shape and the dialog cannot quietly drift from it.
  *
  * 3. THE PASTE CONVERSION. `markdownFromClipboardHtml` turns the rich
  *    clipboard payload (`text/html`) into markdown for the description editor.
@@ -31,9 +31,46 @@
  *    text, which is exactly what a plain paste would have produced.
  */
 
-/** The create sheet's description seed: light sections the author edits away. */
-export const PROJECT_DESCRIPTION_TEMPLATE =
-	"## Summary\n\n## Goals\n\n## Notes";
+/**
+ * The create sheet's description seed: light sections the author edits away.
+ *
+ * BUILT IN THE ACTIVE LOCALE (i18n E2). This was an English constant, so a
+ * French sheet opened on "## Summary / ## Goals / ## Notes". The heading WORDS
+ * are catalogue copy; the `## ` markdown prefix and the blank-line separators
+ * are syntax and stay here, so no translation can break the heading shape.
+ * Call it when the sheet seeds the field (on open), not at module load: the
+ * locale may not be negotiated yet when this module is first imported.
+ */
+export function projectDescriptionTemplate(): string {
+	return [
+		t("ui.projects.project_sheet_model.template_summary"),
+		t("ui.projects.project_sheet_model.template_goals"),
+		t("ui.projects.project_sheet_model.template_notes"),
+	]
+		.map((heading) => `## ${heading}`)
+		.join("\n\n");
+}
+
+/**
+ * The description a create submit should send, or `undefined` for none.
+ *
+ * THE UNTOUCHED SEED IS NOT AUTHORED TEXT (UX round 1, U3): a submit that never
+ * wrote a word must not file the skeleton as the project's description, while
+ * any edit, however small, ships as authored.
+ *
+ * WHY THE SEED IS A PARAMETER: since the seed is localized, comparing against a
+ * freshly built template would misclassify an untouched seed whenever the
+ * language changed between opening the sheet and submitting (the English seed
+ * would no longer equal the French template and would ship as "authored"). The
+ * caller passes the exact string it inserted, captured at seed time.
+ */
+export function authoredProjectDescription(
+	description: string,
+	seed: string,
+): string | undefined {
+	const text = description.trim();
+	return text && text !== seed.trim() ? text : undefined;
+}
 /*
  * The derivation's regexes live at module scope: they are literals of this
  * file's single purpose, hoisted so a keystroke in the title never rebuilds
@@ -45,6 +82,11 @@ export const PROJECT_DESCRIPTION_TEMPLATE =
  * erase at build time. `pasteMarkdownIntoDescription`, at the foot of this
  * file, is the sheet's and the detail editor's shared DOM adapter.
  */
+/*
+ * `t()` only: the i18n core is a plain module (no React, no Electron), so the
+ * Node lanes that bundle this file keep it a pure function library.
+ */
+import { t } from "@shared/i18n";
 import type { ClipboardEvent, RefObject } from "react";
 
 /*

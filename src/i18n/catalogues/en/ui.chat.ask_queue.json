@@ -23,6 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "That question was already settled, so your answer was not sent.",
 	"ui.chat.ask_queue.refusal.busy": "Your answer isn't confirmed yet. The agent is busy.",
 	"ui.chat.ask_queue.refusal.expired": "This ask is too old to answer — ask the agent again.",
+	"ui.chat.ask_queue.refusal.not_addressable": "Your answer was not sent. The app could not put it in a form this session accepts, so nothing left this device.",
 	"ui.chat.ask_queue.response.answered": "Answered — delivering (ask {askId})",
 	"ui.chat.ask_queue.response.declined": "Ask {askId} declined — the agent was told",
 	"ui.chat.ask_queue.response.dismissed": "Dismissed by you{hasVia, select, yes { ({via})} other {}} — {reason} (ask {askId})",

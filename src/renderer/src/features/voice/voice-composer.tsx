@@ -49,6 +49,7 @@ import {
 	MicOff,
 	Pause,
 	Play,
+	RotateCcw,
 	Square,
 	TriangleAlert,
 	Volume2,
@@ -70,13 +71,16 @@ import {
 	openSpeechSettings,
 	openVoiceSession,
 	pauseQwenVoice,
+	pressReplay,
 	resumeQwenVoice,
 	setQwenMuted,
 	startQwenRig,
 } from "./qwen-voice-controller";
+import { useReplayOffer } from "./spoken-summary-block";
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
 import {
 	type VoiceExchangeError,
+	type VoiceSpokenSource,
 	type VoiceStoryRow,
 	type VoiceTick,
 	useVoiceStore,
@@ -173,6 +177,14 @@ export type VoiceComposerView =
 				| null;
 			/** The reply was cut at the cap and the next take has not started. */
 			cut: boolean;
+			/**
+			 * The message the strip's Replay would say again: the last one this window
+			 * spoke, until the next take starts. Whether it can be pressed is
+			 * `replayOffer`'s one rule (unavailable while the rig is busy, absent
+			 * while paused), not this view's: the button stays mounted while a take
+			 * plays so a keyboard press keeps its focus.
+			 */
+			replay?: string;
 	  };
 
 /**
@@ -235,6 +247,9 @@ export function composerVoiceView(
 			sessionId: string;
 			text: string;
 			truncated: boolean;
+			/** Absent for a gate announcement, and for a server with no summary. */
+			messageId?: string;
+			source?: VoiceSpokenSource;
 			at: number;
 		} | null;
 		/** The take a card refused, for the band's own refusal line (U1). */
@@ -296,6 +311,22 @@ export function composerVoiceView(
 	const take = state.lastTake?.sessionId === sessionId ? state.lastTake : null;
 	const spoken =
 		state.lastSpoken?.sessionId === sessionId ? state.lastSpoken : null;
+	/*
+	 * REPLAY AND THE KEPT SUMMARY BELONG TO THE LAST SPOKEN MESSAGE UNTIL THE
+	 * NEXT TAKE (spoken-summary design): the spoken tail is gone in seconds and the
+	 * person may want it again, so the strip keeps the words and the control until
+	 * a newer take replaces them. Only a MESSAGE can be replayed (a gate
+	 * announcement has no message), and only the server's own summary is kept as the
+	 * resting caption - a reply's first 800 characters would be a long line of the
+	 * reply the History row already holds.
+	 */
+	const lastWords =
+		spoken !== null && (take === null || take.at < spoken.at) ? spoken : null;
+	const replay = lastWords?.messageId;
+	const restingCaption: VoiceCaption =
+		lastWords?.source === "summary"
+			? { kind: "said", text: lastWords.text }
+			: { kind: "idle" };
 	const refused =
 		state.lastRefused?.sessionId === sessionId ? state.lastRefused : null;
 	/*
@@ -404,6 +435,7 @@ export function composerVoiceView(
 				caption: null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "speaking":
 			/*
@@ -419,6 +451,7 @@ export function composerVoiceView(
 					caption: { kind: "silenced" },
 					action: null,
 					cut,
+					replay,
 				};
 			return {
 				kind: "here",
@@ -426,6 +459,7 @@ export function composerVoiceView(
 				caption: spoken ? { kind: "said", text: spoken.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "working":
 			/*
@@ -450,6 +484,7 @@ export function composerVoiceView(
 				caption: take ? { kind: "heard", text: take.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "unheard":
 			if (connecting)
@@ -486,6 +521,7 @@ export function composerVoiceView(
 				caption: { kind: "ended", text: spoken?.text ?? null },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 		if (tick.kind === "interrupted" && lived < 3000) {
@@ -495,6 +531,7 @@ export function composerVoiceView(
 				caption: { kind: "interrupted", seconds: tick.seconds },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 	}
@@ -516,9 +553,10 @@ export function composerVoiceView(
 	return {
 		kind: "here",
 		chip: "listening",
-		caption: { kind: "idle" },
+		caption: restingCaption,
 		action: null,
 		cut,
+		replay,
 	};
 }
 
@@ -648,6 +686,27 @@ const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
 /* COPY                                                                        */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * A LABEL, THEN THE WORDS: the label ends in its own colon ("You said:"), and the
+ * gap after it is one rule for every locale. A full-width colon (zh-CN `：`) has the
+ * space built into its glyph, so it takes none; every other colon gets one.
+ */
+const LabelledCaption: FC<{ label: string; text: string }> = ({
+	label,
+	text,
+}) => {
+	const tight = label.endsWith("\uFF1A");
+	return (
+		<span
+			className={cn("flex min-w-0 items-baseline", tight ? "gap-0" : "gap-1")}
+		>
+			<span className="shrink-0 font-medium text-ink-muted">{label}</span>
+			{!tight && " "}
+			<span className="truncate">{text}</span>
+		</span>
+	);
+};
+
 const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 	switch (caption.kind) {
 		case "idle":
@@ -656,24 +715,24 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 			return <>{t("ui.chat.voice.starting_caption")}</>;
 		case "heard":
 			return (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.heard_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.heard_label")}
+					text={caption.text}
+				/>
 			);
 		case "said":
 			return (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.said_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			);
 		case "ended":
 			return caption.text ? (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.said_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			) : null;
 		case "interrupted":
 			return (
@@ -745,6 +804,70 @@ export function storyTime(at: number): string {
 	return formatTime(date, { hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * A summary row's way to the full reply and Replay. Both are offered only for a
+ * row of the conversation that holds the voice (the story outlives a slot move):
+ * Replay for another one is refused by the controller, and a reveal for a
+ * transcript that is not on screen would sit in the store and scroll it unprompted
+ * later. Another conversation's row keeps the summary and loses the controls.
+ */
+const SummaryRowControls: FC<{ sessionId: string; messageId: string }> = ({
+	sessionId,
+	messageId,
+}) => {
+	const replay = useReplayOffer(sessionId);
+	const holder = useVoiceStore((s) => s.active?.session_id === sessionId);
+	if (!holder) return null;
+	return (
+		// WRAPS: the link is nowrap and its label runs long in vi and fr, so a single
+		// row pushed Replay past the History's edge at the 393px dock (QA r2 Q-5:
+		// vi +34px, fr +5px). Wrapping keeps the whole link readable.
+		<span className="mt-1 flex flex-wrap items-center gap-x-1 text-meta">
+			<Button
+				type="button"
+				variant="link"
+				size="sm"
+				data-voice-story-link=""
+				onClick={() =>
+					useVoiceStore.getState().requestReveal(sessionId, messageId)
+				}
+				className="h-6 px-0 text-meta"
+			>
+				{t("ui.chat.voice.full_reply_link")}
+			</Button>
+			{replay && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					data-voice-story-replay=""
+					aria-label={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					title={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					aria-disabled={replay.disabled || undefined}
+					onClick={() => {
+						if (!replay.disabled) void pressReplay(sessionId, messageId);
+					}}
+					className="size-6 shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
+				>
+					{replay.word === "play" ? (
+						<Play aria-hidden="true" />
+					) : (
+						<RotateCcw aria-hidden="true" />
+					)}
+				</Button>
+			)}
+		</span>
+	);
+};
+
 const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 	useI18nLocale();
 	if (row.kind === "interrupted") {
@@ -782,47 +905,91 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 			</div>
 		);
 	}
+	/*
+	 * `source` decides what the Voice line is: the agent's summary (with a link to
+	 * the full reply) or, for a reply the server spoke from its own text and for
+	 * any older server, the whole reply as the full-text change drew it. A summary
+	 * row needs the text that was spoken and the message to link to.
+	 */
+	const summarySpoken =
+		row.source === "summary" && row.spoken !== null && row.messageId !== null;
 	return (
 		<div
 			data-voice-story="exchange"
 			className={cn(
-				"grid grid-cols-[auto_1fr] gap-x-2 border-t border-hairline py-1.5 text-body-sm",
+				/*
+				 * TWO LINES IN ONE GRID, sharing the label column: `You` over `Voice`
+				 * line up whatever the locale's words are wide (the old fixed `w-8`
+				 * clipped "Голос" and "Vous"), and the time rides the first line's end
+				 * like the interrupted and not-sent rows' does, so it no longer takes a
+				 * column of its own from a long reply.
+				 */
+				"grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 border-t border-hairline py-2 text-body-sm",
 				pad,
 			)}
 		>
-			<span className="row-span-2 whitespace-nowrap pt-0.5 text-meta text-ink-dim tabular-nums">
-				{storyTime(row.at)}
+			<span className="pt-px text-meta font-medium text-ink-dim">
+				{t("ui.chat.voice.you_label")}
 			</span>
-			<span className="flex min-w-0 gap-1.5">
-				<span className="w-8 shrink-0 text-meta text-ink-dim">
-					{t("ui.chat.voice.you_label")}
+			<span className="flex min-w-0 items-baseline gap-2">
+				<span className="min-w-0 flex-1 break-words text-ink">{row.heard}</span>
+				<span className="shrink-0 whitespace-nowrap text-meta text-ink-dim tabular-nums">
+					{storyTime(row.at)}
 				</span>
-				<span className="min-w-0 text-ink">{row.heard}</span>
 			</span>
-			<span className="flex min-w-0 gap-1.5">
-				<span className="w-8 shrink-0 text-meta text-ink-dim">
-					{t("ui.chat.voice.voice_label")}
-				</span>
-				<span className="min-w-0">
-					<span className="block text-ink-muted">
-						{row.spoken ?? t("ui.chat.voice.working_row")}
+			<span className="pt-px text-meta font-medium text-ink-dim">
+				{t("ui.chat.voice.voice_label")}
+			</span>
+			<span className="min-w-0">
+				{summarySpoken ? (
+					/*
+					 * THE SUMMARY IS WHAT VOICE SAID (spoken-summary design): the agent's own
+					 * short paragraph, with the way to the whole reply - which is in the chat,
+					 * not repeated here - and Replay. `spoken` is the server's text for it,
+					 * the very words the rig was given.
+					 */
+					<span className="block whitespace-pre-line break-words text-ink">
+						{row.spoken}
 					</span>
-					{/*
-					 * THE CUT NOTE (spec §6): the spoken tail is gone in four seconds, so the
-					 * row is where "there was more" survives. It is a link-like line rather
-					 * than a second control because the message it points at is one scroll
-					 * away, and the strip's own cut chip is the control for that.
-					 */}
-					{row.truncated && (
-						<span
-							data-voice-story-cut=""
-							className="mt-0.5 flex items-center gap-1 text-meta font-medium text-warning"
-						>
-							<TriangleAlert aria-hidden="true" className="size-3" />
-							{t("ui.chat.voice.cut_note")}
-						</span>
-					)}
-				</span>
+				) : row.full ? (
+					/*
+					 * THE WHOLE REPLY, line breaks kept: the server sends `full_text` one
+					 * table row or bullet per line, and `pre-line` is what turns those
+					 * newlines into rows instead of one run-on paragraph.
+					 */
+					<span className="block whitespace-pre-line break-words text-ink">
+						{row.full}
+					</span>
+				) : (
+					<span className="block italic text-ink-dim">
+						{t("ui.chat.voice.working_row")}
+					</span>
+				)}
+				{summarySpoken && row.messageId && (
+					<SummaryRowControls
+						sessionId={row.sessionId}
+						messageId={row.messageId}
+					/>
+				)}
+				{/*
+				 * WHAT WAS CUT IS THE AUDIO, NOT THE ROW (spec §3): the row shows the whole
+				 * reply now, so the line is no longer a warning that text is missing -
+				 * it says only how much was spoken. The strip's own cut chip stays, because
+				 * the spoken tail is gone in four seconds and "the rest is above" is still
+				 * the fact the person needs when they look up. AN OLDER SERVER sends no
+				 * `full_text`: the row then holds the capped spoken text, so "first part
+				 * only" under it would read as the row being complete - no line there. A
+				 * SUMMARY row shows what was spoken, so its cut is always the row's own.
+				 */}
+				{row.truncated && (row.hasFullText || summarySpoken) && (
+					<span
+						data-voice-story-cut=""
+						className="mt-1 flex items-center gap-1 text-meta text-ink-dim"
+					>
+						<Volume2 aria-hidden="true" className="size-3 shrink-0" />
+						{t("ui.chat.voice.spoken_part_note")}
+					</span>
+				)}
 			</span>
 		</div>
 	);
@@ -861,6 +1028,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const clearTick = useVoiceStore((s) => s.clearTick);
 	const pendingControl = useVoiceStore((s) => s.pending);
 	const muted = useVoiceStore((s) => s.rig?.muted === true);
+	const replay = useReplayOffer(sessionId);
 	/*
 	 * THE COMPOSER MOUNTS IN DOCUMENTS WITH NO PROVIDER (the mini view, the
 	 * agents composer): `useQueryClient` throws there, so the optional seam is
@@ -1001,18 +1169,20 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	if (!enabled || !sessionId || view.kind === "off") return null;
 
 	const box = "bg-sunken border-hairline";
-	/* Flush with the box's own padding, so the band spans edge to edge. */
-	const inset = isSmallView
-		? "-mx-2 -mt-2 rounded-t-md"
-		: "-mx-4 -mt-4 rounded-t-frame";
 	/*
-	 * THE CONTENT COLUMN IS THE BOX'S OWN (design round 1, D4): the band pays the
-	 * box's padding back at the edges, so it must then use the SAME padding inside
-	 * - 16px, or 8px in the small view - or the chip, history and caption sit a few
-	 * pixels off the textarea, the mic and Send. Measured before: 10px left / 4px
-	 * right against the box's 16px.
+	 * THE BAND IS A PANEL INSIDE THE EDITOR, NOT A BLEED TO ITS EDGES. It used a
+	 * negative margin sized for a 16px box padding, but `.composer-dock-editor`
+	 * pads 8px (4px inline in the compact dock) and sits under the working
+	 * directory shelf, so the band overhung the box by the difference and its top
+	 * edge covered the shelf's bottom (operator report, 2026-11-23). Hard-coding
+	 * the box's padding twice is what drifted; taking no padding back cannot.
 	 */
-	const pad = isSmallView ? "px-2" : "px-4";
+	const inset = isSmallView ? "rounded-sm" : "rounded-md";
+	/*
+	 * THE BAND'S OWN CONTENT PADDING: the panel is inset, so its chip, history and
+	 * caption are measured from the panel's edge, not the box's.
+	 */
+	const pad = isSmallView ? "px-2" : "px-3";
 	/* A failure's one action, 28px high in text, beside the reason it answers. */
 	/*
 	 * EVERY CONTROL IN THIS FILE IS `type="button"`, and that is load-bearing
@@ -1061,7 +1231,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			<div
 				data-voice-notice=""
 				className={cn(
-					"flex min-h-10 items-center gap-2 border-b",
+					"flex min-h-10 items-center gap-2 border",
 					inset,
 					box,
 					pad,
@@ -1134,34 +1304,41 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			data-voice-band=""
 			className={cn(
 				/*
-				 * FLUSH WITH THE BOX'S TOP EDGE (spec §1): the band pays the box's own
-				 * padding back and takes the box's top radius, so the panel and the
-				 * strip stack inside with no seam.
-				 *
-				 * FROM THE SAME PAIR AS THE BOX (design round 2, D11): this was
-				 * hardcoded `-mx-4 -mt-4`, which is 16px - but the composer's padding
-				 * shrinks to 8px at the narrow width (`p-2`), so at a 620px viewport
-				 * the band hung 8px outside the box on each side and the chip started
-				 * at the box's edge while the textarea started 8px in. `inset` is
-				 * derived from the same `isSmallView` the composer's padding is, and
-				 * the elsewhere notice already used it; the band was the one caller
-				 * that did not.
+				 * INSIDE THE EDITOR'S OWN PADDING, in flow (see `inset`): History opening
+				 * pushes the field down instead of growing upward over the working
+				 * directory shelf, and `min-w-0` keeps a long caption from widening the
+				 * panel past the card.
 				 */
 				inset,
-				"overflow-hidden border-b",
+				"min-w-0 overflow-hidden border",
 				box,
 			)}
 		>
 			{open && (
-				<div
+				<section
 					ref={panel}
 					id={panelId}
 					data-voice-history=""
-					className="max-h-[min(50vh,320px)] overflow-y-auto border-b border-hairline"
+					/*
+					 * A LABELLED REGION THAT SCROLLS, no `tabIndex`: the sticky header's
+					 * Clear button is a focusable child whenever there is a row to read, so
+					 * Chromium (Electron 35 is 134) does not add the scroller to the tab
+					 * order itself. Keyboard scrolling works from Clear - arrow keys and
+					 * Page Up/Down scroll its scrollable ancestor.
+					 */
+					aria-label={t("ui.chat.voice.history")}
+					className={cn(
+						"overflow-y-auto overscroll-contain border-b border-hairline",
+						isSmallView ? "max-h-[min(35vh,240px)]" : "max-h-[min(40vh,320px)]",
+					)}
 				>
+					{/*
+					 * STICKY: the panel opens scrolled to the newest row, which used to carry
+					 * the title and Clear out of sight with the older rows.
+					 */}
 					<div
 						className={cn(
-							"flex items-center gap-2 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim",
+							"sticky top-0 z-[1] flex items-center gap-2 border-b border-hairline bg-sunken pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim",
 							pad,
 						)}
 					>
@@ -1191,7 +1368,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 							<StoryRow key={`${row.kind}:${row.at}`} row={row} pad={pad} />
 						))
 					)}
-				</div>
+				</section>
 			)}
 			<div
 				data-voice-strip=""
@@ -1236,9 +1413,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						type="button"
 						data-voice-cut=""
 						onClick={() => onScrollToNewest?.()}
-						className="flex h-6 shrink-0 items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
+						title={t("ui.chat.voice.cut_chip")}
+						/*
+						 * THE ONE CHIP THAT GIVES: at the narrow dock the status chip, the
+						 * cut chip, Pause, Silence and the History toggle together are wider
+						 * than the band, and `overflow-hidden` clipped the toggle away. The
+						 * caption is already at zero, so this truncates ("Cut short · re…")
+						 * and the title carries the whole sentence.
+						 */
+						className="flex h-6 min-w-0 shrink items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
 					>
-						{t("ui.chat.voice.cut_chip")}
+						<span className="truncate">{t("ui.chat.voice.cut_chip")}</span>
 					</button>
 				)}
 				{view.caption ? (
@@ -1252,6 +1437,43 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					<span className="min-w-0 flex-1" />
 				)}
 				{failureAction}
+				{/*
+				 * AT THE NARROW DOCK THE CUT CHIP OWNS THE ROOM (design D3, measured at
+				 * 393px with this button hidden = the #2065 row: chip 76px, with it 36px,
+				 * "Cut ..."). A cut is exactly when the reply/summary block or the footnote
+				 * under the message carries its own Replay, and the chip points at it.
+				 */}
+				{view.replay && replay && !(isSmallView && view.cut) && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						data-voice-action="replay"
+						aria-label={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						title={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						// Unavailable keeps its place and focus; a press does nothing.
+						aria-disabled={replay.disabled || undefined}
+						onClick={() => {
+							if (sessionId && view.replay && !replay.disabled)
+								void pressReplay(sessionId, view.replay);
+						}}
+						className="shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
+					>
+						{replay.word === "play" ? (
+							<Play aria-hidden="true" />
+						) : (
+							<RotateCcw aria-hidden="true" />
+						)}
+					</Button>
+				)}
 				{pauseable && (
 					<Button
 						type="button"
@@ -1330,6 +1552,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					data-voice-history-toggle=""
 					aria-expanded={open}
 					aria-controls={open ? panelId : undefined}
+					/*
+					 * THE WORD GOES IN THE NARROW VIEW, the name stays: at 8px padding the
+					 * caption, pause, speaker and this toggle do not all fit with their
+					 * words, and the caption is the one that truncates.
+					 */
+					aria-label={
+						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
+					}
+					title={
+						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
+					}
 					className="shrink-0 gap-0.5 px-1.5 text-meta text-ink-muted"
 					onClick={() => {
 						historyOpen = !historyOpen;
@@ -1337,7 +1570,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						setNow(Date.now());
 					}}
 				>
-					<span>
+					<span className={cn(isSmallView && "sr-only")}>
 						{open
 							? t("ui.chat.voice.history_hide")
 							: t("ui.chat.voice.history")}

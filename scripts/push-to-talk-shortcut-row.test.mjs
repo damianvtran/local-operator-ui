@@ -1075,3 +1075,42 @@ test("a cleared primary row shows No shortcut with no Clear and Reset visible", 
 		);
 	});
 });
+
+test("Escape in either speech recorder never reaches the page that holds it", async () => {
+	await mount({}, async (api) => {
+		for (const selector of [START, HOLD]) {
+			const input = api.$(selector);
+			assert.ok(input, `${selector} must render`);
+			const before = input.value;
+			const heard = [];
+			const listener = (event) => heard.push(event.key);
+			api.window.document.addEventListener("keydown", listener);
+			try {
+				await act(async () => input.focus());
+				await act(async () => {
+					input.dispatchEvent(
+						new api.window.KeyboardEvent("keydown", {
+							key: "Escape",
+							bubbles: true,
+							cancelable: true,
+						}),
+					);
+				});
+				await api.settle();
+				/* The Settings page's Esc handler is an ancestor listener like this one. */
+				assert.deepEqual(
+					heard,
+					[],
+					`${selector}: the recorder owns Escape; a page above it must not hear the press`,
+				);
+				assert.equal(input.value, before, "cancelling changes no binding");
+				assert.deepEqual(
+					api.requests.filter((request) => request.op === "settings.edit"),
+					[],
+				);
+			} finally {
+				api.window.document.removeEventListener("keydown", listener);
+			}
+		}
+	});
+});

@@ -57,6 +57,55 @@ const id = z
 	.regex(/^[a-zA-Z0-9_-]+$/);
 
 /**
+ * The detail main answers when ITS OWN schema refuses a request: a 422 that
+ * never left this app (`desktop-transport.ts`, `desktop-ipc.ts`).
+ *
+ * One exported spelling, because the renderer has to recognise exactly this
+ * refusal - a never-sent body - and tell it apart from a backend 422 whose words
+ * are the route's own. Matching a second copy of the string is how the two
+ * would drift and the bare diagnostic would reach a user again. It is a wire
+ * diagnostic, not copy: surfaces that can receive it translate it into a
+ * sentence about their own act (see `unsentAnswerMessage`).
+ */
+export const DESKTOP_CONTRACT_REFUSAL_DETAIL = "Invalid desktop operation."; // i18n: ignore wire diagnostic, translated by its readers
+
+/**
+ * Core's LEGACY MIRROR request id for one question of a queued ask:
+ * `<ask_id>.<question_index>`, e.g. `a-06d8.0`.
+ *
+ * WHY IT EXISTS. For one release core still mirrors the head queued ask as an
+ * ask-kind `pending_gate` (core `local_operator/asks/store.py`
+ * `mirror_request_id` / `parse_mirror_request_id`, ~L430-457), so a reader that
+ * draws the mirror - the inline QuestionDock - answers it through the GATE
+ * shape of `sessions.answer`, and core's runtime routes a parsed mirror id to
+ * the ask queue (`session/runtime/server.py`, ~L9905-9928). The generic `id`
+ * grammar refused the dot, so main answered 422 before sending and the user
+ * read "Your answer was not sent. Invalid desktop operation." (operator report,
+ * 2026-11-23, a remote session's ask).
+ *
+ * WHY THIS EXACT GRAMMAR AND NOT "ANY STRING". Core accepts any request id up
+ * to 128 characters, but this field is also the app's own guard on what a
+ * renderer may put in a body; the widening is therefore exactly the mirror
+ * grammar core emits and parses: the `a-` prefix `parse_mirror_request_id`
+ * requires, the lowercase-hex alphabet `new_ask_id` mints from
+ * (`secrets.token_hex(2)`: 4 characters today, the floor; up to 32 so a longer mint
+ * does not reopen this refusal), ONE `.` separator (`MIRROR_REQUEST_SEPARATOR`)
+ * and an all-digit question index (bounded to 4 digits - an ask with 10,000
+ * questions is not a shape any surface draws).
+ *
+ * LIFETIME: delete this, and its use in `sessions.answer`, when core retires
+ * the legacy mirror (the release after every supported backend publishes
+ * `asks`; see `ask-queue.ts` "Presence of `asks` retires the legacy mirror").
+ */
+export const ASK_MIRROR_REQUEST_ID_PATTERN = /^a-[0-9a-f]{4,32}\.[0-9]{1,4}$/;
+
+/** A gate answer's `request_id`: the ordinary `id`, or a legacy ask mirror's. */
+const answerRequestId = z.union([
+	id,
+	z.string().regex(ASK_MIRROR_REQUEST_ID_PATTERN),
+]);
+
+/**
  * The Team Bridge approvals selection: 1..50 `{message_id, decision}` pairs.
  * 50 is the daemon's `approvals.BATCH_MAX` (local-operator #4099), mirrored so
  * the renderer can never send a body the route refuses by size alone.
@@ -1435,28 +1484,38 @@ export const PROJECTS_SEARCH_MAX_LIMIT = 200;
 export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 
 /**
- * The name check as a DIALOG needs it: a sentence for the user, or null.
+ * The name check as a DIALOG needs it: the copy KEY of the user's sentence, or
+ * null when the name is valid.
  *
  * The same pattern the schema validates with, exposed so an inline refusal
  * under the field and the 422 the wire would answer cannot say two different
  * things about one name. The empty case gets its own sentence rather than the
  * grammar's, because "give it a name" is a different mistake from "this name
  * has a space in it".
+ *
+ * A KEY, NOT A SENTENCE (i18n N1): these used to return English prose, so a
+ * Urdu or Chinese title - which derives an empty key by design - showed
+ * "Give the project a key." in an otherwise translated sheet. This module is
+ * shared with the main process, which must not bundle the runtime `t()` and
+ * its catalogues, so the rule names the message and the renderer edge
+ * (`projectNameRule` in `features/projects/project-edit-model.ts`) resolves it
+ * in the active locale at call time - the `DESKTOP_REFUSAL_COPY_KEY` pattern.
  */
-export function projectNameRule(name: string): string | null {
-	if (!name) return "Give the project a name.";
+export function projectNameRuleKey(name: string): WithoutParams | null {
+	if (!name) return "ui.projects.project_edit_model.name_required";
 	if (!PROJECT_NAME_PATTERN.test(name))
-		return "Names start with a letter or digit and may use letters, digits, dot, underscore or dash.";
+		return "ui.projects.project_edit_model.name_grammar";
 	return null;
 }
 
 /**
  * The tag grammar, one tag at a time (`PROJECT_TAG_PATTERN` — the store's own
- * `_TAG_RE`), as a dialog sentence or null.
+ * `_TAG_RE`), as the copy KEY of a dialog sentence or null. Resolved by the
+ * renderer's `projectTagRule`, for the reason `projectNameRuleKey` gives.
  */
-export function projectTagRule(tag: string): string | null {
+export function projectTagRuleKey(tag: string): WithoutParams | null {
 	if (!PROJECT_TAG_PATTERN.test(tag))
-		return "Tags are 1-24 characters of lowercase letters, digits, underscore or dash.";
+		return "ui.projects.project_edit_model.tag_grammar";
 	return null;
 }
 
@@ -2879,7 +2938,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * below require exactly one of the pair.
 			 */
 			epoch: id.optional(),
-			requestId: id.optional(),
+			/** `id`, or a legacy queued-ask mirror id; see `ASK_MIRROR_REQUEST_ID_PATTERN`. */
+			requestId: answerRequestId.optional(),
 			value: z.string().max(32768).optional(),
 			approved: z.boolean().optional(),
 			questionIndex: z.number().int().min(0).optional(),
@@ -2946,6 +3006,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		 * member is a `ZodEffects` — this file already states that at
 		 * `desktopRequestSchema`, and the member form does not compile.
 		 */
+		.strict(),
+	/*
+	 * ANSWER A QUEUED ASK AS THE OPERATOR (`src/main/ask-attest.ts`). MAIN-ONLY:
+	 * `desktop-ipc.ts` answers it itself and never forwards it. Main freezes this
+	 * exact answer, reads the ask itself, shows a window-modal native sheet built
+	 * from that read, and only on the sheet's confirm button attests the content
+	 * to the session's runtime (`<config>/run/attest/<sid>.sock`, core
+	 * `asks/app_attest.py`) and forwards the SAME content as an ordinary
+	 * `sessions.answer`. That is what lets core stamp the answer `desktop` instead
+	 * of `unverified`, so the dangerous-delete guard can count it as consent.
+	 *
+	 * Only `respond` (no `revise`) and `revise: true` exist here: a decline or a
+	 * dismissal approves nothing, so it keeps the plain route and this arm cannot
+	 * express it (`.strict()`). No labels travel: every word on the sheet is
+	 * main's own read. The value grammar is `sessions.answer`'s own.
+	 */
+	z
+		.object({
+			op: z.literal("asks.attestedAnswer"),
+			sessionId,
+			askId: id,
+			answers: z
+				.record(z.string(), z.array(z.string().max(32768)))
+				.refine((answers) => Object.keys(answers).length > 0, {
+					message: "answers must name at least one question", // i18n: ignore wire validation diagnostic
+				}),
+			revise: z.literal(true).optional(),
+		})
 		.strict(),
 	z
 		.object({
@@ -10885,6 +10973,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "pairings.eligibility":
 			return { path: "app:mesh-pairing/eligibility", method: "GET" };
+		/*
+		 * MAIN-ONLY, like the two pairing ops above: `desktop-ipc.ts` answers it and
+		 * core has no such route. Main forwards an ordinary `sessions.answer` after
+		 * the native sheet and the attestation (`src/main/ask-attest.ts`).
+		 */
+		case "asks.attestedAnswer":
+			return { path: "app:ask-attest/answer", method: "POST" };
 		case "pairings.confirm":
 			return { path: "app:mesh-pairing/confirm", method: "POST" };
 		/*

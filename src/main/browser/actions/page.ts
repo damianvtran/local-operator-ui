@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { BrowserHostError } from "../errors";
+import { authPromptRefusal } from "../extensions/auth-request";
 import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
 import type { LogEntry, ScrollResult } from "../protocol";
@@ -94,16 +95,12 @@ export async function read(
 	const code = `(${READ_FUNCTION})(${JSON.stringify(selector)})`;
 	let text: unknown;
 	try {
-		text = await deadline(
-			ctx.registry.guardRead(record, () =>
-				record.view.webContents.executeJavaScriptInIsolatedWorld(
-					ISOLATED_WORLD_ID,
-					[{ code }],
-				),
-			),
-			SCRIPTING_DEADLINE_MS,
-			`read(${selector})`,
-		);
+		const read = (): Promise<unknown> =>
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
+			);
+		text = await deadline(read(), SCRIPTING_DEADLINE_MS, `read(${selector})`);
 	} catch (error) {
 		// A syntax error in a selector reaches us as the isolated world's rejection;
 		// it is the caller's input, not a host fault.
@@ -251,11 +248,9 @@ export async function copy(
 	let answer: unknown;
 	try {
 		answer = await deadline(
-			ctx.registry.guardRead(record, () =>
-				record.view.webContents.executeJavaScriptInIsolatedWorld(
-					ISOLATED_WORLD_ID,
-					[{ code }],
-				),
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
 			),
 			SCRIPTING_DEADLINE_MS,
 			`copy(${selector})`,
@@ -752,6 +747,13 @@ export async function screenshot(
 ): Promise<Record<string, unknown>> {
 	const record = ctx.registry.requireSurface(params.tab);
 	const contents = record.view.webContents;
+	// A PROVIDER PROMPT ON SCREEN IS NOT THE AGENT'S TO PHOTOGRAPH (architect
+	// option A, review S2): refused before any CDP call, typed, naming the reads
+	// that still work. Presence-keyed, so the passive autofill card counts too.
+	// The epoch is taken now so an admission that lands while the capture is in
+	// flight is caught after it returns (below).
+	ctx.registry.assertNoAuthPrompt(contents.id, "capture");
+	const epoch = ctx.registry.authPromptEpoch(contents.id);
 	const bounds = record.view.getBounds?.();
 	if (bounds && (bounds.width === 0 || bounds.height === 0)) {
 		throw new BrowserHostError(
@@ -805,6 +807,17 @@ export async function screenshot(
 						: BACKGROUND_CAPTURE_ATTEMPT_MS,
 				},
 			);
+			// ADMISSION DURING CAPTURE: the pre-check saw no prompt, but one may
+			// have been admitted (and composited) before Chromium took the pixels.
+			// Any admission since the pre-check, or a prompt present now, drops the
+			// image unread rather than guessing which frame it shows.
+			if (
+				ctx.registry.authPromptEpoch(contents.id) !== epoch ||
+				ctx.registry.authPromptPresent(contents.id)
+			) {
+				ctx.registry.assertNoAuthPrompt(contents.id, "capture");
+				throw authPromptRefusal("capture", null);
+			}
 			return finishCapture(ctx, record, attemptShot);
 		} catch (error) {
 			// Only a STALL is retryable: it is the typed "no reply" arm the deadline

@@ -1,0 +1,119 @@
+{
+	"auditor": {
+		"agent": "reviewer",
+		"session": "d6862d991569",
+		"instance": "audit-i18n-fr-voice-history-full-text-r2",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed this round"
+	},
+	"instance": "audit-i18n-fr-voice-history-full-text-r2",
+	"model": "anthropic/claude-sonnet-5-5",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"locale": "fr",
+	"independence": "Independent i18n auditor (lopdev reviewer session d6862d991569); not the translator (separate lopdev session) and not the round-1 fr auditor (session 617b7e1b37d3). Same model family as both is possible and not verifiable here: disclosed. Read only committed bytes (git show 1bc98320ba / worktree clean); edited no catalogue, ledger, sidecar or repo file; no MT service used.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2065,
+	"branch": "voice-history-full-text",
+	"head": "1bc98320ba",
+	"previous_head": "a9161f63eb",
+	"merge_base": "cd9d85f30d",
+	"round_1_receipt": "fr.json (session 617b7e1b37d3, head a9161f63eb): 0 blocker, 0 major, 1 minor (M1), 2 nit (N1, N2)",
+	"references": {
+		"glossary": "damianvtran/local-operator@52c5a414988e i18n/glossary.md (last touched 60d8584ea; sha256 prefix 5de3929198c3f603; unchanged since round 1; no entry for voice/history/said)",
+		"style_guide": "damianvtran/local-operator@52c5a414988e i18n/style-guides/fr.md (last touched 0f8e3d101; sha256 prefix 5315e1ac10c2ce57; unchanged since round 1): vous, imperative, terse, sentence case, U+202F before : ; ! ? required within prose",
+		"shipped_terms": "fr catalogues at 1bc98320ba: 'lire à voix haute' (byok_speech_failed, stream_lost); feminine participles with 'réponse' (cut_chip 'Coupée', interrupted_caption 'Arrêtée à {time} : …' with U+202F); ui.chat.composer.placeholder.* imperative-vous"
+	},
+	"diff_authority": "git diff cd9d85f30d 1bc98320ba -- src/i18n/catalogues/fr/ : ui.chat.voice.json changes heard_label, said_label, spoken_part_note (replaces cut_note) and nothing else; ui.chat.composer.json adds placeholder.voice only. Delta a9161f63eb..1bc98320ba: 1 file (fr/ui.chat.voice.json), 3 lines, exactly heard_label, said_label, spoken_part_note.",
+	"round2_delta": {
+		"scope": "a9161f63eb..1bc98320ba",
+		"files_changed": [
+			"src/i18n/catalogues/fr/ui.chat.voice.json"
+		],
+		"keys_changed": [
+			"ui.chat.voice.heard_label",
+			"ui.chat.voice.said_label",
+			"ui.chat.voice.spoken_part_note"
+		],
+		"m1_fixed": true,
+		"byte_check": "Parsed the JSON at both heads: the changed-key set is exactly those 3 and the key sets are equal. Each new value equals the old value with U+00A0 replaced by U+202F (assertion passed). The only non-Latin-1-letter code point in each value is U+202F, directly before ':'. No U+00A0 remains in either audited fr catalogue (ui.chat.voice, ui.chat.composer). Values: 'Vous avez dit\\u202f:', 'Dit\\u202f:', 'Lu à voix haute\\u202f: début seulement'."
+	},
+	"scope_note": "Audited the full set of this PR's fr keys at 1bc98320ba: ui.chat.voice.heard_label, ui.chat.voice.said_label, ui.chat.voice.spoken_part_note, ui.chat.composer.placeholder.voice; ui.chat.voice.cut_note removed (en and fr alike; zero occurrences in the fr catalogue). Round-1 judgements on idiom, register, glossary, neighbour consistency, no-implied-missing-text and widths stand: the 4 values are unchanged except the U+00A0→U+202F swap. Mechanical, re-run at this head: key parity en/fr (voice 81/81, composer 97/97, symmetric difference empty); {placeholder} lists identical en/fr in both namespaces; NFC; no Cc/Cf; no ASCII apostrophe or '...'; every ':' in both fr namespaces is preceded by U+202F (no bare colon in prose); rendered through intl-messageformat locale fr: 4 values, 0 parse errors, strings come out as 'Vous avez dit :', 'Dit :', 'Lu à voix haute : début seulement', 'Parlez, ou écrivez ici'.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 3,
+			"keys": [
+				"ui.chat.voice.heard_label",
+				"ui.chat.voice.said_label",
+				"ui.chat.voice.spoken_part_note"
+			],
+			"removed_keys_checked": [
+				"ui.chat.voice.cut_note"
+			],
+			"sha256": {
+				"en": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+				"fr": "9a34be3cf24afb3a5bf75132b757310a58f5871e94a98b8b8ccbbfdd203b3a6b"
+			},
+			"context_sha256": "e1106acf56e0eb52432681804b8c109a2dbfdeec6406a0967c4358dbfe514a32",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "MINOR",
+					"status": "resolved",
+					"key": "ui.chat.voice.heard_label | ui.chat.voice.said_label | ui.chat.voice.spoken_part_note",
+					"note": "Round 1: U+00A0 before the colon where the fr style guide requires U+202F. Fixed in 1bc98320ba; verified by byte check on exactly those 3 values."
+				},
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"status": "deferred (manager, not applied)",
+					"key": "ui.chat.voice.spoken_part_note",
+					"current": "Lu à voix haute : début seulement",
+					"suggested": "Lue à voix haute : début seulement",
+					"note": "Optional feminine agreement with 'réponse', as in cut_chip 'Coupée'; masculine 'Lu' is acceptable generically."
+				}
+			]
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.placeholder.voice"
+			],
+			"sha256": {
+				"en": "68e7108ce215c82f0f957bbfbd597594624500b9005f93a78744ed602e2eacc6",
+				"fr": "d3f1db88cf844c4db5a3e42a9c283d94908fe0b90e0fc7fed7eb82516586d99e"
+			},
+			"context_sha256": "b7a0393c5bff2f114fb9ff3c32c74bb83fe3580a130f35287ec8fa4e382c40ea",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": [
+				{
+					"id": "N2",
+					"severity": "NIT",
+					"status": "deferred (manager, not applied)",
+					"key": "ui.chat.composer.placeholder.voice",
+					"current": "Parlez, ou écrivez ici",
+					"suggested": "Parlez ou écrivez ici",
+					"note": "French does not normally put a comma before a simple 'ou'; mirrors the English. Meaning and register are right either way."
+				}
+			]
+		}
+	},
+	"hashing_method": "sha256 of the raw committed file bytes (git show 1bc98320ba:<path>), identical to sha256File/sha256Hex in scripts/i18n/ledger-check.mjs and ledger-rules.mjs (createHash('sha256').update(readFileSync(path))); en, fr and en .context.json each hashed whole-file. fr/ui.chat.composer.json is byte-identical to round 1 (same hash d3f1db88…); only fr/ui.chat.voice.json hash moved (255315f0… → 9a34be3c…); en and context hashes unchanged from round 1.",
+	"verdict": "pass",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 2
+	}
+}

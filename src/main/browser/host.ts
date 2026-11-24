@@ -6,8 +6,8 @@ import type {
 import { isExtensionId } from "../../shared/browser-extensions";
 import type { MediaPermissionView } from "../../shared/browser-media-permission";
 import type {
-	PasskeyCustodyView,
 	PasskeyNoticeView,
+	PendingAuthRequestView,
 } from "../../shared/browser-passkey-notice";
 import type {
 	HumanTabAction,
@@ -478,9 +478,22 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey notice, from the wiring that owns the shim's state
 	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
 	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
-	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
-	 * means none: the projection then carries null. */
-	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
+	/** The active tab's pending passkey request (`extensions/auth-request.ts`).
+	 * Absent means none: the projection then carries null. */
+	pendingAuthRequest?: (tabId: number) => PendingAuthRequestView | null;
+	/** Informational host-auth state only, never an ownership or CDP gate. An
+	 * overlapping human request cannot be attributed to an agent's input. */
+	nativeAuth?: {
+		pendingFor(
+			tabId: number,
+			documentEpoch: number,
+		): {
+			status: "pending-auth";
+			blocking: false;
+			requestId: string;
+			tabId: number;
+		}[];
+	};
 	/** Every wait an agent tab has on a person, across ALL tabs
 	 * (`user-attention.ts`). Absent means none: the projection carries `[]`. */
 	waitingOnUser?: () => UserAttentionEntry[];
@@ -565,7 +578,8 @@ export class BrowserHost implements BrowserActionContext {
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
 	private readonly waitingOnUser: BrowserHostOptions["waitingOnUser"];
-	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
+	private readonly pendingAuthRequest: BrowserHostOptions["pendingAuthRequest"];
+	private readonly nativeAuth: BrowserHostOptions["nativeAuth"];
 	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
 	/** S4b's popout health, read from the controller (or the launch's platform
@@ -617,7 +631,8 @@ export class BrowserHost implements BrowserActionContext {
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
 		this.waitingOnUser = options.waitingOnUser;
-		this.passkeyCustody = options.passkeyCustody;
+		this.pendingAuthRequest = options.pendingAuthRequest;
+		this.nativeAuth = options.nativeAuth;
 		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
 		this.addressOverlayMode =
@@ -652,6 +667,30 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	private async authorizedPerform(
+		method: string,
+		params: Record<string, unknown>,
+		requestId: string,
+	): Promise<Record<string, unknown>> {
+		if (!this.nativeAuth || !["click", "press", "type"].includes(method))
+			return this.performOnAuthorizedDocument(method, params, requestId);
+		const record = this.registry.requireSurface(params.tab);
+		const epoch = record.documentEpoch;
+		// Await the original operation under its original tab lane. Racing a
+		// pending-auth notification would release the lane while input still ran.
+		const result = await this.performOnAuthorizedDocument(
+			method,
+			params,
+			requestId,
+		);
+		if (record.documentEpoch !== epoch) return result;
+		const pending = this.nativeAuth.pendingFor(record.tabId, epoch);
+		// This is concurrent state, not proof this action caused a ceremony. Keep
+		// the real success/error, and never turn an unrelated human click into a
+		// refusal of otherwise permitted agent work.
+		return pending.length ? { ...result, auth_pending: pending } : result;
+	}
+
+	private async performOnAuthorizedDocument(
 		method: string,
 		params: Record<string, unknown>,
 		requestId: string,
@@ -1195,19 +1234,14 @@ export class BrowserHost implements BrowserActionContext {
 			// the same way: a background (often agent-driven) tab's request must not
 			// narrate itself into the page the user is looking at. It is shown when the
 			// user activates that tab, if it has not aged out.
-			// Suppressed while the tab is in passkey custody: the user is looking at
-			// the real prompt then, and a "could not complete" band beside it would
-			// contradict it.
+			// Suppressed while a real request is live on the tab: the user may be
+			// looking at the actual prompt, and a "could not complete" band beside it
+			// would contradict it. A passive autofill card is NOT a request, so this
+			// never suppresses anything for it (the reported bug).
 			passkeyNotice:
-				active && !this.passkeyCustody?.(active.tabId)
+				active && !this.pendingAuthRequest?.(active.tabId)
 					? (this.passkeyNotice?.(active.tabId) ?? null)
 					: null,
-			// Active tab only, like the notice: a hold brings its tab to the front
-			// when it begins, and a tab the user switched away from shows it again
-			// when they come back.
-			passkeyCustody: active
-				? (this.passkeyCustody?.(active.tabId) ?? null)
-				: null,
 			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
 			// notice: a background tab's request waits (its callback held) until the
 			// user switches to it, rather than asking about a page they cannot see.

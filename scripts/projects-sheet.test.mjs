@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -16,7 +17,9 @@ import { build } from "esbuild";
  *
  * BUNDLED RATHER THAN IMPORTED: these are TypeScript modules in the renderer
  * tree, and the app's tsconfig does not run here. The module imports nothing
- * from the renderer or Electron, so the bundle stays a pure function library.
+ * from the renderer or Electron except the plain i18n core (`t()` for the
+ * localized description seed), aliased below the way the app's Vite config
+ * resolves `@shared/i18n`, so the bundle stays a pure function library.
  */
 
 const bundle = await build({
@@ -30,6 +33,9 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	write: false,
+	alias: {
+		"@shared/i18n": resolve("src/i18n/index.ts"),
+	},
 });
 const source = bundle.outputFiles[0].text;
 const { sheet } = await import(
@@ -74,7 +80,9 @@ test("the key derivation: no usable characters derive the empty key", () => {
 });
 
 test("the description template: light sections, inside the field's cap", () => {
-	const template = sheet.PROJECT_DESCRIPTION_TEMPLATE;
+	/* Built per call in the active locale (English here); the fr seed is pinned
+	 * by `project-status-options-i18n.test.mjs`. */
+	const template = sheet.projectDescriptionTemplate();
 	assert.equal(template, "## Summary\n\n## Goals\n\n## Notes");
 	assert.ok(template.length < 240, "the seed must leave room to write");
 });

@@ -131,6 +131,12 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { splitSpokenSummary } from "../../voice/spoken-summary";
+import {
+	SpokenReplyNote,
+	SpokenSummaryBlock,
+} from "../../voice/spoken-summary-block";
+import { useVoiceStore } from "../../voice/voice-store";
 import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
@@ -2111,6 +2117,18 @@ const AssistantRow = memo(function AssistantRow({
 		() => parseReplies(record.text),
 		[record.text],
 	);
+	/*
+	 * THE AGENT'S SPOKEN SUMMARY, drawn as its own block at the end of the answer
+	 * instead of as a raw `Spoken:` line of prose (voice's design placement C).
+	 * Found by the same rule the server speaks it by, so the block is the paragraph
+	 * the person heard; `remainingContent` itself - copy, quote, Speak - is
+	 * untouched, because the stored message keeps the paragraph.
+	 */
+	const spoken = useMemo(
+		() => splitSpokenSummary(remainingContent, { streaming: record.streaming }),
+		[remainingContent, record.streaming],
+	);
+	const bodyContent = spoken ? spoken.body : remainingContent;
 	const inserts = useMemo(() => {
 		if (!record.inlineUi || record.inlineUi.text !== record.text) return;
 		// The wire addresses untrimmed prose. Quotes and surrounding whitespace
@@ -2118,10 +2136,10 @@ const AssistantRow = memo(function AssistantRow({
 		const { prefix, rest } = splitReplyPrefix(record.text);
 		const start = prefix.length + rest.length - rest.trimStart().length;
 		return record.inlineUi.widgets.map(({ offset, value }) => ({
-			offset: Math.max(0, Math.min(offset - start, remainingContent.length)),
+			offset: Math.max(0, Math.min(offset - start, bodyContent.length)),
 			node: <InlineUiHost value={value} />,
 		}));
-	}, [record.inlineUi, record.text, remainingContent.length]);
+	}, [record.inlineUi, record.text, bodyContent.length]);
 	// A tool-only assistant message has nothing to say; its tool rows carry the
 	// turn. `buildRows` already drops it before a wrapper is minted — see
 	// `paintsSomething` for why the record still exists at all — and this guard
@@ -2255,7 +2273,7 @@ const AssistantRow = memo(function AssistantRow({
 				 */}
 				{record.streaming && !inserts?.length ? (
 					<StreamingMarkdown
-						content={remainingContent}
+						content={bodyContent}
 						// A joined stream or a receipt gap cannot certify that its text
 						// is a new suffix. It and the authoritative settle both paint now.
 						animateInk={animateStream && !record.truncated}
@@ -2265,7 +2283,7 @@ const AssistantRow = memo(function AssistantRow({
 					/>
 				) : (
 					<MarkdownRenderer
-						content={remainingContent}
+						content={bodyContent}
 						className={cn(refused && "[--md-ink:var(--lo-danger)]")}
 						styleProps={isSmallView ? ROW_BODY_STYLE_SMALL : ROW_BODY_STYLE}
 						// A figure can already own focus and a horizontal scroll position
@@ -2279,6 +2297,23 @@ const AssistantRow = memo(function AssistantRow({
 						// re-asks its cached negatives (`claimFirstScan`, review R3-3b).
 						documentId={record.id}
 					/>
+				)}
+				{spoken && !spoken.held ? (
+					<SpokenSummaryBlock
+						sessionId={conversationId}
+						messageId={record.id}
+						summary={spoken.summary}
+						streaming={record.streaming}
+						isSmallView={isSmallView}
+					/>
+				) : (
+					!record.streaming && (
+						<SpokenReplyNote
+							sessionId={conversationId}
+							messageId={record.id}
+							isSmallView={isSmallView}
+						/>
+					)
 				)}
 				{record.stopReason === "aborted" && (
 					<p className="mt-1 text-ink-dim text-meta">
@@ -6131,6 +6166,18 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			THREAD_SEARCH_JUMP_MISS_COPY,
 		);
 	}, [notificationReveal, sessionId, jumpTo, settleNotificationReveal]);
+	/*
+	 * The voice History's "Full reply in chat": the same near path, for the message
+	 * the row spoke from. Only this conversation's own request is honoured.
+	 */
+	const voiceReveal = useVoiceStore((state) => state.reveal);
+	const settleVoiceReveal = useVoiceStore((state) => state.settleReveal);
+	useEffect(() => {
+		if (!voiceReveal || sessionId === null) return;
+		if (voiceReveal.sessionId !== sessionId) return;
+		settleVoiceReveal(voiceReveal.nonce);
+		void jumpTo(voiceReveal.messageId, THREAD_SEARCH_JUMP_MISS_COPY);
+	}, [voiceReveal, sessionId, jumpTo, settleVoiceReveal]);
 	/*
 	 * The rail's naming warm (D2): `onHover` already fires on the CARD's own
 	 * intent-delayed open, not on a fly-over, so each call here is one the

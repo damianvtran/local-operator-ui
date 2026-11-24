@@ -13,7 +13,7 @@ import {
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { CdpContents } from "../cdp";
 import { BrowserHostError } from "../errors";
-import { custodyRefusal } from "../extensions/passkey-custody";
+import { AUTH_REQUEST_REFUSAL_REASON } from "../extensions/auth-request";
 import { CDP_DEADLINE_MS } from "../vendor/driver/deadline";
 import type { BrowserActionContext } from "./context";
 import { requesterOf, stringParam } from "./context";
@@ -236,7 +236,7 @@ const reservations = new Map<
 		webContentsId: number;
 		path: string;
 		cancelled: boolean;
-		/** Why `abortRecording` cancelled this start: passkey custody is answered
+		/** Why `abortRecording` cancelled this start: a provider prompt is answered
 		 * differently from a released tab (see `recordStart`). */
 		cancelReason?: string;
 		large: boolean;
@@ -803,6 +803,14 @@ function capWords(bytes: number): string {
 
 /** D9's start-error taxonomy: version first, then Chromium's own text. */
 function classifyStartFailure(error: unknown): BrowserHostError {
+	// The pool's capture backstop already answered with the typed prompt
+	// refusal; re-wording it as an engine failure would send the agent to
+	// "update the desktop app" for a password manager on screen.
+	if (
+		error instanceof BrowserHostError &&
+		error.data?.reason === AUTH_REQUEST_REFUSAL_REASON
+	)
+		return error;
 	const message = error instanceof Error ? error.message : String(error);
 	const major = chromiumMajor();
 	if (major > 0 && major < RECORD_FIRST_CHROMIUM_MAJOR) {
@@ -1262,35 +1270,42 @@ export async function abortAndEnd(
 	await endReplaced(recording);
 }
 
-/** The reason (and tombstone `detail`) of a recording passkey custody ended. */
-export const CUSTODY_DISCARD_REASON = "passkey_custody";
+/** The tombstone `detail` of a recording a password manager's prompt ended. */
+export const PROMPT_DISCARD_REASON = "passkey_prompt";
 
 /**
- * A password manager's prompt just came up in this tab under passkey custody
- * (`extensions/passkey-custody.ts`): DISCARD every recording on it, now.
+ * A password manager's prompt just loaded in this tab (`extensions/
+ * auth-request.ts`): DISCARD every recording on it, now.
  *
- * WHY DISCARD, NOT PAUSE (review R1/Q1, R2/Q2). The default engine is
- * Chromium's in-process recorder (`Page.startScreenRecording`): it encodes the
- * composited surface, prompt frame included, and raises no CDP event custody
- * could drop, so its clip would carry the prompt to the agent at `record_stop`.
- * The high-quality engine could be paused in principle, but its screencast
- * restarts and frame acks are refused under custody and it would fail or freeze
- * instead. So both end here, with a tombstone that tells the owner's
- * `record_stop` why, and nothing is written.
+ * WHAT THIS IS, AND IS NOT. It is a CAPTURE guard and nothing else: the tab is
+ * not held and the agent keeps working in it (operator requirement, 2026-11-23),
+ * but a clip is the one artefact that would leave the agent holding a video of
+ * the prompt after the fact. A screenshot is answered immediately and visibly to
+ * a person who is looking at that tab; a recording publishes later, to anyone
+ * the session talks to (review R1/Q1, R2/Q2). The pre-engagement boundary is
+ * untouched: a provider document only loads in an agent tab after a trusted
+ * click into it, so there is nothing to record before that.
+ *
+ * WHY DISCARD, NOT PAUSE. The default engine is Chromium's in-process recorder
+ * (`Page.startScreenRecording`): it encodes the composited surface, prompt frame
+ * included, and raises no CDP event that could be filtered, so a paused clip
+ * would still carry the prompt to the agent at `record_stop`. The high-quality
+ * engine could be paused in principle, but restarting its screencast mid-prompt
+ * is exactly the re-encode this guard exists to avoid. So both end here, with a
+ * tombstone that tells the owner's `record_stop` why, and nothing is written.
  *
  * Synchronous bookkeeping first (`abortRecording`: aborted flag, timer, encoder
  * window, start reservations), then Chromium's recorder is stopped and its
- * stream closed UNREAD (`endReplaced`; `IO.read` stays refused under custody).
- * A stop already in flight (`finishing`) is not stopped twice: it sees
- * `aborted` and throws before publishing, and its `IO.read` is refused.
+ * stream closed UNREAD (`endReplaced`). A stop already in flight (`finishing`) is
+ * not stopped twice: it sees `aborted` and throws before publishing.
  */
-export function discardRecordingForCustody(webContentsId: number): void {
+export function discardRecordingForAuthPrompt(webContentsId: number): void {
 	const recording = recordings.get(webContentsId);
 	const stopping = !!recording?.finishing;
-	abortRecording(webContentsId, CUSTODY_DISCARD_REASON, {
+	abortRecording(webContentsId, PROMPT_DISCARD_REASON, {
 		tombstone: true,
 		explanation:
-			"A password manager prompt needed the user in this tab, so the recording was discarded to keep the prompt out of it. Nothing was written; start a new recording once the user returns the tab.",
+			"A password manager's prompt opened in this tab, so the recording was discarded to keep the prompt out of it. Nothing was written; the tab is still yours, and a new recording works once the prompt has gone.",
 	});
 	if (recording && !stopping) void endReplaced(recording);
 }
@@ -1435,6 +1450,15 @@ export async function recordStart(
 			);
 		}
 	}
+	// A PROVIDER PROMPT ON SCREEN (architect option A, review S3): a clip of it
+	// would hand the agent vault UI, so the start is refused HERE — after the
+	// same-owner, path and limit refusals and before the first CDP call or the
+	// replace of another owner's recording, which is the ordering contract
+	// above. Both engines pass this one point. The admission-time discard
+	// (`discardRecordingForAuthPrompt`) still covers a prompt that arrives
+	// while the start is in flight or once it is running.
+	ctx.registry.assertNoAuthPrompt(id, "capture");
+	const promptEpoch = ctx.registry.authPromptEpoch(id);
 	if (active) {
 		// The other owner's session is gone (the wedge `owner_recover` exists to
 		// avoid), so its recording is discarded rather than allowed to block this
@@ -1523,13 +1547,13 @@ export async function recordStart(
 				);
 				started = true;
 			} catch (error) {
-				// Passkey custody began while this start was in flight: the pool drops
-				// Chromium's answer (`cdp.ts`), but the recorder may well be running,
-				// with nobody left to stop it. Treat it as started so the cancelled
-				// branch below stops it (`Page.stopScreenRecording` + `IO.close` are
-				// custody teardown) and the agent gets the custody refusal. Other
-				// cancellations keep their answer: their tab is going away.
-				if (entry.cancelReason !== CUSTODY_DISCARD_REASON)
+				// A provider prompt loaded while this start was in flight: the discard
+				// already ran, but Chromium's recorder may still be running with nobody
+				// left to stop it. Treat it as started so the cancelled branch below
+				// stops it (`Page.stopScreenRecording` + `IO.close`) and the agent gets
+				// the typed answer. Other cancellations keep their own: their tab is
+				// going away.
+				if (entry.cancelReason !== PROMPT_DISCARD_REASON)
 					throw classifyStartFailure(error);
 				started = true;
 			}
@@ -1546,6 +1570,18 @@ export async function recordStart(
 			await clearViewport(ctx.cdp, contents, viewportToken);
 		}
 		throw error;
+	}
+	// A prompt that became present without the admission-time discard reaching
+	// this start (an admission between the pre-check and the reservation, or a
+	// provider frame the committed tree shows) is the same discard: the clip
+	// may already carry it, so nothing is registered and nothing is published.
+	if (
+		!entry.cancelled &&
+		(ctx.registry.authPromptEpoch(id) !== promptEpoch ||
+			ctx.registry.authPromptPresent(id))
+	) {
+		entry.cancelled = true;
+		entry.cancelReason = PROMPT_DISCARD_REASON;
 	}
 	// The tab was released while this start was in flight (`forget`/`detach`, or a
 	// DevTools detach): registering now would leave a recording on a handle nobody
@@ -1567,7 +1603,15 @@ export async function recordStart(
 		} else if (size && viewportToken) {
 			await clearViewport(ctx.cdp, contents, viewportToken);
 		}
-		if (entry.cancelReason === CUSTODY_DISCARD_REASON) throw custodyRefusal();
+		// The capture guard, not a tab lock: nothing was recorded and the tab is
+		// still the agent's, so the agent may start another recording once the
+		// prompt has gone.
+		if (entry.cancelReason === PROMPT_DISCARD_REASON)
+			throw new BrowserHostError(
+				"owner_refused",
+				"a password manager's prompt appeared in that tab, so the recording was discarded rather than handing you its pixels; nothing was saved, and the tab is still yours",
+				{ reason: "record_aborted", detail: PROMPT_DISCARD_REASON },
+			);
 		throw new BrowserHostError(
 			"internal",
 			"that browser tab was released while the recording was starting; nothing was saved. Use 'open' with a URL to get a new tab.",
@@ -1738,7 +1782,7 @@ export function abortRecording(
 	options: {
 		tombstone?: boolean;
 		clearSettled?: boolean;
-		/** The tombstone's sentence, where the cause is known (custody); the
+		/** The tombstone's sentence, where the cause is known (a prompt); the
 		 * default is the detach event's deliberately cause-free one. */
 		explanation?: string;
 	} = {},

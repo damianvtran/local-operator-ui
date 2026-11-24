@@ -1,0 +1,193 @@
+{
+	"instance": "audit-i18n-2074-r3-fr",
+	"locale": "fr",
+	"audit_date": "2026-11-23",
+	"round": 3,
+	"scope": [
+		"ui.chat.voice: FULL namespace (91 keys); the 10 new keys of this PR audited in context"
+	],
+	"auditor": {
+		"agent": "reviewer (lopdev team role, task audit3-2074-fr)",
+		"session": "a3dbbbd3c187 (taken from this session's scratchpad directory name, not from a registry read)",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only reviewer session. Not the translator, not the round-1 auditor (session 4709f4dbea46) and not the round-2 auditor (session 88cc3f37d4bd, whose receipt was refused by ledger-assemble for naming no namespace). Edited no repo file, posted nothing to GitHub, ran no ledger script that writes; only this receipt was written. Same model family (anthropic/claude-sonnet-5-5) as the round-1 and round-2 auditors and, per the ledger row, the translator: disclosed, so independence is session-level, not model-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "0e7a2c48b47a7b6dfcc5d3bc3ef901d9050ff4fd",
+	"head_note": "Catalogue bytes are those of 0e7a2c48b4 and unchanged at the worktree HEAD 4ce22441fc (git diff 0e7a2c48b4 HEAD -- src/i18n is empty); hashes recomputed from the working tree.",
+	"previous_head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"round1_receipt": {
+		"instance": "audit-i18n-2074-fr",
+		"path": "i18n/receipts/audit-i18n-2074-fr.json",
+		"scratch_path": "/Users/bentran/.local-operator/sessions/4709f4dbea46/scratchpad/receipts/fr.json",
+		"note": "audited pre-fix bytes (fr sha256 df1c12d0...); found M1 summary_muted, M2 full_reply_link, N1 summary_upcoming"
+	},
+	"round2_receipt": {
+		"instance": "audit-i18n-2074-r2-fr",
+		"path": "/Users/bentran/.local-operator/sessions/88cc3f37d4bd/scratchpad/receipts/fr-r2.json",
+		"sha256": "b635a9ed7a3059bafe246d6275e1e8b5ff3bf9187173c783482b72e138ad8daf",
+		"note": "delta audit, judged clean on the same fr bytes; REFUSED by ledger-assemble (no namespace block). This receipt supersedes it as the namespace-bound audit; it re-derives rather than relies on it."
+	},
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"references": {
+		"glossary": "local-operator@origin/main i18n/glossary.md (no voice/replay/play rows; 'temporary chat' -> 'conversation temporaire')",
+		"style_guide": "local-operator@origin/main i18n/style-guides/fr.md: vous, imperative actions, past-participle statuses, sentence case, U+202F before : ; ! ?, ellipsis U+2026, fr 15-25% longer than en"
+	},
+	"scope_note": "Full-namespace audit of fr/ui.chat.voice.json. Key parity en/fr 91/91 (same keys, same order). The 10 new keys checked key by key in context of the 81 shipped keys (consistency with phase_speaking, spoken_part_note, cut_chip, mute, toggle_on and ui.common.speech.speak_control). The 81 older keys: mechanical checks only, no semantic re-audit (unchanged by this PR).",
+	"mechanical": {
+		"key_parity": "PASS 91/91",
+		"file_nfc_no_bom": "PASS, ends with newline",
+		"nfc_all_values": "PASS",
+		"ascii_three_dots": "PASS none",
+		"double_or_edge_spaces": "PASS none",
+		"control_or_bidi_chars": "PASS none (Cc/Cf and U+200E/200F/202A-202E/2066-2069/061C)",
+		"nbsp_u00a0": "PASS none",
+		"icu_placeholders": "PASS set of {..} equal en vs fr for all 91; none in the 10 new keys",
+		"french_u202f_before_colon_semicolon_bang_question": "PASS for all 91 values (every : ; ! ? is preceded by U+202F)",
+		"non_ascii_non_letter_in_new_keys": "U+00B7 in summary_stopped and summary_cut (as en); U+2191 in full_reply_link (as en)",
+		"length_note": "fr/en chars: label 15/12, upcoming 20/12, speaking 8/8, stopped 37/28, muted 31/18, cut 33/30, static 11/14, replay 9/6, play 4/4, full_reply_link 39/20. Longest 37 and 39 are about 1.3x/2x en; not rendered here, so fit is unverified."
+	},
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 91,
+			"keys_new_in_pr": 10,
+			"keys": [
+				"ui.chat.voice.summary_label",
+				"ui.chat.voice.summary_upcoming",
+				"ui.chat.voice.summary_speaking",
+				"ui.chat.voice.summary_stopped",
+				"ui.chat.voice.summary_muted",
+				"ui.chat.voice.summary_cut",
+				"ui.chat.voice.summary_static",
+				"ui.chat.voice.replay",
+				"ui.chat.voice.play",
+				"ui.chat.voice.full_reply_link"
+			],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"fr": "88a106766524a27a2cd489546dafb1e851f39b62d722986255d1046c449b3d7f"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"hash_method": "sha256 of whole-file bytes",
+			"per_key": [
+				{
+					"key": "ui.chat.voice.summary_label",
+					"value": "Lu à voix haute",
+					"en": "Spoken aloud",
+					"chars_fr": 15,
+					"chars_en": 12,
+					"verdict": "ok",
+					"note": "ok: same stem as shipped spoken_part_note 'Lu à voix haute : début seulement' (context asks to match it); past participle, masculine to agree with 'résumé'."
+				},
+				{
+					"key": "ui.chat.voice.summary_upcoming",
+					"value": "Sera lu à voix haute",
+					"en": "To be spoken",
+					"chars_fr": 20,
+					"chars_en": 12,
+					"verdict": "ok",
+					"note": "ok: future 'Sera lu à voix haute' = context note (will be read once the reply finishes); not an instruction; same stem as summary_label."
+				},
+				{
+					"key": "ui.chat.voice.summary_speaking",
+					"value": "Je parle",
+					"en": "Speaking",
+					"chars_fr": 8,
+					"chars_en": 8,
+					"verdict": "ok",
+					"note": "ok: identical to shipped phase_speaking 'Je parle' (context: same word and person)."
+				},
+				{
+					"key": "ui.chat.voice.summary_stopped",
+					"value": "Lu à voix haute · arrêté avant la fin",
+					"en": "Spoken aloud · stopped early",
+					"chars_fr": 37,
+					"chars_en": 28,
+					"verdict": "ok",
+					"note": "ok: 'Lu à voix haute · arrêté avant la fin' - middle dot with plain spaces as shipped cut_chip 'Coupée · suite ci-dessus ↑'; 'arrêté' agrees with 'Lu'; neutral, not an error. 37 chars, not rendered here."
+				},
+				{
+					"key": "ui.chat.voice.summary_muted",
+					"value": "Non lu à voix haute (son coupé)",
+					"en": "Not spoken (muted)",
+					"chars_fr": 31,
+					"chars_en": 18,
+					"verdict": "ok",
+					"note": "ok: 'Non lu à voix haute (son coupé)' keeps the 'aloud' sense so 'Non lu' cannot read as 'unread message'; 'son coupé' matches shipped mute 'Couper le son de la voix'. Round-1 M1 resolved."
+				},
+				{
+					"key": "ui.chat.voice.summary_cut",
+					"value": "Lu à voix haute · début seulement",
+					"en": "Spoken aloud · first part only",
+					"chars_fr": 33,
+					"chars_en": 30,
+					"verdict": "ok",
+					"note": "ok: 'Lu à voix haute · début seulement' mirrors spoken_part_note 'début seulement'; middle-dot form as summary_stopped."
+				},
+				{
+					"key": "ui.chat.voice.summary_static",
+					"value": "Résumé oral",
+					"en": "Spoken summary",
+					"chars_fr": 11,
+					"chars_en": 14,
+					"verdict": "ok",
+					"note": "ok: noun phrase 'Résumé oral', sentence case; no replay implied; 11 chars, works as accessible name. Same mild ambiguity as en 'Spoken summary' (written to be spoken)."
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"value": "Réécouter",
+					"en": "Replay",
+					"chars_fr": 9,
+					"chars_en": 6,
+					"verdict": "finding",
+					"note": "nit-level: 'Réécouter' is natural for the listener and one word as the context asks, but shipped ui.common.speech.speak_control.replay_speech is 'Relire à voix haute' (verb pair with speak_aloud 'Lire à voix haute' and new play 'Lire'), so the same replay action uses two verbs across the chat surface; en uses one verb ('Replay'/'Replay speech'). See finding N1."
+				},
+				{
+					"key": "ui.chat.voice.play",
+					"value": "Lire",
+					"en": "Play",
+					"chars_fr": 4,
+					"chars_en": 4,
+					"verdict": "ok",
+					"note": "ok: 'Lire' = verb of shipped speak_aloud 'Lire à voix haute'; imperative, one word; context 'unmute and read the summary aloud now' fits next to the 'Non lu à voix haute' label."
+				},
+				{
+					"key": "ui.chat.voice.full_reply_link",
+					"value": "Réponse complète dans la conversation ↑",
+					"en": "Full reply in chat ↑",
+					"chars_fr": 39,
+					"chars_en": 20,
+					"verdict": "ok",
+					"note": "ok: 'conversation' is the shipped word for chat across the fr voice block and corpus; arrow U+2191 kept as the context requires; no 'ci-dessus' (link sits in a History row). Round-1 M2 resolved."
+				}
+			],
+			"findings": [
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"key": "ui.chat.voice.replay",
+					"current": "Réécouter",
+					"suggested": "Relire (optional; keep 'Réécouter' if the listener-side verb is preferred)",
+					"reason": "The shipped fr replay action in ui.common.speech.speak_control.replay_speech is 'Relire à voix haute' and its pair speak_aloud is 'Lire à voix haute'; the new play is 'Lire', so 'Relire' would pair with it and with the shipped string, while 'Réécouter' introduces a second verb for one action. Both are valid French; 'Relire' alone could be read as re-reading text, which is the reason to keep 'Réécouter'. Not a defect, no action required."
+				}
+			]
+		}
+	},
+	"findings_total": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"result": "clean-with-findings",
+	"status": "passed",
+	"verdict": "No blocker, major or minor. 1 NIT (replay verb vs shipped replay_speech), optional. Round-1 M1, M2, N1 are resolved in the bytes. Terminal."
+}

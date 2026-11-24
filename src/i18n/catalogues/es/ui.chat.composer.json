@@ -6,6 +6,7 @@
 	"ui.chat.composer.placeholder.aside": "Pregunta al margen — Esc cierra el panel",
 	"ui.chat.composer.placeholder.busy": "El agente está ocupado",
 	"ui.chat.composer.placeholder.idle": "Pregunta lo que quieras. @ añade archivos, / ejecuta comandos",
+	"ui.chat.composer.placeholder.voice": "Habla o escribe aquí",
 	"ui.chat.composer.placeholder.no_provider": "Conecta un proveedor para empezar a chatear",
 	"ui.chat.composer.placeholder.recording": "Grabando",
 	"ui.chat.composer.placeholder.secret_answer": "Responde a la solicitud de secreto en el panel de consultas",

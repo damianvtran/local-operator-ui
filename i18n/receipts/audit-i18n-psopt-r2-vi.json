@@ -1,0 +1,116 @@
+{
+	"instance": "audit-i18n-psopt-r2-vi",
+	"locale": "vi",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": [
+		"ui.projects (round 2: name_required, name_grammar retranslated to Key; delta 10c0c83a272..e1cb9d658fa, en change b3ebaf7944b)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-vi, round 2)",
+		"session": "b6eeb2f98416",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5' and 'Session ID: b6eeb2f98416'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue or ledger, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family is possible and not verifiable, so independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"vi": "7c81c086d33997ea44579bacf841ab4e98a464755670d4a464b3dfdcd53f3a68",
+		"en_context": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9, same blob as translator rev) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7: project -> 'dự án'",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/vi.md sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51 (identical on origin/main): bạn-register dropped pronouns, terse, sentence case, no space before punctuation, Latin digits, NFC, other-only plurals",
+		"shipped_terms": "vi ui.projects: tags 'Thẻ'; key 'Khóa'; project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces 'Chữ cái, chữ số, dấu chấm, gạch dưới hoặc gạch ngang; không có khoảng trắng.'; comma_separated_... 'Dùng chữ thường, chữ số, dấu gạch dưới hoặc gạch ngang.'; 'Mục tiêu' already = Target (editors/list/sort)."
+	},
+	"checks": [
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check byte-identical; check-duplicates ok; check-strings ok; context-parity ok (rerun on e1cb9d658fa)"
+		},
+		{
+			"check": "key-set parity en vs vi",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "delta in scope",
+			"result": "PASS",
+			"detail": "10c0c83a272..e1cb9d658fa vi: only name_required and name_grammar changed; 0 added, 0 removed, no other value changed"
+		},
+		{
+			"check": "placeholders/ICU/plurals",
+			"result": "PASS",
+			"detail": "none in en or vi for the changed keys; vi other-only"
+		},
+		{
+			"check": "NFC / bidi",
+			"result": "PASS",
+			"detail": "both NFC; no U+200E/F, U+202A-E, U+2066-9"
+		},
+		{
+			"check": "vi punctuation",
+			"result": "PASS",
+			"detail": "no space before punctuation; sentence-final '.'"
+		},
+		{
+			"check": "terminology Key",
+			"result": "PASS",
+			"detail": "'Khóa' matches field labels project_editors.key / project_form_dialog.key and a_project_with_this_key_already_exists 'khóa'; khóa orthography per style guide"
+		},
+		{
+			"check": "round-1 N1",
+			"result": "RESOLVED",
+			"detail": "name_grammar now 'Khóa phải bắt đầu … và chỉ gồm …', the suggested rule form"
+		},
+		{
+			"check": "length (chars vi/en)",
+			"result": "NOTE",
+			"detail": "name_grammar 131/87 (wrapping inline error; may wrap per context); name_required 19/23"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 0
+	},
+	"findings": [
+		{
+			"id": "M1",
+			"severity": "MINOR",
+			"key": "ui.projects.project_edit_model.name_required",
+			"current": "Đặt khóa cho dự án.",
+			"suggested": "Nhập khóa cho dự án.",
+			"reason": "'Đặt khóa' is the everyday phrase for setting a lock (đặt khóa màn hình / đặt khóa cho tệp), so out of context it reads 'lock the project'. The field label 'Khóa' beside it disambiguates, hence MINOR. The context says the user types a key; 'Nhập khóa' is the standard form-field verb and removes the lock reading. Same length."
+		}
+	],
+	"notes_not_findings": [
+		"Round-1 source note (Key label vs 'name' error) is resolved at the source by b3ebaf7944b.",
+		"Deferred per brief, not re-raised: tag first-character rule gap in the English source."
+	],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "M1",
+		"ui.projects.project_edit_model.name_grammar": "ok: Key term 'Khóa', N1 rule form applied, ASCII-only 'chữ cái không dấu' kept, separator wording matches tag_grammar"
+	},
+	"result": "clean-with-findings",
+	"status": "passed",
+	"hash_paths": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"vi": "src/i18n/catalogues/vi/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"previous_round": {
+		"instance": "audit-i18n-psopt-vi",
+		"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+		"receipt_sha256": "157c62789df5c12d2a45b27b7bc0b549f0a926820e8164dee6bf2b984b300ccb"
+	}
+}

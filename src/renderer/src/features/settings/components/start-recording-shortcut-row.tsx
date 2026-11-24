@@ -125,6 +125,10 @@ export function StartRecordingShortcutRow({
 				if (END_EDIT_KEYS.has(event.key) || MODIFIER_ONLY_KEYS.has(event.key)) {
 					if (END_EDIT_KEYS.has(event.key)) setError(null);
 					event.preventDefault();
+					// Esc is this recorder's cancel, never the page's close.
+					if (event.key === "Escape" || event.key === "Esc") {
+						event.stopPropagation();
+					}
 					return;
 				}
 				const candidate = chordFromEvent(event);

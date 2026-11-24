@@ -106,10 +106,20 @@ html[data-opaque="1"] #approvals-card {
 }
 
 .card-close {
+	/* Pin the close to the header's inline end on its own. The title's
+	 * `flex: 1` used to push it there, but a notice-only card hides the title
+	 * (D7), and the X then fell back to the inline start under the brand line
+	 * (design round 4, D10). `auto` absorbs the free space with or without a
+	 * visible title, and mirrors under RTL. */
+	margin-inline-start: auto;
 	/* The app's 28px control ladder; the earlier 19px button read as a tag. */
 	min-height: 28px;
 	padding: 0 8px;
 	font-size: 11px;
+}
+
+.card-close-x-hidden {
+	display: none;
 }
 
 .card-close:hover,
@@ -180,6 +190,37 @@ html[data-opaque="1"] #approvals-card {
 	flex: 0 0 auto;
 	min-height: 2.9em;
 	overflow-y: auto;
+}
+
+/* The native passkey notice: one sentence and its dismiss, in the card's
+ * own register (not the warning wash of a blocking band). */
+.card-notice:not([hidden]) {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	flex-shrink: 0;
+	padding: 2px 0 8px;
+}
+
+/* Beside an approval: a hairline under the notice (design D8), the same rule
+ * colour the card already uses, so the notice's "this site" does not read as
+ * the approval's origin. */
+.card-notice-mixed .card-notice:not([hidden]) {
+	margin-bottom: 8px;
+	border-bottom: 1px solid var(--lo-border-control);
+}
+
+/* In a mixed card the inline X is secondary to the approval controls. */
+#approvals-notice-dismiss {
+	border-color: transparent;
+}
+
+.card-notice-text {
+	flex: 1;
+	margin: 0;
+	color: var(--lo-ink);
+	font-size: 12px;
+	line-height: 1.45;
 }
 
 #approvals-list {

@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "Independent DELTA semantic copy audit, round 2 (changed keys only, in context of sibling summary_* keys)",
+  "locale": "es",
+  "namespace": "ui.chat.voice",
+  "date": "2026-11-23",
+  "instance": "audit-i18n-2074-r2-es",
+  "round": 2,
+  "repo": "damianvtran/local-operator-ui",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+  "head": "0e7a2c48b47a7b6dfcc5d3bc3ef901d9050ff4fd",
+  "previous_head": "e2e2e812e2",
+  "diff_audited": "git diff e2e2e812e2 0e7a2c48b4 -- src/i18n/catalogues/es/ui.chat.voice.json (4 lines: exactly the two replacements, nothing else)",
+  "auditor": {
+    "agent": "reviewer (lopdev team role, task audit2-2074-es)",
+    "session": "39b66b8b4b4f (inferred from scratchpad path of this session; not otherwise readable)",
+    "model": "anthropic/claude-sonnet-5-5",
+    "actual_model_source": "Served model per this session's system header; no provider fallback observed.",
+    "independent_from_translator_session": true,
+    "independence_note": "Read-only reviewer. Edited no repo file; only file written is this receipt in scratchpad. Not the translator and not the round-1 auditor (a different session). Same model family as the translator (anthropic/claude-sonnet-5-5 family), so independence is session-level, not model-level. No MT service used."
+  },
+  "round1_reference": {
+    "receipt_id": "es round-1 audit of PR 2074 @ e2e2e812e2 (independent audit; minors/nits in 10 new keys)",
+    "path": "/Users/bentran/.local-operator/sessions/e5622264064a/scratchpad/receipts/es.json",
+    "note": "That file at read time carries instance voice-history-full-text-es (PR 2065, head a9161f63eb); it does not name PR 2074 @ e2e2e812e2 findings, so the round-1 suggested replacements were taken from the brief, not verified from that receipt."
+  },
+  "hash_method": "sha256 of raw file bytes (ledger-check.mjs sha256File)",
+  "references": {
+    "glossary": {
+      "repo": "local-operator",
+      "path": "i18n/glossary.md",
+      "at": "origin/main 2b7cba4b0270",
+      "sha256": "5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7",
+      "note": "no entry for mute/stop/interrupt"
+    },
+    "style_guide": {
+      "repo": "local-operator",
+      "path": "i18n/style-guides/es.md",
+      "at": "origin/main 2b7cba4b0270",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    "shipped_terms": "es/ui.chat.voice.json: phase_interrupted 'Interrumpido', interrupted_at 'Interrumpido en {time}', phase_silenced 'Silenciada', mute 'Silenciar la voz', silenced_caption, 'en voz alta' wording"
+  },
+  "namespaces": {
+    "ui.chat.voice": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 2,
+      "keys": [
+        "ui.chat.voice.summary_stopped",
+        "ui.chat.voice.summary_muted"
+      ],
+      "key_count_en": 91,
+      "key_count_es": 91,
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "sha256": {
+        "en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+        "es": "2283daa543114841f433c18d5d9248a9c3aeb8e932a1808ea3919e5cb358848b"
+      },
+      "context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+      "en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+      "es_path": "src/i18n/catalogues/es/ui.chat.voice.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json"
+    }
+  },
+  "per_key": [
+    {
+      "key": "ui.chat.voice.summary_stopped",
+      "en": "Spoken aloud · stopped early",
+      "es": "Leído en voz alta · interrumpido",
+      "chars": 32,
+      "finding": null,
+      "assessment": "Context: person spoke over the voice; not an error. 'interrumpido' matches shipped phase_interrupted/interrupted_at, agrees (masc. impersonal) with 'Leído', and is shorter than prior value. Loses literal 'early' but cause (interruption) is the sidecar's point. Middle dot kept, sentence case, parallels summary_cut (41 chars)."
+    },
+    {
+      "key": "ui.chat.voice.summary_muted",
+      "en": "Not spoken (muted)",
+      "es": "No se leyó (voz silenciada)",
+      "chars": 27,
+      "finding": null,
+      "assessment": "Context: voice silenced, words not spoken, Play follows. 'voz silenciada' matches shipped mute 'Silenciar la voz' / phase_silenced; removes ambiguity of bare 'silenciado' (who/what muted). Past 'No se leyó' parallels summary_label 'Leído en voz alta'. 'leyó' unaccented-monosyllable rules fine."
+    }
+  ],
+  "mechanical": {
+    "diff_exactly_replacements": true,
+    "key_parity_en_es": "91/91, symmetric diff empty",
+    "placeholders_in_changed_keys": "none",
+    "ascii_three_dots": "none in file",
+    "edge_or_double_spaces": "none",
+    "control_or_bidi_chars_Cc_Cf": "none",
+    "nfc": "all values NFC",
+    "brace_tokens": "9 pre-existing {time}/{name}-style keys elsewhere in the file, untouched by this round",
+    "en_catalogue_and_context_unchanged_vs_e2e2e812e2": "git diff --stat shows no en ui.chat.voice.* change in range",
+    "length_fit_393px": "27 and 32 chars, both shorter than shipped summary_cut (41) and full_reply_link (31 incl. link); no maxCells declared; not measured in a rendered frame"
+  },
+  "findings": [],
+  "verdict": "clean — TERMINAL (no blocker/major/minor/nit)",
+  "limitations": [
+    "Source-only semantic audit, not rendered proof.",
+    "Round-1 receipt at the given path could not corroborate the replacement list (see round1_reference.note)."
+  ]
+}

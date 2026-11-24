@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "Ajustes del backend",
 	"ui.settings.navigation.settings_sidebar.application_updates": "Actualizaciones de la app",
 	"ui.settings.navigation.settings_sidebar.account": "Cuenta",
-	"ui.settings.navigation.settings_page.retrying": "Reintentando"
+	"ui.settings.navigation.settings_page.retrying": "Reintentando",
+	"ui.settings.navigation.settings_page.close_settings": "Cerrar ajustes",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "Cerrar (Esc)"
 }

@@ -1,4 +1,5 @@
 import {
+	DESKTOP_CONTRACT_REFUSAL_DETAIL,
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_CODE,
 	type DesktopResponse,
@@ -138,7 +139,7 @@ export async function requestDesktopOutcome(
 		return {
 			response: {
 				status: 422,
-				body: { detail: receiptIssues ?? "Invalid desktop operation." },
+				body: { detail: receiptIssues ?? DESKTOP_CONTRACT_REFUSAL_DETAIL },
 			},
 			answered: false,
 		};

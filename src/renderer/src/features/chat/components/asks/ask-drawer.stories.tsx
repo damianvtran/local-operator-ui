@@ -48,6 +48,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { screen, userEvent } from "@storybook/test";
+import { useState } from "react";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -1427,5 +1428,87 @@ export const SettledRowFullTextAtFloor: Story = {
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
+	},
+};
+
+/*
+ * THE CONFIRM DOOR ("Confirm and send…", `AskPanelProps.onConfirm`; design round 1,
+ * D4). No story wired `onConfirm`, so the control rendered nowhere in the gallery and
+ * the design round needed a scratch story. These are its states: idle beside Send
+ * answer with the approval hint under the row; in flight while main's native sheet
+ * is up (the label swaps without moving the row, D6); one of main's keyed refusals;
+ * the change row with Confirm change; and the change row WITHOUT it, where the
+ * recorded answer was sent unconfirmed and no change could count (QA round 1, Q1).
+ * The native sheet itself is main's and cannot render here.
+ */
+export const ConfirmIdle: Story = {
+	args: { ...AnswerReady.args, onConfirm: noop },
+};
+
+/**
+ * In flight: a stateful wrapper marks the ask `sending` on the confirm press, the
+ * way the session page does while main's sheet is open.
+ */
+function ConfirmingDrawer(props: Story["args"]) {
+	const [outcomes, setOutcomes] = useState<
+		Record<string, { sending: boolean; refused: null }>
+	>({});
+	return (
+		<AskDrawer
+			{...(props as Parameters<typeof AskDrawer>[0])}
+			outcomes={outcomes}
+			onConfirm={(askId) =>
+				setOutcomes({ [askId]: { sending: true, refused: null } })
+			}
+		/>
+	);
+}
+
+export const Confirming: Story = {
+	args: ConfirmIdle.args,
+	render: (args) => <ConfirmingDrawer {...args} />,
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Confirm and send…" }),
+		);
+		await screen.findByText("Confirming…");
+	},
+};
+
+export const ConfirmRefused: Story = {
+	args: {
+		...ConfirmIdle.args,
+		outcomes: {
+			"a-7f3c": {
+				sending: false,
+				refused:
+					"Open the conversation, then confirm again. It isn't running, so this answer couldn't be confirmed. An answer sent without confirming won't count as your approval.",
+			},
+		},
+	},
+};
+
+export const ConfirmChange: Story = {
+	args: { ...Changeable.args, onConfirm: noop },
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Change answer" }),
+		);
+		await screen.findByRole("button", { name: "Confirm change…" });
+	},
+};
+
+export const ConfirmChangeWithheld: Story = {
+	args: {
+		...ConfirmChange.args,
+		frontend: frontend([
+			ask({ ...changeableAsk(), answered_by: { surface: "unverified" } }),
+		]),
+	},
+	play: async () => {
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Change answer" }),
+		);
+		await screen.findByRole("button", { name: "Update answer" });
 	},
 };

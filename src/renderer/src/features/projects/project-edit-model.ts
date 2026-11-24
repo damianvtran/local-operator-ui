@@ -15,9 +15,9 @@ import { t } from "@shared/i18n";
  * copy of "Titles are at most 80 characters" would be the defect.
  *
  * THE RULES ARE THE WIRE'S, NOT INVENTIONS: every bound here is the bound the
- * request schema in `shared/desktop-contract.ts` validates, and `projectKey`
- * reuses `projectNameRule` and `projectTagRule` directly rather than
- * re-spelling the grammar. What is deliberately NOT here: anything the backend
+ * request schema in `shared/desktop-contract.ts` validates, and the key and
+ * tag rules below reuse that module's `projectNameRuleKey` and
+ * `projectTagRuleKey` rather than re-spelling the grammar. What is deliberately NOT here: anything the backend
  * owns as a STATE question (a name already taken, a row written by a newer
  * build, the done-gate against the milestone list) — those stay refusals with
  * the backend's own words, rendered beside the field.
@@ -25,7 +25,8 @@ import { t } from "@shared/i18n";
 
 import {
 	PROJECT_DESCRIPTION_MAX_CHARS,
-	projectTagRule,
+	projectNameRuleKey,
+	projectTagRuleKey,
 } from "../../../../shared/desktop-contract";
 import type { ProjectEditFields } from "./hooks/use-projects-queries";
 import { PROJECT_DAY_FIELD_PATTERN, refusalCopy } from "./project-model";
@@ -54,6 +55,25 @@ export const PROJECT_ATTRIBUTION_MAX_CHARS = 80;
  * typed rather than refusing it after (UX round 1, U3).
  */
 export const PROJECT_KEY_MAX_CHARS = 64;
+
+/**
+ * The project key's rule as a sentence in the ACTIVE locale, or null when valid.
+ *
+ * The grammar lives in the shared contract, which returns a copy key because
+ * it is also bundled into the main process (no runtime `t()` there); this is
+ * the renderer edge that turns the key into words. Call it when validating
+ * (render/submit time), never at module load, so a language switch is honoured.
+ */
+export function projectNameRule(name: string): string | null {
+	const key = projectNameRuleKey(name);
+	return key ? t(key) : null;
+}
+
+/** One tag's grammar as a sentence in the active locale, or null when valid. */
+export function projectTagRule(tag: string): string | null {
+	const key = projectTagRuleKey(tag);
+	return key ? t(key) : null;
+}
 
 /** The store's tag cap (`≤8 tags`); the grammar lives in `projectTagRule`. */
 export const PROJECT_TAGS_MAX = 8;

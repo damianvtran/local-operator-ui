@@ -45,6 +45,7 @@
 	"ui.chat.composer.placeholder.aside": "Спросите не для протокола — Esc закроет панель",
 	"ui.chat.composer.placeholder.busy": "Агент занят",
 	"ui.chat.composer.placeholder.idle": "Спросите что угодно. @ добавляет файлы, / выполняет команды",
+	"ui.chat.composer.placeholder.voice": "Говорите или печатайте здесь",
 	"ui.chat.composer.placeholder.no_provider": "Подключите провайдера, чтобы начать общение",
 	"ui.chat.composer.placeholder.recording": "Запись",
 	"ui.chat.composer.placeholder.secret_answer": "Ответьте на запрос секрета на панели запросов",

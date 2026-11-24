@@ -395,3 +395,109 @@ test("composed card palettes are independently validated inside the document", (
 		palette.accent,
 	);
 });
+
+/*
+ * THE PASSWORD-MANAGER NOTICE (2026-11-17). A real password-manager prompt in an
+ * agent tab is a small dismissible notice in this card, not a blocking banner.
+ * It decides nothing: Close, Escape and its own Dismiss all send the ONE
+ * `dismiss` verb with the notice's id, and nothing reaches `decide`.
+ */
+const NOTICE = {
+	entryId: "native-passkey:7:1700000000000",
+	kind: "native_passkey",
+};
+const visible = (dom, node) =>
+	!node.hidden && dom.window.getComputedStyle(node).display !== "none";
+
+test("notice only: the card is the sentence and its close; Close and Escape dismiss it without deciding", () => {
+	const { dom, doc, calls, push } = mount();
+	push(modelOf(1, [], { notice: NOTICE }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
+	assert.match(
+		doc.getElementById("approvals-notice-text").textContent,
+		/This site requested a passkey/,
+	);
+	// D7: no title (the card offers no choice); the sentence names the dialog.
+	const title = doc.getElementById("approvals-title");
+	assert.equal(title.textContent, "");
+	assert.equal(visible(dom, title), false);
+	assert.doesNotMatch(doc.body.textContent, /Choose a passkey/);
+	assert.equal(
+		doc.getElementById("approvals-card").getAttribute("aria-labelledby"),
+		"approvals-notice-text",
+	);
+	// D10: with the title hidden nothing else pushes the close to the inline
+	// end, so the close must pin itself there. JSDOM does no flex layout, so
+	// the rule that does it is asserted.
+	assert.match(
+		readFileSync("src/renderer/src/approvals-overlay/card.css", "utf8"),
+		/\.card-close \{[^}]*margin-inline-start: auto;/,
+	);
+	// D8: alone, the notice has no separator.
+	assert.equal(
+		doc
+			.getElementById("approvals-card")
+			.classList.contains("card-notice-mixed"),
+		false,
+	);
+	assert.equal(visible(dom, doc.getElementById("approvals-request")), false);
+	assert.equal(visible(dom, doc.getElementById("approvals-list")), false);
+	assert.equal(visible(dom, doc.querySelector(".card-footer")), false);
+	// One close control in notice-only mode: the header's.
+	assert.equal(doc.getElementById("approvals-notice-dismiss").hidden, true);
+	click(dom, doc.getElementById("approvals-close"));
+	doc.dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+	);
+	assert.deepEqual(calls, [
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+	]);
+});
+
+test("notice beside a request: Escape and the notice X target only the notice; header Close targets approval", () => {
+	const { dom, doc, calls, push } = mount();
+	push(modelOf(1, [req("a")], { notice: NOTICE }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
+	assert.equal(visible(dom, doc.getElementById("approvals-request")), true);
+	assert.equal(doc.getElementById("approvals-title").textContent, "Approvals");
+	assert.equal(visible(dom, doc.getElementById("approvals-title")), true);
+	assert.equal(
+		doc.getElementById("approvals-card").getAttribute("aria-labelledby"),
+		"approvals-title",
+	);
+	// D8: beside an approval, a hairline in the card's control-border colour.
+	// (JSDOM does not compute border longhands from this sheet, so the class
+	// that selects the rule and the rule itself are asserted.)
+	assert.equal(
+		doc
+			.getElementById("approvals-card")
+			.classList.contains("card-notice-mixed"),
+		true,
+	);
+	assert.match(
+		readFileSync("src/renderer/src/approvals-overlay/card.css", "utf8"),
+		/\.card-notice-mixed \.card-notice:not\(\[hidden\]\) \{[^}]*border-bottom: 1px solid var\(--lo-border-control\);/,
+	);
+	doc.dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+	);
+	const noticeX = doc.getElementById("approvals-notice-dismiss");
+	assert.equal(noticeX.getAttribute("aria-label"), "Dismiss passkey notice");
+	assert.ok(noticeX.querySelector("svg"));
+	click(dom, noticeX);
+	click(dom, doc.getElementById("approvals-close"));
+	assert.deepEqual(calls, [
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: "a" }],
+	]);
+});
+
+test("the notice leaves with the model: no notice, no section", () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [], { notice: NOTICE }));
+	push(modelOf(2, [req("a")], { notice: null }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), false);
+	assert.equal(visible(dom, doc.querySelector(".card-footer")), true);
+});

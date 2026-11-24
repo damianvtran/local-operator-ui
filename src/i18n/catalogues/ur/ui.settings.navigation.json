@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "بیک اینڈ کی ترتیبات",
 	"ui.settings.navigation.settings_sidebar.application_updates": "ایپ کی اپ ڈیٹس",
 	"ui.settings.navigation.settings_sidebar.account": "اکاؤنٹ",
-	"ui.settings.navigation.settings_page.retrying": "دوبارہ کوشش جاری ہے"
+	"ui.settings.navigation.settings_page.retrying": "دوبارہ کوشش جاری ہے",
+	"ui.settings.navigation.settings_page.close_settings": "ترتیبات بند کریں",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "بند کریں (Esc)"
 }

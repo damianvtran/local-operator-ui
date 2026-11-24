@@ -1,0 +1,73 @@
+{
+	"instance": "audit-i18n-2074-fr",
+	"locale": "fr",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": ["ui.chat.voice (10 new keys)"],
+	"auditor": {
+		"agent": "reviewer (lopdev team role, task audit-2074-fr)",
+		"session": "4709f4dbea46 (taken from this session's scratchpad directory name, not from a registry read)",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only reviewer session; edited no repo file, posted nothing to GitHub, ran no ledger script; only this receipt was written. Translator is a different session; same model family is possible and not verifiable: disclosed, so independence is session-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"base": "origin/feat/voice-history-full-text",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en/ui.chat.voice.json": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+		"fr/ui.chat.voice.json": "df1c12d050338a02a32dd94854a0c377c2806596cf9909aa60aebe3622ba5603",
+		"en/ui.chat.voice.context.json": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (c47b28f09) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (no voice/summary entries)",
+		"style_guide": "local-operator@origin/main i18n/style-guides/fr.md sha256 5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7: vous, imperative actions, terse past-participle statuses, sentence case, U+202F before : ; ! ?",
+		"shipped_terms": "fr: spoken_part_note 'Lu à voix haute : début seulement'; phase_speaking 'Je parle'; ui.chat.audio.play 'Lire'; ui.chat.voice.mute 'Couper le son de la voix'; ui.common.speech.speak_control.replay_speech 'Relire à voix haute'; cut_chip 'Coupée · suite ci-dessus ↑'; the corpus says 'conversation' for the chat (toggle_on, switched_from_untitled, reason_answered_in_chat 'réglée dans la conversation')."
+	},
+	"checks": [
+		{"check": "key-set parity en vs fr", "result": "PASS", "detail": "91/91, symmetric diff empty"},
+		{"check": "diff is additions only", "result": "PASS", "detail": "no existing fr value differs from origin/feat/voice-history-full-text; 10 keys added, exactly the 10 in scope"},
+		{"check": "NFC / code points", "result": "PASS", "detail": "all 10 NFC; non-letter code points only U+00B7 (summary_stopped, summary_cut) and U+2191 (full_reply_link); no ASCII '...', no double spaces, no control/bidi characters"},
+		{"check": "placeholders/ICU", "result": "PASS", "detail": "none in en or fr"},
+		{"check": "French punctuation", "result": "PASS", "detail": "no ':' ';' '!' '?' in the 10 values, so no U+202F needed; '·' separated by plain spaces as in cut_chip"},
+		{"check": "length (chars fr/en)", "result": "NOTE", "detail": "stopped 37/28, cut 33/30, full_reply_link 31/20, upcoming 19/12: ~+30-65% on a few, within the 393px one-line labels at typical caption size (not rendered here; unmeasured). replay 9 vs 6 chars is icon+word safe."}
+	],
+	"counts": {"blocker": 0, "major": 0, "minor": 2, "nit": 1},
+	"findings": [
+		{
+			"id": "M1", "severity": "MINOR", "key": "ui.chat.voice.summary_muted",
+			"current": "Non lu (son coupé)",
+			"suggested": "Non lu à voix haute (son coupé)",
+			"reason": "'Non lu' is the settled French UI word for 'unread' (ui.community.rail.unread, mark_unread, hold.unread_mail). Alone it reads as 'unread message' and loses the 'spoken aloud' sense that summary_label/spoken_part_note carry. The parenthetical lowers the risk, so MINOR. Fix lengthens 18 to 31 chars, still shorter than summary_stopped."
+		},
+		{
+			"id": "M2", "severity": "MINOR", "key": "ui.chat.voice.full_reply_link",
+			"current": "Réponse complète dans le chat ↑",
+			"suggested": "Réponse complète dans la conversation ↑",
+			"reason": "Every shipped fr string, including the whole voice namespace and ui.chat.ask_queue.reason_answered_in_chat, calls the chat 'conversation'. The only fr-corpus use of 'chat' as a noun is this key. +8 chars; 'ci-dessus' is not a fit because this link sits in the History row, where 'above' would be ambiguous."
+		},
+		{
+			"id": "N1", "severity": "NIT", "key": "ui.chat.voice.summary_upcoming",
+			"current": "À lire à voix haute",
+			"suggested": "Sera lu à voix haute",
+			"reason": "'À lire à voix haute' can read as an instruction to the user ('to read aloud'). The context note is future tense, and the voice does the reading. Same length (19 vs 20). Acceptable as is."
+		}
+	],
+	"per_key": {
+		"ui.chat.voice.summary_label": "ok: 'Lu à voix haute' matches spoken_part_note's wording per the context note",
+		"ui.chat.voice.summary_upcoming": "N1",
+		"ui.chat.voice.summary_speaking": "ok: identical to phase_speaking 'Je parle', as the context note requires",
+		"ui.chat.voice.summary_stopped": "ok: not an error, neutral 'arrêté avant la fin'; long (37) but wraps cleanly at ' · '",
+		"ui.chat.voice.summary_muted": "M1",
+		"ui.chat.voice.summary_cut": "ok: same stem as spoken_part_note, ' · ' separator as in cut_chip",
+		"ui.chat.voice.summary_static": "ok: 'Résumé oral' is a short noun phrase, no replay; 'vocal' is also workable but 'oral' avoids the voicemail sense",
+		"ui.chat.voice.replay": "ok: 'Réécouter' is the natural one-word audio replay; differs from shipped 'Relire à voix haute' (replay_speech) in verb only, which is deliberate for a one-word icon+label control, not a finding",
+		"ui.chat.voice.play": "ok: identical to ui.chat.audio.play 'Lire'",
+		"ui.chat.voice.full_reply_link": "M2"
+	},
+	"result": "findings",
+	"status": "passed-with-findings"
+}

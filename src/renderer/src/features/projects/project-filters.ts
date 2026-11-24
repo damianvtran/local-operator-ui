@@ -256,7 +256,16 @@ export function filterOptionLabel(
 		default:
 			break;
 	}
-	return TOKEN_LABELS[value as string] ?? value ?? "";
+	// Own keys only: the `?? value` fallback exists for tokens this build does
+	// not know, and an inherited name (`__proto__`) must take that fallback
+	// rather than hand React the prototype object as a label.
+	if (
+		typeof value === "string" &&
+		Object.prototype.hasOwnProperty.call(TOKEN_LABELS, value)
+	) {
+		return TOKEN_LABELS[value];
+	}
+	return value ?? "";
 }
 
 /** Whether this facet has at least one selection. */
