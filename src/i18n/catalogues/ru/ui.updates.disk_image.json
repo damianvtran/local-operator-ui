@@ -1,0 +1,10 @@
+{
+	"ui.updates.disk_image.heading": "Запуск с установочного образа диска",
+	"ui.updates.disk_image.message": "Local Operator запущен с установочного образа диска, поэтому обновление нельзя установить здесь.",
+	"ui.updates.disk_image.message_version": "Local Operator запущен с установочного образа диска, поэтому обновление до версии {version} нельзя установить здесь.",
+	"ui.updates.disk_image.remedy": "Закройте приложение, затем откройте Local Operator из папки «Программы», чтобы обновить его.",
+	"ui.updates.disk_image.move_button": "Переместить в «Программы»",
+	"ui.updates.disk_image.moving": "Перемещение…",
+	"ui.updates.disk_image.move_exists": "Local Operator уже есть в папке «Программы», поэтому эта копия не перемещена. Закройте её и откройте Local Operator из папки «Программы».",
+	"ui.updates.disk_image.move_failed": "Не удалось переместить Local Operator в папку «Программы». Закройте приложение, перетащите его в «Программы» в Finder и откройте оттуда."
+}

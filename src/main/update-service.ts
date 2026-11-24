@@ -166,6 +166,7 @@ import {
 	compareVersions,
 	didSourceRebuildLand,
 	didUpgradeLand,
+	diskImageLaunchBlock,
 	evaluateBundleSeal,
 	evaluateLaunchDuringInstall,
 	evaluatePendingInstall,
@@ -182,11 +183,14 @@ import {
 	installPointerPath,
 	installedBundleSealBlock,
 	installerSearchPath,
+	isDiskImageLaunch,
 	isInstallInFlight,
 	matchArtifactMetadata,
 	measureDirectoryBytes,
+	moveToApplications,
 	parsePipShowVersion,
 	parseSealViolations,
+	readFreeBytes,
 	readInstallIdentity,
 	readLastInstallAttempt,
 	readPendingInstallMarker,
@@ -3938,18 +3942,43 @@ export class UpdateService {
 		return updater.downloadedUpdateHelper ?? null;
 	}
 
-	/** Free bytes on the volume holding `dir`, or null when it cannot be read. */
+	/**
+	 * Free bytes on the volume holding `dir`, or null when it cannot be read.
+	 *
+	 * Null also covers a reading that cannot be true (0, NaN, negative) once the
+	 * `bfree` fallback has been tried - see `readFreeBytes` for the why. Every
+	 * caller treats null as "do not refuse", so an implausible reading fails
+	 * open with a warning in the update log rather than blocking the update.
+	 * The read-only disk-image case never reaches this: it is refused on its
+	 * own, before any space check (`runningFromDiskImage`).
+	 */
 	private freeBytesAt(dir: string): number | null {
-		try {
-			const stats = statfsSync(dir);
-			return stats.bavail * stats.bsize;
-		} catch (error) {
-			logger.warn(
-				`Could not read free space for ${dir}: ${String(error)}`,
-				LogFileType.UPDATE_SERVICE,
-			);
-			return null;
+		const reading = readFreeBytes(dir, (probe) => statfsSync(probe));
+		if (reading.note) {
+			logger.warn(reading.note, LogFileType.UPDATE_SERVICE);
 		}
+		return reading.bytes;
+	}
+
+	/**
+	 * The running bundle's path when it was launched from a mounted read-only
+	 * volume (the installer DMG), else null. See `isDiskImageLaunch`: the
+	 * writability probe is `access(W_OK)` on the bundle's parent, which answers
+	 * EROFS on a read-only mount without writing anything.
+	 */
+	private runningFromDiskImage(): string | null {
+		if (process.platform !== "darwin") return null;
+		const bundlePath = appBundleFromExecutable(process.execPath);
+		if (!bundlePath) return null;
+		let parentWritable = true;
+		try {
+			accessSync(path.dirname(bundlePath), constants.W_OK);
+		} catch {
+			parentWritable = false;
+		}
+		return isDiskImageLaunch({ bundlePath, parentWritable })
+			? bundlePath
+			: null;
 	}
 
 	private static async sha512Base64(filePath: string): Promise<string> {
@@ -4030,6 +4059,17 @@ export class UpdateService {
 				},
 				detail: `${artifactPath}: ${String(error)}`,
 			};
+		}
+
+		/*
+		 * A launch from the installer disk image is refused BEFORE the space check
+		 * (the 0.53.2 -> 0.63.0 report: the image's true 0.0 GiB free produced a
+		 * "free up 1.6 GiB" refusal on a Mac with 13.4 GiB free). Never fail open
+		 * here: the install would have to write into a read-only image.
+		 */
+		const diskImageBundle = this.runningFromDiskImage();
+		if (diskImageBundle) {
+			return diskImageLaunchBlock(diskImageBundle, info?.version ?? null);
 		}
 
 		/*
@@ -4850,6 +4890,7 @@ export class UpdateService {
 		ipcMain.removeHandler("download-update");
 		ipcMain.removeHandler("quit-and-install");
 		ipcMain.removeHandler("quit-for-update-install");
+		ipcMain.removeHandler("move-to-applications");
 
 		// Set mainWindow to null to break references
 		this.mainWindow = null;
@@ -5816,6 +5857,32 @@ export class UpdateService {
 		 * out of the way of Squirrel's last validation, which asks whether any
 		 * instance of the target app is running before it swaps.
 		 */
+		/*
+		 * "Move to Applications" on the disk-image refusal panel. The decision to
+		 * move is re-derived here rather than trusted from the renderer, so a stale
+		 * panel can never move (or relaunch) a copy that is not on the image. See
+		 * `moveToApplications` for why Electron's mover is safe for this sealed
+		 * bundle and why every conflict declines instead of replacing a newer copy.
+		 */
+		ipcMain.handle("move-to-applications", () => {
+			const result = moveToApplications({
+				onDiskImage: this.runningFromDiskImage() !== null,
+				move: (options) => app.moveToApplicationsFolder(options),
+			});
+			if (result.ok) {
+				logger.info(
+					"Moved the app from the installer disk image to Applications; relaunching from the copy.",
+					LogFileType.UPDATE_SERVICE,
+				);
+			} else {
+				logger.warn(
+					`Move to Applications declined (${result.reason}): ${result.detail}`,
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+			return result;
+		});
+
 		ipcMain.handle("quit-for-update-install", () => {
 			const marker = readPendingInstallMarker(this.markerDir());
 			logger.info(

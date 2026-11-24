@@ -1,0 +1,10 @@
+{
+	"ui.updates.disk_image.heading": "正在从安装磁盘映像运行",
+	"ui.updates.disk_image.message": "Local Operator 正在从安装磁盘映像运行，因此无法在此安装更新。",
+	"ui.updates.disk_image.message_version": "Local Operator 正在从安装磁盘映像运行，因此无法在此安装 {version} 版更新。",
+	"ui.updates.disk_image.remedy": "请退出它，然后从“应用程序”文件夹打开 Local Operator 进行更新。",
+	"ui.updates.disk_image.move_button": "移到“应用程序”",
+	"ui.updates.disk_image.moving": "正在移动…",
+	"ui.updates.disk_image.move_exists": "“应用程序”中已有 Local Operator，因此未移动此副本。请退出此副本，然后从“应用程序”打开 Local Operator。",
+	"ui.updates.disk_image.move_failed": "无法将 Local Operator 移到“应用程序”。请退出它，在访达中将其拖到“应用程序”，然后从那里打开。"
+}

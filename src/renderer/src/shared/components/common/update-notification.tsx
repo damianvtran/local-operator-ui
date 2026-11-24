@@ -450,6 +450,10 @@ const INSTALL_BLOCK_HEADINGS: Record<string, string> = {
 		return t(
 			"ui.common.updates.update_notification.the_update_can_t_be_launched",
 		);
+	}, // A launch straight from the mounted installer DMG (the 0.53.2 -> 0.63.0
+	// report): the image is read-only, so the fix is to run the Applications copy.
+	get "running-from-disk-image"() {
+		return t("ui.updates.disk_image.heading");
 	},
 };
 
@@ -1698,6 +1702,14 @@ export const UpdateNotification = ({
 	// failure, and only one of them has an install still to save.
 	const [installBlocked, setInstallBlocked] =
 		useState<InstallBlockedInfo | null>(null);
+	/*
+	 * The disk-image refusal's one-click fix. `moving` disables the button while
+	 * Electron copies the bundle (the app relaunches from Applications on
+	 * success, so there is no success state to render); `moveError` is the
+	 * localized sentence main returned when the move was declined or failed.
+	 */
+	const [moving, setMoving] = useState(false);
+	const [moveError, setMoveError] = useState<string | null>(null);
 	const [installFailed, setInstallFailed] = useState<InstallFailedInfo | null>(
 		null,
 	);
@@ -2151,6 +2163,19 @@ export const UpdateNotification = ({
 				),
 			);
 			setSnackbarOpen(true);
+		}
+	}, []);
+
+	const moveToApplications = useCallback(async () => {
+		setMoving(true);
+		setMoveError(null);
+		try {
+			const result = await window.api.updater.moveToApplications();
+			if (!result.ok) setMoveError(result.message);
+		} catch {
+			setMoveError(t("ui.updates.disk_image.move_failed"));
+		} finally {
+			setMoving(false);
 		}
 	}, []);
 
@@ -3416,6 +3441,11 @@ export const UpdateNotification = ({
 					{installBlocked.message}
 				</p>
 				<p className="mt-2 text-body text-ink">{installBlocked.remedy.text}</p>
+				{moveError && installBlocked.code === "running-from-disk-image" && (
+					<p role="alert" className="mt-2 text-body text-ink">
+						{moveError}
+					</p>
+				)}
 				{installBlocked.remedy.command && (
 					<CommandBlock command={installBlocked.remedy.command} />
 				)}
@@ -3439,7 +3469,18 @@ export const UpdateNotification = ({
 						{installBlocked.dismissLabel ??
 							t("ui.common.updates.update_notification.update_later")}
 					</Button>
-					{installBlocked.remedy.url ? (
+					{installBlocked.code === "running-from-disk-image" ? (
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={() => void moveToApplications()}
+							disabled={moving}
+						>
+							{moving
+								? t("ui.updates.disk_image.moving")
+								: t("ui.updates.disk_image.move_button")}
+						</Button>
+					) : installBlocked.remedy.url ? (
 						<Button
 							variant="primary"
 							size="sm"

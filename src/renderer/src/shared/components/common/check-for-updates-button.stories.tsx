@@ -57,6 +57,7 @@ const createEmptyUpdaterMethods = () => {
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
 			quitForUpdateInstall: async () => true,
+			moveToApplications: async () => ({ ok: true as const }),
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -108,6 +109,7 @@ const mockUpdaterApi = () => {
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
+		moveToApplications: async () => ({ ok: true as const }),
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {

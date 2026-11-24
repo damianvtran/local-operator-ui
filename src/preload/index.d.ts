@@ -706,6 +706,10 @@ declare global {
 				 * the app is running, and this is the app getting out of its way.
 				 */
 				quitForUpdateInstall: () => Promise<boolean>;
+				moveToApplications: () => Promise<
+					| { ok: true }
+					| { ok: false; reason: string; message: string; detail: string }
+				>;
 				onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void;
 				onUpdateNotAvailable: (
 					callback: (info: UpdateInfo) => void,

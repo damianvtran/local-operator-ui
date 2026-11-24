@@ -59,6 +59,7 @@ const createEmptyUpdaterMethods = () => {
 			downloadUpdate: async () => Promise.resolve([]),
 			quitAndInstall: async () => true,
 			quitForUpdateInstall: async () => true,
+			moveToApplications: async () => ({ ok: true as const }),
 			onUpdateDevMode: () => () => {},
 			onUpdateNpxAvailable: () => () => {},
 			onBackendUpdateAvailable: () => () => {},
@@ -520,6 +521,18 @@ const mockUpdaterApi = () => {
 		downloadUpdate: async () => Promise.resolve([]),
 		quitAndInstall: async () => true,
 		quitForUpdateInstall: async () => true,
+		// The disk-image panel's action. Stories answer with the conflict arm (the
+		// common real case: an older copy already sits in Applications), so the
+		// declined-move message can be captured; production builds it in
+		// `moveToApplications` (`src/main/update-install.ts`).
+		moveToApplications: async () => ({
+			ok: false as const,
+			reason: "exists",
+			message:
+				"Local Operator is already in Applications, so this copy wasn't moved. Quit this one, then open Local Operator from Applications.",
+			detail:
+				"A copy already exists in Applications (exists); it was left in place.",
+		}),
 		onUpdateDevMode: (callback: (message: string) => void) => {
 			// For stories that need to trigger this callback
 			if (window.triggerUpdateDevMode) {
@@ -1002,6 +1015,21 @@ const mockUpdaterApi = () => {
 			// one thing this state does not know (design round 1, D3). Production builds
 			// it in the same `stagedSignatureBlock`, whose `entitlementsPlist == null`
 			// branch carries the heading below.
+			// A launch straight from the mounted installer DMG (the 0.53.2 -> 0.63.0
+			// report). Production builds it in `diskImageLaunchBlock`.
+			if (window.triggerUpdateInstallBlockedDiskImage) {
+				callback({
+					code: "running-from-disk-image",
+					version: "0.63.0",
+					message:
+						"Local Operator is running from the installer disk image, so the update to version 0.63.0 can't be installed here.",
+					remedy: {
+						text: "Quit it, then open Local Operator from Applications to update.",
+					},
+					detail:
+						"/Volumes/Local Operator 0.53.2-arm64/Local Operator.app is on a read-only volume (the installer disk image); the update cannot be written there.",
+				});
+			}
 			if (window.triggerUpdateInstallBlockedCannotCheck) {
 				callback({
 					code: "artifact-cannot-launch",
@@ -1319,6 +1347,7 @@ declare global {
 		triggerUpdateInstallBlockedAtStartup?: boolean;
 		triggerUpdateInstallBlockedCannotLaunch?: boolean;
 		triggerUpdateInstallBlockedCannotCheck?: boolean;
+		triggerUpdateInstallBlockedDiskImage?: boolean;
 		triggerUpdateInstallFailed?: boolean;
 		triggerUpdateInstallFailedCancelledByRelaunch?: boolean;
 		triggerUpdateInstallInFlight?: boolean;
@@ -1367,6 +1396,8 @@ const meta = {
 					context.parameters.triggerUpdateInstallBlockedCannotLaunch;
 				window.triggerUpdateInstallBlockedCannotCheck =
 					context.parameters.triggerUpdateInstallBlockedCannotCheck;
+				window.triggerUpdateInstallBlockedDiskImage =
+					context.parameters.triggerUpdateInstallBlockedDiskImage;
 				window.triggerUpdateInstallFailed =
 					context.parameters.triggerUpdateInstallFailed;
 				window.triggerBackendUpdateManualRequired =
@@ -1393,6 +1424,7 @@ const meta = {
 				context.parameters.triggerUpdateInstallBlockedAtStartup,
 				context.parameters.triggerUpdateInstallBlockedCannotLaunch,
 				context.parameters.triggerUpdateInstallBlockedCannotCheck,
+				context.parameters.triggerUpdateInstallBlockedDiskImage,
 				context.parameters.triggerUpdateInstallFailed,
 				context.parameters.triggerBackendUpdateManualRequired,
 				context.parameters.triggerBackendUpdateManualRequiredExistingServer,
@@ -1779,6 +1811,7 @@ type UpdaterTriggerFlag =
 	| "triggerUpdateInstallBlockedAtStartup"
 	| "triggerUpdateInstallBlockedCannotLaunch"
 	| "triggerUpdateInstallBlockedCannotCheck"
+	| "triggerUpdateInstallBlockedDiskImage"
 	| "triggerUpdateInstallFailed"
 	| "triggerUpdateInstallFailedCancelledByRelaunch"
 	| "triggerUpdateInstallInFlight"
@@ -1839,6 +1872,18 @@ export const InstallBlocked: Story = {
 	args: { autoCheck: false },
 	parameters: { triggerUpdateInstallBlocked: true },
 	render: () => <Triggered flag="triggerUpdateInstallBlocked" />,
+};
+
+/**
+ * A launch straight from the mounted installer disk image. The image is
+ * read-only (0 bytes free), so the old panel blamed disk space; this one names
+ * the real cause and offers the one-click fix. Pressing "Move to Applications"
+ * in this story shows the declined arm (a copy already exists there).
+ */
+export const InstallBlockedDiskImage: Story = {
+	args: { autoCheck: false },
+	parameters: { triggerUpdateInstallBlockedDiskImage: true },
+	render: () => <Triggered flag="triggerUpdateInstallBlockedDiskImage" />,
 };
 
 /**
