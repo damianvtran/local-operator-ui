@@ -83,6 +83,26 @@ export interface ProductEvents {
 
 export type ProductEventName = keyof ProductEvents;
 
+/**
+ * Each product event's own property names, as runtime data: the telemetry
+ * controller's `before_send` allow-list (`telemetry-controller.ts`) keeps these
+ * and drops everything else. Typed so a property added to `ProductEvents`
+ * without being listed here (or listed without existing) fails typecheck,
+ * rather than being silently stripped or silently allowed.
+ */
+export const PRODUCT_EVENT_PROPERTIES: {
+	readonly [N in ProductEventName]: readonly (keyof ProductEvents[N])[];
+} = {
+	provider_setup_started: ["provider", "method"],
+	provider_connected: ["provider", "method"],
+	provider_setup_failed: ["provider", "method", "reason"],
+	local_model_check: ["provider", "result", "reason"],
+	first_message_sent: [],
+	message_send_failed: ["reason_category", "http_status", "error_code"],
+	backend_status: ["state", "reason", "after_ready", "elapsed_s"],
+	onboarding_tour_step: ["step", "outcome"],
+};
+
 /** The capture function, swappable so a test can observe without a client. */
 type Sink = (name: string, properties: Record<string, unknown>) => void;
 

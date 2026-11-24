@@ -263,12 +263,17 @@ test("a build with no key mounts no client in the renderer either", () => {
 		true,
 	);
 	/*
-	 * The renderer hands the controller the BUILD's key and starts it from that
-	 * same export, so the key rule above is the one the live client obeys
-	 * (`createTelemetryController` additionally refuses a blank key itself).
+	 * The renderer hands the controller the BUILD's key, and
+	 * `createTelemetryController` refuses a blank key itself, so the key rule
+	 * above is the one the live client obeys.
 	 */
 	const mainSource = readFileSync("src/renderer/src/main.tsx", "utf8");
-	assert.match(mainSource, /telemetry\.apply\(telemetryEnabled\);/);
+	// Booted from main's LIVE consent, never the window-creation argv (R1).
+	assert.match(
+		mainSource,
+		/bootTelemetry\(telemetry, window\.api\?\.telemetryConsent\);/,
+	);
+	assert.doesNotMatch(mainSource, /telemetry\.apply\(telemetryEnabled\)/);
 	assert.match(mainSource, /projectKey: config\.VITE_PUBLIC_POSTHOG_KEY,/);
 	// And no `PostHogProvider` mount is left to initialise a client on its own.
 	assert.doesNotMatch(mainSource, /<PostHogProvider/);

@@ -41,6 +41,10 @@ const memFs = (files = {}) => ({
 	writeFile: (p, c) => {
 		files[p] = c;
 	},
+	rename: (from, to) => {
+		files[to] = files[from];
+		Reflect.deleteProperty(files, from);
+	},
 });
 
 test("no record, unreadable or malformed records are NOT consent", () => {
@@ -260,19 +264,215 @@ test("posthog options are the active-user minimum: no replay, autocapture or exc
 	assert.equal(o.persistence, "localStorage");
 	assert.equal("session_recording" in o, false);
 	assert.equal(o.before_send.length, 2);
-	// Location/title properties never leave: in-app routes carry conversation ids.
-	const ev = controller.stripLocationProperties({
-		properties: {
-			$current_url: "app://x/#/chat/abc",
-			$pathname: "/",
-			$title: "Secret.pdf",
-			app_version: "1.0.0",
-			$os: "Mac OS X",
-		},
-		$set_once: { $initial_current_url: "app://x/#/chat/abc" },
+	assert.equal(o.before_send[1], controller.restrictToActiveUserSignal);
+});
+
+test("before_send keeps only allow-listed events and properties (Q1/R2)", () => {
+	const leaked = {
+		$current_url: "file:///Users/jane/app/index.html#/chat/abc",
+		$session_entry_url: "file:///Users/jane/app/index.html#/chat/abc",
+		$session_entry_pathname: "/Users/jane/app/index.html",
+		$initial_person_info: { r: "$direct", u: "file:///…#/chat/abc" },
+		$raw_user_agent: "Mozilla/5.0",
+		$screen_height: 900,
+		$viewport_width: 1280,
+		$timezone: "Europe/London",
+		$browser_language: "en-GB",
+		$device_id: "d",
+		$session_id: "s",
+		$title: "Secret.pdf",
+	};
+	const base = {
+		token: "phc_k",
+		distinct_id: "anon",
+		$lib: "web",
+		$lib_version: "1.235.6",
+		$time: 1,
+		$insert_id: "i",
+		$process_person_profile: false,
+		app_version: "0.63.1",
+		$os: "Mac OS X",
+		$os_version: "15.0",
+	};
+	const ev = controller.restrictToActiveUserSignal({
+		uuid: "u",
+		event: "app_active",
+		properties: { ...base, ...leaked },
+		$set: { email: "x" },
+		$set_once: { $initial_current_url: "file:///…#/chat/abc" },
 	});
-	assert.deepEqual(ev.properties, { app_version: "1.0.0", $os: "Mac OS X" });
-	assert.deepEqual(ev.$set_once, {});
+	assert.deepEqual(ev.properties, { ...base, $geoip_disable: true });
+	assert.equal("$set" in ev, false);
+	assert.equal("$set_once" in ev, false);
+	assert.equal(ev.uuid, "u", "top-level bookkeeping survives");
+	// A product event keeps its own enumerated properties, nothing more.
+	const product = controller.restrictToActiveUserSignal({
+		event: "provider_connected",
+		properties: { ...base, provider: "openai", method: "api_key", ...leaked },
+	});
+	assert.deepEqual(product.properties, {
+		...base,
+		provider: "openai",
+		method: "api_key",
+		$geoip_disable: true,
+	});
+	// Unlisted events (pageviews, exceptions, autocapture, $opt_in) never leave.
+	for (const name of [
+		"$pageview",
+		"$exception",
+		"$autocapture",
+		"$opt_in",
+		"x",
+	]) {
+		assert.equal(
+			controller.restrictToActiveUserSignal({ event: name, properties: base }),
+			null,
+			name,
+		);
+	}
+	assert.equal(controller.restrictToActiveUserSignal(null), null);
+	// Fails closed rather than throwing into posthog-js.
+	const hostile = { event: "app_active" };
+	Object.defineProperty(hostile, "properties", {
+		get() {
+			throw new Error("boom");
+		},
+	});
+	assert.equal(controller.restrictToActiveUserSignal(hostile), null);
+});
+
+test("a choice is written atomically: temp file, then rename (R3)", () => {
+	const fs = memFs({ "/c.json": '{"optedIn":true,"decidedAt":""}\n' });
+	const order = [];
+	const write = fs.writeFile;
+	const rename = fs.rename;
+	fs.writeFile = (p, c) => {
+		order.push(["write", p]);
+		write(p, c);
+	};
+	fs.rename = (a, b) => {
+		order.push(["rename", a, b]);
+		rename(a, b);
+	};
+	consent.writeTelemetryConsent(fs, "/c.json", false);
+	assert.deepEqual(order, [
+		["write", "/c.json.tmp"],
+		["rename", "/c.json.tmp", "/c.json"],
+	]);
+	assert.equal(consent.readTelemetryConsent(fs, "/c.json").optedIn, false);
+	assert.equal("/c.json.tmp" in fs.files, false);
+	// A crash during the temp write leaves the previous record intact.
+	const crashing = memFs({ "/c.json": '{"optedIn":true,"decidedAt":""}\n' });
+	crashing.writeFile = () => {
+		throw new Error("ENOSPC");
+	};
+	assert.throws(() =>
+		consent.writeTelemetryConsent(crashing, "/c.json", false),
+	);
+	assert.equal(consent.readTelemetryConsent(crashing, "/c.json").optedIn, true);
+});
+
+function fakeSource(effective) {
+	const listeners = new Set();
+	let resolve;
+	const pending = new Promise((r) => {
+		resolve = r;
+	});
+	return {
+		get: () => pending,
+		answer: () => resolve({ effective }),
+		onChange(l) {
+			listeners.add(l);
+			return () => listeners.delete(l);
+		},
+		emit: (state) => {
+			for (const l of listeners) l(state);
+		},
+	};
+}
+
+test("boot follows live consent, not launch argv: a reload keeps the current choice (R1)", async () => {
+	const tick = () => new Promise((r) => setImmediate(r));
+	globalThis.window = { api: { telemetryEnabled: true } }; // stale argv: "on"
+	try {
+		// Opted out since launch, then reloaded: argv still says on.
+		let client = fakeClient();
+		let src = fakeSource(false);
+		controller.bootTelemetry(
+			controller.createTelemetryController({
+				client,
+				projectKey: "phc_k",
+				options: {},
+			}),
+			src,
+		);
+		assert.equal(
+			liveState.isTelemetryActive(),
+			false,
+			"off before get() answers",
+		);
+		src.answer();
+		await tick();
+		assert.deepEqual(client.calls, [], "opt out + reload: never initialised");
+		assert.equal(liveState.isTelemetryActive(), false);
+
+		// Opted in since launch (argv off), then reloaded: starts.
+		globalThis.window = { api: { telemetryEnabled: false } };
+		liveState.setTelemetryActive(null);
+		client = fakeClient();
+		src = fakeSource(true);
+		controller.bootTelemetry(
+			controller.createTelemetryController({
+				client,
+				projectKey: "phc_k",
+				options: {},
+			}),
+			src,
+		);
+		assert.deepEqual(client.calls, []);
+		src.answer();
+		await tick();
+		assert.deepEqual(client.calls, [
+			["init", "phc_k"],
+			["capture", "app_active"],
+		]);
+		assert.equal(liveState.isTelemetryActive(), true);
+
+		// A broadcast before get() resolves wins over the late answer.
+		liveState.setTelemetryActive(null);
+		client = fakeClient();
+		src = fakeSource(true);
+		controller.bootTelemetry(
+			controller.createTelemetryController({
+				client,
+				projectKey: "phc_k",
+				options: {},
+			}),
+			src,
+		);
+		src.emit({ effective: false });
+		src.answer();
+		await tick();
+		assert.deepEqual(client.calls, [], "the newer opt-out stands");
+
+		// No bridge: stays off even with argv on.
+		globalThis.window = { api: { telemetryEnabled: true } };
+		liveState.setTelemetryActive(null);
+		client = fakeClient();
+		controller.bootTelemetry(
+			controller.createTelemetryController({
+				client,
+				projectKey: "phc_k",
+				options: {},
+			}),
+			undefined,
+		);
+		assert.deepEqual(client.calls, []);
+		assert.equal(liveState.isTelemetryActive(), false);
+	} finally {
+		Reflect.deleteProperty(globalThis, "window");
+		liveState.setTelemetryActive(null);
+	}
 });
 
 test("main and the renderer source keep the contract wired", () => {
@@ -290,6 +490,9 @@ test("main and the renderer source keep the contract wired", () => {
 		"the mini-view stays explicitly off",
 	);
 	const renderer = readFileSync("src/renderer/src/main.tsx", "utf8");
-	assert.match(renderer, /telemetryConsent\?\.onChange\(/);
+	assert.match(
+		renderer,
+		/bootTelemetry\(telemetry, window\.api\?\.telemetryConsent\)/,
+	);
 	assert.doesNotMatch(renderer, /session_recording|capture_exceptions: true/);
 });

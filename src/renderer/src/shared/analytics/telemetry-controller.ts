@@ -22,52 +22,105 @@
  *
  * The client is injected (structural type) so node tests can drive the
  * lifecycle with a fake and never load posthog-js — see
- * `scripts/telemetry-controller.test.mjs`.
+ * `scripts/telemetry-consent.test.mjs`; `scripts/telemetry-allowlist.test.mjs`
+ * runs the real posthog-js through the options' `before_send`.
  */
 
 import type { SuperPropertyClient } from "./app-version";
 import { scrubCaptureResult } from "./autocapture-privacy";
+import { PRODUCT_EVENT_PROPERTIES } from "./product-events";
 import { setTelemetryActive } from "./telemetry-state";
 
 /** The one event that says "this install is active". */
 export const APP_ACTIVE_EVENT = "app_active";
 
 /**
- * Properties posthog-js adds by default that can name WHAT the user is doing:
- * the in-app hash route carries a conversation id (`#/chat/<id>`), the title can
- * carry a file or session name, and referrers carry URLs. Counting active users
- * needs none of them, so they are removed from every event before it is queued.
+ * WHAT MAY LEAVE, AS AN ALLOW-LIST (review round 1, Q1/R2; 2026-11-24).
+ *
+ * The first cut removed a list of known location keys. QA then found posthog-js
+ * 1.235.6 also sends `$session_entry_url`, `$session_entry_pathname` and
+ * `$initial_person_info` — the full `file://` URL with the `#/chat/<id>` route
+ * and, on an unpackaged install, the user's name in the path — plus device
+ * defaults (user agent, screen and viewport, timezone, language). A strip list
+ * loses to every property a library upgrade adds; an allow-list cannot. So an
+ * event leaves only if its NAME is enumerated here, and it keeps only the
+ * properties enumerated here. Everything else, `$set`/`$set_once` included, is
+ * dropped before posthog-js queues it.
+ *
+ * Kept, and why each is needed to count active users:
+ *  - `token`, `distinct_id`: which project, and the anonymous install id.
+ *  - `$lib`, `$lib_version`: PostHog's ingestion routes and parses by them.
+ *  - `$time`, `$insert_id`: event time and ingestion de-duplication.
+ *  - `$process_person_profile`: keeps `person_profiles: "identified_only"` in
+ *    force at ingestion; without it the server would create a person profile.
+ *  - `app_version`, `$os`, `$os_version`: the operator-approved dimensions.
+ *  - each product event's own enumerated properties (`PRODUCT_EVENT_PROPERTIES`,
+ *    closed vocabularies by construction — see `product-events.ts`).
+ * `uuid` and `timestamp` are top-level fields of the capture result, not
+ * properties, so they survive untouched.
+ *
+ * `$geoip_disable: true` asks PostHog's ingestion not to derive a location from
+ * the request's IP. Whether the IP itself is retained is a project setting the
+ * client cannot enforce, which is why the copy promises nothing about IPs.
  */
-export const LOCATION_PROPERTIES = [
-	"$current_url",
-	"$pathname",
-	"$host",
-	"$title",
-	"$referrer",
-	"$referring_domain",
-	"$initial_referrer",
-	"$initial_referring_domain",
-	"$initial_current_url",
-	"$initial_pathname",
-	"$initial_host",
-	"$prev_pageview_pathname",
-	"title",
+export const ALLOWED_BASE_PROPERTIES = [
+	"token",
+	"distinct_id",
+	"$lib",
+	"$lib_version",
+	"$time",
+	"$insert_id",
+	"$process_person_profile",
+	"app_version",
+	"$os",
+	"$os_version",
 ] as const;
 
+const ALLOWED_EVENTS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+	[APP_ACTIVE_EVENT, new Set<string>(ALLOWED_BASE_PROPERTIES)],
+	...Object.entries(PRODUCT_EVENT_PROPERTIES).map(
+		([name, own]) =>
+			[
+				name,
+				new Set<string>([
+					...ALLOWED_BASE_PROPERTIES,
+					...(own as readonly string[]),
+				]),
+			] as const,
+	),
+]);
+
 type CaptureLike = {
+	event: string;
 	properties?: Record<string, unknown>;
 	$set?: Record<string, unknown>;
 	$set_once?: Record<string, unknown>;
-} | null;
+};
 
-/** Strip location/title properties (and their person-property copies). */
-export function stripLocationProperties<T extends CaptureLike>(event: T): T {
-	if (!event) return event;
-	for (const bag of [event.properties, event.$set, event.$set_once]) {
-		if (!bag) continue;
-		for (const key of LOCATION_PROPERTIES) delete bag[key];
+/**
+ * `before_send` step: drop any event not on the allow-list, and reduce an
+ * allowed one to its allowed properties. Never throws (posthog-js runs
+ * `before_send` without a catch): anything unexpected drops the event.
+ */
+export function restrictToActiveUserSignal<T extends CaptureLike | null>(
+	event: T,
+): T | null {
+	try {
+		if (!event) return null;
+		const allowed = ALLOWED_EVENTS.get(event.event);
+		if (!allowed) return null;
+		const kept: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(event.properties ?? {})) {
+			if (allowed.has(key)) kept[key] = value;
+		}
+		kept.$geoip_disable = true;
+		// A new object rather than mutating: `$set`/`$set_once` (person
+		// properties) are left out entirely, and nothing else rides along.
+		const { $set: _set, $set_once: _setOnce, ...rest } = event;
+		return { ...rest, properties: kept } as T;
+	} catch {
+		return null;
 	}
-	return event;
 }
 
 /**
@@ -79,8 +132,9 @@ export function stripLocationProperties<T extends CaptureLike>(event: T): T {
  * `undefined` defers to the project's server-side "autocapture exceptions"
  * setting (`extensions/exception-autocapture/index.js`, `requiredConfig`).
  * `disable_external_dependency_loading` stops posthog-js fetching the
- * recorder, surveys or toolbar scripts at all. `before_send` keeps the
- * autocapture scrub as defence in depth even though autocapture is off.
+ * recorder, surveys or toolbar scripts at all. `before_send` runs the
+ * autocapture scrub as defence in depth, then the allow-list above, which is
+ * the actual guarantee of what leaves.
  */
 export function buildPosthogOptions(input: {
 	apiHost: string;
@@ -112,7 +166,7 @@ export function buildPosthogOptions(input: {
 		disable_external_dependency_loading: true,
 		save_referrer: false,
 		person_profiles: "identified_only" as const,
-		before_send: [stripLocationProperties, scrubCaptureResult],
+		before_send: [scrubCaptureResult, restrictToActiveUserSignal],
 		...(input.loaded ? { loaded: input.loaded } : {}),
 	};
 }
@@ -179,4 +233,46 @@ export function createTelemetryController(input: {
 			}
 		},
 	};
+}
+
+/** The slice of the preload bridge the boot needs. */
+export interface TelemetryConsentSource {
+	get(): Promise<{ effective?: boolean }>;
+	onChange(listener: (state: { effective?: boolean }) => void): () => void;
+}
+
+/**
+ * Start a document's telemetry from the LIVE consent, never from launch argv
+ * (review round 1, R1).
+ *
+ * WHY. `--lo-telemetry` is composed into the window's `additionalArguments`
+ * when the window is created, and Electron keeps those for the webContents'
+ * whole life — so a reload (Cmd+R, sign-out's `location.reload()`) sees the
+ * answer from window creation. Booting from it resurrected an opt-out made
+ * since (and ignored an opt-in made since). Main's `get()` answers from its
+ * current record, already AND-ed with the launch switch, so it is the only
+ * input. Until it answers the document is OFF and says so (`setTelemetryActive
+ * (false)` overrides `telemetry-state`'s argv fallback, so the feature-flag
+ * provider and product events stay off too). A broadcast that arrives before
+ * `get()` resolves is newer than it, so the late `get()` answer is ignored.
+ * No bridge (Storybook, a bare renderer): stays off.
+ */
+export function bootTelemetry(
+	controller: TelemetryController,
+	source: TelemetryConsentSource | undefined,
+): () => void {
+	setTelemetryActive(false);
+	if (!source) return () => undefined;
+	let superseded = false;
+	const off = source.onChange((state) => {
+		superseded = true;
+		controller.apply(state.effective === true);
+	});
+	void source.get().then(
+		(state) => {
+			if (!superseded) controller.apply(state.effective === true);
+		},
+		() => undefined, // unanswered: stay off
+	);
+	return off;
 }

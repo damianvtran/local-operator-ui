@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { existsSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -629,8 +629,13 @@ function telemetryConsentPath(): string {
 const telemetryConsentFs = {
 	readFile: (path: string): string | null =>
 		existsSync(path) ? readFileSync(path, "utf8") : null,
-	writeFile: (path: string, contents: string): void =>
-		writeFileSync(path, contents, { encoding: "utf8", mode: 0o600 }),
+	writeFile: (path: string, contents: string): void => {
+		writeFileSync(path, contents, { encoding: "utf8", mode: 0o600 });
+		// `mode` applies only when the file is created; a leftover temp from a
+		// crashed write keeps its old mode, so restate it before the rename.
+		chmodSync(path, 0o600);
+	},
+	rename: (from: string, to: string): void => renameSync(from, to),
 };
 
 /** Launch verdict AND the user's consent; no record is OFF. */

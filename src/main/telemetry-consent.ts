@@ -120,7 +120,12 @@ export function resolveEffectiveTelemetry(input: {
 export interface ConsentFs {
 	readFile(path: string): string | null;
 	writeFile(path: string, contents: string): void;
+	/** Atomic replace (POSIX `rename`); see `writeTelemetryConsent`. */
+	rename(from: string, to: string): void;
 }
+
+/** The sibling a choice is written to before it replaces the real file. */
+export const consentTempPath = (path: string): string => `${path}.tmp`;
 
 /**
  * Read the record at `path`. A read error (no file, permissions) is "no
@@ -149,6 +154,15 @@ export function writeTelemetryConsent(
 	now: Date = new Date(),
 ): TelemetryConsentRecord {
 	const contents = serializeTelemetryConsent(optedIn, now);
-	fs.writeFile(path, contents);
+	/*
+	 * ATOMIC (review round 1, R3): written whole to a sibling, then renamed
+	 * over the record. A crash mid-write leaves the old record intact rather
+	 * than a truncated file, which would parse as "no record" and silently
+	 * drop the user's choice. Same directory, so the rename never crosses a
+	 * filesystem.
+	 */
+	const temp = consentTempPath(path);
+	fs.writeFile(temp, contents);
+	fs.rename(temp, path);
 	return { optedIn, decidedAt: now.toISOString() };
 }

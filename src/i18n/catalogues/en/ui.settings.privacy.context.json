@@ -21,7 +21,7 @@
 		"role": "Help text under the toggle / checkbox",
 		"tone": "plain, reassuring second person",
 		"length": "Wrapping paragraph; keep every fact.",
-		"note": "Must keep all facts: only counts active users; no conversations, prompts, files, session content or personal details are ever collected or stored; changeable any time. Local Operator is a product name: do not translate."
+		"note": "Must keep all facts: only counts active users; full privacy stays on; no conversations, prompts, files or session details are ever collected, stored or used; can be turned off at any time. Do not add claims about IP addresses or personal data beyond these. Local Operator is a product name: do not translate."
 	},
 	"ui.settings.privacy.save_failed": {
 		"role": "Error toast",
@@ -33,6 +33,6 @@
 		"role": "Inline notice under the toggle",
 		"tone": "neutral",
 		"length": "One sentence.",
-		"note": "Shown when the app was launched with telemetry disabled by its launcher (a test or managed run)."
+		"note": "Shown when the app was launched with telemetry disabled by its launcher (a test or managed run); the toggle's value has no effect for this launch."
 	}
 }

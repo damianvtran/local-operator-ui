@@ -32,6 +32,10 @@ export type TelemetryConsentCheckboxProps = {
 	className?: string;
 };
 
+/** DOM id suffixes (not copy) linking the box to its label and explanation. */
+const LABEL_ID_SUFFIX = "-label"; // i18n: ignore DOM id suffix, not copy
+const DESCRIPTION_ID_SUFFIX = "-description"; // i18n: ignore DOM id suffix, not copy
+
 export const TelemetryConsentCheckbox: FC<TelemetryConsentCheckboxProps> = ({
 	checked,
 	onChange,
@@ -40,8 +44,8 @@ export const TelemetryConsentCheckbox: FC<TelemetryConsentCheckboxProps> = ({
 }) => {
 	useI18nLocale();
 	const id = useId();
-	const labelId = `${id}-label`;
-	const descriptionId = `${id}-description`;
+	const labelId = id + LABEL_ID_SUFFIX;
+	const descriptionId = id + DESCRIPTION_ID_SUFFIX;
 	return (
 		<div className={cn("mx-auto w-full max-w-[34rem]", className)}>
 			<div className="flex items-start gap-3">

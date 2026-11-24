@@ -84,6 +84,7 @@ import { LANGUAGE_SETTING_KEY } from "@shared/i18n";
 import { useQuery } from "@tanstack/react-query";
 import type { AgentMessagesStatus } from "../../../../../shared/agent-messages-contract";
 import type { BackendSettings } from "../../../../../shared/desktop-contract";
+import { consentBridge } from "../../../shared/analytics/use-telemetry-consent";
 import {
 	MODEL_EFFORT_SETTING_KEY,
 	TEAM_BRIDGE_ENABLED_SETTING_KEY,
@@ -518,8 +519,12 @@ export const SettingsPage: FC = () => {
 		() =>
 			DEFAULT_SETTINGS_SECTIONS.filter(
 				(section) =>
-					section.id !== "agent-messages" ||
-					agentMessagesAvailability !== "absent",
+					(section.id !== "agent-messages" ||
+						agentMessagesAvailability !== "absent") &&
+					// `PrivacySection` renders nothing without the desktop bridge
+					// (Storybook, a bare renderer), so its rail entry would point at
+					// nothing (design round 1, D3).
+					(section.id !== "privacy" || consentBridge() !== undefined),
 			),
 		[agentMessagesAvailability],
 	);

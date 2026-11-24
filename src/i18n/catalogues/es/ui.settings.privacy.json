@@ -2,7 +2,7 @@
 	"ui.settings.privacy.title": "Privacidad",
 	"ui.settings.privacy.description": "Lo que Local Operator puede compartir sobre cómo se usa. No se comparte nada a menos que lo actives.",
 	"ui.settings.privacy.usage_label": "Compartir estadísticas de uso anónimas",
-	"ui.settings.privacy.usage_explanation": "Solo sirve para contar cuántas personas usan Local Operator de forma activa. Nunca se recopilan ni se guardan conversaciones, prompts, archivos, contenido de sesiones ni datos personales. Puedes cambiarlo cuando quieras.",
+	"ui.settings.privacy.usage_explanation": "Solo se usa para contar cuántas personas usan Local Operator de forma activa. La privacidad total sigue activada: nunca se recopilan, guardan ni usan conversaciones, prompts, archivos ni detalles de sesiones. Puedes desactivarlo cuando quieras.",
 	"ui.settings.privacy.save_failed": "No se pudo guardar tu elección de privacidad. No ha cambiado nada.",
-	"ui.settings.privacy.launch_off": "Este inicio tiene las estadísticas de uso desactivadas, así que no se envía nada, diga lo que diga este ajuste."
+	"ui.settings.privacy.launch_off": "En este inicio, las estadísticas de uso están desactivadas, así que no se envía nada, sea cual sea este ajuste."
 }
