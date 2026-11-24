@@ -1,0 +1,29 @@
+{
+	"auditor": "task",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "e0f1956153f0-windowglass-es",
+	"date": "2026-11-23",
+	"locale": "es",
+	"independence": "Independent i18n auditor, round 1 (lopdev task session e0f1956153f0, team role \"task\" briefed as i18n auditor); not the translator (lopdev task job 9214f76cf401 briefed as i18n-translator, anthropic/claude-opus-5-5, notes in session 8e3f5025b34a scratchpad n4/translator-es.md). Same model family as the translator: disclosed. Read only the uncommitted worktree bytes at c78604c41b29+worktree; edited no repo file.",
+	"references": {
+		"glossary": "damianvtran/local-operator@b42471d3935c i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@b42471d3935c i18n/style-guides/es.md",
+		"shipped_terms": "src/i18n/catalogues/es/*.json at c78604c41b29+worktree: 'pestaña(s)' is the only tab term (20 values containing 'pestañas', e.g. ui.browser.chrome.scroll_left; no 'ficha'/'tab'); 'emergente' appears only as 'ventana emergente' for popup (ui.browser.extensions.details_no_options/details_no_ui); 'Popover'/'popover' appears in no es value; glossary and es style guide have no popover/tab/Mica row",
+		"context": "en .context.json: segment labels, 'one word', popover = Apple's densest material, tabbed = Microsoft's Tabbed Mica; renderer/src/features/settings/components/window-glass-setting.tsx maps each material to its key"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": null,
+	"head": "c78604c41b29+worktree",
+	"round": 1,
+	"scope": "All 28 keys of ui.settings.appearance.window_glass read against en + en .context.json; git diff confirms only material_popover (Popover→Emergente) and material_tabbed (Tabbed→Con pestañas) changed (2 insertions, 2 deletions). material_label 'Material' confirmed a genuine Spanish noun (RAE 'material'; same word used lowercase in material_description 'El material del sistema'), not untranslated English. material_mica 'Mica' / material_acrylic 'Acrylic' are manager-named exceptions (Microsoft product names; en context 'keep as is'). Segment set Ventana / Menú / Emergente / Mica / Acrylic / Con pestañas: all distinct; Emergente reads as the elliptical 'ventana emergente' without repeating sibling 'Ventana'; Con pestañas is two words because Spanish has no one-word adjective for 'tabbed' (bare 'Pestañas' would mean 'Tabs') — justified departure from the 'one word' length hint. Mechanical: key set = en (28), placeholders none on changed keys and byte-identical on all keys, file NFC, no Cc/Cf (besides JSON \\n/\\t whitespace), sentence case per es style guide.",
+	"namespace": "ui.settings.appearance.window_glass",
+	"status": "passed",
+	"head_verdict": "clean",
+	"sha256": {
+		"en": "d3c6e272273baab454200c41a25b21c451689ae9bf03329aa776dc1cb9f1b33a",
+		"es": "eff98e2c0aa19df3f615d8351696c08db0c8d5367002b6a1fad80854186d7dd6"
+	},
+	"context_sha256": "91fc7249578953f8532df9db875dea4bfb7ff952dd17a9d8db418909ac6046e1",
+	"findings": [],
+	"resolved": []
+}
