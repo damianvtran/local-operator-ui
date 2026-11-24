@@ -1,0 +1,80 @@
+{
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "d2b28d19a9d6",
+		"instance": "d2b28d19a9d6-fr",
+		"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+		"actual_model_source": "Session transcript.jsonl (served turns of this session): provider openrouter, served model deepseek/deepseek-v4.1-flash-1017 for the audit turns; the session selector stays anthropic/claude-opus-5-5 (frontend_state_checkpoint_v1 selection_payloads) and the harness switched models on provider failures during this turn - openai/gpt-6.2-sol, deepseek/deepseek-flash, radient/auto, then openrouter/deepseek/deepseek-v4.1-flash-1017. Fallbacks disclosed; no pin was changed by the auditor and no MT service or translation API was used."
+	},
+	"instance": "d2b28d19a9d6-fr",
+	"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"locale": "fr",
+	"namespace": "ui.chat.ask_queue",
+	"independence": "Independent translation auditor (lop session d2b28d19a9d6, a separate agent from the translator, task job 4fd9b1a9b8fe, which produced the seven catalogue lines in f519840f8d). The auditor wrote no catalogue value before this audit and read only the committed bytes of the worktree; the two catalogue edits this receipt records are the auditor's remediations, disclosed as findings. Same team as the translator is possible; independence is by agent and session, and no model identity is claimed as proof.",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/remote-ask-answer",
+	"head": "f519840f8d",
+	"references": {
+		"glossary": "damianvtran/local-operator@ad910f5da i18n/glossary.md (last touched 5079899f0; sha256 prefix ef07b44666877882)",
+		"style_guide": "damianvtran/local-operator@ad910f5da i18n/style-guides/fr.md (last touched 23d08be81; sha256 prefix b916f3d1c30b0a2e)",
+		"shipped_terms": "fr catalogues at f519840f8d: semicolons 372/390 preceded by U+202F, and ui.chat.ask_queue.refusal.already_settled / status.expired / secret.placeholder_retry all use U+202F; 204 values render the app as 'application'."
+	},
+	"scope": [
+		"ui.chat.ask_queue"
+	],
+	"method": "Read the English value with its .context.json note (role: error when the app itself could not format the user's answer to an ask; tone: short sentence then a reason sentence), the fr value, the fr style guide, glossary §2 (session, device) and the sibling refusal.*/response.* values. Mechanical: key parity en/fr per namespace (equal sets), placeholder/ICU list identical to English (none), NFC, no Cc/Cf control characters, no ASCII apostrophe or '...', rendered through intl-messageformat at locale fr (0 parse errors, formats cleanly with no arguments), length 147 characters against English 111 and no maxCells budget in the en sidecar. fr guide checks applied: vous address, ’ apostrophe, espace fine insécable before ; (the finding), em dash spacing, no ASCII '...'. No MT service used; the value was rendered/parsed locally, not re-translated.",
+	"observations": [
+		"INFO: the key carries no {placeholder} and no ICU structure (English and every locale: []), so nothing needed preserving; the en sidecar sets \"length\": \"\" (no maxCells budget) and no locale exceeds a constrained surface.",
+		"INFO: no Cc/Cf codepoint in any audited value (scanned U+0000-U+001F, U+007F-U+009F and category Cc/Cf), so no manual bidi control characters exist anywhere, ur included, per the ur guide's render-layer isolation rule; all values NFC, no ASCII apostrophe, no \"...\".",
+		"INFO: the seven sibling refusal.* values in each locale were read for register continuity: this sentence keeps each locale's established 'answer' word (respuesta · réponse · जवाब · ответ · جواب · câu trả lời · 回答) and its refusal frame (short sentence, then reason).",
+		"INFO: 'L’application' matches the locale (204 values name the app as 'application'); 'appareil' is glossary §2's device rendering; vous address and ’ apostrophe per guide; rendered 147 characters against English 111."
+	],
+	"namespaces": {
+		"ui.chat.ask_queue": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": [
+				"ui.chat.ask_queue.refusal.not_addressable"
+			],
+			"sha256": {
+				"en": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+				"fr": "8ddf3558851d3e88138b80465dc043deff3612f10e9ecfe5212fd87f70735932"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+			"fr_path": "src/i18n/catalogues/fr/ui.chat.ask_queue.json",
+			"context_sha256": "621e7ccb49d3d33b0356ea2caf694b3491f8ccfbe6b7398f27a71b1133cebd60",
+			"findings": [
+				{
+					"id": "F1",
+					"severity": "MINOR",
+					"key": "ui.chat.ask_queue.refusal.not_addressable",
+					"current": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
+					"problem": "The space before the semicolon was U+0020; the fr guide requires the espace fine insécable U+202F before : ; ! ? in prose (372 of the catalogue's 390 semicolons already use it, and every sibling in this namespace does). A plain space sets visibly wide French punctuation and can wrap the mark to the next line.",
+					"replacement": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
+					"disposition": "fixed in the catalogue by the auditor-remediator; the target sha256 in this receipt is the remediated file, re-read and re-checked after the edit (U+202F verified at the byte level)"
+				}
+			]
+		}
+	},
+	"findings": [
+		{
+			"id": "F1",
+			"severity": "MINOR",
+			"key": "ui.chat.ask_queue.refusal.not_addressable",
+			"current": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
+			"problem": "The space before the semicolon was U+0020; the fr guide requires the espace fine insécable U+202F before : ; ! ? in prose (372 of the catalogue's 390 semicolons already use it, and every sibling in this namespace does). A plain space sets visibly wide French punctuation and can wrap the mark to the next line.",
+			"replacement": "Votre réponse n’a pas été envoyée. L’application n’a pas pu la mettre dans une forme que cette session accepte ; rien n’a donc quitté cet appareil.",
+			"disposition": "fixed in the catalogue by the auditor-remediator; the target sha256 in this receipt is the remediated file, re-read and re-checked after the edit (U+202F verified at the byte level)"
+		}
+	],
+	"verdict": "pass",
+	"result": "clean-with-findings",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 1,
+		"NIT": 0
+	}
+}

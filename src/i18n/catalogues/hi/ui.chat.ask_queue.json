@@ -23,6 +23,7 @@
 	"ui.chat.ask_queue.refusal.already_settled": "वह सवाल पहले ही निपट चुका है, इसलिए आपका जवाब भेजा नहीं गया।",
 	"ui.chat.ask_queue.refusal.busy": "आपके जवाब की पुष्टि अभी नहीं हुई है। एजेंट व्यस्त है।",
 	"ui.chat.ask_queue.refusal.expired": "यह सवाल जवाब देने के लिए बहुत पुराना है — एजेंट से फिर पूछें।",
+	"ui.chat.ask_queue.refusal.not_addressable": "आपका जवाब नहीं भेजा गया। ऐप इसे उस रूप में नहीं ढाल सका जिसे यह सत्र स्वीकार करता है, इसलिए इस डिवाइस से कुछ नहीं भेजा गया।",
 	"ui.chat.ask_queue.response.answered": "जवाब दिया गया — पहुँचाया जा रहा है (सवाल {askId})",
 	"ui.chat.ask_queue.response.declined": "सवाल {askId} अस्वीकार किया गया — एजेंट को बता दिया गया",
 	"ui.chat.ask_queue.response.dismissed": "आपने हटाया{hasVia, select, yes { ({via})} other {}} — {reason} (सवाल {askId})",

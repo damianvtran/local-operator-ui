@@ -110444,8 +110444,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "ae2a9928f5364ea87a2cc6f974501a18f8ebdbca7da0a93851fbacac7e421da0",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "1c528e58fc44b055609ec0512e4a47abd703609c5b9684da1aaecd7bfcc116ef",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -110454,23 +110454,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "ebc5b152-s3c-es",
+					"instance": "d2b28d19a9d6-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
-					"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-es.json",
+					"receipt_sha256": "9140a678ef6ed62fbebf68f1f305119dc15e99e857572484b59595287c7404c1",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "ae2a9928f5364ea87a2cc6f974501a18f8ebdbca7da0a93851fbacac7e421da0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "ebc5b152-s3c-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
+							"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -111273,8 +111299,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "254d28ec52cab3d65567a8a81c7fc04d782f687f07cf8a2ca1896f4df89f766d",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "8ddf3558851d3e88138b80465dc043deff3612f10e9ecfe5212fd87f70735932",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -111283,23 +111309,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "c072f24e-s3d-fr",
+					"instance": "d2b28d19a9d6-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c072f24e-s3d-fr.json",
-					"receipt_sha256": "cd1eddf419ada0a8792476568570bf94387fab7e901f773254057b7e1da2e161",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt c072f24e-s3d-fr).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-fr.json",
+					"receipt_sha256": "c2d11fa40028662af11b859aeaaec962ecc05732dc2f30ed2347352532078260",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "254d28ec52cab3d65567a8a81c7fc04d782f687f07cf8a2ca1896f4df89f766d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "c072f24e-s3d-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/c072f24e-s3d-fr.json",
+							"receipt_sha256": "cd1eddf419ada0a8792476568570bf94387fab7e901f773254057b7e1da2e161",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt c072f24e-s3d-fr).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -112102,8 +112154,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "29a049651b8a00fbbad95826adf8535cab326313330279432310400459f5b7fd",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "a3621a9cc0173f968b6b0a70d07447d10816060231edb01d6e35aa2c95f6d514",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -112112,23 +112164,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "cbb5be6a-s3c-hi",
+					"instance": "d2b28d19a9d6-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
-					"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-hi.json",
+					"receipt_sha256": "fbf5ded6d2687e4fdbbb8a44533e28074560faae16176445f0040b910af1b037",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "29a049651b8a00fbbad95826adf8535cab326313330279432310400459f5b7fd",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "cbb5be6a-s3c-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
+							"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -112907,8 +112985,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "221aff8aca1a11f91ccd6cd490365923b1b8793efc438880d4582c6d1c859b00",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "8a8a58e11124e765684dadaf35a2487cfca61089fd11ac89190a833b72c31036",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -112917,23 +112995,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "e6498c6d-s3d-ru",
+					"instance": "d2b28d19a9d6-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e6498c6d-s3d-ru.json",
-					"receipt_sha256": "f2cc27434eb891202a4f920573461f57e628067cca728da88e84f0f30ddceda3",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt e6498c6d-s3d-ru).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-ru.json",
+					"receipt_sha256": "7f711be8d7fd589337eee941d88de8197dd8c1d94fdf92e3c14f1cff90f350a2",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "221aff8aca1a11f91ccd6cd490365923b1b8793efc438880d4582c6d1c859b00",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "e6498c6d-s3d-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e6498c6d-s3d-ru.json",
+							"receipt_sha256": "f2cc27434eb891202a4f920573461f57e628067cca728da88e84f0f30ddceda3",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt e6498c6d-s3d-ru).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -113736,8 +113840,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "46f3241f6055f3d2f222811618d7311ed28623f33f99af7ec3cbec14847aedaf",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "c1f3d34ef0a74514b35d9bd5eec38dbf30550dfca425b426340d269919e36d41",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -113746,23 +113850,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "3e9c47b1-s3c-ur",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "d2b28d19a9d6-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
-					"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-ur.json",
+					"receipt_sha256": "e91cac583e41a14866bd4d5eb4dbbf1aec232498c3f407498865c465aa991619",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "46f3241f6055f3d2f222811618d7311ed28623f33f99af7ec3cbec14847aedaf",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "3e9c47b1-s3c-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
+							"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -114541,8 +114671,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "d9e58a3f050d03ff58b64bde3c5c2704ce3a563596c5214dd4af191d9cc2d04d",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "cf3f96e2479f80e1553d83bebbd3c9fa051b10eb03939bb13f51476310fd19b6",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -114551,23 +114681,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "97ea8fa7-s3c-vi",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "d2b28d19a9d6-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
-					"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-vi.json",
+					"receipt_sha256": "5db9b9937800a88ded0458c016b731bf2b541b9e062777c39f6b6a8b24b0e730",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "d9e58a3f050d03ff58b64bde3c5c2704ce3a563596c5214dd4af191d9cc2d04d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "97ea8fa7-s3c-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
+							"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -115346,8 +115502,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.ask_queue",
-			"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
-			"target_sha256": "29da6394d15ec4432a2aef72db839711bcad1a662245b4320a3846e535d22b8a",
+			"source_sha256": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+			"target_sha256": "2af0a0ec0380a24e353864cc1f74a1039286286957ed351856be2ed9ebd801a9",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -115356,23 +115512,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "0d833311-s3d-zh-cn",
+					"instance": "d2b28d19a9d6-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/0d833311-s3d-zh-cn.json",
-					"receipt_sha256": "f157ec6fb7ad8ae77b7c952f0b26b0bc963de150a51112b7e858211c9ca8c620",
-					"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt 0d833311-s3d-zh-cn).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/d2b28d19a9d6-zh-CN.json",
+					"receipt_sha256": "62e0d0786338f36e8149592a44ce12256deec01e6a30d6bd3c8c04001a7c921b",
+					"scope": "PR fix/remote-ask-answer @ f519840f8d: new key ui.chat.ask_queue.refusal.not_addressable; legacy keys of the namespace read consistency-only.",
+					"note": "Independent audit; method, glossary/style-guide pins and findings in the receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "6709d1631a00f1fde2d4150770f5a549f4737b95b0d792c47128958e3b83012d",
+					"target_sha256": "29da6394d15ec4432a2aef72db839711bcad1a662245b4320a3846e535d22b8a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "0d833311-s3d-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0d833311-s3d-zh-cn.json",
+							"receipt_sha256": "f157ec6fb7ad8ae77b7c952f0b26b0bc963de150a51112b7e858211c9ca8c620",
+							"scope": "ui.chat.ask_queue: 44 keys read against English before release (wave s3d, receipt 0d833311-s3d-zh-cn).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

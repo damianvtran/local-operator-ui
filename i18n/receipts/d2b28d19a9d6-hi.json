@@ -1,0 +1,61 @@
+{
+	"auditor": {
+		"agent": "translation-auditor",
+		"session": "d2b28d19a9d6",
+		"instance": "d2b28d19a9d6-hi",
+		"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+		"actual_model_source": "Session transcript.jsonl (served turns of this session): provider openrouter, served model deepseek/deepseek-v4.1-flash-1017 for the audit turns; the session selector stays anthropic/claude-opus-5-5 (frontend_state_checkpoint_v1 selection_payloads) and the harness switched models on provider failures during this turn - openai/gpt-6.2-sol, deepseek/deepseek-flash, radient/auto, then openrouter/deepseek/deepseek-v4.1-flash-1017. Fallbacks disclosed; no pin was changed by the auditor and no MT service or translation API was used."
+	},
+	"instance": "d2b28d19a9d6-hi",
+	"model": "openrouter/deepseek/deepseek-v4.1-flash-1017",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"locale": "hi",
+	"namespace": "ui.chat.ask_queue",
+	"independence": "Independent translation auditor (lop session d2b28d19a9d6, a separate agent from the translator, task job 4fd9b1a9b8fe, which produced the seven catalogue lines in f519840f8d). The auditor wrote no catalogue value before this audit and read only the committed bytes of the worktree; the two catalogue edits this receipt records are the auditor's remediations, disclosed as findings. Same team as the translator is possible; independence is by agent and session, and no model identity is claimed as proof.",
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/remote-ask-answer",
+	"head": "f519840f8d",
+	"references": {
+		"glossary": "damianvtran/local-operator@ad910f5da i18n/glossary.md (last touched 5079899f0; sha256 prefix ef07b44666877882)",
+		"style_guide": "damianvtran/local-operator@ad910f5da i18n/style-guides/hi.md (last touched 198f6852c; sha256 prefix 82292dc8d13fcc93)",
+		"shipped_terms": "hi catalogues at f519840f8d: 210 values say 'ऐप'; guide locale calls 'session → सत्र'; sibling refusals use 'सवाल', 'जवाब', 'एजेंट' exactly as this sentence would."
+	},
+	"scope": [
+		"ui.chat.ask_queue"
+	],
+	"method": "Read the English value with its .context.json note (role: error when the app itself could not format the user's answer to an ask; tone: short sentence then a reason sentence), the hi value, the hi style guide, glossary §2 (session, device) and the sibling refusal.*/response.* values. Mechanical: key parity en/hi per namespace (equal sets), placeholder/ICU list identical to English (none), NFC, no Cc/Cf control characters, no ASCII apostrophe or '...', rendered through intl-messageformat at locale hi (0 parse errors, formats cleanly with no arguments), length 123 characters against English 111 and no maxCells budget in the en sidecar. hi guide checks applied: आप address, no '!', danda । stops, Latin digits (none in the string), nukta kept where the loan has it (फ़/ज़ are in other keys, none here). No MT service used; the value was rendered/parsed locally, not re-translated.",
+	"observations": [
+		"INFO: the key carries no {placeholder} and no ICU structure (English and every locale: []), so nothing needed preserving; the en sidecar sets \"length\": \"\" (no maxCells budget) and no locale exceeds a constrained surface.",
+		"INFO: no Cc/Cf codepoint in any audited value (scanned U+0000-U+001F, U+007F-U+009F and category Cc/Cf), so no manual bidi control characters exist anywhere, ur included, per the ur guide's render-layer isolation rule; all values NFC, no ASCII apostrophe, no \"...\".",
+		"INFO: the seven sibling refusal.* values in each locale were read for register continuity: this sentence keeps each locale's established 'answer' word (respuesta · réponse · जवाब · ответ · جواب · câu trả lời · 回答) and its refusal frame (short sentence, then reason).",
+		"INFO: 'ऐप' is the locale's shipped app word - measured 210 hi values, and the hi guide's settled-loan list (टोकन, कैश, फ़ाइल, फ़ोल्डर, प्रॉम्प्ट, डिवाइस, नेटवर्क) plus the catalogue settle it as the living loan rather than a stilted native form.",
+		"INFO: 'डिवाइस' is the guide's settled loan and glossary §2's device rendering; 'सत्र' follows the guide's session call ('सेशन' rejected); 'ऐप … नहीं ढाल सका' agrees masculine with the app, 'यह सत्र स्वीकार करता है' with सत्र, and 'ढालना' (to mould/cast) carries 'put it in a form' idiomatically. Danda full stops per guide; 123 characters against English 111."
+	],
+	"namespaces": {
+		"ui.chat.ask_queue": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": [
+				"ui.chat.ask_queue.refusal.not_addressable"
+			],
+			"sha256": {
+				"en": "4fc97c99ef40107d87fb987604bee4f6df51a5336ed0f2060f87921747930ddf",
+				"hi": "a3621a9cc0173f968b6b0a70d07447d10816060231edb01d6e35aa2c95f6d514"
+			},
+			"en_path": "src/i18n/catalogues/en/ui.chat.ask_queue.json",
+			"hi_path": "src/i18n/catalogues/hi/ui.chat.ask_queue.json",
+			"context_sha256": "621e7ccb49d3d33b0356ea2caf694b3491f8ccfbe6b7398f27a71b1133cebd60",
+			"findings": []
+		}
+	},
+	"findings": [],
+	"verdict": "pass",
+	"result": "clean",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 0
+	}
+}
