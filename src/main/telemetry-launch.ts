@@ -192,6 +192,74 @@ export function readTelemetryArgument(
 }
 
 /**
+ * The entry that tells a renderer which build of the app it is running in.
+ *
+ * WHY THIS EXISTS (2026-11-24). No desktop PostHog event carried the installed
+ * app version: the only version on a renderer event was `$lib_version`, which
+ * is posthog-js's own (1.235.6 on v0.60.2, v0.61.0 and v0.62.1 alike), so
+ * whether a shipped onboarding fix had reached users could not be read from the
+ * events at all. The renderer registers this value as the `app_version` super
+ * property (`shared/analytics/app-version.ts`), which posthog-js then stamps on
+ * every event it sends — named product events, autocapture, rage clicks,
+ * exceptions and the initial pageview.
+ *
+ * WHY ARGV AND NOT THE `get-app-version` IPC. Registration has to happen inside
+ * posthog-js's `loaded` callback, which runs synchronously inside `init`,
+ * before the initial `$pageview` is queued; an IPC round trip resolves too late
+ * for that event and for anything captured while it is in flight. The preload
+ * reads its own `process.argv` synchronously before any page code runs, which
+ * is exactly how the telemetry decision itself reaches the renderer.
+ *
+ * WHY `app.getVersion()` AND NOT A BUILD-INLINED `package.json`. It is the
+ * version Electron reports for the running app — the same value the About
+ * panel, the updater and the `get-app-version` IPC already use — so the event
+ * and every other surface that names the version agree by construction.
+ */
+export const APP_VERSION_ARG = "--lo-app-version";
+
+/**
+ * What a version may look like on its way through argv: semver's own alphabet
+ * (digits, letters, `.`, `-`, `+`), bounded. Anything else — blank, a stray
+ * space, a value an odd build stamped — is not sent at all, because a bogus
+ * `app_version` would split a dashboard's breakdown into a row that names no
+ * release, and "unknown" is better expressed by the property's absence.
+ */
+const APP_VERSION_SHAPE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
+
+/** The version if it is one this channel will carry, else `null`. */
+export function normalizeAppVersion(
+	version: string | null | undefined,
+): string | null {
+	if (typeof version !== "string") return null;
+	const trimmed = version.trim();
+	return APP_VERSION_SHAPE.test(trimmed) ? trimmed : null;
+}
+
+/**
+ * The renderer argument for `version`, or an empty list when the version is
+ * not one worth sending — a list so a caller can spread it into
+ * `additionalArguments` without a conditional of its own.
+ */
+export function appVersionArguments(
+	version: string | null | undefined,
+): string[] {
+	const normalized = normalizeAppVersion(version);
+	return normalized === null ? [] : [`${APP_VERSION_ARG}=${normalized}`];
+}
+
+/**
+ * Read the version back out of a renderer process's `argv`. `null` when the
+ * entry is absent (Storybook, a bare renderer, a window path that never wrote
+ * it) or does not have a version's shape — the renderer then registers nothing.
+ */
+export function readAppVersionArgument(argv: readonly string[]): string | null {
+	const prefix = `${APP_VERSION_ARG}=`;
+	const match = argv.find((entry) => entry.startsWith(prefix));
+	if (match === undefined) return null;
+	return normalizeAppVersion(match.slice(prefix.length));
+}
+
+/**
  * The one line a non-default launch prints, and nothing at all on the ordinary
  * one.
  *
