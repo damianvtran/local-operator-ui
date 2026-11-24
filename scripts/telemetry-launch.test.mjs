@@ -47,9 +47,13 @@ async function bundleDataUrl(entry, env = {}) {
 }
 
 const {
+	APP_VERSION_ARG,
 	TELEMETRY_ARG,
 	TELEMETRY_ENV,
+	appVersionArguments,
 	describeTelemetryLaunch,
+	normalizeAppVersion,
+	readAppVersionArgument,
 	readTelemetryArgument,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -272,5 +276,83 @@ test("the app's name for the switch and the tooling's are the same string", () =
 		SCRIPT_TELEMETRY_ENV,
 		TELEMETRY_ENV,
 		"scripts/telemetry-off.mjs and src/main/telemetry-launch.ts must agree: the name IS the contract, and nothing else would notice them drifting",
+	);
+});
+
+/*
+ * THE APP VERSION'S ROUTE TO THE RENDERER (2026-11-24). Every renderer event is
+ * meant to carry `app_version` because `$lib_version` is posthog-js's version and
+ * says nothing about which release sent the event. The value travels main →
+ * `additionalArguments` → preload argv → `window.api.appVersion`, beside the
+ * telemetry decision, because only argv is readable before posthog-js's first
+ * event; these pin each hop.
+ */
+test("the app version round-trips through a renderer's argv", () => {
+	for (const version of ["0.62.1", "1.0.0-beta.3", "0.63.0+build.7"]) {
+		const argv = [
+			"/Applications/Local Operator.app/Contents/MacOS/Local Operator Helper (Renderer)",
+			"--type=renderer",
+			telemetryArgument(true),
+			...appVersionArguments(version),
+		];
+		assert.deepEqual(appVersionArguments(version), [
+			`${APP_VERSION_ARG}=${version}`,
+		]);
+		assert.equal(readAppVersionArgument(argv), version);
+	}
+	// Whitespace around a real version is the version, not a refusal.
+	assert.equal(normalizeAppVersion(" 0.62.1\n"), "0.62.1");
+});
+
+test("no usable version means no entry at all, never a placeholder", () => {
+	// A bogus `app_version` would become its own row in every breakdown, naming no
+	// release; absence is how "unknown" is spelled.
+	for (const version of [
+		"",
+		"   ",
+		null,
+		undefined,
+		"0.62.1 extra",
+		"-rf",
+		"../0.62.1",
+		"0.62.1;rm",
+		"9".repeat(65),
+	]) {
+		assert.deepEqual(appVersionArguments(version), [], String(version));
+		assert.equal(normalizeAppVersion(version), null, String(version));
+	}
+	// The renderer side: an absent or malformed entry reads as null.
+	assert.equal(readAppVersionArgument(["--type=renderer"]), null);
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}=`]), null);
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}=a b`]), null);
+	// A prefix of the flag's name is not the flag.
+	assert.equal(readAppVersionArgument([`${APP_VERSION_ARG}x=0.62.1`]), null);
+});
+
+test("main writes app.getVersion() on the always-written renderer entry, and the preload exposes it", () => {
+	/*
+	 * Source-level, like the provider-mount check above: the value must be the
+	 * real Electron version (not a build-inlined package.json), it must ride on
+	 * `telemetryWebPreferences` (which `rendererArgumentFlags` composes for every
+	 * app window), and the preload must read it from its own argv rather than
+	 * through the async IPC that resolves after the first pageview.
+	 */
+	const mainIndex = readFileSync("src/main/index.ts", "utf8");
+	assert.match(
+		mainIndex,
+		/const telemetryWebPreferences = \{\s*additionalArguments: \[\s*telemetryArgument\(telemetryLaunch\.enabled\),\s*\.\.\.appVersionArguments\(app\.getVersion\(\)\),\s*\],\s*\};/,
+	);
+	assert.match(
+		mainIndex,
+		/\.\.\.\(telemetryWebPreferences\.additionalArguments \?\? \[\]\)/,
+	);
+	const preload = readFileSync("src/preload/index.ts", "utf8");
+	assert.match(preload, /appVersion: readAppVersionArgument\(process\.argv\),/);
+	// And the renderer registers it from that bridge inside posthog-js's
+	// `loaded`, which runs before the initial pageview is scheduled.
+	const rendererMain = readFileSync("src/renderer/src/main.tsx", "utf8");
+	assert.match(
+		rendererMain,
+		/loaded: \(client\) => registerAppVersion\(client, bridgeAppVersion\(\)\),/,
 	);
 });

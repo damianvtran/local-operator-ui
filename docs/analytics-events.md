@@ -14,6 +14,19 @@ launch's telemetry switch plus a build key, fail-closed. A rig, a test host,
 Storybook or a launch with telemetry off constructs no client and sends nothing.
 A capture that throws is dropped; analytics never fails the action it describes.
 
+## Every event names the app version
+
+Every renderer event — the named events below, `$pageview`, `$autocapture`,
+`$rageclick`, `$exception` — carries the super property `app_version`: the
+installed app's version as Electron reports it (`app.getVersion()`, e.g.
+`0.62.1`). Use it, not `$lib_version`, to split a funnel by release:
+`$lib_version` is posthog-js's own version and is identical across app releases.
+It is registered in posthog-js's `loaded` callback, before the initial pageview
+(`src/renderer/src/shared/analytics/app-version.ts` has the route and the
+ordering proof). A launch with no version to report sends no `app_version` at
+all rather than a placeholder. Events sent by builds before this property
+existed lack it.
+
 ## No PII, no content
 
 Properties are typed per event. Every string is a provider id from the catalogue,

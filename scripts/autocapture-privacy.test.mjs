@@ -321,6 +321,10 @@ test("a throwing property fails closed and still returns the event", () => {
 			},
 		],
 		$current_url: "app://index.html#/chat",
+		// The app-version super property (`shared/analytics/app-version.ts`) rides
+		// on every event, this one included; it names a release, not a person, and
+		// the fail-closed path must not take it with the content keys.
+		app_version: "0.62.1",
 	};
 	Object.defineProperty(properties, "$el_text", {
 		configurable: true,
@@ -347,6 +351,7 @@ test("a throwing property fails closed and still returns the event", () => {
 		{ type: "TypeError", value: "[redacted:unscrubbed]" },
 	]);
 	assert.equal(out.properties.$current_url, "app://index.html#/chat");
+	assert.equal(out.properties.app_version, "0.62.1");
 });
 
 /*
@@ -392,9 +397,22 @@ test("user-content surfaces carry USER_CONTENT_CLASS", () => {
 test("named product events and other properties pass through untouched", () => {
 	const event = {
 		event: "provider_connected",
-		properties: { provider: "openai", method: "sign_in", $current_url: "x" },
+		properties: {
+			provider: "openai",
+			method: "sign_in",
+			$current_url: "x",
+			app_version: "0.62.1",
+		},
 	};
 	assert.deepEqual(mod.scrubCaptureResult(structuredClone(event)), event);
+	// An autocapture event's content keys are scrubbed; its super properties,
+	// `app_version` among them, are not content and are left alone.
+	const click = mod.scrubCaptureResult({
+		event: "$autocapture",
+		properties: { $el_text: "/Users/jane/a.pdf", app_version: "0.62.1" },
+	});
+	assert.equal(click.properties.$el_text, "[redacted:path]");
+	assert.equal(click.properties.app_version, "0.62.1");
 	assert.equal(mod.scrubCaptureResult(null), null);
 });
 

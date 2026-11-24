@@ -6,7 +6,10 @@ import {
 	webUtils,
 } from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
-import { readTelemetryArgument } from "../main/telemetry-launch";
+import {
+	readAppVersionArgument,
+	readTelemetryArgument,
+} from "../main/telemetry-launch";
 import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
@@ -469,6 +472,15 @@ const api = {
 	 * `shared/config/telemetry.ts`, which holds the same rule.
 	 */
 	telemetryEnabled: readTelemetryArgument(process.argv)?.enabled ?? false,
+	/*
+	 * The installed app's version (`app.getVersion()` in main), read from the
+	 * same argv and for the same reason: the renderer registers it as PostHog's
+	 * `app_version` super property inside `init`, before its first event, and
+	 * only a synchronous source can be there in time (`APP_VERSION_ARG` in
+	 * `src/main/telemetry-launch.ts`). `null` when absent or malformed, and the
+	 * renderer then registers nothing.
+	 */
+	appVersion: readAppVersionArgument(process.argv),
 	/*
 	 * WHICH CONVERSATIONS HOLD AN OPEN QUEUED ASK (`shared/app-attention-queued-asks.ts`).
 	 *

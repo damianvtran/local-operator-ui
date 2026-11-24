@@ -215,6 +215,7 @@ import { TeamBridgeNotificationImages } from "./team-bridge-notification-images"
 import { TeamBridgeNotifier } from "./team-bridge-notifier";
 import { TeamBridgeNotifyStore } from "./team-bridge-notify-store";
 import {
+	appVersionArguments,
 	describeTelemetryLaunch,
 	resolveTelemetryLaunch,
 	telemetryArgument,
@@ -1946,9 +1947,20 @@ const devDriverWebPreferences =
  * bridge AND a non-blank key in the build it made) safe to hold. The two words
  * are the whole vocabulary, and they live in `./telemetry-launch`, which the
  * preload reads back out of its own argv.
+ *
+ * The app's version rides beside it (`appVersionArguments`), for the renderer
+ * to register as PostHog's `app_version` super property before its first
+ * event: `app.getVersion()` is the same value the About panel and the updater
+ * report, and argv is the only channel that reaches the renderer synchronously
+ * — see `APP_VERSION_ARG` for why the async `get-app-version` IPC cannot. A
+ * version without a version's shape is simply not written; the renderer then
+ * registers nothing rather than a bogus value.
  */
 const telemetryWebPreferences = {
-	additionalArguments: [telemetryArgument(telemetryLaunch.enabled)],
+	additionalArguments: [
+		telemetryArgument(telemetryLaunch.enabled),
+		...appVersionArguments(app.getVersion()),
+	],
 };
 
 // Radient tokens and OAuth state used to live in an electron-store session

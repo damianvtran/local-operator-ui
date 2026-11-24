@@ -82,6 +82,13 @@ declare global {
 			 */
 			telemetryEnabled: boolean;
 			/**
+			 * The installed app's version (`app.getVersion()`), from the window's
+			 * `additionalArguments` via the preload, so it is readable synchronously
+			 * before PostHog's first event. `null` outside an app window or when main
+			 * had no version-shaped value to send.
+			 */
+			appVersion: string | null;
+			/**
 			 * The window's claim about which conversations hold an open queued ask, and
 			 * main's request to send it again (`shared/app-attention-queued-asks.ts`).
 			 *
