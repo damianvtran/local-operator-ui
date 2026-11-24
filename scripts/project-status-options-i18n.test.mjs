@@ -194,9 +194,9 @@ const nameRule = (name) =>
 		? edit.projectNameRule(name)
 		: contract.projectNameRule(name);
 const N1 = {
-	name_required: "Give the project a name.",
+	name_required: "Give the project a key.",
 	name_grammar:
-		"Names start with a letter or digit and may use letters, digits, dot, underscore or dash.",
+		"Keys start with a letter or digit and may use letters, digits, dot, underscore or dash.",
 	tag_grammar:
 		"Tags are 1-24 characters of lowercase letters, digits, underscore or dash.",
 };

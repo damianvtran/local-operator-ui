@@ -1495,7 +1495,7 @@ export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
  *
  * A KEY, NOT A SENTENCE (i18n N1): these used to return English prose, so a
  * Urdu or Chinese title - which derives an empty key by design - showed
- * "Give the project a name." in an otherwise translated sheet. This module is
+ * "Give the project a key." in an otherwise translated sheet. This module is
  * shared with the main process, which must not bundle the runtime `t()` and
  * its catalogues, so the rule names the message and the renderer edge
  * (`projectNameRule` in `features/projects/project-edit-model.ts`) resolves it

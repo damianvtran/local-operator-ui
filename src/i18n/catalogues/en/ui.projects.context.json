@@ -632,17 +632,17 @@
 		}
 	},
 	"ui.projects.project_edit_model.name_required": {
-		"role": "project create sheet and detail inline editor: validation error shown under the field when the project key field is empty (e.g. the title had no Latin letters to derive it from)",
+		"role": "project create sheet and detail inline editor: validation error shown under the project KEY field (labelled \"Key\", ui.projects.project_form_dialog.key / ui.projects.project_editors.key) when the key is empty - e.g. the title had no ASCII letters or digits to derive it from",
 		"tone": "Plain, helpful validation sentence; state the rule, no blame.",
-		"note": "English source: Give the project a name. The project key is an identifier; this asks the user to provide one.",
-		"length": "English is 24 source characters. One sentence; may wrap under the field.",
+		"note": "English source: Give the project a key. Translate \"key\" with the same word as the field label \"Key\", NOT \"name\": the user has usually just typed a title (name), so asking for a name reads as wrong. The key is a short ASCII-only identifier; this asks the user to type one.",
+		"length": "English is 23 source characters. One sentence; may wrap under the field.",
 		"placeholders": {}
 	},
 	"ui.projects.project_edit_model.name_grammar": {
-		"role": "project create sheet and detail inline editor: validation error shown under the field when the project key breaks the key grammar",
+		"role": "project create sheet and detail inline editor: validation error shown under the project KEY field (labelled \"Key\", ui.projects.project_form_dialog.key / ui.projects.project_editors.key) when the key breaks the key grammar",
 		"tone": "Plain, helpful validation sentence; state the rule, no blame.",
-		"note": "English source: Names start with a letter or digit and may use letters, digits, dot, underscore or dash. The allowed characters describe a machine grammar (ASCII letters a-z, digits 0-9, and the literal symbols named); translate the description but keep the meaning exact, and keep \"1-24\" as digits.",
-		"length": "English is 88 source characters. One sentence; may wrap under the field.",
+		"note": "English source: Keys start with a letter or digit and may use letters, digits, dot, underscore or dash. Translate \"Keys\" with the same word as the field label \"Key\", NOT \"names\". The key is ASCII-only: the allowed characters describe a machine grammar (ASCII letters a-z, digits 0-9, and the literal symbols named); translate the description but keep the meaning exact. This message states no length range (the 1-24 range belongs to tag_grammar, not here).",
+		"length": "English is 87 source characters. One sentence; may wrap under the field.",
 		"placeholders": {}
 	},
 	"ui.projects.project_edit_model.tag_grammar": {

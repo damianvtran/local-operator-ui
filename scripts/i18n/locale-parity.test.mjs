@@ -54,6 +54,10 @@ const IDENTICAL_OK = new Map([
 		"language-neutral format string: a plus sign and a localized number, no words",
 	],
 	[
+		"fr:ui.projects.project_sheet_model.template_notes",
+		"French cognate « Notes », the native heading for the seeded project description's notes section, not an English stub; independently audited in i18n/receipts/audit-i18n-psopt-fr.json (\"'Notes' is the native French word, not an untranslated leftover\"). Scoped to this locale/key only.",
+	],
+	[
 		"fr:ui.teamBridge.alerts.test_badge",
 		"French noun: « Test » is the normal spelling for a test alert badge (audited in #2027 round 1).",
 	],
