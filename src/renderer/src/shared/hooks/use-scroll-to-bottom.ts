@@ -6,6 +6,7 @@ import {
 	initialActivityState,
 } from "@features/chat/canonical/new-activity";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { browserTailScrollEnv, scrollToTail } from "./scroll-to-tail";
 
 /**
  * The jump-to-latest control's inputs.
@@ -46,6 +47,12 @@ export const useScrollToBottom = (
 	 */
 	const activityRef = useRef(activity);
 	activityRef.current = activity;
+	/*
+	 * The running flight's cancel, or null. While a flight is running the
+	 * reader is, by their own request, on their way to the tail: the position
+	 * readings below treat them as there (see `updateScrollPosition`).
+	 */
+	const flightRef = useRef<(() => void) | null>(null);
 
 	/**
 	 * Recalculate whether we're far from bottom, and fold the transcript's
@@ -60,7 +67,18 @@ export const useScrollToBottom = (
 		const container = containerRef.current;
 		if (!container) return;
 
-		const { scrollTop, scrollHeight, clientHeight } = container;
+		const { scrollHeight, clientHeight } = container;
+		/*
+		 * MID-FLIGHT THE DESTINATION IS THE READING. A scroll-to-tail flight
+		 * passes through every offset between the reader and the tail; read
+		 * literally, the chip would stay up for most of it and retire only at the
+		 * landing, and the register would keep counting the reader as away while
+		 * they travel toward the very rows it is counting. The reader asked for the
+		 * tail, so the chip retires as the flight starts - the same tick
+		 * `snapToBottom` retires it in. A gesture that cancels the flight clears
+		 * the ref first, so the real offset is read again from then on.
+		 */
+		const scrollTop = flightRef.current ? 0 : container.scrollTop;
 		const following = followsTail(scrollTop);
 		setIsFarFromBottom(chipVisibleAt(scrollTop, scrollHeight, clientHeight));
 
@@ -77,18 +95,34 @@ export const useScrollToBottom = (
 	}, [containerRef]);
 
 	/**
-	 * Smoothly scroll to bottom (scrollTop = 0 in column-reverse layouts).
+	 * Carry the reader to the tail (scrollTop = 0 in column-reverse layouts).
+	 *
+	 * A frame-driven flight whose duration grows with the distance
+	 * (`scroll-to-tail.ts` holds the model and the reasons). It replaced
+	 * `scrollTo({ behavior: "smooth" })`, whose browser-chosen timing could not
+	 * be tuned and which a layout change mid-flight - a streaming token - could
+	 * cancel, leaving the reader short of the tail. Reduced motion snaps.
+	 *
+	 * Used by both the send (via the composer) and the jump-to-latest chip, so
+	 * the two reach the tail the same way. A second request replaces a running
+	 * flight from wherever it has got to.
 	 */
 	const scrollToBottom = useCallback(() => {
 		const container = containerRef.current;
 		if (!container) return;
-
-		// Use requestAnimationFrame to ensure DOM is updated before scrolling
-		requestAnimationFrame(() => {
-			container.scrollTo({ top: 0, behavior: "smooth" });
-			// Recheck after the animation kicks off
-			requestAnimationFrame(updateScrollPosition);
+		flightRef.current?.();
+		let cancel: (() => void) | null = null;
+		let done = false;
+		cancel = scrollToTail(container, browserTailScrollEnv(), () => {
+			done = true;
+			if (flightRef.current === cancel) flightRef.current = null;
+			updateScrollPosition();
 		});
+		// A synchronous settle (no motion, or a snap) has already run above.
+		if (!done) {
+			flightRef.current = cancel;
+			updateScrollPosition();
+		}
 	}, [containerRef, updateScrollPosition]);
 
 	/**
@@ -135,6 +169,8 @@ export const useScrollToBottom = (
 
 		if (prevContentKeyRef.current !== contentKey) {
 			prevContentKeyRef.current = contentKey;
+			// A flight belongs to the conversation it was asked in.
+			flightRef.current?.();
 			registerRef.current = initialActivityState(activityRef.current);
 			setHasNewActivity(false);
 		}
@@ -152,6 +188,8 @@ export const useScrollToBottom = (
 
 		return () => {
 			container.removeEventListener("scroll", handleScroll);
+			// Never leave a flight writing a scroller that is being torn down.
+			flightRef.current?.();
 			cancelAnimationFrame(rafId);
 			clearTimeout(timeoutId);
 			clearTimeout(longTimeoutId);
