@@ -1,4 +1,27 @@
 {
+	"ui.chat.approval.chip.label": {
+		"length": "2-3 words",
+		"note": "{mode} is the localized mode word (Auto / Ask).",
+		"placeholders": {
+			"mode": "localized approval mode name"
+		},
+		"role": "composer status chip naming this session's tool-approval mode",
+		"tone": "label, no trailing period"
+	},
+	"ui.chat.approval.chip.switch_to_ask": {
+		"length": "one sentence",
+		"note": "Tooltip first sentence; followed by the guardrail note.",
+		"placeholders": {},
+		"role": "tooltip on the approval chip while the session is on auto",
+		"tone": "plain instruction"
+	},
+	"ui.chat.approval.chip.switch_to_auto": {
+		"length": "one sentence",
+		"note": "Tooltip first sentence; followed by the guardrail note.",
+		"placeholders": {},
+		"role": "tooltip on the approval chip while the session asks",
+		"tone": "plain instruction"
+	},
 	"ui.chat.approval.escape.always_ask": {
 		"length": "",
 		"note": "Switches this conversation back to asking before each tool; the opposite of auto.",

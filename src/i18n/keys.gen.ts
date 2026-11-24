@@ -4948,6 +4948,9 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.chip.label": { mode: string };
+	"ui.chat.approval.chip.switch_to_ask": undefined;
+	"ui.chat.approval.chip.switch_to_auto": undefined;
 	"ui.chat.approval.escape.always_ask": undefined;
 	"ui.chat.approval.escape.ask_saved": undefined;
 	"ui.chat.approval.escape.bridge_latched": undefined;

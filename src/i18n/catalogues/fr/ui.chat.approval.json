@@ -1,4 +1,7 @@
 {
+	"ui.chat.approval.chip.label": "Approbations : {mode}",
+	"ui.chat.approval.chip.switch_to_ask": "Cliquez pour demander de nouveau avant chaque outil.",
+	"ui.chat.approval.chip.switch_to_auto": "Cliquez pour approuver automatiquement les outils dans cette session.",
 	"ui.chat.approval.escape.always_ask": "Toujours demander",
 	"ui.chat.approval.escape.ask_saved": "Cette session demande de nouveau avant chaque outil ; cette demande attend toujours une réponse.",
 	"ui.chat.approval.escape.bridge_latched": "« Allow all » et le mode auto sont désactivés dans cette conversation. Pour activer le mode auto, tapez /approvals auto dans le terminal, ou utilisez /new pour démarrer une nouvelle conversation.",

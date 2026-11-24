@@ -1,4 +1,7 @@
 {
+	"ui.chat.approval.chip.label": "منظوریاں: {mode}",
+	"ui.chat.approval.chip.switch_to_ask": "ہر ٹول سے پہلے دوبارہ پوچھنے کے لیے کلک کریں۔",
+	"ui.chat.approval.chip.switch_to_auto": "اس سیشن میں ٹولز کو خودکار منظوری دینے کے لیے کلک کریں۔",
 	"ui.chat.approval.escape.always_ask": "ہمیشہ پوچھیں",
 	"ui.chat.approval.escape.ask_saved": "یہ سیشن اب پھر ہر ٹول سے پہلے پوچھے گا — اس درخواست کا جواب ابھی باقی ہے۔",
 	"ui.chat.approval.escape.bridge_latched": "اس گفتگو میں “Allow all” اور auto بند ہیں۔ auto آن کرنے کے لیے ٹرمینل میں /approvals auto ٹائپ کریں، یا نئی گفتگو کے لیے /new استعمال کریں۔",

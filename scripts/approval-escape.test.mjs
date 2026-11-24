@@ -50,6 +50,7 @@ const bundle = await build({
 		contents: [
 			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine, approvalEscapeHandleState, policyAfterSave } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { ApprovalModeChipView, approvalModeFrom, approvalToggleArgs, approvalModeKey, invalidateApprovalMode } from "./src/renderer/src/features/chat/session-status/approval-mode-chip";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -75,6 +76,11 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const {
+	ApprovalModeChipView,
+	approvalModeFrom,
+	approvalToggleArgs,
+	approvalModeKey,
+	invalidateApprovalMode,
 	runApprovalEscape,
 	ApprovalEscapeControls,
 	APPROVAL_ESCAPE_COPY,
@@ -645,4 +651,124 @@ test("N3/N4: a saved state ends when the mode moves back, and the reveal scrolls
 	);
 	assert.doesNotMatch(source, /scrollIntoView\?\.\(/);
 	assert.match(source, /revealInOwnScroller\(line\)/);
+});
+
+/*
+ * Operator request 2026-11-24 (Ryan Copp's feedback): a one-click way back from
+ * auto, a guardrail note on the card, and a visible mode chip in the composer.
+ */
+test("Always ask runs `approvals ask` through the owner route and never the default", async () => {
+	const calls = [];
+	const outcome = await runApprovalEscape("ask", {
+		runCommand: async (...args) => {
+			calls.push(args);
+			return {
+				outcome: {
+					kind: "notice",
+					text: "tool approvals: ask",
+					style: "info",
+					data: {},
+				},
+				result: { tone: "success", text: "tool approvals: ask" },
+			};
+		},
+		editDefault: async () => {
+			throw new Error("Always ask must not write the default");
+		},
+	});
+	assert.deepEqual(calls, [["approvals", "ask"]]);
+	assert.deepEqual(outcome, { kind: "saved" });
+	const refused = await runApprovalEscape("ask", {
+		runCommand: async () => ({
+			outcome: { kind: "error", text: "no gate", data: {} },
+			result: { tone: "error", text: "no gate" },
+		}),
+		editDefault: async () => ({ key: "", value: "" }),
+	});
+	assert.equal(refused.kind, "unchanged");
+});
+
+test("Always ask shows only while auto, and its save states the session asks again", () => {
+	const idle = renderControls({});
+	assert.doesNotMatch(idle, /data-approval-escape-ask/);
+	const onAuto = renderControls({ showAlwaysAsk: true, onAlwaysAsk: () => {} });
+	assert.match(onAuto, /data-approval-escape-ask/);
+	assert.match(onAuto, /Always ask/);
+	const saved = renderControls({ status: { kind: "ask-saved" } });
+	assert.match(saved, /asks before every tool again/);
+	assert.deepEqual(
+		policyAfterSave(
+			{ kind: "ask-saved" },
+			{ mode: "auto", provenance: "session" },
+		),
+		{ mode: "ask", provenance: "session" },
+	);
+	assert.equal(
+		approvalEscapeHandleState("ask", null, { kind: "ask-saved" }),
+		"idle",
+	);
+});
+
+test("the card says guardrails and dangerous-delete review still apply in auto", () => {
+	const html = renderControls({});
+	assert.match(html, /data-approval-guardrails-note/);
+	assert.match(
+		html,
+		/guardrail refusals and dangerous-delete review still apply/,
+	);
+});
+
+test("the mode chip reads only the backend's row and toggles to the opposite mode", () => {
+	assert.equal(approvalModeFrom("auto"), "auto");
+	assert.equal(approvalModeFrom("ask"), "ask");
+	assert.equal(approvalModeFrom(undefined), null);
+	assert.equal(approvalModeFrom("yolo"), null);
+	assert.equal(approvalToggleArgs("auto"), "ask");
+	assert.equal(approvalToggleArgs("ask"), "auto");
+	const none = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: null, onToggle: () => {} }),
+	);
+	assert.equal(none, "", "an unknown mode hides the chip");
+	const auto = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: "auto", onToggle: () => {} }),
+	);
+	assert.match(auto, /Approvals: Auto/);
+	assert.match(auto, /data-mode="auto"/);
+	assert.match(
+		auto,
+		/dangerous-delete review/,
+		"the tooltip carries the guardrail note",
+	);
+	const ask = renderToStaticMarkup(
+		createElement(ApprovalModeChipView, { mode: "ask", onToggle: () => {} }),
+	);
+	assert.match(ask, /Approvals: Ask/);
+});
+
+test("every approvals receipt invalidates the chip's query key", () => {
+	const seen = [];
+	invalidateApprovalMode(
+		{ invalidateQueries: async (filter) => seen.push(filter.queryKey) },
+		SESSION,
+	);
+	invalidateApprovalMode(null, SESSION);
+	invalidateApprovalMode(
+		{ invalidateQueries: async () => seen.push("x") },
+		undefined,
+	);
+	assert.deepEqual(seen, [["desktop", "entities", SESSION, "approvals"]]);
+	assert.deepEqual(approvalModeKey(SESSION).slice(0, 4), [
+		"desktop",
+		"entities",
+		SESSION,
+		"approvals",
+	]);
+	const dispatch = readFileSync(
+		"src/renderer/src/features/chat/components/slash-dispatch.ts",
+		"utf8",
+	);
+	assert.match(
+		dispatch,
+		/spec\.name === "approvals" && commandArgs\)\s*invalidateApprovalMode/,
+	);
 });

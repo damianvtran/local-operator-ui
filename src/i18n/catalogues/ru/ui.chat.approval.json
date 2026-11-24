@@ -1,4 +1,7 @@
 {
+	"ui.chat.approval.chip.label": "Одобрения: {mode}",
+	"ui.chat.approval.chip.switch_to_ask": "Нажмите, чтобы снова спрашивать перед каждым инструментом.",
+	"ui.chat.approval.chip.switch_to_auto": "Нажмите, чтобы автоматически одобрять инструменты в этой сессии.",
 	"ui.chat.approval.escape.always_ask": "Всегда спрашивать",
 	"ui.chat.approval.escape.ask_saved": "Эта сессия снова спрашивает перед каждым инструментом — на этот запрос всё ещё нужно ответить.",
 	"ui.chat.approval.escape.bridge_latched": "В этой беседе «Allow all» и auto отключены. Чтобы включить auto, введите /approvals auto в терминале или используйте /new, чтобы начать новую беседу.",

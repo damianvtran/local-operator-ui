@@ -1,4 +1,7 @@
 {
+	"ui.chat.approval.chip.label": "Phê duyệt: {mode}",
+	"ui.chat.approval.chip.switch_to_ask": "Nhấp để lại hỏi trước mỗi công cụ.",
+	"ui.chat.approval.chip.switch_to_auto": "Nhấp để tự động phê duyệt công cụ trong phiên này.",
 	"ui.chat.approval.escape.always_ask": "Luôn hỏi",
 	"ui.chat.approval.escape.ask_saved": "Phiên này lại hỏi trước mỗi công cụ — yêu cầu này vẫn cần được trả lời.",
 	"ui.chat.approval.escape.bridge_latched": "“Allow all” và auto đã tắt trong cuộc trò chuyện này. Để bật auto, hãy gõ /approvals auto trong terminal, hoặc dùng /new để bắt đầu cuộc trò chuyện mới.",

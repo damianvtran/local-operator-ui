@@ -82,6 +82,7 @@
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -89,6 +90,7 @@ import { Check } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
+import { invalidateApprovalMode } from "../../session-status/approval-mode-chip";
 
 /** Which gate the press loosens: the live one, or the saved default. */
 /**
@@ -727,6 +729,7 @@ export const ApprovalEscape = ({
 }) => {
 	useI18nLocale();
 	const command = useSessionCommand(sessionId);
+	const { client } = useOptionalQueryClient();
 	const [target, setTarget] = useState<ApprovalEscapeTarget | null>(null);
 	const [status, setStatus] = useState<ApprovalEscapeStatus>({ kind: "idle" });
 	/*
@@ -793,11 +796,13 @@ export const ApprovalEscape = ({
 							: { kind: "refused", detail: outcome.detail },
 				);
 			} finally {
+				// The composer's approval chip repaints from the backend, not the press.
+				invalidateApprovalMode(client, sessionId);
 				inFlight.current = false;
 				setTarget(null);
 			}
 		},
-		[command, editDefault],
+		[command, editDefault, client, sessionId],
 	);
 
 	const policy = policyAfterSave(status, {
