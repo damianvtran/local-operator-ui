@@ -1273,3 +1273,27 @@ test("CLI rejects new state sinks and setter-only edits without restoring techni
 
 	check(technical, 0);
 });
+
+// `const [, setX] = useState(0)` is valid TS (a re-render trigger that never
+// reads its value). The TS API hands the hole back as a nameless
+// BindingElement, and the state-copy scan crashed on `value.name.kind`
+// (PR #2073's Language Coverage run). An elided value can never reach a sink,
+// so the checker must skip it, not exit 2.
+test("CLI tolerates an elided useState value binding", () => {
+	const dir = scratchRepo();
+	const path = join(dir, "src/renderer/state.tsx");
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, "export const x = 1;\n");
+	commitScratchBase(dir);
+	writeFileSync(
+		path,
+		'import { useState } from "react";\nexport function C() {\nconst [, setTick] = useState(0);\nreturn <button onClick={() => setTick((n) => n + 1)}>{"x"}</button>;\n}\n',
+	);
+	const result = spawnSync(
+		process.execPath,
+		[CHECKER, "--repo", dir, "--base", "HEAD"],
+		{ env: gitEnv(), encoding: "utf8" },
+	);
+	assert.notEqual(result.status, 2, result.stdout + result.stderr);
+	assert.ok(!result.stderr.includes("reading 'kind'"), result.stderr);
+});
