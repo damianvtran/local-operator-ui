@@ -90,6 +90,7 @@ function seed(scenario: Scenario) {
 		text: SPOKEN,
 		fullText: scenario === "server" ? SERVER_FULL : FULL,
 		truncated: true,
+		source: "reply",
 		at: t0 + 20_000,
 	});
 	if (scenario === "working") {

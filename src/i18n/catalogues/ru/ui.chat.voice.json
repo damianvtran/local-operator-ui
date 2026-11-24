@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "Лимит вашего провайдера речи пока исчерпан, поэтому ответ не озвучен.",
 	"ui.chat.voice.provider_unset": "Сначала выберите провайдера речи: Radient или собственный ключ ElevenLabs. Голосовой режим использует только выбранного вами провайдера.",
 	"ui.chat.voice.choose_provider": "Выбрать провайдера",
-	"ui.chat.voice.set_up_provider": "Настроить в провайдерах"
+	"ui.chat.voice.set_up_provider": "Настроить в провайдерах",
+	"ui.chat.voice.summary_label": "Озвучено",
+	"ui.chat.voice.summary_upcoming": "Будет озвучено",
+	"ui.chat.voice.summary_speaking": "Говорю",
+	"ui.chat.voice.summary_stopped": "Озвучено · прервано",
+	"ui.chat.voice.summary_muted": "Не озвучено (без звука)",
+	"ui.chat.voice.summary_cut": "Озвучено · только начало",
+	"ui.chat.voice.summary_static": "Сводка для озвучивания",
+	"ui.chat.voice.replay": "Повторить озвучивание",
+	"ui.chat.voice.play": "Воспроизвести",
+	"ui.chat.voice.full_reply_link": "Полный ответ в чате ↑"
 }

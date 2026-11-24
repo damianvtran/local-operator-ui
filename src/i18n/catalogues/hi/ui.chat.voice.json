@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "आपके स्पीच प्रोवाइडर की सीमा अभी पूरी हो गई है, इसलिए वह जवाब बोलकर नहीं सुनाया गया।",
 	"ui.chat.voice.provider_unset": "पहले स्पीच प्रोवाइडर चुनें: Radient या आपकी अपनी ElevenLabs कुंजी। वॉइस मोड सिर्फ़ वही इस्तेमाल करता है जो आप चुनें।",
 	"ui.chat.voice.choose_provider": "प्रोवाइडर चुनें",
-	"ui.chat.voice.set_up_provider": "प्रोवाइडर में सेट अप करें"
+	"ui.chat.voice.set_up_provider": "प्रोवाइडर में सेट अप करें",
+	"ui.chat.voice.summary_label": "बोलकर सुनाया गया",
+	"ui.chat.voice.summary_upcoming": "बोलकर सुनाया जाएगा",
+	"ui.chat.voice.summary_speaking": "बोल रही है",
+	"ui.chat.voice.summary_stopped": "बोलकर सुनाया गया · बीच में रुका",
+	"ui.chat.voice.summary_muted": "सुनाया नहीं गया (म्यूट)",
+	"ui.chat.voice.summary_cut": "बोलकर सुनाया गया · केवल पहला हिस्सा",
+	"ui.chat.voice.summary_static": "बोला गया सारांश",
+	"ui.chat.voice.replay": "फिर से सुनाएँ",
+	"ui.chat.voice.play": "चलाएँ",
+	"ui.chat.voice.full_reply_link": "चैट में पूरा जवाब ↑"
 }

@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "你的语音提供商目前已达上限，所以这条回复没有朗读。",
 	"ui.chat.voice.provider_unset": "请先选择语音提供商：Radient或你自己的ElevenLabs密钥。语音模式只会使用你选择的那一个。",
 	"ui.chat.voice.choose_provider": "选择提供商",
-	"ui.chat.voice.set_up_provider": "在“提供商”中设置"
+	"ui.chat.voice.set_up_provider": "在“提供商”中设置",
+	"ui.chat.voice.summary_label": "已朗读",
+	"ui.chat.voice.summary_upcoming": "将朗读",
+	"ui.chat.voice.summary_speaking": "正在说话",
+	"ui.chat.voice.summary_stopped": "已朗读 · 中途停止",
+	"ui.chat.voice.summary_muted": "未朗读（已静音）",
+	"ui.chat.voice.summary_cut": "已朗读 · 仅开头部分",
+	"ui.chat.voice.summary_static": "朗读摘要",
+	"ui.chat.voice.replay": "重播",
+	"ui.chat.voice.play": "播放",
+	"ui.chat.voice.full_reply_link": "在聊天中查看完整回复 ↑"
 }

@@ -1,0 +1,174 @@
+{
+ "instance": "audit-i18n-2074-es",
+ "locale": "es",
+ "audit_date": "2026-11-23",
+ "round": 1,
+ "scope": [
+  "ui.chat.voice"
+ ],
+ "auditor": {
+  "agent": "reviewer (lopdev team role, task audit-2074-es)",
+  "session": "20f93ebcdc98",
+  "model": "anthropic/claude-sonnet-5-5",
+  "actual_model_source": "Served model per this session's system header; no fallback observed.",
+  "independent_from_translator_session": true,
+  "independence_note": "Read-only; edited no repo file, posted nothing to GitHub; only file written is this receipt. Translator is a different session, likely the same model family (anthropic/claude-sonnet-5-5), so independence is session-level, not model-level. No MT service used."
+ },
+ "repo": "damianvtran/local-operator-ui",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+ "head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+ "base": "origin/feat/voice-history-full-text ebd662e4d0db9774d4a69a65cf3f9067e170c919",
+ "hash_method": "sha256 of raw file bytes (ledger-check.mjs sha256File)",
+ "references": {
+  "style_guide": "damianvtran/local-operator@c47b28f09 (origin/main) i18n/style-guides/es.md sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+  "glossary": "i18n/glossary.md (origin/main): no entry for these labels",
+  "shipped_terms": "es ui.chat.voice: spoken_part_note, phase_speaking, phase_interrupted, phase_silenced, cut_chip, byok_speech_failed; es ui.chat: audio.play"
+ },
+ "result": "clean-with-findings",
+ "status": "passed",
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "checks": [
+  {
+   "check": "key-set parity en vs es",
+   "result": "PASS",
+   "detail": "91/91, symmetric diff empty."
+  },
+  {
+   "check": "diff additions only",
+   "result": "PASS",
+   "detail": "10 added keys; the one removed line is the prior last key gaining a trailing comma, value unchanged."
+  },
+  {
+   "check": "placeholders / ICU",
+   "result": "PASS",
+   "detail": "none in the 10 keys, none expected."
+  },
+  {
+   "check": "punctuation",
+   "result": "PASS",
+   "detail": "No colon in these keys; · (U+00B7) and ↑ (U+2191) kept as in en; no space rule issues; sentence case, no final period."
+  },
+  {
+   "check": "code points",
+   "result": "PASS",
+   "detail": "All 10 NFC; no Cc/Cf, no double spaces, no ASCII '...'; non-ASCII only accented letters, U+00B7, U+2191."
+  },
+  {
+   "check": "length",
+   "result": "WARN",
+   "detail": "Chars es/en: label 17/12, upcoming 20/12, speaking 8/8, stopped 46/28, muted 23/18, cut 41/30, static 15/14, replay 7/6, play 10/4, link 31/20. Not measured in a rendered frame."
+  }
+ ],
+ "namespaces": {
+  "ui.chat.voice": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "keys_audited": 10,
+   "keys": [
+    "ui.chat.voice.summary_label",
+    "ui.chat.voice.summary_upcoming",
+    "ui.chat.voice.summary_speaking",
+    "ui.chat.voice.summary_stopped",
+    "ui.chat.voice.summary_muted",
+    "ui.chat.voice.summary_cut",
+    "ui.chat.voice.summary_static",
+    "ui.chat.voice.replay",
+    "ui.chat.voice.play",
+    "ui.chat.voice.full_reply_link"
+   ],
+   "sha256": {
+    "en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+    "es": "5bf4069b9462de3dc9a41557284c31effb8c68a8a9a909b25a42077059d9b54d"
+   },
+   "context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+   "en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+   "es_path": "src/i18n/catalogues/es/ui.chat.voice.json",
+   "context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+   "per_key": [
+    {
+     "key": "ui.chat.voice.summary_label",
+     "value": "Leído en voz alta",
+     "verdict": "ok",
+     "note": "Past tense, masculine agrees with 'resumen'; same words as shipped spoken_part_note ('Leído en voz alta:'), as the sidecar demands."
+    },
+    {
+     "key": "ui.chat.voice.summary_upcoming",
+     "value": "Se leerá en voz alta",
+     "verdict": "ok",
+     "note": "Future impersonal; matches the sidecar ('will be read aloud once the reply finishes')."
+    },
+    {
+     "key": "ui.chat.voice.summary_speaking",
+     "value": "Hablando",
+     "verdict": "ok",
+     "note": "Byte-identical to shipped phase_speaking, as the sidecar requires."
+    },
+    {
+     "key": "ui.chat.voice.summary_stopped",
+     "value": "Leído en voz alta · detenido antes de terminar",
+     "verdict": "finding-minor",
+     "note": "46 chars vs en 28 (+64%, style guide expects +15-25%): likely to wrap in the 393px block beside an icon+Replay button. Meaning is right."
+    },
+    {
+     "key": "ui.chat.voice.summary_muted",
+     "value": "No se leyó (silenciado)",
+     "verdict": "finding-nit",
+     "note": "'silenciado' has no clear referent; shipped phase_silenced is feminine ('Silenciada') for la voz."
+    },
+    {
+     "key": "ui.chat.voice.summary_cut",
+     "value": "Leído en voz alta · solo la primera parte",
+     "verdict": "ok",
+     "note": "Mirrors shipped spoken_part_note ('…: solo la primera parte'); 41 chars (+37%), the longest acceptable; 'solo' unaccented per guide."
+    },
+    {
+     "key": "ui.chat.voice.summary_static",
+     "value": "Resumen hablado",
+     "verdict": "ok",
+     "note": "Noun phrase; direct, clear as accessible name."
+    },
+    {
+     "key": "ui.chat.voice.replay",
+     "value": "Repetir",
+     "verdict": "ok",
+     "note": "One word, as the sidecar asks; distinct from 'Reproducir' (play) so the pair reads correctly. Sits beside the spoken block, so object is clear; as an icon-only accessible name it is slightly bare, but acceptable."
+    },
+    {
+     "key": "ui.chat.voice.play",
+     "value": "Reproducir",
+     "verdict": "ok",
+     "note": "Byte-identical to shipped ui.chat.audio.play."
+    },
+    {
+     "key": "ui.chat.voice.full_reply_link",
+     "value": "Respuesta completa en el chat ↑",
+     "verdict": "ok",
+     "note": "Arrow kept; 'el chat' matches shipped phrasing; cut_chip uses 'arriba ↑'. No RTL concern in es."
+    }
+   ],
+   "findings": [
+    {
+     "id": "ES-1",
+     "severity": "minor",
+     "key": "ui.chat.voice.summary_stopped",
+     "current": "Leído en voz alta · detenido antes de terminar",
+     "proposed": "Leído en voz alta · interrumpido",
+     "reason": "32 chars (+14% over en), fits one line beside the button. 'Interrumpido' is the shipped phase_interrupted word and matches the sidecar (the person interrupted)."
+    },
+    {
+     "id": "ES-2",
+     "severity": "nit",
+     "key": "ui.chat.voice.summary_muted",
+     "current": "No se leyó (silenciado)",
+     "proposed": "No se leyó (voz silenciada)",
+     "reason": "Names the muted thing and agrees with shipped 'Silenciada' (la voz). 27 chars."
+    }
+   ]
+  }
+ }
+}

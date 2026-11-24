@@ -1,0 +1,48 @@
+{
+	"instance": "audit-i18n-2074-r2-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": ["ui.chat.voice"],
+	"auditor": {
+		"agent": "reviewer",
+		"session": "audit2-2074-vi (lopdev reviewer task); runtime session id not readable from this role",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header); no provider fallback occurred.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only delta audit; edited no repo file, posted nothing to GitHub, ran no ledger script. Not the translator. Not the round-1 auditor session (separate task), but the same model family (anthropic/claude-sonnet-5-5) as round 1; same-family disclosure applies. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "0e7a2c48b47a7b6dfcc5d3bc3ef901d9050ff4fd",
+	"previous_head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"round1_receipt": {
+		"instance": "audit-i18n-2074-vi",
+		"path": "/Users/bentran/.local-operator/sessions/721f74fd7b6f/scratchpad/receipts/vi.json"
+	},
+	"scope_note": "Delta e2e2e812e2..0e7a2c48b4 for vi/ui.chat.voice.json is exactly 2 changed lines (summary_muted, replay), equal to the round-1 suggested replacements, nothing else. Key parity en/vi 91/91. The 10 new keys: NFC, no Cc/Cf/bidi, no double/edge spaces, no ASCII '...', no placeholders. (9 older keys outside scope contain ICU placeholders, unchanged.)",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "clean",
+			"result": "clean",
+			"keys_audited": 2,
+			"keys_in_context": 10,
+			"keys": ["ui.chat.voice.summary_muted", "ui.chat.voice.replay"],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"vi": "5199ecc36f7182c163857f5abc84874aad4935df5a5b453e79afab716eb8e0f0"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"per_key": [
+				{"key": "ui.chat.voice.summary_muted", "value": "Không được đọc to (đã tắt tiếng)", "verdict": "ok", "note": "Passive mirrors summary_upcoming 'Sẽ được đọc to'; 'đọc to' matches spoken_part_note; 32 chars, fits one line."},
+				{"key": "ui.chat.voice.replay", "value": "Phát lại", "verdict": "ok", "note": "Matches shipped replay_speech 'Phát lại giọng đọc' and pairs with play 'Phát'; imperative, 8 chars."}
+			],
+			"findings": []
+		}
+	},
+	"result": "clean",
+	"findings_count": {"blocker": 0, "major": 0, "minor": 0, "nit": 0}
+}

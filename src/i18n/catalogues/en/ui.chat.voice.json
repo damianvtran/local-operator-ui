@@ -79,5 +79,15 @@
 	"ui.chat.voice.byok_speech_rate_limited": "Your speech provider's limit is used up for now, so that reply was not spoken.",
 	"ui.chat.voice.provider_unset": "Choose a speech provider first: Radient or your own ElevenLabs key. Voice mode uses only the one you pick.",
 	"ui.chat.voice.choose_provider": "Choose provider",
-	"ui.chat.voice.set_up_provider": "Set up in Providers"
+	"ui.chat.voice.set_up_provider": "Set up in Providers",
+	"ui.chat.voice.summary_label": "Spoken aloud",
+	"ui.chat.voice.summary_upcoming": "To be spoken",
+	"ui.chat.voice.summary_speaking": "Speaking",
+	"ui.chat.voice.summary_stopped": "Spoken aloud · stopped early",
+	"ui.chat.voice.summary_muted": "Not spoken (muted)",
+	"ui.chat.voice.summary_cut": "Spoken aloud · first part only",
+	"ui.chat.voice.summary_static": "Spoken summary",
+	"ui.chat.voice.replay": "Replay",
+	"ui.chat.voice.play": "Play",
+	"ui.chat.voice.full_reply_link": "Full reply in chat ↑"
 }

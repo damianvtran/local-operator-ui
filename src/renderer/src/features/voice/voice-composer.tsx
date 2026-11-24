@@ -49,6 +49,7 @@ import {
 	MicOff,
 	Pause,
 	Play,
+	RotateCcw,
 	Square,
 	TriangleAlert,
 	Volume2,
@@ -70,13 +71,16 @@ import {
 	openSpeechSettings,
 	openVoiceSession,
 	pauseQwenVoice,
+	pressReplay,
 	resumeQwenVoice,
 	setQwenMuted,
 	startQwenRig,
 } from "./qwen-voice-controller";
+import { useReplayOffer } from "./spoken-summary-block";
 import { controlVoice, useVoiceCapability } from "./use-voice-status";
 import {
 	type VoiceExchangeError,
+	type VoiceSpokenSource,
 	type VoiceStoryRow,
 	type VoiceTick,
 	useVoiceStore,
@@ -173,6 +177,14 @@ export type VoiceComposerView =
 				| null;
 			/** The reply was cut at the cap and the next take has not started. */
 			cut: boolean;
+			/**
+			 * The message the strip's Replay would say again: the last one this window
+			 * spoke, until the next take starts. Whether it can be pressed is
+			 * `replayOffer`'s one rule (unavailable while the rig is busy, absent
+			 * while paused), not this view's: the button stays mounted while a take
+			 * plays so a keyboard press keeps its focus.
+			 */
+			replay?: string;
 	  };
 
 /**
@@ -235,6 +247,9 @@ export function composerVoiceView(
 			sessionId: string;
 			text: string;
 			truncated: boolean;
+			/** Absent for a gate announcement, and for a server with no summary. */
+			messageId?: string;
+			source?: VoiceSpokenSource;
 			at: number;
 		} | null;
 		/** The take a card refused, for the band's own refusal line (U1). */
@@ -296,6 +311,22 @@ export function composerVoiceView(
 	const take = state.lastTake?.sessionId === sessionId ? state.lastTake : null;
 	const spoken =
 		state.lastSpoken?.sessionId === sessionId ? state.lastSpoken : null;
+	/*
+	 * REPLAY AND THE KEPT SUMMARY BELONG TO THE LAST SPOKEN MESSAGE UNTIL THE
+	 * NEXT TAKE (spoken-summary design): the spoken tail is gone in seconds and the
+	 * person may want it again, so the strip keeps the words and the control until
+	 * a newer take replaces them. Only a MESSAGE can be replayed (a gate
+	 * announcement has no message), and only the server's own summary is kept as the
+	 * resting caption - a reply's first 800 characters would be a long line of the
+	 * reply the History row already holds.
+	 */
+	const lastWords =
+		spoken !== null && (take === null || take.at < spoken.at) ? spoken : null;
+	const replay = lastWords?.messageId;
+	const restingCaption: VoiceCaption =
+		lastWords?.source === "summary"
+			? { kind: "said", text: lastWords.text }
+			: { kind: "idle" };
 	const refused =
 		state.lastRefused?.sessionId === sessionId ? state.lastRefused : null;
 	/*
@@ -404,6 +435,7 @@ export function composerVoiceView(
 				caption: null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "speaking":
 			/*
@@ -419,6 +451,7 @@ export function composerVoiceView(
 					caption: { kind: "silenced" },
 					action: null,
 					cut,
+					replay,
 				};
 			return {
 				kind: "here",
@@ -426,6 +459,7 @@ export function composerVoiceView(
 				caption: spoken ? { kind: "said", text: spoken.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "working":
 			/*
@@ -450,6 +484,7 @@ export function composerVoiceView(
 				caption: take ? { kind: "heard", text: take.text } : null,
 				action: null,
 				cut,
+				replay,
 			};
 		case "unheard":
 			if (connecting)
@@ -486,6 +521,7 @@ export function composerVoiceView(
 				caption: { kind: "ended", text: spoken?.text ?? null },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 		if (tick.kind === "interrupted" && lived < 3000) {
@@ -495,6 +531,7 @@ export function composerVoiceView(
 				caption: { kind: "interrupted", seconds: tick.seconds },
 				action: null,
 				cut,
+				replay,
 			};
 		}
 	}
@@ -516,9 +553,10 @@ export function composerVoiceView(
 	return {
 		kind: "here",
 		chip: "listening",
-		caption: { kind: "idle" },
+		caption: restingCaption,
 		action: null,
 		cut,
+		replay,
 	};
 }
 
@@ -766,6 +804,70 @@ export function storyTime(at: number): string {
 	return formatTime(date, { hour: "numeric", minute: "2-digit" });
 }
 
+/**
+ * A summary row's way to the full reply and Replay. Both are offered only for a
+ * row of the conversation that holds the voice (the story outlives a slot move):
+ * Replay for another one is refused by the controller, and a reveal for a
+ * transcript that is not on screen would sit in the store and scroll it unprompted
+ * later. Another conversation's row keeps the summary and loses the controls.
+ */
+const SummaryRowControls: FC<{ sessionId: string; messageId: string }> = ({
+	sessionId,
+	messageId,
+}) => {
+	const replay = useReplayOffer(sessionId);
+	const holder = useVoiceStore((s) => s.active?.session_id === sessionId);
+	if (!holder) return null;
+	return (
+		// WRAPS: the link is nowrap and its label runs long in vi and fr, so a single
+		// row pushed Replay past the History's edge at the 393px dock (QA r2 Q-5:
+		// vi +34px, fr +5px). Wrapping keeps the whole link readable.
+		<span className="mt-1 flex flex-wrap items-center gap-x-1 text-meta">
+			<Button
+				type="button"
+				variant="link"
+				size="sm"
+				data-voice-story-link=""
+				onClick={() =>
+					useVoiceStore.getState().requestReveal(sessionId, messageId)
+				}
+				className="h-6 px-0 text-meta"
+			>
+				{t("ui.chat.voice.full_reply_link")}
+			</Button>
+			{replay && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					data-voice-story-replay=""
+					aria-label={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					title={t(
+						replay.word === "play"
+							? "ui.chat.voice.play"
+							: "ui.chat.voice.replay",
+					)}
+					aria-disabled={replay.disabled || undefined}
+					onClick={() => {
+						if (!replay.disabled) void pressReplay(sessionId, messageId);
+					}}
+					className="size-6 shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
+				>
+					{replay.word === "play" ? (
+						<Play aria-hidden="true" />
+					) : (
+						<RotateCcw aria-hidden="true" />
+					)}
+				</Button>
+			)}
+		</span>
+	);
+};
+
 const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 	useI18nLocale();
 	if (row.kind === "interrupted") {
@@ -803,6 +905,14 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 			</div>
 		);
 	}
+	/*
+	 * `source` decides what the Voice line is: the agent's summary (with a link to
+	 * the full reply) or, for a reply the server spoke from its own text and for
+	 * any older server, the whole reply as the full-text change drew it. A summary
+	 * row needs the text that was spoken and the message to link to.
+	 */
+	const summarySpoken =
+		row.source === "summary" && row.spoken !== null && row.messageId !== null;
 	return (
 		<div
 			data-voice-story="exchange"
@@ -831,7 +941,17 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 				{t("ui.chat.voice.voice_label")}
 			</span>
 			<span className="min-w-0">
-				{row.full ? (
+				{summarySpoken ? (
+					/*
+					 * THE SUMMARY IS WHAT VOICE SAID (spoken-summary design): the agent's own
+					 * short paragraph, with the way to the whole reply - which is in the chat,
+					 * not repeated here - and Replay. `spoken` is the server's text for it,
+					 * the very words the rig was given.
+					 */
+					<span className="block whitespace-pre-line break-words text-ink">
+						{row.spoken}
+					</span>
+				) : row.full ? (
 					/*
 					 * THE WHOLE REPLY, line breaks kept: the server sends `full_text` one
 					 * table row or bullet per line, and `pre-line` is what turns those
@@ -845,6 +965,12 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 						{t("ui.chat.voice.working_row")}
 					</span>
 				)}
+				{summarySpoken && row.messageId && (
+					<SummaryRowControls
+						sessionId={row.sessionId}
+						messageId={row.messageId}
+					/>
+				)}
 				{/*
 				 * WHAT WAS CUT IS THE AUDIO, NOT THE ROW (spec §3): the row shows the whole
 				 * reply now, so the line is no longer a warning that text is missing -
@@ -852,9 +978,10 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 				 * the spoken tail is gone in four seconds and "the rest is above" is still
 				 * the fact the person needs when they look up. AN OLDER SERVER sends no
 				 * `full_text`: the row then holds the capped spoken text, so "first part
-				 * only" under it would read as the row being complete - no line there.
+				 * only" under it would read as the row being complete - no line there. A
+				 * SUMMARY row shows what was spoken, so its cut is always the row's own.
 				 */}
-				{row.truncated && row.hasFullText && (
+				{row.truncated && (row.hasFullText || summarySpoken) && (
 					<span
 						data-voice-story-cut=""
 						className="mt-1 flex items-center gap-1 text-meta text-ink-dim"
@@ -901,6 +1028,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	const clearTick = useVoiceStore((s) => s.clearTick);
 	const pendingControl = useVoiceStore((s) => s.pending);
 	const muted = useVoiceStore((s) => s.rig?.muted === true);
+	const replay = useReplayOffer(sessionId);
 	/*
 	 * THE COMPOSER MOUNTS IN DOCUMENTS WITH NO PROVIDER (the mini view, the
 	 * agents composer): `useQueryClient` throws there, so the optional seam is
@@ -1309,6 +1437,43 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					<span className="min-w-0 flex-1" />
 				)}
 				{failureAction}
+				{/*
+				 * AT THE NARROW DOCK THE CUT CHIP OWNS THE ROOM (design D3, measured at
+				 * 393px with this button hidden = the #2065 row: chip 76px, with it 36px,
+				 * "Cut ..."). A cut is exactly when the reply/summary block or the footnote
+				 * under the message carries its own Replay, and the chip points at it.
+				 */}
+				{view.replay && replay && !(isSmallView && view.cut) && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						data-voice-action="replay"
+						aria-label={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						title={t(
+							replay.word === "play"
+								? "ui.chat.voice.play"
+								: "ui.chat.voice.replay",
+						)}
+						// Unavailable keeps its place and focus; a press does nothing.
+						aria-disabled={replay.disabled || undefined}
+						onClick={() => {
+							if (sessionId && view.replay && !replay.disabled)
+								void pressReplay(sessionId, view.replay);
+						}}
+						className="shrink-0 text-ink-muted aria-disabled:cursor-default aria-disabled:opacity-50"
+					>
+						{replay.word === "play" ? (
+							<Play aria-hidden="true" />
+						) : (
+							<RotateCcw aria-hidden="true" />
+						)}
+					</Button>
+				)}
 				{pauseable && (
 					<Button
 						type="button"

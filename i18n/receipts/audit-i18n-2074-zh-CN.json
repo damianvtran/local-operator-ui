@@ -1,0 +1,125 @@
+{
+	"auditor": {
+		"agent": "reviewer",
+		"session": "unknown: session id not readable from this delegated runtime (team lopdev reviewer, label audit-2074-zh-cn)",
+		"instance": "audit-i18n-2074-zh-CN",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed"
+	},
+	"instance": "audit-i18n-2074-zh-CN",
+	"model": "anthropic/claude-sonnet-5-5",
+	"date": "2026-11-23",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer); not the translator (separate session). Same model family as the translator is possible and not verifiable here: disclosed. Read-only: edited no repo file, ran no ledger script, posted nothing to GitHub, no MT service.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 2074,
+	"head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"base": "origin/feat/voice-history-full-text",
+	"references": {
+		"glossary": "damianvtran/local-operator@c47b28f09 i18n/glossary.md (sha256 prefix 5de3929198c3f603); no entry for voice/spoken/replay/play",
+		"style_guide": "damianvtran/local-operator@c47b28f09 i18n/style-guides/zh-CN.md (sha256 prefix 615a126a8dbff72c): 你, terse, no sentence-final 。 on labels, full-width ，。：；！？（） , …… ellipsis, no CJK/Latin space",
+		"shipped_terms": "zh-CN catalogues at head: said_label 已朗读：, spoken_part_note 朗读内容：仅开头部分, cut_chip 已截断 · 其余内容在上方 ↑, phase_speaking 正在说话, phase_silenced 已静音, ui.common.speech.speak_control.replay_speech 重新播放语音, 聊天 for the chat surface"
+	},
+	"diff_authority": "git diff origin/feat/voice-history-full-text e2e2e812e2 -- src/i18n/catalogues/zh-CN/ui.chat.voice.json: 11 insertions, 1 deletion; the deletion is only the trailing comma on set_up_provider; the 10 new keys are the only additions and no existing value changed (parsed JSON old vs new: changed-value set empty).",
+	"scope_note": "Only the 10 new ui.chat.voice keys. Mechanical, re-run at this head: key parity en/zh-CN 91/91, symmetric difference empty; no {placeholders}/ICU in any of the 10; all NFC; no Cc/Cf (no bidi); no ASCII '...' or double spaces; non-CJK non-ASCII code points are only U+00B7 (summary_stopped, summary_cut), U+FF08/U+FF09 (summary_muted), U+2191 (full_reply_link); no ASCII parens or colon in prose.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 10,
+			"keys": [
+				"ui.chat.voice.summary_label",
+				"ui.chat.voice.summary_upcoming",
+				"ui.chat.voice.summary_speaking",
+				"ui.chat.voice.summary_stopped",
+				"ui.chat.voice.summary_muted",
+				"ui.chat.voice.summary_cut",
+				"ui.chat.voice.summary_static",
+				"ui.chat.voice.replay",
+				"ui.chat.voice.play",
+				"ui.chat.voice.full_reply_link"
+			],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"zh-CN": "c88fb142aeaf320f10c3fb56adaf19d111019f69543010da96414347e6c1d279"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"zh-CN_path": "src/i18n/catalogues/zh-CN/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"per_key": [
+				{
+					"key": "ui.chat.voice.summary_label",
+					"value": "已朗读",
+					"result": "ok",
+					"note": "ok: same stem as shipped said_label 已朗读：; past tense per note"
+				},
+				{
+					"key": "ui.chat.voice.summary_upcoming",
+					"value": "将朗读",
+					"result": "ok",
+					"note": "ok: future 将+朗读"
+				},
+				{
+					"key": "ui.chat.voice.summary_speaking",
+					"value": "正在说话",
+					"result": "ok",
+					"note": "ok: byte-identical to shipped phase_speaking, as the context note requires"
+				},
+				{
+					"key": "ui.chat.voice.summary_stopped",
+					"value": "已朗读 · 中途停止",
+					"result": "ok",
+					"note": "ok: 中途停止 = stopped early, not an error; spaced U+00B7 matches shipped cut_chip"
+				},
+				{
+					"key": "ui.chat.voice.summary_muted",
+					"value": "未朗读（已静音）",
+					"result": "ok",
+					"note": "ok: 已静音 matches phase_silenced; full-width parens per zh-CN guide"
+				},
+				{
+					"key": "ui.chat.voice.summary_cut",
+					"value": "已朗读 · 仅开头部分",
+					"result": "ok",
+					"note": "ok: 仅开头部分 matches shipped spoken_part_note 朗读内容：仅开头部分"
+				},
+				{
+					"key": "ui.chat.voice.summary_static",
+					"value": "朗读摘要",
+					"result": "ok",
+					"note": "ok: noun phrase, no sentence-final 。; 摘要 matches shipped digest/summary usage"
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"value": "重播",
+					"result": "ok",
+					"note": "ok: one-word imperative per note; shipped 重新播放语音 is the long form of the same concept; 2 CJK chars suit icon+label"
+				},
+				{
+					"key": "ui.chat.voice.play",
+					"value": "播放",
+					"result": "ok",
+					"note": "ok: one-word imperative; pairs with 重播"
+				},
+				{
+					"key": "ui.chat.voice.full_reply_link",
+					"value": "在聊天中查看完整回复 ↑",
+					"result": "ok",
+					"note": "ok: 聊天 is the shipped chat-surface term; spaced U+2191 arrow matches cut_chip 其余内容在上方 ↑; 10 CJK + arrow ≈ 22 cells, fits one line at 393px"
+				}
+			],
+			"findings": []
+		}
+	},
+	"hashing_method": "sha256 of raw committed file bytes of en catalogue, zh-CN catalogue and en context sidecar (worktree clean at e2e2e812e2), same as sha256File in scripts/i18n/ledger-check.mjs.",
+	"verdict": "pass",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 0,
+		"NIT": 0
+	}
+}

@@ -128245,8 +128245,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "d4e789953daf3aa9e80c8755e3cc7de8e77348959aa94bab7c373a6f58b88170",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "2283daa543114841f433c18d5d9248a9c3aeb8e932a1808ea3919e5cb358848b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -128257,16 +128257,18 @@
 					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
-					"result": "clean-with-findings",
-					"instance": "voice-history-full-text-es",
+					"result": "clean",
+					"instance": "audit-i18n-2074-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/voice-history-full-text-es.json",
-					"receipt_sha256": "db70310a16657ee8adfc2e00b9d3c49e9975c064fab37af27aa5070c2e161e48"
+					"receipt": "i18n/receipts/audit-i18n-2074-r2-es.json",
+					"receipt_sha256": "fe71ba8ededaeb4fae715c3acdc81e521690c67052c336eb9c24a85d37d43e39",
+					"scope": "ui.chat.voice: all keys, round-2 audit of the post-fix bytes at HEAD 0e7a2c48b4; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Round 1 (audit-i18n-2074-es: 1 minor, 1 nit) audited the pre-fix bytes and is resolved by the edits."
 				}
 			],
 			"status": "audited",
@@ -128291,6 +128293,28 @@
 							"receipt_sha256": "cdb0fa6c59a7796876cf12ac3bb322ad50b7142202f8b771e2f410859c9cb03e",
 							"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 2",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "d4e789953daf3aa9e80c8755e3cc7de8e77348959aa94bab7c373a6f58b88170",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean-with-findings",
+							"instance": "voice-history-full-text-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/voice-history-full-text-es.json",
+							"receipt_sha256": "db70310a16657ee8adfc2e00b9d3c49e9975c064fab37af27aa5070c2e161e48"
 						}
 					],
 					"status": "audited"
@@ -128579,8 +128603,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "f124846953bc23cc4959d813137350250b50a974054e327cbeafa12761162902",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "7b64628f7a4dcdf6e44d07618167f8d2fb25c68b58834fb9515e89e62aaeb529",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -128592,15 +128616,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "voice-history-full-text-ru",
+					"instance": "audit-i18n-2074-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/voice-history-full-text-ru.json",
-					"receipt_sha256": "fd88f401d8f3d83b0378a1fa0d72d30b08f3aa68ca6a9d56f20532294a5d5067"
+					"receipt": "i18n/receipts/audit-i18n-2074-r2-ru.json",
+					"receipt_sha256": "3694cf2fbdffdfb6f14e7aaca2004a75db72fc4f573ef49fc2025aa676ef9a31",
+					"scope": "ui.chat.voice: all keys, round-2 audit of the post-fix bytes at HEAD 0e7a2c48b4; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Round 1 (audit-i18n-2074-ru: 2 minor) audited the pre-fix bytes and is resolved by the edits."
 				}
 			],
 			"status": "audited",
@@ -128625,6 +128651,28 @@
 							"receipt_sha256": "40cb066f9bd10055de4857810eb3901f3bf53f9b138a5eb54cc4f15b6ff13578",
 							"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 2",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "f124846953bc23cc4959d813137350250b50a974054e327cbeafa12761162902",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "voice-history-full-text-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/voice-history-full-text-ru.json",
+							"receipt_sha256": "fd88f401d8f3d83b0378a1fa0d72d30b08f3aa68ca6a9d56f20532294a5d5067"
 						}
 					],
 					"status": "audited"
@@ -128820,8 +128868,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "467e478a3fcedebbb236c9afd5ed799cb35cccba8c975ea225a70a7e0c54c09f",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "5199ecc36f7182c163857f5abc84874aad4935df5a5b453e79afab716eb8e0f0",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -128833,15 +128881,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "voice-history-full-text-vi",
+					"instance": "audit-i18n-2074-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/voice-history-full-text-vi.json",
-					"receipt_sha256": "f79693fa15679291b97d06b7b03e6b5a5ba8eb23d35668a7e327ac318d076a72"
+					"receipt": "i18n/receipts/audit-i18n-2074-r2-vi.json",
+					"receipt_sha256": "6068c9663d838a8053d6acebb835f560b7f89a22efe01f43aa8528f620b09b0f",
+					"scope": "ui.chat.voice: all keys, round-2 audit of the post-fix bytes at HEAD 0e7a2c48b4; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Round 1 (audit-i18n-2074-vi: 2 minor) audited the pre-fix bytes and is resolved by the edits."
 				}
 			],
 			"status": "audited",
@@ -128866,6 +128916,28 @@
 							"receipt_sha256": "9b190faf1f2c78d67a2dca45f45bb7b598693a55287d5b3f4bf9408a004fefed",
 							"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 1",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "467e478a3fcedebbb236c9afd5ed799cb35cccba8c975ea225a70a7e0c54c09f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "voice-history-full-text-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/voice-history-full-text-vi.json",
+							"receipt_sha256": "f79693fa15679291b97d06b7b03e6b5a5ba8eb23d35668a7e327ac318d076a72"
 						}
 					],
 					"status": "audited"
@@ -128968,8 +129040,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "38fe4e38f58083ba93be3fb736fc6d98164803c68cdfc8c6dc8c02c5f9ec9a50",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "c88fb142aeaf320f10c3fb56adaf19d111019f69543010da96414347e6c1d279",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -128981,15 +129053,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "773047de78ca-voice-history-zh-cn",
+					"instance": "audit-i18n-2074-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/773047de78ca-voice-history-zh-cn.json",
-					"receipt_sha256": "6fad8a15816d87ec4045c79a42c778402f94e58379cb70ea5c2625bb3e421393"
+					"receipt": "i18n/receipts/audit-i18n-2074-zh-CN.json",
+					"receipt_sha256": "60f6f889dc3cb2099abf85cb0f098fbefc1ac268d2f2ac2e019a3faf89f45851",
+					"scope": "ui.chat.voice: the 10 new keys, round-1 audit at HEAD e2e2e812e2; catalogue bytes unchanged since; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Not edited by the round-1 remediation; the receipt names the target and English hashes on disk at this head."
 				}
 			],
 			"status": "audited",
@@ -129014,6 +129088,28 @@
 							"receipt_sha256": "8ba80e610c15ac45d7ffa428a1dde139ff2032bfe5eeca25d3881acf911dcb65",
 							"scope": "ui.chat.voice: all 81 keys, first independent audit of the translator's bytes at HEAD bad1701b2d; findings 3",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Findings recorded in the receipt; held pairs: fr/hi/ur ui.chat.voice."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "38fe4e38f58083ba93be3fb736fc6d98164803c68cdfc8c6dc8c02c5f9ec9a50",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "773047de78ca-voice-history-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/773047de78ca-voice-history-zh-cn.json",
+							"receipt_sha256": "6fad8a15816d87ec4045c79a42c778402f94e58379cb70ea5c2625bb3e421393"
 						}
 					],
 					"status": "audited"
@@ -129116,8 +129212,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "9a34be3cf24afb3a5bf75132b757310a58f5871e94a98b8b8ccbbfdd203b3a6b",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "88a106766524a27a2cd489546dafb1e851f39b62d722986255d1046c449b3d7f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -129129,15 +129225,15 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean-with-findings",
-					"instance": "audit-i18n-fr-voice-history-full-text-r2",
+					"instance": "audit-i18n-2074-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/audit-i18n-fr-voice-history-full-text-r2.json",
-					"receipt_sha256": "2357c81efc7b8b3d1321f0172419cdd7484b832a30c9aa10f50545c91406e980"
+					"receipt": "i18n/receipts/audit-i18n-2074-r3-fr.json",
+					"receipt_sha256": "c8ad88327d53b6634c5c07c89eea66f90b3642a4b8d44d9e846186590e4b8c08"
 				}
 			],
 			"status": "audited",
@@ -129165,14 +129261,36 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "9a34be3cf24afb3a5bf75132b757310a58f5871e94a98b8b8ccbbfdd203b3a6b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean-with-findings",
+							"instance": "audit-i18n-fr-voice-history-full-text-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/audit-i18n-fr-voice-history-full-text-r2.json",
+							"receipt_sha256": "2357c81efc7b8b3d1321f0172419cdd7484b832a30c9aa10f50545c91406e980"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "48c5ff46212cb1d60e14331d5463df17510c32dd1e2382326284ec1854fc7d2f",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "763e8b7dad7dac9673b18b5c89bd2c44a8e15d07c0a2f6f57d0224dafa8e231b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -129184,15 +129302,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "voice-history-full-text-hi",
+					"instance": "audit-i18n-2074-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/voice-history-full-text-hi.json",
-					"receipt_sha256": "464c15d2da3420e809f153af6d178c6a32bfad8de8836b64837944318cd24c8c"
+					"receipt": "i18n/receipts/audit-i18n-2074-hi.json",
+					"receipt_sha256": "905e816c0d93b301d57a850b1a8773fe909dcae25b1b6c2a9ebc3ba70dc8e1cd",
+					"scope": "ui.chat.voice: the 10 new keys, round-1 audit at HEAD e2e2e812e2; catalogue bytes unchanged since; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Not edited by the round-1 remediation; the receipt names the target and English hashes on disk at this head."
 				}
 			],
 			"status": "audited",
@@ -129220,14 +129340,36 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "48c5ff46212cb1d60e14331d5463df17510c32dd1e2382326284ec1854fc7d2f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "voice-history-full-text-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/voice-history-full-text-hi.json",
+							"receipt_sha256": "464c15d2da3420e809f153af6d178c6a32bfad8de8836b64837944318cd24c8c"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.voice",
-			"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
-			"target_sha256": "9b20a8818db4d7833357baec823dfb899313c22fea8527b61cc2de34f1ed6bd9",
+			"source_sha256": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+			"target_sha256": "09f5fceedb38117ca0981a071a662fa2acc5aeb6450d60cbcdf9ea6b6ea061bb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -129239,15 +129381,17 @@
 					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "af7d88bde4bf",
+					"instance": "audit-i18n-2074-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/af7d88bde4bf.json",
-					"receipt_sha256": "1f7a70143f4bb2cb017c15ec4ae25954157d5f3164838877d312f35f973d0ddf"
+					"receipt": "i18n/receipts/audit-i18n-2074-r2-ur.json",
+					"receipt_sha256": "f71a39cb5a9036219b7b3225550bf929f0abff2fbc7f7eadfbb90b6025d784e0",
+					"scope": "ui.chat.voice: all keys, round-2 audit of the post-fix bytes at HEAD 0e7a2c48b4; findings 0",
+					"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions; disclosed in the receipt. Round 1 (audit-i18n-2074-ur: 1 minor, 1 nit) audited the pre-fix bytes and is resolved by the edits."
 				}
 			],
 			"status": "audited",
@@ -129272,6 +129416,28 @@
 							"receipt_sha256": "5da888fbb37c0a0a91bbbd16469b4078cba54a5f2269f01b7b00c66d48449f40",
 							"scope": "ui.chat.voice: all 81 keys; round-2 re-audit of the 14 keys changed after round 1, at HEAD 30359fb665; findings 0",
 							"note": "Translator and auditor are the same model family (anthropic/claude-sonnet-5-5) in different sessions/agent roles; disclosed. Round 1 changes_requested resolved by the edits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+					"target_sha256": "9b20a8818db4d7833357baec823dfb899313c22fea8527b61cc2de34f1ed6bd9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-23",
+							"result": "clean",
+							"instance": "af7d88bde4bf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/af7d88bde4bf.json",
+							"receipt_sha256": "1f7a70143f4bb2cb017c15ec4ae25954157d5f3164838877d312f35f973d0ddf"
 						}
 					],
 					"status": "audited"
