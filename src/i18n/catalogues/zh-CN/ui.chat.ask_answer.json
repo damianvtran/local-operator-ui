@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "应用完全无法连接此对话的会话。",
 	"ui.chat.ask_answer.settled_elsewhere": "该问题已在别处得到回答，因此未发送你的回答。",
 	"ui.chat.ask_answer.unconfirmed": "{lead}{reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "无法确定你的回答是否已送达。"
+	"ui.chat.ask_answer.unconfirmed_lead": "无法确定你的回答是否已送达。",
+	"ui.chat.ask_answer.conversation_deleted": "此请求所属的对话已删除，无法再接收回答。请拒绝或清除它。"
 }

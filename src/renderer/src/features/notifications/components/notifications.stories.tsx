@@ -260,8 +260,18 @@ type Stub = {
 	 * `notifications/items.py::detail` rule) and `asks.list` carries the settled row.
 	 */
 	asks?: PendingAsk[];
-	/** How `sessions.answer` answers: settle (default), hang (sending), or fail (503). */
-	answerMode?: "settle" | "hang" | "fail";
+	/**
+	 * How `sessions.answer` answers: settle (default), hang (sending), fail (503),
+	 * `not_found` (core before the orphan fix: every door on a deleted or subagent
+	 * conversation's ask 404s `requested_not_found`), or `conversation_deleted`
+	 * (core after it: decline/dismiss settle, a plain answer is a coded 409).
+	 */
+	answerMode?:
+		| "settle"
+		| "hang"
+		| "fail"
+		| "not_found"
+		| "conversation_deleted";
 	bulkCapability?: boolean;
 	/**
 	 * One row the store revises AFTER the frozen preview and BEFORE the bulk write,
@@ -372,11 +382,12 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 							}
 						: null;
 				})();
-			const settledAsk =
-				stub.asks !== undefined &&
+			/* Only a KNOWN settled row 404s: a deleted conversation's ask has no row at all. */
+			const askRow =
 				String(request.id).startsWith("ask:") &&
-				stub.asks.find((row) => String(request.id).endsWith(`:${row.ask_id}`))
-					?.status !== "open";
+				stub.asks?.find((row) => String(request.id).endsWith(`:${row.ask_id}`));
+			const settledAsk =
+				Boolean(askRow) && askRow !== false && askRow?.status !== "open";
 			if (!detail || settledAsk)
 				return { status: 404, body: { detail: "no such notification" } };
 			return { status: 200, body: { result: detail } };
@@ -413,6 +424,30 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 				body: { result: { asks: structuredClone(stub.asks ?? []) } },
 			};
 		case "sessions.answer": {
+			if (stub.answerMode === "not_found")
+				return {
+					status: 404,
+					body: {
+						detail: {
+							code: "requested_not_found",
+							text: "Requested session, profile, team or subscription not found",
+						},
+					},
+				};
+			if (
+				stub.answerMode === "conversation_deleted" &&
+				request.decline !== true &&
+				!request.dismiss
+			)
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "conversation_deleted",
+							text: "This conversation was deleted, so its ask can no longer be answered.",
+						},
+					},
+				};
 			if (stub.asks !== undefined) {
 				if (stub.answerMode === "hang") return new Promise(() => {});
 				if (stub.answerMode === "fail")
@@ -1828,4 +1863,151 @@ export const BulkOlderCore: Story = {
 			{ items: POPULATED, waiting: WAITING, bulkCapability: false },
 			{ prefs: { "notifications-read-state": "all" } },
 		),
+};
+
+/*
+ * THE ORPHAN ASK (operator report: a "Waiting on you" ask from "Untitled
+ * conversation" that Send, Decline and Dismiss could not clear). Each state is a
+ * BEFORE/AFTER pair over the same row: `Before` is core as it shipped (no
+ * `conversation_deleted` flag, every door 404s `requested_not_found`), `After` is
+ * the fixed core (flagged row, no transcript asks, decline/dismiss settle).
+ */
+const ORPHAN_SESSION = "d745b7ccfd34";
+const ORPHAN_ASK_ID = "a-00ac";
+const ORPHAN_QUESTION =
+	"May the release implementer post the two round-1 remediation comments on damianvtran/local-operator PR #4475?";
+const ORPHAN_ID = `ask:${ORPHAN_SESSION}:${ORPHAN_ASK_ID}`;
+const orphanItem = (deleted: boolean): DesktopNotificationItem =>
+	item({
+		id: ORPHAN_ID,
+		source: "ask",
+		priority: "high",
+		title: ORPHAN_QUESTION,
+		excerpt: ORPHAN_QUESTION,
+		updated_at: NOW - 40 * MINUTE,
+		created_at: NOW - 40 * MINUTE,
+		session: { id: ORPHAN_SESSION, title: "" },
+		ask: { status: "open", question_count: 1, deadline_at: NOW + 13 * HOUR },
+		...(deleted ? { conversation_deleted: true } : {}),
+	});
+const ORPHAN_ASK = {
+	...ASK,
+	ask_id: ORPHAN_ASK_ID,
+	session_id: ORPHAN_SESSION,
+	urgent: false,
+	expires_at: NOW + 13 * HOUR,
+	questions: [
+		{
+			id: "post",
+			question: ORPHAN_QUESTION,
+			recommended: 0,
+			multi: false,
+			options: [
+				{ label: "Yes, post both comments" },
+				{ label: "No, hold them" },
+			],
+		},
+	],
+} as PendingAsk;
+const orphanState = (deleted: boolean, over: Partial<Stub> = {}): Stub => ({
+	items: POPULATED,
+	waiting: [orphanItem(deleted)],
+	/* The fixed core cannot read a deleted transcript: its detail carries no asks. */
+	asks: deleted ? [] : [structuredClone(ORPHAN_ASK)],
+	answerMode: deleted ? "conversation_deleted" : "not_found",
+	...over,
+});
+const ORPHAN_PANE = {
+	path: `/notifications/${encodeURIComponent(ORPHAN_ID)}`,
+	prefs: { "notifications-read-state": "all" },
+};
+/** Press one door on the orphan (old card or new block), hold the shutter until `done`. */
+const driveOrphan =
+	(door: "decline" | "dismiss", done: (root: Element) => boolean) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "true";
+		const byLabel = (label: RegExp) =>
+			[
+				...canvasElement.querySelectorAll("[data-notification-detail] button"),
+			].find((node) => label.test(node.textContent?.trim() ?? "")) as
+				| HTMLButtonElement
+				| undefined;
+		const ready = () =>
+			canvasElement.querySelector(
+				`[data-orphan-ask], [data-lo-ask-row="${ORPHAN_ASK_ID}"]`,
+			) !== null;
+		if (!(await waitFor(ready))) {
+			root.dataset.captureFailed = "true";
+			return;
+		}
+		const block = canvasElement.querySelector(`[data-orphan-ask-${door}]`);
+		if (block) (block as HTMLElement).click();
+		else if (door === "decline") byLabel(/^Decline$/)?.click();
+		else {
+			byLabel(/^Dismiss…$/)?.click();
+			await waitFor(() => byLabel(NO_LONGER_NEEDED) !== undefined, 2_000);
+			byLabel(NO_LONGER_NEEDED)?.click();
+		}
+		if (await waitFor(() => done(canvasElement)))
+			delete root.dataset.capturePending;
+		else root.dataset.captureFailed = "true";
+	};
+const refusalShown = (root: Element) =>
+	root.querySelector("[data-orphan-ask-refused], [data-lo-ask-refused]") !==
+	null;
+
+/** The reel with the orphan pinned in Waiting on you. */
+export const OrphanAskListBefore: Story = {
+	render: () => page(orphanState(false), { prefs: ORPHAN_PANE.prefs }),
+};
+export const OrphanAskListAfter: Story = {
+	render: () => page(orphanState(true), { prefs: ORPHAN_PANE.prefs }),
+};
+/** The orphan's detail, opened. */
+export const OrphanAskDetailBefore: Story = {
+	render: () => page(orphanState(false), ORPHAN_PANE),
+};
+export const OrphanAskDetailAfter: Story = {
+	render: () => page(orphanState(true), ORPHAN_PANE),
+};
+/** The detail read in flight. */
+export const OrphanAskLoadingBefore: Story = {
+	render: () => page(orphanState(false, { detailMode: "hang" }), ORPHAN_PANE),
+};
+export const OrphanAskLoadingAfter: Story = {
+	render: () => page(orphanState(true, { detailMode: "hang" }), ORPHAN_PANE),
+};
+/** Decline refused: before, core's 404; after, a transport failure drawn in place. */
+export const OrphanAskErrorBefore: Story = {
+	render: () => page(orphanState(false), ORPHAN_PANE),
+	play: driveOrphan("decline", refusalShown),
+};
+export const OrphanAskErrorAfter: Story = {
+	render: () => page(orphanState(true, { answerMode: "fail" }), ORPHAN_PANE),
+	play: driveOrphan("decline", refusalShown),
+};
+/** Dismiss pressed on a reel whose only row is the orphan. */
+export const OrphanAskDismissedBefore: Story = {
+	render: () => page(orphanState(false, { items: [] }), ORPHAN_PANE),
+	play: driveOrphan("dismiss", refusalShown),
+};
+export const OrphanAskDismissedAfter: Story = {
+	render: () => page(orphanState(true, { items: [] }), ORPHAN_PANE),
+	play: driveOrphan(
+		"dismiss",
+		(root) => root.querySelector("[data-orphan-ask-settled]") !== null,
+	),
+};
+/*
+ * Decline's settled frame (design round 1, D1): the same pane as Dismiss, so the
+ * review sees both doors end with the status alone - no "Decline or dismiss it"
+ * notice left above it.
+ */
+export const OrphanAskDeclinedAfter: Story = {
+	render: () => page(orphanState(true, { items: [] }), ORPHAN_PANE),
+	play: driveOrphan(
+		"decline",
+		(root) => root.querySelector("[data-orphan-ask-settled]") !== null,
+	),
 };

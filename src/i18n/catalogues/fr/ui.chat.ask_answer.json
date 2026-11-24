@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "L’application n’a pas du tout pu joindre la session de cette conversation.",
 	"ui.chat.ask_answer.settled_elsewhere": "Cette question a déjà reçu une réponse ailleurs ; votre réponse n’a donc pas été envoyée.",
 	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "Impossible de savoir si votre réponse est bien arrivée."
+	"ui.chat.ask_answer.unconfirmed_lead": "Impossible de savoir si votre réponse est bien arrivée.",
+	"ui.chat.ask_answer.conversation_deleted": "La conversation de cette demande a été supprimée : elle ne peut plus recevoir de réponse. Refusez-la ou ignorez-la."
 }

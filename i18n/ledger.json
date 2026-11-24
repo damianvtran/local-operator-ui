@@ -9856,30 +9856,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "897ff40b581726a8c70092cce0e82606cba07863099e4c9dfc085671cacbaa77",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "9ce800335e8db29900ef8912987a369a73009c2812250f74074d05627d2b400a",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-es, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "f08010cd574b-ntdd-r1b-es",
+					"instance": "596d597e4ef5-orphan-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-es.json",
-					"receipt_sha256": "a4d29565381908e2aa04321ac5fbb41bfa13052876f35d04d4d927603ca6aff5",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-es.json",
+					"receipt_sha256": "3a16f2bbf4c46e5655eabf7965b6730391167f724a2cdb1c767e313e206dec7c",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -9904,6 +9905,29 @@
 							"receipt_sha256": "7b6cc9bebe89a2c8b2f7488de9f0eac37247954ae21bc44af3221656fb1c1d03",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "897ff40b581726a8c70092cce0e82606cba07863099e4c9dfc085671cacbaa77",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "f08010cd574b-ntdd-r1b-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-es.json",
+							"receipt_sha256": "a4d29565381908e2aa04321ac5fbb41bfa13052876f35d04d4d927603ca6aff5",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -24325,30 +24349,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "0f23caf378fccfa8cfca7f1d071e524454f7ba5e3922f66d2dbd4e442a4ccfd1",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "67a908c1aaea323ae1bc16c8efda7073bc8062d9d513bfc3b9b5d7047bce45d3",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-fr, openai/gpt-6.1-sol, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
-					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-fr",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "596d597e4ef5-orphan-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-fr.json",
-					"receipt_sha256": "96f5695a156c3c75a8c7ad14b7a11612f7337e184a06f2173977869745482b46",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-fr.json",
+					"receipt_sha256": "a529f885e3550f74ccb21cabf720f338ed9ce5e8afe2cf2e6b7417ea612587ed",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -24373,6 +24398,29 @@
 							"receipt_sha256": "c278d215475629572b393b7e04caf5d81c603a964a0e1584e078547b469e3ff7",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator fallback: anthropic/claude-opus-5-5 draft -> anthropic/claude-sonnet-5-5 announced -> openai/gpt-6.1-sol final. Auditor: openai/gpt-6-astra. Original audited bytes preserved; minor/fit findings remain open."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "0f23caf378fccfa8cfca7f1d071e524454f7ba5e3922f66d2dbd4e442a4ccfd1",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-fr.json",
+							"receipt_sha256": "96f5695a156c3c75a8c7ad14b7a11612f7337e184a06f2173977869745482b46",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -38995,30 +39043,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "c284fb57b057e51ce38a9f1d2d1980c2057e6515d02c00ae5fd763e9623e2ec7",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "49a5438521811c7d65de5424504036760d47d53055df8df0b47954c64c936a53",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-hi, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
-					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-hi",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "596d597e4ef5-orphan-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 5,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-hi.json",
-					"receipt_sha256": "8d03f342e564e3e275667b62371601a2479ee48916cda6221b97ff4e9e566a19",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-hi.json",
+					"receipt_sha256": "772be66cabc5b8df16ea8ab9e7d2cc034e0d6b72d7e5275756d38d9d810b3493",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -39043,6 +39092,29 @@
 							"receipt_sha256": "017c86c8a0047c33feea26a519658e465d740a0d6f31d4417f6b348fac1cc003",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "c284fb57b057e51ce38a9f1d2d1980c2057e6515d02c00ae5fd763e9623e2ec7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-hi.json",
+							"receipt_sha256": "8d03f342e564e3e275667b62371601a2479ee48916cda6221b97ff4e9e566a19",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -53188,30 +53260,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "cb9f5483f3702a75e5ca0768dbfce9d7efc927cc33483a6b7b38a7b00d247425",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "1e51104ff97bca888838dbe8641e5a89c3ce6f76756ea58ec327b28f84ce1553",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-ru, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
-					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-ru",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "596d597e4ef5-orphan-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-ru.json",
-					"receipt_sha256": "8bce2b8763fbce31ff819c628cc279fb3b8fc6d323feac80e03edc4ada73477d",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-ru.json",
+					"receipt_sha256": "25da6267bd98feddc41d517b3e24bbefe51c75a99a11cb6bf101ef46b1738031",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -53236,6 +53309,29 @@
 							"receipt_sha256": "7ef1c4e1e07672c0a6ea01967ad127aa740aea0570115e84b64e7eebf8bb9938",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "cb9f5483f3702a75e5ca0768dbfce9d7efc927cc33483a6b7b38a7b00d247425",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-ru.json",
+							"receipt_sha256": "8bce2b8763fbce31ff819c628cc279fb3b8fc6d323feac80e03edc4ada73477d",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -67636,30 +67732,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "40fb16441548d5fdfb4238382ee09afb15d388d1958e0ba29b48549c0495ec63",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "1124fba8bf5c26c244ffbe5ca49d55ee36d59693d68c69779131f53defe33b2a",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-ur, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
-					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-ur",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "596d597e4ef5-orphan-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-ur.json",
-					"receipt_sha256": "d5e64fa0f5531e628b74c75170619d1ff0116efdf35ccbfc6713e4b3c64adf9b",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-ur.json",
+					"receipt_sha256": "4a1fc4dcca5e40fd37a2a7756e81e7541594561471816f4225f8a62ab099143f",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -67684,6 +67781,29 @@
 							"receipt_sha256": "23625073d5898aed1db9674e37eb519a7e9eec33b255f479be419d39ae3bbbf0",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "40fb16441548d5fdfb4238382ee09afb15d388d1958e0ba29b48549c0495ec63",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-ur.json",
+							"receipt_sha256": "d5e64fa0f5531e628b74c75170619d1ff0116efdf35ccbfc6713e4b3c64adf9b",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -82037,30 +82157,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "e06c356bdc6c21ad2dca646def18d7a15f5929f5401bde75ce1426d8191211ee",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "c24e23c90bba4f2287f33622d6d26cd74dda54c472a600d9b7dc27aabf23e4b4",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-vi, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 keys UI #2082 adds by lopdev coder ui-orphan-asks (80b895d3749f, anthropic/claude-opus-5-5; toast value corrected by auditor 596d597e4ef5); other keys by lopdev coder/i18n-translator per the prior row. Auditor ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
+					"date": "2026-11-24",
 					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-vi",
+					"instance": "596d597e4ef5-orphan-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 0
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-vi.json",
-					"receipt_sha256": "ec5395349a9926e7716cb3e44a281752108350a5a42cc562cde7550af76bacfb",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-vi.json",
+					"receipt_sha256": "ac5b242f0afac738deea314aec3d4b5aa8abbdf54efc63002cbcf13d4fc32f3f",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -82085,6 +82206,29 @@
 							"receipt_sha256": "102ba974fd3cdc907caa6cf4ef48d54cb6023729d7cd271044b21387381f38d1",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "e06c356bdc6c21ad2dca646def18d7a15f5929f5401bde75ce1426d8191211ee",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-vi.json",
+							"receipt_sha256": "ec5395349a9926e7716cb3e44a281752108350a5a42cc562cde7550af76bacfb",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -97148,30 +97292,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.notifications",
-			"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
-			"target_sha256": "961c06373acba461f59ee2495939d483b2106e42b16c7d2182a7fcfb395487b7",
+			"source_sha256": "74151b014e37c88be228c79f54aa7b36a93876dcbecf89961e4e79ab8e77a565",
+			"target_sha256": "ce7809c0f650166963e927b5a5423a81bf8885e08741330d22a7eba052e30352",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-13",
-				"note": "Mixed provenance: 4 drawer.* keys by lopdev coder job 74cb13500e78 (UI #1907); the other 130 by i18n-translator (tr-zh-CN, anthropic/claude-opus-5-5, 2026-10-25). Auditor reviewer f08010cd574b ran the coder's model: disclosed."
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 6 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by lopdev coder (anthropic/claude-opus-5-5, 2026-11-13). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-13",
-					"result": "clean-with-findings",
-					"instance": "f08010cd574b-ntdd-r1b-zh-cn",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "596d597e4ef5-orphan-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-zh-cn.json",
-					"receipt_sha256": "e0668048ea15fc27ceb764d810c7ad961ecaa635ca169f04124c71afa89ac598",
-					"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-zh-cn.json",
+					"receipt_sha256": "8a4f9f1db7c06389f2641cf31c22291b0671e2451358c26cab3b45f9cb054d8e",
+					"scope": "final values of the 6 key(s) UI #2082 adds to ui.notifications; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
 			"status": "audited",
@@ -97196,6 +97341,29 @@
 							"receipt_sha256": "a53c4a76733e29938b8532beaf40963a99296ea37a05d9d031b7b2251523a2c1",
 							"scope": "Full ui.notifications namespace: 130 keys against English/context frozen at d2bcaf95c44712767eacb6b2f327b18f9de0931d. Independent audit; no target rewrites.",
 							"note": "Translator: anthropic/claude-opus-5-5. Auditor actual model: openai/gpt-6.1-sol. Original audited bytes preserved; non-blocking findings remain in the receipt for the unified review batch."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+					"target_sha256": "961c06373acba461f59ee2495939d483b2106e42b16c7d2182a7fcfb395487b7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "f08010cd574b-ntdd-r1b-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f08010cd574b-ntdd-r1b-zh-cn.json",
+							"receipt_sha256": "e0668048ea15fc27ceb764d810c7ad961ecaa635ca169f04124c71afa89ac598",
+							"scope": "final values of the 4 drawer view-details keys UI #1907 adds (incl. round-1 copy fixes); other 130 values byte-identical to the base audit, its open findings carried forward"
 						}
 					],
 					"status": "audited"
@@ -111044,33 +111212,60 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "90c37927dba14a0991c4ad2b9e8bb4fd4cd902614bd04b8fe705ef012c8d36b6",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "556a33a7f1eea4f659f467c1fc36682dddffe55ec80b02248ac7da43db432009",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "ebc5b152-s3c-es",
+					"instance": "596d597e4ef5-orphan-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
-					"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-es.json",
+					"receipt_sha256": "3a16f2bbf4c46e5655eabf7965b6730391167f724a2cdb1c767e313e206dec7c",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "90c37927dba14a0991c4ad2b9e8bb4fd4cd902614bd04b8fe705ef012c8d36b6",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "ebc5b152-s3c-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
+							"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -111899,33 +112094,60 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "a0fcf47146d0be4407f4ca15814a484f03b14c1e34784fd6dc82b4fd3bc86cf4",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "59ec95ca158d6a87cfe3f2356f62a876344cbf0d5a35395428bb350402741528",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "c072f24e-s3d-fr",
+					"instance": "596d597e4ef5-orphan-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/c072f24e-s3d-fr.json",
-					"receipt_sha256": "cd1eddf419ada0a8792476568570bf94387fab7e901f773254057b7e1da2e161",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3d, receipt c072f24e-s3d-fr).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-fr.json",
+					"receipt_sha256": "a529f885e3550f74ccb21cabf720f338ed9ce5e8afe2cf2e6b7417ea612587ed",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "a0fcf47146d0be4407f4ca15814a484f03b14c1e34784fd6dc82b4fd3bc86cf4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "c072f24e-s3d-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c072f24e-s3d-fr.json",
+							"receipt_sha256": "cd1eddf419ada0a8792476568570bf94387fab7e901f773254057b7e1da2e161",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3d, receipt c072f24e-s3d-fr).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -112754,33 +112976,60 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "94d99541ae5dca8e4c1d36ddab76acc9cda1850d72b0d81137dcf4cb398c79db",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "3596260ccb11c9c267571877dfebb2d3678ba729c7614afc1b717c55eb454807",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "cbb5be6a-s3c-hi",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "596d597e4ef5-orphan-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
-					"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-hi.json",
+					"receipt_sha256": "772be66cabc5b8df16ea8ab9e7d2cc034e0d6b72d7e5275756d38d9d810b3493",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "94d99541ae5dca8e4c1d36ddab76acc9cda1850d72b0d81137dcf4cb398c79db",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "cbb5be6a-s3c-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
+							"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -113585,33 +113834,60 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "739747a58e3022d2a14ca870c41b4181331dcb020dc90ca934154058ec640825",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "9745e2c780596f8d2c1f0ca65d0f4cb3870ad552d408f3d9e10671518ae1cb26",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "3a7aab10-s3c-ru",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "596d597e4ef5-orphan-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
-					"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-ru.json",
+					"receipt_sha256": "25da6267bd98feddc41d517b3e24bbefe51c75a99a11cb6bf101ef46b1738031",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "739747a58e3022d2a14ca870c41b4181331dcb020dc90ca934154058ec640825",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "3a7aab10-s3c-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
+							"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -114440,33 +114716,60 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "b703521061eddb0e94ed943adab623875a68a6dbfbc0e34e05223c5daec47b46",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "3c869b73880ae944e52d17d6af5912cff7c1f54b393ddc586b19a8bcf2b266ab",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "3e9c47b1-s3c-ur",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "596d597e4ef5-orphan-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
-					"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-ur.json",
+					"receipt_sha256": "4a1fc4dcca5e40fd37a2a7756e81e7541594561471816f4225f8a62ab099143f",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "b703521061eddb0e94ed943adab623875a68a6dbfbc0e34e05223c5daec47b46",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "3e9c47b1-s3c-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
+							"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -115271,33 +115574,60 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "34f3928fa08ac6b09b01d798aa121c964b427257738958ddd15d52493f421cc0",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "70078ef48ae803df885669c8233eb380dab13097823db8c3eb6b6ed249b1caff",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "97ea8fa7-s3c-vi",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "596d597e4ef5-orphan-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
-					"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-vi.json",
+					"receipt_sha256": "ac5b242f0afac738deea314aec3d4b5aa8abbdf54efc63002cbcf13d4fc32f3f",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "34f3928fa08ac6b09b01d798aa121c964b427257738958ddd15d52493f421cc0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "97ea8fa7-s3c-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
+							"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -116102,33 +116432,60 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.ask_answer",
-			"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
-			"target_sha256": "de47e879f7c82907fa417872f669bc3abaf94b85b37a2d8f7ad46848d73a9147",
+			"source_sha256": "d8faa79466482026e345de882addc19e9c4043bf1f45aeac027de166ff33abc0",
+			"target_sha256": "080b8223fea464c787230042e283f9a1d41a7fb3636e0011db44267a94132753",
 			"translator": {
-				"agent": "translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-11-08"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-24",
+				"note": "Mixed provenance: the 1 key(s) UI #2082 adds by lopdev coder ui-orphan-asks (session 80b895d3749f, anthropic/claude-opus-5-5); other keys by translator (deepseek/deepseek-flash, 2026-11-08). Auditor 596d597e4ef5 ran the coder's model: disclosed."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "7c3e91d4-s3c-zh-cn",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "596d597e4ef5-orphan-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/7c3e91d4-s3c-zh-cn.json",
-					"receipt_sha256": "1809b8c090337a43422a6eda523d3d7417afd52b18a4888dee1597c102645f82",
-					"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 7c3e91d4-s3c-zh-cn).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/596d597e4ef5-orphan-zh-cn.json",
+					"receipt_sha256": "8a4f9f1db7c06389f2641cf31c22291b0671e2451358c26cab3b45f9cb054d8e",
+					"scope": "final values of the 1 key(s) UI #2082 adds to ui.chat.ask_answer; other values byte-identical to base, carried",
+					"note": "Delta audit, PR #2082 i18n round 1; translator and auditor same model (anthropic/claude-opus-5-5), session-independent only. Receipt lists findings."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "61b48ab8148a92f1817ffd4674b04ff0ed73dd5d733eafd002fc0af9606f940c",
+					"target_sha256": "de47e879f7c82907fa417872f669bc3abaf94b85b37a2d8f7ad46848d73a9147",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "7c3e91d4-s3c-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c3e91d4-s3c-zh-cn.json",
+							"receipt_sha256": "1809b8c090337a43422a6eda523d3d7417afd52b18a4888dee1597c102645f82",
+							"scope": "ui.chat.ask_answer: 10 keys read against English before release (wave s3c, receipt 7c3e91d4-s3c-zh-cn).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

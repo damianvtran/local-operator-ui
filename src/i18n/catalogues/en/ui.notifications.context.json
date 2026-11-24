@@ -897,5 +897,41 @@
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
 		"note": "English source: Open in Notifications",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.source.conversation_deleted": {
+		"role": "source line, group heading and From card name for a notification whose conversation no longer exists; replaces 'Untitled conversation' there",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Conversation deleted",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.toast.nothing_to_dismiss": {
+		"role": "toast after 'Dismiss all' finds no updates to dismiss in a conversation (only open asks remain, which a bulk dismiss never removes)",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Nothing to dismiss. Open asks stay until you answer, decline or dismiss them.",
+		"length": "One or two short sentences."
+	},
+	"ui.notifications.detail.deleted.ask": {
+		"role": "notice at the top of an ask's details when the conversation that asked was deleted; the ask's Decline and Dismiss buttons are below it",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: This conversation was deleted, so this ask can't be answered. Decline or dismiss it to clear it.",
+		"length": "One or two short sentences."
+	},
+	"ui.notifications.detail.deleted.update": {
+		"role": "notice at the top of an update's details when its conversation was deleted",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: This conversation was deleted. You can still dismiss this update.",
+		"length": "One or two short sentences."
+	},
+	"ui.notifications.detail.deleted.open_tip": {
+		"role": "tooltip on the unavailable 'Open conversation' button when the conversation was deleted",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: This conversation was deleted",
+		"length": "Short; no trailing period."
+	},
+	"ui.notifications.detail.deleted.send_withheld": {
+		"role": "reason shown beside the unavailable 'Send answer' button on an ask whose conversation was deleted",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Answers can't be sent: the conversation that asked was deleted.",
+		"length": "One short sentence."
 	}
 }

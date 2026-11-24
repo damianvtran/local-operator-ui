@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "Voir les détails",
 	"ui.notifications.drawer.view_details_for": "Voir les détails : {title}",
 	"ui.notifications.drawer.back": "Retour aux mises à jour",
-	"ui.notifications.drawer.open_in_notifications": "Ouvrir dans les notifications"
+	"ui.notifications.drawer.open_in_notifications": "Ouvrir dans les notifications",
+	"ui.notifications.source.conversation_deleted": "Conversation supprimée",
+	"ui.notifications.toast.nothing_to_dismiss": "Rien à ignorer. Les demandes ouvertes restent jusqu’à ce que vous y répondiez, les refusiez ou les ignoriez.",
+	"ui.notifications.detail.deleted.ask": "Cette conversation a été supprimée : impossible de répondre à cette demande. Refusez-la ou ignorez-la pour la retirer.",
+	"ui.notifications.detail.deleted.update": "Cette conversation a été supprimée. Vous pouvez toujours ignorer cette mise à jour.",
+	"ui.notifications.detail.deleted.open_tip": "Cette conversation a été supprimée",
+	"ui.notifications.detail.deleted.send_withheld": "Impossible d’envoyer une réponse : la conversation à l’origine de la demande a été supprimée."
 }

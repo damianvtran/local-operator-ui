@@ -1127,6 +1127,19 @@ export type DesktopNotificationItem = {
 		agent_id?: string;
 		live?: boolean;
 	};
+	/**
+	 * True when the row's owning session no longer exists (deleted, or swept by
+	 * retention) while the row itself is still in the inbox - an "orphan".
+	 *
+	 * WHY THE SERVER SAYS IT. Only core can tell a deleted conversation from one
+	 * this window simply has not loaded; the renderer used to fall back to
+	 * "Untitled conversation" and offer Open conversation / Send answer, all of
+	 * which then failed with "Requested session … not found". With this flag the
+	 * page labels the row "Conversation deleted", withholds the doors that need
+	 * the session, and keeps the ones that settle the row locally (Decline,
+	 * Dismiss). Absent on older cores: read absent as false.
+	 */
+	conversation_deleted?: boolean;
 	projects?: { key: string; name: string; status?: string }[];
 	ask?: {
 		status: string;

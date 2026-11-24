@@ -4993,6 +4993,7 @@ export type MessageParams = {
 	"ui.chat.aside.model_no_text": undefined;
 	"ui.chat.aside.not_answered": undefined;
 	"ui.chat.aside.off_panel_refusal": { question: string; cause: string };
+	"ui.chat.ask_answer.conversation_deleted": undefined;
 	"ui.chat.ask_answer.eyebrow_waiting": undefined;
 	"ui.chat.ask_answer.lost_to_reconnect": undefined;
 	"ui.chat.ask_answer.moved_on": undefined;
@@ -11262,6 +11263,10 @@ export type MessageParams = {
 	"ui.notifications.confirm.dismiss_session_ok": undefined;
 	"ui.notifications.detail.back": undefined;
 	"ui.notifications.detail.close": undefined;
+	"ui.notifications.detail.deleted.ask": undefined;
+	"ui.notifications.detail.deleted.open_tip": undefined;
+	"ui.notifications.detail.deleted.send_withheld": undefined;
+	"ui.notifications.detail.deleted.update": undefined;
 	"ui.notifications.detail.dismiss": undefined;
 	"ui.notifications.detail.dismiss_repeat": { count: string };
 	"ui.notifications.detail.empty": undefined;
@@ -11393,6 +11398,7 @@ export type MessageParams = {
 	"ui.notifications.select.dismiss": { count: string };
 	"ui.notifications.select.mark_read": undefined;
 	"ui.notifications.select.mark_unread": undefined;
+	"ui.notifications.source.conversation_deleted": undefined;
 	"ui.notifications.time.hours": { count: string };
 	"ui.notifications.time.minutes": { count: string };
 	"ui.notifications.time.now": undefined;
@@ -11400,6 +11406,7 @@ export type MessageParams = {
 	"ui.notifications.toast.dismissed": { count: number };
 	"ui.notifications.toast.marked_read": { count: string };
 	"ui.notifications.toast.marked_unread": { count: string };
+	"ui.notifications.toast.nothing_to_dismiss": undefined;
 	"ui.notifications.toast.undo": undefined;
 	"ui.notifications.toast.undone": undefined;
 	"ui.notifications.writes_paused_tip": undefined;

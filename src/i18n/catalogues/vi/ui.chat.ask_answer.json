@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "Ứng dụng hoàn toàn không kết nối được với phiên của cuộc trò chuyện này.",
 	"ui.chat.ask_answer.settled_elsewhere": "Câu hỏi đó đã được trả lời ở nơi khác, nên câu trả lời của bạn chưa được gửi.",
 	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "Không thể biết câu trả lời của bạn đã đến nơi hay chưa."
+	"ui.chat.ask_answer.unconfirmed_lead": "Không thể biết câu trả lời của bạn đã đến nơi hay chưa.",
+	"ui.chat.ask_answer.conversation_deleted": "Cuộc trò chuyện của câu hỏi này đã bị xóa nên không thể nhận câu trả lời. Hãy từ chối hoặc ẩn nó."
 }

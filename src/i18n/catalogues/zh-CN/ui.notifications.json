@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "查看详情",
 	"ui.notifications.drawer.view_details_for": "查看详情：{title}",
 	"ui.notifications.drawer.back": "返回更新列表",
-	"ui.notifications.drawer.open_in_notifications": "在通知页中打开"
+	"ui.notifications.drawer.open_in_notifications": "在通知页中打开",
+	"ui.notifications.source.conversation_deleted": "对话已删除",
+	"ui.notifications.toast.nothing_to_dismiss": "没有可清除的内容。未处理的请求会一直保留，直到你回答、拒绝或清除。",
+	"ui.notifications.detail.deleted.ask": "此对话已删除，无法回答这个请求。拒绝或清除即可将其移除。",
+	"ui.notifications.detail.deleted.update": "此对话已删除。你仍可清除这条更新。",
+	"ui.notifications.detail.deleted.open_tip": "此对话已删除",
+	"ui.notifications.detail.deleted.send_withheld": "无法发送回答：发起请求的对话已删除。"
 }

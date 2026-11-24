@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "View details",
 	"ui.notifications.drawer.view_details_for": "View details: {title}",
 	"ui.notifications.drawer.back": "Back to updates",
-	"ui.notifications.drawer.open_in_notifications": "Open in Notifications"
+	"ui.notifications.drawer.open_in_notifications": "Open in Notifications",
+	"ui.notifications.source.conversation_deleted": "Conversation deleted",
+	"ui.notifications.toast.nothing_to_dismiss": "Nothing to dismiss. Open asks stay until you answer, decline or dismiss them.",
+	"ui.notifications.detail.deleted.ask": "This conversation was deleted, so this ask can't be answered. Decline or dismiss it to clear it.",
+	"ui.notifications.detail.deleted.update": "This conversation was deleted. You can still dismiss this update.",
+	"ui.notifications.detail.deleted.open_tip": "This conversation was deleted",
+	"ui.notifications.detail.deleted.send_withheld": "Answers can't be sent: the conversation that asked was deleted."
 }
