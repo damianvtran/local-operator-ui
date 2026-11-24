@@ -1,0 +1,12 @@
+{
+	"ui.teamBridge.edit.menu": "{kind, select, group {Edit group…} other {Edit channel…}}",
+	"ui.teamBridge.edit.title": "{kind, select, group {Edit group} other {Edit channel}}",
+	"ui.teamBridge.edit.description": "Update the name and description. Everyone in the conversation sees these details.",
+	"ui.teamBridge.edit.topic": "Description",
+	"ui.teamBridge.edit.error.topic_too_long": "Descriptions can be up to {max, number} characters.",
+	"ui.teamBridge.edit.error.topic_characters": "The description contains a character that can’t be used. Line breaks and tabs are allowed.",
+	"ui.teamBridge.edit.error.invalid": "These details can’t be used. Check the name and description.",
+	"ui.teamBridge.edit.error.forbidden": "You don’t have permission to edit this conversation.",
+	"ui.teamBridge.edit.error.archived": "This conversation was archived, so it can’t be edited.",
+	"ui.teamBridge.edit.error.failed": "We couldn’t confirm whether the changes were saved. Your draft is still here. Try again."
+}

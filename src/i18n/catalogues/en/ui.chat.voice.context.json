@@ -196,13 +196,13 @@
 	},
 	"ui.chat.voice.heard_label": {
 		"role": "lead-in before the words a take was heard as",
-		"tone": "two words, sentence case",
-		"note": "Followed by the take’s transcript, quoted by the surrounding markup."
+		"tone": "two words, sentence case, ending in a colon",
+		"note": "Followed by the take’s transcript; the colon is part of the string so the label reads as a separator, and a locale that spaces its colon (French) keeps that space."
 	},
 	"ui.chat.voice.said_label": {
 		"role": "lead-in before the words a reply was spoken as",
-		"tone": "one word, sentence case",
-		"note": "Followed by the spoken text; the server may have cut it at the character cap."
+		"tone": "one word, sentence case, ending in a colon",
+		"note": "Followed by the spoken text; the server may have cut it at the character cap. The colon is part of the string."
 	},
 	"ui.chat.voice.reply_ended": {
 		"role": "status chip in the composer strip, shown for 1.5 s",
@@ -239,10 +239,10 @@
 		"tone": "short label with an arrow",
 		"note": "The reply that was just spoken was cut at the character cap; the rest is in the message above. Pressing it scrolls there. Stays until the next take."
 	},
-	"ui.chat.voice.cut_note": {
-		"role": "note under the spoken half of a voice history row",
-		"tone": "plain statement",
-		"note": "The number is deliberately absent: the cap is a server setting the renderer does not read on this surface."
+	"ui.chat.voice.spoken_part_note": {
+		"role": "note under the reply in a voice history row, shown only when the audio was cut",
+		"tone": "plain statement, not a warning",
+		"note": "The row shows the whole reply; this says only that the spoken audio stopped early. Do not imply any text is missing."
 	},
 	"ui.chat.voice.history_hide": {
 		"role": "text on the history toggle while the panel is open",
@@ -401,5 +401,55 @@
 		"tone": "imperative, sentence case",
 		"length": "Three words; English is 19 characters.",
 		"note": "Opens the Providers section of Settings for the speech provider that is not ready, where its key or sign-in is set up. 'Providers' is that section's name."
+	},
+	"ui.chat.voice.summary_label": {
+		"role": "label at the top of the spoken-summary block under a reply, after the voice read the summary aloud",
+		"tone": "short status label, sentence case",
+		"note": "Past tense: the words in this block were spoken. Pairs with a Replay button. Match the wording of spoken_part_note."
+	},
+	"ui.chat.voice.summary_upcoming": {
+		"role": "label of the spoken-summary block while the reply is still being written",
+		"tone": "short status label, sentence case",
+		"note": "Future: this paragraph will be read aloud once the reply finishes."
+	},
+	"ui.chat.voice.summary_speaking": {
+		"role": "label of the spoken-summary block while the voice is reading it",
+		"tone": "short status label",
+		"note": "Same word and person as phase_speaking, the voice's own status word."
+	},
+	"ui.chat.voice.summary_stopped": {
+		"role": "label of the spoken-summary block when the person spoke over the voice",
+		"tone": "short status label with a middle dot",
+		"note": "The voice stopped before finishing because the person interrupted. Not an error."
+	},
+	"ui.chat.voice.summary_muted": {
+		"role": "label of the spoken-summary block when the speaker was muted",
+		"tone": "short status label",
+		"note": "Nothing was heard: the voice was silenced, so the words were not spoken. A Play button follows."
+	},
+	"ui.chat.voice.summary_cut": {
+		"role": "label of the spoken-summary block when the summary was longer than the spoken limit",
+		"tone": "short status label with a middle dot",
+		"note": "Only the first part of the summary was read aloud. Not an error."
+	},
+	"ui.chat.voice.summary_static": {
+		"role": "label and accessible name of the spoken-summary block when voice is off or the message was not spoken in this session",
+		"tone": "noun phrase, sentence case",
+		"note": "A short summary written to be read aloud. No replay control is shown with this label."
+	},
+	"ui.chat.voice.replay": {
+		"role": "button in the spoken-summary block, the voice strip and the voice history row",
+		"tone": "imperative verb, one word where the language allows",
+		"note": "Say the spoken words again from the start. Icon plus word; icon only in a narrow window, where this is the accessible name."
+	},
+	"ui.chat.voice.play": {
+		"role": "button in the spoken-summary block when the speaker was muted",
+		"tone": "imperative verb, one word where the language allows",
+		"note": "Unmute and read the summary aloud now."
+	},
+	"ui.chat.voice.full_reply_link": {
+		"role": "link in a voice history row under the spoken summary",
+		"tone": "short phrase ending in an upward arrow",
+		"note": "Scrolls the chat up to the full reply the summary came from. Keep the arrow."
 	}
 }

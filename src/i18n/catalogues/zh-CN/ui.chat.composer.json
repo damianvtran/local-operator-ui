@@ -45,6 +45,7 @@
 	"ui.chat.composer.placeholder.aside": "不留记录地提问——Esc关闭旁支对话",
 	"ui.chat.composer.placeholder.busy": "智能体正忙",
 	"ui.chat.composer.placeholder.idle": "有问题尽管问。@添加文件，/运行命令",
+	"ui.chat.composer.placeholder.voice": "说话，或在此输入",
 	"ui.chat.composer.placeholder.no_provider": "连接提供商即可开始聊天",
 	"ui.chat.composer.placeholder.recording": "录音中",
 	"ui.chat.composer.placeholder.secret_answer": "在请求面板中填写敏感信息",

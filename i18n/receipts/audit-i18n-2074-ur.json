@@ -1,0 +1,153 @@
+{
+	"instance": "audit-i18n-2074-ur",
+	"locale": "ur",
+	"audit_date": "2026-11-23",
+	"date": "2026-11-23",
+	"round": 1,
+	"auditor": {
+		"agent": "reviewer (lopdev team role, task audit-2074-ur)",
+		"session": "1b0e3d4350fd (read from the session scratchpad path; not otherwise verified)",
+		"instance": "audit-i18n-2074-ur",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "session system header 'Model: anthropic/claude-sonnet-5-5'; no provider fallback observed"
+	},
+	"model": "anthropic/claude-sonnet-5-5",
+	"independence": "Independent read-only lopdev reviewer; not the translator (separate session). Edited no repo file, posted nothing to GitHub, no MT service. Translator and auditor may share the anthropic/claude-sonnet-5-5 family (not verifiable): independence is session-level, not model-level. Disclosed.",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"base": "origin/feat/voice-history-full-text",
+	"hash_method": "sha256 of raw committed file bytes (git show <head>:<path>), as sha256File in scripts/i18n/ledger-check.mjs",
+	"references": {
+		"glossary": "local-operator origin/main i18n/glossary.md (no entry for voice/summary/replay)",
+		"style_guide": "local-operator origin/main i18n/style-guides/ur.md: آپ, respectful imperative, terse, Urdu vocabulary, no manual bidi controls, Urdu punctuation ۔ ؟ ،",
+		"shipped_terms": "ur: spoken_part_note \"بلند آواز میں پڑھا گیا: صرف پہلا حصہ\"; phase_speaking \"بول رہی ہے\"; mute \"آواز خاموش کریں\"; unmute \"آواز دوبارہ سنیں\"; cut_chip \"… · … ↑\"; ui.common.speech replay_speech \"آواز دوبارہ چلائیں\"; ui.chat.audio.play \"چلائیں\""
+	},
+	"diff_authority": "git diff origin/feat/voice-history-full-text e2e2e812e2 -- src/i18n/catalogues/ur/ui.chat.voice.json: +10 keys; the single removed line is set_up_provider re-emitted with a trailing comma (value unchanged). en diff touches the same 10 keys + context sidecar.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 10,
+			"keys": [
+				"ui.chat.voice.summary_label",
+				"ui.chat.voice.summary_upcoming",
+				"ui.chat.voice.summary_speaking",
+				"ui.chat.voice.summary_stopped",
+				"ui.chat.voice.summary_muted",
+				"ui.chat.voice.summary_cut",
+				"ui.chat.voice.summary_static",
+				"ui.chat.voice.replay",
+				"ui.chat.voice.play",
+				"ui.chat.voice.full_reply_link"
+			],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"ur": "35e6510862ec7b143da76baec61dffcc9906f104fb84b97acd106f2d42bfc91a"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"ur_path": "src/i18n/catalogues/ur/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": [
+				{
+					"id": "M1",
+					"severity": "MINOR",
+					"key": "ui.chat.voice.replay",
+					"current": "دوبارہ سنیں",
+					"suggested": "دوبارہ چلائیں",
+					"reason": "MINOR M1: \"دوبارہ سنیں\" (\"listen again\") is word-for-word the shipped unmute label \"آواز دوبارہ سنیں\" minus \"آواز\", and the context puts Replay in the voice strip, the same row as mute/unmute: two different actions read near-identically. Shipped replay precedent is ui.common.speech.speak_control.replay_speech = \"آواز دوبارہ چلائیں\", and play (this PR and ui.chat.audio.play) = \"چلائیں\". Suggest \"دوبارہ چلائیں\": parallels Play, matches replay_speech, 11 chars, imperative-آپ per style guide."
+				},
+				{
+					"id": "N1",
+					"severity": "NIT",
+					"key": "ui.chat.voice.summary_static",
+					"current": "بولا جانے والا خلاصہ",
+					"suggested": "بلند آواز کے لیے خلاصہ",
+					"reason": "NIT N1: \"بولا جانے والا\" (to-be-spoken) breaks the \"بلند آواز میں پڑھا\" family used by the rest of the block and by speak_aloud; en note: \"short summary written to be read aloud\". Suggest \"بلند آواز کے لیے خلاصہ\" (summary for reading aloud) — same length, same register, no tense claim. Meaning is still acceptable as is."
+				}
+			],
+			"per_key": [
+				{
+					"key": "ui.chat.voice.summary_label",
+					"en": "Spoken aloud",
+					"ur": "بلند آواز میں پڑھا گیا",
+					"result": "ok",
+					"note": "ok. Same wording as shipped spoken_part_note (\"بلند آواز میں پڑھا گیا\") and ui.common.speech speak_aloud family. Past participle, neutral."
+				},
+				{
+					"key": "ui.chat.voice.summary_upcoming",
+					"en": "To be spoken",
+					"ur": "بلند آواز میں پڑھا جائے گا",
+					"result": "ok",
+					"note": "ok. Future passive of the same verb; parallels summary_label."
+				},
+				{
+					"key": "ui.chat.voice.summary_speaking",
+					"en": "Speaking",
+					"ur": "بول رہی ہے",
+					"result": "ok",
+					"note": "ok. Byte-identical to phase_speaking (\"بول رہی ہے\", آواز feminine) as the context note requires."
+				},
+				{
+					"key": "ui.chat.voice.summary_stopped",
+					"en": "Spoken aloud · stopped early",
+					"ur": "بلند آواز میں پڑھا گیا · درمیان میں روک دیا گیا",
+					"result": "ok",
+					"note": "ok. Middle dot + early-stop wording; not an error tone. 47 chars is ~1.5x en: may wrap in the 393px block (render not verified here; a wrap does not break meaning)."
+				},
+				{
+					"key": "ui.chat.voice.summary_muted",
+					"en": "Not spoken (muted)",
+					"ur": "نہیں پڑھا گیا (خاموش)",
+					"result": "ok",
+					"note": "ok. \"(خاموش)\" matches shipped mute \"آواز خاموش کریں\". ASCII parens are neutral and balance correctly in RTL."
+				},
+				{
+					"key": "ui.chat.voice.summary_cut",
+					"en": "Spoken aloud · first part only",
+					"ur": "بلند آواز میں پڑھا گیا · صرف پہلا حصہ",
+					"result": "ok",
+					"note": "ok. \"صرف پہلا حصہ\" identical to shipped spoken_part_note tail; same · separator as shipped cut_chip."
+				},
+				{
+					"key": "ui.chat.voice.summary_static",
+					"en": "Spoken summary",
+					"ur": "بولا جانے والا خلاصہ",
+					"result": "finding",
+					"note": "NIT N1: \"بولا جانے والا\" (to-be-spoken) breaks the \"بلند آواز میں پڑھا\" family used by the rest of the block and by speak_aloud; en note: \"short summary written to be read aloud\". Suggest \"بلند آواز کے لیے خلاصہ\" (summary for reading aloud) — same length, same register, no tense claim. Meaning is still acceptable as is."
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"en": "Replay",
+					"ur": "دوبارہ سنیں",
+					"result": "finding",
+					"note": "MINOR M1: \"دوبارہ سنیں\" (\"listen again\") is word-for-word the shipped unmute label \"آواز دوبارہ سنیں\" minus \"آواز\", and the context puts Replay in the voice strip, the same row as mute/unmute: two different actions read near-identically. Shipped replay precedent is ui.common.speech.speak_control.replay_speech = \"آواز دوبارہ چلائیں\", and play (this PR and ui.chat.audio.play) = \"چلائیں\". Suggest \"دوبارہ چلائیں\": parallels Play, matches replay_speech, 11 chars, imperative-آپ per style guide."
+				},
+				{
+					"key": "ui.chat.voice.play",
+					"en": "Play",
+					"ur": "چلائیں",
+					"result": "ok",
+					"note": "ok. Equals shipped ui.chat.audio.play \"چلائیں\"; respectful imperative per style guide."
+				},
+				{
+					"key": "ui.chat.voice.full_reply_link",
+					"en": "Full reply in chat ↑",
+					"ur": "چیٹ میں مکمل جواب ↑",
+					"result": "ok",
+					"note": "ok. \"چیٹ میں مکمل جواب ↑\": arrow kept, neutral char, no manual bidi marks; same trailing-arrow shape as shipped cut_chip. Word order natural."
+				}
+			]
+		}
+	},
+	"mechanical_checks": "Python over parsed JSON at the head worktree: ur key set == en key set (91); all 10 values NFC; no \"...\", no double spaces, no leading/trailing space; no Cc/Cf (bidi or control) code points; only non-letter code points are U+0028/U+0029, U+00B7 (·), U+2191 (↑), spaces. No placeholders/ICU in en or ur for these keys.",
+	"not_verified": "Rendered fit in the 393px block and RTL arrow placement were not rendered by this audit.",
+	"counts": {
+		"BLOCKER": 0,
+		"MAJOR": 0,
+		"MINOR": 1,
+		"NIT": 1
+	},
+	"verdict": "pass"
+}

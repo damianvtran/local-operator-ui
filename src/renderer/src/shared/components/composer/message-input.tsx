@@ -10315,6 +10315,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														// The host's own words for its own states (D1/D5); absent on
 														// every chat mount, which is what keeps chat unchanged.
 														hostLine: hostNotice?.placeholder ?? null,
+														/*
+														 * Voice on in THIS conversation and not paused: the band
+														 * above says it is listening, and the box says typing is
+														 * still welcome. A paused rig hands the microphone back, so
+														 * the ordinary invitation is true again.
+														 */
+														voiceOn: voiceOnHere && !voicePaused,
 													})
 										}
 										value={newMessage}

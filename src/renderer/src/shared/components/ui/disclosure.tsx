@@ -497,6 +497,9 @@ export const Disclosure = ({
 		const selection = window.getSelection();
 		if (!selection || selection.isCollapsed) return;
 		if (!buttonRef.current?.contains(selection.anchorNode)) return;
+		// Claimed: this press is the selection's. Without it the same Escape also
+		// closed the route that owns this trigger (round 1: R4).
+		event.preventDefault();
 		selection.removeAllRanges();
 	};
 

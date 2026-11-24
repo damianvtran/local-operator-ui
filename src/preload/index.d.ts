@@ -232,7 +232,7 @@ declare global {
 				/** A bulk close. `{ mode: "ids", tabIds }`, or `{ mode: "conversation",
 				 * sessionId }` which main resolves against the live registry. */
 				closeTabs: (intent: unknown) => Promise<unknown>;
-				activateTab: (tabId: number) => Promise<unknown>;
+				activateTab: (tabId: number, trusted?: boolean) => Promise<unknown>;
 				/** Local address suggestions. The expected tab is the one the field's
 				 * draft belongs to; main refuses a request for a tab that is no longer
 				 * active. */
@@ -375,22 +375,9 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
-				/** "Return to agent" on a passkey custody notice. `trusted` is the
-				 * click's `event.isTrusted`; main refuses a release without it. */
-				releasePasskeyCustody: (
-					tabId: number,
-					at: number,
-					trusted: boolean,
-				) => Promise<
-					{ ok: true; reloaded?: boolean } | { ok: false; reason: string }
-				>;
 				/** A sidebar notification row's click (`user-attention.ts`): the tab
 				 * becomes active and its held popups are presented. */
 				openUserAttention: (tabId: number) => Promise<unknown>;
-				/** The hold `{tabId, at}` ended (returned, or its tab closed). */
-				onPasskeyCustodyEnded: (
-					callback: (payload: { tabId: number; at: number }) => void,
-				) => () => void;
 				/** Live composite of an overlay-suppressed page (main's
 				 * `composite-bridge.ts`). Full BGRA frames; display-only. */
 				onCompositeFrame: (

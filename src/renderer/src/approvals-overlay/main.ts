@@ -148,6 +148,12 @@ const backNode = document.getElementById(
 ) as HTMLButtonElement | null;
 const errorNode = document.getElementById("approvals-error");
 const cardBody = document.querySelector(".card-body");
+const noticeView = document.getElementById("approvals-notice");
+const noticeTextNode = document.getElementById("approvals-notice-text");
+const noticeDismissNode = document.getElementById(
+	"approvals-notice-dismiss",
+) as HTMLButtonElement | null;
+const footerNode = document.querySelector<HTMLElement>(".card-footer");
 
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
@@ -354,8 +360,27 @@ function reserveGloss(): void {
 	glossNode.scrollTop = scrollTop;
 }
 
+/** Hide the passkey notice without answering the chooser. */
+function dismissNotice(): void {
+	if (!model?.notice) return;
+	window.approvalsCard?.dismiss({
+		seq: model.seq,
+		entryId: model.notice.entryId,
+	});
+}
+
+/** Whether the card shows only the notice (no request to answer). */
+function noticeOnly(): boolean {
+	return Boolean(model?.notice) && shownRequest() === null;
+}
+
 function dismiss(): void {
 	if (!model) return;
+	// Header X dismisses the notice only if there is no approval to close.
+	if (noticeOnly()) {
+		dismissNotice();
+		return;
+	}
 	const shown = shownRequest();
 	/*
 	 * A dismissal ends the local selection, and it must do so BEFORE the model
@@ -625,6 +650,7 @@ function render(): void {
 	}
 	renderRows(model.pending);
 	setView(localView);
+	renderNotice();
 	syncDecisionAvailability();
 	card?.setAttribute("aria-busy", model.busy ? "true" : "false");
 	if (errorNode) {
@@ -644,6 +670,64 @@ function render(): void {
 		syncScrim();
 		syncGlossAccess();
 	}, 0);
+}
+
+/**
+ * Paint the notice (when present) and, when it is the only thing on the card,
+ * hide the request/list views and the queue footer so the card is just the
+ * sentence and its dismiss. Runs after `setView`, which unhides the views.
+ */
+function renderNotice(): void {
+	const notice = model?.notice ?? null;
+	if (noticeView) noticeView.hidden = notice === null;
+	if (noticeTextNode) {
+		noticeTextNode.textContent = notice
+			? t("ui.browser.approvals_card.native_passkey_notice")
+			: "";
+	}
+	if (noticeDismissNode) {
+		const label = t("ui.browser.approvals_card.dismiss_passkey_notice");
+		noticeDismissNode.setAttribute("aria-label", label);
+		noticeDismissNode.title = label;
+		noticeDismissNode.onclick = dismissNotice;
+		// In notice-only mode the header X dismisses the notice; one button.
+		noticeDismissNode.hidden = noticeOnly();
+	}
+	const only = noticeOnly();
+	if (closeNode) {
+		const label = only
+			? t("ui.browser.approvals_card.dismiss_passkey_notice")
+			: t("ui.common.actions.close");
+		const text = document.getElementById("approvals-close-text");
+		const icon = document.getElementById("approvals-close-x");
+		if (text) text.textContent = only ? "" : label;
+		icon?.classList.toggle("card-close-x-hidden", !only);
+		closeNode.setAttribute("aria-label", label);
+		closeNode.title = label;
+		closeNode.onclick = dismiss;
+	}
+	if (only) {
+		if (requestView) requestView.hidden = true;
+		if (listView) listView.hidden = true;
+	}
+	if (footerNode) footerNode.hidden = only;
+	// Notice-only: NO title (design D7). "Choose a passkey" was an imperative
+	// for a choice this card cannot offer, and the app's own chooser already
+	// carries that title for the same request. The sentence names the dialog
+	// instead, so a screen reader still announces something true.
+	if (titleNode) {
+		titleNode.textContent = only
+			? ""
+			: t("ui.browser.browser_approvals_dock.approvals");
+		titleNode.hidden = only;
+	}
+	card?.setAttribute(
+		"aria-labelledby",
+		only ? "approvals-notice-text" : "approvals-title",
+	);
+	// Beside an approval the notice gets a hairline under it (design D8), so its
+	// "this site" does not read as the approval's origin.
+	card?.classList.toggle("card-notice-mixed", notice !== null && !only);
 }
 
 window.__approvalsCard = {
@@ -684,12 +768,6 @@ window.__approvalsCard = {
 		if (titleNode) {
 			titleNode.textContent = t("ui.browser.browser_approvals_dock.approvals");
 		}
-		if (closeNode) {
-			const label = t("ui.common.actions.close");
-			closeNode.textContent = label;
-			closeNode.setAttribute("aria-label", label);
-			closeNode.onclick = dismiss;
-		}
 		render();
 		// Focus is a one-shot command on receipt, not retained render state. The
 		// inert-window timer must not take focus back from Review all or Back.
@@ -703,7 +781,8 @@ window.__approvalsCard = {
 document.addEventListener("keydown", (event) => {
 	if (event.key === "Escape") {
 		event.preventDefault();
-		dismiss();
+		if (model?.notice) dismissNotice();
+		else dismiss();
 	}
 });
 

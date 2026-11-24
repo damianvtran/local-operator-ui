@@ -79,6 +79,7 @@ export interface RegisterBrowserIpcOptions {
 	 * `index.html` otherwise. Same value the desktop transport is given. */
 	expectedUrl: string;
 	host: () => BrowserHost | null;
+	onTrustedTabSelection?: (tabId: number) => void;
 	availability?: () => BrowserAvailability;
 	/**
 	 * The passkey chooser, which is what `browser-webauthn-respond` answers.
@@ -106,20 +107,6 @@ export interface RegisterBrowserIpcOptions {
 			tabId: number,
 			at: number,
 		) => Promise<{ ok: true } | { ok: false; reason: string }>;
-	};
-	/**
-	 * Passkey custody's one user action, "Return to agent"
-	 * (`extensions/passkey-custody.ts`). `trusted` is the click's `isTrusted`;
-	 * main refuses anything else, as for the media prompt.
-	 */
-	passkeyCustody?: {
-		/** `reloaded`: the hold lifts only once the reload commits, so the band
-		 * stays busy until it disappears. */
-		release: (
-			tabId: number,
-			at: number,
-			trusted: boolean,
-		) => { ok: true; reloaded?: boolean } | { ok: false; reason: string };
 	};
 	/**
 	 * The sidebar notification row's click (`user-attention.ts`): the ONLY way
@@ -266,7 +253,6 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
 	"browser-passkey-notice-continue",
-	"browser-passkey-custody-release",
 	"browser-open-user-attention",
 	"browser-media-permission-decide",
 	"browser-media-permission-open-settings",
@@ -448,10 +434,16 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.closeTabs(closeTabsIntentOrThrow(intent));
 	});
 
-	ipcMain.handle("browser-activate-tab", (event, tabId: unknown) => {
-		const host = authorize(event);
-		return host.activateTab(numberOrThrow(tabId, "tabId"));
-	});
+	ipcMain.handle(
+		"browser-activate-tab",
+		(event, tabId: unknown, trusted?: unknown) => {
+			const host = authorize(event);
+			const id = numberOrThrow(tabId, "tabId");
+			const state = host.activateTab(id);
+			if (trusted === true) options.onTrustedTabSelection?.(id);
+			return state;
+		},
+	);
 
 	ipcMain.handle(
 		"browser-navigate",
@@ -743,24 +735,6 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return options.passkeyNotice.continueInUserTab(
 				numberOrThrow(tabId, "tabId"),
 				numberOrThrow(at, "at"),
-			);
-		},
-	);
-
-	/*
-	 * "Return to agent" on a passkey custody notice: the only way an agent gets a
-	 * held tab back. Sender-checked here and trusted-click-checked in main, so
-	 * neither an agent (no RPC method) nor a page can end a hold.
-	 */
-	ipcMain.handle(
-		"browser-passkey-custody-release",
-		(event, tabId: unknown, at: unknown, trusted: unknown) => {
-			authorize(event);
-			if (!options.passkeyCustody) return { ok: false, reason: "not_held" };
-			return options.passkeyCustody.release(
-				numberOrThrow(tabId, "tabId"),
-				numberOrThrow(at, "at"),
-				trusted === true,
 			);
 		},
 	);

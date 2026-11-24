@@ -6,7 +6,7 @@ import {
 import { WorkspaceFrame } from "@shared/components/common/workspace-frame";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect, useRef } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import {
 	Navigate,
 	Route,
@@ -67,10 +67,6 @@ import {
 	consentClickTarget,
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
-import {
-	type CustodyViewSnapshot,
-	shellCustodyHandoffs,
-} from "@shared/browser-passkey-custody-handoff";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
@@ -95,6 +91,7 @@ import {
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
 import { useNavigationGestures } from "@shared/hooks/use-navigation-gestures";
+import { useSettingsReturnTracking } from "@shared/hooks/use-settings-route";
 import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
@@ -216,6 +213,12 @@ const App: FC = () => {
 	 * renders nothing.
 	 */
 	useWindowChrome();
+	/*
+	 * The route Settings remembers so Close can return to it (memory-only, one
+	 * pathname+search). Mounted beside the chrome hooks because it must run before
+	 * the lazy Settings page can: entering the page is what pins the target.
+	 */
+	useSettingsReturnTracking();
 	/*
 	 * The i18n locale store's writer: mirrors the capabilities answer into it —
 	 * the device locale before any answer, the backend's resolved language
@@ -796,55 +799,6 @@ const App: FC = () => {
 			navigate("/chat");
 		});
 		return () => unsubscribe?.();
-	}, [navigate, setActiveSession, setBrowserPaneOpen]);
-
-	/*
-	 * A password manager's prompt came up in an agent-driven tab and the agent is
-	 * paused there until the user answers it and returns the tab
-	 * (`main/browser/extensions/passkey-custody.ts`).
-	 *
-	 * NOTHING HERE MOVES THE VIEW WHEN A HOLD BEGINS (operator report 2026-11-15,
-	 * "the browser is stealing the view"). This effect used to navigate to the
-	 * hold's conversation or the browser route the moment main pushed an attention
-	 * event; the hold is now a sidebar notification row (`browser-user-attention.ts`)
-	 * and the user goes over when they choose. Only the GIVE-BACK lives here: when
-	 * a hold the user opened FROM ITS ROW ends, their previous view comes back if
-	 * they are still where that click put them (review U1/D3). The row's click is
-	 * what records the handoff in `shellCustodyHandoffs`, so a hold nobody opened
-	 * has nothing to give back.
-	 *
-	 * The route is read through a ref so the listener is not re-registered on
-	 * every navigation (the store reads use `getState()` for the same reason).
-	 */
-	const pathnameRef = useRef(pathname);
-	pathnameRef.current = pathname;
-	useEffect(() => {
-		const currentView = (): CustodyViewSnapshot => {
-			const sessions = useCanonicalSessionsStore.getState();
-			return {
-				pathname: pathnameRef.current,
-				activeSessionId: sessions.activeSessionId ?? null,
-				activeDraftKey: sessions.activeDraftKey ?? null,
-				browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
-			};
-		};
-		const custodyHandoffs = shellCustodyHandoffs;
-		const offEnded = window.api?.browser?.onPasskeyCustodyEnded?.((payload) => {
-			const plan = custodyHandoffs.end(payload, currentView());
-			if (!plan) return;
-			if (plan.openDraft) {
-				const store = useCanonicalSessionsStore.getState();
-				if (store.drafts[plan.openDraft]) store.openDraft(plan.openDraft);
-			} else if (plan.session !== undefined) {
-				setActiveSession(plan.session);
-			} else if (plan.closeBrowserPane) {
-				setBrowserPaneOpen(false);
-			}
-			if (plan.navigate) navigate(plan.navigate);
-		});
-		return () => {
-			offEnded?.();
-		};
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*

@@ -224,6 +224,82 @@ test("a transaction's original held identity remains leased when a same-input pa
 	);
 });
 
+test("a held transaction writes nothing once the reader is at the tail (PR #2068, R1-1)", () => {
+	/*
+	 * The entry slot's 240 ms height transition retains one transaction and
+	 * commits every frame. Begun while the reader was away, it used to keep
+	 * restoring that row after a send's flight had carried them to the tail -
+	 * writing them back off it. At the tail the transaction ends, as the pager's
+	 * own tail gate drops its sample.
+	 */
+	let scroll = -900;
+	let y = 40;
+	const writes = [];
+	const held = { id: "row", viewportOffset: 40, extent: 5000 };
+	const layout = model.createScrollLayoutCoordinator({
+		held: () => null,
+		sample: () => held,
+		measure: () => ({ ...held, viewportOffset: y }),
+		inputRevision: () => 1,
+		following: () => scroll === 0,
+		write: (drift) => {
+			writes.push(drift);
+			scroll = drift === "tail" ? 0 : scroll + drift;
+		},
+	});
+	layout.begin();
+	const release = layout.retainMotion();
+	scroll = 0; // the flight landed
+	y = 940; // the held row is now far below the viewport top
+	assert.equal(layout.commit(true), true);
+	y = 960;
+	layout.commit(true);
+	assert.deepEqual(writes, [], "no correction pulls the reader off the tail");
+	assert.equal(scroll, 0);
+	assert.equal(layout.heldId(), null, "the transaction ended");
+	release();
+
+	// Control: away from the tail the same transaction still corrects.
+	scroll = -900;
+	y = 40;
+	layout.begin();
+	y = 64;
+	layout.commit();
+	assert.deepEqual(writes, [24]);
+});
+
+test("a suspended coordinator neither captures nor corrects, and drop() forgets the anchor (R1-1/R1-2)", () => {
+	let suspended = false;
+	let y = 40;
+	const writes = [];
+	const held = { id: "row", viewportOffset: 40, extent: 5000 };
+	const layout = model.createScrollLayoutCoordinator({
+		held: () => null,
+		sample: () => held,
+		measure: () => ({ ...held, viewportOffset: y }),
+		inputRevision: () => 1,
+		following: () => false,
+		suspended: () => suspended,
+		write: (drift) => writes.push(drift),
+	});
+	const release = layout.retainMotion();
+	layout.begin();
+	layout.drop(); // the flight's takeoff
+	y = 400;
+	layout.commit(true);
+	assert.deepEqual(writes, [], "a dropped anchor is not defended");
+	suspended = true;
+	y = 40;
+	layout.begin(); // mid-flight: a slot transition starts
+	y = 700;
+	layout.commit(true);
+	assert.deepEqual(writes, [], "nothing is captured or written mid-flight");
+	suspended = false;
+	layout.commit(true);
+	assert.deepEqual(writes, [], "and nothing captured mid-flight survives it");
+	release();
+});
+
 test("a row hidden by structural consolidation retargets to the surviving first-slot anchor without changing input", () => {
 	let held = { id: "child", viewportOffset: 0, extent: 500 };
 	let delta = 0;

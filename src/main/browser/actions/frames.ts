@@ -1,7 +1,7 @@
 import { FRAME_DETACHED } from "../cdp";
 import type { DriveableView } from "../electron-types";
 import { BrowserHostError } from "../errors";
-import { CUSTODY_REFUSAL_REASON } from "../extensions/passkey-custody";
+import { AUTH_REQUEST_REFUSAL_REASON } from "../extensions/auth-request";
 import { isExtensionDocumentUrl } from "../extensions/subframe-policy";
 import type { BrowserActionContext } from "./context";
 
@@ -173,13 +173,14 @@ export function isDeniedFrame(
 
 /**
  * An extension's own document inside a page (a password manager's prompt or
- * menu) is never an agent's to read or drive, whatever the tab's custody state:
- * `subframe-policy.ts` keeps such frames out of agent tabs, and passkey custody
- * (`extensions/passkey-custody.ts`) pauses the agent while one is admitted, so
- * this is the third, independent line — a frame that slipped past both (a tab
- * handed over mid-load) is still refused at the one place every route into a
- * frame passes. Matched on the document URL: `new URL(...).origin` is the
- * string "null" for a `chrome-extension:` URL, so the origin cannot carry it.
+ * menu) is never an agent's to read or drive. This is the line that does not
+ * depend on a tab's state at all: `subframe-policy.ts` keeps such frames out of
+ * agent tabs unless a person engaged that tab, and a live request only refuses
+ * the actions that would destroy it (`extensions/auth-request.ts`), so a frame
+ * that IS admitted — the deliberate human route — is still refused here, at the
+ * one place every route into a frame passes. Matched on the document URL:
+ * `new URL(...).origin` is the string "null" for a `chrome-extension:` URL, so
+ * the origin cannot carry it.
  */
 export function assertNotExtensionFrame(documentUrl: string | undefined): void {
 	if (!documentUrl || !isExtensionDocumentUrl(documentUrl)) return;
@@ -197,10 +198,10 @@ function isFatalWalkError(error: unknown): boolean {
 		error instanceof BrowserHostError &&
 		(error.code === "debugger_conflict" ||
 			error.code === "tab_closed" ||
-			// The user took the tab for a passkey prompt mid-walk: every further
-			// command is refused too, so say that rather than "matched nothing".
+			// The walk reached the provider's own prompt document, which is never
+			// an agent target: say that rather than "matched nothing".
 			(error.data as { reason?: unknown } | undefined)?.reason ===
-				CUSTODY_REFUSAL_REASON)
+				AUTH_REQUEST_REFUSAL_REASON)
 	);
 }
 

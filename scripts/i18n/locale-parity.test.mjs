@@ -42,6 +42,10 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"fr:ui.teamBridge.edit.topic",
+		"French cognate « Description », the native label, not an English stub; independently audited in i18n/receipts/d76a8497b66e-tb-edit-fr.json (all 70 target values read across seven locales). Scoped to this locale/key only.",
+	],
+	[
 		"ui.teamBridge.alerts.more_labels",
 		// `+{count, number}`: the alert card's label-overflow chip, one sign and a
 		// locale-formatted number, no words. The number is localized by ICU; the
@@ -2164,6 +2168,36 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.common.time.duration.over_cap",
 		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
 	],
+	// Ask attestation sheet (local-operator-ui #2073). Both values are layout, not
+	// copy: the words come from the interpolated question/answer, which are the
+	// user's and the agent's text and are never translated here.
+	[
+		"ui.chat.ask_attest.sheet.answer_line",
+		// `{question}\n→ {answer}`: two placeholders, a line break and an arrow.
+		// Identical in all seven shipped locales by design; audited in #2073
+		// round 2 (receipts i18n/receipts/323eaab3890c-askattest-*.json).
+		"language-neutral format string: two placeholders joined by a newline and an arrow, no words",
+	],
+	[
+		"es:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-es.json). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-hi.json). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-ur.json). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-vi.json). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-zh-cn.json). Scoped to this locale/key only.",
+	],
 ]);
 
 /*
@@ -2394,6 +2428,21 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
  * hole this form was added to close — so the property is asserted rather than
  * assumed from the production table.
  */
+test("the audited French metadata label exemption stays locale- and key-scoped", () => {
+	assert.equal(allowsIdenticalValue("fr", "ui.teamBridge.edit.topic"), true);
+	for (const locale of localeDirs().filter((locale) => locale !== "fr")) {
+		assert.equal(
+			allowsIdenticalValue(locale, "ui.teamBridge.edit.topic"),
+			false,
+			`${locale} must not inherit the French cognate exemption`,
+		);
+	}
+	assert.equal(
+		allowsIdenticalValue("fr", "ui.teamBridge.edit.description"),
+		false,
+	);
+});
+
 test("a locale-scoped identical-value exemption does not exempt another locale", () => {
 	const table = new Map([
 		["fr:ui.example.cognate", "French cognate: same spelling"],

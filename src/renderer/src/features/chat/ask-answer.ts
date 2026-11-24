@@ -118,7 +118,13 @@ import type { AskDismissReason } from "./ask-queue";
  * reader imports them from (`answerReport` here, `scripts/ask-options.test.mjs`).
  * One disposition, one predicate, one sentence — wherever the ask is painted.
  */
-import { answerBusyMessage, answerOwnerIsBusy } from "./ask-queue";
+import {
+	ATTESTED_DOOR,
+	answerBusyMessage,
+	answerOwnerIsBusy,
+	answerRefusedByAppContract,
+	answerRefusedByAppContractMessage,
+} from "./ask-queue";
 
 export { answerBusyMessage, answerOwnerIsBusy };
 
@@ -553,9 +559,15 @@ export const answerRefusedWithoutACode = (error: unknown): boolean =>
  * rather than `error.message`.
  */
 export const unsentAnswerMessage = (error: unknown): string =>
-	t("ui.chat.ask_answer.not_sent", {
-		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
-	});
+	// Main's own schema refusal has no reason worth quoting (`answerRefusedByAppContract`).
+	answerRefusedByAppContract(error)
+		? answerRefusedByAppContractMessage()
+		: t("ui.chat.ask_answer.not_sent", {
+				reason: userFacingMessage(
+					error,
+					t("ui.chat.ask_answer.request_failed"),
+				),
+			});
 
 /**
  * What one option press reports, and WHERE it reports it.
@@ -976,7 +988,12 @@ export type GateAnswerRequest = Extract<
 export type AnswerOutcome =
 	| { status: "sent" }
 	| { status: "refused" }
-	| { status: "failed"; request: GateAnswerRequest; error: unknown };
+	| {
+			status: "failed";
+			/** The body that failed; the attested door's own op for `confirmQueuedAsk`. */
+			request: GateAnswerRequest | AttestedAnswerRequest;
+			error: unknown;
+	  };
 
 /**
  * Send one option's label as the answer to the pending `ask` gate — or one of
@@ -1380,3 +1397,94 @@ export const dismissQueuedAsk = async (
 		lock.release();
 	}
 };
+
+/**
+ * Answer (or change the answer to) a QUEUED ask AS THE OPERATOR: the card's
+ * "Confirm and send…" door (`asks.attestedAnswer`, `src/main/ask-attest.ts`).
+ *
+ * WHY A SEPARATE DOOR. The plain Submit/Update posts `sessions.answer`, which core
+ * stamps `unverified` from a desktop the runtime cannot identify - and the
+ * dangerous-delete guard, rightly, refuses an unverified answer as consent. This
+ * door asks MAIN to do it instead: main shows a native sheet built from its own
+ * read of the ask, and only on the person's confirm attests the exact answer to
+ * the runtime and forwards it, so core can stamp it `desktop`. Nothing here is
+ * trusted by main - the renderer only names which answer it wants confirmed.
+ *
+ * OUTCOMES, mapped onto the shared `AnswerOutcome` so the card's lock, outcome
+ * line and refusal sentence need no second vocabulary:
+ *  - `sent`: confirmed on the sheet, attested and forwarded.
+ *  - `refused`: the person cancelled the sheet. Nothing was sent - exactly the
+ *    "never sent" meaning `refused` already has - so the card stays answerable.
+ *  - `failed`: main refused (gate, listener, ask changed) or the forward failed;
+ *    the error carries `code: ask_attest_refused` and a `reason` the outcome line
+ *    turns into keyed copy (`askAttestRefusalSentence`), never a silent send.
+ *
+ * No busy resend: a confirmation is a person's act on a sheet, and repeating it
+ * behind their back would attest nothing (the attestation is single-use).
+ */
+export const confirmQueuedAsk = async (
+	deps: {
+		taskId: string;
+		answers: Record<string, string[]>;
+		sessionId?: string | null;
+		revise?: boolean;
+		lock: SendLock;
+	},
+	send: (request: AttestedAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, answers, sessionId, revise, lock } = deps;
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (Object.keys(answers).length === 0) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: AttestedAnswerRequest = {
+		op: "asks.attestedAnswer",
+		sessionId,
+		askId: taskId,
+		answers,
+		...(revise === true ? { revise: true as const } : {}),
+	};
+	try {
+		const result = await send(request);
+		if (
+			typeof result === "object" &&
+			result !== null &&
+			(result as { cancelled?: unknown }).cancelled === true
+		)
+			return { status: "refused" };
+		return { status: "sent" };
+	} catch (error) {
+		/*
+		 * A BUSY runtime keeps its `runtime_busy` code (muted ink, queue refresh) but is
+		 * marked as this door's, so the sentence says "confirm again in a moment"
+		 * rather than the plain path's, which implies a resend this door never makes
+		 * (UX round 1, U5).
+		 */
+		if (answerOwnerIsBusy(error) && error instanceof DesktopControlError) {
+			const detail =
+				typeof error.detail === "object" && error.detail !== null
+					? error.detail
+					: {};
+			return {
+				status: "failed",
+				request,
+				error: new DesktopControlError(
+					error.status,
+					error.message,
+					error,
+					error.code,
+					error.retryAfterMs,
+					{ ...detail, door: ATTESTED_DOOR },
+				),
+			};
+		}
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/** The `asks.attestedAnswer` request, as the wire contract defines it. */
+export type AttestedAnswerRequest = Extract<
+	DesktopRequest,
+	{ op: "asks.attestedAnswer" }
+>;

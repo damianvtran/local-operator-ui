@@ -770,6 +770,27 @@ export const TeamBridgeApi = {
 	 * every conversation write; the contract route puts it in the request BODY
 	 * beside `name` (the daemon refuses a query receipt on rename).
 	 */
+	/** One atomic metadata edit; never route a topic through legacy rename. */
+	async update(
+		conversationId: string,
+		patch: { name?: string; topic?: string },
+		tenantId: string,
+		expectedAccountId: string,
+	): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.update",
+			conversation_id: conversationId,
+			...patch,
+			...(await teamBridgeWriteOwner(expectedAccountId, tenantId)),
+			tenant_id: tenantId,
+			expected_account_id: expectedAccountId,
+		});
+		const served = teamBridgeConversationSchema.parse(answer);
+		if (served.id !== conversationId || served.tenant_id !== tenantId)
+			throw new Error("Team Bridge metadata response target mismatch");
+		return served;
+	},
+
 	async rename(
 		conversationId: string,
 		name: string,

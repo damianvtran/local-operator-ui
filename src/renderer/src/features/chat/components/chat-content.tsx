@@ -717,6 +717,15 @@ type ChatContentProps = {
 		 */
 		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
 		/**
+		 * Send an answer AS THE OPERATOR after main's native confirmation sheet
+		 * (`AskPanelProps.onConfirm`); `revise` from the change form.
+		 */
+		onConfirmAsk?: (
+			askId: string,
+			answers: Record<string, string[]>,
+			revise: boolean,
+		) => void;
+		/**
 		 * PUT AN OPEN ASK AWAY without answering it (harness PR #2833, SA-D5).
 		 *
 		 * Raised to `SessionPanel` beside its three siblings for their reason: the
@@ -3978,6 +3987,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
 								onRevise={canonical?.onReviseAsk}
+								onConfirm={canonical?.onConfirmAsk}
 								onDismiss={canonical?.onDismissAsk}
 								answering={Boolean(canonical?.admitting)}
 								outcomes={canonical?.askOutcomes}

@@ -57,10 +57,15 @@ import type {
 	QwenVoiceStatus,
 } from "../../../../shared/desktop-contract";
 import type { DesktopVoiceText } from "../../../../shared/desktop-control-contract";
+import { replayFactsOf, replayOffer } from "./spoken-summary-model";
 import { applyVoiceActive, useVoiceStatus } from "./use-voice-status";
 import { useVoiceSwitchSync } from "./use-voice-switch";
 import { playReplyEndTone } from "./voice-earcons";
-import { activityOfEvent, useVoiceStore } from "./voice-store";
+import {
+	type VoiceSpokenSource,
+	activityOfEvent,
+	useVoiceStore,
+} from "./voice-store";
 import { type VoiceStreamHandle, subscribeVoiceStream } from "./voice-stream";
 import {
 	VOICE_TAKE_ROW_TTL_MS,
@@ -904,18 +909,57 @@ export function spokenTruncated(
 }
 
 /**
+ * What the server spoke for a message: its `spoken_source`, with a missing field
+ * (a server from before the summary) reading as `reply` - the whole reply cleaned
+ * and capped, which is what every older server does.
+ */
+export function spokenSourceOf(
+	spoken: DesktopVoiceText | null | undefined,
+): VoiceSpokenSource {
+	return spoken?.spoken_source === "summary" ? "summary" : "reply";
+}
+
+/**
  * Speak one source reference: the server resolves the words (`/voice/text`),
  * main checks they are the words it just relayed, and the rig says them. The
  * renderer never composes what is spoken.
+ *
+ * `replay` is the ONE way a message is spoken twice. The turn fold's dedupe
+ * (`voice-turns.ts`, a message id spoken once across reconnect replays) guards
+ * the AUTOMATIC path - a replayed stream frame must not read a reply out again -
+ * and lives in `stepVoiceTurns`, upstream of this function; a person pressing
+ * Replay is an explicit new take and calls here directly, so no dedupe set is
+ * written, read or bypassed.
  */
 async function speakSource(
 	sessionId: string,
 	source: VoiceSpeakSource,
+	options: { replay?: boolean } = {},
 ): Promise<void> {
 	if (source.kind === "gate") {
 		// The announcement's on-screen half: the approval card is the only answer.
 		showCardToast(sessionId, t("ui.chat.voice.approval_waiting"));
 	}
+	/*
+	 * THE REQUEST IS OPEN FROM HERE, so the message's block says "Speaking" and its
+	 * Replay waits, instead of claiming "Spoken aloud" from the record written
+	 * below. Every way out of this function that is not the rig's own playback
+	 * closes it.
+	 */
+	const request =
+		source.kind === "message"
+			? { sessionId, messageId: source.messageId, at: Date.now() }
+			: null;
+	const closeRequest = () => {
+		const current = useVoiceStore.getState().speakRequest;
+		if (
+			request &&
+			current?.at === request.at &&
+			current.sessionId === sessionId
+		)
+			useVoiceStore.getState().setSpeakRequest(null);
+	};
+	useVoiceStore.getState().setSpeakRequest(request);
 	let spoken: DesktopVoiceText;
 	try {
 		spoken = await desktopResult<DesktopVoiceText>({
@@ -928,10 +972,14 @@ async function speakSource(
 		console.warn(
 			`[voice] nothing to speak: ${error instanceof Error ? error.message : String(error)}`,
 		);
+		closeRequest();
 		return;
 	}
 	// The slot moved while the text was out: the old session is not spoken.
-	if (useVoiceStore.getState().active?.session_id !== sessionId) return;
+	if (useVoiceStore.getState().active?.session_id !== sessionId) {
+		closeRequest();
+		return;
+	}
 	const kind = source.kind === "gate" ? "gate" : "reply";
 	rememberSpoken(spoken.text);
 	/*
@@ -940,15 +988,126 @@ async function speakSource(
 	 * that adds the field lands in parallel, so the missing case is the normal
 	 * one until it ships.
 	 */
+	/*
+	 * WRITTEN BEFORE THE RIG ANSWERS, AND UNDONE IF IT REFUSES: the record has to
+	 * exist when `playback.started` arrives (`voiceEventEffects` admits a start
+	 * only for a speak this window just issued, and the ended/interrupted marks
+	 * need the message), which can beat the answer to this call. A refusal then
+	 * puts back exactly what this write replaced, so it claims nothing.
+	 */
+	const before = useVoiceStore.getState();
+	const restore = {
+		messageId: source.kind === "message" ? source.messageId : "",
+		at: Date.now(),
+		lastSpoken: before.lastSpoken,
+		entry:
+			source.kind === "message" ? before.spoken[source.messageId] : undefined,
+	};
 	useVoiceStore.getState().setLastSpoken({
 		sessionId,
 		text: spoken.text,
+		fullText: spoken.full_text,
 		truncated: spokenTruncated(spoken),
-		at: Date.now(),
+		// A gate announcement is never a message's summary.
+		...(source.kind === "message" ? { messageId: source.messageId } : {}),
+		source: spokenSourceOf(spoken),
+		muted: useVoiceStore.getState().rig?.muted === true,
+		replay: options.replay === true,
+		at: restore.at,
 	});
 	const answer = await bridge()?.speak({ text: spoken.text, kind });
-	if (answer && !answer.spoken)
+	if (answer && !answer.spoken) {
 		console.warn(`[voice] the rig did not speak: ${answer.reason ?? ""}`);
+		if (restore.messageId) useVoiceStore.getState().restoreSpoken(restore);
+		closeRequest();
+		return;
+	}
+	if (!request) return;
+	// No bridge (browser development): nothing will ever start.
+	if (!answer) {
+		closeRequest();
+		return;
+	}
+	/*
+	 * Accepted: the audio starts on `playback.started`, which settles the request.
+	 * A muted rig may play nothing observable, and a start that never comes must
+	 * not leave "Speaking" up for good: the bound is the one `voiceEventEffects`
+	 * already allows a start after a speak (measured there, not invented here).
+	 */
+	if (useVoiceStore.getState().rig?.muted === true) closeRequest();
+	else setTimeout(closeRequest, PLAYBACK_START_WINDOW_MS);
+}
+
+/**
+ * REPLAY: say one message's spoken words again, on the person's press. The
+ * request is a source reference like every other - the server picks the
+ * paragraph again - so the renderer composes nothing, and a take is not owed an
+ * answer, so no History row is touched.
+ */
+export async function replaySpoken(
+	sessionId: string,
+	messageId: string,
+): Promise<void> {
+	await speakSource(
+		sessionId,
+		{ kind: "message", messageId },
+		{ replay: true },
+	);
+}
+
+/** A Replay press sits between reading the offer and its speak request opening. */
+let replayPressClaimed = false;
+
+/**
+ * THE PRESS OF EVERY REPLAY (block, strip, History, footnote): a muted speaker is
+ * unmuted first, because the person asked to hear it now (the strip's "Play"
+ * word says so), then the message is said again. One door so the four cannot
+ * drift in what pressing means. A press while unavailable (busy, not the holder,
+ * paused) does nothing and claims nothing; the controls draw it `aria-disabled`.
+ */
+export async function pressReplay(
+	sessionId: string,
+	messageId: string,
+): Promise<void> {
+	/*
+	 * THE CLAIM IS TAKEN BEFORE THE FIRST AWAIT. `speakRequest` (what makes every
+	 * entry point read "busy") opens only inside `speakSource`, after the unmute's
+	 * round trip, so without this a second press in that window sees muted + not
+	 * busy and starts a second unmute and a second speak. Released as soon as the
+	 * request is open (from then on `busy` is the guard) or on any way out.
+	 */
+	if (replayPressClaimed) return;
+	const offerNow = () => {
+		const offer = replayOffer(
+			replayFactsOf(useVoiceStore.getState(), sessionId),
+		);
+		return offer && !offer.disabled ? offer : null;
+	};
+	if (!offerNow()) return;
+	replayPressClaimed = true;
+	let speaking: Promise<void>;
+	try {
+		if (useVoiceStore.getState().rig?.muted === true) {
+			try {
+				await setQwenMuted(false);
+			} catch (error) {
+				// The unmute was refused: the person is no better off for a take they
+				// could not hear, and the state is what it was. Silence, not an error.
+				console.warn(
+					`[voice] could not unmute: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return;
+			}
+		}
+		// The slot moved, the page paused or something else started meanwhile.
+		if (!offerNow()) return;
+		// `replaySpoken` runs synchronously up to `speakRequest`'s write, so the
+		// request is open before the claim is released below.
+		speaking = replaySpoken(sessionId, messageId);
+	} finally {
+		replayPressClaimed = false;
+	}
+	await speaking;
 }
 
 /**

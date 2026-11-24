@@ -1,0 +1,144 @@
+{
+	"instance": "voice-history-full-text-es",
+	"locale": "es",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.chat.voice",
+		"ui.chat.composer"
+	],
+	"auditor": {
+		"agent": "reviewer (lopdev team role, task audit-i18n-es)",
+		"session": "e5622264064a",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model per this session's system header ('Model: anthropic/claude-sonnet-5-5'); no provider fallback observed or disclosed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only lopdev reviewer session. Authored and edited no catalogue, ledger, sidecar or repo file; the only file written is this receipt in scratchpad. The translator is a different session (also anthropic/claude-sonnet-5-5, same model family, so independence is session-level, not model-level). No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2065",
+	"branch": "voice-history-full-text",
+	"head": "a9161f63eb48cc0932558543c7b61d5a3eed54ba",
+	"base": "cd9d85f30d",
+	"hash_method": "sha256 of raw file bytes (ledger-check.mjs sha256File = createHash('sha256').update(readFileSync(path)))",
+	"references": {
+		"glossary": "damianvtran/local-operator@52c5a4149 (origin/main) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (no entry for voice/history labels)",
+		"style_guide": "damianvtran/local-operator@52c5a4149 i18n/style-guides/es.md sha256 4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+		"shipped_terms": "es/ui.chat.voice.json at head: 'en voz alta' (stream_lost, byok_speech_failed, byok_speech_rate_limited), 'Cortada' (cut_chip), 'Di algo' (idle_caption), tú-imperatives ('Habla'/'Di'); es/ui.chat.composer.json placeholders 'Escribe tu propia respuesta…', 'Pregunta lo que quieras'."
+	},
+	"changed_keys_from_diff": {
+		"en_changed": [
+			"ui.chat.voice.heard_label",
+			"ui.chat.voice.said_label"
+		],
+		"en_added": [
+			"ui.chat.voice.spoken_part_note",
+			"ui.chat.composer.placeholder.voice"
+		],
+		"en_removed": [
+			"ui.chat.voice.cut_note"
+		],
+		"es_matches_en_key_set": true
+	},
+	"scope_note": "Every changed/added key in both namespaces audited from git diff cd9d85f30d..a9161f63eb; hashes bind the whole namespace files at the head. Ledger rows/receipts for these namespaces are not part of the diff (no i18n/ changes in the PR); binding is a follow-up for whoever assembles the ledger.",
+	"result": "clean-with-findings",
+	"status": "passed",
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"checks": [
+		{
+			"check": "key-set parity en vs es, both namespaces",
+			"result": "PASS",
+			"detail": "voice 81/81, composer 97/97, symmetric diff empty (python set diff)."
+		},
+		{
+			"check": "placeholder parity",
+			"result": "PASS",
+			"detail": "The 4 audited keys carry no placeholders in en or es. A brace-token compare flags ui.chat.composer.secret_confirm_chars, which this PR did not touch: es adds the CLDR 'many' plural branch the style guide requires; not a finding."
+		},
+		{
+			"check": "retired key ui.chat.voice.cut_note",
+			"result": "PASS",
+			"detail": "absent from es/ui.chat.voice.json; grep of src/ and i18n/ledger.json finds no cut_note anywhere."
+		},
+		{
+			"check": "colon forms",
+			"result": "PASS",
+			"detail": "'Dijiste:' / 'Dijo:' end in ASCII ':' with no space before, per es style guide ('No space before : ; ? !'); not fr-style, not zh full-width. Colon is part of the string as the en sidecar requires."
+		},
+		{
+			"check": "register / idiom",
+			"result": "PASS",
+			"detail": "tú imperatives 'Habla o escribe aquí' (matches 'Di algo', 'Escribe tu propia respuesta…'); 'Dijiste' 2nd-person pretérito mirrors en 'You said' and the 'Tú'/'Voz' history row labels; 'Dijo' is the voice's turn, parallel; spoken_part_note is a plain statement, implies no missing text, as sidecar demands (row shows whole reply). Not literal: 'Talk, or type here' -> 'Habla o escribe aquí', 'Spoken aloud' -> 'Leído en voz alta'."
+		},
+		{
+			"check": "glossary / neighbour consistency",
+			"result": "PASS",
+			"detail": "No glossary entries apply. 'en voz alta' as shipped; 'solo' unaccented (current RAE); sentence case, no '!' ."
+		},
+		{
+			"check": "length fit",
+			"result": "PASS",
+			"detail": "heard 8, said 5, placeholder 20, spoken_part_note 40 characters; no maxCells declared for these keys (composer placeholder note says advisory only). Single line; 40 chars is shorter than the shipped cut_chip sibling it replaced (cut_note was 72). Not measured in a rendered frame."
+		},
+		{
+			"check": "bidi / control chars / NFC",
+			"result": "PASS",
+			"detail": "No Cc/Cf characters and all values NFC in both es files (python unicodedata)."
+		}
+	],
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 3,
+			"keys": [
+				"ui.chat.voice.heard_label",
+				"ui.chat.voice.said_label",
+				"ui.chat.voice.spoken_part_note"
+			],
+			"sha256": {
+				"en": "72c4509e62cc259b3c8825ea34c015ea2bb4712aa628203c137b1e80da53257e",
+				"es": "d4e789953daf3aa9e80c8755e3cc7de8e77348959aa94bab7c373a6f58b88170"
+			},
+			"context_sha256": "e1106acf56e0eb52432681804b8c109a2dbfdeec6406a0967c4358dbfe514a32",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"es_path": "src/i18n/catalogues/es/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": [
+				{
+					"id": "ES-1",
+					"severity": "nit",
+					"key": "ui.chat.voice.spoken_part_note",
+					"current": "Leído en voz alta: solo la primera parte",
+					"proposed": "Leída en voz alta: solo la primera parte (optional)",
+					"reason": "Note sits under the reply (respuesta, fem.) and the sibling ui.chat.voice.cut_chip says «Cortada»; «Leída» would agree with it. «Leído» also parses as impersonal «lo leído: solo la primera parte», which is correct, so this is taste, not an error. «en voz alta» matches the locale's ui.chat.voice.stream_lost / byok_speech_failed wording."
+				}
+			],
+			"retired_keys_checked": [
+				"ui.chat.voice.cut_note"
+			]
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"result": "clean",
+			"keys_audited": 1,
+			"keys": [
+				"ui.chat.composer.placeholder.voice"
+			],
+			"sha256": {
+				"en": "68e7108ce215c82f0f957bbfbd597594624500b9005f93a78744ed602e2eacc6",
+				"es": "824acf8c72efb3936d3e183f5b95104ff57bdd3e16048f088b68fcbc87b1f58a"
+			},
+			"context_sha256": "b7a0393c5bff2f114fb9ff3c32c74bb83fe3580a130f35287ec8fa4e382c40ea",
+			"en_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"es_path": "src/i18n/catalogues/es/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"findings": []
+		}
+	}
+}

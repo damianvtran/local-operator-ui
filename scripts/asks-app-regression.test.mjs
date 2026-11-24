@@ -831,7 +831,17 @@ test("future asks production and fixture-only deltas select the existing native 
 		new URL("../.github/workflows/full-suite.yml", import.meta.url),
 		"utf8",
 	);
-	assert(fullSuite.includes("needs.changes.outputs.pack != 'false'"));
+	// The gate's native selection is DIFF-derived, not `--all`-derived: `pack` is
+	// true for every diff on this path, and gating on it charged every backend PR
+	// a macOS slot. Pinned by the output name the classifier emits.
+	assert(
+		fullSuite.includes("needs.changes.outputs.native != 'false'"),
+		"native-proofs must be selected by the diff-derived scope, not by pack",
+	);
+	assert(
+		fullSuite.includes("native: ${{ steps.native.outputs.native }}"),
+		"the changes job must publish the native scope output",
+	);
 });
 test("merge-gate native-proofs job performs real native capture and always uploads measurements", () => {
 	const workflow = readFileSync(

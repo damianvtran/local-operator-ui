@@ -58,6 +58,7 @@ import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
 import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
 import enUiChatAskAnswer from "./catalogues/en/ui.chat.ask_answer.json";
+import enUiChatAskAttest from "./catalogues/en/ui.chat.ask_attest.json";
 import enUiChatAskCommand from "./catalogues/en/ui.chat.ask_command.json";
 import enUiChatAskPanel from "./catalogues/en/ui.chat.ask_panel.json";
 import enUiChatAskQueue from "./catalogues/en/ui.chat.ask_queue.json";
@@ -196,6 +197,7 @@ import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridgeAlerts from "./catalogues/en/ui.teamBridge.alerts.json";
 import enUiTeamBridgeApprovals from "./catalogues/en/ui.teamBridge.approvals.json";
 import enUiTeamBridgeArchive from "./catalogues/en/ui.teamBridge.archive.json";
+import enUiTeamBridgeEdit from "./catalogues/en/ui.teamBridge.edit.json";
 import enUiTeamBridgeHolds from "./catalogues/en/ui.teamBridge.holds.json";
 import enUiTeamBridgeHoldsBatch from "./catalogues/en/ui.teamBridge.holdsBatch.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
@@ -243,6 +245,7 @@ import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
 import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
 import esUiChatAskAnswer from "./catalogues/es/ui.chat.ask_answer.json";
+import esUiChatAskAttest from "./catalogues/es/ui.chat.ask_attest.json";
 import esUiChatAskCommand from "./catalogues/es/ui.chat.ask_command.json";
 import esUiChatAskPanel from "./catalogues/es/ui.chat.ask_panel.json";
 import esUiChatAskQueue from "./catalogues/es/ui.chat.ask_queue.json";
@@ -381,6 +384,7 @@ import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridgeAlerts from "./catalogues/es/ui.teamBridge.alerts.json";
 import esUiTeamBridgeApprovals from "./catalogues/es/ui.teamBridge.approvals.json";
 import esUiTeamBridgeArchive from "./catalogues/es/ui.teamBridge.archive.json";
+import esUiTeamBridgeEdit from "./catalogues/es/ui.teamBridge.edit.json";
 import esUiTeamBridgeHolds from "./catalogues/es/ui.teamBridge.holds.json";
 import esUiTeamBridgeHoldsBatch from "./catalogues/es/ui.teamBridge.holdsBatch.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
@@ -428,6 +432,7 @@ import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
 import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
 import frUiChatAskAnswer from "./catalogues/fr/ui.chat.ask_answer.json";
+import frUiChatAskAttest from "./catalogues/fr/ui.chat.ask_attest.json";
 import frUiChatAskCommand from "./catalogues/fr/ui.chat.ask_command.json";
 import frUiChatAskPanel from "./catalogues/fr/ui.chat.ask_panel.json";
 import frUiChatAskQueue from "./catalogues/fr/ui.chat.ask_queue.json";
@@ -566,6 +571,7 @@ import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridgeAlerts from "./catalogues/fr/ui.teamBridge.alerts.json";
 import frUiTeamBridgeApprovals from "./catalogues/fr/ui.teamBridge.approvals.json";
 import frUiTeamBridgeArchive from "./catalogues/fr/ui.teamBridge.archive.json";
+import frUiTeamBridgeEdit from "./catalogues/fr/ui.teamBridge.edit.json";
 import frUiTeamBridgeHolds from "./catalogues/fr/ui.teamBridge.holds.json";
 import frUiTeamBridgeHoldsBatch from "./catalogues/fr/ui.teamBridge.holdsBatch.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
@@ -613,6 +619,7 @@ import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
 import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
 import hiUiChatAskAnswer from "./catalogues/hi/ui.chat.ask_answer.json";
+import hiUiChatAskAttest from "./catalogues/hi/ui.chat.ask_attest.json";
 import hiUiChatAskCommand from "./catalogues/hi/ui.chat.ask_command.json";
 import hiUiChatAskPanel from "./catalogues/hi/ui.chat.ask_panel.json";
 import hiUiChatAskQueue from "./catalogues/hi/ui.chat.ask_queue.json";
@@ -751,6 +758,7 @@ import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridgeAlerts from "./catalogues/hi/ui.teamBridge.alerts.json";
 import hiUiTeamBridgeApprovals from "./catalogues/hi/ui.teamBridge.approvals.json";
 import hiUiTeamBridgeArchive from "./catalogues/hi/ui.teamBridge.archive.json";
+import hiUiTeamBridgeEdit from "./catalogues/hi/ui.teamBridge.edit.json";
 import hiUiTeamBridgeHolds from "./catalogues/hi/ui.teamBridge.holds.json";
 import hiUiTeamBridgeHoldsBatch from "./catalogues/hi/ui.teamBridge.holdsBatch.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
@@ -798,6 +806,7 @@ import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
 import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
 import ruUiChatAskAnswer from "./catalogues/ru/ui.chat.ask_answer.json";
+import ruUiChatAskAttest from "./catalogues/ru/ui.chat.ask_attest.json";
 import ruUiChatAskCommand from "./catalogues/ru/ui.chat.ask_command.json";
 import ruUiChatAskPanel from "./catalogues/ru/ui.chat.ask_panel.json";
 import ruUiChatAskQueue from "./catalogues/ru/ui.chat.ask_queue.json";
@@ -936,6 +945,7 @@ import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
 import ruUiTeamBridgeAlerts from "./catalogues/ru/ui.teamBridge.alerts.json";
 import ruUiTeamBridgeApprovals from "./catalogues/ru/ui.teamBridge.approvals.json";
 import ruUiTeamBridgeArchive from "./catalogues/ru/ui.teamBridge.archive.json";
+import ruUiTeamBridgeEdit from "./catalogues/ru/ui.teamBridge.edit.json";
 import ruUiTeamBridgeHolds from "./catalogues/ru/ui.teamBridge.holds.json";
 import ruUiTeamBridgeHoldsBatch from "./catalogues/ru/ui.teamBridge.holdsBatch.json";
 import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
@@ -983,6 +993,7 @@ import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
 import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
 import urUiChatAskAnswer from "./catalogues/ur/ui.chat.ask_answer.json";
+import urUiChatAskAttest from "./catalogues/ur/ui.chat.ask_attest.json";
 import urUiChatAskCommand from "./catalogues/ur/ui.chat.ask_command.json";
 import urUiChatAskPanel from "./catalogues/ur/ui.chat.ask_panel.json";
 import urUiChatAskQueue from "./catalogues/ur/ui.chat.ask_queue.json";
@@ -1121,6 +1132,7 @@ import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridgeAlerts from "./catalogues/ur/ui.teamBridge.alerts.json";
 import urUiTeamBridgeApprovals from "./catalogues/ur/ui.teamBridge.approvals.json";
 import urUiTeamBridgeArchive from "./catalogues/ur/ui.teamBridge.archive.json";
+import urUiTeamBridgeEdit from "./catalogues/ur/ui.teamBridge.edit.json";
 import urUiTeamBridgeHolds from "./catalogues/ur/ui.teamBridge.holds.json";
 import urUiTeamBridgeHoldsBatch from "./catalogues/ur/ui.teamBridge.holdsBatch.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
@@ -1168,6 +1180,7 @@ import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
 import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
 import viUiChatAskAnswer from "./catalogues/vi/ui.chat.ask_answer.json";
+import viUiChatAskAttest from "./catalogues/vi/ui.chat.ask_attest.json";
 import viUiChatAskCommand from "./catalogues/vi/ui.chat.ask_command.json";
 import viUiChatAskPanel from "./catalogues/vi/ui.chat.ask_panel.json";
 import viUiChatAskQueue from "./catalogues/vi/ui.chat.ask_queue.json";
@@ -1306,6 +1319,7 @@ import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridgeAlerts from "./catalogues/vi/ui.teamBridge.alerts.json";
 import viUiTeamBridgeApprovals from "./catalogues/vi/ui.teamBridge.approvals.json";
 import viUiTeamBridgeArchive from "./catalogues/vi/ui.teamBridge.archive.json";
+import viUiTeamBridgeEdit from "./catalogues/vi/ui.teamBridge.edit.json";
 import viUiTeamBridgeHolds from "./catalogues/vi/ui.teamBridge.holds.json";
 import viUiTeamBridgeHoldsBatch from "./catalogues/vi/ui.teamBridge.holdsBatch.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
@@ -1353,6 +1367,7 @@ import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
 import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
 import zhCNUiChatAskAnswer from "./catalogues/zh-CN/ui.chat.ask_answer.json";
+import zhCNUiChatAskAttest from "./catalogues/zh-CN/ui.chat.ask_attest.json";
 import zhCNUiChatAskCommand from "./catalogues/zh-CN/ui.chat.ask_command.json";
 import zhCNUiChatAskPanel from "./catalogues/zh-CN/ui.chat.ask_panel.json";
 import zhCNUiChatAskQueue from "./catalogues/zh-CN/ui.chat.ask_queue.json";
@@ -1491,6 +1506,7 @@ import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
 import zhCNUiTeamBridgeAlerts from "./catalogues/zh-CN/ui.teamBridge.alerts.json";
 import zhCNUiTeamBridgeApprovals from "./catalogues/zh-CN/ui.teamBridge.approvals.json";
 import zhCNUiTeamBridgeArchive from "./catalogues/zh-CN/ui.teamBridge.archive.json";
+import zhCNUiTeamBridgeEdit from "./catalogues/zh-CN/ui.teamBridge.edit.json";
 import zhCNUiTeamBridgeHolds from "./catalogues/zh-CN/ui.teamBridge.holds.json";
 import zhCNUiTeamBridgeHoldsBatch from "./catalogues/zh-CN/ui.teamBridge.holdsBatch.json";
 import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
@@ -1541,6 +1557,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatApproval,
 	...enUiChatAside,
 	...enUiChatAskAnswer,
+	...enUiChatAskAttest,
 	...enUiChatAskCommand,
 	...enUiChatAskPanel,
 	...enUiChatAskQueue,
@@ -1679,6 +1696,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiTeamBridgeAlerts,
 	...enUiTeamBridgeApprovals,
 	...enUiTeamBridgeArchive,
+	...enUiTeamBridgeEdit,
 	...enUiTeamBridgeHolds,
 	...enUiTeamBridgeHoldsBatch,
 	...enUiTeamBridge,
@@ -1734,6 +1752,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatApproval,
 		...esUiChatAside,
 		...esUiChatAskAnswer,
+		...esUiChatAskAttest,
 		...esUiChatAskCommand,
 		...esUiChatAskPanel,
 		...esUiChatAskQueue,
@@ -1872,6 +1891,7 @@ export const bundledCatalogues: Readonly<
 		...esUiTeamBridgeAlerts,
 		...esUiTeamBridgeApprovals,
 		...esUiTeamBridgeArchive,
+		...esUiTeamBridgeEdit,
 		...esUiTeamBridgeHolds,
 		...esUiTeamBridgeHoldsBatch,
 		...esUiTeamBridge,
@@ -1921,6 +1941,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatApproval,
 		...frUiChatAside,
 		...frUiChatAskAnswer,
+		...frUiChatAskAttest,
 		...frUiChatAskCommand,
 		...frUiChatAskPanel,
 		...frUiChatAskQueue,
@@ -2059,6 +2080,7 @@ export const bundledCatalogues: Readonly<
 		...frUiTeamBridgeAlerts,
 		...frUiTeamBridgeApprovals,
 		...frUiTeamBridgeArchive,
+		...frUiTeamBridgeEdit,
 		...frUiTeamBridgeHolds,
 		...frUiTeamBridgeHoldsBatch,
 		...frUiTeamBridge,
@@ -2108,6 +2130,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatApproval,
 		...hiUiChatAside,
 		...hiUiChatAskAnswer,
+		...hiUiChatAskAttest,
 		...hiUiChatAskCommand,
 		...hiUiChatAskPanel,
 		...hiUiChatAskQueue,
@@ -2246,6 +2269,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiTeamBridgeAlerts,
 		...hiUiTeamBridgeApprovals,
 		...hiUiTeamBridgeArchive,
+		...hiUiTeamBridgeEdit,
 		...hiUiTeamBridgeHolds,
 		...hiUiTeamBridgeHoldsBatch,
 		...hiUiTeamBridge,
@@ -2295,6 +2319,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatApproval,
 		...ruUiChatAside,
 		...ruUiChatAskAnswer,
+		...ruUiChatAskAttest,
 		...ruUiChatAskCommand,
 		...ruUiChatAskPanel,
 		...ruUiChatAskQueue,
@@ -2433,6 +2458,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiTeamBridgeAlerts,
 		...ruUiTeamBridgeApprovals,
 		...ruUiTeamBridgeArchive,
+		...ruUiTeamBridgeEdit,
 		...ruUiTeamBridgeHolds,
 		...ruUiTeamBridgeHoldsBatch,
 		...ruUiTeamBridge,
@@ -2482,6 +2508,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatApproval,
 		...urUiChatAside,
 		...urUiChatAskAnswer,
+		...urUiChatAskAttest,
 		...urUiChatAskCommand,
 		...urUiChatAskPanel,
 		...urUiChatAskQueue,
@@ -2620,6 +2647,7 @@ export const bundledCatalogues: Readonly<
 		...urUiTeamBridgeAlerts,
 		...urUiTeamBridgeApprovals,
 		...urUiTeamBridgeArchive,
+		...urUiTeamBridgeEdit,
 		...urUiTeamBridgeHolds,
 		...urUiTeamBridgeHoldsBatch,
 		...urUiTeamBridge,
@@ -2669,6 +2697,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatApproval,
 		...viUiChatAside,
 		...viUiChatAskAnswer,
+		...viUiChatAskAttest,
 		...viUiChatAskCommand,
 		...viUiChatAskPanel,
 		...viUiChatAskQueue,
@@ -2807,6 +2836,7 @@ export const bundledCatalogues: Readonly<
 		...viUiTeamBridgeAlerts,
 		...viUiTeamBridgeApprovals,
 		...viUiTeamBridgeArchive,
+		...viUiTeamBridgeEdit,
 		...viUiTeamBridgeHolds,
 		...viUiTeamBridgeHoldsBatch,
 		...viUiTeamBridge,
@@ -2856,6 +2886,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatApproval,
 		...zhCNUiChatAside,
 		...zhCNUiChatAskAnswer,
+		...zhCNUiChatAskAttest,
 		...zhCNUiChatAskCommand,
 		...zhCNUiChatAskPanel,
 		...zhCNUiChatAskQueue,
@@ -2994,6 +3025,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiTeamBridgeAlerts,
 		...zhCNUiTeamBridgeApprovals,
 		...zhCNUiTeamBridgeArchive,
+		...zhCNUiTeamBridgeEdit,
 		...zhCNUiTeamBridgeHolds,
 		...zhCNUiTeamBridgeHoldsBatch,
 		...zhCNUiTeamBridge,
@@ -4184,6 +4216,8 @@ export type MessageParams = {
 	"ui.browser.approval_queue_model.this_session_only": undefined;
 	"ui.browser.approval_queue_model.this_site": undefined;
 	"ui.browser.approval_queue_model.whole_domain": undefined;
+	"ui.browser.approvals_card.dismiss_passkey_notice": undefined;
+	"ui.browser.approvals_card.native_passkey_notice": undefined;
 	"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app": undefined;
 	"ui.browser.browser_approvals_dock.approvals": undefined;
 	"ui.browser.browser_approvals_dock.approvals_are_kept_per_origin_and_are": undefined;
@@ -4320,14 +4354,6 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
-	"ui.browser.browser_passkey_custody.explanation": undefined;
-	"ui.browser.browser_passkey_custody.label": undefined;
-	"ui.browser.browser_passkey_custody.message": undefined;
-	"ui.browser.browser_passkey_custody.return_failed": undefined;
-	"ui.browser.browser_passkey_custody.return_refused_not_held": undefined;
-	"ui.browser.browser_passkey_custody.return_refused_stale": undefined;
-	"ui.browser.browser_passkey_custody.return_to_agent": undefined;
-	"ui.browser.browser_passkey_custody.returning": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;
@@ -4977,6 +5003,37 @@ export type MessageParams = {
 	"ui.chat.ask_answer.settled_elsewhere": undefined;
 	"ui.chat.ask_answer.unconfirmed": { lead: string; reason: string };
 	"ui.chat.ask_answer.unconfirmed_lead": undefined;
+	"ui.chat.ask_attest.action.confirm": undefined;
+	"ui.chat.ask_attest.action.confirm_change": undefined;
+	"ui.chat.ask_attest.action.confirming": undefined;
+	"ui.chat.ask_attest.action.hint": undefined;
+	"ui.chat.ask_attest.refusal.answer_unconfirmed": undefined;
+	"ui.chat.ask_attest.refusal.busy": undefined;
+	"ui.chat.ask_attest.refusal.changed": undefined;
+	"ui.chat.ask_attest.refusal.devtools": undefined;
+	"ui.chat.ask_attest.refusal.expired": undefined;
+	"ui.chat.ask_attest.refusal.not_consent_bearing": undefined;
+	"ui.chat.ask_attest.refusal.not_eligible": undefined;
+	"ui.chat.ask_attest.refusal.not_running": undefined;
+	"ui.chat.ask_attest.refusal.refused": undefined;
+	"ui.chat.ask_attest.refusal.retry": undefined;
+	"ui.chat.ask_attest.refusal.secret": undefined;
+	"ui.chat.ask_attest.refusal.sheet_open": undefined;
+	"ui.chat.ask_attest.refusal.too_long": undefined;
+	"ui.chat.ask_attest.refusal.window": undefined;
+	"ui.chat.ask_attest.sheet.agent": { agent: string };
+	"ui.chat.ask_attest.sheet.answer_line": { question: string; answer: string };
+	"ui.chat.ask_attest.sheet.button.cancel": undefined;
+	"ui.chat.ask_attest.sheet.button.change": undefined;
+	"ui.chat.ask_attest.sheet.button.send": undefined;
+	"ui.chat.ask_attest.sheet.consent_note": undefined;
+	"ui.chat.ask_attest.sheet.conversation": { title: string; session: string };
+	"ui.chat.ask_attest.sheet.conversation_untitled": { session: string };
+	"ui.chat.ask_attest.sheet.message_respond": undefined;
+	"ui.chat.ask_attest.sheet.message_revise": undefined;
+	"ui.chat.ask_attest.sheet.no_value": undefined;
+	"ui.chat.ask_attest.sheet.secret_value": undefined;
+	"ui.chat.ask_attest.sheet.typed_value": { value: string };
 	"ui.chat.ask_command.copy": undefined;
 	"ui.chat.ask_command.dialog_caution": undefined;
 	"ui.chat.ask_command.dialog_closed": undefined;
@@ -5052,6 +5109,7 @@ export type MessageParams = {
 	"ui.chat.ask_queue.refusal.already_settled": undefined;
 	"ui.chat.ask_queue.refusal.busy": undefined;
 	"ui.chat.ask_queue.refusal.expired": undefined;
+	"ui.chat.ask_queue.refusal.not_addressable": undefined;
 	"ui.chat.ask_queue.response.answered": { askId: string };
 	"ui.chat.ask_queue.response.declined": { askId: string };
 	"ui.chat.ask_queue.response.dismissed": {
@@ -5897,6 +5955,7 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.stopping": undefined;
 	"ui.chat.composer.placeholder.temporary": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
+	"ui.chat.composer.placeholder.voice": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
 	"ui.chat.composer.placeholder.waiting_both": undefined;
 	"ui.chat.composer.placeholder.waiting_queue": undefined;
@@ -8511,7 +8570,6 @@ export type MessageParams = {
 	"ui.chat.voice.choose_provider": undefined;
 	"ui.chat.voice.connecting_caption": undefined;
 	"ui.chat.voice.cut_chip": undefined;
-	"ui.chat.voice.cut_note": undefined;
 	"ui.chat.voice.dictation_off_voice": undefined;
 	"ui.chat.voice.dictation_off_voice_elsewhere": { title: string };
 	"ui.chat.voice.disable_failed": { reason: string };
@@ -8522,6 +8580,7 @@ export type MessageParams = {
 	"ui.chat.voice.error_not_sent": undefined;
 	"ui.chat.voice.error_provider_unset": undefined;
 	"ui.chat.voice.error_start_failed": undefined;
+	"ui.chat.voice.full_reply_link": undefined;
 	"ui.chat.voice.go_there": undefined;
 	"ui.chat.voice.heard_label": undefined;
 	"ui.chat.voice.history": undefined;
@@ -8555,18 +8614,28 @@ export type MessageParams = {
 	"ui.chat.voice.phase_starting": undefined;
 	"ui.chat.voice.phase_unheard": undefined;
 	"ui.chat.voice.phase_working": undefined;
+	"ui.chat.voice.play": undefined;
 	"ui.chat.voice.provider_unset": undefined;
+	"ui.chat.voice.replay": undefined;
 	"ui.chat.voice.reply_ended": undefined;
 	"ui.chat.voice.retry": undefined;
 	"ui.chat.voice.said_label": undefined;
 	"ui.chat.voice.set_up_provider": undefined;
 	"ui.chat.voice.silenced_caption": undefined;
+	"ui.chat.voice.spoken_part_note": undefined;
 	"ui.chat.voice.start_rig": undefined;
 	"ui.chat.voice.starting_caption": undefined;
 	"ui.chat.voice.stream_lost": undefined;
 	"ui.chat.voice.stream_reconnect": undefined;
 	"ui.chat.voice.strip_pause": undefined;
 	"ui.chat.voice.strip_resume": undefined;
+	"ui.chat.voice.summary_cut": undefined;
+	"ui.chat.voice.summary_label": undefined;
+	"ui.chat.voice.summary_muted": undefined;
+	"ui.chat.voice.summary_speaking": undefined;
+	"ui.chat.voice.summary_static": undefined;
+	"ui.chat.voice.summary_stopped": undefined;
+	"ui.chat.voice.summary_upcoming": undefined;
 	"ui.chat.voice.switched_from": { title: string };
 	"ui.chat.voice.switched_from_untitled": undefined;
 	"ui.chat.voice.take_too_long": undefined;
@@ -13854,6 +13923,8 @@ export type MessageParams = {
 	"ui.settings.model.provider_callout.providers_link": undefined;
 	"ui.settings.model.provider_callout.sentence": undefined;
 	"ui.settings.navigation.settings_page.backend_settings": undefined;
+	"ui.settings.navigation.settings_page.close_settings": undefined;
+	"ui.settings.navigation.settings_page.close_settings_shortcut": undefined;
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": undefined;
 	"ui.settings.navigation.settings_page.loading_settings": undefined;
 	"ui.settings.navigation.settings_page.retry": undefined;
@@ -14451,6 +14522,16 @@ export type MessageParams = {
 	"ui.teamBridge.archive.thread.empty": undefined;
 	"ui.teamBridge.archive.thread.forbidden": undefined;
 	"ui.teamBridge.archive.toast.archive_failed": { name: string };
+	"ui.teamBridge.edit.description": undefined;
+	"ui.teamBridge.edit.error.archived": undefined;
+	"ui.teamBridge.edit.error.failed": undefined;
+	"ui.teamBridge.edit.error.forbidden": undefined;
+	"ui.teamBridge.edit.error.invalid": undefined;
+	"ui.teamBridge.edit.error.topic_characters": undefined;
+	"ui.teamBridge.edit.error.topic_too_long": { max: number };
+	"ui.teamBridge.edit.menu": { kind: string };
+	"ui.teamBridge.edit.title": { kind: string };
+	"ui.teamBridge.edit.topic": undefined;
 	"ui.teamBridge.holds.body_withheld": undefined;
 	"ui.teamBridge.holds.cannot_verify": undefined;
 	"ui.teamBridge.holds.confirm.cancel": undefined;

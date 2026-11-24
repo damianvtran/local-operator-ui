@@ -134,12 +134,14 @@ const PROJECT_STATUS_META: Record<string, ChipMeta> = {
 export const PROJECT_STATUS_ORDER: string[] = Object.keys(PROJECT_STATUS_META);
 
 export function projectStatusMeta(status: string): ChipMeta {
-	return (
-		PROJECT_STATUS_META[status] ?? {
-			label: status || t("ui.projects.project_model.unknown"),
-			variant: "neutral",
-		}
-	);
+	// The status vocabulary is open: inherited names are opaque wire data too.
+	if (Object.prototype.hasOwnProperty.call(PROJECT_STATUS_META, status)) {
+		return PROJECT_STATUS_META[status];
+	}
+	return {
+		label: status || t("ui.projects.project_model.unknown"),
+		variant: "neutral",
+	};
 }
 
 /**
@@ -206,12 +208,13 @@ const MILESTONE_STATUS_META: Record<DesktopMilestoneStatus, ChipMeta> = {
 };
 
 export function milestoneStatusMeta(status: DesktopMilestoneStatus): ChipMeta {
-	return (
-		MILESTONE_STATUS_META[status] ?? {
-			label: String(status),
-			variant: "neutral",
-		}
-	);
+	// Own keys only, like `projectStatusMeta`: the status is wire data, and an
+	// inherited name (`__proto__`, `constructor`) would otherwise yield a
+	// prototype object with no `label` - a blank chip instead of the raw word.
+	if (Object.prototype.hasOwnProperty.call(MILESTONE_STATUS_META, status)) {
+		return MILESTONE_STATUS_META[status];
+	}
+	return { label: String(status), variant: "neutral" };
 }
 
 /** The stale badge's one label. Its presence is `progress_stale`, not a derivation here. */

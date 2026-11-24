@@ -1,0 +1,76 @@
+{
+	"instance": "audit-i18n-2074-vi",
+	"locale": "vi",
+	"audit_date": "2026-11-23",
+	"scope": [
+		"ui.chat.voice"
+	],
+	"auditor": {
+		"agent": "reviewer",
+		"session": "audit-2074-vi (lopdev reviewer task; runtime session dir 721f74fd7b6f)",
+		"model": "anthropic/claude-sonnet-5-5",
+		"actual_model_source": "Served model of the auditing session (system header); no provider fallback occurred.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only lopdev reviewer task; edited no repo file, posted nothing to GitHub, ran no ledger script. Strings were produced by a separate session; same model family (anthropic/claude-sonnet-5-5), different session. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/2074",
+	"head": "e2e2e812e2a3a8d4cab59baeef0941377057a4b0",
+	"base": "origin/feat/voice-history-full-text",
+	"references": {
+		"glossary": "damianvtran/local-operator@origin/main i18n/glossary.md (no row for the spoken-summary concepts)",
+		"style_guide": "damianvtran/local-operator@origin/main i18n/style-guides/vi.md",
+		"shipped_terms": "vi catalogues at head: «đọc to» (ui.common.speech.*, spoken_part_note «Đã đọc to: chỉ phần đầu»), «Phát lại giọng đọc» (speak_control.replay_speech), «Phát» (ui.chat.audio.play), «Đang nói» (phase_speaking), «Đã cắt ngắn · phần còn lại ở trên ↑» (cut_chip, same «·» and ↑)"
+	},
+	"scope_note": "10 NEW keys. Diff vs base is additions only (11 insertions, 1 deletion = trailing comma on set_up_provider; value unchanged). Key set parity en/vi (91/91). All values NFC; no Cc/Cf/bidi chars; no double spaces; no ASCII '...'; only non-letter non-ASCII chars are U+00B7 (·) and U+2191 (↑), matching cut_chip precedent; no ICU placeholders (en has none). Sentence case, terse, no pronoun per style guide. summary_label/stopped/cut agree with spoken_part_note wording; summary_speaking identical to phase_speaking per context note. Lengths (chars): 9/14/8/27/24/24/14/8/4/41; full_reply_link (41, en 21) is the longest, comparable to shipped cut_chip (36) — a possible wrap at 393px but not a finding without a rendered frame.",
+	"namespaces": {
+		"ui.chat.voice": {
+			"status": "findings",
+			"result": "findings",
+			"keys_audited": 10,
+			"keys": [
+				"ui.chat.voice.summary_label",
+				"ui.chat.voice.summary_upcoming",
+				"ui.chat.voice.summary_speaking",
+				"ui.chat.voice.summary_stopped",
+				"ui.chat.voice.summary_muted",
+				"ui.chat.voice.summary_cut",
+				"ui.chat.voice.summary_static",
+				"ui.chat.voice.replay",
+				"ui.chat.voice.play",
+				"ui.chat.voice.full_reply_link"
+			],
+			"sha256": {
+				"en": "489f99311ac531a40607eea86f0555d4d30ec4a948d581c637572c56165ac8d7",
+				"vi": "ef96dfe8515c0d9dbd844741f420472ffb387c35119051542b9886d066a149c4"
+			},
+			"context_sha256": "b83ba6a06747bb1479b29122ad5abcf97c4e7fbe7a700b7defa5144785ad79a0",
+			"en_path": "src/i18n/catalogues/en/ui.chat.voice.json",
+			"vi_path": "src/i18n/catalogues/vi/ui.chat.voice.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.voice.context.json",
+			"findings": [
+				{
+					"key": "ui.chat.voice.summary_muted",
+					"severity": "MINOR",
+					"value": "Không đọc (đã tắt tiếng)",
+					"suggested": "Không được đọc to (đã tắt tiếng)",
+					"reason": "Bare «Không đọc» reads as an imperative/«not reading» or «unread» and drops «to», the shipped term for speaking aloud (ui.common.speech.*, spoken_part_note «Đã đọc to»). The passive mirrors summary_upcoming «Sẽ được đọc to» and the en meaning «Not spoken»."
+				},
+				{
+					"key": "ui.chat.voice.replay",
+					"severity": "MINOR",
+					"value": "Nghe lại",
+					"suggested": "Phát lại",
+					"reason": "Shipped ui.common.speech.speak_control.replay_speech is «Phát lại giọng đọc», and the sibling button in the same block is «Phát» (ui.chat.voice.play, = ui.chat.audio.play). «Nghe lại» breaks the Phát/Phát lại pair and, in a voice-input product, can read as «listen back to what I said». «Nghe lại» is idiomatic and not wrong, hence minor."
+				}
+			]
+		}
+	},
+	"result": "findings",
+	"findings_count": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 2,
+		"nit": 0
+	}
+}

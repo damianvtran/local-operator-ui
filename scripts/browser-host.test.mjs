@@ -34,7 +34,8 @@ import { networkInterfaces } from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { build } from "esbuild";
+import { runInNewContext } from "node:vm";
+import { build, transformSync } from "esbuild";
 
 const bundle = await build({
 	stdin: {
@@ -72,8 +73,10 @@ const bundle = await build({
 			// main process applies are importable here rather than re-spelled.
 			'export * from "./src/shared/browser-tab-actions-menu";',
 			'export * from "./src/main/browser/ownership";',
-			'export * from "./src/main/browser/extensions/passkey-custody";',
+			'export * from "./src/main/browser/extensions/auth-request";',
 			'export * from "./src/main/browser/host";',
+			'export * from "./src/main/browser/native-passkey-notice";',
+			'export { WebauthnChooser } from "./src/main/webauthn";',
 			// The download capture and the file-transfer policy pair. Bundled so the
 			// arm-gated save path, the name refusal and the caps can be driven against a
 			// real temp directory and a fake `DownloadItem` — the rules worth testing —
@@ -180,10 +183,12 @@ const {
 	TAB_ACTIONS_MENU_ACTION_IDS,
 	tabActionsMenuSelectionOrNull,
 	OwnershipLedger,
-	PasskeyCustody,
+	AuthRequests,
 	PASSKEY_PROMPT_DOCUMENTS,
-	CUSTODY_REFUSAL_REASON,
+	AUTH_REQUEST_REFUSAL_REASON,
 	BrowserHost,
+	NativePasskeyNotice,
+	WebauthnChooser,
 	CdpPool,
 	isReportableLoadFailure,
 	configurePslRules,
@@ -2168,6 +2173,156 @@ test("a tab the user opens in a conversation belongs to it, and still gives no a
 	);
 });
 
+test("hand-over and revoke settle only departing chooser generations", (t) => {
+	const { host, registry } = makeHost();
+	const tab = registry.create({ owner: "user", sessionId: "synthetic-home" });
+	const other = registry.create({
+		owner: "agent",
+		sessionId: "synthetic-other",
+	});
+	const contents = tab.view.webContents;
+	contents.mainFrame = {
+		framesInSubtree: [{ url: "chrome-extension://fixture/index.html" }],
+	};
+	const reloads = [];
+	contents.reload = () => reloads.push(tab.documentEpoch);
+	const notices = new NativePasskeyNotice();
+	const answers = [];
+	let nextId;
+	const wiring = readFileSync("src/main/browser/index.ts", "utf8");
+	const source = wiring.match(/const describeSource = ([\s\S]*?\n\t{2}\});/);
+	const changed = wiring.match(/registry\.ownerChanged = ([\s\S]*?\n\t{2}\});/);
+	assert.ok(
+		source && changed,
+		"exercise production source and lifecycle wiring",
+	);
+	const replay = (body, deps) =>
+		runInNewContext(transformSync(`(${body})`, { loader: "ts" }).code, {
+			registry,
+			...deps,
+		});
+	const chooser = new WebauthnChooser({
+		nextRequestId: () => nextId,
+		describeSource: replay(source[1], {
+			webContents: { fromFrame: ({ contents }) => contents },
+		}),
+		notify: (request, { tab: record }) =>
+			notices.started(
+				request,
+				null,
+				{ has: () => false },
+				{
+					owner: record.owner,
+					documentEpoch: record.documentEpoch,
+					origin: "https://rp.example",
+				},
+			),
+		onSettled: (requestId) => notices.settled(requestId),
+		log: () => {},
+	});
+	t.after(() => chooser.dispose());
+	const forgotten = [];
+	registry.ownerChanged = replay(changed[1], {
+		engagement: { clear: () => {} },
+		webauthn: chooser,
+		nativePasskeyNotice: notices,
+		// A pending passkey request belonged to the authority that was answering
+		// it, so a hand-over or revoke drops that tab's request and nothing else
+		// (`extensions/auth-request.ts`).
+		authRequests: {
+			forget: (webContentsId, why) => forgotten.push([webContentsId, why]),
+		},
+		mustReloadOnOwnerChange: (owner) => owner === "agent",
+	});
+	const arrive = (requestId, record = tab, onAnswer = () => {}) => {
+		nextId = requestId;
+		chooser.handle(
+			{
+				frame: { tab: record, contents: record.view.webContents },
+				accounts: [{ credentialId: "fixture-credential" }],
+			},
+			(value) => {
+				answers.push([requestId, value]);
+				onAnswer();
+			},
+		);
+	};
+	const pending = () => chooser.pendingRequests().map((r) => r.requestId);
+	const active = registry.activeTab?.tabId;
+	host.handOver(tab.tabId, "synthetic-first");
+	const oldEpoch = tab.documentEpoch;
+	const oldToken = surfaceToken(tab);
+	arrive("other", other);
+	arrive("departed", tab, () => {
+		assert.equal(chooser.respond("departed", "fixture-credential"), false);
+		arrive("during-callback");
+	});
+	arrive("also-departed");
+	let arrivalOnBump = "after-revoke-bump";
+	registry.onEpoch((tabId) => {
+		if (tabId === tab.tabId) arrive(arrivalOnBump);
+	});
+	host.revokeHandOver(tab.tabId);
+	assert.equal(tab.documentEpoch, oldEpoch + 1);
+	assert.equal(tab.owner, "user");
+	assert.equal(tab.sessionId, "synthetic-home");
+	assert.equal(surfaceToken(tab), null);
+	assert.throws(() => registry.requireSurface(oldToken), {
+		code: "tab_closed",
+	});
+	assert.deepEqual(answers, [
+		["departed", undefined],
+		["also-departed", undefined],
+	]);
+	assert.equal(chooser.respond("departed", "fixture-credential"), false);
+	assert.deepEqual(pending(), [
+		"other",
+		"after-revoke-bump",
+		"during-callback",
+	]);
+	assert.deepEqual(notices.pendingFor(tab.tabId, oldEpoch), []);
+	assert.deepEqual(reloads, [oldEpoch], "revoke does not reload the human tab");
+
+	host.revokeHandOver(tab.tabId);
+	assert.equal(
+		tab.documentEpoch,
+		oldEpoch + 1,
+		"repeated revoke does not retire human work",
+	);
+	assert.deepEqual(pending(), [
+		"other",
+		"after-revoke-bump",
+		"during-callback",
+	]);
+	arrivalOnBump = "new-agent-generation";
+	host.handOver(tab.tabId, "synthetic-next");
+	assert.equal(tab.documentEpoch, oldEpoch + 2);
+	assert.equal(tab.owner, "agent");
+	assert.equal(registry.mayDrive(tab, "synthetic-next"), true);
+	assert.notEqual(surfaceToken(tab), oldToken);
+	assert.equal(registry.activeTab?.tabId, active);
+	assert.deepEqual(
+		reloads,
+		[oldEpoch, oldEpoch + 2],
+		"agent subframe recheck still runs",
+	);
+	assert.deepEqual(pending(), ["other", "new-agent-generation"]);
+	assert.deepEqual(
+		notices.pendingFor(tab.tabId, tab.documentEpoch).map((r) => r.requestId),
+		["new-agent-generation"],
+	);
+	assert.deepEqual(
+		notices.pendingFor(other.tabId).map((r) => r.requestId),
+		["other"],
+	);
+	assert.deepEqual(answers, [
+		["departed", undefined],
+		["also-departed", undefined],
+		["after-revoke-bump", undefined],
+		["during-callback", undefined],
+	]);
+});
+
 test("revoking a hand-over gives the tab back to its conversation, not to nobody (design §5.1 row 6; review round 1, Q2)", async () => {
 	const { host, registry } = makeHost();
 	const owner = { requester: "session:alice", url: "https://home.example/" };
@@ -3332,6 +3487,10 @@ test("real dispatcher records allocation, fences peers, recovers and finishes ex
 });
 
 test("owner_finish stays pending during a passkey prompt and retries the exact allocation", async () => {
+	// Converged from main's custody version (#1975) onto the auth-request
+	// quarantine: the tab stays usable (recover hands the SAME handle back), but
+	// closing it would cancel the request the user is answering, so terminal
+	// cleanup is refused as `pending` until the request ends.
 	const { host, registry, removed } = makeHost();
 	const owner = {
 		requester: "session:alice",
@@ -3345,17 +3504,24 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	const { tab } = await host.dispatch("open", { ...owner, url }, "open");
 	const record = registry.requireSurface(tab);
 	const human = registry.create({ owner: "user", sessionId: null });
-	const custody = new PasskeyCustody();
-	registry.setCustodyGate(custody);
-	const [provider, [document]] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	let frameGone = false;
+	const requests = new AuthRequests({
+		log: () => {},
+		hasProviderFrame: () => false,
+	});
+	registry.setAuthRequestGate(requests);
+	// The ceremony document: the generic notification host alone is presence
+	// (quarantine), never a request, and presence does not refuse a close.
+	const [provider, documents] = [...PASSKEY_PROMPT_DOCUMENTS][0];
+	const document = documents.find((path) => path.includes("universal-sign-on"));
 	const { tabId } = record;
 	const { id: webContentsId } = record.view.webContents;
-	let frameGone = false;
 	assert.equal(
-		custody.admit({
+		requests.admit({
 			tabId,
 			webContentsId,
 			url: `chrome-extension://${provider}${document}`,
+			engaged: true,
 			isInstalled: (id) => id === provider,
 			frame: { isDestroyed: () => frameGone },
 		}),
@@ -3366,7 +3532,6 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	});
 	assert.equal(registry.byWebContents(webContentsId), record);
 	assert.deepEqual(removed, []);
-	assert.equal(custody.isHeld(webContentsId), true);
 
 	const resumed = { ...owner, owner_generation: "g2" };
 	const recovered = await host.dispatch(
@@ -3376,26 +3541,22 @@ test("owner_finish stays pending during a passkey prompt and retries the exact a
 	);
 	assert.equal(
 		recovered.tab,
-		"",
-		"custody must not disclose a reusable handle",
+		tab,
+		"a live passkey request no longer locks the tab: recover keeps its handle",
 	);
 	await assert.rejects(() => host.dispatch("owner_finish", owner, "stale"), {
 		code: "owner_refused",
 	});
 	await assert.rejects(
-		() => host.dispatch("read", { ...resumed, tab }, "held-read"),
-		(error) => error.data?.reason === CUSTODY_REFUSAL_REASON,
+		() => host.dispatch("close", { ...resumed, tab }, "held-close"),
+		(error) => error.data?.reason === AUTH_REQUEST_REFUSAL_REASON,
 	);
+	assert.deepEqual(await host.dispatch("owner_finish", resumed, "held"), {
+		state: "pending",
+	});
+	assert.deepEqual(removed, []);
+	// The prompt closes: the next cleanup's own sweep ends the request.
 	frameGone = true;
-	assert.deepEqual(
-		custody.release({
-			tabId,
-			at: custody.viewForTab(tabId).at,
-			hasProviderFrame: () => false,
-			reload: () => assert.fail("no live prompt remains to reload"),
-		}),
-		{ ok: true, reloaded: false },
-	);
 	const wrongNonce = `${tab.slice(0, -1)}${tab.endsWith("a") ? "b" : "a"}`;
 	await assert.rejects(
 		() => host.dispatch("close", { ...resumed, tab: wrongNonce }, "nonce"),
@@ -5881,6 +6042,13 @@ test("a hung page ends as the typed nav_timeout inside the published budget", as
 	contents.loadURL = () => new Promise(() => {});
 	const ctx = {
 		cdp: { send: async () => ({}), subscribe: () => () => {} },
+		// The one navigation choke point asks the registry whether a passkey
+		// request would be destroyed by this navigation; no request here.
+		registry: {
+			assertNoConflictingAuthRequest: () => {},
+			// The agent-navigation hook that ends a person's engagement (R11).
+			agentNavigating: () => {},
+		},
 		log: () => {},
 	};
 	const started = Date.now();
@@ -12374,6 +12542,122 @@ async function openPressTab(host, owner = {}) {
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	return host.dispatch("open", params, "open");
 }
+
+test("pending native auth is additive during real press dispatch and leaves both agent tabs usable", async () => {
+	const notices = new NativePasskeyNotice();
+	const { host, registry, cdp } = makeHost({ nativeAuth: notices });
+	const opened = await openPressTab(host);
+	const other = await host.dispatch(
+		"open",
+		{
+			url: "https://press.example/other",
+			requester: "session:press",
+		},
+		"open-b",
+	);
+	const record = registry.requireSurface(opened.tab);
+	const otherRecord = registry.requireSurface(other.tab);
+	const before = [record.owner, otherRecord.owner, registry.activeTab?.tabId];
+	const answers = [];
+	const chooser = new WebauthnChooser({
+		notify: (request) =>
+			notices.started(
+				request,
+				null,
+				{ has: () => false },
+				{
+					owner: record.owner,
+					documentEpoch: record.documentEpoch,
+					origin: "https://press.example",
+				},
+			),
+		onSettled: (requestId) => notices.settled(requestId),
+		describeSource: () => ({ tabId: record.tabId, pageTitle: "Fixture" }),
+		log: () => {},
+		nextRequestId: () => "fixture-auth",
+	});
+	let inputReached;
+	const reached = new Promise((resolve) => {
+		inputReached = resolve;
+	});
+	let releaseInput;
+	const inputGate = new Promise((resolve) => {
+		releaseInput = resolve;
+	});
+	const send = cdp.send;
+	cdp.send = async (contents, method, params) => {
+		if (
+			contents === record.view.webContents &&
+			method === "Input.dispatchKeyEvent" &&
+			params.type === "keyDown"
+		) {
+			inputReached();
+			await inputGate;
+		}
+		return send(contents, method, params);
+	};
+	const start = performance.now();
+	const action = host.dispatch(
+		"press",
+		{ tab: opened.tab, key: "Enter" },
+		"press-auth",
+	);
+	await reached;
+	// Deliberately external to agent dispatch: a concurrent HUMAN request must
+	// not turn successful agent input into a falsely attributed auth refusal.
+	chooser.handle(
+		{
+			relyingPartyId: "press.example",
+			accounts: [{ credentialId: "fixture-public-id" }],
+		},
+		(value) => answers.push(value),
+	);
+	releaseInput();
+	try {
+		const result = await action;
+		const elapsed = performance.now() - start;
+		assert.equal(result.key, "Enter");
+		assert.equal(result.navigated, false);
+		assert.deepEqual(result.auth_pending, [
+			{
+				status: "pending-auth",
+				blocking: false,
+				requestId: "fixture-auth",
+				tabId: record.tabId,
+			},
+		]);
+		assert.deepEqual(
+			answers,
+			[],
+			"press did not wait for or answer the chooser",
+		);
+		assert.deepEqual(
+			[record.owner, otherRecord.owner, registry.activeTab?.tabId],
+			before,
+		);
+		for (const tab of [opened.tab, other.tab])
+			await host.dispatch("snapshot", { tab }, `snapshot-${tab}`);
+		await assert.rejects(
+			host.dispatch("press", { tab: opened.tab, key: "INVALID" }, "bad-key"),
+			(error) => error.code === "unsupported_key",
+		);
+		console.log(
+			JSON.stringify({
+				fixture: "native-auth-press",
+				elapsed_ms: Math.round(elapsed),
+				callback_pending_at_completion: answers.length === 0,
+				safe_snapshots: 2,
+				ownership_and_active_tab_unchanged: true,
+			}),
+		);
+		chooser.cancelForTab(record.tabId);
+		assert.deepEqual(answers, [undefined]);
+		assert.deepEqual(notices.pendingFor(record.tabId), []);
+		assert.equal(chooser.respond("fixture-auth", "fixture-public-id"), false);
+	} finally {
+		chooser.dispose();
+	}
+});
 
 test("press closed wire admits the method and preserves unsupported_key", async () => {
 	assert.ok(METHODS.includes("press"));

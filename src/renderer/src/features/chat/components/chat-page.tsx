@@ -131,6 +131,7 @@ import {
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
+	confirmQueuedAsk,
 	createSendLock,
 	declineQueuedAsk,
 	dismissQueuedAsk,
@@ -3432,6 +3433,38 @@ function SessionPanel({
 		if (outcome.status === "sent")
 			showSuccessToast(t("ui.notices.chat.answer_changed"));
 	};
+	/*
+	 * THE OPERATOR-CONFIRMED DOOR (`confirmQueuedAsk`, `src/main/ask-attest.ts`): the
+	 * same answer or change, sent only after the person confirms it on main's native
+	 * sheet, so core stamps it as the operator's and the dangerous-delete guard can
+	 * count it as consent. Same lock and outcome surface as its siblings; a cancelled
+	 * sheet is `refused` (nothing sent) and main's refusal is keyed copy in the outcome
+	 * line (`askAttestRefusalSentence`) - never a silent unconfirmed send.
+	 */
+	const confirmAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+		revise: boolean,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await confirmQueuedAsk(
+				{ taskId, answers, sessionId, revise, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome, revise && outcome.status === "sent");
+		if (revise && outcome.status === "sent")
+			showSuccessToast(t("ui.notices.chat.answer_changed"));
+	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;
 		setAdmitting(true);
@@ -5725,6 +5758,11 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						onConfirmAsk: (
+							taskId: string,
+							answers: Record<string, string[]>,
+							revise: boolean,
+						) => void confirmAsk(taskId, answers, revise),
 						/*
 						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
 						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body

@@ -6,6 +6,7 @@
 	"ui.chat.composer.placeholder.aside": "Posez une question en aparté — Échap ferme l’aparté",
 	"ui.chat.composer.placeholder.busy": "L’agent est occupé",
 	"ui.chat.composer.placeholder.idle": "Posez votre question. @ ajoute des fichiers, / exécute des commandes",
+	"ui.chat.composer.placeholder.voice": "Parlez, ou écrivez ici",
 	"ui.chat.composer.placeholder.no_provider": "Connectez un fournisseur pour commencer à discuter",
 	"ui.chat.composer.placeholder.recording": "Enregistrement",
 	"ui.chat.composer.placeholder.secret_answer": "Répondez à la demande de secret dans le panneau des demandes",

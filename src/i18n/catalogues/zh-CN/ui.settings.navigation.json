@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "后端设置",
 	"ui.settings.navigation.settings_sidebar.application_updates": "应用更新",
 	"ui.settings.navigation.settings_sidebar.account": "账户",
-	"ui.settings.navigation.settings_page.retrying": "正在重试"
+	"ui.settings.navigation.settings_page.retrying": "正在重试",
+	"ui.settings.navigation.settings_page.close_settings": "关闭设置",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "关闭（Esc）"
 }

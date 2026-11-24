@@ -122,7 +122,7 @@ const bundled = await build({
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu-model";
 			export { memberRowAction } from "./src/renderer/src/features/team-bridge/team-bridge-members-model";
 			export { canRenameConversation } from "./src/renderer/src/features/team-bridge/team-bridge-model";
-			export { renameFailure, normalizedRenameName, TeamBridgeRenameDialog } from "./src/renderer/src/features/team-bridge/team-bridge-rename-dialog";
+			export { metadataPatch, metadataValidation, editFailure, TeamBridgeEditDraftJournal, renameFailure, normalizedRenameName, TeamBridgeRenameDialog } from "./src/renderer/src/features/team-bridge/team-bridge-rename-dialog";
 			// The SAME sonner instance the page's toast manager writes to, so a
 			// test can read which toasts were raised without mounting a Toaster.
 			export { toast } from "sonner";
@@ -1525,4 +1525,296 @@ test("rename: an outcome only acts on the dialog open that sent it; a late refus
 	assert.equal(raised[0].title, "The new name wasn't saved. Try again.");
 	await openRename();
 	assert.equal(renameAlert(), null, "the late refusal annotates no new dialog");
+});
+
+// Metadata tests are DOM/contract fixtures, not rendered pixels or live writes.
+const metadataDraft = (patch = {}) => ({
+	baselineName: "Legacy Channel",
+	baselineTopic: "old",
+	name: "Legacy Channel",
+	topic: "old",
+	pending: false,
+	error: null,
+	...patch,
+});
+const editName = () => document.querySelector("[data-edit-name]");
+const editTopic = () => document.querySelector("[data-edit-topic]");
+const editSave = () =>
+	document.querySelector('[role="dialog"] button[type="submit"]');
+async function typeMetadata(field, value) {
+	const prototype =
+		field.tagName === "TEXTAREA"
+			? dom.window.HTMLTextAreaElement.prototype
+			: dom.window.HTMLInputElement.prototype;
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(prototype, "value").set.call(field, value);
+		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+}
+
+test("metadata: omission preserves legacy name, explicit clear and code-point validation", () => {
+	assert.deepEqual(
+		view.metadataPatch("channel", metadataDraft({ topic: "new\ncontext" })),
+		{ topic: "new\ncontext" },
+	);
+	assert.deepEqual(
+		view.metadataPatch("channel", metadataDraft({ topic: "  " })),
+		{ topic: "" },
+	);
+	assert.deepEqual(view.metadataPatch("channel", metadataDraft()), {});
+	assert.deepEqual(
+		view.metadataPatch("channel", metadataDraft({ name: "New Channel" })),
+		{ name: "new-channel" },
+	);
+	assert.equal(view.metadataValidation({ topic: "🚀".repeat(512) }), null);
+	assert.equal(
+		view.metadataValidation({ topic: "🚀".repeat(513) }).kind,
+		"topic_too_long",
+	);
+	assert.equal(
+		view.metadataValidation({ topic: "line 1\nline 2\tmore\r" }),
+		null,
+	);
+	assert.equal(
+		view.metadataValidation({ topic: "bad\u0085" }).kind,
+		"topic_characters",
+	);
+	assert.equal(
+		view.metadataValidation(
+			view.metadataPatch(
+				"channel",
+				metadataDraft({
+					baselineName: "x".repeat(100),
+					name: "x".repeat(100),
+					topic: "new",
+				}),
+			),
+		),
+		null,
+	);
+	assert.equal(
+		view.editFailure(
+			{
+				status: 400,
+				code: "invalid_request",
+				detail: { details: { field: "topic", rule: "too_long" } },
+			},
+			"x",
+		).kind,
+		"topic_too_long",
+	);
+});
+
+test("metadata: edit replaces rename, failure retains draft across refetch and reopen", async (t) => {
+	const c = conversation({ name: "Legacy Channel", topic: "old" });
+	const calls = [];
+	let answer = deferred();
+	const journal = new view.TeamBridgeEditDraftJournal();
+	const props = (row = c) =>
+		pageProps(row, {
+			metadataDrafts: journal,
+			renameCapabilityState: "enabled",
+			updateCapabilityState: "enabled",
+			onUpdate: (row, patch) => {
+				calls.push([row.tenant_id, row.id, patch]);
+				return answer.promise;
+			},
+		});
+	const { container, render } = await mount(
+		t,
+		React.createElement(view.TeamBridgePageView, props()),
+	);
+	const open = async () => {
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("rename");
+	};
+	await open();
+	assert.equal(editName().value, "Legacy Channel");
+	assert.equal(editSave().disabled, true);
+	await typeMetadata(editTopic(), "new\ncontext");
+	assert.equal(editSave().disabled, false);
+	await act(async () =>
+		editTopic().dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		),
+	);
+	assert.equal(calls.length, 0, "textarea Enter is not submit");
+	await act(async () => editTopic().form.requestSubmit());
+	assert.equal(editSave().disabled, true);
+	assert.deepEqual(calls[0], [c.tenant_id, c.id, { topic: "new\ncontext" }]);
+	await act(async () => editTopic().form.requestSubmit());
+	assert.equal(calls.length, 1, "duplicate submit refused");
+	await render(
+		React.createElement(
+			view.TeamBridgePageView,
+			props({ ...c, topic: "external update" }),
+		),
+	);
+	assert.equal(editTopic().value, "new\ncontext", "refetch never resets draft");
+	await act(async () => answer.reject(new Error("offline")));
+	assert.ok(document.querySelector('[role="dialog"] [role="alert"]'));
+	assert.equal(editTopic().value, "new\ncontext");
+	await pressEscape();
+	await open();
+	assert.equal(
+		editTopic().value,
+		"new\ncontext",
+		"failed draft retained on reopen",
+	);
+	answer = deferred();
+	await typeMetadata(editTopic(), "");
+	await act(async () => editSave().click());
+	assert.deepEqual(calls.at(-1)[2], { topic: "" });
+	await act(async () => answer.resolve({ name: "Legacy Channel" }));
+	assert.equal(document.querySelector('[role="dialog"]'), null);
+});
+
+test("metadata: cancel and Escape discard unsent edits without writing", async (t) => {
+	const calls = [];
+	const c = conversation({ topic: "old" });
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				updateCapabilityState: "enabled",
+				onUpdate: (...args) => {
+					calls.push(args);
+					return Promise.resolve({});
+				},
+			}),
+		),
+	);
+	const open = async () => {
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("rename");
+	};
+	await open();
+	await typeMetadata(editTopic(), "not saved");
+	await pressEscape();
+	await open();
+	assert.equal(editTopic().value, "old");
+	await act(async () =>
+		[...document.querySelectorAll('[role="dialog"] button')]
+			.find((b) => b.textContent === "Cancel")
+			.click(),
+	);
+	assert.equal(calls.length, 0);
+});
+
+test("metadata: pending dismissed draft observes settlement after view remount", async (t) => {
+	const pending = deferred();
+	const journal = new view.TeamBridgeEditDraftJournal();
+	const c = conversation({ topic: "old" });
+	const props = {
+		metadataDrafts: journal,
+		updateCapabilityState: "enabled",
+		onUpdate: () => pending.promise,
+	};
+	const { container, render } = await mount(
+		t,
+		React.createElement(view.TeamBridgePageView, {
+			...pageProps(c, props),
+			key: "first",
+		}),
+	);
+	const open = async () => {
+		await pointerOpen(
+			container.querySelector('button[aria-label="Conversation options"]'),
+		);
+		await clickItem("rename");
+	};
+	await open();
+	await typeMetadata(editTopic(), "pending draft");
+	await act(async () => editSave().click());
+	await pressEscape();
+	await render(
+		React.createElement(view.TeamBridgePageView, {
+			...pageProps(c, props),
+			key: "second",
+		}),
+	);
+	await open();
+	assert.equal(editTopic().value, "pending draft");
+	assert.equal(editSave().disabled, true);
+	await act(async () => pending.reject(new Error("offline")));
+	assert.equal(
+		editSave().disabled,
+		false,
+		"new view observes old request settlement",
+	);
+	assert.equal(editTopic().value, "pending draft");
+});
+
+test("metadata: group supports both editable fields and invalid topic disables Save", async (t) => {
+	const calls = [];
+	const c = conversation({ kind: "group", name: "Legacy Group", topic: "old" });
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				updateCapabilityState: "enabled",
+				onUpdate: (row, patch) => {
+					calls.push(patch);
+					return Promise.resolve({});
+				},
+			}),
+		),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	assert.ok(
+		document
+			.querySelector('[data-menu-item="rename"]')
+			.textContent.includes("Edit group"),
+	);
+	await clickItem("rename");
+	await typeMetadata(editName(), " New   Group ");
+	await typeMetadata(editTopic(), "🚀".repeat(513));
+	assert.equal(editSave().disabled, true);
+	assert.equal(editTopic().getAttribute("aria-invalid"), "true");
+	await typeMetadata(editTopic(), "new\ncontext");
+	await act(async () => editSave().click());
+	assert.deepEqual(calls, [{ name: "New Group", topic: "new\ncontext" }]);
+});
+
+test("metadata: unknown update capability never relabels legacy rename or sends topic", async (t) => {
+	const calls = [];
+	const c = conversation({ topic: "old" });
+	const { container } = await mount(
+		t,
+		React.createElement(
+			view.TeamBridgePageView,
+			pageProps(c, {
+				renameCapabilityState: "enabled",
+				updateCapabilityState: "unknown",
+				onRename: (row, name) => {
+					calls.push(name);
+					return Promise.resolve({});
+				},
+				onUpdate: () => {
+					throw new Error("must not dispatch update");
+				},
+			}),
+		),
+	);
+	await pointerOpen(
+		container.querySelector('button[aria-label="Conversation options"]'),
+	);
+	assert.ok(
+		document
+			.querySelector('[data-menu-item="rename"]')
+			.textContent.includes("Rename channel"),
+	);
+	await clickItem("rename");
+	assert.equal(editTopic(), null);
+	await typeName("next");
+	await act(async () => renameSave().click());
+	assert.deepEqual(calls, ["next"]);
 });

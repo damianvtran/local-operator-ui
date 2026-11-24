@@ -81,7 +81,7 @@ export type TeamBridgeConversationMenuItem =
 	| { id: "manage_apps" }
 	/* Team Integrations (RFC §7.1, Flow D): the reader's own agent as alert responder. */
 	| { id: "responder" }
-	| { id: "rename"; kind: "channel" | "group" }
+	| { id: "rename"; kind: "channel" | "group"; edit?: boolean }
 	| { id: "join" }
 	| { id: "notify" }
 	| { id: "agent_notify" }
@@ -142,6 +142,8 @@ export type TeamBridgeConversationMenuInput = {
 	 * would fail with an error no retry can fix.
 	 */
 	renamable?: boolean;
+	/** Full metadata PATCH capability; otherwise this is genuinely name-only. */
+	editable?: boolean;
 	wiring: TeamBridgeConversationMenuWiring;
 };
 
@@ -347,6 +349,7 @@ export function conversationMenuSections(
 	)
 		membership.push({
 			id: "rename",
+			...(input.editable ? { edit: true } : {}),
 			kind: conversation.kind === "group" ? "group" : "channel",
 		});
 	if (writable && wiring.join && preview) membership.push({ id: "join" });

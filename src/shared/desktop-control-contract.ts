@@ -771,6 +771,21 @@ export type DesktopVoiceText = {
 	 * "not cut", never an error.
 	 */
 	truncated?: boolean;
+	/**
+	 * The same reply cleaned for DISPLAY and never cut: newline-separated, a table
+	 * row one line, bullets keeping their marker. `text` is what is spoken and is
+	 * capped, so the History panel reads this and falls back to `text` when it is
+	 * absent (a server from before the field), which is today's behaviour.
+	 */
+	full_text?: string;
+	/**
+	 * What `text` is: the agent's own `Spoken:` paragraph (`summary`), or the
+	 * reply itself, cleaned and capped (`reply`). Optional and additive: a server
+	 * from before the spoken summary sends none, and absence reads as `reply`,
+	 * today's behaviour. With `summary`, `truncated` says the summary itself was
+	 * cut at the cap; with `reply` it says the reply's tail was.
+	 */
+	spoken_source?: "summary" | "reply";
 };
 
 /**

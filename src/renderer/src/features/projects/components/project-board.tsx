@@ -154,6 +154,23 @@ const COLUMN_NOTE: Record<string, string> = {
 };
 
 /**
+ * A column's note, or `undefined` for a status that has none.
+ *
+ * OWN KEYS ONLY (QA round 3, Q10): `column.status` is the daemon's open status
+ * vocabulary, so it can be any string - including a name `Object.prototype`
+ * answers for. A bare `COLUMN_NOTE["__proto__"]` returns that prototype
+ * object, which React refuses as a child (minified error #31) and takes the
+ * whole app down; `constructor` / `toString` would print function source.
+ * An unknown status has no note, the same answer `projectStatusMeta` gives for
+ * its label (`project-model.ts`).
+ */
+function columnNote(status: string): string | undefined {
+	return Object.prototype.hasOwnProperty.call(COLUMN_NOTE, status)
+		? COLUMN_NOTE[status]
+		: undefined;
+}
+
+/**
  * WHERE THE CARET GOES AFTER A STATUS MOVE (UX round 2, Q-2/U2).
  *
  * The card cannot do this itself. A move re-parents the card into another
@@ -846,9 +863,9 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 										<span className="truncate text-body-sm font-medium text-ink">
 											{meta.label}
 										</span>
-										{COLUMN_NOTE[column.status] && (
+										{columnNote(column.status) && (
 											<span className="truncate text-meta text-ink-muted">
-												{COLUMN_NOTE[column.status]}
+												{columnNote(column.status)}
 											</span>
 										)}
 									</span>

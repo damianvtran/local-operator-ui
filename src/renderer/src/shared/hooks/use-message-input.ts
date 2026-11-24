@@ -367,6 +367,13 @@ export const COMPOSER_PLACEHOLDER = {
 	 * sentence that names the action instead (design audit section 6).
 	 */
 	noProvider: "ui.chat.composer.placeholder.no_provider",
+	/**
+	 * Voice is on in this conversation: the box is still a text field (only
+	 * dictation is refused), but its single empty row beside a band of spoken
+	 * words read as dead space. Ranked with the invitation because it IS the
+	 * invitation, said for this mode.
+	 */
+	voice: "ui.chat.composer.placeholder.voice",
 	idle: "ui.chat.composer.placeholder.idle",
 } as const satisfies Record<string, MessageKey>;
 
@@ -464,6 +471,8 @@ export const composerPlaceholder = (state: {
 	 * ABSENT MEANS NOTHING CHANGES: no chat mount passes it.
 	 */
 	hostLine?: string | null;
+	/** Session voice is on here; the box takes typing as well as speech. */
+	voiceOn?: boolean;
 }): string => {
 	if (state.unavailable) return t(COMPOSER_PLACEHOLDER.unavailable);
 	if (state.secretAnswer) return t(COMPOSER_PLACEHOLDER.secretAnswer);
@@ -487,7 +496,12 @@ export const composerPlaceholder = (state: {
 		return t(COMPOSER_PLACEHOLDER.waiting);
 	}
 	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
-	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
+	// Voice is the invitation said for this mode, so it sits INSIDE the
+	// invitation slot: a host's own sentence (`idle`) still wins over it.
+	return (
+		state.idle ??
+		t(state.voiceOn ? COMPOSER_PLACEHOLDER.voice : COMPOSER_PLACEHOLDER.idle)
+	);
 };
 
 /**
@@ -1336,6 +1350,19 @@ export const useMessageInput = ({
 					() => {
 						echoPainted = true;
 						clearOnce(true);
+						/*
+						 * THE SENDER IS CARRIED TO THEIR MESSAGE AT THE PAINT (operator
+						 * report, 2026-11-23). This used to be left to the transcript's
+						 * follow policy, which only follows a reader already at the tail
+						 * - so a sender scrolled up in history stayed there with their
+						 * message out of sight. Sending IS the request for the newest
+						 * row, so the composer asks for the tail here, with the echo,
+						 * rather than on receipt: by then the reader may have scrolled
+						 * again, and a scroll at settle would override that. The flight
+						 * is a no-op for a sender already at the tail, snaps under
+						 * reduced motion, and a gesture during it cancels it.
+						 */
+						scrollToBottom?.();
 					},
 					options,
 				);
@@ -1413,7 +1440,7 @@ export const useMessageInput = ({
 			// Cleared BEFORE the store write so a synchronous restore inside
 			// `onSubmit` is not immediately overwritten by this submit's own clear.
 			retireDraft();
-			// An echoed send already used the transcript's follow/anchor policy. A
+			// An echoed send already asked for the tail at its paint (above). A
 			// second scroll on receipt overrides a reader's position after that paint.
 			if (!echoPainted && scrollToBottom) {
 				// Use requestAnimationFrame to ensure DOM updates before scrolling

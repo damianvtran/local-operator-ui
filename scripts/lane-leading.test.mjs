@@ -176,7 +176,7 @@ const INSET_COLUMNS = [
 			'"flex min-h-0 flex-1 overflow-hidden bg-surface"',
 			'<WorkspaceFrame variant="full-height">',
 			'"flex min-h-0 min-w-0 flex-1 flex-col"',
-			'"min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 md:px-8"',
+			'"min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 pe-14 sm:px-6 sm:pe-14 md:px-8 md:max-[1511px]:pe-14"',
 		],
 	],
 	[

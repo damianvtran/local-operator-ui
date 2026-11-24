@@ -72,6 +72,12 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  * follow-up). A pure function with no React or store dependency, which is why
  * the direction is safe: this store is below it, and nothing there reads state.
  */
+/*
+ * `pageFrontierMs` is a pure function over rows (no React, no store read), so
+ * importing it here keeps the direction above: the store captures the sidebar's
+ * local horizon at the moment each page arrives (`head.frontierMs`).
+ */
+import { pageFrontierMs } from "../../features/chat/chat-sidebar-view";
 import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
@@ -3974,6 +3980,22 @@ export type CatalogueHeadState = {
 	tailCursor: string | null;
 	/** Whether an extension has ever been requested; see `tailCursor`. */
 	tailStarted: boolean;
+	/**
+	 * The listing's FRONTIER CLOCK (ms): the mtime of the last idle local row the
+	 * deepest page read so far carried, captured WHEN that page arrived
+	 * (`pageFrontierMs`), or null when no page carried one. The sidebar withholds
+	 * non-running remote rows at or below it (`localHorizonMs`).
+	 *
+	 * WHY CAPTURED AND NOT READ LIVE (agent review round 1, R2): the bound holds
+	 * for that row's mtime at read time. Touching the conversation later moves
+	 * its live clock to now, and a live read then hid every remote row. It moves
+	 * with `tailCursor`'s rule: page-one answers seed it until an extension is
+	 * requested, then only extensions move it (deeper pages, older clocks).
+	 *
+	 * Optional because fixtures and states written before it existed read as
+	 * "no frontier", which withholds more rather than less.
+	 */
+	frontierMs?: number | null;
 	/** True once an answer said this is the whole catalogue. */
 	complete: boolean;
 	/** Single flight for the tail extension. */
@@ -6477,6 +6499,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				nextCursor: null,
 				tailCursor: null,
 				tailStarted: false,
+				frontierMs: null,
 				complete: false,
 				loading: false,
 				error: null,
@@ -6926,6 +6949,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 										? state.head.tailCursor
 										: answerCursor,
 								tailStarted: state.head.tailStarted,
+								// Same seeding rule as `tailCursor`, for the same reason.
+								frontierMs: answerComplete
+									? null
+									: state.head.tailStarted
+										? (state.head.frontierMs ?? null)
+										: pageFrontierMs(page),
 								complete: answerComplete,
 								loading: false,
 								error: null,
@@ -7073,6 +7102,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * extension has said nothing about the head page (QA round 2, Q2).
 								 */
 								tailCursor: nextCursor,
+								/*
+								 * The frontier moves with the cursor. A page with no idle local row
+								 * (all active band) keeps the previous one: core sorts that band
+								 * first, so idle rows below it are bounded by no newer clock.
+								 */
+								frontierMs:
+									pageFrontierMs(page) ?? state.head.frontierMs ?? null,
 								// The tail reached the end only when it says so. `head.at`
 								// is deliberately NOT advanced: it stamps the answer that
 								// is allowed to settle FACTS, and an extension must never be
