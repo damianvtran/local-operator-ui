@@ -714,9 +714,11 @@ export function listSeparator(locale?: string): string {
 		})
 			.formatToParts(["a", "b", "c", "d"])
 			.filter((part) => part.type === "literal");
-		// Four items always yield three literals; the fallback only guards an
-		// engine without CLDR list data, where English punctuation is the
-		// least-bad answer rather than items run together.
+		// Four items always yield three literals; the fallback only guards a
+		// malformed `formatToParts` result (no middle literal), where English
+		// punctuation is the least-bad answer rather than items run together.
+		// An engine with no `Intl.ListFormat` at all throws above, exactly as
+		// `formatList` does; every runtime this app ships on has it.
 		separator = literals[1]?.value ?? ", ";
 		listSeparators.set(tag, separator);
 	}

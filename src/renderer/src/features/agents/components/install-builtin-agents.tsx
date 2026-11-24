@@ -238,7 +238,10 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					 * "Установить всех встроенных агентов" ran past both edges of the
 					 * sidebar-width button. `h-auto` + `min-h-8` keeps the 32 px control
 					 * height whenever the label fits on one line (13 px x 1.5 line
-					 * height + 2 x 6 px padding = 31.5 px, so en is unchanged), and lets
+					 * height + 2 x 4 px padding = 27.5 px - `ghost` has no border -
+					 * under the floor, so en stays 32 px; on the bordered `secondary`
+					 * this replaced, `py-1.5` made it 33.5 px - design D3 / code
+					 * R1-3), and lets
 					 * a longer translation take a second line inside the button;
 					 * `text-balance` evens the two lines out. The fix is layout, not
 					 * copy: the translation is the translator's.
@@ -246,7 +249,7 @@ export const InstallBuiltinAgents: FC<InstallBuiltinAgentsProps> = ({
 					<Button
 						ref={actionRef}
 						variant="ghost"
-						className="h-auto min-h-8 w-full whitespace-normal py-1.5 text-balance text-center text-ink"
+						className="h-auto min-h-8 w-full whitespace-normal py-1 text-balance text-center text-ink"
 						onClick={() => void run()}
 					>
 						{t("ui.agents.starters.action.all_builtins")}

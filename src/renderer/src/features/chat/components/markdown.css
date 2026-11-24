@@ -253,8 +253,9 @@
 	margin: 1rem 0 0.25rem;
 }
 
-/* LOGICAL, NOT PHYSICAL (i18n census N2): every list carries `dir="auto"`
-   (`utils/rehype-block-direction.ts`), so the marker gutter has to sit on the
+/* LOGICAL, NOT PHYSICAL (i18n census N2): every list carries the direction of
+   its own first strong character (`utils/rehype-block-direction.ts`), so the
+   marker gutter has to sit on the
    list's own start edge - left for an English list, right for an Urdu one. A
    physical `padding-left` left an RTL list's markers hanging outside its box.
    Identical to the old rule in every LTR list. */
@@ -274,6 +275,19 @@
 
 .lo-markdown li {
 	margin: 0.25rem 0;
+}
+
+/* AN ITEM WRITTEN IN THE OTHER DIRECTION FROM ITS LIST (design review round 1,
+   D2): an Urdu item in an English list resolves rtl, so its outside marker
+   hangs off its inline-start - the list's inline-END, where the list has no
+   gutter - and paints past the column (clipped under an `overflow: hidden`
+   transcript). Giving that item the gutter on its own start edge keeps the
+   marker inside the list box. Only a mismatched item matches: the plugin writes
+   explicit `ltr`/`rtl` on both, and a letterless item has no `dir` at all, so
+   it inherits the list and is untouched. */
+.lo-markdown :is(ul, ol)[dir="ltr"] > li[dir="rtl"],
+.lo-markdown :is(ul, ol)[dir="rtl"] > li[dir="ltr"] {
+	margin-inline-start: 1.5rem;
 }
 
 .lo-markdown a {
@@ -331,7 +345,7 @@
 
 .lo-markdown blockquote {
 	/* Logical for the same reason as the lists: the rule sits on the quote's
-	   own start edge once it resolves `dir="auto"`. */
+	   own start edge, from the direction the plugin computes for it. */
 	border-inline-start: 2px solid var(--lo-hairline);
 	background-color: var(--lo-sunken);
 	border-start-start-radius: 0;
@@ -378,7 +392,7 @@
 .lo-markdown td:where(:not([data-lo-inline-ui] *)) {
 	border: 1px solid var(--lo-hairline);
 	padding: 0.5rem 0.75rem;
-	/* `start`, not `left`: each cell resolves `dir="auto"`, so an Urdu cell
+	/* `start`, not `left`: each cell resolves its own direction, so an Urdu cell
 	   aligns right and an English one left (left in every LTR table, as before). */
 	text-align: start;
 }
@@ -516,9 +530,15 @@
 }
 
 /* Inline math stays in the text flow at the prose baseline; only its size is
-   nudged, because KaTeX's Computer Modern reads small beside the UI face. */
+   nudged, because KaTeX's Computer Modern reads small beside the UI face.
+   `unicode-bidi: isolate` (QA round 1, Q-1): the plugin pins the formula
+   `dir="ltr"`, and the isolate keeps it one LTR island that neither reorders
+   the Urdu words around it nor is reordered by them. The UA sheet already
+   isolates any `[dir]` element; stating it keeps the formula isolated should
+   the attribute ever be dropped. */
 .lo-markdown .katex {
 	font-size: 1.05em;
+	unicode-bidi: isolate;
 }
 
 /*

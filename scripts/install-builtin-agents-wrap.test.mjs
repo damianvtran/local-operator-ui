@@ -9,8 +9,16 @@
  * both edges of the sidebar-width button. The fix lets the label wrap and the
  * button grow from the same 32 px floor. jsdom/SSR has no layout, so this pins
  * the RENDERED class list of the real component in ru (tailwind-merge has to
- * have dropped the base's nowrap and fixed height for the override to win);
- * the pixels are rendered-app evidence.
+ * have dropped the base's nowrap and fixed height for the override to win).
+ *
+ * CLASS NAMES ARE NOT LAYOUT PROOF (code review round 1, R1-4). This file
+ * cannot show that the ru label stops overflowing or that en stays 32 px tall:
+ * that is the rendered-frame pass (ru/es/fr two balanced lines, en one line at
+ * 32 px). What it does pin is the arithmetic those frames rest on: the
+ * `secondary` Button carries a 1 px border on each side (border-box), so the
+ * vertical padding must be `py-1` - 19.5 px line + 2 x 4 px + 2 x 1 px =
+ * 29.5 px, under the `min-h-8` floor, so en keeps exactly 32 px. `py-1.5`
+ * made it 33.5 px (design D3 / code R1-3 / QA Q-2).
  */
 import assert from "node:assert/strict";
 import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
@@ -113,6 +121,7 @@ test("the primary install action wraps its label and grows in ru (and en)", () =
 				"min-h-8",
 				"text-center",
 				"w-full",
+				"py-1",
 			])
 				assert.ok(
 					classes.includes(wanted),
@@ -122,6 +131,12 @@ test("the primary install action wraps its label and grows in ru (and en)", () =
 				assert.ok(
 					!classes.includes(unwanted),
 					`${locale}: ${unwanted} would clip the label`,
+				);
+			// Any taller padding lifts a one-line en button past the 32 px floor.
+			for (const tall of ["py-1.5", "py-2"])
+				assert.ok(
+					!classes.includes(tall),
+					`${locale}: ${tall} + the 1 px border grows en past 32 px`,
 				);
 		}
 	} finally {

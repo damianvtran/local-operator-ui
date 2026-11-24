@@ -384,8 +384,8 @@ test("list items on either side of a widget paint separately without losing whol
 				markup,
 			);
 			if (tag === "ol") {
-				// Attribute-order-agnostic: every list also carries its own
-				// `dir="auto"` (i18n census N2, `rehype-block-direction.ts`).
+				// Attribute-order-agnostic: a list with a letter also carries
+				// its own `dir` (i18n census N2, `rehype-block-direction.ts`).
 				assert.match(markup, /<ol\b[^>]*\bstart="3"[^>]*>/);
 				assert.match(markup, /<ol\b[^>]*\bstart="8"[^>]*>/);
 			}

@@ -573,7 +573,8 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
  */
 /*
  * EVERY PIPELINE ENDS WITH `rehypeBlockDirection` (i18n census N2): each
- * paragraph, list, quote and cell resolves its own `dir="auto"`, so an English
+ * paragraph, list, quote and cell carries the direction of its own first strong
+ * character (code and math excluded), so an English
  * reply under ur no longer paints "!Hello" and a mixed reply reads per block.
  * Both arrays are hoisted for the identity reasons above, and both the static
  * renderer and the streaming `ParsedBlock` take theirs from `useMathPipeline`,
@@ -1316,9 +1317,16 @@ ParsedBlock.displayName = "ParsedBlock";
  */
 const OpenFenceBody = ({ info, body }: { info: string; body: string }) => {
 	const language = info.split(WHITESPACE_RUN)[0];
+	/*
+	 * `dir="ltr"` on both, exactly as the closed fence carries them
+	 * (`rehypeBlockDirection` pins the parse's `pre`, `MARKDOWN_COMPONENTS.code`
+	 * its `code`). This path paints without either, so without the pin an open
+	 * fence under ur inherited the document's rtl - right-aligned - and jumped
+	 * left the moment it closed (code review round 1, R1-2).
+	 */
 	return (
-		<pre>
-			<code className={language ? `language-${language}` : undefined}>
+		<pre dir="ltr">
+			<code dir="ltr" className={language ? `language-${language}` : undefined}>
 				{body === "" ? "" : `${body}${body.endsWith("\n") ? "" : "\n"}`}
 			</code>
 		</pre>

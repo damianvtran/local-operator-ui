@@ -690,11 +690,13 @@ test("a row prints its relative time, and a running row does not", () => {
 	);
 	/*
 	 * The accessible name keeps the time as its tail and the visible `2h` stays
-	 * out of it, the shape `ChatSessionStatus` uses for its own `, unread`.
+	 * out of it, the shape `ChatSessionStatus` uses for its own `, unread`. The
+	 * joiner is the LOCALE's list separator (`listSeparator`, src/i18n/format.ts),
+	 * not a literal ", ": a Latin comma inside Urdu or Chinese was census N3.
 	 */
 	assert.match(
 		sidebar,
-		/, \{relativeTimeSentence\(row, listNow, view\.basis\)\}/,
+		/\{listSeparator\(\)\}\s*\{relativeTimeSentence\(row, listNow, view\.basis\)\}/,
 		"the row's accessible name no longer says how long ago it moved",
 	);
 });
