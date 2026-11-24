@@ -196,13 +196,13 @@
 	},
 	"ui.chat.voice.heard_label": {
 		"role": "lead-in before the words a take was heard as",
-		"tone": "two words, sentence case",
-		"note": "Followed by the take’s transcript, quoted by the surrounding markup."
+		"tone": "two words, sentence case, ending in a colon",
+		"note": "Followed by the take’s transcript; the colon is part of the string so the label reads as a separator, and a locale that spaces its colon (French) keeps that space."
 	},
 	"ui.chat.voice.said_label": {
 		"role": "lead-in before the words a reply was spoken as",
-		"tone": "one word, sentence case",
-		"note": "Followed by the spoken text; the server may have cut it at the character cap."
+		"tone": "one word, sentence case, ending in a colon",
+		"note": "Followed by the spoken text; the server may have cut it at the character cap. The colon is part of the string."
 	},
 	"ui.chat.voice.reply_ended": {
 		"role": "status chip in the composer strip, shown for 1.5 s",
@@ -239,10 +239,10 @@
 		"tone": "short label with an arrow",
 		"note": "The reply that was just spoken was cut at the character cap; the rest is in the message above. Pressing it scrolls there. Stays until the next take."
 	},
-	"ui.chat.voice.cut_note": {
-		"role": "note under the spoken half of a voice history row",
-		"tone": "plain statement",
-		"note": "The number is deliberately absent: the cap is a server setting the renderer does not read on this surface."
+	"ui.chat.voice.spoken_part_note": {
+		"role": "note under the reply in a voice history row, shown only when the audio was cut",
+		"tone": "plain statement, not a warning",
+		"note": "The row shows the whole reply; this says only that the spoken audio stopped early. Do not imply any text is missing."
 	},
 	"ui.chat.voice.history_hide": {
 		"role": "text on the history toggle while the panel is open",

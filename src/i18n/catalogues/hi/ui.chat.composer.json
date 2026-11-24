@@ -6,6 +6,7 @@
 	"ui.chat.composer.placeholder.aside": "बिना रिकॉर्ड के पूछें — Esc से अलग बातचीत बंद होती है",
 	"ui.chat.composer.placeholder.busy": "एजेंट व्यस्त है",
 	"ui.chat.composer.placeholder.idle": "कुछ भी पूछें। @ फ़ाइलें जोड़ता है, / कमांड चलाता है",
+	"ui.chat.composer.placeholder.voice": "बोलें, या यहाँ टाइप करें",
 	"ui.chat.composer.placeholder.no_provider": "चैट शुरू करने के लिए प्रोवाइडर कनेक्ट करें",
 	"ui.chat.composer.placeholder.recording": "रिकॉर्डिंग",
 	"ui.chat.composer.placeholder.secret_answer": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें",

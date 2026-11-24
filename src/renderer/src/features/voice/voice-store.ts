@@ -73,6 +73,19 @@ export type VoiceStoryRow =
 			sessionId: string;
 			heard: string;
 			spoken: string | null;
+			/**
+			 * The reply as DISPLAYED: the server's uncapped `full_text`, or the spoken
+			 * text when the server has none. `spoken` is capped for the voice, so a
+			 * long reply read from it ends mid-thought; History reads this instead.
+			 */
+			full: string | null;
+			/**
+			 * `full` is the server's own `full_text`, not the spoken text standing in
+			 * for it. An older server sends none, and a cut reply's `full` is then
+			 * itself capped, so a row must not describe itself as the whole reply.
+			 */
+			hasFullText: boolean;
+			/** The AUDIO was cut at the server's cap; `full` is never cut. */
 			truncated: boolean;
 	  }
 	| { kind: "interrupted"; at: number; sessionId: string; seconds: number }
@@ -170,6 +183,8 @@ type VoiceStoreActions = {
 	setLastSpoken: (spoken: {
 		sessionId: string;
 		text: string;
+		/** The uncapped display text; absent from an older server, then `text`. */
+		fullText?: string;
 		truncated: boolean;
 		at: number;
 	}) => void;
@@ -211,7 +226,13 @@ function capStory(story: VoiceStoryRow[]): VoiceStoryRow[] {
 /** Fill the newest unanswered exchange for a session, or add nothing. */
 function completeStoryRow(
 	story: VoiceStoryRow[],
-	spoken: { sessionId: string; text: string; truncated: boolean; at: number },
+	spoken: {
+		sessionId: string;
+		text: string;
+		fullText?: string;
+		truncated: boolean;
+		at: number;
+	},
 ): VoiceStoryRow[] {
 	for (let index = story.length - 1; index >= 0; index--) {
 		const row = story[index];
@@ -222,7 +243,16 @@ function completeStoryRow(
 		)
 			continue;
 		const next = [...story];
-		next[index] = { ...row, spoken: spoken.text, truncated: spoken.truncated };
+		// An empty or whitespace-only `full_text` is no display text either: the
+		// spoken words still say something, a blank row would not.
+		const fullText = spoken.fullText?.trim();
+		next[index] = {
+			...row,
+			spoken: spoken.text,
+			full: fullText || spoken.text,
+			hasFullText: Boolean(fullText),
+			truncated: spoken.truncated,
+		};
 		return next;
 	}
 	return story;
@@ -333,6 +363,8 @@ export const useVoiceStore = create<VoiceStoreState & VoiceStoreActions>(
 						sessionId,
 						heard: text,
 						spoken: null,
+						full: null,
+						hasFullText: false,
 						truncated: false,
 					},
 				]),

@@ -5914,6 +5914,7 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.stopping": undefined;
 	"ui.chat.composer.placeholder.temporary": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
+	"ui.chat.composer.placeholder.voice": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
 	"ui.chat.composer.placeholder.waiting_both": undefined;
 	"ui.chat.composer.placeholder.waiting_queue": undefined;
@@ -8527,7 +8528,6 @@ export type MessageParams = {
 	"ui.chat.voice.choose_provider": undefined;
 	"ui.chat.voice.connecting_caption": undefined;
 	"ui.chat.voice.cut_chip": undefined;
-	"ui.chat.voice.cut_note": undefined;
 	"ui.chat.voice.dictation_off_voice": undefined;
 	"ui.chat.voice.dictation_off_voice_elsewhere": { title: string };
 	"ui.chat.voice.disable_failed": { reason: string };
@@ -8577,6 +8577,7 @@ export type MessageParams = {
 	"ui.chat.voice.said_label": undefined;
 	"ui.chat.voice.set_up_provider": undefined;
 	"ui.chat.voice.silenced_caption": undefined;
+	"ui.chat.voice.spoken_part_note": undefined;
 	"ui.chat.voice.start_rig": undefined;
 	"ui.chat.voice.starting_caption": undefined;
 	"ui.chat.voice.stream_lost": undefined;

@@ -648,6 +648,27 @@ const ChipMark: FC<{ chip: VoiceChipKind }> = ({ chip }) => {
 /* COPY                                                                        */
 /* -------------------------------------------------------------------------- */
 
+/*
+ * A LABEL, THEN THE WORDS: the label ends in its own colon ("You said:"), and the
+ * gap after it is one rule for every locale. A full-width colon (zh-CN `：`) has the
+ * space built into its glyph, so it takes none; every other colon gets one.
+ */
+const LabelledCaption: FC<{ label: string; text: string }> = ({
+	label,
+	text,
+}) => {
+	const tight = label.endsWith("\uFF1A");
+	return (
+		<span
+			className={cn("flex min-w-0 items-baseline", tight ? "gap-0" : "gap-1")}
+		>
+			<span className="shrink-0 font-medium text-ink-muted">{label}</span>
+			{!tight && " "}
+			<span className="truncate">{text}</span>
+		</span>
+	);
+};
+
 const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 	switch (caption.kind) {
 		case "idle":
@@ -656,24 +677,24 @@ const Caption: FC<{ caption: VoiceCaption }> = ({ caption }) => {
 			return <>{t("ui.chat.voice.starting_caption")}</>;
 		case "heard":
 			return (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.heard_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.heard_label")}
+					text={caption.text}
+				/>
 			);
 		case "said":
 			return (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.said_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			);
 		case "ended":
 			return caption.text ? (
-				<>
-					<span className="shrink-0">{t("ui.chat.voice.said_label")}</span>{" "}
-					<span className="truncate">{caption.text}</span>
-				</>
+				<LabelledCaption
+					label={t("ui.chat.voice.said_label")}
+					text={caption.text}
+				/>
 			) : null;
 		case "interrupted":
 			return (
@@ -786,43 +807,62 @@ const StoryRow: FC<{ row: VoiceStoryRow; pad: string }> = ({ row, pad }) => {
 		<div
 			data-voice-story="exchange"
 			className={cn(
-				"grid grid-cols-[auto_1fr] gap-x-2 border-t border-hairline py-1.5 text-body-sm",
+				/*
+				 * TWO LINES IN ONE GRID, sharing the label column: `You` over `Voice`
+				 * line up whatever the locale's words are wide (the old fixed `w-8`
+				 * clipped "Голос" and "Vous"), and the time rides the first line's end
+				 * like the interrupted and not-sent rows' does, so it no longer takes a
+				 * column of its own from a long reply.
+				 */
+				"grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 border-t border-hairline py-2 text-body-sm",
 				pad,
 			)}
 		>
-			<span className="row-span-2 whitespace-nowrap pt-0.5 text-meta text-ink-dim tabular-nums">
-				{storyTime(row.at)}
+			<span className="pt-px text-meta font-medium text-ink-dim">
+				{t("ui.chat.voice.you_label")}
 			</span>
-			<span className="flex min-w-0 gap-1.5">
-				<span className="w-8 shrink-0 text-meta text-ink-dim">
-					{t("ui.chat.voice.you_label")}
+			<span className="flex min-w-0 items-baseline gap-2">
+				<span className="min-w-0 flex-1 break-words text-ink">{row.heard}</span>
+				<span className="shrink-0 whitespace-nowrap text-meta text-ink-dim tabular-nums">
+					{storyTime(row.at)}
 				</span>
-				<span className="min-w-0 text-ink">{row.heard}</span>
 			</span>
-			<span className="flex min-w-0 gap-1.5">
-				<span className="w-8 shrink-0 text-meta text-ink-dim">
-					{t("ui.chat.voice.voice_label")}
-				</span>
-				<span className="min-w-0">
-					<span className="block text-ink-muted">
-						{row.spoken ?? t("ui.chat.voice.working_row")}
+			<span className="pt-px text-meta font-medium text-ink-dim">
+				{t("ui.chat.voice.voice_label")}
+			</span>
+			<span className="min-w-0">
+				{row.full ? (
+					/*
+					 * THE WHOLE REPLY, line breaks kept: the server sends `full_text` one
+					 * table row or bullet per line, and `pre-line` is what turns those
+					 * newlines into rows instead of one run-on paragraph.
+					 */
+					<span className="block whitespace-pre-line break-words text-ink">
+						{row.full}
 					</span>
-					{/*
-					 * THE CUT NOTE (spec §6): the spoken tail is gone in four seconds, so the
-					 * row is where "there was more" survives. It is a link-like line rather
-					 * than a second control because the message it points at is one scroll
-					 * away, and the strip's own cut chip is the control for that.
-					 */}
-					{row.truncated && (
-						<span
-							data-voice-story-cut=""
-							className="mt-0.5 flex items-center gap-1 text-meta font-medium text-warning"
-						>
-							<TriangleAlert aria-hidden="true" className="size-3" />
-							{t("ui.chat.voice.cut_note")}
-						</span>
-					)}
-				</span>
+				) : (
+					<span className="block italic text-ink-dim">
+						{t("ui.chat.voice.working_row")}
+					</span>
+				)}
+				{/*
+				 * WHAT WAS CUT IS THE AUDIO, NOT THE ROW (spec §3): the row shows the whole
+				 * reply now, so the line is no longer a warning that text is missing -
+				 * it says only how much was spoken. The strip's own cut chip stays, because
+				 * the spoken tail is gone in four seconds and "the rest is above" is still
+				 * the fact the person needs when they look up. AN OLDER SERVER sends no
+				 * `full_text`: the row then holds the capped spoken text, so "first part
+				 * only" under it would read as the row being complete - no line there.
+				 */}
+				{row.truncated && row.hasFullText && (
+					<span
+						data-voice-story-cut=""
+						className="mt-1 flex items-center gap-1 text-meta text-ink-dim"
+					>
+						<Volume2 aria-hidden="true" className="size-3 shrink-0" />
+						{t("ui.chat.voice.spoken_part_note")}
+					</span>
+				)}
 			</span>
 		</div>
 	);
@@ -1001,18 +1041,20 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 	if (!enabled || !sessionId || view.kind === "off") return null;
 
 	const box = "bg-sunken border-hairline";
-	/* Flush with the box's own padding, so the band spans edge to edge. */
-	const inset = isSmallView
-		? "-mx-2 -mt-2 rounded-t-md"
-		: "-mx-4 -mt-4 rounded-t-frame";
 	/*
-	 * THE CONTENT COLUMN IS THE BOX'S OWN (design round 1, D4): the band pays the
-	 * box's padding back at the edges, so it must then use the SAME padding inside
-	 * - 16px, or 8px in the small view - or the chip, history and caption sit a few
-	 * pixels off the textarea, the mic and Send. Measured before: 10px left / 4px
-	 * right against the box's 16px.
+	 * THE BAND IS A PANEL INSIDE THE EDITOR, NOT A BLEED TO ITS EDGES. It used a
+	 * negative margin sized for a 16px box padding, but `.composer-dock-editor`
+	 * pads 8px (4px inline in the compact dock) and sits under the working
+	 * directory shelf, so the band overhung the box by the difference and its top
+	 * edge covered the shelf's bottom (operator report, 2026-11-23). Hard-coding
+	 * the box's padding twice is what drifted; taking no padding back cannot.
 	 */
-	const pad = isSmallView ? "px-2" : "px-4";
+	const inset = isSmallView ? "rounded-sm" : "rounded-md";
+	/*
+	 * THE BAND'S OWN CONTENT PADDING: the panel is inset, so its chip, history and
+	 * caption are measured from the panel's edge, not the box's.
+	 */
+	const pad = isSmallView ? "px-2" : "px-3";
 	/* A failure's one action, 28px high in text, beside the reason it answers. */
 	/*
 	 * EVERY CONTROL IN THIS FILE IS `type="button"`, and that is load-bearing
@@ -1061,7 +1103,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			<div
 				data-voice-notice=""
 				className={cn(
-					"flex min-h-10 items-center gap-2 border-b",
+					"flex min-h-10 items-center gap-2 border",
 					inset,
 					box,
 					pad,
@@ -1134,34 +1176,41 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 			data-voice-band=""
 			className={cn(
 				/*
-				 * FLUSH WITH THE BOX'S TOP EDGE (spec §1): the band pays the box's own
-				 * padding back and takes the box's top radius, so the panel and the
-				 * strip stack inside with no seam.
-				 *
-				 * FROM THE SAME PAIR AS THE BOX (design round 2, D11): this was
-				 * hardcoded `-mx-4 -mt-4`, which is 16px - but the composer's padding
-				 * shrinks to 8px at the narrow width (`p-2`), so at a 620px viewport
-				 * the band hung 8px outside the box on each side and the chip started
-				 * at the box's edge while the textarea started 8px in. `inset` is
-				 * derived from the same `isSmallView` the composer's padding is, and
-				 * the elsewhere notice already used it; the band was the one caller
-				 * that did not.
+				 * INSIDE THE EDITOR'S OWN PADDING, in flow (see `inset`): History opening
+				 * pushes the field down instead of growing upward over the working
+				 * directory shelf, and `min-w-0` keeps a long caption from widening the
+				 * panel past the card.
 				 */
 				inset,
-				"overflow-hidden border-b",
+				"min-w-0 overflow-hidden border",
 				box,
 			)}
 		>
 			{open && (
-				<div
+				<section
 					ref={panel}
 					id={panelId}
 					data-voice-history=""
-					className="max-h-[min(50vh,320px)] overflow-y-auto border-b border-hairline"
+					/*
+					 * A LABELLED REGION THAT SCROLLS, no `tabIndex`: the sticky header's
+					 * Clear button is a focusable child whenever there is a row to read, so
+					 * Chromium (Electron 35 is 134) does not add the scroller to the tab
+					 * order itself. Keyboard scrolling works from Clear - arrow keys and
+					 * Page Up/Down scroll its scrollable ancestor.
+					 */
+					aria-label={t("ui.chat.voice.history")}
+					className={cn(
+						"overflow-y-auto overscroll-contain border-b border-hairline",
+						isSmallView ? "max-h-[min(35vh,240px)]" : "max-h-[min(40vh,320px)]",
+					)}
 				>
+					{/*
+					 * STICKY: the panel opens scrolled to the newest row, which used to carry
+					 * the title and Clear out of sight with the older rows.
+					 */}
 					<div
 						className={cn(
-							"flex items-center gap-2 pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim",
+							"sticky top-0 z-[1] flex items-center gap-2 border-b border-hairline bg-sunken pt-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-dim",
 							pad,
 						)}
 					>
@@ -1191,7 +1240,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 							<StoryRow key={`${row.kind}:${row.at}`} row={row} pad={pad} />
 						))
 					)}
-				</div>
+				</section>
 			)}
 			<div
 				data-voice-strip=""
@@ -1236,9 +1285,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						type="button"
 						data-voice-cut=""
 						onClick={() => onScrollToNewest?.()}
-						className="flex h-6 shrink-0 items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
+						title={t("ui.chat.voice.cut_chip")}
+						/*
+						 * THE ONE CHIP THAT GIVES: at the narrow dock the status chip, the
+						 * cut chip, Pause, Silence and the History toggle together are wider
+						 * than the band, and `overflow-hidden` clipped the toggle away. The
+						 * caption is already at zero, so this truncates ("Cut short · re…")
+						 * and the title carries the whole sentence.
+						 */
+						className="flex h-6 min-w-0 shrink items-center rounded-sm bg-warning-wash px-2 text-meta font-medium text-warning"
 					>
-						{t("ui.chat.voice.cut_chip")}
+						<span className="truncate">{t("ui.chat.voice.cut_chip")}</span>
 					</button>
 				)}
 				{view.caption ? (
@@ -1330,6 +1387,17 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 					data-voice-history-toggle=""
 					aria-expanded={open}
 					aria-controls={open ? panelId : undefined}
+					/*
+					 * THE WORD GOES IN THE NARROW VIEW, the name stays: at 8px padding the
+					 * caption, pause, speaker and this toggle do not all fit with their
+					 * words, and the caption is the one that truncates.
+					 */
+					aria-label={
+						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
+					}
+					title={
+						open ? t("ui.chat.voice.history_hide") : t("ui.chat.voice.history")
+					}
 					className="shrink-0 gap-0.5 px-1.5 text-meta text-ink-muted"
 					onClick={() => {
 						historyOpen = !historyOpen;
@@ -1337,7 +1405,7 @@ export const VoiceComposerStrip: FC<VoiceComposerStripProps> = ({
 						setNow(Date.now());
 					}}
 				>
-					<span>
+					<span className={cn(isSmallView && "sr-only")}>
 						{open
 							? t("ui.chat.voice.history_hide")
 							: t("ui.chat.voice.history")}

@@ -45,6 +45,13 @@
 		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {}
 	},
+	"ui.chat.composer.placeholder.voice": {
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "Session voice is on: speaking or typing both work. The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {}
+	},
 	"ui.chat.composer.placeholder.no_provider": {
 		"role": "composer placeholder for one input state",
 		"tone": "short state sentence, sentence case",

@@ -943,6 +943,7 @@ async function speakSource(
 	useVoiceStore.getState().setLastSpoken({
 		sessionId,
 		text: spoken.text,
+		fullText: spoken.full_text,
 		truncated: spokenTruncated(spoken),
 		at: Date.now(),
 	});

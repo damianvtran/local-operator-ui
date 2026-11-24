@@ -6,6 +6,7 @@
 	"ui.chat.composer.placeholder.aside": "بغیر ریکارڈ کے پوچھیں — Esc ضمنی گفتگو بند کرتا ہے",
 	"ui.chat.composer.placeholder.busy": "ایجنٹ مصروف ہے",
 	"ui.chat.composer.placeholder.idle": "کچھ بھی پوچھیں۔ @ فائلیں شامل کرتا ہے، / کمانڈز چلاتا ہے",
+	"ui.chat.composer.placeholder.voice": "بولیں، یا یہاں ٹائپ کریں",
 	"ui.chat.composer.placeholder.no_provider": "چیٹ شروع کرنے کے لیے فراہم کنندہ منسلک کریں",
 	"ui.chat.composer.placeholder.recording": "ریکارڈنگ جاری ہے",
 	"ui.chat.composer.placeholder.secret_answer": "سوالات کے پینل میں راز کی درخواست کا جواب دیں",

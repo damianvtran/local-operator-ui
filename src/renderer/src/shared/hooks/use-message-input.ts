@@ -367,6 +367,13 @@ export const COMPOSER_PLACEHOLDER = {
 	 * sentence that names the action instead (design audit section 6).
 	 */
 	noProvider: "ui.chat.composer.placeholder.no_provider",
+	/**
+	 * Voice is on in this conversation: the box is still a text field (only
+	 * dictation is refused), but its single empty row beside a band of spoken
+	 * words read as dead space. Ranked with the invitation because it IS the
+	 * invitation, said for this mode.
+	 */
+	voice: "ui.chat.composer.placeholder.voice",
 	idle: "ui.chat.composer.placeholder.idle",
 } as const satisfies Record<string, MessageKey>;
 
@@ -464,6 +471,8 @@ export const composerPlaceholder = (state: {
 	 * ABSENT MEANS NOTHING CHANGES: no chat mount passes it.
 	 */
 	hostLine?: string | null;
+	/** Session voice is on here; the box takes typing as well as speech. */
+	voiceOn?: boolean;
 }): string => {
 	if (state.unavailable) return t(COMPOSER_PLACEHOLDER.unavailable);
 	if (state.secretAnswer) return t(COMPOSER_PLACEHOLDER.secretAnswer);
@@ -487,7 +496,12 @@ export const composerPlaceholder = (state: {
 		return t(COMPOSER_PLACEHOLDER.waiting);
 	}
 	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
-	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
+	// Voice is the invitation said for this mode, so it sits INSIDE the
+	// invitation slot: a host's own sentence (`idle`) still wins over it.
+	return (
+		state.idle ??
+		t(state.voiceOn ? COMPOSER_PLACEHOLDER.voice : COMPOSER_PLACEHOLDER.idle)
+	);
 };
 
 /**
