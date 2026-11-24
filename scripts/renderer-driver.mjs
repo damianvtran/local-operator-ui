@@ -32925,6 +32925,29 @@ const SETTINGS_TABS_READING = `(() => {
 	};
 })()`;
 
+/** The column ABOVE the panel, so a landing cannot move the whole page. */
+const SETTINGS_COLUMN_READING = `(() => {
+	const column = document.querySelector('[data-glass-region="canvas-content"]');
+	const close = document.querySelector('[data-settings-close]');
+	const box = close ? close.getBoundingClientRect() : null;
+	return {
+		scrollTop: column ? Math.round(column.scrollTop) : null,
+		closeTop: box ? Math.round(box.top) : null,
+	};
+})()`;
+
+/** The scroller's own width and the search field's inline-end edge. */
+const SETTINGS_WIDTH_READING = `(() => {
+	const scroller = document.querySelector('[data-settings-content]');
+	const field = document.querySelector('[data-settings-search]');
+	const box = field ? field.getBoundingClientRect() : null;
+	return {
+		clientWidth: scroller ? scroller.clientWidth : null,
+		offsetWidth: scroller ? scroller.offsetWidth : null,
+		searchRight: box ? Math.round(box.right) : null,
+	};
+})()`;
+
 /** The live tour: its step id, whether Back exists, and the panel on screen. */
 const SETTINGS_TOUR_READING = `(() => {
 	/*
@@ -33037,6 +33060,26 @@ async function sceneSettingsTabs(cdp) {
 	await wait(250);
 
 	/* ---------------------------------------------------------------- */
+	/* 1b. A short tab and a tall tab keep the same content width (D2)    */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "press", { selector: '[data-settings-tab="keyboard"]' });
+	await wait(450);
+	const keyboardWidth = await cdp.evaluate(SETTINGS_WIDTH_READING);
+	await capture("settings-tabs-width-keyboard-dark");
+	await verb(cdp, "press", { selector: '[data-settings-tab="imports"]' });
+	await wait(450);
+	const importsWidth = await cdp.evaluate(SETTINGS_WIDTH_READING);
+	await capture("settings-tabs-width-imports-dark");
+	check(
+		"a scrolling tab and a short one keep the same content width",
+		keyboardWidth?.clientWidth !== null &&
+			keyboardWidth?.clientWidth === importsWidth?.clientWidth &&
+			keyboardWidth?.searchRight === importsWidth?.searchRight,
+		`keyboard=${JSON.stringify(keyboardWidth)} imports=${JSON.stringify(importsWidth)}`,
+	);
+
+	/* ---------------------------------------------------------------- */
 	/* 2. A rail press moves the panel, the URL and aria-current together */
 	/* ---------------------------------------------------------------- */
 
@@ -33107,6 +33150,8 @@ async function sceneSettingsTabs(cdp) {
 	for (let step = 0; step < at; step += 1)
 		await pressKey("ArrowDown", "ArrowDown", 40);
 	await pressKey("Enter", "Enter", 13);
+	/* Read BEFORE the Enter: the landing must not move this column. */
+	const columnBefore = await cdp.evaluate(SETTINGS_COLUMN_READING);
 	const landed = await waitForScene(
 		cdp,
 		`Boolean(document.querySelector('[data-settings-panel="appearance"]:not([hidden])'))`,
@@ -33124,6 +33169,18 @@ async function sceneSettingsTabs(cdp) {
 			`document.activeElement?.closest('[data-search-row="appearance.glass"]') !== null`,
 		),
 		`activeElement=${await cdp.evaluate("document.activeElement?.tagName ?? null")} row=${await cdp.evaluate("document.activeElement?.closest('[data-search-row]')?.getAttribute('data-search-row') ?? null")}`,
+	);
+	/*
+	 * D1: `scrollIntoView` walked past the panel to the `panel-flush` column,
+	 * which also reports overflow, and moved the whole page up 16px - the pinned
+	 * Close button with it. The landing now sets the panel's own `scrollTop`.
+	 */
+	const columnAfter = await cdp.evaluate(SETTINGS_COLUMN_READING);
+	check(
+		"a cross-tab landing moves only the panel: the column above it stays put",
+		columnAfter?.scrollTop === 0 &&
+			columnAfter?.closeTop === columnBefore?.closeTop,
+		`before=${JSON.stringify(columnBefore)} after=${JSON.stringify(columnAfter)}`,
 	);
 	await capture("settings-tabs-search-landing-dark");
 
@@ -33319,6 +33376,67 @@ async function sceneSettingsTabs(cdp) {
 				mirrored?.shown?.length === 1,
 			`panels=${mirrored?.panels} shown=${JSON.stringify(mirrored?.shown ?? null)}`,
 		);
+		/*
+		 * D4: at the 48px rail the tooltip must open toward the CONTENT. In RTL a
+		 * physical `right` opened it into the app sidebar.
+		 */
+		await cdp
+			.send("Emulation.setDeviceMetricsOverride", {
+				width: 900,
+				height: 900,
+				deviceScaleFactor: 2,
+				mobile: false,
+			})
+			.catch(() => null);
+		await wait(500);
+		await verb(cdp, "navigate", "/settings?section=speech");
+		await wait(500);
+		const focusedRow = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-settings-tab="speech"]');
+			if (!row) return false;
+			row.focus();
+			return document.activeElement === row;
+		})()`);
+		await wait(600);
+		const tooltip = await cdp.evaluate(`(() => {
+			const tip = document.querySelector('[role="tooltip"]');
+			const row = document.querySelector('[data-settings-tab="speech"]');
+			const scroller = document.querySelector('[data-settings-content]');
+			if (!tip || !row || !scroller) return null;
+			const t = tip.getBoundingClientRect();
+			const r = row.getBoundingClientRect();
+			const s = scroller.getBoundingClientRect();
+			return {
+				tooltip: { left: Math.round(t.left), right: Math.round(t.right) },
+				row: { left: Math.round(r.left), right: Math.round(r.right) },
+				content: { left: Math.round(s.left), right: Math.round(s.right) },
+				direction: document.documentElement.dir,
+			};
+		})()`);
+		note(
+			"the icon rail's tooltip in RTL",
+			JSON.stringify({ focusedRow, tooltip }),
+		);
+		check(
+			"in RTL the icon rail's tooltip opens toward the CONTENT, not the sidebar",
+			focusedRow === true &&
+				tooltip?.direction === "rtl" &&
+				tooltip.tooltip.right <= tooltip.row.left + 1 &&
+				tooltip.tooltip.left >= tooltip.content.left - 1,
+			JSON.stringify(tooltip),
+		);
+		await capture("settings-tabs-rtl-tooltip-dark");
+		await cdp
+			.send("Emulation.setDeviceMetricsOverride", {
+				width: 1380,
+				height: 900,
+				deviceScaleFactor: 2,
+				mobile: false,
+			})
+			.catch(() => null);
+		await wait(400);
+		await verb(cdp, "navigate", "/settings?section=general");
+		await wait(500);
 		await capture("settings-tabs-rtl-probe-dark");
 		await cdp.evaluate("document.documentElement.dir = 'ltr'");
 		const english = await pickLanguage("English");
@@ -33388,32 +33506,6 @@ async function sceneSettingsTabs(cdp) {
 		}
 		idle = 0;
 		forward.push(state);
-		if (state.step === "navigate-settings") {
-			/*
-			 * The step clicks the gear, and the gear is a TOGGLE: if Settings was
-			 * already open when the tour reached it, that click CLOSES the page and
-			 * the four settings steps then spotlight nothing. The rig puts the
-			 * page back through the same control (a second toggle) and records
-			 * which case it hit, so the steps below are measured on a page that
-			 * exists.
-			 */
-			await wait(800);
-			const home = await cdp.evaluate("window.location.hash");
-			if (!String(home).includes("/settings")) {
-				await verb(cdp, "press", {
-					selector: '[data-tour-tag="nav-item-settings"]',
-				});
-				await waitForScene(
-					cdp,
-					`Boolean(document.querySelector('[data-settings-panel]:not([hidden])'))`,
-					200,
-				);
-				note(
-					"the gear step closed Settings; reopened it through the same control",
-					JSON.stringify({ wasAt: home }),
-				);
-			}
-		}
 		const expected = STEP_PANEL[state.step];
 		if (expected) {
 			check(
@@ -33431,6 +33523,25 @@ async function sceneSettingsTabs(cdp) {
 		 * follows would add a hop with no panel of its own).
 		 */
 		if (state.step === "application-updates-settings") break;
+		if (state.step === "navigate-settings") {
+			/*
+			 * Recorded AFTER this step's own Next, which is where its action runs
+			 * (`tour-steps.ts`: the gear is clicked only when it is not already
+			 * current). An earlier probe read the route on ARRIVAL, before the
+			 * click, and mislabelled the previous steps' route as a close.
+			 */
+			const before = await cdp.evaluate("window.location.hash");
+			await clickTour(".shepherd-button-primary");
+			await wait(900);
+			note(
+				"the gear step: route before and after its own Next",
+				JSON.stringify({
+					before,
+					after: await cdp.evaluate("window.location.hash"),
+				}),
+			);
+			continue;
+		}
 		await clickTour(".shepherd-button-primary");
 		await wait(700);
 	}

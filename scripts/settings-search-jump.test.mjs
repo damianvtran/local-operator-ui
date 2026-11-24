@@ -79,6 +79,7 @@ const {
 	jumpToSearchRow,
 	jumpToSearchSection,
 	jumpToSearchSectionSettled,
+	scrollPanelTo,
 	searchControlOf,
 } = module;
 
@@ -153,8 +154,17 @@ test("a jump scrolls the control to the centre, focuses it, and washes the ROW",
 		dom.window.document.activeElement === button,
 		"focus is on the control",
 	);
-	assert.ok(scrolled.at(-1).element === button, "the control was scrolled");
-	assert.deepEqual(scrolled.at(-1).options, { block: "center" });
+	/*
+	 * The landing sets the PANEL's own scrollTop, never `scrollIntoView`: that
+	 * call also moved the `panel-flush` column above the panel (design round 1,
+	 * D1). The fixture has no layout, so the arithmetic test below owns the
+	 * numbers; here the claim is the mechanism.
+	 */
+	assert.equal(
+		scrolled.filter((call) => call.element === button).length,
+		0,
+		"the control was not scrolled by an ancestor walk",
+	);
 	assert.deepEqual(
 		painted.map((element) => element.getAttribute("data-search-row")),
 		["appearance.theme"],
@@ -212,8 +222,11 @@ test("a section jump makes the root focusable, then focuses it", () => {
 	assert.equal(outcome, "landed");
 	assert.equal(section.getAttribute("tabindex"), "-1", "and becomes focusable");
 	assert.ok(dom.window.document.activeElement === section);
-	assert.ok(scrolled.at(-1).element === section, "the section was scrolled");
-	assert.deepEqual(scrolled.at(-1).options, { block: "start" });
+	assert.equal(
+		scrolled.filter((call) => call.element === section).length,
+		0,
+		"the section was reached by the panel's scrollTop, not an ancestor walk",
+	);
 	assert.equal(painted[0], section);
 });
 
@@ -265,4 +278,63 @@ test("the settled section jump is bounded: a target that never appears is missin
 		"missing",
 	);
 	assert.ok(Date.now() - start < 5000, "bounded, not a hang");
+});
+
+test("a landing sets the panel's scrollTop: centre for a row, start for a section", () => {
+	/*
+	 * The arithmetic that replaced `scrollIntoView({block})`. It is asserted on
+	 * geometry a browser would report, on a document of its own, because the
+	 * shared fixture has no layout — and the point of the change is that the
+	 * ONLY scroller moved is `[data-settings-content]`; the column above it (the
+	 * `panel-flush` wrapper, which also reports overflow) must stay at 0.
+	 */
+	const { document } = dom.window;
+	const outer = document.createElement("div");
+	outer.setAttribute("data-glass-region", "canvas-content");
+	const scroller = document.createElement("div");
+	scroller.setAttribute("data-settings-content", "");
+	const row = document.createElement("div");
+	row.setAttribute("data-search-row", "probe.row");
+	const control = document.createElement("button");
+	control.setAttribute("data-search-control", "");
+	control.type = "button";
+	row.appendChild(control);
+	scroller.appendChild(row);
+	outer.appendChild(scroller);
+	document.body.appendChild(outer);
+
+	Object.defineProperty(scroller, "clientHeight", { value: 600 });
+	scroller.scrollTop = 100;
+	scroller.getBoundingClientRect = () => ({ top: 32, height: 600 });
+	row.getBoundingClientRect = () => ({ top: 432, height: 40 });
+	control.getBoundingClientRect = () => ({ top: 432, height: 40 });
+	let walked = 0;
+	control.scrollIntoView = () => {
+		walked += 1;
+	};
+
+	assert.equal(
+		scrollPanelTo(scroller, control, "center"),
+		true,
+		"the panel is the scroller",
+	);
+	// offset = 432 - 32 + 100 = 500; centre = 500 - (600 - 40) / 2 = 220.
+	assert.equal(
+		scroller.scrollTop,
+		220,
+		"a row lands in the middle of the panel",
+	);
+	assert.equal(outer.scrollTop, 0, "the column above the panel did not move");
+	assert.equal(walked, 0, "no ancestor walk");
+
+	scroller.scrollTop = 100;
+	assert.equal(scrollPanelTo(scroller, row, "start"), true);
+	assert.equal(scroller.scrollTop, 500, "a section lands at the panel's top");
+	assert.equal(outer.scrollTop, 0);
+	assert.equal(walked, 0);
+
+	// A root that is not the page's scroller and does not contain one: say so,
+	// so the caller can fall back rather than silently do nothing.
+	assert.equal(scrollPanelTo(row, control, "center"), false);
+	outer.remove();
 });

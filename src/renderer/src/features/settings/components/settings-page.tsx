@@ -116,6 +116,7 @@ import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
 
 import {
+	bindTabScrollMemory,
 	createTabScrollMemory,
 	rememberSettingsTab,
 	settingsPanelOf,
@@ -542,7 +543,9 @@ export const SettingsPage: FC = () => {
 		() => agentMessagesModel.check("surface_open", true),
 		[agentMessagesModel],
 	);
-	const contentContainerRef = useRef<HTMLDivElement>(null);
+	/* `… | null`, not `…`: the callback ref below publishes and clears it, and a
+	   `RefObject`'s `current` is read-only. */
+	const contentContainerRef = useRef<HTMLDivElement | null>(null);
 
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
@@ -574,6 +577,21 @@ export const SettingsPage: FC = () => {
 	});
 	/* One memory per page mount: leaving Settings forgets where each tab was. */
 	const scrollMemory = useMemo(() => createTabScrollMemory(), []);
+	/*
+	 * THE SCROLLER AS STATE, NOT ONLY A REF. The page has three trees (loading,
+	 * the three page-level error states, and the populated page), and only the
+	 * last one mounts `[data-settings-content]`. A cold open or an
+	 * error -> Retry therefore has no scroller at first effect, and an effect
+	 * that read the ref once would never bind — no position recorded for the
+	 * whole visit (round 1: M2). The callback ref publishes the element when it
+	 * mounts and clears it when it unmounts, so the effects below run on the
+	 * real element.
+	 */
+	const [scrollerNode, setScrollerNode] = useState<HTMLDivElement | null>(null);
+	const contentScrollerRef = useCallback((node: HTMLDivElement | null) => {
+		contentContainerRef.current = node;
+		setScrollerNode(node);
+	}, []);
 	/*
 	 * A panel is named the same as the rail row that reveals it, from the rail's
 	 * own labels — no second copy of the copy, and the name follows a locale
@@ -844,11 +862,13 @@ export const SettingsPage: FC = () => {
 	 * overruled and the panel is General's), and a press that asked for focus
 	 * inside the panel gets it now that the panel is laid out.
 	 *
-	 * ONE effect, keyed ONLY on the tab: the scroll must be set in the same
-	 * commit that unhides the panel, or the browser measures the OLD panel's
-	 * height and clamps the stored position against it. `useLayoutEffect`, not
-	 * an effect, so this happens before the frame paints — a tab that flashed at
-	 * the previous tab's offset before moving would read as a jump.
+	 * One effect, keyed on the tab and on the scroller's IDENTITY: the scroll must
+	 * be set in the same commit that unhides the panel, or the browser measures
+	 * the OLD panel's height and clamps the stored position against it, and it
+	 * must run again when the scroller mounts after the loading or an error state
+	 * (`scrollerNode`). `useLayoutEffect`, not an effect, so this happens before
+	 * the frame paints — a tab that flashed at the previous tab's offset before
+	 * moving would read as a jump.
 	 *
 	 * PR3 extends THIS effect for row anchors; nothing else may scroll the page
 	 * on arrival, which is why the deep-link settle and the scroll-spy are gone.
@@ -856,8 +876,9 @@ export const SettingsPage: FC = () => {
 	useLayoutEffect(() => {
 		if (!settingsTabStale) rememberSettingsTab(activeTab);
 		scrollMemory.track(activeTab);
-		const scroller = contentContainerRef.current;
-		if (scroller) scroller.scrollTop = scrollMemory.recall(activeTab) ?? 0;
+		if (scrollerNode) {
+			scrollerNode.scrollTop = scrollMemory.recall(activeTab) ?? 0;
+		}
 		const pending = pendingPanelFocusRef.current;
 		if (pending !== activeTab) return;
 		pendingPanelFocusRef.current = null;
@@ -866,20 +887,19 @@ export const SettingsPage: FC = () => {
 		// Programmatic rest-stop, not a tab stop: the same rule the search jump uses.
 		if (landing.tabIndex < 0) landing.tabIndex = -1;
 		landing.focus({ preventScroll: true });
-	}, [activeTab, scrollMemory, settingsTabStale, sectionRefs]);
+	}, [activeTab, scrollerNode, scrollMemory, settingsTabStale, sectionRefs]);
 	/*
-	 * The scroll listener is PASSIVE and permanent for the mount: it records under
-	 * whichever tab the arrival effect last tracked, so a switch never re-binds a
-	 * listener and the frame between a commit and a re-bind cannot attribute the
-	 * outgoing tab's position to the incoming one.
+	 * The scroll listener is PASSIVE and lives as long as the scroller element
+	 * does: it records under whichever tab the arrival effect last tracked, so a
+	 * tab switch never re-binds it and the frame between a commit and a re-bind
+	 * cannot attribute the outgoing tab's position to the incoming one. It is
+	 * bound from `scrollerNode` so it also binds when the element appears after
+	 * the loading or an error state.
 	 */
 	useEffect(() => {
-		const scroller = contentContainerRef.current;
-		if (!scroller) return;
-		const onScroll = () => scrollMemory.record(scroller.scrollTop);
-		scroller.addEventListener("scroll", onScroll, { passive: true });
-		return () => scroller.removeEventListener("scroll", onScroll);
-	}, [scrollMemory]);
+		if (!scrollerNode) return;
+		return bindTabScrollMemory(scrollerNode, scrollMemory);
+	}, [scrollerNode, scrollMemory]);
 	// Handle updating a specific config field
 	const handleUpdateField = async (
 		field: keyof ConfigUpdate,
@@ -1224,7 +1244,7 @@ export const SettingsPage: FC = () => {
 			 */}
 			{contentColumn(
 				<div
-					ref={contentContainerRef}
+					ref={contentScrollerRef}
 					data-settings-content
 					data-tour-tag="settings-general-section"
 					/*
@@ -1246,7 +1266,14 @@ export const SettingsPage: FC = () => {
 					 * 16px the narrow layout keeps: every width below it keeps `pe-14`,
 					 * and from 1496 up the base `p-8` restores symmetric margins.
 					 */
-					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 sm:p-6 sm:pe-14 md:p-8 md:max-[1495px]:pe-14"
+					/*
+					 * `scrollbar-gutter: stable` because the rail now switches between
+					 * tabs of different heights: without it a short tab gives its 8px
+					 * scrollbar back, and every control's inline-end edge slides 8px on
+					 * each switch (round 1: D2). A tab change is a layout change; a width
+					 * step in the middle of it reads as a twitch.
+					 */
+					className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pe-14 [scrollbar-gutter:stable] sm:p-6 sm:pe-14 md:p-8 md:max-[1495px]:pe-14"
 				>
 					{/*
 					 * One measured column, centred, rather than two.

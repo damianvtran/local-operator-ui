@@ -10,7 +10,7 @@
  * grow a second identical history entry. Both rules belong to the action, not
  * to each of the rail's and the page's call sites.
  */
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	type ResolveSettingsTabInput,
@@ -41,18 +41,26 @@ export function useSettingsTab(
 	const { search, available, sectionForKey } = input;
 	const navigate = useNavigate();
 	const ownNavigationRef = useRef(false);
+	/*
+	 * THE SEED IS READ ONCE PER MOUNT, not once per resolve.
+	 *
+	 * A bare `/settings` entry in history means "the tab this page opened on",
+	 * and the arrival effect rewrites the memory on every tab press. Reading the
+	 * memory at resolve time made that entry resolve to whatever tab was visited
+	 * LAST: gear (General) -> Appearance -> Back re-showed Appearance, so the
+	 * first Back did nothing and the second left Settings (round 1: M1). A fresh
+	 * visit still opens on the latest tab, because a new mount reads it again.
+	 */
+	const [seed] = useState<string | null>(() => lastSettingsTab());
 	const resolved = useMemo(
 		() =>
 			resolveSettingsTab({
 				search,
 				available,
-				// Read at resolve time, never captured: the memory is written by the
-				// arrival effect, and a value frozen into the memo would be one visit
-				// behind.
-				lastTab: lastSettingsTab(),
+				lastTab: seed,
 				sectionForKey,
 			}),
-		[search, available, sectionForKey],
+		[search, available, sectionForKey, seed],
 	);
 	const activeTab = resolved.tab;
 	const selectTab = useCallback(

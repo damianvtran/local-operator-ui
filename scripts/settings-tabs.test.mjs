@@ -57,6 +57,7 @@ const {
 	shouldClearSearchJump,
 	isTourTargetVisible,
 	revealSettingsTab,
+	bindTabScrollMemory,
 } = await import(dataUrl);
 
 const sectionForKey = (key) => (key === "model_effort" ? "general" : "backend");
@@ -360,4 +361,120 @@ test("the tour's tags name rail rows this page renders", () => {
 		null,
 		"the rail must not carry its own tag map",
 	);
+});
+
+test("the seed is read once per mount, so Back to the bare entry keeps its tab", () => {
+	/*
+	 * Round 1: M1. A bare `/settings` entry means "the tab this visit opened on".
+	 * Replaying the page's own calls with the seed captured ONCE (what the hook's
+	 * `useState` does) is the sequence that was broken: gear -> Appearance -> Back
+	 * used to re-show Appearance, because the memory had been rewritten to it.
+	 */
+	resetSettingsTabMemory();
+	const seed = lastSettingsTab(); // the cold-start read the hook does on mount
+	const resolveNow = (search) =>
+		resolveSettingsTab({
+			search,
+			available: all,
+			lastTab: seed,
+			sectionForKey,
+		});
+	assert.equal(resolveNow("").tab, "general", "gear on a cold start");
+	rememberSettingsTab("general"); // the arrival effect, on General
+	assert.equal(resolveNow("?section=appearance").tab, "appearance");
+	rememberSettingsTab("appearance"); // the arrival effect, on Appearance
+	assert.equal(
+		resolveNow("").tab,
+		"general",
+		"Back to the entry the visit opened on keeps that entry's tab",
+	);
+
+	// A NEW visit mounts again: it reads the memory as it is now.
+	assert.equal(
+		resolveSettingsTab({
+			search: "",
+			available: all,
+			lastTab: lastSettingsTab(),
+			sectionForKey,
+		}).tab,
+		"appearance",
+		"a fresh open still lands on the run's last tab",
+	);
+	resetSettingsTabMemory();
+});
+
+test("the hook and the page carry the mount-scoped shapes, not the per-resolve ones", () => {
+	/*
+	 * The two round-1 mechanisms are one line each, and the line is the contract:
+	 * a per-resolve `lastSettingsTab()` is M1 returning, and a listener effect
+	 * without the scroller's identity is M2 returning.
+	 */
+	const hook = readFileSync(
+		"src/renderer/src/features/settings/use-settings-tab.ts",
+		"utf8",
+	);
+	assert.match(
+		hook,
+		/useState<string \| null>\(\(\) => lastSettingsTab\(\)\)/,
+		"the seed is state, read once per mount",
+	);
+	assert.match(hook, /lastTab: seed/, "the resolver reads that seed");
+	assert.ok(
+		!/lastTab: lastSettingsTab\(\)/.test(hook),
+		"the resolver must not re-read the memory on every resolve",
+	);
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/bindTabScrollMemory\(scrollerNode, scrollMemory\)/,
+		"the listener binds the element that is mounted, not a ref captured once",
+	);
+	assert.match(
+		page,
+		/ref=\{contentScrollerRef\}/,
+		"the scroller publishes itself through the callback ref",
+	);
+});
+
+test("the scroll listener binds to the element it is given, whenever that is", () => {
+	/*
+	 * M2's seam: the scroller does not exist while the page is loading or in an
+	 * error state, so binding must take the element as an argument and work when
+	 * it appears later.
+	 */
+	const memory = createTabScrollMemory();
+	const handlers = [];
+	const scroller = {
+		scrollTop: 0,
+		addEventListener(type, fn, options) {
+			handlers.push({ type, fn, options });
+		},
+		removeEventListener(type, fn) {
+			const at = handlers.findIndex(
+				(entry) => entry.type === type && entry.fn === fn,
+			);
+			if (at >= 0) handlers.splice(at, 1);
+		},
+	};
+	memory.track("speech");
+	const unbind = bindTabScrollMemory(scroller, memory);
+	assert.equal(
+		handlers.length,
+		1,
+		"one passive listener on the mounted element",
+	);
+	assert.equal(handlers[0].type, "scroll");
+	assert.deepEqual(handlers[0].options, { passive: true });
+	scroller.scrollTop = 240;
+	handlers[0].fn();
+	assert.equal(
+		memory.recall("speech"),
+		240,
+		"a scroller that mounted after the first effect still records",
+	);
+	unbind();
+	assert.equal(handlers.length, 0, "the unbind is the effect's cleanup");
 });

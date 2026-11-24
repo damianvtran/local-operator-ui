@@ -127,6 +127,55 @@ function settleOn(
 }
 
 /**
+ * The page's one scroller, if `root` is or contains it.
+ *
+ * The settings page mounts three trees; only the populated one has
+ * `[data-settings-content]`, and the jump always runs against the populated
+ * tree (there is no row to land on otherwise).
+ */
+function scrollerOf(root: ParentNode): HTMLElement | null {
+	const element = root as Element;
+	if (element.nodeType === 1 && element.matches("[data-settings-content]")) {
+		return element as HTMLElement;
+	}
+	return (
+		element.querySelector?.<HTMLElement>("[data-settings-content]") ?? null
+	);
+}
+
+/**
+ * Bring `element` to `align` by setting the PANEL's own `scrollTop`.
+ *
+ * WHY NOT `scrollIntoView`. That call walks EVERY scrollable ancestor, and this
+ * page has a second one above the panel: the `panel-flush ... overflow-hidden`
+ * column reports overflow while its only scrolling child does the work, so a
+ * landing also moved the whole content column up to 16px — the pinned Close
+ * button (64 -> 48) and the `h1` with it (design round 1, D1, measured on the
+ * cross-tab landing). The page has exactly one scroller and this is it; the
+ * arithmetic is the same centring `scrollIntoView({block:"center"})` did.
+ *
+ * `false` when there is no scroller (a caller rendering outside the page):
+ * the caller then falls back to `scrollIntoView`.
+ */
+export function scrollPanelTo(
+	root: ParentNode,
+	element: HTMLElement,
+	align: "start" | "center",
+): boolean {
+	const scroller = scrollerOf(root);
+	if (!scroller) return false;
+	const box = element.getBoundingClientRect();
+	const offset =
+		box.top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+	const target =
+		align === "center"
+			? offset - Math.max(0, (scroller.clientHeight - box.height) / 2)
+			: offset;
+	scroller.scrollTop = Math.max(0, target);
+	return true;
+}
+
+/**
  * Jump to a rendered row.
  *
  * The promise resolves `"landed"` only when the row was focusable, scrolled and
@@ -151,7 +200,9 @@ export function jumpToSearchRow(
 		return () => {
 			const target = searchControlOf(row);
 			if (target === row) row.tabIndex = -1;
-			target.scrollIntoView({ block: "center" });
+			if (!scrollPanelTo(root, target, "center")) {
+				target.scrollIntoView({ block: "center" });
+			}
 			target.focus();
 			paint(row);
 		};
@@ -185,10 +236,13 @@ function findSearchSection(
 
 /** What a section landing does, once its element is reachable. */
 function landOnSection(
+	root: ParentNode,
 	element: HTMLElement,
 	paint: (element: HTMLElement) => void,
 ): void {
-	element.scrollIntoView({ block: "start" });
+	if (!scrollPanelTo(root, element, "start")) {
+		element.scrollIntoView({ block: "start" });
+	}
 	/*
 	 * SET, not compared. `HTMLElement.tabIndex` reads `-1` for a `div` that has
 	 * no `tabindex` attribute — which is every section root whose `id` is unset
@@ -217,7 +271,7 @@ export function jumpToSearchSection(
 ): SearchJumpOutcome {
 	const element = findSearchSection(root, sectionId);
 	if (!element) return "missing";
-	landOnSection(element, options.paint ?? paintJumpHighlight);
+	landOnSection(root, element, options.paint ?? paintJumpHighlight);
 	return "landed";
 }
 
@@ -242,6 +296,6 @@ export function jumpToSearchSectionSettled(
 	const paint = options.paint ?? paintJumpHighlight;
 	return settleOn(() => {
 		const element = findSearchSection(root, sectionId);
-		return element ? () => landOnSection(element, paint) : null;
+		return element ? () => landOnSection(root, element, paint) : null;
 	}, frames);
 }

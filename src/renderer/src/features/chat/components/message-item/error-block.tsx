@@ -39,6 +39,13 @@ export type ErrorBlockProps = {
  * The label is a KEY, not a string: `t()` is called when this helper renders,
  * which is the only moment the active locale is known.
  */
+/*
+ * A bare `/settings` opens the tab last visited this run, which is right for a
+ * generic "open settings" hint and wrong for copy that names what to change: a
+ * model or rate-limit sentence is about General's model settings and a provider
+ * sentence is about the provider grid. The two specific arms pass their tab;
+ * `unavailable` and `schema` name no destination and keep the bare link.
+ */
 const settingsLink = (
 	labelKey:
 		| "ui.chat.error_block.link.settings"
@@ -95,28 +102,32 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 		case "provider":
 			return (
 				<p>
-					{t("ui.chat.error_block.provider.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.provider.before")}{" "}
+					{settingsLink(undefined, "/settings?section=providers")}{" "}
 					{t("ui.chat.error_block.provider.after")}
 				</p>
 			);
 		case "model":
 			return (
 				<p>
-					{t("ui.chat.error_block.model.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.model.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.model.after")}
 				</p>
 			);
 		case "rate_limit":
 			return (
 				<p>
-					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.rate_limit.after")}
 				</p>
 			);
 		case "rate_limit_all":
 			return (
 				<p>
-					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.rate_limit.all_after")}
 				</p>
 			);

@@ -197,6 +197,17 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	 * with a `hidden` variant would still mount on every row at every width.
 	 */
 	const labelled = useMediaQuery("(min-width: 1040px)");
+	/*
+	 * The tooltip opens toward the content, which is the INLINE-END direction:
+	 * `right` in LTR and `left` in RTL. It was a physical `right`, so in RTL it
+	 * opened into the app sidebar instead of over the settings panel (design
+	 * round 1: D4). `<html dir>` is what the shell writes on a locale change, and
+	 * this component already re-renders on one (`useI18nLocale`).
+	 */
+	const tooltipSide =
+		typeof document !== "undefined" && document.documentElement.dir === "rtl"
+			? "left"
+			: "right";
 
 	const renderSection = (section: SettingsSection) => {
 		const isActive = activeTab === section.id;
@@ -251,7 +262,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			<li key={section.id}>{button}</li>
 		) : (
 			<li key={section.id}>
-				<Tooltip content={section.label} side="right">
+				<Tooltip content={section.label} side={tooltipSide}>
 					{button}
 				</Tooltip>
 			</li>

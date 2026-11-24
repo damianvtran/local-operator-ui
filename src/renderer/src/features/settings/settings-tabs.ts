@@ -158,7 +158,7 @@ export function resolveSettingsTab({
 
 /** The URL a rail row pushes for its tab. */
 export function buildSettingsTabHref(tab: string): string {
-	return `${SETTINGS_PATH}?section=${encodeURIComponent(tab)}`;
+	return `${SETTINGS_PATH}?section=${encodeURIComponent(tab)}`; // i18n: ignore route path, not user copy
 }
 
 /**
@@ -230,6 +230,29 @@ export function createTabScrollMemory(): TabScrollMemory {
 			return tracked;
 		},
 	};
+}
+
+/**
+ * Record a scroller's positions under the tab the arrival effect last tracked.
+ *
+ * WHY THIS IS A FUNCTION, NOT THREE LINES IN AN EFFECT. The scroller does not
+ * exist on every render: a cold open, an error and the no-config state all
+ * return a different tree, so the page binds this when the element MOUNTS and
+ * rebinds when it is replaced (round 1: M2). Taking the element as an argument
+ * is what makes that rebind testable without a renderer.
+ *
+ * Returns the unbind, the shape React's effect cleanup wants.
+ */
+export function bindTabScrollMemory(
+	scroller: Pick<
+		HTMLElement,
+		"addEventListener" | "removeEventListener" | "scrollTop"
+	>,
+	memory: TabScrollMemory,
+): () => void {
+	const onScroll = () => memory.record(scroller.scrollTop);
+	scroller.addEventListener("scroll", onScroll, { passive: true });
+	return () => scroller.removeEventListener("scroll", onScroll);
 }
 
 /**
