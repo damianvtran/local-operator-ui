@@ -11,8 +11,8 @@
  * the primitive is restyled, and nobody notices until the operator does.
  *
  * THE CENSUS THIS FILE FREEZES (refactor/shared-dialog-migration): 70 modal call
- * sites, all already on the primitive - 37 through `BaseDialog`, the rest on
- * `DialogContent` directly. The surfaces that LOOK like hand-rolled modals are
+ * sites in 60 files, all already on the primitive - 28 `<BaseDialog>` and 42
+ * `<DialogContent>` (one of those is `BaseDialog`'s own). The surfaces that LOOK like hand-rolled modals are
  * not modals and stay as they are: the phone-pairing card and the session
  * switcher are `aria-modal="false"` on purpose (neither may trap focus; the
  * switcher commits on Control's keyUp), the wake/job cancel cards and the chat
