@@ -631,6 +631,27 @@
 			"PROJECT_TAGS_MAX": "Raw numeric count passed to ICU; not a preformatted string. ICU number ::group-off preserves ungrouped English digits."
 		}
 	},
+	"ui.projects.project_edit_model.name_required": {
+		"role": "project create sheet and detail inline editor: validation error shown under the field when the project key field is empty (e.g. the title had no Latin letters to derive it from)",
+		"tone": "Plain, helpful validation sentence; state the rule, no blame.",
+		"note": "English source: Give the project a name. The project key is an identifier; this asks the user to provide one.",
+		"length": "English is 24 source characters. One sentence; may wrap under the field.",
+		"placeholders": {}
+	},
+	"ui.projects.project_edit_model.name_grammar": {
+		"role": "project create sheet and detail inline editor: validation error shown under the field when the project key breaks the key grammar",
+		"tone": "Plain, helpful validation sentence; state the rule, no blame.",
+		"note": "English source: Names start with a letter or digit and may use letters, digits, dot, underscore or dash. The allowed characters describe a machine grammar (ASCII letters a-z, digits 0-9, and the literal symbols named); translate the description but keep the meaning exact, and keep \"1-24\" as digits.",
+		"length": "English is 88 source characters. One sentence; may wrap under the field.",
+		"placeholders": {}
+	},
+	"ui.projects.project_edit_model.tag_grammar": {
+		"role": "project create sheet and detail inline editor: validation error shown under the field when one tag breaks the tag grammar",
+		"tone": "Plain, helpful validation sentence; state the rule, no blame.",
+		"note": "English source: Tags are 1-24 characters of lowercase letters, digits, underscore or dash. The allowed characters describe a machine grammar (ASCII letters a-z, digits 0-9, and the literal symbols named); translate the description but keep the meaning exact, and keep \"1-24\" as digits.",
+		"length": "English is 74 source characters. One sentence; may wrap under the field.",
+		"placeholders": {}
+	},
 	"ui.projects.project_editors.a_short_name_for_the_workstream": {
 		"role": "project editors: field, view or status label for “A short name for the workstream”",
 		"tone": "Concise neutral label, retaining English sentence case.",
@@ -1994,6 +2015,27 @@
 		"tone": "Plain explanatory prose; preserve consequences and qualifiers.",
 		"note": "English source: Searches names, descriptions, tags, owners, teams and update text. Clearing the search and filters restores the list..  Markup and emphasized user names stay outside this message.",
 		"length": "English is 117 source characters. Existing feedback may wrap; keep the same sentence/paragraph count, no additional instructions."
+	},
+	"ui.projects.project_sheet_model.template_summary": {
+		"role": "project create sheet: markdown H2 heading “Summary” in the description field's editable starter skeleton (Summary / Goals / Notes)",
+		"tone": "Concise neutral section heading; a single word or very short noun phrase, sentence case.",
+		"note": "English source: Summary. The code renders this as a markdown level-2 heading by prefixing \"## \"; do NOT include \"#\" or any markdown in the value. The user edits or deletes this seed text freely, so it is a suggestion, not a label.",
+		"length": "English is 7 source characters. Keep it one or two words; it sits on its own line as a heading.",
+		"placeholders": {}
+	},
+	"ui.projects.project_sheet_model.template_goals": {
+		"role": "project create sheet: markdown H2 heading “Goals” in the description field's editable starter skeleton (Summary / Goals / Notes)",
+		"tone": "Concise neutral section heading; a single word or very short noun phrase, sentence case.",
+		"note": "English source: Goals. The code renders this as a markdown level-2 heading by prefixing \"## \"; do NOT include \"#\" or any markdown in the value. The user edits or deletes this seed text freely, so it is a suggestion, not a label.",
+		"length": "English is 5 source characters. Keep it one or two words; it sits on its own line as a heading.",
+		"placeholders": {}
+	},
+	"ui.projects.project_sheet_model.template_notes": {
+		"role": "project create sheet: markdown H2 heading “Notes” in the description field's editable starter skeleton (Summary / Goals / Notes)",
+		"tone": "Concise neutral section heading; a single word or very short noun phrase, sentence case.",
+		"note": "English source: Notes. The code renders this as a markdown level-2 heading by prefixing \"## \"; do NOT include \"#\" or any markdown in the value. The user edits or deletes this seed text freely, so it is a suggestion, not a label.",
+		"length": "English is 5 source characters. Keep it one or two words; it sits on its own line as a heading.",
+		"placeholders": {}
 	},
 	"ui.projects.project_sort.a_to_z": {
 		"role": "project sort: field, view or status label for “A to Z”",
