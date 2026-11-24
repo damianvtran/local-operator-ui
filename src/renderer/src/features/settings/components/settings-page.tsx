@@ -716,6 +716,18 @@ export const SettingsPage: FC = () => {
 	 * after that commit.
 	 */
 	const pendingPanelFocusRef = useRef<string | null>(null);
+	/*
+	 * A keyboard rail press asks for the PANEL, not for a section inside it: the
+	 * reader chose a destination and should land on the region that names it
+	 * (round 3, U1). Separate from `pendingPanelFocusRef`, which the page's own
+	 * skip-link requests use to focus a SECTION within a panel.
+	 */
+	const pendingPanelBoxRef = useRef<string | null>(null);
+	const panelElement = useCallback(
+		(tab: string): HTMLElement | null =>
+			document.getElementById(`settings-panel-${tab}`),
+		[],
+	);
 	const capabilities = useDesktopCapabilities();
 	const settingsFeatureEnabled = desktopFeatureEnabled(
 		capabilities.data,
@@ -879,6 +891,13 @@ export const SettingsPage: FC = () => {
 		if (scrollerNode) {
 			scrollerNode.scrollTop = scrollMemory.recall(activeTab) ?? 0;
 		}
+		const box = pendingPanelBoxRef.current;
+		if (box === activeTab) {
+			pendingPanelBoxRef.current = null;
+			/* `preventScroll`: the tab's own position was set just above, and this
+			   must not undo it. */
+			panelElement(activeTab)?.focus({ preventScroll: true });
+		}
 		const pending = pendingPanelFocusRef.current;
 		if (pending !== activeTab) return;
 		pendingPanelFocusRef.current = null;
@@ -887,7 +906,14 @@ export const SettingsPage: FC = () => {
 		// Programmatic rest-stop, not a tab stop: the same rule the search jump uses.
 		if (landing.tabIndex < 0) landing.tabIndex = -1;
 		landing.focus({ preventScroll: true });
-	}, [activeTab, scrollerNode, scrollMemory, settingsTabStale, sectionRefs]);
+	}, [
+		activeTab,
+		scrollerNode,
+		scrollMemory,
+		settingsTabStale,
+		sectionRefs,
+		panelElement,
+	]);
 	/*
 	 * The scroll listener is PASSIVE and lives as long as the scroller element
 	 * does: it records under whichever tab the arrival effect last tracked, so a
@@ -1230,7 +1256,25 @@ export const SettingsPage: FC = () => {
 			>
 				<SettingsSidebar
 					activeTab={activeTab}
-					onSelectTab={selectTab}
+					/*
+					 * A keyboard press on a rail row lands the reader IN the panel it
+					 * revealed (round 3, U1): the arriving tab's section is focused by
+					 * the arrival effect, once it is no longer `hidden` and the tab's
+					 * remembered scroll is set — the same `pendingPanelFocusRef` the
+					 * page's own deep-link focus requests use. A press on the row that
+					 * is already current changes no tab, so there is no arrival to
+					 * focus on and it focuses now.
+					 */
+					onSelectTab={(tab, options) => {
+						if (options?.focusPanel) {
+							if (tab === activeTab) {
+								panelElement(tab)?.focus({ preventScroll: true });
+							} else {
+								pendingPanelBoxRef.current = tab;
+							}
+						}
+						selectTab(tab);
+					}}
 					sections={settingsSections}
 				/>
 			</div>

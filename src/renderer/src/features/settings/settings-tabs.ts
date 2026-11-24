@@ -288,6 +288,21 @@ export function lastSettingsTab(): string | null {
 }
 
 /**
+ * Whether a rail activation came from the KEYBOARD.
+ *
+ * A click's `detail` is the click count: a pointer press reports 1 or more, and
+ * a keyboard activation (Enter/Space on the focused row, or `element.click()`)
+ * reports 0. The rail uses it to decide whether the reader needs their focus
+ * MOVED into the panel they just chose: a keyboard reader is standing on a
+ * button whose destination is now on screen behind 13 other rows, so they are
+ * taken to the panel's named region; a pointer reader's focus is already where
+ * their hand is, and moving it would only take the row's own focus ring away.
+ */
+export function keyboardActivation(detail: number): boolean {
+	return detail === 0;
+}
+
+/**
  * The tab a visit opens on: the run's last tab, read ONCE at mount.
  *
  * This is a named function rather than a call to `lastSettingsTab()` inside the

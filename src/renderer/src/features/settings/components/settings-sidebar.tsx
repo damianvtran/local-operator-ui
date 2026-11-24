@@ -19,7 +19,7 @@ import {
 	SlidersHorizontal,
 } from "lucide-react";
 import type { ComponentType, FC } from "react";
-import { TOUR_TAGS } from "../settings-tabs";
+import { TOUR_TAGS, keyboardActivation } from "../settings-tabs";
 
 /**
  * A section's glyph. Every entry is now a component that draws itself in
@@ -56,7 +56,7 @@ type SettingsSidebarProps = {
 	/** The tab the URL selects (the panel on screen) */
 	activeTab: string;
 	/** Show a tab: a history push, and a no-op for the tab already showing */
-	onSelectTab: (tab: string) => void;
+	onSelectTab: (tab: string, options?: { focusPanel?: boolean }) => void;
 	/** List of available settings sections */
 	sections: SettingsSection[];
 };
@@ -219,7 +219,17 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 		const button = (
 			<button
 				type="button"
-				onClick={() => onSelectTab(section.id)}
+				/*
+				 * A keyboard activation (Enter/Space, `detail === 0`) asks for focus
+				 * in the panel: the reader chose a destination and would otherwise
+				 * have to Tab past the rest of the rail to reach it. A pointer press
+				 * keeps focus on the row, under the reader's own hand (round 3, U1).
+				 */
+				onClick={(event) =>
+					onSelectTab(section.id, {
+						focusPanel: keyboardActivation(event.detail),
+					})
+				}
 				data-settings-tab={section.id}
 				aria-current={isActive ? "page" : undefined}
 				/* Unlabelled the row is an icon and nothing else, and a tooltip

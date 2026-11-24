@@ -33097,6 +33097,68 @@ async function sceneSettingsTabs(cdp) {
 	await wait(350);
 	await expectTab("appearance", "rail press back to appearance");
 
+	/*
+	 * 2b. U1: a KEYBOARD press lands the reader IN the panel it revealed; a
+	 * POINTER press leaves focus on the row under the reader's hand. This
+	 * scene's own `press` verb is a synthetic click with `detail: 0` (the
+	 * keyboard path), so the pointer half needs a real CDP press.
+	 */
+	const rowFocused = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-settings-tab="speech"]');
+		if (!row) return false;
+		row.focus();
+		return document.activeElement === row;
+	})()`);
+	await pressKey("Enter", "Enter", 13);
+	await wait(500);
+	const afterEnter = await cdp.evaluate(`(() => {
+		const panel = document.querySelector('[data-settings-panel="speech"]');
+		const active = document.activeElement;
+		return {
+			shown: panel ? !panel.hasAttribute('hidden') : false,
+			onPanel: panel !== null && active === panel,
+			tag: active?.tagName ?? null,
+			label: active?.getAttribute?.('aria-label') ?? null,
+		};
+	})()`);
+	check(
+		"Enter on a rail row moves focus into the panel it revealed",
+		rowFocused === true && afterEnter.shown && afterEnter.onPanel,
+		JSON.stringify(afterEnter),
+	);
+	const appearanceBox = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-settings-tab="appearance"]');
+		if (!row) return null;
+		const r = row.getBoundingClientRect();
+		return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+	})()`);
+	if (appearanceBox) {
+		for (const type of ["mousePressed", "mouseReleased"]) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type,
+				x: appearanceBox.x,
+				y: appearanceBox.y,
+				button: "left",
+				clickCount: 1,
+			});
+		}
+	}
+	await wait(500);
+	const afterPointer = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-settings-tab="appearance"]');
+		const panel = document.querySelector('[data-settings-panel="appearance"]');
+		return {
+			shown: panel ? !panel.hasAttribute('hidden') : false,
+			onRow: row !== null && document.activeElement === row,
+			tag: document.activeElement?.tagName ?? null,
+		};
+	})()`);
+	check(
+		"a pointer press leaves focus on the rail row",
+		afterPointer.shown && afterPointer.onRow,
+		JSON.stringify(afterPointer),
+	);
+
 	/* ---------------------------------------------------------------- */
 	/* 3. Cmd/Ctrl+F reaches a row in ANOTHER tab and reveals it          */
 	/* ---------------------------------------------------------------- */

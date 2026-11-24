@@ -50,6 +50,14 @@ export const SettingsTabPanel: FC<SettingsTabPanelProps> = ({
 		data-settings-panel={tab}
 		id={`settings-panel-${tab}`}
 		aria-label={label}
+		/*
+		 * A programmatic rest-stop, never a tab stop: a keyboard press on the rail
+		 * moves focus here (the row's own `event.detail === 0`), so the reader
+		 * lands on the named region they chose instead of walking the remaining
+		 * rail rows to reach it. `-1`, because the panel itself is not something
+		 * Tab should stop on later.
+		 */
+		tabIndex={-1}
 	>
 		{children}
 	</section>

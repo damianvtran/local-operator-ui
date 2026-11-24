@@ -61,6 +61,7 @@ const {
 	revealSettingsTab,
 	bindTabScrollMemory,
 	textDirectionFor,
+	keyboardActivation,
 } = await import(dataUrl);
 
 const sectionForKey = (key) => (key === "model_effort" ? "general" : "backend");
@@ -590,5 +591,49 @@ test("the rail tooltip's side is the LOCALE's direction, never a rendered attrib
 		sidebar,
 		/documentElement\.dir/,
 		"no render-time read of the attribute the layout effect writes later",
+	);
+});
+
+test("a keyboard rail press asks for the panel, a pointer press does not", () => {
+	/*
+	 * Round 3, U1. A click's `detail` is the click count: Enter/Space (and a
+	 * scripted `element.click()`) report 0, a pointer press reports 1. The rule
+	 * lives in the pure module so the rail, the page and this test agree.
+	 */
+	assert.equal(keyboardActivation(0), true, "keyboard activation");
+	assert.equal(keyboardActivation(1), false, "a single pointer press");
+	assert.equal(keyboardActivation(2), false, "a double press");
+
+	const sidebar = readFileSync(
+		"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		sidebar,
+		/focusPanel: keyboardActivation\(event\.detail\)/,
+		"the row reads the click count, not a separate key handler",
+	);
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/pendingPanelBoxRef\.current = tab;/,
+		"a cross-tab keyboard press waits for the arrival",
+	);
+	assert.match(
+		page,
+		/panelElement\(activeTab\)\?\.focus\(\{ preventScroll: true \}\)/,
+		"and the arrival focuses the panel without scrolling it",
+	);
+	const panel = readFileSync(
+		"src/renderer/src/features/settings/components/settings-tab-panel.tsx",
+		"utf8",
+	);
+	assert.match(
+		panel,
+		/tabIndex=\{-1\}/,
+		"the panel is a programmatic focus target",
 	);
 });
