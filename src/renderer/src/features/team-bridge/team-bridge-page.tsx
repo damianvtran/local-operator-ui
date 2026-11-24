@@ -1736,8 +1736,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		tenantId: string,
 	) =>
 		labelFor(participant, tenantId) ??
+		/* A Team Bridge agent is a chief of staff: unnamed, it is still that,
+		   never "Unknown agent" (operator report, 2026-11-23). */
 		(participant.kind === "agent"
-			? t("ui.teamBridge.sender.unknown_agent")
+			? t("ui.teamBridge.chief.fallback")
 			: t("ui.teamBridge.sender.unknown_person"));
 	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
 	// owns is listed on its own. The union view folds them the same way, one
@@ -5210,7 +5212,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					   nothing, so it needs no pending/failure state here. */
 					const agentName =
 						selfPersonFor(subject.tenant_id)?.agent?.name?.trim() ||
-						t("ui.teamBridge.sender.unknown_agent");
+						// The reader's own chief of staff, unnamed: still a chief
+						// of staff, never "Unknown agent" (operator report, 2026-11-23).
+						t("ui.teamBridge.chief.fallback");
 					return (
 						<TeamBridgeResponderDialog
 							open

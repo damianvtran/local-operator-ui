@@ -3277,6 +3277,65 @@ export const ChiefLabelNamedAgent: Story = {
 	},
 };
 
+/*
+ * AN AGENT MESSAGE IS AUTHORED BY THE AGENT (operator report, 2026-11-23).
+ * PR #2035 painted "Ben Tran" with an "Unknown agent" subline on every agent
+ * row, because the session leaf it read is not sent yet; the agent's name was
+ * left only in the body's "Santa Claus —" prefix. These rows carry no
+ * `agent_session`, exactly as production does today, so the author line must
+ * read as the rail's Chiefs row: "Santa Claus (Ben Tran)".
+ */
+const santaRoster = rosterWithChiefs.map((row) =>
+	row.account_id === "acct_ben"
+		? {
+				...row,
+				agent: { endpoint_id: "bep_ben", name: "Santa Claus", state: "active" },
+			}
+		: row,
+);
+const santaMessage = (conversationId: string): TeamBridgeMessage => ({
+	id: `bcmsg_santa_${conversationId}`,
+	conversation_id: conversationId,
+	seq: 13,
+	sender: {
+		account_id: "acct_ben",
+		kind: "agent",
+		display_label: "Santa Claus",
+	},
+	body: "Santa Claus — on it, Damian: the fixtures are coming out of the UI now.",
+	origin: "agent",
+	created_at: at(2),
+});
+export const AgentAuthorInDm: Story = {
+	args: {
+		...ChiefLabelUnnamedAgent.args,
+		people: santaRoster,
+		messages: [santaMessage(chiefDm.id)],
+	},
+};
+export const AgentAuthorInChannel: Story = {
+	args: {
+		...slackRail,
+		people: santaRoster,
+		target: { type: "conversation", id: channel.id },
+		messages: [santaMessage(channel.id)],
+	},
+};
+/* Nothing names the agent (no directory row, no stored label): the row reads
+   "Chief of staff", never "Unknown agent". */
+export const AgentAuthorUnresolved: Story = {
+	args: {
+		...AgentAuthorInChannel.args,
+		people: rosterWithChiefs.filter((row) => row.account_id !== "acct_ben"),
+		messages: [
+			{
+				...santaMessage(channel.id),
+				sender: { account_id: "acct_ben", kind: "agent", display_label: "" },
+			},
+		],
+	},
+};
+
 /**
  * A first send to a teammate's chief, through the real create serializer
  * (`draftCreateInput`), read back by the real view. The payload is printed so
