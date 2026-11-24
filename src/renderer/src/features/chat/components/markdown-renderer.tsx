@@ -50,6 +50,7 @@ import {
 } from "../utils/markdown-blocks";
 import { closeOpenMarkdown, openFenceOf } from "../utils/markdown-remend";
 import { opensInCanvas } from "../utils/open-in-canvas";
+import { rehypeBlockDirection } from "../utils/rehype-block-direction";
 import { remarkLinkifyTargets } from "../utils/remark-linkify-targets";
 import { remarkSkillInk } from "../utils/remark-skill-ink";
 import { remarkSoftBreaks } from "../utils/remark-soft-breaks";
@@ -570,7 +571,17 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
  * `remarkCredentialCitations` and `remarkSoftBreaks` all emit text nodes with no
  * `position`. Behind any of them a node has nothing to map by (`remark-skill-ink.ts`).
  */
-const NO_REHYPE: [] = [];
+/*
+ * EVERY PIPELINE ENDS WITH `rehypeBlockDirection` (i18n census N2): each
+ * paragraph, list, quote and cell carries the direction of its own first strong
+ * character (code and math excluded), so an English
+ * reply under ur no longer paints "!Hello" and a mixed reply reads per block.
+ * Both arrays are hoisted for the identity reasons above, and both the static
+ * renderer and the streaming `ParsedBlock` take theirs from `useMathPipeline`,
+ * so the settled paint and every streamed block carry the same attributes
+ * (`utils/rehype-block-direction.ts` carries the why).
+ */
+const BASE_REHYPE: [typeof rehypeBlockDirection] = [rehypeBlockDirection];
 /*
  * KaTeX options (2026-11-10). Agent output is untrusted TeX, so:
  *   - `throwOnError: false` - invalid TeX renders as KaTeX's own error span (the
@@ -591,9 +602,10 @@ const KATEX_OPTIONS = {
 	trust: false,
 	errorColor: "var(--lo-danger)",
 } as const;
-const KATEX_ONLY: [[typeof rehypeKatex, typeof KATEX_OPTIONS]] = [
-	[rehypeKatex, KATEX_OPTIONS],
-];
+const KATEX_REHYPE: [
+	[typeof rehypeKatex, typeof KATEX_OPTIONS],
+	typeof rehypeBlockDirection,
+] = [[rehypeKatex, KATEX_OPTIONS], rehypeBlockDirection];
 
 /**
  * Whether the content is worth paying for the math pipeline.
@@ -701,7 +713,7 @@ const useMathPipeline = (
 	);
 	return {
 		remarkPlugins: remarkPlugins as typeof base,
-		rehypePlugins: mathEnabled ? KATEX_ONLY : NO_REHYPE,
+		rehypePlugins: mathEnabled ? KATEX_REHYPE : BASE_REHYPE,
 	};
 };
 
@@ -1305,9 +1317,16 @@ ParsedBlock.displayName = "ParsedBlock";
  */
 const OpenFenceBody = ({ info, body }: { info: string; body: string }) => {
 	const language = info.split(WHITESPACE_RUN)[0];
+	/*
+	 * `dir="ltr"` on both, exactly as the closed fence carries them
+	 * (`rehypeBlockDirection` pins the parse's `pre`, `MARKDOWN_COMPONENTS.code`
+	 * its `code`). This path paints without either, so without the pin an open
+	 * fence under ur inherited the document's rtl - right-aligned - and jumped
+	 * left the moment it closed (code review round 1, R1-2).
+	 */
 	return (
-		<pre>
-			<code className={language ? `language-${language}` : undefined}>
+		<pre dir="ltr">
+			<code dir="ltr" className={language ? `language-${language}` : undefined}>
 				{body === "" ? "" : `${body}${body.endsWith("\n") ? "" : "\n"}`}
 			</code>
 		</pre>

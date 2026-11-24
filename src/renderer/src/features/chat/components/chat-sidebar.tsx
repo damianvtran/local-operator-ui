@@ -89,7 +89,7 @@ import {
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
-import { t } from "@shared/i18n";
+import { listSeparator, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -5574,9 +5574,24 @@ export function ChatSidebar({
 				    The fragments are the same ones the flyout draws (`remoteHost`,
 				    then the split `remoteUnreachable` line when the owner did not
 				    answer). */}
-				{remote && <span className="sr-only">, {remoteHost}</span>}
+				{/* THE CLAUSE JOINER IS THE LOCALE'S (i18n census N3). Each `sr-only`
+				    fragment below extends the row's accessible name by one clause, and
+				    the joiner used to be a literal ", " - a Latin comma inside the Urdu
+				    and Chinese sentences a screen reader speaks. `listSeparator()` is
+				    CLDR's list separator for the interface language (", " in en, so the
+				    English name is byte-identical; "، " in ur; "、" in zh-CN), read per
+				    render like `t()` so a language switch re-spells it. */}
+				{remote && (
+					<span className="sr-only">
+						{listSeparator()}
+						{remoteHost}
+					</span>
+				)}
 				{remoteUnreachable && (
-					<span className="sr-only">, {remoteUnreachable}</span>
+					<span className="sr-only">
+						{listSeparator()}
+						{remoteUnreachable}
+					</span>
 				)}
 				{/* PINNED IS SPOKEN IN TAG MODE (PR #1747 U6). In Time section a pinned row
 				    sits under the PINNED heading, which is what tells a screen reader; in
@@ -5584,7 +5599,8 @@ export function ChatSidebar({
 				    the row's name carries the same word the section label uses. */}
 				{pinned && groupBy === "tag" && !nested && (
 					<span className="sr-only">
-						, {t("ui.chat.sidebar_view.section.pinned")}
+						{listSeparator()}
+						{t("ui.chat.sidebar_view.section.pinned")}
 					</span>
 				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
@@ -5602,7 +5618,10 @@ export function ChatSidebar({
 				    (review n1's arrangement). */}
 				{agentOpenedRow(row) &&
 					(trailing === "team" || trailing === "none") && (
-						<span className="sr-only">, {openedBySentence(row)}</span>
+						<span className="sr-only">
+							{listSeparator()}
+							{openedBySentence(row)}
+						</span>
 					)}
 				{/*
 				 * THE SUBAGENT CLAUSE, and it belongs here rather than beside the glyphs
@@ -5664,7 +5683,8 @@ export function ChatSidebar({
 								{relativeTime(row, listNow, view.basis)}
 							</span>
 							<span className="sr-only">
-								, {relativeTimeSentence(row, listNow, view.basis)}
+								{listSeparator()}
+								{relativeTimeSentence(row, listNow, view.basis)}
 							</span>
 						</>
 					)

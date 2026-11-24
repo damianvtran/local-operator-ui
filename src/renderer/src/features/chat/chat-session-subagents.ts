@@ -27,7 +27,7 @@
  * lane) belong to `components/chat-session-status.tsx`.
  */
 
-import { currentLocale, t } from "@shared/i18n";
+import { formatList, t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 
 /**
@@ -136,43 +136,20 @@ export function hasBackgroundWork(
 	return row.status?.code === COUNTS_RIDE_THE_LABEL;
 }
 
-/*
- * `Intl.ListFormat` is ES2021 and this renderer's `lib` is ES2020, so the one
- * constructor used here is typed locally rather than widening `lib` for the
- * whole app. Every runtime this code runs in (Electron's Chromium, Node >= 13
- * for the tests) ships it.
- */
-type ListFormatter = { format(items: string[]): string };
-const ListFormat = (
-	Intl as unknown as {
-		ListFormat: new (
-			tag: string,
-			options: { type: "conjunction"; style: "narrow" },
-		) => ListFormatter;
-	}
-).ListFormat;
-
 /**
- * The current locale's list joiner, cached per tag ("1 subagent, 1 job").
+ * The current locale's list joiner ("1 subagent, 1 job").
  *
  * CONJUNCTION/NARROW, NOT UNIT/SHORT (i18n audit round 1, I1): CLDR's unit
  * list joins with a bare space in ru ("1 субагент 1 задание") and with nothing
  * at all in zh-CN ("1个子智能体1个任务"), which reads as one run-on count. The
  * narrow conjunction keeps en's "1 subagent, 1 job" byte-identical and gives
  * every other shipped locale its own list punctuation ("、" in zh-CN, "، " in ur,
- * "y"/"और" where the language joins two items with a word).
+ * "y"/"और" where the language joins two items with a word). That is exactly
+ * the shared `formatList` (src/i18n/format.ts), which also owns the per-locale
+ * cache this module used to keep privately (i18n census N3: one joiner, not
+ * one per feature).
  */
-let listFormat: { tag: string; format: ListFormatter } | null = null;
-const joinItems = (items: string[]): string => {
-	const tag = currentLocale();
-	if (listFormat?.tag !== tag) {
-		listFormat = {
-			tag,
-			format: new ListFormat(tag, { type: "conjunction", style: "narrow" }),
-		};
-	}
-	return listFormat.format.format(items);
-};
+const joinItems = (items: string[]): string => formatList(items);
 
 /**
  * The background-work clause a reader hears - appended once to the row's

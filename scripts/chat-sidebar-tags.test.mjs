@@ -972,8 +972,13 @@ test("tag mode: the Agent/flat hint offers Tag, and Tag mode speaks a pin", () =
 		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 		"utf8",
 	);
+	/* The clause is still spoken, but its lead-in is the locale's own list
+	   separator (i18n census N3): a hard-coded ASCII ", " put a Latin comma
+	   inside Urdu and Chinese accessible names. Pinning `listSeparator()` here
+	   keeps both halves of the contract — Tag mode speaks the pin, and it does
+	   so without an English joiner. */
 	assert.match(
 		source,
-		/pinned && groupBy === "tag" && !nested && \(\s*<span className="sr-only">\s*, \{t\("ui\.chat\.sidebar_view\.section\.pinned"\)\}/,
+		/pinned && groupBy === "tag" && !nested && \(\s*<span className="sr-only">\s*\{listSeparator\(\)\}\s*\{t\("ui\.chat\.sidebar_view\.section\.pinned"\)\}/,
 	);
 });
