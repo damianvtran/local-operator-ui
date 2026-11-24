@@ -134,7 +134,7 @@
 	"ui.notifications.drawer.back": "Quay lại mục Cập nhật",
 	"ui.notifications.drawer.open_in_notifications": "Mở trong mục Thông báo",
 	"ui.notifications.source.conversation_deleted": "Cuộc trò chuyện đã bị xóa",
-	"ui.notifications.toast.nothing_to_dismiss": "Không có gì để ẩn. Câu hỏi đang mở vẫn ở lại cho đến khi bạn trả lời, từ chối hoặc ẩn.",
+	"ui.notifications.toast.nothing_to_dismiss": "Không có gì để ẩn. Câu hỏi đang mở vẫn được giữ lại cho đến khi bạn trả lời, từ chối hoặc ẩn.",
 	"ui.notifications.detail.deleted.ask": "Cuộc trò chuyện này đã bị xóa nên không thể trả lời câu hỏi này. Hãy từ chối hoặc ẩn để gỡ nó.",
 	"ui.notifications.detail.deleted.update": "Cuộc trò chuyện này đã bị xóa. Bạn vẫn có thể ẩn cập nhật này.",
 	"ui.notifications.detail.deleted.open_tip": "Cuộc trò chuyện này đã bị xóa",
