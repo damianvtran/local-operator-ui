@@ -11819,7 +11819,10 @@ export type MessageParams = {
 	"ui.projects.project_edit_model.keep_the_description_within_value1_characters": {
 		value1: number;
 	};
+	"ui.projects.project_edit_model.name_grammar": undefined;
+	"ui.projects.project_edit_model.name_required": undefined;
 	"ui.projects.project_edit_model.owners": undefined;
+	"ui.projects.project_edit_model.tag_grammar": undefined;
 	"ui.projects.project_edit_model.teams": undefined;
 	"ui.projects.project_edit_model.teams_are_at_most_value2_characters": {
 		teams: string;
@@ -12071,6 +12074,9 @@ export type MessageParams = {
 	"ui.projects.project_request_update_button.requesting": undefined;
 	"ui.projects.project_search.searches_names_descriptions_tags_owners_and_teams_update_text_is": undefined;
 	"ui.projects.project_search.searches_names_descriptions_tags_owners_teams_and_update_text_cle": undefined;
+	"ui.projects.project_sheet_model.template_goals": undefined;
+	"ui.projects.project_sheet_model.template_notes": undefined;
+	"ui.projects.project_sheet_model.template_summary": undefined;
 	"ui.projects.project_sort.a_to_z": undefined;
 	"ui.projects.project_sort.archived_first": undefined;
 	"ui.projects.project_sort.days_first": undefined;

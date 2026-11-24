@@ -1,0 +1,122 @@
+{
+	"instance": "audit-i18n-psopt-hi",
+	"locale": "hi",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 1,
+	"scope": [
+		"ui.projects (6 new keys)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-hi)",
+		"session": "d054015c7056 (from this session's system header 'Session ID', not a registry read)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue/ledger, committed and posted nothing, ran no ledger write; only this receipt was written. Translator was a separate i18n-translator session; same model family possible and not verifiable, so independence is session-level. No MT service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "10c0c83a272e434e7a747bbda045f7e1cdecc454",
+	"base": "origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"en_sha256": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+	"hi_sha256": "e19590ba521dd7a9017df312325a94eaf5388541c63291ceb103d239cfc7c61d",
+	"hashes": {
+		"en/ui.projects.json": "31af6ba5b487e331a2f7b04c8dbaf2fe7e425533dd1fe5d9a1965f83646a1d97",
+		"hi/ui.projects.json": "e19590ba521dd7a9017df312325a94eaf5388541c63291ceb103d239cfc7c61d",
+		"en/ui.projects.context.json": "8e55985776883f6aa91ecfc80fa0001e5396c31dd9289221a559167c5cd9f10a"
+	},
+	"references": {
+		"glossary": "local-operator@1b011ed566f9 (= origin/main 1b011ed566f9 at audit time) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7: project -> प्रोजेक्ट; Latin digits for hi; hi plural one/other",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/hi.md sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5: आप, polite imperative (-एँ/-ें), danda, nukta kept, living loans over Sanskritisation",
+		"shipped_terms": "hi ui.projects: tags -> टैग; letters_digits_dot_underscore_or_dash_no_spaces 'अक्षर, अंक, डॉट, अंडरस्कोर या डैश; स्पेस नहीं।'; comma_separated_up_to_8... 'छोटे अक्षर, अंक, अंडरस्कोर या डैश।'; character counts use 'अक्षर' (titles_are_at_most_value1_characters); delete dialog 'प्रोजेक्ट का नाम'; corpus 'नोट्स' (release notes), 'सारांश'"
+	},
+	"checks": [
+		{
+			"check": "key-set parity en vs hi",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "diff is additions only",
+			"result": "PASS",
+			"detail": "vs 8b5ca519a1f: 0 existing hi values changed, 0 removed, 6 added, exactly the 6 in scope"
+		},
+		{
+			"check": "placeholders/ICU",
+			"result": "PASS",
+			"detail": "no { } in en or hi values; node --test locale-parity: '[hi] preserves every ICU placeholder' pass"
+		},
+		{
+			"check": "CLDR plurals",
+			"result": "PASS",
+			"detail": "no ICU plural needed: tag_grammar's '1-24 वर्णों' is a fixed range, oblique plural is grammatical; hi one/other not engaged"
+		},
+		{
+			"check": "NFC / bidi / invisible",
+			"result": "PASS",
+			"detail": "all 6 NFC; no U+200C-200F, U+202A-202E, U+2066-2069; non-Devanagari chars only space, ',', '-', '1','2','4'; no double/trailing spaces"
+		},
+		{
+			"check": "hi punctuation & orthography",
+			"result": "PASS",
+			"detail": "danda U+0964 ends the 3 sentences; headings bare (no '#', no danda); nukta in अंग्रेज़ी; '1-24' Latin digits with ASCII hyphen as context requires"
+		},
+		{
+			"check": "ASCII-only fidelity",
+			"result": "PASS",
+			"detail": "name/tag grammar say 'अंग्रेज़ी (के छोटे) अक्षर' and 'केवल' — matches /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/ and /^[a-z0-9][a-z0-9_-]{0,23}$/ better than en; range 1-24 exact"
+		},
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "context-parity ok; check-duplicates ok (0 dups); node --test locale-parity/catalogue-locale/hi-activation: 54/55 pass, all [hi] rows pass; the 1 fail is [fr] template_notes 'Notes' identical to en (out of this locale's scope)"
+		},
+		{
+			"check": "fit",
+			"result": "NOTE",
+			"detail": "no maxCells hint; errors wrap under field (name_grammar 122 vs 88 cp, tag_grammar 100 vs 74); headings 5-6 cp"
+		},
+		{
+			"check": "RTL",
+			"result": "N/A",
+			"detail": "hi is LTR"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 2
+	},
+	"findings": [
+		{
+			"id": "N1",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.name_grammar",
+			"current": "नाम किसी अंग्रेज़ी अक्षर या अंक से शुरू होना चाहिए, और उसमें केवल अंग्रेज़ी अक्षर, अंक, डॉट, अंडरस्कोर या डैश हो सकते हैं।",
+			"suggested": "नाम किसी अंग्रेज़ी अक्षर या 0-9 अंक से शुरू होना चाहिए, और उसमें केवल अंग्रेज़ी अक्षर, 0-9 अंक, डॉट, अंडरस्कोर या डैश हो सकते हैं।",
+			"reason": "Pattern rejects Devanagari digits ०-९; 'अंक' alone does not exclude them (अंग्रेज़ी scopes the letters). Low risk since hi UI uses Latin digits; same applies to tag_grammar. Optional."
+		},
+		{
+			"id": "N2",
+			"severity": "NIT",
+			"key": "ui.projects.project_edit_model.tag_grammar",
+			"current": "टैग 1-24 वर्णों के होते हैं, …",
+			"suggested": "keep as is",
+			"reason": "Same file counts characters with 'अक्षर' (titles_are_at_most_value1_characters). 'वर्ण' here is a justified divergence: the sentence also says 'छोटे अक्षर' (lowercase letters) and अक्षर for both would blur them. Recorded, no change."
+		}
+	],
+	"per_key": {
+		"ui.projects.project_sheet_model.template_summary": "ok: 'सारांश' standard heading word, used in corpus; bare value, no markdown",
+		"ui.projects.project_sheet_model.template_goals": "ok: 'लक्ष्य' natural for Goals; shares word with 'लक्ष्य तारीख़' (target date) but as a description heading context is unambiguous",
+		"ui.projects.project_sheet_model.template_notes": "ok: 'नोट्स' matches corpus plural loan (रिलीज़ नोट्स)",
+		"ui.projects.project_edit_model.name_required": "ok: 'प्रोजेक्ट को एक नाम दें।' idiomatic polite imperative, glossary प्रोजेक्ट",
+		"ui.projects.project_edit_model.name_grammar": "N1; otherwise accurate, native, ASCII restriction stated explicitly",
+		"ui.projects.project_edit_model.tag_grammar": "N2; accurate 1-24 range, lowercase ASCII stated, 'केवल' faithful to the closed set"
+	},
+	"result": "clean-with-findings",
+	"status": "passed",
+	"status_note": "Brief offered 'passed-with-findings'; ledger-rules.mjs deriveReceiptAudit accepts only passed|changes_requested (result clean|clean-with-findings|changes_requested), so status 'passed' + result 'clean-with-findings'."
+}

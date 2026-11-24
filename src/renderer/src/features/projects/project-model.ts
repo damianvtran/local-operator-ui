@@ -151,11 +151,16 @@ export function projectStatusMeta(status: string): ChipMeta {
  * spell a state differently. The sequence is the lifecycle order `PROJECT_STATUSES`
  * declares in the wire contract - planning -> active -> qa -> validation ->
  * done, then the two side states - written once here rather than per list.
+ *
+ * A FUNCTION, NOT A CONSTANT (i18n E1). This used to be an exported array whose
+ * labels were resolved by `.map()` at module load - before the backend's
+ * language was negotiated - so the menu stayed English while the chips beside
+ * it (whose `label` getters read `t()` on access) followed the locale. Call it
+ * during render in a component that subscribes via `useI18nLocale()`, so a
+ * language switch repaints the menu with fresh labels. Only the value list is
+ * kept at module scope: values are wire data and never localized.
  */
-export const PROJECT_STATUS_OPTIONS: ReadonlyArray<{
-	value: string;
-	label: string;
-}> = [
+const PROJECT_STATUS_OPTION_VALUES = [
 	"planning",
 	"active",
 	"qa",
@@ -163,7 +168,17 @@ export const PROJECT_STATUS_OPTIONS: ReadonlyArray<{
 	"done",
 	"paused",
 	"archived",
-].map((value) => ({ value, label: projectStatusMeta(value).label }));
+] as const;
+
+export function projectStatusOptions(): ReadonlyArray<{
+	value: string;
+	label: string;
+}> {
+	return PROJECT_STATUS_OPTION_VALUES.map((value) => ({
+		value,
+		label: projectStatusMeta(value).label,
+	}));
+}
 
 /**
  * Whether the status's chip carries a check BESIDE its colour.

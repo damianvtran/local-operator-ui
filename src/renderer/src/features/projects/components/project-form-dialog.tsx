@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { t, userTextDir } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The CREATE sheet for a project, used by the tab's `New project` — the
@@ -48,10 +48,7 @@ import {
 import { cn } from "@shared/lib/utils";
 import type { ClipboardEvent, FC } from "react";
 import { useEffect, useId, useRef, useState } from "react";
-import {
-	PROJECT_DESCRIPTION_MAX_CHARS,
-	projectNameRule,
-} from "../../../../../shared/desktop-contract";
+import { PROJECT_DESCRIPTION_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import type { DesktopProjectStatus } from "../../../../../shared/desktop-control-contract";
 import type {
 	ProjectCreateFields,
@@ -64,14 +61,16 @@ import {
 	projectDateOrderRule,
 	projectDescriptionRule,
 	projectEstimateNumberRule,
+	projectNameRule,
 	projectTagsFieldRule,
 	projectTitleRule,
 } from "../project-edit-model";
 import { ProjectMarkdown } from "../project-markdown";
-import { PROJECT_STATUS_OPTIONS, refusalCopy } from "../project-model";
+import { projectStatusOptions, refusalCopy } from "../project-model";
 import {
-	PROJECT_DESCRIPTION_TEMPLATE,
+	authoredProjectDescription,
 	pasteMarkdownIntoDescription,
+	projectDescriptionTemplate,
 	projectKeyFromTitle,
 } from "../project-sheet-model";
 
@@ -151,6 +150,14 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	const [preview, setPreview] = useState(false);
 	const fieldId = useId();
 	const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+	/**
+	 * The exact description seed this open inserted. The seed is built in the
+	 * locale active AT OPEN; the submit compares against this string, never a
+	 * freshly built template, so switching language with the sheet open cannot
+	 * turn an untouched seed into "authored" text. A ref, not state: it never
+	 * renders, and it is written in the same effect that seeds the field.
+	 */
+	const descriptionSeedRef = useRef("");
 
 	/*
 	 * The form is rebuilt whenever the dialog OPENS: a create sheet is only
@@ -161,7 +168,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	 */
 	useEffect(() => {
 		if (!open) return;
-		setForm({ ...EMPTY_FORM, description: PROJECT_DESCRIPTION_TEMPLATE });
+		const seed = projectDescriptionTemplate();
+		descriptionSeedRef.current = seed;
+		setForm({ ...EMPTY_FORM, description: seed });
 		setErrors({});
 		setRefusal(null);
 		setSubmitting(false);
@@ -277,20 +286,22 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 				followUp.estimate = Number(form.estimate);
 				followUp.estimate_unit = form.estimateUnit as "points" | "days";
 			}
+			/*
+			 * THE UNTOUCHED TEMPLATE IS NOT AUTHORED TEXT (UX round 1, U3): the
+			 * sheet seeds the section skeleton, and a submit that never wrote a
+			 * word must not file the seed as the project's own description.
+			 * Equality with the seed THIS OPEN inserted is the test (see
+			 * `authoredProjectDescription`) — any edit, however small, ships as
+			 * authored.
+			 */
+			const description = authoredProjectDescription(
+				form.description,
+				descriptionSeedRef.current,
+			);
 			await onSubmit({
 				fields: {
 					name: keyValue,
-					/*
-					 * THE UNTOUCHED TEMPLATE IS NOT AUTHORED TEXT (UX round 1, U3):
-					 * the sheet seeds the section skeleton, and a submit that never
-					 * wrote a word must not file the seed as the project's own
-					 * description. Equality with the constant is the test — any edit,
-					 * however small, ships as authored.
-					 */
-					...(form.description.trim() &&
-					form.description.trim() !== PROJECT_DESCRIPTION_TEMPLATE
-						? { description: form.description.trim() }
-						: {}),
+					...(description === undefined ? {} : { description }),
 					status: form.status as DesktopProjectStatus,
 					...(tags.length > 0 ? { tags } : {}),
 				},
@@ -502,6 +513,16 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							id={`${fieldId}-description`}
 							data-project-description=""
 							value={form.description}
+							/*
+							 * `userTextDir` (`dir="auto"` once non-empty): the description is the
+							 * operator's text, whose script need not match the interface. Inheriting
+							 * an RTL locale drew the seed line "## Summary" as "Summary ##" in ur: the
+							 * neutral "#" run takes the paragraph's RTL direction and lands at the
+							 * right edge. With `auto` the value's first strong character decides
+							 * (localized Urdu headings still resolve RTL); while empty the field
+							 * inherits the locale, so an Urdu placeholder and caret stay right.
+							 */
+							dir={userTextDir(form.description)}
 							onChange={(event) => set("description", event.target.value)}
 							onPaste={handleDescriptionPaste}
 							rows={8}
@@ -552,7 +573,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{PROJECT_STATUS_OPTIONS.map((option) => (
+								{projectStatusOptions().map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>

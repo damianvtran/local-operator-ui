@@ -47595,7 +47595,7 @@ async function sceneProjectInlineEdit(cdp) {
 	await clickControl("key", "accept");
 	const validationSentence = await waitForCondition(
 		cdp,
-		`(document.body.textContent ?? "").includes("Names start with a letter or digit")`,
+		`(document.body.textContent ?? "").includes("Keys start with a letter or digit")`,
 		4_000,
 	);
 	const afterValidation = await stored();

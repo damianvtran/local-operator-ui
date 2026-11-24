@@ -1,0 +1,91 @@
+{
+	"instance": "audit-i18n-psopt-r3-vi",
+	"locale": "vi",
+	"namespace": "ui.projects",
+	"audit_date": "2026-11-23",
+	"round": 3,
+	"scope": [
+		"ui.projects (round 3: name_required M1 remediation, uncommitted working copy vs e1cb9d658fa)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-vi, round 3)",
+		"session": "b6eeb2f98416",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5' and 'Session ID: b6eeb2f98416'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue or ledger, committed and posted nothing; only this receipt was written. Translator was a separate i18n-translator session; same model family is possible and not verifiable, so independence is session-level. No MT/translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"branch": "fix/i18n-project-status-options",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "origin/main 7809ec934a3",
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"vi": "2e388aead388df9764514d33edd1745330c38db3c6705c437f80293300408db8",
+		"en_context": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9, same blob as translator rev) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7: project -> 'dự án'",
+		"style_guide": "local-operator@1b011ed566f9 i18n/style-guides/vi.md sha256 99eed3b6f9b619f9eb7fb00e4ffc8963df0adaea29891dfa3aefc58d658eba51 (identical on origin/main): bạn-register dropped pronouns, terse, sentence case, no space before punctuation, Latin digits, NFC, other-only plurals",
+		"shipped_terms": "vi ui.projects: tags 'Thẻ'; key 'Khóa'; project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces 'Chữ cái, chữ số, dấu chấm, gạch dưới hoặc gạch ngang; không có khoảng trắng.'; comma_separated_... 'Dùng chữ thường, chữ số, dấu gạch dưới hoặc gạch ngang.'; 'Mục tiêu' already = Target (editors/list/sort)."
+	},
+	"checks": [
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "generate.mjs --check byte-identical; check-duplicates ok; check-strings ok; context-parity ok (rerun on working copy)"
+		},
+		{
+			"check": "key-set parity en vs vi",
+			"result": "PASS",
+			"detail": "433/433, symmetric diff empty"
+		},
+		{
+			"check": "delta in scope",
+			"result": "PASS",
+			"detail": "git diff vs HEAD e1cb9d658fa: only name_required changed ('Đặt khóa cho dự án.' -> 'Nhập khóa cho dự án.'); no other value, key added or removed"
+		},
+		{
+			"check": "placeholders/ICU/plurals",
+			"result": "PASS",
+			"detail": "none in en or vi"
+		},
+		{
+			"check": "NFC / bidi / punctuation",
+			"result": "PASS",
+			"detail": "NFC; no U+200E/F, U+202A-E, U+2066-9; no space before punctuation"
+		},
+		{
+			"check": "round-2 M1",
+			"result": "RESOLVED",
+			"detail": "name_required now 'Nhập khóa cho dự án.', exactly the suggested wording; 'khóa' matches the Key field label"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"notes_not_findings": [
+		"Deferred per brief, not re-raised: tag first-character rule gap in the English source."
+	],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: M1 resolved; standard form-field verb, Key term consistent"
+	},
+	"result": "clean",
+	"status": "passed",
+	"hash_paths": {
+		"en": "src/i18n/catalogues/en/ui.projects.json",
+		"vi": "src/i18n/catalogues/vi/ui.projects.json",
+		"en_context": "src/i18n/catalogues/en/ui.projects.context.json"
+	},
+	"previous_round": {
+		"instance": "audit-i18n-psopt-r2-vi",
+		"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+		"receipt_sha256": "698818f3df88125987b44ee20f65f163e4fc818107dcafa15b49d48c525b0462"
+	},
+	"head_note": "vi bytes audited are the UNCOMMITTED working copy at this head (git diff shows exactly one changed line: name_required); vi sha256 below is of those working-copy bytes."
+}

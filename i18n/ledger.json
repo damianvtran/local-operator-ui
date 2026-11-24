@@ -10312,28 +10312,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "f32ba45366ecefaef31e9a15d68097c12cf4ef607737a8ff0d12545f892d599b",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "3f6e74ac95a360274df608fdfd333ecc54aa2bc3839eec24e1f728925cba2ca3",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "32818c8f857f",
+					"instance": "audit-i18n-psopt-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/32818c8f857f.json",
-					"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-es.json",
+					"receipt_sha256": "17e1dedff3946840a61f91291e24d290bf83cec79148045b5044defec73b4970",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -10380,6 +10383,28 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "f32ba45366ecefaef31e9a15d68097c12cf4ef607737a8ff0d12545f892d599b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "32818c8f857f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32818c8f857f.json",
+							"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
 						}
 					],
 					"status": "audited"
@@ -24794,28 +24819,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "06eb8d1ccf57ab4f3b69debe3efae5672358be06e58cf3f6e7998f4dfcc67c48",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "26bb2325d7a6068a34b1a45a8082f40aaf52d5a0f662760803afe619209df27c",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "d94011de0dc0",
+					"instance": "audit-i18n-psopt-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-fr.json",
+					"receipt_sha256": "e15cfd2306235530ecb079885382ebc522af7539b6646e98db4f85507c11b9ac",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -24862,6 +24890,28 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "06eb8d1ccf57ab4f3b69debe3efae5672358be06e58cf3f6e7998f4dfcc67c48",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
 						}
 					],
 					"status": "audited"
@@ -39391,28 +39441,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "92d40fafa54263c14e7ae7ae5729c2fb4be6d68a7275ca450d5d42c6df9ff462",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "d762be817dc5fb9e324dc0493d3b724f33650491e4ab7d8f23aad0901b828b09",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "audit-i18n-psopt-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-hi.json",
+					"receipt_sha256": "de90771a3cc17d635f1fc978e0692f19ff4505c23d10de9253b26429c3ca238a",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -39484,6 +39537,28 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "92d40fafa54263c14e7ae7ae5729c2fb4be6d68a7275ca450d5d42c6df9ff462",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
 						}
 					],
 					"status": "audited"
@@ -53559,29 +53634,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "931c5450136518ddb01fcd8171b28ceeeb1b5e699d26ffe54f2843a264d2d0c2",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "19ff884dd9a941932a818eb8a53d04719184a797ac45e1a8826f6e70a684aef6",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "deepseek/deepseek-flash",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"instance": "audit-i18n-psopt-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-ru.json",
+					"receipt_sha256": "40c5dde89d857919a69e67146e586a16c9ed98766474b68558bc7e94425a7aa0",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -53629,6 +53706,29 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "931c5450136518ddb01fcd8171b28ceeeb1b5e699d26ffe54f2843a264d2d0c2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
 						}
 					],
 					"status": "audited"
@@ -67926,29 +68026,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "232734a936be103b3be70e08a922e8dcd07a1a4c9b6406aa56ade5c9d16bdc0b",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "d05e4b7dafc07261103000fb33bf9eb5018d17e477305bf8b68181615bbbe112",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-19"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "audit-i18n-psopt-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-ur.json",
+					"receipt_sha256": "7342e2cff144457bf3ee51f65fa9ba9a1f6e2cda5a546886cab96dc9ed92d195",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -67996,6 +68098,29 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "232734a936be103b3be70e08a922e8dcd07a1a4c9b6406aa56ade5c9d16bdc0b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
 						}
 					],
 					"status": "audited"
@@ -82358,28 +82483,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "9d4bcad72b9074fe399e541119fda6c1b8b9ef16ede9c10e3f5860be93de5712",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "2e388aead388df9764514d33edd1745330c38db3c6705c437f80293300408db8",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18"
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "b928c7f0c96d",
+					"instance": "audit-i18n-psopt-r3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r3-vi.json",
+					"receipt_sha256": "ecf62f92cca6bdd44c9f0f91bbefbc383611f77bc751c4fcef98cd12797e0834",
+					"scope": "ui.projects: all keys, round-3 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -82475,6 +82603,28 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "9d4bcad72b9074fe399e541119fda6c1b8b9ef16ede9c10e3f5860be93de5712",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
 						}
 					],
 					"status": "audited"
@@ -97492,29 +97642,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.projects",
-			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
-			"target_sha256": "9d0da77447bc0e9e9cfc70c54ba5a400fe4772a47d234d51390856c15ad1fb0c",
+			"source_sha256": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+			"target_sha256": "d4de92e4970151ca2f71d871402d565310ff9822376671cb772ddca3e285e95f",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-10-18",
-				"note": "Reworded by the implementing coder (deepseek/deepseek-flash) on 2026-10-18 for the 您→你 register correction, PR #1205, not a translator: 3 strings, 3 您 occurrences. Register-only audit 4c6c213dd0d8 covers the new bytes; prior full audits stay in superseded."
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23",
+				"note": "Project status/seed/validation copy translated and remediated by an i18n-translator session (anthropic/claude-opus-5-5), separate from the auditor sessions."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
 					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"instance": "audit-i18n-psopt-r2-zh-CN",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/audit-i18n-psopt-r2-zh-CN.json",
+					"receipt_sha256": "e1bd01195996d5e107c37cdaae9bd7e1ff6612a2bc19b52149fc78729835914a",
+					"scope": "ui.projects: all keys, round-2 audit of the post-remediation bytes for the project status/seed/validation copy; findings 0",
+					"note": "Translator (i18n-translator) and auditor (i18n-auditor) are the same model family (anthropic/claude-opus-5-5) in separate sessions; disclosed in the receipt. Earlier rounds audited pre-fix bytes and are kept as receipts."
 				}
 			],
 			"status": "audited",
@@ -97586,6 +97738,28 @@
 							"receipt": "i18n/receipts/65c9256dc576.json",
 							"receipt_sha256": "249b246529c09c7a1e9286a5e38040468d7d4f8b23685d5c2130c34f2e287509",
 							"scope": "QA report — round 3 at 84c8954b: eight new ui.projects keys, key/ICU/stub audit; zero findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+					"target_sha256": "9d0da77447bc0e9e9cfc70c54ba5a400fe4772a47d234d51390856c15ad1fb0c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
 						}
 					],
 					"status": "audited"

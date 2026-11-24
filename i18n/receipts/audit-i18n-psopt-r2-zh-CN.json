@@ -1,0 +1,111 @@
+{
+	"instance": "audit-i18n-psopt-r2-zh-CN",
+	"namespace": "ui.projects",
+	"locale": "zh-CN",
+	"audit_date": "2026-11-23",
+	"round": 2,
+	"scope": [
+		"ui.projects (round-2 delta 10c0c83a272..e1cb9d658fa: name_required, name_grammar; English change b3ebaf7944b)"
+	],
+	"auditor": {
+		"agent": "i18n-auditor (lopdev team role, task au-zh-CN round 2)",
+		"session": "4e70d334fe81 (from this session's system header 'Session ID' and its scratchpad path, not a registry read)",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "Session system header 'Model: anthropic/claude-opus-5-5'; no provider fallback observed.",
+		"independent_from_translator_session": true,
+		"independence_note": "Read-only auditor session; edited no catalogue, ledger or other repo file, committed and posted nothing; only this receipt was written. The translator was a separate i18n-translator session; same model family possible and not verifiable, so independence is session-level. No MT or translation service used."
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"head": "e1cb9d658fa54aeecc38d1ca1d4a8047bee3e12c",
+	"base": "10c0c83a272e434e7a747bbda045f7e1cdecc454 (round-1 head)",
+	"previous_receipt": {
+		"path": "i18n/receipts/audit-i18n-psopt-zh-CN.json",
+		"sha256": "5c3ed99680607d7c33f23ef3bea5c769371546cbb7e631d9a66f9a501132e4c4"
+	},
+	"hash_method": "sha256 of whole-file bytes (ledger-check.mjs sha256File)",
+	"hashes": {
+		"en": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"zh-CN": "d4de92e4970151ca2f71d871402d565310ff9822376671cb772ddca3e285e95f",
+		"en/ui.projects.json": "634dc990643a62fd4001c21ad84d9688f513ec49924c1c4e587cf4b7e9d97eb6",
+		"zh-CN/ui.projects.json": "d4de92e4970151ca2f71d871402d565310ff9822376671cb772ddca3e285e95f",
+		"en/ui.projects.context.json": "30ea5fe4afbe0a49356119726334b2917a2ded7a941bb133ed504a4041956767"
+	},
+	"references": {
+		"glossary": "local-operator@origin/main (1b011ed566f9; last touching commit e40c277b8b80) i18n/glossary.md sha256 5de3929198c3f603ce14bf75fb992c0f5c7a1952c440b496386977f8c636fcc7 (project -> 项目; no tag/key/name entries)",
+		"style_guide": "local-operator@origin/main (1b011ed566f9) i18n/style-guides/zh-CN.md sha256 6d9b370681d5d7fa19659240c4286a0617b303c44965b5804f4a763a2df17b52: 你, terse, 请 on validation/field prompts that carry a next step, full-width punctuation, no space between CJK and Latin/digits, Latin digits, plural other-only",
+		"shipped_terms": "zh-CN ui.projects: Key field label project_editors.key / project_form_dialog.key '标识'; tags '标签'; target '目标'; existing key hint project_form_dialog.letters_digits_dot_underscore_or_dash_no_spaces '可使用字母、数字、点、下划线或连字符，不能包含空格。'; titles_are_at_most_value1_characters '…个字符'; delete dialog '输入项目名称以确认' (名称 already used for the key-as-name)."
+	},
+	"checks": [
+		{
+			"check": "repo validators",
+			"result": "PASS",
+			"detail": "check-duplicates ok (0 duplicate keys); context-parity ok. ledger-check still reports zh-CN/ui.projects stale source/target hashes - expected until the ledger row is re-assembled for this head."
+		},
+		{
+			"check": "key-set parity en vs zh-CN",
+			"result": "PASS",
+			"detail": "433/433, symmetric difference empty"
+		},
+		{
+			"check": "delta in scope",
+			"result": "PASS",
+			"detail": "git diff --numstat 10c0c83a272..HEAD: zh-CN/ui.projects.json 2+/2- (name_required, name_grammar only); en/ui.projects.json 2+/2- (same keys); en context 6+/6-. Cumulative 8b5ca519a1f..HEAD zh-CN: 6 added, 0 deleted."
+		},
+		{
+			"check": "placeholders/ICU/plural",
+			"result": "PASS",
+			"detail": "none in en or zh-CN for the 6 keys"
+		},
+		{
+			"check": "NFC / code points / bidi",
+			"result": "PASS",
+			"detail": "python on new bytes: all 6 NFC; no U+200B/200E/200F/202A-202E/2066-2069/FEFF and no Cc/Cf; non-Han chars only full-width ，、。 and ASCII '1-24' (tag_grammar, unchanged)"
+		},
+		{
+			"check": "punctuation/spacing",
+			"result": "PASS",
+			"detail": "full-width punctuation, sentence-final 。 on both sentences, 请 at clause head of name_required per style guide"
+		},
+		{
+			"check": "terminology: Key label",
+			"result": "PASS",
+			"detail": "'标识' now in name_required, name_grammar, project_editors.key, project_form_dialog.key and a_project_with_this_key_already_exists - consistent; matches the updated sidecar ('same word as the field label Key, NOT name')"
+		},
+		{
+			"check": "round-1 finding M1",
+			"result": "PASS",
+			"detail": "resolved: values are exactly the round-1 suggested wording, and English now says 'key'"
+		},
+		{
+			"check": "fit (cells)",
+			"result": "PASS",
+			"detail": "name_required 16 cells (en 23 chars), name_grammar 72 (en 87); no maxCells hints"
+		}
+	],
+	"counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"findings": [],
+	"resolved_findings": [
+		{
+			"id": "M1",
+			"round": 1,
+			"status": "resolved",
+			"key": "ui.projects.project_edit_model.name_required / name_grammar",
+			"now": "请填写项目标识。 / 标识须以英文字母或数字开头，只能使用英文字母、数字、点、下划线或连字符。"
+		}
+	],
+	"per_key": {
+		"ui.projects.project_edit_model.name_required": "ok: '请填写项目标识。' - faithful to 'Give the project a key.', field-prompt 请, uses Key label term",
+		"ui.projects.project_edit_model.name_grammar": "ok: 'Keys' -> 标识; ASCII meaning exact (英文字母); no length range, as the sidecar requires",
+		"ui.projects.project_edit_model.tag_grammar": "retained from round 1 (bytes unchanged)",
+		"ui.projects.project_sheet_model.template_summary": "retained from round 1 (bytes unchanged)",
+		"ui.projects.project_sheet_model.template_goals": "retained from round 1 (bytes unchanged)",
+		"ui.projects.project_sheet_model.template_notes": "retained from round 1 (bytes unchanged)"
+	},
+	"result": "clean",
+	"status": "passed"
+}

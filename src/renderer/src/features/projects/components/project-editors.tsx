@@ -1,4 +1,4 @@
-import { currentLocale, t } from "@shared/i18n";
+import { currentLocale, t, userTextDir } from "@shared/i18n";
 /**
  * The projects detail's field editors: every field the retired sheet could
  * edit, as an individually editable surface built on the shared inline-edit
@@ -65,10 +65,7 @@ import { cn } from "@shared/lib/utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import type { FC, KeyboardEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
-import {
-	PROJECT_DESCRIPTION_MAX_CHARS,
-	projectNameRule,
-} from "../../../../../shared/desktop-contract";
+import { PROJECT_DESCRIPTION_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopProjectStatus,
 	DesktopProjectView,
@@ -87,6 +84,7 @@ import {
 	projectDateOrderRule,
 	projectDescriptionRule,
 	projectEstimateNumberRule,
+	projectNameRule,
 	projectTagsFieldRule,
 	projectTitleRule,
 	tagsDraftEquals,
@@ -94,12 +92,12 @@ import {
 import { ProjectMarkdown } from "../project-markdown";
 import {
 	type DoneGateRefusal,
-	PROJECT_STATUS_OPTIONS,
 	estimateLabel,
 	forcedCloseToastText,
 	formatProjectDay,
 	projectDisplayName,
 	projectStatusMeta,
+	projectStatusOptions,
 } from "../project-model";
 import { doneGateRefusalOf, projectWriteErrorCopy } from "../project-refusals";
 import { pasteMarkdownIntoDescription } from "../project-sheet-model";
@@ -834,7 +832,7 @@ export const ProjectStatusField: FC<{
 						<SelectValue />
 					</SelectTrigger>
 					<SelectContent>
-						{PROJECT_STATUS_OPTIONS.map((option) => (
+						{projectStatusOptions().map((option) => (
 							<SelectItem
 								key={option.value}
 								value={option.value}
@@ -989,6 +987,16 @@ export const ProjectDescriptionBlock: FC<{
 							{...api.editorAria}
 							data-project-description=""
 							value={api.draft}
+							/*
+							 * `userTextDir` (`dir="auto"` once non-empty): the description is the
+							 * operator's text, whose script need not match the interface. Inheriting
+							 * an RTL locale drew the seed line "## Summary" as "Summary ##" in ur: the
+							 * neutral "#" run takes the paragraph's RTL direction and lands at the
+							 * right edge. With `auto` the value's first strong character decides
+							 * (localized Urdu headings still resolve RTL); while empty the field
+							 * inherits the locale, so an Urdu placeholder and caret stay right.
+							 */
+							dir={userTextDir(api.draft)}
 							readOnly={api.phase === "saving"}
 							rows={8}
 							placeholder={t(

@@ -1484,28 +1484,38 @@ export const PROJECTS_SEARCH_MAX_LIMIT = 200;
 export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 
 /**
- * The name check as a DIALOG needs it: a sentence for the user, or null.
+ * The name check as a DIALOG needs it: the copy KEY of the user's sentence, or
+ * null when the name is valid.
  *
  * The same pattern the schema validates with, exposed so an inline refusal
  * under the field and the 422 the wire would answer cannot say two different
  * things about one name. The empty case gets its own sentence rather than the
  * grammar's, because "give it a name" is a different mistake from "this name
  * has a space in it".
+ *
+ * A KEY, NOT A SENTENCE (i18n N1): these used to return English prose, so a
+ * Urdu or Chinese title - which derives an empty key by design - showed
+ * "Give the project a key." in an otherwise translated sheet. This module is
+ * shared with the main process, which must not bundle the runtime `t()` and
+ * its catalogues, so the rule names the message and the renderer edge
+ * (`projectNameRule` in `features/projects/project-edit-model.ts`) resolves it
+ * in the active locale at call time - the `DESKTOP_REFUSAL_COPY_KEY` pattern.
  */
-export function projectNameRule(name: string): string | null {
-	if (!name) return "Give the project a name.";
+export function projectNameRuleKey(name: string): WithoutParams | null {
+	if (!name) return "ui.projects.project_edit_model.name_required";
 	if (!PROJECT_NAME_PATTERN.test(name))
-		return "Names start with a letter or digit and may use letters, digits, dot, underscore or dash.";
+		return "ui.projects.project_edit_model.name_grammar";
 	return null;
 }
 
 /**
  * The tag grammar, one tag at a time (`PROJECT_TAG_PATTERN` — the store's own
- * `_TAG_RE`), as a dialog sentence or null.
+ * `_TAG_RE`), as the copy KEY of a dialog sentence or null. Resolved by the
+ * renderer's `projectTagRule`, for the reason `projectNameRuleKey` gives.
  */
-export function projectTagRule(tag: string): string | null {
+export function projectTagRuleKey(tag: string): WithoutParams | null {
 	if (!PROJECT_TAG_PATTERN.test(tag))
-		return "Tags are 1-24 characters of lowercase letters, digits, underscore or dash.";
+		return "ui.projects.project_edit_model.tag_grammar";
 	return null;
 }
 
