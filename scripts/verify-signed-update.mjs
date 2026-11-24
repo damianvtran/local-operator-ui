@@ -54,6 +54,12 @@ import {
 	incumbentInspectorRefusal,
 } from "./incumbent-fuse-gate.mjs";
 import {
+	candidateReadiness,
+	ended,
+	ownChildren,
+	provisionIncumbent,
+} from "./incumbent-provision.mjs";
+import {
 	incumbentReleaseRefusalMessage,
 	resolveIncumbentMetadata,
 	resolveIncumbentRelease,
@@ -123,7 +129,9 @@ function blocked(message) {
 const require = createRequire(import.meta.url);
 const builder = createRequire(require.resolve("electron-builder"));
 const { load } = createRequire(builder.resolve("app-builder-lib"))("js-yaml");
-const owned = [];
+// Install cancellation before the first await. Every long-lived child shares
+// the same exact-PID reaper, including the provisioning boot.
+const owned = ownChildren();
 let feed;
 let inspector;
 const delay = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -149,14 +157,14 @@ async function command(program, args) {
 async function until(work, timeout = 60_000) {
 	const end = Date.now() + timeout;
 	while (Date.now() < end) {
+		owned.signal.throwIfAborted();
 		const value = await work();
+		owned.signal.throwIfAborted();
 		if (value) return value;
 		await delay(250);
 	}
 	throw new Error("Timed out waiting for owned update operation");
 }
-/** An owned child has ended, by exit code or by signal. */
-const ended = (child) => child.exitCode !== null || child.signalCode !== null;
 /**
  * The F2 rows that must be visible on every run, as their own matrix lines.
  *
@@ -289,6 +297,7 @@ function safeEnv(extra = {}) {
 	};
 }
 function startOwned(executable, args, label, env = safeEnv()) {
+	owned.signal.throwIfAborted();
 	const log = createWriteStream(join(evidence, `${label}.log`));
 	const child = spawn(executable, args, {
 		/*
@@ -304,9 +313,9 @@ function startOwned(executable, args, label, env = safeEnv()) {
 		env: withTelemetryOff(env),
 		stdio: ["ignore", "pipe", "pipe"],
 	});
+	owned.track(child);
 	child.stdout.pipe(log);
 	child.stderr.pipe(log);
-	owned.push(child);
 	return child;
 }
 
@@ -578,6 +587,17 @@ try {
 	if (!inspectorCapability.supported)
 		blocked(incumbentInspectorRefusal(tag, inspectorCapability));
 	const executable = join(app, "Contents", "MacOS", "Local Operator");
+	// An update starts with a working installation, not a first-run candidate.
+	// Seed that profile with the signed incumbent before creating the synthetic
+	// pre-split venv, so the provisioning run cannot consume or change it.
+	const provisioned = await provisionIncumbent({
+		tag,
+		paths: { executable, log: join(evidence, "incumbent-provision.log") },
+		env: safeEnv(),
+		owned,
+	});
+	record("Incumbent provisioned", provisioned.verdict, provisioned.detail);
+	if (provisioned.verdict !== "PASS") throw new Error(provisioned.detail);
 	const legacyPython = join(
 		app,
 		"Contents",
@@ -731,7 +751,13 @@ try {
 	 * quit takes. Every failure here is a FAIL, never BLOCKED: the incumbent
 	 * already proved this host can run the app.
 	 */
+	const readiness = candidateReadiness(
+		existsSync(
+			join(support, "managed-python", "packaged", "selected-environment.json"),
+		),
+	);
 	const launchAndCheck = async (label) => {
+		owned.signal.throwIfAborted();
 		const verdict = relaunchProbeVerdict(
 			await relaunchProbe(executable, `${label}-probe`),
 			{
@@ -752,16 +778,8 @@ try {
 			label,
 			safeEnv({ LOCAL_OPERATOR_UI_WINDOW_MODE: "headless" }),
 		);
-		if (label === "candidate")
-			await until(async () => {
-				const path = join(
-					support,
-					"managed-python",
-					"packaged",
-					"selected-environment.json",
-				);
-				return existsSync(path) && JSON.parse(readFileSync(path, "utf8"));
-			}, 600_000);
+		const readinessMs =
+			label === "candidate" ? readiness.firstBootMs : readiness.secondBootMs;
 		await until(async () => {
 			if (ended(child))
 				throw new Error(
@@ -776,21 +794,21 @@ try {
 			} catch {
 				return false;
 			}
-		}, 120_000);
+		}, readinessMs);
 		assert.equal(
 			createHash("sha256").update(readFileSync(sentinel)).digest("hex"),
 			dataHash,
 		);
 		await command("/usr/bin/codesign", ["--verify", "--deep", "--strict", app]);
-		child.kill("SIGTERM");
-		await until(() => ended(child));
+		await owned.release(child);
+		owned.signal.throwIfAborted();
 	};
 	await launchAndCheck("candidate");
 	await launchAndCheck("second-launch");
 	record(
 		"Candidate first and second launch",
 		"PASS",
-		"Real backend healthy, selected external runtime reused, synthetic data unchanged, signatures valid",
+		`Real backend healthy, synthetic data unchanged, signatures valid; ${readiness.selectionCaveat}`,
 	);
 	const shipIt = join(
 		homedir(),
@@ -812,5 +830,18 @@ try {
 	feed?.close();
 	// Only children created by this test, on its disposable VM. Never ps/pkill,
 	// launchd sweeps, foreign-service cleanup or deletion of user directories.
-	for (const child of owned) if (child.exitCode === null) child.kill("SIGTERM");
+	for (const cleanup of await owned.close()) {
+		if (cleanup.status === "rejected") {
+			record("Owned child cleanup", "FAIL", String(cleanup.reason));
+			process.exitCode = 1;
+		}
+	}
+	if (owned.signal.aborted) {
+		record(
+			"Exact signed update cancellation",
+			"FAIL",
+			owned.signal.reason.message,
+		);
+		process.exitCode = owned.signal.reason.exitCode;
+	}
 }
