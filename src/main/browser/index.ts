@@ -2699,19 +2699,20 @@ async function initializeBrowserHost(
 			 * and is not involved.
 			 */
 			contents.on("before-mouse-event", (_event, mouse) => {
-				if (mouse.type !== "mouseDown") return;
-				addressOverlay?.dismissForTab(tabId, "page_pointer");
-				// A PERSON'S PRESS ON THE PAGE engages the tab (review S4): the
-				// tab-strip selection alone missed a click straight into an already
-				// selected tab. The event cannot tell a person from CDP, so an agent
-				// input command in flight for this view makes it the agent's
-				// (`tab-engagement.ts` has the Electron source this rests on).
-				engagement.pagePressed(tabId, {
-					synthetic: cdp.isDispatchingInput(contents.id),
-					windowFocused:
-						!options.window.isDestroyed() && options.window.isFocused(),
-					active: registry.activeTab?.tabId === tabId,
-				});
+				if (mouse.type === "mouseDown") {
+					addressOverlay?.dismissForTab(tabId, "page_pointer");
+					// A PERSON'S PRESS ON THE PAGE engages the tab (review S4): the
+					// tab-strip selection alone missed a click straight into an already
+					// selected tab. The event cannot tell a person from CDP, so an agent
+					// input command in flight for this view makes it the agent's
+					// (`tab-engagement.ts` has the Electron source this rests on).
+					engagement.pagePressed(tabId, {
+						synthetic: cdp.isDispatchingInput(contents.id),
+						windowFocused:
+							!options.window.isDestroyed() && options.window.isFocused(),
+						active: registry.activeTab?.tabId === tabId,
+					});
+				}
 			});
 			// The user's own navigation starts here; a page/agent-initiated one shares
 			// the event, which is why the design scopes "navigating dismisses" to the
