@@ -12,16 +12,39 @@ import { persist } from "zustand/middleware";
  * Onboarding steps enum
  */
 /*
- * Three steps (design audit section 5): connect, confirm the default model,
- * optional extras. The retired values (`user_profile`, `search_api`,
- * `create_agent`, `congratulations`) are not members any more; a persisted
- * store that still holds one is sent back to the first step by the modal's
- * own "unknown step" guard, which is the migration.
+ * Up to four steps (first-run stage refresh, 2026-11): sign in, confirm the
+ * default model, web search, meet Aida. Search and Meet used to be one "extras"
+ * step; they are split because the search step now LEAVES THE SEQUENCE when
+ * Radient is connected (Radient already provides search), while Meet stays
+ * whenever she is available - one step could not be both present and absent.
+ *
+ * The retired values (`user_profile`, `search_api`, `create_agent`,
+ * `congratulations`) are not members any more; a persisted store that still
+ * holds one is sent back to the first step by the modal's own "unknown step"
+ * guard. `extras` is migrated explicitly (see `migrateLegacyStep`), because a
+ * user who quit on the old last step should land on its successor rather than
+ * start over.
  */
 export enum OnboardingStep {
 	CONNECT_PROVIDER = "connect_provider",
 	DEFAULT_MODEL = "default_model",
-	EXTRAS = "extras",
+	SEARCH = "search",
+	MEET = "meet",
+}
+
+/** The value the old combined search-and-Aida step persisted. */
+export const LEGACY_EXTRAS_STEP = "extras";
+
+/**
+ * Map a persisted step from an older build onto this one.
+ *
+ * Only `extras` has a successor: it becomes SEARCH, and the modal moves a SEARCH
+ * that is not in the live sequence (Radient connected) on to MEET. Every other
+ * value passes through untouched so the modal's unknown-step guard still owns
+ * the fallback for the values that have none.
+ */
+export function migrateLegacyStep(step: unknown): unknown {
+	return step === LEGACY_EXTRAS_STEP ? OnboardingStep.SEARCH : step;
 }
 
 /**
@@ -145,6 +168,11 @@ export const useOnboardingStore = create<OnboardingState>()(
 			merge: (persisted, current) => {
 				const { isModalActive: _stale, ...rest } = (persisted ??
 					{}) as Partial<OnboardingState>;
+				if (rest.currentStep !== undefined) {
+					rest.currentStep = migrateLegacyStep(
+						rest.currentStep,
+					) as OnboardingStep;
+				}
 				return { ...current, ...rest };
 			},
 			onRehydrateStorage: () => (state, error) => {

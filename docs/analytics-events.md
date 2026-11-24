@@ -102,6 +102,8 @@ decision.
 | `message_send_failed` | `reason_category` (`SEND_FAILURE_REASONS`), `http_status` (`SEND_FAILURE_HTTP_STATUSES`, `none` or `other`), `error_code` (`SEND_FAILURE_ERROR_CODES`, `none` or `other`) | the composer's send catch (`chat-page.tsx`, `diagnoseSendFailure`) |
 | `backend_status` | `state` (`ready` \| `failed`), `reason` (`BACKEND_STARTUP_CATEGORIES` or `none`), `after_ready` (boolean), `elapsed_s` | each settled start-up attempt of the app's own server, and a server that died after it was ready (`backend-startup-panel.tsx`, `useBackendStartupTelemetry`); once per attempt per renderer session (deduped in sessionStorage, so a reload does not report it again) |
 | `onboarding_tour_step` | `step`, `outcome` (`shown` \| `skipped_missing_target` \| `completed` \| `cancelled`) | `use-onboarding-tour.ts`; skips from `guardTourTargets` in `tour-steps.ts` |
+| `onboarding_step_viewed` | `step` (`connect_provider` \| `default_model` \| `search` \| `meet`), `provider` (catalogue id, optional) | the first-run stage (`onboarding-modal.tsx` via `onboarding-analytics.ts`), once per step per visit; `provider` is omitted on view |
+| `onboarding_step_completed` | `step` as above, `provider` (optional) | the same wizard when the user leaves a step FORWARD (Continue, Meet Aida, Finish). `connect_provider` carries the first connected provider id (Radient when connected); `search` carries `free` \| `radient` \| `keys` as `provider`; Skip and Back report nothing, so drop-off is `viewed(step) - completed(step)` |
 
 `backend_status.elapsed_s` is the start-up duration distribution: measure it
 before changing the readiness budget (`READINESS_BUDGET_MS`, 30 s), which this

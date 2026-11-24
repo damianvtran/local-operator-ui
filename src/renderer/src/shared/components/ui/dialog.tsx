@@ -89,6 +89,21 @@ export type DialogContentProps = ComponentPropsWithoutRef<
 	 * `z-50`. Only a surface that has already decided it owns the screen needs it.
 	 */
 	overlayClassName?: string;
+	/**
+	 * `stage`: the content IS the window (the first-run setup stage), not a panel
+	 * floating over it.
+	 *
+	 * WHY A VARIANT RATHER THAN CLASS OVERRIDES: a floating dialog carries
+	 * `data-lo-floating`, the marker that enrols it in the floating-surface rules
+	 * (no border, the one overlay shadow, the opaque `elevated` plate) and in
+	 * `scripts/floating-surface-no-border.test.mjs`. A full-window page is not a
+	 * floating surface, and a caller could not take the marker off through
+	 * `className`. The stage keeps everything else a dialog is for - the focus
+	 * trap, `aria-modal`, Escape and the title wiring - and the `no-drag`
+	 * subtraction, which a stage needs too: it covers the chrome strip, and only
+	 * the drag band it draws itself may move the window.
+	 */
+	variant?: "floating" | "stage";
 };
 
 export const DialogContent = forwardRef<
@@ -103,6 +118,7 @@ export const DialogContent = forwardRef<
 			closeDisabled = false,
 			closeLabel,
 			overlayClassName,
+			variant = "floating",
 			...props
 		},
 		ref,
@@ -137,11 +153,15 @@ export const DialogContent = forwardRef<
 					 * translucency buys nothing and costs legibility: this surface keeps the
 					 * opaque `elevated` role and its shadow.
 					 */
-					data-lo-floating=""
+					data-lo-floating={variant === "floating" ? "" : undefined}
 					className={cn(
-						"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
-						"flex w-full max-w-lg flex-col gap-4",
-						"rounded-lg bg-elevated p-6 shadow-overlay",
+						variant === "stage"
+							? "fixed inset-0 z-50 flex flex-col"
+							: [
+									"-translate-x-1/2 -translate-y-1/2 fixed top-1/2 left-1/2 z-50",
+									"flex w-full max-w-lg flex-col gap-4",
+									"rounded-lg bg-elevated p-6 shadow-overlay",
+								],
 						// No entrance animation; see the note at the top of `tooltip.tsx`.
 						className,
 					)}

@@ -14,10 +14,28 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 	quiet,
 	dimmed,
 	suppressed,
+	paperSelector = "[data-lo-composer-splash]",
+	markClassName = "size-10",
 }: {
 	quiet: boolean;
 	dimmed: boolean;
 	suppressed: boolean;
+	/**
+	 * The ancestor that is the helix's "paper": the surface whose pointer moves
+	 * steer it and whose size it measures. The composer splash by default; the
+	 * first-run stage passes `[data-lo-onboarding-stage]` so the whole window
+	 * steers the helix there, the way the whole splash does on new chat. A
+	 * selector rather than an element ref because the controller is created in a
+	 * layout effect that resolves it with `closest`, before any ref of the
+	 * parent's has settled.
+	 */
+	paperSelector?: string;
+	/**
+	 * The mark's size classes. The canvas positions itself on the mark SLOT's
+	 * centre (`MARK_Y`), not on the glyph's box, so the crossing stays on the
+	 * mark at any size; the first-run intro shows it larger than new chat does.
+	 */
+	markClassName?: string;
 }) {
 	const scene = useRef<HTMLCanvasElement>(null);
 	const controller = useRef<ReturnType<typeof trackNewChatHorizon>>(undefined);
@@ -30,6 +48,9 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 		},
 		[],
 	);
+	// `paperSelector` is read once, at creation: the controller owns its paper for
+	// its whole life, and no caller swaps surfaces under a live helix.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: read once at creation, see above.
 	useLayoutEffect(() => {
 		if (controller.current) {
 			controller.current.setPresentation(quiet, suppressed);
@@ -38,7 +59,7 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 		const canvas = scene.current;
 		// The full splash is the input surface, not the measured content strip.
 		// Paint before the first frame, even while that strip's ref is settling.
-		const paper = canvas?.closest<HTMLElement>("[data-lo-composer-splash]");
+		const paper = canvas?.closest<HTMLElement>(paperSelector);
 		if (canvas && paper) {
 			controller.current = trackNewChatHorizon(
 				paper,
@@ -68,7 +89,11 @@ export const NewChatHorizon = memo(function NewChatHorizon({
 				data-lo-empty-mark={suppressed ? undefined : ""}
 				className="new-chat-horizon__mark relative flex"
 			>
-				<BrandMark className="size-10" tone="ink-muted" treatment="engraved" />
+				<BrandMark
+					className={markClassName}
+					tone="ink-muted"
+					treatment="engraved"
+				/>
 			</span>
 		</div>
 	);

@@ -78,6 +78,16 @@ export interface ProductEvents {
 		elapsed_s: number | null;
 	};
 	onboarding_tour_step: { step: string; outcome: TourStepOutcome };
+	/*
+	 * The first-run wizard's own funnel (onboarding stage refresh): one
+	 * `viewed` per step the user reaches and one `completed` per step they leave
+	 * forward, so drop-off is `viewed(n) - completed(n)`. `step` is an
+	 * `OnboardingStep` value (`connect_provider`, `default_model`, `search`,
+	 * `meet`) and `provider` a catalogue id - never free text. See
+	 * `features/onboarding/components/onboarding-analytics.ts`.
+	 */
+	onboarding_step_viewed: { step: string; provider?: string };
+	onboarding_step_completed: { step: string; provider?: string };
 }
 
 export type ProductEventName = keyof ProductEvents;

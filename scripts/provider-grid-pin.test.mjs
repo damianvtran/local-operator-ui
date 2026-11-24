@@ -41,8 +41,7 @@ const bundle = await build({
 			} from "./src/renderer/src/features/providers/provider-grid";
 			export { QueryClient } from "@tanstack/react-query";
 			export { desktopKeys } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
-			export { STEP_PANEL_WIDTH } from "./src/renderer/src/features/onboarding/components/onboarding-modal";
-			export { ONBOARDING_PANEL_WIDTHS } from "./src/renderer/src/features/onboarding/components/onboarding-dialog";
+			export { ONBOARDING_COLUMN_WIDTH } from "./src/renderer/src/features/onboarding/components/onboarding-layout";
 			export { OnboardingStep } from "./src/renderer/src/shared/store/onboarding-store";
 			export { recommendedProvider, showsRecommendedCue, visibleProviders };
 			export { moreProvidersSummary } from "./src/renderer/src/features/providers/provider-catalog";
@@ -105,7 +104,7 @@ const bundle = await build({
 	loader: { ".css": "empty" },
 	jsx: "automatic",
 	/*
-	 * The onboarding modules this file imports for `STEP_PANEL_WIDTH` resolve
+	 * The modules this file imports resolve
 	 * `@shared/config` on the way, and `load-config.ts` reads
 	 * `import.meta.env` -- a Vite-only global, undefined in Node, where
 	 * `Object.entries(undefined)` throws at module load rather than at an
@@ -150,8 +149,7 @@ const {
 	visibleProviders,
 	moreProvidersSummary,
 	PROVIDER_DIALOG_GROUP_ORDER,
-	STEP_PANEL_WIDTH,
-	ONBOARDING_PANEL_WIDTHS,
+	ONBOARDING_COLUMN_WIDTH,
 	OnboardingStep,
 	t,
 	setLocale,
@@ -468,30 +466,15 @@ test("a 'More providers' trigger with nothing behind it is not rendered", () => 
 	}
 });
 
-test("every step takes the same panel measure, and it is clamped", () => {
+test("every step takes the same column measure, and it is clamped", () => {
 	/*
-	 * Design round 1's D6: step 1 used to ask for a wider measure than steps 2 and
-	 * 3, so pressing Continue narrowed the dialog by about 200px and the title, the
-	 * step indicator and the close button all jumped inward mid-flow. An EMPTY map
-	 * is the fix stated as a rule: every step resolves to the one measure, so a step
-	 * added later cannot quietly widen the frame that holds the others.
+	 * Design round 1's D6, carried into the full-window stage: one measure for the
+	 * whole flow, so pressing Continue never moves the header or the track. The
+	 * stage lays every step out in ONE 30rem column (spec § 2.1) - there is no
+	 * per-step map any more for a later step to widen - and `min(..., 100%)` keeps
+	 * it inside the stage's own 32px gutters at the 800px minimum window.
 	 */
-	assert.deepEqual(Object.keys(STEP_PANEL_WIDTH), []);
-	/*
-	 * Design round 1's D1: the panel is `w-full` and this frame used to clamp
-	 * only its height, so a measure wider than the viewport painted its own
-	 * border on column 0 of an 800px window. The PIXELS are the frames' business;
-	 * this pins that neither measure can exceed the viewport.
-	 */
-	for (const [shape, measure] of Object.entries(ONBOARDING_PANEL_WIDTHS)) {
-		assert.match(
-			measure,
-			/^max-w-\[min\(\d+rem,calc\(100vw-4rem\)\)\]$/,
-			`the ${shape} measure must be clamped against the viewport`,
-		);
-	}
-	assert.match(ONBOARDING_PANEL_WIDTHS.single, /min\(40rem/);
-	assert.equal(Object.keys(ONBOARDING_PANEL_WIDTHS).length, 1);
+	assert.equal(ONBOARDING_COLUMN_WIDTH, "w-[min(30rem,100%)]");
 });
 
 /*

@@ -121,6 +121,7 @@ import {
 	providerReadiness,
 } from "./provider-labels";
 import { SecretInput } from "./secret-input";
+import type { SignInState } from "./sign-in-flow";
 import {
 	clearKeyOutcome,
 	peekKeyOutcome,
@@ -272,6 +273,24 @@ type ProviderDetailProps = {
 	 * alternative to setting up a model on this computer (D1).
 	 */
 	onUseHosted?: () => void;
+	/**
+	 * Start the provider's sign-in as soon as the panel mounts.
+	 *
+	 * The first-run stage's "Continue with Radient" / "Log in with ChatGPT"
+	 * buttons ARE the sign-in press: opening a panel that then asks for a second
+	 * "Continue in browser" press made the primary action of the first screen a
+	 * two-step one. Only a browser or device method starts; a key or local method
+	 * has nothing to start without input, so it renders as usual. A session that
+	 * is already running or settled is left alone (the panel re-attaches to it),
+	 * so remounting never restarts a sign-in the user is midway through.
+	 */
+	autoStart?: boolean;
+	/**
+	 * Told every time the sign-in flow's phase changes, so a surface that owns the
+	 * button outside this panel can label it ("Waiting for browser") from the same
+	 * state the panel renders, rather than from a second guess.
+	 */
+	onFlowPhase?: (phase: SignInState["phase"], succeeded: boolean) => void;
 };
 
 /**
@@ -536,6 +555,8 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 	context = "settings",
 	readiness: readinessProp,
 	onUseHosted,
+	autoStart = false,
+	onFlowPhase,
 }) => {
 	useI18nLocale();
 	const queryClient = useQueryClient();
@@ -901,6 +922,25 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 			},
 		}),
 	);
+
+	/*
+	 * `autoStart` (see the prop): one start per mount, and only from idle, so a
+	 * re-attach to a running or settled session keeps what it holds.
+	 */
+	const autoStarted = useRef(false);
+	useEffect(() => {
+		if (!autoStart || autoStarted.current) return;
+		autoStarted.current = true;
+		if (flow.phase !== "idle") return;
+		if (method?.kind !== "browser" && method?.kind !== "device") return;
+		void flowHandle.start(method.method_id);
+	}, [autoStart, flow.phase, method, flowHandle]);
+	const onFlowPhaseRef = useRef(onFlowPhase);
+	onFlowPhaseRef.current = onFlowPhase;
+	const flowSucceeded = flow.operation?.state === "succeeded";
+	useEffect(() => {
+		onFlowPhaseRef.current?.(flow.phase, flowSucceeded);
+	}, [flow.phase, flowSucceeded]);
 
 	/*
 	 * A panel reused for ANOTHER provider starts clean -- and ONLY the panel's own

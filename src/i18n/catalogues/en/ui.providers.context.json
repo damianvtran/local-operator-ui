@@ -337,12 +337,12 @@
 	"ui.providers.provider_catalog.use_a_subscription": {
 		"role": "shared method label or provider-row explanation — provider method/group presentation",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Provider method/group presentation: use a subscription. Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+		"note": "Provider group heading: log in with an account (a subscription sign-in through the browser, NOT an API key). Names the account/plan used by this method; vendor/product names Claude, ChatGPT, Radient, Moonshot, SuperGrok and Token Plan stay untranslated. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
 	},
 	"ui.providers.provider_catalog.use_an_api_key": {
 		"role": "shared method label or provider-row explanation — provider method/group presentation",
 		"tone": "Plain factual status/explanation; preserve source confidence",
-		"note": "Provider method/group presentation: use an api key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
+		"note": "Provider group heading: paste an API key. Keep this distinct from neighboring pending, failed and completed states. Length: compact single-line control/status; aim for English-length wording, not an invented hard character limit."
 	},
 	"ui.providers.provider_catalog.run_models_on_this_computer": {
 		"role": "shared method label or provider-row explanation — provider method/group presentation",

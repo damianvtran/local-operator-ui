@@ -1203,6 +1203,33 @@ longer than 240ms, and only something entering the screen earns that.
   permanently invisible. (That exact defect shipped on the marketing site: 16
   elements with `opacity: 0` that never animated away under reduced motion.)
 
+#### First-run stage: a documented exception, not precedent
+
+First-run setup (`features/onboarding/onboarding-stage.css`, scoped to
+`[data-lo-onboarding-stage]`) breaks four rules above on purpose, and only there:
+
+- **Motion length.** The intro runs ~2.2 s and the hand-off 700 ms (the whole
+  auto-playing sequence ≈3.0 s, under the design kit's 4.4 s budget). It is the one
+  screen whose job is a brand moment rather than a task, and it is skippable by any
+  key, click or wheel. Under reduced motion it does not play at all: the stage opens
+  on the sign-in final frame, and every entrance there is `animation: none` over an
+  end-state base style, so nothing can strand on a `from` keyframe.
+- **A gradient fill and a bloom on one button.** "Continue with Radient" is the
+  page's single decision, so it alone gets an `accent-hover → accent` fill and a
+  painted (not shadowed) glow. Hover and press stay colour/opacity steps; focus is
+  the system outline, never the glow. In light palettes `accent-hover` is darker, so
+  the gradient deepens and label contrast only rises.
+- **A 44px button.** The same button, for the same reason. Everything else on the
+  stage keeps the standard sizes.
+- **Atmosphere.** A vignette, a paper pool and a faint `accent-alt` light under the
+  live helix, all `radial-gradient`s centred on `--horizon-y` so they travel with the
+  helix during the hand-off. Forced colours drops all three.
+
+Why: the operator found the old 640px setup dialog "flat and unexciting", and the
+first screen is where a new user decides what kind of product this is. Why scoped:
+none of these treatments has earned a place in task UI, where attention belongs to
+the work. A second surface that wants any of them needs its own case here.
+
 ### Icons
 
 **`lucide-react`, one stroke weight, and the weight is never written down.**

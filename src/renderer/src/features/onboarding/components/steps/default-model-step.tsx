@@ -211,7 +211,7 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 
 	if (choice === null) {
 		return (
-			<div className="flex items-center justify-center gap-3 py-8">
+			<div className="onboarding-glass flex items-center justify-center gap-3 py-8">
 				<Spinner size="sm" />
 				<p className="text-body-sm text-ink-muted">
 					{t("ui.onboarding.default_model.loading")}
@@ -261,11 +261,13 @@ export const DefaultModelStep: FC<DefaultModelStepProps> = ({
 		</div>
 	);
 
+	/*
+	 * ONE glass panel (stage refresh, spec § 5.2): the stage's header already
+	 * carries the step's sentence (`ui.onboarding.default_model.intro`), so the
+	 * body is just the choice, on the same inset surface the sign-in step uses.
+	 */
 	return (
-		<div className="flex flex-col gap-5">
-			<p className="text-body text-ink-muted">
-				{t("ui.onboarding.default_model.intro")}
-			</p>
+		<div className="onboarding-glass flex flex-col gap-5 p-5">
 			{noCatalogue ? (
 				/*
 				 * THE SENTENCE SAYS WHAT CONTINUE WILL DO, because what it does is the

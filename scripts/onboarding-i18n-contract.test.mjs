@@ -64,11 +64,6 @@ const BASE = "src/renderer/src/features/onboarding/components/";
 /** key -> [committed English (byte-exact), wiring file]. */
 const CONTRACT = [
 	[
-		"ui.onboarding.connect.intro",
-		"Choose Radient for many models, dictation and agent sharing through one browser sign-in. Or use your Claude or ChatGPT subscription, an API key or a model on your computer. Eligible new Radient accounts can claim free credit after email verification and a security check.",
-		"steps/connect-provider-step.tsx",
-	],
-	[
 		"ui.onboarding.default_model.block.loading_models",
 		"Loading the model list…",
 		"steps/default-model-plan.ts",
@@ -100,8 +95,8 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.default_model.intro",
-		"New chats use this model. Every agent can pick a different one later.",
-		"steps/default-model-step.tsx",
+		"New chats start with this model. Each agent can use a different one.",
+		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.default_model.loading",
@@ -133,21 +128,30 @@ const CONTRACT = [
 		"suggested for your account",
 		"steps/default-model-step.tsx",
 	],
-	["ui.onboarding.dialog.setup", "Setup", "onboarding-dialog.tsx"],
 	[
-		"ui.onboarding.extras.greeting_done",
-		"{name} is your chief of staff. Her conversation is where you pick up with her, and it is one keystroke away in the sidebar. You can also skip straight to a new chat.",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.skip_hint",
+		"Press any key to continue",
+		"onboarding-dialog.tsx",
 	],
 	[
-		"ui.onboarding.extras.greeting_owed",
-		"{name} is your chief of staff. She will say hello first, ask what to call you and what you would like help with, and show you around. You can also skip straight to a new chat.",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.subtitle",
+		"Agents that do real work on your computer.",
+		"onboarding-dialog.tsx",
 	],
 	[
-		"ui.onboarding.extras.next_meet",
-		"Next: meet {name}",
-		"steps/extras-step.tsx",
+		"ui.onboarding.intro.title",
+		"Welcome to Local Operator",
+		"onboarding-dialog.tsx",
+	],
+	[
+		"ui.onboarding.meet.done",
+		"She's your chief of staff. Her conversation is one keystroke away in the sidebar.",
+		"steps/meet-aida-step.tsx",
+	],
+	[
+		"ui.onboarding.meet.owed",
+		"She's your chief of staff. She'll say hello, ask what to call you, and show you around.",
+		"steps/meet-aida-step.tsx",
 	],
 	["ui.onboarding.modal.action.back", "Back", "onboarding-modal.tsx"],
 	["ui.onboarding.modal.action.continue", "Continue", "onboarding-modal.tsx"],
@@ -181,22 +185,12 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.modal.title.connect_provider",
-		"Connect an AI account",
+		"Sign in to get started",
 		"onboarding-modal.tsx",
 	],
 	[
 		"ui.onboarding.modal.title.default_model",
-		"Your default model",
-		"onboarding-modal.tsx",
-	],
-	[
-		"ui.onboarding.modal.title.extras",
-		"Web search (optional)",
-		"onboarding-modal.tsx",
-	],
-	[
-		"ui.onboarding.modal.title.extras_with_name",
-		"Web search, then meet {name}",
+		"Pick your default model",
 		"onboarding-modal.tsx",
 	],
 	[
@@ -204,6 +198,8 @@ const CONTRACT = [
 		"First-time setup",
 		"onboarding-modal.tsx",
 	],
+	["ui.onboarding.modal.title.meet", "Meet {name}", "onboarding-modal.tsx"],
+	["ui.onboarding.modal.title.search", "Web search", "onboarding-modal.tsx"],
 	[
 		"ui.onboarding.search.each_key_saved",
 		"Each key is saved on your device as soon as you leave its field.",
@@ -211,28 +207,58 @@ const CONTRACT = [
 	],
 	[
 		"ui.onboarding.search.intro",
-		"Agents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.",
-		"steps/search-api-step.tsx",
+		"Agents look things up while they work, like today's prices or this week's news.",
+		"onboarding-modal.tsx",
 	],
 	["ui.onboarding.search.mode.free", "Free", "steps/search-api-step.tsx"],
 	[
 		"ui.onboarding.search.mode.free_detail",
-		"Uses free search services shared with other users. No key needed. Searches can be slower at busy times.",
+		"Shared search services. No key needed. Can be slower at busy times.",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.keys",
-		"Add API keys",
+		"Add your own search API keys",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.keys_detail",
-		"Bring your own keys for the search providers you use.",
+		"SerpApi, Tavily, Brave and others.",
 		"steps/search-api-step.tsx",
 	],
 	[
 		"ui.onboarding.search.mode.label",
 		"Search setup",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.not_needed",
+		"Not needed with Radient",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient",
+		"Sign in with Radient",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_action",
+		"Sign in with Radient",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_detail",
+		"Higher-volume search, plus smart skill and tool picks, automatic model fallbacks and cost-aware routing.",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_done",
+		"Radient search is on",
+		"steps/search-api-step.tsx",
+	],
+	[
+		"ui.onboarding.search.mode.radient_done_detail",
+		"No keys needed. Your agents now get the other Radient benefits too.",
 		"steps/search-api-step.tsx",
 	],
 	[
@@ -266,6 +292,146 @@ const CONTRACT = [
 		"Saving {name}",
 		"steps/search-api-step.tsx",
 	],
+	[
+		"ui.onboarding.signin.announce_connected",
+		"{brand} connected.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.chatgpt.action",
+		"Log in with ChatGPT",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.claude.action",
+		"Log in with Claude",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.connected",
+		"Connected",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.divider",
+		"or log in with your subscription",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.detail",
+		"Setup needs it to sign you in. It usually starts within a few seconds.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.retry",
+		"Retry",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.error.title",
+		"Couldn't reach Local Operator's server.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.more",
+		"Other ways to connect",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.more_detail",
+		"API keys, local models",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.action",
+		"Continue with Radient",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.action_add",
+		"Add Radient",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.benefit.fallbacks",
+		"Automatic model fallbacks",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.benefit.routing",
+		"Cost-aware model routing",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.benefit.search",
+		"Optimized web search",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.benefit.skills",
+		"Smart skill and tool picks",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.credit",
+		"Eligible new accounts can claim free credit.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow",
+		"Recommended",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow_in_addition",
+		"Recommended in addition",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.eyebrow_signed_in",
+		"Signed in",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.radient.nudge",
+		"Keep your {brands} plan, and add Radient too. Your agents get smart skill and tool picks, optimized search and automatic fallbacks when a model is busy.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.subscriptions_note",
+		"Uses your ChatGPT Plus or Pro, or Claude Pro or Max plan. No extra charge.",
+		"steps/connect-provider-step.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle",
+		"Radient is the quickest start. You can add your ChatGPT or Claude plan too.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle_connected",
+		"Add more accounts, or continue.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.subtitle_radient_connected",
+		"Radient is connected. Add a subscription too, or continue.",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.title",
+		"Sign in to get started",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.title_connected",
+		"You're connected",
+		"onboarding-modal.tsx",
+	],
+	[
+		"ui.onboarding.signin.waiting",
+		"Waiting for browser",
+		"steps/connect-provider-step.tsx",
+	],
 ];
 
 /**
@@ -276,20 +442,22 @@ const CONTRACT = [
  * `brandOf(...)` argument) is a different node.
  */
 const PARAM_SITES = [
-	["ui.onboarding.modal.title.extras_with_name", [["name", "aidaName"]]],
+	["ui.onboarding.modal.title.meet", [["name", "aidaName"]]],
 	["ui.onboarding.modal.action.meet", [["name", "aidaName"]]],
 	["ui.onboarding.modal.error.aida_open_failed", [["name", "aidaName"]]],
 	[
 		"ui.onboarding.modal.step_of",
 		[
 			["current", "activeIndex + 1"],
-			["total", "STEP_SEQUENCE.length"],
+			["total", "sequence.length"],
 		],
 	],
-	["ui.onboarding.modal.steps_total", [["total", "STEP_SEQUENCE.length"]]],
-	["ui.onboarding.extras.next_meet", [["name", "aidaName"]]],
-	["ui.onboarding.extras.greeting_owed", [["name", "aidaName"]]],
-	["ui.onboarding.extras.greeting_done", [["name", "aidaName"]]],
+	["ui.onboarding.modal.steps_total", [["total", "sequence.length"]]],
+	["ui.onboarding.signin.radient.nudge", [["brands", "listFormat(brands)"]]],
+	[
+		"ui.onboarding.signin.announce_connected",
+		[["brand", "accountNameOf(row)"]],
+	],
 	[
 		"ui.onboarding.default_model.connected_pick",
 		[["brand", "brandOf(choice.provider)"]],
@@ -312,11 +480,12 @@ const PARAM_SITES = [
 	["ui.onboarding.search.row.get_your", [["name", "credential.name"]]],
 ];
 
-/** The three titles that flow through the modal's `stepTitles` table. */
+/** The step names that flow through the modal's `trackTitle` table. */
 const TABLE_KEYS = [
 	"ui.onboarding.modal.title.connect_provider",
 	"ui.onboarding.modal.title.default_model",
-	"ui.onboarding.modal.title.extras",
+	"ui.onboarding.modal.title.search",
+	"ui.onboarding.modal.title.meet",
 ];
 
 const PLAN_KEYS = {
@@ -912,7 +1081,7 @@ test("every key's committed English is byte-exact in the catalogue, and the set 
 	assert.deepEqual(
 		Object.keys(catalogue).sort(),
 		CONTRACT.map(([key]) => key),
-		"the catalogue's key set moved from the committed 47",
+		"the catalogue's key set moved from the committed contract",
 	);
 	for (const [key, expected] of CONTRACT) {
 		assert.equal(
@@ -959,7 +1128,8 @@ const bundle = await esbuild.build({
 export { ConnectProviderStep } from './src/renderer/src/features/onboarding/components/steps/connect-provider-step';
 export { DefaultModelSummary } from './src/renderer/src/features/onboarding/components/steps/default-model-step';
 export { SearchKeyRow } from './src/renderer/src/features/onboarding/components/steps/search-api-step';
-export { ExtrasStep } from './src/renderer/src/features/onboarding/components/steps/extras-step';
+export { SearchApiStep } from './src/renderer/src/features/onboarding/components/steps/search-api-step';
+export { meetAidaCopy } from './src/renderer/src/features/onboarding/components/steps/meet-aida-step';
 export { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 export { MemoryRouter } from 'react-router-dom';
 `,
@@ -1102,18 +1272,32 @@ function findP(markup, prefix) {
 	return null;
 }
 
-test("the connect intro renders its full committed sentence, with no extra fragments", () => {
-	const markup = render(React.createElement(mod.ConnectProviderStep));
-	const intro = findP(markup, "Choose Radient for many models");
-	assert.ok(intro, "the intro paragraph is missing from the render");
-	assert.equal(intro.text, value("ui.onboarding.connect.intro"));
+test("the sign-in step renders its divider and subscription note as full committed sentences", () => {
+	const markup = render(
+		React.createElement(mod.ConnectProviderStep, {
+			providers: [],
+			isLoading: false,
+			isError: false,
+			onRetry: () => {},
+			listFormat: (items) => items.join(" and "),
+		}),
+	);
+	const note = findP(markup, "Uses your ChatGPT Plus");
+	assert.ok(note, "the subscriptions note is missing from the render");
+	assert.equal(note.text, value("ui.onboarding.signin.subscriptions_note"));
+	assert.ok(
+		strip(markup).includes(value("ui.onboarding.signin.divider")),
+		"the divider names subscription LOG-INS",
+	);
 });
 
 test("the free-pool detail renders its exact committed sentence (appended or prefixed text fails)", () => {
 	const markup = render(
-		React.createElement(mod.ExtrasStep, { aidaName: "Ada", oweGreeting: true }),
+		React.createElement(mod.SearchApiStep, {
+			showCredentialDescription: false,
+		}),
 	);
-	const freeDetail = findP(markup, "Uses free search services");
+	const freeDetail = findP(markup, "Shared search services");
 	assert.ok(
 		freeDetail,
 		"the free-pool detail paragraph is missing from the render",
@@ -1121,30 +1305,16 @@ test("the free-pool detail renders its exact committed sentence (appended or pre
 	assert.equal(freeDetail.text, value("ui.onboarding.search.mode.free_detail"));
 });
 
-test("both chief-of-staff branches render their exact sentence for the oweGreeting they are given", () => {
-	const owed = render(
-		React.createElement(mod.ExtrasStep, { aidaName: "Ada", oweGreeting: true }),
-	);
-	const owedP = findP(owed, "Ada is your chief of staff");
-	assert.ok(owedP, "the owed greeting paragraph is missing");
+test("both chief-of-staff branches resolve their exact sentence for the oweGreeting they are given", () => {
+	const owed = mod.meetAidaCopy("Aida", true);
 	assert.equal(
-		owedP.text,
-		value("ui.onboarding.extras.greeting_owed").replace("{name}", "Ada"),
+		owed.title,
+		value("ui.onboarding.modal.title.meet").replace("{name}", "Aida"),
 	);
-	assert.match(owed, /<h3[^>]*>Next: meet Ada<\/h3>/);
-
-	const delivered = render(
-		React.createElement(mod.ExtrasStep, {
-			aidaName: "Ada",
-			oweGreeting: false,
-		}),
-	);
-	const doneP = findP(delivered, "Ada is your chief of staff");
-	assert.ok(doneP, "the delivered greeting paragraph is missing");
-	assert.equal(
-		doneP.text,
-		value("ui.onboarding.extras.greeting_done").replace("{name}", "Ada"),
-	);
+	assert.equal(owed.subtitle, value("ui.onboarding.meet.owed"));
+	const done = mod.meetAidaCopy("Aida", false);
+	assert.equal(done.subtitle, value("ui.onboarding.meet.done"));
+	assert.notEqual(owed.subtitle, done.subtitle);
 });
 
 test("the acquisition link renders the live href and caption; the placeholder is the committed one", () => {
@@ -1231,18 +1401,46 @@ test("the model summary names the brand its producer computes, and its states re
 });
 
 test("parameters render as escaped text, never markup", () => {
+	// The nudge's `{brands}` is the one parameter on the stage built from data;
+	// a list formatter that returned markup must still land as text.
+	const openai = {
+		id: "openai",
+		name: "OpenAI",
+		storage_id: "openai",
+		search_aliases: [],
+		auth_methods: [],
+		local: false,
+		credential_optional: false,
+		has_credential: true,
+		configured: true,
+		stored_credentials: 1,
+		base_url: null,
+	};
+	// The nudge lives in the Radient panel, so the census needs that row too.
+	const radient = {
+		...openai,
+		id: "radient",
+		name: "Radient",
+		storage_id: "radient",
+		has_credential: false,
+		configured: false,
+		stored_credentials: 0,
+	};
 	const markup = render(
-		React.createElement(mod.ExtrasStep, {
-			aidaName: "<strong>Ada</strong>",
-			oweGreeting: true,
+		React.createElement(mod.ConnectProviderStep, {
+			providers: [radient, openai],
+			isLoading: false,
+			isError: false,
+			onRetry: () => {},
+			listFormat: () => "<strong>Plan</strong>",
 		}),
 	);
 	assert.ok(
-		markup.includes("&lt;strong&gt;Ada&lt;/strong&gt; is your chief of staff"),
+		markup.includes("Keep your &lt;strong&gt;Plan&lt;/strong&gt; plan"),
 		"the parameter was not escaped into text",
 	);
 	assert.ok(
-		!markup.includes("<strong>Ada</strong>"),
+		!markup.includes("<strong>Plan</strong>"),
 		"the parameter became live markup",
 	);
 });
