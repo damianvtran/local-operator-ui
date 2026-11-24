@@ -1,0 +1,38 @@
+{
+	"ui.settings.privacy.title": {
+		"role": "Settings section heading and sidebar label",
+		"tone": "single noun",
+		"length": "Short; sits in the settings rail.",
+		"note": "Section holding the opt-in usage statistics switch."
+	},
+	"ui.settings.privacy.description": {
+		"role": "Section description",
+		"tone": "plain, reassuring",
+		"length": "One sentence under the heading.",
+		"note": "States sharing is off unless the user turns it on."
+	},
+	"ui.settings.privacy.usage_label": {
+		"role": "Toggle / checkbox label",
+		"tone": "sentence case verb phrase",
+		"length": "One line beside a switch or checkbox.",
+		"note": "Opt-in for anonymous active-user counting. Also used as the optional onboarding checkbox label."
+	},
+	"ui.settings.privacy.usage_explanation": {
+		"role": "Help text under the toggle / checkbox",
+		"tone": "plain, reassuring second person",
+		"length": "Wrapping paragraph; keep every fact.",
+		"note": "Must keep all facts: only counts active users; no conversations, prompts, files, session content or personal details are ever collected or stored; changeable any time. Local Operator is a product name: do not translate."
+	},
+	"ui.settings.privacy.save_failed": {
+		"role": "Error toast",
+		"tone": "plain",
+		"length": "One sentence.",
+		"note": "Shown when the choice could not be written to disk; the previous choice still applies."
+	},
+	"ui.settings.privacy.launch_off": {
+		"role": "Inline notice under the toggle",
+		"tone": "neutral",
+		"length": "One sentence.",
+		"note": "Shown when the app was launched with telemetry disabled by its launcher (a test or managed run)."
+	}
+}

@@ -15,6 +15,7 @@ import {
 	Plug,
 	Puzzle,
 	Settings,
+	ShieldCheck,
 	SlidersHorizontal,
 } from "lucide-react";
 import type { ComponentType, FC } from "react";
@@ -124,7 +125,7 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 		get label() {
 			return t("ui.settings.navigation.settings_sidebar.system");
 		},
-		ids: ["updates"],
+		ids: ["privacy", "updates"],
 	},
 ];
 
@@ -426,6 +427,13 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 			return t("ui.settings.imports.title");
 		},
 		icon: FolderInput,
+	},
+	{
+		id: "privacy",
+		get label() {
+			return t("ui.settings.privacy.title");
+		},
+		icon: ShieldCheck,
 	},
 	{
 		id: "updates",

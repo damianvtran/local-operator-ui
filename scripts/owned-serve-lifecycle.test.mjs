@@ -2109,7 +2109,6 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 		backendService,
 		logger: { error() {} },
 		LogFileType: { BACKEND: "backend" },
-		posthogClient: { shutdown: () => calls.push(["telemetry"]) },
 		scheduleReopenAtQuitTerminal: () => reopens.push("crash"),
 	});
 	processFixture.emit("uncaughtException", Error("fatal"));
@@ -2121,7 +2120,9 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 		"the crash exit completes a recorded reopen before the process goes (#755)",
 	);
 	processFixture.emit("exit");
-	assert.deepEqual(calls.slice(2), [["emergency"], ["telemetry"]]);
+	// Main constructs no PostHog client any more (2026-11-24, opt-in telemetry
+	// is renderer-only), so the exit path has no telemetry flush to run.
+	assert.deepEqual(calls.slice(2), [["emergency"]]);
 	assert.equal(
 		reopens.length,
 		1,

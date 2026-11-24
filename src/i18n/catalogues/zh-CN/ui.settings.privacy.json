@@ -1,0 +1,8 @@
+{
+	"ui.settings.privacy.title": "隐私",
+	"ui.settings.privacy.description": "Local Operator 可以分享的使用情况信息。除非你开启，否则不会分享任何内容。",
+	"ui.settings.privacy.usage_label": "分享匿名使用统计",
+	"ui.settings.privacy.usage_explanation": "仅用于统计有多少人在活跃使用 Local Operator。绝不会收集或存储任何对话、提示词、文件、会话内容或个人信息。你可以随时更改此设置。",
+	"ui.settings.privacy.save_failed": "无法保存你的隐私选择，设置未更改。",
+	"ui.settings.privacy.launch_off": "本次启动已关闭使用统计，无论此设置如何，都不会发送任何内容。"
+}

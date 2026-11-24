@@ -27,9 +27,11 @@
  *
  * THE RULES, and the reason each direction is the safe one:
  *
- *  - the launch says NOTHING: telemetry stays ON. This is the shipped app on a
- *    user's own machine, and their analytics are the feature — a default of
- *    "off unless asked" would silently delete them for everybody.
+ *  - the launch says NOTHING: the launch ALLOWS telemetry and defers to the
+ *    user's consent (`telemetry-consent.ts`, 2026-11-24). Telemetry is
+ *    default-off and opt-in, so an unset switch on a user's machine still sends
+ *    nothing until they opt in from Settings → Privacy. This switch can only
+ *    take telemetry away; it never turns it on over a user's "no".
  *  - the launch says `off` (`off`, `0`, `false`, `no`): none of the app's
  *    clients is constructed, and the renderer is told the same thing through the
  *    window's `additionalArguments` rather than through an environment of its
@@ -46,8 +48,9 @@
  *  - the build carries NO project key: no client either, and a line saying so.
  *    That is the crash above turned into the thing an empty key plainly means.
  *
- * What it deliberately is NOT: a privacy control for the shipped app's users
- * (there is no UI for it, and the launch is not theirs to set), and not a
+ * What it deliberately is NOT: the user's privacy control (that is the opt-in
+ * consent in Settings → Privacy, `telemetry-consent.ts`; the launch is not
+ * theirs to set), and not a
  * network-isolation guarantee — an off launch makes no PostHog request of its
  * own, but it still reaches the Local Operator backend the app was pointed at.
  *
@@ -57,7 +60,7 @@
  * decisions in milliseconds instead of booting an app.
  */
 
-/** The launch fact. Unset — the shipped app — means telemetry stays on. */
+/** The launch fact. Unset — the shipped app — defers to the user's consent. */
 export const TELEMETRY_ENV = "LOCAL_OPERATOR_UI_TELEMETRY";
 
 /**
@@ -65,13 +68,12 @@ export const TELEMETRY_ENV = "LOCAL_OPERATOR_UI_TELEMETRY";
  * this decision has to the renderer.
  *
  * It is ALWAYS written, unlike the dev driver's entry, which is written only
- * when armed. The dev driver is an opt-in whose absence can be read as "off";
- * telemetry's default is ON, so if silence also meant "on" then a window created
- * by a path that forgot to compose this entry would leak the very events this
- * switch exists to stop — and the reader below could not tell that case apart
- * from a launch that was never an app window at all. Spelling the decision out
- * every time makes the renderer's fail-closed default ("no entry, no telemetry")
- * safe to hold.
+ * when armed. The value is the EFFECTIVE decision (this launch's verdict AND
+ * the user's opt-in consent, `telemetry-consent.ts`) at window creation; later
+ * consent changes reach an open window over IPC. Spelling it out on every
+ * window, even now that the default is off, keeps "no entry" from ever being a
+ * normal launch's spelling, so the renderer's fail-closed default ("no entry,
+ * no telemetry") stays safe to hold and a forgotten window path is visible.
  */
 export const TELEMETRY_ARG = "--lo-telemetry";
 

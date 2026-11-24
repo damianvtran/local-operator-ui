@@ -83,12 +83,14 @@ const keylessRenderer = await import(
 /** The launch a person makes: nothing in the environment about telemetry. */
 const normalLaunch = { env: {}, projectKey: KEY };
 
-test("a launch that says nothing keeps its telemetry, and says nothing about it", () => {
+test("a launch that says nothing ALLOWS telemetry and defers to the user's consent", () => {
 	const decision = resolveTelemetryLaunch(normalLaunch);
+	// `enabled` here is the LAUNCH's half only (2026-11-24): telemetry is opt-in,
+	// and `resolveEffectiveTelemetry` (scripts/telemetry-consent.test.mjs) ANDs
+	// this with the user's consent, so an unset switch with no consent record is
+	// still OFF. This half stays "allows" so a user who opts in is not refused.
 	assert.equal(decision.enabled, true);
-	// No problems and no line, because nothing was set: a normal launch must not
-	// explain a feature its user did not invoke, and the evidence for "a real
-	// user still reports" is that this decision is byte-for-byte what it was.
+	// No problems and no line from the launch itself: nothing was set.
 	assert.deepEqual(decision.problems, []);
 	assert.equal(decision.offReason, null);
 	assert.equal(describeTelemetryLaunch(decision), null);
@@ -261,14 +263,15 @@ test("a build with no key mounts no client in the renderer either", () => {
 		true,
 	);
 	/*
-	 * The two call sites read THAT export rather than working the key out again:
-	 * the provider mounts on `telemetryEnabled`, and the apiKey it hands over is
-	 * the same build key this rule just checked. A mount that reached for the key
-	 * directly would re-open exactly the divergence this closes.
+	 * The renderer hands the controller the BUILD's key and starts it from that
+	 * same export, so the key rule above is the one the live client obeys
+	 * (`createTelemetryController` additionally refuses a blank key itself).
 	 */
 	const mainSource = readFileSync("src/renderer/src/main.tsx", "utf8");
-	assert.match(mainSource, /\{telemetryEnabled \? \(/);
-	assert.match(mainSource, /apiKey=\{config\.VITE_PUBLIC_POSTHOG_KEY\}/);
+	assert.match(mainSource, /telemetry\.apply\(telemetryEnabled\);/);
+	assert.match(mainSource, /projectKey: config\.VITE_PUBLIC_POSTHOG_KEY,/);
+	// And no `PostHogProvider` mount is left to initialise a client on its own.
+	assert.doesNotMatch(mainSource, /<PostHogProvider/);
 });
 
 test("the app's name for the switch and the tooling's are the same string", () => {
@@ -338,13 +341,19 @@ test("main writes app.getVersion() on the always-written renderer entry, and the
 	 * through the async IPC that resolves after the first pageview.
 	 */
 	const mainIndex = readFileSync("src/main/index.ts", "utf8");
+	// The entry is the EFFECTIVE decision (launch AND consent) at window creation.
 	assert.match(
 		mainIndex,
-		/const telemetryWebPreferences = \{\s*additionalArguments: \[\s*telemetryArgument\(telemetryLaunch\.enabled\),\s*\.\.\.appVersionArguments\(app\.getVersion\(\)\),\s*\],\s*\};/,
+		/function telemetryWebPreferences\(\)[^\n]*\{\s*return \{\s*additionalArguments: \[[\s\S]*?telemetryArgument\(telemetryConsentState\(\)\.effective\),\s*\.\.\.appVersionArguments\(app\.getVersion\(\)\),\s*\],/,
 	);
 	assert.match(
 		mainIndex,
-		/\.\.\.\(telemetryWebPreferences\.additionalArguments \?\? \[\]\)/,
+		/\.\.\.telemetryWebPreferences\(\)\.additionalArguments,/,
+	);
+	// Main constructs no analytics client of its own any more.
+	assert.doesNotMatch(
+		mainIndex,
+		/from "posthog-node"|new PostHog\(|posthogClient/,
 	);
 	const preload = readFileSync("src/preload/index.ts", "utf8");
 	assert.match(preload, /appVersion: readAppVersionArgument\(process\.argv\),/);

@@ -1,0 +1,8 @@
+{
+	"ui.settings.privacy.title": "Confidentialité",
+	"ui.settings.privacy.description": "Ce que Local Operator peut partager sur son utilisation. Rien n’est partagé tant que vous ne l’activez pas.",
+	"ui.settings.privacy.usage_label": "Partager des statistiques d’utilisation anonymes",
+	"ui.settings.privacy.usage_explanation": "Sert uniquement à compter le nombre de personnes qui utilisent activement Local Operator. Aucune conversation, aucun prompt, aucun fichier, aucun contenu de session ni aucune donnée personnelle n’est jamais collecté ni conservé. Vous pouvez modifier ce choix à tout moment.",
+	"ui.settings.privacy.save_failed": "Impossible d’enregistrer votre choix de confidentialité. Rien n’a changé.",
+	"ui.settings.privacy.launch_off": "Les statistiques d’utilisation sont désactivées pour ce lancement : rien n’est envoyé, quel que soit ce réglage."
+}

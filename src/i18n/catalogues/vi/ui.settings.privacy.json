@@ -1,0 +1,8 @@
+{
+	"ui.settings.privacy.title": "Quyền riêng tư",
+	"ui.settings.privacy.description": "Những gì Local Operator có thể chia sẻ về cách ứng dụng được sử dụng. Không có gì được chia sẻ trừ khi bạn bật lên.",
+	"ui.settings.privacy.usage_label": "Chia sẻ thống kê sử dụng ẩn danh",
+	"ui.settings.privacy.usage_explanation": "Chỉ dùng để đếm số người đang tích cực sử dụng Local Operator. Không bao giờ thu thập hay lưu trữ cuộc trò chuyện, prompt, tệp, nội dung phiên hoặc thông tin cá nhân. Bạn có thể thay đổi lựa chọn này bất cứ lúc nào.",
+	"ui.settings.privacy.save_failed": "Không thể lưu lựa chọn quyền riêng tư của bạn. Không có gì thay đổi.",
+	"ui.settings.privacy.launch_off": "Lần khởi chạy này đã tắt thống kê sử dụng, nên không có gì được gửi đi, bất kể cài đặt này ra sao."
+}

@@ -6,7 +6,6 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
@@ -17,14 +16,17 @@ import {
 	bridgeAppVersion,
 	registerAppVersion,
 } from "@shared/analytics/app-version";
-import { scrubCaptureResult } from "@shared/analytics/autocapture-privacy";
 import { registerProductEventClient } from "@shared/analytics/product-events";
+import {
+	type TelemetryClient,
+	buildPosthogOptions,
+	createTelemetryController,
+} from "@shared/analytics/telemetry-controller";
 import { config, telemetryEnabled } from "@shared/config";
 import { LocaleDirectionProvider } from "@shared/i18n/locale-direction";
 import { installExternalOpenRefusalToasts } from "@shared/lib/external-open-refusal";
 import { installNotificationSoundPlayer } from "@shared/lib/notification-sound-player";
 import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
-import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
 import { RegistrationToasts } from "./mini-view/registration-toasts";
@@ -41,38 +43,18 @@ import { appearanceOf, applyAppearance } from "./shared/themes/appearance";
 import { ThemeProvider } from "./shared/themes/theme-provider";
 import { isDevelopmentMode } from "./shared/utils/env-utils";
 
-const posthogOptions: Partial<PostHogConfig> = {
-	api_host: config.VITE_PUBLIC_POSTHOG_HOST,
-	capture_exceptions: true,
-	/*
-	 * NO USER CONTENT IN AUTOCAPTURE OR EXCEPTIONS (2026-11-21). Every event
-	 * passes through this before it is queued: clicked-element text and
-	 * attributes (`$el_text`, `$elements_chain`, `$elements`, external URLs) keep
-	 * short control labels and lose paths, file names, emails, URLs and long
-	 * text; `$exception` messages and frames lose the same inline. The rule, its
-	 * measurement and how to extend it live in `autocapture-privacy.ts`; the
-	 * other half is `USER_CONTENT_CLASS` on user-content regions.
-	 */
-	before_send: scrubCaptureResult,
-	/*
-	 * EVERY EVENT NAMES THE APP VERSION THAT SENT IT (2026-11-24). `$lib_version`
-	 * is posthog-js's version, identical across app releases, so without this a
-	 * shipped fix could not be told apart from the build before it in the data.
-	 * `loaded` runs synchronously inside `init` and BEFORE the initial pageview is
-	 * scheduled (posthog-js 1.235.6, `lib/src/posthog-core.js:504-520`), so the
-	 * very first `$pageview` carries `app_version` too. The value is main's
-	 * `app.getVersion()` via the preload bridge; why that route, and why a missing
-	 * one unregisters rather than registering a placeholder, is in
-	 * `shared/analytics/app-version.ts`.
-	 */
+/*
+ * THE ANALYTICS CLIENT IS OPT-IN AND LIVE (2026-11-24). Nothing is sent unless
+ * the user opted in (Settings → Privacy) AND the launch allows it; the options
+ * are the minimum needed to count active users — no session replay, no
+ * autocapture, no exception capture, no page titles or in-app routes
+ * (`buildPosthogOptions` in `telemetry-controller.ts` says why each is off).
+ * `loaded` still stamps `app_version` on every event, before the first one.
+ */
+const posthogOptions = buildPosthogOptions({
+	apiHost: config.VITE_PUBLIC_POSTHOG_HOST,
 	loaded: (client) => registerAppVersion(client, bridgeAppVersion()),
-	/*
-	 * Replay already masks every input by default; restated so a posthog-js
-	 * default change cannot unmask the composer. Text in user-content regions is
-	 * masked through their `ph-mask` class (posthog's default `maskTextClass`).
-	 */
-	session_recording: { maskAllInputs: true },
-};
+});
 
 /*
  * Register the dev driver's verbs, if this launch armed it.
@@ -305,18 +287,20 @@ document.addEventListener("DOMContentLoaded", () => {
 		</QueryClientProvider>
 	);
 
-	root.render(
-		<React.StrictMode>
-			{telemetryEnabled ? (
-				<PostHogProvider
-					apiKey={config.VITE_PUBLIC_POSTHOG_KEY}
-					options={posthogOptions}
-				>
-					{appTree}
-				</PostHogProvider>
-			) : (
-				appTree
-			)}
-		</React.StrictMode>,
+	root.render(<React.StrictMode>{appTree}</React.StrictMode>);
+	/*
+	 * Start from the launch's answer (main composed it from launch AND consent
+	 * when it created this window), then follow main's broadcasts, so opting in
+	 * or out in Settings — in this window or another — starts or stops sending
+	 * here immediately. No bridge (Storybook, a bare renderer) stays off.
+	 */
+	const telemetry = createTelemetryController({
+		client: posthog as unknown as TelemetryClient,
+		projectKey: config.VITE_PUBLIC_POSTHOG_KEY,
+		options: posthogOptions as unknown as Record<string, unknown>,
+	});
+	telemetry.apply(telemetryEnabled);
+	window.api?.telemetryConsent?.onChange((state) =>
+		telemetry.apply(state.effective === true),
 	);
 });

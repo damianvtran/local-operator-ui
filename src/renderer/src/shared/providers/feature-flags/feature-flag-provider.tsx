@@ -6,11 +6,14 @@
  * Automatically refreshes feature flags every 10 minutes.
  */
 
-import { telemetryEnabled } from "@shared/config";
+import {
+	isTelemetryActive,
+	subscribeTelemetryActive,
+} from "@shared/analytics/telemetry-state";
 import posthog from "posthog-js";
 import { useFeatureFlagEnabled } from "posthog-js/react";
 import type { FC, ReactNode } from "react";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import {
 	FeatureFlagContext,
@@ -152,12 +155,25 @@ const DefaultFeatureFlags: FC<FeatureFlagProviderProps> = ({ children }) => {
  * PostHog-backed one when the launch may report, and the all-defaults one when
  * it may not.
  */
-export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = (props) =>
-	telemetryEnabled ? (
+export const FeatureFlagProvider: FC<FeatureFlagProviderProps> = (props) => {
+	/*
+	 * LIVE, not a launch constant (2026-11-24): telemetry is opt-in and can be
+	 * switched in Settings without a restart, so the provider follows the state
+	 * the telemetry controller publishes. Off (the default) is the all-defaults
+	 * branch, which makes no network request; it remounts children's flag
+	 * context only, never posthog-js init (the controller owns that).
+	 */
+	const active = useSyncExternalStore(
+		subscribeTelemetryActive,
+		isTelemetryActive,
+		() => false,
+	);
+	return active ? (
 		<PostHogFeatureFlags {...props} />
 	) : (
 		<DefaultFeatureFlags {...props} />
 	);
+};
 
 /**
  * Hook to access feature flags in a type-safe manner

@@ -1,3 +1,15 @@
+import type {
+	BackendStartupCategory,
+	BackendStartupPhase,
+} from "../../../../shared/backend-startup";
+import type {
+	LocalModelCheckReason,
+	LocalModelCheckResult,
+	ProviderSetupFailureReason,
+	ProviderSetupMethod,
+	SendFailureDiagnosis,
+	TourStepOutcome,
+} from "./first-run-reasons";
 /**
  * Named product events for the first-run funnel, through the ONE consent gate.
  *
@@ -35,18 +47,7 @@
  * gated `PostHogProvider`, hands the client in through
  * `registerProductEventClient`; until it does, the default sink drops.
  */
-import type {
-	BackendStartupCategory,
-	BackendStartupPhase,
-} from "../../../../shared/backend-startup";
-import type {
-	LocalModelCheckReason,
-	LocalModelCheckResult,
-	ProviderSetupFailureReason,
-	ProviderSetupMethod,
-	SendFailureDiagnosis,
-	TourStepOutcome,
-} from "./first-run-reasons";
+import { isTelemetryActive } from "./telemetry-state";
 
 /** Every event and the exact properties it may carry. */
 export interface ProductEvents {
@@ -115,14 +116,12 @@ const defaultSink: Sink = (name, properties) => {
 /*
  * WHY NOT `telemetryEnabled` DIRECTLY: that module reads the build config at
  * import, and this one is imported by the onboarding tour, which tests bundle
- * without a config. The gate is the same fact read at capture time: the bridge's
- * explicit `true` (the half `telemetry.ts` reads from the launch) AND an
- * initialised client - which only the gated `PostHogProvider` ever creates.
+ * without a config. The gate is read at capture time from `telemetry-state.ts`:
+ * the LIVE opt-in state the telemetry controller publishes (falling back to the
+ * bridge's explicit `true` before it has), AND an initialised client. An
+ * opt-out therefore stops product events immediately, not at the next launch.
  */
-const launchMayReport = (): boolean =>
-	typeof window !== "undefined" &&
-	(window as { api?: { telemetryEnabled?: boolean } }).api?.telemetryEnabled ===
-		true;
+const launchMayReport = (): boolean => isTelemetryActive();
 
 let sink: Sink | null = defaultSink;
 
