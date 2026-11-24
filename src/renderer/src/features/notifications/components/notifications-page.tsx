@@ -24,6 +24,7 @@ import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
  * that an arbitrary truncation is the whole inbox.
  */
 import {
+	DesktopControlError,
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
@@ -105,6 +106,7 @@ import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	applyConfirmedWrite,
+	notificationKeys,
 	prefetchNotificationDetail,
 	previewNotificationSelection,
 	readSessionDismissCounts,
@@ -137,7 +139,11 @@ import {
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
-import { notificationSourceLabel } from "../source-label";
+import {
+	conversationDeleted,
+	notificationSourceLabel,
+	withDeletedOwners,
+} from "../source-label";
 import {
 	NotificationDetail,
 	copyNotificationLink,
@@ -366,6 +372,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const [settledAskRows, setSettledAskRows] = useState<
 		Map<string, DesktopNotificationItem>
 	>(() => new Map());
+	/* Conversations a fresh detail read reported deleted before the list did (Q-U2). */
+	const [deletedSessions, setDeletedSessions] = useState<ReadonlySet<string>>(
+		() => new Set(),
+	);
 	const [stickyRead, setStickyRead] = useState<
 		Map<string, DesktopNotificationItem>
 	>(() => new Map());
@@ -523,23 +533,33 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			confirmedReadTokens.current,
 		);
 		const settled = [...settledAskRows.values()];
-		const reconciled = [
-			...base.filter((item) => !settledAskRows.has(item.id)),
-			...settled,
-		];
+		const reconciled = withDeletedOwners(
+			[...base.filter((item) => !settledAskRows.has(item.id)), ...settled],
+			deletedSessions,
+		);
 		if (readState !== "unread" || stickyRead.size === 0) return reconciled;
 		const present = new Set(reconciled.map((item) => item.id));
 		return [
 			...reconciled,
 			...[...stickyRead.values()].filter((item) => !present.has(item.id)),
 		];
-	}, [loaded, readState, stickyRead, confirmedReadVersion, settledAskRows]);
+	}, [
+		loaded,
+		readState,
+		stickyRead,
+		confirmedReadVersion,
+		settledAskRows,
+		deletedSessions,
+	]);
 	const waiting = useMemo(
 		() =>
-			(loaded?.reelWaiting ?? loaded?.waiting ?? []).filter(
-				(item) => !settledAskRows.has(item.id),
+			withDeletedOwners(
+				(loaded?.reelWaiting ?? loaded?.waiting ?? []).filter(
+					(item) => !settledAskRows.has(item.id),
+				),
+				deletedSessions,
 			),
-		[loaded, settledAskRows],
+		[loaded, settledAskRows, deletedSessions],
 	);
 	const filtered = useMemo(() => filterItems(items, filters), [items, filters]);
 	const filteredWaiting = useMemo(
@@ -1349,6 +1369,52 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		},
 		[navigate],
 	);
+	/*
+	 * THE DETAIL KNOWS FIRST (QA round 1, Q-U2). When the open row's fresh detail
+	 * read says its conversation is deleted, every row of that conversation is
+	 * painted so at once (`withDeletedOwners`) and the list is re-read for core's
+	 * own flags - once per conversation, so a stale list cannot loop it.
+	 */
+	const detailItem = detail.data?.item;
+	useEffect(() => {
+		if (!detailItem || !conversationDeleted(detailItem)) return;
+		const sessionId = detailItem.session.id;
+		if (deletedSessions.has(sessionId)) return;
+		setDeletedSessions((current) => new Set(current).add(sessionId));
+		/* The facts read is the list's page one and what reconciles the window. */
+		if (client)
+			void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
+	}, [detailItem, deletedSessions, client]);
+	/*
+	 * A LISTED ROW WHOSE DETAIL ANSWERS 404 IS GONE (QA round 1, Q-U1). Cores
+	 * before the orphan fix answer `unknown_item` for an ask whose conversation was
+	 * deleted while it sat on screen; the pane used to keep the stale card with
+	 * Open conversation live. The row no longer exists server-side, so the list is
+	 * re-read (a fixed core returns it flagged; an older one drops it) and the pane
+	 * closes instead of offering doors onto nothing. Exempt: a row this page itself
+	 * settled or dismissed - core stops answering those too, and their pane keeps
+	 * the settled status on purpose (see `OrphanAskActions`).
+	 */
+	const detailGone =
+		detail.isError &&
+		detail.error instanceof DesktopControlError &&
+		detail.error.status === 404;
+	const goneListedId =
+		detailGone &&
+		notificationId &&
+		!settledAskRows.has(notificationId) &&
+		byId.get(notificationId)?.dismissed === false
+			? notificationId
+			: null;
+	useEffect(() => {
+		if (!goneListedId) return;
+		if (client) {
+			void client.invalidateQueries({ queryKey: notificationKeys.listRoot });
+			void client.invalidateQueries({ queryKey: notificationKeys.count });
+			void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
+		}
+		closeDetail();
+	}, [goneListedId, client, closeDetail]);
 	const toggleSelect = useCallback(
 		(item: DesktopNotificationItem, shift: boolean) => {
 			if (frozenSelection) {
@@ -1764,6 +1830,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			case "O":
 				if (current && !primary) {
 					event.preventDefault();
+					/*
+					 * The key is the same door as the withheld Open conversation button
+					 * (code round 1, R1): a deleted conversation says why, never navigates
+					 * to a route that answers "not found".
+					 */
+					if (conversationDeleted(current)) {
+						showInfoToast(t("ui.notifications.detail.deleted.open_tip"));
+						return;
+					}
 					openSource(current.session.id);
 				}
 				return;

@@ -138,6 +138,7 @@ const dom = new JSDOM("<!doctype html>", {
 	pretendToBeVisual: true,
 });
 const { window } = dom;
+let wideViewport = false;
 const NoopObserver = class {
 	observe() {}
 	unobserve() {}
@@ -155,10 +156,13 @@ const shims = {
 	requestAnimationFrame: (callback) => setTimeout(callback, 0),
 	cancelAnimationFrame: (id) => clearTimeout(id),
 	IS_REACT_ACT_ENVIRONMENT: true,
+	/* The page restores row focus with `CSS.escape`, a global jsdom does not define. */
+	CSS: { escape: (value) => value },
 	ResizeObserver: NoopObserver,
 	IntersectionObserver: NoopObserver,
+	/* `wideViewport` lets one case draw the list and the detail side by side. */
 	matchMedia: (query) => ({
-		matches: false,
+		matches: wideViewport && query.includes("min-width"),
 		media: query,
 		onchange: null,
 		addEventListener() {},
@@ -228,7 +232,7 @@ const QUESTION =
 	"May the release implementer post the two round-1 remediation comments on PR #4475?";
 
 /** The orphan as core lists it: flagged, with no title left to show. */
-const orphan = () => ({
+const orphan = (flagged = true) => ({
 	id: ORPHAN_ID,
 	source: "ask",
 	priority: "high",
@@ -243,7 +247,7 @@ const orphan = () => ({
 	dismissed: false,
 	repeat_count: 1,
 	session: { id: GONE, title: "" },
-	conversation_deleted: true,
+	conversation_deleted: flagged,
 	ask: {
 		status: "open",
 		question_count: 1,
@@ -275,9 +279,14 @@ const SUBAGENT_NOTE = {
 async function mount({
 	openId = ORPHAN_ID,
 	answer = () => ({ status: 200 }),
+	/* false: the list still has the pre-delete row (an out-of-band delete, Q-U2). */
+	listFlagged = true,
+	/* An older core: the open ask's detail answers 404 once its owner is gone (Q-U1). */
+	detail404 = false,
 } = {}) {
 	let open = true;
 	const posts = [];
+	const reads = { list: 0 };
 	window.api = {
 		desktop: {
 			request: async (request) => {
@@ -296,7 +305,10 @@ async function mount({
 						};
 					case "notifications.list":
 					case "notifications.count": {
-						const waiting = open ? [orphan()] : [];
+						if (request.op === "notifications.list") reads.list += 1;
+						/* An older core drops a gone owner's row once the list is re-read. */
+						const listed = open && !(detail404 && reads.list > 1);
+						const waiting = listed ? [orphan(listFlagged)] : [];
 						/* A conversation-scoped walk (Dismiss all) finds no updates to dismiss. */
 						const items = request.sessionId ? [] : [SUBAGENT_NOTE];
 						return {
@@ -337,7 +349,7 @@ async function mount({
 									},
 								},
 							};
-						if (!open || request.id !== ORPHAN_ID)
+						if (!open || detail404 || request.id !== ORPHAN_ID)
 							return { status: 404, body: { detail: "no such notification" } };
 						/* No `asks`: core cannot read the deleted conversation's transcript. */
 						return {
@@ -441,12 +453,22 @@ async function mount({
 		client.clear();
 		container.remove();
 	};
-	return { container, pane, row, settle, press, posts, unmount };
+	const key = async (node, value) => {
+		await act(async () => {
+			node.focus();
+			node.dispatchEvent(
+				new window.KeyboardEvent("keydown", { key: value, bubbles: true }),
+			);
+		});
+	};
+	return { container, pane, row, settle, press, key, posts, reads, unmount };
 }
 
 const BOUNDED = { timeout: 30_000 };
 const DELETED = "Conversation deleted";
 const UNTITLED = /Untitled conversation/;
+const IN_THIS_CONVERSATION = /in this conversation/;
+const DISMISS_INSTRUCTION = /Decline or dismiss it/;
 const orphanBlock = (page) => page.pane()?.querySelector("[data-orphan-ask]");
 const ready = (page) => page.settle(() => orphanBlock(page) != null);
 
@@ -464,6 +486,9 @@ test(
 				"header names the deletion",
 			);
 			assert.ok(pane.querySelector("[data-notification-conversation-deleted]"));
+			/* D4: no "in this conversation" over a conversation that is gone. */
+			assert.ok(pane.textContent.includes("Waiting on you"));
+			assert.doesNotMatch(pane.textContent, IN_THIS_CONVERSATION);
 			assert.equal(
 				pane.querySelector("[data-notification-from-name]")?.textContent,
 				DELETED,
@@ -557,6 +582,26 @@ for (const [door, field] of [
 					page.pane()?.querySelector("[data-orphan-ask-refused]") ?? null,
 					null,
 					"no refusal on success",
+				);
+				/*
+				 * D1: the instruction to decline or dismiss goes once it is done; the
+				 * settled word is the only status left. Held across the refetch that
+				 * 404s (core stops answering a settled ask), so the pane stays open.
+				 */
+				await page.settle(() => false, 300);
+				/* Booleans, not nodes: a failing deepEqual would inspect the whole jsdom tree. */
+				assert.ok(page.pane() != null, "the settled orphan's pane stays open");
+				assert.equal(
+					page
+						.pane()
+						.querySelector("[data-notification-conversation-deleted]") != null,
+					false,
+					"no 'Decline or dismiss it' notice above a settled status",
+				);
+				assert.doesNotMatch(page.pane().textContent, DISMISS_INSTRUCTION);
+				assert.ok(
+					page.pane().querySelector("[data-orphan-ask-settled]") != null,
+					"the settled status is still drawn",
 				);
 			} finally {
 				await page.unmount();
@@ -668,6 +713,83 @@ test(
 				"the empty walk is said, not swallowed",
 			);
 		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"R1: the `o` key on a deleted conversation's row says why and does not navigate",
+	BOUNDED,
+	async () => {
+		const page = await mount({ openId: null });
+		try {
+			assert.ok(await page.settle(() => page.row(ORPHAN_ID) !== null));
+			await page.key(page.row(ORPHAN_ID), "o");
+			assert.ok(
+				await page.settle(() =>
+					window.document.body.textContent.includes(
+						"This conversation was deleted",
+					),
+				),
+				"the withheld door's reason is said",
+			);
+			/* Navigating would leave both routes: the page (and its row) would unmount. */
+			assert.ok(page.row(ORPHAN_ID) != null, "still on the Notifications page");
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"Q-U2: a detail that reports the conversation deleted relabels its list row at once",
+	BOUNDED,
+	async () => {
+		wideViewport = true;
+		const page = await mount({ listFlagged: false });
+		try {
+			assert.ok(await ready(page), "the detail read carried the flag");
+			assert.ok(
+				page.row(ORPHAN_ID) != null,
+				"the list is drawn beside the detail",
+			);
+			assert.ok(
+				await page.settle(() =>
+					page.row(ORPHAN_ID)?.textContent.includes(DELETED),
+				),
+				`the row agrees with the detail: ${page.row(ORPHAN_ID)?.textContent}`,
+			);
+			assert.doesNotMatch(page.row(ORPHAN_ID).textContent, UNTITLED);
+			assert.ok(
+				await page.settle(() => page.reads.list >= 2),
+				"the list was re-read for core's flags",
+			);
+		} finally {
+			wideViewport = false;
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"Q-U1: a listed ask whose detail answers 404 closes its pane and re-reads the list",
+	BOUNDED,
+	async () => {
+		wideViewport = true;
+		const page = await mount({ detail404: true, listFlagged: false });
+		try {
+			assert.ok(
+				await page.settle(() => page.reads.list >= 2 && page.pane() == null),
+				"the pane closed and the list was re-read",
+			);
+			assert.ok(
+				await page.settle(() => page.row(ORPHAN_ID) == null),
+				"the gone row left the list",
+			);
+			assert.equal(page.posts.length, 0);
+		} finally {
+			wideViewport = false;
 			await page.unmount();
 		}
 	},

@@ -34,7 +34,40 @@ export const notificationSourceLabel = (
  * detail read carries no `asks` (core cannot read a transcript that is gone),
  * so the id has to come from the row itself. Session ids never contain `:`, so
  * everything after the second colon is the ask id.
+ *
+ * THE ASSUMPTION'S FAILURE MODE (code round 1, R3). Core's session ids are
+ * 12-hex or `remote-*`/pseudo ids today, none with `:`. Should one ever carry
+ * a colon, the prefix built here would still match the row's own id (it is built
+ * from the same `session.id`), so the split stays right; only a row whose id
+ * disagrees with its `session.id` misses the prefix, and that returns null - the
+ * pane then falls back to the ordinary ask panel rather than settling a wrong id.
  */
+/**
+ * The rows with every row of a known-deleted conversation flagged as such.
+ *
+ * WHY AN OVERLAY (QA round 1, Q-U2). A conversation deleted out of band moves
+ * no store fingerprint, so the list read keeps its rows unflagged ("Untitled
+ * conversation", Open live) until the next poll, while the detail read - fresh
+ * for the one open row - already says `conversation_deleted`. The page records
+ * the session the detail reported and paints the list from that fact at once;
+ * the list refetch it triggers then brings core's own flags. Identity is kept
+ * when nothing changes so memoised consumers do not re-render.
+ */
+export const withDeletedOwners = (
+	items: DesktopNotificationItem[],
+	deletedSessions: ReadonlySet<string>,
+): DesktopNotificationItem[] => {
+	if (deletedSessions.size === 0) return items;
+	let changed = false;
+	const next = items.map((item) => {
+		if (conversationDeleted(item) || !deletedSessions.has(item.session.id))
+			return item;
+		changed = true;
+		return { ...item, conversation_deleted: true };
+	});
+	return changed ? next : items;
+};
+
 export const askIdOfItem = (item: DesktopNotificationItem): string | null => {
 	if (item.source !== "ask") return null;
 	const prefix = `ask:${item.session.id}:`; // i18n: ignore the wire id's prefix, not interface copy

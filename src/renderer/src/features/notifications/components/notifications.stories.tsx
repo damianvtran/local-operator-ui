@@ -1999,3 +1999,15 @@ export const OrphanAskDismissedAfter: Story = {
 		(root) => root.querySelector("[data-orphan-ask-settled]") !== null,
 	),
 };
+/*
+ * Decline's settled frame (design round 1, D1): the same pane as Dismiss, so the
+ * review sees both doors end with the status alone - no "Decline or dismiss it"
+ * notice left above it.
+ */
+export const OrphanAskDeclinedAfter: Story = {
+	render: () => page(orphanState(true, { items: [] }), ORPHAN_PANE),
+	play: driveOrphan(
+		"decline",
+		(root) => root.querySelector("[data-orphan-ask-settled]") !== null,
+	),
+};

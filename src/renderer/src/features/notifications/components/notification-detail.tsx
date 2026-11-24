@@ -4,8 +4,13 @@ import {
 	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "@features/chat/ask-answer";
-import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
+import type {
+	AskDismissReason,
+	AskDraft,
+	AskStatus,
+} from "@features/chat/ask-queue";
 import {
+	ASK_STATUS_COPY,
 	askQueueView,
 	askRevisionEvidence,
 	askStatusWord,
@@ -186,7 +191,34 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 	const source = deleted
 		? t("ui.notifications.source.conversation_deleted")
 		: notificationSourceLabel(item);
-	const orphanAskId = deleted && liveAsk ? askIdOfItem(item) : null;
+	/*
+	 * THE ORPHAN'S SETTLED STATE, LIFTED (design round 1, D1). The detail read is
+	 * stale once Decline/Dismiss lands - core stops answering a settled ask item, so
+	 * the refetch fails and the query keeps the last `open` row - so `item` alone
+	 * kept the pane saying "Decline or dismiss it to clear it" above the block's own
+	 * "Dismissed". Two sources say it is settled: the press in this pane
+	 * (`orphanSettled`) and the list row the page has already moved to its settled
+	 * status (`rowItem`, via `onAsksSettled`). Either one ends the instruction.
+	 */
+	const [orphanSettled, setOrphanSettled] = useState<
+		"answered" | "declined" | "dismissed" | null
+	>(null);
+	const rowAskStatus =
+		rowItem.source === "ask" ? rowItem.ask?.status : undefined;
+	const settledStatus: string | null =
+		orphanSettled ??
+		(rowAskStatus !== undefined && rowAskStatus !== "open"
+			? rowAskStatus
+			: null);
+	const orphanAskId =
+		deleted && (liveAsk || settledStatus !== null) ? askIdOfItem(item) : null;
+	/*
+	 * "Waiting on you in this conversation" names a conversation that no longer
+	 * exists (design round 1, D4): a deleted owner takes the list's own heading.
+	 */
+	const waitingTitle = deleted
+		? t("ui.notifications.group.waiting")
+		: t("ui.notifications.detail.section.waiting");
 	const repeat = item.repeat_count > 1 ? item.repeat_count : 0;
 	const [showAllHistory, setShowAllHistory] = useState(false);
 	const history = detail?.history ?? [];
@@ -355,7 +387,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					{t("ui.notifications.detail.gone.dismissed")}
 				</Alert>
 			)}
-			{deleted && !gone && (
+			{deleted && !gone && settledStatus === null && (
 				<Alert
 					variant="neutral"
 					className="mt-3"
@@ -552,18 +584,22 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			)}
 
 			{orphanAskId !== null && !gone && (
-				<DetailSection title={t("ui.notifications.detail.section.waiting")}>
+				<DetailSection title={waitingTitle}>
 					<OrphanAskActions
 						sessionId={item.session.id}
 						askId={orphanAskId}
 						writesPaused={writesPaused}
-						onSettled={onAsksSettled}
+						settledStatus={settledStatus}
+						onSettled={(askId, status) => {
+							setOrphanSettled(status);
+							onAsksSettled(askId, status);
+						}}
 					/>
 				</DetailSection>
 			)}
 
 			{orphanAskId === null && (detail?.asks?.length ?? 0) > 0 && (
-				<DetailSection title={t("ui.notifications.detail.section.waiting")}>
+				<DetailSection title={waitingTitle}>
 					<DetailAsks
 						sessionId={item.session.id}
 						asks={(detail?.asks ?? []) as PendingAsk[]}
@@ -893,11 +929,13 @@ const OrphanAskActions: FC<{
 	sessionId: string;
 	askId: string;
 	writesPaused: boolean;
+	/** Settled elsewhere (the list row already moved): show the status, offer no door. */
+	settledStatus?: string | null;
 	onSettled: (
 		askId: string,
 		status: "answered" | "declined" | "dismissed",
 	) => void;
-}> = ({ sessionId, askId, writesPaused, onSettled }) => {
+}> = ({ sessionId, askId, writesPaused, settledStatus, onSettled }) => {
 	const { client } = useOptionalQueryClient();
 	const { lock, outcomes, answering, run } = useAskOutcomes({
 		onAccepted: (act) => {
@@ -914,14 +952,17 @@ const OrphanAskActions: FC<{
 	 * query keeps the last `open` row (the stale-card rule `DetailAsks` documents).
 	 * Without this the block kept offering Decline/Dismiss after both had landed.
 	 */
-	const settled = outcome?.settled?.status;
+	const settled = outcome?.settled?.status ?? settledStatus ?? null;
 	if (settled)
 		return (
 			<output
 				className="rounded-md bg-surface px-3 py-3 text-body-sm text-ink-muted"
 				data-orphan-ask-settled={settled}
 			>
-				{askStatusWord(settled)}
+				{askStatusWord(
+					/* A row status this build has no word for reads as unknown, never a crash. */
+					settled in ASK_STATUS_COPY ? (settled as AskStatus) : "unknown",
+				)}
 			</output>
 		);
 	return (
