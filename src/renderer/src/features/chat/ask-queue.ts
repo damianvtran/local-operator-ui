@@ -2714,7 +2714,101 @@ const askRefusalAuthored = (error: unknown): boolean => {
  * - which is how a green suite sat beside a dead branch. `ask-queue.test.mjs`
  * now names both.
  */
+/**
+ * The keyed sentence for MAIN's refusal of a "Confirm and send…" press
+ * (`code: ask_attest_refused`, `src/main/ask-attest.ts`), or for a busy runtime on
+ * that door (`ATTESTED_DOOR` marked by `confirmQueuedAsk`), or null for any other
+ * error.
+ *
+ * WHY KEYED HERE rather than main's `detail.message`: main's sentence is an
+ * English diagnostic for logs, and the reader needs to know what to do next,
+ * which depends on the reason. Each sentence LEADS WITH THE ROUTE THAT WORKS, and
+ * where it mentions the unconfirmed send it says that send will not count as
+ * approval (design round 1 D2, UX round 1 U3-U5) - for the delete/move asks this
+ * door exists for, an unconfirmed answer is exactly what the guard refuses:
+ *  - no listener: open the conversation and confirm again;
+ *  - the runtime refused the confirmation (verdict, frame, silence): confirm again;
+ *  - this build or launch can never confirm: answer in the terminal instead;
+ *  - DevTools or a debugger: close DevTools, then confirm again (dynamic, fixable);
+ *  - the window lost the front: bring it back and confirm again;
+ *  - another sheet already open: finish that one;
+ *  - the ask changed or closed under the sheet: check it again; EXPIRED is its own
+ *    sentence, because a lapsed ask cannot be answered at all;
+ *  - a secret or an over-long typed answer: the sheet could not show it;
+ *  - a change to an answer that was sent unconfirmed, and a delivered answer the
+ *    runtime did not stamp as yours: ask the agent to ask again, then confirm;
+ *  - the runtime was busy: confirm again in a moment (no automatic resend here -
+ *    an attestation is single-use);
+ *  - anything else (a failed read): try again.
+ * Never a silent fallback to the unconfirmed send: that is the person's choice.
+ */
+const ASK_ATTEST_NOT_ELIGIBLE = new Set([
+	"not_macos",
+	"not_packaged",
+	"remote_debugging",
+	"dev_flag",
+	"window_mode",
+]);
+const ASK_ATTEST_DEVTOOLS = new Set(["devtools_open", "debugger_attached"]);
+const ASK_ATTEST_WINDOW = new Set([
+	"no_window",
+	"window_not_visible",
+	"window_not_focused",
+]);
+const ASK_ATTEST_CHANGED = new Set(["ask_closed", "ask_changed"]);
+const ASK_ATTEST_REFUSED = new Set([
+	"listener_refused",
+	"frame_refused",
+	"timeout",
+]);
+/** Reasons with a sentence of their own, keyed by reason. */
+const ASK_ATTEST_OWN = {
+	listener_unavailable: "ui.chat.ask_attest.refusal.not_running",
+	expired: "ui.chat.ask_attest.refusal.expired",
+	sheet_open: "ui.chat.ask_attest.refusal.sheet_open",
+	secret_answer: "ui.chat.ask_attest.refusal.secret",
+	answer_too_long: "ui.chat.ask_attest.refusal.too_long",
+	answer_unconfirmed: "ui.chat.ask_attest.refusal.answer_unconfirmed",
+	not_consent_bearing: "ui.chat.ask_attest.refusal.not_consent_bearing",
+} as const;
+
+/**
+ * The marker `confirmQueuedAsk` adds to a busy refusal's `detail`, so the busy
+ * sentence can be the confirm door's own (U5) while the error keeps its
+ * `runtime_busy` code - the card's muted ink and queue refresh read that code.
+ */
+export const ATTESTED_DOOR = "asks.attestedAnswer";
+
+export const askAttestRefusalSentence = (error: unknown): string | null => {
+	if (!(error instanceof DesktopControlError)) return null;
+	const detail = error.detail as
+		| { reason?: unknown; door?: unknown }
+		| undefined;
+	if (answerOwnerIsBusy(error))
+		return detail?.door === ATTESTED_DOOR
+			? t("ui.chat.ask_attest.refusal.busy")
+			: null;
+	if (error.code !== "ask_attest_refused") return null;
+	const reason = typeof detail?.reason === "string" ? detail.reason : "";
+	// `hasOwnProperty.call`: the renderer's ES2020 lib has no `Object.hasOwn`.
+	if (Object.prototype.hasOwnProperty.call(ASK_ATTEST_OWN, reason))
+		return t(ASK_ATTEST_OWN[reason as keyof typeof ASK_ATTEST_OWN]);
+	if (ASK_ATTEST_REFUSED.has(reason))
+		return t("ui.chat.ask_attest.refusal.refused");
+	if (ASK_ATTEST_NOT_ELIGIBLE.has(reason))
+		return t("ui.chat.ask_attest.refusal.not_eligible");
+	if (ASK_ATTEST_DEVTOOLS.has(reason))
+		return t("ui.chat.ask_attest.refusal.devtools");
+	if (ASK_ATTEST_WINDOW.has(reason))
+		return t("ui.chat.ask_attest.refusal.window");
+	if (ASK_ATTEST_CHANGED.has(reason))
+		return t("ui.chat.ask_attest.refusal.changed");
+	return t("ui.chat.ask_attest.refusal.retry");
+};
+
 export const askRefusalSentence = (error: unknown): string => {
+	const attest = askAttestRefusalSentence(error);
+	if (attest !== null) return attest;
 	if (answerOwnerIsBusy(error)) return answerBusyMessage();
 	if (answerRefusedByAppContract(error))
 		return answerRefusedByAppContractMessage();

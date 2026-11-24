@@ -125,6 +125,7 @@ import {
 } from "react-router-dom";
 import {
 	answerQueuedAsk,
+	confirmQueuedAsk,
 	declineQueuedAsk,
 	dismissQueuedAsk,
 	reviseQueuedAsk,
@@ -390,6 +391,37 @@ export const FleetAskDrawer = ({
 		[lock, rows, run, outcomes],
 	);
 
+	/*
+	 * THE OPERATOR-CONFIRMED DOOR (`confirmQueuedAsk`): the answer or change above,
+	 * sent only after the person confirms it on main's native sheet, so it is stamped
+	 * as the operator's. Main reads the ask ITSELF for the sheet; the row here only
+	 * names it. Same act kinds and evidence as the plain doors, so the card's receipt
+	 * is identical once it lands.
+	 */
+	const onConfirm = useCallback(
+		(askId: string, answers: Record<string, string[]>, revise: boolean) => {
+			const sessionId = fleetAskSessionFor(rows ?? [], askId);
+			const raw = rows?.find((row) => row.ask_id === askId);
+			if (!sessionId || !raw) return;
+			const ask = revise
+				? askWithLocalSettle(raw, outcomes[askId], sessionId)
+				: raw;
+			run({
+				askId,
+				kind: revise ? "changed" : "answered",
+				answers,
+				decision: askRevisionEvidence(ask, answers, sessionId),
+				questions: ask.questions,
+				send: () =>
+					confirmQueuedAsk(
+						{ taskId: askId, answers, sessionId, revise, lock },
+						(request) => desktopResult(request),
+					),
+			});
+		},
+		[lock, rows, run, outcomes],
+	);
+
 	const onDecline = useCallback(
 		(askId: string) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
@@ -509,6 +541,7 @@ export const FleetAskDrawer = ({
 				onAnswer={onAnswer}
 				onDecline={onDecline}
 				onRevise={onRevise}
+				onConfirm={onConfirm}
 				onDismiss={dismissEnabled ? onDismiss : undefined}
 				answering={answering}
 				outcomes={outcomes}

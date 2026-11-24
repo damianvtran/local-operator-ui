@@ -212,6 +212,20 @@ export type AskPanelProps = {
 	 * moot. It is not inferred here: the two values are the wire's vocabulary.
 	 */
 	onDismiss?: (ask: PendingAsk, reason: AskDismissReason) => void;
+	/**
+	 * SEND THE ANSWER AS THE OPERATOR (`asks.attestedAnswer`, `src/main/ask-attest.ts`):
+	 * the "Confirm and send…" / "Confirm change…" control beside Send answer / Update answer. Main
+	 * shows a native sheet and, on the person's confirm, attests the exact answer to
+	 * the runtime, so it is stamped as the operator's rather than `unverified` and the
+	 * dangerous-delete guard can count it as consent. `revise` is true from the change
+	 * form. Absent where the surface cannot confirm (a story, a read-only mount): the
+	 * panel then draws no such control. Plain Send answer is unchanged beside it.
+	 */
+	onConfirm?: (
+		ask: PendingAsk,
+		answers: Record<string, string[]>,
+		revise: boolean,
+	) => void;
 	/** An answer is in flight from any surface: every control is disabled. */
 	answering?: boolean;
 	/**
@@ -927,6 +941,7 @@ const AskRow = ({
 	onDecline,
 	onRevise,
 	onDismiss,
+	onConfirm,
 	conversationOf,
 	onCommand,
 	placement,
@@ -942,6 +957,7 @@ const AskRow = ({
 	onDecline: AskPanelProps["onDecline"];
 	onRevise?: AskPanelProps["onRevise"];
 	onDismiss?: AskPanelProps["onDismiss"];
+	onConfirm?: AskPanelProps["onConfirm"];
 	conversationOf?: AskPanelProps["conversationOf"];
 	onCommand?: AskPanelProps["onCommand"];
 	placement: AskAgentPlacement;
@@ -1019,6 +1035,15 @@ const AskRow = ({
 			);
 	}, [accepted]);
 	const busy = answering || Boolean(outcome?.sending);
+	/*
+	 * Which door is in flight, so only the confirm control reads "Waiting for your
+	 * confirmation…" while main's sheet is up - a plain Send answer in flight must
+	 * not claim a sheet is open. Cleared when the card stops being busy.
+	 */
+	const [confirming, setConfirming] = useState(false);
+	useEffect(() => {
+		if (!busy) setConfirming(false);
+	}, [busy]);
 	/*
 	 * Count edits, not values (R2-1/U1). Secret fields deliberately live outside
 	 * `draft`; comparing only that object's identity left Send disabled after a
@@ -1313,12 +1338,49 @@ const AskRow = ({
 	 */
 	const sendAnswer = () => {
 		const answers = askAnswerMap(ask, draft, secrets);
+		// A confirm press the page handler dropped (send lock held) never made the
+		// card busy, so the busy effect could not clear its flag; a plain send must
+		// not inherit the confirm label (code review round 1, N1).
+		setConfirming(false);
 		if (answers !== null) onAnswer(ask, answers);
 	};
 	const sendChange = () => {
 		if (onRevise === undefined) return;
+		setConfirming(false);
 		const answers = askAnswerMap(ask, changeDraft, secrets, recorded);
 		if (answers !== null) onRevise(ask, answers);
+	};
+	/*
+	 * THE OPERATOR-CONFIRMED TWINS of the two submits: the SAME answer map, built by
+	 * the same `askAnswerMap` from the same draft, handed to `onConfirm` instead. Main
+	 * re-reads the ask and shows it on a native sheet; nothing here is trusted there.
+	 */
+	const confirmAnswer = () => {
+		if (onConfirm === undefined) return;
+		const answers = askAnswerMap(ask, draft, secrets);
+		if (answers === null) return;
+		setConfirming(true);
+		onConfirm(ask, answers, false);
+	};
+	/*
+	 * THE CHANGE ROW'S CONFIRM, ONLY WHERE IT CAN COUNT (QA round 1, Q1). Core folds an
+	 * answer and its revisions to the WEAKEST surface (deliberate anti-laundering), so
+	 * confirming a change to an answer stamped `unverified` can never become consent.
+	 * When the row says how the recorded answer was stamped, a non-trusted stamp hides
+	 * the control and names why; an older row without `answered_by` keeps it, and
+	 * main - which reads the row itself and enforces this - refuses with the same
+	 * sentence. UX only: the decision is main's.
+	 */
+	const confirmChangeWithheld =
+		onConfirm !== undefined && askConfirmChangeWithheld(ask);
+	const confirmChangeOffered =
+		onConfirm !== undefined && !confirmChangeWithheld;
+	const confirmChange = () => {
+		if (onConfirm === undefined) return;
+		const answers = askAnswerMap(ask, changeDraft, secrets, recorded);
+		if (answers === null) return;
+		setConfirming(true);
+		onConfirm(ask, answers, true);
 	};
 	/*
 	 * ENTER IN AN ANSWER FIELD (the shared composer's convention: Enter commits,
@@ -1853,6 +1915,32 @@ const AskRow = ({
 						>
 							{t("ui.chat.asks.send_answer")}
 						</button>
+						{onConfirm !== undefined ? (
+							/*
+							 * "Confirm and send…": the same answer, sent only after the person
+							 * confirms it on main's native sheet (see `onConfirm`). Secondary ink
+							 * beside the primary Send answer (design round 1, D1: most asks need
+							 * no approval, so Send answer stays primary), same gate, so it never
+							 * offers what Send answer would refuse. The label names the outcome;
+							 * the hint line below the row says why it matters.
+							 */
+							<button
+								type="button"
+								disabled={disabled || !ready || retryPending}
+								onClick={confirmAnswer}
+								className={cn(
+									"rounded-md border px-3 py-1.5 text-sm",
+									disabled || !ready || retryPending
+										? "border-hairline bg-surface text-ink-dim"
+										: "border-control text-ink hover:bg-sunken",
+								)}
+							>
+								<ConfirmLabel
+									idle={t("ui.chat.ask_attest.action.confirm")}
+									confirming={confirming && busy}
+								/>
+							</button>
+						) : null}
 						{canDecline ? (
 							/*
 							 * `border-transparent` so the ROW BASELINES (design round 1, D4). The
@@ -1890,6 +1978,18 @@ const AskRow = ({
 						>
 							{t("ui.chat.asks.dismiss.trigger")}
 						</button>
+					) : null}
+					{onConfirm !== undefined ? (
+						/*
+						 * THE CONSEQUENCE, BEFORE THE CLICK (design round 1, D1; UX round 1,
+						 * U2): nothing else on the card says that Send answer will not count as
+						 * approval for a delete or move, and the sheet that does say it only
+						 * opens after the right button was found. Quiet meta ink, its own line
+						 * (`basis-full` in the wrapping band), and only where Confirm is drawn.
+						 */
+						<p className="basis-full text-ink-dim text-meta">
+							{t("ui.chat.ask_attest.action.hint")}
+						</p>
 					) : null}
 				</div>
 			) : null}
@@ -1947,6 +2047,24 @@ const AskRow = ({
 									 */}
 									{t("ui.chat.asks.update_answer")}
 								</button>
+								{confirmChangeOffered ? (
+									<button
+										type="button"
+										disabled={busy || !changeReady}
+										onClick={confirmChange}
+										className={cn(
+											"rounded-md border px-3 py-1.5 text-sm",
+											busy || !changeReady
+												? "border-hairline bg-surface text-ink-dim"
+												: "border-control text-ink hover:bg-sunken",
+										)}
+									>
+										<ConfirmLabel
+											idle={t("ui.chat.ask_attest.action.confirm_change")}
+											confirming={confirming && busy}
+										/>
+									</button>
+								) : null}
 								<button
 									type="button"
 									disabled={busy}
@@ -1961,6 +2079,17 @@ const AskRow = ({
 									{t("ui.chat.asks.cancel")}
 								</button>
 							</div>
+							{confirmChangeWithheld ? (
+								/*
+								 * Why there is no Confirm change here (QA round 1, Q1): the recorded
+								 * answer was sent unconfirmed, and core keeps the weakest surface across
+								 * an answer and its changes, so no change can make it count. Saying so
+								 * beats a button main would refuse; main refuses it regardless.
+								 */
+								<p className="text-ink-dim text-meta">
+									{t("ui.chat.ask_attest.refusal.answer_unconfirmed")}
+								</p>
+							) : null}
 						</>
 					) : (
 						<button
@@ -2103,6 +2232,7 @@ export const AskPanel = ({
 	onDecline,
 	onRevise,
 	onDismiss,
+	onConfirm,
 	answering = false,
 	outcomes,
 	nowMs,
@@ -2611,6 +2741,7 @@ export const AskPanel = ({
 			onDecline={onDecline}
 			onRevise={onRevise}
 			onDismiss={onDismiss === undefined ? undefined : dismissAsk}
+			onConfirm={onConfirm}
 			conversationOf={conversationOf}
 			onCommand={onCommand}
 			placement={commandPlacementOf?.(presentation.ask) ?? UNKNOWN_PLACEMENT}
@@ -3029,3 +3160,56 @@ export const AskPanel = ({
 		</div>
 	);
 };
+
+/**
+ * Whether the change row must NOT offer Confirm change (QA round 1, Q1): the row
+ * says how the recorded answer was stamped, and that stamp is not one the guard
+ * trusts, so core's weakest-surface fold could never make a confirmed change count.
+ * An absent stamp (an older row) is not known, so the control stays and main decides.
+ */
+export const askConfirmChangeWithheld = (ask: PendingAsk): boolean => {
+	const surface = ask.answered_by?.surface;
+	return typeof surface === "string" && !GUARD_TRUSTED_SURFACES.has(surface);
+};
+
+/**
+ * Core's `asks.surfaces.GUARD_TRUSTED_SURFACES`, mirrored for the change row's
+ * presentation only (main's `src/main/ask-attest.ts` holds the enforcing copy).
+ */
+const GUARD_TRUSTED_SURFACES: ReadonlySet<string> = new Set([
+	"terminal",
+	"tui",
+	"desktop",
+	"mirror",
+]);
+
+/**
+ * The confirm control's label, sized to the WIDER of its idle and in-flight words
+ * so the row does not shift while main's sheet is up (design round 1, D6): both
+ * are stacked in one grid cell and the one not shown is invisible, never removed.
+ */
+function ConfirmLabel({
+	idle,
+	confirming,
+}: {
+	idle: string;
+	confirming: boolean;
+}) {
+	const progress = t("ui.chat.ask_attest.action.confirming");
+	return (
+		<span className="inline-grid">
+			<span
+				className={cn("col-start-1 row-start-1", confirming && "invisible")}
+				aria-hidden={confirming}
+			>
+				{idle}
+			</span>
+			<span
+				className={cn("col-start-1 row-start-1", !confirming && "invisible")}
+				aria-hidden={!confirming}
+			>
+				{progress}
+			</span>
+		</span>
+	);
+}

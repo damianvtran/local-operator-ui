@@ -2168,6 +2168,36 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.common.time.duration.over_cap",
 		"Pure symbol wrapper `{duration}+`: the duration is formatted by Intl in this locale and « + » is a mathematical sign, so there is no lexical English; independently audited in W2 C3 (70198a03162c). Scoped to this locale/key only.",
 	],
+	// Ask attestation sheet (local-operator-ui #2073). Both values are layout, not
+	// copy: the words come from the interpolated question/answer, which are the
+	// user's and the agent's text and are never translated here.
+	[
+		"ui.chat.ask_attest.sheet.answer_line",
+		// `{question}\n→ {answer}`: two placeholders, a line break and an arrow.
+		// Identical in all seven shipped locales by design; audited in #2073
+		// round 2 (receipts i18n/receipts/323eaab3890c-askattest-*.json).
+		"language-neutral format string: two placeholders joined by a newline and an arrow, no words",
+	],
+	[
+		"es:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-es.json). Scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-hi.json). Scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-ur.json). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-vi.json). Scoped to this locale/key only.",
+	],
+	[
+		"zh-CN:ui.chat.ask_attest.sheet.typed_value",
+		"Pure quotation wrapper “{value}”: curly double quotes are this locale's quotation marks (fr and ru use guillemets and differ), around the user's own typed text, so there is no lexical English; independently audited in #2073 round 2 (i18n/receipts/323eaab3890c-askattest-zh-cn.json). Scoped to this locale/key only.",
+	],
 ]);
 
 /*

@@ -131193,6 +131193,216 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "b82c1d7599d5694f2fe0e75c447aec1c7a68d5621c1cdefd7938081e2826a97b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "323eaab3890c-askattest-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-es.json",
+					"receipt_sha256": "eb07926ec75a7687eb523e61524b7438e0d230f58cf06076814fb7b6412f06eb",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "084c42746d7940db7d0290aeca33529eecc91ca0bf41bcf97faf8b491105d229",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "323eaab3890c-askattest-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-fr.json",
+					"receipt_sha256": "8a07093ff66034c8a5f26e8134c7889f75532708ab8d29267b1fd8abc65e4372",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "ec20c23f5c651673f4e458bbbd675fbf0df44878071bd543abd71d5de61114fd",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "323eaab3890c-askattest-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-hi.json",
+					"receipt_sha256": "cee35bf3bce1714d0e60366f275fe3ee8648450f806af7bdf7f7dc74ccec5ff3",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "13d511abc3bd07102b0b02e0b2a7bc1ba15325e99a3d421be2c928788ebc6ccb",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "323eaab3890c-askattest-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-ru.json",
+					"receipt_sha256": "25743d6b222cac419ba95412a00761932c37953873aa1da06dd6f035928281ba",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "3083feaa4e4ec9f42b0d2612345b5faa2d58c087d9dd7fa45ab496d397a45619",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "323eaab3890c-askattest-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-ur.json",
+					"receipt_sha256": "012f335ee0fa216f08bec41eb09cd3bd0b3e48040284fac8db111a1fedb37f70",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "28f9b005a8b62d137af3a6b46ee2fd3f22c745c822b2b7d2f78e3c7ed84282c8",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean",
+					"instance": "323eaab3890c-askattest-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-vi.json",
+					"receipt_sha256": "fef45a33c765cb584880a07e43d545a46ca574f7673d094d3d3c0fda038a3e42",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.ask_attest",
+			"source_sha256": "56ed7725b92c0b6d1edb151c7af1c75b851ef5c997ab10d7ac4d6359d037e1b4",
+			"target_sha256": "35946565ad05bdb2650396f5b5fc2831868d329b89e2f9052d4c151c4f09cc06",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-23",
+					"result": "clean-with-findings",
+					"instance": "323eaab3890c-askattest-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/323eaab3890c-askattest-zh-cn.json",
+					"receipt_sha256": "5e619836bd052074775a66cbc797ebefbff6781a7f9cbdfca55e076983dc80ff",
+					"scope": "PR #2073 round 2 @ 50897b3afba5"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

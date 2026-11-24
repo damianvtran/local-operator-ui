@@ -2997,6 +2997,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		 * `desktopRequestSchema`, and the member form does not compile.
 		 */
 		.strict(),
+	/*
+	 * ANSWER A QUEUED ASK AS THE OPERATOR (`src/main/ask-attest.ts`). MAIN-ONLY:
+	 * `desktop-ipc.ts` answers it itself and never forwards it. Main freezes this
+	 * exact answer, reads the ask itself, shows a window-modal native sheet built
+	 * from that read, and only on the sheet's confirm button attests the content
+	 * to the session's runtime (`<config>/run/attest/<sid>.sock`, core
+	 * `asks/app_attest.py`) and forwards the SAME content as an ordinary
+	 * `sessions.answer`. That is what lets core stamp the answer `desktop` instead
+	 * of `unverified`, so the dangerous-delete guard can count it as consent.
+	 *
+	 * Only `respond` (no `revise`) and `revise: true` exist here: a decline or a
+	 * dismissal approves nothing, so it keeps the plain route and this arm cannot
+	 * express it (`.strict()`). No labels travel: every word on the sheet is
+	 * main's own read. The value grammar is `sessions.answer`'s own.
+	 */
+	z
+		.object({
+			op: z.literal("asks.attestedAnswer"),
+			sessionId,
+			askId: id,
+			answers: z
+				.record(z.string(), z.array(z.string().max(32768)))
+				.refine((answers) => Object.keys(answers).length > 0, {
+					message: "answers must name at least one question", // i18n: ignore wire validation diagnostic
+				}),
+			revise: z.literal(true).optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("sessions.seen"),
@@ -10935,6 +10963,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 */
 		case "pairings.eligibility":
 			return { path: "app:mesh-pairing/eligibility", method: "GET" };
+		/*
+		 * MAIN-ONLY, like the two pairing ops above: `desktop-ipc.ts` answers it and
+		 * core has no such route. Main forwards an ordinary `sessions.answer` after
+		 * the native sheet and the attestation (`src/main/ask-attest.ts`).
+		 */
+		case "asks.attestedAnswer":
+			return { path: "app:ask-attest/answer", method: "POST" };
 		case "pairings.confirm":
 			return { path: "app:mesh-pairing/confirm", method: "POST" };
 		/*

@@ -689,11 +689,16 @@ export function findStateCopyCandidates(sourceFile, checker) {
 		)
 			continue;
 		const [value, setter] = declaration.name.elements;
+		/* An elided slot (`const [, setX] = useState(0)`) comes back from the TS
+		 * API as a BindingElement with NO `name`, so `name?.kind` is required:
+		 * a bare `.kind` crashed the whole checker (exit 2) on valid code. A
+		 * state value that is never bound cannot reach a sink, so skipping the
+		 * declaration loses no candidate. */
 		if (
 			value.kind !== SyntaxKind.BindingElement ||
 			setter.kind !== SyntaxKind.BindingElement ||
-			value.name.kind !== SyntaxKind.Identifier ||
-			setter.name.kind !== SyntaxKind.Identifier ||
+			value.name?.kind !== SyntaxKind.Identifier ||
+			setter.name?.kind !== SyntaxKind.Identifier ||
 			value.dotDotDotToken ||
 			setter.dotDotDotToken ||
 			value.initializer ||
