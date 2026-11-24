@@ -93,7 +93,7 @@
 	"ui.agentMessages.settings.allowlist.directory_empty_agent": "Không có tác nhân nào để chọn. Bạn vẫn có thể nhập ID tác nhân.",
 	"ui.agentMessages.settings.allowlist.directory_empty": "Không có người dùng hoặc tác nhân nào để chọn. Bạn vẫn có thể nhập ID.",
 	"ui.agentMessages.settings.allowlist.directory_stale": "Lựa chọn đó không còn khả dụng. Hãy chọn lại hoặc nhập ID.",
-	"ui.agentMessages.settings.allowlist.already_listed": "Tác nhân hoặc người dùng này đã có trong danh sách.",
+	"ui.agentMessages.settings.allowlist.already_listed": "Tác nhân hoặc người dùng này đã có trong danh sách này.",
 	"ui.agentMessages.settings.allowlist.allow_explainer": "Khi bạn cho phép ai đó theo một chiều, bên kia cũng có thể trả lời trong cuộc trò chuyện đó.",
 	"ui.agentMessages.settings.error.no_changes": "Không có cài đặt nào bị thay đổi. Hãy thử lại để kiểm tra trạng thái hiện tại.",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, other {Có {count} tin nhắn đang chờ chánh văn phòng của bạn. Chỉ cần gửi một tin nhắn trong cuộc trò chuyện đó là sẽ nhận được.}}",

@@ -1,0 +1,55 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 round 3 (UX round-1 remediation i18n delta)",
+	"locale": "ru",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-24",
+	"head": "d1394012c131d2dbf5cb3583f76b5c83c948e31e",
+	"instance": "pr2014-r3-ru-agentmessages-settings-49d7a948",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 298acd6e45fd (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 3 delta keys were drafted by the coder (implementer) in d1394012c1 per its commit message. Judged from English, the context sidecar and the namespace's shipped terms (description, cue_listed_only direction term, kind_person); no MT used. Auditor-authored fixes in this commit: C2, C3 (disclosed; translator remains coder).",
+		"instance": "pr2014-r3-ru-agentmessages-settings-49d7a948"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"severity": "MINOR",
+			"id": "C2",
+			"key": "ui.agentMessages.settings.allowlist.directory_empty",
+			"issue": "'Нет людей или агентов' uses 'или' under negation; standard Russian is the ни…ни construction",
+			"before": "Нет людей или агентов для выбора. Вы по-прежнему можете ввести ID.",
+			"fix": "Нет ни людей, ни агентов для выбора. Вы по-прежнему можете ввести ID.",
+			"fixed_in": "this receipt's commit on PR #2014 (auditor-authored)"
+		},
+		{
+			"severity": "MINOR",
+			"id": "C3",
+			"key": "ui.agentMessages.settings.allowlist.allow_explainer",
+			"issue": "'разрешить кого-то в одном направлении' takes the wrong case and has no complement; reads as broken grammar",
+			"before": "Если разрешить кого-то в одном направлении, другая сторона тоже сможет отвечать в этом разговоре.",
+			"fix": "Разрешение в одном направлении позволяет другой стороне тоже отвечать в этом разговоре.",
+			"fixed_in": "this receipt's commit on PR #2014 (auditor-authored)"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_empty": "Нет ни людей, ни агентов для выбора. Вы по-прежнему можете ввести ID.",
+		"ui.agentMessages.settings.allowlist.already_listed": "Этот агент или человек уже есть в этом списке.",
+		"ui.agentMessages.settings.allowlist.allow_explainer": "Разрешение в одном направлении позволяет другой стороне тоже отвечать в этом разговоре."
+	},
+	"binding": "Verified by sha256 of the bytes committed with this receipt (on top of d1394012c1): target src/i18n/catalogues/ru/ui.agentMessages.settings.json sha256 49d7a948666d5abee12acd79e2c67acafafcdaf5a62df7cd14ccb7ac9aa71285; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738; context sha256 5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7. Key set equals English; the 3 delta keys carry no ICU placeholders, matching English. directory_empty_person was removed and replaced by directory_empty; already_listed and allow_explainer are new. Every other value is byte-identical to what pr2014-r2 audited.",
+	"scope": "PR #2014 round 3 delta: allowlist.directory_empty (replaces directory_empty_person), allowlist.already_listed, allowlist.allow_explainer; unchanged messages retain their pr2014-r2 / PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+	"context_sha256": "5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7",
+	"target_sha256": "49d7a948666d5abee12acd79e2c67acafafcdaf5a62df7cd14ccb7ac9aa71285",
+	"sha256": {
+		"ru": "49d7a948666d5abee12acd79e2c67acafafcdaf5a62df7cd14ccb7ac9aa71285",
+		"en": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738"
+	}
+}

@@ -1,0 +1,36 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 round 3 (UX round-1 remediation i18n delta)",
+	"locale": "hi",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-24",
+	"head": "d1394012c131d2dbf5cb3583f76b5c83c948e31e",
+	"instance": "pr2014-r3-hi-agentmessages-settings-c621d147",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 298acd6e45fd (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 3 delta keys were drafted by the coder (implementer) in d1394012c1 per its commit message. Judged from English, the context sidecar and the namespace's shipped terms (description, cue_listed_only direction term, kind_person); no MT used.",
+		"instance": "pr2014-r3-hi-agentmessages-settings-c621d147"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean",
+	"findings": [],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_empty": "चुनने के लिए कोई व्यक्ति या एजेंट नहीं है। आप अब भी ID दर्ज कर सकते हैं।",
+		"ui.agentMessages.settings.allowlist.already_listed": "यह एजेंट या व्यक्ति पहले से इस सूची में है।",
+		"ui.agentMessages.settings.allowlist.allow_explainer": "किसी को एक दिशा में अनुमति देने पर दूसरी ओर से भी उस बातचीत में जवाब दिया जा सकता है।"
+	},
+	"binding": "Verified by sha256 of the bytes committed with this receipt (on top of d1394012c1): target src/i18n/catalogues/hi/ui.agentMessages.settings.json sha256 c621d1473d12315e46aa3ca8af294e5671ded2ee8ff242e5489796e5712e8a94; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738; context sha256 5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7. Key set equals English; the 3 delta keys carry no ICU placeholders, matching English. directory_empty_person was removed and replaced by directory_empty; already_listed and allow_explainer are new. Every other value is byte-identical to what pr2014-r2 audited.",
+	"scope": "PR #2014 round 3 delta: allowlist.directory_empty (replaces directory_empty_person), allowlist.already_listed, allowlist.allow_explainer; unchanged messages retain their pr2014-r2 / PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+	"context_sha256": "5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7",
+	"target_sha256": "c621d1473d12315e46aa3ca8af294e5671ded2ee8ff242e5489796e5712e8a94",
+	"sha256": {
+		"hi": "c621d1473d12315e46aa3ca8af294e5671ded2ee8ff242e5489796e5712e8a94",
+		"en": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738"
+	}
+}

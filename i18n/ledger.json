@@ -109,8 +109,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "ea8221a663da2b735140e86710b3f91788b46898d718fab5e52051853bb79f2c",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "6d3b10a9282ab0583976e9e0fa9efd6bf8c957822f693820f0049fe560e97a25",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -121,19 +121,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean-with-findings",
-					"instance": "pr2014-r2-es-agentmessages-settings-45a6d3f0",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "pr2014-r3-es-agentmessages-settings-6d3b10a9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-es-agentmessages-settings-45a6d3f0.json",
-					"receipt_sha256": "02450583a292c56267ae4d246aff76f081880ca51a099b35c586e3e622f18969",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-es-agentmessages-settings-6d3b10a9.json",
+					"receipt_sha256": "b0b4bcb6e10a36d4754f569f45dcd72db05a50dce3cdb36428efc4c1a9ad8cdc",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -278,6 +278,30 @@
 							"receipt_sha256": "3c62fc48e1ab80142e21fe4bca6c1fd59809285d4f8725fbf5197c91bee3e921",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "ea8221a663da2b735140e86710b3f91788b46898d718fab5e52051853bb79f2c",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean-with-findings",
+							"instance": "pr2014-r2-es-agentmessages-settings-45a6d3f0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/pr2014-r2-es-agentmessages-settings-45a6d3f0.json",
+							"receipt_sha256": "02450583a292c56267ae4d246aff76f081880ca51a099b35c586e3e622f18969",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -13561,8 +13585,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "d67b85115a29fbe98c9142a8fa2db8ae8d2e650eea91ab90297fd3fb29ebacf0",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "a25bd0f1596c1ad9015bc228718d90b74d6e3d2f32e7f58da0df8b4f17bedf5e",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -13573,19 +13597,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "pr2014-r2-fr-agentmessages-settings-ef885443",
+					"instance": "pr2014-r3-fr-agentmessages-settings-a25bd0f1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-fr-agentmessages-settings-ef885443.json",
-					"receipt_sha256": "9c695296eedbe4cdc17479a9da583fafc55ff087c133a26e0eab3bc3204f5c3e",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-fr-agentmessages-settings-a25bd0f1.json",
+					"receipt_sha256": "cfc616630ba4d61ec9d664283bec896b22c53f13695f30b1c42c9c1a30fca024",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -13730,6 +13754,30 @@
 							"receipt_sha256": "ad035a39fa7ce674e6065bacc22a2e79b1d49b97865500f51938159d030c0800",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "d67b85115a29fbe98c9142a8fa2db8ae8d2e650eea91ab90297fd3fb29ebacf0",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2014-r2-fr-agentmessages-settings-ef885443",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2014-r2-fr-agentmessages-settings-ef885443.json",
+							"receipt_sha256": "9c695296eedbe4cdc17479a9da583fafc55ff087c133a26e0eab3bc3204f5c3e",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -27658,8 +27706,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "a2b3646989d9080ee06f99b4907267f670d78555ea287f0a73b9ffe963d9db4b",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "c621d1473d12315e46aa3ca8af294e5671ded2ee8ff242e5489796e5712e8a94",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -27670,19 +27718,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"date": "2026-11-24",
 					"result": "clean",
-					"instance": "pr2014-r2-hi-agentmessages-settings-bfdd9abc",
+					"instance": "pr2014-r3-hi-agentmessages-settings-c621d147",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-hi-agentmessages-settings-bfdd9abc.json",
-					"receipt_sha256": "cde2757cc73866dd97e049fef475c52c422faff5de8898fd66f7e78017e8635c",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-hi-agentmessages-settings-c621d147.json",
+					"receipt_sha256": "fed1e6d2194b30d4a6570cf8ca900954553761bd18a8042e9a43efd0f7b275d2",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -27851,6 +27899,30 @@
 							"receipt_sha256": "52ec9a7d6920ed7ef4cd20f5c9017fe8be6761c9fc2d6dbc397d3901b8fee0ad",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "a2b3646989d9080ee06f99b4907267f670d78555ea287f0a73b9ffe963d9db4b",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2014-r2-hi-agentmessages-settings-bfdd9abc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2014-r2-hi-agentmessages-settings-bfdd9abc.json",
+							"receipt_sha256": "cde2757cc73866dd97e049fef475c52c422faff5de8898fd66f7e78017e8635c",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -41358,8 +41430,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "d473e623b253bccd89fdcf5322696caa0d3361be7c2249fc10ff4fdf2c133ce3",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "49d7a948666d5abee12acd79e2c67acafafcdaf5a62df7cd14ccb7ac9aa71285",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -41370,19 +41442,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean",
-					"instance": "pr2014-r2-ru-agentmessages-settings-ef3d22e1",
+					"date": "2026-11-24",
+					"result": "clean-with-findings",
+					"instance": "pr2014-r3-ru-agentmessages-settings-49d7a948",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-ru-agentmessages-settings-ef3d22e1.json",
-					"receipt_sha256": "c542f24d981b0daa9d57bfd423d1f67a996774a6ddb8024d73e7e3782f826745",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-ru-agentmessages-settings-49d7a948.json",
+					"receipt_sha256": "dbf0cccf4a868f677cdb2c3c370b3dcb739895d50e356fa687ace479623ca269",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -41503,6 +41575,30 @@
 							"receipt_sha256": "8ec16a36e3f5e2ae8096626b697e5d98560910bddb4febf896185e6265afb56e",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "d473e623b253bccd89fdcf5322696caa0d3361be7c2249fc10ff4fdf2c133ce3",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean",
+							"instance": "pr2014-r2-ru-agentmessages-settings-ef3d22e1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2014-r2-ru-agentmessages-settings-ef3d22e1.json",
+							"receipt_sha256": "c542f24d981b0daa9d57bfd423d1f67a996774a6ddb8024d73e7e3782f826745",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -54896,8 +54992,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "3eef629be017f247872ae9171925eaeb7780e7c8475cb2b6f3d1613abf25bdba",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "12ec1704ac38f3b104814524fd3be925e2e8d9ebbc31d2f259063d90016b6ae0",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -54908,19 +55004,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean-with-findings",
-					"instance": "pr2014-r2-ur-agentmessages-settings-6c7f694a",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "pr2014-r3-ur-agentmessages-settings-12ec1704",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-ur-agentmessages-settings-6c7f694a.json",
-					"receipt_sha256": "a1eb49b86a95dc9a22f0af396cb76f715df1936acaae0ec930c919eb5f838b6d",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-ur-agentmessages-settings-12ec1704.json",
+					"receipt_sha256": "b2a0a36e2e8753137a57d303b1fec2895afd1f611a2fb7d91f586b3db26a5bcc",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -55065,6 +55161,30 @@
 							"receipt_sha256": "b467d1799aa71473668efa1fc6bbdc805c7480d6f22082733348115c2ec27e1e",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "3eef629be017f247872ae9171925eaeb7780e7c8475cb2b6f3d1613abf25bdba",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean-with-findings",
+							"instance": "pr2014-r2-ur-agentmessages-settings-6c7f694a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr2014-r2-ur-agentmessages-settings-6c7f694a.json",
+							"receipt_sha256": "a1eb49b86a95dc9a22f0af396cb76f715df1936acaae0ec930c919eb5f838b6d",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -68526,8 +68646,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "36edb2e57a2f34556d9cbde9a8f6865418e8c74e4a6b230a8da01879738629fd",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "c7058382837ad042b51fb8d2a4e08ececc0cdf06818ada36829d8cd03cfa218f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -68538,19 +68658,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
+					"date": "2026-11-24",
 					"result": "clean-with-findings",
-					"instance": "pr2014-r2-vi-agentmessages-settings-8604d40e",
+					"instance": "pr2014-r3-vi-agentmessages-settings-c7058382",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-vi-agentmessages-settings-8604d40e.json",
-					"receipt_sha256": "31e6b3c440e076c2a5a0927ce1b0b8f2f709868dfd1c9cea1ccca399e610b5f8",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-vi-agentmessages-settings-c7058382.json",
+					"receipt_sha256": "7c0947aa0d394213211c78bf0a2e4f76c288b6553b8554b7f39638aa0c2b7daf",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -68671,6 +68791,30 @@
 							"receipt_sha256": "4ab91aeccd5e08eda637399c13d47a084d4e505f11a7f95556ed7177ef48bc92",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "36edb2e57a2f34556d9cbde9a8f6865418e8c74e4a6b230a8da01879738629fd",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean-with-findings",
+							"instance": "pr2014-r2-vi-agentmessages-settings-8604d40e",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2014-r2-vi-agentmessages-settings-8604d40e.json",
+							"receipt_sha256": "31e6b3c440e076c2a5a0927ce1b0b8f2f709868dfd1c9cea1ccca399e610b5f8",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"
@@ -82660,8 +82804,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
-			"target_sha256": "9009e23eb12c15cc219b7eab5f82852df36653eb12fb0f2418d0ea2970314c69",
+			"source_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+			"target_sha256": "9d7fe260ed239bf871ff7ed5fd1c366674608bc8e9be17f5c0ba72f137c51efb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -82672,19 +82816,19 @@
 				{
 					"agent": "copy-reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-20",
-					"result": "clean-with-findings",
-					"instance": "pr2014-r2-zh-cn-agentmessages-settings-301d8a96",
+					"date": "2026-11-24",
+					"result": "clean",
+					"instance": "pr2014-r3-zh-cn-agentmessages-settings-9d7fe260",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr2014-r2-zh-cn-agentmessages-settings-301d8a96.json",
-					"receipt_sha256": "d21c2a6acc5a507f6d78865623e32704098b165221a0803efc01cc81e72d6a00",
-					"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
-					"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
+					"receipt": "i18n/receipts/pr2014-r3-zh-cn-agentmessages-settings-9d7fe260.json",
+					"receipt_sha256": "618e709029eea7efb090dc8aa82f3592c292f31e81a3b7053d7e6affd00ae236",
+					"scope": "PR #2014 r3 delta: directory_empty (replaces directory_empty_person), already_listed, allow_explainer; unchanged messages retain pr2014-r2 / PR #1928 provenance",
+					"note": "PR #2014 r3: delta keys drafted by coder (implementer) in d1394012c1; independent audit copy-reviewer session 298acd6e45fd"
 				}
 			],
 			"status": "audited",
@@ -82829,6 +82973,30 @@
 							"receipt_sha256": "e657841a2ebf76399792ab6f0625bc4b2e0715a78bfbd85af7b685bae6b5e267",
 							"scope": "PR #1928 round-2 screening model copy (6 keys)",
 							"note": "PR #1928 r2: translators coder jobs 610e98de331a/4611f0d5274e (changed/new keys) + abe41ec364b7 (unchanged), mgr 2c6111e02b16; fresh audit task 619fdcf93ce8 (I4/I5 fix 5e27835912, auditor-authored)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cecd08122eccb38453c39b0a9c478d97ca20b825c0c033933f2c0e84f40a82fe",
+					"target_sha256": "9009e23eb12c15cc219b7eab5f82852df36653eb12fb0f2418d0ea2970314c69",
+					"auditors": [
+						{
+							"agent": "copy-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-20",
+							"result": "clean-with-findings",
+							"instance": "pr2014-r2-zh-cn-agentmessages-settings-301d8a96",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr2014-r2-zh-cn-agentmessages-settings-301d8a96.json",
+							"receipt_sha256": "d21c2a6acc5a507f6d78865623e32704098b165221a0803efc01cc81e72d6a00",
+							"scope": "PR #2014 delta: 11 allowlist.directory_* keys; unchanged messages retain PR #1928 provenance",
+							"note": "PR #2014: delta keys drafted by coder (implementer), remediated by coder job 7aa83d555a35 (d16d7f83ec); independent audit copy-reviewer session 7bcc857d7769"
 						}
 					],
 					"status": "audited"

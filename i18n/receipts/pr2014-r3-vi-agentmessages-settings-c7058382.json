@@ -1,0 +1,46 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "independent translation audit, PR #2014 round 3 (UX round-1 remediation i18n delta)",
+	"locale": "vi",
+	"namespace": "ui.agentMessages.settings",
+	"pr": 2014,
+	"date": "2026-11-24",
+	"head": "d1394012c131d2dbf5cb3583f76b5c83c948e31e",
+	"instance": "pr2014-r3-vi-agentmessages-settings-c7058382",
+	"auditor": {
+		"agent": "copy-reviewer",
+		"role": "independent i18n auditor (team radientdev copy-reviewer); not the implementer/translator",
+		"model": "anthropic/claude-opus-5-5",
+		"independence": "Session 298acd6e45fd (copy-reviewer), served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Not the translator: the 3 delta keys were drafted by the coder (implementer) in d1394012c1 per its commit message. Judged from English, the context sidecar and the namespace's shipped terms (description, cue_listed_only direction term, kind_person); no MT used. Auditor-authored fixes in this commit: C4 (disclosed; translator remains coder).",
+		"instance": "pr2014-r3-vi-agentmessages-settings-c7058382"
+	},
+	"model": "anthropic/claude-opus-5-5",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"severity": "MINOR",
+			"id": "C4",
+			"key": "ui.agentMessages.settings.allowlist.already_listed",
+			"issue": "dropped English 'this' list: the message must say the entry is in THIS list (Allowed or Blocked), not any list",
+			"before": "Tác nhân hoặc người dùng này đã có trong danh sách.",
+			"fix": "Tác nhân hoặc người dùng này đã có trong danh sách này.",
+			"fixed_in": "this receipt's commit on PR #2014 (auditor-authored)"
+		}
+	],
+	"audited_values": {
+		"ui.agentMessages.settings.allowlist.directory_empty": "Không có người dùng hoặc tác nhân nào để chọn. Bạn vẫn có thể nhập ID.",
+		"ui.agentMessages.settings.allowlist.already_listed": "Tác nhân hoặc người dùng này đã có trong danh sách này.",
+		"ui.agentMessages.settings.allowlist.allow_explainer": "Khi bạn cho phép ai đó theo một chiều, bên kia cũng có thể trả lời trong cuộc trò chuyện đó."
+	},
+	"binding": "Verified by sha256 of the bytes committed with this receipt (on top of d1394012c1): target src/i18n/catalogues/vi/ui.agentMessages.settings.json sha256 c7058382837ad042b51fb8d2a4e08ececc0cdf06818ada36829d8cd03cfa218f; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738; context sha256 5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7. Key set equals English; the 3 delta keys carry no ICU placeholders, matching English. directory_empty_person was removed and replaced by directory_empty; already_listed and allow_explainer are new. Every other value is byte-identical to what pr2014-r2 audited.",
+	"scope": "PR #2014 round 3 delta: allowlist.directory_empty (replaces directory_empty_person), allowlist.already_listed, allowlist.allow_explainer; unchanged messages retain their pr2014-r2 / PR #1928 provenance. Static linguistic/mechanical audit; no rendered-fit sign-off.",
+	"en_sha256": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738",
+	"context_sha256": "5026d3f8dd8675a2fc7a7ba5759dd3c1b6d5db22211ff414cb62b7a2575f7bd7",
+	"target_sha256": "c7058382837ad042b51fb8d2a4e08ececc0cdf06818ada36829d8cd03cfa218f",
+	"sha256": {
+		"vi": "c7058382837ad042b51fb8d2a4e08ececc0cdf06818ada36829d8cd03cfa218f",
+		"en": "abacd6c110081d729770057fda179493955aaa76caa10fc5be68a5bda92c7738"
+	}
+}
