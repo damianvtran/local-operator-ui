@@ -382,11 +382,12 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 							}
 						: null;
 				})();
-			const settledAsk =
-				stub.asks !== undefined &&
+			/* Only a KNOWN settled row 404s: a deleted conversation's ask has no row at all. */
+			const askRow =
 				String(request.id).startsWith("ask:") &&
-				stub.asks.find((row) => String(request.id).endsWith(`:${row.ask_id}`))
-					?.status !== "open";
+				stub.asks?.find((row) => String(request.id).endsWith(`:${row.ask_id}`));
+			const settledAsk =
+				Boolean(askRow) && askRow !== false && askRow?.status !== "open";
 			if (!detail || settledAsk)
 				return { status: 404, body: { detail: "no such notification" } };
 			return { status: 200, body: { result: detail } };

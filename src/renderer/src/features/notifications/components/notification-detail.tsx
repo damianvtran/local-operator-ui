@@ -933,8 +933,12 @@ const OrphanAskActions: FC<{
 				{t("ui.notifications.detail.deleted.send_withheld")}
 			</p>
 			<div className="flex flex-wrap items-center gap-2">
+				{/*
+				 * Secondary, not the panel's primary: a withheld primary kept its green
+				 * fill under `text-ink-disabled` and read as the live default action.
+				 */}
 				<Button
-					variant="primary"
+					variant="secondary"
 					size="sm"
 					aria-disabled
 					aria-describedby={reasonId}
