@@ -31,6 +31,8 @@ import {
 	type JoinedDetail,
 	addLocalHoldRevisions,
 	bindShownBody,
+	findHeldMessage,
+	holdLookupRead,
 	holdRefusalLabel,
 	resolveHoldDetail,
 } from "./team-bridge-holds-model";
@@ -167,16 +169,35 @@ export function useHeldMessageDetails(
 			queryFn: async () => {
 				for (const tenantId of tenantIds) {
 					try {
-						const page = await readForBridgeOwner(client, accountId, () =>
-							TeamBridgeOwnerAuditApi.messages(
-								{ accountId: accountId as string, tenantId },
-								item.conversation_id,
-								item.seq !== null && item.seq >= 0 ? item.seq + 1 : undefined,
-							),
-						);
-						const message = page.messages.find(
-							(row) => row.id === item.message_id,
-						);
+						const scope = { accountId: accountId as string, tenantId };
+						// A held reply is read from its thread (`holdLookupRead`).
+						const plan = holdLookupRead(item);
+						const rows =
+							plan.read === "replies"
+								? await readForBridgeOwner(client, accountId, async () => {
+										const thread = await TeamBridgeOwnerAuditApi.replies(
+											scope,
+											item.conversation_id,
+											plan.rootId,
+											undefined,
+											{
+												order: "desc",
+												limit: 50,
+												beforeSeq: plan.beforeSeq,
+											},
+										);
+										return [thread.root, ...thread.replies];
+									})
+								: (
+										await readForBridgeOwner(client, accountId, () =>
+											TeamBridgeOwnerAuditApi.messages(
+												scope,
+												item.conversation_id,
+												plan.beforeSeq,
+											),
+										)
+									).messages;
+						const message = findHeldMessage(item, rows);
 						if (message) return { message, tenantId };
 						// The conversation is here but the message is not: it is in
 						// no other org either.
