@@ -287,6 +287,19 @@ export function lastSettingsTab(): string | null {
 	return rememberedTab;
 }
 
+/**
+ * The tab a visit opens on: the run's last tab, read ONCE at mount.
+ *
+ * This is a named function rather than a call to `lastSettingsTab()` inside the
+ * hook for one reason: the mount semantics are the fix (round 1: M1), and a
+ * named read is what the replay test can call without mounting React. The hook
+ * passes it to `useState`'s initializer, so it runs once per mount; resolving
+ * the URL is a separate step and never re-reads the memory.
+ */
+export function mountSeed(): string | null {
+	return lastSettingsTab();
+}
+
 /** Test seam: forget the run's tab (each case starts cold). */
 export function resetSettingsTabMemory(): void {
 	rememberedTab = null;

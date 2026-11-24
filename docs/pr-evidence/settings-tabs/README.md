@@ -23,7 +23,7 @@ that run owned.
 
 ## The scene's own output
 
-**84 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
+**85 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
 
 - `?section=appearance`: `shown=["appearance"]`, `current=["appearance"]`,
   panels `11`, rail rows `11` — the Agent messages panel is absent on this
@@ -39,16 +39,30 @@ that run owned.
   opened at `0`; browser Back returned to Appearance at `420` (six-pixel
   tolerance, measured within 1).
 - **D1, the ancestor walk**: the column above the panel read
-  `{"scrollTop":0,"closeTop":64}` BEFORE the landing and the same AFTER it. The
-  same landing measured `closeTop: 48` before this round's fix, because
-  `scrollIntoView` also scrolled the `panel-flush` wrapper.
+  `{"scrollTop":0,"closeTop":64}` before Enter was pressed and the same after
+  the landing (round 2, MINOR 3: the "before" reading is taken before the key,
+  not after it). The same landing measured `closeTop: 48` before the fix,
+  because `scrollIntoView` also scrolled the `panel-flush` wrapper.
 - **D2, the width step**: Keyboard and Imports at the same viewport both read
   `clientWidth 892 / offsetWidth 900 / search field right edge 1316`. Before the
   fix the short tab read `clientWidth 900` and a search-field edge of `1324` —
   an 8px jump on every switch between them.
-- **D4, the RTL tooltip**: at 900px `dir=rtl`, the focused Speech row is
-  `600..632`; its tooltip opened `477..594`, over the content (which ends at
-  592), not into the sidebar to its right.
+- **D4, the RTL tooltip — what this rig can and cannot show (round 2).** The
+  tooltip's side now comes from the LOCALE (`useTextDirection`), not from
+  `<html dir>`, because the attribute is written by App's layout effect after
+  its children render (one render behind on a locale switch). This daemon's
+  capabilities answer carries no `language` and no `features.i18n`, so the
+  store always resolves to the English device locale and a locale-driven RTL
+  render cannot be produced here — measured three ways (`Emulation.setLocaleOverride`
+  leaves `navigator.language` at `en-US`; a pre-document `navigator.language`
+  override reaches `navigator.language` but not a backend answer, and the
+  capabilities answer still resolves the store to English; the picker's Urdu
+  commit round-trips and is then replaced). The frame therefore proves the
+  property this round changed: at 900px with the forced `dir=rtl` layout probe,
+  the Speech row is `600..632` while its tooltip reads `data-side="right"` at
+  `638..740` — the side did NOT follow the attribute. The mapping itself
+  (`ur-PK -> rtl`, `en -> ltr`, an unshipped tag -> ltr) and the source that
+  applies it are pinned in `scripts/settings-tabs.test.mjs`.
 - Esc from the Updates tab left `/settings` (PR1's scope intact after the
   search field was cleared — the field owns Escape while it holds text).
 - At 900 CSS px the rail row measures ≤48px and every tab check still passes.

@@ -2,6 +2,7 @@ import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -201,13 +202,16 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	 * The tooltip opens toward the content, which is the INLINE-END direction:
 	 * `right` in LTR and `left` in RTL. It was a physical `right`, so in RTL it
 	 * opened into the app sidebar instead of over the settings panel (design
-	 * round 1: D4). `<html dir>` is what the shell writes on a locale change, and
-	 * this component already re-renders on one (`useI18nLocale`).
+	 * round 1: D4).
+	 *
+	 * The direction comes from the LOCALE, not from `<html dir>`: the shell
+	 * writes that attribute in `App`'s layout effect AFTER this component (a
+	 * child) has rendered, so reading the attribute is one render behind on a
+	 * locale switch (round 2, MINOR 1). `useTextDirection` re-renders the caller
+	 * when the locale changes — the same reading `mesh-approvals-tray` and
+	 * `trace-fold` use.
 	 */
-	const tooltipSide =
-		typeof document !== "undefined" && document.documentElement.dir === "rtl"
-			? "left"
-			: "right";
+	const tooltipSide = useTextDirection() === "rtl" ? "left" : "right";
 
 	const renderSection = (section: SettingsSection) => {
 		const isActive = activeTab === section.id;

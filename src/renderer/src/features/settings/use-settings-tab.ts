@@ -15,7 +15,7 @@ import { useNavigate } from "react-router-dom";
 import {
 	type ResolveSettingsTabInput,
 	SETTINGS_PATH,
-	lastSettingsTab,
+	mountSeed,
 	resolveSettingsTab,
 } from "./settings-tabs";
 
@@ -51,7 +51,7 @@ export function useSettingsTab(
 	 * first Back did nothing and the second left Settings (round 1: M1). A fresh
 	 * visit still opens on the latest tab, because a new mount reads it again.
 	 */
-	const [seed] = useState<string | null>(() => lastSettingsTab());
+	const [seed] = useState<string | null>(() => mountSeed());
 	const resolved = useMemo(
 		() =>
 			resolveSettingsTab({

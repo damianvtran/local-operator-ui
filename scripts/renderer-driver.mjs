@@ -33153,9 +33153,9 @@ async function sceneSettingsTabs(cdp) {
 	await pressKey("Home", "Home", 36);
 	for (let step = 0; step < at; step += 1)
 		await pressKey("ArrowDown", "ArrowDown", 40);
-	await pressKey("Enter", "Enter", 13);
-	/* Read BEFORE the Enter: the landing must not move this column. */
+	/* Read before the Enter: the landing must not move this column. */
 	const columnBefore = await cdp.evaluate(SETTINGS_COLUMN_READING);
+	await pressKey("Enter", "Enter", 13);
 	const landed = await waitForScene(
 		cdp,
 		`Boolean(document.querySelector('[data-settings-panel="appearance"]:not([hidden])'))`,
@@ -33405,9 +33405,29 @@ async function sceneSettingsTabs(cdp) {
 			row.focus();
 			return document.activeElement === row;
 		})()`);
-		await wait(600);
+		/* A real pointer, because that is what a reader uses to open a rail label. */
+		const rowBox = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-settings-tab="speech"]');
+			if (!row) return null;
+			const r = row.getBoundingClientRect();
+			return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+		})()`);
+		if (rowBox) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: Math.round(rowBox.x),
+				y: Math.round(rowBox.y),
+			});
+		}
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[role="tooltip"]'))`,
+			300,
+		);
+		await wait(300);
 		const tooltip = await cdp.evaluate(`(() => {
-			const tip = document.querySelector('[role="tooltip"]');
+			const all = [...document.querySelectorAll('[role="tooltip"]')];
+			const tip = all.find((node) => /Speech/.test(node.textContent ?? '')) ?? all[0] ?? null;
 			const row = document.querySelector('[data-settings-tab="speech"]');
 			const scroller = document.querySelector('[data-settings-content]');
 			if (!tip || !row || !scroller) return null;
@@ -33419,18 +33439,28 @@ async function sceneSettingsTabs(cdp) {
 				row: { left: Math.round(r.left), right: Math.round(r.right) },
 				content: { left: Math.round(s.left), right: Math.round(s.right) },
 				direction: document.documentElement.dir,
+				side: tip.getAttribute('data-side'),
+				text: (tip.textContent ?? '').trim(),
+				count: all.length,
 			};
 		})()`);
 		note(
 			"the icon rail's tooltip in RTL",
 			JSON.stringify({ focusedRow, tooltip }),
 		);
+		/*
+		 * MINOR 1's property, and the one this rig can measure: the side follows
+		 * the LOCALE, so the forced `<html dir="rtl">` above must NOT move it.
+		 * The daemon answers no `language` and no `features.i18n`, so the store
+		 * never leaves the device locale here (English) and the expected side is
+		 * `right`; the mapping itself (`ur-PK` -> rtl) and the source are pinned
+		 * in `scripts/settings-tabs.test.mjs`.
+		 */
 		check(
-			"in RTL the icon rail's tooltip opens toward the CONTENT, not the sidebar",
+			"the rail tooltip's side follows the locale, not the forced direction attribute",
 			focusedRow === true &&
 				tooltip?.direction === "rtl" &&
-				tooltip.tooltip.right <= tooltip.row.left + 1 &&
-				tooltip.tooltip.left >= tooltip.content.left - 1,
+				tooltip.side === "right",
 			JSON.stringify(tooltip),
 		);
 		await capture("settings-tabs-rtl-tooltip-dark");
@@ -33548,12 +33578,11 @@ async function sceneSettingsTabs(cdp) {
 			const before = await cdp.evaluate("window.location.hash");
 			await clickTour(".shepherd-button-primary");
 			await wait(900);
-			note(
-				"the gear step: route before and after its own Next",
-				JSON.stringify({
-					before,
-					after: await cdp.evaluate("window.location.hash"),
-				}),
+			const after = await cdp.evaluate("window.location.hash");
+			check(
+				"the gear step's Next leaves Settings open",
+				String(after).includes("/settings"),
+				`before=${before} after=${after}`,
 			);
 			continue;
 		}

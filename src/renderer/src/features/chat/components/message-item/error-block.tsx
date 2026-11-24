@@ -40,11 +40,13 @@ export type ErrorBlockProps = {
  * which is the only moment the active locale is known.
  */
 /*
- * A bare `/settings` opens the tab last visited this run, which is right for a
- * generic "open settings" hint and wrong for copy that names what to change: a
- * model or rate-limit sentence is about General's model settings and a provider
- * sentence is about the provider grid. The two specific arms pass their tab;
- * `unavailable` and `schema` name no destination and keep the bare link.
+ * EVERY ARM NAMES ITS DESTINATION. A bare `/settings` opens the tab last
+ * visited this run, which is wrong for copy that names what to change: the
+ * model, rate-limit and schema sentences are about the model settings in
+ * General, and the provider ones are about the provider grid. The English copy
+ * is what decides — "select a different model", "Change your model in the",
+ * "sign in to it" — and the arm table in `scripts/settings-tabs.test.mjs`
+ * asserts every call site carries the tab its sentence means.
  */
 const settingsLink = (
 	labelKey:
@@ -145,7 +147,8 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 		case "unavailable":
 			return (
 				<p>
-					{t("ui.chat.error_block.unavailable.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.unavailable.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.unavailable.after")}
 				</p>
 			);
@@ -155,7 +158,8 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 					{t("ui.chat.error_block.schema.before")}
 					<br />
 					<br />
-					{t("ui.chat.error_block.schema.after_before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.schema.after_before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.schema.after")}
 				</p>
 			);

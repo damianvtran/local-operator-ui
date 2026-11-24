@@ -28,6 +28,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/renderer/src/features/settings/settings-tabs";
 			export { isTourTargetVisible, revealSettingsTab } from "./src/renderer/src/features/onboarding/tour/tour-settings-tab";
+			export { textDirectionFor } from "./src/i18n/direction";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -51,6 +52,7 @@ const {
 	createTabScrollMemory,
 	lastSettingsTab,
 	rememberSettingsTab,
+	mountSeed,
 	resetSettingsTabMemory,
 	resolveSettingsTab,
 	settingsPanelOf,
@@ -58,6 +60,7 @@ const {
 	isTourTargetVisible,
 	revealSettingsTab,
 	bindTabScrollMemory,
+	textDirectionFor,
 } = await import(dataUrl);
 
 const sectionForKey = (key) => (key === "model_effort" ? "general" : "backend");
@@ -363,43 +366,55 @@ test("the tour's tags name rail rows this page renders", () => {
 	);
 });
 
-test("the seed is read once per mount, so Back to the bare entry keeps its tab", () => {
+test("a visit's tab is read once at mount: the three sequences, claimed by mountSeed", () => {
 	/*
-	 * Round 1: M1. A bare `/settings` entry means "the tab this visit opened on".
-	 * Replaying the page's own calls with the seed captured ONCE (what the hook's
-	 * `useState` does) is the sequence that was broken: gear -> Appearance -> Back
-	 * used to re-show Appearance, because the memory had been rewritten to it.
+	 * Round 1: M1, claimed by BEHAVIOUR (round 2, MINOR 4). `mountSeed` is the
+	 * read the hook's `useState` initializer performs, so a replay through it
+	 * exercises the same seam rather than restating the source text.
 	 */
-	resetSettingsTabMemory();
-	const seed = lastSettingsTab(); // the cold-start read the hook does on mount
-	const resolveNow = (search) =>
+	const resolveWith = (search, seed) =>
 		resolveSettingsTab({
 			search,
 			available: all,
 			lastTab: seed,
 			sectionForKey,
 		});
-	assert.equal(resolveNow("").tab, "general", "gear on a cold start");
+
+	// (a) A fresh mount after a visit that ended on Backend opens on Backend.
+	resetSettingsTabMemory();
+	rememberSettingsTab("backend"); // the previous visit's arrival effect
+	const freshSeed = mountSeed();
+	assert.equal(freshSeed, "backend", "the mount read sees the run's last tab");
+	assert.equal(resolveWith("", freshSeed).tab, "backend", "gear opens Backend");
+
+	// (b) Back to a paramless entry keeps the tab that entry opened on, even
+	// after Appearance was pressed inside the visit.
+	resetSettingsTabMemory();
+	const seed = mountSeed(); // cold start: null -> General
+	assert.equal(resolveWith("", seed).tab, "general", "gear opens General");
 	rememberSettingsTab("general"); // the arrival effect, on General
-	assert.equal(resolveNow("?section=appearance").tab, "appearance");
+	assert.equal(resolveWith("?section=appearance", seed).tab, "appearance");
 	rememberSettingsTab("appearance"); // the arrival effect, on Appearance
 	assert.equal(
-		resolveNow("").tab,
+		resolveWith("", seed).tab,
 		"general",
-		"Back to the entry the visit opened on keeps that entry's tab",
+		"Back resolves through the seed, not through the rewritten memory",
 	);
-
-	// A NEW visit mounts again: it reads the memory as it is now.
+	// ...and a genuinely NEW visit re-reads it.
 	assert.equal(
-		resolveSettingsTab({
-			search: "",
-			available: all,
-			lastTab: lastSettingsTab(),
-			sectionForKey,
-		}).tab,
+		resolveWith("", mountSeed()).tab,
 		"appearance",
 		"a fresh open still lands on the run's last tab",
 	);
+
+	// (c) The same sequence with nothing pressed: the memory never moves, so
+	// every bare resolve is the same tab.
+	resetSettingsTabMemory();
+	const quietSeed = mountSeed();
+	assert.equal(quietSeed, null);
+	assert.equal(resolveWith("", quietSeed).tab, "general");
+	assert.equal(resolveWith("", quietSeed).tab, "general");
+	assert.equal(mountSeed(), null, "nothing pressed: the memory is still null");
 	resetSettingsTabMemory();
 });
 
@@ -415,8 +430,8 @@ test("the hook and the page carry the mount-scoped shapes, not the per-resolve o
 	);
 	assert.match(
 		hook,
-		/useState<string \| null>\(\(\) => lastSettingsTab\(\)\)/,
-		"the seed is state, read once per mount",
+		/useState<string \| null>\(\(\) => mountSeed\(\)\)/,
+		"the seed is state, read once per mount, through the named read",
 	);
 	assert.match(hook, /lastTab: seed/, "the resolver reads that seed");
 	assert.ok(
@@ -477,4 +492,103 @@ test("the scroll listener binds to the element it is given, whenever that is", (
 	);
 	unbind();
 	assert.equal(handlers.length, 0, "the unbind is the effect's cleanup");
+});
+
+test("every chat error-block settings link names the tab its sentence means", () => {
+	/*
+	 * Round 2, the MAJOR. A bare `/settings` opens the tab last visited, so a
+	 * link inside a sentence that names what to change ("select a different
+	 * model") must carry that destination itself. The English catalogue is the
+	 * authority for the mapping; this table is the same judgement, arm by arm.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/message-item/error-block.tsx",
+		"utf8",
+	);
+	const EXPECTED = {
+		provider: "providers",
+		model: "general",
+		rate_limit: "general",
+		rate_limit_all: "general",
+		invalid_key: "providers",
+		unavailable: "general",
+		schema: "general",
+	};
+	const body = source.slice(
+		source.indexOf("const suggestionFor"),
+		source.indexOf("export const ErrorBlock"),
+	);
+	const arms = body
+		.split(/\n\t\tcase "/)
+		.slice(1)
+		.map((chunk) => {
+			const kind = chunk.slice(0, chunk.indexOf('"'));
+			const call = chunk.match(/settingsLink\(([^)]*)\)/);
+			return { kind, call: call?.[1] ?? null };
+		});
+	const linked = arms.filter((arm) => arm.call !== null);
+	assert.deepEqual(
+		linked.map((arm) => arm.kind),
+		Object.keys(EXPECTED),
+		"every arm with a link is in the table, and none was dropped",
+	);
+	for (const arm of linked) {
+		const destination =
+			/\/settings\?section=([a-z-]+)/.exec(arm.call ?? "")?.[1] ?? null;
+		assert.equal(
+			destination,
+			EXPECTED[arm.kind],
+			`the "${arm.kind}" arm opens the section its sentence names`,
+		);
+	}
+	// A bare call anywhere in this file is the regression this test exists for.
+	assert.equal(
+		source.match(/settingsLink\(\s*\)/g)?.length ?? 0,
+		0,
+		"no arm may fall back to bare /settings",
+	);
+});
+
+test("the rail tooltip's side is the LOCALE's direction, never a rendered attribute", () => {
+	/*
+	 * Round 2, MINOR 1. `<html dir>` is written by App's layout effect AFTER its
+	 * children render, so reading the attribute during render is one render
+	 * behind on a locale switch. The component reads the locale instead — the
+	 * same reading `mesh-approvals-tray` and `trace-fold` use — and this test
+	 * pins both halves: the mapping the hook applies, and the source that applies
+	 * it.
+	 */
+	assert.equal(
+		textDirectionFor("ur-PK"),
+		"rtl",
+		"Urdu is a right-to-left locale",
+	);
+	// An unshipped language is not guessed: the manifest is the only list.
+	assert.equal(
+		textDirectionFor("ar"),
+		"ltr",
+		"unshipped -> the DOM's own default",
+	);
+	assert.equal(textDirectionFor("en"), "ltr");
+	assert.equal(textDirectionFor("en-US"), "ltr");
+
+	const sidebar = readFileSync(
+		"src/renderer/src/features/settings/components/settings-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(
+		sidebar,
+		/import \{ useTextDirection \} from "@shared\/i18n\/use-document-direction";/,
+		"the rail takes its direction from the locale binding",
+	);
+	assert.match(
+		sidebar,
+		/const tooltipSide = useTextDirection\(\) === "rtl" \? "left" : "right";/,
+		"and derives the side from it",
+	);
+	assert.doesNotMatch(
+		sidebar,
+		/documentElement\.dir/,
+		"no render-time read of the attribute the layout effect writes later",
+	);
 });
