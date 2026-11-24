@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "Приложению вообще не удалось связаться с сессией этого чата.",
 	"ui.chat.ask_answer.settled_elsewhere": "На этот вопрос уже ответили в другом месте, поэтому ваш ответ не отправлен.",
 	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "Невозможно узнать, дошёл ли ваш ответ."
+	"ui.chat.ask_answer.unconfirmed_lead": "Невозможно узнать, дошёл ли ваш ответ.",
+	"ui.chat.ask_answer.conversation_deleted": "Разговор этого запроса удалён, и ответ принять некому. Отклоните или скройте запрос."
 }

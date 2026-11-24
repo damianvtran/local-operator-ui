@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "Ver detalles",
 	"ui.notifications.drawer.view_details_for": "Ver detalles: {title}",
 	"ui.notifications.drawer.back": "Volver a las actualizaciones",
-	"ui.notifications.drawer.open_in_notifications": "Abrir en Notificaciones"
+	"ui.notifications.drawer.open_in_notifications": "Abrir en Notificaciones",
+	"ui.notifications.source.conversation_deleted": "Conversación eliminada",
+	"ui.notifications.toast.nothing_to_dismiss": "No hay nada que descartar. Las consultas abiertas se mantienen hasta que las respondas, rechaces o descartes.",
+	"ui.notifications.detail.deleted.ask": "Esta conversación se eliminó, así que no se puede responder a esta consulta. Recházala o descártala para quitarla.",
+	"ui.notifications.detail.deleted.update": "Esta conversación se eliminó. Aún puedes descartar esta actualización.",
+	"ui.notifications.detail.deleted.open_tip": "Esta conversación se eliminó",
+	"ui.notifications.detail.deleted.send_withheld": "No se pueden enviar respuestas: la conversación que hizo la consulta se eliminó."
 }

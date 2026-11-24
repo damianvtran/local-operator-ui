@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "تفصیلات دیکھیں",
 	"ui.notifications.drawer.view_details_for": "تفصیلات دیکھیں: {title}",
 	"ui.notifications.drawer.back": "اپ ڈیٹس پر واپس جائیں",
-	"ui.notifications.drawer.open_in_notifications": "اطلاعات میں کھولیں"
+	"ui.notifications.drawer.open_in_notifications": "اطلاعات میں کھولیں",
+	"ui.notifications.source.conversation_deleted": "گفتگو حذف ہو گئی",
+	"ui.notifications.toast.nothing_to_dismiss": "ہٹانے کو کچھ نہیں۔ کھلے سوالات تب تک رہتے ہیں جب تک آپ ان کا جواب نہ دیں، انکار نہ کریں یا انہیں ہٹا نہ دیں۔",
+	"ui.notifications.detail.deleted.ask": "یہ گفتگو حذف ہو چکی ہے، اس لیے اس سوال کا جواب نہیں دیا جا سکتا۔ اسے صاف کرنے کے لیے انکار کریں یا ہٹائیں۔",
+	"ui.notifications.detail.deleted.update": "یہ گفتگو حذف ہو چکی ہے۔ آپ اب بھی یہ اپ ڈیٹ ہٹا سکتے ہیں۔",
+	"ui.notifications.detail.deleted.open_tip": "یہ گفتگو حذف ہو چکی ہے",
+	"ui.notifications.detail.deleted.send_withheld": "جواب نہیں بھیجا جا سکتا: سوال کرنے والی گفتگو حذف ہو چکی ہے۔"
 }

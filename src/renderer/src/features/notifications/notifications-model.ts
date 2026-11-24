@@ -165,6 +165,8 @@ export type NotificationGroup =
 			key: string;
 			sessionId: string;
 			title: string;
+			/** The owning session is gone: the heading says so instead of a title. */
+			conversationDeleted: boolean;
 			items: DesktopNotificationItem[];
 	  };
 
@@ -231,6 +233,9 @@ export function groupItems(
 			key: `session:${sessionId}`,
 			sessionId,
 			title: list[0].session.title,
+			conversationDeleted: list.some(
+				(item) => item.conversation_deleted === true,
+			),
 			items: list,
 		});
 	}

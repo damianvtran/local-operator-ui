@@ -5,7 +5,11 @@ import {
 	reviseQueuedAsk,
 } from "@features/chat/ask-answer";
 import type { AskDismissReason, AskDraft } from "@features/chat/ask-queue";
-import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
+import {
+	askQueueView,
+	askRevisionEvidence,
+	askStatusWord,
+} from "@features/chat/ask-queue";
 /**
  * The detail pane (design.md § 2 "Detail", contract § 5.2 `GET …/{id}`).
  *
@@ -58,7 +62,7 @@ import {
 	MoreHorizontal,
 	X,
 } from "lucide-react";
-import { type FC, useEffect, useMemo, useRef, useState } from "react";
+import { type FC, useEffect, useId, useMemo, useRef, useState } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -67,6 +71,11 @@ import type { PendingAsk } from "../../../../../shared/desktop-session-contract"
 import { notificationKeys } from "../notifications-api";
 import { isLiveAsk } from "../notifications-model";
 import { rowTimeOf } from "../notifications-model";
+import {
+	askIdOfItem,
+	conversationDeleted,
+	notificationSourceLabel,
+} from "../source-label";
 import { priorityName, rowTimeText } from "./notification-row";
 import { PriorityBars } from "./priority-bars";
 
@@ -167,7 +176,17 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 	const gone = item.dismissed;
 	const liveAsk = isLiveAsk(item);
 	const actionsDisabled = writesPaused || gone;
-	const source = item.session.title || t("ui.notifications.group.untitled");
+	/*
+	 * A DELETED OWNER (contract `conversation_deleted`). Every door that needs the
+	 * session - Open conversation, the From link, Send answer - is withheld with its
+	 * reason; the doors that settle the row locally (Decline, Dismiss, Mark read)
+	 * stay. Either the list row or the detail read may carry the flag first.
+	 */
+	const deleted = conversationDeleted(item) || conversationDeleted(rowItem);
+	const source = deleted
+		? t("ui.notifications.source.conversation_deleted")
+		: notificationSourceLabel(item);
+	const orphanAskId = deleted && liveAsk ? askIdOfItem(item) : null;
 	const repeat = item.repeat_count > 1 ? item.repeat_count : 0;
 	const [showAllHistory, setShowAllHistory] = useState(false);
 	const history = detail?.history ?? [];
@@ -336,13 +355,42 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					{t("ui.notifications.detail.gone.dismissed")}
 				</Alert>
 			)}
+			{deleted && !gone && (
+				<Alert
+					variant="neutral"
+					className="mt-3"
+					// biome-ignore lint/a11y/useSemanticElements: `role="status"` is a live region with no element of its own; `<output>` is a form's result, and this is a page notice
+					role="status"
+					data-notification-conversation-deleted=""
+				>
+					{liveAsk
+						? t("ui.notifications.detail.deleted.ask")
+						: t("ui.notifications.detail.deleted.update")}
+				</Alert>
+			)}
 
 			<div className="mt-4 flex flex-wrap items-center gap-2">
 				{onOpenConversation && (
 					<Button
-						variant="primary"
+						variant={deleted ? "secondary" : "primary"}
 						size="sm"
-						onClick={() => onOpenConversation(item.session.id)}
+						/*
+						 * WITHHELD, NOT HIDDEN, for a deleted conversation: the button keeps its
+						 * place and says why it cannot open (the same inert-looks-inert rule as
+						 * the siblings below, OD6), rather than navigating to a route that
+						 * answers "not found".
+						 */
+						aria-disabled={deleted || undefined}
+						className={deleted ? "text-ink-disabled" : undefined}
+						title={
+							deleted
+								? t("ui.notifications.detail.deleted.open_tip")
+								: undefined
+						}
+						onClick={() => {
+							if (deleted) return;
+							onOpenConversation(item.session.id);
+						}}
 						data-notification-open-conversation=""
 					>
 						<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
@@ -503,7 +551,18 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 				</DetailSection>
 			)}
 
-			{(detail?.asks?.length ?? 0) > 0 && (
+			{orphanAskId !== null && !gone && (
+				<DetailSection title={t("ui.notifications.detail.section.waiting")}>
+					<OrphanAskActions
+						sessionId={item.session.id}
+						askId={orphanAskId}
+						writesPaused={writesPaused}
+						onSettled={onAsksSettled}
+					/>
+				</DetailSection>
+			)}
+
+			{orphanAskId === null && (detail?.asks?.length ?? 0) > 0 && (
 				<DetailSection title={t("ui.notifications.detail.section.waiting")}>
 					<DetailAsks
 						sessionId={item.session.id}
@@ -516,7 +575,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 
 			<DetailSection title={t("ui.notifications.detail.section.from")}>
 				<div className="flex items-center justify-between gap-3 rounded-md bg-surface px-3 py-2">
-					{onOpenConversation ? (
+					{onOpenConversation && !deleted ? (
 						<button
 							type="button"
 							onClick={() => onOpenConversation(item.session.id)}
@@ -530,7 +589,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 							className="min-w-0 truncate text-body-sm text-ink"
 							data-notification-from-name=""
 						>
-							{detail?.session.title || source}
+							{deleted ? source : detail?.session.title || source}
 						</span>
 					)}
 					{/*
@@ -811,6 +870,136 @@ const DetailAsks: FC<{
 				})
 			}
 		/>
+	);
+};
+
+/**
+ * The doors left on an ask whose conversation was deleted.
+ *
+ * WHY NOT THE ASK PANEL. The panel is built from the detail read's `asks`, which
+ * core reads out of the owning session; once that session is gone the read may
+ * carry no rows at all, and the operator was left with a row nothing could
+ * settle ("Send, Decline and Dismiss all fail or do nothing"). This block needs
+ * only the ask id, which the row's own id carries, and addresses the SAME
+ * answers route with the SAME helpers - core settles `decline`/`dismiss` for a
+ * deleted owner locally (withdrawn/declined in the ask index) and refuses a
+ * plain answer with `409 conversation_deleted`, so Send answer is shown
+ * withheld with its reason instead of offered.
+ *
+ * A refusal is drawn in place (`role="alert"`), never swallowed: that silence is
+ * the defect this block replaces.
+ */
+const OrphanAskActions: FC<{
+	sessionId: string;
+	askId: string;
+	writesPaused: boolean;
+	onSettled: (
+		askId: string,
+		status: "answered" | "declined" | "dismissed",
+	) => void;
+}> = ({ sessionId, askId, writesPaused, onSettled }) => {
+	const { client } = useOptionalQueryClient();
+	const { lock, outcomes, answering, run } = useAskOutcomes({
+		onAccepted: (act) => {
+			if (act.kind !== "changed") onSettled(act.askId, act.kind);
+			void client?.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+		},
+	});
+	const outcome = outcomes[askId];
+	const busy = answering || outcome?.sending === true || writesPaused;
+	const reasonId = useId();
+	/*
+	 * SETTLED IS THE PRESS'S OWN RECORD. The detail read cannot confirm it: core
+	 * stops answering an ask item once it is settled, so the refetch 404s and the
+	 * query keeps the last `open` row (the stale-card rule `DetailAsks` documents).
+	 * Without this the block kept offering Decline/Dismiss after both had landed.
+	 */
+	const settled = outcome?.settled?.status;
+	if (settled)
+		return (
+			<output
+				className="rounded-md bg-surface px-3 py-3 text-body-sm text-ink-muted"
+				data-orphan-ask-settled={settled}
+			>
+				{askStatusWord(settled)}
+			</output>
+		);
+	return (
+		<div
+			className="flex flex-col gap-2 rounded-md bg-surface px-3 py-3"
+			data-orphan-ask={askId}
+		>
+			<p id={reasonId} className="text-body-sm text-ink-muted">
+				{t("ui.notifications.detail.deleted.send_withheld")}
+			</p>
+			<div className="flex flex-wrap items-center gap-2">
+				<Button
+					variant="primary"
+					size="sm"
+					aria-disabled
+					aria-describedby={reasonId}
+					className="text-ink-disabled"
+					title={t("ui.notifications.detail.deleted.send_withheld")}
+					data-orphan-ask-send=""
+					onClick={() => {}}
+				>
+					{t("ui.chat.asks.send_answer")}
+				</Button>
+				<Button
+					variant="secondary"
+					size="sm"
+					aria-disabled={busy || undefined}
+					className={busy ? "text-ink-disabled" : undefined}
+					data-orphan-ask-decline=""
+					onClick={() => {
+						if (busy) return;
+						run({
+							askId,
+							kind: "declined",
+							send: () =>
+								declineQueuedAsk(
+									{ taskId: askId, sessionId, lock },
+									(request) => desktopResult(request),
+								),
+						});
+					}}
+				>
+					{t("ui.chat.asks.decline")}
+				</Button>
+				<Button
+					variant="secondary"
+					size="sm"
+					aria-disabled={busy || undefined}
+					className={busy ? "text-ink-disabled" : undefined}
+					data-orphan-ask-dismiss=""
+					onClick={() => {
+						if (busy) return;
+						/*
+						 * `moot`, not a chooser: with the conversation gone there is no chat the
+						 * answer could have been given in, so `answered_in_chat` cannot be true.
+						 */
+						run({
+							askId,
+							kind: "dismissed",
+							reason: "moot",
+							send: () =>
+								dismissQueuedAsk(
+									{ taskId: askId, reason: "moot", sessionId, lock },
+									(request) => desktopResult(request),
+								),
+						});
+					}}
+				>
+					<X aria-hidden="true" />
+					{t("ui.notifications.row.dismiss")}
+				</Button>
+			</div>
+			{outcome?.refused ? (
+				<Alert variant="danger" role="alert" data-orphan-ask-refused="">
+					{outcome.refused}
+				</Alert>
+			) : null}
+		</div>
 	);
 };
 

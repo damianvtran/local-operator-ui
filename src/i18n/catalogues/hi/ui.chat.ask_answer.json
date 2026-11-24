@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "ऐप इस चैट के सत्र तक बिल्कुल नहीं पहुँच सका।",
 	"ui.chat.ask_answer.settled_elsewhere": "उस सवाल का जवाब पहले ही कहीं और दिया जा चुका था, इसलिए आपका जवाब नहीं भेजा गया।",
 	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "यह पता नहीं चल सकता कि आपका जवाब पहुँचा या नहीं।"
+	"ui.chat.ask_answer.unconfirmed_lead": "यह पता नहीं चल सकता कि आपका जवाब पहुँचा या नहीं।",
+	"ui.chat.ask_answer.conversation_deleted": "इस सवाल की बातचीत मिटा दी गई है, इसलिए यह जवाब नहीं ले सकता। इसके बजाय इसे अस्वीकार करें या हटाएँ।"
 }

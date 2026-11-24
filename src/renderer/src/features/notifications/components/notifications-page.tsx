@@ -137,6 +137,7 @@ import {
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
+import { notificationSourceLabel } from "../source-label";
 import {
 	NotificationDetail,
 	copyNotificationLink,
@@ -632,7 +633,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		for (const item of [...waiting, ...items]) {
 			const entry = counts.get(item.session.id) ?? [
 				item.session.id,
-				item.session.title || t("ui.notifications.group.untitled"),
+				notificationSourceLabel(item),
 				0,
 			];
 			entry[2] += 1;
@@ -1209,6 +1210,14 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 						count: snapshot.tokens.length,
 						snapshot,
 					});
+				/*
+				 * AN EMPTY WALK IS SAID, NOT SWALLOWED. "Dismiss all" is offered while its
+				 * count is still unknown, and a conversation whose only row is an open
+				 * ask walks to zero tokens (asks are never in a bulk dismiss). This
+				 * branch used to end the press with nothing on screen - the operator's
+				 * "Dismiss all does nothing" on a deleted conversation's ask. Name what
+				 * stayed and where it settles instead.
+				 */ else showInfoToast(t("ui.notifications.toast.nothing_to_dismiss"));
 			} catch {
 				showErrorToast(t("ui.notifications.error.load.title"));
 			} finally {
@@ -1787,7 +1796,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				if (event.shiftKey) {
 					requestDismissSession(
 						current.session.id,
-						current.session.title || t("ui.notifications.group.untitled"),
+						notificationSourceLabel(current),
 					);
 					return;
 				}
@@ -2303,7 +2312,9 @@ const groupTitle = (group: NotificationGroup): string => {
 		case "waiting":
 			return t("ui.notifications.group.waiting");
 		case "conversation":
-			return group.title || t("ui.notifications.group.untitled");
+			return group.conversationDeleted
+				? t("ui.notifications.source.conversation_deleted")
+				: group.title || t("ui.notifications.group.untitled");
 		case "time":
 			return group.key === "today"
 				? t("ui.notifications.group.today")

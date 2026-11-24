@@ -132,5 +132,11 @@
 	"ui.notifications.drawer.view_details": "Подробнее",
 	"ui.notifications.drawer.view_details_for": "Подробнее: {title}",
 	"ui.notifications.drawer.back": "Назад к обновлениям",
-	"ui.notifications.drawer.open_in_notifications": "Открыть в уведомлениях"
+	"ui.notifications.drawer.open_in_notifications": "Открыть в уведомлениях",
+	"ui.notifications.source.conversation_deleted": "Разговор удалён",
+	"ui.notifications.toast.nothing_to_dismiss": "Скрывать нечего. Открытые запросы остаются, пока вы не ответите на них, не отклоните или не скроете.",
+	"ui.notifications.detail.deleted.ask": "Этот разговор удалён, поэтому ответить на запрос нельзя. Отклоните или скройте его, чтобы убрать.",
+	"ui.notifications.detail.deleted.update": "Этот разговор удалён. Это обновление всё ещё можно скрыть.",
+	"ui.notifications.detail.deleted.open_tip": "Этот разговор удалён",
+	"ui.notifications.detail.deleted.send_withheld": "Ответ отправить нельзя: разговор, из которого пришёл запрос, удалён."
 }

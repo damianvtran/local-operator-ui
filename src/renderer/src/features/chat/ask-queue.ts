@@ -2806,9 +2806,31 @@ export const askAttestRefusalSentence = (error: unknown): string | null => {
 	return t("ui.chat.ask_attest.refusal.retry");
 };
 
+/** Core's code for an answer refused because the ask's conversation was deleted. */
+export const CONVERSATION_DELETED_CODE = "conversation_deleted";
+
+/** Whether an ask-route failure is core's `conversation_deleted` refusal. */
+export const askOwnerConversationDeleted = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.code === CONVERSATION_DELETED_CODE;
+
 export const askRefusalSentence = (error: unknown): string => {
 	const attest = askAttestRefusalSentence(error);
 	if (attest !== null) return attest;
+	/*
+	 * THE OWNER IS GONE (contract: `409` + `conversation_deleted`). Checked before
+	 * the settled/ownership classifiers below because a coded 409 is exactly what
+	 * `askRefusalAuthored` would otherwise read as "already settled" - which is
+	 * false here: the ask is still open, it simply has nobody left to answer to,
+	 * and the card's Decline/Dismiss still settle it. Core sends a translated
+	 * sentence; ours stands in only when its body carried none.
+	 */
+	if (askOwnerConversationDeleted(error))
+		return error instanceof Error &&
+			error.message &&
+			error.message !== DESKTOP_REFUSAL_PLACEHOLDER
+			? userFacingMessage(error, t("ui.chat.ask_answer.conversation_deleted"))
+			: t("ui.chat.ask_answer.conversation_deleted");
 	if (answerOwnerIsBusy(error)) return answerBusyMessage();
 	if (answerRefusedByAppContract(error))
 		return answerRefusedByAppContractMessage();

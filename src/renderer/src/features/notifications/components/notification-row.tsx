@@ -36,6 +36,7 @@ import {
 	rowTimeOf,
 	seenMarkOf,
 } from "../notifications-model";
+import { notificationSourceLabel } from "../source-label";
 import { PriorityBars } from "./priority-bars";
 
 export const rowTimeText = (time: RowTime): string => {
@@ -132,7 +133,7 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 	const unread = !item.read;
 	const seen = seenMarkOf(item);
 	const time = rowTimeText(rowTimeOf(item.updated_at, nowMs));
-	const source = item.session.title || t("ui.notifications.group.untitled");
+	const source = notificationSourceLabel(item);
 	const repeat = item.repeat_count > 1 ? item.repeat_count : 0;
 	const label = t("ui.notifications.row.a11y", {
 		read: unread ? "false" : "true",

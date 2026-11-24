@@ -8,5 +8,6 @@
 	"ui.chat.ask_answer.session_unreachable": "ایپ اس چیٹ کے سیشن تک بالکل نہیں پہنچ سکی۔",
 	"ui.chat.ask_answer.settled_elsewhere": "اس سوال کا جواب پہلے ہی کہیں اور دیا جا چکا تھا، اس لیے آپ کا جواب نہیں بھیجا گیا۔",
 	"ui.chat.ask_answer.unconfirmed": "{lead} {reason}",
-	"ui.chat.ask_answer.unconfirmed_lead": "یہ جاننا ممکن نہیں کہ آپ کا جواب پہنچا یا نہیں۔"
+	"ui.chat.ask_answer.unconfirmed_lead": "یہ جاننا ممکن نہیں کہ آپ کا جواب پہنچا یا نہیں۔",
+	"ui.chat.ask_answer.conversation_deleted": "اس سوال کی گفتگو حذف ہو چکی ہے، اس لیے یہ جواب نہیں لے سکتا۔ اس کے بجائے انکار کریں یا ہٹائیں۔"
 }
