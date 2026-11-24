@@ -96,11 +96,12 @@ export const ConnectProviderDialog: FC = () => {
 						 * this dialog did not, so the path the PR's discoverability item names
 						 * showed a receipt with no way to change it (review round 2 R2-m4).
 						 * General owns the model settings, which is where Settings' own panel
-						 * sends the same press.
+						 * sends the same press — so the link names that tab rather than
+						 * opening Settings on whatever tab was last visited.
 						 */
 						onChangeModel={() => {
 							closeConnect();
-							navigate("/settings");
+							navigate("/settings?section=general");
 						}}
 					/>
 				) : null}

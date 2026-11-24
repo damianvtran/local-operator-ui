@@ -1661,7 +1661,7 @@ export const AgentHubPage: React.FC = () => {
 								) : (
 									<PublicTeamsLibrary
 										signedIn={isAuthenticated}
-										onOpenSettings={() => navigate("/settings")}
+										onOpenSettings={() => navigate("/settings?section=radient")}
 									/>
 								))}
 						</div>

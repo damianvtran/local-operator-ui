@@ -159,6 +159,16 @@ test("no route builds a ?section= from a variable this scan cannot see", () => {
 	 */
 	const ALLOWED = [
 		"src/renderer/src/features/command-palette/palette-search.ts",
+		/*
+		 * The tab grammar (PR2): one module builds a tab's link and one hook
+		 * pushes it, and neither can invent a section — every id either side can
+		 * name is `SETTINGS_TAB_IDS`, which the assertion below binds to the
+		 * page's own `sectionRefs` seed. That binding is what makes the
+		 * expression safe to read; without it these two would be the `/accounts`
+		 * defect with a friendlier shape.
+		 */
+		"src/renderer/src/features/settings/settings-tabs.ts",
+		"src/renderer/src/features/settings/use-settings-tab.ts",
 	];
 	const offenders = [];
 	for (const file of sourceFiles()) {
@@ -170,6 +180,25 @@ test("no route builds a ?section= from a variable this scan cannot see", () => {
 		offenders,
 		[],
 		"a file builds a ?section= route from an expression, which the literal route scan cannot check: either name the section literally or add the file here with the reason its source is bound to sectionRefs",
+	);
+	/*
+	 * ...and the reason, as an assertion rather than a comment: the only ids the
+	 * tab grammar can put in a `?section=` are the ones the page mounts.
+	 */
+	const grammar = readFileSync(
+		"src/renderer/src/features/settings/settings-tabs.ts",
+		"utf8",
+	);
+	const start = grammar.indexOf("export const SETTINGS_TAB_IDS = [");
+	assert.notEqual(start, -1, "SETTINGS_TAB_IDS not found");
+	const list = grammar.slice(start, grammar.indexOf("] as const;", start));
+	const tabIds = [...list.matchAll(/^\t"([a-z-]+)",$/gm)].map(
+		(match) => match[1],
+	);
+	assert.deepEqual(
+		new Set(tabIds),
+		sectionRefKeys(),
+		"the tab grammar can build a link only for a section the page mounts",
 	);
 });
 
@@ -300,4 +329,24 @@ test("the promoted model_effort row is revealed and focused by its deep link", (
 		/\[role=combobox\][\s\S]{0,80}\.focus\(/,
 		"the row must focus its own combobox when the deep link names it",
 	);
+});
+
+test("every section a link can name is a tab panel, one per ref, no strays", () => {
+	/*
+	 * The route map above proves a link names a REF. Since the tab change, the
+	 * ref is no longer the whole destination: the link's section must also reach
+	 * a panel, or the URL selects a tab whose content the page does not draw.
+	 * The panel list is read from the page's own wrappers, so a section added
+	 * without its panel fails here instead of landing on an empty tab.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	const panels = [...page.matchAll(/<SettingsTabPanel\s+tab="([^"]+)"/g)].map(
+		(match) => match[1],
+	);
+	const refs = sectionRefKeys();
+	assert.equal(panels.length, refs.size, "one panel per deep-link key");
+	assert.deepEqual([...new Set(panels)].sort(), [...refs].sort());
 });

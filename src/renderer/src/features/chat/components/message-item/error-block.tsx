@@ -39,6 +39,16 @@ export type ErrorBlockProps = {
  * The label is a KEY, not a string: `t()` is called when this helper renders,
  * which is the only moment the active locale is known.
  */
+/*
+ * EVERY ARM NAMES ITS DESTINATION. A bare `/settings` opens the tab last
+ * visited this run, which is wrong for copy that names what to change. THE
+ * SENTENCE DECIDES, against the English catalogue: a model sentence ("select a
+ * different model", "Change your model in the") is General, a provider or API
+ * key sentence is the Providers grid, and "get Radient Pass in the ..." is the
+ * Radient panel — the only surface that offers the Pass. The arm table in
+ * `scripts/settings-tabs.test.mjs` asserts every call site carries the tab its
+ * own sentence means, so an arm cannot be re-pinned by guesswork.
+ */
 const settingsLink = (
 	labelKey:
 		| "ui.chat.error_block.link.settings"
@@ -95,28 +105,32 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 		case "provider":
 			return (
 				<p>
-					{t("ui.chat.error_block.provider.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.provider.before")}{" "}
+					{settingsLink(undefined, "/settings?section=providers")}{" "}
 					{t("ui.chat.error_block.provider.after")}
 				</p>
 			);
 		case "model":
 			return (
 				<p>
-					{t("ui.chat.error_block.model.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.model.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.model.after")}
 				</p>
 			);
 		case "rate_limit":
 			return (
 				<p>
-					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.before")}{" "}
+					{settingsLink(undefined, "/settings?section=radient")}{" "}
 					{t("ui.chat.error_block.rate_limit.after")}
 				</p>
 			);
 		case "rate_limit_all":
 			return (
 				<p>
-					{t("ui.chat.error_block.rate_limit.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.rate_limit.before")}{" "}
+					{settingsLink(undefined, "/settings?section=radient")}{" "}
 					{t("ui.chat.error_block.rate_limit.all_after")}
 				</p>
 			);
@@ -134,7 +148,8 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 		case "unavailable":
 			return (
 				<p>
-					{t("ui.chat.error_block.unavailable.before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.unavailable.before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.unavailable.after")}
 				</p>
 			);
@@ -144,7 +159,8 @@ const suggestionFor = (kind: SuggestionKind): React.ReactNode => {
 					{t("ui.chat.error_block.schema.before")}
 					<br />
 					<br />
-					{t("ui.chat.error_block.schema.after_before")} {settingsLink()}{" "}
+					{t("ui.chat.error_block.schema.after_before")}{" "}
+					{settingsLink(undefined, "/settings?section=general")}{" "}
 					{t("ui.chat.error_block.schema.after")}
 				</p>
 			);

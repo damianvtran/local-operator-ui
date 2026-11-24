@@ -96,6 +96,86 @@ function isReachable(element: HTMLElement): boolean {
 }
 
 /**
+ * The shared settle: poll a frame at a time for a landing that has become
+ * possible, and answer `"missing"` at the bound rather than hanging.
+ *
+ * A tab switch makes a landing possible one COMMIT after the press, so every
+ * jump waits the same way whether its target is a row or a section.
+ */
+function settleOn(
+	find: () => (() => void) | null,
+	frames: number,
+): Promise<SearchJumpOutcome> {
+	return new Promise((resolve) => {
+		let attempts = 0;
+		const step = () => {
+			const land = find();
+			if (land) {
+				land();
+				resolve("landed");
+				return;
+			}
+			attempts += 1;
+			if (attempts >= frames) {
+				resolve("missing");
+				return;
+			}
+			requestAnimationFrame(step);
+		};
+		requestAnimationFrame(step);
+	});
+}
+
+/**
+ * The page's one scroller, if `root` is or contains it.
+ *
+ * The settings page mounts three trees; only the populated one has
+ * `[data-settings-content]`, and the jump always runs against the populated
+ * tree (there is no row to land on otherwise).
+ */
+function scrollerOf(root: ParentNode): HTMLElement | null {
+	const element = root as Element;
+	if (element.nodeType === 1 && element.matches("[data-settings-content]")) {
+		return element as HTMLElement;
+	}
+	return (
+		element.querySelector?.<HTMLElement>("[data-settings-content]") ?? null
+	);
+}
+
+/**
+ * Bring `element` to `align` by setting the PANEL's own `scrollTop`.
+ *
+ * WHY NOT `scrollIntoView`. That call walks EVERY scrollable ancestor, and this
+ * page has a second one above the panel: the `panel-flush ... overflow-hidden`
+ * column reports overflow while its only scrolling child does the work, so a
+ * landing also moved the whole content column up to 16px — the pinned Close
+ * button (64 -> 48) and the `h1` with it (design round 1, D1, measured on the
+ * cross-tab landing). The page has exactly one scroller and this is it; the
+ * arithmetic is the same centring `scrollIntoView({block:"center"})` did.
+ *
+ * `false` when there is no scroller (a caller rendering outside the page):
+ * the caller then falls back to `scrollIntoView`.
+ */
+export function scrollPanelTo(
+	root: ParentNode,
+	element: HTMLElement,
+	align: "start" | "center",
+): boolean {
+	const scroller = scrollerOf(root);
+	if (!scroller) return false;
+	const box = element.getBoundingClientRect();
+	const offset =
+		box.top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+	const target =
+		align === "center"
+			? offset - Math.max(0, (scroller.clientHeight - box.height) / 2)
+			: offset;
+	scroller.scrollTop = Math.max(0, target);
+	return true;
+}
+
+/**
  * Jump to a rendered row.
  *
  * The promise resolves `"landed"` only when the row was focusable, scrolled and
@@ -114,32 +194,67 @@ export function jumpToSearchRow(
 ): Promise<SearchJumpOutcome> {
 	const frames = options.frames ?? SEARCH_JUMP_SETTLE_FRAMES;
 	const paint = options.paint ?? paintJumpHighlight;
-	return new Promise((resolve) => {
-		let frame = 0;
-		let attempts = 0;
-		const step = () => {
-			const row = findSearchRow(root, rowId);
-			if (row && isReachable(row)) {
-				const target = searchControlOf(row);
-				if (target === row) row.tabIndex = -1;
+	return settleOn(() => {
+		const row = findSearchRow(root, rowId);
+		if (!row || !isReachable(row)) return null;
+		return () => {
+			const target = searchControlOf(row);
+			if (target === row) row.tabIndex = -1;
+			if (!scrollPanelTo(root, target, "center")) {
 				target.scrollIntoView({ block: "center" });
-				target.focus();
-				paint(row);
-				resolve("landed");
-				return;
 			}
-			attempts += 1;
-			if (attempts >= frames) {
-				resolve("missing");
-				return;
-			}
-			frame = requestAnimationFrame(step);
+			target.focus();
+			paint(row);
 		};
-		frame = requestAnimationFrame(step);
-		// A test host without `requestAnimationFrame` would otherwise never settle;
-		// jsdom owns one only when it is visual, and the app always has one.
-		void frame;
-	});
+	}, frames);
+}
+
+/**
+ * The element a section result names, reachable or not.
+ *
+ * Exported because a section can be in a tab that is not showing: the element
+ * is in the document either way (panels stay mounted), and the page has to read
+ * WHICH tab before it can reveal it.
+ */
+export function findSearchSectionRoot(
+	root: ParentNode,
+	sectionId: string,
+): HTMLElement | null {
+	return root.querySelector<HTMLElement>(
+		`[data-search-section="${CSS.escape(sectionId)}"]`,
+	);
+}
+
+/** The element a section jump lands on, when it is reachable. */
+function findSearchSection(
+	root: ParentNode,
+	sectionId: string,
+): HTMLElement | null {
+	const element = findSearchSectionRoot(root, sectionId);
+	return element && isReachable(element) ? element : null;
+}
+
+/** What a section landing does, once its element is reachable. */
+function landOnSection(
+	root: ParentNode,
+	element: HTMLElement,
+	paint: (element: HTMLElement) => void,
+): void {
+	if (!scrollPanelTo(root, element, "start")) {
+		element.scrollIntoView({ block: "start" });
+	}
+	/*
+	 * SET, not compared. `HTMLElement.tabIndex` reads `-1` for a `div` that has
+	 * no `tabindex` attribute — which is every section root whose `id` is unset
+	 * — so the old `if (element.tabIndex < 0) element.focus()` ran its branch
+	 * and called `focus()` on an element the browser refuses to focus: a scroll
+	 * and a wash, with the reader's cursor still in the search field (review
+	 * round 1, M1). Assigning `-1` makes the root a programmatic focus target
+	 * without adding a tab stop, exactly as `jumpToSearchRow` does for a row.
+	 */
+	if (element.tabIndex < 0) element.tabIndex = -1;
+	element.focus();
+	paint(element);
 }
 
 /**
@@ -154,22 +269,33 @@ export function jumpToSearchSection(
 	sectionId: string,
 	options: { paint?: (element: HTMLElement) => void } = {},
 ): SearchJumpOutcome {
-	const element = root.querySelector<HTMLElement>(
-		`[data-search-section="${CSS.escape(sectionId)}"]`,
-	);
-	if (!element || !isReachable(element)) return "missing";
-	element.scrollIntoView({ block: "start" });
-	/*
-	 * SET, not compared. `HTMLElement.tabIndex` reads `-1` for a `div` that has
-	 * no `tabindex` attribute — which is every section root whose `id` is unset
-	 * — so the old `if (element.tabIndex < 0) element.focus()` ran its branch
-	 * and called `focus()` on an element the browser refuses to focus: a scroll
-	 * and a wash, with the reader's cursor still in the search field (review
-	 * round 1, M1). Assigning `-1` makes the root a programmatic focus target
-	 * without adding a tab stop, exactly as `jumpToSearchRow` does for a row.
-	 */
-	if (element.tabIndex < 0) element.tabIndex = -1;
-	element.focus();
-	(options.paint ?? paintJumpHighlight)(element);
+	const element = findSearchSection(root, sectionId);
+	if (!element) return "missing";
+	landOnSection(root, element, options.paint ?? paintJumpHighlight);
 	return "landed";
+}
+
+/**
+ * The settled section jump: the same landing, waited for.
+ *
+ * WHY THE ASYNC TWIN. A section-only search result can live in another tab, and
+ * the page reveals it by pushing that tab; the section root is in the document
+ * the whole time (panels stay mounted) but `[hidden]` until the commit lands.
+ * The sync form answers `"missing"` on that first frame, which would report a
+ * result that is about to be visible as a dead end.
+ */
+export function jumpToSearchSectionSettled(
+	root: ParentNode,
+	sectionId: string,
+	options: {
+		frames?: number;
+		paint?: (element: HTMLElement) => void;
+	} = {},
+): Promise<SearchJumpOutcome> {
+	const frames = options.frames ?? SEARCH_JUMP_SETTLE_FRAMES;
+	const paint = options.paint ?? paintJumpHighlight;
+	return settleOn(() => {
+		const element = findSearchSection(root, sectionId);
+		return element ? () => landOnSection(root, element, paint) : null;
+	}, frames);
 }

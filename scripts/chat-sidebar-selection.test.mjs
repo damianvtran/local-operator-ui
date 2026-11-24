@@ -2007,7 +2007,29 @@ test("settings current-page cue occupies the gutter without changing accessible 
 		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute start-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
 	);
 	assert.match(rail, /isActive \? "text-accent" : "text-ink-dim"/);
-	assert.match(rail, /<Tooltip content=\{section\.label\} side="right">/);
+	/*
+	 * THE TOOLTIP'S SIDE IS LOGICAL NOW (2026-11-24). This guard used to pin the
+	 * literal `side="right"`, which was the D4 defect: a physical right opens
+	 * into the app sidebar under RTL. The rail reads the writing direction and
+	 * passes it through, so the assertion follows the new shape — the marker
+	 * string is the derivation, not the destination, so a caller cannot pin a
+	 * physical side again without failing here.
+	 */
+	assert.match(
+		rail,
+		/<Tooltip content=\{section\.label\} side=\{tooltipSide\}>/,
+		"the rail's tooltip takes the logical side",
+	);
+	assert.match(
+		rail,
+		/const tooltipSide = useTextDirection\(\) === "rtl" \? "left" : "right";/,
+		"and that side is the LOCALE's direction (rtl -> left, else right)",
+	);
+	assert.match(
+		rail,
+		/import \{ useTextDirection \} from "@shared\/i18n\/use-document-direction";/,
+		"from the direction binding, not a rendered attribute",
+	);
 });
 
 test("the settings rail's group lists carry no ground of their own", () => {

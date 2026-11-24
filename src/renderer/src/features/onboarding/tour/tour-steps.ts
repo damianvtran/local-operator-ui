@@ -1,8 +1,10 @@
+import { TOUR_TAGS } from "@features/settings/settings-tabs";
 import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import Shepherd, { type Step, type StepOptions, type Tour } from "shepherd.js";
 import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
 import { tourGearNeedsClick } from "./tour-gear-open";
+import { isTourTargetVisible, revealSettingsTab } from "./tour-settings-tab";
 
 /**
  * The element carrying a tour tag that the user can actually see.
@@ -436,7 +438,7 @@ export const guardTourTargets = (
 	steps: StepOptions[],
 	present: (selector: string) => boolean = (selector) =>
 		typeof document !== "undefined" &&
-		document.querySelector(selector) !== null,
+		isTourTargetVisible(document.querySelector(selector)),
 	/* The reporter is injected (the hook passes the analytics call) so this
 	   module stays free of the telemetry config, which only a renderer loads. */
 	onSkipped?: (stepId: string) => void,
@@ -1610,6 +1612,13 @@ const buildTourSteps = (): StepOptions[] => [
 			element: 'div[data-tour-tag="settings-general-section"]',
 			on: attachSide("right"),
 		},
+		/*
+		 * The scroller this step points at is visible on every tab, so on the way
+		 * BACK from a later step it would spotlight whichever panel was showing.
+		 * Revealing General's own row first is what makes the box and the content
+		 * agree (the click is guarded by `aria-current`).
+		 */
+		beforeShowPromise: () => revealSettingsTab(TOUR_TAGS.general),
 		title: tourLabel("ui.onboarding.tour.general_settings.title"),
 		text: renderTourBody(TOUR_BODIES.general_settings),
 		buttons: [
@@ -1635,6 +1644,8 @@ const buildTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-appearance-section"]',
 			on: attachSide("right"),
 		},
+		// The target is inside its panel, which is hidden until its row is clicked.
+		beforeShowPromise: () => revealSettingsTab(TOUR_TAGS.appearance),
 		title: tourLabel("ui.onboarding.tour.appearance_settings.title"),
 		text: renderTourBody(TOUR_BODIES.appearance_settings),
 		buttons: [
@@ -1660,6 +1671,8 @@ const buildTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-radient-account-section"]',
 			on: attachSide("right"),
 		},
+		// The target is inside its panel, which is hidden until its row is clicked.
+		beforeShowPromise: () => revealSettingsTab(TOUR_TAGS.radient),
 		title: tourLabel("ui.onboarding.tour.radient_account_settings.title"),
 		text: renderTourBody(TOUR_BODIES.radient_account_settings),
 		buttons: [
@@ -1685,6 +1698,8 @@ const buildTourSteps = (): StepOptions[] => [
 			element: '[data-tour-tag="settings-app-updates-section"]',
 			on: attachSide("right"),
 		},
+		// The target is inside its panel, which is hidden until its row is clicked.
+		beforeShowPromise: () => revealSettingsTab(TOUR_TAGS.updates),
 		title: tourLabel("ui.onboarding.tour.application_updates_settings.title"),
 		text: renderTourBody(TOUR_BODIES.application_updates_settings),
 		buttons: [

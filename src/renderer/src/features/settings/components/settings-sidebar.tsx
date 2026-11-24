@@ -2,6 +2,7 @@ import { RadientMark } from "@shared/components/common/radient-mark";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { t } from "@shared/i18n";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -18,6 +19,7 @@ import {
 	SlidersHorizontal,
 } from "lucide-react";
 import type { ComponentType, FC } from "react";
+import { TOUR_TAGS, keyboardActivation } from "../settings-tabs";
 
 /**
  * A section's glyph. Every entry is now a component that draws itself in
@@ -51,25 +53,12 @@ export type SettingsSection = {
  * Props for the SettingsSidebar component
  */
 type SettingsSidebarProps = {
-	/** The currently active settings section */
-	activeSection: string;
-	/** Callback function when a section is selected */
-	onSelectSection: (sectionId: string) => void;
+	/** The tab the URL selects (the panel on screen) */
+	activeTab: string;
+	/** Show a tab: a history push, and a no-op for the tab already showing */
+	onSelectTab: (tab: string, options?: { focusPanel?: boolean }) => void;
 	/** List of available settings sections */
 	sections: SettingsSection[];
-};
-
-/**
- * Onboarding tour anchors, keyed by section id. A section with no entry gets no
- * tag, which is what the tour expects — `features/onboarding` matches these
- * values by selector, so a renamed value breaks the tour silently.
- */
-const TOUR_TAGS: Record<string, string> = {
-	general: "settings-sidebar-general",
-	radient: "settings-sidebar-radient-account",
-	integrations: "settings-sidebar-integrations",
-	appearance: "settings-sidebar-appearance",
-	updates: "settings-sidebar-application-updates",
 };
 
 /**
@@ -77,12 +66,10 @@ const TOUR_TAGS: Record<string, string> = {
  * sliced by position, so a section this file does not know about is left out of
  * every group instead of landing under the wrong heading.
  *
- * The order within a group must match the order the sections appear in
- * `settings-page`. This is a jump list over one long document, not a page
- * switcher, and the active row is chosen by whichever section is most visible
- * — so a rail that disagrees with document order makes the highlight jump
- * backwards as you scroll forwards. Account used to list credentials before
- * integrations while the page rendered them the other way round.
+ * The order within a group follows `settings-page`'s own order, so a destination
+ * is found where a returning reader expects it. It is no longer load-bearing:
+ * the active row comes from the URL, not from how much of a section is on
+ * screen, so a disagreement can no longer make the highlight jump.
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	/*
@@ -158,9 +145,9 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  *
  * There was, and the word then appeared three times in one viewport: on the
  * app rail's nav item, at the head of this rail, and as the page's own `h1`
- * beside it. This rail is a jump list within one page, and the page already
- * carries the title — so the groups start at the top, which is how Linear's
- * and 1Password's settings rails are built.
+ * beside it. This rail is the page's tab list, and the page already carries the
+ * title — so the groups start at the top, which is how Linear's and 1Password's
+ * settings rails are built.
  *
  * ## Why no edge of its own
  *
@@ -197,8 +184,8 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * almost nothing.
  */
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({
-	activeSection,
-	onSelectSection,
+	activeTab,
+	onSelectTab,
 	sections,
 }) => {
 	useI18nLocale();
@@ -211,14 +198,39 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	 * with a `hidden` variant would still mount on every row at every width.
 	 */
 	const labelled = useMediaQuery("(min-width: 1040px)");
+	/*
+	 * The tooltip opens toward the content, which is the INLINE-END direction:
+	 * `right` in LTR and `left` in RTL. It was a physical `right`, so in RTL it
+	 * opened into the app sidebar instead of over the settings panel (design
+	 * round 1: D4).
+	 *
+	 * The direction comes from the LOCALE, not from `<html dir>`: the shell
+	 * writes that attribute in `App`'s layout effect AFTER this component (a
+	 * child) has rendered, so reading the attribute is one render behind on a
+	 * locale switch (round 2, MINOR 1). `useTextDirection` re-renders the caller
+	 * when the locale changes — the same reading `mesh-approvals-tray` and
+	 * `trace-fold` use.
+	 */
+	const tooltipSide = useTextDirection() === "rtl" ? "left" : "right";
 
 	const renderSection = (section: SettingsSection) => {
-		const isActive = activeSection === section.id;
+		const isActive = activeTab === section.id;
 
 		const button = (
 			<button
 				type="button"
-				onClick={() => onSelectSection(section.id)}
+				/*
+				 * A keyboard activation (Enter/Space, `detail === 0`) asks for focus
+				 * in the panel: the reader chose a destination and would otherwise
+				 * have to Tab past the rest of the rail to reach it. A pointer press
+				 * keeps focus on the row, under the reader's own hand (round 3, U1).
+				 */
+				onClick={(event) =>
+					onSelectTab(section.id, {
+						focusPanel: keyboardActivation(event.detail),
+					})
+				}
+				data-settings-tab={section.id}
 				aria-current={isActive ? "page" : undefined}
 				/* Unlabelled the row is an icon and nothing else, and a tooltip
 				   cannot stand in for a name: Radix's `Trigger` contributes
@@ -264,7 +276,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 			<li key={section.id}>{button}</li>
 		) : (
 			<li key={section.id}>
-				<Tooltip content={section.label} side="right">
+				<Tooltip content={section.label} side={tooltipSide}>
 					{button}
 				</Tooltip>
 			</li>

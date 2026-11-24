@@ -416,8 +416,17 @@ test("the route lands on the row, and it is the one the settings page reads", ()
 		"utf8",
 	);
 	// Both halves of the route have to be read by the page that receives it.
+	// The section half moved into the tab resolver when Settings became one panel
+	// at a time: `?mcp=` names the Integrations TAB there, and the page hands its
+	// search to that one pure function instead of resolving `section=` itself.
 	assert.match(settingsPage, /params\.get\("mcp"\)/);
-	assert.match(settingsPage, /sectionFromQuery/);
+	assert.match(settingsPage, /useSettingsTab\(\{/);
+	const tabGrammar = readFileSync(
+		"src/renderer/src/features/settings/settings-tabs.ts",
+		"utf8",
+	);
+	assert.match(tabGrammar, /params\.get\("mcp"\)/);
+	assert.match(tabGrammar, /wanted = "integrations"/);
 	assert.match(settingsPage, /highlightServer=\{mcpTarget\}/);
 });
 

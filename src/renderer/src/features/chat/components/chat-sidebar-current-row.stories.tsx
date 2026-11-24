@@ -380,7 +380,7 @@ const RAIL_ACTIVE = "integrations";
  * a stated GAP for two rounds — the `settings-appearance` story sets
  * `capturePending` and never clears it offline, which aborts a sweep before it
  * reaches the rail. Rendering the rail directly is what closes it: the component
- * takes `activeSection`, `sections` and a callback, reads no store, and needs no
+ * takes `activeTab`, `sections` and a callback, reads no store, and needs no
  * desktop bridge, so nothing about it has to be stubbed or faked.
  *
  * The width matters and is why this story is registered at 1280 rather than the 780
@@ -393,8 +393,8 @@ export const SettingsRail: Story = {
 		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
 			<div className="w-[280px] shrink-0 border-hairline border-r">
 				<SettingsSidebar
-					activeSection={RAIL_ACTIVE}
-					onSelectSection={() => undefined}
+					activeTab={RAIL_ACTIVE}
+					onSelectTab={() => undefined}
 					sections={DEFAULT_SETTINGS_SECTIONS}
 				/>
 			</div>
@@ -408,7 +408,7 @@ export const SettingsRail: Story = {
 					<code className="font-mono">accent</code> bar this row used to carry
 					was removed with the refinement round.
 				</p>
-				<p>{`activeSection = ${RAIL_ACTIVE}`}</p>
+				<p>{`activeTab = ${RAIL_ACTIVE}`}</p>
 			</div>
 		</div>
 	),

@@ -463,3 +463,47 @@ test("no keymap action can reach the gear", () => {
 		assert.doesNotMatch(action.id, /settings/i);
 	}
 });
+
+test("a tab push inside Settings never re-pins where Close goes", () => {
+	/*
+	 * PR1's rule is that the return target is the route Settings was entered
+	 * FROM, and an in-page query change is the same visit. Tabs make every rail
+	 * click a query change, so the rule is now load-bearing on the commonest
+	 * interaction on the page: if a push re-pinned, Close would land on the
+	 * previous TAB — a close that steps back one tab instead of leaving.
+	 */
+	const cold = nextSettingsReturn(
+		{ returnTarget: null, lastOutsideRoute: null },
+		"/settings",
+		"?section=general",
+	);
+	let state = nextSettingsReturn(cold, "/chat", "");
+	state = nextSettingsReturn(state, "/settings", "?section=general");
+	assert.equal(settingsCloseTarget(state), "/chat", "entered from chat");
+
+	state = nextSettingsReturn(state, "/settings", "?section=appearance");
+	assert.equal(settingsCloseTarget(state), "/chat", "the first tab push");
+
+	state = nextSettingsReturn(state, "/settings", "?section=updates");
+	assert.equal(settingsCloseTarget(state), "/chat", "a second tab push");
+
+	state = nextSettingsReturn(state, "/settings", "?section=appearance");
+	assert.equal(
+		settingsCloseTarget(state),
+		"/chat",
+		"Back to a tab that is already in history is still the same visit",
+	);
+
+	state = nextSettingsReturn(state, "/files", "");
+	assert.equal(
+		settingsCloseTarget(state),
+		"/chat",
+		"leaving clears the target; the fallback answers until re-entry",
+	);
+	state = nextSettingsReturn(state, "/settings", "?section=backend");
+	assert.equal(
+		settingsCloseTarget(state),
+		"/files",
+		"re-entry pins the route just left, whatever tab the link names",
+	);
+});
