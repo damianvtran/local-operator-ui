@@ -106,6 +106,12 @@ html[data-opaque="1"] #approvals-card {
 }
 
 .card-close {
+	/* Pin the close to the header's inline end on its own. The title's
+	 * `flex: 1` used to push it there, but a notice-only card hides the title
+	 * (D7), and the X then fell back to the inline start under the brand line
+	 * (design round 4, D10). `auto` absorbs the free space with or without a
+	 * visible title, and mirrors under RTL. */
+	margin-inline-start: auto;
 	/* The app's 28px control ladder; the earlier 19px button read as a tag. */
 	min-height: 28px;
 	padding: 0 8px;

@@ -426,6 +426,13 @@ test("notice only: the card is the sentence and its close; Close and Escape dism
 		doc.getElementById("approvals-card").getAttribute("aria-labelledby"),
 		"approvals-notice-text",
 	);
+	// D10: with the title hidden nothing else pushes the close to the inline
+	// end, so the close must pin itself there. JSDOM does no flex layout, so
+	// the rule that does it is asserted.
+	assert.match(
+		readFileSync("src/renderer/src/approvals-overlay/card.css", "utf8"),
+		/\.card-close \{[^}]*margin-inline-start: auto;/,
+	);
 	// D8: alone, the notice has no separator.
 	assert.equal(
 		doc
