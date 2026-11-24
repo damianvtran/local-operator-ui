@@ -14,14 +14,16 @@ that run owned.
 | `before-long-page-dark` / `before-long-page-light` | the base tree: one long document — the rail scroll-spies a page that never ends |
 | `settings-tabs-appearance-dark` / `...-light` | `?section=appearance` shows ONE panel; the rail marks Appearance current; the other eleven panels are mounted and hidden |
 | `settings-tabs-radient-dark` | a rail press moved the panel, the URL (`?section=radient`) and `aria-current` together |
-| `settings-tabs-search-landing-dark` | Cmd+F for a page row in another tab revealed that tab and landed on the row (`appearance.glass` focused, wash painted) |
+| `settings-tabs-search-landing-dark` | Cmd+F for a page row in another tab revealed that tab and landed on the row (`appearance.glass` focused, wash painted) **with the column above the panel where it was** (round 1 D1) |
+| `settings-tabs-width-keyboard-dark` / `...-imports-dark` | a scrolling tab and a short one keep the same content width (round 1 D2) |
 | `settings-tabs-narrow-900-dark` | at 900 CSS px the rail is its 48px icon column and the panel behaves the same |
 | `settings-tabs-rtl-probe-dark` | document `dir=rtl`: the rail sits on the inline-end side and the panel mirrors (a DIRECTION probe — see limits) |
+| `settings-tabs-rtl-tooltip-dark` | at the 48px rail in RTL the tooltip opens toward the CONTENT (round 1 D4) |
 | `settings-tabs-tour-appearance-dark` | the onboarding tour's Appearance step, with its panel the one on screen |
 
 ## The scene's own output
 
-**78 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
+**84 PASS, 0 FAIL**, `rc=0`. The measurements behind the frames:
 
 - `?section=appearance`: `shown=["appearance"]`, `current=["appearance"]`,
   panels `11`, rail rows `11` — the Agent messages panel is absent on this
@@ -36,34 +38,47 @@ that run owned.
 - Scroll memory: Appearance scrolled to `420`; the never-visited Imports tab
   opened at `0`; browser Back returned to Appearance at `420` (six-pixel
   tolerance, measured within 1).
+- **D1, the ancestor walk**: the column above the panel read
+  `{"scrollTop":0,"closeTop":64}` BEFORE the landing and the same AFTER it. The
+  same landing measured `closeTop: 48` before this round's fix, because
+  `scrollIntoView` also scrolled the `panel-flush` wrapper.
+- **D2, the width step**: Keyboard and Imports at the same viewport both read
+  `clientWidth 892 / offsetWidth 900 / search field right edge 1316`. Before the
+  fix the short tab read `clientWidth 900` and a search-field edge of `1324` —
+  an 8px jump on every switch between them.
+- **D4, the RTL tooltip**: at 900px `dir=rtl`, the focused Speech row is
+  `600..632`; its tooltip opened `477..594`, over the content (which ends at
+  592), not into the sidebar to its right.
 - Esc from the Updates tab left `/settings` (PR1's scope intact after the
   search field was cleared — the field owns Escape while it holds text).
 - At 900 CSS px the rail row measures ≤48px and every tab check still passes.
 - Tour: forward reached `general-settings`, `appearance-settings`,
   `radient-account-settings`, `application-updates-settings`, each spotlighting
   its own panel; Back from the last of them returned through radient and
-  appearance to `general-settings`, its panel showing.
+  appearance to `general-settings`, its panel showing. The gear step's own Next
+  recorded `#/agents` before the click and `#/settings` after it.
 
 ## Limits, stated rather than implied
 
 - **The RTL frame is a direction probe, not a locale switch.** The picker lists
   Urdu and the commit round-trips, but this daemon's capabilities answer falls
   back to English, so `document.documentElement.dir` never flips (measured:
-  `{"rtl":false}` after the commit, i.e. the same limit PR1's scene documents in
-  its own code path). The layout claim is measured with `dir="rtl"` set on
-  `<html>` and is labelled as such in the scene's notes and in the file name.
+  `{"rtl":false}` after the commit). The layout claim is measured with
+  `dir="rtl"` set on `<html>` and is labelled as such in the scene's notes and in
+  the file name.
 - **"Voice" does not demonstrate a cross-tab jump on this daemon.** Querying
   `voice` returns ten REGISTRY rows whose hint is "In Backend settings", and a
   registry key truthfully lands on Backend. The page row that belongs to another
   tab is entered in PR3 (Theme/Voice/Update check row ids); until then `theme`
   is the query that proves the mechanism.
-- **The tour's gear step can close Settings it opened.** In this rig the tour
-  reached `navigate-settings` while the page was already open; PR1's gear is a
-  toggle and `tourGearNeedsClick` reads `aria-current`, so the click closed the
-  page (`{"wasAt":"#/chat"}`). The rig reopened Settings through the same
-  control and the four settings steps then passed; the toggle behaviour itself
-  is PR1's, not this change's, and is reported as a finding rather than fixed
-  here.
+- **The tour's gear step does not close anything** (corrected in round 1). Its
+  Next is open-only (`tour-steps.ts`: the gear is clicked only when it is not
+  current). An earlier probe read the route on ARRIVAL, before that step's
+  click, and mislabelled the previous steps' route as a closed page; the probe
+  now records the route AFTER the click: `#/agents` -> `#/settings`. The same
+  round found the scene's tour clicks landing on a hidden earlier step's button
+  (Shepherd keeps every step element in the DOM); they are scoped to
+  `.shepherd-element:not([hidden])`, which is what makes the walk advance.
 - **The frames are emulated viewports** (`Emulation.setDeviceMetricsOverride`),
   the same instrument PR1's evidence used.
 - **What no frame shows:** the loading and config-error states (they render no
@@ -89,5 +104,8 @@ LOCAL_OPERATOR_DESKTOP_TOKEN=<daemon access_token> node scripts/renderer-driver.
   --backend-records <rig>/config/run/serve --out <frames> --seed-onboarding-complete
 ```
 
-The daemon was stopped by its recorded pid after the run; no process outlived
-it (the driver's own `[PASS] no process from this run outlived its boot`).
+`out/` was rebuilt once for this round from `df1060c4e9` (3072 MB heap, one
+process); the UX round's hand-edited port 18973 is gone from
+`out/renderer/index.html`. The daemon was stopped by its recorded pid after the
+run; no process outlived it (the driver's own `[PASS] no process from this run
+outlived its boot`).

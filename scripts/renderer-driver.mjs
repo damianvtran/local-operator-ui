@@ -33071,6 +33071,10 @@ async function sceneSettingsTabs(cdp) {
 	await wait(450);
 	const importsWidth = await cdp.evaluate(SETTINGS_WIDTH_READING);
 	await capture("settings-tabs-width-imports-dark");
+	note(
+		"content width: Keyboard vs Imports at the same viewport",
+		JSON.stringify({ keyboard: keyboardWidth, imports: importsWidth }),
+	);
 	check(
 		"a scrolling tab and a short one keep the same content width",
 		keyboardWidth?.clientWidth !== null &&
@@ -33176,6 +33180,10 @@ async function sceneSettingsTabs(cdp) {
 	 * Close button with it. The landing now sets the panel's own `scrollTop`.
 	 */
 	const columnAfter = await cdp.evaluate(SETTINGS_COLUMN_READING);
+	note(
+		"the column above the panel, before and after the landing",
+		JSON.stringify({ before: columnBefore, after: columnAfter }),
+	);
 	check(
 		"a cross-tab landing moves only the panel: the column above it stays put",
 		columnAfter?.scrollTop === 0 &&
@@ -33467,9 +33475,16 @@ async function sceneSettingsTabs(cdp) {
 		"radient-account-settings": "radient",
 		"application-updates-settings": "updates",
 	};
+	/*
+	 * Scoped to the VISIBLE step: Shepherd keeps every earlier step's element in
+	 * the document, so a bare selector clicks a stale step's button and the tour
+	 * never advances (measured: the route stayed #/chat across the gear step's
+	 * own Next, because the click landed on a hidden element).
+	 */
 	const clickTour = async (selector) =>
 		cdp.evaluate(`(() => {
-			const button = document.querySelector(${JSON.stringify(selector)});
+			const step = document.querySelector('.shepherd-element:not([hidden])');
+			const button = step ? step.querySelector(${JSON.stringify(selector)}) : null;
 			if (!button) return false;
 			button.click();
 			return true;
