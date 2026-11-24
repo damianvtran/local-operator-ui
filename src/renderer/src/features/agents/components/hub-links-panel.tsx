@@ -1217,7 +1217,7 @@ export function HubLinksPanel({
 					source={approvedSource}
 					organizations={organizations}
 					isAuthenticated={isAuthenticated}
-					onSignIn={() => navigate("/settings")}
+					onSignIn={() => navigate("/settings?section=radient")}
 					initialOpen={openResolve}
 					onResolved={() => setResolutionCompleted(true)}
 				/>

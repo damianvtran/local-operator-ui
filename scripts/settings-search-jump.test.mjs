@@ -75,8 +75,10 @@ const module = await import(
 const {
 	SEARCH_JUMP_SETTLE_FRAMES,
 	findSearchRow,
+	findSearchSectionRoot,
 	jumpToSearchRow,
 	jumpToSearchSection,
+	jumpToSearchSectionSettled,
 	searchControlOf,
 } = module;
 
@@ -213,4 +215,54 @@ test("a section jump makes the root focusable, then focuses it", () => {
 	assert.ok(scrolled.at(-1).element === section, "the section was scrolled");
 	assert.deepEqual(scrolled.at(-1).options, { block: "start" });
 	assert.equal(painted[0], section);
+});
+
+test("a row inside a hidden TAB lands only once the tab commit reveals the panel", async () => {
+	/*
+	 * This is the tab change's own case: every panel stays mounted, so a row in
+	 * another tab is findable from the first frame and `[hidden]` on its panel is
+	 * what says "not yet". The settle covers the commit that reveals it.
+	 */
+	const section = root.querySelector('[data-search-section="hidden-section"]');
+	assert.equal(
+		section.hasAttribute("hidden"),
+		true,
+		"the fixture starts hidden",
+	);
+	const pending = jumpToSearchRow(root, "hidden.row", { paint: () => {} });
+	await frames(2);
+	section.removeAttribute("hidden");
+	assert.equal(await pending, "landed");
+});
+
+test("a section in another tab: the sync answer is missing, the settled one lands", async () => {
+	const holder = dom.window.document.createElement("section");
+	holder.setAttribute("hidden", "");
+	holder.setAttribute("data-settings-panel", "deep");
+	holder.innerHTML = '<div data-search-section="deep"></div>';
+	root.append(holder);
+	// A hidden section is in the document (that is how the page knows which tab
+	// to reveal), so the raw lookup finds it and the reachable one does not.
+	assert.notEqual(findSearchSectionRoot(root, "deep"), null);
+	assert.equal(
+		jumpToSearchSection(root, "deep", { paint: () => {} }),
+		"missing",
+	);
+	const pending = jumpToSearchSectionSettled(root, "deep", { paint: () => {} });
+	await frames(2);
+	holder.removeAttribute("hidden");
+	assert.equal(await pending, "landed");
+	assert.equal(
+		root.querySelector('[data-search-section="deep"]').getAttribute("tabindex"),
+		"-1",
+	);
+});
+
+test("the settled section jump is bounded: a target that never appears is missing", async () => {
+	const start = Date.now();
+	assert.equal(
+		await jumpToSearchSectionSettled(root, "never", { paint: () => {} }),
+		"missing",
+	);
+	assert.ok(Date.now() - start < 5000, "bounded, not a hang");
 });

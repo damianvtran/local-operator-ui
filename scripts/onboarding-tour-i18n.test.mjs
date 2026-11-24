@@ -146,13 +146,17 @@ globalThis.CSS = { escape: (value) => String(value) };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.Element.prototype.scrollIntoView = () => {};
 /*
- * The app's tour targets, planted once (PostHog D5). `guardTourTargets` now
- * SKIPS a step whose target is not on screen, which is what a running app with
- * a retired target needs - but this harness renders no app, so without stand-ins
+ * The app's tour targets, planted once (PostHog D5). `guardTourTargets` SKIPS a
+ * step whose target is not on screen, which is what a running app with a
+ * retired target needs - but this harness renders no app, so without stand-ins
  * every attached step would be skipped and the mechanics below (locale repaint,
- * the palette hop) would be measured on a different step. Each tag the tour
- * names gets a hidden element, exactly as the app renders one; the palette
- * anchor is left to `paletteAnchorStub`, whose presence several cases vary.
+ * the palette hop) would be measured on a different step.
+ *
+ * "On screen" now means `closest("[hidden]") === null` (the tab change: a
+ * panel's targets are in the DOM and invisible), so a stand-in is a VISIBLE
+ * element, not a hidden one - a hidden stand-in is the exact state the guard
+ * exists to skip. The palette anchor is left to `paletteAnchorStub`, whose
+ * presence several cases vary.
  */
 for (const [, tag] of readFileSync(
 	"src/renderer/src/features/onboarding/tour/tour-steps.ts",
@@ -166,7 +170,7 @@ for (const [, tag] of readFileSync(
 	stand.setAttribute("data-tour-tag", tag);
 	if (tag === "view-agent-settings-menu-item")
 		stand.setAttribute("role", "menuitem");
-	stand.hidden = true;
+	stand.hidden = false;
 	document.body.appendChild(stand);
 }
 const storage = new Map();

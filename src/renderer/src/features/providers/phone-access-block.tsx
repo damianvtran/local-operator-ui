@@ -845,10 +845,12 @@ const PhoneAccessBody: FC<{
 		headingIn(sectionRef.current)?.focus({ preventScroll: true });
 	});
 
-	// The sidebar offer's [Set up phone access] lands here, not at the top of the
-	// Radient section (UX review U3c). The offer navigates to plain `/settings`
-	// rather than `?section=radient`: that deep link re-scrolls to the SECTION's
-	// top once the page settles (up to 2 s later) and would undo this landing.
+	// The sidebar offer's [Set up phone access] lands here (UX review U3c). The
+	// offer names the Radient account TAB (`?section=radient`) so this block's
+	// panel is the one showing; the section no longer scrolls itself, so this
+	// landing is the only scroll on the way in. `visible` is this block's own
+	// settled state (it starts hidden while the status is read), so the effect
+	// runs when there is a heading to land on.
 	const visible = view.kind !== "hidden";
 	useEffect(() => {
 		if (!visible || !sectionRef.current) return;

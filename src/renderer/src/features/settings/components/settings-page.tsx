@@ -59,7 +59,14 @@ import {
 	SlidersHorizontal,
 	User,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { FC, ReactNode, RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
@@ -94,8 +101,10 @@ import {
 } from "../search/settings-search-index";
 import {
 	type SearchJumpOutcome,
+	findSearchRow,
+	findSearchSectionRoot,
 	jumpToSearchRow,
-	jumpToSearchSection,
+	jumpToSearchSectionSettled,
 } from "../search/settings-search-jump";
 import { AppUpdatesSection } from "./app-updates-section";
 import {
@@ -106,6 +115,13 @@ import { DefaultEffortSelect } from "./default-effort-select";
 import { ImportSettingsSection } from "./import-settings-section";
 import { GeneralLanguageSetting } from "./language-dialog";
 
+import {
+	createTabScrollMemory,
+	rememberSettingsTab,
+	settingsPanelOf,
+	shouldClearSearchJump,
+} from "../settings-tabs";
+import { useSettingsTab } from "../use-settings-tab";
 import { AgentAvatarSizeSetting } from "./agent-avatar-size-setting";
 import { AppearanceLayers } from "./appearance-layers";
 import { KeyboardShortcutsSection } from "./keyboard-shortcuts-section";
@@ -120,6 +136,7 @@ import {
 } from "./settings-search";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
+import { SettingsTabPanel } from "./settings-tab-panel";
 import { SettingsUsageChart } from "./settings-usage-chart";
 import { SpeechSection } from "./speech-section";
 import { SystemPrompt } from "./system-prompt";
@@ -525,14 +542,46 @@ export const SettingsPage: FC = () => {
 		() => agentMessagesModel.check("surface_open", true),
 		[agentMessagesModel],
 	);
-	const [activeSection, setActiveSection] = useState<string>("general");
-	const [isScrolling, setIsScrolling] = useState(false);
-	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
 	const navigate = useNavigate();
+	/*
+	 * WHICH PANEL SHOWS IS THE URL'S ANSWER, not a second piece of state beside
+	 * it. `useSettingsTab` resolves `setting=` > `section=` > an implied tab
+	 * (`provider`, `mcp`, `filter`) > the run's last tab > General, and the only
+	 * writable half is `selectTab` — a history push that drops the parameters
+	 * naming a destination inside the tab it leaves.
+	 */
+	const settingsSectionIds = useMemo(
+		() => settingsSections.map((section) => section.id),
+		[settingsSections],
+	);
+	const sectionForKey = useCallback(
+		(key: string) => sectionForSettingKey(key, "backend"),
+		[],
+	);
+	const {
+		activeTab,
+		stale: settingsTabStale,
+		selectTab,
+		ownNavigationRef,
+	} = useSettingsTab({
+		search: location.search,
+		available: settingsSectionIds,
+		sectionForKey,
+	});
+	/* One memory per page mount: leaving Settings forgets where each tab was. */
+	const scrollMemory = useMemo(() => createTabScrollMemory(), []);
+	/*
+	 * A panel is named the same as the rail row that reveals it, from the rail's
+	 * own labels — no second copy of the copy, and the name follows a locale
+	 * change because `DEFAULT_SETTINGS_SECTIONS` labels are getters.
+	 */
+	const tabLabel = (tab: string) =>
+		DEFAULT_SETTINGS_SECTIONS.find((section) => section.id === tab)?.label ??
+		tab;
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -618,84 +667,6 @@ export const SettingsPage: FC = () => {
 		return params.get("provider");
 	}, [location.search]);
 
-	// Handle section selection from sidebar
-	const handleSelectSection = useCallback(
-		(sectionId: string) => {
-			setActiveSection(sectionId); // Update state immediately for visual feedback
-			setIsScrolling(true); // Prevent scroll listener from interfering
-
-			const ref = sectionRefs[sectionId];
-			const contentContainer = contentContainerRef.current;
-
-			if (ref?.current && contentContainer) {
-				// Two separate defects lived in the old
-				// `contentContainer.scrollTo(ref.current.offsetTop - 80)`:
-				//
-				// 1. `offsetTop` is relative to the nearest POSITIONED ancestor,
-				//    not to the scroll container, so it reported a section's offset
-				//    inside the centred content wrapper -- a number tens of pixels
-				//    from zero for sections that sit screens down the page.
-				// 2. It assumed this container is the scroller. Which element
-				//    actually scrolls depends on how the shell is sized, and when
-				//    it is the window instead, scrolling the div is a silent no-op.
-				//
-				// Together they are why every deep link, and even a plain sidebar
-				// click, stopped on User profile (UX U3).
-				//
-				// Whichever element is actually the scroller gets scrolled.
-				//
-				// The content div carries `overflow-y-auto` and is the scroller in
-				// the packaged app, where the shell's `h-screen` gives it a bounded
-				// height. That is not guaranteed: if the height chain is not
-				// bounded the div grows to fit its content and the DOCUMENT scrolls
-				// instead, and a scroll aimed at the div is then a silent no-op.
-				//
-				// So: measure the distance once, and move whichever box can move.
-				// This also replaces the original `offsetTop` read, which was
-				// relative to the centred content wrapper rather than to the
-				// scroller and so under-reported every section's position -- the
-				// two together are why deep links stopped on User profile (UX U3).
-				const HEADER_ROOM = 80;
-				const delta =
-					ref.current.getBoundingClientRect().top -
-					contentContainer.getBoundingClientRect().top;
-				const containerScrolls =
-					contentContainer.scrollHeight > contentContainer.clientHeight;
-
-				if (containerScrolls) {
-					contentContainer.scrollTo({
-						top: Math.max(0, contentContainer.scrollTop + delta - HEADER_ROOM),
-						behavior: "smooth",
-					});
-				} else {
-					window.scrollTo({
-						top: Math.max(
-							0,
-							ref.current.getBoundingClientRect().top +
-								window.scrollY -
-								HEADER_ROOM,
-						),
-						behavior: "smooth",
-					});
-				}
-
-				// No guard: clearing is a no-op on a missing handle. `?? undefined`
-				// only because the Node timer types accept `undefined` and not `null`.
-				clearTimeout(scrollTimeoutRef.current ?? undefined);
-
-				// Set a timeout to re-enable scroll listening after the smooth scroll finishes
-				scrollTimeoutRef.current = setTimeout(() => {
-					setIsScrolling(false);
-					scrollTimeoutRef.current = null;
-				}, 800); // Slightly longer timeout to ensure smooth scroll completes
-			} else {
-				// Fallback if container or ref not found
-				setIsScrolling(false);
-			}
-		},
-		[sectionRefs],
-	);
-
 	/*
 	 * SETTINGS SEARCH (issue #1492): the page's OWN field, in the header's
 	 * action slot.
@@ -716,7 +687,17 @@ export const SettingsPage: FC = () => {
 	 * fires and restored when the panel closes WITHOUT a jump; a jump clears it,
 	 * because a landing is the scroll the reader asked for.
 	 */
-	const savedSearchScrollRef = useRef<number | null>(null);
+	const savedSearchScrollRef = useRef<{ tab: string; top: number } | null>(
+		null,
+	);
+	/*
+	 * A panel a press asked to LAND in (the model callout's Providers link, the
+	 * provider grid's change-model link). The panel is `display: none` until the
+	 * commit that follows `selectTab`, and `focus()` on such an element is a
+	 * silent no-op — so the focus is handed to the arrival effect, which runs
+	 * after that commit.
+	 */
+	const pendingPanelFocusRef = useRef<string | null>(null);
 	const capabilities = useDesktopCapabilities();
 	const settingsFeatureEnabled = desktopFeatureEnabled(
 		capabilities.data,
@@ -762,11 +743,29 @@ export const SettingsPage: FC = () => {
 			savedSearchScrollRef.current = null;
 			const root = contentContainerRef.current ?? document;
 			if (entry.source === "page") {
-				// `page:<row id>` -> the DOM contract's own id.
-				return jumpToSearchRow(root, entry.id.slice(5));
+				/*
+				 * `page:<row id>` -> the DOM contract's own id. The row can live in
+				 * another tab: the panel is hidden, not unmounted (the index reads the
+				 * rendered DOM), so reveal that tab first and let the jump's own settle
+				 * cover the commit. One wait, not two.
+				 */
+				const rowId = entry.id.slice(5);
+				const tab = settingsPanelOf(findSearchRow(root, rowId));
+				if (tab) selectTab(tab);
+				return jumpToSearchRow(root, rowId);
 			}
 			if (entry.source === "section") {
-				return jumpToSearchSection(root, entry.sectionId);
+				/*
+				 * A section-only result names the rail destination, and the settle is the
+				 * async form because the section root is `[hidden]` until the tab commit
+				 * lands. The sync form would report a result that is about to be visible
+				 * as a dead end.
+				 */
+				const tab = settingsPanelOf(
+					findSearchSectionRoot(root, entry.sectionId),
+				);
+				if (tab) selectTab(tab);
+				return jumpToSearchSectionSettled(root, entry.sectionId);
 			}
 			const key = entry.settingKey;
 			if (!key) return "missing";
@@ -781,23 +780,39 @@ export const SettingsPage: FC = () => {
 			) {
 				return "missing";
 			}
-			handleSelectSection(section);
+			/*
+			 * A KEYED ROW IS REVEALED, NOT SCROLLED. The registry row can be inside
+			 * any tab (`sectionForSettingKey` says which, including promoted keys), so
+			 * the tab moves and the Backend section's own reveal loop (which retries
+			 * while its row sits behind `[hidden]`) does the rest.
+			 */
+			selectTab(section);
 			setSearchJump({ key, nonce: Date.now() });
-			return root.querySelector(`[data-search-section="${section}"]`)
-				? "landed"
-				: "missing";
+			return findSearchSectionRoot(root, section) ? "landed" : "missing";
 		},
-		[handleSelectSection, settingsRegistryQuery.data],
+		[selectTab, settingsRegistryQuery.data],
 	);
 	/*
 	 * A URL deep link outranks a search jump that is still on the books: the
 	 * reader navigated somewhere with a keyed link, and the section must follow
 	 * THAT key rather than the last result they pressed Enter on.
+	 *
+	 * BUT the page's own tab push must not clear the jump it carries: every
+	 * search result now navigates (its row or section may live in another tab),
+	 * so a clear-on-every-change rule would cancel the very jump that caused the
+	 * navigation and the keyed row would never be revealed.
+	 * `shouldClearSearchJump` spells the rule: clear only when a destination
+	 * parameter changed AND the change was not the page's own.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `location.search` is the trigger; the setter is stable.
+	const previousSearchRef = useRef(location.search);
 	useEffect(() => {
-		setSearchJump(null);
-	}, [location.search]);
+		const previous = previousSearchRef.current;
+		previousSearchRef.current = location.search;
+		const own = ownNavigationRef.current;
+		ownNavigationRef.current = false;
+		if (shouldClearSearchJump(previous, location.search, own))
+			setSearchJump(null);
+	}, [location.search, ownNavigationRef]);
 	/*
 	 * Cmd/Ctrl+F is this page's, not the command palette's (that chord is
 	 * Cmd/Ctrl+K and is owned globally). A press that landed on an overlay —
@@ -810,184 +825,61 @@ export const SettingsPage: FC = () => {
 			if (event.key.toLowerCase() !== "f") return;
 			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
+			const tab = scrollMemory.trackedTab();
 			savedSearchScrollRef.current =
-				contentContainerRef.current?.scrollTop ?? null;
+				tab === null
+					? null
+					: { tab, top: contentContainerRef.current?.scrollTop ?? 0 };
 			searchRef.current?.focus();
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, []);
-	// Update active section based on scroll position
+	}, [scrollMemory]);
+
+	/*
+	 * THE ONE ARRIVAL. Every tab change lands here: the tab is tracked so the
+	 * passive scroll listener below attributes the next event to the right tab,
+	 * the scroller moves to that tab's remembered position (a tab's top is 0),
+	 * the run's last-tab memory records where the reader is (unless the URL was
+	 * overruled and the panel is General's), and a press that asked for focus
+	 * inside the panel gets it now that the panel is laid out.
+	 *
+	 * ONE effect, keyed ONLY on the tab: the scroll must be set in the same
+	 * commit that unhides the panel, or the browser measures the OLD panel's
+	 * height and clamps the stored position against it. `useLayoutEffect`, not
+	 * an effect, so this happens before the frame paints — a tab that flashed at
+	 * the previous tab's offset before moving would read as a jump.
+	 *
+	 * PR3 extends THIS effect for row anchors; nothing else may scroll the page
+	 * on arrival, which is why the deep-link settle and the scroll-spy are gone.
+	 */
+	useLayoutEffect(() => {
+		if (!settingsTabStale) rememberSettingsTab(activeTab);
+		scrollMemory.track(activeTab);
+		const scroller = contentContainerRef.current;
+		if (scroller) scroller.scrollTop = scrollMemory.recall(activeTab) ?? 0;
+		const pending = pendingPanelFocusRef.current;
+		if (pending !== activeTab) return;
+		pendingPanelFocusRef.current = null;
+		const landing = sectionRefs[activeTab]?.current;
+		if (!landing) return;
+		// Programmatic rest-stop, not a tab stop: the same rule the search jump uses.
+		if (landing.tabIndex < 0) landing.tabIndex = -1;
+		landing.focus({ preventScroll: true });
+	}, [activeTab, scrollMemory, settingsTabStale, sectionRefs]);
+	/*
+	 * The scroll listener is PASSIVE and permanent for the mount: it records under
+	 * whichever tab the arrival effect last tracked, so a switch never re-binds a
+	 * listener and the frame between a commit and a re-bind cannot attribute the
+	 * outgoing tab's position to the incoming one.
+	 */
 	useEffect(() => {
-		// Use a small delay to ensure DOM is ready
-		const timer = setTimeout(() => {
-			const contentContainer = contentContainerRef.current;
-
-			if (!contentContainer) {
-				return;
-			}
-
-			const handleScroll = () => {
-				// If programmatic scrolling is active, ignore scroll events
-				if (isScrolling) {
-					return;
-				}
-
-				const containerRect = contentContainer.getBoundingClientRect();
-				const viewportHeight = containerRect.height;
-
-				// Find the section that is most visible in the viewport
-				let bestSection = "";
-				let bestVisibility = 0;
-
-				for (const [sectionId, ref] of Object.entries(sectionRefs)) {
-					if (ref.current) {
-						const elementRect = ref.current.getBoundingClientRect();
-						const containerTop = containerRect.top;
-
-						// Calculate the element's position relative to the container
-						const elementTop = elementRect.top - containerTop;
-						const elementBottom = elementRect.bottom - containerTop;
-						const elementHeight = elementRect.height;
-
-						// Calculate how much of the element is visible in the viewport
-						const visibleTop = Math.max(0, elementTop);
-						const visibleBottom = Math.min(viewportHeight, elementBottom);
-						const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-						const visibilityRatio = visibleHeight / elementHeight;
-
-						// Prefer sections that are more visible, with a bias towards sections near the top
-						const score =
-							visibilityRatio + (elementTop < viewportHeight * 0.3 ? 0.1 : 0);
-
-						if (score > bestVisibility && visibilityRatio > 0.1) {
-							bestVisibility = score;
-							bestSection = sectionId;
-						}
-					}
-				}
-
-				// Update state only if the active section has changed
-				if (bestSection && bestSection !== activeSection) {
-					setActiveSection(bestSection);
-				}
-			};
-
-			// Initial call to set the correct section on mount
-			handleScroll();
-
-			contentContainer.addEventListener("scroll", handleScroll, {
-				passive: true,
-			});
-
-			return () => {
-				contentContainer.removeEventListener("scroll", handleScroll);
-				clearTimeout(scrollTimeoutRef.current ?? undefined);
-			};
-		}, 100);
-
-		return () => clearTimeout(timer);
-	}, [sectionRefs, activeSection, isScrolling]);
-
-	// Effect to handle initial section scrolling from URL query parameter
-	useEffect(() => {
-		const queryParams = new URLSearchParams(location.search);
-		const sectionFromQuery = queryParams.get("section");
-		// A ?setting= deep link lives inside the backend settings section — unless
-		// the key's control has been promoted elsewhere, in which case the link
-		// follows the control (see `PROMOTED_SETTING_SECTIONS`).
-		const settingKey = queryParams.get("setting");
-		const targetSection = settingKey
-			? sectionForSettingKey(settingKey, "backend")
-			: sectionFromQuery;
-		// A link to a section this build does not show has nowhere to land; the
-		// rail has no row for it either.
-		if (targetSection === "agent-messages" && !agentMessagesSectionVisible)
-			return undefined;
-
-		const ref = targetSection ? sectionRefs[targetSection] : undefined;
-		if (!targetSection || !ref) return undefined;
-
-		// Deep links used to fire behind a fixed 100ms timer, reading
-		// `offsetTop` before this very long page had laid out. The section was
-		// still near the top of an unfinished layout, so EVERY deep link landed
-		// on User profile while the sidebar highlighted the section the user
-		// asked for (UX U3).
-		//
-		// Layout-aware instead of longer: a ResizeObserver on the scroll content
-		// fires whenever the page's height changes, so we re-scroll as sections
-		// mount and settle rather than guessing when they have. It stops at the
-		// first frame whose target offset repeats -- that is what "laid out"
-		// means here -- and a deadline bounds the case where something animates
-		// forever.
-		let settled = false;
-		let lastOffset = Number.NaN;
-		let frame = 0;
-		// A page that never stops resizing must still take the user where they
-		// asked, so the deadline scrolls rather than merely giving up.
-		const deadline = window.setTimeout(() => {
-			if (settled) return;
-			settled = true;
-			observer.disconnect();
-			handleSelectSection(targetSection);
-		}, 2000);
-
-		const attempt = () => {
-			if (settled) return;
-			const element = ref.current;
-			// Not mounted YET is the normal first frame on a lazily-loaded page,
-			// not a reason to give up: keep waiting, bounded by the deadline
-			// below. Returning without rescheduling here killed the loop before
-			// the section existed, which is the whole mechanism.
-			if (!element) {
-				frame = requestAnimationFrame(attempt);
-				return;
-			}
-			// The section's distance from the top of the document: stable once the
-			// page above it has finished laying out, and independent of which
-			// element ends up being the scroller.
-			const offset = Math.round(
-				element.getBoundingClientRect().top + window.scrollY,
-			);
-			// Scroll ONCE, when the target has stopped moving -- never on every
-			// frame. A smooth scroll re-issued each frame is cancelled and
-			// restarted before it can advance, so the view never actually
-			// travels: the fix for a race must not become a busy loop that
-			// defeats the animation it is waiting for.
-			if (offset === lastOffset && offset > 0) {
-				settled = true;
-				observer.disconnect();
-				window.clearTimeout(deadline);
-				handleSelectSection(targetSection);
-				return;
-			}
-			lastOffset = offset;
-			frame = requestAnimationFrame(attempt);
-		};
-
-		const observer = new ResizeObserver(() => {
-			if (settled) return;
-			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(attempt);
-		});
-		if (contentContainerRef.current) {
-			observer.observe(contentContainerRef.current);
-		}
-		frame = requestAnimationFrame(attempt);
-
-		return () => {
-			settled = true;
-			cancelAnimationFrame(frame);
-			observer.disconnect();
-			window.clearTimeout(deadline);
-		};
-	}, [
-		location.search,
-		sectionRefs,
-		handleSelectSection,
-		agentMessagesSectionVisible,
-	]); // Rerun when URL search params change or refs are updated
-
+		const scroller = contentContainerRef.current;
+		if (!scroller) return;
+		const onScroll = () => scrollMemory.record(scroller.scrollTop);
+		scroller.addEventListener("scroll", onScroll, { passive: true });
+		return () => scroller.removeEventListener("scroll", onScroll);
+	}, [scrollMemory]);
 	// Handle updating a specific config field
 	const handleUpdateField = async (
 		field: keyof ConfigUpdate,
@@ -1317,8 +1209,8 @@ export const SettingsPage: FC = () => {
 				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
 			>
 				<SettingsSidebar
-					activeSection={activeSection}
-					onSelectSection={handleSelectSection}
+					activeTab={activeTab}
+					onSelectTab={selectTab}
 					sections={settingsSections}
 				/>
 			</div>
@@ -1398,8 +1290,13 @@ export const SettingsPage: FC = () => {
 								onDismiss={() => {
 									const saved = savedSearchScrollRef.current;
 									savedSearchScrollRef.current = null;
-									if (saved === null) return;
-									contentContainerRef.current?.scrollTo({ top: saved });
+									/*
+									 * Restore only within the SAME tab: a jump that revealed another
+									 * tab already made that tab's arrival the reader's scroll, and
+									 * putting this position back would move them a second time.
+									 */
+									if (saved === null || saved.tab !== activeTab) return;
+									contentContainerRef.current?.scrollTo({ top: saved.top });
 								}}
 								ref={searchRef}
 								index={searchIndex}
@@ -1408,475 +1305,484 @@ export const SettingsPage: FC = () => {
 							/>
 						</div>
 						<div className="flex flex-col gap-8">
-							<div
-								ref={sectionRefs.general}
-								/*
-								 * The sidebar destination this group belongs to, with its
-								 * rail label: the `h2`s inside name sub-groups ("User
-								 * profile"), while a jump lands in General settings.
-								 */
-								data-search-section="general"
-								data-search-section-label={t(
-									"ui.settings.navigation.settings_sidebar.general_settings",
-								)}
-								className="flex flex-col gap-8"
+							<SettingsTabPanel
+								tab="general"
+								label={tabLabel("general")}
+								active={activeTab === "general"}
 							>
-								<GeneralLanguageSetting
-									focus={
-										settingFocusKey === LANGUAGE_SETTING_KEY ||
-										searchJump?.key === LANGUAGE_SETTING_KEY
-									}
-									focusNonce={
-										searchJump?.key === LANGUAGE_SETTING_KEY
-											? searchJump.nonce
-											: undefined
-									}
-								/>
-								<SettingsSection
-									title={t("ui.settings.profile.title")}
-									icon={User}
-									description={t(
-										isAuthenticated
-											? "ui.settings.profile.description_authenticated"
-											: "ui.settings.profile.description_anonymous",
+								<div
+									ref={sectionRefs.general}
+									/*
+									 * The sidebar destination this group belongs to, with its
+									 * rail label: the `h2`s inside name sub-groups ("User
+									 * profile"), while a jump lands in General settings.
+									 */
+									data-search-section="general"
+									data-search-section-label={t(
+										"ui.settings.navigation.settings_sidebar.general_settings",
 									)}
+									className="flex flex-col gap-8"
 								>
-									{/*
-									 * The status slot above the fields, in the app's one register for "this
-									 * is not authoritative yet": `text-meta text-ink-dim`, sentence
-									 * case, no spinner, no icon, no border (`branding.md` section 8).
-									 *
-									 * WHY THE FIELDS CANNOT JUST SIT THERE WHILE THE READ IS OUT. They
-									 * render the user store's own profile, whose default is the literal
-									 * name "User" and `user@example.com`, in the same styling as a real
-									 * one -- so an unanswered read presented placeholder data as the
-									 * reader's own, and (measured 2026-09-19) the in-flight frame was
-									 * byte-identical to the ordinary signed-out frame. "Checking" costs
-									 * the reader one line and removes the claim.
-									 *
-									 * Present from the first painted frame, not on a deadline: unlike
-									 * the config gate below, the ambiguity here is not "is it hung" but
-									 * "whose data is this", and that question is unanswered from the
-									 * first frame the fields are on screen.
-									 */}
-									{accountReadChecking && (
-										<p className="text-meta text-ink-dim">
-											{t("ui.settings.profile.account_checking")}
-										</p>
-									)}
-									{/*
-									 * A failed account read, said out loud. Without this the two fields
-									 * below render the user store's default - the literal name "User"
-									 * and `user@example.com` - in the same styling as a real profile,
-									 * so a person whose Radient credential was rejected sees
-									 * placeholder data and no reason for it (measured 2026-09-19: the
-									 * sidebar read "User" beside a backend that held a Radient
-									 * credential).
-									 *
-									 * ONE ALERT FOR THIS FAULT, and it is this one: the lie is visible
-									 * here, so the explanation and its Retry live here. The Radient
-									 * account section says what the read's failure means for ITS own
-									 * state in one sentence rather than rendering a second warning
-									 * 3173px below (design round 1, D1: two warnings for one fault, with
-									 * two opposite sentences 16px apart, is what the reader was shown).
-									 *
-									 * AND IT IS UNREACHABLE WHILE AN ACCOUNT IS RESOLVED (review round
-									 * 2, B3): the hook's rule puts a resolved account ahead of a failed
-									 * refetch, because these fields are then the account's own name and
-									 * email and calling them placeholders was the lie this alert
-									 * exists to prevent.
-									 *
-									 * `warning` and a Retry, matching the config branch above and the
-									 * providers grid: one fault renders at one severity, and a failure
-									 * with a retry beside it has cost the user nothing. The raw
-									 * exception stays out of the sentence for the reason
-									 * `backend-error.ts` records - the sentence has to name something
-									 * the reader can do.
-									 *
-									 * NO CAUSE IS NAMED UNLESS THE BACKEND NAMED IT. "Radient refused
-									 * the sign-in" is a statement about the ACCOUNT's credential and
-									 * is only made for the class that carries
-									 * `radient_credential_refused`; every other failure - including a
-									 * bare 401/403, which also means this app's own bearer was
-									 * refused - keeps to what was observed and the retry.
-									 */}
-									{accountReadFailed && (
-										<Alert variant="warning">
-											<div className="flex items-center justify-between gap-3">
-												<span>
-													{t(
-														accountRead === "refused"
-															? "ui.settings.profile.account_read_failed_refused"
-															: "ui.settings.profile.account_read_failed_retry",
-													)}
-												</span>
-												{/*
-												 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
-												 * `isAccountRefreshing` is the mutation's pending state, and that mutation
-												 * awaits its refetch - so the control says t("ui.settings.navigation.settings_page.retrying") exactly while the
-												 * re-read this press began is running, and an ordinary fetch (the client's
-												 * own retries included) leaves it saying "Retry", enabled. The first version
-												 * read `isFetching`, which is true for those retries too: for a read that
-												 * never answers the control read t("ui.settings.navigation.settings_page.retrying"), disabled, with nobody having
-												 * pressed anything, beside copy that says "Retry."
-												 *
-												 * The alert STAYS MOUNTED while that re-read is out (the hook keeps the
-												 * failure across the fetch), and this control reports that the press did
-												 * something: without it the frame after a press is pixel-identical to the
-												 * frame before it - issue 89's own "I cannot tell whether this is working or
-												 * hung", one click downstream of its fix.
-												 */}
-												<Button
-													variant="secondary"
-													size="sm"
-													className="shrink-0"
-													onClick={() => refreshUser()}
-													disabled={isAccountRefreshing}
-												>
-													{isAccountRefreshing
-														? t("ui.settings.profile.retrying")
-														: t("ui.settings.profile.retry")}
-												</Button>
-											</div>
-										</Alert>
-									)}
-									{/*
-									 * Neither field carries a glyph. The section heading is
-									 * already a person, and a second person glyph 60px under it
-									 * on "Display name" was the same picture twice for two
-									 * different things. `Mail` goes with it rather than being
-									 * kept alone: one indented label beside one flush label is a
-									 * ragged column, and "Display name" and "Email address" are
-									 * not words that need a picture to be told apart.
-									 */}
-									{/*
-									 * LOCKED ONLY WHERE AN OVERWRITE IS ACTUALLY POSSIBLE (design round 2,
-									 * ruling on B2). The old predicate asked "is this read unresolved?"
-									 * when the governing question is "could what I type be replaced
-									 * without my knowing?", and it answered yes in two states where
-									 * nothing can replace it:
-									 *
-									 *  - `ready`: the account owns these fields - the store-sync effect in
-									 *    `use-radient-auth.ts` writes the account's name and email over
-									 *    the store's - so an edit here is one the app would undo. LOCKED.
-									 *  - `checking`: a resolution may still land WITH an account, and the
-									 *    caption above says the app is asking. LOCKED, and bounded by the
-									 *    read's own deadline rather than indefinite.
-									 *  - the failure classes (`refused`, `unavailable`, `unknown`) and
-									 *    signed out: UNLOCKED. The read has ANSWERED without an account
-									 *    and the sync effect only fires on a resolution WITH one, so
-									 *    nothing in the app's own model can overwrite an edit made here;
-									 *    the old predicate instead stranded a reader who has no Radient
-									 *    account and a failing read on two permanently dead controls whose
-									 *    only release never arrives. The alert above explains the read.
-									 *
-									 * THE RESIDUAL, named rather than hidden: a later successful read (a
-									 * retry resuming, a remount, a focus refetch) can still replace a
-									 * profile typed here. Closing that properly is a dirty flag on the
-									 * store-sync effect - the edit wins until the reader clears it -
-									 * which is a follow-up, not a reason to keep an indefinite lock.
-									 */}
-									<div className="flex flex-col gap-4">
-										<EditableField
-											searchRow="general.profile.name"
-											value={userStore.profile.name}
-											label={t("ui.settings.profile.display_name.label")}
-											placeholder={t(
-												"ui.settings.profile.display_name.placeholder",
-											)}
-											isSaving={savingField === "user_name"}
-											onSave={async (value) => {
-												setSavingField("user_name");
-												try {
-													userStore.updateName(value);
-												} finally {
-													setSavingField(null);
-												}
-											}}
-											readOnly={profileFieldsAreReadOnly}
-										/>
-										<EditableField
-											searchRow="general.profile.email"
-											value={userStore.profile.email}
-											label={t("ui.settings.profile.email.label")}
-											placeholder={t("ui.settings.profile.email.placeholder")}
-											isSaving={savingField === "user_email"}
-											onSave={async (value) => {
-												setSavingField("user_email");
-												try {
-													userStore.updateEmail(value);
-												} finally {
-													setSavingField(null);
-												}
-											}}
-											readOnly={profileFieldsAreReadOnly}
-										/>
-									</div>
-								</SettingsSection>
-
-								<SettingsSection
-									title={t("ui.settings.tour.title")}
-									description={t("ui.settings.tour.description")}
-								>
-									<Button
-										variant="secondary"
-										data-search-row="general.tour"
-										data-search-control
-										onClick={() => {
-											startOnboardingTour({ forceModalCompleted: true });
-										}}
+									<GeneralLanguageSetting
+										focus={
+											settingFocusKey === LANGUAGE_SETTING_KEY ||
+											searchJump?.key === LANGUAGE_SETTING_KEY
+										}
+										focusNonce={
+											searchJump?.key === LANGUAGE_SETTING_KEY
+												? searchJump.nonce
+												: undefined
+										}
+									/>
+									<SettingsSection
+										title={t("ui.settings.profile.title")}
+										icon={User}
+										description={t(
+											isAuthenticated
+												? "ui.settings.profile.description_authenticated"
+												: "ui.settings.profile.description_anonymous",
+										)}
 									>
-										<CirclePlay />
-										{t("ui.settings.tour.action")}
-									</Button>
-								</SettingsSection>
+										{/*
+										 * The status slot above the fields, in the app's one register for "this
+										 * is not authoritative yet": `text-meta text-ink-dim`, sentence
+										 * case, no spinner, no icon, no border (`branding.md` section 8).
+										 *
+										 * WHY THE FIELDS CANNOT JUST SIT THERE WHILE THE READ IS OUT. They
+										 * render the user store's own profile, whose default is the literal
+										 * name "User" and `user@example.com`, in the same styling as a real
+										 * one -- so an unanswered read presented placeholder data as the
+										 * reader's own, and (measured 2026-09-19) the in-flight frame was
+										 * byte-identical to the ordinary signed-out frame. "Checking" costs
+										 * the reader one line and removes the claim.
+										 *
+										 * Present from the first painted frame, not on a deadline: unlike
+										 * the config gate below, the ambiguity here is not "is it hung" but
+										 * "whose data is this", and that question is unanswered from the
+										 * first frame the fields are on screen.
+										 */}
+										{accountReadChecking && (
+											<p className="text-meta text-ink-dim">
+												{t("ui.settings.profile.account_checking")}
+											</p>
+										)}
+										{/*
+										 * A failed account read, said out loud. Without this the two fields
+										 * below render the user store's default - the literal name "User"
+										 * and `user@example.com` - in the same styling as a real profile,
+										 * so a person whose Radient credential was rejected sees
+										 * placeholder data and no reason for it (measured 2026-09-19: the
+										 * sidebar read "User" beside a backend that held a Radient
+										 * credential).
+										 *
+										 * ONE ALERT FOR THIS FAULT, and it is this one: the lie is visible
+										 * here, so the explanation and its Retry live here. The Radient
+										 * account section says what the read's failure means for ITS own
+										 * state in one sentence rather than rendering a second warning
+										 * 3173px below (design round 1, D1: two warnings for one fault, with
+										 * two opposite sentences 16px apart, is what the reader was shown).
+										 *
+										 * AND IT IS UNREACHABLE WHILE AN ACCOUNT IS RESOLVED (review round
+										 * 2, B3): the hook's rule puts a resolved account ahead of a failed
+										 * refetch, because these fields are then the account's own name and
+										 * email and calling them placeholders was the lie this alert
+										 * exists to prevent.
+										 *
+										 * `warning` and a Retry, matching the config branch above and the
+										 * providers grid: one fault renders at one severity, and a failure
+										 * with a retry beside it has cost the user nothing. The raw
+										 * exception stays out of the sentence for the reason
+										 * `backend-error.ts` records - the sentence has to name something
+										 * the reader can do.
+										 *
+										 * NO CAUSE IS NAMED UNLESS THE BACKEND NAMED IT. "Radient refused
+										 * the sign-in" is a statement about the ACCOUNT's credential and
+										 * is only made for the class that carries
+										 * `radient_credential_refused`; every other failure - including a
+										 * bare 401/403, which also means this app's own bearer was
+										 * refused - keeps to what was observed and the retry.
+										 */}
+										{accountReadFailed && (
+											<Alert variant="warning">
+												<div className="flex items-center justify-between gap-3">
+													<span>
+														{t(
+															accountRead === "refused"
+																? "ui.settings.profile.account_read_failed_refused"
+																: "ui.settings.profile.account_read_failed_retry",
+														)}
+													</span>
+													{/*
+													 * WHAT THIS REPORTS IS THE READER'S OWN PRESS (qa round 3, Q1).
+													 * `isAccountRefreshing` is the mutation's pending state, and that mutation
+													 * awaits its refetch - so the control says t("ui.settings.navigation.settings_page.retrying") exactly while the
+													 * re-read this press began is running, and an ordinary fetch (the client's
+													 * own retries included) leaves it saying "Retry", enabled. The first version
+													 * read `isFetching`, which is true for those retries too: for a read that
+													 * never answers the control read t("ui.settings.navigation.settings_page.retrying"), disabled, with nobody having
+													 * pressed anything, beside copy that says "Retry."
+													 *
+													 * The alert STAYS MOUNTED while that re-read is out (the hook keeps the
+													 * failure across the fetch), and this control reports that the press did
+													 * something: without it the frame after a press is pixel-identical to the
+													 * frame before it - issue 89's own "I cannot tell whether this is working or
+													 * hung", one click downstream of its fix.
+													 */}
+													<Button
+														variant="secondary"
+														size="sm"
+														className="shrink-0"
+														onClick={() => refreshUser()}
+														disabled={isAccountRefreshing}
+													>
+														{isAccountRefreshing
+															? t("ui.settings.profile.retrying")
+															: t("ui.settings.profile.retry")}
+													</Button>
+												</div>
+											</Alert>
+										)}
+										{/*
+										 * Neither field carries a glyph. The section heading is
+										 * already a person, and a second person glyph 60px under it
+										 * on "Display name" was the same picture twice for two
+										 * different things. `Mail` goes with it rather than being
+										 * kept alone: one indented label beside one flush label is a
+										 * ragged column, and "Display name" and "Email address" are
+										 * not words that need a picture to be told apart.
+										 */}
+										{/*
+										 * LOCKED ONLY WHERE AN OVERWRITE IS ACTUALLY POSSIBLE (design round 2,
+										 * ruling on B2). The old predicate asked "is this read unresolved?"
+										 * when the governing question is "could what I type be replaced
+										 * without my knowing?", and it answered yes in two states where
+										 * nothing can replace it:
+										 *
+										 *  - `ready`: the account owns these fields - the store-sync effect in
+										 *    `use-radient-auth.ts` writes the account's name and email over
+										 *    the store's - so an edit here is one the app would undo. LOCKED.
+										 *  - `checking`: a resolution may still land WITH an account, and the
+										 *    caption above says the app is asking. LOCKED, and bounded by the
+										 *    read's own deadline rather than indefinite.
+										 *  - the failure classes (`refused`, `unavailable`, `unknown`) and
+										 *    signed out: UNLOCKED. The read has ANSWERED without an account
+										 *    and the sync effect only fires on a resolution WITH one, so
+										 *    nothing in the app's own model can overwrite an edit made here;
+										 *    the old predicate instead stranded a reader who has no Radient
+										 *    account and a failing read on two permanently dead controls whose
+										 *    only release never arrives. The alert above explains the read.
+										 *
+										 * THE RESIDUAL, named rather than hidden: a later successful read (a
+										 * retry resuming, a remount, a focus refetch) can still replace a
+										 * profile typed here. Closing that properly is a dirty flag on the
+										 * store-sync effect - the edit wins until the reader clears it -
+										 * which is a follow-up, not a reason to keep an indefinite lock.
+										 */}
+										<div className="flex flex-col gap-4">
+											<EditableField
+												searchRow="general.profile.name"
+												value={userStore.profile.name}
+												label={t("ui.settings.profile.display_name.label")}
+												placeholder={t(
+													"ui.settings.profile.display_name.placeholder",
+												)}
+												isSaving={savingField === "user_name"}
+												onSave={async (value) => {
+													setSavingField("user_name");
+													try {
+														userStore.updateName(value);
+													} finally {
+														setSavingField(null);
+													}
+												}}
+												readOnly={profileFieldsAreReadOnly}
+											/>
+											<EditableField
+												searchRow="general.profile.email"
+												value={userStore.profile.email}
+												label={t("ui.settings.profile.email.label")}
+												placeholder={t("ui.settings.profile.email.placeholder")}
+												isSaving={savingField === "user_email"}
+												onSave={async (value) => {
+													setSavingField("user_email");
+													try {
+														userStore.updateEmail(value);
+													} finally {
+														setSavingField(null);
+													}
+												}}
+												readOnly={profileFieldsAreReadOnly}
+											/>
+										</div>
+									</SettingsSection>
 
-								{/* `SlidersHorizontal`, not `Cpu`: this section sets defaults for
+									<SettingsSection
+										title={t("ui.settings.tour.title")}
+										description={t("ui.settings.tour.description")}
+									>
+										<Button
+											variant="secondary"
+											data-search-row="general.tour"
+											data-search-control
+											onClick={() => {
+												startOnboardingTour({ forceModalCompleted: true });
+											}}
+										>
+											<CirclePlay />
+											{t("ui.settings.tour.action")}
+										</Button>
+									</SettingsSection>
+
+									{/* `SlidersHorizontal`, not `Cpu`: this section sets defaults for
 							    two things, and `Cpu` is the Model select's own glyph a few
 							    rows below it. One picture, one meaning. */}
-								<SettingsSection
-									id="model-settings"
-									title={t("ui.settings.model.settings_page.model_settings")}
-									icon={SlidersHorizontal}
-									description={t(
-										"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen",
-									)}
-								>
-									<div
-										/* The hosting/model/effort trio is ONE row: they are
+									<SettingsSection
+										id="model-settings"
+										title={t("ui.settings.model.settings_page.model_settings")}
+										icon={SlidersHorizontal}
+										description={t(
+											"ui.settings.model.settings_page.configure_the_default_ai_model_and_hosting_providers_used_for_gen",
+										)}
+									>
+										<div
+											/* The hosting/model/effort trio is ONE row: they are
 									   three controls choosing one thing (which model runs
 									   new conversations), and a reader searching "model"
 									   should land on the group, not on three near-identical
 									   results. */
-										data-search-row="general.model"
-										data-search-control
-										/*
-										 * This row is THREE controls and no title of its own: the
-										 * section's h2 is the only name it prints, so a reader
-										 * typing "model" was competing against twelve registry rows
-										 * whose labels are exactly that word while this row's label
-										 * was the concatenated text of its three selects (QA round
-										 * 2b, Q6b). The label is the heading's own string, so the
-										 * word on screen is the word that finds it; the row's text
-										 * (hosting provider, the model's name) stays searchable as
-										 * its description.
-										 */
-										data-search-label={t(
-											"ui.settings.model.settings_page.model_settings",
-										)}
-										/*
-										 * The words the three controls PRINT, as terms: making the
-										 * label the heading's string moved the trio's own captions
-										 * out of the label tier, so "hosting provider" — which a
-										 * reader reads off the `Hosting provider` caption and used to
-										 * find this row first — would fall to the description tier and
-										 * be outranked by registry names. Terms keep the reader's
-										 * vocabulary at the tier the captions had.
-										 */
-										data-search-terms={[
-											t("ui.common.models.hosting_select.hosting_provider"),
-											t("ui.common.models.model_select.model"),
-											t("ui.settings.model.default_effort.label"),
-										].join(" ")}
-										className="flex flex-col gap-4"
-									>
-										<HostingSelect
-											value={config.values.hosting}
-											isSaving={savingField === "hosting"}
-											onSave={(value) => handleUpdateField("hosting", value)}
-											filterByCredentials={true}
-											allowCustom={true}
-											allowDefault={false}
-											/* This IS Settings, so the default ("…in Settings, under Providers")
+											data-search-row="general.model"
+											data-search-control
+											/*
+											 * This row is THREE controls and no title of its own: the
+											 * section's h2 is the only name it prints, so a reader
+											 * typing "model" was competing against twelve registry rows
+											 * whose labels are exactly that word while this row's label
+											 * was the concatenated text of its three selects (QA round
+											 * 2b, Q6b). The label is the heading's own string, so the
+											 * word on screen is the word that finds it; the row's text
+											 * (hosting provider, the model's name) stays searchable as
+											 * its description.
+											 */
+											data-search-label={t(
+												"ui.settings.model.settings_page.model_settings",
+											)}
+											/*
+											 * The words the three controls PRINT, as terms: making the
+											 * label the heading's string moved the trio's own captions
+											 * out of the label tier, so "hosting provider" — which a
+											 * reader reads off the `Hosting provider` caption and used to
+											 * find this row first — would fall to the description tier and
+											 * be outranked by registry names. Terms keep the reader's
+											 * vocabulary at the tier the captions had.
+											 */
+											data-search-terms={[
+												t("ui.common.models.hosting_select.hosting_provider"),
+												t("ui.common.models.model_select.model"),
+												t("ui.settings.model.default_effort.label"),
+											].join(" ")}
+											className="flex flex-col gap-4"
+										>
+											<HostingSelect
+												value={config.values.hosting}
+												isSaving={savingField === "hosting"}
+												onSave={(value) => handleUpdateField("hosting", value)}
+												filterByCredentials={true}
+												allowCustom={true}
+												allowDefault={false}
+												/* This IS Settings, so the default ("…in Settings, under Providers")
 										   would send the reader to the page they are already on. Settings'
 										   own model section says "below" instead: same door, same words,
 										   no second sentence. */
-											emptyHelperText={t(
-												"ui.settings.model.settings_page.no_hosting_options",
+												emptyHelperText={t(
+													"ui.settings.model.settings_page.no_hosting_options",
+												)}
+											/>
+											<ModelSelect
+												value={config.values.model_name}
+												hostingId={config.values.hosting}
+												isSaving={savingField === "model_name"}
+												onSave={(value) =>
+													handleUpdateField("model_name", value)
+												}
+												allowCustom={true}
+												allowDefault={false}
+											/>
+											{/*
+											 * Beside the two rows it depends on, in the same chrome: the
+											 * effort ladder is the SELECTED model's, read from the
+											 * preview the composer's own effort picker uses.
+											 */}
+											<DefaultEffortSelect
+												hosting={config.values.hosting}
+												modelName={config.values.model_name}
+												/*
+												 * The same reveal the language row gets: this key is promoted
+												 * out of the backend registry, so the section's `focusKey` is
+												 * suppressed for it and the row has to focus itself.
+												 */
+												focus={
+													settingFocusKey === MODEL_EFFORT_SETTING_KEY ||
+													searchJump?.key === MODEL_EFFORT_SETTING_KEY
+												}
+												focusNonce={
+													searchJump?.key === MODEL_EFFORT_SETTING_KEY
+														? searchJump.nonce
+														: undefined
+												}
+											/>
+											{/*
+											 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
+											 * rather than API keys, because a subscription login is the
+											 * path most readers have: the sentence names it, and the inline
+											 * link jumps to the Providers section on this page (a real
+											 * button, not a hash href - this is a hash router, where a
+											 * hash link would read as a route change).
+											 */}
+											{needsProvider && (
+												<Alert
+													variant="neutral"
+													icon={<Info className="size-4" aria-hidden="true" />}
+												>
+													<span>
+														{t("ui.settings.model.provider_callout.sentence")}
+														<button
+															type="button"
+															className="text-accent underline underline-offset-2"
+															onClick={() => {
+																/*
+																 * The panel is `display: none` until the commit that follows
+																 * `selectTab`, so the landing is handed to the arrival effect; a
+																 * `focus()` here would be a silent no-op on a hidden element.
+																 */
+																pendingPanelFocusRef.current = "providers";
+																selectTab("providers");
+															}}
+														>
+															{t(
+																"ui.settings.model.provider_callout.providers_link",
+															)}
+														</button>
+														.
+													</span>
+												</Alert>
 											)}
-										/>
-										<ModelSelect
-											value={config.values.model_name}
-											hostingId={config.values.hosting}
-											isSaving={savingField === "model_name"}
-											onSave={(value) => handleUpdateField("model_name", value)}
-											allowCustom={true}
-											allowDefault={false}
-										/>
-										{/*
-										 * Beside the two rows it depends on, in the same chrome: the
-										 * effort ladder is the SELECTED model's, read from the
-										 * preview the composer's own effort picker uses.
-										 */}
-										<DefaultEffortSelect
-											hosting={config.values.hosting}
-											modelName={config.values.model_name}
-											/*
-											 * The same reveal the language row gets: this key is promoted
-											 * out of the backend registry, so the section's `focusKey` is
-											 * suppressed for it and the row has to focus itself.
-											 */
-											focus={
-												settingFocusKey === MODEL_EFFORT_SETTING_KEY ||
-												searchJump?.key === MODEL_EFFORT_SETTING_KEY
-											}
-											focusNonce={
-												searchJump?.key === MODEL_EFFORT_SETTING_KEY
-													? searchJump.nonce
-													: undefined
-											}
-										/>
-										{/*
-										 * ONLY WHEN NO PROVIDER IS CONNECTED. Leading with "sign in"
-										 * rather than API keys, because a subscription login is the
-										 * path most readers have: the sentence names it, and the inline
-										 * link jumps to the Providers section on this page (a real
-										 * button, not a hash href - this is a hash router, where a
-										 * hash link would read as a route change).
-										 */}
-										{needsProvider && (
-											<Alert
-												variant="neutral"
-												icon={<Info className="size-4" aria-hidden="true" />}
-											>
-												<span>
-													{t("ui.settings.model.provider_callout.sentence")}
-													<button
-														type="button"
-														className="text-accent underline underline-offset-2"
-														onClick={() => {
-															handleSelectSection("providers");
-															/*
-															 * Keep the landing and make the jump keyboard-complete: the
-															 * container is focusable (`tabIndex={-1}` via its `id`), so
-															 * `preventScroll` keeps the smooth scroll's destination while
-															 * the next Tab continues INSIDE the section. Scoped to this
-															 * jump only; the sidebar keeps its pointer-first behaviour.
-															 */
-															sectionRefs.providers.current?.focus({
-																preventScroll: true,
-															});
-														}}
-													>
-														{t(
-															"ui.settings.model.provider_callout.providers_link",
-														)}
-													</button>
-													.
-												</span>
-											</Alert>
+										</div>
+									</SettingsSection>
+
+									<SystemPrompt />
+
+									<SettingsSection
+										title={t(
+											"ui.settings.configuration.settings_page.configuration_information",
 										)}
-									</div>
-								</SettingsSection>
-
-								<SystemPrompt />
-
+										icon={Info}
+										description={t(
+											"ui.settings.configuration.settings_page.system_information_about_the_current_configuration",
+										)}
+									>
+										<InfoGrid>
+											<InfoItem
+												label={t(
+													"ui.settings.configuration.settings_page.version",
+												)}
+												value={
+													<span className="text-mono-sm">{config.version}</span>
+												}
+											/>
+											<InfoItem
+												label={t(
+													"ui.settings.configuration.settings_page.created",
+												)}
+												value={formatCalendarDate(config.metadata.created_at)}
+											/>
+											<InfoItem
+												label={t(
+													"ui.settings.configuration.settings_page.last_modified",
+												)}
+												value={formatCalendarDateTime(
+													config.metadata.last_modified,
+												)}
+											/>
+											<InfoItem
+												label={t(
+													"ui.settings.configuration.settings_page.description",
+												)}
+												value={
+													config.metadata.description ||
+													t(
+														"ui.settings.configuration.settings_page.no_description_available",
+													)
+												}
+											/>
+										</InfoGrid>
+									</SettingsSection>
+								</div>
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="appearance"
+								label={tabLabel("appearance")}
+								active={activeTab === "appearance"}
+							>
 								<SettingsSection
-									title={t(
-										"ui.settings.configuration.settings_page.configuration_information",
-									)}
-									icon={Info}
+									title={t("ui.settings.appearance.settings_page.appearance")}
+									icon={Contrast}
 									description={t(
-										"ui.settings.configuration.settings_page.system_information_about_the_current_configuration",
+										"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator",
+									)}
+									sectionRef={sectionRefs.appearance}
+									dataTourTag="settings-appearance-section"
+									searchSection="appearance"
+									searchSectionLabel={t(
+										"ui.settings.navigation.settings_sidebar.appearance",
 									)}
 								>
-									<InfoGrid>
-										<InfoItem
-											label={t(
-												"ui.settings.configuration.settings_page.version",
-											)}
-											value={
-												<span className="text-mono-sm">{config.version}</span>
-											}
-										/>
-										<InfoItem
-											label={t(
-												"ui.settings.configuration.settings_page.created",
-											)}
-											value={formatCalendarDate(config.metadata.created_at)}
-										/>
-										<InfoItem
-											label={t(
-												"ui.settings.configuration.settings_page.last_modified",
-											)}
-											value={formatCalendarDateTime(
-												config.metadata.last_modified,
-											)}
-										/>
-										<InfoItem
-											label={t(
-												"ui.settings.configuration.settings_page.description",
-											)}
-											value={
-												config.metadata.description ||
-												t(
-													"ui.settings.configuration.settings_page.no_description_available",
-												)
-											}
-										/>
-									</InfoGrid>
-								</SettingsSection>
-							</div>
-
-							<SettingsSection
-								title={t("ui.settings.appearance.settings_page.appearance")}
-								icon={Contrast}
-								description={t(
-									"ui.settings.appearance.settings_page.customize_the_look_and_feel_of_local_operator",
-								)}
-								sectionRef={sectionRefs.appearance}
-								dataTourTag="settings-appearance-section"
-								searchSection="appearance"
-								searchSectionLabel={t(
-									"ui.settings.navigation.settings_sidebar.appearance",
-								)}
-							>
-								<div className="flex flex-col gap-4">
-									{/* The gallery remains the Theme layer; preview, contrast and
+									<div className="flex flex-col gap-4">
+										{/* The gallery remains the Theme layer; preview, contrast and
 									    accent controls share the same composed appearance. */}
-									<AppearanceLayers
-										gallery={<ThemeSelector />}
-										glass={glass.state}
-									/>
-									{/*
-									 * The transcript display mode: this row changes how RESPONSES are
-									 * drawn. It used to be the second of a pair with a "show agent
-									 * reasoning" switch above it; that switch was removed because the
-									 * canonical transcript has no reasoning record for it to show, so it
-									 * changed nothing on screen. The mode is ALSO reachable from the conversation itself (see the
-									 * header's `Transcript display` submenu), because a reader looking for
-									 * it is looking at the transcript rather than at this page.
-									 */}
-									<TranscriptDisplayModeSetting
-										searchRow="appearance.transcript"
-										value={parseTranscriptDisplayMode(transcriptDisplayMode)}
-										onChange={(next) => setTranscriptDisplayMode(next)}
-									/>
-									{/*
-									 * The agent picture's size: an app-level choice about how the chat
-									 * window and its header draw the picture, beside the other
-									 * transcript-appearance row. Not an agent setting, so it is not in
-									 * Settings > General or on an agent's page.
-									 */}
-									<AgentAvatarSizeSetting
-										searchRow="appearance.agent-picture-size"
-										value={parseAgentAvatarSize(agentAvatarSize)}
-										onChange={(next) => setAgentAvatarSize(next)}
-									/>
-									{/*
-									 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process
-									 * (it must know before the window exists), so this row reads and
-									 * writes through `useWindowGlass` rather than the preferences store.
-									 * Absent outside the desktop app; replaced by its reason where the
-									 * platform cannot do it. See `window-glass-setting.tsx`.
-									 */}
-									<WindowGlassSetting
-										searchRow="appearance.glass"
-										state={glass.state}
-										onChange={glass.set}
-									/>
-								</div>
-							</SettingsSection>
+										<AppearanceLayers
+											gallery={<ThemeSelector />}
+											glass={glass.state}
+										/>
+										{/*
+										 * The transcript display mode: this row changes how RESPONSES are
+										 * drawn. It used to be the second of a pair with a "show agent
+										 * reasoning" switch above it; that switch was removed because the
+										 * canonical transcript has no reasoning record for it to show, so it
+										 * changed nothing on screen. The mode is ALSO reachable from the conversation itself (see the
+										 * header's `Transcript display` submenu), because a reader looking for
+										 * it is looking at the transcript rather than at this page.
+										 */}
+										<TranscriptDisplayModeSetting
+											searchRow="appearance.transcript"
+											value={parseTranscriptDisplayMode(transcriptDisplayMode)}
+											onChange={(next) => setTranscriptDisplayMode(next)}
+										/>
+										{/*
+										 * The agent picture's size: an app-level choice about how the chat
+										 * window and its header draw the picture, beside the other
+										 * transcript-appearance row. Not an agent setting, so it is not in
+										 * Settings > General or on an agent's page.
+										 */}
+										<AgentAvatarSizeSetting
+											searchRow="appearance.agent-picture-size"
+											value={parseAgentAvatarSize(agentAvatarSize)}
+											onChange={(next) => setAgentAvatarSize(next)}
+										/>
+										{/*
+										 * OPTIONAL WINDOW TRANSLUCENCY, default off. Owned by the main process
+										 * (it must know before the window exists), so this row reads and
+										 * writes through `useWindowGlass` rather than the preferences store.
+										 * Absent outside the desktop app; replaced by its reason where the
+										 * platform cannot do it. See `window-glass-setting.tsx`.
+										 */}
+										<WindowGlassSetting
+											searchRow="appearance.glass"
+											state={glass.state}
+											onChange={glass.set}
+										/>
+									</div>
+								</SettingsSection>
+							</SettingsTabPanel>
 
 							{/*
 							 * Speech voicing sits beside Appearance and not under Backend settings,
@@ -1888,155 +1794,197 @@ export const SettingsPage: FC = () => {
 							 * why it carries no credential field.
 							 */}
 							{/* Notifications precedes Speech in the rail and document order. */}
-							<NotificationsSection sectionRef={sectionRefs.notifications} />
-							<SpeechSection
-								sectionRef={sectionRefs.speech}
-								onOpenProviders={(provider) =>
-									navigate(
-										`/settings?section=providers&provider=${encodeURIComponent(provider)}`,
-									)
-								}
-							/>
-							<KeyboardShortcutsSection
-								sectionRef={sectionRefs.keyboard}
-								focusKey={settingFocusKey}
-							/>
-
-							{/*
-							 * The provider grid is the same component onboarding uses: one
-							 * place for a provider's sign-in methods, states and stored
-							 * credentials. `/provider`, `/login` and `/logout` land here.
-							 */}
-							<SettingsSection
-								title={t("ui.settings.model.settings_page.model_providers")}
-								icon={Plug}
-								description={t(
-									"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
-								)}
-								sectionRef={sectionRefs.providers}
-								searchSection="providers"
-								searchSectionLabel={t(
-									"ui.settings.navigation.settings_sidebar.model_providers",
-								)}
-								/*
-								 * An anchor for the callout's jump: `id` makes the container a
-								 * `tabIndex={-1}` focus target, so activation can move focus INTO
-								 * the section (skip-link pattern) and the next Tab continues through
-								 * its controls instead of pulling the view back to where the link
-								 * sits in DOM order.
-								 */
-								id="model-providers"
-								/*
-								 * The landing target draws NO ring. `tabIndex={-1}` makes it a
-								 * programmatic rest-stop, not a control, and Chromium counts a
-								 * scripted `.focus()` after keyboard input as `:focus-visible` - so
-								 * the app's 2px accent ring would outline the whole section,
-								 * heading through provider grid, with nothing actionable in it.
-								 * `index.css` allows `outline-none` exactly when "focus is moved
-								 * there programmatically and a ring would be noise"; the `!` is
-								 * required because the ring is an unlayered `html :focus-visible`
-								 * rule that outranks utilities (same escape the browser pane's
-								 * U9 rest-stop uses). Every focusable CHILD keeps its own ring,
-								 * and the landing is already unmistakable: the scroll puts the
-								 * heading at the header room and the rail moves to this section.
-								 */
-								className="focus-visible:outline-none!"
+							<SettingsTabPanel
+								tab="notifications"
+								label={tabLabel("notifications")}
+								active={activeTab === "notifications"}
 							>
-								<ProviderGrid
-									initialProviderId={providerFromQuery}
-									onChangeModel={() => handleSelectSection("general")}
+								<NotificationsSection sectionRef={sectionRefs.notifications} />
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="speech"
+								label={tabLabel("speech")}
+								active={activeTab === "speech"}
+							>
+								<SpeechSection
+									sectionRef={sectionRefs.speech}
+									onOpenProviders={(provider) =>
+										navigate(
+											`/settings?section=providers&provider=${encodeURIComponent(provider)}`,
+										)
+									}
 								/>
-							</SettingsSection>
-
-							{/*
-							 * MCP management replaced the Google OIDC cards: the section
-							 * negotiates the `mcp` capability itself and reads the active
-							 * canonical session, so it renders unconditionally here.
-							 */}
-							<McpManagementSection
-								sessionId={activeSessionId ?? undefined}
-								sectionRef={sectionRefs.integrations}
-								highlightServer={mcpTarget}
-							/>
-
-							<SettingsSection
-								title={t("ui.settings.account.settings_page.radient_account")}
-								titleComponent={<RadientSectionTitle />}
-								description={t(
-									"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi",
-								)}
-								sectionRef={sectionRefs.radient}
-								dataTourTag="settings-radient-account-section"
-								searchSection="radient"
-								searchSectionLabel={t(
-									"ui.settings.navigation.settings_sidebar.radient_account",
-								)}
-								searchIgnore="account, billing and usage are read-only or remote"
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="keyboard"
+								label={tabLabel("keyboard")}
+								active={activeTab === "keyboard"}
 							>
+								<KeyboardShortcutsSection
+									sectionRef={sectionRefs.keyboard}
+									focusKey={settingFocusKey}
+								/>
+
 								{/*
-								 * Account, billing and usage were separated by `Divider`s. They are
-								 * three groups inside one grouping, so the section tier gap says
-								 * the same thing without drawing two more lines on a page that
-								 * already has enough.
+								 * The provider grid is the same component onboarding uses: one
+								 * place for a provider's sign-in methods, states and stored
+								 * credentials. `/provider`, `/login` and `/logout` land here.
 								 */}
-								<div className="flex flex-col gap-8">
-									<RadientAccountSection
-										onAfterCredentialUpdate={() => {
-											refreshModels();
-											refetchCredentials();
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="providers"
+								label={tabLabel("providers")}
+								active={activeTab === "providers"}
+							>
+								<SettingsSection
+									title={t("ui.settings.model.settings_page.model_providers")}
+									icon={Plug}
+									description={t(
+										"ui.settings.navigation.settings_page.sign_in_to_the_services_your_agents_think_with_new_chats_use_your",
+									)}
+									sectionRef={sectionRefs.providers}
+									searchSection="providers"
+									searchSectionLabel={t(
+										"ui.settings.navigation.settings_sidebar.model_providers",
+									)}
+									/*
+									 * An anchor for the callout's jump: `id` makes the container a
+									 * `tabIndex={-1}` focus target, so activation can move focus INTO
+									 * the section (skip-link pattern) and the next Tab continues through
+									 * its controls instead of pulling the view back to where the link
+									 * sits in DOM order.
+									 */
+									id="model-providers"
+									/*
+									 * The landing target draws NO ring. `tabIndex={-1}` makes it a
+									 * programmatic rest-stop, not a control, and Chromium counts a
+									 * scripted `.focus()` after keyboard input as `:focus-visible` - so
+									 * the app's 2px accent ring would outline the whole section,
+									 * heading through provider grid, with nothing actionable in it.
+									 * `index.css` allows `outline-none` exactly when "focus is moved
+									 * there programmatically and a ring would be noise"; the `!` is
+									 * required because the ring is an unlayered `html :focus-visible`
+									 * rule that outranks utilities (same escape the browser pane's
+									 * U9 rest-stop uses). Every focusable CHILD keeps its own ring,
+									 * and the landing is already unmistakable: the scroll puts the
+									 * heading at the header room and the rail moves to this section.
+									 */
+									className="focus-visible:outline-none!"
+								>
+									<ProviderGrid
+										initialProviderId={providerFromQuery}
+										onChangeModel={() => {
+											pendingPanelFocusRef.current = "general";
+											selectTab("general");
 										}}
 									/>
+								</SettingsSection>
 
-									{isAuthenticated && (
-										<>
-											<BillingInfo />
-											<UsageInfo />
-										</>
-									)}
-								</div>
-							</SettingsSection>
-
-							{agentMessagesSectionVisible && (
+								{/*
+								 * MCP management replaced the Google OIDC cards: the section
+								 * negotiates the `mcp` capability itself and reads the active
+								 * canonical session, so it renders unconditionally here.
+								 */}
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="integrations"
+								label={tabLabel("integrations")}
+								active={activeTab === "integrations"}
+							>
+								<McpManagementSection
+									sessionId={activeSessionId ?? undefined}
+									sectionRef={sectionRefs.integrations}
+									highlightServer={mcpTarget}
+								/>
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="radient"
+								label={tabLabel("radient")}
+								active={activeTab === "radient"}
+							>
 								<SettingsSection
-									title={t("ui.agentMessages.settings.section")}
-									icon={MessageSquare}
-									description={t("ui.agentMessages.settings.description")}
-									sectionRef={sectionRefs["agent-messages"]}
-									id="agent-messages"
-									searchSection="agent-messages"
-									searchSectionLabel={t("ui.agentMessages.settings.section")}
-									/* The controls inside are a consent state machine's, not
+									title={t("ui.settings.account.settings_page.radient_account")}
+									titleComponent={<RadientSectionTitle />}
+									description={t(
+										"ui.settings.account.settings_page.your_radient_account_radient_pass_details_and_credits_to_use_radi",
+									)}
+									sectionRef={sectionRefs.radient}
+									dataTourTag="settings-radient-account-section"
+									searchSection="radient"
+									searchSectionLabel={t(
+										"ui.settings.navigation.settings_sidebar.radient_account",
+									)}
+									searchIgnore="account, billing and usage are read-only or remote"
+								>
+									{/*
+									 * Account, billing and usage were separated by `Divider`s. They are
+									 * three groups inside one grouping, so the section tier gap says
+									 * the same thing without drawing two more lines on a page that
+									 * already has enough.
+									 */}
+									<div className="flex flex-col gap-8">
+										<RadientAccountSection
+											onAfterCredentialUpdate={() => {
+												refreshModels();
+												refetchCredentials();
+											}}
+										/>
+
+										{isAuthenticated && (
+											<>
+												<BillingInfo />
+												<UsageInfo />
+											</>
+										)}
+									</div>
+								</SettingsSection>
+							</SettingsTabPanel>
+							{agentMessagesSectionVisible && (
+								<SettingsTabPanel
+									tab="agent-messages"
+									label={tabLabel("agent-messages")}
+									active={activeTab === "agent-messages"}
+								>
+									<SettingsSection
+										title={t("ui.agentMessages.settings.section")}
+										icon={MessageSquare}
+										description={t("ui.agentMessages.settings.description")}
+										sectionRef={sectionRefs["agent-messages"]}
+										id="agent-messages"
+										searchSection="agent-messages"
+										searchSectionLabel={t("ui.agentMessages.settings.section")}
+										/* The controls inside are a consent state machine's, not
 								   a list of rows; the two registry-backed preferences it
 								   owns are searchable through the registry index and land
 								   here through `sectionForSettingKey`. */
-									searchIgnore="agent messages is a consent state machine; its registry rows are searchable"
-									/* A peer section, not a subsection of Backend settings
+										searchIgnore="agent messages is a consent state machine; its registry rows are searchable"
+										/* A peer section, not a subsection of Backend settings
 								   (design round 1, D1): one decorative rule plus the
 								   page's section gap, no card. */
-									className="border-b border-hairline pb-8"
-								>
-									{agentMessagesStatus ? (
-										<AgentMessagesSettings
-											availability={agentMessagesAvailability}
-											status={agentMessagesStatus}
-											accountId={agentMessagesAccountId}
-											refusal={agentMessagesSnapshot.refusal}
-											onRefreshStatus={refreshAgentMessages}
-											sessions={canonicalSessions}
-											typingAvailable={desktopFeatureEnabled(
-												capabilities.data,
-												"team_bridge_typing",
-											)}
-											focus={
-												settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
-												searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
-											}
-											focusNonce={
-												searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
-													? searchJump.nonce
-													: undefined
-											}
-											/* The chief-of-staff hold's button goes through the
+										className="border-b border-hairline pb-8"
+									>
+										{agentMessagesStatus ? (
+											<AgentMessagesSettings
+												availability={agentMessagesAvailability}
+												status={agentMessagesStatus}
+												accountId={agentMessagesAccountId}
+												refusal={agentMessagesSnapshot.refusal}
+												onRefreshStatus={refreshAgentMessages}
+												sessions={canonicalSessions}
+												typingAvailable={desktopFeatureEnabled(
+													capabilities.data,
+													"team_bridge_typing",
+												)}
+												focus={
+													settingFocusKey === TEAM_BRIDGE_ENABLED_SETTING_KEY ||
+													searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+												}
+												focusNonce={
+													searchJump?.key === TEAM_BRIDGE_ENABLED_SETTING_KEY
+														? searchJump.nonce
+														: undefined
+												}
+												/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
 										   store commit like every other entrance; the chat
 										   pane's composer takes focus on mount by itself.
@@ -2044,117 +1992,134 @@ export const SettingsPage: FC = () => {
 										   mount boundary on the way back reads the hold
 										   fresh and the notice clears once the owner has
 										   sent that message. */
-											onOpenSession={(sessionId) => {
-												agentMessagesModel.invalidateStatus();
-												void openConversation(navigate, sessionId);
-											}}
-										/>
-									) : agentMessagesSnapshot.refusal ? (
-										/*
-										 * The model keeps the refusal while a forced retry is
-										 * in flight, so this Alert — and its Retry — stays on
-										 * screen instead of the section blanking (R2-2).
-										 */
-										<Alert variant="warning">
-											<AlertTitle>
-												{t("ui.agentMessages.settings.error.title")}
-											</AlertTitle>
-											<AlertDescription>
-												{agentMessagesSnapshot.refusal.code !==
-													"client_unavailable" && (
+												onOpenSession={(sessionId) => {
+													agentMessagesModel.invalidateStatus();
+													void openConversation(navigate, sessionId);
+												}}
+											/>
+										) : agentMessagesSnapshot.refusal ? (
+											/*
+											 * The model keeps the refusal while a forced retry is
+											 * in flight, so this Alert — and its Retry — stays on
+											 * screen instead of the section blanking (R2-2).
+											 */
+											<Alert variant="warning">
+												<AlertTitle>
+													{t("ui.agentMessages.settings.error.title")}
+												</AlertTitle>
+												<AlertDescription>
+													{agentMessagesSnapshot.refusal.code !==
+														"client_unavailable" && (
+														<span className="block">
+															{settingsRefusalSentence(
+																agentMessagesSnapshot.refusal,
+															)}
+														</span>
+													)}
 													<span className="block">
-														{settingsRefusalSentence(
-															agentMessagesSnapshot.refusal,
-														)}
+														{t("ui.agentMessages.settings.error.no_changes")}
 													</span>
-												)}
-												<span className="block">
-													{t("ui.agentMessages.settings.error.no_changes")}
-												</span>
-												<Button
-													className="mt-3"
-													variant="secondary"
-													onClick={() => void refreshAgentMessages()}
-												>
-													{t("ui.agentMessages.settings.error.retry")}
-												</Button>
-											</AlertDescription>
-										</Alert>
-									) : (
-										<div aria-busy="true" className="flex flex-col gap-3">
-											<Skeleton className="h-5 w-40" />
-											<Skeleton className="h-4 w-full max-w-xl" />
-										</div>
-									)}
-								</SettingsSection>
+													<Button
+														className="mt-3"
+														variant="secondary"
+														onClick={() => void refreshAgentMessages()}
+													>
+														{t("ui.agentMessages.settings.error.retry")}
+													</Button>
+												</AlertDescription>
+											</Alert>
+										) : (
+											<div aria-busy="true" className="flex flex-col gap-3">
+												<Skeleton className="h-5 w-40" />
+												<Skeleton className="h-4 w-full max-w-xl" />
+											</div>
+										)}
+									</SettingsSection>
+								</SettingsTabPanel>
 							)}
 
-							<SettingsSection
-								title={t(
-									"ui.settings.navigation.settings_page.backend_settings",
-								)}
-								icon={Settings}
-								description={t(
-									"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
-								)}
-								sectionRef={sectionRefs.backend}
-								searchSection="backend"
-								searchSectionLabel={t(
-									"ui.settings.navigation.settings_sidebar.backend_settings",
-								)}
-								/* Registry rows are the Backend section's own surface: its
+							<SettingsTabPanel
+								tab="backend"
+								label={tabLabel("backend")}
+								active={activeTab === "backend"}
+							>
+								<SettingsSection
+									title={t(
+										"ui.settings.navigation.settings_page.backend_settings",
+									)}
+									icon={Settings}
+									description={t(
+										"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi",
+									)}
+									sectionRef={sectionRefs.backend}
+									searchSection="backend"
+									searchSectionLabel={t(
+										"ui.settings.navigation.settings_sidebar.backend_settings",
+									)}
+									/* Registry rows are the Backend section's own surface: its
 							   filter searches them in place, and this page's search reads
 							   the same payload directly (`settings.list`), so its rendered
 							   rows are not rows of THIS mechanism. */
-								searchIgnore="registry rows are searched by the Backend section's own filter"
+									searchIgnore="registry rows are searched by the Backend section's own filter"
+								>
+									<BackendSettingsSection
+										hideInterfaceLanguage
+										hideModelEffort
+										hideAgentMessages
+										hideSpeechShortcuts
+										hideNotifications
+										focusKey={
+											/*
+											 * A search jump outranks a URL deep link: it is the most recent
+											 * intent, and both resolve to the same keyed row. The nonce is
+											 * what makes a SECOND Enter on the same result land again.
+											 */
+											searchJump
+												? searchJump.key
+												: settingFocusKey &&
+														sectionForSettingKey(settingFocusKey, "backend") ===
+															"backend"
+													? settingFocusKey
+													: null
+										}
+										focusNonce={searchJump?.nonce}
+										initialFilter={settingsSearchFilter}
+									/>
+								</SettingsSection>
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="imports"
+								label={tabLabel("imports")}
+								active={activeTab === "imports"}
 							>
-								<BackendSettingsSection
-									hideInterfaceLanguage
-									hideModelEffort
-									hideAgentMessages
-									hideSpeechShortcuts
-									hideNotifications
-									focusKey={
-										/*
-										 * A search jump outranks a URL deep link: it is the most recent
-										 * intent, and both resolve to the same keyed row. The nonce is
-										 * what makes a SECOND Enter on the same result land again.
-										 */
-										searchJump
-											? searchJump.key
-											: settingFocusKey &&
-													sectionForSettingKey(settingFocusKey, "backend") ===
-														"backend"
-												? settingFocusKey
-												: null
-									}
-									focusNonce={searchJump?.nonce}
-									initialFilter={settingsSearchFilter}
-								/>
-							</SettingsSection>
-
-							<div
-								ref={sectionRefs.imports}
-								/* A DESTINATION, even though its controls are ignored: the
+								<div
+									ref={sectionRefs.imports}
+									/* A DESTINATION, even though its controls are ignored: the
 							   sidebar indexes this section, and a section result that
 							   cannot land is a dead result (review round 1, B1). */
-								data-search-section="imports"
-								data-search-section-label={t("ui.settings.imports.title")}
-								data-search-ignore="imports are a one-off task list, not a setting"
+									data-search-section="imports"
+									data-search-section-label={t("ui.settings.imports.title")}
+									data-search-ignore="imports are a one-off task list, not a setting"
+								>
+									<ImportSettingsSection />
+								</div>
+							</SettingsTabPanel>
+							<SettingsTabPanel
+								tab="updates"
+								label={tabLabel("updates")}
+								active={activeTab === "updates"}
 							>
-								<ImportSettingsSection />
-							</div>
-
-							<div
-								ref={sectionRefs.updates}
-								data-search-section="updates"
-								data-search-section-label={t(
-									"ui.settings.navigation.settings_sidebar.application_updates",
-								)}
-								data-search-ignore="application updates are an action surface, not a setting"
-							>
-								<AppUpdatesSection />
-							</div>
+								<div
+									ref={sectionRefs.updates}
+									data-search-section="updates"
+									data-search-section-label={t(
+										"ui.settings.navigation.settings_sidebar.application_updates",
+									)}
+									data-search-ignore="application updates are an action surface, not a setting"
+								>
+									<AppUpdatesSection />
+								</div>
+							</SettingsTabPanel>
 						</div>
 					</div>
 				</div>,

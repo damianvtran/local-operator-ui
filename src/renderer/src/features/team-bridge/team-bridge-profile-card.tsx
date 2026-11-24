@@ -296,7 +296,7 @@ function NativeProfileEditButton({
 			size="sm"
 			className="w-full"
 			onClick={() => {
-				if (onBeforeNavigate()) navigate("/settings");
+				if (onBeforeNavigate()) navigate("/settings?section=general");
 			}}
 		>
 			{t("ui.settings.personal_profile.edit")}

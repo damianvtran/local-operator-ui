@@ -173,17 +173,19 @@ const focusAfter = (anchor: Element | null): void => {
 };
 
 /**
- * [Set up phone access]: navigate, and ask the Phone access block to take
- * focus when it mounts there (UX review U3c). Plain `/settings`, not the
- * `?section=radient` deep link: that link re-scrolls to the top of the Radient
- * section once the page settles, which would undo the block's own landing a
- * second later (see `PhoneAccessBody`).
+ * [Set up phone access]: navigate to the Radient account TAB, and ask the Phone
+ * access block to take focus when it mounts there (UX review U3c).
+ *
+ * The tab is named in the link (`?section=radient`) because the block lives in
+ * one panel and a bare `/settings` would open whatever tab was last visited.
+ * Nothing scrolls the section afterwards any more: the panel arrives at its own
+ * top, so the block's landing is the only scroll on the way in.
  */
 const useSetUp = (): (() => void) => {
 	const navigate = useNavigate();
 	return useCallback(() => {
 		requestPhoneAccessFocus();
-		navigate("/settings");
+		navigate("/settings?section=radient");
 	}, [navigate]);
 };
 

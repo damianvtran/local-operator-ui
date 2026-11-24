@@ -301,3 +301,23 @@ test("the promoted model_effort row is revealed and focused by its deep link", (
 		"the row must focus its own combobox when the deep link names it",
 	);
 });
+
+test("every section a link can name is a tab panel, one per ref, no strays", () => {
+	/*
+	 * The route map above proves a link names a REF. Since the tab change, the
+	 * ref is no longer the whole destination: the link's section must also reach
+	 * a panel, or the URL selects a tab whose content the page does not draw.
+	 * The panel list is read from the page's own wrappers, so a section added
+	 * without its panel fails here instead of landing on an empty tab.
+	 */
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	const panels = [...page.matchAll(/<SettingsTabPanel\s+tab="([^"]+)"/g)].map(
+		(match) => match[1],
+	);
+	const refs = sectionRefKeys();
+	assert.equal(panels.length, refs.size, "one panel per deep-link key");
+	assert.deepEqual([...new Set(panels)].sort(), [...refs].sort());
+});

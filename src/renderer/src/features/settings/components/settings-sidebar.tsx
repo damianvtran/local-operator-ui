@@ -18,6 +18,7 @@ import {
 	SlidersHorizontal,
 } from "lucide-react";
 import type { ComponentType, FC } from "react";
+import { TOUR_TAGS } from "../settings-tabs";
 
 /**
  * A section's glyph. Every entry is now a component that draws itself in
@@ -51,25 +52,12 @@ export type SettingsSection = {
  * Props for the SettingsSidebar component
  */
 type SettingsSidebarProps = {
-	/** The currently active settings section */
-	activeSection: string;
-	/** Callback function when a section is selected */
-	onSelectSection: (sectionId: string) => void;
+	/** The tab the URL selects (the panel on screen) */
+	activeTab: string;
+	/** Show a tab: a history push, and a no-op for the tab already showing */
+	onSelectTab: (tab: string) => void;
 	/** List of available settings sections */
 	sections: SettingsSection[];
-};
-
-/**
- * Onboarding tour anchors, keyed by section id. A section with no entry gets no
- * tag, which is what the tour expects — `features/onboarding` matches these
- * values by selector, so a renamed value breaks the tour silently.
- */
-const TOUR_TAGS: Record<string, string> = {
-	general: "settings-sidebar-general",
-	radient: "settings-sidebar-radient-account",
-	integrations: "settings-sidebar-integrations",
-	appearance: "settings-sidebar-appearance",
-	updates: "settings-sidebar-application-updates",
 };
 
 /**
@@ -77,12 +65,10 @@ const TOUR_TAGS: Record<string, string> = {
  * sliced by position, so a section this file does not know about is left out of
  * every group instead of landing under the wrong heading.
  *
- * The order within a group must match the order the sections appear in
- * `settings-page`. This is a jump list over one long document, not a page
- * switcher, and the active row is chosen by whichever section is most visible
- * — so a rail that disagrees with document order makes the highlight jump
- * backwards as you scroll forwards. Account used to list credentials before
- * integrations while the page rendered them the other way round.
+ * The order within a group follows `settings-page`'s own order, so a destination
+ * is found where a returning reader expects it. It is no longer load-bearing:
+ * the active row comes from the URL, not from how much of a section is on
+ * screen, so a disagreement can no longer make the highlight jump.
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
 	/*
@@ -158,9 +144,9 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  *
  * There was, and the word then appeared three times in one viewport: on the
  * app rail's nav item, at the head of this rail, and as the page's own `h1`
- * beside it. This rail is a jump list within one page, and the page already
- * carries the title — so the groups start at the top, which is how Linear's
- * and 1Password's settings rails are built.
+ * beside it. This rail is the page's tab list, and the page already carries the
+ * title — so the groups start at the top, which is how Linear's and 1Password's
+ * settings rails are built.
  *
  * ## Why no edge of its own
  *
@@ -197,8 +183,8 @@ const SECTION_GROUPS: { label: string; ids: string[] }[] = [
  * almost nothing.
  */
 export const SettingsSidebar: FC<SettingsSidebarProps> = ({
-	activeSection,
-	onSelectSection,
+	activeTab,
+	onSelectTab,
 	sections,
 }) => {
 	useI18nLocale();
@@ -213,12 +199,13 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	const labelled = useMediaQuery("(min-width: 1040px)");
 
 	const renderSection = (section: SettingsSection) => {
-		const isActive = activeSection === section.id;
+		const isActive = activeTab === section.id;
 
 		const button = (
 			<button
 				type="button"
-				onClick={() => onSelectSection(section.id)}
+				onClick={() => onSelectTab(section.id)}
+				data-settings-tab={section.id}
 				aria-current={isActive ? "page" : undefined}
 				/* Unlabelled the row is an icon and nothing else, and a tooltip
 				   cannot stand in for a name: Radix's `Trigger` contributes

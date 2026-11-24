@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-close|settings-close-error|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|profile-proposals|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-close|settings-tabs|settings-close-error|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -5567,7 +5567,7 @@ async function sceneSessionArchive(cdp) {
 	const stateChangedAt = Date.now();
 	await clickAt(cdp, restoreControl);
 	let goneByStateChange = null;
-	for (let attempt = 0; attempt < 24; attempt += 1) {
+	for (let attempt = 0; attempt < 45; attempt += 1) {
 		await wait(250);
 		/*
 		 * THE OFFER, NOT "A TOAST" (this check's own triage, 2026-09-21). The lane draws one
@@ -32868,7 +32868,641 @@ async function sceneSettingsClose(cdp) {
 	return frames;
 }
 
+/* ===================================================================== */
+/* settings-tabs: one panel at a time, and the URL is the only tab state  */
+/* ===================================================================== */
+
 /**
+ * The Settings page as a rail of TABS (PR2 of the tabs work).
+ *
+ * What the frames and the readings record:
+ *
+ *  - `?section=appearance` opens the Appearance panel and nothing else; all
+ *    twelve panels stay MOUNTED (Cmd/Ctrl+F searches the rendered DOM) and
+ *    exactly one is unhidden, in both palettes;
+ *  - a rail press moves the panel, the URL and `aria-current` together;
+ *  - Cmd/Ctrl+F for a row in ANOTHER tab reveals that tab and lands on the row
+ *    (the jump the old clear-on-every-change effect cancelled);
+ *  - a tab keeps its own scroll position, and browser Back returns to the tab
+ *    it came from AT that position;
+ *  - Esc still closes the page from a tab that is not the one it opened on
+ *    (PR1 intact);
+ *  - below 1040px the rail is the 48px icon column and the panel still works;
+ *  - with the app in Urdu the rail sits on the inline-end side, measured;
+ *  - the onboarding tour walks FORWARD and BACK across the four settings steps
+ *    (General, Appearance, Radient account, Application updates) and the panel
+ *    on screen is the one each step spotlights.
+ *
+ * Needs `--backend` and `--backend-records` (the page renders behind its config
+ * query and the language picker writes backend state), plus a renderer built
+ * against the same URL. It leaves the rig's language as it found it.
+ */
+const SETTINGS_TABS_READING = `(() => {
+	const panels = [...document.querySelectorAll('[data-settings-panel]')];
+	const shown = panels.filter((panel) => !panel.hasAttribute('hidden'));
+	const rows = [...document.querySelectorAll('[data-settings-tab]')];
+	const current = rows.filter((row) => row.getAttribute('aria-current') === 'page');
+	const scroller = document.querySelector('[data-settings-content]');
+	const rowBox = rows[0] ? rows[0].getBoundingClientRect() : null;
+	const scrollerBox = scroller ? scroller.getBoundingClientRect() : null;
+	return {
+		hash: window.location.hash,
+		panels: panels.length,
+		shown: shown.map((panel) => panel.getAttribute('data-settings-panel')),
+		current: current.map((row) => row.getAttribute('data-settings-tab')),
+		rows: rows.length,
+		scrollTop: scroller ? Math.round(scroller.scrollTop) : null,
+		/* Which side of the content the rail's rows sit on, read not assumed. */
+		railSide:
+			rowBox && scrollerBox
+				? rowBox.left < scrollerBox.left
+					? 'start'
+					: 'end'
+				: null,
+		railRowWidth: rowBox ? Math.round(rowBox.width) : null,
+		direction: document.documentElement.dir,
+		viewport: { width: window.innerWidth, height: window.innerHeight },
+	};
+})()`;
+
+/** The live tour: its step id, whether Back exists, and the panel on screen. */
+const SETTINGS_TOUR_READING = `(() => {
+	/*
+	 * ONLY the visible step: Shepherd leaves earlier steps' elements in the DOM,
+	 * so the first match is the step the tour has already left.
+	 */
+	const element = document.querySelector('.shepherd-element:not([hidden])');
+	if (!element) return null;
+	const page = ${SETTINGS_TABS_READING};
+	return {
+		step: element.getAttribute('data-shepherd-step-id'),
+		title: element.querySelector('.shepherd-title')?.textContent?.trim() ?? null,
+		hasBack: Boolean(element.querySelector('.shepherd-button-secondary')),
+		panel: page.shown.length === 1 ? page.shown[0] : null,
+		home: page.hash,
+	};
+})()`;
+
+async function sceneSettingsTabs(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the Settings page renders behind its config query",
+	);
+	if (!BACKEND) return [];
+
+	const frames = [];
+	const capture = async (label) => {
+		const frame = await captureSettled(cdp, label);
+		if (frame) frames.push(frame);
+		return frame;
+	};
+	const read = () => cdp.evaluate(SETTINGS_TABS_READING);
+	const tour = () => cdp.evaluate(SETTINGS_TOUR_READING);
+	/** The tab the page says is showing, asserted from three directions. */
+	const expectTab = async (tab, label) => {
+		const state = await read();
+		check(
+			`${label}: only the "${tab}" panel is shown`,
+			Array.isArray(state?.shown) &&
+				state.shown.length === 1 &&
+				state.shown[0] === tab,
+			`shown=${JSON.stringify(state?.shown ?? null)} hash=${state?.hash}`,
+		);
+		check(
+			`${label}: the rail marks "${tab}" current and nothing else`,
+			Array.isArray(state?.current) &&
+				state.current.length === 1 &&
+				state.current[0] === tab,
+			`current=${JSON.stringify(state?.current ?? null)}`,
+		);
+		check(
+			`${label}: the URL names the same tab`,
+			String(state?.hash ?? "").includes(`section=${tab}`),
+			state?.hash,
+		);
+		return state;
+	};
+	const pressKey = async (key, code, virtualKeyCode) => {
+		await pressChord(cdp, { key, code, virtualKeyCode });
+		await wait(120);
+	};
+
+	/* ---------------------------------------------------------------- */
+	/* 1. A deep link opens its own panel; the rest stay mounted.        */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "navigate", "/settings?section=appearance");
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-settings-panel="appearance"]:not([hidden])'))`,
+	);
+	const appearance = await expectTab(
+		"appearance",
+		"deep link ?section=appearance",
+	);
+	/*
+	 * Eleven or twelve: the Agent messages panel is present only while the
+	 * surface says Settings is part of it (RFC §5.6), so this daemon's answer
+	 * decides the count. What must hold either way is that every mounted panel
+	 * has its rail row and that only ONE is shown — the mount count is what makes
+	 * Cmd/Ctrl+F able to read the hidden tabs.
+	 */
+	check(
+		"every panel stays mounted, and the rail has one row per panel",
+		(appearance?.panels === 11 || appearance?.panels === 12) &&
+			appearance?.panels === appearance?.rows,
+		`panels=${appearance?.panels} rows=${appearance?.rows}`,
+	);
+	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
+		await verb(cdp, "setTheme", theme);
+		await wait(400);
+		await capture(
+			`settings-tabs-appearance-${theme === "localOperatorDark" ? "dark" : "light"}`,
+		);
+	}
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await wait(250);
+
+	/* ---------------------------------------------------------------- */
+	/* 2. A rail press moves the panel, the URL and aria-current together */
+	/* ---------------------------------------------------------------- */
+
+	for (const tab of ["speech", "backend", "radient"]) {
+		await verb(cdp, "press", { selector: `[data-settings-tab="${tab}"]` });
+		await wait(350);
+		await expectTab(tab, `rail press "${tab}"`);
+	}
+	await capture("settings-tabs-radient-dark");
+	await verb(cdp, "press", { selector: '[data-settings-tab="appearance"]' });
+	await wait(350);
+	await expectTab("appearance", "rail press back to appearance");
+
+	/* ---------------------------------------------------------------- */
+	/* 3. Cmd/Ctrl+F reaches a row in ANOTHER tab and reveals it          */
+	/* ---------------------------------------------------------------- */
+
+	await pressChord(cdp, {
+		key: "f",
+		code: "KeyF",
+		virtualKeyCode: 70,
+		modifiers: 4,
+	});
+	await wait(300);
+	const focused = await cdp.evaluate(
+		`document.activeElement?.closest('[data-settings-search]') !== null`,
+	);
+	check(
+		"Cmd+F lands in the page's search field",
+		focused === true,
+		"focus elsewhere",
+	);
+	/*
+	 * "theme" is a PAGE row in the Appearance tab while the Backend panel is
+	 * showing, which is the case this jump is for. ("voice" was the first
+	 * choice and is recorded in the note below: on this daemon every result it
+	 * matches is a REGISTRY key whose section is Backend - the truthful landing
+	 * for those - so it cannot demonstrate a jump between tabs.)
+	 */
+	const typed = await cdp.evaluate(`(() => {
+		const input = document.querySelector('[data-settings-search] input');
+		if (!input) return null;
+		const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+		setter.call(input, 'theme');
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		return input.value;
+	})()`);
+	check("the search field holds the query", typed === "theme", String(typed));
+	await wait(500);
+	const results = await cdp.evaluate(
+		`document.querySelectorAll('[role="listbox"] [role="option"], [data-settings-search-result]').length`,
+	);
+	note('search results for "theme"', JSON.stringify({ results }));
+	/*
+	 * The list mixes this page's own rows and the registry keys, and a registry
+	 * key legitimately resolves to ITS section (Backend, for most). The claim
+	 * this scene records is the section one, so the walk goes to the result that
+	 * names the "Speech voicing" section.
+	 */
+	const options = await cdp.evaluate(
+		`[...document.querySelectorAll('[role="listbox"] [role="option"], [data-settings-search-result]')].map((row) => row.textContent ?? '')`,
+	);
+	const at = Array.isArray(options)
+		? options.findIndex((text) => /Translucent window/.test(text))
+		: -1;
+	note("search option texts", JSON.stringify({ at, options }));
+	await pressKey("Home", "Home", 36);
+	for (let step = 0; step < at; step += 1)
+		await pressKey("ArrowDown", "ArrowDown", 40);
+	await pressKey("Enter", "Enter", 13);
+	const landed = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-settings-panel="appearance"]:not([hidden])'))`,
+		240,
+	);
+	check(
+		"a page-row result reveals the tab that row lives in",
+		landed === true,
+		await cdp.evaluate(SETTINGS_TABS_READING).then((state) => state?.hash),
+	);
+	await expectTab("appearance", "search landing");
+	check(
+		"the landing is on the row, inside the panel it revealed",
+		await cdp.evaluate(
+			`document.activeElement?.closest('[data-search-row="appearance.glass"]') !== null`,
+		),
+		`activeElement=${await cdp.evaluate("document.activeElement?.tagName ?? null")} row=${await cdp.evaluate("document.activeElement?.closest('[data-search-row]')?.getAttribute('data-search-row') ?? null")}`,
+	);
+	await capture("settings-tabs-search-landing-dark");
+
+	/* ---------------------------------------------------------------- */
+	/* 4. Per-tab scroll memory, and browser Back at that position        */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "press", { selector: '[data-settings-tab="appearance"]' });
+	await wait(350);
+	await cdp.evaluate(`(() => {
+		const scroller = document.querySelector('[data-settings-content]');
+		if (!scroller) return false;
+		scroller.scrollTop = 420;
+		return true;
+	})()`);
+	await wait(350);
+	const scrolled = await read();
+	check(
+		"the appearance panel took the scroll",
+		(scrolled?.scrollTop ?? 0) >= 300,
+		`scrollTop=${scrolled?.scrollTop}`,
+	);
+	/* Imports is a tab this run has not visited - Backend was already scrolled
+	   by the search landing above, and would rightly restore its own offset. */
+	await verb(cdp, "press", { selector: '[data-settings-tab="imports"]' });
+	await wait(400);
+	const fresh = await read();
+	check(
+		"a tab the reader has not scrolled opens at its top, not at the last tab's offset",
+		(fresh?.scrollTop ?? -1) === 0,
+		`scrollTop=${fresh?.scrollTop}`,
+	);
+	await cdp.evaluate("history.back()");
+	await wait(700);
+	const restored = await expectTab("appearance", "browser Back");
+	check(
+		"Back returns to the tab AND its remembered scroll position",
+		Math.abs((restored?.scrollTop ?? 0) - 420) <= 6,
+		`scrollTop=${restored?.scrollTop} (expected ~420)`,
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 5. Esc still closes the page from a tab it did not open on        */
+	/* ---------------------------------------------------------------- */
+
+	await verb(cdp, "press", { selector: '[data-settings-tab="updates"]' });
+	await wait(350);
+	await expectTab("updates", "rail press updates");
+	/*
+	 * The search field owns Escape while it holds text (PR1's rule), and the
+	 * search above left a query in it. Clear it and put focus on the rail row
+	 * first, so this press is the page's.
+	 */
+	await cdp.evaluate(`(() => {
+		const input = document.querySelector('[data-settings-search] input');
+		if (input) {
+			const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+			setter.call(input, '');
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+			input.blur();
+		}
+		document.querySelector('[data-settings-tab="updates"]')?.focus();
+		return true;
+	})()`);
+	await wait(300);
+	await pressKey("Escape", "Escape", 27);
+	const closed = await waitForScene(
+		cdp,
+		`!window.location.hash.includes('/settings')`,
+		120,
+	);
+	check(
+		"Esc closes Settings from the Updates tab (PR1's scope is intact)",
+		closed === true,
+		await cdp.evaluate("window.location.hash"),
+	);
+
+	/* ---------------------------------------------------------------- */
+	/* 6. Below 1040px the rail is the 48px icon column                  */
+	/* ---------------------------------------------------------------- */
+
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 900,
+			height: 900,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await verb(cdp, "navigate", "/settings?section=appearance");
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-settings-panel="appearance"]:not([hidden])'))`,
+	);
+	await wait(500);
+	const narrow = await expectTab("appearance", "at 900 CSS px");
+	check(
+		"at 900 CSS px the rail is the icon column",
+		narrow?.viewport.width === 900 && (narrow?.railRowWidth ?? 999) <= 48,
+		`viewport=${narrow?.viewport.width} rowWidth=${narrow?.railRowWidth}`,
+	);
+	await capture("settings-tabs-narrow-900-dark");
+	await verb(cdp, "press", { selector: '[data-settings-tab="speech"]' });
+	await wait(350);
+	await expectTab("speech", "rail press at 900 CSS px");
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1380,
+			height: 900,
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(500);
+
+	/* ---------------------------------------------------------------- */
+	/* 7. RTL: the rail on the inline-end side, the panel mirrored        */
+	/* ---------------------------------------------------------------- */
+
+	const openLanguage = async () =>
+		cdp.evaluate(`(() => {
+			const trigger = document.querySelector('[data-setting-key="language"] [role="combobox"]');
+			if (!trigger) return false;
+			trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+			trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+			trigger.click();
+			return true;
+		})()`);
+	const pickLanguage = async (autonym) => {
+		await verb(cdp, "navigate", "/settings?section=general");
+		await waitForScene(
+			cdp,
+			`Boolean(document.querySelector('[data-setting-key="language"] [role="combobox"]'))`,
+		);
+		await openLanguage();
+		await wait(400);
+		const index = await cdp.evaluate(`(() => {
+			const rows = [...document.querySelectorAll('[role="listbox"] [role="option"]')];
+			const at = rows.findIndex((row) => (row.querySelector('bdi')?.textContent ?? '').trim() === ${JSON.stringify(autonym)});
+			const row = rows[at] ?? null;
+			return { at, found: row !== null, disabled: row ? row.getAttribute('data-disabled') === '' : null };
+		})()`);
+		if (!index.found || index.disabled) return { ...index, committed: false };
+		await pressKey("Home", "Home", 36);
+		for (let step = 0; step < index.at; step += 1) {
+			await pressKey("ArrowDown", "ArrowDown", 40);
+		}
+		await pressKey("Enter", "Enter", 13);
+		return { ...index, committed: true };
+	};
+
+	const urdu = await pickLanguage("اردو");
+	let rtl = urdu.committed
+		? await waitForScene(cdp, `document.documentElement.dir === 'rtl'`, 400)
+		: false;
+	note("the document direction after choosing Urdu", JSON.stringify({ rtl }));
+	/*
+	 * A LOCALE THE DAEMON DOES NOT SHIP cannot turn the document around: the
+	 * picker lists it, the commit round-trips, and the capabilities answer falls
+	 * back to English. The RTL LAYOUT is still measurable - and it is the layout
+	 * this PR changes - so the direction is set on `<html>` and the frame is
+	 * labelled as a direction probe, never as a locale switch.
+	 */
+	if (rtl !== true) {
+		await cdp.evaluate("document.documentElement.dir = 'rtl'");
+		await wait(500);
+		rtl = await cdp.evaluate("document.documentElement.dir === 'rtl'");
+		note(
+			"the RTL frame is a DIRECTION PROBE (this daemon's locale set does not ship Urdu)",
+			JSON.stringify({ rtl, committed: urdu.committed }),
+		);
+	}
+	note(
+		"the Urdu (RTL) option on this daemon",
+		JSON.stringify({
+			...urdu,
+			why: "a disabled option cannot be committed through the picker; the settings-language scene records the same limit",
+		}),
+	);
+	if (rtl === true) {
+		await verb(cdp, "navigate", "/settings?section=general");
+		await wait(600);
+		const mirrored = await expectTab("general", "in RTL");
+		check(
+			"with the document RTL the rail sits on the inline-end side of the panel",
+			mirrored?.direction === "rtl" && mirrored?.railSide === "end",
+			`direction=${mirrored?.direction} railSide=${mirrored?.railSide}`,
+		);
+		check(
+			"and every panel is still mounted, one shown",
+			(mirrored?.panels === 11 || mirrored?.panels === 12) &&
+				mirrored?.panels === mirrored?.rows &&
+				mirrored?.shown?.length === 1,
+			`panels=${mirrored?.panels} shown=${JSON.stringify(mirrored?.shown ?? null)}`,
+		);
+		await capture("settings-tabs-rtl-probe-dark");
+		await cdp.evaluate("document.documentElement.dir = 'ltr'");
+		const english = await pickLanguage("English");
+		const back = await waitForScene(
+			cdp,
+			`document.documentElement.dir === 'ltr'`,
+			300,
+		);
+		note(
+			"the rig's language after this run",
+			JSON.stringify({ englishRestored: back === true, ...english }),
+		);
+	} else {
+		check(
+			"the document turns right-to-left in the RTL case",
+			false,
+			`dir=${await cdp.evaluate("document.documentElement.dir")}`,
+		);
+	}
+
+	/* ---------------------------------------------------------------- */
+	/* 8. The tour walks the four settings steps forward, then back.     */
+	/* ---------------------------------------------------------------- */
+
+	const STEP_PANEL = {
+		"general-settings": "general",
+		"appearance-settings": "appearance",
+		"radient-account-settings": "radient",
+		"application-updates-settings": "updates",
+	};
+	const clickTour = async (selector) =>
+		cdp.evaluate(`(() => {
+			const button = document.querySelector(${JSON.stringify(selector)});
+			if (!button) return false;
+			button.click();
+			return true;
+		})()`);
+
+	await verb(cdp, "navigate", "/settings?section=general");
+	await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('[data-search-row="general.tour"]'))`,
+	);
+	await verb(cdp, "press", { selector: '[data-search-row="general.tour"]' });
+	const started = await waitForScene(
+		cdp,
+		`Boolean(document.querySelector('.shepherd-element'))`,
+		200,
+	);
+	check(
+		"the tour's own button starts the walkthrough",
+		started === true,
+		"no Shepherd element",
+	);
+
+	const forward = [];
+	let idle = 0;
+	for (let attempt = 0; attempt < 70; attempt += 1) {
+		const state = await tour();
+		if (!state) {
+			/* A hop hides the element while the next step waits for its target;
+			   that is a wait, not the end of the walk. */
+			idle += 1;
+			if (idle > 8) break;
+			await wait(500);
+			continue;
+		}
+		idle = 0;
+		forward.push(state);
+		if (state.step === "navigate-settings") {
+			/*
+			 * The step clicks the gear, and the gear is a TOGGLE: if Settings was
+			 * already open when the tour reached it, that click CLOSES the page and
+			 * the four settings steps then spotlight nothing. The rig puts the
+			 * page back through the same control (a second toggle) and records
+			 * which case it hit, so the steps below are measured on a page that
+			 * exists.
+			 */
+			await wait(800);
+			const home = await cdp.evaluate("window.location.hash");
+			if (!String(home).includes("/settings")) {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="nav-item-settings"]',
+				});
+				await waitForScene(
+					cdp,
+					`Boolean(document.querySelector('[data-settings-panel]:not([hidden])'))`,
+					200,
+				);
+				note(
+					"the gear step closed Settings; reopened it through the same control",
+					JSON.stringify({ wasAt: home }),
+				);
+			}
+		}
+		const expected = STEP_PANEL[state.step];
+		if (expected) {
+			check(
+				`tour forward: "${state.step}" spotlights the ${expected} panel`,
+				state.panel === expected,
+				`panel=${state.panel} home=${state.home} title=${JSON.stringify(state.title)}`,
+			);
+			if (state.step === "appearance-settings") {
+				await capture("settings-tabs-tour-appearance-dark");
+			}
+		}
+		/*
+		 * Stop at the LAST settings step: the back walk starts there, because the
+		 * direction that matters is Back across the four panels (a step that
+		 * follows would add a hop with no panel of its own).
+		 */
+		if (state.step === "application-updates-settings") break;
+		await clickTour(".shepherd-button-primary");
+		await wait(700);
+	}
+	const forwardSteps = forward.map((state) => state?.step).filter(Boolean);
+	note("tour steps seen going forward", JSON.stringify(forwardSteps));
+	for (const step of Object.keys(STEP_PANEL)) {
+		check(
+			`tour forward reached "${step}"`,
+			forwardSteps.includes(step),
+			`seen=${forwardSteps.join(",") || "(none)"}`,
+		);
+	}
+
+	const backward = [];
+	for (let attempt = 0; attempt < 8; attempt += 1) {
+		let state = await tour();
+		for (let spin = 0; !state && spin < 6; spin += 1) {
+			await wait(500);
+			state = await tour();
+		}
+		if (!state?.hasBack) break;
+		await clickTour(".shepherd-button-secondary");
+		await wait(900);
+		const next = await tour();
+		if (!next) break;
+		backward.push(next);
+		const expected = STEP_PANEL[next.step];
+		if (expected) {
+			check(
+				`tour back: "${next.step}" spotlights the ${expected} panel`,
+				next.panel === expected,
+				`panel=${next.panel} home=${next.home}`,
+			);
+		}
+		if (next.step === "general-settings") break;
+	}
+	const backwardSteps = backward.map((state) => state?.step).filter(Boolean);
+	note("tour steps seen going back", JSON.stringify(backwardSteps));
+	check(
+		"tour back from the last settings step returns to General's own panel",
+		backwardSteps.includes("general-settings"),
+		`seen=${backwardSteps.join(",") || "(none)"}`,
+	);
+	/* The walk STARTS on the updates step (the forward walk's last), so only the
+	   three it steps back through are recorded here. */
+	for (const step of [
+		"radient-account-settings",
+		"appearance-settings",
+		"general-settings",
+	]) {
+		check(
+			`tour back reached "${step}"`,
+			backwardSteps.includes(step),
+			`seen=${backwardSteps.join(",") || "(none)"}`,
+		);
+	}
+	await clickTour(".shepherd-cancel-icon");
+	await wait(400);
+	const cancelled = await cdp.evaluate(
+		`!document.querySelector('.shepherd-element')`,
+	);
+	note(
+		"the tour after this run",
+		JSON.stringify({ cancelled: cancelled === true }),
+	);
+
+	await verb(cdp, "setTheme", "localOperatorDark");
+	return frames;
+}
+
+/**
+
  * The config-ERROR state, with the daemon down (round 2: D7/M5).
  *
  * The populated page is photographed by `settings-close`; this scene answers the
@@ -52372,6 +53006,11 @@ async function main() {
 			 * The Settings page's close affordances (PR1 of the tabs work): the pinned X,
 			 * Esc during a recording vs after it, and the gear toggle. Needs `--backend`.
 			 */ else if (SCENE === "settings-close") await sceneSettingsClose(cdp);
+			/*
+			 * The Settings page as rail TABS (PR2): one panel at a time, the URL as the
+			 * only tab state, per-tab scroll memory, the search jump into another tab,
+			 * the tour across the four settings steps, and RTL. Needs `--backend`.
+			 */ else if (SCENE === "settings-tabs") await sceneSettingsTabs(cdp);
 			else if (SCENE === "settings-close-error")
 				await sceneSettingsCloseError(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);

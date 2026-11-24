@@ -393,8 +393,8 @@ export const SettingsRail: Story = {
 		<div className={cn("flex h-screen overflow-hidden bg-canvas text-ink")}>
 			<div className="w-[280px] shrink-0 border-hairline border-r">
 				<SettingsSidebar
-					activeSection={RAIL_ACTIVE}
-					onSelectSection={() => undefined}
+					activeTab={RAIL_ACTIVE}
+					onSelectTab={() => undefined}
 					sections={DEFAULT_SETTINGS_SECTIONS}
 				/>
 			</div>
