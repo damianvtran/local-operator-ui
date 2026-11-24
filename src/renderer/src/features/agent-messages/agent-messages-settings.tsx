@@ -55,8 +55,11 @@ import {
 } from "./agent-messages-settings-model";
 import {
 	type AllowlistDirectorySelection,
+	type AllowlistEntryName,
 	allowlistDirectoryChoices,
 	allowlistDirectoryKey,
+	allowlistEntryIdentity,
+	allowlistEntryNames,
 	selectionIsCurrent,
 } from "./allowlist-directory";
 import { DefaultOnBanner } from "./default-on-banner";
@@ -1413,13 +1416,18 @@ export type AllowlistDirectoryView =
  * not writable for this account (read-only posture, a status that belongs to
  * another account) or the api offers no directory; then nothing is fetched and
  * the form shows only the typed-ID path.
+ *
+ * RETRY. `retry` re-runs the SAME read for the same key (no new endpoint):
+ * it drops the settled answer so the editor says Loading again, then bumps
+ * `attempt`, which the effect depends on. A retry racing a pairing change is
+ * still guarded by `live` and the key check.
  */
 function useAllowlistDirectory(
 	read: AgentMessagesSettingsApi["directory"],
 	context: { tenantId: string; accountId: string },
 	enabled: boolean,
 	organizationName: string | undefined,
-): AllowlistDirectoryView | null {
+): { view: AllowlistDirectoryView | null; retry: () => void } {
 	const key = allowlistDirectoryKey(context);
 	const tenantId = context.tenantId;
 	// The latest reader, without making a fresh fake-api object (a story
@@ -1428,7 +1436,10 @@ function useAllowlistDirectory(
 	reader.current = read;
 	const available = enabled && Boolean(read);
 	const [settled, setSettled] = useState<AllowlistDirectoryView | null>(null);
+	const [attempt, setAttempt] = useState(0);
 	useEffect(() => {
+		// Read only so the effect re-runs when a retry bumps it.
+		void attempt;
 		const run = reader.current;
 		if (!available || !run) return;
 		let live = true;
@@ -1444,10 +1455,16 @@ function useAllowlistDirectory(
 			live = false;
 		};
 		// `key` folds tenant and account together, so either moving re-reads.
-	}, [available, key, tenantId]);
-	if (!available) return null;
-	if (settled?.key !== key) return { key, state: "loading", organizationName };
-	return { ...settled, organizationName };
+	}, [available, key, tenantId, attempt]);
+	const retry = () => {
+		setSettled(null);
+		setAttempt((current) => current + 1);
+	};
+	if (!available) return { view: null, retry };
+	if (settled?.key !== key) {
+		return { view: { key, state: "loading", organizationName }, retry };
+	}
+	return { view: { ...settled, organizationName }, retry };
 }
 
 const AllowlistEditor: FC<AllowlistEditorProps> = ({
@@ -1473,7 +1490,7 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 	);
 	const disabled = pending || readOnly || !accountMatches;
 	// Not gated on `pending`: a save in flight must not discard the roster.
-	const directory = useAllowlistDirectory(
+	const { view: directory, retry: retryDirectory } = useAllowlistDirectory(
 		api.directory,
 		{ tenantId: allowlist.allowlist.tenant_id, accountId },
 		!readOnly && accountMatches,
@@ -1492,14 +1509,44 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 	// A local sequence, not a clock: two adds in one tick must not collide on a
 	// React key (the clock can repeat within a millisecond).
 	const sequence = useRef(0);
+	// The form already refuses a duplicate with a message; this is the second
+	// gate, so one list can never hold the same kind+id twice (two identical
+	// rows would be two Remove buttons for one grant).
 	const add = (entry: Omit<AllowlistDraftEntry, "key">) =>
-		setEntries((current) => [
-			...current,
-			{
-				...entry,
-				key: `${entry.direction}:${entry.effect}:${sequence.current++}`,
-			},
-		]);
+		setEntries((current) =>
+			current.some(
+				(existing) =>
+					existing.direction === entry.direction &&
+					existing.effect === entry.effect &&
+					existing.kind === entry.kind &&
+					existing.id === entry.id,
+			)
+				? current
+				: [
+						...current,
+						{
+							...entry,
+							key: `${entry.direction}:${entry.effect}:${sequence.current++}`,
+						},
+					],
+		);
+	// Stable per-direction arrays, so each group's memoised "already listed"
+	// sets change only when the entries do.
+	const receiveEntries = useMemo(
+		() => entries.filter((entry) => entry.direction === "receive"),
+		[entries],
+	);
+	const sendEntries = useMemo(
+		() => entries.filter((entry) => entry.direction === "send"),
+		[entries],
+	);
+	// Names come from the roster already on screen; no extra read.
+	const readyDirectory =
+		directory?.state === "ready" ? directory.directory : null;
+	const names = useMemo(
+		() => (readyDirectory ? allowlistEntryNames(readyDirectory) : null),
+		[readyDirectory],
+	);
 	const remove = (key: string) =>
 		setEntries((current) => current.filter((entry) => entry.key !== key));
 
@@ -1538,6 +1585,15 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				<p className="mt-1 max-w-2xl text-body-sm text-ink-muted">
 					{t("ui.agentMessages.settings.allowlist.description")}
 				</p>
+				<p
+					className="mt-1 max-w-2xl text-meta text-ink-dim"
+					data-agent-messages-allow-explainer=""
+				>
+					{t("ui.agentMessages.settings.allowlist.allow_explainer")}
+				</p>
+				{directory && (
+					<DirectoryNote directory={directory} onRetry={retryDirectory} />
+				)}
 			</div>
 
 			<DirectionGroup
@@ -1545,8 +1601,9 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				title={t("ui.agentMessages.settings.allowlist.receive")}
 				mode={modes.receive}
 				cues={allowlist.view.cues}
-				entries={entries.filter((entry) => entry.direction === "receive")}
+				entries={receiveEntries}
 				directory={directory}
+				names={names}
 				disabled={disabled}
 				onMode={(mode) =>
 					setModes((current) => ({ ...current, receive: mode }))
@@ -1559,8 +1616,9 @@ const AllowlistEditor: FC<AllowlistEditorProps> = ({
 				title={t("ui.agentMessages.settings.allowlist.send")}
 				mode={modes.send}
 				cues={allowlist.view.cues}
-				entries={entries.filter((entry) => entry.direction === "send")}
+				entries={sendEntries}
 				directory={directory}
+				names={names}
 				disabled={disabled}
 				onMode={(mode) => setModes((current) => ({ ...current, send: mode }))}
 				onAdd={(entry) => add({ ...entry, direction: "send" })}
@@ -1621,6 +1679,8 @@ type DirectionGroupProps = {
 	cues: AgentMessagesAllowlistResult["view"]["cues"];
 	entries: readonly AllowlistDraftEntry[];
 	directory: AllowlistDirectoryView | null;
+	/** Names for listed ids from the loaded roster; null without one. */
+	names: ReadonlyMap<string, AllowlistEntryName> | null;
 	disabled: boolean;
 	onMode: (mode: AllowlistMode) => void;
 	onAdd: (entry: {
@@ -1638,6 +1698,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 	cues,
 	entries,
 	directory,
+	names,
 	disabled,
 	onMode,
 	onAdd,
@@ -1645,6 +1706,18 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 }) => {
 	const allowed = entries.filter((entry) => entry.effect === "allow");
 	const blocked = entries.filter((entry) => entry.effect === "deny");
+	// Memoised so each form's choice list is not rebuilt on every render.
+	const [allowedIds, blockedIds] = useMemo(() => {
+		const identities = (effect: "allow" | "deny") =>
+			new Set(
+				entries
+					.filter((entry) => entry.effect === effect)
+					.map((entry) => allowlistEntryIdentity(entry.kind, entry.id)),
+			);
+		return [identities("allow"), identities("deny")];
+	}, [entries]);
+	const nameOf = (entry: AllowlistDraftEntry) =>
+		names?.get(allowlistEntryIdentity(entry.kind, entry.id)) ?? null;
 	return (
 		<fieldset
 			data-agent-messages-direction={direction}
@@ -1679,6 +1752,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 						<EntryRow
 							key={entry.key}
 							entry={entry}
+							name={nameOf(entry)}
 							disabled={disabled}
 							onRemove={() => onRemove(entry.key)}
 						/>
@@ -1686,6 +1760,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 					<AddEntryForm
 						label={t("ui.agentMessages.settings.allowlist.add_allowed")}
 						directory={directory}
+						listed={allowedIds}
 						disabled={disabled}
 						onAdd={(entry) => onAdd({ ...entry, effect: "allow" })}
 					/>
@@ -1705,6 +1780,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 					<EntryRow
 						key={entry.key}
 						entry={entry}
+						name={nameOf(entry)}
 						disabled={disabled}
 						onRemove={() => onRemove(entry.key)}
 					/>
@@ -1712,6 +1788,7 @@ const DirectionGroup: FC<DirectionGroupProps> = ({
 				<AddEntryForm
 					label={t("ui.agentMessages.settings.allowlist.add_blocked")}
 					directory={directory}
+					listed={blockedIds}
 					disabled={disabled}
 					onAdd={(entry) => onAdd({ ...entry, effect: "deny" })}
 				/>
@@ -1770,36 +1847,132 @@ const LevelControl: FC<{
 	);
 };
 
+/**
+ * One listed entry. With a directory name it reads as the picker did (name,
+ * then "Run by <owner>" for an agent) so the pending list says WHO before
+ * Save; the full id stays underneath in machine voice because it is the only
+ * identity the wire carries and names repeat. Without a name (typed id, id
+ * not in the roster, roster unavailable) the id itself is the primary text,
+ * exactly as before — never a guessed name.
+ */
 const EntryRow: FC<{
 	entry: AllowlistDraftEntry;
+	name: AllowlistEntryName | null;
 	disabled: boolean;
 	onRemove: () => void;
-}> = ({ entry, disabled, onRemove }) => (
-	<div className="flex items-center justify-between gap-3 rounded border border-hairline px-2 py-1">
-		<div className="flex min-w-0 items-baseline gap-2">
-			<span className="shrink-0 text-meta text-ink-dim">
-				{entry.kind === "endpoint"
-					? t("ui.agentMessages.settings.allowlist.agent_id")
-					: t("ui.agentMessages.settings.allowlist.person_id")}
-			</span>
-			{/* The full id stays visible and selectable: it is the only
-			    identity the wire carries, and truncation would make it
-			    unverifiable. */}
-			<span className="break-all font-mono text-body-sm text-ink">
-				{entry.id}
-			</span>
-		</div>
-		<Button
-			variant="secondary"
-			size="sm"
-			disabled={disabled}
-			aria-label={`${t("ui.agentMessages.settings.allowlist.remove")} ${entry.id}`}
-			onClick={onRemove}
+}> = ({ entry, name, disabled, onRemove }) => {
+	const kindLabel =
+		entry.kind === "endpoint"
+			? t("ui.agentMessages.settings.allowlist.agent_id")
+			: t("ui.agentMessages.settings.allowlist.person_id");
+	const owner = name?.owner
+		? t("ui.agentMessages.settings.allowlist.directory_agent_owner", {
+				owner: name.owner,
+			})
+		: null;
+	// Remove is named by what the row SHOWS, so a screen-reader user hears
+	// "Remove Helper, Run by Ada Park", not an opaque id.
+	const target = name ? (owner ? `${name.label}, ${owner}` : name.label) : null;
+	return (
+		<div
+			className="flex items-center justify-between gap-3 rounded border border-hairline px-2 py-1"
+			data-agent-messages-entry={entry.id}
+			data-agent-messages-entry-named={name ? "" : undefined}
 		>
-			{t("ui.agentMessages.settings.allowlist.remove")}
-		</Button>
-	</div>
-);
+			{name ? (
+				<div className="flex min-w-0 flex-col">
+					<span className="break-words text-body-sm text-ink">
+						{name.label}
+						{owner && <span className="ms-2 text-ink-dim">{owner}</span>}
+					</span>
+					<span className="flex min-w-0 items-baseline gap-2 text-meta text-ink-dim">
+						<span className="shrink-0">{kindLabel}</span>
+						<span className="break-all font-mono">{entry.id}</span>
+					</span>
+				</div>
+			) : (
+				<div className="flex min-w-0 items-baseline gap-2">
+					<span className="shrink-0 text-meta text-ink-dim">{kindLabel}</span>
+					{/* The full id stays visible and selectable: it is the only
+					    identity the wire carries, and truncation would make it
+					    unverifiable. */}
+					<span className="break-all font-mono text-body-sm text-ink">
+						{entry.id}
+					</span>
+				</div>
+			)}
+			<Button
+				variant="secondary"
+				size="sm"
+				disabled={disabled}
+				aria-label={`${t("ui.agentMessages.settings.allowlist.remove")} ${target ?? entry.id}`}
+				onClick={onRemove}
+			>
+				{t("ui.agentMessages.settings.allowlist.remove")}
+			</Button>
+		</div>
+	);
+};
+
+/**
+ * The roster's state, said ONCE for the whole Reach editor (not under each
+ * add form, which repeated it three times). The sentence sits in a polite
+ * live region that is mounted before its text changes, so Loading and the
+ * failure are announced. Try again sits OUTSIDE the region so the announcement
+ * is the sentence alone. Every state keeps the typed-ID path working, and the
+ * copy says so.
+ */
+const DirectoryNote: FC<{
+	directory: AllowlistDirectoryView;
+	onRetry: () => void;
+}> = ({ directory, onRetry }) => {
+	const readyDirectory =
+		directory.state === "ready" ? directory.directory : null;
+	const counts = useMemo(
+		() =>
+			readyDirectory
+				? {
+						agents: allowlistDirectoryChoices(readyDirectory, "endpoint")
+							.length,
+						people: allowlistDirectoryChoices(readyDirectory, "account").length,
+					}
+				: null,
+		[readyDirectory],
+	);
+	const note =
+		directory.state === "loading"
+			? t("ui.agentMessages.settings.allowlist.directory_loading")
+			: directory.state === "error"
+				? t("ui.agentMessages.settings.allowlist.directory_error")
+				: counts && counts.agents === 0 && counts.people === 0
+					? t("ui.agentMessages.settings.allowlist.directory_empty")
+					: counts && counts.agents === 0
+						? t("ui.agentMessages.settings.allowlist.directory_empty_agent")
+						: null;
+	return (
+		// No margin while silent, so a ready roster leaves no gap; the region
+		// itself stays mounted (not display:none) so its next text is announced.
+		<div className={cn("flex flex-wrap items-center gap-2", note && "mt-2")}>
+			{/* <output> carries the implicit polite `status` role. */}
+			<output
+				className="block text-meta text-ink-dim"
+				data-agent-messages-directory-note={directory.state}
+			>
+				{note}
+			</output>
+			{directory.state === "error" && (
+				<Button
+					variant="secondary"
+					size="sm"
+					data-agent-messages-directory-retry=""
+					onClick={onRetry}
+				>
+					{t("ui.common.actions.retry_again")}
+				</Button>
+			)}
+		</div>
+	);
+};
 
 /**
  * One Add row: an optional directory choice, the typed-ID field, and Add.
@@ -1817,9 +1990,11 @@ const EntryRow: FC<{
 const AddEntryForm: FC<{
 	label: string;
 	directory: AllowlistDirectoryView | null;
+	/** `allowlistEntryIdentity`s already in THIS list: not offered, not re-added. */
+	listed: ReadonlySet<string>;
 	disabled: boolean;
 	onAdd: (entry: { kind: AllowlistEntryKind; id: string }) => void;
-}> = ({ label, directory, disabled, onAdd }) => {
+}> = ({ label, directory, listed, disabled, onAdd }) => {
 	const [kind, setKind] = useState<AllowlistEntryKind>("endpoint");
 	const [value, setValue] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -1827,20 +2002,29 @@ const AddEntryForm: FC<{
 		useState<AllowlistDirectorySelection | null>(null);
 	const fieldId = useId();
 	const helpId = `${fieldId}-help`;
+	// Own useId()s, not `${fieldId}-…` suffixes: the added-strings i18n gate
+	// reads a suffix literal as copy, and an opaque id is all aria needs.
+	const formLabelId = useId();
 	// The organization is shown, not just announced: the operator has to see
 	// whose people and agents the list holds. The picker is then named by that
 	// visible label plus its own visible text (aria-labelledby), so its
 	// accessible name contains what is on screen and speech input that says
 	// either "Choose from …" or "Choose an agent" reaches it.
-	const pickerLabelId = `${fieldId}-directory-label`;
-	const pickerTriggerId = `${fieldId}-directory-picker`;
+	const pickerLabelId = useId();
+	const pickerTriggerId = useId();
 
 	const readyDirectory =
 		directory?.state === "ready" ? directory.directory : null;
+	// Entries already in this list are not offered again: picking one could
+	// only produce a duplicate row (UX round 1, U3).
 	const choices = useMemo(
 		() =>
-			readyDirectory ? allowlistDirectoryChoices(readyDirectory, kind) : [],
-		[readyDirectory, kind],
+			readyDirectory
+				? allowlistDirectoryChoices(readyDirectory, kind).filter(
+						(choice) => !listed.has(allowlistEntryIdentity(kind, choice.id)),
+					)
+				: [],
+		[readyDirectory, kind, listed],
 	);
 	const current = directory
 		? { key: directory.key, kind, choices }
@@ -1873,6 +2057,12 @@ const AddEntryForm: FC<{
 		const problem = allowlistIdentifierError(value.trim());
 		setError(problem);
 		if (problem) return;
+		// A typed id can still repeat one already listed; say so instead of
+		// silently adding nothing.
+		if (listed.has(allowlistEntryIdentity(kind, value.trim()))) {
+			setError(t("ui.agentMessages.settings.allowlist.already_listed"));
+			return;
+		}
 		onAdd({ kind, id: value.trim() });
 		setValue("");
 		setSelection(null);
@@ -1891,21 +2081,14 @@ const AddEntryForm: FC<{
 				organization,
 			})
 		: t("ui.agentMessages.settings.allowlist.directory_label_unnamed");
-	// Loading, failed and empty all leave the typed-ID path working, and say so.
-	const directoryNote =
-		directory?.state === "loading"
-			? t("ui.agentMessages.settings.allowlist.directory_loading")
-			: directory?.state === "error"
-				? t("ui.agentMessages.settings.allowlist.directory_error")
-				: directory?.state === "ready" && choices.length === 0
-					? kind === "endpoint"
-						? t("ui.agentMessages.settings.allowlist.directory_empty_agent")
-						: t("ui.agentMessages.settings.allowlist.directory_empty_person")
-					: null;
+	// Loading, failed and empty are said once for the whole editor
+	// (`DirectoryNote`), not here: three copies read as noise (D1/U6).
 
 	return (
 		<div className="flex flex-col gap-2">
-			<Label htmlFor={fieldId}>{label}</Label>
+			<Label id={formLabelId} htmlFor={fieldId}>
+				{label}
+			</Label>
 			{/* items-end: the picker carries its organization label above it, so
 			    the row aligns on the controls' baseline, not the column's middle. */}
 			<div className="flex flex-wrap items-end gap-2">
@@ -1951,7 +2134,10 @@ const AddEntryForm: FC<{
 							<SelectTrigger
 								id={pickerTriggerId}
 								className="w-64"
-								aria-labelledby={`${pickerLabelId} ${pickerTriggerId}`}
+								// The form's own label first ("Allow …" / "Block …"): three
+								// pickers share the organization label, and without it a
+								// screen-reader user could not tell Allow from Block (U5).
+								aria-labelledby={`${formLabelId} ${pickerLabelId} ${pickerTriggerId}`}
 								data-agent-messages-directory-picker={kind}
 							>
 								<SelectValue
@@ -1976,6 +2162,24 @@ const AddEntryForm: FC<{
 										key={choice.id}
 										value={choice.id}
 										data-agent-messages-directory-choice={choice.id}
+										// The visual gaps are CSS margins, which leave no
+										// space in the computed name ("HelperRun by …"), so
+										// the option is named with explicit separators (U5).
+										aria-label={[
+											choice.label,
+											choice.owner &&
+												t(
+													"ui.agentMessages.settings.allowlist.directory_agent_owner",
+													{ owner: choice.owner },
+												),
+											choice.id,
+											choice.duplicateLabel &&
+												t(
+													"ui.agentMessages.settings.allowlist.directory_same_name",
+												),
+										]
+											.filter(Boolean)
+											.join(", ")}
 									>
 										<span className="flex min-w-0 flex-col">
 											<span className="text-ink">
@@ -2029,23 +2233,12 @@ const AddEntryForm: FC<{
 						}
 					}}
 				/>
-				<Button
-					variant="secondary"
-					size="sm"
-					disabled={disabled}
-					onClick={submit}
-				>
+				{/* Default (md) size: the same 32px as the kind select, picker and
+				    input, so under items-end its top lines up too (D3). */}
+				<Button variant="secondary" disabled={disabled} onClick={submit}>
 					{t("ui.agentMessages.settings.allowlist.add")}
 				</Button>
 			</div>
-			{directoryNote && (
-				<p
-					className="text-meta text-ink-dim"
-					data-agent-messages-directory-note={directory?.state}
-				>
-					{directoryNote}
-				</p>
-			)}
 			<p id={helpId} className="text-meta text-ink-dim">
 				{kind === "endpoint"
 					? t("ui.agentMessages.settings.allowlist.identifier_help_agent")

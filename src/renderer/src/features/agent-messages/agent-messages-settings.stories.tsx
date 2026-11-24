@@ -489,7 +489,9 @@ export const ScreeningModelNotEnrolledHere: Story = {
  * story cannot show a row the contract would refuse. Two people share the name
  * "Ada Park" and both run an agent named "Helper": the open list must keep them
  * apart by owner and full id. Choosing only fills the ID field; nothing is
- * written until Add and then Save.
+ * written until Add and then Save. A long agent name, a long owner name and a
+ * long organization name are here on purpose, so the label above the picker,
+ * the options and the named list rows show how they wrap.
  * ------------------------------------------------------------------------- */
 const DIRECTORY_MEMBERS = {
 	members: [
@@ -521,24 +523,101 @@ const DIRECTORY_MEMBERS = {
 				state: "active",
 			},
 		},
+		{
+			account_id: "acc_maximiliana",
+			display_label: "Maximiliana Oyelaran-Featherstonehaugh",
+			role: "member",
+			bridge_enabled: true,
+			bridge_state: "active",
+			agent: {
+				endpoint_id: "bep_maximiliana_forecasting",
+				name: "Quarterly revenue reconciliation and forecasting assistant",
+				state: "active",
+			},
+		},
 	],
 };
 
 function directoryStoryApi(
 	answer: () => Promise<unknown>,
+	allowlist: AgentMessagesAllowlistResult = allowlistResult,
 ): AgentMessagesSettingsApi {
 	return {
-		...fakeApi(activeSettings),
+		...fakeApi(activeSettings, allowlist),
 		directory: async () => teamBridgeDirectorySchema.parse(await answer()),
 	};
 }
 
-const directoryStatus = statusWith({
-	surface_state: "C",
-	local: { enabled: true, session: "aaaaaaaaaaaa" },
-});
+/** Status whose tenant row matches the allowlist's, so the organization is named. */
+function directoryStatusNamed(tenantName?: string) {
+	return statusWith({
+		surface_state: "C",
+		local: { enabled: true, session: "aaaaaaaaaaaa" },
+		status: {
+			available: true,
+			tenants: [
+				{
+					tenant_id: "tnt_bridge_e2e",
+					...(tenantName ? { tenant_name: tenantName } : {}),
+					eligible: true,
+					endpoint: null,
+				},
+			],
+		},
+	});
+}
 
-/** The roster read is in flight: the typed-ID path still works. */
+// The option's accessible name starts with the agent name, then ", Run by …".
+const RESEARCH_DESK_OPTION = /^Research desk,/;
+const LONG_ORGANIZATION = "Northwind Research & Development Cooperative";
+const directoryStatus = directoryStatusNamed("Example organization");
+
+/**
+ * Saved entries a directory can name (Helper, the long-named assistant, a
+ * person) beside one it cannot (`bep_peer_send`, typed by hand earlier), so the
+ * named rows and the bare-id fallback render together.
+ */
+const namedAllowlist: AgentMessagesAllowlistResult = (() => {
+	const entries: AgentMessagesAllowlistResult["allowlist"]["entries"] = [
+		{
+			id: "bal_send_allow",
+			direction: "send",
+			effect: "allow",
+			target: { kind: "endpoint", endpoint_id: "bep_peer_send" },
+		},
+		{
+			id: "bal_send_helper",
+			direction: "send",
+			effect: "allow",
+			target: { kind: "endpoint", endpoint_id: "bep_ada_one" },
+		},
+		{
+			id: "bal_send_forecast",
+			direction: "send",
+			effect: "allow",
+			target: { kind: "endpoint", endpoint_id: "bep_maximiliana_forecasting" },
+		},
+		{
+			id: "bal_receive_deny",
+			direction: "receive",
+			effect: "deny",
+			target: { kind: "account", account_id: "acc_bo_chen" },
+		},
+	];
+	return {
+		allowlist: { ...allowlistResult.allowlist, entries },
+		view: {
+			...allowlistResult.view,
+			entries,
+			directions: {
+				send: { mode: "listed_only", allow: 3, deny: 0 },
+				receive: { mode: "class_default", allow: 0, deny: 1 },
+			},
+		},
+	};
+})();
+
+/** The roster read is in flight: said once for the section; typing still works. */
 export const ReachDirectoryLoading: Story = {
 	args: {
 		status: directoryStatus,
@@ -546,7 +625,7 @@ export const ReachDirectoryLoading: Story = {
 	},
 };
 
-/** The organization lists nobody to choose. */
+/** The organization lists nobody to choose: said once for the section. */
 export const ReachDirectoryEmpty: Story = {
 	args: {
 		status: directoryStatus,
@@ -554,7 +633,7 @@ export const ReachDirectoryEmpty: Story = {
 	},
 };
 
-/** The roster read failed: said once, and the typed-ID path still works. */
+/** The roster read failed: said once, with Try again; typing still works. */
 export const ReachDirectoryFailed: Story = {
 	args: {
 		status: directoryStatus,
@@ -564,10 +643,22 @@ export const ReachDirectoryFailed: Story = {
 	},
 };
 
-/** Populated: the picker sits beside the kind and the ID field. */
+/**
+ * Populated, under a long organization name: saved rows show the name and
+ * "Run by …" with the id underneath; `bep_peer_send`, which the directory does
+ * not hold, falls back to its bare id.
+ */
 export const ReachDirectoryPopulated: Story = {
 	args: {
-		status: directoryStatus,
+		status: directoryStatusNamed(LONG_ORGANIZATION),
+		api: directoryStoryApi(async () => DIRECTORY_MEMBERS, namedAllowlist),
+	},
+};
+
+/** The organization has no name on status: the label falls back. */
+export const ReachDirectoryUnnamedOrganization: Story = {
+	args: {
+		status: directoryStatusNamed(),
 		api: directoryStoryApi(async () => DIRECTORY_MEMBERS),
 	},
 };
@@ -575,7 +666,7 @@ export const ReachDirectoryPopulated: Story = {
 /** The list open: owner, full id and the same-name marker on each "Helper". */
 export const ReachDirectoryOpen: Story = {
 	args: {
-		status: directoryStatus,
+		status: directoryStatusNamed(LONG_ORGANIZATION),
 		api: directoryStoryApi(async () => DIRECTORY_MEMBERS),
 	},
 	play: async ({ canvasElement }) => {
@@ -587,6 +678,56 @@ export const ReachDirectoryOpen: Story = {
 			return found as HTMLElement;
 		});
 		await userEvent.click(picker);
-		await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(3));
+		await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(4));
+	},
+};
+
+/**
+ * Add, then the dedupe: "Research desk" is chosen and added to the send
+ * Allowed list, where it shows by name and owner and is no longer offered;
+ * typing its id again is refused with a message instead of a second row.
+ */
+export const ReachDirectoryAddedAndDuplicate: Story = {
+	args: {
+		status: directoryStatusNamed(LONG_ORGANIZATION),
+		api: directoryStoryApi(async () => DIRECTORY_MEMBERS, namedAllowlist),
+	},
+	play: async ({ canvasElement }) => {
+		const send = await waitFor(() => {
+			const found = canvasElement.querySelector<HTMLElement>(
+				"[data-agent-messages-direction='send']",
+			);
+			expect(
+				found?.querySelector("button[data-agent-messages-directory-picker]"),
+			).not.toBeNull();
+			return found as HTMLElement;
+		});
+		const picker = send.querySelector<HTMLElement>(
+			"button[data-agent-messages-directory-picker]",
+		) as HTMLElement;
+		await userEvent.click(picker);
+		await userEvent.click(
+			await screen.findByRole("option", { name: RESEARCH_DESK_OPTION }),
+		);
+		const allowRow = within(send).getAllByRole("textbox")[0];
+		const add = within(send).getAllByRole("button", { name: "Add" })[0];
+		await userEvent.click(add);
+		await waitFor(() =>
+			expect(
+				within(send).getByRole("button", {
+					name: "Remove Research desk, Run by Bo Chen",
+				}),
+			).toBeTruthy(),
+		);
+		await userEvent.type(allowRow, "bep_bo_research");
+		await userEvent.click(add);
+		await waitFor(() =>
+			expect(
+				within(send).getByText("That agent or person is already in this list."),
+			).toBeTruthy(),
+		);
+		expect(
+			send.querySelectorAll("[data-agent-messages-entry='bep_bo_research']"),
+		).toHaveLength(1);
 	},
 };

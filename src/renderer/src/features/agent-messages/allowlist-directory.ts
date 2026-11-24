@@ -106,6 +106,42 @@ export function allowlistDirectoryChoices(
 	}));
 }
 
+/**
+ * The identity of one entry within one list (a direction/effect pair): kind and
+ * full id. NUL cannot occur in an id, so two different pairs never collide.
+ */
+export function allowlistEntryIdentity(kind: AllowlistEntryKind, id: string) {
+	return `${kind}\u0000${id}`;
+}
+
+/** What a listed entry shows when the directory on screen can name it. */
+export type AllowlistEntryName = { label: string; owner?: string };
+
+/**
+ * Names for the entries a list holds, read from the directory ALREADY loaded
+ * (no extra request). WHY: once a choice is added the pending row is the
+ * operator's last check before Save, and an opaque `bep_…` cannot tell two
+ * agents called "Helper" apart — the owner can. An id the directory does not
+ * hold (typed by hand, a departed member, or no directory at all) gets no
+ * name, and the row falls back to the bare id rather than guessing.
+ */
+export function allowlistEntryNames(
+	directory: TeamBridgeDirectory,
+): Map<string, AllowlistEntryName> {
+	const names = new Map<string, AllowlistEntryName>();
+	for (const kind of ["endpoint", "account"] as const) {
+		for (const choice of allowlistDirectoryChoices(directory, kind)) {
+			names.set(
+				allowlistEntryIdentity(kind, choice.id),
+				choice.owner
+					? { label: choice.label, owner: choice.owner }
+					: { label: choice.label },
+			);
+		}
+	}
+	return names;
+}
+
 /** A choice as the form holds it: the id plus the context it was made in. */
 export type AllowlistDirectorySelection = {
 	key: string;

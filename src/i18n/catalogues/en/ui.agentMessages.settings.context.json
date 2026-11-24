@@ -647,12 +647,12 @@
 		"placeholders": {},
 		"note": "No agents are listed in the organization; the typed-ID field still works."
 	},
-	"ui.agentMessages.settings.allowlist.directory_empty_person": {
+	"ui.agentMessages.settings.allowlist.directory_empty": {
 		"role": "directory status line",
 		"tone": "sentence case, plain, second person",
 		"length": "One short line or sentence.",
 		"placeholders": {},
-		"note": "No people are listed in the organization; the typed-ID field still works."
+		"note": "Shown once for the whole Reach editor when the organization lists no people (and so no agents) to choose; the typed-ID field still works."
 	},
 	"ui.agentMessages.settings.allowlist.directory_stale": {
 		"role": "add-entry validation error",
@@ -660,6 +660,20 @@
 		"length": "One short line or sentence.",
 		"placeholders": {},
 		"note": "The chosen person or agent left the list (organization or account changed, or they were removed). Nothing was added."
+	},
+	"ui.agentMessages.settings.allowlist.already_listed": {
+		"role": "add-entry validation error",
+		"tone": "sentence case, plain, neutral",
+		"length": "One short sentence.",
+		"placeholders": {},
+		"note": "Shown under an Add row when the typed or chosen ID is already in that same list (Allowed or Blocked); nothing is added."
+	},
+	"ui.agentMessages.settings.allowlist.allow_explainer": {
+		"role": "section help line",
+		"tone": "sentence case, plain, second person, reassuring",
+		"length": "One sentence; sits under the Reach description.",
+		"placeholders": {},
+		"note": "Explains the product rule that allowing someone in one direction (who you can message / who can message you) also lets the other side reply in that same conversation. 'Direction' refers to the two groups in this section."
 	},
 	"ui.agentMessages.settings.error.no_changes": {
 		"role": "read-failure reassurance",
