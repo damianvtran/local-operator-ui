@@ -12,7 +12,7 @@ import { JSDOM } from "jsdom";
  * latched by the backend, and the backend refuses `approvals auto` there
  * (`data.ok: false, approval_reason: "bridge_latched"`; the desktop command
  * carries no `bridge_ack`). The card nevertheless offered "Set auto for this
- * session" / "Set auto for all sessions". Both presses failed, and "all
+ * session" / "Auto-approve all sessions". Both presses failed, and "all
  * sessions" wrote the machine default (`settings.edit`) before the session half
  * was refused. The card now mounts neither link on a latched gate and says why.
  *
@@ -227,7 +227,7 @@ const UNLATCHED_GATE = {
 	bridge_latched: false,
 };
 
-const SET_AUTO_FOR = /Set auto for/;
+const SET_AUTO_FOR = /Auto-approve (this|all) session/;
 const NOTE =
 	"Allow all and auto are off in this conversation. To turn auto on, type /approvals auto in the terminal, or use /new for a fresh conversation.";
 
@@ -297,7 +297,7 @@ test("a latched approval offers no auto link, says why once, and still answers",
 	const answered = [];
 	await render(LATCHED_GATE, (label) => answered.push(label));
 
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.doesNotMatch(document.body.textContent, SET_AUTO_FOR);
 	const notes = document.querySelectorAll("[data-approval-latched-note]");
 	assert.equal(notes.length, 1, "exactly one inline note");
@@ -328,7 +328,7 @@ test("a gate with only approval_suspended: bridge hides the links too", async ()
 	sent.length = 0;
 	const { bridge_latched: _omitted, ...gate } = SUSPENDED_GATE;
 	await render(gate);
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
 		1,
@@ -339,7 +339,7 @@ test("a gate with only approval_suspended: bridge hides the links too", async ()
 
 test("the full published suspended payload (latched AND suspended) hides them", async () => {
 	await render(SUSPENDED_GATE);
-	assert.ok(!buttonNamed("Set auto"), "no Set auto control");
+	assert.ok(!buttonNamed("Auto-approve"), "no Auto-approve control");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
 		1,
@@ -350,7 +350,7 @@ test("NEGATIVE CONTROL: an unlatched approval still offers both links and they s
 	sent.length = 0;
 	await render(UNLATCHED_GATE);
 	const session = buttonNamed("Auto-approve this session");
-	const all = buttonNamed("Set auto for all sessions");
+	const all = buttonNamed("Auto-approve all sessions");
 	assert.ok(session && all, "both links render on an unlatched card");
 	assert.equal(
 		document.querySelectorAll("[data-approval-latched-note]").length,
@@ -365,7 +365,7 @@ test("NEGATIVE CONTROL: an unlatched approval still offers both links and they s
 	assert.equal(sent[0].args, "auto");
 
 	sent.length = 0;
-	await press(buttonNamed("Set auto for all sessions"));
+	await press(buttonNamed("Auto-approve all sessions"));
 	assert.deepEqual(
 		sent.map((request) => request.op),
 		["settings.edit", "sessions.command"],

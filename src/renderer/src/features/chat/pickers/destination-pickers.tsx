@@ -34,7 +34,7 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
-import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
+import { SNAPSHOT_READ_OPTIONS, queryClient } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
@@ -144,6 +144,9 @@ import {
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
+// Cycle-safe: the chip imports `useEntities` from here, and both sides only
+// call the other at run time, never at module evaluation.
+import { invalidateApprovalMode } from "../session-status/approval-mode-chip";
 import {
 	bandReadings,
 	effortChosenRung,
@@ -4434,6 +4437,14 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 		async (value: string) => {
 			if (scope === "session") {
 				await command.run("approvals", value);
+				/*
+				 * The receipt is prose; the row marker and the composer's approval
+				 * chip read the entity query. Without this the dialog kept marking the
+				 * OLD mode after a successful pick, so a click looked like it did
+				 * nothing while a typed `/approvals auto` (which the dispatcher
+				 * invalidates) visibly applied (operator report 2026-11-24).
+				 */
+				invalidateApprovalMode(queryClient, sessionId);
 				return;
 			}
 			// Default scope writes the typed settings key. The saved default applies
@@ -4458,7 +4469,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 			);
 			await defaults.refetch();
 		},
-		[scope, command, settingsOp, defaults],
+		[scope, command, settingsOp, defaults, sessionId],
 	);
 	return (
 		<PickerHost

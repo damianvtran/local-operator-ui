@@ -347,7 +347,7 @@ test("a saved default with a refused live command reports the half that did not 
 test("the handles are subordinate text buttons with full names", () => {
 	const html = renderControls({});
 	assert.match(html, /Auto-approve this session/);
-	assert.match(html, /Set auto for all sessions/);
+	assert.match(html, /Auto-approve all sessions/);
 	// The reserved status slot exists even when empty, so nothing reflows later.
 	assert.match(html, /data-approval-escape-status/);
 	assert.match(html, /min-h-\[2lh\]/);
@@ -366,7 +366,7 @@ test("a policy call disables only its own handles", () => {
 		/ disabled(?:=""|\s|>)/,
 	);
 	assert.match(
-		buttonOpeningTag(html, "Set auto for all sessions"),
+		buttonOpeningTag(html, "Auto-approve all sessions"),
 		/ disabled(?:=""|\s|>)/,
 	);
 });
@@ -601,7 +601,7 @@ test("the pressed handle says it is working, then says what now holds", () => {
 		buttonOpeningTag(done, "Auto is on for this session"),
 		/data-state="done"/,
 	);
-	assert.doesNotMatch(done, />Set auto for all sessions</);
+	assert.doesNotMatch(done, />Auto-approve all sessions</);
 	// U5: the receipt points at the press that actually answers the request.
 	assert.match(
 		done,
@@ -714,7 +714,7 @@ test("the card says guardrails and dangerous-delete review still apply in auto",
 	assert.match(html, /data-approval-guardrails-note/);
 	assert.match(
 		html,
-		/guardrail refusals and dangerous-delete review still apply/,
+		/Guardrail refusals and dangerous-delete review still apply/,
 	);
 });
 

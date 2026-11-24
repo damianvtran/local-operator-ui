@@ -319,3 +319,30 @@ test("clicking the `auto` row dispatches exactly what typing it + Enter does", a
 	assert.equal(field().value, "");
 	assert.equal(popupOpen(), false);
 });
+
+/*
+ * The `/approvals` DIALOG (ApprovalsPicker) must refresh the mode after a
+ * session-scope pick, exactly as the typed path does via slash-dispatch.
+ * Measured 2026-11-24 on a live isolated backend: the POST succeeded but the
+ * dialog's row marker and the composer chip kept the old mode, so a click read
+ * as a no-op. Source-pinned because the dialog needs the full picker host.
+ */
+test("ApprovalsPicker invalidates the approvals mode after a session pick", async () => {
+	const src = await readFile(
+		new URL(
+			"../src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+			import.meta.url,
+		),
+		"utf8",
+	);
+	const start = src.indexOf("export const ApprovalsPicker");
+	assert.ok(start > 0);
+	const body = src.slice(start, src.indexOf("return (", start));
+	const session = body.slice(body.indexOf('scope === "session"'));
+	const run = session.indexOf('command.run("approvals", value)');
+	const inval = session.indexOf(
+		"invalidateApprovalMode(queryClient, sessionId)",
+	);
+	assert.ok(run >= 0 && inval > run, "invalidate follows the session run");
+	assert.ok(inval < session.indexOf("return;"), "before the branch returns");
+});
