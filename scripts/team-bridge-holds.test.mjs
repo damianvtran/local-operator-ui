@@ -1284,7 +1284,13 @@ function memoryPreference() {
 }
 
 test("only the same account and exact receipt are hidden after restart; observed recovery persists", async () => {
-	const other = hold({ message_id: "bcmsg_other", actionable: true });
+	/* An ordinary in-window row with a receipt: its Discard is possible, so it
+	   never takes a hide fingerprint (a no-receipt row now would). */
+	const other = hold({
+		message_id: "bcmsg_other",
+		actionable: true,
+		discard_receipt: "e".repeat(64),
+	});
 	const raw = hidePage([expiredForLocalHide, other]);
 	const [same, anotherAccount, newReceipt] = await Promise.all([
 		m.addLocalHoldRevisions("account-a", raw),
