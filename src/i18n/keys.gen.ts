@@ -5068,6 +5068,7 @@ export type MessageParams = {
 	"ui.chat.ask_queue.refusal.already_settled": undefined;
 	"ui.chat.ask_queue.refusal.busy": undefined;
 	"ui.chat.ask_queue.refusal.expired": undefined;
+	"ui.chat.ask_queue.refusal.not_addressable": undefined;
 	"ui.chat.ask_queue.response.answered": { askId: string };
 	"ui.chat.ask_queue.response.declined": { askId: string };
 	"ui.chat.ask_queue.response.dismissed": {
@@ -13880,6 +13881,8 @@ export type MessageParams = {
 	"ui.settings.model.provider_callout.providers_link": undefined;
 	"ui.settings.model.provider_callout.sentence": undefined;
 	"ui.settings.navigation.settings_page.backend_settings": undefined;
+	"ui.settings.navigation.settings_page.close_settings": undefined;
+	"ui.settings.navigation.settings_page.close_settings_shortcut": undefined;
 	"ui.settings.navigation.settings_page.every_setting_the_backend_registry_owns_searchable_with_typed_edi": undefined;
 	"ui.settings.navigation.settings_page.loading_settings": undefined;
 	"ui.settings.navigation.settings_page.retry": undefined;

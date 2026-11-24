@@ -1,0 +1,25 @@
+{
+ "schema": 1,
+ "auditor": "reviewer",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "7bd362f0190d-navclose-zh-CN",
+ "date": "2026-11-23",
+ "locale": "zh-CN",
+ "independence": "Independent i18n auditor: lopdev reviewer session 7bd362f0190d (task r1-i18n-audit), a different agent from the row's translator of record (i18n-translator) and from the PR's implementer (lopdev coder). Did not write, translate or edit any string; read only PR #2067 head 7b4da60ea8173698ffc98112f32e96a9ecbd9a4a. Model family overlap with the implementer, if any, is undisclosed to this auditor.",
+ "references": {
+  "glossary": "damianvtran/local-operator@32270f862ee7 i18n/glossary.md",
+  "style_guide_root": "damianvtran/local-operator@32270f862ee7 i18n/style-guides/<locale>.md"
+ },
+ "repo": "damianvtran/local-operator-ui",
+ "pr": 2067,
+ "head": "7b4da60ea8173698ffc98112f32e96a9ecbd9a4a",
+ "scope": "The 2 keys added by PR #2067 to ui.settings.navigation (settings_page.close_settings, settings_page.close_settings_shortcut) read against en value + en context sidecar, glossary and the locale style guide, and against the locale's shipped terms (settings word, Close verb, Esc in sibling shortcut hints); mechanical: key set == en, no ICU/placeholder/brace/apostrophe, no Cc/Cf or bidi controls, NFC. The other keys of the namespace are unchanged since their earlier receipts and were not re-audited.",
+ "namespace": "ui.settings.navigation",
+ "status": "passed",
+ "sha256": {
+  "en": "7f8b13cfa396c01c936caa40b57f7c698b4c12efbb26fc5a4b029008be68031b",
+  "zh-CN": "3db29252d10c41af6fd69bf88f070c6546818a045a02a6de7b30bbfee9649538"
+ },
+ "context_sha256": "be6dec8c4e3c275d36ed2cc29138943dfddcabb8cbbaaaf8fb8348e0562e7c65",
+ "findings": []
+}

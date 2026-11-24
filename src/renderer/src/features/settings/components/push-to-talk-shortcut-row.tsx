@@ -309,6 +309,10 @@ export function PushToTalkShortcutRow({
 					press.current = null;
 					setError(null);
 					event.preventDefault();
+					// Esc is this recorder's cancel, never the page's close.
+					if (event.key === "Escape" || event.key === "Esc") {
+						event.stopPropagation();
+					}
 					return;
 				}
 				// Every press is the field's: a held Alt must not open a menu bar and a

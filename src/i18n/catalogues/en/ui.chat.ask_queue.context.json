@@ -201,6 +201,13 @@
 		"role": "error when the user answers an ask too old to answer",
 		"tone": "sentence with an em dash and an instruction, ends with a full stop"
 	},
+	"ui.chat.ask_queue.refusal.not_addressable": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written. 'Nothing left this device' means the answer was never transmitted.",
+		"placeholders": {},
+		"role": "error when the app itself could not format the user's answer to an ask for the session, so it was never sent",
+		"tone": "short sentence then a reason sentence, ends with a full stop"
+	},
 	"ui.chat.ask_queue.response.answered": {
 		"length": "",
 		"note": "Ask means a question the agent put to the user.",

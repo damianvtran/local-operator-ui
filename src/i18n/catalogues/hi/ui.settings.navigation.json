@@ -20,5 +20,7 @@
 	"ui.settings.navigation.settings_sidebar.backend_settings": "बैकएंड सेटिंग्स",
 	"ui.settings.navigation.settings_sidebar.application_updates": "ऐप अपडेट",
 	"ui.settings.navigation.settings_sidebar.account": "खाता",
-	"ui.settings.navigation.settings_page.retrying": "फिर कोशिश हो रही है"
+	"ui.settings.navigation.settings_page.retrying": "फिर कोशिश हो रही है",
+	"ui.settings.navigation.settings_page.close_settings": "सेटिंग्स बंद करें",
+	"ui.settings.navigation.settings_page.close_settings_shortcut": "बंद करें (Esc)"
 }

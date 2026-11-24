@@ -2,6 +2,7 @@ import { currentLocale, t, textDirectionFor } from "@shared/i18n";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import Shepherd, { type Step, type StepOptions, type Tour } from "shepherd.js";
 import { TOUR_BODIES, renderTourBody, tourLabel } from "./tour-copy";
+import { tourGearNeedsClick } from "./tour-gear-open";
 
 /**
  * The element carrying a tour tag that the user can actually see.
@@ -1579,10 +1580,19 @@ const buildTourSteps = (): StepOptions[] => [
 				text: tourLabel("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
+					/*
+					 * OPEN-ONLY, because the gear is a toggle (round 1: Q-2). The
+					 * tour reaches this step a second time through its own Back: the
+					 * page is already open, so a plain click CLOSED it and the next
+					 * step ("General settings") floated over another route with no
+					 * anchor. `aria-current="page"` on the gear is the app's own
+					 * statement that Settings is the current route - the same
+					 * reading the gear uses for its own direction.
+					 */
 					const button = document.querySelector(
 						'[data-tour-tag="nav-item-settings"]',
 					);
-					if (button) {
+					if (tourGearNeedsClick(button)) {
 						(button as HTMLButtonElement).click();
 					}
 					// Wait for the navigation to complete before clicking the next button

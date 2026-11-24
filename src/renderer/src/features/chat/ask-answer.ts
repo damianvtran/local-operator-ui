@@ -118,7 +118,12 @@ import type { AskDismissReason } from "./ask-queue";
  * reader imports them from (`answerReport` here, `scripts/ask-options.test.mjs`).
  * One disposition, one predicate, one sentence — wherever the ask is painted.
  */
-import { answerBusyMessage, answerOwnerIsBusy } from "./ask-queue";
+import {
+	answerBusyMessage,
+	answerOwnerIsBusy,
+	answerRefusedByAppContract,
+	answerRefusedByAppContractMessage,
+} from "./ask-queue";
 
 export { answerBusyMessage, answerOwnerIsBusy };
 
@@ -553,9 +558,15 @@ export const answerRefusedWithoutACode = (error: unknown): boolean =>
  * rather than `error.message`.
  */
 export const unsentAnswerMessage = (error: unknown): string =>
-	t("ui.chat.ask_answer.not_sent", {
-		reason: userFacingMessage(error, t("ui.chat.ask_answer.request_failed")),
-	});
+	// Main's own schema refusal has no reason worth quoting (`answerRefusedByAppContract`).
+	answerRefusedByAppContract(error)
+		? answerRefusedByAppContractMessage()
+		: t("ui.chat.ask_answer.not_sent", {
+				reason: userFacingMessage(
+					error,
+					t("ui.chat.ask_answer.request_failed"),
+				),
+			});
 
 /**
  * What one option press reports, and WHERE it reports it.

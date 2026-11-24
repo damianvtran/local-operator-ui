@@ -57,6 +57,55 @@ const id = z
 	.regex(/^[a-zA-Z0-9_-]+$/);
 
 /**
+ * The detail main answers when ITS OWN schema refuses a request: a 422 that
+ * never left this app (`desktop-transport.ts`, `desktop-ipc.ts`).
+ *
+ * One exported spelling, because the renderer has to recognise exactly this
+ * refusal - a never-sent body - and tell it apart from a backend 422 whose words
+ * are the route's own. Matching a second copy of the string is how the two
+ * would drift and the bare diagnostic would reach a user again. It is a wire
+ * diagnostic, not copy: surfaces that can receive it translate it into a
+ * sentence about their own act (see `unsentAnswerMessage`).
+ */
+export const DESKTOP_CONTRACT_REFUSAL_DETAIL = "Invalid desktop operation."; // i18n: ignore wire diagnostic, translated by its readers
+
+/**
+ * Core's LEGACY MIRROR request id for one question of a queued ask:
+ * `<ask_id>.<question_index>`, e.g. `a-06d8.0`.
+ *
+ * WHY IT EXISTS. For one release core still mirrors the head queued ask as an
+ * ask-kind `pending_gate` (core `local_operator/asks/store.py`
+ * `mirror_request_id` / `parse_mirror_request_id`, ~L430-457), so a reader that
+ * draws the mirror - the inline QuestionDock - answers it through the GATE
+ * shape of `sessions.answer`, and core's runtime routes a parsed mirror id to
+ * the ask queue (`session/runtime/server.py`, ~L9905-9928). The generic `id`
+ * grammar refused the dot, so main answered 422 before sending and the user
+ * read "Your answer was not sent. Invalid desktop operation." (operator report,
+ * 2026-11-23, a remote session's ask).
+ *
+ * WHY THIS EXACT GRAMMAR AND NOT "ANY STRING". Core accepts any request id up
+ * to 128 characters, but this field is also the app's own guard on what a
+ * renderer may put in a body; the widening is therefore exactly the mirror
+ * grammar core emits and parses: the `a-` prefix `parse_mirror_request_id`
+ * requires, the lowercase-hex alphabet `new_ask_id` mints from
+ * (`secrets.token_hex(2)`: 4 characters today, the floor; up to 32 so a longer mint
+ * does not reopen this refusal), ONE `.` separator (`MIRROR_REQUEST_SEPARATOR`)
+ * and an all-digit question index (bounded to 4 digits - an ask with 10,000
+ * questions is not a shape any surface draws).
+ *
+ * LIFETIME: delete this, and its use in `sessions.answer`, when core retires
+ * the legacy mirror (the release after every supported backend publishes
+ * `asks`; see `ask-queue.ts` "Presence of `asks` retires the legacy mirror").
+ */
+export const ASK_MIRROR_REQUEST_ID_PATTERN = /^a-[0-9a-f]{4,32}\.[0-9]{1,4}$/;
+
+/** A gate answer's `request_id`: the ordinary `id`, or a legacy ask mirror's. */
+const answerRequestId = z.union([
+	id,
+	z.string().regex(ASK_MIRROR_REQUEST_ID_PATTERN),
+]);
+
+/**
  * The Team Bridge approvals selection: 1..50 `{message_id, decision}` pairs.
  * 50 is the daemon's `approvals.BATCH_MAX` (local-operator #4099), mirrored so
  * the renderer can never send a body the route refuses by size alone.
@@ -2879,7 +2928,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * below require exactly one of the pair.
 			 */
 			epoch: id.optional(),
-			requestId: id.optional(),
+			/** `id`, or a legacy queued-ask mirror id; see `ASK_MIRROR_REQUEST_ID_PATTERN`. */
+			requestId: answerRequestId.optional(),
 			value: z.string().max(32768).optional(),
 			approved: z.boolean().optional(),
 			questionIndex: z.number().int().min(0).optional(),

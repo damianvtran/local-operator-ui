@@ -87,6 +87,7 @@ import {
 import { useCheckFirstTimeUser } from "@shared/hooks/use-check-first-time-user";
 import { useLowCreditsDialog } from "@shared/hooks/use-low-credits-dialog";
 import { useNavigationGestures } from "@shared/hooks/use-navigation-gestures";
+import { useSettingsReturnTracking } from "@shared/hooks/use-settings-route";
 import { useWindowChrome } from "@shared/hooks/use-window-chrome";
 import {
 	panelSessionIdOfView,
@@ -208,6 +209,12 @@ const App: FC = () => {
 	 * renders nothing.
 	 */
 	useWindowChrome();
+	/*
+	 * The route Settings remembers so Close can return to it (memory-only, one
+	 * pathname+search). Mounted beside the chrome hooks because it must run before
+	 * the lazy Settings page can: entering the page is what pins the target.
+	 */
+	useSettingsReturnTracking();
 	/*
 	 * The i18n locale store's writer: mirrors the capabilities answer into it —
 	 * the device locale before any answer, the backend's resolved language
